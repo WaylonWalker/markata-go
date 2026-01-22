@@ -966,7 +966,7 @@ If a specified template doesn't exist, markata-go falls back to:
 
 ## See Also
 
-- [Configuration Guide](./configuration.md) - Configure template settings
-- [Feeds Guide](./feeds.md) - Learn about the feed system
-- [Themes Guide](./themes.md) - Create and customize themes
+- [[configuration-guide|Configuration Guide]] - Configure template settings
+- [[feeds-guide|Feeds Guide]] - Learn about the feed system
+- [[themes-and-styling|Themes Guide]] - Create and customize themes
 - [pongo2 Documentation](https://github.com/flosch/pongo2) - Full template engine reference

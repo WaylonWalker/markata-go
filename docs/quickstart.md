@@ -60,9 +60,9 @@ Output is written to `./output/`.
 
 ## Next Steps
 
-- [Getting Started](./getting-started.md) - Full tutorial
-- [Configuration](./guides/configuration.md) - Customize your site
-- [Frontmatter](./guides/frontmatter.md) - Content metadata
-- [Feeds](./guides/feeds.md) - Create archives and RSS
-- [Templates](./guides/templates.md) - Customize appearance
-- [Deployment](./guides/deployment.md) - Go live
+- [[getting-started|Getting Started]] - Full tutorial
+- [[configuration-guide|Configuration]] - Customize your site
+- [[frontmatter-guide|Frontmatter]] - Content metadata
+- [[feeds-guide|Feeds]] - Create archives and RSS
+- [[templates-guide|Templates]] - Customize appearance
+- [[deployment-guide|Deployment]] - Go live

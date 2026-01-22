@@ -16,8 +16,8 @@ A fast, plugin-driven static site generator written in Go.
 
 ## Quick Links
 
-- [Quickstart](./quickstart.md) - Get running in 5 minutes
-- [Getting Started](./getting-started.md) - Full tutorial walkthrough
+- [[quickstart|Quickstart]] - Get running in 5 minutes
+- [[getting-started|Getting Started]] - Full tutorial walkthrough
 
 ---
 
@@ -25,38 +25,38 @@ A fast, plugin-driven static site generator written in Go.
 
 ### Content
 
-- [Frontmatter](./guides/frontmatter.md) - Post metadata and fields
-- [Markdown Features](./guides/markdown.md) - Supported syntax and extensions
-- [Dynamic Content](./guides/dynamic-content.md) - Using Jinja templates in Markdown
+- [[frontmatter-guide|Frontmatter]] - Post metadata and fields
+- [[markdown-features|Markdown Features]] - Supported syntax and extensions
+- [[dynamic-content|Dynamic Content]] - Using Jinja templates in Markdown
 
 ### Feeds & Output
 
-- [Feeds](./guides/feeds.md) - Create archives and collections
-- [Syndication](./guides/syndication-feeds.md) - RSS, Atom, JSON Feed, and Sitemap
+- [[feeds-guide|Feeds]] - Create archives and collections
+- [[syndication-feeds|Syndication]] - RSS, Atom, JSON Feed, and Sitemap
 
 ### Customization
 
-- [Configuration](./guides/configuration.md) - All configuration options
-- [Templates](./guides/templates.md) - Customize your site's appearance
-- [Plugin Development](./guides/plugin-development.md) - Extend markata-go
+- [[configuration-guide|Configuration]] - All configuration options
+- [[templates-guide|Templates]] - Customize your site's appearance
+- [[plugin-development|Plugin Development]] - Extend markata-go
 
 ### Publishing
 
-- [Deployment](./guides/deployment.md) - Host your site
+- [[deployment-guide|Deployment]] - Host your site
 
 ---
 
 ## Reference
 
-- [CLI Reference](./reference/cli.md) - All commands and flags
-- [Advanced Usage](./advanced-usage.md) - Power user features
+- [[cli-reference|CLI Reference]] - All commands and flags
+- [[advanced-usage|Advanced Usage]] - Power user features
 
 ---
 
 ## Help
 
-- [Troubleshooting](./troubleshooting.md) - Common issues and solutions
-- [Comparison](./comparison.md) - How markata-go compares to other SSGs
+- [[troubleshooting|Troubleshooting]] - Common issues and solutions
+- [[framework-comparison|Comparison]] - How markata-go compares to other SSGs
 
 ---
 
