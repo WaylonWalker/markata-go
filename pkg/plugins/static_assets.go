@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/themes"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/themes"
 )
 
 // StaticAssetsPlugin copies static assets from themes and project directories to output.
@@ -34,7 +34,7 @@ func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 	outputDir := config.OutputDir
 
 	// Get theme name from config (default to "default")
-	themeName := "default"
+	themeName := ThemeDefault
 	if extra := config.Extra; extra != nil {
 		if theme, ok := extra["theme"].(map[string]interface{}); ok {
 			if name, ok := theme["name"].(string); ok && name != "" {
@@ -54,7 +54,7 @@ func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 		if err := p.copyDir(themeStaticDir, outputDir); err != nil {
 			return fmt.Errorf("copying theme static files: %w", err)
 		}
-	} else if themeName == "default" {
+	} else if themeName == ThemeDefault {
 		// Fall back to embedded static files for default theme
 		if err := p.copyEmbeddedStatic(outputDir); err != nil {
 			return fmt.Errorf("copying embedded static files: %w", err)
@@ -121,7 +121,7 @@ func (p *StaticAssetsPlugin) copyEmbeddedStatic(outputDir string) error {
 		dstPath := filepath.Join(outputDir, path)
 
 		if d.IsDir() {
-			return os.MkdirAll(dstPath, 0755)
+			return os.MkdirAll(dstPath, 0o755)
 		}
 
 		// Read embedded file
@@ -131,12 +131,12 @@ func (p *StaticAssetsPlugin) copyEmbeddedStatic(outputDir string) error {
 		}
 
 		// Ensure parent directory exists
-		if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 			return fmt.Errorf("creating parent directory: %w", err)
 		}
 
 		// Write file
-		if err := os.WriteFile(dstPath, content, 0644); err != nil {
+		if err := os.WriteFile(dstPath, content, 0o644); err != nil { //nolint:gosec // static assets need world-readable permissions for web serving
 			return fmt.Errorf("writing file %s: %w", dstPath, err)
 		}
 
@@ -162,7 +162,7 @@ func (p *StaticAssetsPlugin) copyDir(src, dst string) error {
 
 		if info.IsDir() {
 			// Create directory
-			return os.MkdirAll(dstPath, 0755)
+			return os.MkdirAll(dstPath, 0o755)
 		}
 
 		// Copy file
@@ -173,7 +173,7 @@ func (p *StaticAssetsPlugin) copyDir(src, dst string) error {
 // copyFile copies a single file from src to dst.
 func (p *StaticAssetsPlugin) copyFile(src, dst string) error {
 	// Ensure parent directory exists
-	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return fmt.Errorf("creating parent directory: %w", err)
 	}
 

@@ -590,6 +590,85 @@ h4:hover .heading-anchor {
 
 ---
 
+### md_video
+
+**Name:** `md_video`  
+**Stage:** Render (post_render)  
+**Purpose:** Converts markdown image syntax for video files into HTML video elements with GIF-like autoplay behavior by default.
+
+**Configuration (TOML):**
+```toml
+[markata.md_video]
+enabled = true                    # Enable the plugin (default: true)
+video_extensions = [".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v"]  # Extensions to treat as video
+video_class = "md-video"          # CSS class for video elements (default)
+controls = true                   # Show video controls (default: true)
+autoplay = true                   # Auto-start playback (default: true)
+loop = true                       # Loop video continuously (default: true)
+muted = true                      # Mute audio (default: true, required for autoplay)
+playsinline = true                # Play inline on mobile (default: true)
+preload = "metadata"              # Preload hint: "none", "metadata", "auto" (default: "metadata")
+```
+
+**Why GIF-like defaults?**
+
+The default configuration mimics animated GIF behavior because most embedded videos in blog posts are short demonstrations, screen recordings, or animations. Users expect these to play automatically without sound, similar to GIFs.
+
+To use traditional video behavior (click to play with sound):
+```toml
+[markata.md_video]
+autoplay = false
+loop = false
+muted = false
+controls = true
+```
+
+**Markdown usage:**
+```markdown
+![kickflip down the 3 stair - fingerboarding](https://example.com/video.mp4)
+
+![Demo of the feature](demo.webm)
+
+![Screen recording](screen.mp4?width=500)
+```
+
+**Behavior:**
+1. Scans `ArticleHTML` for `<img>` tags after markdown rendering
+2. Checks if the `src` attribute ends with a video extension (handles query parameters)
+3. Replaces matching `<img>` tags with `<video>` elements
+4. Preserves the `alt` text as fallback content
+5. Automatically detects MIME type from file extension
+
+**HTML output:**
+```html
+<video autoplay loop muted playsinline controls preload="metadata" class="md-video">
+  <source src="https://example.com/video.mp4" type="video/mp4">
+  kickflip down the 3 stair - fingerboarding
+</video>
+```
+
+**MIME type detection:**
+
+| Extension | MIME Type |
+|-----------|-----------|
+| `.mp4` | `video/mp4` |
+| `.webm` | `video/webm` |
+| `.ogg`, `.ogv` | `video/ogg` |
+| `.mov` | `video/quicktime` |
+| `.m4v` | `video/x-m4v` |
+| `.avi` | `video/x-msvideo` |
+
+**CSS styling:**
+```css
+.md-video {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+```
+
+---
+
 ### link_collector
 
 **Name:** `link_collector`  

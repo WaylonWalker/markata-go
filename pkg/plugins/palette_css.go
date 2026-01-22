@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/palettes"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/palettes"
 )
 
 // PaletteCSSPlugin generates CSS variables from the configured color palette.
@@ -53,12 +53,13 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 
 	// Write to output directory
 	cssDir := filepath.Join(outputDir, "css")
-	if err := os.MkdirAll(cssDir, 0755); err != nil {
+	if err := os.MkdirAll(cssDir, 0o755); err != nil {
 		return fmt.Errorf("creating css directory: %w", err)
 	}
 
 	cssPath := filepath.Join(cssDir, "variables.css")
-	if err := os.WriteFile(cssPath, []byte(css), 0644); err != nil {
+	//nolint:gosec // G306: variables.css is a public CSS file, 0644 is appropriate
+	if err := os.WriteFile(cssPath, []byte(css), 0o644); err != nil {
 		return fmt.Errorf("writing palette CSS: %w", err)
 	}
 
@@ -68,6 +69,8 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 // generateThemeCSS generates CSS that maps palette colors to theme variable names.
 // It includes the default theme's non-color variables (fonts, spacing, etc.)
 // and maps the palette's semantic colors to the theme's expected names.
+//
+//nolint:gocyclo // complexity is acceptable for a CSS generation function with many rules
 func (p *PaletteCSSPlugin) generateThemeCSS(palette *palettes.Palette) string {
 	var buf bytes.Buffer
 
@@ -164,7 +167,7 @@ func (p *PaletteCSSPlugin) generateThemeCSS(palette *palettes.Palette) string {
 
 	// Add link colors if available
 	if link := palette.Resolve("link"); link != "" {
-		buf.WriteString(fmt.Sprintf("\n  /* Link colors */\n"))
+		buf.WriteString("\n  /* Link colors */\n")
 		buf.WriteString(fmt.Sprintf("  --color-link: %s;\n", link))
 		if linkHover := palette.Resolve("link-hover"); linkHover != "" {
 			buf.WriteString(fmt.Sprintf("  --color-link-hover: %s;\n", linkHover))
@@ -176,10 +179,39 @@ func (p *PaletteCSSPlugin) generateThemeCSS(palette *palettes.Palette) string {
 
 	// Add code colors if available
 	if codeBg := palette.Resolve("code-bg"); codeBg != "" {
-		buf.WriteString(fmt.Sprintf("\n  /* Code colors */\n"))
+		buf.WriteString("\n  /* Code colors */\n")
 		buf.WriteString(fmt.Sprintf("  --color-code-bg: %s;\n", codeBg))
 		if codeText := palette.Resolve("code-text"); codeText != "" {
 			buf.WriteString(fmt.Sprintf("  --color-code-text: %s;\n", codeText))
+		}
+	}
+
+	// Add admonition colors if available
+	admonitionTypes := []string{
+		"note", "info", "tip", "hint", "success",
+		"warn", "warning", "caution", "important",
+		"danger", "error", "bug",
+		"example", "quote", "abstract",
+	}
+
+	hasAdmonitions := false
+	for _, adType := range admonitionTypes {
+		if palette.Resolve("admonition-"+adType+"-bg") != "" ||
+			palette.Resolve("admonition-"+adType+"-border") != "" {
+			hasAdmonitions = true
+			break
+		}
+	}
+
+	if hasAdmonitions {
+		buf.WriteString("\n  /* Admonition colors */\n")
+		for _, adType := range admonitionTypes {
+			if bg := palette.Resolve("admonition-" + adType + "-bg"); bg != "" {
+				buf.WriteString(fmt.Sprintf("  --admonition-%s-bg: %s;\n", adType, bg))
+			}
+			if border := palette.Resolve("admonition-" + adType + "-border"); border != "" {
+				buf.WriteString(fmt.Sprintf("  --admonition-%s-border: %s;\n", adType, border))
+			}
 		}
 	}
 

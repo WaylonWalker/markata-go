@@ -76,6 +76,42 @@ type GlobConfig struct {
 type MarkdownConfig struct {
 	// Extensions is the list of markdown extensions to enable
 	Extensions []string `json:"extensions" yaml:"extensions" toml:"extensions"`
+
+	// Highlight configures syntax highlighting for code blocks
+	Highlight HighlightConfig `json:"highlight" yaml:"highlight" toml:"highlight"`
+}
+
+// HighlightConfig configures syntax highlighting for code blocks.
+type HighlightConfig struct {
+	// Enabled controls whether syntax highlighting is active (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Theme is the Chroma theme to use for syntax highlighting.
+	// If empty, the theme is automatically derived from the site's color palette.
+	// See https://xyproto.github.io/splash/docs/ for available themes.
+	Theme string `json:"theme,omitempty" yaml:"theme,omitempty" toml:"theme,omitempty"`
+
+	// LineNumbers enables line numbers in code blocks (default: false)
+	LineNumbers bool `json:"line_numbers" yaml:"line_numbers" toml:"line_numbers"`
+}
+
+// NewHighlightConfig creates a new HighlightConfig with default values.
+func NewHighlightConfig() HighlightConfig {
+	enabled := true
+	return HighlightConfig{
+		Enabled:     &enabled,
+		Theme:       "", // Empty means auto-detect from palette
+		LineNumbers: false,
+	}
+}
+
+// IsEnabled returns whether syntax highlighting is enabled.
+// Defaults to true if not explicitly set.
+func (h *HighlightConfig) IsEnabled() bool {
+	if h.Enabled == nil {
+		return true
+	}
+	return *h.Enabled
 }
 
 // CSVFenceConfig configures the csv_fence plugin.
@@ -124,6 +160,52 @@ func NewMermaidConfig() MermaidConfig {
 	}
 }
 
+// MDVideoConfig configures the md_video plugin.
+type MDVideoConfig struct {
+	// Enabled controls whether video conversion is active (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// VideoExtensions is the list of file extensions to treat as videos
+	VideoExtensions []string `json:"video_extensions" yaml:"video_extensions" toml:"video_extensions"`
+
+	// VideoClass is the CSS class added to video elements (default: "md-video")
+	VideoClass string `json:"video_class" yaml:"video_class" toml:"video_class"`
+
+	// Controls shows video controls (default: true)
+	Controls bool `json:"controls" yaml:"controls" toml:"controls"`
+
+	// Autoplay starts video automatically (default: true for GIF-like behavior)
+	Autoplay bool `json:"autoplay" yaml:"autoplay" toml:"autoplay"`
+
+	// Loop repeats the video (default: true for GIF-like behavior)
+	Loop bool `json:"loop" yaml:"loop" toml:"loop"`
+
+	// Muted mutes the video (default: true, required for autoplay in most browsers)
+	Muted bool `json:"muted" yaml:"muted" toml:"muted"`
+
+	// Playsinline enables inline playback on mobile (default: true)
+	Playsinline bool `json:"playsinline" yaml:"playsinline" toml:"playsinline"`
+
+	// Preload hints how much to preload: "none", "metadata", "auto" (default: "metadata")
+	Preload string `json:"preload" yaml:"preload" toml:"preload"`
+}
+
+// NewMDVideoConfig creates a new MDVideoConfig with sensible defaults.
+// Default behavior is GIF-like: autoplay, loop, muted, with controls available.
+func NewMDVideoConfig() MDVideoConfig {
+	return MDVideoConfig{
+		Enabled:         true,
+		VideoExtensions: []string{".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v"},
+		VideoClass:      "md-video",
+		Controls:        true,
+		Autoplay:        true,
+		Loop:            true,
+		Muted:           true,
+		Playsinline:     true,
+		Preload:         "metadata",
+	}
+}
+
 // NewConfig creates a new Config with default values.
 func NewConfig() *Config {
 	return &Config{
@@ -138,6 +220,7 @@ func NewConfig() *Config {
 		},
 		MarkdownConfig: MarkdownConfig{
 			Extensions: []string{},
+			Highlight:  NewHighlightConfig(),
 		},
 		Feeds:        []FeedConfig{},
 		FeedDefaults: NewFeedDefaults(),

@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
-	"github.com/example/markata-go/pkg/templates"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // PublishFeedsPlugin writes feeds to multiple output formats during the write stage.
@@ -44,9 +44,9 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	for _, fc := range feedConfigs {
-		if err := p.publishFeed(&fc, config, outputDir); err != nil {
-			return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
+	for i := range feedConfigs {
+		if err := p.publishFeed(&feedConfigs[i], config, outputDir); err != nil {
+			return fmt.Errorf("publishing feed %q: %w", feedConfigs[i].Slug, err)
 		}
 	}
 
@@ -62,7 +62,7 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 	}
 
 	// Create feed directory
-	if err := os.MkdirAll(feedDir, 0755); err != nil {
+	if err := os.MkdirAll(feedDir, 0o755); err != nil {
 		return fmt.Errorf("creating feed directory: %w", err)
 	}
 
@@ -120,7 +120,7 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 			pagePath = filepath.Join(feedDir, "index.html")
 		} else {
 			pageDir := filepath.Join(feedDir, "page", fmt.Sprintf("%d", page.Number))
-			if err := os.MkdirAll(pageDir, 0755); err != nil {
+			if err := os.MkdirAll(pageDir, 0o755); err != nil {
 				return fmt.Errorf("creating page directory: %w", err)
 			}
 			pagePath = filepath.Join(pageDir, "index.html")
@@ -133,7 +133,8 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 		}
 
 		// Write file
-		if err := os.WriteFile(pagePath, []byte(html), 0644); err != nil {
+		//nolint:gosec // G306: HTML output files need 0644 for web serving
+		if err := os.WriteFile(pagePath, []byte(html), 0o644); err != nil {
 			return fmt.Errorf("writing page %d: %w", page.Number, err)
 		}
 	}
@@ -144,7 +145,7 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 // generateFeedPageHTML generates HTML for a feed page.
 func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config) (string, error) {
 	// Get templates directory from config
-	templatesDir := "templates"
+	templatesDir := PluginNameTemplates
 	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
 		templatesDir = extra
 	}
@@ -293,7 +294,8 @@ func (p *PublishFeedsPlugin) publishRSS(fc *models.FeedConfig, config *lifecycle
 	}
 
 	rssPath := filepath.Join(feedDir, "rss.xml")
-	return os.WriteFile(rssPath, []byte(rss), 0644)
+	//nolint:gosec // G306: Feed files need 0644 for web serving
+	return os.WriteFile(rssPath, []byte(rss), 0o644)
 }
 
 // publishAtom generates and writes an Atom feed.
@@ -304,7 +306,8 @@ func (p *PublishFeedsPlugin) publishAtom(fc *models.FeedConfig, config *lifecycl
 	}
 
 	atomPath := filepath.Join(feedDir, "atom.xml")
-	return os.WriteFile(atomPath, []byte(atom), 0644)
+	//nolint:gosec // G306: Feed files need 0644 for web serving
+	return os.WriteFile(atomPath, []byte(atom), 0o644)
 }
 
 // publishJSON generates and writes a JSON feed.
@@ -315,7 +318,8 @@ func (p *PublishFeedsPlugin) publishJSON(fc *models.FeedConfig, config *lifecycl
 	}
 
 	jsonPath := filepath.Join(feedDir, "feed.json")
-	return os.WriteFile(jsonPath, []byte(jsonFeed), 0644)
+	//nolint:gosec // G306: Feed files need 0644 for web serving
+	return os.WriteFile(jsonPath, []byte(jsonFeed), 0o644)
 }
 
 // publishMarkdown generates and writes a Markdown feed listing.
@@ -351,7 +355,8 @@ func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, feedDir stri
 	}
 
 	mdPath := filepath.Join(feedDir, "index.md")
-	return os.WriteFile(mdPath, []byte(sb.String()), 0644)
+	//nolint:gosec // G306: Feed files need 0644 for web serving
+	return os.WriteFile(mdPath, []byte(sb.String()), 0o644)
 }
 
 // publishText generates and writes a plain text feed listing.
@@ -387,7 +392,8 @@ func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, feedDir string) 
 	}
 
 	txtPath := filepath.Join(feedDir, "index.txt")
-	return os.WriteFile(txtPath, []byte(sb.String()), 0644)
+	//nolint:gosec // G306: Feed files need 0644 for web serving
+	return os.WriteFile(txtPath, []byte(sb.String()), 0o644)
 }
 
 // Ensure PublishFeedsPlugin implements the required interfaces.

@@ -3,9 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/example/markata-go/pkg/config"
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/plugins"
+	"github.com/WaylonWalker/markata-go/pkg/config"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/plugins"
 )
 
 // createManager creates and configures a lifecycle manager with all plugins.
@@ -34,7 +34,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 
 	// Return errors
 	if len(actualErrors) > 0 {
-		return nil, fmt.Errorf("config validation failed: %v", actualErrors[0])
+		return nil, fmt.Errorf("config validation failed: %w", actualErrors[0])
 	}
 
 	// Create manager
@@ -125,6 +125,9 @@ func runBuild(m *lifecycle.Manager) (*BuildResult, error) {
 				fmt.Printf("  [%s] loaded %d posts\n", stage, len(m.Posts()))
 			case lifecycle.StageCollect:
 				fmt.Printf("  [%s] collected %d feeds\n", stage, len(m.Feeds()))
+			case lifecycle.StageConfigure, lifecycle.StageValidate, lifecycle.StageTransform,
+				lifecycle.StageRender, lifecycle.StageWrite, lifecycle.StageCleanup:
+				// No extra logging for these stages
 			}
 		}
 	}

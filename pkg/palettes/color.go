@@ -30,14 +30,32 @@ func ParseHexColor(hex string) (Color, error) {
 
 	switch len(hex) {
 	case 3, 4: // RGB or RGBA (short form)
-		r64, _ := strconv.ParseUint(string(hex[0])+string(hex[0]), 16, 8)
-		g64, _ := strconv.ParseUint(string(hex[1])+string(hex[1]), 16, 8)
-		b64, _ := strconv.ParseUint(string(hex[2])+string(hex[2]), 16, 8)
+		r64, err := strconv.ParseUint(string(hex[0])+string(hex[0]), 16, 8)
+		if err != nil {
+			return Color{}, fmt.Errorf("%w: %s", ErrInvalidHexColor, hex)
+		}
+		g64, err := strconv.ParseUint(string(hex[1])+string(hex[1]), 16, 8)
+		if err != nil {
+			return Color{}, fmt.Errorf("%w: %s", ErrInvalidHexColor, hex)
+		}
+		b64, err := strconv.ParseUint(string(hex[2])+string(hex[2]), 16, 8)
+		if err != nil {
+			return Color{}, fmt.Errorf("%w: %s", ErrInvalidHexColor, hex)
+		}
 		r, g, b = uint8(r64), uint8(g64), uint8(b64)
 	case 6, 8: // RRGGBB or RRGGBBAA
-		r64, _ := strconv.ParseUint(hex[0:2], 16, 8)
-		g64, _ := strconv.ParseUint(hex[2:4], 16, 8)
-		b64, _ := strconv.ParseUint(hex[4:6], 16, 8)
+		r64, err := strconv.ParseUint(hex[0:2], 16, 8)
+		if err != nil {
+			return Color{}, fmt.Errorf("%w: %s", ErrInvalidHexColor, hex)
+		}
+		g64, err := strconv.ParseUint(hex[2:4], 16, 8)
+		if err != nil {
+			return Color{}, fmt.Errorf("%w: %s", ErrInvalidHexColor, hex)
+		}
+		b64, err := strconv.ParseUint(hex[4:6], 16, 8)
+		if err != nil {
+			return Color{}, fmt.Errorf("%w: %s", ErrInvalidHexColor, hex)
+		}
 		r, g, b = uint8(r64), uint8(g64), uint8(b64)
 	}
 
@@ -163,10 +181,12 @@ func PassedLevels(ratio float64, isLargeText bool) []WCAGLevel {
 // ColorFromStdlib converts a standard library color.Color to our Color type.
 func ColorFromStdlib(c color.Color) Color {
 	r, g, b, _ := c.RGBA()
+	// Right-shifting by 8 converts from 16-bit (0-65535) to 8-bit (0-255).
+	// The result is always in uint8 range, so the conversion is safe.
 	return Color{
-		R: uint8(r >> 8),
-		G: uint8(g >> 8),
-		B: uint8(b >> 8),
+		R: uint8(r >> 8), //nolint:gosec // r>>8 is always <= 255
+		G: uint8(g >> 8), //nolint:gosec // g>>8 is always <= 255
+		B: uint8(b >> 8), //nolint:gosec // b>>8 is always <= 255
 	}
 }
 

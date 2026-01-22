@@ -2,7 +2,6 @@ package models
 
 import (
 	"testing"
-	"time"
 )
 
 // =============================================================================
@@ -293,9 +292,6 @@ func TestFeedConfig_Paginate_SinglePage(t *testing.T) {
 	if len(feed.Pages) != 1 {
 		t.Errorf("expected 1 page, got %d", len(feed.Pages))
 	}
-	if !feed.Pages[0].HasPrev {
-		// First page should not have prev
-	}
 	if feed.Pages[0].HasPrev {
 		t.Error("first page should not have prev")
 	}
@@ -485,8 +481,4 @@ func TestSyndicationConfig(t *testing.T) {
 
 func strPtr(s string) *string {
 	return &s
-}
-
-func timePtr(t time.Time) *time.Time {
-	return &t
 }

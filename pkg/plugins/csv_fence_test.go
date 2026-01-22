@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestCSVFencePlugin_Name(t *testing.T) {
@@ -504,7 +504,7 @@ func TestCSVFencePlugin_HeaderOnlyCSV(t *testing.T) {
 
 // Interface compliance tests
 
-func TestCSVFencePlugin_Interfaces(t *testing.T) {
+func TestCSVFencePlugin_Interfaces(_ *testing.T) {
 	p := NewCSVFencePlugin()
 
 	// Verify interface compliance

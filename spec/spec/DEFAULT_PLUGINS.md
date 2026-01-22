@@ -27,6 +27,7 @@ This document specifies all built-in plugins that ship with the static site gene
 │                                                                      │
 │  POST-RENDER                                                         │
 │    ├─ heading_anchors    Add anchor links to headings               │
+│    ├─ md_video           Convert video images to video tags         │
 │    ├─ toc                Generate table of contents                  │
 │    ├─ link_collector     Track inlinks/outlinks between posts       │
 │    └─ feeds              Generate feed collections                   │
@@ -591,6 +592,84 @@ def post_render(core):
     
     for post in core.filter("not skip"):
         post.article_html = add_heading_anchors(post.article_html, config)
+```
+
+---
+
+### `md_video`
+
+**Stage:** `render` (with late priority, after `render_markdown`)
+
+**Purpose:** Convert markdown image syntax for video files into HTML video elements with GIF-like autoplay behavior.
+
+**Configuration:**
+```toml
+[name.md_video]
+enabled = true
+video_extensions = [".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v"]
+video_class = "md-video"
+controls = true
+autoplay = true                    # GIF-like behavior
+loop = true                        # GIF-like behavior
+muted = true                       # Required for autoplay
+playsinline = true                 # Inline on mobile
+preload = "metadata"
+```
+
+**Configuration Fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Enable/disable the plugin |
+| `video_extensions` | []string | `[".mp4", ".webm", ...]` | Extensions to treat as video |
+| `video_class` | string | `"md-video"` | CSS class for video elements |
+| `controls` | bool | `true` | Show video controls |
+| `autoplay` | bool | `true` | Auto-start playback |
+| `loop` | bool | `true` | Loop continuously |
+| `muted` | bool | `true` | Mute audio |
+| `playsinline` | bool | `true` | Play inline on iOS |
+| `preload` | string | `"metadata"` | Preload hint |
+
+**Behavior:**
+1. Find all `<img>` tags in `article_html` after markdown rendering
+2. Check if `src` ends with a video extension (handles query params)
+3. Replace with `<video>` element with configured attributes
+4. Preserve alt text as fallback content
+5. Auto-detect MIME type from extension
+
+**Markdown syntax:**
+```markdown
+![kickflip down the 3 stair](https://example.com/video.mp4)
+
+![Demo](demo.webm?width=500)
+```
+
+**Example output:**
+```html
+<video autoplay loop muted playsinline controls preload="metadata" class="md-video">
+  <source src="https://example.com/video.mp4" type="video/mp4">
+  kickflip down the 3 stair
+</video>
+```
+
+**MIME type detection:**
+
+| Extension | MIME Type |
+|-----------|-----------|
+| `.mp4` | `video/mp4` |
+| `.webm` | `video/webm` |
+| `.ogg`, `.ogv` | `video/ogg` |
+| `.mov` | `video/quicktime` |
+| `.m4v` | `video/x-m4v` |
+
+**Interface compliance:**
+```go
+var (
+    _ lifecycle.Plugin          = (*MDVideoPlugin)(nil)
+    _ lifecycle.ConfigurePlugin = (*MDVideoPlugin)(nil)
+    _ lifecycle.RenderPlugin    = (*MDVideoPlugin)(nil)
+    _ lifecycle.PriorityPlugin  = (*MDVideoPlugin)(nil)
+)
 ```
 
 ---

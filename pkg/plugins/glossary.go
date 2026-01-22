@@ -12,8 +12,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // GlossaryConfig holds configuration for the glossary plugin.
@@ -220,7 +220,7 @@ func (p *GlossaryPlugin) Write(m *lifecycle.Manager) error {
 	outputPath := filepath.Join(config.OutputDir, "glossary.json")
 
 	// Ensure output directory exists
-	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(config.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("creating output directory: %w", err)
 	}
 
@@ -230,7 +230,8 @@ func (p *GlossaryPlugin) Write(m *lifecycle.Manager) error {
 		return fmt.Errorf("marshaling glossary JSON: %w", err)
 	}
 
-	if err := os.WriteFile(outputPath, data, 0644); err != nil {
+	//nolint:gosec // G306: glossary.json is a public file, 0644 is appropriate
+	if err := os.WriteFile(outputPath, data, 0o644); err != nil {
 		return fmt.Errorf("writing glossary.json: %w", err)
 	}
 
@@ -515,14 +516,17 @@ func (p *GlossaryPlugin) linkTerms(htmlContent string, currentPost *models.Post)
 func (p *GlossaryPlugin) buildLink(term *GlossaryTerm, matchedText string) string {
 	var attrs strings.Builder
 
-	attrs.WriteString(fmt.Sprintf(`href="%s"`, html.EscapeString(term.Href)))
+	//nolint:gocritic // sprintfQuotedString: %q produces Go escaping, but we need HTML entity escaping here
+	_, _ = attrs.WriteString(fmt.Sprintf(`href="%s"`, html.EscapeString(term.Href)))
 
 	if p.config.LinkClass != "" {
-		attrs.WriteString(fmt.Sprintf(` class="%s"`, html.EscapeString(p.config.LinkClass)))
+		//nolint:gocritic // sprintfQuotedString: %q produces Go escaping, but we need HTML entity escaping here
+		_, _ = attrs.WriteString(fmt.Sprintf(` class="%s"`, html.EscapeString(p.config.LinkClass)))
 	}
 
 	if p.config.Tooltip && term.Description != "" {
-		attrs.WriteString(fmt.Sprintf(` title="%s"`, html.EscapeString(term.Description)))
+		//nolint:gocritic // sprintfQuotedString: %q produces Go escaping, but we need HTML entity escaping here
+		_, _ = attrs.WriteString(fmt.Sprintf(` title="%s"`, html.EscapeString(term.Description)))
 	}
 
 	return fmt.Sprintf(`<a %s>%s</a>`, attrs.String(), html.EscapeString(matchedText))

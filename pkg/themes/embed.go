@@ -61,8 +61,10 @@ func ListTemplates() ([]string, error) {
 		}
 		if !d.IsDir() {
 			// Strip the prefix to get relative path
-			rel, _ := filepath.Rel("default/templates", path)
-			templates = append(templates, rel)
+			rel, relErr := filepath.Rel("default/templates", path)
+			if relErr == nil {
+				templates = append(templates, rel)
+			}
 		}
 		return nil
 	})
@@ -78,8 +80,10 @@ func ListStatic() ([]string, error) {
 		}
 		if !d.IsDir() {
 			// Strip the prefix to get relative path
-			rel, _ := filepath.Rel("default/static", path)
-			files = append(files, rel)
+			rel, relErr := filepath.Rel("default/static", path)
+			if relErr == nil {
+				files = append(files, rel)
+			}
 		}
 		return nil
 	})

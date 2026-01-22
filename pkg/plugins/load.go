@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // LoadPlugin parses markdown files into Post objects.
@@ -58,7 +58,7 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 }
 
 // parseFile parses a markdown file's content into a Post object.
-func (p *LoadPlugin) parseFile(path string, content string) (*models.Post, error) {
+func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 	// Parse frontmatter
 	metadata, body, err := ParseFrontmatter(content)
 	if err != nil {

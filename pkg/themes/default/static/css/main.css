@@ -36,6 +36,7 @@ h1, h2, h3, h4, h5, h6 {
   margin-top: var(--space-8);
   margin-bottom: var(--space-4);
   color: var(--color-text);
+  position: relative;
 }
 
 h1 { font-size: var(--text-4xl); }
@@ -44,6 +45,31 @@ h3 { font-size: var(--text-2xl); }
 h4 { font-size: var(--text-xl); }
 h5 { font-size: var(--text-lg); }
 h6 { font-size: var(--text-base); font-weight: 600; }
+
+/* Heading Anchors */
+.heading-anchor {
+  opacity: 0;
+  margin-left: var(--space-2);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-weight: 400;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+h1:hover .heading-anchor,
+h2:hover .heading-anchor,
+h3:hover .heading-anchor,
+h4:hover .heading-anchor,
+h5:hover .heading-anchor,
+h6:hover .heading-anchor,
+.heading-anchor:focus {
+  opacity: 1;
+}
+
+.heading-anchor:hover {
+  color: var(--color-primary);
+  text-decoration: none;
+}
 
 p {
   margin-bottom: var(--space-4);
@@ -95,7 +121,7 @@ blockquote p:last-child {
 img {
   max-width: 100%;
   height: auto;
-  border-radius: var(--radius);
+  display: block;
 }
 
 figure {
@@ -107,6 +133,231 @@ figcaption {
   color: var(--color-text-muted);
   text-align: center;
   margin-top: var(--space-2);
+}
+
+/* Videos */
+video,
+.md-video {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ==========================================================================
+   Post Content Media Styling
+   
+   Following best practices from Tailwind Typography, Astro, and other SSGs:
+   - Minimal default styling (no borders by default)
+   - Proper spacing with margin
+   - Optional decorative styles via classes
+   ========================================================================== */
+
+/* Base media in post content - clean minimal styling */
+.post-content img,
+.post-content video,
+.post-content .md-video {
+  /* Prevent overflow */
+  max-width: 100%;
+  height: auto;
+  
+  /* Block display with spacing (like Tailwind Typography) */
+  display: block;
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-6);
+  
+  /* Subtle rounding */
+  border-radius: var(--radius-lg);
+}
+
+/* Center larger images, but allow small inline images */
+.post-content p > img:only-child,
+.post-content figure img {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Figure styling */
+.post-content figure {
+  margin: var(--space-8) 0;
+}
+
+.post-content figure > img,
+.post-content figure > video {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.post-content figcaption {
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-top: var(--space-3);
+}
+
+/* Small inline images (badges, icons) - no special treatment */
+.post-content img.inline,
+.post-content img[height="16"],
+.post-content img[height="20"],
+.post-content img[height="24"],
+.post-content img[height="32"] {
+  display: inline;
+  margin: 0;
+  border-radius: var(--radius);
+  vertical-align: middle;
+}
+
+/* ==========================================================================
+   Optional Media Decorations
+   
+   Apply these via frontmatter css_class or directly on elements.
+   These are opt-in, not default.
+   ========================================================================== */
+
+/* Bordered style - subtle border */
+.post-content.bordered img,
+.post-content.bordered video,
+.post-content img.bordered,
+.post-content video.bordered {
+  border: 1px solid var(--color-border);
+}
+
+/* Shadow style - elevated card look */
+.post-content.shadow img,
+.post-content.shadow video,
+.post-content img.shadow,
+.post-content video.shadow {
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Framed style - border + shadow + padding (like a photo frame) */
+.post-content.framed img,
+.post-content.framed video,
+.post-content img.framed,
+.post-content video.framed {
+  border: 1px solid var(--color-border);
+  padding: var(--space-2);
+  background: var(--color-surface);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Dark mode adjustments for framed */
+@media (prefers-color-scheme: dark) {
+  .post-content.framed img,
+  .post-content.framed video,
+  .post-content img.framed,
+  .post-content video.framed {
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.3),
+      0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* ==========================================================================
+   Gradient Borders (Opt-in decorative style)
+   
+   Use padding + background technique for gradient borders.
+   Apply via css_class in frontmatter.
+   ========================================================================== */
+
+/* Base gradient border setup */
+.post-content.gradient-borders img,
+.post-content.gradient-borders video,
+.post-content.gradient-borders .md-video,
+.media-frame.gradient-border > img,
+.media-frame.gradient-border > video {
+  padding: var(--media-border-width, 3px);
+  background: var(--gradient-accent);
+  background-origin: border-box;
+  /* Inner content needs its own border-radius */
+  border-radius: var(--radius-lg);
+}
+
+/* Gradient variants */
+.post-content.gradient-vibrant img,
+.post-content.gradient-vibrant video { background: var(--gradient-vibrant); }
+
+.post-content.gradient-warm img,
+.post-content.gradient-warm video { background: var(--gradient-warm); }
+
+.post-content.gradient-cool img,
+.post-content.gradient-cool video { background: var(--gradient-cool); }
+
+.post-content.gradient-sunset img,
+.post-content.gradient-sunset video { background: var(--gradient-sunset); }
+
+.post-content.gradient-ocean img,
+.post-content.gradient-ocean video { background: var(--gradient-ocean); }
+
+/* Palette-specific gradients */
+.post-content.gradient-catppuccin img,
+.post-content.gradient-catppuccin video { background: var(--gradient-catppuccin); }
+
+.post-content.gradient-nord img,
+.post-content.gradient-nord video { background: var(--gradient-nord); }
+
+.post-content.gradient-dracula img,
+.post-content.gradient-dracula video { background: var(--gradient-dracula); }
+
+.post-content.gradient-gruvbox img,
+.post-content.gradient-gruvbox video { background: var(--gradient-gruvbox); }
+
+.post-content.gradient-rose-pine img,
+.post-content.gradient-rose-pine video { background: var(--gradient-rose-pine); }
+
+.post-content.gradient-solarized img,
+.post-content.gradient-solarized video { background: var(--gradient-solarized); }
+
+.post-content.gradient-tokyo-night img,
+.post-content.gradient-tokyo-night video { background: var(--gradient-tokyo-night); }
+
+/* Animated gradient border */
+@keyframes gradient-rotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.post-content.gradient-animated img,
+.post-content.gradient-animated video {
+  padding: var(--media-border-width, 3px);
+  background: linear-gradient(270deg, #667eea, #764ba2, #f093fb, #667eea);
+  background-size: 300% 300%;
+  animation: gradient-rotate 6s ease infinite;
+}
+
+/* Glow effect for media */
+.post-content.glow img,
+.post-content.glow video {
+  box-shadow: 
+    0 0 20px rgba(102, 126, 234, 0.3),
+    0 0 40px rgba(118, 75, 162, 0.2),
+    0 0 60px rgba(240, 147, 251, 0.1);
+}
+
+/* Enhanced glow in dark mode */
+@media (prefers-color-scheme: dark) {
+  .post-content.glow img,
+  .post-content.glow video {
+    box-shadow: 
+      0 0 30px rgba(102, 126, 234, 0.4),
+      0 0 60px rgba(118, 75, 162, 0.3),
+      0 0 90px rgba(240, 147, 251, 0.2);
+  }
+}
+
+/* Full-width media - breaks out of content width */
+.post-content img.full-width,
+.post-content video.full-width {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  border-radius: 0;
 }
 
 /* Tables */
@@ -238,6 +489,9 @@ main {
 
 .post-content {
   margin-bottom: var(--space-8);
+  /* Prevent content from overflowing horizontally */
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .post-content > *:first-child {
@@ -398,6 +652,130 @@ main {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* ==========================================================================
+   Plugin Styles
+   ========================================================================== */
+
+/* Table of Contents (toc plugin) */
+.toc {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin: var(--space-6) 0;
+}
+
+.toc-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.toc ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.toc ul ul {
+  padding-left: var(--space-4);
+  margin-top: var(--space-1);
+}
+
+.toc li {
+  margin-bottom: var(--space-1);
+}
+
+.toc a {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  display: block;
+  padding: var(--space-1) 0;
+  transition: color 0.2s;
+}
+
+.toc a:hover {
+  color: var(--color-primary);
+}
+
+/* CSV Tables (csv_fence plugin) */
+.csv-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--space-6) 0;
+  font-size: var(--text-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.csv-table th,
+.csv-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.csv-table th {
+  background: var(--color-surface);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.csv-table tbody tr:nth-child(even) {
+  background: var(--color-surface);
+}
+
+.csv-table tbody tr:hover {
+  background: var(--color-border);
+}
+
+/* Glossary Terms (glossary plugin) */
+.glossary-term {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  cursor: help;
+  transition: text-decoration-color 0.2s;
+}
+
+.glossary-term:hover {
+  text-decoration-style: solid;
+  text-decoration-color: var(--color-primary);
+}
+
+/* Mermaid Diagrams (mermaid plugin) */
+.mermaid {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin: var(--space-6) 0;
+  text-align: center;
+  overflow-x: auto;
+}
+
+/* Wikilinks (wikilinks plugin) */
+a.wikilink {
+  color: var(--color-primary);
+}
+
+a.wikilink.wikilink-missing {
+  color: var(--color-error);
+  text-decoration: underline;
+  text-decoration-style: dashed;
+}
+
+/* Reading Time (reading_time plugin) */
+.reading-time {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
 /* Responsive */

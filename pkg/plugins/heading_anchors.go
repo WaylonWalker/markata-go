@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // HeadingAnchorsPlugin adds anchor links to headings in rendered HTML.
@@ -38,7 +38,7 @@ func NewHeadingAnchorsPlugin() *HeadingAnchorsPlugin {
 		enabled:  true,
 		minLevel: 2,
 		maxLevel: 4,
-		position: "end",
+		position: PositionEnd,
 		symbol:   "#",
 		class:    "heading-anchor",
 	}
@@ -83,7 +83,7 @@ func (p *HeadingAnchorsPlugin) Configure(m *lifecycle.Manager) error {
 		if maxLevel, ok := cfgMap["max_level"].(int); ok && maxLevel >= 1 && maxLevel <= 6 {
 			p.maxLevel = maxLevel
 		}
-		if position, ok := cfgMap["position"].(string); ok && (position == "start" || position == "end") {
+		if position, ok := cfgMap["position"].(string); ok && (position == PositionStart || position == PositionEnd) {
 			p.position = position
 		}
 		if symbol, ok := cfgMap["symbol"].(string); ok {
@@ -153,9 +153,9 @@ func (p *HeadingAnchorsPlugin) processHeading(match string, idCounts map[string]
 		id = p.generateID(content, idCounts)
 		// Add id attribute if not present
 		if attrs == "" {
-			attrs = fmt.Sprintf(` id="%s"`, id)
+			attrs = fmt.Sprintf(` id=%q`, id)
 		} else {
-			attrs = fmt.Sprintf(` id="%s"%s`, id, attrs)
+			attrs = fmt.Sprintf(` id=%q%s`, id, attrs)
 		}
 	} else {
 		// Track existing ID for duplicates
@@ -167,7 +167,7 @@ func (p *HeadingAnchorsPlugin) processHeading(match string, idCounts map[string]
 
 	// Insert anchor at configured position
 	var newContent string
-	if p.position == "start" {
+	if p.position == PositionStart {
 		newContent = anchor + content
 	} else {
 		newContent = content + anchor
@@ -234,10 +234,10 @@ func stripHTMLTags(content string) string {
 // createAnchor creates an anchor link element for the given ID.
 func (p *HeadingAnchorsPlugin) createAnchor(id string) string {
 	// Add leading space for "end" position, trailing space for "start"
-	if p.position == "start" {
-		return fmt.Sprintf(`<a href="#%s" class="%s">%s</a> `, id, p.class, p.symbol)
+	if p.position == PositionStart {
+		return fmt.Sprintf(`<a href="#%s" class=%q>%s</a> `, id, p.class, p.symbol)
 	}
-	return fmt.Sprintf(` <a href="#%s" class="%s">%s</a>`, id, p.class, p.symbol)
+	return fmt.Sprintf(` <a href="#%s" class=%q>%s</a>`, id, p.class, p.symbol)
 }
 
 // SetEnabled enables or disables the plugin.
@@ -246,18 +246,18 @@ func (p *HeadingAnchorsPlugin) SetEnabled(enabled bool) {
 }
 
 // SetLevelRange sets the minimum and maximum heading levels to process.
-func (p *HeadingAnchorsPlugin) SetLevelRange(min, max int) {
-	if min >= 1 && min <= 6 {
-		p.minLevel = min
+func (p *HeadingAnchorsPlugin) SetLevelRange(minLevel, maxLevel int) {
+	if minLevel >= 1 && minLevel <= 6 {
+		p.minLevel = minLevel
 	}
-	if max >= 1 && max <= 6 && max >= min {
-		p.maxLevel = max
+	if maxLevel >= 1 && maxLevel <= 6 && maxLevel >= minLevel {
+		p.maxLevel = maxLevel
 	}
 }
 
 // SetPosition sets the anchor position ("start" or "end").
 func (p *HeadingAnchorsPlugin) SetPosition(position string) {
-	if position == "start" || position == "end" {
+	if position == PositionStart || position == PositionEnd {
 		p.position = position
 	}
 }

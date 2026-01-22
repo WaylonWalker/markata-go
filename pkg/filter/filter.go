@@ -3,7 +3,7 @@ package filter
 import (
 	"fmt"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // Filter represents a compiled filter expression
@@ -98,8 +98,8 @@ func (f *Filter) MatchAllWithErrors(posts []*models.Post) ([]*models.Post, []err
 	return result, errors
 }
 
-// FilterPosts is a convenience function that parses an expression and filters posts
-func FilterPosts(expression string, posts []*models.Post) ([]*models.Post, error) {
+// Posts is a convenience function that parses an expression and filters posts
+func Posts(expression string, posts []*models.Post) ([]*models.Post, error) {
 	f, err := Parse(expression)
 	if err != nil {
 		return nil, err
@@ -131,13 +131,13 @@ func And(filters ...*Filter) *Filter {
 	}
 
 	// Build combined AST
-	var combined Expr = filters[0].ast
+	combined := filters[0].ast
 	expression := filters[0].expression
 
 	for i := 1; i < len(filters); i++ {
 		combined = &BinaryExpr{
 			Left:  combined,
-			Op:    "and",
+			Op:    opAnd,
 			Right: filters[i].ast,
 		}
 		expression += " and " + filters[i].expression
@@ -165,13 +165,13 @@ func Or(filters ...*Filter) *Filter {
 	}
 
 	// Build combined AST
-	var combined Expr = filters[0].ast
+	combined := filters[0].ast
 	expression := filters[0].expression
 
 	for i := 1; i < len(filters); i++ {
 		combined = &BinaryExpr{
 			Left:  combined,
-			Op:    "or",
+			Op:    opOr,
 			Right: filters[i].ast,
 		}
 		expression += " or " + filters[i].expression

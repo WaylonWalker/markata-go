@@ -48,7 +48,7 @@ func init() {
 	newCmd.Flags().BoolVar(&newDraft, "draft", true, "create as draft")
 }
 
-func runNewCommand(cmd *cobra.Command, args []string) error {
+func runNewCommand(_ *cobra.Command, args []string) error {
 	title := args[0]
 
 	// Generate slug from title
@@ -64,7 +64,7 @@ func runNewCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create directory if it doesn't exist
-	if err := os.MkdirAll(newDir, 0755); err != nil {
+	if err := os.MkdirAll(newDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
@@ -72,8 +72,8 @@ func runNewCommand(cmd *cobra.Command, args []string) error {
 	now := time.Now()
 	content := generatePostContent(title, slug, now, newDraft)
 
-	// Write file
-	if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+	// Write file (0o644 is appropriate for content files that should be world-readable)
+	if err := os.WriteFile(fullPath, []byte(content), 0o644); err != nil { //nolint:gosec // content files should be readable
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 

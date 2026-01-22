@@ -4,28 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
-
-// Helper function to test filters via template rendering
-func testFilterViaTemplate(t *testing.T, template string, expected string) {
-	t.Helper()
-
-	engine, err := NewEngine("")
-	if err != nil {
-		t.Fatalf("Failed to create engine: %v", err)
-	}
-
-	ctx := NewContext(nil, "", nil)
-	result, err := engine.RenderString(template, ctx)
-	if err != nil {
-		t.Fatalf("RenderString() error: %v", err)
-	}
-
-	if result != expected {
-		t.Errorf("Template %q: got %q, want %q", template, result, expected)
-	}
-}
 
 func TestFilterRSSDate(t *testing.T) {
 	engine, err := NewEngine("")

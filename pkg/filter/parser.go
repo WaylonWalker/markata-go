@@ -142,7 +142,7 @@ func (p *Parser) advance() error {
 
 // Parse parses the input and returns the AST
 func (p *Parser) Parse() (Expr, error) {
-	if p.current.Type == TOKEN_EOF {
+	if p.current.Type == TokenEOF {
 		// Empty expression - always matches
 		return &Literal{Value: true}, nil
 	}
@@ -156,7 +156,7 @@ func (p *Parser) parseOr() (Expr, error) {
 		return nil, err
 	}
 
-	for p.current.Type == TOKEN_LOGIC_OP && p.current.Value == "or" {
+	for p.current.Type == TokenLogicOp && p.current.Value == "or" {
 		op := p.current.Value
 		if err := p.advance(); err != nil {
 			return nil, err
@@ -178,7 +178,7 @@ func (p *Parser) parseAnd() (Expr, error) {
 		return nil, err
 	}
 
-	for p.current.Type == TOKEN_LOGIC_OP && p.current.Value == "and" {
+	for p.current.Type == TokenLogicOp && p.current.Value == "and" {
 		op := p.current.Value
 		if err := p.advance(); err != nil {
 			return nil, err
@@ -195,7 +195,7 @@ func (p *Parser) parseAnd() (Expr, error) {
 
 // parseNot parses 'not' expressions
 func (p *Parser) parseNot() (Expr, error) {
-	if p.current.Type == TOKEN_NOT {
+	if p.current.Type == TokenNot {
 		if err := p.advance(); err != nil {
 			return nil, err
 		}
@@ -216,7 +216,7 @@ func (p *Parser) parseComparison() (Expr, error) {
 	}
 
 	// Handle 'in' expressions
-	if p.current.Type == TOKEN_IN {
+	if p.current.Type == TokenIn {
 		if err := p.advance(); err != nil {
 			return nil, err
 		}
@@ -228,7 +228,7 @@ func (p *Parser) parseComparison() (Expr, error) {
 	}
 
 	// Handle comparison operators
-	if p.current.Type == TOKEN_COMPARE_OP {
+	if p.current.Type == TokenCompareOp {
 		op := p.current.Value
 		if err := p.advance(); err != nil {
 			return nil, err
@@ -250,12 +250,12 @@ func (p *Parser) parseAccess() (Expr, error) {
 		return nil, err
 	}
 
-	for p.current.Type == TOKEN_DOT {
+	for p.current.Type == TokenDot {
 		if err := p.advance(); err != nil {
 			return nil, err
 		}
 
-		if p.current.Type != TOKEN_IDENTIFIER {
+		if p.current.Type != TokenIdentifier {
 			return nil, fmt.Errorf("expected identifier after '.', got %s", p.current)
 		}
 
@@ -265,13 +265,13 @@ func (p *Parser) parseAccess() (Expr, error) {
 		}
 
 		// Check if it's a method call
-		if p.current.Type == TOKEN_LPAREN {
+		if p.current.Type == TokenLParen {
 			if err := p.advance(); err != nil {
 				return nil, err
 			}
 
 			var args []Expr
-			if p.current.Type != TOKEN_RPAREN {
+			if p.current.Type != TokenRParen {
 				for {
 					arg, err := p.parseOr()
 					if err != nil {
@@ -279,7 +279,7 @@ func (p *Parser) parseAccess() (Expr, error) {
 					}
 					args = append(args, arg)
 
-					if p.current.Type != TOKEN_COMMA {
+					if p.current.Type != TokenComma {
 						break
 					}
 					if err := p.advance(); err != nil {
@@ -288,7 +288,7 @@ func (p *Parser) parseAccess() (Expr, error) {
 				}
 			}
 
-			if p.current.Type != TOKEN_RPAREN {
+			if p.current.Type != TokenRParen {
 				return nil, fmt.Errorf("expected ')' after method arguments, got %s", p.current)
 			}
 			if err := p.advance(); err != nil {
@@ -307,53 +307,53 @@ func (p *Parser) parseAccess() (Expr, error) {
 // parsePrimary parses primary expressions (literals, identifiers, parenthesized expressions)
 func (p *Parser) parsePrimary() (Expr, error) {
 	switch p.current.Type {
-	case TOKEN_IDENTIFIER:
+	case TokenIdentifier:
 		name := p.current.Value
 		if err := p.advance(); err != nil {
 			return nil, err
 		}
 		return &Identifier{Name: name}, nil
 
-	case TOKEN_STRING:
+	case TokenString:
 		value := p.current.Literal
 		if err := p.advance(); err != nil {
 			return nil, err
 		}
 		return &Literal{Value: value}, nil
 
-	case TOKEN_NUMBER:
+	case TokenNumber:
 		value := p.current.Literal
 		if err := p.advance(); err != nil {
 			return nil, err
 		}
 		return &Literal{Value: value}, nil
 
-	case TOKEN_BOOL:
+	case TokenBool:
 		value := p.current.Literal
 		if err := p.advance(); err != nil {
 			return nil, err
 		}
 		return &Literal{Value: value}, nil
 
-	case TOKEN_NONE:
+	case TokenNone:
 		if err := p.advance(); err != nil {
 			return nil, err
 		}
 		return &Literal{Value: nil}, nil
 
-	case TOKEN_TODAY:
+	case TokenToday:
 		if err := p.advance(); err != nil {
 			return nil, err
 		}
 		return &SpecialValue{Name: "today"}, nil
 
-	case TOKEN_NOW:
+	case TokenNow:
 		if err := p.advance(); err != nil {
 			return nil, err
 		}
 		return &SpecialValue{Name: "now"}, nil
 
-	case TOKEN_LPAREN:
+	case TokenLParen:
 		if err := p.advance(); err != nil {
 			return nil, err
 		}
@@ -361,7 +361,7 @@ func (p *Parser) parsePrimary() (Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		if p.current.Type != TOKEN_RPAREN {
+		if p.current.Type != TokenRParen {
 			return nil, fmt.Errorf("expected ')' after expression, got %s", p.current)
 		}
 		if err := p.advance(); err != nil {

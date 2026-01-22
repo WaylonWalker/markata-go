@@ -3,7 +3,7 @@ package templates
 import (
 	"time"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/flosch/pongo2/v6"
 )
 

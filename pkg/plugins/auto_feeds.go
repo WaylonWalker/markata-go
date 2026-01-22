@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // AutoFeedsConfig configures automatic feed generation.
@@ -106,10 +106,10 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	feeds := m.Feeds()
 
 	// Get existing feed configs from cache to append auto-generated ones
-	var allFeedConfigs []models.FeedConfig
+	allFeedConfigs := make([]models.FeedConfig, 0, len(autoFeedConfigs))
 	if cached, ok := m.Cache().Get("feed_configs"); ok {
 		if fcs, ok := cached.([]models.FeedConfig); ok {
-			allFeedConfigs = fcs
+			allFeedConfigs = append(allFeedConfigs, fcs...)
 		}
 	}
 
@@ -168,14 +168,14 @@ func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeed
 	}
 
 	// Sort tags alphabetically
-	var tags []string
+	tags := make([]string, 0, len(tagCounts))
 	for tag := range tagCounts {
 		tags = append(tags, tag)
 	}
 	sort.Strings(tags)
 
 	// Create feed config for each tag
-	var feeds []models.FeedConfig
+	feeds := make([]models.FeedConfig, 0, len(tags))
 	prefix := config.SlugPrefix
 	if prefix == "" {
 		prefix = "tags"
@@ -208,14 +208,14 @@ func (p *AutoFeedsPlugin) generateCategoryFeeds(posts []*models.Post, config Aut
 	}
 
 	// Sort categories alphabetically
-	var categories []string
+	categories := make([]string, 0, len(categoryCounts))
 	for cat := range categoryCounts {
 		categories = append(categories, cat)
 	}
 	sort.Strings(categories)
 
 	// Create feed config for each category
-	var feeds []models.FeedConfig
+	feeds := make([]models.FeedConfig, 0, len(categories))
 	prefix := config.SlugPrefix
 	if prefix == "" {
 		prefix = "categories"
@@ -294,6 +294,7 @@ func (p *AutoFeedsPlugin) generateArchiveFeeds(posts []*models.Post, config Auto
 
 		for _, ym := range ymList {
 			var year, month int
+			//nolint:errcheck // best-effort parsing, invalid format will result in zero values
 			fmt.Sscanf(ym, "%d/%d", &year, &month)
 
 			slug := fmt.Sprintf("%s/%s", prefix, ym)

@@ -3,8 +3,8 @@ package plugins
 import (
 	"testing"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // =============================================================================
@@ -552,7 +552,7 @@ func TestTocPlugin_ExtractTOC(t *testing.T) {
 }
 
 // Interface compliance tests
-func TestTocPlugin_Interfaces(t *testing.T) {
+func TestTocPlugin_Interfaces(_ *testing.T) {
 	p := NewTocPlugin()
 
 	var _ lifecycle.Plugin = p

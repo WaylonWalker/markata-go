@@ -92,7 +92,7 @@ primary = "red"
 secondary = "blue"
 `
 
-	if err := os.WriteFile(paletteFile, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(paletteFile, []byte(content), 0o600); err != nil {
 		t.Fatalf("Failed to write test palette: %v", err)
 	}
 
@@ -163,7 +163,7 @@ bad = "not-a-hex"
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			paletteFile := filepath.Join(tmpDir, tt.name+".toml")
-			if err := os.WriteFile(paletteFile, []byte(tt.content), 0644); err != nil {
+			if err := os.WriteFile(paletteFile, []byte(tt.content), 0o600); err != nil {
 				t.Fatalf("Failed to write test file: %v", err)
 			}
 
@@ -179,7 +179,7 @@ func TestLoader_Load(t *testing.T) {
 	// Create temp directory with a palette
 	tmpDir := t.TempDir()
 	palettesDir := filepath.Join(tmpDir, "palettes")
-	if err := os.MkdirAll(palettesDir, 0755); err != nil {
+	if err := os.MkdirAll(palettesDir, 0o755); err != nil {
 		t.Fatalf("Failed to create palettes dir: %v", err)
 	}
 
@@ -192,7 +192,7 @@ white = "#ffffff"
 [palette.semantic]
 bg = "white"
 `
-	if err := os.WriteFile(filepath.Join(palettesDir, "project.toml"), []byte(content), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(palettesDir, "project.toml"), []byte(content), 0o600); err != nil {
 		t.Fatalf("Failed to write palette: %v", err)
 	}
 
@@ -212,7 +212,7 @@ func TestLoader_Discover(t *testing.T) {
 	// Create temp directory with palettes
 	tmpDir := t.TempDir()
 	palettesDir := filepath.Join(tmpDir, "palettes")
-	if err := os.MkdirAll(palettesDir, 0755); err != nil {
+	if err := os.MkdirAll(palettesDir, 0o755); err != nil {
 		t.Fatalf("Failed to create palettes dir: %v", err)
 	}
 
@@ -225,7 +225,7 @@ variant = "` + name + `"
 [palette.colors]
 base = "#000000"
 `
-		if err := os.WriteFile(filepath.Join(palettesDir, name+".toml"), []byte(content), 0644); err != nil {
+		if err := os.WriteFile(filepath.Join(palettesDir, name+".toml"), []byte(content), 0o600); err != nil {
 			t.Fatalf("Failed to write palette: %v", err)
 		}
 	}
@@ -253,7 +253,7 @@ func TestLoader_DiscoverByVariant(t *testing.T) {
 	// Create temp directory with palettes
 	tmpDir := t.TempDir()
 	palettesDir := filepath.Join(tmpDir, "palettes")
-	if err := os.MkdirAll(palettesDir, 0755); err != nil {
+	if err := os.MkdirAll(palettesDir, 0o755); err != nil {
 		t.Fatalf("Failed to create palettes dir: %v", err)
 	}
 
@@ -272,10 +272,10 @@ variant = "light"
 [palette.colors]
 base = "#ffffff"
 `
-	if err := os.WriteFile(filepath.Join(palettesDir, "dark.toml"), []byte(darkContent), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(palettesDir, "dark.toml"), []byte(darkContent), 0o600); err != nil {
 		t.Fatalf("Failed to write palette: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(palettesDir, "light.toml"), []byte(lightContent), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(palettesDir, "light.toml"), []byte(lightContent), 0o600); err != nil {
 		t.Fatalf("Failed to write palette: %v", err)
 	}
 

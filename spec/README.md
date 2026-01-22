@@ -53,6 +53,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [CONTENT.md](./spec/CONTENT.md) | Markdown processing, frontmatter, admonitions |
 | [TEMPLATES.md](./spec/TEMPLATES.md) | Template system, engine differences |
 | [OPTIONAL_PLUGINS.md](./spec/OPTIONAL_PLUGINS.md) | Optional enhancement plugins |
+| [VERSIONING.md](./spec/VERSIONING.md) | Versioning scheme and release process |
 | [tests.yaml](./spec/tests.yaml) | 350+ test cases for verification |
 
 ## Architecture Overview

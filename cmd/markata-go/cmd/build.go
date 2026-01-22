@@ -6,8 +6,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/example/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/spf13/cobra"
+)
+
+// Common string constants.
+const (
+	defaultOutputDir = "output"
 )
 
 var (
@@ -48,7 +53,7 @@ func init() {
 	buildCmd.Flags().BoolVar(&buildDryRun, "dry-run", false, "show what would be built without building")
 }
 
-func runBuildCommand(cmd *cobra.Command, args []string) error {
+func runBuildCommand(_ *cobra.Command, _ []string) error {
 	startTime := time.Now()
 
 	if verbose {
@@ -70,7 +75,7 @@ func runBuildCommand(cmd *cobra.Command, args []string) error {
 	if buildClean {
 		outputPath := m.Config().OutputDir
 		if outputPath == "" {
-			outputPath = "output"
+			outputPath = defaultOutputDir
 		}
 
 		if verbose {
@@ -171,7 +176,7 @@ func runDryBuild(m *lifecycle.Manager) error {
 
 	outputDir := m.Config().OutputDir
 	if outputDir == "" {
-		outputDir = "output"
+		outputDir = defaultOutputDir
 	}
 	fmt.Printf("\nOutput directory: %s\n", filepath.Clean(outputDir))
 

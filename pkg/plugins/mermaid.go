@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // MermaidPlugin converts Mermaid code blocks into rendered diagrams.

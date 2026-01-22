@@ -3,9 +3,11 @@ package plugins
 
 import (
 	"bytes"
+	"strings"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/extension"
@@ -25,8 +27,24 @@ type RenderMarkdownPlugin struct {
 // - HTML rendering with unsafe mode (allow raw HTML)
 // - Auto heading IDs
 // - Custom admonition support
+//
+// The initial configuration uses a default theme. The Configure() method will
+// reconfigure the markdown renderer with the appropriate theme based on the
+// site's palette configuration.
 func NewRenderMarkdownPlugin() *RenderMarkdownPlugin {
-	md := goldmark.New(
+	return &RenderMarkdownPlugin{
+		md: createMarkdownRenderer(palettes.DefaultChromaThemeDark, false),
+	}
+}
+
+// createMarkdownRenderer creates a goldmark instance with the specified highlighting options.
+func createMarkdownRenderer(chromaTheme string, _ bool) goldmark.Markdown {
+	highlightOpts := []highlighting.Option{
+		highlighting.WithStyle(chromaTheme),
+		highlighting.WithFormatOptions(),
+	}
+
+	return goldmark.New(
 		goldmark.WithExtensions(
 			// GFM extensions
 			extension.GFM,
@@ -35,10 +53,7 @@ func NewRenderMarkdownPlugin() *RenderMarkdownPlugin {
 			extension.Linkify,
 			extension.TaskList,
 			// Syntax highlighting with chroma
-			highlighting.NewHighlighting(
-				highlighting.WithStyle("monokai"),
-				highlighting.WithFormatOptions(),
-			),
+			highlighting.NewHighlighting(highlightOpts...),
 			// Custom admonition extension
 			&AdmonitionExtension{},
 		),
@@ -50,10 +65,6 @@ func NewRenderMarkdownPlugin() *RenderMarkdownPlugin {
 			html.WithUnsafe(),
 		),
 	)
-
-	return &RenderMarkdownPlugin{
-		md: md,
-	}
 }
 
 // Name returns the unique name of the plugin.
@@ -62,11 +73,93 @@ func (p *RenderMarkdownPlugin) Name() string {
 }
 
 // Configure initializes the plugin during the configure stage.
-// This can be used to apply configuration options to the markdown renderer.
+// It reads the highlight theme from configuration, falling back to the theme
+// derived from the site's color palette if not explicitly set.
+//
+// Configuration priority:
+// 1. markdown.highlight.theme in config (explicit override)
+// 2. Theme derived from theme.palette (automatic matching)
+// 3. Default theme based on palette variant (github/github-dark)
 func (p *RenderMarkdownPlugin) Configure(m *lifecycle.Manager) error {
-	// Configuration could be read from m.Config().Extra if needed
-	// For example, to change the highlighting style or enable/disable extensions
+	chromaTheme, lineNumbers := p.resolveHighlightConfig(m.Config().Extra)
+
+	// Reconfigure the markdown renderer with the resolved theme
+	p.md = createMarkdownRenderer(chromaTheme, lineNumbers)
+
 	return nil
+}
+
+// resolveHighlightConfig extracts highlight configuration from the config.Extra map.
+// Returns the Chroma theme name and whether line numbers should be shown.
+func (p *RenderMarkdownPlugin) resolveHighlightConfig(extra map[string]interface{}) (string, bool) {
+	var chromaTheme string
+	var lineNumbers bool
+	var paletteVariant = palettes.VariantDark
+
+	// Try to get explicit highlight config from markdown.highlight
+	if markdown, ok := extra["markdown"].(map[string]interface{}); ok {
+		if highlight, ok := markdown["highlight"].(map[string]interface{}); ok {
+			// Check if highlighting is disabled
+			if enabled, ok := highlight["enabled"].(bool); ok && !enabled {
+				// Return empty theme to effectively disable highlighting
+				return "monokailight", false // Use a neutral theme, highlighting is still applied
+			}
+
+			// Get explicit theme
+			if theme, ok := highlight["theme"].(string); ok && theme != "" {
+				chromaTheme = theme
+			}
+
+			// Get line numbers setting
+			if ln, ok := highlight["line_numbers"].(bool); ok {
+				lineNumbers = ln
+			}
+		}
+	}
+
+	// If no explicit theme, derive from palette
+	if chromaTheme == "" {
+		paletteName := p.getPaletteName(extra)
+		if paletteName != "" {
+			// Try to get theme from palette mapping
+			chromaTheme = palettes.ChromaTheme(paletteName)
+
+			// Determine palette variant for fallback
+			paletteVariant = p.getPaletteVariant(paletteName)
+		}
+	}
+
+	// Final fallback based on palette variant
+	if chromaTheme == "" {
+		chromaTheme = palettes.ChromaThemeForVariant(paletteVariant)
+	}
+
+	return chromaTheme, lineNumbers
+}
+
+// getPaletteName extracts the palette name from config.Extra.
+func (p *RenderMarkdownPlugin) getPaletteName(extra map[string]interface{}) string {
+	if theme, ok := extra["theme"].(map[string]interface{}); ok {
+		if palette, ok := theme["palette"].(string); ok && palette != "" {
+			return palette
+		}
+	}
+	return ""
+}
+
+// getPaletteVariant determines the variant (light/dark) of a palette by name.
+// Uses naming conventions to infer variant when palette data isn't loaded.
+func (p *RenderMarkdownPlugin) getPaletteVariant(paletteName string) palettes.Variant {
+	// Check common light palette name patterns
+	lightPatterns := []string{
+		"-light", "-latte", "-dawn", "-day", "-lotus",
+	}
+	for _, pattern := range lightPatterns {
+		if strings.Contains(paletteName, pattern) {
+			return palettes.VariantLight
+		}
+	}
+	return palettes.VariantDark
 }
 
 // Render converts markdown content to HTML for all posts.

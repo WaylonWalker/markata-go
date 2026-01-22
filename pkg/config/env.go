@@ -6,10 +6,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 const envPrefix = "MARKATA_GO_"
+
+// Common string constants used in environment variable processing.
+const (
+	envKeyURL         = "url"
+	envKeyConcurrency = "concurrency"
+	envKeyJSON        = "json"
+)
 
 // ApplyEnvOverrides applies environment variable overrides to a config.
 // Environment variables are expected to follow the format MARKATA_GO_*.
@@ -39,6 +46,8 @@ func ApplyEnvOverrides(config *models.Config) error {
 }
 
 // applyEnvOverride applies a single environment variable override.
+//
+//nolint:gocyclo // This is a switch statement mapping env vars to config fields, complexity is unavoidable.
 func applyEnvOverride(config *models.Config, key, value string) {
 	// Normalize the key to lowercase for comparison
 	keyLower := strings.ToLower(key)
@@ -46,7 +55,7 @@ func applyEnvOverride(config *models.Config, key, value string) {
 	switch keyLower {
 	case "output_dir":
 		config.OutputDir = value
-	case "url":
+	case envKeyURL:
 		config.URL = value
 	case "title":
 		config.Title = value
@@ -58,7 +67,7 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.AssetsDir = value
 	case "templates_dir":
 		config.TemplatesDir = value
-	case "concurrency":
+	case envKeyConcurrency:
 		if v, err := strconv.Atoi(value); err == nil {
 			config.Concurrency = v
 		}
@@ -149,11 +158,11 @@ func UnsetEnvValue(key string) error {
 	return os.Unsetenv(envPrefix + strings.ToUpper(key))
 }
 
-// ConfigFromEnv creates a Config entirely from environment variables.
+// FromEnv creates a Config entirely from environment variables.
 // This is useful when no config file is available.
-func ConfigFromEnv() *models.Config {
+func FromEnv() *models.Config {
 	config := DefaultConfig()
-	ApplyEnvOverrides(config)
+	_ = ApplyEnvOverrides(config) //nolint:errcheck // Best-effort env override
 	return config
 }
 
@@ -208,6 +217,8 @@ func structToEnvKeysRecursive(prefix string, t reflect.Type, result map[string]s
 			result[envKey] = "integer"
 		case reflect.String:
 			result[envKey] = "string"
+		default:
+			// Other types (uint, float, complex, etc.) are not currently supported for env vars
 		}
 	}
 }

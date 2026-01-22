@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
@@ -673,7 +673,7 @@ func TestAdmonitionExtension_Extend(t *testing.T) {
 	}
 }
 
-func TestAdmonitionRenderer_RegisterFuncs(t *testing.T) {
+func TestAdmonitionRenderer_RegisterFuncs(_ *testing.T) {
 	r := NewAdmonitionRenderer()
 
 	// Just verify it doesn't panic
@@ -681,7 +681,7 @@ func TestAdmonitionRenderer_RegisterFuncs(t *testing.T) {
 	_ = r
 }
 
-func TestAdmonitionNode_Dump(t *testing.T) {
+func TestAdmonitionNode_Dump(_ *testing.T) {
 	ad := NewAdmonition("note", "Test Title", false, false, "")
 
 	// Should not panic

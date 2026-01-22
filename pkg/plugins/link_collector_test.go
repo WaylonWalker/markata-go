@@ -3,8 +3,8 @@ package plugins
 import (
 	"testing"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestLinkCollectorPlugin_Name(t *testing.T) {
@@ -753,7 +753,7 @@ func TestIsFeedPost(t *testing.T) {
 
 // Interface compliance tests
 
-func TestLinkCollectorPlugin_Interfaces(t *testing.T) {
+func TestLinkCollectorPlugin_Interfaces(_ *testing.T) {
 	p := NewLinkCollectorPlugin()
 
 	// Verify interface compliance

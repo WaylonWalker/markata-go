@@ -3,8 +3,8 @@ package plugins
 import (
 	"testing"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestPrevNextPlugin_Name(t *testing.T) {
@@ -624,7 +624,7 @@ func TestPrevNextConfig_ApplyDefaults(t *testing.T) {
 }
 
 // Verify interface implementations
-func TestPrevNextPlugin_Interfaces(t *testing.T) {
+func TestPrevNextPlugin_Interfaces(_ *testing.T) {
 	var _ lifecycle.Plugin = (*PrevNextPlugin)(nil)
 	var _ lifecycle.CollectPlugin = (*PrevNextPlugin)(nil)
 	var _ lifecycle.PriorityPlugin = (*PrevNextPlugin)(nil)

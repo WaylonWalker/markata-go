@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // Cache is an interface for caching data between stages.
@@ -436,7 +436,7 @@ func (m *Manager) Filter(expr string) ([]*models.Post, error) {
 //   - filter: optional filter expression (same syntax as Filter)
 //   - sortField: field to sort by (empty for no sorting)
 //   - reverse: if true, sort in descending order
-func (m *Manager) Map(field string, filter string, sortField string, reverse bool) ([]interface{}, error) {
+func (m *Manager) Map(field, filter, sortField string, reverse bool) ([]interface{}, error) {
 	posts, err := m.Filter(filter)
 	if err != nil {
 		return nil, err
@@ -648,7 +648,7 @@ func (m *Manager) ProcessPostsConcurrently(fn func(*models.Post) error) error {
 	close(errCh)
 
 	// Collect errors
-	var errs []error
+	errs := make([]error, 0, len(m.posts))
 	for err := range errCh {
 		errs = append(errs, err)
 	}

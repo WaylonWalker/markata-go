@@ -3,9 +3,9 @@ package plugins
 import (
 	"fmt"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
-	"github.com/example/markata-go/pkg/templates"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // TemplatesPlugin wraps rendered markdown content in HTML templates.
@@ -21,7 +21,7 @@ func NewTemplatesPlugin() *TemplatesPlugin {
 
 // Name returns the plugin name.
 func (p *TemplatesPlugin) Name() string {
-	return "templates"
+	return PluginNameTemplates
 }
 
 // Configure initializes the template engine from the config.
@@ -32,13 +32,13 @@ func (p *TemplatesPlugin) Configure(m *lifecycle.Manager) error {
 	}
 
 	// Get templates directory from config
-	templatesDir := "templates"
+	templatesDir := PluginNameTemplates
 	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
 		templatesDir = extra
 	}
 
 	// Get theme name from config (default to "default")
-	themeName := "default"
+	themeName := ThemeDefault
 	if extra := config.Extra; extra != nil {
 		if theme, ok := extra["theme"].(map[string]interface{}); ok {
 			if name, ok := theme["name"].(string); ok && name != "" {

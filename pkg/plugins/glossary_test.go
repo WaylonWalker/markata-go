@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestGlossaryPlugin_Name(t *testing.T) {
@@ -220,7 +220,7 @@ func TestGlossaryPlugin_LinkTerms_Basic(t *testing.T) {
 	}
 
 	posts := []*models.Post{glossaryPost}
-	_ = p.buildGlossary(posts)
+	_ = p.buildGlossary(posts) //nolint:errcheck // test ignores error
 
 	html := "<p>The API allows communication between services.</p>"
 	result := p.linkTerms(html, nil)
@@ -245,7 +245,7 @@ func TestGlossaryPlugin_LinkTerms_MaxLinksPerTerm(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	html := "<p>The API is great. Another API mention. Third API usage.</p>"
 	result := p.linkTerms(html, nil)
@@ -271,7 +271,7 @@ func TestGlossaryPlugin_LinkTerms_AllOccurrences(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	html := "<p>The API is great. Another API mention.</p>"
 	result := p.linkTerms(html, nil)
@@ -296,7 +296,7 @@ func TestGlossaryPlugin_LinkTerms_SkipExistingLinks(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	html := `<p>Check this <a href="/other">API link</a> for info.</p>`
 	result := p.linkTerms(html, nil)
@@ -320,7 +320,7 @@ func TestGlossaryPlugin_LinkTerms_SkipCodeBlocks(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	html := `<p>Use <code>API.call()</code> in your code.</p>`
 	result := p.linkTerms(html, nil)
@@ -347,7 +347,7 @@ func TestGlossaryPlugin_LinkTerms_SkipPreBlocks(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	html := `<pre><code>API.call()</code></pre><p>The API works.</p>`
 	result := p.linkTerms(html, nil)
@@ -376,7 +376,7 @@ func TestGlossaryPlugin_LinkTerms_CaseInsensitive(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	html := "<p>The api is lowercase.</p>"
 	result := p.linkTerms(html, nil)
@@ -404,7 +404,7 @@ func TestGlossaryPlugin_LinkTerms_CaseSensitive(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	html := "<p>The api is lowercase but API is uppercase.</p>"
 	result := p.linkTerms(html, nil)
@@ -432,7 +432,7 @@ func TestGlossaryPlugin_LinkTerms_NoTooltip(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	html := "<p>The API works.</p>"
 	result := p.linkTerms(html, nil)
@@ -457,7 +457,7 @@ func TestGlossaryPlugin_LinkTerms_Aliases(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	html := "<p>The API and APIs are both linked.</p>"
 	result := p.linkTerms(html, nil)
@@ -482,7 +482,7 @@ func TestGlossaryPlugin_ProcessPost_SkipGlossaryPost(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	originalHTML := glossaryPost.ArticleHTML
 	err := p.processPost(glossaryPost)
@@ -509,7 +509,7 @@ func TestGlossaryPlugin_ProcessPost_SkipExcludedTags(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	regularPost := &models.Post{
 		Slug:        "test-post",
@@ -617,7 +617,7 @@ func TestGlossaryPlugin_Write_ExportJSON(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	// Create temp directory
 	tmpDir := t.TempDir()
@@ -671,7 +671,7 @@ func TestGlossaryPlugin_Write_Disabled(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	tmpDir := t.TempDir()
 
@@ -703,7 +703,7 @@ func TestGlossaryPlugin_WordBoundary(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	// Should not match "API" within "RAPID"
 	html := "<p>RAPID development uses the API.</p>"
@@ -746,7 +746,7 @@ func TestGlossaryPlugin_LongestMatchFirst(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{jsPost, javaPost})
+	_ = p.buildGlossary([]*models.Post{jsPost, javaPost}) //nolint:errcheck // test ignores error
 
 	html := "<p>JavaScript is not Java.</p>"
 	result := p.linkTerms(html, nil)
@@ -765,7 +765,7 @@ func TestGlossaryPlugin_LongestMatchFirst(t *testing.T) {
 	}
 }
 
-func TestGlossaryPlugin_Interfaces(t *testing.T) {
+func TestGlossaryPlugin_Interfaces(_ *testing.T) {
 	p := NewGlossaryPlugin()
 
 	// Verify interface compliance
@@ -799,7 +799,7 @@ func TestGlossaryPlugin_Terms(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary(posts)
+	_ = p.buildGlossary(posts) //nolint:errcheck // test ignores error
 
 	terms := p.Terms()
 	if len(terms) != 2 {
@@ -847,7 +847,7 @@ func TestGlossaryPlugin_SkipEmptyPosts(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	// Post with empty ArticleHTML
 	emptyPost := &models.Post{
@@ -879,7 +879,7 @@ func TestGlossaryPlugin_SkipSkippedPosts(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	skippedPost := &models.Post{
 		Slug:        "skipped",
@@ -915,7 +915,7 @@ func TestGlossaryPlugin_HTMLEscaping(t *testing.T) {
 		},
 	}
 
-	_ = p.buildGlossary([]*models.Post{glossaryPost})
+	_ = p.buildGlossary([]*models.Post{glossaryPost}) //nolint:errcheck // test ignores error
 
 	html := "<p>This is a Test.</p>"
 	result := p.linkTerms(html, nil)

@@ -390,6 +390,211 @@ Then style it:
 
 ---
 
+## Media Borders and Gradient Effects
+
+markata-go provides beautiful, configurable borders for images and videos. From subtle solid borders to animated gradients, you have full control over how your media looks.
+
+### Default Media Styling
+
+By default, images and videos in your content get:
+
+- Rounded corners (`--media-border-radius`)
+- A subtle border (`--media-border-width`, `--media-border-color`)
+- Proper spacing and centering
+
+### Configuring Media Borders
+
+Customize the default borders via CSS variables:
+
+```css
+/* In your custom CSS or via theme.variables */
+:root {
+  --media-border-width: 3px;      /* Border thickness */
+  --media-border-color: #e5e7eb;  /* Border color */
+  --media-border-radius: 0.5rem;  /* Corner rounding */
+}
+```
+
+Or via config:
+
+```toml
+[markata-go.theme.variables]
+"--media-border-width" = "4px"
+"--media-border-color" = "#8b5cf6"
+"--media-border-radius" = "1rem"
+```
+
+### Gradient Borders
+
+Enable colorful gradient borders for a modern, eye-catching look. Add a class to your post content to enable gradients for all media:
+
+```yaml
+---
+title: "My Post with Gradient Borders"
+css_class: gradient-borders
+---
+```
+
+This applies the default accent gradient to all images and videos in that post.
+
+### Available Gradient Presets
+
+markata-go includes several beautiful gradient presets:
+
+| Class | Colors | Best For |
+|-------|--------|----------|
+| `gradient-borders` | Primary to primary-dark | Brand-consistent |
+| `gradient-vibrant` | Purple to pink | Creative, artistic |
+| `gradient-warm` | Pink to orange | Energetic, warm |
+| `gradient-cool` | Blue to cyan | Professional, tech |
+| `gradient-sunset` | Pink to yellow | Warm, inviting |
+| `gradient-ocean` | Teal to light blue | Calm, refreshing |
+
+Use them in frontmatter:
+
+```yaml
+---
+title: "Ocean-Themed Post"
+css_class: gradient-ocean
+---
+```
+
+### Animated Gradient Borders
+
+For extra visual impact, use animated gradients that slowly shift colors:
+
+```yaml
+---
+title: "Attention-Grabbing Post"
+css_class: gradient-animated
+---
+```
+
+The animation cycles through purple, pink, and blue over 6 seconds.
+
+### Glow Effects
+
+Add a subtle glow behind your media:
+
+```yaml
+---
+title: "Glowing Media"
+css_class: glow
+---
+```
+
+Combine glow with gradients:
+
+```yaml
+---
+title: "Maximum Impact"
+css_class: gradient-vibrant glow
+---
+```
+
+### Per-Image Styling
+
+For fine-grained control, add classes directly to images in your Markdown using HTML:
+
+```html
+<img src="/images/hero.jpg" alt="Hero" class="gradient-vibrant glow">
+```
+
+Or use a wrapper div:
+
+```html
+<div class="media-frame gradient-sunset glow">
+  <img src="/images/featured.jpg" alt="Featured">
+</div>
+```
+
+### CSS Variable Reference for Media
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `--media-border-width` | Border thickness | `3px` |
+| `--media-border-style` | Border style | `solid` |
+| `--media-border-color` | Border color | `var(--color-border)` |
+| `--media-border-radius` | Corner rounding | `0.5rem` |
+| `--gradient-accent` | Default gradient | Primary colors |
+| `--gradient-vibrant` | Purple-pink gradient | `#667eea` to `#f093fb` |
+| `--gradient-warm` | Pink-orange gradient | `#f093fb` to `#f8b500` |
+| `--gradient-cool` | Blue-cyan gradient | `#4facfe` to `#00f2fe` |
+| `--gradient-sunset` | Pink-yellow gradient | `#fa709a` to `#fee140` |
+| `--gradient-ocean` | Teal-blue gradient | `#2193b0` to `#6dd5ed` |
+
+### Palette-Matching Gradients
+
+If you're using a specific color palette, use the matching gradient for visual consistency:
+
+| Class | Palette | Colors |
+|-------|---------|--------|
+| `gradient-catppuccin` | Catppuccin | Mauve → Pink → Red |
+| `gradient-nord` | Nord | Frost colors (cyan → blue) |
+| `gradient-dracula` | Dracula | Purple → Pink → Cyan |
+| `gradient-gruvbox` | Gruvbox | Yellow → Orange → Red |
+| `gradient-rose-pine` | Rosé Pine | Iris → Rose → Gold |
+| `gradient-solarized` | Solarized | Blue → Cyan → Green |
+| `gradient-tokyo-night` | Tokyo Night | Blue → Purple → Pink |
+
+Example: If your site uses `catppuccin-mocha` palette, use `gradient-catppuccin` for borders:
+
+```toml
+# markata-go.toml
+[markata-go.theme]
+palette = "catppuccin-mocha"
+```
+
+```yaml
+# In your post frontmatter
+---
+title: "Catppuccin-Styled Gallery"
+css_class: gradient-catppuccin
+---
+```
+
+### Custom Gradients
+
+Create your own gradient by overriding the variables:
+
+```css
+/* In static/custom.css */
+:root {
+  --gradient-accent: linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb);
+}
+```
+
+Or define a completely new one:
+
+```css
+.post-content.gradient-custom img,
+.post-content.gradient-custom video {
+  border: none;
+  padding: 3px;
+  background: linear-gradient(45deg, #12c2e9, #c471ed, #f64f59);
+  background-origin: border-box;
+}
+```
+
+Then use in frontmatter:
+
+```yaml
+---
+css_class: gradient-custom
+---
+```
+
+### Dark Mode Considerations
+
+Gradient borders adapt to dark mode:
+- Glow effects become more prominent
+- Border colors adjust automatically
+- Gradients remain vibrant on dark backgrounds
+
+Test your gradient choices in both light and dark mode.
+
+---
+
 ## Best Practices
 
 ### 1. Start with a Palette

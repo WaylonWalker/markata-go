@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func makePost(opts ...func(*models.Post)) *models.Post {
@@ -609,7 +609,7 @@ func TestFilter_ConvenienceFunctions(t *testing.T) {
 
 	t.Run("Always", func(t *testing.T) {
 		f := Always()
-		result, _ := f.Match(post)
+		result, _ := f.Match(post) //nolint:errcheck // Always() never errors
 		if !result {
 			t.Error("Always() should match")
 		}
@@ -617,18 +617,18 @@ func TestFilter_ConvenienceFunctions(t *testing.T) {
 
 	t.Run("Never", func(t *testing.T) {
 		f := Never()
-		result, _ := f.Match(post)
+		result, _ := f.Match(post) //nolint:errcheck // Never() never errors
 		if result {
 			t.Error("Never() should not match")
 		}
 	})
 
-	t.Run("FilterPosts", func(t *testing.T) {
+	t.Run("Posts", func(t *testing.T) {
 		posts := []*models.Post{
 			makePost(withPublished(true)),
 			makePost(withPublished(false)),
 		}
-		result, err := FilterPosts("published == True", posts)
+		result, err := Posts("published == True", posts)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

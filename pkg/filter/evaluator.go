@@ -6,7 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
+)
+
+// Logical operator constants
+const (
+	opAnd = "and"
+	opOr  = "or"
 )
 
 // EvalContext contains the context for evaluating filter expressions
@@ -89,7 +95,7 @@ func eval(expr Expr, post *models.Post, ctx *EvalContext) (interface{}, error) {
 func evalBinaryExpr(e *BinaryExpr, post *models.Post, ctx *EvalContext) (interface{}, error) {
 	// Handle logical operators first (short-circuit evaluation)
 	switch e.Op {
-	case "and":
+	case opAnd:
 		left, err := eval(e.Left, post, ctx)
 		if err != nil {
 			return nil, err
@@ -103,7 +109,7 @@ func evalBinaryExpr(e *BinaryExpr, post *models.Post, ctx *EvalContext) (interfa
 		}
 		return toBool(right), nil
 
-	case "or":
+	case opOr:
 		left, err := eval(e.Left, post, ctx)
 		if err != nil {
 			return nil, err
@@ -221,7 +227,7 @@ func evalCallExpr(e *CallExpr, post *models.Post, ctx *EvalContext) (interface{}
 }
 
 // evalStringMethod evaluates string methods
-func evalStringMethod(s string, method string, args []interface{}) (interface{}, error) {
+func evalStringMethod(s, method string, args []interface{}) (interface{}, error) {
 	switch method {
 	case "startswith":
 		if len(args) != 1 {
@@ -404,6 +410,8 @@ func toBool(v interface{}) bool {
 }
 
 // compare compares two values and returns -1, 0, or 1
+//
+//nolint:gocyclo // complex type-switch logic for comparing heterogeneous values is inherently cyclomatic
 func compare(a, b interface{}) int {
 	// Handle nil
 	if a == nil && b == nil {
@@ -522,7 +530,7 @@ func normalizeValue(v interface{}) interface{} {
 	case int32:
 		return int64(val)
 	case uint:
-		return int64(val)
+		return int64(val) //nolint:gosec // G115: conversion is safe for filter comparison values
 	case uint8:
 		return int64(val)
 	case uint16:
@@ -530,7 +538,7 @@ func normalizeValue(v interface{}) interface{} {
 	case uint32:
 		return int64(val)
 	case uint64:
-		return int64(val)
+		return int64(val) //nolint:gosec // G115: conversion is safe for filter comparison values
 	case float32:
 		return float64(val)
 	case *time.Time:

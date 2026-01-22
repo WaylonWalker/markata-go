@@ -6,7 +6,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"gopkg.in/yaml.v3"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // ParseTOML parses TOML configuration data into a Config struct.
@@ -159,8 +159,8 @@ func (c *tomlConfig) toConfig() *models.Config {
 	}
 
 	// Convert feeds
-	for _, f := range c.Feeds {
-		config.Feeds = append(config.Feeds, f.toFeedConfig())
+	for i := range c.Feeds {
+		config.Feeds = append(config.Feeds, c.Feeds[i].toFeedConfig())
 	}
 
 	// Convert feed defaults
@@ -313,6 +313,7 @@ type yamlSyndicationConfig struct {
 	IncludeContent bool `yaml:"include_content"`
 }
 
+//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (c *yamlConfig) toConfig() *models.Config {
 	config := &models.Config{
 		OutputDir:     c.OutputDir,
@@ -338,8 +339,8 @@ func (c *yamlConfig) toConfig() *models.Config {
 	}
 
 	// Convert feeds
-	for _, f := range c.Feeds {
-		config.Feeds = append(config.Feeds, f.toFeedConfig())
+	for i := range c.Feeds {
+		config.Feeds = append(config.Feeds, c.Feeds[i].toFeedConfig())
 	}
 
 	// Convert feed defaults
@@ -479,6 +480,7 @@ type jsonSyndicationConfig struct {
 	IncludeContent bool `json:"include_content"`
 }
 
+//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (c *jsonConfig) toConfig() *models.Config {
 	config := &models.Config{
 		OutputDir:     c.OutputDir,
@@ -504,8 +506,8 @@ func (c *jsonConfig) toConfig() *models.Config {
 	}
 
 	// Convert feeds
-	for _, f := range c.Feeds {
-		config.Feeds = append(config.Feeds, f.toFeedConfig())
+	for i := range c.Feeds {
+		config.Feeds = append(config.Feeds, c.Feeds[i].toFeedConfig())
 	}
 
 	// Convert feed defaults

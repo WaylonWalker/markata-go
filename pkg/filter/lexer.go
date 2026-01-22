@@ -10,22 +10,22 @@ import (
 type TokenType int
 
 const (
-	TOKEN_EOF TokenType = iota
-	TOKEN_IDENTIFIER
-	TOKEN_STRING
-	TOKEN_NUMBER
-	TOKEN_BOOL
-	TOKEN_NONE
-	TOKEN_COMPARE_OP // ==, !=, <, >, <=, >=
-	TOKEN_LOGIC_OP   // and, or
-	TOKEN_IN
-	TOKEN_NOT
-	TOKEN_LPAREN
-	TOKEN_RPAREN
-	TOKEN_DOT
-	TOKEN_COMMA
-	TOKEN_TODAY
-	TOKEN_NOW
+	TokenEOF TokenType = iota
+	TokenIdentifier
+	TokenString
+	TokenNumber
+	TokenBool
+	TokenNone
+	TokenCompareOp // ==, !=, <, >, <=, >=
+	TokenLogicOp   // and, or
+	TokenIn
+	TokenNot
+	TokenLParen
+	TokenRParen
+	TokenDot
+	TokenComma
+	TokenToday
+	TokenNow
 )
 
 // Token represents a lexical token
@@ -39,15 +39,15 @@ type Token struct {
 // String returns a string representation of the token
 func (t Token) String() string {
 	switch t.Type {
-	case TOKEN_EOF:
+	case TokenEOF:
 		return "EOF"
-	case TOKEN_STRING:
+	case TokenString:
 		return fmt.Sprintf("STRING(%q)", t.Value)
-	case TOKEN_NUMBER:
+	case TokenNumber:
 		return fmt.Sprintf("NUMBER(%v)", t.Literal)
-	case TOKEN_BOOL:
+	case TokenBool:
 		return fmt.Sprintf("BOOL(%v)", t.Literal)
-	case TOKEN_NONE:
+	case TokenNone:
 		return "NONE"
 	default:
 		return fmt.Sprintf("%s(%s)", tokenTypeName(t.Type), t.Value)
@@ -56,22 +56,22 @@ func (t Token) String() string {
 
 func tokenTypeName(t TokenType) string {
 	names := map[TokenType]string{
-		TOKEN_EOF:        "EOF",
-		TOKEN_IDENTIFIER: "IDENTIFIER",
-		TOKEN_STRING:     "STRING",
-		TOKEN_NUMBER:     "NUMBER",
-		TOKEN_BOOL:       "BOOL",
-		TOKEN_NONE:       "NONE",
-		TOKEN_COMPARE_OP: "COMPARE_OP",
-		TOKEN_LOGIC_OP:   "LOGIC_OP",
-		TOKEN_IN:         "IN",
-		TOKEN_NOT:        "NOT",
-		TOKEN_LPAREN:     "LPAREN",
-		TOKEN_RPAREN:     "RPAREN",
-		TOKEN_DOT:        "DOT",
-		TOKEN_COMMA:      "COMMA",
-		TOKEN_TODAY:      "TODAY",
-		TOKEN_NOW:        "NOW",
+		TokenEOF:        "EOF",
+		TokenIdentifier: "IDENTIFIER",
+		TokenString:     "STRING",
+		TokenNumber:     "NUMBER",
+		TokenBool:       "BOOL",
+		TokenNone:       "NONE",
+		TokenCompareOp:  "COMPARE_OP",
+		TokenLogicOp:    "LOGIC_OP",
+		TokenIn:         "IN",
+		TokenNot:        "NOT",
+		TokenLParen:     "LPAREN",
+		TokenRParen:     "RPAREN",
+		TokenDot:        "DOT",
+		TokenComma:      "COMMA",
+		TokenToday:      "TODAY",
+		TokenNow:        "NOW",
 	}
 	if name, ok := names[t]; ok {
 		return name
@@ -128,29 +128,29 @@ func (l *Lexer) NextToken() (Token, error) {
 
 	switch l.ch {
 	case 0:
-		return Token{Type: TOKEN_EOF, Pos: pos}, nil
+		return Token{Type: TokenEOF, Pos: pos}, nil
 
 	case '(':
 		l.readChar()
-		return Token{Type: TOKEN_LPAREN, Value: "(", Pos: pos}, nil
+		return Token{Type: TokenLParen, Value: "(", Pos: pos}, nil
 
 	case ')':
 		l.readChar()
-		return Token{Type: TOKEN_RPAREN, Value: ")", Pos: pos}, nil
+		return Token{Type: TokenRParen, Value: ")", Pos: pos}, nil
 
 	case '.':
 		l.readChar()
-		return Token{Type: TOKEN_DOT, Value: ".", Pos: pos}, nil
+		return Token{Type: TokenDot, Value: ".", Pos: pos}, nil
 
 	case ',':
 		l.readChar()
-		return Token{Type: TOKEN_COMMA, Value: ",", Pos: pos}, nil
+		return Token{Type: TokenComma, Value: ",", Pos: pos}, nil
 
 	case '=':
 		if l.peekChar() == '=' {
 			l.readChar()
 			l.readChar()
-			return Token{Type: TOKEN_COMPARE_OP, Value: "==", Pos: pos}, nil
+			return Token{Type: TokenCompareOp, Value: "==", Pos: pos}, nil
 		}
 		return Token{}, fmt.Errorf("unexpected character '=' at position %d, expected '=='", pos)
 
@@ -158,7 +158,7 @@ func (l *Lexer) NextToken() (Token, error) {
 		if l.peekChar() == '=' {
 			l.readChar()
 			l.readChar()
-			return Token{Type: TOKEN_COMPARE_OP, Value: "!=", Pos: pos}, nil
+			return Token{Type: TokenCompareOp, Value: "!=", Pos: pos}, nil
 		}
 		return Token{}, fmt.Errorf("unexpected character '!' at position %d, expected '!='", pos)
 
@@ -166,19 +166,19 @@ func (l *Lexer) NextToken() (Token, error) {
 		if l.peekChar() == '=' {
 			l.readChar()
 			l.readChar()
-			return Token{Type: TOKEN_COMPARE_OP, Value: "<=", Pos: pos}, nil
+			return Token{Type: TokenCompareOp, Value: "<=", Pos: pos}, nil
 		}
 		l.readChar()
-		return Token{Type: TOKEN_COMPARE_OP, Value: "<", Pos: pos}, nil
+		return Token{Type: TokenCompareOp, Value: "<", Pos: pos}, nil
 
 	case '>':
 		if l.peekChar() == '=' {
 			l.readChar()
 			l.readChar()
-			return Token{Type: TOKEN_COMPARE_OP, Value: ">=", Pos: pos}, nil
+			return Token{Type: TokenCompareOp, Value: ">=", Pos: pos}, nil
 		}
 		l.readChar()
-		return Token{Type: TOKEN_COMPARE_OP, Value: ">", Pos: pos}, nil
+		return Token{Type: TokenCompareOp, Value: ">", Pos: pos}, nil
 
 	case '"', '\'':
 		return l.readString()
@@ -231,7 +231,7 @@ func (l *Lexer) readString() (Token, error) {
 	l.readChar() // consume closing quote
 
 	value := sb.String()
-	return Token{Type: TOKEN_STRING, Value: value, Literal: value, Pos: pos}, nil
+	return Token{Type: TokenString, Value: value, Literal: value, Pos: pos}, nil
 }
 
 // readNumber reads a number (integer or float)
@@ -268,15 +268,17 @@ func (l *Lexer) readNumber() (Token, error) {
 
 	if isFloat {
 		var f float64
+		//nolint:errcheck // error checking not needed; lexer already validated the number format
 		fmt.Sscanf(value, "%f", &f)
 		literal = f
 	} else {
 		var i int64
+		//nolint:errcheck // error checking not needed; lexer already validated the number format
 		fmt.Sscanf(value, "%d", &i)
 		literal = i
 	}
 
-	return Token{Type: TOKEN_NUMBER, Value: value, Literal: literal, Pos: pos}, nil
+	return Token{Type: TokenNumber, Value: value, Literal: literal, Pos: pos}, nil
 }
 
 // readIdentifier reads an identifier or keyword
@@ -294,25 +296,25 @@ func (l *Lexer) readIdentifier() (Token, error) {
 	// Check for keywords
 	switch value {
 	case "True":
-		return Token{Type: TOKEN_BOOL, Value: value, Literal: true, Pos: pos}, nil
+		return Token{Type: TokenBool, Value: value, Literal: true, Pos: pos}, nil
 	case "False":
-		return Token{Type: TOKEN_BOOL, Value: value, Literal: false, Pos: pos}, nil
+		return Token{Type: TokenBool, Value: value, Literal: false, Pos: pos}, nil
 	case "None":
-		return Token{Type: TOKEN_NONE, Value: value, Literal: nil, Pos: pos}, nil
+		return Token{Type: TokenNone, Value: value, Literal: nil, Pos: pos}, nil
 	case "and":
-		return Token{Type: TOKEN_LOGIC_OP, Value: value, Pos: pos}, nil
+		return Token{Type: TokenLogicOp, Value: value, Pos: pos}, nil
 	case "or":
-		return Token{Type: TOKEN_LOGIC_OP, Value: value, Pos: pos}, nil
+		return Token{Type: TokenLogicOp, Value: value, Pos: pos}, nil
 	case "not":
-		return Token{Type: TOKEN_NOT, Value: value, Pos: pos}, nil
+		return Token{Type: TokenNot, Value: value, Pos: pos}, nil
 	case "in":
-		return Token{Type: TOKEN_IN, Value: value, Pos: pos}, nil
+		return Token{Type: TokenIn, Value: value, Pos: pos}, nil
 	case "today":
-		return Token{Type: TOKEN_TODAY, Value: value, Pos: pos}, nil
+		return Token{Type: TokenToday, Value: value, Pos: pos}, nil
 	case "now":
-		return Token{Type: TOKEN_NOW, Value: value, Pos: pos}, nil
+		return Token{Type: TokenNow, Value: value, Pos: pos}, nil
 	default:
-		return Token{Type: TOKEN_IDENTIFIER, Value: value, Pos: pos}, nil
+		return Token{Type: TokenIdentifier, Value: value, Pos: pos}, nil
 	}
 }
 
@@ -325,7 +327,7 @@ func (l *Lexer) Tokenize() ([]Token, error) {
 			return nil, err
 		}
 		tokens = append(tokens, tok)
-		if tok.Type == TOKEN_EOF {
+		if tok.Type == TokenEOF {
 			break
 		}
 	}

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestTemplatesPlugin_Name(t *testing.T) {
@@ -58,7 +58,8 @@ func TestTemplatesPlugin_Render(t *testing.T) {
 <head><title>{{ post.title }}</title></head>
 <body>{{ body | safe }}</body>
 </html>`
-	err = os.WriteFile(filepath.Join(tmpDir, "post.html"), []byte(templateContent), 0644)
+	//nolint:gosec // test file
+	err = os.WriteFile(filepath.Join(tmpDir, "post.html"), []byte(templateContent), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to write template: %v", err)
 	}
@@ -209,7 +210,7 @@ func TestTemplatesPlugin_Priority(t *testing.T) {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
+	return len(s) >= len(substr) && (s == substr || s != "" && containsHelper(s, substr))
 }
 
 func containsHelper(s, substr string) bool {

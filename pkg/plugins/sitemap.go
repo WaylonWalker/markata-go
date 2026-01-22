@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // SitemapPlugin generates a sitemap.xml file during the write stage.
@@ -41,14 +41,14 @@ func (p *SitemapPlugin) Write(m *lifecycle.Manager) error {
 	outputDir := config.OutputDir
 
 	// Ensure output directory exists
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("creating output directory: %w", err)
 	}
 
 	// Get site URL
 	siteURL := getSiteURL(config)
 	if siteURL == "" {
-		siteURL = "https://example.com"
+		siteURL = DefaultSiteURL
 	}
 
 	// Build sitemap
@@ -65,7 +65,7 @@ func (p *SitemapPlugin) Write(m *lifecycle.Manager) error {
 
 	// Write sitemap.xml
 	sitemapPath := filepath.Join(outputDir, "sitemap.xml")
-	if err := os.WriteFile(sitemapPath, []byte(xmlContent), 0644); err != nil {
+	if err := os.WriteFile(sitemapPath, []byte(xmlContent), 0o644); err != nil { //nolint:gosec // sitemap needs world-readable permissions for web serving
 		return fmt.Errorf("writing sitemap: %w", err)
 	}
 
@@ -73,6 +73,8 @@ func (p *SitemapPlugin) Write(m *lifecycle.Manager) error {
 }
 
 // buildSitemap creates the sitemap structure from posts and feeds.
+//
+//nolint:gocyclo // complexity is due to straightforward iteration over posts and feeds
 func (p *SitemapPlugin) buildSitemap(m *lifecycle.Manager, siteURL string) *URLSet {
 	sitemap := &URLSet{
 		XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9",
@@ -128,7 +130,8 @@ func (p *SitemapPlugin) buildSitemap(m *lifecycle.Manager, siteURL string) *URLS
 		}
 	}
 
-	for _, fc := range feedConfigs {
+	for i := range feedConfigs {
+		fc := &feedConfigs[i]
 		if fc.Slug == "" {
 			continue // Skip root feed, already covered by home page
 		}

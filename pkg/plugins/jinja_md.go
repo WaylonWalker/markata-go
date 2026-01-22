@@ -3,9 +3,9 @@ package plugins
 import (
 	"fmt"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
-	"github.com/example/markata-go/pkg/templates"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // JinjaMdPlugin processes Jinja2 templates in markdown content.

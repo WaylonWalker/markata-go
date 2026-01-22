@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestNewEngine(t *testing.T) {

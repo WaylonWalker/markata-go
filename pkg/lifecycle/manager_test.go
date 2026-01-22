@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // TestPlugin is a test plugin that implements all stage interfaces.
@@ -34,7 +34,7 @@ func NewTestPlugin(name string) *TestPlugin {
 
 func (p *TestPlugin) Name() string { return p.name }
 
-func (p *TestPlugin) Priority(stage Stage) int { return p.priority }
+func (p *TestPlugin) Priority(_ Stage) int { return p.priority }
 
 func (p *TestPlugin) Configure(m *Manager) error {
 	p.stagesRun = append(p.stagesRun, StageConfigure)
@@ -335,11 +335,15 @@ func TestManagerRunToContinue(t *testing.T) {
 	m.RegisterPlugin(p)
 
 	// Run to Load
-	m.RunTo(StageLoad)
+	if err := m.RunTo(StageLoad); err != nil {
+		t.Fatalf("RunTo(StageLoad) failed: %v", err)
+	}
 	stagesAfterLoad := len(p.stagesRun)
 
 	// Continue to Render
-	m.RunTo(StageRender)
+	if err := m.RunTo(StageRender); err != nil {
+		t.Fatalf("RunTo(StageRender) failed: %v", err)
+	}
 
 	// Should have run Transform and Render (2 more stages)
 	expectedAdditional := 2
@@ -377,21 +381,21 @@ func TestManagerPriorityOrdering(t *testing.T) {
 
 	p1 := NewTestPlugin("last")
 	p1.priority = PriorityLast
-	p1.configureFn = func(m *Manager) error {
+	p1.configureFn = func(_ *Manager) error {
 		order = append(order, "last")
 		return nil
 	}
 
 	p2 := NewTestPlugin("first")
 	p2.priority = PriorityFirst
-	p2.configureFn = func(m *Manager) error {
+	p2.configureFn = func(_ *Manager) error {
 		order = append(order, "first")
 		return nil
 	}
 
 	p3 := NewTestPlugin("default")
 	p3.priority = PriorityDefault
-	p3.configureFn = func(m *Manager) error {
+	p3.configureFn = func(_ *Manager) error {
 		order = append(order, "default")
 		return nil
 	}
@@ -401,7 +405,9 @@ func TestManagerPriorityOrdering(t *testing.T) {
 	m.RegisterPlugin(p2)
 	m.RegisterPlugin(p3)
 
-	m.RunTo(StageConfigure)
+	if err := m.RunTo(StageConfigure); err != nil {
+		t.Fatalf("RunTo(StageConfigure) failed: %v", err)
+	}
 
 	expected := []string{"first", "default", "last"}
 	if len(order) != len(expected) {
@@ -519,7 +525,9 @@ func TestManagerReset(t *testing.T) {
 	m.AddFile("test.md")
 	m.Cache().Set("key", "value")
 
-	m.RunTo(StageLoad)
+	if err := m.RunTo(StageLoad); err != nil {
+		t.Fatalf("RunTo(StageLoad) failed: %v", err)
+	}
 
 	// Reset
 	m.Reset()
@@ -550,7 +558,7 @@ func TestManagerConcurrentProcessing(t *testing.T) {
 
 	processed := make(chan struct{}, 10)
 
-	err := m.ProcessPostsConcurrently(func(p *models.Post) error {
+	err := m.ProcessPostsConcurrently(func(_ *models.Post) error {
 		processed <- struct{}{}
 		return nil
 	})

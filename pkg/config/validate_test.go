@@ -1,9 +1,10 @@
 package config
 
 import (
+	"errors"
 	"testing"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestValidateConfig_Nil(t *testing.T) {
@@ -82,7 +83,8 @@ func TestValidateConfig_ValidURLs(t *testing.T) {
 
 			errs := ValidateConfig(config)
 			for _, err := range errs {
-				if ve, ok := err.(ValidationError); ok && ve.Field == "url" && !ve.IsWarn {
+				var ve ValidationError
+				if errors.As(err, &ve) && ve.Field == "url" && !ve.IsWarn {
 					t.Errorf("ValidateConfig() should not error for URL %q: %v", url, err)
 				}
 			}
@@ -106,7 +108,8 @@ func TestValidateConfig_NegativeConcurrency(t *testing.T) {
 	// Find the concurrency error
 	found := false
 	for _, err := range errs {
-		if ve, ok := err.(ValidationError); ok && ve.Field == "concurrency" {
+		var ve ValidationError
+		if errors.As(err, &ve) && ve.Field == "concurrency" {
 			found = true
 			break
 		}
@@ -126,7 +129,8 @@ func TestValidateConfig_ZeroConcurrency(t *testing.T) {
 
 	errs := ValidateConfig(config)
 	for _, err := range errs {
-		if ve, ok := err.(ValidationError); ok && ve.Field == "concurrency" && !ve.IsWarn {
+		var ve ValidationError
+		if errors.As(err, &ve) && ve.Field == "concurrency" && !ve.IsWarn {
 			t.Errorf("ValidateConfig() should not error for concurrency=0: %v", err)
 		}
 	}

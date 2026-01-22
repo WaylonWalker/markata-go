@@ -15,6 +15,10 @@ var registerOnce sync.Once
 
 // registerFilters registers all custom template filters with pongo2.
 // This is called once when the first Engine is created.
+// The pongo2 registration functions return errors only for duplicate registrations,
+// which won't occur due to sync.Once protection.
+//
+//nolint:errcheck // pongo2 filter registration errors are only for duplicates, protected by sync.Once
 func registerFilters() {
 	registerOnce.Do(func() {
 		// Date formatting filters
@@ -60,7 +64,7 @@ func registerFilters() {
 
 // filterRSSDate formats a date for RSS feeds.
 // Format: "Mon, 02 Jan 2006 15:04:05 -0700"
-func filterRSSDate(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterRSSDate(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	t, err := toTime(in)
 	if err != nil {
 		return pongo2.AsValue(""), nil
@@ -70,7 +74,7 @@ func filterRSSDate(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo
 
 // filterAtomDate formats a date for Atom feeds.
 // Format: RFC3339 (e.g., "2006-01-02T15:04:05Z07:00")
-func filterAtomDate(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterAtomDate(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	t, err := toTime(in)
 	if err != nil {
 		return pongo2.AsValue(""), nil
@@ -81,7 +85,7 @@ func filterAtomDate(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pong
 // filterDate is a replacement for pongo2's built-in date filter that handles
 // *time.Time pointers and string parsing in addition to time.Time values.
 // Uses Go's time formatting (e.g., "2006-01-02", "January 2, 2006").
-func filterDate(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterDate(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	t, err := toTime(in)
 	if err != nil {
 		return pongo2.AsValue(""), nil
@@ -97,7 +101,7 @@ func filterDate(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.E
 
 // filterDateFormat formats a date using a custom format string.
 // Uses Go's time formatting (e.g., "2006-01-02", "January 2, 2006").
-func filterDateFormat(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterDateFormat(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	t, err := toTime(in)
 	if err != nil {
 		return pongo2.AsValue(""), nil
@@ -113,7 +117,7 @@ func filterDateFormat(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *po
 
 // filterSlugify converts a string to a URL-safe slug.
 // Converts to lowercase, replaces spaces with hyphens, removes special characters.
-func filterSlugify(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterSlugify(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s := in.String()
 
 	// Convert to lowercase
@@ -144,7 +148,7 @@ func filterSlugify(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo
 
 // filterTruncate truncates a string to a specified length with an ellipsis.
 // Usage: {{ text|truncate:100 }} or {{ text|truncate:"50" }}
-func filterTruncate(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterTruncate(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s := in.String()
 	length := param.Integer()
 
@@ -168,7 +172,7 @@ func filterTruncate(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pong
 
 // filterTruncateWords truncates a string to a specified number of words.
 // Usage: {{ text|truncatewords:20 }}
-func filterTruncateWords(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterTruncateWords(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s := in.String()
 	wordCount := param.Integer()
 
@@ -186,7 +190,7 @@ func filterTruncateWords(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, 
 
 // filterDefaultIfNone returns a default value if the input is nil or empty.
 // Usage: {{ value|default_if_none:"fallback" }}
-func filterDefaultIfNone(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterDefaultIfNone(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	if in.IsNil() || (in.String() == "" && !in.IsBool()) {
 		return param, nil
 	}
@@ -194,12 +198,12 @@ func filterDefaultIfNone(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, 
 }
 
 // filterLength returns the length of a string, slice, or map.
-func filterLength(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterLength(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	return pongo2.AsValue(in.Len()), nil
 }
 
 // filterFirst returns the first element of a slice.
-func filterFirst(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterFirst(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	if in.Len() == 0 {
 		return pongo2.AsValue(nil), nil
 	}
@@ -207,7 +211,7 @@ func filterFirst(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.
 }
 
 // filterLast returns the last element of a slice.
-func filterLast(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterLast(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	length := in.Len()
 	if length == 0 {
 		return pongo2.AsValue(nil), nil
@@ -217,7 +221,7 @@ func filterLast(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.E
 
 // filterJoin joins slice elements with a separator.
 // Usage: {{ list|join:", " }}
-func filterJoin(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterJoin(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	if !in.CanSlice() {
 		return pongo2.AsValue(in.String()), nil
 	}
@@ -236,7 +240,7 @@ func filterJoin(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.E
 }
 
 // filterReverse reverses a slice or string.
-func filterReverse(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterReverse(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	// For strings, reverse the characters
 	if !in.CanSlice() {
 		s := in.String()
@@ -257,7 +261,7 @@ func filterReverse(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo
 }
 
 // filterSort sorts a slice of comparable values.
-func filterSort(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterSort(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	if !in.CanSlice() || in.Len() == 0 {
 		return in, nil
 	}
@@ -287,7 +291,7 @@ func filterSort(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.E
 }
 
 // filterStripTags removes HTML tags from a string.
-func filterStripTags(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterStripTags(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s := in.String()
 	// Simple regex to remove HTML tags
 	re := regexp.MustCompile(`<[^>]*>`)
@@ -295,7 +299,7 @@ func filterStripTags(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pon
 }
 
 // filterLinebreaks converts newlines to <p> and <br> tags.
-func filterLinebreaks(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterLinebreaks(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s := in.String()
 	// Split by double newlines for paragraphs
 	paragraphs := regexp.MustCompile(`\n\n+`).Split(s, -1)
@@ -312,13 +316,13 @@ func filterLinebreaks(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *po
 }
 
 // filterLinebreaksBR converts newlines to <br> tags.
-func filterLinebreaksBR(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterLinebreaksBR(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s := in.String()
 	return pongo2.AsValue(strings.ReplaceAll(s, "\n", "<br>")), nil
 }
 
 // filterURLEncode URL-encodes a string.
-func filterURLEncode(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterURLEncode(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s := in.String()
 	// Simple URL encoding for common characters
 	s = strings.ReplaceAll(s, " ", "%20")
@@ -332,7 +336,7 @@ func filterURLEncode(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pon
 // filterAbsoluteURL converts a relative URL to an absolute URL.
 // Requires the site URL to be passed as the parameter.
 // Usage: {{ post.href|absolute_url:config.url }}
-func filterAbsoluteURL(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterAbsoluteURL(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	path := in.String()
 	baseURL := param.String()
 
@@ -354,7 +358,7 @@ func filterAbsoluteURL(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *p
 // filterThemeAsset returns a URL path for theme static assets.
 // Usage: {{ 'css/main.css' | theme_asset }}
 // Returns: /css/main.css (theme assets are copied to root of output)
-func filterThemeAsset(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterThemeAsset(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	path := in.String()
 	if path == "" {
 		return pongo2.AsValue(""), nil
@@ -371,7 +375,7 @@ func filterThemeAsset(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *po
 // filterAssetURL returns a URL path for project static assets.
 // Usage: {{ 'images/logo.png' | asset_url }}
 // Returns: /images/logo.png (project assets are at root of output)
-func filterAssetURL(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterAssetURL(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	path := in.String()
 	if path == "" {
 		return pongo2.AsValue(""), nil
@@ -388,7 +392,7 @@ func filterAssetURL(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pong
 // filterISOFormat formats a date in ISO 8601 format.
 // Usage: {{ post.date | isoformat }}
 // Returns: 2006-01-02T15:04:05Z07:00
-func filterISOFormat(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterISOFormat(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	t, err := toTime(in)
 	if err != nil {
 		return pongo2.AsValue(""), nil

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // DescriptionPlugin auto-generates descriptions for posts that don't have one.
@@ -101,10 +101,10 @@ var (
 	blockquoteRegex = regexp.MustCompile(`(?m)^>\s*`)
 
 	// Match unordered list markers - item, * item, + item
-	unorderedListRegex = regexp.MustCompile(`(?m)^[\s]*[-*+]\s+`)
+	unorderedListRegex = regexp.MustCompile(`(?m)^\s*[-*+]\s+`)
 
 	// Match ordered list markers 1. item
-	orderedListRegex = regexp.MustCompile(`(?m)^[\s]*\d+\.\s+`)
+	orderedListRegex = regexp.MustCompile(`(?m)^\s*\d+\.\s+`)
 
 	// Match horizontal rules ---, ***, ___
 	hrRegex = regexp.MustCompile(`(?m)^[-*_]{3,}\s*$`)
@@ -117,9 +117,6 @@ var (
 
 	// Match multiple whitespace
 	multiSpaceRegex = regexp.MustCompile(`\s+`)
-
-	// Match multiple newlines
-	multiNewlineRegex = regexp.MustCompile(`\n{2,}`)
 )
 
 // generateDescription creates a description from markdown content.

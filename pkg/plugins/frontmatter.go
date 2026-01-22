@@ -25,7 +25,7 @@ const frontmatterDelimiter = "---"
 //   - No frontmatter (doesn't start with ---): returns empty frontmatter, full content as body
 //   - Empty frontmatter (---, then ---): returns empty frontmatter, content after second ---
 //   - Unclosed frontmatter: returns error
-func ExtractFrontmatter(content string) (frontmatter string, body string, err error) {
+func ExtractFrontmatter(content string) (frontmatter, body string, err error) {
 	// Normalize line endings
 	content = strings.ReplaceAll(content, "\r\n", "\n")
 	content = strings.ReplaceAll(content, "\r", "\n")
@@ -40,23 +40,19 @@ func ExtractFrontmatter(content string) (frontmatter string, body string, err er
 	afterOpening := content[len(frontmatterDelimiter):]
 
 	// The opening delimiter must be on its own line
-	if len(afterOpening) > 0 && afterOpening[0] != '\n' {
+	if afterOpening != "" && afterOpening[0] != '\n' {
 		// Not a valid frontmatter start (e.g., "---something")
 		return "", content, nil
 	}
 
 	// Skip the newline after opening delimiter
-	if len(afterOpening) > 0 && afterOpening[0] == '\n' {
-		afterOpening = afterOpening[1:]
-	}
+	afterOpening = strings.TrimPrefix(afterOpening, "\n")
 
 	// Handle empty frontmatter case (--- immediately follows)
 	if strings.HasPrefix(afterOpening, frontmatterDelimiter) {
 		// Empty frontmatter
 		remaining := afterOpening[len(frontmatterDelimiter):]
-		if strings.HasPrefix(remaining, "\n") {
-			remaining = remaining[1:]
-		}
+		remaining = strings.TrimPrefix(remaining, "\n")
 		return "", remaining, nil
 	}
 
@@ -78,9 +74,7 @@ func ExtractFrontmatter(content string) (frontmatter string, body string, err er
 	// Extract body (skip the newline, the closing delimiter, and optional trailing newline)
 	remaining := afterOpening[closingIdx+1:] // Skip the newline before ---
 	remaining = strings.TrimPrefix(remaining, frontmatterDelimiter)
-	if strings.HasPrefix(remaining, "\n") {
-		remaining = remaining[1:] // Skip newline after ---
-	}
+	remaining = strings.TrimPrefix(remaining, "\n")
 	body = remaining
 
 	return frontmatter, body, nil
@@ -106,8 +100,9 @@ func ExtractFrontmatter(content string) (frontmatter string, body string, err er
 //   - No frontmatter: returns empty map, full content as body
 //   - Empty frontmatter: returns empty map, content after delimiters
 //   - Invalid YAML: returns error with context
-func ParseFrontmatter(content string) (map[string]interface{}, string, error) {
-	frontmatter, body, err := ExtractFrontmatter(content)
+func ParseFrontmatter(content string) (metadata map[string]interface{}, body string, err error) {
+	var frontmatter string
+	frontmatter, body, err = ExtractFrontmatter(content)
 	if err != nil {
 		return nil, "", err
 	}
@@ -118,9 +113,9 @@ func ParseFrontmatter(content string) (map[string]interface{}, string, error) {
 	}
 
 	// Parse the YAML
-	metadata := make(map[string]interface{})
-	if err := yaml.Unmarshal([]byte(frontmatter), &metadata); err != nil {
-		return nil, "", fmt.Errorf("%w: %v", ErrInvalidFrontmatter, err)
+	metadata = make(map[string]interface{})
+	if err = yaml.Unmarshal([]byte(frontmatter), &metadata); err != nil {
+		return nil, "", fmt.Errorf("%w: %w", ErrInvalidFrontmatter, err)
 	}
 
 	// Handle nil result from empty YAML

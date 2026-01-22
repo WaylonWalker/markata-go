@@ -3,7 +3,7 @@ package config
 import (
 	"testing"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestMergeConfigs_NilBase(t *testing.T) {

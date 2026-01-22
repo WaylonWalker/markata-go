@@ -7,10 +7,17 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/example/markata-go/pkg/config"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/config"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+)
+
+// Common string constants to avoid goconst warnings.
+const (
+	formatJSON = "json"
+	formatTOML = "toml"
+	formatYAML = "yaml"
 )
 
 // configCmd represents the config command group.
@@ -114,13 +121,21 @@ func init() {
 	configInitCmd.Flags().BoolVar(&configInitForce, "force", false, "overwrite existing file")
 }
 
-func runConfigShowCommand(cmd *cobra.Command, args []string) error {
+func runConfigShowCommand(cmd *cobra.Command, _ []string) error {
 	// Handle format shorthands
-	if jsonFlag, _ := cmd.Flags().GetBool("json"); jsonFlag {
-		configFormat = "json"
+	jsonFlag, err := cmd.Flags().GetBool(formatJSON)
+	if err != nil {
+		return fmt.Errorf("failed to get json flag: %w", err)
 	}
-	if tomlFlag, _ := cmd.Flags().GetBool("toml"); tomlFlag {
-		configFormat = "toml"
+	if jsonFlag {
+		configFormat = formatJSON
+	}
+	tomlFlag, err := cmd.Flags().GetBool(formatTOML)
+	if err != nil {
+		return fmt.Errorf("failed to get toml flag: %w", err)
+	}
+	if tomlFlag {
+		configFormat = formatTOML
 	}
 
 	// Load configuration
@@ -131,20 +146,25 @@ func runConfigShowCommand(cmd *cobra.Command, args []string) error {
 
 	// Output in requested format
 	switch strings.ToLower(configFormat) {
-	case "json":
+	case formatJSON:
 		data, err := json.MarshalIndent(cfg, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)
 		}
 		fmt.Println(string(data))
 
-	case "toml":
+	case formatTOML:
 		if err := toml.NewEncoder(os.Stdout).Encode(cfg); err != nil {
 			return fmt.Errorf("failed to marshal TOML: %w", err)
 		}
 
-	case "yaml":
-		fallthrough
+	case formatYAML:
+		data, err := yaml.Marshal(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to marshal YAML: %w", err)
+		}
+		fmt.Print(string(data))
+
 	default:
 		data, err := yaml.Marshal(cfg)
 		if err != nil {
@@ -156,7 +176,7 @@ func runConfigShowCommand(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runConfigGetCommand(cmd *cobra.Command, args []string) error {
+func runConfigGetCommand(_ *cobra.Command, args []string) error {
 	key := args[0]
 
 	// Load configuration
@@ -194,7 +214,18 @@ func runConfigGetCommand(cmd *cobra.Command, args []string) error {
 // getConfigValue retrieves a configuration value by key with dot notation support.
 func getConfigValue(cfg *models.Config, key string) (interface{}, error) {
 	// Map of top-level keys to their values
-	switch strings.ToLower(key) {
+	lowKey := strings.ToLower(key)
+	if val, err := getTopLevelConfigValue(cfg, lowKey); err == nil {
+		return val, nil
+	}
+
+	// Handle nested keys
+	return getNestedConfigValue(cfg, lowKey)
+}
+
+// getTopLevelConfigValue returns top-level config values.
+func getTopLevelConfigValue(cfg *models.Config, key string) (interface{}, error) {
+	switch key {
 	case "output_dir":
 		return cfg.OutputDir, nil
 	case "url":
@@ -215,37 +246,40 @@ func getConfigValue(cfg *models.Config, key string) (interface{}, error) {
 		return cfg.DisabledHooks, nil
 	case "concurrency":
 		return cfg.Concurrency, nil
+	default:
+		return nil, fmt.Errorf("not a top-level key")
 	}
+}
 
-	// Handle nested keys
+// getNestedConfigValue returns nested config values (with dot notation).
+func getNestedConfigValue(cfg *models.Config, key string) (interface{}, error) {
 	parts := strings.SplitN(key, ".", 2)
 	switch strings.ToLower(parts[0]) {
 	case "glob":
 		if len(parts) == 1 {
 			return cfg.GlobConfig, nil
 		}
-		switch strings.ToLower(parts[1]) {
-		case "patterns":
+		if strings.EqualFold(parts[1], "patterns") {
 			return cfg.GlobConfig.Patterns, nil
-		case "use_gitignore":
+		}
+		if strings.EqualFold(parts[1], "use_gitignore") {
 			return cfg.GlobConfig.UseGitignore, nil
 		}
 	case "markdown":
 		if len(parts) == 1 {
 			return cfg.MarkdownConfig, nil
 		}
-		switch strings.ToLower(parts[1]) {
-		case "extensions":
+		if strings.EqualFold(parts[1], "extensions") {
 			return cfg.MarkdownConfig.Extensions, nil
 		}
 	case "feed_defaults":
 		if len(parts) == 1 {
 			return cfg.FeedDefaults, nil
 		}
-		switch strings.ToLower(parts[1]) {
-		case "items_per_page":
+		if strings.EqualFold(parts[1], "items_per_page") {
 			return cfg.FeedDefaults.ItemsPerPage, nil
-		case "orphan_threshold":
+		}
+		if strings.EqualFold(parts[1], "orphan_threshold") {
 			return cfg.FeedDefaults.OrphanThreshold, nil
 		}
 	case "feeds":
@@ -255,7 +289,7 @@ func getConfigValue(cfg *models.Config, key string) (interface{}, error) {
 	return nil, fmt.Errorf("unknown config key: %s", key)
 }
 
-func runConfigValidateCommand(cmd *cobra.Command, args []string) error {
+func runConfigValidateCommand(_ *cobra.Command, _ []string) error {
 	// Load and validate configuration
 	cfg, validationErrs, err := config.LoadAndValidate(cfgFile)
 	if err != nil {
@@ -286,7 +320,11 @@ func runConfigValidateCommand(cmd *cobra.Command, args []string) error {
 	// Print success
 	configPath := cfgFile
 	if configPath == "" {
-		configPath, _ = config.Discover()
+		var discoverErr error
+		configPath, discoverErr = config.Discover()
+		if discoverErr != nil {
+			configPath = ""
+		}
 	}
 	if configPath == "" {
 		configPath = "(defaults)"
@@ -306,7 +344,7 @@ func runConfigValidateCommand(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runConfigInitCommand(cmd *cobra.Command, args []string) error {
+func runConfigInitCommand(_ *cobra.Command, args []string) error {
 	// Determine output filename
 	filename := "markata-go.toml"
 	if len(args) > 0 {
@@ -329,8 +367,8 @@ func runConfigInitCommand(cmd *cobra.Command, args []string) error {
 		content = defaultConfigTOML
 	}
 
-	// Write file
-	if err := os.WriteFile(filename, []byte(content), 0644); err != nil {
+	// Write file (0o644 is appropriate for config files that should be world-readable)
+	if err := os.WriteFile(filename, []byte(content), 0o644); err != nil { //nolint:gosec // config files should be readable
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 

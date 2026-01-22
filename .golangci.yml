@@ -1,0 +1,173 @@
+# golangci-lint configuration
+# https://golangci-lint.run/usage/configuration/
+
+run:
+  timeout: 5m
+  tests: true
+  go: "1.22"
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  sort-results: true
+
+linters:
+  enable:
+    # Default linters
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+    # Additional linters
+    - bodyclose
+    - dogsled
+    - dupl
+    - errorlint
+    - exhaustive
+    - copyloopvar
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - goprintffuncname
+    - gosec
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - prealloc
+    - revive
+    - rowserrcheck
+    - stylecheck
+    - tparallel
+    - unconvert
+    - unparam
+    - whitespace
+
+  disable:
+    - gochecknoglobals  # We use globals for CLI flags
+    - funlen            # Some functions are necessarily long
+    - lll               # Line length is handled by formatter
+    - wsl               # Too opinionated about whitespace
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  errorlint:
+    errorf: true
+    asserts: true
+    comparison: true
+
+  exhaustive:
+    default-signifies-exhaustive: true
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - whyNoLint
+      - hugeParam  # Sometimes unavoidable with large structs
+
+  gocyclo:
+    min-complexity: 20
+
+  gofmt:
+    simplify: true
+
+  goimports:
+    local-prefixes: github.com/example/markata-go
+
+  gosec:
+    excludes:
+      - G104  # Unhandled errors (covered by errcheck)
+      - G304  # File path from variable (intentional in SSG)
+
+  misspell:
+    locale: US
+
+  nakedret:
+    max-func-lines: 30
+
+  nolintlint:
+    require-explanation: true
+    require-specific: true
+
+  revive:
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+
+  stylecheck:
+    checks:
+      - all
+      - -ST1000  # Package comments (we use doc.go)
+
+  unparam:
+    check-exported: false
+
+issues:
+  exclude-rules:
+    # Test files can have longer functions and more complexity
+    - path: _test\.go
+      linters:
+        - dupl
+        - gocyclo
+        - goconst
+        - funlen
+
+    # Main can have init
+    - path: main\.go
+      linters:
+        - gochecknoinits
+
+    # CLI commands often use init
+    - path: cmd/
+      linters:
+        - gochecknoinits
+
+    # Allow dot imports in tests for testify
+    - path: _test\.go
+      text: "dot-imports"
+
+  max-issues-per-linter: 50
+  max-same-issues: 10
+  new: false

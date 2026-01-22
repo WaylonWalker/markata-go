@@ -36,6 +36,7 @@ Example usage:
   markata-go config show     # Show resolved configuration`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	Version:       Version,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -68,7 +68,7 @@ func (p *Palette) GenerateCSSWithFormat(format CSSFormat) string {
 
 	// Write header comment
 	if !format.Minify {
-		buf.WriteString(fmt.Sprintf("/* Generated from %s palette */\n", p.Name))
+		fmt.Fprintf(&buf, "/* Generated from %s palette */\n", p.Name)
 	}
 
 	buf.WriteString(":root {")
@@ -113,21 +113,21 @@ func (p *Palette) GenerateCSSWithFormat(format CSSFormat) string {
 }
 
 // writeColorVars writes CSS variables with hex values.
-func writeColorVars(buf *bytes.Buffer, colors map[string]string, prefix, suffix, indent, nl string, minify bool) {
+func writeColorVars(buf *bytes.Buffer, colors map[string]string, prefix, suffix, indent, _ string, minify bool) {
 	names := sortedKeys(colors)
 	for _, name := range names {
 		hex := colors[name]
 		varName := cssVarName(prefix, name, suffix)
 		if minify {
-			buf.WriteString(fmt.Sprintf("%s:%s;", varName, hex))
+			fmt.Fprintf(buf, "%s:%s;", varName, hex)
 		} else {
-			buf.WriteString(fmt.Sprintf("%s%s: %s;\n", indent, varName, hex))
+			fmt.Fprintf(buf, "%s%s: %s;\n", indent, varName, hex)
 		}
 	}
 }
 
 // writeReferenceVars writes CSS variables that reference other variables.
-func writeReferenceVars(buf *bytes.Buffer, colors map[string]string, prefix, rawPrefix string, p *Palette, indent, nl string, minify bool) {
+func writeReferenceVars(buf *bytes.Buffer, colors map[string]string, prefix, rawPrefix string, p *Palette, indent, _ string, minify bool) {
 	names := sortedKeys(colors)
 	for _, name := range names {
 		ref := colors[name]
@@ -152,15 +152,15 @@ func writeReferenceVars(buf *bytes.Buffer, colors map[string]string, prefix, raw
 		}
 
 		if minify {
-			buf.WriteString(fmt.Sprintf("%s:%s;", varName, value))
+			fmt.Fprintf(buf, "%s:%s;", varName, value)
 		} else {
-			buf.WriteString(fmt.Sprintf("%s%s: %s;\n", indent, varName, value))
+			fmt.Fprintf(buf, "%s%s: %s;\n", indent, varName, value)
 		}
 	}
 }
 
 // writeResolvedVars writes CSS variables with resolved hex values.
-func writeResolvedVars(buf *bytes.Buffer, colors map[string]string, prefix string, p *Palette, indent, nl string, minify bool) {
+func writeResolvedVars(buf *bytes.Buffer, colors map[string]string, prefix string, p *Palette, indent, _ string, minify bool) {
 	names := sortedKeys(colors)
 	for _, name := range names {
 		varName := cssVarName(prefix, name, "")
@@ -170,9 +170,9 @@ func writeResolvedVars(buf *bytes.Buffer, colors map[string]string, prefix strin
 		}
 
 		if minify {
-			buf.WriteString(fmt.Sprintf("%s:%s;", varName, hex))
+			fmt.Fprintf(buf, "%s:%s;", varName, hex)
 		} else {
-			buf.WriteString(fmt.Sprintf("%s%s: %s;\n", indent, varName, hex))
+			fmt.Fprintf(buf, "%s%s: %s;\n", indent, varName, hex)
 		}
 	}
 }

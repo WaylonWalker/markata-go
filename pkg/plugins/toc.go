@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // TocPlugin extracts headings from markdown content and builds a
@@ -92,7 +92,7 @@ func (p *TocPlugin) extractTOC(content string) []*TocEntry {
 	}
 
 	// Extract flat list of headings
-	var headings []*TocEntry
+	headings := make([]*TocEntry, 0, len(matches))
 	idCounts := make(map[string]int)
 
 	for _, match := range matches {
@@ -167,8 +167,8 @@ func (p *TocPlugin) buildHierarchy(headings []*TocEntry) []*TocEntry {
 		}
 	}
 
-	var roots []*TocEntry
-	var stack []*TocEntry
+	roots := make([]*TocEntry, 0, len(headings))
+	stack := make([]*TocEntry, 0, len(headings))
 
 	for _, heading := range headings {
 		// Adjust level relative to minimum
@@ -201,12 +201,12 @@ func (p *TocPlugin) buildHierarchy(headings []*TocEntry) []*TocEntry {
 }
 
 // SetLevelRange sets the minimum and maximum heading levels to include.
-func (p *TocPlugin) SetLevelRange(min, max int) {
-	if min >= 1 && min <= 6 {
-		p.minLevel = min
+func (p *TocPlugin) SetLevelRange(minLevel, maxLevel int) {
+	if minLevel >= 1 && minLevel <= 6 {
+		p.minLevel = minLevel
 	}
-	if max >= 1 && max <= 6 && max >= min {
-		p.maxLevel = max
+	if maxLevel >= 1 && maxLevel <= 6 && maxLevel >= minLevel {
+		p.maxLevel = maxLevel
 	}
 }
 

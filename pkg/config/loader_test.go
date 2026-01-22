@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,7 +30,8 @@ filter = "published == True"
 html = true
 rss = true
 `
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	//nolint:gosec // Test file permissions are fine at 0644
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -75,7 +77,8 @@ markata-go:
       - "**/*.md"
       - "docs/**/*.md"
 `
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	//nolint:gosec // Test file permissions are fine at 0644
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -105,7 +108,8 @@ func TestLoad_WithJSON(t *testing.T) {
     "title": "JSON Site"
   }
 }`
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	//nolint:gosec // Test file permissions are fine at 0644
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -140,13 +144,13 @@ func TestLoad_WithDefaults(t *testing.T) {
 
 func TestDiscover_FindsTOML(t *testing.T) {
 	dir := t.TempDir()
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(dir)
+	cleanup := chdir(t, dir)
+	defer cleanup()
 
 	// Create config file
 	configPath := filepath.Join(dir, "markata-go.toml")
-	if err := os.WriteFile(configPath, []byte("[markata-go]\n"), 0644); err != nil {
+	//nolint:gosec // Test file permissions are fine at 0644
+	if err := os.WriteFile(configPath, []byte("[markata-go]\n"), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -161,14 +165,22 @@ func TestDiscover_FindsTOML(t *testing.T) {
 
 func TestDiscover_PrefersOrder(t *testing.T) {
 	dir := t.TempDir()
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(dir)
+	cleanup := chdir(t, dir)
+	defer cleanup()
 
 	// Create multiple config files
-	os.WriteFile(filepath.Join(dir, "markata-go.toml"), []byte("[markata-go]\n"), 0644)
-	os.WriteFile(filepath.Join(dir, "markata-go.yaml"), []byte("markata-go:\n"), 0644)
-	os.WriteFile(filepath.Join(dir, "markata-go.json"), []byte("{\"markata-go\":{}}\n"), 0644)
+	//nolint:gosec // Test file permissions are fine at 0644
+	if err := os.WriteFile(filepath.Join(dir, "markata-go.toml"), []byte("[markata-go]\n"), 0o644); err != nil {
+		t.Fatalf("failed to write TOML file: %v", err)
+	}
+	//nolint:gosec // Test file permissions are fine at 0644
+	if err := os.WriteFile(filepath.Join(dir, "markata-go.yaml"), []byte("markata-go:\n"), 0o644); err != nil {
+		t.Fatalf("failed to write YAML file: %v", err)
+	}
+	//nolint:gosec // Test file permissions are fine at 0644
+	if err := os.WriteFile(filepath.Join(dir, "markata-go.json"), []byte("{\"markata-go\":{}}\n"), 0o644); err != nil {
+		t.Fatalf("failed to write JSON file: %v", err)
+	}
 
 	found, err := Discover()
 	if err != nil {
@@ -183,12 +195,11 @@ func TestDiscover_PrefersOrder(t *testing.T) {
 
 func TestDiscover_NotFound(t *testing.T) {
 	dir := t.TempDir()
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(dir)
+	cleanup := chdir(t, dir)
+	defer cleanup()
 
 	_, err := Discover()
-	if err != ErrConfigNotFound {
+	if !errors.Is(err, ErrConfigNotFound) {
 		t.Errorf("Discover() error = %v, want ErrConfigNotFound", err)
 	}
 }
@@ -233,6 +244,7 @@ func TestLoadFromString(t *testing.T) {
 	}
 }
 
+//nolint:gosec // Test file permissions are fine at 0644
 func TestLoadAndValidate(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "markata-go.toml")
@@ -242,7 +254,7 @@ func TestLoadAndValidate(t *testing.T) {
 output_dir = "public"
 concurrency = -5
 `
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -284,13 +296,18 @@ func TestFormatFromPath(t *testing.T) {
 
 func TestDiscoverAll(t *testing.T) {
 	dir := t.TempDir()
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(dir)
+	cleanup := chdir(t, dir)
+	defer cleanup()
 
 	// Create multiple config files
-	os.WriteFile(filepath.Join(dir, "markata-go.toml"), []byte("[markata-go]\n"), 0644)
-	os.WriteFile(filepath.Join(dir, "markata-go.yaml"), []byte("markata-go:\n"), 0644)
+	//nolint:gosec // Test file permissions are fine at 0644
+	if err := os.WriteFile(filepath.Join(dir, "markata-go.toml"), []byte("[markata-go]\n"), 0o644); err != nil {
+		t.Fatalf("failed to write TOML file: %v", err)
+	}
+	//nolint:gosec // Test file permissions are fine at 0644
+	if err := os.WriteFile(filepath.Join(dir, "markata-go.yaml"), []byte("markata-go:\n"), 0o644); err != nil {
+		t.Fatalf("failed to write YAML file: %v", err)
+	}
 
 	found := DiscoverAll()
 	if len(found) != 2 {
@@ -312,11 +329,13 @@ func TestDiscoverAll(t *testing.T) {
 
 func TestConfigPath_Source(t *testing.T) {
 	dir := t.TempDir()
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(dir)
+	cleanup := chdir(t, dir)
+	defer cleanup()
 
-	os.WriteFile(filepath.Join(dir, "markata-go.toml"), []byte("[markata-go]\n"), 0644)
+	//nolint:gosec // Test file permissions are fine at 0644
+	if err := os.WriteFile(filepath.Join(dir, "markata-go.toml"), []byte("[markata-go]\n"), 0o644); err != nil {
+		t.Fatalf("failed to write TOML file: %v", err)
+	}
 
 	found := DiscoverAll()
 	if len(found) == 0 {
@@ -327,6 +346,7 @@ func TestConfigPath_Source(t *testing.T) {
 	}
 }
 
+//nolint:gosec // Test file permissions are fine at 0644
 func TestLoad_MergesWithDefaults(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "markata-go.toml")
@@ -335,7 +355,7 @@ func TestLoad_MergesWithDefaults(t *testing.T) {
 [markata-go]
 output_dir = "custom"
 `
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -359,6 +379,7 @@ output_dir = "custom"
 	}
 }
 
+//nolint:gosec // Test file permissions are fine at 0644
 func TestFeedConfig_Parsing(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "markata-go.toml")
@@ -384,7 +405,7 @@ json = false
 [markata-go.feeds.templates]
 html = "custom-feed.html"
 `
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -436,6 +457,7 @@ html = "custom-feed.html"
 	}
 }
 
+//nolint:gosec // Test file permissions are fine at 0644
 func TestFeedDefaults_Parsing(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "markata-go.toml")
@@ -454,7 +476,7 @@ rss = false
 max_items = 50
 include_content = true
 `
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -490,11 +512,12 @@ func TestLoad_NonExistentFile(t *testing.T) {
 	}
 }
 
+//nolint:gosec // Test file permissions are fine at 0644
 func TestLoad_InvalidTOML(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "markata-go.toml")
 	content := `invalid toml content {{{{`
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -549,7 +572,8 @@ use_gitignore = true
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
 			configPath := filepath.Join(dir, "markata-go.toml")
-			if err := os.WriteFile(configPath, []byte(tt.toml), 0644); err != nil {
+			//nolint:gosec // Test file permissions are fine at 0644
+			if err := os.WriteFile(configPath, []byte(tt.toml), 0o644); err != nil {
 				t.Fatalf("failed to write config file: %v", err)
 			}
 
@@ -568,6 +592,7 @@ use_gitignore = true
 	}
 }
 
+//nolint:gosec // Test file permissions are fine at 0644
 func TestMarkdownConfig_Parsing(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "markata-go.toml")
@@ -576,7 +601,7 @@ func TestMarkdownConfig_Parsing(t *testing.T) {
 [markata-go.markdown]
 extensions = ["tables", "footnotes", "syntax-highlighting"]
 `
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -596,6 +621,7 @@ extensions = ["tables", "footnotes", "syntax-highlighting"]
 	}
 }
 
+//nolint:gosec // Test file permissions are fine at 0644
 func TestMultipleFeeds(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "markata-go.toml")
@@ -614,7 +640,7 @@ title = "Projects"
 slug = "notes"
 title = "Notes"
 `
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -635,6 +661,7 @@ title = "Notes"
 	}
 }
 
+//nolint:gosec // Test file permissions are fine at 0644
 func TestYAML_MultipleFeeds(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "markata-go.yaml")
@@ -647,7 +674,7 @@ markata-go:
     - slug: projects
       title: Projects
 `
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -667,6 +694,7 @@ markata-go:
 	}
 }
 
+//nolint:gosec // Test file permissions are fine at 0644
 func TestHooks_Parsing(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "markata-go.toml")
@@ -675,7 +703,7 @@ func TestHooks_Parsing(t *testing.T) {
 hooks = ["markdown", "template", "sitemap"]
 disabled_hooks = ["seo"]
 `
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 
@@ -696,6 +724,8 @@ disabled_hooks = ["seo"]
 }
 
 // Integration test - full config example
+//
+//nolint:gosec // Test file permissions are fine at 0644
 func TestFullConfigExample(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "markata-go.toml")
@@ -739,7 +769,7 @@ html = true
 rss = true
 atom = true
 `
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write config file: %v", err)
 	}
 

@@ -77,7 +77,7 @@ func (n *Admonition) Dump(source []byte, level int) {
 
 func boolToString(b bool) string {
 	if b {
-		return "true"
+		return BoolTrue
 	}
 	return "false"
 }
@@ -107,7 +107,7 @@ func (p *AdmonitionParser) Trigger() []byte {
 }
 
 // Open parses the opening line of an admonition block.
-func (p *AdmonitionParser) Open(parent ast.Node, reader text.Reader, pc parser.Context) (ast.Node, parser.State) {
+func (p *AdmonitionParser) Open(_ ast.Node, reader text.Reader, _ parser.Context) (ast.Node, parser.State) {
 	line, _ := reader.PeekLine()
 	lineStr := strings.TrimSpace(string(line))
 
@@ -132,10 +132,10 @@ func (p *AdmonitionParser) Open(parent ast.Node, reader text.Reader, pc parser.C
 	// Parse position modifiers for aside type
 	// Supports: left, right, inline (=left), inline end (=right)
 	position := ""
-	if adType == "aside" && modifier != "" {
+	if adType == AdmonitionTypeAside && modifier != "" {
 		switch modifier {
-		case "left", "inline":
-			position = "left"
+		case PositionLeft, "inline":
+			position = PositionLeft
 		case "right", "inline end":
 			position = "right"
 		}
@@ -143,7 +143,7 @@ func (p *AdmonitionParser) Open(parent ast.Node, reader text.Reader, pc parser.C
 
 	// Set default title if not provided
 	if title == "" {
-		if adType == "aside" {
+		if adType == AdmonitionTypeAside {
 			// Aside has no default title per spec
 			title = ""
 		} else {
@@ -159,7 +159,7 @@ func (p *AdmonitionParser) Open(parent ast.Node, reader text.Reader, pc parser.C
 
 // Continue checks if the admonition block continues.
 // Admonition content is indented with at least 4 spaces.
-func (p *AdmonitionParser) Continue(node ast.Node, reader text.Reader, pc parser.Context) parser.State {
+func (p *AdmonitionParser) Continue(_ ast.Node, reader text.Reader, _ parser.Context) parser.State {
 	line, segment := reader.PeekLine()
 
 	// Check if this is a blank line
@@ -186,7 +186,7 @@ func (p *AdmonitionParser) Continue(node ast.Node, reader text.Reader, pc parser
 }
 
 // Close is called when the admonition block is closed.
-func (p *AdmonitionParser) Close(node ast.Node, reader text.Reader, pc parser.Context) {
+func (p *AdmonitionParser) Close(_ ast.Node, _ text.Reader, _ parser.Context) {
 	// Nothing to do
 }
 
@@ -216,58 +216,74 @@ func (r *AdmonitionRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegister
 }
 
 // renderAdmonition renders an Admonition node to HTML.
-func (r *AdmonitionRenderer) renderAdmonition(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	ad := node.(*Admonition)
+func (r *AdmonitionRenderer) renderAdmonition(w util.BufWriter, _ []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	ad := node.(*Admonition) //nolint:errcheck // type assertion is safe here
 
 	if entering {
-		if ad.Collapsible {
-			// Collapsible admonition uses <details>/<summary>
-			_, _ = w.WriteString("<details class=\"admonition ")
-			_, _ = w.WriteString(ad.AdmonitionType)
-			_, _ = w.WriteString("\"")
-			if ad.DefaultOpen {
-				_, _ = w.WriteString(" open")
-			}
-			_, _ = w.WriteString(">\n")
-			_, _ = w.WriteString("<summary class=\"admonition-title\">")
-			_, _ = w.WriteString(ad.AdmonitionTitle)
-			_, _ = w.WriteString("</summary>\n")
-		} else if ad.AdmonitionType == "aside" {
-			// Aside uses <aside> element with position classes
-			// Default position is right (margin note style, per Tufte convention)
-			_, _ = w.WriteString("<aside class=\"admonition aside")
-			if ad.Position == "left" {
-				_, _ = w.WriteString(" aside-left")
-			} else {
-				// Default to right (including when Position is "" or "right")
-				_, _ = w.WriteString(" aside-right")
-			}
-			_, _ = w.WriteString("\">\n")
-			if ad.AdmonitionTitle != "" {
-				_, _ = w.WriteString("<p class=\"admonition-title\">")
-				_, _ = w.WriteString(ad.AdmonitionTitle)
-				_, _ = w.WriteString("</p>\n")
-			}
+		r.renderEntering(w, ad)
+	} else {
+		r.renderExiting(w, ad)
+	}
+
+	return ast.WalkContinue, nil
+}
+
+// renderEntering renders the opening tags for an admonition.
+//
+//nolint:errcheck // WriteString errors are handled at a higher level in goldmark
+func (r *AdmonitionRenderer) renderEntering(w util.BufWriter, ad *Admonition) {
+	switch {
+	case ad.Collapsible:
+		// Collapsible admonition uses <details>/<summary>
+		_, _ = w.WriteString("<details class=\"admonition ")
+		_, _ = w.WriteString(ad.AdmonitionType)
+		_, _ = w.WriteString("\"")
+		if ad.DefaultOpen {
+			_, _ = w.WriteString(" open")
+		}
+		_, _ = w.WriteString(">\n")
+		_, _ = w.WriteString("<summary class=\"admonition-title\">")
+		_, _ = w.WriteString(ad.AdmonitionTitle)
+		_, _ = w.WriteString("</summary>\n")
+	case ad.AdmonitionType == AdmonitionTypeAside:
+		// Aside uses <aside> element with position classes
+		// Default position is right (margin note style, per Tufte convention)
+		_, _ = w.WriteString("<aside class=\"admonition aside")
+		if ad.Position == PositionLeft {
+			_, _ = w.WriteString(" aside-left")
 		} else {
-			// Standard admonition uses <div>
-			_, _ = w.WriteString("<div class=\"admonition ")
-			_, _ = w.WriteString(ad.AdmonitionType)
-			_, _ = w.WriteString("\">\n")
+			// Default to right (including when Position is "" or "right")
+			_, _ = w.WriteString(" aside-right")
+		}
+		_, _ = w.WriteString("\">\n")
+		if ad.AdmonitionTitle != "" {
 			_, _ = w.WriteString("<p class=\"admonition-title\">")
 			_, _ = w.WriteString(ad.AdmonitionTitle)
 			_, _ = w.WriteString("</p>\n")
 		}
-	} else {
-		if ad.Collapsible {
-			_, _ = w.WriteString("</details>\n")
-		} else if ad.AdmonitionType == "aside" {
-			_, _ = w.WriteString("</aside>\n")
-		} else {
-			_, _ = w.WriteString("</div>\n")
-		}
+	default:
+		// Standard admonition uses <div>
+		_, _ = w.WriteString("<div class=\"admonition ")
+		_, _ = w.WriteString(ad.AdmonitionType)
+		_, _ = w.WriteString("\">\n")
+		_, _ = w.WriteString("<p class=\"admonition-title\">")
+		_, _ = w.WriteString(ad.AdmonitionTitle)
+		_, _ = w.WriteString("</p>\n")
 	}
+}
 
-	return ast.WalkContinue, nil
+// renderExiting renders the closing tags for an admonition.
+//
+//nolint:errcheck // WriteString errors are handled at a higher level in goldmark
+func (r *AdmonitionRenderer) renderExiting(w util.BufWriter, ad *Admonition) {
+	switch {
+	case ad.Collapsible:
+		_, _ = w.WriteString("</details>\n")
+	case ad.AdmonitionType == AdmonitionTypeAside:
+		_, _ = w.WriteString("</aside>\n")
+	default:
+		_, _ = w.WriteString("</div>\n")
+	}
 }
 
 // AdmonitionExtension is a goldmark extension for admonitions.

@@ -109,7 +109,7 @@ func isCriticalStage(stage Stage) bool {
 // executeHooks runs all plugins that implement the given stage interface.
 // Returns collected errors. If any critical error occurs, execution stops.
 func executeHooks[T Plugin](
-	m *Manager,
+	_ *Manager,
 	stage Stage,
 	plugins []Plugin,
 	check func(Plugin) (T, bool),

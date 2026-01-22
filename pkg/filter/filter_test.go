@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // ptr returns a pointer to the given string
@@ -19,7 +19,7 @@ func timePtr(t time.Time) *time.Time {
 
 // parseDate parses a date string in YYYY-MM-DD format
 func parseDate(s string) time.Time {
-	t, _ := time.Parse("2006-01-02", s)
+	t, _ := time.Parse("2006-01-02", s) //nolint:errcheck // test helper, format is controlled
 	return t
 }
 
@@ -284,7 +284,16 @@ func TestFilter_CompoundOr(t *testing.T) {
 			}
 			// Verify correct posts were matched
 			for _, p := range result {
-				status := p.Extra["status"].(string)
+				statusVal, ok := p.Extra["status"]
+				if !ok {
+					t.Errorf("matched post %v should have status field", *p.Title)
+					continue
+				}
+				status, ok := statusVal.(string)
+				if !ok {
+					t.Errorf("matched post %v status should be string", *p.Title)
+					continue
+				}
 				if status != "draft" && status != "review" {
 					t.Errorf("matched post %v should have status 'draft' or 'review', got %q", *p.Title, status)
 				}
@@ -666,13 +675,13 @@ func TestFilterSpec_ConvenienceFunctions(t *testing.T) {
 		{Title: ptr("Post 2"), Published: false},
 	}
 
-	// Test FilterPosts
-	result, err := FilterPosts("published == True", posts)
+	// Test Posts
+	result, err := Posts("published == True", posts)
 	if err != nil {
-		t.Fatalf("FilterPosts error: %v", err)
+		t.Fatalf("Posts error: %v", err)
 	}
 	if len(result) != 1 {
-		t.Errorf("FilterPosts: got %d, want 1", len(result))
+		t.Errorf("Posts: got %d, want 1", len(result))
 	}
 
 	// Test MatchPost

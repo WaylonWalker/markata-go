@@ -22,7 +22,7 @@ func (e *FrontmatterParseError) Unwrap() error {
 }
 
 // NewFrontmatterParseError creates a new FrontmatterParseError.
-func NewFrontmatterParseError(path string, message string, err error) *FrontmatterParseError {
+func NewFrontmatterParseError(path, message string, err error) *FrontmatterParseError {
 	return &FrontmatterParseError{
 		Path:    path,
 		Message: message,

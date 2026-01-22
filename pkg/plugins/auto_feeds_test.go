@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // =============================================================================
@@ -796,7 +796,7 @@ func TestSlugify(t *testing.T) {
 // Interface Compliance
 // =============================================================================
 
-func TestAutoFeedsPlugin_ImplementsInterfaces(t *testing.T) {
+func TestAutoFeedsPlugin_ImplementsInterfaces(_ *testing.T) {
 	var _ lifecycle.Plugin = (*AutoFeedsPlugin)(nil)
 	var _ lifecycle.CollectPlugin = (*AutoFeedsPlugin)(nil)
 }

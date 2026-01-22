@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // TestParseFrontmatter tests the frontmatter parsing functionality.
@@ -226,15 +226,17 @@ func TestGlobPlugin(t *testing.T) {
 
 	for _, f := range testFiles {
 		path := filepath.Join(tmpDir, f)
-		os.MkdirAll(filepath.Dir(path), 0755)
-		os.WriteFile(path, []byte("# Test"), 0644)
+		_ = os.MkdirAll(filepath.Dir(path), 0o755) //nolint:errcheck // test setup
+		//nolint:gosec,errcheck // test file
+		_ = os.WriteFile(path, []byte("# Test"), 0o644)
 	}
 
 	// Create a .gitignore
 	gitignore := `ignored/
 *.txt
 `
-	os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte(gitignore), 0644)
+	//nolint:gosec,errcheck // test setup
+	_ = os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte(gitignore), 0o644)
 
 	tests := []struct {
 		name         string
@@ -328,7 +330,8 @@ Content with extras.`,
 	}
 
 	for name, content := range files {
-		os.WriteFile(filepath.Join(tmpDir, name), []byte(content), 0644)
+		//nolint:gosec,errcheck // test setup
+		_ = os.WriteFile(filepath.Join(tmpDir, name), []byte(content), 0o644)
 	}
 
 	// Setup manager with files

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // Supported config file names in discovery order
@@ -206,8 +206,8 @@ func fileExists(path string) bool {
 	return !info.IsDir()
 }
 
-// ConfigPath holds the result of config file discovery with additional metadata.
-type ConfigPath struct {
+// Path holds the result of config file discovery with additional metadata.
+type Path struct {
 	Path   string // Full path to the config file
 	Format Format // Format of the config file
 	Source string // Where it was found: "cli", "cwd", "user"
@@ -215,15 +215,15 @@ type ConfigPath struct {
 
 // DiscoverAll finds all config files in the standard locations.
 // This is useful for debugging or showing available configs.
-func DiscoverAll() []ConfigPath {
-	var found []ConfigPath
+func DiscoverAll() []Path {
+	var found []Path
 
 	cwd, err := os.Getwd()
 	if err == nil {
 		for _, name := range configFileNames {
 			path := filepath.Join(cwd, name)
 			if fileExists(path) {
-				found = append(found, ConfigPath{
+				found = append(found, Path{
 					Path:   path,
 					Format: formatFromPath(path),
 					Source: "cwd",
@@ -236,7 +236,7 @@ func DiscoverAll() []ConfigPath {
 	if err == nil {
 		userConfigPath := filepath.Join(homeDir, ".config", "markata-go", "config.toml")
 		if fileExists(userConfigPath) {
-			found = append(found, ConfigPath{
+			found = append(found, Path{
 				Path:   userConfigPath,
 				Format: FormatTOML,
 				Source: "user",

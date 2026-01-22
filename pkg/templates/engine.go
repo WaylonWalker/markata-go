@@ -7,11 +7,18 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
-	"github.com/example/markata-go/pkg/themes"
+	"github.com/WaylonWalker/markata-go/pkg/themes"
 
 	"github.com/flosch/pongo2/v6"
+)
+
+// Constants for theme names and embedded file markers
+const (
+	defaultThemeName   = "default"
+	embeddedFilePrefix = "embedded:"
 )
 
 // Engine provides template rendering capabilities using pongo2.
@@ -56,7 +63,7 @@ func NewEngineWithTheme(templatesDir, themeName string) (*Engine, error) {
 	}
 
 	if e.themeName == "" {
-		e.themeName = "default"
+		e.themeName = defaultThemeName
 	}
 
 	// Register custom filters
@@ -66,7 +73,7 @@ func NewEngineWithTheme(templatesDir, themeName string) (*Engine, error) {
 	e.buildSearchPaths(templatesDir)
 
 	// Create a basic template set (we'll handle loading ourselves)
-	e.set = pongo2.NewSet("default", pongo2.MustNewLocalFileSystemLoader(""))
+	e.set = pongo2.NewSet(defaultThemeName, pongo2.MustNewLocalFileSystemLoader(""))
 
 	return e, nil
 }
@@ -83,7 +90,7 @@ func (e *Engine) buildSearchPaths(templatesDir string) {
 	}
 
 	// 2. Current theme templates in current directory
-	if e.themeName != "" && e.themeName != "default" {
+	if e.themeName != "" && e.themeName != defaultThemeName {
 		themeTemplatesDir := filepath.Join("themes", e.themeName, "templates")
 		if _, err := os.Stat(themeTemplatesDir); err == nil {
 			e.searchPaths = append(e.searchPaths, themeTemplatesDir)
@@ -91,7 +98,7 @@ func (e *Engine) buildSearchPaths(templatesDir string) {
 	}
 
 	// 3. Default theme templates in current directory
-	defaultThemeDir := filepath.Join("themes", "default", "templates")
+	defaultThemeDir := filepath.Join("themes", defaultThemeName, "templates")
 	if _, err := os.Stat(defaultThemeDir); err == nil {
 		e.searchPaths = append(e.searchPaths, defaultThemeDir)
 	}
@@ -101,14 +108,14 @@ func (e *Engine) buildSearchPaths(templatesDir string) {
 		exeDir := filepath.Dir(exePath)
 
 		// Check for themes next to executable (e.g., /usr/local/bin/markata-go -> /usr/local/bin/themes)
-		if e.themeName != "" && e.themeName != "default" {
+		if e.themeName != "" && e.themeName != defaultThemeName {
 			themeDir := filepath.Join(exeDir, "themes", e.themeName, "templates")
 			if _, err := os.Stat(themeDir); err == nil {
 				e.searchPaths = append(e.searchPaths, themeDir)
 			}
 		}
 
-		defaultExeThemeDir := filepath.Join(exeDir, "themes", "default", "templates")
+		defaultExeThemeDir := filepath.Join(exeDir, "themes", defaultThemeName, "templates")
 		if _, err := os.Stat(defaultExeThemeDir); err == nil {
 			e.searchPaths = append(e.searchPaths, defaultExeThemeDir)
 		}
@@ -176,7 +183,8 @@ func (e *Engine) LoadTemplate(name string) (*pongo2.Template, error) {
 	var tpl *pongo2.Template
 	var err error
 
-	if templatePath != "" {
+	switch {
+	case templatePath != "":
 		// Found in filesystem - use file-based loading
 		absPath, absErr := filepath.Abs(templatePath)
 		if absErr != nil {
@@ -194,7 +202,7 @@ func (e *Engine) LoadTemplate(name string) (*pongo2.Template, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse template %q: %w", name, err)
 		}
-	} else if e.useEmbedded && e.embeddedFS != nil {
+	case e.useEmbedded && e.embeddedFS != nil:
 		// Try embedded templates as fallback
 		content, readErr := fs.ReadFile(e.embeddedFS, name)
 		if readErr != nil {
@@ -211,7 +219,7 @@ func (e *Engine) LoadTemplate(name string) (*pongo2.Template, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse embedded template %q: %w", name, err)
 		}
-	} else {
+	default:
 		return nil, fmt.Errorf("template %q not found in search paths %v", name, e.searchPaths)
 	}
 
@@ -236,37 +244,40 @@ func (l *searchPathLoader) Abs(base, name string) string {
 	}
 
 	// If name already has embedded prefix, return it
-	if len(name) > 9 && name[:9] == "embedded:" {
+	if strings.HasPrefix(name, embeddedFilePrefix) {
 		return name
 	}
 
 	// Handle case where base is an embedded file
-	if len(base) > 9 && base[:9] == "embedded:" {
+	if strings.HasPrefix(base, embeddedFilePrefix) {
 		// For embedded base, first check if the file exists in embedded FS
 		if l.embeddedFS != nil {
 			// Try the name directly first
 			if _, err := fs.Stat(l.embeddedFS, name); err == nil {
-				return "embedded:" + name
+				return embeddedFilePrefix + name
 			}
 			// Also try resolving relative to the base's directory within embedded FS
-			embeddedBase := base[9:]
+			embeddedBase := base[len(embeddedFilePrefix):]
 			baseDir := filepath.Dir(embeddedBase)
 			if baseDir != "." {
 				candidate := filepath.Join(baseDir, name)
 				if _, err := fs.Stat(l.embeddedFS, candidate); err == nil {
-					return "embedded:" + candidate
+					return embeddedFilePrefix + candidate
 				}
 			}
 		}
 	}
 
 	// If base is provided and is a regular file, try relative to base directory first
-	if base != "" && (len(base) < 9 || base[:9] != "embedded:") {
+	if base != "" && !strings.HasPrefix(base, embeddedFilePrefix) {
 		baseDir := filepath.Dir(base)
 		candidate := filepath.Join(baseDir, name)
 		if _, err := os.Stat(candidate); err == nil {
-			absPath, _ := filepath.Abs(candidate)
-			return absPath
+			absPath, absErr := filepath.Abs(candidate)
+			if absErr == nil {
+				return absPath
+			}
+			return candidate
 		}
 	}
 
@@ -274,8 +285,11 @@ func (l *searchPathLoader) Abs(base, name string) string {
 	for _, dir := range l.searchPaths {
 		candidate := filepath.Join(dir, name)
 		if _, err := os.Stat(candidate); err == nil {
-			absPath, _ := filepath.Abs(candidate)
-			return absPath
+			absPath, absErr := filepath.Abs(candidate)
+			if absErr == nil {
+				return absPath
+			}
+			return candidate
 		}
 	}
 
@@ -283,22 +297,24 @@ func (l *searchPathLoader) Abs(base, name string) string {
 	if l.embeddedFS != nil {
 		if _, err := fs.Stat(l.embeddedFS, name); err == nil {
 			// Return a special marker for embedded files
-			return "embedded:" + name
+			return embeddedFilePrefix + name
 		}
 	}
 
 	// Return name with first search path as fallback (will fail gracefully)
 	if len(l.searchPaths) > 0 {
-		absPath, _ := filepath.Abs(filepath.Join(l.searchPaths[0], name))
-		return absPath
+		absPath, absErr := filepath.Abs(filepath.Join(l.searchPaths[0], name))
+		if absErr == nil {
+			return absPath
+		}
 	}
 	return name
 }
 
 func (l *searchPathLoader) Get(path string) (io.Reader, error) {
 	// Check for embedded file marker
-	if len(path) > 9 && path[:9] == "embedded:" {
-		embeddedPath := path[9:]
+	if strings.HasPrefix(path, embeddedFilePrefix) {
+		embeddedPath := path[len(embeddedFilePrefix):]
 		if l.embeddedFS != nil {
 			file, err := l.embeddedFS.Open(embeddedPath)
 			if err == nil {
@@ -411,7 +427,7 @@ func (e *Engine) SetTheme(themeName string) {
 
 	e.themeName = themeName
 	if e.themeName == "" {
-		e.themeName = "default"
+		e.themeName = defaultThemeName
 	}
 
 	// Clear cache and rebuild search paths

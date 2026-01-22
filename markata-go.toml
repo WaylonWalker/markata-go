@@ -74,6 +74,11 @@ palette = "matte-black"
 # palette = "tokyo-night-day"
 # palette = "tokyo-night-storm"
 
+[markata-go.markdown.highlight]
+enabled = true
+theme = "github-dark"    # Highlight theme
+line_numbers = false
+
 # Glob settings - find content files
 [markata-go.glob]
 patterns = [

@@ -1255,6 +1255,294 @@ Built-in themes SHOULD use CSS custom properties for consistency:
 
 ---
 
+## Media Styles
+
+Built-in themes MUST include styles for images and videos.
+
+### Images
+
+```css
+/* Base image styles */
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+}
+
+/* Images in article content */
+.post-content img {
+  display: block;
+  margin: var(--space-6) auto;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode: use border instead of shadow */
+@media (prefers-color-scheme: dark) {
+  .post-content img {
+    box-shadow: none;
+    border: 1px solid var(--color-border);
+  }
+}
+
+figure {
+  margin: var(--space-6) 0;
+}
+
+figcaption {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-top: var(--space-2);
+}
+```
+
+### Videos
+
+The `md_video` plugin converts markdown image syntax to video tags. Themes MUST style these appropriately:
+
+```css
+/* Base video styles */
+video,
+.md-video {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  display: block;
+  margin: var(--space-4) 0;
+  background: var(--color-surface);
+}
+
+/* Videos in article content */
+.post-content video,
+.post-content .md-video {
+  display: block;
+  margin: var(--space-6) auto;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .post-content video,
+  .post-content .md-video {
+    box-shadow: none;
+    border: 1px solid var(--color-border);
+  }
+}
+
+/* Loading state placeholder */
+video {
+  background: var(--color-surface) url("data:image/svg+xml,...") center center no-repeat;
+  min-height: 200px;
+}
+```
+
+### Full-Width Media
+
+Support for edge-to-edge media display:
+
+```css
+.post-content img.full-width,
+.post-content video.full-width {
+  width: 100%;
+  max-width: none;
+  margin-left: calc(-1 * var(--space-4));
+  margin-right: calc(-1 * var(--space-4));
+  width: calc(100% + var(--space-8));
+  border-radius: 0;
+}
+```
+
+### Media Borders
+
+Themes SHOULD provide configurable media borders via CSS custom properties:
+
+```css
+:root {
+  /* Media border settings */
+  --media-border-width: 3px;
+  --media-border-style: solid;
+  --media-border-color: var(--color-border);
+  --media-border-radius: var(--radius-lg);
+  
+  /* Generic gradient presets */
+  --gradient-accent: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  --gradient-vibrant: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+  --gradient-warm: linear-gradient(135deg, #f093fb, #f5576c, #f8b500);
+  --gradient-cool: linear-gradient(135deg, #4facfe, #00f2fe);
+  --gradient-sunset: linear-gradient(135deg, #fa709a, #fee140);
+  --gradient-ocean: linear-gradient(135deg, #2193b0, #6dd5ed);
+  
+  /* Palette-specific gradients - use colors from popular palettes */
+  --gradient-catppuccin: linear-gradient(135deg, #cba6f7, #f5c2e7, #f38ba8);
+  --gradient-nord: linear-gradient(135deg, #88c0d0, #81a1c1, #5e81ac);
+  --gradient-dracula: linear-gradient(135deg, #bd93f9, #ff79c6, #8be9fd);
+  --gradient-gruvbox: linear-gradient(135deg, #fabd2f, #fe8019, #fb4934);
+  --gradient-rose-pine: linear-gradient(135deg, #c4a7e7, #ebbcba, #f6c177);
+  --gradient-solarized: linear-gradient(135deg, #268bd2, #2aa198, #859900);
+  --gradient-tokyo-night: linear-gradient(135deg, #7aa2f7, #bb9af7, #f7768e);
+}
+```
+
+### Palette-Specific Gradient Borders
+
+Themes SHOULD include gradient presets that match popular color palettes. This allows users to maintain visual consistency when using a specific palette:
+
+| Gradient Class | Palette | Colors |
+|---------------|---------|--------|
+| `gradient-catppuccin` | Catppuccin | Mauve → Pink → Red |
+| `gradient-nord` | Nord | Frost colors (cyan → blue) |
+| `gradient-dracula` | Dracula | Purple → Pink → Cyan |
+| `gradient-gruvbox` | Gruvbox | Yellow → Orange → Red |
+| `gradient-rose-pine` | Rosé Pine | Iris → Rose → Gold |
+| `gradient-solarized` | Solarized | Blue → Cyan → Green |
+| `gradient-tokyo-night` | Tokyo Night | Blue → Purple → Pink |
+
+Usage in frontmatter:
+
+```yaml
+---
+title: "My Catppuccin-Themed Post"
+css_class: gradient-catppuccin
+---
+```
+
+CSS implementation:
+
+```css
+/* Palette-specific gradient classes */
+.post-content.gradient-catppuccin img,
+.post-content.gradient-catppuccin video {
+  border: none;
+  padding: var(--media-border-width);
+  background: var(--gradient-catppuccin);
+  background-origin: border-box;
+}
+
+.post-content.gradient-nord img,
+.post-content.gradient-nord video {
+  background: var(--gradient-nord);
+}
+
+/* ... similar for dracula, gruvbox, rose-pine, solarized, tokyo-night */
+```
+
+This allows users who select a palette like `catppuccin-mocha` to also use matching gradient borders that complement their color scheme.
+
+### Gradient Borders
+
+Themes MAY support gradient borders for media elements. The technique uses padding and background:
+
+```css
+/* Apply gradient borders to all media in post content */
+.post-content.gradient-borders img,
+.post-content.gradient-borders video {
+  border: none;
+  padding: var(--media-border-width);
+  background: var(--gradient-accent);
+  background-origin: border-box;
+}
+
+/* Specific gradient variants */
+.post-content.gradient-vibrant img { background: var(--gradient-vibrant); }
+.post-content.gradient-warm img { background: var(--gradient-warm); }
+.post-content.gradient-cool img { background: var(--gradient-cool); }
+.post-content.gradient-sunset img { background: var(--gradient-sunset); }
+.post-content.gradient-ocean img { background: var(--gradient-ocean); }
+```
+
+### Animated Gradient Borders
+
+For eye-catching media display:
+
+```css
+@keyframes gradient-rotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.post-content.gradient-animated img,
+.post-content.gradient-animated video {
+  background: linear-gradient(270deg, #667eea, #764ba2, #f093fb, #667eea);
+  background-size: 300% 300%;
+  animation: gradient-rotate 6s ease infinite;
+}
+```
+
+### Glow Effects
+
+For dramatic media presentation:
+
+```css
+.post-content.glow img,
+.post-content.glow video {
+  box-shadow: 
+    0 0 20px rgba(102, 126, 234, 0.3),
+    0 0 40px rgba(118, 75, 162, 0.2),
+    0 0 60px rgba(240, 147, 251, 0.1);
+}
+
+/* Enhanced glow in dark mode */
+@media (prefers-color-scheme: dark) {
+  .post-content.glow img,
+  .post-content.glow video {
+    box-shadow: 
+      0 0 30px rgba(102, 126, 234, 0.4),
+      0 0 60px rgba(118, 75, 162, 0.3),
+      0 0 90px rgba(240, 147, 251, 0.2);
+  }
+}
+```
+
+### Usage in Templates
+
+Apply gradient borders via class on the content wrapper:
+
+```html
+<!-- Default borders -->
+<div class="post-content">
+  {{ post.ArticleHTML | safe }}
+</div>
+
+<!-- Gradient borders -->
+<div class="post-content gradient-borders">
+  {{ post.ArticleHTML | safe }}
+</div>
+
+<!-- Vibrant gradient with glow -->
+<div class="post-content gradient-vibrant glow">
+  {{ post.ArticleHTML | safe }}
+</div>
+
+<!-- Animated gradient -->
+<div class="post-content gradient-animated">
+  {{ post.ArticleHTML | safe }}
+</div>
+```
+
+### Configuration via Frontmatter
+
+Posts can specify their preferred media style:
+
+```yaml
+---
+title: "My Cool Demo"
+media_style: gradient-vibrant glow
+---
+```
+
+Template usage:
+
+```html
+<div class="post-content {{ post.Frontmatter.media_style | default('') }}">
+  {{ post.ArticleHTML | safe }}
+</div>
+```
+
+---
+
 ## Admonition Styles
 
 Built-in themes MUST include styles for all admonition types.
@@ -1691,25 +1979,257 @@ pre[data-language]::after {
 
 ### Syntax Highlighting Themes
 
-Implementations SHOULD support multiple syntax highlighting themes:
+Implementations SHOULD support multiple syntax highlighting themes. The syntax highlighting theme can be:
+
+1. **Explicitly configured** via `markdown.highlight.theme`
+2. **Automatically derived** from the site's color palette (`theme.palette`)
+3. **Defaulted** based on palette variant (light/dark)
+
+#### Palette-to-Theme Mapping
+
+When no explicit theme is set, the syntax highlighting theme is derived from the site palette:
+
+| Site Palette | Chroma Theme | Notes |
+|-------------|--------------|-------|
+| `catppuccin-latte` | `catppuccin-latte` | Exact match |
+| `catppuccin-frappe` | `catppuccin-frappe` | Exact match |
+| `catppuccin-macchiato` | `catppuccin-macchiato` | Exact match |
+| `catppuccin-mocha` | `catppuccin-mocha` | Exact match |
+| `nord-light` | `nord` | Both variants use same theme |
+| `nord-dark` | `nord` | Both variants use same theme |
+| `gruvbox-light` | `gruvbox-light` | Light variant |
+| `gruvbox-dark` | `gruvbox` | Dark variant |
+| `tokyo-night` | `tokyonight-night` | Main variant |
+| `tokyo-night-storm` | `tokyonight-storm` | Storm variant |
+| `tokyo-night-day` | `tokyonight-day` | Light variant |
+| `rose-pine` | `rose-pine` | Exact match |
+| `rose-pine-moon` | `rose-pine-moon` | Exact match |
+| `rose-pine-dawn` | `rose-pine-dawn` | Exact match |
+| `everforest-light` | `evergarden` | Similar aesthetic |
+| `everforest-dark` | `evergarden` | Similar aesthetic |
+| `dracula` | `dracula` | Exact match |
+| `solarized-light` | `solarized-light` | Exact match |
+| `solarized-dark` | `solarized-dark` | Exact match |
+| `kanagawa-wave` | `vim` | Japanese aesthetic |
+| `kanagawa-dragon` | `vim` | Japanese aesthetic |
+| `kanagawa-lotus` | `modus-operandi` | Light variant |
+| `default-light` | `github` | Clean, neutral |
+| `default-dark` | `github-dark` | Clean, neutral |
+| `matte-black` | `monokai` | High contrast |
+
+For unknown palettes, the default is determined by the palette's variant:
+- Light palettes: `github`
+- Dark palettes: `github-dark`
+
+#### Available Themes
 
 | Theme | Description |
 |-------|-------------|
-| `github-light` | GitHub's light theme |
+| `github` | GitHub's light theme |
 | `github-dark` | GitHub's dark theme |
 | `monokai` | Classic dark theme |
-| `one-dark` | Atom's One Dark |
+| `onedark` | Atom's One Dark |
 | `dracula` | Dracula theme |
 | `nord` | Nord color palette |
 | `solarized-light` | Solarized light |
 | `solarized-dark` | Solarized dark |
+| `catppuccin-latte` | Catppuccin light |
+| `catppuccin-frappe` | Catppuccin medium-dark |
+| `catppuccin-macchiato` | Catppuccin dark |
+| `catppuccin-mocha` | Catppuccin darkest |
+| `rose-pine` | Rosé Pine dark |
+| `rose-pine-moon` | Rosé Pine medium |
+| `rose-pine-dawn` | Rosé Pine light |
+| `gruvbox` | Gruvbox dark |
+| `gruvbox-light` | Gruvbox light |
+| `tokyonight-night` | Tokyo Night dark |
+| `tokyonight-storm` | Tokyo Night storm |
+| `tokyonight-day` | Tokyo Night light |
+| `vim` | Classic Vim |
+| `evergarden` | Nature-inspired |
+
+See https://xyproto.github.io/splash/docs/ for the complete list of Chroma themes.
 
 Configuration:
 
 ```toml
+# Automatic (derived from theme.palette)
+[markata-go.theme]
+palette = "catppuccin-mocha"  # Will use catppuccin-mocha for code highlighting
+
+# Explicit override
 [markata-go.markdown.highlight]
-theme = "github-dark"
+theme = "dracula"  # Overrides palette-derived theme
 line_numbers = false
+```
+
+---
+
+## Plugin Output Styles
+
+Built-in themes MUST include styles for plugin-generated HTML elements.
+
+### Heading Anchors (`heading_anchors` plugin)
+
+```css
+.heading-anchor {
+  opacity: 0;
+  margin-left: var(--space-2);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-weight: 400;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+h1:hover .heading-anchor,
+h2:hover .heading-anchor,
+h3:hover .heading-anchor,
+h4:hover .heading-anchor,
+h5:hover .heading-anchor,
+h6:hover .heading-anchor,
+.heading-anchor:focus {
+  opacity: 1;
+}
+
+.heading-anchor:hover {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+```
+
+### Table of Contents (`toc` plugin)
+
+```css
+.toc {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin: var(--space-6) 0;
+}
+
+.toc-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.toc ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.toc ul ul {
+  padding-left: var(--space-4);
+  margin-top: var(--space-1);
+}
+
+.toc li {
+  margin-bottom: var(--space-1);
+}
+
+.toc a {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.toc a:hover {
+  color: var(--color-primary);
+}
+```
+
+### CSV Tables (`csv_fence` plugin)
+
+```css
+.csv-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--space-6) 0;
+  font-size: var(--text-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.csv-table th,
+.csv-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.csv-table th {
+  background: var(--color-surface);
+  font-weight: 600;
+}
+
+.csv-table tbody tr:nth-child(even) {
+  background: var(--color-surface);
+}
+
+.csv-table tbody tr:hover {
+  background: var(--color-border);
+}
+```
+
+### Glossary Terms (`glossary` plugin)
+
+```css
+.glossary-term {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  cursor: help;
+  transition: text-decoration-color 0.2s;
+}
+
+.glossary-term:hover {
+  text-decoration-style: solid;
+  text-decoration-color: var(--color-primary);
+}
+```
+
+### Mermaid Diagrams (`mermaid` plugin)
+
+```css
+.mermaid {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin: var(--space-6) 0;
+  text-align: center;
+  overflow-x: auto;
+}
+```
+
+### Wikilinks (`wikilinks` plugin)
+
+```css
+a.wikilink {
+  color: var(--color-primary);
+}
+
+a.wikilink.wikilink-missing {
+  color: var(--color-error);
+  text-decoration: underline;
+  text-decoration-style: dashed;
+}
+```
+
+### Reading Time (`reading_time` plugin)
+
+```css
+.reading-time {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
 ```
 
 ---

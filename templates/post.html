@@ -15,7 +15,7 @@
         </div>
         {% endif %}
     </header>
-    <div class="content">
+    <div class="post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
         {{ body | safe }}
     </div>
 </article>

@@ -6,8 +6,16 @@ import (
 	"os"
 	"strings"
 
-	"github.com/example/markata-go/pkg/palettes"
+	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/spf13/cobra"
+)
+
+// Common string constants to avoid goconst warnings.
+const (
+	paletteFormatCSS      = "css"
+	paletteFormatSCSS     = "scss"
+	paletteFormatJSON     = "json"
+	paletteFormatTailwind = "tailwind"
 )
 
 // paletteCmd represents the palette command group.
@@ -196,7 +204,7 @@ func init() {
 }
 
 // runPaletteListCommand lists available palettes.
-func runPaletteListCommand(cmd *cobra.Command, args []string) error {
+func runPaletteListCommand(_ *cobra.Command, _ []string) error {
 	loader := palettes.NewLoader()
 	infos, err := loader.Discover()
 	if err != nil {
@@ -244,7 +252,7 @@ func runPaletteListCommand(cmd *cobra.Command, args []string) error {
 }
 
 // runPaletteInfoCommand shows palette details.
-func runPaletteInfoCommand(cmd *cobra.Command, args []string) error {
+func runPaletteInfoCommand(_ *cobra.Command, args []string) error {
 	name := args[0]
 
 	loader := palettes.NewLoader()
@@ -314,7 +322,7 @@ func runPaletteInfoCommand(cmd *cobra.Command, args []string) error {
 }
 
 // runPaletteCheckCommand validates contrast ratios.
-func runPaletteCheckCommand(cmd *cobra.Command, args []string) error {
+func runPaletteCheckCommand(_ *cobra.Command, args []string) error {
 	loader := palettes.NewLoader()
 
 	var palettesToCheck []*palettes.Palette
@@ -370,8 +378,8 @@ func runPaletteCheckCommand(cmd *cobra.Command, args []string) error {
 			fmt.Printf("\nChecking palette: %s\n", p.Name)
 			fmt.Println(strings.Repeat("-", 50))
 
-			for _, r := range results {
-				fmt.Println(palettes.FormatContrastResult(r))
+			for i := range results {
+				fmt.Println(palettes.FormatContrastResult(results[i]))
 			}
 
 			fmt.Println()
@@ -400,7 +408,7 @@ func runPaletteCheckCommand(cmd *cobra.Command, args []string) error {
 }
 
 // runPaletteExportCommand exports palette to different formats.
-func runPaletteExportCommand(cmd *cobra.Command, args []string) error {
+func runPaletteExportCommand(_ *cobra.Command, args []string) error {
 	name := args[0]
 
 	loader := palettes.NewLoader()
@@ -411,24 +419,24 @@ func runPaletteExportCommand(cmd *cobra.Command, args []string) error {
 
 	var output string
 	switch paletteFormat {
-	case "css":
+	case paletteFormatCSS:
 		output = p.GenerateCSS()
-	case "scss":
+	case paletteFormatSCSS:
 		output = p.GenerateSCSS()
-	case "json":
+	case paletteFormatJSON:
 		data, err := p.ExportJSON(true)
 		if err != nil {
 			return fmt.Errorf("failed to generate JSON: %w", err)
 		}
 		output = string(data)
-	case "tailwind":
+	case paletteFormatTailwind:
 		output = p.GenerateTailwind()
 	default:
 		return fmt.Errorf("unknown format: %s (supported: css, scss, json, tailwind)", paletteFormat)
 	}
 
 	if paletteOutput != "" {
-		if err := os.WriteFile(paletteOutput, []byte(output), 0644); err != nil {
+		if err := os.WriteFile(paletteOutput, []byte(output), 0o644); err != nil { //nolint:gosec // exported files should be readable
 			return fmt.Errorf("failed to write file: %w", err)
 		}
 		fmt.Printf("Exported to %s\n", paletteOutput)
@@ -440,7 +448,7 @@ func runPaletteExportCommand(cmd *cobra.Command, args []string) error {
 }
 
 // runPalettePreviewCommand generates HTML preview.
-func runPalettePreviewCommand(cmd *cobra.Command, args []string) error {
+func runPalettePreviewCommand(_ *cobra.Command, args []string) error {
 	name := args[0]
 
 	loader := palettes.NewLoader()
@@ -456,7 +464,7 @@ func runPalettePreviewCommand(cmd *cobra.Command, args []string) error {
 		outputFile = "palette-preview.html"
 	}
 
-	if err := os.WriteFile(outputFile, []byte(html), 0644); err != nil {
+	if err := os.WriteFile(outputFile, []byte(html), 0o644); err != nil { //nolint:gosec // preview files should be readable
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
@@ -471,7 +479,7 @@ func runPalettePreviewCommand(cmd *cobra.Command, args []string) error {
 }
 
 // runPaletteNewCommand creates a new palette.
-func runPaletteNewCommand(cmd *cobra.Command, args []string) error {
+func runPaletteNewCommand(_ *cobra.Command, args []string) error {
 	name := args[0]
 
 	var p *palettes.Palette
@@ -521,7 +529,7 @@ func runPaletteNewCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	// Ensure directory exists
-	if err := os.MkdirAll("palettes", 0755); err != nil {
+	if err := os.MkdirAll("palettes", 0o755); err != nil {
 		return fmt.Errorf("failed to create palettes directory: %w", err)
 	}
 
@@ -530,7 +538,7 @@ func runPaletteNewCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("file already exists: %s", outputFile)
 	}
 
-	if err := os.WriteFile(outputFile, []byte(toml), 0644); err != nil {
+	if err := os.WriteFile(outputFile, []byte(toml), 0o644); err != nil { //nolint:gosec // palette files should be readable
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 

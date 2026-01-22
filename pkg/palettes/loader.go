@@ -209,7 +209,7 @@ func discoverFromPath(searchPath string) ([]PaletteInfo, error) {
 		return nil, err
 	}
 
-	var infos []PaletteInfo
+	infos := make([]PaletteInfo, 0, len(entries))
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -253,8 +253,11 @@ func sourceFromPath(path string) string {
 		}
 	}
 
-	return "built-in"
+	return sourceBuiltIn
 }
+
+// sourceBuiltIn is the constant string for built-in palette source.
+const sourceBuiltIn = "built-in"
 
 // normalizeFileName converts a palette name to a normalized file name.
 // e.g., "Catppuccin Mocha" -> "catppuccin-mocha"

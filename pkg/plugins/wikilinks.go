@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // WikilinksPlugin transforms [[slug]] and [[slug|text]] wikilink syntax
@@ -64,7 +64,7 @@ func (p *WikilinksPlugin) Transform(m *lifecycle.Manager) error {
 
 		// Store warnings if any
 		if len(warnings) > 0 && p.warnOnBroken {
-			existingWarnings, _ := post.Extra["wikilink_warnings"].([]string)
+			existingWarnings, _ := post.Extra["wikilink_warnings"].([]string) //nolint:errcheck // type assertion ok to fail
 			post.Set("wikilink_warnings", append(existingWarnings, warnings...))
 		}
 
@@ -81,9 +81,7 @@ var wikilinkRegex = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 // processWikilinks replaces wikilink syntax with HTML anchor tags.
 // Returns the processed content and any warnings about broken links.
 // Wikilinks inside fenced code blocks are preserved and not transformed.
-func (p *WikilinksPlugin) processWikilinks(content string, postMap map[string]*models.Post) (string, []string) {
-	var warnings []string
-
+func (p *WikilinksPlugin) processWikilinks(content string, postMap map[string]*models.Post) (processed string, warnings []string) {
 	// Split content by fenced code blocks to avoid transforming wikilinks inside them
 	// Match ``` or ~~~ fenced code blocks (with optional language identifier)
 	codeBlockRegex := regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
@@ -93,7 +91,8 @@ func (p *WikilinksPlugin) processWikilinks(content string, postMap map[string]*m
 
 	// If no code blocks, process the entire content
 	if len(codeBlocks) == 0 {
-		return p.processWikilinksInText(content, postMap, &warnings), warnings
+		processed = p.processWikilinksInText(content, postMap, &warnings)
+		return processed, warnings
 	}
 
 	// Process content in segments, skipping code blocks
@@ -176,7 +175,7 @@ func (p *WikilinksPlugin) processWikilinksInText(text string, postMap map[string
 			href = "/" + targetPost.Slug + "/"
 		}
 
-		return fmt.Sprintf(`<a href="%s" class="wikilink">%s</a>`,
+		return fmt.Sprintf(`<a href=%q class="wikilink">%s</a>`,
 			html.EscapeString(href),
 			html.EscapeString(displayText))
 	})

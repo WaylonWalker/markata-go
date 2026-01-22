@@ -4,6 +4,7 @@ description: "Guide to supported Markdown syntax including GFM, admonitions, wik
 date: 2024-01-15
 published: true
 template: doc.html
+css_class: shadow bordered
 tags:
   - documentation
   - markdown
@@ -25,7 +26,16 @@ markata-go supports standard Markdown (CommonMark), GitHub Flavored Markdown (GF
 - [Heading Anchors](#heading-anchors)
 - [Footnotes](#footnotes)
 
+
 ---
+
+video
+
+![kickflip down the 3 stair - fingerboarding](https://dropper.waylonwalker.com/file/6f042a91-1e90-445d-b91d-8d4ee187af2c.mp4)
+
+image
+
+![](https://dropper.waylonwalker.com/file/1b7f257c-5193-4b74-b768-2fa4a7ccdec8.webp)
 
 ## Basic Markdown
 
@@ -652,11 +662,63 @@ Configure syntax highlighting in `markata-go.toml`:
 ```toml
 [markata-go.markdown.highlight]
 enabled = true
-theme = "github-dark"    # Highlight.js theme
+theme = "github-dark"    # Chroma theme (optional)
 line_numbers = false     # Line numbers (if supported)
 ```
 
-Available themes include: `github-dark`, `github-light`, `monokai`, `dracula`, `nord`, `solarized-dark`, `solarized-light`, and more.
+#### Automatic Theme from Palette
+
+By default, the syntax highlighting theme is **automatically derived** from your site's color palette. This ensures code blocks match your site's overall look:
+
+```toml
+[markata-go.theme]
+palette = "catppuccin-mocha"  # Code blocks will use catppuccin-mocha highlighting
+```
+
+| Site Palette | Code Theme |
+|-------------|------------|
+| catppuccin-mocha | catppuccin-mocha |
+| catppuccin-latte | catppuccin-latte |
+| rose-pine | rose-pine |
+| gruvbox-dark | gruvbox |
+| gruvbox-light | gruvbox-light |
+| tokyo-night | tokyonight-night |
+| dracula | dracula |
+| solarized-dark | solarized-dark |
+| nord-dark | nord |
+
+For palettes without an exact match, defaults are used based on light/dark variant.
+
+#### Explicit Override
+
+To use a different code theme than your palette suggests:
+
+```toml
+[markata-go.theme]
+palette = "catppuccin-mocha"
+
+[markata-go.markdown.highlight]
+theme = "dracula"  # Override: use Dracula instead of Catppuccin
+```
+
+#### Available Themes
+
+Popular themes include:
+
+| Theme | Description |
+|-------|-------------|
+| `github` / `github-dark` | Clean, neutral (default) |
+| `monokai` | Classic dark theme |
+| `dracula` | Vibrant dark theme |
+| `nord` | Arctic, blue-tinted |
+| `catppuccin-mocha` | Soothing pastel (dark) |
+| `catppuccin-latte` | Soothing pastel (light) |
+| `rose-pine` | Soho vibes |
+| `gruvbox` / `gruvbox-light` | Retro groove |
+| `tokyonight-night` | Tokyo city lights |
+| `solarized-dark` / `solarized-light` | Scientifically designed |
+
+See the [Chroma Style Gallery](https://xyproto.github.io/splash/docs/) for all available themes.
 
 ### Language Aliases
 

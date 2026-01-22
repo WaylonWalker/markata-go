@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // RSS represents an RSS 2.0 feed.
@@ -128,13 +128,14 @@ func postToRSSItem(post *models.Post, siteURL string) RSSItem {
 	}
 
 	// Get description (use post description or truncated content)
-	description := ""
-	if post.Description != nil {
+	var description string
+	switch {
+	case post.Description != nil:
 		description = escapeXML(*post.Description)
-	} else if post.ArticleHTML != "" {
+	case post.ArticleHTML != "":
 		// Use rendered HTML as description (truncated)
 		description = escapeXML(truncateHTML(post.ArticleHTML, 500))
-	} else {
+	default:
 		description = escapeXML(truncateText(post.Content, 500))
 	}
 
@@ -190,7 +191,7 @@ func getSiteDescription(config *lifecycle.Config) string {
 func escapeXML(s string) string {
 	// xml.EscapeString handles &, <, >, ", '
 	var buf strings.Builder
-	xml.EscapeText(&buf, []byte(s))
+	_ = xml.EscapeText(&buf, []byte(s)) //nolint:errcheck // writing to strings.Builder never fails
 	return buf.String()
 }
 

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // AutoTitlePlugin auto-generates human-readable titles for posts that don't have one.
@@ -81,7 +81,7 @@ func (p *AutoTitlePlugin) generateTitle(path string) string {
 func toTitleCase(s string) string {
 	words := strings.Fields(s)
 	for i, word := range words {
-		if len(word) == 0 {
+		if word == "" {
 			continue
 		}
 		// Capitalize first rune, lowercase the rest

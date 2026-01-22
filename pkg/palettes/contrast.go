@@ -79,7 +79,9 @@ func (p *Palette) CheckContrast() []ContrastCheck {
 // CheckContrastStrict checks both required and strict contrast ratios.
 // Returns a slice of ContrastCheck results including AAA level checks.
 func (p *Palette) CheckContrastStrict() []ContrastCheck {
-	allChecks := append(RequiredChecks, StrictChecks...)
+	allChecks := make([]ContrastCheckSpec, 0, len(RequiredChecks)+len(StrictChecks))
+	allChecks = append(allChecks, RequiredChecks...)
+	allChecks = append(allChecks, StrictChecks...)
 	return p.checkContrastWith(allChecks)
 }
 
@@ -90,7 +92,7 @@ func (p *Palette) CheckContrastWith(specs []ContrastCheckSpec) []ContrastCheck {
 
 // checkContrastWith performs contrast checks against given specs.
 func (p *Palette) checkContrastWith(specs []ContrastCheckSpec) []ContrastCheck {
-	var results []ContrastCheck
+	results := make([]ContrastCheck, 0, len(specs))
 
 	for _, spec := range specs {
 		result := p.checkSingleContrast(spec)
@@ -161,14 +163,16 @@ func SummarizeContrast(paletteName string, results []ContrastCheck) ContrastSumm
 		Total:   len(results),
 	}
 
-	for _, r := range results {
-		if r.ForegroundHex == "" || r.BackgroundHex == "" {
+	for i := range results {
+		r := &results[i]
+		switch {
+		case r.ForegroundHex == "" || r.BackgroundHex == "":
 			summary.Skipped++
-		} else if r.Passed {
+		case r.Passed:
 			summary.Passed++
-		} else {
+		default:
 			summary.Failed++
-			summary.FailedChecks = append(summary.FailedChecks, r)
+			summary.FailedChecks = append(summary.FailedChecks, *r)
 		}
 	}
 
@@ -213,7 +217,8 @@ func FormatContrastSummary(summary ContrastSummary) string {
 			result += fmt.Sprintf(", %d skipped (colors not found)", summary.Skipped)
 		}
 		result += "\n\nFailed checks:\n"
-		for _, fc := range summary.FailedChecks {
+		for i := range summary.FailedChecks {
+			fc := &summary.FailedChecks[i]
 			result += fmt.Sprintf("  %s on %s: %.1f:1 (required %.1f:1 for %s)\n",
 				fc.Foreground,
 				fc.Background,

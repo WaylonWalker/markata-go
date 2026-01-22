@@ -52,7 +52,9 @@ func TestApplyEnvOverrides_IntFields(t *testing.T) {
 	defer cleanup()
 
 	config := DefaultConfig()
-	ApplyEnvOverrides(config)
+	if err := ApplyEnvOverrides(config); err != nil {
+		t.Fatalf("ApplyEnvOverrides() error = %v", err)
+	}
 
 	if config.Concurrency != 8 {
 		t.Errorf("Concurrency = %d, want 8", config.Concurrency)
@@ -87,7 +89,9 @@ func TestApplyEnvOverrides_BoolFields(t *testing.T) {
 
 			config := DefaultConfig()
 			config.GlobConfig.UseGitignore = !tt.want // Set to opposite
-			ApplyEnvOverrides(config)
+			if err := ApplyEnvOverrides(config); err != nil {
+				t.Fatalf("ApplyEnvOverrides() error = %v", err)
+			}
 
 			if config.GlobConfig.UseGitignore != tt.want {
 				t.Errorf("UseGitignore = %v, want %v for input %q", config.GlobConfig.UseGitignore, tt.want, tt.value)
@@ -106,7 +110,9 @@ func TestApplyEnvOverrides_ListFields(t *testing.T) {
 	defer cleanup()
 
 	config := DefaultConfig()
-	ApplyEnvOverrides(config)
+	if err := ApplyEnvOverrides(config); err != nil {
+		t.Fatalf("ApplyEnvOverrides() error = %v", err)
+	}
 
 	tests := []struct {
 		field string
@@ -147,7 +153,9 @@ func TestApplyEnvOverrides_NestedFields(t *testing.T) {
 	defer cleanup()
 
 	config := DefaultConfig()
-	ApplyEnvOverrides(config)
+	if err := ApplyEnvOverrides(config); err != nil {
+		t.Fatalf("ApplyEnvOverrides() error = %v", err)
+	}
 
 	if config.FeedDefaults.ItemsPerPage != 25 {
 		t.Errorf("FeedDefaults.ItemsPerPage = %d, want 25", config.FeedDefaults.ItemsPerPage)
@@ -180,7 +188,9 @@ func TestApplyEnvOverrides_CaseInsensitive(t *testing.T) {
 	defer cleanup()
 
 	config := DefaultConfig()
-	ApplyEnvOverrides(config)
+	if err := ApplyEnvOverrides(config); err != nil {
+		t.Fatalf("ApplyEnvOverrides() error = %v", err)
+	}
 
 	if config.OutputDir != "lower" {
 		t.Errorf("OutputDir = %q, want %q", config.OutputDir, "lower")
@@ -277,7 +287,7 @@ func TestSetEnvValue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SetEnvValue() error = %v", err)
 	}
-	defer os.Unsetenv("MARKATA_GO_NEW_KEY")
+	defer func() { _ = os.Unsetenv("MARKATA_GO_NEW_KEY") }()
 
 	val, ok := GetEnvValue("NEW_KEY")
 	if !ok {
@@ -289,7 +299,7 @@ func TestSetEnvValue(t *testing.T) {
 }
 
 func TestUnsetEnvValue(t *testing.T) {
-	os.Setenv("MARKATA_GO_TO_UNSET", "value")
+	_ = os.Setenv("MARKATA_GO_TO_UNSET", "value")
 
 	err := UnsetEnvValue("TO_UNSET")
 	if err != nil {
@@ -309,7 +319,7 @@ func TestConfigFromEnv(t *testing.T) {
 	})
 	defer cleanup()
 
-	config := ConfigFromEnv()
+	config := FromEnv()
 
 	if config.OutputDir != "from-env" {
 		t.Errorf("OutputDir = %q, want %q", config.OutputDir, "from-env")
@@ -332,7 +342,9 @@ func TestApplyEnvOverrides_InvalidInt(t *testing.T) {
 
 	config := DefaultConfig()
 	config.Concurrency = 4 // Set a value
-	ApplyEnvOverrides(config)
+	if err := ApplyEnvOverrides(config); err != nil {
+		t.Fatalf("ApplyEnvOverrides() error = %v", err)
+	}
 
 	// Should remain unchanged when env value is invalid
 	if config.Concurrency != 4 {
@@ -348,7 +360,9 @@ func TestApplyEnvOverrides_EmptyList(t *testing.T) {
 
 	config := DefaultConfig()
 	config.Hooks = []string{"original"}
-	ApplyEnvOverrides(config)
+	if err := ApplyEnvOverrides(config); err != nil {
+		t.Fatalf("ApplyEnvOverrides() error = %v", err)
+	}
 
 	// Empty string should result in nil list, overwriting the original
 	if len(config.Hooks) != 0 {
@@ -364,7 +378,9 @@ func TestApplyEnvOverrides_AlternateKeyFormats(t *testing.T) {
 	defer cleanup()
 
 	config := DefaultConfig()
-	ApplyEnvOverrides(config)
+	if err := ApplyEnvOverrides(config); err != nil {
+		t.Fatalf("ApplyEnvOverrides() error = %v", err)
+	}
 
 	if config.FeedDefaults.ItemsPerPage != 50 {
 		t.Errorf("FeedDefaults.ItemsPerPage = %d, want 50", config.FeedDefaults.ItemsPerPage)
@@ -405,16 +421,16 @@ func setEnvVars(t *testing.T, vars map[string]string) func() {
 
 	// Set new values
 	for k, v := range vars {
-		os.Setenv(k, v)
+		_ = os.Setenv(k, v)
 	}
 
 	// Return cleanup function
 	return func() {
 		for k := range vars {
 			if exists[k] {
-				os.Setenv(k, originals[k])
+				_ = os.Setenv(k, originals[k])
 			} else {
-				os.Unsetenv(k)
+				_ = os.Unsetenv(k)
 			}
 		}
 	}

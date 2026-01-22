@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // MergeConfigs merges override configuration into base configuration.

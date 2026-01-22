@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/example/markata-go/pkg/lifecycle"
 )
 
 // GlobPlugin discovers content files using glob patterns.
@@ -107,14 +107,13 @@ func (p *GlobPlugin) isIgnored(path string) bool {
 		normalizedPattern := filepath.ToSlash(pattern)
 
 		// Handle directory patterns (ending with /)
-		if strings.HasSuffix(normalizedPattern, "/") {
-			normalizedPattern = normalizedPattern[:len(normalizedPattern)-1]
-		}
+		normalizedPattern = strings.TrimSuffix(normalizedPattern, "/")
 
 		// Try different matching strategies
 
 		// 1. Direct match with the pattern
-		if matched, _ := doublestar.Match(normalizedPattern, normalizedPath); matched {
+		matched, err := doublestar.Match(normalizedPattern, normalizedPath)
+		if err == nil && matched {
 			return true
 		}
 
@@ -125,13 +124,15 @@ func (p *GlobPlugin) isIgnored(path string) bool {
 
 		// 3. Match against just the filename
 		filename := filepath.Base(normalizedPath)
-		if matched, _ := doublestar.Match(normalizedPattern, filename); matched {
+		matched, err = doublestar.Match(normalizedPattern, filename)
+		if err == nil && matched {
 			return true
 		}
 
 		// 4. Try with **/ prefix for patterns that should match anywhere
 		if !strings.HasPrefix(normalizedPattern, "**/") && !strings.HasPrefix(normalizedPattern, "/") {
-			if matched, _ := doublestar.Match("**/"+normalizedPattern, normalizedPath); matched {
+			matched, err = doublestar.Match("**/"+normalizedPattern, normalizedPath)
+			if err == nil && matched {
 				return true
 			}
 		}

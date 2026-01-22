@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // ValidationError represents a configuration validation error.
@@ -62,8 +62,8 @@ func ValidateConfig(config *models.Config) []error {
 
 	// Validate feed configurations
 	// Apply feed defaults before validation so we can check effective values
-	for i, feed := range config.Feeds {
-		feedWithDefaults := feed
+	for i := range config.Feeds {
+		feedWithDefaults := config.Feeds[i]
 		feedWithDefaults.ApplyDefaults(config.FeedDefaults)
 		feedErrs := validateFeedConfig(i, &feedWithDefaults)
 		errs = append(errs, feedErrs...)

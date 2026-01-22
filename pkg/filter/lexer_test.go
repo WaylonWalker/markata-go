@@ -12,70 +12,70 @@ func TestLexer_BasicTokens(t *testing.T) {
 		{
 			input: "published == True",
 			expected: []Token{
-				{Type: TOKEN_IDENTIFIER, Value: "published"},
-				{Type: TOKEN_COMPARE_OP, Value: "=="},
-				{Type: TOKEN_BOOL, Value: "True", Literal: true},
-				{Type: TOKEN_EOF},
+				{Type: TokenIdentifier, Value: "published"},
+				{Type: TokenCompareOp, Value: "=="},
+				{Type: TokenBool, Value: "True", Literal: true},
+				{Type: TokenEOF},
 			},
 		},
 		{
 			input: "'python' in tags",
 			expected: []Token{
-				{Type: TOKEN_STRING, Value: "python", Literal: "python"},
-				{Type: TOKEN_IN, Value: "in"},
-				{Type: TOKEN_IDENTIFIER, Value: "tags"},
-				{Type: TOKEN_EOF},
+				{Type: TokenString, Value: "python", Literal: "python"},
+				{Type: TokenIn, Value: "in"},
+				{Type: TokenIdentifier, Value: "tags"},
+				{Type: TokenEOF},
 			},
 		},
 		{
 			input: "date <= today",
 			expected: []Token{
-				{Type: TOKEN_IDENTIFIER, Value: "date"},
-				{Type: TOKEN_COMPARE_OP, Value: "<="},
-				{Type: TOKEN_TODAY, Value: "today"},
-				{Type: TOKEN_EOF},
+				{Type: TokenIdentifier, Value: "date"},
+				{Type: TokenCompareOp, Value: "<="},
+				{Type: TokenToday, Value: "today"},
+				{Type: TokenEOF},
 			},
 		},
 		{
 			input: "not draft",
 			expected: []Token{
-				{Type: TOKEN_NOT, Value: "not"},
-				{Type: TOKEN_IDENTIFIER, Value: "draft"},
-				{Type: TOKEN_EOF},
+				{Type: TokenNot, Value: "not"},
+				{Type: TokenIdentifier, Value: "draft"},
+				{Type: TokenEOF},
 			},
 		},
 		{
 			input: "title.startswith('How')",
 			expected: []Token{
-				{Type: TOKEN_IDENTIFIER, Value: "title"},
-				{Type: TOKEN_DOT, Value: "."},
-				{Type: TOKEN_IDENTIFIER, Value: "startswith"},
-				{Type: TOKEN_LPAREN, Value: "("},
-				{Type: TOKEN_STRING, Value: "How", Literal: "How"},
-				{Type: TOKEN_RPAREN, Value: ")"},
-				{Type: TOKEN_EOF},
+				{Type: TokenIdentifier, Value: "title"},
+				{Type: TokenDot, Value: "."},
+				{Type: TokenIdentifier, Value: "startswith"},
+				{Type: TokenLParen, Value: "("},
+				{Type: TokenString, Value: "How", Literal: "How"},
+				{Type: TokenRParen, Value: ")"},
+				{Type: TokenEOF},
 			},
 		},
 		{
 			input: "word_count > 400",
 			expected: []Token{
-				{Type: TOKEN_IDENTIFIER, Value: "word_count"},
-				{Type: TOKEN_COMPARE_OP, Value: ">"},
-				{Type: TOKEN_NUMBER, Value: "400", Literal: int64(400)},
-				{Type: TOKEN_EOF},
+				{Type: TokenIdentifier, Value: "word_count"},
+				{Type: TokenCompareOp, Value: ">"},
+				{Type: TokenNumber, Value: "400", Literal: int64(400)},
+				{Type: TokenEOF},
 			},
 		},
 		{
 			input: "status == 'draft' or status == 'review'",
 			expected: []Token{
-				{Type: TOKEN_IDENTIFIER, Value: "status"},
-				{Type: TOKEN_COMPARE_OP, Value: "=="},
-				{Type: TOKEN_STRING, Value: "draft", Literal: "draft"},
-				{Type: TOKEN_LOGIC_OP, Value: "or"},
-				{Type: TOKEN_IDENTIFIER, Value: "status"},
-				{Type: TOKEN_COMPARE_OP, Value: "=="},
-				{Type: TOKEN_STRING, Value: "review", Literal: "review"},
-				{Type: TOKEN_EOF},
+				{Type: TokenIdentifier, Value: "status"},
+				{Type: TokenCompareOp, Value: "=="},
+				{Type: TokenString, Value: "draft", Literal: "draft"},
+				{Type: TokenLogicOp, Value: "or"},
+				{Type: TokenIdentifier, Value: "status"},
+				{Type: TokenCompareOp, Value: "=="},
+				{Type: TokenString, Value: "review", Literal: "review"},
+				{Type: TokenEOF},
 			},
 		},
 	}
@@ -127,7 +127,7 @@ func TestLexer_Numbers(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if tok.Type != TOKEN_NUMBER {
+			if tok.Type != TokenNumber {
 				t.Errorf("expected NUMBER, got %v", tok.Type)
 			}
 			if tok.Literal != tt.literal {
@@ -157,7 +157,7 @@ func TestLexer_Strings(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if tok.Type != TOKEN_STRING {
+			if tok.Type != TokenString {
 				t.Errorf("expected STRING, got %v", tok.Type)
 			}
 			if tok.Literal != tt.expected {
@@ -173,15 +173,15 @@ func TestLexer_Keywords(t *testing.T) {
 		tokenType   TokenType
 		boolLiteral *bool
 	}{
-		{"True", TOKEN_BOOL, boolPtr(true)},
-		{"False", TOKEN_BOOL, boolPtr(false)},
-		{"None", TOKEN_NONE, nil},
-		{"and", TOKEN_LOGIC_OP, nil},
-		{"or", TOKEN_LOGIC_OP, nil},
-		{"not", TOKEN_NOT, nil},
-		{"in", TOKEN_IN, nil},
-		{"today", TOKEN_TODAY, nil},
-		{"now", TOKEN_NOW, nil},
+		{"True", TokenBool, boolPtr(true)},
+		{"False", TokenBool, boolPtr(false)},
+		{"None", TokenNone, nil},
+		{"and", TokenLogicOp, nil},
+		{"or", TokenLogicOp, nil},
+		{"not", TokenNot, nil},
+		{"in", TokenIn, nil},
+		{"today", TokenToday, nil},
+		{"now", TokenNow, nil},
 	}
 
 	for _, tt := range tests {

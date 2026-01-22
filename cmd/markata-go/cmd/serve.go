@@ -14,9 +14,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/example/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
+)
+
+// HTTP server timeout constants.
+const (
+	serverReadHeaderTimeout = 10 * time.Second
 )
 
 var (
@@ -65,7 +70,7 @@ func init() {
 	serveCmd.Flags().BoolVar(&serveNoWatch, "no-watch", false, "disable file watching")
 }
 
-func runServeCommand(cmd *cobra.Command, args []string) error {
+func runServeCommand(_ *cobra.Command, _ []string) error {
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -146,8 +151,9 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	handler := createHandler(outputPath)
 
 	server := &http.Server{
-		Addr:    addr,
-		Handler: handler,
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: serverReadHeaderTimeout,
 	}
 
 	// Start server in goroutine
@@ -252,16 +258,19 @@ func serveHTMLWithLiveReload(w http.ResponseWriter, path string) {
 </script>`
 
 	html := string(content)
-	if strings.Contains(html, "</body>") {
+	switch {
+	case strings.Contains(html, "</body>"):
 		html = strings.Replace(html, "</body>", liveReloadScript+"</body>", 1)
-	} else if strings.Contains(html, "</html>") {
+	case strings.Contains(html, "</html>"):
 		html = strings.Replace(html, "</html>", liveReloadScript+"</html>", 1)
-	} else {
-		html = html + liveReloadScript
+	default:
+		html += liveReloadScript
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil && verbose {
+		fmt.Printf("Error writing response: %v\n", err)
+	}
 }
 
 // Live reload clients

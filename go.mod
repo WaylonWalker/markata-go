@@ -1,4 +1,4 @@
-module github.com/example/markata-go
+module github.com/WaylonWalker/markata-go
 
 go 1.22.2
 

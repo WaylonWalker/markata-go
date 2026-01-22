@@ -4,53 +4,64 @@ package plugins
 import (
 	"sync"
 
-	"github.com/example/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 )
 
 // pluginRegistry holds all registered plugin constructors.
+// The registry is initialized lazily via ensureRegistryInitialized().
 var pluginRegistry = struct {
 	sync.RWMutex
 	constructors map[string]func() lifecycle.Plugin
+	initialized  bool
 }{
 	constructors: make(map[string]func() lifecycle.Plugin),
 }
 
-func init() {
-	// Register all built-in plugins
-	registerBuiltinPlugins()
+// ensureRegistryInitialized registers all built-in plugins if not already done.
+// This replaces the init() function to satisfy gochecknoinits linter.
+func ensureRegistryInitialized() {
+	pluginRegistry.Lock()
+	defer pluginRegistry.Unlock()
+	if !pluginRegistry.initialized {
+		registerBuiltinPluginsLocked()
+		pluginRegistry.initialized = true
+	}
 }
 
-// registerBuiltinPlugins registers all built-in plugins with the registry.
-func registerBuiltinPlugins() {
-	RegisterPluginConstructor("glob", func() lifecycle.Plugin { return NewGlobPlugin() })
-	RegisterPluginConstructor("load", func() lifecycle.Plugin { return NewLoadPlugin() })
-	RegisterPluginConstructor("jinja_md", func() lifecycle.Plugin { return NewJinjaMdPlugin() })
-	RegisterPluginConstructor("render_markdown", func() lifecycle.Plugin { return NewRenderMarkdownPlugin() })
-	RegisterPluginConstructor("templates", func() lifecycle.Plugin { return NewTemplatesPlugin() })
-	RegisterPluginConstructor("feeds", func() lifecycle.Plugin { return NewFeedsPlugin() })
-	RegisterPluginConstructor("auto_feeds", func() lifecycle.Plugin { return NewAutoFeedsPlugin() })
-	RegisterPluginConstructor("publish_feeds", func() lifecycle.Plugin { return NewPublishFeedsPlugin() })
-	RegisterPluginConstructor("publish_html", func() lifecycle.Plugin { return NewPublishHTMLPlugin() })
-	RegisterPluginConstructor("sitemap", func() lifecycle.Plugin { return NewSitemapPlugin() })
-	RegisterPluginConstructor("wikilinks", func() lifecycle.Plugin { return NewWikilinksPlugin() })
-	RegisterPluginConstructor("toc", func() lifecycle.Plugin { return NewTocPlugin() })
-	RegisterPluginConstructor("description", func() lifecycle.Plugin { return NewDescriptionPlugin() })
-	RegisterPluginConstructor("auto_title", func() lifecycle.Plugin { return NewAutoTitlePlugin() })
-	RegisterPluginConstructor("reading_time", func() lifecycle.Plugin { return NewReadingTimePlugin() })
-	RegisterPluginConstructor("static_assets", func() lifecycle.Plugin { return NewStaticAssetsPlugin() })
-	RegisterPluginConstructor("palette_css", func() lifecycle.Plugin { return NewPaletteCSSPlugin() })
-	RegisterPluginConstructor("prevnext", func() lifecycle.Plugin { return NewPrevNextPlugin() })
-	RegisterPluginConstructor("heading_anchors", func() lifecycle.Plugin { return NewHeadingAnchorsPlugin() })
-	RegisterPluginConstructor("redirects", func() lifecycle.Plugin { return NewRedirectsPlugin() })
-	RegisterPluginConstructor("csv_fence", func() lifecycle.Plugin { return NewCSVFencePlugin() })
-	RegisterPluginConstructor("mermaid", func() lifecycle.Plugin { return NewMermaidPlugin() })
-	RegisterPluginConstructor("link_collector", func() lifecycle.Plugin { return NewLinkCollectorPlugin() })
-	RegisterPluginConstructor("glossary", func() lifecycle.Plugin { return NewGlossaryPlugin() })
+// registerBuiltinPluginsLocked registers all built-in plugins with the registry.
+// Must be called with pluginRegistry.Lock held.
+func registerBuiltinPluginsLocked() {
+	pluginRegistry.constructors["glob"] = func() lifecycle.Plugin { return NewGlobPlugin() }
+	pluginRegistry.constructors["load"] = func() lifecycle.Plugin { return NewLoadPlugin() }
+	pluginRegistry.constructors["jinja_md"] = func() lifecycle.Plugin { return NewJinjaMdPlugin() }
+	pluginRegistry.constructors["render_markdown"] = func() lifecycle.Plugin { return NewRenderMarkdownPlugin() }
+	pluginRegistry.constructors[PluginNameTemplates] = func() lifecycle.Plugin { return NewTemplatesPlugin() }
+	pluginRegistry.constructors["feeds"] = func() lifecycle.Plugin { return NewFeedsPlugin() }
+	pluginRegistry.constructors["auto_feeds"] = func() lifecycle.Plugin { return NewAutoFeedsPlugin() }
+	pluginRegistry.constructors["publish_feeds"] = func() lifecycle.Plugin { return NewPublishFeedsPlugin() }
+	pluginRegistry.constructors["publish_html"] = func() lifecycle.Plugin { return NewPublishHTMLPlugin() }
+	pluginRegistry.constructors["sitemap"] = func() lifecycle.Plugin { return NewSitemapPlugin() }
+	pluginRegistry.constructors["wikilinks"] = func() lifecycle.Plugin { return NewWikilinksPlugin() }
+	pluginRegistry.constructors["toc"] = func() lifecycle.Plugin { return NewTocPlugin() }
+	pluginRegistry.constructors["description"] = func() lifecycle.Plugin { return NewDescriptionPlugin() }
+	pluginRegistry.constructors["auto_title"] = func() lifecycle.Plugin { return NewAutoTitlePlugin() }
+	pluginRegistry.constructors["reading_time"] = func() lifecycle.Plugin { return NewReadingTimePlugin() }
+	pluginRegistry.constructors["static_assets"] = func() lifecycle.Plugin { return NewStaticAssetsPlugin() }
+	pluginRegistry.constructors["palette_css"] = func() lifecycle.Plugin { return NewPaletteCSSPlugin() }
+	pluginRegistry.constructors["prevnext"] = func() lifecycle.Plugin { return NewPrevNextPlugin() }
+	pluginRegistry.constructors["heading_anchors"] = func() lifecycle.Plugin { return NewHeadingAnchorsPlugin() }
+	pluginRegistry.constructors["redirects"] = func() lifecycle.Plugin { return NewRedirectsPlugin() }
+	pluginRegistry.constructors["csv_fence"] = func() lifecycle.Plugin { return NewCSVFencePlugin() }
+	pluginRegistry.constructors["mermaid"] = func() lifecycle.Plugin { return NewMermaidPlugin() }
+	pluginRegistry.constructors["link_collector"] = func() lifecycle.Plugin { return NewLinkCollectorPlugin() }
+	pluginRegistry.constructors["glossary"] = func() lifecycle.Plugin { return NewGlossaryPlugin() }
+	pluginRegistry.constructors["md_video"] = func() lifecycle.Plugin { return NewMDVideoPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
 // This allows third-party plugins to be registered and used by name.
 func RegisterPluginConstructor(name string, constructor func() lifecycle.Plugin) {
+	ensureRegistryInitialized()
 	pluginRegistry.Lock()
 	defer pluginRegistry.Unlock()
 	pluginRegistry.constructors[name] = constructor
@@ -59,6 +70,7 @@ func RegisterPluginConstructor(name string, constructor func() lifecycle.Plugin)
 // PluginByName returns a new instance of a plugin by its name.
 // Returns the plugin and true if found, or nil and false if not found.
 func PluginByName(name string) (lifecycle.Plugin, bool) {
+	ensureRegistryInitialized()
 	pluginRegistry.RLock()
 	defer pluginRegistry.RUnlock()
 
@@ -72,6 +84,7 @@ func PluginByName(name string) (lifecycle.Plugin, bool) {
 
 // RegisteredPlugins returns a list of all registered plugin names.
 func RegisteredPlugins() []string {
+	ensureRegistryInitialized()
 	pluginRegistry.RLock()
 	defer pluginRegistry.RUnlock()
 
@@ -104,6 +117,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		// Render stage plugins
 		NewRenderMarkdownPlugin(),
 		NewHeadingAnchorsPlugin(), // Add anchors after markdown rendering
+		NewMDVideoPlugin(),        // Convert video images to video tags
 		NewLinkCollectorPlugin(),  // Collect links after markdown rendering
 		NewTemplatesPlugin(),
 
@@ -147,11 +161,11 @@ func TransformPlugins() []lifecycle.Plugin {
 	}
 }
 
-// PluginsByNames creates plugin instances from a list of names.
+// ByNames creates plugin instances from a list of names.
 // Unknown plugin names are skipped with a warning returned.
-func PluginsByNames(names []string) ([]lifecycle.Plugin, []string) {
-	plugins := make([]lifecycle.Plugin, 0, len(names))
-	warnings := make([]string, 0)
+func ByNames(names []string) (pluginList []lifecycle.Plugin, warnings []string) {
+	pluginList = make([]lifecycle.Plugin, 0, len(names))
+	warnings = make([]string, 0)
 
 	for _, name := range names {
 		plugin, ok := PluginByName(name)
@@ -159,8 +173,8 @@ func PluginsByNames(names []string) ([]lifecycle.Plugin, []string) {
 			warnings = append(warnings, "unknown plugin: "+name)
 			continue
 		}
-		plugins = append(plugins, plugin)
+		pluginList = append(pluginList, plugin)
 	}
 
-	return plugins, warnings
+	return pluginList, warnings
 }

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // =============================================================================
@@ -497,7 +497,7 @@ func TestWikilinksPlugin_MissingPostNoWarningWhenDisabled(t *testing.T) {
 }
 
 // Interface compliance tests
-func TestWikilinksPlugin_Interfaces(t *testing.T) {
+func TestWikilinksPlugin_Interfaces(_ *testing.T) {
 	p := NewWikilinksPlugin()
 
 	var _ lifecycle.Plugin = p

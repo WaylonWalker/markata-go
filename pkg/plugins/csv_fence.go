@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // CSVFencePlugin converts CSV code blocks into HTML tables.
@@ -76,7 +76,7 @@ func (p *CSVFencePlugin) Configure(m *lifecycle.Manager) error {
 		if hasHeader, ok := cfgMap["has_header"].(bool); ok {
 			p.hasHeader = hasHeader
 		}
-		if delimiter, ok := cfgMap["delimiter"].(string); ok && len(delimiter) > 0 {
+		if delimiter, ok := cfgMap["delimiter"].(string); ok && delimiter != "" {
 			p.delimiter = rune(delimiter[0])
 		}
 	}
@@ -142,11 +142,11 @@ func (p *CSVFencePlugin) processCSVBlock(match string) string {
 			value := opt[2]
 			switch key {
 			case "delimiter":
-				if len(value) > 0 {
+				if value != "" {
 					delimiter = rune(value[0])
 				}
 			case "has_header":
-				hasHeader = value == "true"
+				hasHeader = value == BoolTrue
 			case "table_class":
 				tableClass = value
 			}

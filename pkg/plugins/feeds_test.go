@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // =============================================================================
@@ -336,7 +336,7 @@ func TestFeedsPlugin_OrphanThreshold(t *testing.T) {
 	}
 
 	cached, _ := m.Cache().Get("feed_configs")
-	feedConfigs := cached.([]models.FeedConfig)
+	feedConfigs, _ := cached.([]models.FeedConfig) //nolint:errcheck // test code
 	fc := feedConfigs[0]
 
 	// With 12 posts, 5 per page, and orphan threshold 3:
@@ -398,7 +398,7 @@ func TestFeedsPlugin_FeedDefaults(t *testing.T) {
 	}
 
 	cached, _ := m.Cache().Get("feed_configs")
-	feedConfigs := cached.([]models.FeedConfig)
+	feedConfigs, _ := cached.([]models.FeedConfig) //nolint:errcheck // test code
 	fc := feedConfigs[0]
 
 	// Should have inherited ItemsPerPage = 10
@@ -584,7 +584,7 @@ func TestFeedsPlugin_NoPosts(t *testing.T) {
 
 	// Check that pagination creates empty pages slice
 	cached, _ := m.Cache().Get("feed_configs")
-	feedConfigs := cached.([]models.FeedConfig)
+	feedConfigs, _ := cached.([]models.FeedConfig) //nolint:errcheck // test code
 	if len(feedConfigs[0].Pages) != 0 {
 		t.Errorf("expected 0 pages for empty feed, got %d", len(feedConfigs[0].Pages))
 	}
@@ -716,7 +716,7 @@ func TestFeedsPlugin_PageNavigation(t *testing.T) {
 	}
 
 	cached, _ := m.Cache().Get("feed_configs")
-	feedConfigs := cached.([]models.FeedConfig)
+	feedConfigs, _ := cached.([]models.FeedConfig) //nolint:errcheck // test code
 	fc := feedConfigs[0]
 
 	if len(fc.Pages) != 2 {
@@ -940,7 +940,7 @@ func TestCompareFieldValues(t *testing.T) {
 // Interface Compliance
 // =============================================================================
 
-func TestFeedsPlugin_ImplementsInterfaces(t *testing.T) {
+func TestFeedsPlugin_ImplementsInterfaces(_ *testing.T) {
 	var _ lifecycle.Plugin = (*FeedsPlugin)(nil)
 	var _ lifecycle.CollectPlugin = (*FeedsPlugin)(nil)
 }

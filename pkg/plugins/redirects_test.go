@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/example/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 )
 
 // TestRedirectsPlugin_Name tests the plugin name.
@@ -145,8 +145,8 @@ func TestRedirectsPlugin_Write(t *testing.T) {
 	tmpDir := t.TempDir()
 	staticDir := filepath.Join(tmpDir, "static")
 	outputDir := filepath.Join(tmpDir, "output")
-	os.MkdirAll(staticDir, 0755)
-	os.MkdirAll(outputDir, 0755)
+	_ = os.MkdirAll(staticDir, 0o755) //nolint:errcheck // test setup
+	_ = os.MkdirAll(outputDir, 0o755) //nolint:errcheck // test setup
 
 	// Create redirects file
 	redirectsContent := `# Blog migration
@@ -155,7 +155,8 @@ func TestRedirectsPlugin_Write(t *testing.T) {
 /blog/2023/article    /posts/article
 `
 	redirectsFile := filepath.Join(staticDir, "_redirects")
-	if err := os.WriteFile(redirectsFile, []byte(redirectsContent), 0644); err != nil {
+	//nolint:gosec // test file
+	if err := os.WriteFile(redirectsFile, []byte(redirectsContent), 0o644); err != nil {
 		t.Fatalf("failed to create redirects file: %v", err)
 	}
 
@@ -230,7 +231,7 @@ func TestRedirectsPlugin_Write(t *testing.T) {
 func TestRedirectsPlugin_Write_MissingFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputDir := filepath.Join(tmpDir, "output")
-	os.MkdirAll(outputDir, 0755)
+	_ = os.MkdirAll(outputDir, 0o755) //nolint:errcheck // test setup
 
 	m := lifecycle.NewManager()
 	cfg := m.Config()
@@ -251,11 +252,12 @@ func TestRedirectsPlugin_Write_MissingFile(t *testing.T) {
 func TestRedirectsPlugin_Write_EmptyFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputDir := filepath.Join(tmpDir, "output")
-	os.MkdirAll(outputDir, 0755)
+	_ = os.MkdirAll(outputDir, 0o755) //nolint:errcheck // test setup
 
 	// Create empty redirects file
 	redirectsFile := filepath.Join(tmpDir, "_redirects")
-	if err := os.WriteFile(redirectsFile, []byte(""), 0644); err != nil {
+	//nolint:gosec // test file
+	if err := os.WriteFile(redirectsFile, []byte(""), 0o644); err != nil {
 		t.Fatalf("failed to create redirects file: %v", err)
 	}
 
@@ -273,7 +275,7 @@ func TestRedirectsPlugin_Write_EmptyFile(t *testing.T) {
 	}
 
 	// Output dir should have no redirect files
-	entries, _ := os.ReadDir(outputDir)
+	entries, _ := os.ReadDir(outputDir) //nolint:errcheck // test code
 	if len(entries) > 0 {
 		t.Errorf("expected no files in output dir for empty redirects, got %d entries", len(entries))
 	}
@@ -283,11 +285,12 @@ func TestRedirectsPlugin_Write_EmptyFile(t *testing.T) {
 func TestRedirectsPlugin_Write_CustomTemplate(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputDir := filepath.Join(tmpDir, "output")
-	os.MkdirAll(outputDir, 0755)
+	_ = os.MkdirAll(outputDir, 0o755) //nolint:errcheck // test setup
 
 	// Create redirects file
 	redirectsFile := filepath.Join(tmpDir, "_redirects")
-	if err := os.WriteFile(redirectsFile, []byte("/old /new"), 0644); err != nil {
+	//nolint:gosec // test file
+	if err := os.WriteFile(redirectsFile, []byte("/old /new"), 0o644); err != nil {
 		t.Fatalf("failed to create redirects file: %v", err)
 	}
 
@@ -298,7 +301,8 @@ func TestRedirectsPlugin_Write_CustomTemplate(t *testing.T) {
 <body>CUSTOM: {{ .Original }} -> {{ .New }}</body>
 </html>`
 	templateFile := filepath.Join(tmpDir, "redirect.html")
-	if err := os.WriteFile(templateFile, []byte(customTemplate), 0644); err != nil {
+	//nolint:gosec // test file
+	if err := os.WriteFile(templateFile, []byte(customTemplate), 0o644); err != nil {
 		t.Fatalf("failed to create template file: %v", err)
 	}
 
@@ -420,11 +424,12 @@ func TestRedirectsPlugin_Priority(t *testing.T) {
 func TestRedirectsPlugin_Write_Caching(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputDir := filepath.Join(tmpDir, "output")
-	os.MkdirAll(outputDir, 0755)
+	_ = os.MkdirAll(outputDir, 0o755) //nolint:errcheck // test setup
 
 	// Create redirects file
 	redirectsFile := filepath.Join(tmpDir, "_redirects")
-	if err := os.WriteFile(redirectsFile, []byte("/old /new"), 0644); err != nil {
+	//nolint:gosec // test file
+	if err := os.WriteFile(redirectsFile, []byte("/old /new"), 0o644); err != nil {
 		t.Fatalf("failed to create redirects file: %v", err)
 	}
 
@@ -466,13 +471,14 @@ func TestRedirectsPlugin_Write_Caching(t *testing.T) {
 func TestRedirectsPlugin_Write_NestedPaths(t *testing.T) {
 	tmpDir := t.TempDir()
 	outputDir := filepath.Join(tmpDir, "output")
-	os.MkdirAll(outputDir, 0755)
+	_ = os.MkdirAll(outputDir, 0o755) //nolint:errcheck // test setup
 
 	// Create redirects file with nested paths
 	redirectsContent := `/a/b/c/d/e    /target
 /deep/nested/path/here    /simple`
 	redirectsFile := filepath.Join(tmpDir, "_redirects")
-	if err := os.WriteFile(redirectsFile, []byte(redirectsContent), 0644); err != nil {
+	//nolint:gosec // test file
+	if err := os.WriteFile(redirectsFile, []byte(redirectsContent), 0o644); err != nil {
 		t.Fatalf("failed to create redirects file: %v", err)
 	}
 

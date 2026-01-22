@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/example/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 )
 
 // Redirect represents a single URL redirect rule.
@@ -216,7 +216,7 @@ func (p *RedirectsPlugin) writeRedirect(redirect Redirect, tmpl *template.Templa
 	postDir := filepath.Join(outputDir, relativePath)
 
 	// Create directory
-	if err := os.MkdirAll(postDir, 0755); err != nil {
+	if err := os.MkdirAll(postDir, 0o755); err != nil {
 		return fmt.Errorf("creating directory %s: %w", postDir, err)
 	}
 
@@ -239,7 +239,8 @@ func (p *RedirectsPlugin) writeRedirect(redirect Redirect, tmpl *template.Templa
 
 	// Write index.html
 	outputPath := filepath.Join(postDir, "index.html")
-	if err := os.WriteFile(outputPath, buf.Bytes(), 0644); err != nil {
+	//nolint:gosec // G306: HTML output files need 0644 for web serving
+	if err := os.WriteFile(outputPath, buf.Bytes(), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", outputPath, err)
 	}
 

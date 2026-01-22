@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/example/markata-go/pkg/config"
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
-	"github.com/example/markata-go/pkg/plugins"
+	"github.com/WaylonWalker/markata-go/pkg/config"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/plugins"
 )
 
 // =============================================================================
@@ -35,7 +35,7 @@ func newTestSite(t *testing.T) *testSite {
 	dir := t.TempDir()
 
 	contentDir := filepath.Join(dir, "content")
-	if err := os.MkdirAll(contentDir, 0755); err != nil {
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
 		t.Fatalf("failed to create content dir: %v", err)
 	}
 
@@ -54,10 +54,10 @@ func (s *testSite) addPost(path, content string) {
 	s.t.Helper()
 	fullPath := filepath.Join(s.contentDir, path)
 	dir := filepath.Dir(fullPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		s.t.Fatalf("failed to create dir %s: %v", dir, err)
 	}
-	if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(fullPath, []byte(content), 0o600); err != nil {
 		s.t.Fatalf("failed to write %s: %v", path, err)
 	}
 }
@@ -66,7 +66,7 @@ func (s *testSite) addPost(path, content string) {
 func (s *testSite) addConfig(content string) {
 	s.t.Helper()
 	configPath := filepath.Join(s.dir, "markata-go.toml")
-	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		s.t.Fatalf("failed to write config: %v", err)
 	}
 }
@@ -827,7 +827,7 @@ Content`)
 
 	// Build may succeed with warnings or fail depending on strictness
 	// The key is it shouldn't panic
-	_ = m.Run()
+	_ = m.Run() //nolint:errcheck // intentionally ignoring error in test
 
 	// Valid post should still be processed
 	warnings := m.Warnings()

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestRenderMarkdownPlugin_Name(t *testing.T) {
@@ -425,11 +425,219 @@ func TestRenderMarkdownPlugin_AdmonitionInvalidType(t *testing.T) {
 
 // Interface compliance tests
 
-func TestRenderMarkdownPlugin_Interfaces(t *testing.T) {
+func TestRenderMarkdownPlugin_Interfaces(_ *testing.T) {
 	p := NewRenderMarkdownPlugin()
 
 	// Verify interface compliance
 	var _ lifecycle.Plugin = p
 	var _ lifecycle.ConfigurePlugin = p
 	var _ lifecycle.RenderPlugin = p
+}
+
+// Highlight configuration tests
+
+func TestRenderMarkdownPlugin_ConfigureWithPalette(t *testing.T) {
+	tests := []struct {
+		name        string
+		extra       map[string]interface{}
+		wantContain string // string that should be in rendered code
+	}{
+		{
+			name: "catppuccin-mocha palette",
+			extra: map[string]interface{}{
+				"theme": map[string]interface{}{
+					"palette": "catppuccin-mocha",
+				},
+			},
+			wantContain: "background-color:", // Chroma adds inline styles
+		},
+		{
+			name: "explicit theme override",
+			extra: map[string]interface{}{
+				"theme": map[string]interface{}{
+					"palette": "catppuccin-mocha",
+				},
+				"markdown": map[string]interface{}{
+					"highlight": map[string]interface{}{
+						"theme": "dracula",
+					},
+				},
+			},
+			wantContain: "#282a36", // Dracula background color
+		},
+		{
+			name:        "no config uses default",
+			extra:       map[string]interface{}{},
+			wantContain: "background-color:",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewRenderMarkdownPlugin()
+			m := lifecycle.NewManager()
+			m.Config().Extra = tt.extra
+
+			err := p.Configure(m)
+			if err != nil {
+				t.Fatalf("Configure error: %v", err)
+			}
+
+			// Verify rendering works with the configured theme
+			post := &models.Post{Content: "```go\nfunc main() {}\n```"}
+			err = p.renderPost(post)
+			if err != nil {
+				t.Fatalf("renderPost error: %v", err)
+			}
+
+			if !strings.Contains(post.ArticleHTML, tt.wantContain) {
+				t.Errorf("expected %q in output, got %q", tt.wantContain, post.ArticleHTML)
+			}
+		})
+	}
+}
+
+func TestRenderMarkdownPlugin_ResolveHighlightConfig(t *testing.T) {
+	tests := []struct {
+		name      string
+		extra     map[string]interface{}
+		wantTheme string
+		wantLN    bool
+	}{
+		{
+			name:      "empty config - default dark theme",
+			extra:     map[string]interface{}{},
+			wantTheme: "github-dark", // Default for dark variant
+			wantLN:    false,
+		},
+		{
+			name: "explicit theme",
+			extra: map[string]interface{}{
+				"markdown": map[string]interface{}{
+					"highlight": map[string]interface{}{
+						"theme": "monokai",
+					},
+				},
+			},
+			wantTheme: "monokai",
+			wantLN:    false,
+		},
+		{
+			name: "line numbers enabled",
+			extra: map[string]interface{}{
+				"markdown": map[string]interface{}{
+					"highlight": map[string]interface{}{
+						"theme":        "dracula",
+						"line_numbers": true,
+					},
+				},
+			},
+			wantTheme: "dracula",
+			wantLN:    true,
+		},
+		{
+			name: "palette-derived theme - catppuccin-mocha",
+			extra: map[string]interface{}{
+				"theme": map[string]interface{}{
+					"palette": "catppuccin-mocha",
+				},
+			},
+			wantTheme: "catppuccin-mocha",
+			wantLN:    false,
+		},
+		{
+			name: "palette-derived theme - gruvbox-light",
+			extra: map[string]interface{}{
+				"theme": map[string]interface{}{
+					"palette": "gruvbox-light",
+				},
+			},
+			wantTheme: "gruvbox-light",
+			wantLN:    false,
+		},
+		{
+			name: "explicit theme overrides palette",
+			extra: map[string]interface{}{
+				"theme": map[string]interface{}{
+					"palette": "catppuccin-mocha",
+				},
+				"markdown": map[string]interface{}{
+					"highlight": map[string]interface{}{
+						"theme": "nord",
+					},
+				},
+			},
+			wantTheme: "nord",
+			wantLN:    false,
+		},
+		{
+			name: "unknown palette uses variant default - light",
+			extra: map[string]interface{}{
+				"theme": map[string]interface{}{
+					"palette": "custom-light-theme",
+				},
+			},
+			wantTheme: "github", // Light variant default
+			wantLN:    false,
+		},
+		{
+			name: "unknown palette uses variant default - dark",
+			extra: map[string]interface{}{
+				"theme": map[string]interface{}{
+					"palette": "custom-dark-theme",
+				},
+			},
+			wantTheme: "github-dark", // Dark variant default
+			wantLN:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewRenderMarkdownPlugin()
+			gotTheme, gotLN := p.resolveHighlightConfig(tt.extra)
+
+			if gotTheme != tt.wantTheme {
+				t.Errorf("theme = %q, want %q", gotTheme, tt.wantTheme)
+			}
+			if gotLN != tt.wantLN {
+				t.Errorf("lineNumbers = %v, want %v", gotLN, tt.wantLN)
+			}
+		})
+	}
+}
+
+func TestRenderMarkdownPlugin_GetPaletteVariant(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+
+	tests := []struct {
+		palette string
+		want    string
+	}{
+		// Light variants
+		{"default-light", "light"},
+		{"gruvbox-light", "light"},
+		{"catppuccin-latte", "light"},
+		{"rose-pine-dawn", "light"},
+		{"tokyo-night-day", "light"},
+		{"kanagawa-lotus", "light"},
+
+		// Dark variants
+		{"default-dark", "dark"},
+		{"gruvbox-dark", "dark"},
+		{"catppuccin-mocha", "dark"},
+		{"rose-pine", "dark"},
+		{"tokyo-night", "dark"},
+		{"dracula", "dark"},
+		{"matte-black", "dark"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.palette, func(t *testing.T) {
+			got := p.getPaletteVariant(tt.palette)
+			if string(got) != tt.want {
+				t.Errorf("getPaletteVariant(%q) = %q, want %q", tt.palette, got, tt.want)
+			}
+		})
+	}
 }

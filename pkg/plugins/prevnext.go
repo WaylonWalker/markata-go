@@ -1,10 +1,8 @@
 package plugins
 
 import (
-	"fmt"
-
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // PrevNextPlugin calculates previous/next post links for navigation.
@@ -48,9 +46,7 @@ func (p *PrevNextPlugin) Collect(m *lifecycle.Manager) error {
 	// Process each post
 	posts := m.Posts()
 	for _, post := range posts {
-		if err := p.processPost(post, config, feeds, postToFeeds); err != nil {
-			return fmt.Errorf("prevnext: processing post %s: %w", post.Slug, err)
-		}
+		p.processPost(post, config, feeds, postToFeeds)
 	}
 
 	return nil
@@ -62,12 +58,12 @@ func (p *PrevNextPlugin) processPost(
 	config models.PrevNextConfig,
 	feeds []*lifecycle.Feed,
 	postToFeeds map[string][]*lifecycle.Feed,
-) error {
+) {
 	// Determine which feed to use for navigation
 	feed := p.resolveFeed(post, config, feeds, postToFeeds)
 	if feed == nil {
 		// Post is not in any feed, no prev/next navigation
-		return nil
+		return
 	}
 
 	// Find the post's position in the feed
@@ -81,7 +77,7 @@ func (p *PrevNextPlugin) processPost(
 
 	if position == -1 {
 		// Post not found in feed (shouldn't happen)
-		return nil
+		return
 	}
 
 	// Set prev/next
@@ -105,8 +101,6 @@ func (p *PrevNextPlugin) processPost(
 		Prev:      prev,
 		Next:      next,
 	}
-
-	return nil
 }
 
 // resolveFeed determines which feed to use for a post based on the strategy.
@@ -141,7 +135,7 @@ func (p *PrevNextPlugin) resolveFeed(
 		return p.getFirstFeed(post, postToFeeds)
 
 	case models.StrategyFirstFeed:
-		fallthrough
+		return p.getFirstFeed(post, postToFeeds)
 	default:
 		return p.getFirstFeed(post, postToFeeds)
 	}

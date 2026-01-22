@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // PublishHTMLPlugin writes individual post HTML files during the write stage.
@@ -31,7 +31,7 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 	outputDir := config.OutputDir
 
 	// Ensure output directory exists
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("creating output directory: %w", err)
 	}
 
@@ -68,26 +68,28 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	postDir := filepath.Join(outputDir, post.Slug)
 
 	// Create post directory
-	if err := os.MkdirAll(postDir, 0755); err != nil {
+	if err := os.MkdirAll(postDir, 0o755); err != nil {
 		return fmt.Errorf("creating post directory %s: %w", postDir, err)
 	}
 
 	// Determine HTML content to write
 	var htmlContent string
-	if post.HTML != "" {
+	switch {
+	case post.HTML != "":
 		// Use pre-rendered HTML if available
 		htmlContent = post.HTML
-	} else if post.ArticleHTML != "" {
+	case post.ArticleHTML != "":
 		// Wrap ArticleHTML in a basic template
 		htmlContent = p.wrapInTemplate(post, config)
-	} else {
+	default:
 		// No HTML content available
 		return nil
 	}
 
 	// Write index.html
 	outputPath := filepath.Join(postDir, "index.html")
-	if err := os.WriteFile(outputPath, []byte(htmlContent), 0644); err != nil {
+	//nolint:gosec // G306: HTML output files need 0644 for web serving
+	if err := os.WriteFile(outputPath, []byte(htmlContent), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", outputPath, err)
 	}
 
@@ -182,7 +184,7 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
 	}{
 		Title:       title,
 		Description: description,
-		Content:     template.HTML(post.ArticleHTML),
+		Content:     template.HTML(post.ArticleHTML), //nolint:gosec // G203: ArticleHTML is sanitized markdown output
 		DateStr:     dateStr,
 		DateISO:     dateISO,
 		Tags:        post.Tags,

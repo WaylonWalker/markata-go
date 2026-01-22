@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/markata-go/pkg/filter"
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/filter"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // FeedsPlugin processes configured feeds during the collect stage.
@@ -36,7 +36,7 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 	feedConfigs := getFeedConfigs(config)
 	feedDefaults := getFeedDefaults(config)
 
-	var feeds []*lifecycle.Feed
+	feeds := make([]*lifecycle.Feed, 0, len(feedConfigs))
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]

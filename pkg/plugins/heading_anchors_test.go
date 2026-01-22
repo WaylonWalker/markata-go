@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/example/markata-go/pkg/lifecycle"
-	"github.com/example/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestHeadingAnchorsPlugin_Name(t *testing.T) {
@@ -558,7 +558,7 @@ func TestHeadingAnchorsPlugin_CaseInsensitiveMatching(t *testing.T) {
 
 // Interface compliance tests
 
-func TestHeadingAnchorsPlugin_Interfaces(t *testing.T) {
+func TestHeadingAnchorsPlugin_Interfaces(_ *testing.T) {
 	p := NewHeadingAnchorsPlugin()
 
 	// Verify interface compliance

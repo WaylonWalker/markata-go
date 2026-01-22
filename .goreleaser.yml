@@ -1,0 +1,166 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+#
+# GoReleaser configuration for markata-go
+# https://goreleaser.com
+
+version: 2
+
+project_name: markata-go
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: markata-go
+    main: ./cmd/markata-go
+    binary: markata-go
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+      - freebsd
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - "7"
+    ignore:
+      # Ignore arm for windows
+      - goos: windows
+        goarch: arm
+      - goos: windows
+        goarch: arm64
+      # Ignore arm for freebsd
+      - goos: freebsd
+        goarch: arm
+      - goos: freebsd
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/WaylonWalker/markata-go/cmd/markata-go/cmd.Version={{.Version}}
+      - -X github.com/WaylonWalker/markata-go/cmd/markata-go/cmd.Commit={{.Commit}}
+      - -X github.com/WaylonWalker/markata-go/cmd/markata-go/cmd.Date={{.Date}}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE*
+      - CHANGELOG*
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+      - "^style:"
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: "New Features"
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: "Bug Fixes"
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: "Performance"
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: "Other"
+      order: 999
+
+release:
+  github:
+    owner: WaylonWalker
+    name: markata-go
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## markata-go {{ .Version }}
+
+    A plugin-driven static site generator written in Go.
+  footer: |
+    ## Installation
+
+    ### Quick Install (Recommended)
+
+    ```bash
+    # Using jpillora/installer (Linux/macOS)
+    curl -sL https://i.jpillora.com/WaylonWalker/markata-go | bash
+
+    # Using eget
+    eget WaylonWalker/markata-go
+
+    # Using mise (from GitHub releases)
+    mise use -g github:WaylonWalker/markata-go
+    ```
+
+    ### Manual Download
+
+    Download the appropriate archive for your platform from the assets below.
+
+    **Full Changelog**: https://github.com/WaylonWalker/markata-go/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+# sbom generation
+sboms:
+  - artifacts: archive
+
+# Sign checksums
+signs:
+  - cmd: cosign
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+      - --yes
+    artifacts: checksum
+    output: true
+
+# Homebrew tap (optional, configure later)
+# brews:
+#   - repository:
+#       owner: WaylonWalker
+#       name: homebrew-tap
+#     directory: Formula
+#     homepage: "https://github.com/WaylonWalker/markata-go"
+#     description: "A plugin-driven static site generator"
+#     license: "MIT"
+#     test: |
+#       system "#{bin}/markata-go", "version"
+#     install: |
+#       bin.install "markata-go"
