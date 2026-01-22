@@ -1,0 +1,101 @@
+# Nord - An arctic, north-bluish color palette
+# https://www.nordtheme.com
+# License: MIT
+
+[palette]
+name = "Nord Dark"
+variant = "dark"
+author = "Arctic Ice Studio"
+license = "MIT"
+homepage = "https://www.nordtheme.com"
+
+# Layer 1: Raw Colors
+# Nord's 16 colors organized into 4 groups
+[palette.colors]
+# Polar Night (dark backgrounds)
+nord0  = "#2e3440"  # Origin
+nord1  = "#3b4252"  # Lighter
+nord2  = "#434c5e"  # Lighter
+nord3  = "#4c566a"  # Brightest
+
+# Snow Storm (text/foreground)
+nord4  = "#d8dee9"  # Darkest
+nord5  = "#e5e9f0"  # Medium
+nord6  = "#eceff4"  # Brightest
+
+# Frost (accent colors)
+nord7  = "#8fbcbb"  # Frozen water
+nord8  = "#88c0d0"  # Pure ice
+nord9  = "#81a1c1"  # Ice cavern
+nord10 = "#5e81ac"  # Arctic ocean
+
+# Aurora (status colors)
+nord11 = "#bf616a"  # Red
+nord12 = "#d08770"  # Orange
+nord13 = "#ebcb8b"  # Yellow
+nord14 = "#a3be8c"  # Green
+nord15 = "#b48ead"  # Purple
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "nord4"
+text-secondary = "nord5"
+text-muted     = "nord3"
+
+# Background colors
+bg-primary   = "nord0"
+bg-secondary = "nord1"
+bg-surface   = "nord2"
+bg-elevated  = "nord3"
+
+# Accent colors
+accent       = "nord8"
+accent-hover = "nord7"
+link         = "nord8"
+link-hover   = "nord9"
+link-visited = "nord15"
+
+# Status colors
+success = "nord14"
+warning = "nord13"
+error   = "nord11"
+info    = "nord10"
+
+# Border colors
+border       = "nord3"
+border-focus = "nord8"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "nord1"
+code-text     = "nord4"
+code-comment  = "nord3"
+code-keyword  = "nord9"
+code-string   = "nord14"
+code-number   = "nord15"
+code-function = "nord8"
+code-type     = "nord7"
+code-operator = "nord9"
+
+admonition-note-bg     = "nord1"
+admonition-note-border = "nord10"
+admonition-tip-bg      = "nord1"
+admonition-tip-border  = "nord14"
+admonition-warn-bg     = "nord1"
+admonition-warn-border = "nord13"
+admonition-error-bg    = "nord1"
+admonition-error-border = "nord11"
+
+button-primary-bg     = "nord8"
+button-primary-text   = "nord0"
+button-secondary-bg   = "nord3"
+button-secondary-text = "nord4"
+
+nav-bg     = "nord1"
+nav-text   = "nord4"
+nav-active = "nord8"
+
+card-bg     = "nord1"
+card-border = "nord3"
+card-shadow = "nord0"

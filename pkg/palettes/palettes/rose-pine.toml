@@ -1,0 +1,101 @@
+# Rose Pine - All natural pine, faux fur and a bit of soho vibes
+# https://rosepinetheme.com
+# License: MIT
+
+[palette]
+name = "Rose Pine"
+variant = "dark"
+author = "Rose Pine"
+license = "MIT"
+homepage = "https://rosepinetheme.com"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Base colors
+base    = "#191724"
+surface = "#1f1d2e"
+overlay = "#26233a"
+
+# Muted colors
+muted       = "#6e6a86"
+subtle      = "#908caa"
+
+# Text colors
+text = "#e0def4"
+
+# Accent colors
+love  = "#eb6f92"  # Red/Pink
+gold  = "#f6c177"  # Yellow/Orange
+rose  = "#ebbcba"  # Light pink
+pine  = "#31748f"  # Teal/Blue
+foam  = "#9ccfd8"  # Cyan
+iris  = "#c4a7e7"  # Purple
+
+# Highlight colors
+highlight-low  = "#21202e"
+highlight-med  = "#403d52"
+highlight-high = "#524f67"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "text"
+text-secondary = "subtle"
+text-muted     = "muted"
+
+# Background colors
+bg-primary   = "base"
+bg-secondary = "surface"
+bg-surface   = "overlay"
+bg-elevated  = "highlight-med"
+
+# Accent colors
+accent       = "iris"
+accent-hover = "foam"
+link         = "foam"
+link-hover   = "pine"
+link-visited = "iris"
+
+# Status colors
+success = "pine"
+warning = "gold"
+error   = "love"
+info    = "foam"
+
+# Border colors
+border       = "highlight-med"
+border-focus = "iris"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "surface"
+code-text     = "text"
+code-comment  = "muted"
+code-keyword  = "love"
+code-string   = "gold"
+code-number   = "gold"
+code-function = "foam"
+code-type     = "iris"
+code-operator = "subtle"
+
+admonition-note-bg     = "surface"
+admonition-note-border = "iris"
+admonition-tip-bg      = "surface"
+admonition-tip-border  = "pine"
+admonition-warn-bg     = "surface"
+admonition-warn-border = "gold"
+admonition-error-bg    = "surface"
+admonition-error-border = "love"
+
+button-primary-bg     = "iris"
+button-primary-text   = "base"
+button-secondary-bg   = "overlay"
+button-secondary-text = "text"
+
+nav-bg     = "surface"
+nav-text   = "text"
+nav-active = "rose"
+
+card-bg     = "surface"
+card-border = "highlight-med"
+card-shadow = "base"

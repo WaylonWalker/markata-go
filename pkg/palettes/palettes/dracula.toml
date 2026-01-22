@@ -1,0 +1,98 @@
+# Dracula - A dark theme for vampires
+# https://draculatheme.com
+# License: MIT
+
+[palette]
+name = "Dracula"
+variant = "dark"
+author = "Zeno Rocha"
+license = "MIT"
+homepage = "https://draculatheme.com"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors
+background     = "#282a36"
+current-line   = "#44475a"
+selection      = "#44475a"
+
+# Foreground colors
+foreground = "#f8f8f2"
+
+# Accent colors
+cyan       = "#8be9fd"
+green      = "#50fa7b"
+orange     = "#ffb86c"
+pink       = "#ff79c6"
+purple     = "#bd93f9"
+red        = "#ff5555"
+yellow     = "#f1fa8c"
+
+# Additional colors from Dracula Pro
+comment    = "#6272a4"
+bg-darker  = "#21222c"
+bg-lighter = "#343746"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "comment"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "purple"
+accent-hover = "pink"
+link         = "cyan"
+link-hover   = "green"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "cyan"
+
+# Border colors
+border       = "current-line"
+border-focus = "purple"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "current-line"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "pink"
+code-string   = "yellow"
+code-number   = "purple"
+code-function = "green"
+code-type     = "cyan"
+code-operator = "pink"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "purple"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "purple"
+button-primary-text   = "foreground"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "pink"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"

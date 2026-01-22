@@ -1,0 +1,100 @@
+# Tokyo Night Day - Tokyo city lights light variant
+# https://github.com/enkia/tokyo-night-vscode-theme
+# License: MIT
+
+[palette]
+name = "Tokyo Night Day"
+variant = "light"
+author = "enkia"
+license = "MIT"
+homepage = "https://github.com/enkia/tokyo-night-vscode-theme"
+
+# Layer 1: Raw Colors
+[palette.colors]
+bg        = "#e1e2e7"
+bg-dark   = "#d5d6db"
+bg-float  = "#e9e9ec"
+bg-popup  = "#e9e9ed"
+fg        = "#3760bf"
+fg-dark   = "#6172b0"
+comment   = "#848cb5"
+dark3     = "#68709a"
+dark5     = "#a1a6c5"
+
+# Accent colors
+blue      = "#2e7de9"
+blue0     = "#7890dd"
+blue1     = "#188092"
+blue2     = "#07879d"
+blue5     = "#006a83"
+cyan      = "#007197"
+green     = "#587539"
+green1    = "#387068"
+green2    = "#38919f"
+magenta   = "#9854f1"
+magenta2  = "#d20065"
+orange    = "#b15c00"
+purple    = "#7847bd"
+red       = "#f52a65"
+red1      = "#c64343"
+teal      = "#118c74"
+yellow    = "#8c6c3e"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+text-primary   = "fg"
+text-secondary = "fg-dark"
+text-muted     = "comment"
+
+bg-primary   = "bg"
+bg-secondary = "bg-dark"
+bg-surface   = "bg-float"
+bg-elevated  = "dark5"
+
+accent       = "magenta"
+accent-hover = "purple"
+link         = "blue"
+link-hover   = "cyan"
+link-visited = "magenta"
+
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "blue1"
+
+border       = "dark5"
+border-focus = "blue"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-float"
+code-text     = "fg"
+code-comment  = "comment"
+code-keyword  = "magenta"
+code-string   = "green"
+code-number   = "orange"
+code-function = "blue"
+code-type     = "cyan"
+code-operator = "blue5"
+
+admonition-note-bg     = "bg-float"
+admonition-note-border = "blue"
+admonition-tip-bg      = "bg-float"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "bg-float"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "bg-float"
+admonition-error-border = "red"
+
+button-primary-bg     = "blue"
+button-primary-text   = "bg"
+button-secondary-bg   = "dark5"
+button-secondary-text = "fg"
+
+nav-bg     = "bg-dark"
+nav-text   = "fg"
+nav-active = "blue"
+
+card-bg     = "bg-float"
+card-border = "dark5"
+card-shadow = "bg-popup"

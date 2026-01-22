@@ -1,0 +1,15 @@
+<nav class="pagination">
+  {% if page.has_prev %}
+  <a href="{{ page.prev_url }}">&laquo; Newer</a>
+  {% else %}
+  <span></span>
+  {% endif %}
+  
+  <span>Page {{ page.number }} of {{ page.total_pages }}</span>
+  
+  {% if page.has_next %}
+  <a href="{{ page.next_url }}">Older &raquo;</a>
+  {% else %}
+  <span></span>
+  {% endif %}
+</nav>

@@ -1,0 +1,108 @@
+# Kanagawa Wave - Dark theme inspired by Katsushika Hokusai
+# https://github.com/rebelot/kanagawa.nvim
+# License: MIT
+
+[palette]
+name = "Kanagawa Wave"
+variant = "dark"
+author = "rebelot"
+license = "MIT"
+homepage = "https://github.com/rebelot/kanagawa.nvim"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Backgrounds
+sumiInk0  = "#16161d"
+sumiInk1  = "#181820"
+sumiInk2  = "#1a1a22"
+sumiInk3  = "#1f1f28"
+sumiInk4  = "#2a2a37"
+sumiInk5  = "#363646"
+sumiInk6  = "#54546d"
+
+# Foregrounds
+fujiWhite = "#dcd7ba"
+oldWhite  = "#c8c093"
+fujiGray  = "#727169"
+
+# Syntax colors
+waveBlue1 = "#223249"
+waveBlue2 = "#2d4f67"
+waveAqua1 = "#6a9589"
+waveAqua2 = "#7aa89f"
+springGreen = "#98bb6c"
+springBlue = "#7fb4ca"
+boatYellow1 = "#938056"
+boatYellow2 = "#c0a36e"
+carpYellow = "#e6c384"
+sakuraPink = "#d27e99"
+peachRed   = "#ff5d62"
+surimiOrange = "#ffa066"
+samuraiRed = "#e82424"
+roninYellow = "#ff9e3b"
+waveRed    = "#e46876"
+oniViolet  = "#957fb8"
+crystalBlue = "#7e9cd8"
+springViolet1 = "#938aa9"
+springViolet2 = "#9cabca"
+dragonBlue = "#658594"
+katanaGray = "#717c7c"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+text-primary   = "fujiWhite"
+text-secondary = "oldWhite"
+text-muted     = "fujiGray"
+
+bg-primary   = "sumiInk3"
+bg-secondary = "sumiInk2"
+bg-surface   = "sumiInk4"
+bg-elevated  = "sumiInk5"
+
+accent       = "oniViolet"
+accent-hover = "springViolet2"
+link         = "crystalBlue"
+link-hover   = "springBlue"
+link-visited = "oniViolet"
+
+success = "springGreen"
+warning = "carpYellow"
+error   = "samuraiRed"
+info    = "springBlue"
+
+border       = "sumiInk5"
+border-focus = "crystalBlue"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "sumiInk2"
+code-text     = "fujiWhite"
+code-comment  = "fujiGray"
+code-keyword  = "oniViolet"
+code-string   = "springGreen"
+code-number   = "sakuraPink"
+code-function = "crystalBlue"
+code-type     = "waveAqua2"
+code-operator = "boatYellow2"
+
+admonition-note-bg     = "waveBlue1"
+admonition-note-border = "crystalBlue"
+admonition-tip-bg      = "sumiInk4"
+admonition-tip-border  = "springGreen"
+admonition-warn-bg     = "sumiInk4"
+admonition-warn-border = "carpYellow"
+admonition-error-bg    = "sumiInk4"
+admonition-error-border = "samuraiRed"
+
+button-primary-bg     = "crystalBlue"
+button-primary-text   = "sumiInk3"
+button-secondary-bg   = "sumiInk5"
+button-secondary-text = "fujiWhite"
+
+nav-bg     = "sumiInk2"
+nav-text   = "fujiWhite"
+nav-active = "crystalBlue"
+
+card-bg     = "sumiInk4"
+card-border = "sumiInk5"
+card-shadow = "sumiInk0"

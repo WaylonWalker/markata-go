@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}{{ feed.title | default:config.title | default:'Posts' }}{% endblock %}
+
+{% block content %}
+<div class="feed">
+  {% if feed.title %}
+  <header class="feed-header">
+    <h1>{{ feed.title }}</h1>
+    {% if feed.description %}<p>{{ feed.description }}</p>{% endif %}
+  </header>
+  {% endif %}
+  
+  <div class="posts">
+    {% for post in page.posts %}
+    {% include "partials/card.html" %}
+    {% endfor %}
+  </div>
+  
+  {% if page.total_pages > 1 %}
+  {% include "partials/pagination.html" %}
+  {% endif %}
+</div>
+{% endblock %}

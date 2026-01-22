@@ -1,0 +1,113 @@
+# Catppuccin Mocha - Soothing pastel theme for the high-spirited
+# https://catppuccin.com
+# License: MIT
+
+[palette]
+name = "Catppuccin Mocha"
+variant = "dark"
+author = "Catppuccin Team"
+license = "MIT"
+homepage = "https://catppuccin.com"
+
+# Layer 1: Raw Colors
+# The 26 Catppuccin colors - pure values with no semantic meaning
+[palette.colors]
+rosewater = "#f5e0dc"
+flamingo  = "#f2cdcd"
+pink      = "#f5c2e7"
+mauve     = "#cba6f7"
+red       = "#f38ba8"
+maroon    = "#eba0ac"
+peach     = "#fab387"
+yellow    = "#f9e2af"
+green     = "#a6e3a1"
+teal      = "#94e2d5"
+sky       = "#89dceb"
+sapphire  = "#74c7ec"
+blue      = "#89b4fa"
+lavender  = "#b4befe"
+text      = "#cdd6f4"
+subtext1  = "#bac2de"
+subtext0  = "#a6adc8"
+overlay2  = "#9399b2"
+overlay1  = "#7f849c"
+overlay0  = "#6c7086"
+surface2  = "#585b70"
+surface1  = "#45475a"
+surface0  = "#313244"
+base      = "#1e1e2e"
+mantle    = "#181825"
+crust     = "#11111b"
+
+# Layer 2: Semantic Mapping
+# Maps raw colors to semantic roles for theming
+[palette.semantic]
+# Text colors
+text-primary   = "text"
+text-secondary = "subtext1"
+text-muted     = "overlay1"
+
+# Background colors
+bg-primary   = "base"
+bg-secondary = "mantle"
+bg-surface   = "surface0"
+bg-elevated  = "surface1"
+
+# Accent colors
+accent       = "mauve"
+accent-hover = "lavender"
+link         = "blue"
+link-hover   = "sapphire"
+link-visited = "mauve"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "blue"
+
+# Border colors
+border       = "surface1"
+border-focus = "mauve"
+
+# Layer 3: Component Colors
+# Fine-grained component styling
+[palette.components]
+# Code blocks
+code-bg       = "surface0"
+code-text     = "text"
+code-comment  = "overlay1"
+code-keyword  = "mauve"
+code-string   = "green"
+code-number   = "peach"
+code-function = "blue"
+code-type     = "yellow"
+code-operator = "sky"
+
+# Admonitions
+admonition-note-bg     = "surface0"
+admonition-note-border = "blue"
+admonition-tip-bg      = "surface0"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "surface0"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "surface0"
+admonition-error-border = "red"
+admonition-info-bg     = "surface0"
+admonition-info-border = "sapphire"
+
+# Buttons
+button-primary-bg   = "mauve"
+button-primary-text = "base"
+button-secondary-bg = "surface1"
+button-secondary-text = "text"
+
+# Navigation
+nav-bg     = "mantle"
+nav-text   = "text"
+nav-active = "mauve"
+
+# Cards
+card-bg     = "surface0"
+card-border = "surface1"
+card-shadow = "crust"

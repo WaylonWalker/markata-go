@@ -1,0 +1,104 @@
+# Gruvbox Light - Retro groove warm light theme
+# https://github.com/morhetz/gruvbox
+# License: MIT
+
+[palette]
+name = "Gruvbox Light"
+variant = "light"
+author = "Pavel Pertsev (morhetz)"
+license = "MIT"
+homepage = "https://github.com/morhetz/gruvbox"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background tones
+bg0-hard = "#f9f5d7"
+bg0      = "#fbf1c7"
+bg0-soft = "#f2e5bc"
+bg1      = "#ebdbb2"
+bg2      = "#d5c4a1"
+bg3      = "#bdae93"
+bg4      = "#a89984"
+
+# Foreground tones
+fg0      = "#282828"
+fg1      = "#3c3836"
+fg2      = "#504945"
+fg3      = "#665c54"
+fg4      = "#7c6f64"
+
+# Colors
+red      = "#cc241d"
+red-dim  = "#9d0006"
+green    = "#98971a"
+green-dim = "#79740e"
+yellow   = "#d79921"
+yellow-dim = "#b57614"
+blue     = "#458588"
+blue-dim = "#076678"
+purple   = "#b16286"
+purple-dim = "#8f3f71"
+aqua     = "#689d6a"
+aqua-dim = "#427b58"
+orange   = "#d65d0e"
+orange-dim = "#af3a03"
+gray     = "#928374"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+text-primary   = "fg1"
+text-secondary = "fg2"
+text-muted     = "fg4"
+
+bg-primary   = "bg0"
+bg-secondary = "bg0-soft"
+bg-surface   = "bg1"
+bg-elevated  = "bg2"
+
+accent       = "blue-dim"
+accent-hover = "blue"
+link         = "blue-dim"
+link-hover   = "blue"
+link-visited = "purple-dim"
+
+success = "green-dim"
+warning = "yellow-dim"
+error   = "red-dim"
+info    = "blue-dim"
+
+border       = "bg2"
+border-focus = "blue-dim"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg1"
+code-text     = "fg1"
+code-comment  = "gray"
+code-keyword  = "red-dim"
+code-string   = "green-dim"
+code-number   = "purple-dim"
+code-function = "aqua-dim"
+code-type     = "yellow-dim"
+code-operator = "fg3"
+
+admonition-note-bg     = "bg1"
+admonition-note-border = "blue-dim"
+admonition-tip-bg      = "bg1"
+admonition-tip-border  = "green-dim"
+admonition-warn-bg     = "bg1"
+admonition-warn-border = "yellow-dim"
+admonition-error-bg    = "bg1"
+admonition-error-border = "red-dim"
+
+button-primary-bg     = "blue-dim"
+button-primary-text   = "bg0"
+button-secondary-bg   = "bg2"
+button-secondary-text = "fg1"
+
+nav-bg     = "bg0-soft"
+nav-text   = "fg1"
+nav-active = "blue-dim"
+
+card-bg     = "bg1"
+card-border = "bg2"
+card-shadow = "bg3"

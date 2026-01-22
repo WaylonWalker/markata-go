@@ -65,6 +65,35 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 		result.Feeds = override.Feeds
 	}
 
+	// Theme - merge if override has any non-empty values
+	result.Theme = mergeThemeConfig(base.Theme, override.Theme)
+
+	return result
+}
+
+// mergeThemeConfig merges ThemeConfig values.
+func mergeThemeConfig(base, override models.ThemeConfig) models.ThemeConfig {
+	result := base
+
+	if override.Name != "" {
+		result.Name = override.Name
+	}
+	if override.Palette != "" {
+		result.Palette = override.Palette
+	}
+	if override.CustomCSS != "" {
+		result.CustomCSS = override.CustomCSS
+	}
+	// Merge variables maps
+	if len(override.Variables) > 0 {
+		if result.Variables == nil {
+			result.Variables = make(map[string]string)
+		}
+		for k, v := range override.Variables {
+			result.Variables[k] = v
+		}
+	}
+
 	return result
 }
 

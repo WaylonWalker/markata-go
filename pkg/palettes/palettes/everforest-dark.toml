@@ -1,0 +1,99 @@
+# Everforest Dark - Nature-inspired green dark theme
+# https://github.com/sainnhe/everforest
+# License: MIT
+
+[palette]
+name = "Everforest Dark"
+variant = "dark"
+author = "sainnhe"
+license = "MIT"
+homepage = "https://github.com/sainnhe/everforest"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background
+bg0       = "#2d353b"
+bg1       = "#343f44"
+bg2       = "#3d484d"
+bg3       = "#475258"
+bg4       = "#4f585e"
+bg5       = "#56635f"
+bg-visual = "#543a48"
+bg-red    = "#514045"
+bg-green  = "#425047"
+bg-blue   = "#3a515d"
+bg-yellow = "#4d4c43"
+
+# Foreground
+fg        = "#d3c6aa"
+grey0     = "#7a8478"
+grey1     = "#859289"
+grey2     = "#9da9a0"
+
+# Colors
+red       = "#e67e80"
+orange    = "#e69875"
+yellow    = "#dbbc7f"
+green     = "#a7c080"
+aqua      = "#83c092"
+blue      = "#7fbbb3"
+purple    = "#d699b6"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+text-primary   = "fg"
+text-secondary = "grey2"
+text-muted     = "grey0"
+
+bg-primary   = "bg0"
+bg-secondary = "bg1"
+bg-surface   = "bg2"
+bg-elevated  = "bg3"
+
+accent       = "green"
+accent-hover = "aqua"
+link         = "blue"
+link-hover   = "aqua"
+link-visited = "purple"
+
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "blue"
+
+border       = "bg3"
+border-focus = "green"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg1"
+code-text     = "fg"
+code-comment  = "grey0"
+code-keyword  = "red"
+code-string   = "green"
+code-number   = "purple"
+code-function = "blue"
+code-type     = "yellow"
+code-operator = "orange"
+
+admonition-note-bg     = "bg-blue"
+admonition-note-border = "blue"
+admonition-tip-bg      = "bg-green"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "bg-yellow"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "bg-red"
+admonition-error-border = "red"
+
+button-primary-bg     = "green"
+button-primary-text   = "bg0"
+button-secondary-bg   = "bg3"
+button-secondary-text = "fg"
+
+nav-bg     = "bg1"
+nav-text   = "fg"
+nav-active = "green"
+
+card-bg     = "bg1"
+card-border = "bg3"
+card-shadow = "bg0"

@@ -1,0 +1,97 @@
+# Solarized Dark - Precision colors for machines and people
+# https://ethanschoonover.com/solarized/
+# License: MIT
+
+[palette]
+name = "Solarized Dark"
+variant = "dark"
+author = "Ethan Schoonover"
+license = "MIT"
+homepage = "https://ethanschoonover.com/solarized/"
+
+# Layer 1: Raw Colors
+# Solarized's scientifically-designed L*a*b color space palette
+[palette.colors]
+# Base tones (dark to light)
+base03  = "#002b36"  # Darkest background
+base02  = "#073642"  # Dark background
+base01  = "#586e75"  # Optional emphasized content
+base00  = "#657b83"  # Body text / primary content
+base0   = "#839496"  # Body text (light theme)
+base1   = "#93a1a1"  # Secondary content
+base2   = "#eee8d5"  # Light background
+base3   = "#fdf6e3"  # Lightest background
+
+# Accent colors
+yellow  = "#b58900"
+orange  = "#cb4b16"
+red     = "#dc322f"
+magenta = "#d33682"
+violet  = "#6c71c4"
+blue    = "#268bd2"
+cyan    = "#2aa198"
+green   = "#859900"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors (dark background mode)
+text-primary   = "base0"
+text-secondary = "base1"
+text-muted     = "base01"
+
+# Background colors
+bg-primary   = "base03"
+bg-secondary = "base02"
+bg-surface   = "base02"
+bg-elevated  = "base01"
+
+# Accent colors
+accent       = "blue"
+accent-hover = "cyan"
+link         = "blue"
+link-hover   = "cyan"
+link-visited = "violet"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "cyan"
+
+# Border colors
+border       = "base01"
+border-focus = "blue"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "base02"
+code-text     = "base0"
+code-comment  = "base01"
+code-keyword  = "green"
+code-string   = "cyan"
+code-number   = "magenta"
+code-function = "blue"
+code-type     = "yellow"
+code-operator = "orange"
+
+admonition-note-bg     = "base02"
+admonition-note-border = "blue"
+admonition-tip-bg      = "base02"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "base02"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "base02"
+admonition-error-border = "red"
+
+button-primary-bg     = "blue"
+button-primary-text   = "base03"
+button-secondary-bg   = "base01"
+button-secondary-text = "base0"
+
+nav-bg     = "base02"
+nav-text   = "base0"
+nav-active = "blue"
+
+card-bg     = "base02"
+card-border = "base01"
+card-shadow = "base03"

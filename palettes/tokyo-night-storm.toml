@@ -1,0 +1,104 @@
+# Tokyo Night Storm - Tokyo city lights storm variant
+# https://github.com/enkia/tokyo-night-vscode-theme
+# License: MIT
+
+[palette]
+name = "Tokyo Night Storm"
+variant = "dark"
+author = "enkia"
+license = "MIT"
+homepage = "https://github.com/enkia/tokyo-night-vscode-theme"
+
+# Layer 1: Raw Colors
+[palette.colors]
+bg        = "#24283b"
+bg-dark   = "#1f2335"
+bg-float  = "#1f2335"
+bg-popup  = "#16161e"
+bg-search = "#3d59a1"
+fg        = "#c0caf5"
+fg-dark   = "#a9b1d6"
+fg-gutter = "#3b4261"
+comment   = "#565f89"
+dark3     = "#545c7e"
+dark5     = "#737aa2"
+
+# Accent colors
+blue      = "#7aa2f7"
+blue0     = "#3d59a1"
+blue1     = "#2ac3de"
+blue2     = "#0db9d7"
+blue5     = "#89ddff"
+blue6     = "#b4f9f8"
+blue7     = "#394b70"
+cyan      = "#7dcfff"
+green     = "#9ece6a"
+green1    = "#73daca"
+green2    = "#41a6b5"
+magenta   = "#bb9af7"
+magenta2  = "#ff007c"
+orange    = "#ff9e64"
+purple    = "#9d7cd8"
+red       = "#f7768e"
+red1      = "#db4b4b"
+teal      = "#1abc9c"
+yellow    = "#e0af68"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+text-primary   = "fg"
+text-secondary = "fg-dark"
+text-muted     = "comment"
+
+bg-primary   = "bg"
+bg-secondary = "bg-dark"
+bg-surface   = "bg-float"
+bg-elevated  = "dark3"
+
+accent       = "magenta"
+accent-hover = "purple"
+link         = "blue"
+link-hover   = "cyan"
+link-visited = "magenta"
+
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "blue1"
+
+border       = "dark3"
+border-focus = "blue"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-dark"
+code-text     = "fg"
+code-comment  = "comment"
+code-keyword  = "magenta"
+code-string   = "green"
+code-number   = "orange"
+code-function = "blue"
+code-type     = "cyan"
+code-operator = "blue5"
+
+admonition-note-bg     = "bg-float"
+admonition-note-border = "blue"
+admonition-tip-bg      = "bg-float"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "bg-float"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "bg-float"
+admonition-error-border = "red"
+
+button-primary-bg     = "blue"
+button-primary-text   = "bg"
+button-secondary-bg   = "dark3"
+button-secondary-text = "fg"
+
+nav-bg     = "bg-dark"
+nav-text   = "fg"
+nav-active = "blue"
+
+card-bg     = "bg-float"
+card-border = "dark3"
+card-shadow = "bg-popup"

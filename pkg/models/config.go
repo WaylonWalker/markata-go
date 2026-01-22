@@ -43,6 +43,24 @@ type Config struct {
 
 	// Concurrency is the number of concurrent workers (default: 0 = auto)
 	Concurrency int `json:"concurrency" yaml:"concurrency" toml:"concurrency"`
+
+	// Theme configures the site theme
+	Theme ThemeConfig `json:"theme" yaml:"theme" toml:"theme"`
+}
+
+// ThemeConfig configures the site theme.
+type ThemeConfig struct {
+	// Name is the theme name (default: "default")
+	Name string `json:"name" yaml:"name" toml:"name"`
+
+	// Palette is the color palette to use (default: "default-light")
+	Palette string `json:"palette" yaml:"palette" toml:"palette"`
+
+	// Variables allows overriding specific CSS variables
+	Variables map[string]string `json:"variables" yaml:"variables" toml:"variables"`
+
+	// CustomCSS is a path to a custom CSS file to include
+	CustomCSS string `json:"custom_css" yaml:"custom_css" toml:"custom_css"`
 }
 
 // GlobConfig configures file globbing behavior.
@@ -58,6 +76,52 @@ type GlobConfig struct {
 type MarkdownConfig struct {
 	// Extensions is the list of markdown extensions to enable
 	Extensions []string `json:"extensions" yaml:"extensions" toml:"extensions"`
+}
+
+// CSVFenceConfig configures the csv_fence plugin.
+type CSVFenceConfig struct {
+	// Enabled controls whether CSV blocks are converted to tables (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// TableClass is the CSS class for generated tables (default: "csv-table")
+	TableClass string `json:"table_class" yaml:"table_class" toml:"table_class"`
+
+	// HasHeader indicates whether the first row is a header (default: true)
+	HasHeader bool `json:"has_header" yaml:"has_header" toml:"has_header"`
+
+	// Delimiter is the CSV field delimiter (default: ",")
+	Delimiter string `json:"delimiter" yaml:"delimiter" toml:"delimiter"`
+}
+
+// NewCSVFenceConfig creates a new CSVFenceConfig with default values.
+func NewCSVFenceConfig() CSVFenceConfig {
+	return CSVFenceConfig{
+		Enabled:    true,
+		TableClass: "csv-table",
+		HasHeader:  true,
+		Delimiter:  ",",
+	}
+}
+
+// MermaidConfig configures the mermaid plugin.
+type MermaidConfig struct {
+	// Enabled controls whether mermaid processing is active (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// CDNURL is the URL for the Mermaid.js library
+	CDNURL string `json:"cdn_url" yaml:"cdn_url" toml:"cdn_url"`
+
+	// Theme is the Mermaid theme to use (default, dark, forest, neutral)
+	Theme string `json:"theme" yaml:"theme" toml:"theme"`
+}
+
+// NewMermaidConfig creates a new MermaidConfig with default values.
+func NewMermaidConfig() MermaidConfig {
+	return MermaidConfig{
+		Enabled: true,
+		CDNURL:  "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
+		Theme:   "default",
+	}
 }
 
 // NewConfig creates a new Config with default values.
@@ -78,6 +142,20 @@ func NewConfig() *Config {
 		Feeds:        []FeedConfig{},
 		FeedDefaults: NewFeedDefaults(),
 		Concurrency:  0,
+		Theme: ThemeConfig{
+			Name:      "default",
+			Palette:   "default-light",
+			Variables: make(map[string]string),
+		},
+	}
+}
+
+// NewThemeConfig creates a new ThemeConfig with default values.
+func NewThemeConfig() ThemeConfig {
+	return ThemeConfig{
+		Name:      "default",
+		Palette:   "default-light",
+		Variables: make(map[string]string),
 	}
 }
 

@@ -1,0 +1,116 @@
+# Gruvbox Dark - Retro groove color scheme
+# https://github.com/morhetz/gruvbox
+# License: MIT
+
+[palette]
+name = "Gruvbox Dark"
+variant = "dark"
+author = "Pavel Pertsev (morhetz)"
+license = "MIT"
+homepage = "https://github.com/morhetz/gruvbox"
+
+# Layer 1: Raw Colors
+# Gruvbox medium contrast dark palette
+[palette.colors]
+# Background tones
+bg-hard    = "#1d2021"
+bg         = "#282828"
+bg-soft    = "#32302f"
+bg1        = "#3c3836"
+bg2        = "#504945"
+bg3        = "#665c54"
+bg4        = "#7c6f64"
+
+# Foreground tones
+fg         = "#ebdbb2"
+fg0        = "#fbf1c7"
+fg1        = "#ebdbb2"
+fg2        = "#d5c4a1"
+fg3        = "#bdae93"
+fg4        = "#a89984"
+
+# Accent colors (normal)
+red        = "#cc241d"
+green      = "#98971a"
+yellow     = "#d79921"
+blue       = "#458588"
+purple     = "#b16286"
+aqua       = "#689d6a"
+orange     = "#d65d0e"
+
+# Accent colors (bright)
+red-bright    = "#fb4934"
+green-bright  = "#b8bb26"
+yellow-bright = "#fabd2f"
+blue-bright   = "#83a598"
+purple-bright = "#d3869b"
+aqua-bright   = "#8ec07c"
+orange-bright = "#fe8019"
+
+# Grays
+gray      = "#928374"
+gray-dark = "#a89984"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "fg"
+text-secondary = "fg3"
+text-muted     = "fg4"
+
+# Background colors
+bg-primary   = "bg"
+bg-secondary = "bg-soft"
+bg-surface   = "bg1"
+bg-elevated  = "bg2"
+
+# Accent colors
+accent       = "yellow-bright"
+accent-hover = "orange-bright"
+link         = "blue-bright"
+link-hover   = "aqua-bright"
+link-visited = "purple-bright"
+
+# Status colors
+success = "green-bright"
+warning = "yellow-bright"
+error   = "red-bright"
+info    = "blue-bright"
+
+# Border colors
+border       = "bg3"
+border-focus = "yellow-bright"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg1"
+code-text     = "fg"
+code-comment  = "gray"
+code-keyword  = "red-bright"
+code-string   = "green-bright"
+code-number   = "purple-bright"
+code-function = "aqua-bright"
+code-type     = "yellow-bright"
+code-operator = "fg3"
+
+admonition-note-bg     = "bg1"
+admonition-note-border = "blue-bright"
+admonition-tip-bg      = "bg1"
+admonition-tip-border  = "green-bright"
+admonition-warn-bg     = "bg1"
+admonition-warn-border = "yellow-bright"
+admonition-error-bg    = "bg1"
+admonition-error-border = "red-bright"
+
+button-primary-bg     = "yellow-bright"
+button-primary-text   = "bg"
+button-secondary-bg   = "bg2"
+button-secondary-text = "fg"
+
+nav-bg     = "bg-soft"
+nav-text   = "fg"
+nav-active = "yellow-bright"
+
+card-bg     = "bg1"
+card-border = "bg3"
+card-shadow = "bg-hard"

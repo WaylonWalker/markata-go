@@ -1,0 +1,99 @@
+# Kanagawa Dragon - Warmer dark variant of Kanagawa
+# https://github.com/rebelot/kanagawa.nvim
+# License: MIT
+
+[palette]
+name = "Kanagawa Dragon"
+variant = "dark"
+author = "rebelot"
+license = "MIT"
+homepage = "https://github.com/rebelot/kanagawa.nvim"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Backgrounds
+dragonBlack0 = "#0d0c0c"
+dragonBlack1 = "#12120f"
+dragonBlack2 = "#1d1c19"
+dragonBlack3 = "#181616"
+dragonBlack4 = "#282727"
+dragonBlack5 = "#393836"
+dragonBlack6 = "#625e5a"
+
+# Foregrounds
+dragonWhite  = "#c5c9c5"
+dragonGreen  = "#87a987"
+dragonGreen2 = "#8a9a7b"
+dragonPink   = "#a292a3"
+dragonOrange = "#b6927b"
+dragonOrange2 = "#b98d7b"
+dragonGray   = "#a6a69c"
+dragonGray2  = "#9e9b93"
+dragonGray3  = "#7a8382"
+dragonBlue   = "#658594"
+dragonBlue2  = "#8ba4b0"
+dragonViolet = "#8992a7"
+dragonRed    = "#c4746e"
+dragonAqua   = "#8ea4a2"
+dragonAsh    = "#737c73"
+dragonTeal   = "#949fb5"
+dragonYellow = "#c4b28a"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+text-primary   = "dragonWhite"
+text-secondary = "dragonGray"
+text-muted     = "dragonAsh"
+
+bg-primary   = "dragonBlack3"
+bg-secondary = "dragonBlack2"
+bg-surface   = "dragonBlack4"
+bg-elevated  = "dragonBlack5"
+
+accent       = "dragonViolet"
+accent-hover = "dragonTeal"
+link         = "dragonBlue2"
+link-hover   = "dragonAqua"
+link-visited = "dragonPink"
+
+success = "dragonGreen"
+warning = "dragonYellow"
+error   = "dragonRed"
+info    = "dragonBlue2"
+
+border       = "dragonBlack5"
+border-focus = "dragonBlue2"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "dragonBlack2"
+code-text     = "dragonWhite"
+code-comment  = "dragonAsh"
+code-keyword  = "dragonViolet"
+code-string   = "dragonGreen"
+code-number   = "dragonPink"
+code-function = "dragonBlue2"
+code-type     = "dragonAqua"
+code-operator = "dragonOrange"
+
+admonition-note-bg     = "dragonBlack4"
+admonition-note-border = "dragonBlue2"
+admonition-tip-bg      = "dragonBlack4"
+admonition-tip-border  = "dragonGreen"
+admonition-warn-bg     = "dragonBlack4"
+admonition-warn-border = "dragonYellow"
+admonition-error-bg    = "dragonBlack4"
+admonition-error-border = "dragonRed"
+
+button-primary-bg     = "dragonBlue2"
+button-primary-text   = "dragonBlack3"
+button-secondary-bg   = "dragonBlack5"
+button-secondary-text = "dragonWhite"
+
+nav-bg     = "dragonBlack2"
+nav-text   = "dragonWhite"
+nav-active = "dragonBlue2"
+
+card-bg     = "dragonBlack4"
+card-border = "dragonBlack5"
+card-shadow = "dragonBlack0"

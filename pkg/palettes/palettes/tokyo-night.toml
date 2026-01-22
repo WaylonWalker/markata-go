@@ -1,0 +1,105 @@
+# Tokyo Night - A clean, dark Neovim theme inspired by Tokyo at night
+# https://github.com/folke/tokyonight.nvim
+# License: Apache-2.0
+
+[palette]
+name = "Tokyo Night"
+variant = "dark"
+author = "Folke Lemaitre"
+license = "Apache-2.0"
+homepage = "https://github.com/folke/tokyonight.nvim"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors
+bg-dark    = "#16161e"
+bg         = "#1a1b26"
+bg-light   = "#24283b"
+bg-lighter = "#292e42"
+
+# Foreground colors
+fg-dark    = "#a9b1d6"
+fg         = "#c0caf5"
+fg-light   = "#c0caf5"
+
+# Accent colors
+blue       = "#7aa2f7"
+blue-light = "#7dcfff"
+cyan       = "#7dcfff"
+green      = "#9ece6a"
+magenta    = "#bb9af7"
+orange     = "#ff9e64"
+purple     = "#9d7cd8"
+red        = "#f7768e"
+teal       = "#73daca"
+yellow     = "#e0af68"
+
+# UI colors
+comment    = "#565f89"
+dark3      = "#545c7e"
+dark5      = "#737aa2"
+terminal-black = "#414868"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "fg"
+text-secondary = "fg-dark"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "bg"
+bg-secondary = "bg-dark"
+bg-surface   = "bg-light"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "purple"
+accent-hover = "magenta"
+link         = "blue"
+link-hover   = "blue-light"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "cyan"
+
+# Border colors
+border       = "terminal-black"
+border-focus = "blue"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-light"
+code-text     = "fg"
+code-comment  = "comment"
+code-keyword  = "purple"
+code-string   = "green"
+code-number   = "orange"
+code-function = "blue"
+code-type     = "blue-light"
+code-operator = "blue-light"
+
+admonition-note-bg     = "bg-light"
+admonition-note-border = "blue"
+admonition-tip-bg      = "bg-light"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "bg-light"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "bg-light"
+admonition-error-border = "red"
+
+button-primary-bg     = "blue"
+button-primary-text   = "bg"
+button-secondary-bg   = "bg-lighter"
+button-secondary-text = "fg"
+
+nav-bg     = "bg-dark"
+nav-text   = "fg"
+nav-active = "blue"
+
+card-bg     = "bg-light"
+card-border = "terminal-black"
+card-shadow = "bg-dark"

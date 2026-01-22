@@ -1,0 +1,368 @@
+/* Admonition Styles - Default Theme */
+
+/* Base admonition styles */
+.admonition {
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  border-left: 4px solid var(--admonition-color, var(--color-primary));
+  background: var(--admonition-bg, var(--color-surface));
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.admonition-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+  color: var(--admonition-color, var(--color-primary));
+}
+
+.admonition-title::before {
+  content: var(--admonition-icon, "");
+  font-size: 1.25em;
+}
+
+.admonition > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Type-specific styles - using palette CSS variables with fallbacks */
+.admonition.note {
+  --admonition-color: var(--admonition-note-border, #3b82f6);
+  --admonition-bg: var(--admonition-note-bg, #eff6ff);
+  --admonition-icon: "i";
+}
+
+.admonition.info {
+  --admonition-color: var(--admonition-info-border, #3b82f6);
+  --admonition-bg: var(--admonition-info-bg, #eff6ff);
+  --admonition-icon: "i";
+}
+
+.admonition.tip {
+  --admonition-color: var(--admonition-tip-border, #10b981);
+  --admonition-bg: var(--admonition-tip-bg, #ecfdf5);
+  --admonition-icon: "*";
+}
+
+.admonition.hint {
+  --admonition-color: var(--admonition-hint-border, #10b981);
+  --admonition-bg: var(--admonition-hint-bg, #ecfdf5);
+  --admonition-icon: "*";
+}
+
+.admonition.success {
+  --admonition-color: var(--admonition-success-border, #10b981);
+  --admonition-bg: var(--admonition-success-bg, #ecfdf5);
+  --admonition-icon: "v";
+}
+
+.admonition.warning {
+  --admonition-color: var(--admonition-warn-border, #f59e0b);
+  --admonition-bg: var(--admonition-warn-bg, #fffbeb);
+  --admonition-icon: "!";
+}
+
+.admonition.caution {
+  --admonition-color: var(--admonition-caution-border, #f59e0b);
+  --admonition-bg: var(--admonition-caution-bg, #fffbeb);
+  --admonition-icon: "!";
+}
+
+.admonition.important {
+  --admonition-color: var(--admonition-important-border, #8b5cf6);
+  --admonition-bg: var(--admonition-important-bg, #f5f3ff);
+  --admonition-icon: "!";
+}
+
+.admonition.danger {
+  --admonition-color: var(--admonition-danger-border, #ef4444);
+  --admonition-bg: var(--admonition-danger-bg, #fef2f2);
+  --admonition-icon: "!!";
+}
+
+.admonition.error {
+  --admonition-color: var(--admonition-error-border, #ef4444);
+  --admonition-bg: var(--admonition-error-bg, #fef2f2);
+  --admonition-icon: "x";
+}
+
+.admonition.bug {
+  --admonition-color: var(--admonition-bug-border, #ef4444);
+  --admonition-bg: var(--admonition-bug-bg, #fef2f2);
+  --admonition-icon: "@";
+}
+
+.admonition.example {
+  --admonition-color: var(--admonition-example-border, #8b5cf6);
+  --admonition-bg: var(--admonition-example-bg, #f5f3ff);
+  --admonition-icon: ">";
+}
+
+.admonition.quote {
+  --admonition-color: var(--admonition-quote-border, #6b7280);
+  --admonition-bg: var(--admonition-quote-bg, #f9fafb);
+  --admonition-icon: "\"";
+}
+
+.admonition.abstract {
+  --admonition-color: var(--admonition-abstract-border, #06b6d4);
+  --admonition-bg: var(--admonition-abstract-bg, #ecfeff);
+  --admonition-icon: "#";
+}
+
+/* Aside - Sidebar/Marginal Note (Tufte-style) */
+/* Asides are positioned in the margin of the article, outside the main content flow */
+
+aside.admonition.aside {
+  --admonition-color: #6b7280;
+  --admonition-bg: #f9fafb;
+  position: relative;
+  border-left: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  width: 250px;
+  padding: var(--space-3);
+  margin: 0;
+}
+
+/* Right margin positioning (default, Tufte-style) */
+aside.admonition.aside.aside-right {
+  float: right;
+  clear: right;
+  margin-right: -280px; /* Push into right margin */
+  margin-left: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+/* Left margin positioning */
+aside.admonition.aside.aside-left {
+  float: left;
+  clear: left;
+  margin-left: -280px; /* Push into left margin */
+  margin-right: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+/* Aside title styling */
+aside.admonition.aside .admonition-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+aside.admonition.aside .admonition-title::before {
+  content: none; /* No icon for asides */
+}
+
+/* Medium screens: float beside content instead of margin */
+@media (max-width: 1400px) {
+  aside.admonition.aside.aside-right {
+    margin-right: 0;
+    margin-left: var(--space-4);
+  }
+  
+  aside.admonition.aside.aside-left {
+    margin-left: 0;
+    margin-right: var(--space-4);
+  }
+}
+
+/* Small screens: full width, inline */
+@media (max-width: 768px) {
+  aside.admonition.aside,
+  aside.admonition.aside.aside-left,
+  aside.admonition.aside.aside-right {
+    float: none;
+    width: 100%;
+    max-width: 100%;
+    margin: var(--space-4) 0;
+  }
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  aside.admonition.aside {
+    --admonition-bg: #1f2937;
+  }
+}
+
+/* Collapsible admonitions use <details>/<summary> */
+details.admonition {
+  border-left: 4px solid var(--admonition-color, var(--color-primary));
+}
+
+details.admonition > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+details.admonition > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.admonition > summary::before {
+  content: "\25b6";
+  display: inline-block;
+  margin-right: var(--space-2);
+  transition: transform 0.2s;
+  font-size: 0.8em;
+}
+
+details.admonition[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+/* Chat container */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+}
+
+/* Individual message */
+.chat-message {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  max-width: 85%;
+}
+
+/* Left-aligned messages */
+.chat-message.chat-left {
+  align-self: flex-start;
+  flex-direction: row;
+}
+
+/* Right-aligned messages */
+.chat-message.chat-right {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+/* Avatar */
+.chat-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+/* Message bubble */
+.chat-bubble {
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  position: relative;
+}
+
+/* Left bubble styling */
+.chat-left .chat-bubble {
+  background: #e5e7eb;
+  color: #1f2937;
+  border-bottom-left-radius: var(--radius);
+}
+
+/* Right bubble styling */
+.chat-right .chat-bubble {
+  background: var(--color-primary);
+  color: white;
+  border-bottom-right-radius: var(--radius);
+}
+
+/* Author name */
+.chat-author {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+  opacity: 0.8;
+}
+
+.chat-left .chat-author {
+  color: var(--color-text-muted);
+}
+
+.chat-right .chat-author {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Message content */
+.chat-content {
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.chat-content p {
+  margin: 0;
+}
+
+.chat-content p + p {
+  margin-top: var(--space-2);
+}
+
+/* Timestamp */
+.chat-timestamp {
+  font-size: var(--text-xs);
+  margin-top: var(--space-1);
+  opacity: 0.6;
+}
+
+.chat-left .chat-timestamp {
+  color: var(--color-text-muted);
+}
+
+.chat-right .chat-timestamp {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* System messages */
+.chat-message.chat-system {
+  align-self: center;
+  max-width: 100%;
+}
+
+.chat-system .chat-content {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  background: transparent;
+  padding: var(--space-2) var(--space-4);
+  text-align: center;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .chat-container {
+    background: var(--color-surface);
+  }
+  
+  .chat-left .chat-bubble {
+    background: #374151;
+    color: #f9fafb;
+  }
+  
+  .chat-left .chat-author {
+    color: #9ca3af;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .chat-message {
+    max-width: 95%;
+  }
+  
+  .chat-avatar {
+    width: 28px;
+    height: 28px;
+  }
+}

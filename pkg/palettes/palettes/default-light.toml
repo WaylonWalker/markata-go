@@ -1,0 +1,109 @@
+# Default Light - Clean, minimal light theme
+# Ships with markata-go as the default light palette
+# License: MIT
+
+[palette]
+name = "Default Light"
+variant = "light"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/example/markata-go"
+
+# Layer 1: Raw Colors
+# A neutral, professional palette with blue accents
+[palette.colors]
+# Grays (light to dark)
+gray-50  = "#f9fafb"
+gray-100 = "#f3f4f6"
+gray-200 = "#e5e7eb"
+gray-300 = "#d1d5db"
+gray-400 = "#9ca3af"
+gray-500 = "#6b7280"
+gray-600 = "#4b5563"
+gray-700 = "#374151"
+gray-800 = "#1f2937"
+gray-900 = "#111827"
+
+# Blues (accent)
+blue-50  = "#eff6ff"
+blue-100 = "#dbeafe"
+blue-400 = "#60a5fa"
+blue-500 = "#3b82f6"
+blue-600 = "#2563eb"
+blue-700 = "#1d4ed8"
+
+# Status colors
+green-500 = "#10b981"
+green-600 = "#059669"
+green-700 = "#047857"
+yellow-500 = "#f59e0b"
+yellow-600 = "#d97706"
+yellow-700 = "#b45309"
+red-500 = "#ef4444"
+red-600 = "#dc2626"
+purple-500 = "#8b5cf6"
+purple-600 = "#7c3aed"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "gray-900"
+text-secondary = "gray-700"
+text-muted     = "gray-500"
+
+# Background colors
+bg-primary   = "gray-50"
+bg-secondary = "gray-100"
+bg-surface   = "gray-100"
+bg-elevated  = "gray-200"
+
+# Accent colors
+accent       = "blue-500"
+accent-hover = "blue-600"
+link         = "blue-600"
+link-hover   = "blue-700"
+link-visited = "purple-600"
+
+# Status colors
+success = "green-700"
+warning = "yellow-700"
+error   = "red-600"
+info    = "blue-600"
+
+# Border colors
+border       = "gray-200"
+border-focus = "blue-500"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "gray-100"
+code-text     = "gray-800"
+code-comment  = "gray-500"
+code-keyword  = "purple-600"
+code-string   = "green-600"
+code-number   = "blue-600"
+code-function = "blue-500"
+code-type     = "yellow-600"
+code-operator = "gray-600"
+
+admonition-note-bg     = "blue-50"
+admonition-note-border = "blue-500"
+admonition-tip-bg      = "gray-100"
+admonition-tip-border  = "green-500"
+admonition-warn-bg     = "gray-100"
+admonition-warn-border = "yellow-500"
+admonition-error-bg    = "gray-100"
+admonition-error-border = "red-500"
+
+button-primary-bg     = "blue-600"
+button-primary-text   = "gray-50"
+button-secondary-bg   = "gray-200"
+button-secondary-text = "gray-800"
+
+nav-bg     = "gray-50"
+nav-text   = "gray-800"
+nav-active = "blue-600"
+
+card-bg     = "gray-50"
+card-border = "gray-200"
+card-shadow = "gray-300"

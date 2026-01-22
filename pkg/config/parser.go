@@ -70,7 +70,15 @@ type tomlConfig struct {
 	Feeds         []tomlFeedConfig   `toml:"feeds"`
 	FeedDefaults  tomlFeedDefaults   `toml:"feed_defaults"`
 	Concurrency   int                `toml:"concurrency"`
+	Theme         tomlThemeConfig    `toml:"theme"`
 	UnknownFields map[string]any     `toml:"-"`
+}
+
+type tomlThemeConfig struct {
+	Name      string            `toml:"name"`
+	Palette   string            `toml:"palette"`
+	Variables map[string]string `toml:"variables"`
+	CustomCSS string            `toml:"custom_css"`
 }
 
 type tomlGlobConfig struct {
@@ -143,6 +151,7 @@ func (c *tomlConfig) toConfig() *models.Config {
 			Extensions: c.Markdown.Extensions,
 		},
 		Concurrency: c.Concurrency,
+		Theme:       c.Theme.toThemeConfig(),
 	}
 
 	if c.Glob.UseGitignore != nil {
@@ -158,6 +167,19 @@ func (c *tomlConfig) toConfig() *models.Config {
 	config.FeedDefaults = c.FeedDefaults.toFeedDefaults()
 
 	return config
+}
+
+func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
+	variables := t.Variables
+	if variables == nil {
+		variables = make(map[string]string)
+	}
+	return models.ThemeConfig{
+		Name:      t.Name,
+		Palette:   t.Palette,
+		Variables: variables,
+		CustomCSS: t.CustomCSS,
+	}
 }
 
 func (f *tomlFeedConfig) toFeedConfig() models.FeedConfig {

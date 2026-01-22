@@ -1,0 +1,109 @@
+# Matte Black - Sleek, understated dark theme with deep blacks and subtle contrast
+# A sophisticated palette emphasizing muted tones and minimal visual noise
+
+[palette]
+name = "Matte Black"
+variant = "dark"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/example/markata-go"
+
+# Layer 1: Raw Colors
+# Deep blacks, muted grays, and subtle accent colors
+[palette.colors]
+# Primary blacks and grays - the matte foundation
+black       = "#0a0a0a"
+charcoal    = "#121212"
+graphite    = "#1a1a1a"
+slate       = "#242424"
+ash         = "#2e2e2e"
+smoke       = "#3a3a3a"
+pewter      = "#4a4a4a"
+silver      = "#6a6a6a"
+pearl       = "#8a8a8a"
+cloud       = "#aaaaaa"
+snow        = "#d0d0d0"
+white       = "#e8e8e8"
+
+# Muted accent colors - subtle, not flashy
+crimson     = "#b04040"
+ember       = "#c07040"
+gold        = "#c0a040"
+sage        = "#60a060"
+ocean       = "#4080a0"
+steel       = "#6080c0"
+violet      = "#8060a0"
+rose        = "#a06080"
+
+# Layer 2: Semantic Mapping
+# Maps raw colors to semantic roles for theming
+[palette.semantic]
+# Text colors
+text-primary   = "white"
+text-secondary = "snow"
+text-muted     = "pearl"
+
+# Background colors
+bg-primary   = "charcoal"
+bg-secondary = "black"
+bg-surface   = "graphite"
+bg-elevated  = "slate"
+
+# Accent colors
+accent       = "steel"
+accent-hover = "ocean"
+link         = "steel"
+link-hover   = "ocean"
+link-visited = "violet"
+
+# Status colors
+success = "sage"
+warning = "gold"
+error   = "crimson"
+info    = "ocean"
+
+# Border colors
+border       = "ash"
+border-focus = "steel"
+
+# Layer 3: Component Colors
+# Fine-grained component styling
+[palette.components]
+# Code blocks
+code-bg       = "graphite"
+code-text     = "snow"
+code-comment  = "silver"
+code-keyword  = "steel"
+code-string   = "sage"
+code-number   = "ember"
+code-function = "ocean"
+code-type     = "gold"
+code-operator = "pearl"
+
+# Admonitions
+admonition-note-bg     = "slate"
+admonition-note-border = "ocean"
+admonition-tip-bg      = "slate"
+admonition-tip-border  = "sage"
+admonition-warn-bg     = "slate"
+admonition-warn-border = "gold"
+admonition-error-bg    = "slate"
+admonition-error-border = "crimson"
+admonition-info-bg     = "slate"
+admonition-info-border = "steel"
+
+# Buttons
+button-primary-bg   = "steel"
+button-primary-text = "charcoal"
+button-secondary-bg = "slate"
+button-secondary-text = "white"
+
+# Navigation
+nav-bg     = "black"
+nav-text   = "snow"
+nav-active = "steel"
+
+# Cards
+card-bg     = "graphite"
+card-border = "ash"
+card-shadow = "black"

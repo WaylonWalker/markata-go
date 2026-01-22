@@ -1,0 +1,87 @@
+# Rose Pine Moon - Softer variant of Rose Pine
+# https://rosepinetheme.com
+# License: MIT
+
+[palette]
+name = "Rose Pine Moon"
+variant = "dark"
+author = "Rose Pine"
+license = "MIT"
+homepage = "https://rosepinetheme.com"
+
+# Layer 1: Raw Colors
+[palette.colors]
+base      = "#232136"
+surface   = "#2a273f"
+overlay   = "#393552"
+muted     = "#6e6a86"
+subtle    = "#908caa"
+text      = "#e0def4"
+love      = "#eb6f92"
+gold      = "#f6c177"
+rose      = "#ea9a97"
+pine      = "#3e8fb0"
+foam      = "#9ccfd8"
+iris      = "#c4a7e7"
+highlight-low  = "#2a283e"
+highlight-med  = "#44415a"
+highlight-high = "#56526e"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+text-primary   = "text"
+text-secondary = "subtle"
+text-muted     = "muted"
+
+bg-primary   = "base"
+bg-secondary = "surface"
+bg-surface   = "overlay"
+bg-elevated  = "highlight-med"
+
+accent       = "iris"
+accent-hover = "rose"
+link         = "foam"
+link-hover   = "pine"
+link-visited = "iris"
+
+success = "foam"
+warning = "gold"
+error   = "love"
+info    = "pine"
+
+border       = "highlight-med"
+border-focus = "iris"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "surface"
+code-text     = "text"
+code-comment  = "muted"
+code-keyword  = "iris"
+code-string   = "gold"
+code-number   = "gold"
+code-function = "foam"
+code-type     = "rose"
+code-operator = "subtle"
+
+admonition-note-bg     = "surface"
+admonition-note-border = "pine"
+admonition-tip-bg      = "surface"
+admonition-tip-border  = "foam"
+admonition-warn-bg     = "surface"
+admonition-warn-border = "gold"
+admonition-error-bg    = "surface"
+admonition-error-border = "love"
+
+button-primary-bg     = "iris"
+button-primary-text   = "base"
+button-secondary-bg   = "overlay"
+button-secondary-text = "text"
+
+nav-bg     = "surface"
+nav-text   = "text"
+nav-active = "iris"
+
+card-bg     = "surface"
+card-border = "highlight-med"
+card-shadow = "highlight-low"
