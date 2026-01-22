@@ -1,0 +1,1159 @@
+---
+title: "Feeds Guide"
+description: "Deep dive into markata-go's powerful feed system for creating filtered, sorted, paginated collections"
+date: 2024-01-15
+published: true
+template: doc.html
+tags:
+  - documentation
+  - feeds
+---
+
+# Feeds
+
+Feeds are the core differentiator of markata-go. A feed is a **filtered, sorted, paginated collection of posts** that can output to **multiple formats** simultaneously from a single definition.
+
+## Why Feeds Matter
+
+Feeds solve a common problem in static site generation: you need the same collection of posts in different formats for different consumers.
+
+```
+                         FEED DEFINITION
+  filter: "published == True and 'python' in tags"
+  sort: "date"
+  reverse: true
+  items_per_page: 10
+                              |
+                              v
+                        OUTPUT FORMATS
+  +-------+-------+-------+-------+----------+------+---------+
+  | HTML  |  RSS  | Atom  | JSON  | Markdown | Text | Sitemap |
+  | index | feed  | feed  |  API  |   list   | list |   XML   |
+  +-------+-------+-------+-------+----------+------+---------+
+```
+
+**Benefits:**
+
+1. **One definition, many outputs** - Define a collection once, get HTML pages, RSS, Atom, JSON API, sitemap, etc.
+2. **Composable** - Feeds can share filters or inherit from defaults
+3. **Flexible** - Every "index page" is a feed: home, archives, tags, categories, search indexes
+4. **Familiar** - Mirrors how content platforms work (RSS readers, APIs, syndication)
+
+## Basic Feed Configuration
+
+A feed is defined in your `markata-go.toml` using the `[[markata-go.feeds]]` array:
+
+```toml
+[[markata-go.feeds]]
+slug = "blog"
+title = "Blog"
+filter = "published == True"
+sort = "date"
+reverse = true
+```
+
+This creates a feed at `/blog/` with:
+- All published posts
+- Sorted by date (newest first)
+- HTML and RSS output (default formats)
+
+### Minimal Example
+
+```toml
+[[markata-go.feeds]]
+slug = "posts"
+title = "All Posts"
+filter = "published == True"
+```
+
+### Full Configuration Example
+
+```toml
+[[markata-go.feeds]]
+# Identity
+slug = "blog"                      # URL path: /blog/
+title = "All Posts"                # Display title
+description = "Latest blog posts"  # Meta description
+
+# Content Selection
+filter = "published == True and date <= today"
+sort = "date"
+reverse = true                     # Newest first
+
+# Pagination
+items_per_page = 10                # 0 = no pagination (all on one page)
+orphan_threshold = 3               # If last page has <=3 items, merge with previous
+
+# Output Formats
+[markata-go.feeds.formats]
+html = true                        # /blog/index.html, /blog/page/2/index.html
+rss = true                         # /blog/rss.xml
+atom = true                        # /blog/atom.xml
+json = true                        # /blog/feed.json
+markdown = false                   # /blog/index.md
+text = false                       # /blog/index.txt
+
+# Custom Templates
+[markata-go.feeds.templates]
+html = "feed.html"                 # Template for HTML pages
+card = "partials/card.html"        # Template for post cards in list
+rss = "rss.xml"                    # Template for RSS
+atom = "atom.xml"                  # Template for Atom
+json = "feed.json"                 # Template for JSON
+```
+
+## Filtering Posts
+
+The `filter` field uses a Python-like expression syntax to select which posts appear in a feed.
+
+### Filter Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `==` | Equal | `published == True` |
+| `!=` | Not equal | `draft != True` |
+| `>`, `>=` | Greater than | `date >= '2024-01-01'` |
+| `<`, `<=` | Less than | `date < '2025-01-01'` |
+| `in` | Contains (tags) | `'python' in tags` |
+| `contains` | String contains | `tags contains 'python'` |
+| `and` | Logical AND | `published == True and featured == True` |
+| `or` | Logical OR | `'python' in tags or 'go' in tags` |
+| `not` | Logical NOT | `not draft` |
+
+### Filter Examples
+
+```toml
+# Published posts only
+filter = "published == True"
+
+# Exclude drafts
+filter = "draft == False"
+
+# Posts with a specific tag
+filter = "'tutorial' in tags"
+
+# Multiple tags (OR)
+filter = "'python' in tags or 'go' in tags"
+
+# Combined conditions
+filter = "published == True and featured == True"
+
+# Date range
+filter = "date >= '2024-01-01' and date < '2025-01-01'"
+
+# By slug
+filter = "slug != 'about'"
+
+# Complex filter
+filter = "published == True and ('python' in tags or 'go' in tags) and featured == True"
+```
+
+## Sorting Posts
+
+Control the order of posts with `sort` and `reverse`:
+
+```toml
+[[markata-go.feeds]]
+slug = "blog"
+sort = "date"        # Field to sort by
+reverse = true       # true = descending (newest first)
+```
+
+### Sort Fields
+
+You can sort by any post field:
+
+| Field | Description |
+|-------|-------------|
+| `date` | Publication date (most common) |
+| `title` | Alphabetical by title |
+| `slug` | Alphabetical by slug |
+| `reading_time` | By reading time |
+| Any frontmatter | Sort by custom fields |
+
+### Sort Examples
+
+```toml
+# Newest first (most common)
+sort = "date"
+reverse = true
+
+# Oldest first (chronological)
+sort = "date"
+reverse = false
+
+# Alphabetical by title
+sort = "title"
+reverse = false
+
+# Custom field (priority)
+sort = "priority"
+reverse = true
+```
+
+## Pagination
+
+Feeds support three pagination strategies for different use cases.
+
+### Pagination Configuration
+
+```toml
+[[markata-go.feeds]]
+slug = "blog"
+items_per_page = 10           # Posts per page (0 = all on one page)
+orphan_threshold = 3          # Merge last page if <= N items
+pagination_type = "manual"    # Pagination strategy
+```
+
+### Pagination Types
+
+| Type | Description | Use Case |
+|------|-------------|----------|
+| `manual` | Traditional page links | SEO-friendly, works without JavaScript |
+| `htmx` | AJAX-based loading via HTMX | Modern, seamless UX without full page reloads |
+| `js` | Custom JavaScript pagination | Full control over pagination behavior |
+
+### Manual Pagination (Default)
+
+Standard pagination with full page reloads:
+
+```toml
+[[markata-go.feeds]]
+slug = "blog"
+items_per_page = 10
+pagination_type = "manual"
+```
+
+Generates:
+```
+/blog/index.html           # Page 1
+/blog/page/2/index.html    # Page 2
+/blog/page/3/index.html    # Page 3
+```
+
+### HTMX Pagination
+
+HTMX pagination provides seamless content loading without full page reloads:
+
+```toml
+[markata-go]
+htmx_version = "2.0.8"             # HTMX version to use
+
+[[markata-go.feeds]]
+slug = "blog"
+items_per_page = 10
+pagination_type = "htmx"
+template = "feed.html"
+partial_template = "feed_partial.html"
+```
+
+**How it works:**
+1. User clicks "Next" or page number
+2. HTMX intercepts click, sends GET request
+3. Server returns partial HTML (just the posts list)
+4. HTMX swaps new content into existing container
+5. URL updates via pushState (browser history works)
+
+**Output structure:**
+```
+/blog/
+  index.html                 # Full page (page 1)
+  partial/
+    index.html               # Partial content (page 1)
+  page/
+    2/
+      index.html             # Full page (page 2)
+      partial/
+        index.html           # Partial content (page 2)
+```
+
+**HTMX template example:**
+
+```html
+<!-- feed.html (full page) -->
+<div id="feed-content" hx-swap-oob="true">
+  {% include "feed_partial.html" %}
+</div>
+
+<nav class="pagination">
+  {% if pagination.has_prev %}
+  <a href="{{ feed.slug }}/page/{{ pagination.prev_page }}/"
+     hx-get="{{ feed.slug }}/page/{{ pagination.prev_page }}/partial/"
+     hx-target="#feed-content"
+     hx-push-url="true">
+    Previous
+  </a>
+  {% endif %}
+  
+  {% if pagination.has_next %}
+  <a href="{{ feed.slug }}/page/{{ pagination.next_page }}/"
+     hx-get="{{ feed.slug }}/page/{{ pagination.next_page }}/partial/"
+     hx-target="#feed-content"
+     hx-push-url="true">
+    Next
+  </a>
+  {% endif %}
+</nav>
+```
+
+### JavaScript Pagination
+
+For custom JavaScript implementations:
+
+```toml
+[[markata-go.feeds]]
+slug = "blog"
+items_per_page = 10
+pagination_type = "js"
+```
+
+Generates a configuration file at `/static/js/pagination-config.js`:
+
+```javascript
+window.paginationData = {
+  "enabled": true,
+  "type": "js",
+  "page": 1,
+  "totalPages": 5,
+  "totalPosts": 47,
+  "itemsShown": 10,
+  "feedName": "blog",
+  "hasNext": true
+};
+```
+
+### Orphan Threshold
+
+The `orphan_threshold` prevents tiny last pages:
+
+```toml
+[[markata-go.feeds]]
+slug = "blog"
+items_per_page = 10
+orphan_threshold = 3    # If last page has <=3 items, merge with previous
+```
+
+With 23 posts and `items_per_page = 10`:
+- Without threshold: Page 1 (10), Page 2 (10), Page 3 (3)
+- With threshold: Page 1 (10), Page 2 (13)
+
+## Output Formats
+
+Each feed can generate multiple output formats simultaneously.
+
+### HTML
+
+Paginated HTML index pages.
+
+```toml
+[markata-go.feeds.formats]
+html = true
+```
+
+**Output:**
+```
+/blog/index.html           # Page 1
+/blog/page/2/index.html    # Page 2
+```
+
+### RSS 2.0
+
+RSS feed for feed readers.
+
+```toml
+[markata-go.feeds.formats]
+rss = true
+```
+
+**Output:** `/blog/rss.xml`
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Blog</title>
+    <link>https://example.com/blog/</link>
+    <description>Latest blog posts</description>
+    <lastBuildDate>Mon, 15 Jan 2024 12:00:00 +0000</lastBuildDate>
+    <atom:link href="https://example.com/blog/rss.xml" rel="self" type="application/rss+xml"/>
+    
+    <item>
+      <title>My Post</title>
+      <link>https://example.com/my-post/</link>
+      <guid isPermaLink="true">https://example.com/my-post/</guid>
+      <pubDate>Mon, 15 Jan 2024 12:00:00 +0000</pubDate>
+      <description>Post description...</description>
+    </item>
+  </channel>
+</rss>
+```
+
+### Atom
+
+Atom feed (RFC 4287).
+
+```toml
+[markata-go.feeds.formats]
+atom = true
+```
+
+**Output:** `/blog/atom.xml`
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Blog</title>
+  <link href="https://example.com/blog/" rel="alternate"/>
+  <link href="https://example.com/blog/atom.xml" rel="self"/>
+  <id>https://example.com/blog/</id>
+  <updated>2024-01-15T12:00:00Z</updated>
+  
+  <entry>
+    <title>My Post</title>
+    <link href="https://example.com/my-post/" rel="alternate"/>
+    <id>https://example.com/my-post/</id>
+    <published>2024-01-15T12:00:00Z</published>
+    <updated>2024-01-15T12:00:00Z</updated>
+    <summary>Post description...</summary>
+  </entry>
+</feed>
+```
+
+### JSON Feed
+
+JSON Feed (version 1.1) for modern feed readers and APIs.
+
+```toml
+[markata-go.feeds.formats]
+json = true
+```
+
+**Output:** `/blog/feed.json`
+
+```json
+{
+  "version": "https://jsonfeed.org/version/1.1",
+  "title": "Blog",
+  "home_page_url": "https://example.com",
+  "feed_url": "https://example.com/blog/feed.json",
+  "description": "Latest blog posts",
+  "items": [
+    {
+      "id": "https://example.com/my-post/",
+      "url": "https://example.com/my-post/",
+      "title": "My Post",
+      "content_html": "<p>Post content...</p>",
+      "summary": "Post description...",
+      "date_published": "2024-01-15T12:00:00Z",
+      "tags": ["go", "tutorial"]
+    }
+  ]
+}
+```
+
+### Markdown
+
+Markdown list of posts (useful for READMEs, documentation).
+
+```toml
+[markata-go.feeds.formats]
+markdown = true
+```
+
+**Output:** `/blog/index.md`
+
+```markdown
+# Blog
+
+Latest blog posts
+
+- [My Post](/my-post/) - 2024-01-15
+- [Another Post](/another-post/) - 2024-01-10
+```
+
+### Plain Text
+
+Simple text list (useful for APIs, scripts, minimal readers).
+
+```toml
+[markata-go.feeds.formats]
+text = true
+```
+
+**Output:** `/blog/index.txt`
+
+```
+Blog
+====
+
+Latest blog posts
+
+2024-01-15 - My Post
+  /my-post/
+
+2024-01-10 - Another Post
+  /another-post/
+```
+
+### Sitemap
+
+XML sitemap for search engines.
+
+```toml
+[markata-go.feeds.formats]
+sitemap = true
+```
+
+**Output:** `/blog/sitemap.xml`
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/my-post/</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>
+```
+
+## Auto-Generated Tag Feeds
+
+markata-go can automatically create feeds for each unique tag in your posts.
+
+### Enable Auto Tags
+
+```toml
+[markata-go.feeds.auto_tags]
+enabled = true
+slug_prefix = "tags"               # /tags/python/, /tags/go/
+
+[markata-go.feeds.auto_tags.formats]
+html = true
+rss = true
+```
+
+### Generated Output
+
+If your posts have tags `python`, `go`, and `tutorial`:
+
+```
+/tags/
+  python/
+    index.html
+    rss.xml
+  go/
+    index.html
+    rss.xml
+  tutorial/
+    index.html
+    rss.xml
+```
+
+### Auto Categories
+
+Similar to tags, but for the `category` frontmatter field:
+
+```toml
+[markata-go.feeds.auto_categories]
+enabled = true
+slug_prefix = "categories"
+
+[markata-go.feeds.auto_categories.formats]
+html = true
+rss = true
+```
+
+### Auto Archives
+
+Automatic date-based archive feeds:
+
+```toml
+[markata-go.feeds.auto_archives]
+enabled = true
+slug_prefix = "archive"
+yearly_feeds = true               # /archive/2024/
+monthly_feeds = true              # /archive/2024/01/
+
+[markata-go.feeds.auto_archives.formats]
+html = true
+```
+
+## Feed Defaults and Inheritance
+
+Configure defaults that apply to all feeds, then override as needed.
+
+### Global Defaults
+
+```toml
+# Default values for ALL feeds
+[markata-go.feeds.defaults]
+items_per_page = 10
+orphan_threshold = 3
+
+[markata-go.feeds.defaults.formats]
+html = true
+rss = true
+atom = false
+json = false
+markdown = false
+text = false
+
+[markata-go.feeds.defaults.templates]
+html = "feed.html"
+card = "partials/card.html"
+rss = "rss.xml"
+atom = "atom.xml"
+json = "feed.json"
+
+# Syndication settings (RSS/Atom/JSON limits)
+[markata-go.feeds.syndication]
+max_items = 20                     # Max items in RSS/Atom feeds
+include_content = false            # Include full content or just summary
+```
+
+### Inheritance Example
+
+```toml
+# Global defaults
+[markata-go.feeds.defaults]
+items_per_page = 10
+
+[markata-go.feeds.defaults.formats]
+html = true
+rss = true
+atom = false
+json = false
+
+# Home page - override items_per_page and formats
+[[markata-go.feeds]]
+slug = ""
+title = "Home"
+filter = "published == True"
+items_per_page = 5                 # Override: fewer items
+formats = { rss = false }          # Override: no RSS for home
+
+# Blog - inherits all defaults
+[[markata-go.feeds]]
+slug = "blog"
+title = "Blog"
+filter = "published == True"
+# Inherits: items_per_page=10, html=true, rss=true
+
+# API endpoint - completely different formats
+[[markata-go.feeds]]
+slug = "api/posts"
+title = "Posts API"
+filter = "published == True"
+items_per_page = 0                 # Override: no pagination
+formats = { html = false, rss = false, json = true }  # Override: JSON only
+```
+
+### Format Override Behavior
+
+When overriding formats:
+
+```toml
+# Defaults: html=true, rss=true, atom=false, json=false
+
+# Add to defaults (merge)
+formats = { atom = true }
+# Result: html=true, rss=true, atom=true, json=false
+
+# Disable specific format
+formats = { rss = false }
+# Result: html=true, rss=false, atom=false, json=false
+
+# Complete replacement
+formats = { html = false, rss = false, atom = false, json = true }
+# Result: json only
+```
+
+## Common Patterns
+
+### Home Page Feed
+
+The home page is a feed with an empty slug:
+
+```toml
+[[markata-go.feeds]]
+slug = ""                          # Outputs to /index.html
+title = "Recent Posts"
+filter = "published == True"
+sort = "date"
+reverse = true
+items_per_page = 5
+
+[markata-go.feeds.formats]
+html = true
+rss = false                        # Usually no RSS on home page
+```
+
+### Archive (All Posts, No Pagination)
+
+```toml
+[[markata-go.feeds]]
+slug = "archive"
+title = "All Posts"
+filter = "published == True"
+sort = "date"
+reverse = true
+items_per_page = 0                 # No pagination - all posts on one page
+
+[markata-go.feeds.formats]
+html = true
+rss = false
+```
+
+### Tag Pages (Manual)
+
+If you don't want auto-generated tag feeds:
+
+```toml
+[[markata-go.feeds]]
+slug = "tags/python"
+title = "Python Posts"
+filter = "published == True and 'python' in tags"
+sort = "date"
+reverse = true
+```
+
+### Featured Posts
+
+```toml
+[[markata-go.feeds]]
+slug = "featured"
+title = "Featured"
+description = "Hand-picked articles"
+filter = "published == True and featured == True"
+sort = "date"
+reverse = true
+items_per_page = 6
+```
+
+### JSON API Endpoint
+
+```toml
+[[markata-go.feeds]]
+slug = "api/posts"
+title = "Posts API"
+filter = "published == True"
+sort = "date"
+reverse = true
+items_per_page = 0                 # All posts
+
+[markata-go.feeds.formats]
+html = false
+rss = false
+json = true                        # JSON only
+```
+
+### Search Index
+
+Generate a JSON index for client-side search:
+
+```toml
+[[markata-go.feeds]]
+slug = "search"
+title = "Search Index"
+filter = "published == True"
+
+[markata-go.feeds.formats]
+json = true
+
+[markata-go.feeds.templates]
+json = "search-index.json"
+```
+
+Custom template (`templates/search-index.json`):
+
+```json
+{
+  "posts": [
+    {% for post in feed.posts %}
+    {
+      "title": {{ post.title | tojson }},
+      "href": {{ post.href | tojson }},
+      "content": {{ post.content | striptags | truncate:500 | tojson }},
+      "tags": {{ post.tags | tojson }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+```
+
+### Global Sitemap
+
+Root sitemap with all posts:
+
+```toml
+[[markata-go.feeds]]
+slug = ""                          # Root
+title = "Sitemap"
+filter = "published == True"
+sort = "date"
+reverse = true
+
+[markata-go.feeds.formats]
+html = false                       # No HTML
+sitemap = true                     # Sitemap only
+```
+
+Outputs `/sitemap.xml` at the root.
+
+### Tutorials Section
+
+```toml
+[[markata-go.feeds]]
+slug = "tutorials"
+title = "Tutorials"
+description = "Step-by-step guides"
+filter = "published == True and 'tutorial' in tags"
+sort = "date"
+reverse = true
+items_per_page = 10
+
+[markata-go.feeds.formats]
+html = true
+rss = true
+atom = true
+json = true
+```
+
+## Template Variables
+
+When rendering feed templates, these variables are available:
+
+### Feed Context (`feed`)
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `feed.slug` | string | URL-safe identifier |
+| `feed.title` | string | Display title |
+| `feed.description` | string | Feed description |
+| `feed.href` | string | Base URL path (`/blog/`) |
+| `feed.posts` | []Post | All matching posts (pre-pagination) |
+
+### Pagination Context (`pagination`)
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `pagination.current_page` | int | Current page number (1-indexed) |
+| `pagination.total_pages` | int | Total number of pages |
+| `pagination.total_items` | int | Total posts in feed |
+| `pagination.items_per_page` | int | Posts per page |
+| `pagination.has_prev` | bool | Has previous page |
+| `pagination.has_next` | bool | Has next page |
+| `pagination.prev_url` | string | URL to previous page |
+| `pagination.next_url` | string | URL to next page |
+| `pagination.prev_page` | int | Previous page number |
+| `pagination.next_page` | int | Next page number |
+| `pagination.page_urls` | []string | URLs for all pages |
+
+### Page Context (`page`)
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `page.number` | int | Page number |
+| `page.posts` | []Post | Posts on this page |
+| `page.has_prev` | bool | Has previous page |
+| `page.has_next` | bool | Has next page |
+| `page.prev_url` | string | Previous page URL |
+| `page.next_url` | string | Next page URL |
+
+### Post Fields
+
+Each post in `feed.posts` or `page.posts` has:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `post.Title` | string | Post title |
+| `post.Slug` | string | URL slug |
+| `post.Href` | string | Relative URL (`/my-post/`) |
+| `post.Date` | time | Publication date |
+| `post.Published` | bool | Whether published |
+| `post.Tags` | []string | List of tags |
+| `post.Description` | string | Post description |
+| `post.Content` | string | Raw markdown |
+| `post.ArticleHTML` | string | Rendered HTML |
+| `post.Extra` | map | Additional frontmatter |
+
+### Template Example
+
+```html
+{% extends "base.html" %}
+
+{% block content %}
+<main>
+  <h1>{{ feed.title }}</h1>
+  {% if feed.description %}
+  <p class="description">{{ feed.description }}</p>
+  {% endif %}
+  
+  <ul class="posts">
+  {% for post in page.posts %}
+    <li class="post">
+      <a href="{{ post.Href }}">
+        <h2>{{ post.Title }}</h2>
+      </a>
+      <time datetime="{{ post.Date|atom_date }}">
+        {{ post.Date|date_format:"January 2, 2006" }}
+      </time>
+      {% if post.Description %}
+      <p>{{ post.Description }}</p>
+      {% endif %}
+    </li>
+  {% endfor %}
+  </ul>
+  
+  <nav class="pagination">
+    {% if page.has_prev %}
+    <a href="{{ page.prev_url }}" rel="prev">Previous</a>
+    {% endif %}
+    
+    <span>Page {{ pagination.current_page }} of {{ pagination.total_pages }}</span>
+    
+    {% if page.has_next %}
+    <a href="{{ page.next_url }}" rel="next">Next</a>
+    {% endif %}
+  </nav>
+</main>
+{% endblock %}
+```
+
+## Template Filters for Feeds
+
+| Filter | Description | Example |
+|--------|-------------|---------|
+| `rss_date` | Format as RSS date | `{{ date\|rss_date }}` |
+| `atom_date` | Format as Atom/ISO date | `{{ date\|atom_date }}` |
+| `date_format` | Custom date format | `{{ date\|date_format:"2006-01-02" }}` |
+| `tojson` | Convert to JSON | `{{ tags\|tojson }}` |
+| `absolute_url` | Add base URL | `{{ href\|absolute_url:config.URL }}` |
+| `striptags` | Remove HTML tags | `{{ html\|striptags }}` |
+| `truncate` | Truncate to length | `{{ text\|truncate:100 }}` |
+
+## Feed Discovery
+
+Add `<link>` tags in your base template for feed autodiscovery:
+
+```html
+<head>
+  <!-- RSS Feed -->
+  <link rel="alternate" type="application/rss+xml" 
+        title="{{ feed.title }} (RSS)" 
+        href="{{ feed.href }}rss.xml">
+  
+  <!-- Atom Feed -->
+  <link rel="alternate" type="application/atom+xml" 
+        title="{{ feed.title }} (Atom)" 
+        href="{{ feed.href }}atom.xml">
+  
+  <!-- JSON Feed -->
+  <link rel="alternate" type="application/feed+json" 
+        title="{{ feed.title }} (JSON)" 
+        href="{{ feed.href }}feed.json">
+</head>
+```
+
+## Configuration Reference
+
+### Feed Config Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `slug` | string | Required | URL path (`""` for root) |
+| `title` | string | Required | Display title |
+| `description` | string | `""` | Feed description |
+| `filter` | string | `""` | Filter expression |
+| `sort` | string | `"date"` | Sort field |
+| `reverse` | bool | `true` | Sort direction (true=descending) |
+| `items_per_page` | int | `10` | Posts per page (0=no pagination) |
+| `orphan_threshold` | int | `3` | Min items for separate page |
+| `pagination_type` | string | `"manual"` | `manual`, `htmx`, or `js` |
+| `formats` | object | - | Output formats |
+| `templates` | object | - | Custom templates |
+
+### Feed Formats
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `html` | bool | `true` | Generate HTML pages |
+| `rss` | bool | `true` | Generate RSS feed |
+| `atom` | bool | `false` | Generate Atom feed |
+| `json` | bool | `false` | Generate JSON feed |
+| `markdown` | bool | `false` | Generate Markdown file |
+| `text` | bool | `false` | Generate text file |
+| `sitemap` | bool | `false` | Generate sitemap |
+
+### Feed Templates
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `html` | string | `"feed.html"` | HTML template |
+| `card` | string | `"card.html"` | Post card template |
+| `rss` | string | `"feed.xml"` | RSS template |
+| `atom` | string | `"atom.xml"` | Atom template |
+| `json` | string | `"feed.json"` | JSON template |
+
+### Feed Defaults
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `items_per_page` | int | `10` | Default posts per page |
+| `orphan_threshold` | int | `3` | Default orphan threshold |
+| `formats` | object | - | Default formats |
+| `templates` | object | - | Default templates |
+
+### Syndication Settings
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `max_items` | int | `20` | Max items in RSS/Atom |
+| `include_content` | bool | `false` | Include full content |
+
+### Auto Tags Config
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Enable auto tag feeds |
+| `slug_prefix` | string | `"tags"` | URL prefix |
+| `formats` | object | - | Output formats |
+
+### Auto Archives Config
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Enable auto archives |
+| `slug_prefix` | string | `"archive"` | URL prefix |
+| `yearly_feeds` | bool | `true` | Generate yearly feeds |
+| `monthly_feeds` | bool | `false` | Generate monthly feeds |
+| `formats` | object | - | Output formats |
+
+## Complete Example
+
+```toml
+[markata-go]
+title = "My Blog"
+url = "https://myblog.com"
+author = "Jane Doe"
+
+# =============================================================================
+# FEED DEFAULTS
+# =============================================================================
+[markata-go.feeds.defaults]
+items_per_page = 10
+orphan_threshold = 3
+
+[markata-go.feeds.defaults.formats]
+html = true
+rss = true
+atom = true
+json = false
+
+[markata-go.feeds.defaults.templates]
+html = "feed.html"
+card = "partials/card.html"
+
+[markata-go.feeds.syndication]
+max_items = 20
+include_content = false
+
+# =============================================================================
+# INDIVIDUAL FEEDS
+# =============================================================================
+
+# Home page
+[[markata-go.feeds]]
+slug = ""
+title = "Recent Posts"
+filter = "published == True"
+sort = "date"
+reverse = true
+items_per_page = 5
+formats = { rss = false, atom = false }
+
+# Main blog feed
+[[markata-go.feeds]]
+slug = "blog"
+title = "Blog"
+description = "All blog posts"
+filter = "published == True"
+sort = "date"
+reverse = true
+
+# Tutorials
+[[markata-go.feeds]]
+slug = "tutorials"
+title = "Tutorials"
+filter = "published == True and 'tutorial' in tags"
+sort = "date"
+reverse = true
+
+# Archive (no pagination)
+[[markata-go.feeds]]
+slug = "archive"
+title = "Archive"
+filter = "published == True"
+sort = "date"
+reverse = true
+items_per_page = 0
+formats = { rss = false, atom = false }
+
+# JSON API
+[[markata-go.feeds]]
+slug = "api/posts"
+title = "Posts API"
+filter = "published == True"
+sort = "date"
+reverse = true
+items_per_page = 0
+formats = { html = false, rss = false, atom = false, json = true }
+
+# =============================================================================
+# AUTO-GENERATED FEEDS
+# =============================================================================
+
+[markata-go.feeds.auto_tags]
+enabled = true
+slug_prefix = "tags"
+
+[markata-go.feeds.auto_tags.formats]
+html = true
+rss = true
+```
+
+**Generated output:**
+
+```
+public/
+  index.html                     # Home (5 posts)
+  blog/
+    index.html                   # Blog page 1
+    page/2/index.html            # Blog page 2
+    rss.xml
+    atom.xml
+  tutorials/
+    index.html
+    rss.xml
+    atom.xml
+  archive/
+    index.html                   # All posts, no pagination
+  api/
+    posts/
+      feed.json                  # JSON API
+  tags/
+    python/
+      index.html
+      rss.xml
+    go/
+      index.html
+      rss.xml
+```
+
+## See Also
+
+- [Configuration Guide](./configuration.md) - Full configuration reference
+- [Templates Guide](./templates.md) - Template system documentation
+- [Filter Expressions](../reference/filters.md) - Filter syntax reference
