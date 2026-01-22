@@ -51,6 +51,27 @@ type Post struct {
 	// ArticleHTML is the rendered content without template wrapper
 	ArticleHTML string `json:"article_html" yaml:"article_html" toml:"article_html"`
 
+	// Prev is the previous post in the navigation sequence
+	Prev *Post `json:"-" yaml:"-" toml:"-"`
+
+	// Next is the next post in the navigation sequence
+	Next *Post `json:"-" yaml:"-" toml:"-"`
+
+	// PrevNextFeed is the feed/series slug used for navigation
+	PrevNextFeed string `json:"prevnext_feed,omitempty" yaml:"prevnext_feed,omitempty" toml:"prevnext_feed,omitempty"`
+
+	// PrevNextContext contains full navigation context
+	PrevNextContext *PrevNextContext `json:"-" yaml:"-" toml:"-"`
+
+	// Hrefs is a list of raw href values from all links in the post
+	Hrefs []string `json:"hrefs,omitempty" yaml:"hrefs,omitempty" toml:"hrefs,omitempty"`
+
+	// Inlinks are links pointing TO this post from other posts
+	Inlinks []*Link `json:"inlinks,omitempty" yaml:"inlinks,omitempty" toml:"inlinks,omitempty"`
+
+	// Outlinks are links FROM this post to other pages
+	Outlinks []*Link `json:"outlinks,omitempty" yaml:"outlinks,omitempty" toml:"outlinks,omitempty"`
+
 	// Extra holds dynamic/unknown fields from frontmatter
 	Extra map[string]interface{} `json:"extra,omitempty" yaml:"extra,omitempty" toml:"extra,omitempty"`
 }
