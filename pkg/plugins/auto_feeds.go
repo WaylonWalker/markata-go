@@ -321,7 +321,7 @@ func (p *AutoFeedsPlugin) generateArchiveFeeds(posts []*models.Post, config Auto
 func getAutoFeedsConfig(config *lifecycle.Config) AutoFeedsConfig {
 	defaultConfig := AutoFeedsConfig{
 		Tags: AutoFeedTypeConfig{
-			Enabled:    false,
+			Enabled:    true, // Tag feeds enabled by default
 			SlugPrefix: "tags",
 			Formats: models.FeedFormats{
 				HTML: true,
