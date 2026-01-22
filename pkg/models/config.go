@@ -206,6 +206,123 @@ func NewMDVideoConfig() MDVideoConfig {
 	}
 }
 
+// ChartJSConfig configures the chartjs plugin.
+type ChartJSConfig struct {
+	// Enabled controls whether Chart.js processing is active (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// CDNURL is the URL for the Chart.js library
+	CDNURL string `json:"cdn_url" yaml:"cdn_url" toml:"cdn_url"`
+
+	// ContainerClass is the CSS class for the chart container div (default: "chartjs-container")
+	ContainerClass string `json:"container_class" yaml:"container_class" toml:"container_class"`
+}
+
+// NewChartJSConfig creates a new ChartJSConfig with default values.
+func NewChartJSConfig() ChartJSConfig {
+	return ChartJSConfig{
+		Enabled:        true,
+		CDNURL:         "https://cdn.jsdelivr.net/npm/chart.js",
+		ContainerClass: "chartjs-container",
+	}
+}
+
+// OneLineLinkConfig configures the one_line_link plugin.
+type OneLineLinkConfig struct {
+	// Enabled controls whether link expansion is active (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// CardClass is the CSS class for the link card (default: "link-card")
+	CardClass string `json:"card_class" yaml:"card_class" toml:"card_class"`
+
+	// FetchMetadata enables fetching title/description from URLs (default: false for performance)
+	FetchMetadata bool `json:"fetch_metadata" yaml:"fetch_metadata" toml:"fetch_metadata"`
+
+	// FallbackTitle is used when metadata fetch fails (default: "Link")
+	FallbackTitle string `json:"fallback_title" yaml:"fallback_title" toml:"fallback_title"`
+
+	// Timeout is the HTTP request timeout in seconds (default: 5)
+	Timeout int `json:"timeout" yaml:"timeout" toml:"timeout"`
+
+	// ExcludePatterns is a list of regex patterns for URLs to exclude from expansion
+	ExcludePatterns []string `json:"exclude_patterns" yaml:"exclude_patterns" toml:"exclude_patterns"`
+}
+
+// NewOneLineLinkConfig creates a new OneLineLinkConfig with default values.
+func NewOneLineLinkConfig() OneLineLinkConfig {
+	return OneLineLinkConfig{
+		Enabled:         true,
+		CardClass:       "link-card",
+		FetchMetadata:   false, // Disabled by default for build performance
+		FallbackTitle:   "Link",
+		Timeout:         5,
+		ExcludePatterns: []string{},
+	}
+}
+
+// WikilinkHoverConfig configures the wikilink_hover plugin.
+type WikilinkHoverConfig struct {
+	// Enabled controls whether hover previews are added (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// PreviewLength is the maximum characters for the preview text (default: 200)
+	PreviewLength int `json:"preview_length" yaml:"preview_length" toml:"preview_length"`
+
+	// IncludeImage adds data-preview-image attribute if post has a featured image (default: true)
+	IncludeImage bool `json:"include_image" yaml:"include_image" toml:"include_image"`
+
+	// ScreenshotService is an optional URL prefix for screenshot generation
+	// If set, adds data-preview-screenshot attribute with the URL
+	ScreenshotService string `json:"screenshot_service" yaml:"screenshot_service" toml:"screenshot_service"`
+}
+
+// NewWikilinkHoverConfig creates a new WikilinkHoverConfig with default values.
+func NewWikilinkHoverConfig() WikilinkHoverConfig {
+	return WikilinkHoverConfig{
+		Enabled:           true,
+		PreviewLength:     200,
+		IncludeImage:      true,
+		ScreenshotService: "",
+	}
+}
+
+// QRCodeConfig configures the qrcode plugin.
+type QRCodeConfig struct {
+	// Enabled controls whether QR codes are generated (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// Format is the output format: "svg" or "png" (default: "svg")
+	Format string `json:"format" yaml:"format" toml:"format"`
+
+	// Size is the QR code size in pixels (default: 200)
+	Size int `json:"size" yaml:"size" toml:"size"`
+
+	// OutputDir is the subdirectory in output for QR code files (default: "qrcodes")
+	OutputDir string `json:"output_dir" yaml:"output_dir" toml:"output_dir"`
+
+	// ErrorCorrection is the QR error correction level: L, M, Q, H (default: "M")
+	ErrorCorrection string `json:"error_correction" yaml:"error_correction" toml:"error_correction"`
+
+	// Foreground is the QR code foreground color in hex (default: "#000000")
+	Foreground string `json:"foreground" yaml:"foreground" toml:"foreground"`
+
+	// Background is the QR code background color in hex (default: "#ffffff")
+	Background string `json:"background" yaml:"background" toml:"background"`
+}
+
+// NewQRCodeConfig creates a new QRCodeConfig with default values.
+func NewQRCodeConfig() QRCodeConfig {
+	return QRCodeConfig{
+		Enabled:         true,
+		Format:          "svg",
+		Size:            200,
+		OutputDir:       "qrcodes",
+		ErrorCorrection: "M",
+		Foreground:      "#000000",
+		Background:      "#ffffff",
+	}
+}
+
 // NewConfig creates a new Config with default values.
 func NewConfig() *Config {
 	return &Config{

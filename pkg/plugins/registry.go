@@ -56,6 +56,10 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["link_collector"] = func() lifecycle.Plugin { return NewLinkCollectorPlugin() }
 	pluginRegistry.constructors["glossary"] = func() lifecycle.Plugin { return NewGlossaryPlugin() }
 	pluginRegistry.constructors["md_video"] = func() lifecycle.Plugin { return NewMDVideoPlugin() }
+	pluginRegistry.constructors["chartjs"] = func() lifecycle.Plugin { return NewChartJSPlugin() }
+	pluginRegistry.constructors["one_line_link"] = func() lifecycle.Plugin { return NewOneLineLinkPlugin() }
+	pluginRegistry.constructors["wikilink_hover"] = func() lifecycle.Plugin { return NewWikilinkHoverPlugin() }
+	pluginRegistry.constructors["qrcode"] = func() lifecycle.Plugin { return NewQRCodePlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.

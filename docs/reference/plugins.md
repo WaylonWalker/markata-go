@@ -151,6 +151,48 @@ custom_field: custom value
 
 ## Transform Stage
 
+### auto_title
+
+**Name:** `auto_title`  
+**Stage:** Transform (first priority)  
+**Purpose:** Auto-generates human-readable titles for posts that don't have one by deriving them from filenames.
+
+**Configuration:** None required.
+
+**Behavior:**
+1. Runs with highest priority in Transform stage (before other transform plugins)
+2. Skips posts that already have a title set
+3. Extracts the filename without extension
+4. Replaces hyphens and underscores with spaces
+5. Applies title case (first letter of each word capitalized)
+6. Sets `post.Title`
+
+**Post fields set:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | *string | Generated title (if not already set) |
+
+**Example transformations:**
+
+| Filename | Generated Title |
+|----------|-----------------|
+| `my-first-post.md` | "My First Post" |
+| `getting_started_guide.md` | "Getting Started Guide" |
+| `hello-world.md` | "Hello World" |
+| `2024-01-15-release-notes.md` | "2024 01 15 Release Notes" |
+
+**When to use:**
+- For quick drafts where you want titles auto-derived
+- When filenames already describe the content well
+- For sites with many posts where manual titling is tedious
+
+**Limitations:**
+- Does not extract titles from H1 headings in content (only uses filename)
+- Numeric prefixes in filenames (like dates) become part of the title
+- Special characters are kept as-is (not removed or transformed)
+
+---
+
 ### description
 
 **Name:** `description`  
@@ -748,6 +790,206 @@ type Link struct {
 
 ---
 
+### chartjs
+
+**Name:** `chartjs`  
+**Stage:** Render (after render_markdown)  
+**Purpose:** Converts `chartjs` code blocks into interactive Chart.js charts.
+
+**Configuration (TOML):**
+```toml
+[markata.chartjs]
+enabled = true
+cdn_url = "https://cdn.jsdelivr.net/npm/chart.js"
+container_class = "chartjs-container"
+```
+
+**Options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `true` | Enable/disable the plugin |
+| `cdn_url` | `https://cdn.jsdelivr.net/npm/chart.js` | Chart.js CDN URL |
+| `container_class` | `chartjs-container` | CSS class for wrapper div |
+
+**Markdown syntax:**
+````markdown
+```chartjs
+{
+  "type": "bar",
+  "data": {
+    "labels": ["Red", "Blue", "Yellow"],
+    "datasets": [{
+      "label": "My Dataset",
+      "data": [12, 19, 3],
+      "backgroundColor": ["#ff6384", "#36a2eb", "#ffce56"]
+    }]
+  }
+}
+```
+````
+
+**HTML output:**
+```html
+<div class="chartjs-container">
+  <canvas id="chart-abc123"></canvas>
+  <script>
+    (function() {
+      var ctx = document.getElementById('chart-abc123').getContext('2d');
+      new Chart(ctx, {"type":"bar","data":{...}});
+    })();
+  </script>
+</div>
+```
+
+**Supported chart types:**
+- `bar`, `line`, `pie`, `doughnut`, `radar`, `polarArea`, `bubble`, `scatter`
+
+**Template requirements:**
+Include Chart.js in your base template:
+```html
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+```
+
+---
+
+### one_line_link
+
+**Name:** `one_line_link`  
+**Stage:** Render (after render_markdown)  
+**Purpose:** Expands standalone URLs in paragraphs into styled link preview cards.
+
+**Configuration (TOML):**
+```toml
+[markata.one_line_link]
+enabled = true
+card_class = "link-card"
+fallback_title = "Link"
+timeout = 5
+exclude_patterns = ["^https://twitter\\.com", "^https://x\\.com"]
+```
+
+**Options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `true` | Enable/disable the plugin |
+| `card_class` | `link-card` | CSS class for the link card |
+| `fallback_title` | `Link` | Title when metadata unavailable |
+| `timeout` | `5` | HTTP timeout in seconds |
+| `exclude_patterns` | `[]` | Regex patterns for URLs to skip |
+
+**Behavior:**
+1. Finds paragraphs containing only a URL (`<p>https://...</p>`)
+2. Extracts the domain from the URL
+3. Converts to a styled link card
+
+**Before:**
+```html
+<p>https://example.com/article</p>
+```
+
+**After:**
+```html
+<a href="https://example.com/article" class="link-card" target="_blank" rel="noopener noreferrer">
+  <div class="link-card-content">
+    <div class="link-card-title">Link</div>
+    <div class="link-card-url">example.com</div>
+  </div>
+</a>
+```
+
+**CSS example:**
+```css
+.link-card {
+  display: block;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: box-shadow 0.2s;
+}
+.link-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.link-card-title {
+  font-weight: bold;
+  color: var(--color-text);
+}
+.link-card-url {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+```
+
+---
+
+### wikilink_hover
+
+**Name:** `wikilink_hover`  
+**Stage:** Render (after wikilinks)  
+**Purpose:** Adds hover preview data attributes to wikilinks for tooltip/popup previews.
+
+**Configuration (TOML):**
+```toml
+[markata.wikilink_hover]
+enabled = true
+preview_length = 200
+include_image = true
+screenshot_service = ""  # Optional: "https://screenshot.example.com/capture?url="
+```
+
+**Options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `true` | Enable/disable the plugin |
+| `preview_length` | `200` | Max characters for preview text |
+| `include_image` | `true` | Add preview image if available |
+| `screenshot_service` | `""` | URL prefix for screenshot service |
+
+**Behavior:**
+1. Finds `<a class="wikilink">` tags created by the wikilinks plugin
+2. Looks up the target post by href
+3. Adds data attributes for hover previews
+
+**Data attributes added:**
+| Attribute | Description |
+|-----------|-------------|
+| `data-preview` | Truncated description or content |
+| `data-preview-image` | Featured image URL (if available) |
+| `data-preview-screenshot` | Screenshot service URL (if configured) |
+
+**Before:**
+```html
+<a href="/my-post/" class="wikilink">My Post</a>
+```
+
+**After:**
+```html
+<a href="/my-post/" class="wikilink" 
+   data-preview="This is a description of the post..."
+   data-preview-image="/images/featured.jpg">My Post</a>
+```
+
+**JavaScript for hover previews:**
+```javascript
+document.querySelectorAll('.wikilink[data-preview]').forEach(link => {
+  link.addEventListener('mouseenter', (e) => {
+    const preview = e.target.dataset.preview;
+    const image = e.target.dataset.previewImage;
+    // Show tooltip with preview content and optional image
+  });
+});
+```
+
+**Image field lookup order:**
+The plugin checks these Extra fields for images:
+1. `image`
+2. `featured_image`
+3. `cover_image`
+4. `og_image`
+5. `thumbnail`
+
+---
+
 ## Collect Stage
 
 ### feeds
@@ -1207,6 +1449,114 @@ mysite/
 
 ---
 
+### palette_css
+
+**Name:** `palette_css`  
+**Stage:** Write (after static_assets)  
+**Purpose:** Generates CSS custom properties from the configured color palette, enabling theme customization without modifying CSS files directly.
+
+**Configuration (TOML):**
+```toml
+[markata.theme]
+palette = "nord"  # Palette name (built-in or custom)
+```
+
+**Built-in palettes:**
+- `catppuccin-latte` - Light pastel theme
+- `catppuccin-mocha` - Dark pastel theme
+- `dracula` - Dark purple/pink theme
+- `gruvbox-dark` - Dark retro groove theme
+- `gruvbox-light` - Light retro groove theme
+- `nord` - Arctic, north-bluish color palette
+- `one-dark` - Atom One Dark inspired
+- `rose-pine` - All-natural pine, faux fur, and soho vibes
+- `solarized-dark` - Precision dark theme
+- `solarized-light` - Precision light theme
+- `tokyo-night` - Dark theme inspired by Tokyo night lights
+
+**Behavior:**
+1. Reads palette name from `config.Extra["theme"]["palette"]`
+2. Loads the palette definition (built-in or from `palettes/` directory)
+3. Maps palette semantic colors to theme CSS variable names
+4. Generates `css/variables.css` with CSS custom properties
+5. Includes default font families, spacing, and layout values
+
+**Generated CSS structure:**
+```css
+/* CSS Custom Properties - Nord Theme */
+:root {
+  --color-primary: #88c0d0;
+  --color-primary-light: #8fbcbb;
+  --color-primary-dark: #8fbcbb;
+
+  /* Semantic colors */
+  --color-text: #eceff4;
+  --color-text-muted: #d8dee9;
+  --color-background: #2e3440;
+  --color-surface: #3b4252;
+  --color-border: #4c566a;
+
+  /* Status colors */
+  --color-success: #a3be8c;
+  --color-warning: #ebcb8b;
+  --color-error: #bf616a;
+  --color-info: #81a1c1;
+
+  /* Font families */
+  --font-body: system-ui, -apple-system, ...;
+  --font-heading: var(--font-body);
+  --font-mono: ui-monospace, ...;
+
+  /* Font sizes, spacing, layout... */
+}
+```
+
+**Custom palettes:**
+Create a TOML file in the `palettes/` directory:
+
+```toml
+# palettes/my-palette.toml
+name = "My Custom Palette"
+type = "dark"  # or "light"
+
+[colors]
+accent = "#ff6b6b"
+accent-hover = "#ee5a5a"
+text-primary = "#f8f8f2"
+text-muted = "#b0b0b0"
+bg-primary = "#1a1a2e"
+bg-surface = "#16213e"
+border = "#2d3a5a"
+success = "#50fa7b"
+warning = "#f1fa8c"
+error = "#ff5555"
+info = "#8be9fd"
+```
+
+**Template usage:**
+Variables are automatically available in your CSS:
+
+```css
+.my-component {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.button-primary {
+  background: var(--color-primary);
+  color: var(--color-background);
+}
+```
+
+**Why use palettes?**
+- Switch themes by changing one config value
+- Consistent colors across your entire site
+- Built-in palettes tested for accessibility
+- Easy to create and share custom themes
+
+---
+
 ### redirects
 
 **Name:** `redirects`  
@@ -1289,6 +1639,103 @@ redirect_template = "templates/redirect.html"
 | `.Original` | string | Source path (e.g., `/old-post/`) |
 | `.New` | string | Destination path (e.g., `/new-post/`) |
 | `.Config` | *Config | Site configuration object |
+
+---
+
+### qrcode
+
+**Name:** `qrcode`  
+**Stage:** Write  
+**Purpose:** Generates QR code images for each post's URL, useful for print materials or sharing.
+
+**Configuration (TOML):**
+```toml
+[markata.qrcode]
+enabled = true
+format = "svg"              # "svg" or "png"
+size = 200                  # Size in pixels
+output_dir = "qrcodes"      # Subdirectory in output
+error_correction = "M"      # L, M, Q, H
+foreground = "#000000"      # QR code color
+background = "#ffffff"      # Background color
+```
+
+**Options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `true` | Enable/disable QR code generation |
+| `format` | `svg` | Output format: `svg` or `png` |
+| `size` | `200` | Image size in pixels |
+| `output_dir` | `qrcodes` | Output subdirectory name |
+| `error_correction` | `M` | Error correction level |
+| `foreground` | `#000000` | QR code foreground color |
+| `background` | `#ffffff` | QR code background color |
+
+**Error correction levels:**
+| Level | Recovery | Use Case |
+|-------|----------|----------|
+| `L` | ~7% | Clean environments |
+| `M` | ~15% | Standard use (default) |
+| `Q` | ~25% | Industrial/outdoor |
+| `H` | ~30% | Maximum durability |
+
+**Behavior:**
+1. For each non-skipped post, builds the absolute URL
+2. Generates QR code in the configured format
+3. Saves to `{output_dir}/{qrcode_output_dir}/{slug}.{format}`
+4. Adds `qrcode_url` to post's Extra map
+
+**Output structure:**
+```
+output/
+  qrcodes/
+    hello-world.svg
+    my-first-post.svg
+    another-article.svg
+```
+
+**Post field set:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `qrcode_url` | string | Relative URL to QR code image |
+
+**Template usage:**
+```html
+{% if post.qrcode_url %}
+<div class="qr-code">
+    <img src="{{ post.qrcode_url }}" alt="QR Code for {{ post.Title }}" />
+    <p>Scan to visit this page</p>
+</div>
+{% endif %}
+```
+
+**Print stylesheet example:**
+```css
+@media print {
+    .qr-code {
+        display: block;
+        page-break-inside: avoid;
+        text-align: center;
+        margin-top: 2rem;
+    }
+    .qr-code img {
+        width: 150px;
+        height: 150px;
+    }
+}
+@media screen {
+    .qr-code {
+        display: none; /* Hide on screen, show in print */
+    }
+}
+```
+
+**Custom colors example:**
+```toml
+[markata.qrcode]
+foreground = "#2e3440"  # Nord dark
+background = "#eceff4"  # Nord light
+```
 
 ---
 
