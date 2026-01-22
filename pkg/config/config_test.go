@@ -27,6 +27,17 @@ func chdir(t *testing.T, dir string) func() {
 	}
 }
 
+// evalSymlinks resolves symlinks in a path. On macOS, /var is a symlink to
+// /private/var, which causes path comparison issues in tests.
+func evalSymlinks(t *testing.T, path string) string {
+	t.Helper()
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatalf("failed to resolve symlinks for %s: %v", path, err)
+	}
+	return resolved
+}
+
 // =============================================================================
 // Configuration Tests based on tests.yaml
 // =============================================================================
@@ -239,7 +250,7 @@ func TestConfig_EnvVarIntegerConversion(t *testing.T) {
 
 func TestConfig_DiscoverTOML(t *testing.T) {
 	// Test case: "finds markata-go.toml in current directory"
-	tmpDir := t.TempDir()
+	tmpDir := evalSymlinks(t, t.TempDir())
 
 	// Save current dir and change to temp dir
 	cleanup := chdir(t, tmpDir)
@@ -267,7 +278,7 @@ output_dir = "public"
 
 func TestConfig_DiscoverYAML(t *testing.T) {
 	// Test case: "finds yaml format"
-	tmpDir := t.TempDir()
+	tmpDir := evalSymlinks(t, t.TempDir())
 
 	cleanup := chdir(t, tmpDir)
 	defer cleanup()
@@ -293,7 +304,7 @@ func TestConfig_DiscoverYAML(t *testing.T) {
 
 func TestConfig_TOMLPreferredOverYAML(t *testing.T) {
 	// Test case: "toml preferred over yaml"
-	tmpDir := t.TempDir()
+	tmpDir := evalSymlinks(t, t.TempDir())
 
 	cleanup := chdir(t, tmpDir)
 	defer cleanup()
