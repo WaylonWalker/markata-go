@@ -2,6 +2,63 @@
 
 This document provides guidelines for AI coding agents working in the markata-go codebase.
 
+## GitHub Workflow
+
+**This project uses a formal GitHub workflow.** All work should be tracked and managed through GitHub:
+
+### Issues
+
+- **All work starts with an issue** - Before implementing features, fixes, or changes, ensure there's a GitHub issue tracking the work
+- **Reference issues in commits** - Use `Fixes #123` or `Refs #123` in commit messages to link work to issues
+- **Check existing issues first** - Before creating new issues, search for existing ones that may cover the same topic
+
+### Pull Requests
+
+- **Feature branches** - Create branches from `main` for all changes (e.g., `feat/chartjs-plugin`, `fix/template-error`)
+- **PR descriptions** - Include a summary, link to the issue, and list of changes
+- **CI must pass** - All PRs require passing CI (lint, test, build) before merge
+- **Keep PRs focused** - One feature or fix per PR when possible
+
+### Releases
+
+- **Semantic Versioning** - This project follows [semver](https://semver.org/): `MAJOR.MINOR.PATCH`
+- **CRITICAL: Do NOT bump MAJOR version** - Only the project owner can authorize major version bumps. This includes any breaking changes.
+- **Minor versions** - New features that are backward compatible
+- **Patch versions** - Bug fixes and minor improvements
+- **Releases are created via GitHub Releases** - Use `gh release create` or the GitHub UI
+- **GoReleaser handles binaries** - Release automation is configured in `.goreleaser.yml`
+
+### Branch Naming
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Feature | `feat/<description>` | `feat/chartjs-plugin` |
+| Bug fix | `fix/<description>` | `fix/feed-pagination` |
+| Docs | `docs/<description>` | `docs/plugin-guide` |
+| Refactor | `refactor/<description>` | `refactor/lifecycle` |
+| Chore | `chore/<description>` | `chore/update-deps` |
+
+### Useful Commands
+
+```bash
+# Issues
+gh issue list                        # List open issues
+gh issue create                      # Create new issue
+gh issue view 123                    # View issue details
+
+# Pull Requests
+gh pr create                         # Create PR from current branch
+gh pr list                           # List open PRs
+gh pr checks                         # View CI status
+gh pr merge                          # Merge PR (after approval)
+
+# Releases
+gh release list                      # List releases
+gh release create v0.2.0 --generate-notes  # Create release with auto-generated notes
+```
+
+---
+
 ## Project Overview
 
 **markata-go** is a static site generator written in Go 1.22+. It processes Markdown files with frontmatter through a plugin-based lifecycle system to generate HTML sites.
