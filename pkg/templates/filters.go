@@ -48,6 +48,13 @@ func registerFilters() {
 		// URL filters
 		pongo2.RegisterFilter("urlencode", filterURLEncode)
 		pongo2.RegisterFilter("absolute_url", filterAbsoluteURL)
+
+		// Theme/asset filters (per THEMES.md spec)
+		pongo2.RegisterFilter("theme_asset", filterThemeAsset)
+		pongo2.RegisterFilter("asset_url", filterAssetURL)
+
+		// ISO date format filter (per THEMES.md spec)
+		pongo2.RegisterFilter("isoformat", filterISOFormat)
 	})
 }
 
@@ -342,6 +349,51 @@ func filterAbsoluteURL(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *p
 	}
 
 	return pongo2.AsValue(baseURL + path), nil
+}
+
+// filterThemeAsset returns a URL path for theme static assets.
+// Usage: {{ 'css/main.css' | theme_asset }}
+// Returns: /css/main.css (theme assets are copied to root of output)
+func filterThemeAsset(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	path := in.String()
+	if path == "" {
+		return pongo2.AsValue(""), nil
+	}
+
+	// Ensure path starts with /
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+
+	return pongo2.AsValue(path), nil
+}
+
+// filterAssetURL returns a URL path for project static assets.
+// Usage: {{ 'images/logo.png' | asset_url }}
+// Returns: /images/logo.png (project assets are at root of output)
+func filterAssetURL(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	path := in.String()
+	if path == "" {
+		return pongo2.AsValue(""), nil
+	}
+
+	// Ensure path starts with /
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+
+	return pongo2.AsValue(path), nil
+}
+
+// filterISOFormat formats a date in ISO 8601 format.
+// Usage: {{ post.date | isoformat }}
+// Returns: 2006-01-02T15:04:05Z07:00
+func filterISOFormat(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	t, err := toTime(in)
+	if err != nil {
+		return pongo2.AsValue(""), nil
+	}
+	return pongo2.AsValue(t.Format(time.RFC3339)), nil
 }
 
 // toTime attempts to convert a pongo2 value to a time.Time.
