@@ -29,13 +29,16 @@ This document specifies all built-in plugins that ship with the static site gene
 │    ├─ heading_anchors    Add anchor links to headings               │
 │    ├─ toc                Generate table of contents                  │
 │    ├─ link_collector     Track inlinks/outlinks between posts       │
-│    ├─ feeds              Generate feed collections                   │
+│    └─ feeds              Generate feed collections                   │
+│                                                                      │
+│  COLLECT                                                             │
 │    └─ prevnext           Calculate prev/next from feeds/series       │
 │                                                                      │
 │  OUTPUT                                                              │
 │    ├─ publish_feeds      Write HTML/RSS/Atom/JSON/MD/TXT/Sitemap    │
 │    ├─ publish_html       Write individual post HTML files           │
-│    └─ copy_assets        Copy static files                           │
+│    ├─ copy_assets        Copy static files                           │
+│    └─ redirects          Generate HTML redirect pages                │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -265,9 +268,9 @@ def pre_render(core):
 
 ### `prevnext`
 
-**Stage:** `post_render` (after feeds are created)
+**Stage:** `collect` (after feeds are created)
 
-**Purpose:** Calculate previous/next post links for navigation based on feeds or series.
+**Purpose:** Calculate previous/next post links for navigation based on feeds.
 
 **Configuration:**
 ```toml
@@ -283,196 +286,127 @@ default_feed = "blog"          # Feed to use when strategy = "explicit_feed"
 |----------|-------------|
 | `first_feed` | Use first feed the post appears in (default) |
 | `explicit_feed` | Always use `default_feed` for all posts |
-| `series` | Use post's `series` frontmatter, fall back to `first_feed` |
-| `frontmatter` | Use post's `prevnext_feed` frontmatter, fall back to `first_feed` |
+| `series` | Use post's `series` frontmatter to find matching feed, fall back to `first_feed` |
+| `frontmatter` | Use post's `prevnext_feed` frontmatter to find matching feed, fall back to `first_feed` |
 
 **Post frontmatter options:**
 ```yaml
 ---
 title: My Post
-series: python-tutorial       # Series name (acts like feed slug)
-prevnext_feed: blog           # Explicit feed for this post's navigation
+series: python-tutorial       # Feed slug to use for navigation (with strategy="series")
+prevnext_feed: blog           # Explicit feed for this post's navigation (with strategy="frontmatter")
 ---
-```
-
-**Series Definition:**
-
-Series are lightweight feed aliases for navigation purposes. Define them inline or reference existing feeds:
-
-```toml
-# Inline series definition
-[[name.series]]
-slug = "python-tutorial"
-title = "Python Tutorial Series"
-filter = "series == 'python-tutorial'"
-sort = "date"
-reverse = false               # Chronological for tutorials
-
-# Series as feed alias
-[[name.series]]
-slug = "getting-started"
-feed = "tutorials"            # Use existing feed's posts and sort order
 ```
 
 **Post fields added:**
 | Field | Type | Description |
 |-------|------|-------------|
-| `prev` | Post? | Previous post in sequence |
-| `next` | Post? | Next post in sequence |
-| `prevnext_feed` | string? | Feed/series slug used for navigation |
-| `prevnext_context` | PrevNextContext | Full navigation context |
+| `Prev` | *Post | Previous post in sequence (nil if first) |
+| `Next` | *Post | Next post in sequence (nil if last) |
+| `PrevNextFeed` | string | Feed slug used for navigation |
+| `PrevNextContext` | *PrevNextContext | Full navigation context |
 
 **PrevNextContext structure:**
-```python
-class PrevNextContext:
-    feed_slug: str              # Feed or series slug
-    feed_title: str             # Feed or series title
-    position: int               # Position in sequence (1-indexed)
-    total: int                  # Total posts in sequence
-    prev: Post | None           # Previous post
-    next: Post | None           # Next post
+```go
+type PrevNextContext struct {
+    FeedSlug  string  // Feed slug
+    FeedTitle string  // Feed title
+    Position  int     // Position in sequence (1-indexed)
+    Total     int     // Total posts in sequence
+    Prev      *Post   // Previous post (nil if first)
+    Next      *Post   // Next post (nil if last)
+}
 ```
 
 **Behavior:**
 
-1. **Collect all series definitions** - Parse `[[name.series]]` configs
-2. **For each post, determine navigation context:**
-   - If `strategy == "frontmatter"` and post has `prevnext_feed`: use that feed
-   - If `strategy == "series"` and post has `series`: look up series, use its posts
-   - If `strategy == "explicit_feed"`: use `default_feed`
-   - If `strategy == "first_feed"`: find first feed containing this post
-3. **Get ordered posts from feed/series**
-4. **Find post position and set prev/next**
+1. **Build post-to-feeds mapping** - For each feed, map post slugs to feeds containing them
+2. **For each post, determine navigation context based on strategy:**
+   - `first_feed`: Find first feed containing this post
+   - `explicit_feed`: Always use `default_feed`
+   - `series`: Check post's `Extra["series"]`, look up matching feed, fall back to first_feed
+   - `frontmatter`: Check post's `Extra["prevnext_feed"]`, look up matching feed, fall back to first_feed
+3. **Find post's position in the feed's posts list**
+4. **Set Prev/Next based on position**
 
-**Resolution order for series/feeds:**
-1. Check `core.series` for matching slug
-2. Check `core.feeds` for matching slug
-3. Log warning if not found, skip prev/next for this post
-
-**Hook signature:**
-```python
-@hook_impl
-def post_render(core):
-    config = core.config.prevnext
-    if not config.enabled:
-        return
+**Hook signature (Go):**
+```go
+func (p *PrevNextPlugin) Collect(m *lifecycle.Manager) error {
+    config := getPrevNextConfig(m.Config())
+    if !config.Enabled {
+        return nil
+    }
     
-    # Build series lookup
-    series_map = {}
-    for series_config in core.config.get("series", []):
-        if "feed" in series_config:
-            # Series is alias for existing feed
-            feed = core.feeds.get(series_config["feed"])
-            if feed:
-                series_map[series_config["slug"]] = {
-                    "title": series_config.get("title", feed.title),
-                    "posts": feed.posts
+    feeds := m.Feeds()
+    postToFeeds := buildPostToFeedsMap(feeds)
+    
+    for _, post := range m.Posts() {
+        feed := p.resolveFeed(post, config, feeds, postToFeeds)
+        if feed == nil {
+            continue
+        }
+        
+        // Find position and set prev/next
+        for i, feedPost := range feed.Posts {
+            if feedPost.Slug == post.Slug {
+                if i > 0 {
+                    post.Prev = feed.Posts[i-1]
                 }
-        else:
-            # Inline series definition
-            posts = core.filter(series_config.get("filter", "True"))
-            sort_field = series_config.get("sort", "date")
-            reverse = series_config.get("reverse", True)
-            posts = sorted(posts, key=lambda p: getattr(p, sort_field, ""), reverse=reverse)
-            series_map[series_config["slug"]] = {
-                "title": series_config.get("title", series_config["slug"]),
-                "posts": posts
+                if i < len(feed.Posts)-1 {
+                    post.Next = feed.Posts[i+1]
+                }
+                post.PrevNextFeed = feed.Name
+                post.PrevNextContext = &models.PrevNextContext{
+                    FeedSlug:  feed.Name,
+                    FeedTitle: feed.Title,
+                    Position:  i + 1,
+                    Total:     len(feed.Posts),
+                    Prev:      post.Prev,
+                    Next:      post.Next,
+                }
+                break
             }
-    
-    # Build feed lookup
-    feed_map = {f.slug: f for f in core.feeds}
-    
-    for post in core.posts:
-        # Determine which feed/series to use
-        context_slug = None
-        
-        if config.strategy == "frontmatter" and hasattr(post, "prevnext_feed"):
-            context_slug = post.prevnext_feed
-        elif config.strategy == "series" and hasattr(post, "series"):
-            context_slug = post.series
-        elif config.strategy == "explicit_feed":
-            context_slug = config.default_feed
-        elif config.strategy == "first_feed":
-            # Find first feed containing this post
-            for feed in core.feeds:
-                if post in feed.posts:
-                    context_slug = feed.slug
-                    break
-        
-        if not context_slug:
-            post.prev = None
-            post.next = None
-            continue
-        
-        # Get posts from series or feed
-        if context_slug in series_map:
-            context = series_map[context_slug]
-            posts = context["posts"]
-            title = context["title"]
-        elif context_slug in feed_map:
-            feed = feed_map[context_slug]
-            posts = feed.posts
-            title = feed.title
-        else:
-            logger.warning(f"Feed/series '{context_slug}' not found for post '{post.slug}'")
-            post.prev = None
-            post.next = None
-            continue
-        
-        # Find position and set prev/next
-        try:
-            idx = posts.index(post)
-            post.prev = posts[idx - 1] if idx > 0 else None
-            post.next = posts[idx + 1] if idx < len(posts) - 1 else None
-            post.prevnext_feed = context_slug
-            post.prevnext_context = PrevNextContext(
-                feed_slug=context_slug,
-                feed_title=title,
-                position=idx + 1,
-                total=len(posts),
-                prev=post.prev,
-                next=post.next
-            )
-        except ValueError:
-            post.prev = None
-            post.next = None
+        }
+    }
+    return nil
+}
 ```
 
 **Template usage:**
 ```jinja2
 {# Basic prev/next navigation #}
 <nav class="post-navigation">
-  {% if post.prev %}
-  <a href="{{ post.prev.href }}" class="nav-prev">
+  {% if post.Prev %}
+  <a href="{{ post.Prev.Href }}" class="nav-prev">
     <span class="nav-label">Previous</span>
-    <span class="nav-title">{{ post.prev.title }}</span>
+    <span class="nav-title">{{ post.Prev.Title }}</span>
   </a>
   {% endif %}
   
-  {% if post.next %}
-  <a href="{{ post.next.href }}" class="nav-next">
+  {% if post.Next %}
+  <a href="{{ post.Next.Href }}" class="nav-next">
     <span class="nav-label">Next</span>
-    <span class="nav-title">{{ post.next.title }}</span>
+    <span class="nav-title">{{ post.Next.Title }}</span>
   </a>
   {% endif %}
 </nav>
 
-{# Series navigation with position indicator #}
-{% if post.prevnext_context %}
+{# Navigation with position indicator #}
+{% if post.PrevNextContext %}
 <nav class="series-navigation">
   <div class="series-info">
-    <span class="series-title">{{ post.prevnext_context.feed_title }}</span>
+    <span class="series-title">{{ post.PrevNextContext.FeedTitle }}</span>
     <span class="series-position">
-      Part {{ post.prevnext_context.position }} of {{ post.prevnext_context.total }}
+      Part {{ post.PrevNextContext.Position }} of {{ post.PrevNextContext.Total }}
     </span>
   </div>
   
   <div class="series-links">
-    {% if post.prev %}
-    <a href="{{ post.prev.href }}">← {{ post.prev.title }}</a>
+    {% if post.PrevNextContext.Prev %}
+    <a href="{{ post.PrevNextContext.Prev.Href }}">← {{ post.PrevNextContext.Prev.Title }}</a>
     {% endif %}
-    {% if post.next %}
-    <a href="{{ post.next.href }}">{{ post.next.title }} →</a>
+    {% if post.PrevNextContext.Next %}
+    <a href="{{ post.PrevNextContext.Next.Href }}">{{ post.PrevNextContext.Next.Title }} →</a>
     {% endif %}
   </div>
 </nav>
@@ -493,53 +427,25 @@ enabled = true
 strategy = "explicit_feed"
 default_feed = "all-posts"
 
-# Strategy 3: Series-based navigation
+# Strategy 3: Series-based navigation (uses series frontmatter to find feed)
 [name.prevnext]
 enabled = true
 strategy = "series"
-
-# Define series for tutorials
-[[name.series]]
-slug = "python-basics"
-title = "Python Basics Tutorial"
-filter = "series == 'python-basics'"
-sort = "date"
-reverse = false
-
-[[name.series]]
-slug = "web-dev-guide"
-title = "Web Development Guide"
-filter = "'web-dev-guide' in tags"
-sort = "order"              # Custom sort field
-reverse = false
-
-# Series as alias for existing feed
-[[name.series]]
-slug = "recent"
-feed = "blog"               # Inherit posts from 'blog' feed
-title = "Recent Posts"
 ```
 
 **Frontmatter examples:**
 
 ```yaml
 ---
-# Post in a tutorial series
+# Post using series frontmatter (strategy="series")
 title: "Variables in Python"
-series: python-basics
+series: python-basics    # Must match a feed slug
 ---
 
 ---
-# Post with explicit navigation feed
+# Post with explicit navigation feed (strategy="frontmatter")
 title: "Announcement Post"
 prevnext_feed: announcements
----
-
----
-# Post with both (series takes precedence with strategy="series")
-title: "Advanced Topic"
-series: python-advanced
-prevnext_feed: all-posts
 ---
 ```
 
@@ -646,7 +552,7 @@ def render(core):
 
 ### `heading_anchors`
 
-**Stage:** `post_render`
+**Stage:** `render` (with late priority, after `render_markdown`)
 
 **Purpose:** Add anchor links to headings for direct linking.
 
@@ -1159,6 +1065,142 @@ def save(core):
 
 ---
 
+### `redirects`
+
+**Stage:** `write` (with late priority, after content is written)
+
+**Purpose:** Generate HTML redirect pages from a `_redirects` file. Creates static HTML pages at old URLs that redirect browsers to new URLs.
+
+**Configuration:**
+```toml
+[name.redirects]
+redirects_file = "static/_redirects"    # Path to redirects file (default)
+redirect_template = ""                   # Optional custom template path
+```
+
+**Redirects file format:**
+
+The `_redirects` file follows Netlify's format - one redirect per line with source and destination paths:
+
+```
+# Comments start with #
+/old-path /new-path
+/blog/old-post /blog/new-post
+/legacy/page /modern/page
+```
+
+**Syntax rules:**
+- Lines starting with `#` are comments
+- Empty lines are ignored
+- Each line has two space-separated paths: `<original> <new>`
+- Both paths must start with `/`
+- Wildcards (`*`) are not supported (skipped)
+
+**Behavior:**
+1. Read the `_redirects` file (skip silently if not found)
+2. Parse each line into redirect rules
+3. For each redirect rule:
+   - Create directory at `{output_dir}/{original_path}/`
+   - Generate `index.html` with meta refresh redirect
+4. Cache results based on file content hash
+
+**Output:**
+For each redirect rule, creates `{output_dir}/{original_path}/index.html`:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Refresh" content="0; url='/new-path'" />
+  <meta charset="UTF-8">
+  <link rel="canonical" href="/new-path" />
+  <meta name="description" content="/old-path has been moved to /new-path." />
+  <title>/old-path has been moved to /new-path</title>
+  <!-- Styled fallback content for users with JS disabled -->
+</head>
+<body>
+  <h1>Page Moved</h1>
+  <p><code>/old-path</code> has moved to <a href="/new-path">/new-path</a></p>
+</body>
+</html>
+```
+
+**Custom templates:**
+
+If `redirect_template` is set, the plugin loads a custom Go template with these variables:
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `.Original` | string | The source path |
+| `.New` | string | The destination path |
+| `.Config` | Config | Site configuration |
+
+**Example custom template:**
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Refresh" content="0; url='{{ .New }}'" />
+  <link rel="canonical" href="{{ .New }}" />
+</head>
+<body>
+  <p>Redirecting to <a href="{{ .New }}">{{ .New }}</a>...</p>
+</body>
+</html>
+```
+
+**Hook signature:**
+```go
+func (p *RedirectsPlugin) Write(m *lifecycle.Manager) error {
+    // Read _redirects file
+    content, err := os.ReadFile(p.config.RedirectsFile)
+    if os.IsNotExist(err) {
+        return nil // Skip silently
+    }
+    
+    // Parse and generate redirect pages
+    for _, redirect := range parseRedirects(content) {
+        outputPath := filepath.Join(outputDir, redirect.Original, "index.html")
+        // Render template and write file
+    }
+}
+```
+
+**Example configuration:**
+
+```toml
+# Basic usage (default settings)
+[name.redirects]
+# Uses static/_redirects by default
+
+# Custom redirects file location
+[name.redirects]
+redirects_file = "_redirects"
+
+# With custom template
+[name.redirects]
+redirects_file = "config/_redirects"
+redirect_template = "templates/redirect.html"
+```
+
+**Example `_redirects` file:**
+
+```
+# Blog post renames
+/blog/old-title /blog/new-title
+/posts/draft-post /posts/published-post
+
+# Section reorganization
+/tutorials/beginner /guides/getting-started
+/tutorials/advanced /guides/advanced-topics
+
+# Legacy URLs
+/about-me /about
+/contact-us /contact
+```
+
+---
+
 ## Plugin Load Order
 
 When `hooks = ["default"]`, plugins load in this order:
@@ -1180,6 +1222,7 @@ DEFAULT_PLUGINS = [
     "publish_feeds",        # Write feed files
     "publish_html",         # Write post files
     "copy_assets",          # Copy static files
+    "redirects",            # Generate redirect pages
 ]
 ```
 

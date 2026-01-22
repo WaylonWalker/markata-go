@@ -28,25 +28,23 @@ This document specifies optional plugins that extend the static site generator w
 
 ## Enabling Optional Plugins
 
+Optional plugins must be explicitly enabled in your configuration. Add them to the `hooks` list:
+
 ```toml
-[your-ssg]
+[markata-go]
 hooks = [
     "default",
     "glossary",
     "mermaid",
-    "chartjs",
+    "csv_fence",
 ]
 ```
 
-Or with full module path:
+Each plugin also has an `enabled` configuration option (default: `true`) that allows temporarily disabling a plugin without removing it from the hooks list:
 
 ```toml
-[your-ssg]
-hooks = [
-    "default",
-    "your_ssg.plugins.glossary",
-    "your_ssg.plugins.mermaid",
-]
+[markata-go.mermaid]
+enabled = false  # Disable mermaid without removing from hooks
 ```
 
 ---
@@ -55,7 +53,7 @@ hooks = [
 
 ### `glossary`
 
-**Stage:** `post_render`
+**Stage:** `render` (late priority, after markdown conversion) + `write` (for JSON export)
 
 **Purpose:** Automatically link glossary terms in post content to their definition pages.
 
@@ -64,7 +62,7 @@ hooks = [
 **Configuration:**
 
 ```toml
-[your-ssg.glossary]
+[markata-go.glossary]
 enabled = true
 link_class = "glossary-term"       # CSS class for glossary links
 case_sensitive = false             # Match terms case-insensitively
@@ -72,7 +70,23 @@ tooltip = true                     # Add tooltip with description
 max_links_per_term = 1             # Link only first occurrence (0 = all)
 exclude_tags = ["glossary"]        # Don't link in glossary posts themselves
 export_json = true                 # Export glossary.json to output
+glossary_path = "glossary"         # Path prefix for glossary posts
+template_key = "glossary"          # templateKey value identifying glossary posts
 ```
+
+**Configuration Fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Whether the plugin is active |
+| `link_class` | string | `"glossary-term"` | CSS class for glossary links |
+| `case_sensitive` | bool | `false` | Whether term matching is case-sensitive |
+| `tooltip` | bool | `true` | Add title attribute with description |
+| `max_links_per_term` | int | `1` | Max links per term per post (0 = unlimited) |
+| `exclude_tags` | []string | `["glossary"]` | Tags that should not have terms linked |
+| `export_json` | bool | `true` | Whether to export glossary.json |
+| `glossary_path` | string | `"glossary"` | Path prefix for glossary definition posts |
+| `template_key` | string | `"glossary"` | templateKey frontmatter value identifying glossary posts |
 
 **Post Frontmatter (Definition Posts):**
 
@@ -93,7 +107,14 @@ aliases:
 2. Build term → definition lookup including aliases
 3. For each non-glossary post, find term occurrences in `article_html`
 4. Replace with linked version: `<a href="/glossary/api/" class="glossary-term" title="...">API</a>`
-5. Optionally export `glossary.json` with all terms
+5. At write stage: optionally export `glossary.json` with all terms
+
+**Protected Content:**
+
+The plugin protects the following HTML elements from term linking:
+- `<a>` tags (prevents double-linking)
+- `<code>` tags (preserves code samples)
+- `<pre>` tags (preserves preformatted content)
 
 **Output Files:**
 
@@ -117,32 +138,24 @@ aliases:
 }
 ```
 
-**Hook Signature:**
+**Go Interface:**
 
-```python
-@hook_impl
-def post_render(core):
-    config = core.config.glossary
-    if not config.enabled:
-        return
-    
-    # Build glossary from definition posts
-    glossary = build_glossary(core)
-    
-    # Process each post
-    for post in core.filter("not skip and templateKey != 'glossary'"):
-        post.article_html = link_glossary_terms(
-            post.article_html,
-            glossary,
-            config
-        )
+```go
+// GlossaryPlugin implements these lifecycle interfaces:
+var (
+    _ lifecycle.Plugin          = (*GlossaryPlugin)(nil)
+    _ lifecycle.ConfigurePlugin = (*GlossaryPlugin)(nil)
+    _ lifecycle.RenderPlugin    = (*GlossaryPlugin)(nil)  // Term linking
+    _ lifecycle.WritePlugin     = (*GlossaryPlugin)(nil)  // JSON export
+    _ lifecycle.PriorityPlugin  = (*GlossaryPlugin)(nil)
+)
 ```
 
 ---
 
 ### `mermaid`
 
-**Stage:** `post_render`
+**Stage:** `render` (late priority, after markdown conversion)
 
 **Purpose:** Convert Mermaid code blocks into rendered diagrams.
 
@@ -151,12 +164,19 @@ def post_render(core):
 **Configuration:**
 
 ```toml
-[your-ssg.mermaid]
+[markata-go.mermaid]
 enabled = true
 cdn_url = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs"
 theme = "default"                  # default, dark, forest, neutral
-init_config = {}                   # Additional mermaid.initialize() options
 ```
+
+**Configuration Fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Whether the plugin is active |
+| `cdn_url` | string | `"https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs"` | URL for Mermaid.js library |
+| `theme` | string | `"default"` | Mermaid theme (default, dark, forest, neutral) |
 
 **Syntax:**
 
@@ -173,7 +193,7 @@ graph TD
 
 1. Find all `<pre><code class="language-mermaid">` blocks
 2. Replace with `<pre class="mermaid">{diagram code}</pre>`
-3. Inject Mermaid.js script (once per page with mermaid content)
+3. Inject Mermaid.js script (once per post with mermaid content)
 
 **Output:**
 
@@ -206,26 +226,25 @@ graph TD
 | `mindmap` | Mind maps |
 | `timeline` | Timelines |
 
-**Hook Signature:**
+**Go Interface:**
 
-```python
-@hook_impl
-def post_render(core):
-    config = core.config.mermaid
-    if not config.enabled:
-        return
-    
-    for post in core.filter("not skip"):
-        if has_mermaid_blocks(post.article_html):
-            post.article_html = process_mermaid_blocks(post.article_html, config)
-            post.article_html = inject_mermaid_script(post.article_html, config)
+```go
+// MermaidPlugin implements these lifecycle interfaces:
+var (
+    _ lifecycle.Plugin          = (*MermaidPlugin)(nil)
+    _ lifecycle.ConfigurePlugin = (*MermaidPlugin)(nil)
+    _ lifecycle.RenderPlugin    = (*MermaidPlugin)(nil)
+    _ lifecycle.PriorityPlugin  = (*MermaidPlugin)(nil)
+)
 ```
 
 ---
 
 ### `chartjs`
 
-**Stage:** `post_render`
+> **Note:** This plugin is planned but not yet implemented.
+
+**Stage:** `render` (late priority, after markdown conversion)
 
 **Purpose:** Convert Chart.js JSON blocks into rendered charts.
 
@@ -234,7 +253,7 @@ def post_render(core):
 **Configuration:**
 
 ```toml
-[your-ssg.chartjs]
+[markata-go.chartjs]
 enabled = true
 cdn_url = "https://cdn.jsdelivr.net/npm/chart.js"
 default_options = {}               # Default Chart.js options
@@ -295,25 +314,11 @@ default_options = {}               # Default Chart.js options
 | `bubble` | Bubble chart |
 | `scatter` | Scatter plot |
 
-**Hook Signature:**
-
-```python
-@hook_impl
-def post_render(core):
-    config = core.config.chartjs
-    if not config.enabled:
-        return
-    
-    for post in core.filter("not skip"):
-        if has_chartjs_blocks(post.article_html):
-            post.article_html = process_chartjs_blocks(post.article_html, config)
-```
-
 ---
 
 ### `csv_fence`
 
-**Stage:** `post_render`
+**Stage:** `render` (late priority, after markdown conversion)
 
 **Purpose:** Convert CSV code blocks into HTML tables.
 
@@ -322,12 +327,21 @@ def post_render(core):
 **Configuration:**
 
 ```toml
-[your-ssg.csv_fence]
+[markata-go.csv_fence]
 enabled = true
 table_class = "csv-table"          # CSS class for table
 has_header = true                  # First row is header
 delimiter = ","                    # CSV delimiter
 ```
+
+**Configuration Fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Whether the plugin is active |
+| `table_class` | string | `"csv-table"` | CSS class for generated table |
+| `has_header` | bool | `true` | Whether first row is a header |
+| `delimiter` | string | `","` | CSV field delimiter |
 
 **Syntax:**
 
@@ -379,31 +393,34 @@ Charlie,35,Chicago
 
 **Advanced Usage:**
 
+Per-block options can override global configuration:
+
 ````markdown
-```csv delimiter=";" has_header="false"
+```csv delimiter=";" has_header="false" table_class="custom-table"
 1;2;3
 4;5;6
 ```
 ````
 
-**Hook Signature:**
+**Go Interface:**
 
-```python
-@hook_impl
-def post_render(core):
-    config = core.config.csv_fence
-    if not config.enabled:
-        return
-    
-    for post in core.filter("not skip"):
-        post.article_html = process_csv_blocks(post.article_html, config)
+```go
+// CSVFencePlugin implements these lifecycle interfaces:
+var (
+    _ lifecycle.Plugin          = (*CSVFencePlugin)(nil)
+    _ lifecycle.ConfigurePlugin = (*CSVFencePlugin)(nil)
+    _ lifecycle.RenderPlugin    = (*CSVFencePlugin)(nil)
+    _ lifecycle.PriorityPlugin  = (*CSVFencePlugin)(nil)
+)
 ```
 
 ---
 
 ### `md_video`
 
-**Stage:** `post_render`
+> **Note:** This plugin is planned but not yet implemented.
+
+**Stage:** `render` (late priority, after markdown conversion)
 
 **Purpose:** Convert markdown image syntax for video files into HTML video elements.
 
@@ -412,7 +429,7 @@ def post_render(core):
 **Configuration:**
 
 ```toml
-[your-ssg.md_video]
+[markata-go.md_video]
 enabled = true
 video_extensions = [".mp4", ".webm", ".ogg", ".mov"]
 video_class = "md-video"
@@ -451,24 +468,11 @@ preload = "metadata"               # "none", "metadata", "auto"
 For silent, looping videos (like animated GIFs):
 
 ```toml
-[your-ssg.md_video]
+[markata-go.md_video]
 autoplay = true
 loop = true
 muted = true
 controls = false
-```
-
-**Hook Signature:**
-
-```python
-@hook_impl
-def post_render(core):
-    config = core.config.md_video
-    if not config.enabled:
-        return
-    
-    for post in core.filter("not skip"):
-        post.article_html = convert_video_images(post.article_html, config)
 ```
 
 ---
@@ -477,16 +481,18 @@ def post_render(core):
 
 ### `one_line_link`
 
-**Stage:** `post_render`
+> **Note:** This plugin is planned but not yet implemented.
+
+**Stage:** `render` (late priority, after markdown conversion)
 
 **Purpose:** Expand URLs that appear alone on a line into rich preview cards.
 
-**Dependencies:** `lxml` (optional, for parsing fetched pages)
+**Dependencies:** None (optional: external HTTP client for metadata fetching)
 
 **Configuration:**
 
 ```toml
-[your-ssg.one_line_link]
+[markata-go.one_line_link]
 enabled = true
 card_class = "link-card"
 fetch_metadata = true              # Fetch title/description from URL
@@ -501,7 +507,7 @@ exclude_patterns = [
 ]
 
 # Custom templates per domain
-[your-ssg.one_line_link.templates]
+[markata-go.one_line_link.templates]
 "github.com" = "github-card.html"
 "youtube.com" = "youtube-card.html"
 ```
@@ -548,37 +554,22 @@ And continue reading...
 | `[Link](https://example.com)` | No (already link) |
 | `<https://example.com>` | No (autolink) |
 
-**Hook Signature:**
-
-```python
-@hook_impl
-def post_render(core):
-    config = core.config.one_line_link
-    if not config.enabled:
-        return
-    
-    for post in core.filter("not skip"):
-        post.article_html = expand_one_line_links(
-            post.article_html,
-            config,
-            core.cache
-        )
-```
-
 ---
 
 ### `wikilink_hover`
 
-**Stage:** `post_render` (after wikilinks)
+> **Note:** This plugin is planned but not yet implemented.
+
+**Stage:** `render` (late priority, after wikilinks plugin)
 
 **Purpose:** Add hover previews to wikilinks showing target post content.
 
-**Dependencies:** `lxml` (for HTML parsing)
+**Dependencies:** None
 
 **Configuration:**
 
 ```toml
-[your-ssg.wikilink_hover]
+[markata-go.wikilink_hover]
 enabled = true
 preview_length = 200               # Characters to show in preview
 include_image = true               # Include featured image if available
@@ -632,51 +623,24 @@ Output:
 </a>
 ```
 
-**Hook Signature:**
-
-```python
-@hook_impl(trylast=True)  # Run after wikilinks
-def post_render(core):
-    config = core.config.wikilink_hover
-    if not config.enabled:
-        return
-    
-    # Build post lookup
-    post_lookup = {p.slug: p for p in core.posts}
-    
-    for post in core.filter("not skip"):
-        post.article_html = add_wikilink_previews(
-            post.article_html,
-            post_lookup,
-            config,
-            core.config.url
-        )
-```
-
 ---
 
 ## Output Generation Plugins
 
 ### `qrcode`
 
-**Stage:** `save`
+> **Note:** This plugin is planned but not yet implemented.
+
+**Stage:** `write`
 
 **Purpose:** Generate QR code images for each post's URL.
 
-**Dependencies:** `pyqrcode` (or `qrcode`)
-
-**Installation:**
-
-```bash
-pip install pyqrcode
-# or
-pip install qrcode[pil]
-```
+**Dependencies:** External QR code library (to be determined)
 
 **Configuration:**
 
 ```toml
-[your-ssg.qrcode]
+[markata-go.qrcode]
 enabled = true
 format = "svg"                     # "svg" or "png"
 size = 200                         # Size in pixels
@@ -706,10 +670,7 @@ output/
 
 **Post Model Extension:**
 
-```python
-class QRCodePostFields(BaseModel):
-    qrcode_url: Optional[str] = None
-```
+Posts with QR codes will have the `qrcode_url` field set in their Extra map.
 
 **Template Usage:**
 
@@ -719,46 +680,19 @@ class QRCodePostFields(BaseModel):
 {% endif %}
 ```
 
-**Hook Signature:**
-
-```python
-@hook_impl
-def save(core):
-    config = core.config.qrcode
-    if not config.enabled:
-        return
-    
-    qr_dir = Path(core.config.output_dir) / config.output_dir
-    qr_dir.mkdir(parents=True, exist_ok=True)
-    
-    for post in core.filter("not skip"):
-        url = f"{core.config.url}{post.href}"
-        qr_path = generate_qr(url, post.slug, qr_dir, config)
-        post.qrcode_url = f"/{config.output_dir}/{qr_path.name}"
-```
-
 ---
 
 ## Plugin Dependencies
+
+For the implemented plugins:
 
 | Plugin | Required | Optional |
 |--------|----------|----------|
 | `glossary` | - | - |
 | `mermaid` | - | - |
-| `chartjs` | - | - |
 | `csv_fence` | - | - |
-| `md_video` | - | - |
-| `one_line_link` | - | `lxml` (metadata fetching) |
-| `wikilink_hover` | `lxml` | - |
-| `qrcode` | `pyqrcode` or `qrcode` | `pillow` (for PNG) |
 
-Install optional dependencies:
-
-```bash
-pip install your-ssg[qrcode]      # QR code support
-pip install your-ssg[hover]       # Wikilink hover support
-pip install your-ssg[all-plugins] # All optional plugin deps
-```
+Planned plugins may have additional dependencies when implemented.
 
 ---
 
@@ -795,19 +729,16 @@ hooks = [
 ## Disabling Optional Plugins
 
 ```toml
-[your-ssg]
-hooks = ["default", "mermaid", "chartjs"]
+[markata-go]
+hooks = ["default", "mermaid", "csv_fence"]
 disabled_hooks = ["mermaid"]  # Disable mermaid specifically
 ```
 
-Or per-post via frontmatter:
+Or set the `enabled` config option to false:
 
-```yaml
----
-title: No Diagrams Here
-mermaid: false
-chartjs: false
----
+```toml
+[markata-go.mermaid]
+enabled = false
 ```
 
 ---
@@ -816,56 +747,79 @@ chartjs: false
 
 Follow the pattern established by these plugins:
 
-1. **Configuration Model**: Define with sensible defaults
-2. **Post Model Extension**: Add fields if needed
-3. **Enabled Check**: Always check `config.enabled` first
-4. **Filter Usage**: Use `core.filter("not skip")` 
-5. **Caching**: Cache expensive operations
-6. **Error Handling**: Gracefully handle missing dependencies
+1. **Configuration**: Define config struct with sensible defaults
+2. **Enabled Check**: Always check `config.Enabled` first
+3. **Priority**: Use `lifecycle.PriorityLate` to run after markdown rendering
+4. **Concurrent Processing**: Use `m.ProcessPostsConcurrently()` for post processing
+5. **Error Handling**: Return errors, don't panic
 
 Example skeleton:
 
-```python
-"""
-My Custom Plugin
+```go
+package plugins
 
-Configuration:
-    [your-ssg.my_plugin]
-    enabled = true
-    option = "value"
-"""
-from typing import TYPE_CHECKING
-import pydantic
+import (
+    "github.com/example/markata-go/pkg/lifecycle"
+    "github.com/example/markata-go/pkg/models"
+)
 
-from your_ssg.hookspec import hook_impl
+// MyPluginConfig holds configuration for the plugin.
+type MyPluginConfig struct {
+    Enabled bool   `json:"enabled" yaml:"enabled" toml:"enabled"`
+    Option  string `json:"option" yaml:"option" toml:"option"`
+}
 
-if TYPE_CHECKING:
-    from your_ssg import Core
+// NewMyPluginConfig creates a config with default values.
+func NewMyPluginConfig() *MyPluginConfig {
+    return &MyPluginConfig{
+        Enabled: true,
+        Option:  "default",
+    }
+}
 
+// MyPlugin does something useful.
+type MyPlugin struct {
+    config *MyPluginConfig
+}
 
-class MyPluginConfig(pydantic.BaseModel):
-    enabled: bool = True
-    option: str = "default"
+func NewMyPlugin() *MyPlugin {
+    return &MyPlugin{config: NewMyPluginConfig()}
+}
 
+func (p *MyPlugin) Name() string { return "my_plugin" }
 
-class Config(pydantic.BaseModel):
-    my_plugin: MyPluginConfig = MyPluginConfig()
+func (p *MyPlugin) Priority(stage lifecycle.Stage) int {
+    if stage == lifecycle.StageRender {
+        return lifecycle.PriorityLate
+    }
+    return lifecycle.PriorityDefault
+}
 
+func (p *MyPlugin) Configure(m *lifecycle.Manager) error {
+    // Read config from m.Config().Extra["my_plugin"]
+    return nil
+}
 
-@hook_impl
-def config_model(core: "Core") -> None:
-    core.config_models.append(Config)
+func (p *MyPlugin) Render(m *lifecycle.Manager) error {
+    if !p.config.Enabled {
+        return nil
+    }
+    return m.ProcessPostsConcurrently(func(post *models.Post) error {
+        if post.Skip || post.ArticleHTML == "" {
+            return nil
+        }
+        // Process post.ArticleHTML
+        return nil
+    })
+}
 
-
-@hook_impl
-def post_render(core: "Core") -> None:
-    config = core.config.my_plugin
-    if not config.enabled:
-        return
-    
-    for post in core.filter("not skip"):
-        # Process post
-        pass
+// Ensure interface compliance
+var (
+    _ lifecycle.Plugin          = (*MyPlugin)(nil)
+    _ lifecycle.ConfigurePlugin = (*MyPlugin)(nil)
+    _ lifecycle.RenderPlugin    = (*MyPlugin)(nil)
+    _ lifecycle.PriorityPlugin  = (*MyPlugin)(nil)
+)
 ```
 
 ---

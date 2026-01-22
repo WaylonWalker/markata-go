@@ -18,6 +18,25 @@ Everything else is specified.
 2. Hand the spec files to an AI agent
 3. Run the test suite to verify your implementation
 
+## Documentation Requirements
+
+**Every feature in the spec MUST have corresponding user documentation.**
+
+The spec defines *what* and *how* - technical behavior, data models, edge cases.
+The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
+
+| Spec File | Required User Doc |
+|-----------|-------------------|
+| `CONFIG.md` | `docs/guides/configuration.md` |
+| `THEMES.md` | `docs/guides/themes.md` |
+| `FEEDS.md` | `docs/guides/feeds.md` |
+| `TEMPLATES.md` | `docs/guides/templates.md` |
+| `CONTENT.md` | `docs/guides/markdown.md`, `docs/guides/frontmatter.md` |
+| `PLUGINS.md` | `docs/guides/plugin-development.md`, `docs/reference/plugins.md` |
+| `SPEC.md` (CLI) | `docs/reference/cli.md` |
+
+**Documentation lives in `docs/` and is built as part of the site itself.**
+
 ## Specification Files
 
 | File | Description |

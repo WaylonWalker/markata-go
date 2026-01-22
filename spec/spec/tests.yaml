@@ -80,6 +80,178 @@ frontmatter_parse:
       featured: true
 
 # =============================================================================
+# AUTO TITLE GENERATION
+# =============================================================================
+auto_title:
+  - name: "title from hyphenated filename"
+    description: "Generates title from filename with hyphens"
+    input:
+      path: "posts/my-first-post.md"
+      content: |
+        ---
+        ---
+        Content here
+    output:
+      title: "My First Post"
+
+  - name: "title from underscored filename"
+    description: "Generates title from filename with underscores"
+    input:
+      path: "posts/python_tips_and_tricks.md"
+      content: |
+        ---
+        ---
+        Content
+    output:
+      title: "Python Tips And Tricks"
+
+  - name: "title from mixed separators"
+    description: "Handles both hyphens and underscores"
+    input:
+      path: "posts/my-awesome_post.md"
+      content: |
+        ---
+        ---
+        Content
+    output:
+      title: "My Awesome Post"
+
+  - name: "existing title not overwritten"
+    description: "Posts with explicit title are skipped"
+    input:
+      path: "posts/my-post.md"
+      content: |
+        ---
+        title: "My Custom Title"
+        ---
+        Content
+    output:
+      title: "My Custom Title"
+
+  - name: "empty title gets generated"
+    description: "Empty string title triggers generation"
+    input:
+      path: "posts/hello-world.md"
+      content: |
+        ---
+        title: ""
+        ---
+        Content
+    output:
+      title: "Hello World"
+
+  - name: "null title gets generated"
+    description: "Null/nil title triggers generation"
+    input:
+      path: "posts/test-post.md"
+      content: |
+        ---
+        title: null
+        ---
+        Content
+    output:
+      title: "Test Post"
+
+  - name: "no frontmatter gets title"
+    description: "File with no frontmatter at all gets auto title"
+    input:
+      path: "posts/no-frontmatter.md"
+      content: |
+        # Just Markdown
+        No frontmatter here
+    output:
+      title: "No Frontmatter"
+
+  - name: "date prefixed filename"
+    description: "Date prefix included in title (user should set explicit title)"
+    input:
+      path: "posts/2024-01-15-new-feature.md"
+      content: |
+        ---
+        ---
+        Content
+    output:
+      title: "2024 01 15 New Feature"
+
+  - name: "nested path uses filename only"
+    description: "Only filename stem used, not full path"
+    input:
+      path: "posts/2024/tutorials/getting-started.md"
+      content: |
+        ---
+        ---
+        Content
+    output:
+      title: "Getting Started"
+
+  - name: "special characters preserved"
+    description: "Characters other than hyphens/underscores kept"
+    input:
+      path: "posts/c++-tutorial.md"
+      content: |
+        ---
+        ---
+        Content
+    output:
+      title: "C++ Tutorial"
+
+  - name: "unicode filename"
+    description: "Unicode characters handled correctly"
+    input:
+      path: "posts/café-guide.md"
+      content: |
+        ---
+        ---
+        Content
+    output:
+      title: "Café Guide"
+
+  - name: "single word filename"
+    description: "Single word gets title cased"
+    input:
+      path: "posts/readme.md"
+      content: |
+        ---
+        ---
+        Content
+    output:
+      title: "Readme"
+
+  - name: "all caps filename"
+    description: "All caps becomes title case"
+    input:
+      path: "posts/API.md"
+      content: |
+        ---
+        ---
+        Content
+    output:
+      title: "Api"
+
+  - name: "numbers in filename"
+    description: "Numbers preserved in title"
+    input:
+      path: "posts/api-v2-reference.md"
+      content: |
+        ---
+        ---
+        Content
+    output:
+      title: "Api V2 Reference"
+
+  - name: "runs before description plugin"
+    description: "Auto title available for description generation"
+    input:
+      path: "posts/my-post.md"
+      content: |
+        ---
+        ---
+        This is the first paragraph of content.
+    output:
+      title: "My Post"
+      description_generated: true
+
+# =============================================================================
 # SLUG GENERATION
 # =============================================================================
 slug_generation:
@@ -1562,6 +1734,37 @@ config_validation:
     error: true
     error_type: "ConfigValidationError"
     error_contains: "feeds[0].filter is required"
+
+  - name: "no warning when feed inherits formats from defaults"
+    description: "Validation should apply feed_defaults before checking for missing formats"
+    input:
+      config:
+        feeds:
+          defaults:
+            formats:
+              html: true
+              rss: true
+        items:
+          - slug: "blog"
+            filter: "published == True"
+            # No formats specified - should inherit from defaults
+    output:
+      warnings: []
+      # No "no output formats enabled" warning because defaults provide formats
+
+  - name: "warning when no formats in defaults or feed"
+    description: "Warn only when neither defaults nor feed specify formats"
+    input:
+      config:
+        feeds:
+          defaults: {}
+          items:
+            - slug: "blog"
+              filter: "published == True"
+              # No formats anywhere
+    output:
+      warnings:
+        - "feeds[0].formats: no output formats enabled"
 
 # =============================================================================
 # CONFIGURATION CLI
