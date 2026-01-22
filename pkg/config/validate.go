@@ -202,12 +202,12 @@ func HasWarnings(errs []error) bool {
 }
 
 // SplitErrorsAndWarnings separates errors and warnings into separate slices.
-func SplitErrorsAndWarnings(errs []error) (errors, warnings []error) {
+func SplitErrorsAndWarnings(errs []error) (errsOut, warnsOut []error) {
 	for _, err := range errs {
 		if isWarning(err) {
-			warnings = append(warnings, err)
+			warnsOut = append(warnsOut, err)
 		} else {
-			errors = append(errors, err)
+			errsOut = append(errsOut, err)
 		}
 	}
 	return
