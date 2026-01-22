@@ -255,6 +255,6 @@ If macOS blocks the binary:
 
 ## Next Steps
 
-- [Quick Start Guide](./quickstart.md) - Build your first site
-- [Configuration](./guides/configuration.md) - Configure your site
-- [CLI Reference](./reference/cli.md) - All available commands
+- [[quickstart|Quick Start Guide]] - Build your first site
+- [[configuration-guide|Configuration]] - Configure your site
+- [[cli-reference|CLI Reference]] - All available commands

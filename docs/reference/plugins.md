@@ -15,9 +15,9 @@ tags:
 This reference documents all built-in plugins that ship with markata-go. Plugins are organized by their lifecycle stage.
 
 **Related guides:**
-- [Plugin Development](../guides/plugin-development.md) - Create your own plugins
-- [Configuration](../guides/configuration.md) - Configure plugins
-- [Feeds](../guides/feeds.md) - Feed plugins in detail
+- [[plugin-development|Plugin Development]] - Create your own plugins
+- [[configuration-guide|Configuration]] - Configure plugins
+- [[feeds-guide|Feeds]] - Feed plugins in detail
 
 ## Plugin Lifecycle Overview
 
@@ -1052,7 +1052,7 @@ filter = "tags contains 'go' or tags contains 'python'"
 filter = "date >= '2024-01-01'"
 ```
 
-See [Feeds Guide](../guides/feeds.md) for complete filter syntax.
+See [[feeds-guide|Feeds Guide]] for complete filter syntax.
 
 ---
 
@@ -2123,4 +2123,4 @@ plugins.RegisterPluginConstructor("my_plugin", func() lifecycle.Plugin {
 })
 ```
 
-See [Plugin Development Guide](../guides/plugin-development.md) for complete instructions.
+See [[plugin-development|Plugin Development Guide]] for complete instructions.

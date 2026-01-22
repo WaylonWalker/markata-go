@@ -492,11 +492,11 @@ rsync -avz public/ user@server:/var/www/html/
 
 ## Next Steps
 
-- **[Configuration Reference](./configuration.md)** - Full config options
-- **[Templates Guide](./templates.md)** - Custom templates and filters
-- **[Feeds System](./feeds.md)** - Advanced feed configuration
-- **[Plugins](./plugins.md)** - Built-in plugins and customization
-- **[Markdown Features](./markdown.md)** - Admonitions, wikilinks, and more
+- **[[configuration-guide|Configuration Reference]]** - Full config options
+- **[[templates-guide|Templates Guide]]** - Custom templates and filters
+- **[[feeds-guide|Feeds System]]** - Advanced feed configuration
+- **[[built-in-plugins|Plugins]]** - Built-in plugins and customization
+- **[[markdown-features|Markdown Features]]** - Admonitions, wikilinks, and more
 
 ## Getting Help
 

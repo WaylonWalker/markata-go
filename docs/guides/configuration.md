@@ -180,7 +180,7 @@ custom_css = "my-styles.css"
 
 **Available palettes:** `default-light`, `default-dark`, `catppuccin-mocha`, `catppuccin-latte`, `nord-dark`, `gruvbox-dark`, `dracula`, `rose-pine`, `solarized-dark`, `tokyo-night`
 
-See the [Themes Guide](./themes.md) for detailed customization options.
+See the [[themes-and-styling|Themes Guide]] for detailed customization options.
 
 ### Glob Settings (`[markata-go.glob]`)
 
@@ -763,8 +763,8 @@ markata-go config validate
 
 ## See Also
 
-- [Getting Started](./getting-started.md) - Quick start guide
-- [Themes Guide](./themes.md) - Theme and palette customization
-- [Feed System](./feeds.md) - Detailed feed configuration
-- [Plugins](./plugins.md) - Plugin configuration and development
-- [Templates](./templates.md) - Template configuration and usage
+- [[getting-started|Getting Started]] - Quick start guide
+- [[themes-and-styling|Themes Guide]] - Theme and palette customization
+- [[feeds-guide|Feed System]] - Detailed feed configuration
+- [[built-in-plugins|Plugins]] - Plugin configuration and development
+- [[templates-guide|Templates]] - Template configuration and usage
