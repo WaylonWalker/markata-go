@@ -26,14 +26,23 @@ snow        = "#d0d0d0"
 white       = "#e8e8e8"
 
 # Muted accent colors - subtle, not flashy
-crimson     = "#b04040"
-ember       = "#c07040"
-gold        = "#c0a040"
-sage        = "#60a060"
-ocean       = "#4080a0"
-steel       = "#6080c0"
-violet      = "#8060a0"
-rose        = "#a06080"
+crimson     = "#803030"
+ember       = "#906030"
+gold        = "#908030"
+sage        = "#408040"
+ocean       = "#306070"
+steel       = "#405080"
+violet      = "#604070"
+rose        = "#704050"
+
+# Tinted blacks for admonition backgrounds - barely perceptible color
+black-red    = "#1a1214"
+black-orange = "#1a1612"
+black-yellow = "#1a1912"
+black-green  = "#121a14"
+black-blue   = "#12161a"
+black-purple = "#16121a"
+black-gray   = "#161616"
 
 # Layer 2: Semantic Mapping
 # Maps raw colors to semantic roles for theming
