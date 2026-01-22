@@ -27,132 +27,124 @@
   margin-bottom: 0;
 }
 
-/* Type-specific styles */
+/* Type-specific styles - using palette CSS variables with fallbacks */
 .admonition.note {
-  --admonition-color: #3b82f6;
-  --admonition-bg: #eff6ff;
+  --admonition-color: var(--admonition-note-border, #3b82f6);
+  --admonition-bg: var(--admonition-note-bg, #eff6ff);
   --admonition-icon: "i";
 }
 
 .admonition.info {
-  --admonition-color: #3b82f6;
-  --admonition-bg: #eff6ff;
+  --admonition-color: var(--admonition-info-border, #3b82f6);
+  --admonition-bg: var(--admonition-info-bg, #eff6ff);
   --admonition-icon: "i";
 }
 
 .admonition.tip {
-  --admonition-color: #10b981;
-  --admonition-bg: #ecfdf5;
+  --admonition-color: var(--admonition-tip-border, #10b981);
+  --admonition-bg: var(--admonition-tip-bg, #ecfdf5);
   --admonition-icon: "*";
 }
 
 .admonition.hint {
-  --admonition-color: #10b981;
-  --admonition-bg: #ecfdf5;
+  --admonition-color: var(--admonition-hint-border, #10b981);
+  --admonition-bg: var(--admonition-hint-bg, #ecfdf5);
   --admonition-icon: "*";
 }
 
 .admonition.success {
-  --admonition-color: #10b981;
-  --admonition-bg: #ecfdf5;
+  --admonition-color: var(--admonition-success-border, #10b981);
+  --admonition-bg: var(--admonition-success-bg, #ecfdf5);
   --admonition-icon: "v";
 }
 
 .admonition.warning {
-  --admonition-color: #f59e0b;
-  --admonition-bg: #fffbeb;
+  --admonition-color: var(--admonition-warn-border, #f59e0b);
+  --admonition-bg: var(--admonition-warn-bg, #fffbeb);
   --admonition-icon: "!";
 }
 
 .admonition.caution {
-  --admonition-color: #f59e0b;
-  --admonition-bg: #fffbeb;
+  --admonition-color: var(--admonition-caution-border, #f59e0b);
+  --admonition-bg: var(--admonition-caution-bg, #fffbeb);
+  --admonition-icon: "!";
+}
+
+.admonition.important {
+  --admonition-color: var(--admonition-important-border, #8b5cf6);
+  --admonition-bg: var(--admonition-important-bg, #f5f3ff);
   --admonition-icon: "!";
 }
 
 .admonition.danger {
-  --admonition-color: #ef4444;
-  --admonition-bg: #fef2f2;
+  --admonition-color: var(--admonition-danger-border, #ef4444);
+  --admonition-bg: var(--admonition-danger-bg, #fef2f2);
   --admonition-icon: "!!";
 }
 
 .admonition.error {
-  --admonition-color: #ef4444;
-  --admonition-bg: #fef2f2;
+  --admonition-color: var(--admonition-error-border, #ef4444);
+  --admonition-bg: var(--admonition-error-bg, #fef2f2);
   --admonition-icon: "x";
 }
 
 .admonition.bug {
-  --admonition-color: #ef4444;
-  --admonition-bg: #fef2f2;
+  --admonition-color: var(--admonition-bug-border, #ef4444);
+  --admonition-bg: var(--admonition-bug-bg, #fef2f2);
   --admonition-icon: "@";
 }
 
 .admonition.example {
-  --admonition-color: #8b5cf6;
-  --admonition-bg: #f5f3ff;
+  --admonition-color: var(--admonition-example-border, #8b5cf6);
+  --admonition-bg: var(--admonition-example-bg, #f5f3ff);
   --admonition-icon: ">";
 }
 
 .admonition.quote {
-  --admonition-color: #6b7280;
-  --admonition-bg: #f9fafb;
+  --admonition-color: var(--admonition-quote-border, #6b7280);
+  --admonition-bg: var(--admonition-quote-bg, #f9fafb);
   --admonition-icon: "\"";
 }
 
 .admonition.abstract {
-  --admonition-color: #06b6d4;
-  --admonition-bg: #ecfeff;
+  --admonition-color: var(--admonition-abstract-border, #06b6d4);
+  --admonition-bg: var(--admonition-abstract-bg, #ecfeff);
   --admonition-icon: "#";
 }
 
-/* Dark mode adjustments */
-@media (prefers-color-scheme: dark) {
-  .admonition.note { --admonition-bg: #1e3a5f; }
-  .admonition.info { --admonition-bg: #1e3a5f; }
-  .admonition.tip { --admonition-bg: #064e3b; }
-  .admonition.hint { --admonition-bg: #064e3b; }
-  .admonition.success { --admonition-bg: #064e3b; }
-  .admonition.warning { --admonition-bg: #451a03; }
-  .admonition.caution { --admonition-bg: #451a03; }
-  .admonition.danger { --admonition-bg: #450a0a; }
-  .admonition.error { --admonition-bg: #450a0a; }
-  .admonition.bug { --admonition-bg: #450a0a; }
-  .admonition.example { --admonition-bg: #2e1065; }
-  .admonition.quote { --admonition-bg: #1f2937; }
-  .admonition.abstract { --admonition-bg: #083344; }
-}
+/* Aside - Sidebar/Marginal Note (Tufte-style) */
+/* Asides are positioned in the margin of the article, outside the main content flow */
 
-/* Aside - Sidebar/Marginal Note */
 aside.admonition.aside {
   --admonition-color: #6b7280;
   --admonition-bg: #f9fafb;
+  position: relative;
   border-left: none;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   font-size: var(--text-sm);
-  max-width: 280px;
+  line-height: var(--leading-relaxed);
+  width: 250px;
+  padding: var(--space-3);
+  margin: 0;
 }
 
-/* Default: float right */
-aside.admonition.aside {
+/* Right margin positioning (default, Tufte-style) */
+aside.admonition.aside.aside-right {
   float: right;
-  margin: 0 0 var(--space-4) var(--space-4);
   clear: right;
+  margin-right: -280px; /* Push into right margin */
+  margin-left: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
-/* Inline left modifier */
-aside.admonition.aside.aside-inline {
+/* Left margin positioning */
+aside.admonition.aside.aside-left {
   float: left;
-  margin: 0 var(--space-4) var(--space-4) 0;
   clear: left;
-}
-
-/* Inline end (right) modifier - explicit */
-aside.admonition.aside.aside-inline-end {
-  float: right;
-  margin: 0 0 var(--space-4) var(--space-4);
-  clear: right;
+  margin-left: -280px; /* Push into left margin */
+  margin-right: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 /* Aside title styling */
@@ -160,18 +152,33 @@ aside.admonition.aside .admonition-title {
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text);
+  margin-bottom: var(--space-2);
 }
 
 aside.admonition.aside .admonition-title::before {
   content: none; /* No icon for asides */
 }
 
-/* Responsive: full width on small screens */
+/* Medium screens: float beside content instead of margin */
+@media (max-width: 1400px) {
+  aside.admonition.aside.aside-right {
+    margin-right: 0;
+    margin-left: var(--space-4);
+  }
+  
+  aside.admonition.aside.aside-left {
+    margin-left: 0;
+    margin-right: var(--space-4);
+  }
+}
+
+/* Small screens: full width, inline */
 @media (max-width: 768px) {
   aside.admonition.aside,
-  aside.admonition.aside.aside-inline,
-  aside.admonition.aside.aside-inline-end {
+  aside.admonition.aside.aside-left,
+  aside.admonition.aside.aside-right {
     float: none;
+    width: 100%;
     max-width: 100%;
     margin: var(--space-4) 0;
   }

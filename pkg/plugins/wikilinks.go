@@ -80,10 +80,52 @@ var wikilinkRegex = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 
 // processWikilinks replaces wikilink syntax with HTML anchor tags.
 // Returns the processed content and any warnings about broken links.
+// Wikilinks inside fenced code blocks are preserved and not transformed.
 func (p *WikilinksPlugin) processWikilinks(content string, postMap map[string]*models.Post) (string, []string) {
 	var warnings []string
 
-	result := wikilinkRegex.ReplaceAllStringFunc(content, func(match string) string {
+	// Split content by fenced code blocks to avoid transforming wikilinks inside them
+	// Match ``` or ~~~ fenced code blocks (with optional language identifier)
+	codeBlockRegex := regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
+
+	// Find all code blocks and their positions
+	codeBlocks := codeBlockRegex.FindAllStringIndex(content, -1)
+
+	// If no code blocks, process the entire content
+	if len(codeBlocks) == 0 {
+		return p.processWikilinksInText(content, postMap, &warnings), warnings
+	}
+
+	// Process content in segments, skipping code blocks
+	var result strings.Builder
+	lastEnd := 0
+
+	for _, block := range codeBlocks {
+		start, end := block[0], block[1]
+
+		// Process text before this code block
+		if start > lastEnd {
+			processed := p.processWikilinksInText(content[lastEnd:start], postMap, &warnings)
+			result.WriteString(processed)
+		}
+
+		// Keep code block unchanged
+		result.WriteString(content[start:end])
+		lastEnd = end
+	}
+
+	// Process any remaining text after the last code block
+	if lastEnd < len(content) {
+		processed := p.processWikilinksInText(content[lastEnd:], postMap, &warnings)
+		result.WriteString(processed)
+	}
+
+	return result.String(), warnings
+}
+
+// processWikilinksInText processes wikilinks in a text segment (not inside code blocks).
+func (p *WikilinksPlugin) processWikilinksInText(text string, postMap map[string]*models.Post, warnings *[]string) string {
+	return wikilinkRegex.ReplaceAllStringFunc(text, func(match string) string {
 		// Extract groups from the match
 		groups := wikilinkRegex.FindStringSubmatch(match)
 		if len(groups) < 2 {
@@ -114,7 +156,7 @@ func (p *WikilinksPlugin) processWikilinks(content string, postMap map[string]*m
 
 		if !found {
 			// Target post not found - warn and keep original syntax
-			warnings = append(warnings, fmt.Sprintf("broken wikilink: [[%s]]", slug))
+			*warnings = append(*warnings, fmt.Sprintf("broken wikilink: [[%s]]", slug))
 			return match
 		}
 
@@ -128,18 +170,16 @@ func (p *WikilinksPlugin) processWikilinks(content string, postMap map[string]*m
 			}
 		}
 
-		// Generate HTML anchor tag
+		// Generate HTML anchor tag with wikilink class for styling
 		href := targetPost.Href
 		if href == "" {
 			href = "/" + targetPost.Slug + "/"
 		}
 
-		return fmt.Sprintf(`<a href="%s">%s</a>`,
+		return fmt.Sprintf(`<a href="%s" class="wikilink">%s</a>`,
 			html.EscapeString(href),
 			html.EscapeString(displayText))
 	})
-
-	return result, warnings
 }
 
 // normalizeSlug normalizes a slug for lookup by converting to lowercase
