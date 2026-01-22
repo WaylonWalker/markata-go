@@ -351,10 +351,10 @@ func TestSplitErrorsAndWarnings(t *testing.T) {
 		ValidationError{Field: "f4", Message: "warning2", IsWarn: true},
 	}
 
-	errors, warnings := SplitErrorsAndWarnings(errs)
+	errsOut, warnings := SplitErrorsAndWarnings(errs)
 
-	if len(errors) != 2 {
-		t.Errorf("len(errors) = %d, want 2", len(errors))
+	if len(errsOut) != 2 {
+		t.Errorf("len(errsOut) = %d, want 2", len(errsOut))
 	}
 	if len(warnings) != 2 {
 		t.Errorf("len(warnings) = %d, want 2", len(warnings))
