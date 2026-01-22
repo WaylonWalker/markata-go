@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Refresh" content="0; url='{{ .New }}'" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="canonical" href="{{ .New }}" />
+  <meta name="description" content="{{ .Original }} has been moved to {{ .New }}." />
+  <title>{{ .Original }} has been moved to {{ .New }}</title>
+  <style>
+    html {
+      font-family: system-ui, sans-serif;
+      background: #1f2022;
+      color: #eefbfe;
+    }
+    body {
+      margin: 5rem auto;
+      max-width: 800px;
+      padding: 0 1rem;
+    }
+    a {
+      color: #fb30c4;
+      text-decoration-color: #e1bd00c9;
+    }
+    code {
+      background: #2a2a2e;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Page Moved</h1>
+  <p>
+    <code>{{ .Original }}</code> has moved to 
+    <a href="{{ .New }}">{{ .New }}</a>
+  </p>
+</body>
+</html>

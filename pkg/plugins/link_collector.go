@@ -1,0 +1,456 @@
+// Package plugins provides lifecycle plugins for markata-go.
+package plugins
+
+import (
+	"net/url"
+	"regexp"
+	"strings"
+	"sync"
+
+	"github.com/example/markata-go/pkg/lifecycle"
+	"github.com/example/markata-go/pkg/models"
+)
+
+// LinkCollectorPlugin collects all hyperlinks from posts and tracks inlinks
+// (pages linking TO a post) and outlinks (pages a post links TO).
+// It runs in the render stage after render_markdown.
+type LinkCollectorPlugin struct {
+	// includeFeeds includes feed pages in inlinks when true
+	includeFeeds bool
+
+	// includeIndex includes index page in inlinks when true
+	includeIndex bool
+
+	// siteURL is the base URL of the site
+	siteURL string
+
+	// siteDomain is the domain extracted from siteURL
+	siteDomain string
+}
+
+// NewLinkCollectorPlugin creates a new LinkCollectorPlugin with default settings.
+func NewLinkCollectorPlugin() *LinkCollectorPlugin {
+	return &LinkCollectorPlugin{
+		includeFeeds: false,
+		includeIndex: false,
+	}
+}
+
+// Name returns the unique name of the plugin.
+func (p *LinkCollectorPlugin) Name() string {
+	return "link_collector"
+}
+
+// Configure reads configuration options for the plugin.
+func (p *LinkCollectorPlugin) Configure(m *lifecycle.Manager) error {
+	config := m.Config()
+	if config.Extra != nil {
+		// Check for link_collector config section
+		if linkCollectorConfig, ok := config.Extra["link_collector"].(map[string]interface{}); ok {
+			if includeFeeds, ok := linkCollectorConfig["include_feeds"].(bool); ok {
+				p.includeFeeds = includeFeeds
+			}
+			if includeIndex, ok := linkCollectorConfig["include_index"].(bool); ok {
+				p.includeIndex = includeIndex
+			}
+		}
+
+		// Get site URL from config
+		if siteURL, ok := config.Extra["url"].(string); ok {
+			p.siteURL = siteURL
+			if parsed, err := url.Parse(siteURL); err == nil {
+				p.siteDomain = parsed.Host
+			}
+		}
+	}
+	return nil
+}
+
+// Priority returns the plugin's priority for the render stage.
+// Returns a late priority to ensure it runs after render_markdown.
+func (p *LinkCollectorPlugin) Priority(stage lifecycle.Stage) int {
+	if stage == lifecycle.StageRender {
+		return lifecycle.PriorityLate
+	}
+	return lifecycle.PriorityDefault
+}
+
+// Render collects all links from posts and populates inlinks/outlinks.
+func (p *LinkCollectorPlugin) Render(m *lifecycle.Manager) error {
+	posts := m.Posts()
+	if len(posts) == 0 {
+		return nil
+	}
+
+	// Build slug -> post lookup for quick resolution
+	postBySlug := make(map[string]*models.Post)
+	postByHref := make(map[string]*models.Post)
+	for _, post := range posts {
+		if post.Slug != "" {
+			postBySlug[post.Slug] = post
+		}
+		if post.Href != "" {
+			postByHref[post.Href] = post
+			// Also index without trailing slash
+			postByHref[strings.TrimSuffix(post.Href, "/")] = post
+		}
+	}
+
+	// Collect all links from all posts
+	var allLinks []*models.Link
+	var linksMu sync.Mutex
+
+	// Process each post to extract hrefs and create Link objects
+	err := m.ProcessPostsConcurrently(func(post *models.Post) error {
+		if post.Skip || post.ArticleHTML == "" {
+			return nil
+		}
+
+		// Build base URL for this post
+		baseURL := p.buildBaseURL(post)
+
+		// Extract all hrefs from article HTML
+		hrefs := extractHrefs(post.ArticleHTML)
+		post.Hrefs = hrefs
+
+		// Create Link objects for each href
+		var postLinks []*models.Link
+		for _, href := range hrefs {
+			link := p.createLink(post, baseURL, href, postBySlug, postByHref)
+			if link != nil {
+				postLinks = append(postLinks, link)
+			}
+		}
+
+		// Add links to global collection (thread-safe)
+		linksMu.Lock()
+		allLinks = append(allLinks, postLinks...)
+		linksMu.Unlock()
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Store all links in cache for potential use by other plugins
+	m.Cache().Set("links", allLinks)
+
+	// Assign inlinks and outlinks to each post
+	p.assignLinksToPost(posts, allLinks)
+
+	return nil
+}
+
+// buildBaseURL constructs the absolute URL for a post.
+func (p *LinkCollectorPlugin) buildBaseURL(post *models.Post) string {
+	if p.siteURL == "" {
+		return post.Href
+	}
+	return strings.TrimSuffix(p.siteURL, "/") + post.Href
+}
+
+// hrefRegex matches <a href="..."> elements in HTML.
+// Captures the href value in group 1.
+var hrefRegex = regexp.MustCompile(`<a\s+[^>]*href=["']([^"']+)["'][^>]*>([^<]*)</a>`)
+
+// extractHrefs extracts all href values from HTML content.
+func extractHrefs(html string) []string {
+	matches := hrefRegex.FindAllStringSubmatch(html, -1)
+	hrefs := make([]string, 0, len(matches))
+	seen := make(map[string]bool)
+
+	for _, match := range matches {
+		if len(match) >= 2 {
+			href := match[1]
+			// Skip empty hrefs and anchors-only links
+			if href == "" || href == "#" {
+				continue
+			}
+			// Deduplicate
+			if !seen[href] {
+				seen[href] = true
+				hrefs = append(hrefs, href)
+			}
+		}
+	}
+
+	return hrefs
+}
+
+// extractLinkText extracts the text content from an anchor tag match.
+func extractLinkText(html, href string) string {
+	// Find the specific link and extract its text
+	pattern := `<a\s+[^>]*href=["']` + regexp.QuoteMeta(href) + `["'][^>]*>([^<]*)</a>`
+	re := regexp.MustCompile(pattern)
+	match := re.FindStringSubmatch(html)
+	if len(match) >= 2 {
+		return strings.TrimSpace(match[1])
+	}
+	return ""
+}
+
+// createLink creates a Link object from an href found in a post.
+func (p *LinkCollectorPlugin) createLink(sourcePost *models.Post, baseURL, href string, postBySlug, postByHref map[string]*models.Post) *models.Link {
+	// Resolve the href against the base URL
+	targetURL := resolveURL(baseURL, href)
+	if targetURL == "" {
+		return nil
+	}
+
+	// Parse the target URL to extract domain
+	parsed, err := url.Parse(targetURL)
+	if err != nil {
+		return nil
+	}
+
+	targetDomain := parsed.Host
+
+	// Determine if internal link
+	isInternal := p.isInternalLink(targetDomain)
+
+	// Look up target post if internal
+	var targetPost *models.Post
+	if isInternal {
+		targetPost = p.resolveTargetPost(parsed.Path, postBySlug, postByHref)
+	}
+
+	// Determine if self-link
+	isSelf := targetPost != nil && targetPost.Slug == sourcePost.Slug
+
+	// Extract link text from source
+	sourceText := extractLinkText(sourcePost.ArticleHTML, href)
+
+	link := &models.Link{
+		SourceURL:    baseURL,
+		SourcePost:   sourcePost,
+		TargetPost:   targetPost,
+		RawTarget:    href,
+		TargetURL:    targetURL,
+		TargetDomain: targetDomain,
+		IsInternal:   isInternal,
+		IsSelf:       isSelf,
+		SourceText:   sourceText,
+	}
+
+	// Set target text if we have a target post
+	if targetPost != nil && targetPost.Title != nil {
+		link.TargetText = *targetPost.Title
+	}
+
+	return link
+}
+
+// resolveURL resolves a potentially relative URL against a base URL.
+func resolveURL(baseURL, href string) string {
+	// Handle absolute URLs
+	if strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://") {
+		return href
+	}
+
+	// Handle protocol-relative URLs
+	if strings.HasPrefix(href, "//") {
+		return "https:" + href
+	}
+
+	// Handle anchor-only links
+	if strings.HasPrefix(href, "#") {
+		return baseURL + href
+	}
+
+	// Handle mailto, tel, javascript, etc.
+	if strings.Contains(href, ":") && !strings.HasPrefix(href, "/") {
+		return href
+	}
+
+	// Parse base URL
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return href
+	}
+
+	// Parse href
+	ref, err := url.Parse(href)
+	if err != nil {
+		return href
+	}
+
+	// Resolve against base
+	resolved := base.ResolveReference(ref)
+	return resolved.String()
+}
+
+// isInternalLink checks if the given domain matches the site domain.
+func (p *LinkCollectorPlugin) isInternalLink(targetDomain string) bool {
+	if p.siteDomain == "" {
+		// If no site URL configured, treat root-relative links as internal
+		return targetDomain == ""
+	}
+	return strings.EqualFold(targetDomain, p.siteDomain)
+}
+
+// resolveTargetPost looks up a post by its path/slug.
+func (p *LinkCollectorPlugin) resolveTargetPost(path string, postBySlug, postByHref map[string]*models.Post) *models.Post {
+	// Normalize the path
+	path = strings.TrimSuffix(path, "/")
+	path = strings.TrimPrefix(path, "/")
+
+	// Try direct slug lookup
+	if post, ok := postBySlug[path]; ok {
+		return post
+	}
+
+	// Try href lookup
+	hrefPath := "/" + path + "/"
+	if post, ok := postByHref[hrefPath]; ok {
+		return post
+	}
+
+	// Try without trailing slash
+	hrefPathNoSlash := "/" + path
+	if post, ok := postByHref[hrefPathNoSlash]; ok {
+		return post
+	}
+
+	return nil
+}
+
+// assignLinksToPost populates inlinks and outlinks for each post.
+func (p *LinkCollectorPlugin) assignLinksToPost(posts []*models.Post, allLinks []*models.Link) {
+	// Build inlinks map: target post slug -> list of links
+	inlinksMap := make(map[string][]*models.Link)
+	// Build outlinks map: source post slug -> list of links
+	outlinksMap := make(map[string][]*models.Link)
+
+	for _, link := range allLinks {
+		// Skip self-links
+		if link.IsSelf {
+			continue
+		}
+
+		// Add to outlinks for source post
+		if link.SourcePost != nil {
+			outlinksMap[link.SourcePost.Slug] = append(outlinksMap[link.SourcePost.Slug], link)
+		}
+
+		// Add to inlinks for target post (if internal and resolved)
+		if link.TargetPost != nil {
+			// Check if we should include this inlink based on config
+			if !p.shouldIncludeInlink(link) {
+				continue
+			}
+			inlinksMap[link.TargetPost.Slug] = append(inlinksMap[link.TargetPost.Slug], link)
+		}
+	}
+
+	// Assign to posts
+	for _, post := range posts {
+		// Deduplicate inlinks by source URL
+		post.Inlinks = deduplicateLinksBySource(inlinksMap[post.Slug])
+
+		// Deduplicate outlinks by target URL
+		post.Outlinks = deduplicateLinksByTarget(outlinksMap[post.Slug])
+	}
+}
+
+// shouldIncludeInlink checks if an inlink should be included based on configuration.
+func (p *LinkCollectorPlugin) shouldIncludeInlink(link *models.Link) bool {
+	if link.SourcePost == nil {
+		return false
+	}
+
+	slug := link.SourcePost.Slug
+
+	// Check index exclusion
+	if !p.includeIndex && slug == "index" {
+		return false
+	}
+
+	// Check feed exclusion (simple heuristic: check if post has no content)
+	// A more robust check would involve checking against known feed slugs
+	if !p.includeFeeds {
+		// Check if the source post appears to be a feed page
+		if isFeedPost(link.SourcePost) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// isFeedPost checks if a post appears to be a feed/index page.
+// Feed pages typically have a "feed" template or are in the feeds list.
+func isFeedPost(post *models.Post) bool {
+	if post.Template == "feed.html" || post.Template == "archive.html" {
+		return true
+	}
+	// Check for feed marker in extra
+	if isFeed, ok := post.Extra["is_feed"].(bool); ok && isFeed {
+		return true
+	}
+	return false
+}
+
+// deduplicateLinksBySource removes duplicate links with the same source URL.
+func deduplicateLinksBySource(links []*models.Link) []*models.Link {
+	if len(links) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]bool)
+	result := make([]*models.Link, 0, len(links))
+
+	for _, link := range links {
+		if !seen[link.SourceURL] {
+			seen[link.SourceURL] = true
+			result = append(result, link)
+		}
+	}
+
+	return result
+}
+
+// deduplicateLinksByTarget removes duplicate links with the same target URL.
+func deduplicateLinksByTarget(links []*models.Link) []*models.Link {
+	if len(links) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]bool)
+	result := make([]*models.Link, 0, len(links))
+
+	for _, link := range links {
+		if !seen[link.TargetURL] {
+			seen[link.TargetURL] = true
+			result = append(result, link)
+		}
+	}
+
+	return result
+}
+
+// SetIncludeFeeds enables or disables including feed pages in inlinks.
+func (p *LinkCollectorPlugin) SetIncludeFeeds(include bool) {
+	p.includeFeeds = include
+}
+
+// SetIncludeIndex enables or disables including the index page in inlinks.
+func (p *LinkCollectorPlugin) SetIncludeIndex(include bool) {
+	p.includeIndex = include
+}
+
+// SetSiteURL sets the site URL for determining internal vs external links.
+func (p *LinkCollectorPlugin) SetSiteURL(siteURL string) {
+	p.siteURL = siteURL
+	if parsed, err := url.Parse(siteURL); err == nil {
+		p.siteDomain = parsed.Host
+	}
+}
+
+// Ensure LinkCollectorPlugin implements the required interfaces.
+var (
+	_ lifecycle.Plugin          = (*LinkCollectorPlugin)(nil)
+	_ lifecycle.ConfigurePlugin = (*LinkCollectorPlugin)(nil)
+	_ lifecycle.RenderPlugin    = (*LinkCollectorPlugin)(nil)
+	_ lifecycle.PriorityPlugin  = (*LinkCollectorPlugin)(nil)
+)
