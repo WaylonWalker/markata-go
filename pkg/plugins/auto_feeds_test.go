@@ -389,7 +389,7 @@ func TestAutoFeedsPlugin_NoAutoFeedsConfigured(t *testing.T) {
 		{Path: "post1.md", Slug: "post1", Title: strPtr("Post"), Tags: []string{"test"}, Date: &date},
 	})
 
-	// No auto_feeds config (all disabled by default)
+	// No auto_feeds config (tag feeds enabled by default)
 	config := lifecycle.NewConfig()
 	config.Extra = map[string]interface{}{}
 	m.SetConfig(config)
@@ -401,8 +401,9 @@ func TestAutoFeedsPlugin_NoAutoFeedsConfigured(t *testing.T) {
 	}
 
 	feeds := m.Feeds()
-	if len(feeds) != 0 {
-		t.Errorf("expected 0 feeds when auto_feeds disabled, got %d", len(feeds))
+	// With tag feeds enabled by default, we should get 1 feed for the "test" tag
+	if len(feeds) != 1 {
+		t.Errorf("expected 1 feed (tag feed) with default config, got %d", len(feeds))
 	}
 }
 
