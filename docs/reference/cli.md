@@ -43,7 +43,7 @@ When `--config` is not specified, markata-go searches for configuration files in
 5. `.markata-go.yaml` / `.markata-go.yml`
 6. `.markata-go.json`
 
-See [Configuration](../guides/configuration.md) for details on configuration options.
+See [[configuration-guide|Configuration]] for details on configuration options.
 
 ---
 
@@ -535,12 +535,12 @@ MARKATA_GO_URL="${DEPLOY_URL}" markata-go build --clean
 aws s3 sync public/ s3://my-bucket/ --delete
 ```
 
-See [Deployment](../guides/deployment.md) for detailed deployment guides.
+See [[deployment-guide|Deployment]] for detailed deployment guides.
 
 ---
 
 ## See Also
 
-- [Getting Started](../getting-started.md) - Quick introduction to markata-go
-- [Configuration](../guides/configuration.md) - Detailed configuration reference
-- [Deployment](../guides/deployment.md) - Deployment guides for various platforms
+- [[getting-started|Getting Started]] - Quick introduction to markata-go
+- [[configuration-guide|Configuration]] - Detailed configuration reference
+- [[deployment-guide|Deployment]] - Deployment guides for various platforms

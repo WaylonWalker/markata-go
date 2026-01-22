@@ -1271,7 +1271,7 @@ Include the TOC in your post template:
 </div>
 ```
 
-See [Templates](./templates.md) for more template examples.
+See [[templates-guide|Templates]] for more template examples.
 
 ### Configuration
 
@@ -1497,8 +1497,8 @@ Here's an inline footnote.^[This is the footnote content inline.]
 
 ## See Also
 
-- [Templates](./templates.md) - Using TOC and content in templates
-- [Advanced Usage](../advanced-usage.md#admonitions-and-callouts) - Advanced admonition customization
-- [Dynamic Content](./dynamic-content.md) - Using Jinja in Markdown
-- [Frontmatter](./frontmatter.md) - Frontmatter fields and metadata
-- [Configuration](./configuration.md) - Markdown configuration options
+- [[templates-guide|Templates]] - Using TOC and content in templates
+- [[advanced-usage|Advanced Usage]] - Advanced admonition customization
+- [[dynamic-content|Dynamic Content]] - Using Jinja in Markdown
+- [[frontmatter-guide|Frontmatter]] - Frontmatter fields and metadata
+- [[configuration-guide|Configuration]] - Markdown configuration options

@@ -885,6 +885,6 @@ reverse = true
 
 ## See Also
 
-- [Feeds Guide](./feeds.md) - Complete guide to feed filtering and configuration
-- [Templates Guide](./templates.md) - Using frontmatter in templates
-- [Configuration Guide](./configuration.md) - Site-wide defaults and settings
+- [[feeds-guide|Feeds Guide]] - Complete guide to feed filtering and configuration
+- [[templates-guide|Templates Guide]] - Using frontmatter in templates
+- [[configuration-guide|Configuration Guide]] - Site-wide defaults and settings

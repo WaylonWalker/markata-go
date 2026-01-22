@@ -710,6 +710,6 @@ rss = true     # Must be explicitly true
 
 ## See Also
 
-- [Feeds Guide](./feeds.md) - Complete feed system documentation
-- [Configuration Guide](./configuration.md) - Full configuration reference
-- [Templates Guide](./templates.md) - Template system and filters
+- [[feeds-guide|Feeds Guide]] - Complete feed system documentation
+- [[configuration-guide|Configuration Guide]] - Full configuration reference
+- [[templates-guide|Templates Guide]] - Template system and filters

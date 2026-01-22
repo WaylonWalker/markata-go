@@ -904,8 +904,8 @@ The best SSG is the one that fits your workflow. markata-go excels for content-h
 
 ## Further Reading
 
-- [Getting Started Guide](./getting-started.md)
-- [Feed System Guide](./guides/feeds.md)
-- [Plugin Development Guide](./guides/plugin-development.md)
-- [Template Guide](./guides/templates.md)
-- [Configuration Guide](./guides/configuration.md)
+- [[getting-started|Getting Started Guide]]
+- [[feeds-guide|Feed System Guide]]
+- [[plugin-development|Plugin Development Guide]]
+- [[templates-guide|Template Guide]]
+- [[configuration-guide|Configuration Guide]]

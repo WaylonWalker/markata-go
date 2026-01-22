@@ -1154,6 +1154,5 @@ public/
 
 ## See Also
 
-- [Configuration Guide](./configuration.md) - Full configuration reference
-- [Templates Guide](./templates.md) - Template system documentation
-- [Filter Expressions](../reference/filters.md) - Filter syntax reference
+- [[configuration-guide|Configuration Guide]] - Full configuration reference
+- [[templates-guide|Templates Guide]] - Template system documentation

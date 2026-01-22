@@ -32,7 +32,7 @@ This guide is for power users who want to leverage markata-go's full capabilitie
 
 The feed system is markata-go's most powerful feature. Beyond basic usage, you can create sophisticated content architectures with multiple feeds, nested hierarchies, and custom API endpoints.
 
-**Related guides:** [Feeds Guide](./guides/feeds.md), [Syndication Feeds](./guides/syndication-feeds.md)
+**Related guides:** [[feeds-guide|Feeds Guide]], [[syndication-feeds|Syndication Feeds]]
 
 ### Multiple Feeds with Different Filters
 
@@ -327,7 +327,7 @@ fetch('/search-index/feed.json')
 
 The `jinja_md` plugin enables powerful dynamic content generation directly within your Markdown files.
 
-**Related guide:** [Dynamic Content](./guides/dynamic-content.md)
+**Related guide:** [[dynamic-content|Dynamic Content]]
 
 ### Embedding Post Lists in Content
 
@@ -490,7 +490,7 @@ jinja: true
 
 The filter expression system supports complex queries for precise content selection.
 
-**Related guides:** [Frontmatter](./guides/frontmatter.md), [Feeds Guide](./guides/feeds.md)
+**Related guides:** [[frontmatter-guide|Frontmatter]], [[feeds-guide|Feeds Guide]]
 
 ### Complex Filter Expressions
 
@@ -600,7 +600,7 @@ filter = "published == True and category.startswith('Web')"
 
 When built-in functionality isn't enough, write custom plugins to extend markata-go.
 
-**Related guide:** [Plugin Development](./guides/plugin-development.md)
+**Related guide:** [[plugin-development|Plugin Development]]
 
 ### When to Write a Plugin
 
@@ -938,7 +938,7 @@ For sites with 1000+ posts:
 
 Configure markata-go for different deployment environments.
 
-**Related guides:** [Configuration](./guides/configuration.md), [Deployment](./guides/deployment.md)
+**Related guides:** [[configuration-guide|Configuration]], [[deployment-guide|Deployment]]
 
 ### Staging vs Production
 
@@ -1069,7 +1069,7 @@ docker build --build-arg MARKATA_GO_URL=https://staging.example.com -t site:stag
 
 Master template inheritance, conditionals, and reusable components.
 
-**Related guide:** [Templates Guide](./guides/templates.md)
+**Related guide:** [[templates-guide|Templates Guide]]
 
 ### Template Inheritance Patterns
 
@@ -1622,11 +1622,11 @@ Renders as:
 
 ## See Also
 
-- [Feeds Guide](./guides/feeds.md) - Complete feed system documentation
-- [Templates Guide](./guides/templates.md) - Template system reference
-- [Configuration Guide](./guides/configuration.md) - Full configuration options
-- [Plugin Development](./guides/plugin-development.md) - Create custom plugins
-- [Dynamic Content](./guides/dynamic-content.md) - Jinja-in-Markdown guide
-- [Deployment](./guides/deployment.md) - Deployment and CI/CD
-- [Frontmatter](./guides/frontmatter.md) - Frontmatter field reference
-- [Syndication Feeds](./guides/syndication-feeds.md) - RSS, Atom, JSON feeds
+- [[feeds-guide|Feeds Guide]] - Complete feed system documentation
+- [[templates-guide|Templates Guide]] - Template system reference
+- [[configuration-guide|Configuration Guide]] - Full configuration options
+- [[plugin-development|Plugin Development]] - Create custom plugins
+- [[dynamic-content|Dynamic Content]] - Jinja-in-Markdown guide
+- [[deployment-guide|Deployment]] - Deployment and CI/CD
+- [[frontmatter-guide|Frontmatter]] - Frontmatter field reference
+- [[syndication-feeds|Syndication Feeds]] - RSS, Atom, JSON feeds

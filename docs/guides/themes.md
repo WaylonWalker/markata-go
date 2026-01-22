@@ -643,6 +643,6 @@ Use `markata-go palette check` to verify your color choices meet WCAG guidelines
 
 ## See Also
 
-- [Configuration Guide](./configuration.md) - All configuration options
-- [Templates Guide](./templates.md) - Template syntax and customization
-- [Frontmatter Guide](./frontmatter.md) - Post-level configuration
+- [[configuration-guide|Configuration Guide]] - All configuration options
+- [[templates-guide|Templates Guide]] - Template syntax and customization
+- [[frontmatter-guide|Frontmatter Guide]] - Post-level configuration

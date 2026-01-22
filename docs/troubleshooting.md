@@ -205,7 +205,7 @@ Or markata-go uses unexpected default values.
 - `markata-go.yml`
 - `markata-go.json`
 
-See the [Configuration Guide](./guides/configuration.md) for details on config file locations.
+See the [[configuration-guide|Configuration Guide]] for details on config file locations.
 
 ---
 
@@ -305,7 +305,7 @@ Or a setting doesn't seem to take effect.
    markata-go config show
    ```
 
-3. Reference the [Configuration Guide](./guides/configuration.md) for the complete list of options.
+3. Reference the [[configuration-guide|Configuration Guide]] for the complete list of options.
 
 **Example of correct configuration:**
 ```toml
@@ -427,7 +427,7 @@ Error: failed to parse frontmatter in posts/my-post.md: yaml: line 5: could not 
 
 3. Validate YAML online at [yamllint.com](http://www.yamllint.com/)
 
-See the [Frontmatter Guide](./guides/frontmatter.md) for complete frontmatter documentation.
+See the [[frontmatter-guide|Frontmatter Guide]] for complete frontmatter documentation.
 
 ---
 
@@ -670,7 +670,7 @@ Error: template "custom-layout.html" not found
    templates_dir = "templates"  # Must match your directory
    ```
 
-See the [Templates Guide](./guides/templates.md) for template setup.
+See the [[templates-guide|Templates Guide]] for template setup.
 
 ---
 
@@ -822,7 +822,7 @@ Error: template error: variable "post.title" not found
    ls -la public/blog/rss.xml public/blog/atom.xml
    ```
 
-See the [Feeds Guide](./guides/feeds.md) for detailed feed configuration.
+See the [[feeds-guide|Feeds Guide]] for detailed feed configuration.
 
 ---
 
@@ -1268,7 +1268,7 @@ Error: listen tcp :8000: bind: address already in use
    ```
 
 4. **For custom plugins, ensure they're registered properly:**
-   - See the [Plugin Development Guide](./guides/plugin-development.md)
+   - See the [[plugin-development|Plugin Development Guide]]
 
 ---
 
@@ -1317,10 +1317,10 @@ If you can't resolve your issue with this guide:
    - [GitHub Issues](https://github.com/example/markata-go/issues)
 
 2. **Search the documentation:**
-   - [Getting Started](./getting-started.md)
-   - [Configuration Guide](./guides/configuration.md)
-   - [Feeds Guide](./guides/feeds.md)
-   - [Templates Guide](./guides/templates.md)
+   - [[getting-started|Getting Started]]
+   - [[configuration-guide|Configuration Guide]]
+   - [[feeds-guide|Feeds Guide]]
+   - [[templates-guide|Templates Guide]]
 
 3. **Create a minimal reproduction:**
    - Create the smallest possible project that shows the issue

@@ -732,6 +732,6 @@ jinja: true  # Don't forget this!
 
 ## See Also
 
-- [Templates Guide](./templates.md) - Full template syntax and filters
-- [Feeds Guide](./feeds.md) - Configure feed collections
-- [Configuration Guide](./configuration.md) - Site-wide settings
+- [[templates-guide|Templates Guide]] - Full template syntax and filters
+- [[feeds-guide|Feeds Guide]] - Configure feed collections
+- [[configuration-guide|Configuration Guide]] - Site-wide settings
