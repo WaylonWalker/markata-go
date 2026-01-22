@@ -125,6 +125,10 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
     <title>{{.Title}} | {{.SiteTitle}}</title>
     {{if .Description}}<meta name="description" content="{{.Description}}">{{end}}
     <link rel="canonical" href="{{.SiteURL}}{{.Href}}">
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
 </head>
 <body>
     <header>

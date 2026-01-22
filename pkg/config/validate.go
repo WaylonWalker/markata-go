@@ -61,8 +61,11 @@ func ValidateConfig(config *models.Config) []error {
 	}
 
 	// Validate feed configurations
+	// Apply feed defaults before validation so we can check effective values
 	for i, feed := range config.Feeds {
-		feedErrs := validateFeedConfig(i, &feed)
+		feedWithDefaults := feed
+		feedWithDefaults.ApplyDefaults(config.FeedDefaults)
+		feedErrs := validateFeedConfig(i, &feedWithDefaults)
 		errs = append(errs, feedErrs...)
 	}
 

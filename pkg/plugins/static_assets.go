@@ -3,10 +3,12 @@ package plugins
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/example/markata-go/pkg/lifecycle"
+	"github.com/example/markata-go/pkg/themes"
 )
 
 // StaticAssetsPlugin copies static assets from themes and project directories to output.
@@ -45,11 +47,17 @@ func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Copy theme static files first (lower priority)
-	themeStaticDir := filepath.Join("themes", themeName, "static")
-	if _, err := os.Stat(themeStaticDir); err == nil {
+	// Try to find theme static directory in various locations
+	themeStaticDir := p.findThemeStaticDir(themeName)
+	if themeStaticDir != "" {
+		// Found filesystem theme static dir
 		if err := p.copyDir(themeStaticDir, outputDir); err != nil {
 			return fmt.Errorf("copying theme static files: %w", err)
+		}
+	} else if themeName == "default" {
+		// Fall back to embedded static files for default theme
+		if err := p.copyEmbeddedStatic(outputDir); err != nil {
+			return fmt.Errorf("copying embedded static files: %w", err)
 		}
 	}
 
@@ -62,6 +70,78 @@ func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	return nil
+}
+
+// findThemeStaticDir searches for theme static directory in various locations.
+func (p *StaticAssetsPlugin) findThemeStaticDir(themeName string) string {
+	// 1. Check current working directory
+	cwdPath := filepath.Join("themes", themeName, "static")
+	if _, err := os.Stat(cwdPath); err == nil {
+		return cwdPath
+	}
+
+	// 2. Check relative to executable
+	if exePath, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exePath)
+
+		// themes next to executable
+		exeThemePath := filepath.Join(exeDir, "themes", themeName, "static")
+		if _, err := os.Stat(exeThemePath); err == nil {
+			return exeThemePath
+		}
+
+		// Check parent/share/markata-go/themes (standard install location)
+		parentDir := filepath.Dir(exeDir)
+		sharePath := filepath.Join(parentDir, "share", "markata-go", "themes", themeName, "static")
+		if _, err := os.Stat(sharePath); err == nil {
+			return sharePath
+		}
+	}
+
+	return ""
+}
+
+// copyEmbeddedStatic copies embedded static files to the output directory.
+func (p *StaticAssetsPlugin) copyEmbeddedStatic(outputDir string) error {
+	staticFS := themes.DefaultStatic()
+	if staticFS == nil {
+		return nil // No embedded static files
+	}
+
+	return fs.WalkDir(staticFS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip root directory
+		if path == "." {
+			return nil
+		}
+
+		dstPath := filepath.Join(outputDir, path)
+
+		if d.IsDir() {
+			return os.MkdirAll(dstPath, 0755)
+		}
+
+		// Read embedded file
+		content, err := fs.ReadFile(staticFS, path)
+		if err != nil {
+			return fmt.Errorf("reading embedded file %s: %w", path, err)
+		}
+
+		// Ensure parent directory exists
+		if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+			return fmt.Errorf("creating parent directory: %w", err)
+		}
+
+		// Write file
+		if err := os.WriteFile(dstPath, content, 0644); err != nil {
+			return fmt.Errorf("writing file %s: %w", dstPath, err)
+		}
+
+		return nil
+	})
 }
 
 // copyDir recursively copies a directory to the destination.

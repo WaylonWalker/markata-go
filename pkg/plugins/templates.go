@@ -87,11 +87,16 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 			templateName = "post.html"
 		}
 
-		// Check if template exists
+		// Check if template exists, fall back to post.html if not
 		if !p.engine.TemplateExists(templateName) {
-			// If no template exists, just use the article HTML as final HTML
-			post.HTML = post.ArticleHTML
-			return nil
+			// Template not found, fall back to default post.html
+			templateName = "post.html"
+
+			// If even post.html doesn't exist, use article HTML directly
+			if !p.engine.TemplateExists(templateName) {
+				post.HTML = post.ArticleHTML
+				return nil
+			}
 		}
 
 		// Create template context

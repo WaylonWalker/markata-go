@@ -392,7 +392,7 @@ func TestAdmonition_Types(t *testing.T) {
 	}
 }
 
-func TestAdmonition_DefaultTitle(t *testing.T) {
+func TestRenderMarkdownPlugin_AdmonitionDefaultTitle(t *testing.T) {
 	p := NewRenderMarkdownPlugin()
 	post := &models.Post{Content: "!!! warning\n    Warning content"}
 
@@ -407,7 +407,7 @@ func TestAdmonition_DefaultTitle(t *testing.T) {
 	}
 }
 
-func TestAdmonition_InvalidType(t *testing.T) {
+func TestRenderMarkdownPlugin_AdmonitionInvalidType(t *testing.T) {
 	p := NewRenderMarkdownPlugin()
 	// Using an invalid type should not create an admonition
 	post := &models.Post{Content: "!!! invalid\n    Content"}

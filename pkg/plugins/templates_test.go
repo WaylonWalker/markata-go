@@ -3,6 +3,7 @@ package plugins
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/example/markata-go/pkg/lifecycle"
@@ -114,7 +115,8 @@ func TestTemplatesPlugin_Render_NoTemplate(t *testing.T) {
 	p := NewTemplatesPlugin()
 	m := lifecycle.NewManager()
 
-	// Configure without templates directory (templates won't exist)
+	// Configure without templates directory (templates won't exist on filesystem)
+	// But embedded templates will be used as fallback
 	config := m.Config()
 	config.Extra["templates_dir"] = "/nonexistent"
 
@@ -138,9 +140,24 @@ func TestTemplatesPlugin_Render_NoTemplate(t *testing.T) {
 		t.Fatalf("Render() error = %v", err)
 	}
 
-	// When template doesn't exist, HTML should equal ArticleHTML
-	if post.HTML != post.ArticleHTML {
-		t.Errorf("Render() with missing template: HTML = %q, want %q", post.HTML, post.ArticleHTML)
+	// With embedded templates, post should be rendered with full HTML template
+	// Check that the content is wrapped in a proper HTML document
+	if post.HTML == post.ArticleHTML {
+		t.Errorf("Render() with embedded templates: HTML should be wrapped in template, got raw ArticleHTML")
+	}
+
+	// Check that the HTML contains expected elements from the embedded template
+	if !strings.Contains(post.HTML, "<!DOCTYPE html>") {
+		t.Errorf("Render() with embedded templates: HTML should contain DOCTYPE")
+	}
+	if !strings.Contains(post.HTML, "<p>Hello World</p>") {
+		t.Errorf("Render() with embedded templates: HTML should contain ArticleHTML content")
+	}
+	if !strings.Contains(post.HTML, "Test Post") {
+		t.Errorf("Render() with embedded templates: HTML should contain post title")
+	}
+	if !strings.Contains(post.HTML, "css/main.css") {
+		t.Errorf("Render() with embedded templates: HTML should include CSS links")
 	}
 }
 

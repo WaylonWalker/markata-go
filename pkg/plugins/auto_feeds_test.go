@@ -1,0 +1,802 @@
+package plugins
+
+import (
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/example/markata-go/pkg/lifecycle"
+	"github.com/example/markata-go/pkg/models"
+)
+
+// =============================================================================
+// AutoFeedsPlugin Tests
+// =============================================================================
+
+func TestAutoFeedsPlugin_Name(t *testing.T) {
+	plugin := NewAutoFeedsPlugin()
+	if plugin.Name() != "auto_feeds" {
+		t.Errorf("Name() = %q, want %q", plugin.Name(), "auto_feeds")
+	}
+}
+
+func TestAutoFeedsPlugin_TagFeeds(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Python Tutorial"), Tags: []string{"python", "tutorial"}, Date: &date},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("Go Basics"), Tags: []string{"go", "tutorial"}, Date: &date},
+		{Path: "post3.md", Slug: "post3", Title: strPtr("Python Advanced"), Tags: []string{"python", "advanced"}, Date: &date},
+	})
+
+	// Configure auto feeds for tags
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{
+				Enabled:    true,
+				SlugPrefix: "tags",
+				Formats: models.FeedFormats{
+					HTML: true,
+					RSS:  true,
+				},
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+
+	// Should have 4 tag feeds: advanced, go, python, tutorial (alphabetical)
+	if len(feeds) != 4 {
+		t.Fatalf("expected 4 tag feeds, got %d", len(feeds))
+	}
+
+	// Create a map for easy lookup
+	feedMap := make(map[string]*lifecycle.Feed)
+	for _, f := range feeds {
+		feedMap[f.Name] = f
+	}
+
+	// Check that expected tag feeds exist with correct titles
+	expectedFeeds := map[string]string{
+		"tags/python":   "Posts tagged: python",
+		"tags/go":       "Posts tagged: go",
+		"tags/tutorial": "Posts tagged: tutorial",
+		"tags/advanced": "Posts tagged: advanced",
+	}
+
+	for slug, expectedTitle := range expectedFeeds {
+		feed, ok := feedMap[slug]
+		if !ok {
+			t.Errorf("expected feed %q not found", slug)
+			continue
+		}
+		if feed.Title != expectedTitle {
+			t.Errorf("feed %q title = %q, want %q", slug, feed.Title, expectedTitle)
+		}
+	}
+}
+
+func TestAutoFeedsPlugin_CustomSlugPrefix(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post 1"), Tags: []string{"python"}, Date: &date},
+	})
+
+	// Configure with custom slug prefix
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{
+				Enabled:    true,
+				SlugPrefix: "topics",
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+	if len(feeds) != 1 {
+		t.Fatalf("expected 1 feed, got %d", len(feeds))
+	}
+
+	// Should use custom prefix
+	if feeds[0].Name != "topics/python" {
+		t.Errorf("feed slug = %q, want %q", feeds[0].Name, "topics/python")
+	}
+}
+
+func TestAutoFeedsPlugin_CategoryFeeds(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{
+			Path:  "post1.md",
+			Slug:  "post1",
+			Title: strPtr("Tech Post 1"),
+			Date:  &date,
+			Extra: map[string]interface{}{"category": "Technology"},
+		},
+		{
+			Path:  "post2.md",
+			Slug:  "post2",
+			Title: strPtr("Life Post"),
+			Date:  &date,
+			Extra: map[string]interface{}{"category": "Lifestyle"},
+		},
+		{
+			Path:  "post3.md",
+			Slug:  "post3",
+			Title: strPtr("Tech Post 2"),
+			Date:  &date,
+			Extra: map[string]interface{}{"category": "Technology"},
+		},
+	})
+
+	// Configure auto feeds for categories
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Categories: AutoFeedTypeConfig{
+				Enabled:    true,
+				SlugPrefix: "categories",
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+
+	// Should have 2 category feeds: Lifestyle, Technology
+	if len(feeds) != 2 {
+		t.Fatalf("expected 2 category feeds, got %d", len(feeds))
+	}
+
+	feedMap := make(map[string]*lifecycle.Feed)
+	for _, f := range feeds {
+		feedMap[f.Name] = f
+	}
+
+	// Check technology feed
+	if techFeed, ok := feedMap["categories/technology"]; ok {
+		if len(techFeed.Posts) != 2 {
+			t.Errorf("technology category should have 2 posts, got %d", len(techFeed.Posts))
+		}
+		if techFeed.Title != "Category: Technology" {
+			t.Errorf("technology feed title = %q, want %q", techFeed.Title, "Category: Technology")
+		}
+	} else {
+		t.Error("categories/technology feed not found")
+	}
+
+	// Check lifestyle feed
+	if lifeFeed, ok := feedMap["categories/lifestyle"]; ok {
+		if len(lifeFeed.Posts) != 1 {
+			t.Errorf("lifestyle category should have 1 post, got %d", len(lifeFeed.Posts))
+		}
+	} else {
+		t.Error("categories/lifestyle feed not found")
+	}
+}
+
+func TestAutoFeedsPlugin_YearlyArchives(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date2024 := time.Date(2024, 6, 15, 0, 0, 0, 0, time.UTC)
+	date2023a := time.Date(2023, 3, 10, 0, 0, 0, 0, time.UTC)
+	date2023b := time.Date(2023, 8, 20, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post 2024"), Date: &date2024},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("Post 2023 A"), Date: &date2023a},
+		{Path: "post3.md", Slug: "post3", Title: strPtr("Post 2023 B"), Date: &date2023b},
+	})
+
+	// Configure yearly archive feeds
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Archives: AutoArchiveConfig{
+				Enabled:      true,
+				SlugPrefix:   "archive",
+				YearlyFeeds:  true,
+				MonthlyFeeds: false,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+
+	// Should have 2 yearly archive feeds: 2024, 2023
+	if len(feeds) != 2 {
+		t.Fatalf("expected 2 yearly archive feeds, got %d", len(feeds))
+	}
+
+	feedMap := make(map[string]*lifecycle.Feed)
+	for _, f := range feeds {
+		feedMap[f.Name] = f
+	}
+
+	// Check 2024 archive exists with correct title
+	if feed2024, ok := feedMap["archive/2024"]; ok {
+		if feed2024.Title != "Archive: 2024" {
+			t.Errorf("2024 archive title = %q, want %q", feed2024.Title, "Archive: 2024")
+		}
+	} else {
+		t.Error("archive/2024 feed not found")
+	}
+
+	// Check 2023 archive exists
+	if _, ok := feedMap["archive/2023"]; !ok {
+		t.Error("archive/2023 feed not found")
+	}
+}
+
+func TestAutoFeedsPlugin_MonthlyArchives(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	dateJan := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	dateMarA := time.Date(2024, 3, 10, 0, 0, 0, 0, time.UTC)
+	dateMarB := time.Date(2024, 3, 20, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("January Post"), Date: &dateJan},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("March Post A"), Date: &dateMarA},
+		{Path: "post3.md", Slug: "post3", Title: strPtr("March Post B"), Date: &dateMarB},
+	})
+
+	// Configure monthly archive feeds
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Archives: AutoArchiveConfig{
+				Enabled:      true,
+				SlugPrefix:   "archive",
+				YearlyFeeds:  false,
+				MonthlyFeeds: true,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+
+	// Should have 2 monthly archive feeds: 2024/01, 2024/03
+	if len(feeds) != 2 {
+		t.Fatalf("expected 2 monthly archive feeds, got %d", len(feeds))
+	}
+
+	feedMap := make(map[string]*lifecycle.Feed)
+	for _, f := range feeds {
+		feedMap[f.Name] = f
+	}
+
+	// Check January archive exists with correct title
+	if feedJan, ok := feedMap["archive/2024/01"]; ok {
+		if !strings.Contains(feedJan.Title, "January") {
+			t.Errorf("January archive title should contain 'January', got %q", feedJan.Title)
+		}
+	} else {
+		t.Error("archive/2024/01 feed not found")
+	}
+
+	// Check March archive exists
+	if _, ok := feedMap["archive/2024/03"]; !ok {
+		t.Error("archive/2024/03 feed not found")
+	}
+}
+
+func TestAutoFeedsPlugin_CombinedArchives(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post"), Date: &date},
+	})
+
+	// Configure both yearly and monthly archive feeds
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Archives: AutoArchiveConfig{
+				Enabled:      true,
+				SlugPrefix:   "archive",
+				YearlyFeeds:  true,
+				MonthlyFeeds: true,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+
+	// Should have 2 feeds: yearly 2024 + monthly 2024/01
+	if len(feeds) != 2 {
+		t.Fatalf("expected 2 archive feeds, got %d", len(feeds))
+	}
+
+	hasYearly := false
+	hasMonthly := false
+	for _, f := range feeds {
+		if f.Name == "archive/2024" {
+			hasYearly = true
+		}
+		if f.Name == "archive/2024/01" {
+			hasMonthly = true
+		}
+	}
+
+	if !hasYearly {
+		t.Error("expected yearly archive feed")
+	}
+	if !hasMonthly {
+		t.Error("expected monthly archive feed")
+	}
+}
+
+func TestAutoFeedsPlugin_NoAutoFeedsConfigured(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post"), Tags: []string{"test"}, Date: &date},
+	})
+
+	// No auto_feeds config (all disabled by default)
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+	if len(feeds) != 0 {
+		t.Errorf("expected 0 feeds when auto_feeds disabled, got %d", len(feeds))
+	}
+}
+
+func TestAutoFeedsPlugin_AllDisabled(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post"), Tags: []string{"test"}, Date: &date},
+	})
+
+	// All auto feeds explicitly disabled
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Tags:       AutoFeedTypeConfig{Enabled: false},
+			Categories: AutoFeedTypeConfig{Enabled: false},
+			Archives:   AutoArchiveConfig{Enabled: false},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+	if len(feeds) != 0 {
+		t.Errorf("expected 0 feeds when all disabled, got %d", len(feeds))
+	}
+}
+
+func TestAutoFeedsPlugin_InheritsFeedDefaults(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	// Create enough posts to trigger pagination
+	var posts []*models.Post
+	for i := 0; i < 15; i++ {
+		posts = append(posts, &models.Post{
+			Path:  "post.md",
+			Slug:  "post",
+			Title: strPtr("Post"),
+			Tags:  []string{"python"},
+			Date:  &date,
+		})
+	}
+	m.SetPosts(posts)
+
+	// Configure feed defaults and tag auto feeds
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feed_defaults": models.FeedDefaults{
+			ItemsPerPage:    5,
+			OrphanThreshold: 2,
+		},
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{
+				Enabled: true,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	// Check that feed configs inherit defaults
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		t.Fatal("feed_configs not found in cache")
+	}
+
+	feedConfigs, ok := cached.([]models.FeedConfig)
+	if !ok {
+		t.Fatalf("feed_configs has wrong type: %T", cached)
+	}
+
+	if len(feedConfigs) != 1 {
+		t.Fatalf("expected 1 feed config, got %d", len(feedConfigs))
+	}
+
+	fc := feedConfigs[0]
+
+	// Should have inherited defaults
+	if fc.ItemsPerPage != 5 {
+		t.Errorf("ItemsPerPage should be 5 (from defaults), got %d", fc.ItemsPerPage)
+	}
+
+	// 15 posts / 5 per page = 3 pages
+	if len(fc.Pages) != 3 {
+		t.Errorf("expected 3 pages, got %d", len(fc.Pages))
+	}
+}
+
+func TestAutoFeedsPlugin_PostsSortedByDateDescending(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date1 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	date2 := time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC)
+	date3 := time.Date(2024, 1, 5, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "oldest", Title: strPtr("Oldest"), Tags: []string{"python"}, Date: &date3},
+		{Path: "post2.md", Slug: "newest", Title: strPtr("Newest"), Tags: []string{"python"}, Date: &date1},
+		{Path: "post3.md", Slug: "middle", Title: strPtr("Middle"), Tags: []string{"python"}, Date: &date2},
+	})
+
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{
+				Enabled: true,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+	if len(feeds) != 1 {
+		t.Fatalf("expected 1 feed, got %d", len(feeds))
+	}
+
+	posts := feeds[0].Posts
+
+	// Should be sorted by date descending (newest first)
+	if posts[0].Slug != "newest" {
+		t.Errorf("first post should be 'newest', got %q", posts[0].Slug)
+	}
+	if posts[1].Slug != "middle" {
+		t.Errorf("second post should be 'middle', got %q", posts[1].Slug)
+	}
+	if posts[2].Slug != "oldest" {
+		t.Errorf("third post should be 'oldest', got %q", posts[2].Slug)
+	}
+}
+
+func TestAutoFeedsPlugin_SlugifyTag(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	// Tags with special characters that need slugification
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post"), Tags: []string{"C++ Programming", "Machine Learning"}, Date: &date},
+	})
+
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{
+				Enabled: true,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+
+	// Check that slugs are properly formatted
+	for _, f := range feeds {
+		// Slugs should be lowercase with hyphens
+		if strings.ContainsAny(f.Name, " +") {
+			t.Errorf("feed slug should not contain spaces or +: %q", f.Name)
+		}
+		if f.Name != strings.ToLower(f.Name) {
+			// Check slug part only (after prefix)
+			parts := strings.SplitN(f.Name, "/", 2)
+			if len(parts) == 2 && parts[1] != strings.ToLower(parts[1]) {
+				t.Errorf("feed slug should be lowercase: %q", f.Name)
+			}
+		}
+	}
+}
+
+func TestAutoFeedsPlugin_NoTagsNoPosts(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	// Posts without tags
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post 1"), Tags: []string{}, Date: &date},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("Post 2"), Date: &date}, // nil tags
+	})
+
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{
+				Enabled: true,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+
+	// No tags = no tag feeds
+	if len(feeds) != 0 {
+		t.Errorf("expected 0 feeds when no tags, got %d", len(feeds))
+	}
+}
+
+func TestAutoFeedsPlugin_NoCategoriesNoPosts(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	// Posts without category
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post 1"), Date: &date},
+	})
+
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Categories: AutoFeedTypeConfig{
+				Enabled: true,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+
+	// No categories = no category feeds
+	if len(feeds) != 0 {
+		t.Errorf("expected 0 feeds when no categories, got %d", len(feeds))
+	}
+}
+
+func TestAutoFeedsPlugin_NoDatesNoArchives(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	// Posts without dates
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post 1")},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("Post 2")},
+	})
+
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Archives: AutoArchiveConfig{
+				Enabled:     true,
+				YearlyFeeds: true,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+
+	// No dates = no archive feeds
+	if len(feeds) != 0 {
+		t.Errorf("expected 0 archive feeds when no dates, got %d", len(feeds))
+	}
+}
+
+func TestAutoFeedsPlugin_AppendsToExistingFeeds(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post"), Tags: []string{"python"}, Date: &date},
+	})
+
+	// Pre-populate existing feeds (as if FeedsPlugin ran first)
+	existingFeed := &lifecycle.Feed{
+		Name:  "existing",
+		Title: "Existing Feed",
+	}
+	m.SetFeeds([]*lifecycle.Feed{existingFeed})
+
+	// Also set existing feed configs in cache
+	m.Cache().Set("feed_configs", []models.FeedConfig{
+		{Slug: "existing", Title: "Existing Feed"},
+	})
+
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{
+				Enabled: true,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+
+	// Should have both existing and auto-generated feeds
+	if len(feeds) != 2 {
+		t.Fatalf("expected 2 feeds (1 existing + 1 auto), got %d", len(feeds))
+	}
+
+	hasExisting := false
+	hasPython := false
+	for _, f := range feeds {
+		if f.Name == "existing" {
+			hasExisting = true
+		}
+		if f.Name == "tags/python" {
+			hasPython = true
+		}
+	}
+
+	if !hasExisting {
+		t.Error("existing feed should be preserved")
+	}
+	if !hasPython {
+		t.Error("auto-generated python tag feed should exist")
+	}
+}
+
+// =============================================================================
+// Slugify Tests
+// =============================================================================
+
+func TestSlugify(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"Python", "python"},
+		{"Machine Learning", "machine-learning"},
+		{"C++", "c"},
+		{"Web Dev!", "web-dev"},
+		{"  spaces  ", "spaces"},
+		{"multiple---hyphens", "multiple-hyphens"},
+		{"UPPERCASE", "uppercase"},
+		{"Mix3d C4se", "mix3d-c4se"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got := slugify(tt.input)
+			if got != tt.want {
+				t.Errorf("slugify(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// Interface Compliance
+// =============================================================================
+
+func TestAutoFeedsPlugin_ImplementsInterfaces(t *testing.T) {
+	var _ lifecycle.Plugin = (*AutoFeedsPlugin)(nil)
+	var _ lifecycle.CollectPlugin = (*AutoFeedsPlugin)(nil)
+}

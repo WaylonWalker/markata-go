@@ -35,8 +35,17 @@ func registerBuiltinPlugins() {
 	RegisterPluginConstructor("wikilinks", func() lifecycle.Plugin { return NewWikilinksPlugin() })
 	RegisterPluginConstructor("toc", func() lifecycle.Plugin { return NewTocPlugin() })
 	RegisterPluginConstructor("description", func() lifecycle.Plugin { return NewDescriptionPlugin() })
+	RegisterPluginConstructor("auto_title", func() lifecycle.Plugin { return NewAutoTitlePlugin() })
 	RegisterPluginConstructor("reading_time", func() lifecycle.Plugin { return NewReadingTimePlugin() })
 	RegisterPluginConstructor("static_assets", func() lifecycle.Plugin { return NewStaticAssetsPlugin() })
+	RegisterPluginConstructor("palette_css", func() lifecycle.Plugin { return NewPaletteCSSPlugin() })
+	RegisterPluginConstructor("prevnext", func() lifecycle.Plugin { return NewPrevNextPlugin() })
+	RegisterPluginConstructor("heading_anchors", func() lifecycle.Plugin { return NewHeadingAnchorsPlugin() })
+	RegisterPluginConstructor("redirects", func() lifecycle.Plugin { return NewRedirectsPlugin() })
+	RegisterPluginConstructor("csv_fence", func() lifecycle.Plugin { return NewCSVFencePlugin() })
+	RegisterPluginConstructor("mermaid", func() lifecycle.Plugin { return NewMermaidPlugin() })
+	RegisterPluginConstructor("link_collector", func() lifecycle.Plugin { return NewLinkCollectorPlugin() })
+	RegisterPluginConstructor("glossary", func() lifecycle.Plugin { return NewGlossaryPlugin() })
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -85,6 +94,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewLoadPlugin(),
 
 		// Transform stage plugins (in order)
+		NewAutoTitlePlugin(),   // Auto-generate titles first
 		NewDescriptionPlugin(), // Auto-generate descriptions early
 		NewReadingTimePlugin(), // Calculate reading time
 		NewWikilinksPlugin(),   // Process wikilinks before rendering
@@ -93,16 +103,21 @@ func DefaultPlugins() []lifecycle.Plugin {
 
 		// Render stage plugins
 		NewRenderMarkdownPlugin(),
+		NewHeadingAnchorsPlugin(), // Add anchors after markdown rendering
+		NewLinkCollectorPlugin(),  // Collect links after markdown rendering
 		NewTemplatesPlugin(),
 
 		// Collect stage plugins
 		NewFeedsPlugin(),
 		NewAutoFeedsPlugin(),
+		NewPrevNextPlugin(), // Calculate prev/next after feeds are built
 
 		// Write stage plugins
 		NewStaticAssetsPlugin(), // Copy static assets first
+		NewPaletteCSSPlugin(),   // Generate palette CSS (overwrites variables.css)
 		NewPublishFeedsPlugin(),
 		NewPublishHTMLPlugin(),
+		NewRedirectsPlugin(), // Generate redirect pages
 		NewSitemapPlugin(),
 	}
 }
@@ -123,6 +138,7 @@ func MinimalPlugins() []lifecycle.Plugin {
 // Useful for adding to a custom plugin set.
 func TransformPlugins() []lifecycle.Plugin {
 	return []lifecycle.Plugin{
+		NewAutoTitlePlugin(),
 		NewDescriptionPlugin(),
 		NewReadingTimePlugin(),
 		NewWikilinksPlugin(),

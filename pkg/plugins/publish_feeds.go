@@ -11,6 +11,7 @@ import (
 
 	"github.com/example/markata-go/pkg/lifecycle"
 	"github.com/example/markata-go/pkg/models"
+	"github.com/example/markata-go/pkg/templates"
 )
 
 // PublishFeedsPlugin writes feeds to multiple output formats during the write stage.
@@ -142,6 +143,54 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 
 // generateFeedPageHTML generates HTML for a feed page.
 func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config) (string, error) {
+	// Get templates directory from config
+	templatesDir := "templates"
+	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
+		templatesDir = extra
+	}
+
+	// Get theme name from config (default to "default")
+	themeName := "default"
+	if extra := config.Extra; extra != nil {
+		if theme, ok := extra["theme"].(map[string]interface{}); ok {
+			if name, ok := theme["name"].(string); ok && name != "" {
+				themeName = name
+			}
+		}
+		if name, ok := extra["theme"].(string); ok && name != "" {
+			themeName = name
+		}
+	}
+
+	// Try to use pongo2 template engine with feed.html template
+	engine, err := templates.NewEngineWithTheme(templatesDir, themeName)
+	if err == nil && engine.TemplateExists("feed.html") {
+		// Build config for template context
+		modelsConfig := &models.Config{
+			OutputDir:   config.OutputDir,
+			Title:       getStringFromExtra(config.Extra, "title"),
+			URL:         getStringFromExtra(config.Extra, "url"),
+			Description: getStringFromExtra(config.Extra, "description"),
+			Author:      getStringFromExtra(config.Extra, "author"),
+		}
+
+		// Create feed context
+		ctx := templates.NewFeedContext(fc, page, modelsConfig)
+
+		// Render with pongo2 template
+		html, err := engine.Render("feed.html", ctx)
+		if err == nil {
+			return html, nil
+		}
+		// If pongo2 rendering fails, fall back to built-in template
+	}
+
+	// Fallback: Use built-in Go template
+	return p.generateFeedPageHTMLFallback(fc, page, config)
+}
+
+// generateFeedPageHTMLFallback generates HTML using a built-in Go template.
+func (p *PublishFeedsPlugin) generateFeedPageHTMLFallback(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config) (string, error) {
 	siteURL := getSiteURL(config)
 	siteTitle := getSiteTitle(config)
 
@@ -150,42 +199,50 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 		title = siteTitle
 	}
 
-	// Simple default template
+	// Simple default template with CSS links
 	tmplStr := `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
     <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="rss.xml">
     <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="atom.xml">
     <link rel="alternate" type="application/feed+json" title="JSON Feed" href="feed.json">
 </head>
 <body>
     <header>
-        <h1>{{.Title}}</h1>
-        {{if .Description}}<p>{{.Description}}</p>{{end}}
+        <nav>
+            <a href="/">{{.SiteTitle}}</a>
+            <a href="/blog/">Blog</a>
+        </nav>
     </header>
     <main>
-        <ul class="posts">
+        <h1>{{.Title}}</h1>
+        {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
+        <div class="post-list">
         {{range .Posts}}
-            <li class="post">
+            <article class="post-card">
                 <a href="{{.Href}}">
                     <h2>{{if .Title}}{{.Title}}{{else}}{{.Slug}}{{end}}</h2>
                 </a>
                 {{if .Date}}<time datetime="{{.Date.Format "2006-01-02"}}">{{.Date.Format "January 2, 2006"}}</time>{{end}}
                 {{if .Description}}<p>{{.Description}}</p>{{end}}
-            </li>
+            </article>
         {{end}}
-        </ul>
+        </div>
     </main>
     <nav class="pagination">
-        {{if .HasPrev}}<a href="{{.PrevURL}}" rel="prev">Previous</a>{{end}}
+        {{if .HasPrev}}<a href="{{.PrevURL}}" rel="prev">&laquo; Newer</a>{{end}}
         <span>Page {{.Number}}</span>
-        {{if .HasNext}}<a href="{{.NextURL}}" rel="next">Next</a>{{end}}
+        {{if .HasNext}}<a href="{{.NextURL}}" rel="next">Older &raquo;</a>{{end}}
     </nav>
     <footer>
-        <p><a href="{{.SiteURL}}">{{.SiteTitle}}</a></p>
+        <p>&copy; {{.SiteTitle}}</p>
     </footer>
 </body>
 </html>`
