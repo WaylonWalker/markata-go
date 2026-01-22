@@ -143,7 +143,7 @@ func TestLoad_WithDefaults(t *testing.T) {
 }
 
 func TestDiscover_FindsTOML(t *testing.T) {
-	dir := t.TempDir()
+	dir := evalSymlinks(t, t.TempDir())
 	cleanup := chdir(t, dir)
 	defer cleanup()
 
@@ -164,7 +164,7 @@ func TestDiscover_FindsTOML(t *testing.T) {
 }
 
 func TestDiscover_PrefersOrder(t *testing.T) {
-	dir := t.TempDir()
+	dir := evalSymlinks(t, t.TempDir())
 	cleanup := chdir(t, dir)
 	defer cleanup()
 
