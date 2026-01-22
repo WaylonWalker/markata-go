@@ -59,6 +59,14 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["feed_defaults"] = cfg.FeedDefaults
 	lcConfig.Extra["use_gitignore"] = cfg.GlobConfig.UseGitignore
 
+	// Pass theme configuration to plugins
+	lcConfig.Extra["theme"] = map[string]interface{}{
+		"name":       cfg.Theme.Name,
+		"palette":    cfg.Theme.Palette,
+		"variables":  cfg.Theme.Variables,
+		"custom_css": cfg.Theme.CustomCSS,
+	}
+
 	m.SetConfig(lcConfig)
 
 	// Set concurrency if specified
@@ -74,27 +82,8 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 
 // registerDefaultPlugins registers all default plugins to the manager.
 func registerDefaultPlugins(m *lifecycle.Manager) {
-	// Glob stage - discover files
-	m.RegisterPlugin(plugins.NewGlobPlugin())
-
-	// Load stage - parse markdown files
-	m.RegisterPlugin(plugins.NewLoadPlugin())
-
-	// Transform stage - jinja templates in markdown
-	m.RegisterPlugin(plugins.NewJinjaMdPlugin())
-
-	// Render stage - markdown to HTML
-	m.RegisterPlugin(plugins.NewRenderMarkdownPlugin())
-	m.RegisterPlugin(plugins.NewTemplatesPlugin())
-
-	// Collect stage - build feeds
-	m.RegisterPlugin(plugins.NewFeedsPlugin())
-	m.RegisterPlugin(plugins.NewAutoFeedsPlugin())
-
-	// Write stage - output files
-	m.RegisterPlugin(plugins.NewStaticAssetsPlugin()) // Copy static assets (CSS, JS, etc.)
-	m.RegisterPlugin(plugins.NewPublishFeedsPlugin())
-	m.RegisterPlugin(plugins.NewPublishHTMLPlugin())
+	// Use the centralized DefaultPlugins() to ensure all plugins are registered
+	m.RegisterPlugins(plugins.DefaultPlugins()...)
 }
 
 // BuildResult holds the result of a build operation.

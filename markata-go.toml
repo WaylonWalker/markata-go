@@ -20,9 +20,67 @@ concurrency = 0
 hooks = ["default"]
 disabled_hooks = []
 
+
+# NAME                      VARIANT  SOURCE     DESCRIPTION
+# ----------------------------------------------------------------------
+# Catppuccin Frappe         dark     project
+# Catppuccin Latte          light    project
+# Catppuccin Macchiato      dark     project
+# Catppuccin Mocha          dark     project
+# Default Dark              dark     project
+# Default Light             light    project
+# Dracula                   dark     project
+# Everforest Dark           dark     project
+# Everforest Light          light    project
+# Gruvbox Dark              dark     project
+# Gruvbox Light             light    project
+# Kanagawa Dragon           dark     project
+# Kanagawa Lotus            light    project
+# Kanagawa Wave             dark     project
+# Nord Dark                 dark     project
+# Nord Light                light    project
+# Rose Pine                 dark     project
+# Rose Pine Dawn            light    project
+# Rose Pine Moon            dark     project
+# Solarized Dark            dark     project
+# Solarized Light           light    project
+# Tokyo Night               dark     project
+# Tokyo Night Day           light    project
+# Tokyo Night Storm         dark     project
+[markata-go.theme]
+# palette = "catppuccin-frappe"
+# palette = "catppuccin-latte"
+# palette = "catppuccin-macchiato"
+# palette = "catppuccin-mocha"
+# palette = "default-dark"
+# palette = "default-light"
+# palette = "dracula"
+# palette = "everforest-dark"
+# palette = "everforest-light"
+# palette = "gruvbox-dark"
+# palette = "gruvbox-light"
+# palette = "kanagawa-dragon"
+# palette = "kanagawa-lotus"
+# palette = "kanagawa-wave"
+palette = "matte-black"
+# palette = "nord-dark"
+# palette = "nord-light"
+# palette = "rose-pine"
+# palette = "rose-pine-dawn"
+# palette = "rose-pine-moon"
+# palette = "solarized-dark"
+# palette = "solarized-light"
+# palette = "tokyo-night"
+# palette = "tokyo-night-day"
+# palette = "tokyo-night-storm"
+
 # Glob settings - find content files
 [markata-go.glob]
-patterns = ["posts/**/*.md", "pages/*.md"]
+patterns = [
+"posts/**/*.md",
+"pages/*.md", 
+"docs/**/*.md", 
+]
 use_gitignore = true
 
 # Markdown settings
@@ -37,10 +95,10 @@ orphan_threshold = 3
 [markata-go.feed_defaults.formats]
 html = true
 rss = true
-atom = false
-json = false
-markdown = false
-text = false
+atom = true
+json = true
+markdown = true
+text = true
 
 [markata-go.feed_defaults.templates]
 html = "feed.html"
@@ -55,28 +113,28 @@ include_content = false
 slug = "blog"
 title = "Blog"
 description = "All blog posts"
+filter = ""
+sort = "date"
+reverse = true
+items_per_page = 10
+
+[[markata-go.feeds]]
+slug = "docs"
+title = "docs"
+description = "All docs posts"
 filter = "published == True"
 sort = "date"
 reverse = true
 items_per_page = 10
 
-[markata-go.feeds.formats]
-html = true
-rss = true
-atom = true
-json = true
-
 # Home page feed (empty slug = root index.html)
 [[markata-go.feeds]]
-slug = ""
+slug = "latst"
 title = "Latest Posts"
 filter = "published == True"
 sort = "date"
 reverse = true
 items_per_page = 5
-
-[markata-go.feeds.formats]
-html = true
 
 # Featured posts feed
 [[markata-go.feeds]]
@@ -84,6 +142,15 @@ slug = "featured"
 title = "Featured"
 description = "Featured posts"
 filter = "published == True and featured == True"
+sort = "date"
+reverse = true
+items_per_page = 10
+
+[[markata-go.feeds]]
+slug = "draft"
+title = "draft"
+description = "Featured posts"
+filter = "published == False"
 sort = "date"
 reverse = true
 items_per_page = 10

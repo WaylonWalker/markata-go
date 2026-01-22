@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -27,6 +28,12 @@ var (
 
 	// serveNoWatch disables file watching.
 	serveNoWatch bool
+
+	// serveOutputPath is the output directory path for filtering watch events.
+	serveOutputPath string
+
+	// isRebuilding tracks whether a rebuild is in progress to avoid event loops.
+	isRebuilding atomic.Bool
 )
 
 // serveCmd represents the serve command.
@@ -91,6 +98,12 @@ func runServeCommand(cmd *cobra.Command, args []string) error {
 	if outputPath == "" {
 		outputPath = "output"
 	}
+	// Store the absolute output path for watch filtering
+	absOutputPath, err := filepath.Abs(outputPath)
+	if err != nil {
+		absOutputPath = outputPath
+	}
+	serveOutputPath = absOutputPath
 
 	// Start file watcher if enabled
 	var watcher *fsnotify.Watcher
@@ -329,10 +342,29 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 				return
 			}
 
-			// Ignore events for output directory and temporary files
-			if strings.Contains(event.Name, "output") ||
-				strings.HasSuffix(event.Name, "~") ||
-				strings.HasPrefix(filepath.Base(event.Name), ".") {
+			// Skip events during rebuild to avoid infinite loops
+			if isRebuilding.Load() {
+				continue
+			}
+
+			// Get absolute path for comparison
+			absEventPath, err := filepath.Abs(event.Name)
+			if err != nil {
+				absEventPath = event.Name
+			}
+
+			// Ignore events for output directory
+			if serveOutputPath != "" && strings.HasPrefix(absEventPath, serveOutputPath) {
+				continue
+			}
+
+			// Ignore temporary/backup files and hidden files
+			baseName := filepath.Base(event.Name)
+			if strings.HasSuffix(event.Name, "~") ||
+				strings.HasPrefix(baseName, ".") ||
+				strings.HasSuffix(event.Name, ".swp") ||
+				strings.HasSuffix(event.Name, ".swo") ||
+				strings.HasSuffix(event.Name, ".tmp") {
 				continue
 			}
 
@@ -384,6 +416,10 @@ func handleRebuilds(ctx context.Context, rebuildCh <-chan struct{}) {
 
 // doRebuild performs an incremental rebuild.
 func doRebuild() {
+	// Set rebuilding flag to ignore events during build
+	isRebuilding.Store(true)
+	defer isRebuilding.Store(false)
+
 	fmt.Println("\nRebuilding...")
 	startTime := time.Now()
 
@@ -457,8 +493,14 @@ func addDirRecursive(watcher *fsnotify.Watcher, root string) error {
 			return err
 		}
 
+		// Get absolute path for comparison
+		absPath, pathErr := filepath.Abs(path)
+		if pathErr != nil {
+			absPath = path
+		}
+
 		// Skip output directory
-		if strings.Contains(path, "output") {
+		if serveOutputPath != "" && strings.HasPrefix(absPath, serveOutputPath) {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
