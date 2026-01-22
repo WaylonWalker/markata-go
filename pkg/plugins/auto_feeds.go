@@ -1,0 +1,377 @@
+// Package plugins provides lifecycle plugins for markata-go.
+package plugins
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/example/markata-go/pkg/lifecycle"
+	"github.com/example/markata-go/pkg/models"
+)
+
+// AutoFeedsConfig configures automatic feed generation.
+type AutoFeedsConfig struct {
+	// Tags configures automatic tag feeds
+	Tags AutoFeedTypeConfig `json:"tags" yaml:"tags" toml:"tags"`
+
+	// Categories configures automatic category feeds
+	Categories AutoFeedTypeConfig `json:"categories" yaml:"categories" toml:"categories"`
+
+	// Archives configures automatic date archive feeds
+	Archives AutoArchiveConfig `json:"archives" yaml:"archives" toml:"archives"`
+}
+
+// AutoFeedTypeConfig configures a type of auto-generated feed (tags, categories).
+type AutoFeedTypeConfig struct {
+	// Enabled enables generation of this feed type
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// SlugPrefix is the URL prefix for feeds (e.g., "tags" -> /tags/python/)
+	SlugPrefix string `json:"slug_prefix" yaml:"slug_prefix" toml:"slug_prefix"`
+
+	// Formats specifies which output formats to generate
+	Formats models.FeedFormats `json:"formats" yaml:"formats" toml:"formats"`
+}
+
+// AutoArchiveConfig configures automatic date archive feeds.
+type AutoArchiveConfig struct {
+	// Enabled enables generation of archive feeds
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// SlugPrefix is the URL prefix for archives (e.g., "archive" -> /archive/2024/)
+	SlugPrefix string `json:"slug_prefix" yaml:"slug_prefix" toml:"slug_prefix"`
+
+	// YearlyFeeds enables year-based archive feeds
+	YearlyFeeds bool `json:"yearly_feeds" yaml:"yearly_feeds" toml:"yearly_feeds"`
+
+	// MonthlyFeeds enables month-based archive feeds
+	MonthlyFeeds bool `json:"monthly_feeds" yaml:"monthly_feeds" toml:"monthly_feeds"`
+
+	// Formats specifies which output formats to generate
+	Formats models.FeedFormats `json:"formats" yaml:"formats" toml:"formats"`
+}
+
+// AutoFeedsPlugin automatically generates feeds for tags, categories, and date archives.
+type AutoFeedsPlugin struct{}
+
+// NewAutoFeedsPlugin creates a new AutoFeedsPlugin.
+func NewAutoFeedsPlugin() *AutoFeedsPlugin {
+	return &AutoFeedsPlugin{}
+}
+
+// Name returns the unique name of the plugin.
+func (p *AutoFeedsPlugin) Name() string {
+	return "auto_feeds"
+}
+
+// Collect generates automatic feeds for tags, categories, and date archives.
+func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
+	posts := m.Posts()
+	config := m.Config()
+
+	autoConfig := getAutoFeedsConfig(config)
+
+	// Collect only auto-generated feed configs
+	var autoFeedConfigs []models.FeedConfig
+
+	// Generate tag feeds
+	if autoConfig.Tags.Enabled {
+		tagFeeds := p.generateTagFeeds(posts, autoConfig.Tags)
+		autoFeedConfigs = append(autoFeedConfigs, tagFeeds...)
+	}
+
+	// Generate category feeds
+	if autoConfig.Categories.Enabled {
+		categoryFeeds := p.generateCategoryFeeds(posts, autoConfig.Categories)
+		autoFeedConfigs = append(autoFeedConfigs, categoryFeeds...)
+	}
+
+	// Generate archive feeds
+	if autoConfig.Archives.Enabled {
+		archiveFeeds := p.generateArchiveFeeds(posts, autoConfig.Archives)
+		autoFeedConfigs = append(autoFeedConfigs, archiveFeeds...)
+	}
+
+	// If no auto-feeds were generated, nothing to do
+	if len(autoFeedConfigs) == 0 {
+		return nil
+	}
+
+	// Process auto-generated feeds
+	feedDefaults := getFeedDefaults(config)
+
+	// Get existing feeds from FeedsPlugin
+	feeds := m.Feeds()
+
+	// Get existing feed configs from cache to append auto-generated ones
+	var allFeedConfigs []models.FeedConfig
+	if cached, ok := m.Cache().Get("feed_configs"); ok {
+		if fcs, ok := cached.([]models.FeedConfig); ok {
+			allFeedConfigs = fcs
+		}
+	}
+
+	for i := range autoFeedConfigs {
+		fc := &autoFeedConfigs[i]
+
+		// Apply defaults
+		fc.ApplyDefaults(feedDefaults)
+
+		// Filter posts for this feed
+		filteredPosts, err := filterPosts(posts, fc.Filter)
+		if err != nil {
+			return fmt.Errorf("auto feed %q: %w", fc.Slug, err)
+		}
+
+		// Sort posts by date, newest first
+		sortPosts(filteredPosts, "date", true)
+
+		// Store posts in feed config
+		fc.Posts = filteredPosts
+
+		// Get base URL for pagination
+		baseURL := "/" + fc.Slug
+
+		// Paginate results
+		fc.Paginate(baseURL)
+
+		// Create lifecycle.Feed
+		feed := &lifecycle.Feed{
+			Name:  fc.Slug,
+			Title: fc.Title,
+			Posts: filteredPosts,
+			Path:  fc.Slug,
+		}
+
+		feeds = append(feeds, feed)
+		allFeedConfigs = append(allFeedConfigs, *fc)
+	}
+
+	m.SetFeeds(feeds)
+
+	// Update cache with all feed configs (original + auto-generated)
+	m.Cache().Set("feed_configs", allFeedConfigs)
+
+	return nil
+}
+
+// generateTagFeeds creates feed configurations for each unique tag.
+func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeedTypeConfig) []models.FeedConfig {
+	// Collect all unique tags
+	tagCounts := make(map[string]int)
+	for _, post := range posts {
+		for _, tag := range post.Tags {
+			tagCounts[tag]++
+		}
+	}
+
+	// Sort tags alphabetically
+	var tags []string
+	for tag := range tagCounts {
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+
+	// Create feed config for each tag
+	var feeds []models.FeedConfig
+	prefix := config.SlugPrefix
+	if prefix == "" {
+		prefix = "tags"
+	}
+
+	for _, tag := range tags {
+		slug := prefix + "/" + slugify(tag)
+		feeds = append(feeds, models.FeedConfig{
+			Slug:        slug,
+			Title:       fmt.Sprintf("Posts tagged: %s", tag),
+			Description: fmt.Sprintf("All posts with the tag %q", tag),
+			Filter:      fmt.Sprintf("tags contains %q", tag),
+			Sort:        "date",
+			Reverse:     true,
+			Formats:     config.Formats,
+		})
+	}
+
+	return feeds
+}
+
+// generateCategoryFeeds creates feed configurations for each unique category.
+func (p *AutoFeedsPlugin) generateCategoryFeeds(posts []*models.Post, config AutoFeedTypeConfig) []models.FeedConfig {
+	// Collect all unique categories from Extra["category"]
+	categoryCounts := make(map[string]int)
+	for _, post := range posts {
+		if cat, ok := post.Extra["category"].(string); ok && cat != "" {
+			categoryCounts[cat]++
+		}
+	}
+
+	// Sort categories alphabetically
+	var categories []string
+	for cat := range categoryCounts {
+		categories = append(categories, cat)
+	}
+	sort.Strings(categories)
+
+	// Create feed config for each category
+	var feeds []models.FeedConfig
+	prefix := config.SlugPrefix
+	if prefix == "" {
+		prefix = "categories"
+	}
+
+	for _, cat := range categories {
+		slug := prefix + "/" + slugify(cat)
+		feeds = append(feeds, models.FeedConfig{
+			Slug:        slug,
+			Title:       fmt.Sprintf("Category: %s", cat),
+			Description: fmt.Sprintf("All posts in the %q category", cat),
+			Filter:      fmt.Sprintf("category == %q", cat),
+			Sort:        "date",
+			Reverse:     true,
+			Formats:     config.Formats,
+		})
+	}
+
+	return feeds
+}
+
+// generateArchiveFeeds creates feed configurations for year and month archives.
+func (p *AutoFeedsPlugin) generateArchiveFeeds(posts []*models.Post, config AutoArchiveConfig) []models.FeedConfig {
+	// Collect all unique year/month combinations
+	yearMonths := make(map[string]bool)
+	years := make(map[int]bool)
+
+	for _, post := range posts {
+		if post.Date != nil {
+			year := post.Date.Year()
+			month := post.Date.Month()
+
+			years[year] = true
+			yearMonths[fmt.Sprintf("%04d/%02d", year, month)] = true
+		}
+	}
+
+	var feeds []models.FeedConfig
+	prefix := config.SlugPrefix
+	if prefix == "" {
+		prefix = "archive"
+	}
+
+	// Create yearly feeds
+	if config.YearlyFeeds {
+		var yearList []int
+		for year := range years {
+			yearList = append(yearList, year)
+		}
+		sort.Sort(sort.Reverse(sort.IntSlice(yearList)))
+
+		for _, year := range yearList {
+			slug := fmt.Sprintf("%s/%04d", prefix, year)
+			startDate := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+			endDate := time.Date(year+1, 1, 1, 0, 0, 0, 0, time.UTC)
+
+			feeds = append(feeds, models.FeedConfig{
+				Slug:        slug,
+				Title:       fmt.Sprintf("Archive: %d", year),
+				Description: fmt.Sprintf("All posts from %d", year),
+				Filter:      fmt.Sprintf("date >= %q and date < %q", startDate.Format(time.RFC3339), endDate.Format(time.RFC3339)),
+				Sort:        "date",
+				Reverse:     true,
+				Formats:     config.Formats,
+			})
+		}
+	}
+
+	// Create monthly feeds
+	if config.MonthlyFeeds {
+		var ymList []string
+		for ym := range yearMonths {
+			ymList = append(ymList, ym)
+		}
+		sort.Sort(sort.Reverse(sort.StringSlice(ymList)))
+
+		for _, ym := range ymList {
+			var year, month int
+			fmt.Sscanf(ym, "%d/%d", &year, &month)
+
+			slug := fmt.Sprintf("%s/%s", prefix, ym)
+			monthName := time.Month(month).String()
+			startDate := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+			endDate := startDate.AddDate(0, 1, 0)
+
+			feeds = append(feeds, models.FeedConfig{
+				Slug:        slug,
+				Title:       fmt.Sprintf("Archive: %s %d", monthName, year),
+				Description: fmt.Sprintf("All posts from %s %d", monthName, year),
+				Filter:      fmt.Sprintf("date >= %q and date < %q", startDate.Format(time.RFC3339), endDate.Format(time.RFC3339)),
+				Sort:        "date",
+				Reverse:     true,
+				Formats:     config.Formats,
+			})
+		}
+	}
+
+	return feeds
+}
+
+// getAutoFeedsConfig retrieves auto feeds configuration from the manager config.
+func getAutoFeedsConfig(config *lifecycle.Config) AutoFeedsConfig {
+	defaultConfig := AutoFeedsConfig{
+		Tags: AutoFeedTypeConfig{
+			Enabled:    false,
+			SlugPrefix: "tags",
+			Formats: models.FeedFormats{
+				HTML: true,
+				RSS:  true,
+			},
+		},
+		Categories: AutoFeedTypeConfig{
+			Enabled:    false,
+			SlugPrefix: "categories",
+			Formats: models.FeedFormats{
+				HTML: true,
+				RSS:  true,
+			},
+		},
+		Archives: AutoArchiveConfig{
+			Enabled:      false,
+			SlugPrefix:   "archive",
+			YearlyFeeds:  true,
+			MonthlyFeeds: false,
+			Formats: models.FeedFormats{
+				HTML: true,
+				RSS:  false,
+			},
+		},
+	}
+
+	if config.Extra == nil {
+		return defaultConfig
+	}
+
+	if autoFeeds, ok := config.Extra["auto_feeds"]; ok {
+		if ac, ok := autoFeeds.(AutoFeedsConfig); ok {
+			return ac
+		}
+	}
+
+	return defaultConfig
+}
+
+// slugify converts a string to a URL-safe slug.
+func slugify(s string) string {
+	s = strings.ToLower(s)
+	s = strings.ReplaceAll(s, " ", "-")
+	s = slugifyRegex.ReplaceAllString(s, "")
+	s = multiHyphenRegex.ReplaceAllString(s, "-")
+	s = strings.Trim(s, "-")
+	return s
+}
+
+// Ensure AutoFeedsPlugin implements the required interfaces.
+var (
+	_ lifecycle.Plugin        = (*AutoFeedsPlugin)(nil)
+	_ lifecycle.CollectPlugin = (*AutoFeedsPlugin)(nil)
+)

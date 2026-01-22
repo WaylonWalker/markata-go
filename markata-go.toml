@@ -1,0 +1,89 @@
+# Markata-Go Configuration
+# A plugin-driven static site generator with powerful feed system
+
+[markata-go]
+# Site settings
+title = "My Site"
+description = "A site built with markata-go"
+url = "https://example.com"
+author = "Your Name"
+
+# Build settings
+output_dir = "public"
+templates_dir = "templates"
+assets_dir = "static"
+
+# Concurrency (0 = auto based on CPU)
+concurrency = 0
+
+# Plugin configuration
+hooks = ["default"]
+disabled_hooks = []
+
+# Glob settings - find content files
+[markata-go.glob]
+patterns = ["posts/**/*.md", "pages/*.md"]
+use_gitignore = true
+
+# Markdown settings
+[markata-go.markdown]
+extensions = ["tables", "strikethrough", "autolinks", "tasklist"]
+
+# Feed defaults - inherited by all feeds unless overridden
+[markata-go.feed_defaults]
+items_per_page = 10
+orphan_threshold = 3
+
+[markata-go.feed_defaults.formats]
+html = true
+rss = true
+atom = false
+json = false
+markdown = false
+text = false
+
+[markata-go.feed_defaults.templates]
+html = "feed.html"
+card = "partials/card.html"
+
+[markata-go.feed_defaults.syndication]
+max_items = 20
+include_content = false
+
+# Main blog feed
+[[markata-go.feeds]]
+slug = "blog"
+title = "Blog"
+description = "All blog posts"
+filter = "published == True"
+sort = "date"
+reverse = true
+items_per_page = 10
+
+[markata-go.feeds.formats]
+html = true
+rss = true
+atom = true
+json = true
+
+# Home page feed (empty slug = root index.html)
+[[markata-go.feeds]]
+slug = ""
+title = "Latest Posts"
+filter = "published == True"
+sort = "date"
+reverse = true
+items_per_page = 5
+
+[markata-go.feeds.formats]
+html = true
+
+# Featured posts feed
+[[markata-go.feeds]]
+slug = "featured"
+title = "Featured"
+description = "Featured posts"
+filter = "published == True and featured == True"
+sort = "date"
+reverse = true
+items_per_page = 10

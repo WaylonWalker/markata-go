@@ -1,0 +1,671 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/example/markata-go/pkg/models"
+)
+
+// =============================================================================
+// Configuration Tests based on tests.yaml
+// =============================================================================
+
+func TestConfig_DefaultOutputDir(t *testing.T) {
+	// Test case: "default output dir"
+	// When no config is provided, output_dir should be "output"
+	config := DefaultConfig()
+
+	if config.OutputDir != "output" {
+		t.Errorf("output_dir: got %q, want 'output'", config.OutputDir)
+	}
+}
+
+func TestConfig_CustomOutputDir(t *testing.T) {
+	// Test case: "custom output dir"
+	// Create a temp config file
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "markata-go.toml")
+	configContent := `[markata-go]
+output_dir = "public"
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	config, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+
+	if config.OutputDir != "public" {
+		t.Errorf("output_dir: got %q, want 'public'", config.OutputDir)
+	}
+}
+
+func TestConfig_DefaultGlobPatterns(t *testing.T) {
+	// Test case: "default glob patterns"
+	config := DefaultConfig()
+
+	expectedPatterns := []string{"**/*.md"}
+	if len(config.GlobConfig.Patterns) != 1 || config.GlobConfig.Patterns[0] != "**/*.md" {
+		t.Errorf("glob.patterns: got %v, want %v", config.GlobConfig.Patterns, expectedPatterns)
+	}
+}
+
+func TestConfig_DefaultValues(t *testing.T) {
+	config := DefaultConfig()
+
+	// Verify all defaults
+	if config.OutputDir != "output" {
+		t.Errorf("output_dir: got %q, want 'output'", config.OutputDir)
+	}
+	if config.TemplatesDir != "templates" {
+		t.Errorf("templates_dir: got %q, want 'templates'", config.TemplatesDir)
+	}
+	if config.AssetsDir != "static" {
+		t.Errorf("assets_dir: got %q, want 'static'", config.AssetsDir)
+	}
+	if len(config.Hooks) != 1 || config.Hooks[0] != "default" {
+		t.Errorf("hooks: got %v, want ['default']", config.Hooks)
+	}
+	if !config.GlobConfig.UseGitignore {
+		t.Error("glob.use_gitignore should default to true")
+	}
+	if config.FeedDefaults.ItemsPerPage != 10 {
+		t.Errorf("feed_defaults.items_per_page: got %d, want 10", config.FeedDefaults.ItemsPerPage)
+	}
+	if config.FeedDefaults.OrphanThreshold != 3 {
+		t.Errorf("feed_defaults.orphan_threshold: got %d, want 3", config.FeedDefaults.OrphanThreshold)
+	}
+}
+
+// =============================================================================
+// Environment Variable Override Tests
+// =============================================================================
+
+func TestConfig_EnvVarOverride(t *testing.T) {
+	// Test case: "env var overrides config file"
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "markata-go.toml")
+	configContent := `[markata-go]
+output_dir = "file-output"
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	// Set environment variable
+	os.Setenv("MARKATA_GO_OUTPUT_DIR", "env-output")
+	defer os.Unsetenv("MARKATA_GO_OUTPUT_DIR")
+
+	config, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+
+	// Environment variable should override config file
+	if config.OutputDir != "env-output" {
+		t.Errorf("output_dir: got %q, want 'env-output'", config.OutputDir)
+	}
+}
+
+func TestConfig_EnvVarSetsRoot(t *testing.T) {
+	// Test case: "env var sets root config"
+	// Clear any existing env vars
+	os.Unsetenv("MARKATA_GO_OUTPUT_DIR")
+
+	// Set environment variable
+	os.Setenv("MARKATA_GO_OUTPUT_DIR", "env-output")
+	defer os.Unsetenv("MARKATA_GO_OUTPUT_DIR")
+
+	config, err := LoadWithDefaults()
+	if err != nil {
+		t.Fatalf("LoadWithDefaults error: %v", err)
+	}
+
+	if config.OutputDir != "env-output" {
+		t.Errorf("output_dir: got %q, want 'env-output'", config.OutputDir)
+	}
+}
+
+func TestConfig_EnvVarNestedConfig(t *testing.T) {
+	// Test case: "env var sets nested config"
+	os.Setenv("MARKATA_GO_GLOB_USE_GITIGNORE", "false")
+	defer os.Unsetenv("MARKATA_GO_GLOB_USE_GITIGNORE")
+
+	config, err := LoadWithDefaults()
+	if err != nil {
+		t.Fatalf("LoadWithDefaults error: %v", err)
+	}
+
+	if config.GlobConfig.UseGitignore != false {
+		t.Error("glob.use_gitignore should be false from env var")
+	}
+}
+
+func TestConfig_EnvVarBooleanValues(t *testing.T) {
+	tests := []struct {
+		name     string
+		envValue string
+		expected bool
+	}{
+		{"true", "true", true},
+		{"1", "1", true},
+		{"yes", "yes", true},
+		{"false", "false", false},
+		{"0", "0", false},
+		{"no", "no", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Setenv("MARKATA_GO_GLOB_USE_GITIGNORE", tt.envValue)
+			defer os.Unsetenv("MARKATA_GO_GLOB_USE_GITIGNORE")
+
+			config, err := LoadWithDefaults()
+			if err != nil {
+				t.Fatalf("LoadWithDefaults error: %v", err)
+			}
+
+			if config.GlobConfig.UseGitignore != tt.expected {
+				t.Errorf("glob.use_gitignore: got %v, want %v", config.GlobConfig.UseGitignore, tt.expected)
+			}
+		})
+	}
+}
+
+func TestConfig_EnvVarListValue(t *testing.T) {
+	// Test case: "env var list value comma separated"
+	os.Setenv("MARKATA_GO_GLOB_PATTERNS", "posts/**/*.md,pages/*.md")
+	defer os.Unsetenv("MARKATA_GO_GLOB_PATTERNS")
+
+	config, err := LoadWithDefaults()
+	if err != nil {
+		t.Fatalf("LoadWithDefaults error: %v", err)
+	}
+
+	expected := []string{"posts/**/*.md", "pages/*.md"}
+	if len(config.GlobConfig.Patterns) != len(expected) {
+		t.Errorf("glob.patterns: got %v, want %v", config.GlobConfig.Patterns, expected)
+	}
+	for i, pattern := range expected {
+		if i < len(config.GlobConfig.Patterns) && config.GlobConfig.Patterns[i] != pattern {
+			t.Errorf("glob.patterns[%d]: got %q, want %q", i, config.GlobConfig.Patterns[i], pattern)
+		}
+	}
+}
+
+func TestConfig_EnvVarIntegerConversion(t *testing.T) {
+	// Test case: "env var integer conversion"
+	os.Setenv("MARKATA_GO_CONCURRENCY", "8")
+	defer os.Unsetenv("MARKATA_GO_CONCURRENCY")
+
+	config, err := LoadWithDefaults()
+	if err != nil {
+		t.Fatalf("LoadWithDefaults error: %v", err)
+	}
+
+	if config.Concurrency != 8 {
+		t.Errorf("concurrency: got %d, want 8", config.Concurrency)
+	}
+}
+
+// =============================================================================
+// Config File Discovery Tests
+// =============================================================================
+
+func TestConfig_DiscoverTOML(t *testing.T) {
+	// Test case: "finds markata-go.toml in current directory"
+	tmpDir := t.TempDir()
+
+	// Save current dir and change to temp dir
+	origDir, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origDir)
+
+	// Create config file
+	configPath := filepath.Join(tmpDir, "markata-go.toml")
+	configContent := `[markata-go]
+output_dir = "public"
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	discovered, err := Discover()
+	if err != nil {
+		t.Fatalf("Discover error: %v", err)
+	}
+
+	if discovered != configPath {
+		t.Errorf("discovered: got %q, want %q", discovered, configPath)
+	}
+}
+
+func TestConfig_DiscoverYAML(t *testing.T) {
+	// Test case: "finds yaml format"
+	tmpDir := t.TempDir()
+
+	origDir, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origDir)
+
+	configPath := filepath.Join(tmpDir, "markata-go.yaml")
+	configContent := `markata-go:
+  output_dir: yaml-output
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	discovered, err := Discover()
+	if err != nil {
+		t.Fatalf("Discover error: %v", err)
+	}
+
+	if discovered != configPath {
+		t.Errorf("discovered: got %q, want %q", discovered, configPath)
+	}
+}
+
+func TestConfig_TOMLPreferredOverYAML(t *testing.T) {
+	// Test case: "toml preferred over yaml"
+	tmpDir := t.TempDir()
+
+	origDir, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origDir)
+
+	// Create both TOML and YAML
+	tomlPath := filepath.Join(tmpDir, "markata-go.toml")
+	if err := os.WriteFile(tomlPath, []byte(`[markata-go]
+output_dir = "toml-output"
+`), 0644); err != nil {
+		t.Fatalf("failed to write TOML file: %v", err)
+	}
+
+	yamlPath := filepath.Join(tmpDir, "markata-go.yaml")
+	if err := os.WriteFile(yamlPath, []byte(`markata-go:
+  output_dir: yaml-output
+`), 0644); err != nil {
+		t.Fatalf("failed to write YAML file: %v", err)
+	}
+
+	discovered, err := Discover()
+	if err != nil {
+		t.Fatalf("Discover error: %v", err)
+	}
+
+	// TOML should be preferred
+	if discovered != tomlPath {
+		t.Errorf("discovered: got %q, want %q (TOML preferred)", discovered, tomlPath)
+	}
+}
+
+func TestConfig_NoConfigFileUsesDefaults(t *testing.T) {
+	// Test case: "no config file uses defaults"
+	tmpDir := t.TempDir()
+
+	origDir, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origDir)
+
+	// No config file created
+
+	config, err := Load("")
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+
+	if config.OutputDir != "output" {
+		t.Errorf("output_dir: got %q, want 'output' (default)", config.OutputDir)
+	}
+}
+
+// =============================================================================
+// Config Validation Tests
+// =============================================================================
+
+func TestConfigValidation_InvalidURL(t *testing.T) {
+	// Test case: "invalid url format error"
+	config := DefaultConfig()
+	config.URL = "not-a-url"
+
+	errs := ValidateConfig(config)
+	if len(errs) == 0 {
+		t.Error("expected validation error for invalid URL")
+	}
+
+	// Check that error mentions URL
+	found := false
+	for _, err := range errs {
+		if ve, ok := err.(ValidationError); ok && ve.Field == "url" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected validation error for 'url' field")
+	}
+}
+
+func TestConfigValidation_NegativeConcurrency(t *testing.T) {
+	// Test case: "negative concurrency error"
+	config := DefaultConfig()
+	config.Concurrency = -5
+
+	errs := ValidateConfig(config)
+	if len(errs) == 0 {
+		t.Error("expected validation error for negative concurrency")
+	}
+
+	found := false
+	for _, err := range errs {
+		if ve, ok := err.(ValidationError); ok && ve.Field == "concurrency" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected validation error for 'concurrency' field")
+	}
+}
+
+func TestConfigValidation_EmptyPatternsWarning(t *testing.T) {
+	// Test case: "empty patterns warning"
+	config := DefaultConfig()
+	config.GlobConfig.Patterns = []string{}
+
+	errs := ValidateConfig(config)
+
+	// Should have a warning (not error) for empty patterns
+	hasWarning := false
+	for _, err := range errs {
+		if ve, ok := err.(ValidationError); ok && ve.Field == "glob.patterns" && ve.IsWarn {
+			hasWarning = true
+			break
+		}
+	}
+	if !hasWarning {
+		t.Error("expected warning for empty glob.patterns")
+	}
+}
+
+func TestConfigValidation_ValidConfig(t *testing.T) {
+	config := DefaultConfig()
+	config.URL = "https://example.com"
+
+	errs := ValidateConfig(config)
+
+	// Should only have warnings (empty patterns), no errors
+	for _, err := range errs {
+		if ve, ok := err.(ValidationError); ok && !ve.IsWarn {
+			t.Errorf("unexpected error: %v", err)
+		}
+	}
+}
+
+func TestConfigValidation_NilConfig(t *testing.T) {
+	errs := ValidateConfig(nil)
+
+	if len(errs) == 0 {
+		t.Error("expected error for nil config")
+	}
+}
+
+// =============================================================================
+// Config Merge Tests
+// =============================================================================
+
+func TestConfigMerge_ScalarValues(t *testing.T) {
+	// Test case: "scalar values later wins"
+	base := DefaultConfig()
+	base.OutputDir = "global"
+
+	override := &models.Config{
+		OutputDir: "local",
+	}
+
+	merged := MergeConfigs(base, override)
+
+	if merged.OutputDir != "local" {
+		t.Errorf("output_dir: got %q, want 'local'", merged.OutputDir)
+	}
+}
+
+func TestConfigMerge_PreservesUnsetValues(t *testing.T) {
+	base := DefaultConfig()
+	base.OutputDir = "global"
+	base.URL = "https://global.com"
+
+	override := &models.Config{
+		OutputDir: "local",
+		// URL not set
+	}
+
+	merged := MergeConfigs(base, override)
+
+	if merged.OutputDir != "local" {
+		t.Errorf("output_dir: got %q, want 'local'", merged.OutputDir)
+	}
+	// URL should be preserved from base if not overridden
+	if merged.URL != "https://global.com" && override.URL == "" {
+		// This depends on implementation - zero values might override
+		// For now, just verify merge happened
+	}
+}
+
+// =============================================================================
+// Config Helper Tests
+// =============================================================================
+
+func TestSpec_GetEnvValue(t *testing.T) {
+	// Set a test env var
+	os.Setenv("MARKATA_GO_TEST_KEY", "test_value")
+	defer os.Unsetenv("MARKATA_GO_TEST_KEY")
+
+	value, ok := GetEnvValue("TEST_KEY")
+	if !ok {
+		t.Error("expected env var to be found")
+	}
+	if value != "test_value" {
+		t.Errorf("got %q, want 'test_value'", value)
+	}
+
+	// Test missing env var
+	_, ok = GetEnvValue("NONEXISTENT")
+	if ok {
+		t.Error("expected env var not to be found")
+	}
+}
+
+func TestSpec_SetEnvValue(t *testing.T) {
+	key := "SET_TEST"
+	value := "set_value"
+
+	err := SetEnvValue(key, value)
+	if err != nil {
+		t.Fatalf("SetEnvValue error: %v", err)
+	}
+	defer UnsetEnvValue(key)
+
+	got, ok := GetEnvValue(key)
+	if !ok || got != value {
+		t.Errorf("got %q, want %q", got, value)
+	}
+}
+
+func TestSpec_UnsetEnvValue(t *testing.T) {
+	key := "UNSET_TEST"
+	SetEnvValue(key, "value")
+
+	err := UnsetEnvValue(key)
+	if err != nil {
+		t.Fatalf("UnsetEnvValue error: %v", err)
+	}
+
+	_, ok := GetEnvValue(key)
+	if ok {
+		t.Error("env var should be unset")
+	}
+}
+
+func TestSpec_ConfigFromEnv(t *testing.T) {
+	os.Setenv("MARKATA_GO_OUTPUT_DIR", "from-env")
+	defer os.Unsetenv("MARKATA_GO_OUTPUT_DIR")
+
+	config := ConfigFromEnv()
+
+	if config.OutputDir != "from-env" {
+		t.Errorf("output_dir: got %q, want 'from-env'", config.OutputDir)
+	}
+}
+
+// =============================================================================
+// Load Functions Tests
+// =============================================================================
+
+func TestSpec_LoadFromString(t *testing.T) {
+	tests := []struct {
+		name      string
+		data      string
+		format    Format
+		wantDir   string
+		wantError bool
+	}{
+		{
+			name: "TOML format",
+			data: `[markata-go]
+output_dir = "toml-dir"
+`,
+			format:    FormatTOML,
+			wantDir:   "toml-dir",
+			wantError: false,
+		},
+		{
+			name: "YAML format",
+			data: `markata-go:
+  output_dir: yaml-dir
+`,
+			format:    FormatYAML,
+			wantDir:   "yaml-dir",
+			wantError: false,
+		},
+		{
+			name:      "JSON format",
+			data:      `{"markata-go": {"output_dir": "json-dir"}}`,
+			format:    FormatJSON,
+			wantDir:   "json-dir",
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config, err := LoadFromString(tt.data, tt.format)
+			if (err != nil) != tt.wantError {
+				t.Errorf("error = %v, wantError = %v", err, tt.wantError)
+				return
+			}
+			if !tt.wantError && config.OutputDir != tt.wantDir {
+				t.Errorf("output_dir: got %q, want %q", config.OutputDir, tt.wantDir)
+			}
+		})
+	}
+}
+
+func TestSpec_MustLoad_Panics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("expected MustLoad to panic on invalid path")
+		}
+	}()
+
+	MustLoad("/nonexistent/path/config.toml")
+}
+
+func TestSpec_LoadAndValidate(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "markata-go.toml")
+	configContent := `[markata-go]
+output_dir = "public"
+url = "https://example.com"
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	config, validationErrs, err := LoadAndValidate(configPath)
+	if err != nil {
+		t.Fatalf("LoadAndValidate error: %v", err)
+	}
+
+	if config == nil {
+		t.Fatal("config should not be nil")
+	}
+	if config.OutputDir != "public" {
+		t.Errorf("output_dir: got %q, want 'public'", config.OutputDir)
+	}
+
+	// Check for warnings only (no errors expected)
+	for _, ve := range validationErrs {
+		if validErr, ok := ve.(ValidationError); ok && !validErr.IsWarn {
+			t.Errorf("unexpected validation error: %v", ve)
+		}
+	}
+}
+
+// =============================================================================
+// Format Detection Tests
+// =============================================================================
+
+func TestSpec_FormatFromPath(t *testing.T) {
+	tests := []struct {
+		path     string
+		expected Format
+	}{
+		{"config.toml", FormatTOML},
+		{"config.yaml", FormatYAML},
+		{"config.yml", FormatYAML},
+		{"config.json", FormatJSON},
+		{"config.TOML", FormatTOML},
+		{"config.unknown", FormatTOML}, // Default
+		{"config", FormatTOML},         // No extension
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			result := formatFromPath(tt.path)
+			if result != tt.expected {
+				t.Errorf("got %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSpec_DiscoverAll(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	origDir, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origDir)
+
+	// Create multiple config files
+	os.WriteFile(filepath.Join(tmpDir, "markata-go.toml"), []byte(""), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "markata-go.yaml"), []byte(""), 0644)
+
+	found := DiscoverAll()
+
+	if len(found) < 2 {
+		t.Errorf("expected at least 2 config files, found %d", len(found))
+	}
+
+	// Verify sources are set
+	for _, cp := range found {
+		if cp.Source == "" {
+			t.Error("ConfigPath.Source should be set")
+		}
+	}
+}

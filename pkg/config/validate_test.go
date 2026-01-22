@@ -1,0 +1,517 @@
+package config
+
+import (
+	"testing"
+
+	"github.com/example/markata-go/pkg/models"
+)
+
+func TestValidateConfig_Nil(t *testing.T) {
+	errs := ValidateConfig(nil)
+	if len(errs) == 0 {
+		t.Error("ValidateConfig(nil) should return errors")
+	}
+}
+
+func TestValidateConfig_ValidConfig(t *testing.T) {
+	config := &models.Config{
+		URL:         "https://example.com",
+		Concurrency: 4,
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{"**/*.md"},
+		},
+		Feeds: []models.FeedConfig{
+			{
+				Slug: "blog",
+				Formats: models.FeedFormats{
+					HTML: true,
+				},
+			},
+		},
+	}
+
+	errs := ValidateConfig(config)
+	if HasErrors(errs) {
+		t.Errorf("ValidateConfig() unexpected errors: %v", errs)
+	}
+}
+
+func TestValidateConfig_InvalidURL(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+	}{
+		{"no scheme", "example.com"},
+		{"invalid scheme", "ftp://example.com"},
+		{"no host", "https://"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &models.Config{
+				URL: tt.url,
+				GlobConfig: models.GlobConfig{
+					Patterns: []string{"**/*.md"},
+				},
+			}
+
+			errs := ValidateConfig(config)
+			if !HasErrors(errs) {
+				t.Errorf("ValidateConfig() should return error for URL %q", tt.url)
+			}
+		})
+	}
+}
+
+func TestValidateConfig_ValidURLs(t *testing.T) {
+	tests := []string{
+		"https://example.com",
+		"http://localhost:8000",
+		"https://sub.domain.example.com",
+		"https://example.com/path/to/page",
+	}
+
+	for _, url := range tests {
+		t.Run(url, func(t *testing.T) {
+			config := &models.Config{
+				URL: url,
+				GlobConfig: models.GlobConfig{
+					Patterns: []string{"**/*.md"},
+				},
+			}
+
+			errs := ValidateConfig(config)
+			for _, err := range errs {
+				if ve, ok := err.(ValidationError); ok && ve.Field == "url" && !ve.IsWarn {
+					t.Errorf("ValidateConfig() should not error for URL %q: %v", url, err)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateConfig_NegativeConcurrency(t *testing.T) {
+	config := &models.Config{
+		Concurrency: -1,
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{"**/*.md"},
+		},
+	}
+
+	errs := ValidateConfig(config)
+	if !HasErrors(errs) {
+		t.Error("ValidateConfig() should error for negative concurrency")
+	}
+
+	// Find the concurrency error
+	found := false
+	for _, err := range errs {
+		if ve, ok := err.(ValidationError); ok && ve.Field == "concurrency" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected concurrency validation error")
+	}
+}
+
+func TestValidateConfig_ZeroConcurrency(t *testing.T) {
+	config := &models.Config{
+		Concurrency: 0, // 0 means auto-detect, should be valid
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{"**/*.md"},
+		},
+	}
+
+	errs := ValidateConfig(config)
+	for _, err := range errs {
+		if ve, ok := err.(ValidationError); ok && ve.Field == "concurrency" && !ve.IsWarn {
+			t.Errorf("ValidateConfig() should not error for concurrency=0: %v", err)
+		}
+	}
+}
+
+func TestValidateConfig_EmptyGlobPatterns(t *testing.T) {
+	config := &models.Config{
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{},
+		},
+	}
+
+	errs := ValidateConfig(config)
+	if !HasWarnings(errs) {
+		t.Error("ValidateConfig() should warn for empty glob patterns")
+	}
+
+	// Should be a warning, not an error
+	actualErrors, warnings := SplitErrorsAndWarnings(errs)
+	if len(actualErrors) > 0 {
+		t.Errorf("Empty glob patterns should be warning, not error: %v", actualErrors)
+	}
+	if len(warnings) == 0 {
+		t.Error("Expected warning for empty glob patterns")
+	}
+}
+
+func TestValidateConfig_FeedEmptySlugAllowed(t *testing.T) {
+	// Empty slug is now allowed - it represents the home page feed (index.html)
+	config := &models.Config{
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{"**/*.md"},
+		},
+		Feeds: []models.FeedConfig{
+			{
+				Slug: "", // Empty slug is valid for home page
+				Formats: models.FeedFormats{
+					HTML: true,
+				},
+			},
+		},
+	}
+
+	errs := ValidateConfig(config)
+	actualErrors, _ := SplitErrorsAndWarnings(errs)
+	if len(actualErrors) > 0 {
+		t.Errorf("ValidateConfig() should allow empty slug for home page feed, got errors: %v", actualErrors)
+	}
+}
+
+func TestValidateConfig_FeedNegativeItemsPerPage(t *testing.T) {
+	config := &models.Config{
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{"**/*.md"},
+		},
+		Feeds: []models.FeedConfig{
+			{
+				Slug:         "blog",
+				ItemsPerPage: -5,
+				Formats: models.FeedFormats{
+					HTML: true,
+				},
+			},
+		},
+	}
+
+	errs := ValidateConfig(config)
+	if !HasErrors(errs) {
+		t.Error("ValidateConfig() should error for negative items_per_page")
+	}
+}
+
+func TestValidateConfig_FeedNoFormats(t *testing.T) {
+	config := &models.Config{
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{"**/*.md"},
+		},
+		Feeds: []models.FeedConfig{
+			{
+				Slug:    "blog",
+				Formats: models.FeedFormats{}, // All formats disabled
+			},
+		},
+	}
+
+	errs := ValidateConfig(config)
+	if !HasWarnings(errs) {
+		t.Error("ValidateConfig() should warn for feed with no formats")
+	}
+}
+
+func TestValidateConfig_FeedDefaultsNegativeValues(t *testing.T) {
+	config := &models.Config{
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{"**/*.md"},
+		},
+		FeedDefaults: models.FeedDefaults{
+			ItemsPerPage:    -1,
+			OrphanThreshold: -1,
+		},
+	}
+
+	errs := ValidateConfig(config)
+	if !HasErrors(errs) {
+		t.Error("ValidateConfig() should error for negative feed default values")
+	}
+}
+
+func TestValidationError_Error(t *testing.T) {
+	err := ValidationError{
+		Field:   "url",
+		Message: "must include scheme",
+		IsWarn:  false,
+	}
+
+	expected := "config error: url: must include scheme"
+	if err.Error() != expected {
+		t.Errorf("Error() = %q, want %q", err.Error(), expected)
+	}
+
+	warn := ValidationError{
+		Field:   "glob.patterns",
+		Message: "empty patterns",
+		IsWarn:  true,
+	}
+
+	expectedWarn := "config warning: glob.patterns: empty patterns"
+	if warn.Error() != expectedWarn {
+		t.Errorf("Error() = %q, want %q", warn.Error(), expectedWarn)
+	}
+}
+
+func TestHasErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		errs []error
+		want bool
+	}{
+		{
+			name: "no errors",
+			errs: nil,
+			want: false,
+		},
+		{
+			name: "only warnings",
+			errs: []error{
+				ValidationError{Field: "f", Message: "m", IsWarn: true},
+			},
+			want: false,
+		},
+		{
+			name: "has errors",
+			errs: []error{
+				ValidationError{Field: "f", Message: "m", IsWarn: false},
+			},
+			want: true,
+		},
+		{
+			name: "mixed",
+			errs: []error{
+				ValidationError{Field: "f1", Message: "m1", IsWarn: true},
+				ValidationError{Field: "f2", Message: "m2", IsWarn: false},
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := HasErrors(tt.errs); got != tt.want {
+				t.Errorf("HasErrors() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHasWarnings(t *testing.T) {
+	tests := []struct {
+		name string
+		errs []error
+		want bool
+	}{
+		{
+			name: "no errors",
+			errs: nil,
+			want: false,
+		},
+		{
+			name: "only errors",
+			errs: []error{
+				ValidationError{Field: "f", Message: "m", IsWarn: false},
+			},
+			want: false,
+		},
+		{
+			name: "has warnings",
+			errs: []error{
+				ValidationError{Field: "f", Message: "m", IsWarn: true},
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := HasWarnings(tt.errs); got != tt.want {
+				t.Errorf("HasWarnings() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSplitErrorsAndWarnings(t *testing.T) {
+	errs := []error{
+		ValidationError{Field: "f1", Message: "error", IsWarn: false},
+		ValidationError{Field: "f2", Message: "warning", IsWarn: true},
+		ValidationError{Field: "f3", Message: "error2", IsWarn: false},
+		ValidationError{Field: "f4", Message: "warning2", IsWarn: true},
+	}
+
+	errors, warnings := SplitErrorsAndWarnings(errs)
+
+	if len(errors) != 2 {
+		t.Errorf("len(errors) = %d, want 2", len(errors))
+	}
+	if len(warnings) != 2 {
+		t.Errorf("len(warnings) = %d, want 2", len(warnings))
+	}
+}
+
+func TestSortErrors(t *testing.T) {
+	errs := []error{
+		ValidationError{Field: "f1", Message: "warning1", IsWarn: true},
+		ValidationError{Field: "f2", Message: "error1", IsWarn: false},
+		ValidationError{Field: "f3", Message: "warning2", IsWarn: true},
+		ValidationError{Field: "f4", Message: "error2", IsWarn: false},
+	}
+
+	sortErrors(errs)
+
+	// First two should be errors
+	for i := 0; i < 2; i++ {
+		if isWarning(errs[i]) {
+			t.Errorf("errs[%d] should be an error, got warning", i)
+		}
+	}
+	// Last two should be warnings
+	for i := 2; i < 4; i++ {
+		if !isWarning(errs[i]) {
+			t.Errorf("errs[%d] should be a warning, got error", i)
+		}
+	}
+}
+
+func TestValidateAndWarn(t *testing.T) {
+	config := &models.Config{
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{}, // Will generate warning
+		},
+		Concurrency: -1, // Will generate error
+	}
+
+	var warnings []error
+	warnFunc := func(err error) {
+		warnings = append(warnings, err)
+	}
+
+	errs := ValidateAndWarn(config, warnFunc)
+
+	// Should return errors
+	if len(errs) == 0 {
+		t.Error("ValidateAndWarn() should return errors")
+	}
+
+	// Warnings should be passed to warnFunc
+	if len(warnings) == 0 {
+		t.Error("ValidateAndWarn() should pass warnings to warnFunc")
+	}
+
+	// Errors should not include warnings
+	for _, err := range errs {
+		if isWarning(err) {
+			t.Error("ValidateAndWarn() should not return warnings")
+		}
+	}
+}
+
+func TestValidateAndWarn_NilWarnFunc(t *testing.T) {
+	config := &models.Config{
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{}, // Will generate warning
+		},
+	}
+
+	// Should not panic with nil warnFunc
+	errs := ValidateAndWarn(config, nil)
+	// Should return empty (warnings filtered out, no errors)
+	if len(errs) != 0 {
+		t.Errorf("ValidateAndWarn() returned errors: %v", errs)
+	}
+}
+
+func TestHasAnyFormat(t *testing.T) {
+	tests := []struct {
+		name    string
+		formats models.FeedFormats
+		want    bool
+	}{
+		{
+			name:    "all false",
+			formats: models.FeedFormats{},
+			want:    false,
+		},
+		{
+			name:    "HTML true",
+			formats: models.FeedFormats{HTML: true},
+			want:    true,
+		},
+		{
+			name:    "RSS true",
+			formats: models.FeedFormats{RSS: true},
+			want:    true,
+		},
+		{
+			name:    "multiple true",
+			formats: models.FeedFormats{HTML: true, RSS: true, Atom: true},
+			want:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := hasAnyFormat(tt.formats); got != tt.want {
+				t.Errorf("hasAnyFormat() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestValidateURL(t *testing.T) {
+	tests := []struct {
+		url     string
+		wantErr bool
+	}{
+		{"https://example.com", false},
+		{"http://localhost:8000", false},
+		{"example.com", true},       // no scheme
+		{"ftp://example.com", true}, // invalid scheme
+		{"https://", true},          // no host
+		{"://example.com", true},    // missing scheme name
+		{"https://example.com/path", false},
+		{"https://sub.domain.example.com", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			err := validateURL(tt.url)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateURL(%q) error = %v, wantErr %v", tt.url, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateConfig_MultipleFeedErrors(t *testing.T) {
+	config := &models.Config{
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{"**/*.md"},
+		},
+		Feeds: []models.FeedConfig{
+			{Slug: "", Formats: models.FeedFormats{HTML: true}},                      // Empty slug is now valid
+			{Slug: "valid", Formats: models.FeedFormats{}},                           // No formats (warning)
+			{Slug: "bad", ItemsPerPage: -1, Formats: models.FeedFormats{HTML: true}}, // Negative items
+		},
+	}
+
+	errs := ValidateConfig(config)
+	actualErrors, warnings := SplitErrorsAndWarnings(errs)
+
+	// Only 1 error now: negative items_per_page
+	if len(actualErrors) < 1 {
+		t.Errorf("Expected at least 1 error, got %d", len(actualErrors))
+	}
+	// 2 warnings: no formats on "valid" feed
+	if len(warnings) < 1 {
+		t.Errorf("Expected at least 1 warning, got %d", len(warnings))
+	}
+}

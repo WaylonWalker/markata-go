@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="{{ config.lang | default:'en' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  {% block meta %}
+  <title>{% block title %}{{ config.title | default:'My Site' }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ config.description | default:'' }}{% endblock %}">
+  {% endblock %}
+  
+  {% block head %}
+  <!-- Theme CSS -->
+  <link rel="stylesheet" href="/css/variables.css">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/admonitions.css">
+  <link rel="stylesheet" href="/css/code.css">
+  
+  <!-- RSS Feed -->
+  <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+  <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+  {% endblock %}
+</head>
+<body>
+  {% block header %}
+  {% include "partials/header.html" %}
+  {% endblock %}
+  
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  
+  {% block footer %}
+  {% include "partials/footer.html" %}
+  {% endblock %}
+  
+  {% block scripts %}{% endblock %}
+</body>
+</html>

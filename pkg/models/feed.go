@@ -1,0 +1,288 @@
+package models
+
+// FeedConfig represents a feed configuration.
+type FeedConfig struct {
+	// Slug is the URL-safe identifier for the feed
+	Slug string `json:"slug" yaml:"slug" toml:"slug"`
+
+	// Title is the feed title
+	Title string `json:"title" yaml:"title" toml:"title"`
+
+	// Description is the feed description
+	Description string `json:"description" yaml:"description" toml:"description"`
+
+	// Filter is the filter expression for selecting posts
+	Filter string `json:"filter" yaml:"filter" toml:"filter"`
+
+	// Sort is the field to sort posts by
+	Sort string `json:"sort" yaml:"sort" toml:"sort"`
+
+	// Reverse indicates if the sort order should be reversed
+	Reverse bool `json:"reverse" yaml:"reverse" toml:"reverse"`
+
+	// ItemsPerPage is the number of items per page (default: 10)
+	ItemsPerPage int `json:"items_per_page" yaml:"items_per_page" toml:"items_per_page"`
+
+	// OrphanThreshold is the minimum number of items for a separate page (default: 3)
+	OrphanThreshold int `json:"orphan_threshold" yaml:"orphan_threshold" toml:"orphan_threshold"`
+
+	// Formats specifies which output formats to generate
+	Formats FeedFormats `json:"formats" yaml:"formats" toml:"formats"`
+
+	// Templates specifies custom templates for each format
+	Templates FeedTemplates `json:"templates" yaml:"templates" toml:"templates"`
+
+	// Posts holds the filtered posts at runtime (not serialized)
+	Posts []*Post `json:"-" yaml:"-" toml:"-"`
+
+	// Pages holds the paginated results at runtime (not serialized)
+	Pages []FeedPage `json:"-" yaml:"-" toml:"-"`
+}
+
+// FeedFormats specifies which output formats to generate for a feed.
+type FeedFormats struct {
+	// HTML generates an HTML page
+	HTML bool `json:"html" yaml:"html" toml:"html"`
+
+	// RSS generates an RSS feed
+	RSS bool `json:"rss" yaml:"rss" toml:"rss"`
+
+	// Atom generates an Atom feed
+	Atom bool `json:"atom" yaml:"atom" toml:"atom"`
+
+	// JSON generates a JSON feed
+	JSON bool `json:"json" yaml:"json" toml:"json"`
+
+	// Markdown generates a Markdown file
+	Markdown bool `json:"markdown" yaml:"markdown" toml:"markdown"`
+
+	// Text generates a plain text file
+	Text bool `json:"text" yaml:"text" toml:"text"`
+}
+
+// HasAnyEnabled returns true if any output format is enabled.
+func (f FeedFormats) HasAnyEnabled() bool {
+	return f.HTML || f.RSS || f.Atom || f.JSON || f.Markdown || f.Text
+}
+
+// FeedTemplates specifies custom templates for feed formats.
+type FeedTemplates struct {
+	// HTML is the template for HTML output
+	HTML string `json:"html" yaml:"html" toml:"html"`
+
+	// RSS is the template for RSS output
+	RSS string `json:"rss" yaml:"rss" toml:"rss"`
+
+	// Atom is the template for Atom output
+	Atom string `json:"atom" yaml:"atom" toml:"atom"`
+
+	// JSON is the template for JSON output
+	JSON string `json:"json" yaml:"json" toml:"json"`
+
+	// Card is the template for individual post cards
+	Card string `json:"card" yaml:"card" toml:"card"`
+}
+
+// FeedPage represents a single page of paginated feed results.
+type FeedPage struct {
+	// Number is the page number (1-indexed)
+	Number int `json:"number" yaml:"number" toml:"number"`
+
+	// Posts is the list of posts on this page
+	Posts []*Post `json:"posts" yaml:"posts" toml:"posts"`
+
+	// HasPrev indicates if there is a previous page
+	HasPrev bool `json:"has_prev" yaml:"has_prev" toml:"has_prev"`
+
+	// HasNext indicates if there is a next page
+	HasNext bool `json:"has_next" yaml:"has_next" toml:"has_next"`
+
+	// PrevURL is the URL of the previous page
+	PrevURL string `json:"prev_url" yaml:"prev_url" toml:"prev_url"`
+
+	// NextURL is the URL of the next page
+	NextURL string `json:"next_url" yaml:"next_url" toml:"next_url"`
+}
+
+// FeedDefaults provides default values that feeds inherit.
+type FeedDefaults struct {
+	// ItemsPerPage is the default number of items per page
+	ItemsPerPage int `json:"items_per_page" yaml:"items_per_page" toml:"items_per_page"`
+
+	// OrphanThreshold is the default minimum number of items for a separate page
+	OrphanThreshold int `json:"orphan_threshold" yaml:"orphan_threshold" toml:"orphan_threshold"`
+
+	// Formats specifies the default output formats
+	Formats FeedFormats `json:"formats" yaml:"formats" toml:"formats"`
+
+	// Templates specifies the default templates
+	Templates FeedTemplates `json:"templates" yaml:"templates" toml:"templates"`
+
+	// Syndication configures syndication feed behavior
+	Syndication SyndicationConfig `json:"syndication" yaml:"syndication" toml:"syndication"`
+}
+
+// SyndicationConfig configures syndication feed behavior.
+type SyndicationConfig struct {
+	// MaxItems is the maximum number of items in syndication feeds
+	MaxItems int `json:"max_items" yaml:"max_items" toml:"max_items"`
+
+	// IncludeContent determines if full content is included in feeds
+	IncludeContent bool `json:"include_content" yaml:"include_content" toml:"include_content"`
+}
+
+// NewFeedDefaults creates FeedDefaults with sensible default values.
+func NewFeedDefaults() FeedDefaults {
+	return FeedDefaults{
+		ItemsPerPage:    10,
+		OrphanThreshold: 3,
+		Formats: FeedFormats{
+			HTML: true,
+			RSS:  true,
+			Atom: false,
+			JSON: false,
+		},
+		Templates: FeedTemplates{
+			HTML: "feed.html",
+			RSS:  "feed.xml",
+			Atom: "atom.xml",
+			JSON: "feed.json",
+			Card: "card.html",
+		},
+		Syndication: SyndicationConfig{
+			MaxItems:       20,
+			IncludeContent: true,
+		},
+	}
+}
+
+// NewFeedConfig creates a new FeedConfig with default values from FeedDefaults.
+func NewFeedConfig(defaults FeedDefaults) *FeedConfig {
+	return &FeedConfig{
+		ItemsPerPage:    defaults.ItemsPerPage,
+		OrphanThreshold: defaults.OrphanThreshold,
+		Formats:         defaults.Formats,
+		Templates:       defaults.Templates,
+		Posts:           []*Post{},
+		Pages:           []FeedPage{},
+	}
+}
+
+// ApplyDefaults applies default values from FeedDefaults to a FeedConfig
+// for any fields that are not explicitly set.
+func (f *FeedConfig) ApplyDefaults(defaults FeedDefaults) {
+	if f.ItemsPerPage == 0 {
+		f.ItemsPerPage = defaults.ItemsPerPage
+	}
+	if f.OrphanThreshold == 0 {
+		f.OrphanThreshold = defaults.OrphanThreshold
+	}
+
+	// Apply format defaults if no formats are explicitly enabled
+	if !f.Formats.HasAnyEnabled() {
+		f.Formats = defaults.Formats
+	}
+
+	// Apply template defaults for any empty template paths
+	if f.Templates.HTML == "" {
+		f.Templates.HTML = defaults.Templates.HTML
+	}
+	if f.Templates.RSS == "" {
+		f.Templates.RSS = defaults.Templates.RSS
+	}
+	if f.Templates.Atom == "" {
+		f.Templates.Atom = defaults.Templates.Atom
+	}
+	if f.Templates.JSON == "" {
+		f.Templates.JSON = defaults.Templates.JSON
+	}
+	if f.Templates.Card == "" {
+		f.Templates.Card = defaults.Templates.Card
+	}
+}
+
+// Paginate divides the Posts slice into pages based on ItemsPerPage and OrphanThreshold.
+func (f *FeedConfig) Paginate(baseURL string) {
+	if len(f.Posts) == 0 {
+		f.Pages = []FeedPage{}
+		return
+	}
+
+	itemsPerPage := f.ItemsPerPage
+	if itemsPerPage <= 0 {
+		itemsPerPage = 10
+	}
+
+	totalPosts := len(f.Posts)
+	var pages []FeedPage
+
+	for i := 0; i < totalPosts; i += itemsPerPage {
+		end := i + itemsPerPage
+		if end > totalPosts {
+			end = totalPosts
+		}
+
+		// Check orphan threshold: if remaining items are below threshold,
+		// add them to the current page instead of creating a new page
+		remaining := totalPosts - end
+		if remaining > 0 && remaining < f.OrphanThreshold {
+			end = totalPosts
+		}
+
+		pageNum := len(pages) + 1
+		page := FeedPage{
+			Number:  pageNum,
+			Posts:   f.Posts[i:end],
+			HasPrev: pageNum > 1,
+		}
+
+		pages = append(pages, page)
+
+		if end >= totalPosts {
+			break
+		}
+	}
+
+	// Set HasNext and URLs
+	for i := range pages {
+		pages[i].HasNext = i < len(pages)-1
+
+		if pages[i].HasPrev {
+			if i == 1 {
+				pages[i].PrevURL = baseURL + "/"
+			} else {
+				pages[i].PrevURL = baseURL + "/page/" + itoa(i) + "/"
+			}
+		}
+
+		if pages[i].HasNext {
+			pages[i].NextURL = baseURL + "/page/" + itoa(i+2) + "/"
+		}
+	}
+
+	f.Pages = pages
+}
+
+// itoa converts an integer to a string without importing strconv
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+
+	var digits []byte
+	negative := n < 0
+	if negative {
+		n = -n
+	}
+
+	for n > 0 {
+		digits = append([]byte{byte('0' + n%10)}, digits...)
+		n /= 10
+	}
+
+	if negative {
+		digits = append([]byte{'-'}, digits...)
+	}
+
+	return string(digits)
+}
