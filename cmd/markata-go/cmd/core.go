@@ -58,6 +58,8 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["feeds"] = cfg.Feeds
 	lcConfig.Extra["feed_defaults"] = cfg.FeedDefaults
 	lcConfig.Extra["use_gitignore"] = cfg.GlobConfig.UseGitignore
+	lcConfig.Extra["nav"] = cfg.Nav
+	lcConfig.Extra["footer"] = cfg.Footer
 
 	// Pass theme configuration to plugins
 	lcConfig.Extra["theme"] = map[string]interface{}{

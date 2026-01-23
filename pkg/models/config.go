@@ -1,5 +1,26 @@
 package models
 
+// NavItem represents a navigation link.
+type NavItem struct {
+	// Label is the display text for the nav link
+	Label string `json:"label" yaml:"label" toml:"label"`
+
+	// URL is the link destination (can be relative or absolute)
+	URL string `json:"url" yaml:"url" toml:"url"`
+
+	// External indicates if the link opens in a new tab (default: false)
+	External bool `json:"external,omitempty" yaml:"external,omitempty" toml:"external,omitempty"`
+}
+
+// FooterConfig configures the site footer.
+type FooterConfig struct {
+	// Text is the footer text (supports template variables like {{ year }})
+	Text string `json:"text,omitempty" yaml:"text,omitempty" toml:"text,omitempty"`
+
+	// ShowCopyright shows the copyright line (default: true)
+	ShowCopyright *bool `json:"show_copyright,omitempty" yaml:"show_copyright,omitempty" toml:"show_copyright,omitempty"`
+}
+
 // Config represents the site configuration for markata-go.
 type Config struct {
 	// OutputDir is the directory where generated files are written (default: "output")
@@ -22,6 +43,12 @@ type Config struct {
 
 	// TemplatesDir is the directory containing templates (default: "templates")
 	TemplatesDir string `json:"templates_dir" yaml:"templates_dir" toml:"templates_dir"`
+
+	// Nav is the list of navigation links
+	Nav []NavItem `json:"nav" yaml:"nav" toml:"nav"`
+
+	// Footer configures the site footer
+	Footer FooterConfig `json:"footer" yaml:"footer" toml:"footer"`
 
 	// Hooks is the list of hooks to run (default: ["default"])
 	Hooks []string `json:"hooks" yaml:"hooks" toml:"hooks"`

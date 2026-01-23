@@ -175,6 +175,16 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 			Author:      getStringFromExtra(config.Extra, "author"),
 		}
 
+		// Copy nav items if available
+		if navItems, ok := config.Extra["nav"].([]models.NavItem); ok {
+			modelsConfig.Nav = navItems
+		}
+
+		// Copy footer config if available
+		if footer, ok := config.Extra["footer"].(models.FooterConfig); ok {
+			modelsConfig.Footer = footer
+		}
+
 		// Create feed context
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
 
