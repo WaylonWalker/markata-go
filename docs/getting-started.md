@@ -14,28 +14,48 @@ tags:
 
 This guide will walk you through installing markata-go, creating your first site, and building it for production.
 
-## Prerequisites
-
-- **Go 1.22 or later** - [Download Go](https://go.dev/dl/)
-
-Verify your Go installation:
-
-```bash
-go version
-# go version go1.22.2 linux/amd64
-```
-
 ## Installation
 
-Install markata-go using `go install`:
+markata-go is distributed as a single binary with no dependencies. Choose the installation method that works best for you.
+
+### Quick Install (Recommended)
 
 ```bash
-go install github.com/example/markata-go/cmd/markata-go@latest
+# One-liner install script (Linux/macOS)
+curl -sSL https://waylonwalker.github.io/markata-go/install.sh | bash
+
+# Using jpillora/installer (Linux/macOS)
+curl -sL https://i.jpillora.com/WaylonWalker/markata-go | bash
+
+# Using eget
+eget WaylonWalker/markata-go
+
+# Using mise (installs from GitHub releases)
+mise use -g github:WaylonWalker/markata-go
 ```
 
-Verify the installation:
+### Go Install
+
+If you have Go 1.22+ installed:
 
 ```bash
+go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
+```
+
+Note: This installs to `$GOPATH/bin` (usually `~/go/bin`). Ensure this is in your `PATH`.
+
+### Manual Download
+
+Download pre-built binaries from [GitHub Releases](https://github.com/WaylonWalker/markata-go/releases).
+
+Available platforms: Linux (amd64, arm64, armv7), macOS (Intel, Apple Silicon), Windows (amd64), FreeBSD (amd64).
+
+See [Installation Guide](installation.md) for detailed installation instructions.
+
+### Verify Installation
+
+```bash
+markata-go version
 markata-go --help
 ```
 
