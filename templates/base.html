@@ -45,6 +45,18 @@
     <!-- RSS/Atom Feeds -->
     <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
     <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    <!-- IndieAuth -->
+    {% if config.indieauth.enabled %}
+    {% if config.indieauth.authorization_endpoint %}<link rel="authorization_endpoint" href="{{ config.indieauth.authorization_endpoint }}">{% endif %}
+    {% if config.indieauth.token_endpoint %}<link rel="token_endpoint" href="{{ config.indieauth.token_endpoint }}">{% endif %}
+    {% if config.indieauth.me_url %}<link rel="me" href="{{ config.indieauth.me_url }}">{% endif %}
+    {% endif %}
+    
+    <!-- Webmention -->
+    {% if config.webmention.enabled %}
+    {% if config.webmention.endpoint %}<link rel="webmention" href="{{ config.webmention.endpoint }}">{% endif %}
+    {% endif %}
     {% endblock %}
     
     <!-- Schema.org JSON-LD -->

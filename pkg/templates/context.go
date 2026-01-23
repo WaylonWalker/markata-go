@@ -169,6 +169,20 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"logo_url":       c.SEO.LogoURL,
 	}
 
+	// Convert IndieAuth to map
+	indieAuthMap := map[string]interface{}{
+		"enabled":                c.IndieAuth.Enabled,
+		"authorization_endpoint": c.IndieAuth.AuthorizationEndpoint,
+		"token_endpoint":         c.IndieAuth.TokenEndpoint,
+		"me_url":                 c.IndieAuth.MeURL,
+	}
+
+	// Convert Webmention to map
+	webmentionMap := map[string]interface{}{
+		"enabled":  c.Webmention.Enabled,
+		"endpoint": c.Webmention.Endpoint,
+	}
+
 	return map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
@@ -180,6 +194,8 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"nav":           navItems,
 		"footer":        footerMap,
 		"seo":           seoMap,
+		"indieauth":     indieAuthMap,
+		"webmention":    webmentionMap,
 	}
 }
 

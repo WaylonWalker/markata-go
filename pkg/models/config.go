@@ -79,6 +79,15 @@ type Config struct {
 
 	// SEO configures SEO metadata generation
 	SEO SEOConfig `json:"seo" yaml:"seo" toml:"seo"`
+
+	// IndieAuth configures IndieAuth link tags for identity and authentication
+	IndieAuth IndieAuthConfig `json:"indieauth" yaml:"indieauth" toml:"indieauth"`
+
+	// Webmention configures Webmention endpoint for receiving mentions
+	Webmention WebmentionConfig `json:"webmention" yaml:"webmention" toml:"webmention"`
+
+	// Components configures layout components (nav, footer, sidebar)
+	Components ComponentsConfig `json:"components" yaml:"components" toml:"components"`
 }
 
 // ThemeConfig configures the site theme.
@@ -340,6 +349,157 @@ func NewSEOConfig() SEOConfig {
 	}
 }
 
+// IndieAuthConfig configures IndieAuth link tags for identity and authentication.
+// IndieAuth is a decentralized authentication protocol built on OAuth 2.0.
+// See https://indieauth.spec.indieweb.org/ for the specification.
+type IndieAuthConfig struct {
+	// Enabled controls whether IndieAuth link tags are included (default: false)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// AuthorizationEndpoint is the URL of your authorization endpoint
+	// Example: "https://indieauth.com/auth"
+	AuthorizationEndpoint string `json:"authorization_endpoint" yaml:"authorization_endpoint" toml:"authorization_endpoint"`
+
+	// TokenEndpoint is the URL of your token endpoint
+	// Example: "https://tokens.indieauth.com/token"
+	TokenEndpoint string `json:"token_endpoint" yaml:"token_endpoint" toml:"token_endpoint"`
+
+	// MeURL is your profile URL for rel="me" links (optional)
+	// This links your site to other profiles (GitHub, Twitter, etc.)
+	MeURL string `json:"me_url" yaml:"me_url" toml:"me_url"`
+}
+
+// NewIndieAuthConfig creates a new IndieAuthConfig with default values.
+func NewIndieAuthConfig() IndieAuthConfig {
+	return IndieAuthConfig{
+		Enabled:               false,
+		AuthorizationEndpoint: "",
+		TokenEndpoint:         "",
+		MeURL:                 "",
+	}
+}
+
+// WebmentionConfig configures Webmention endpoint for receiving mentions.
+// Webmention is a simple protocol for notifying URLs when you link to them.
+// See https://www.w3.org/TR/webmention/ for the specification.
+type WebmentionConfig struct {
+	// Enabled controls whether Webmention link tag is included (default: false)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// Endpoint is the URL of your Webmention endpoint
+	// Example: "https://webmention.io/example.com/webmention"
+	Endpoint string `json:"endpoint" yaml:"endpoint" toml:"endpoint"`
+}
+
+// NewWebmentionConfig creates a new WebmentionConfig with default values.
+func NewWebmentionConfig() WebmentionConfig {
+	return WebmentionConfig{
+		Enabled:  false,
+		Endpoint: "",
+	}
+}
+
+// ComponentsConfig configures layout components.
+// This allows users to customize navigation, footer, and sidebar behavior.
+type ComponentsConfig struct {
+	// Nav configures the navigation component
+	Nav NavComponentConfig `json:"nav" yaml:"nav" toml:"nav"`
+
+	// Footer configures the footer component
+	Footer FooterComponentConfig `json:"footer" yaml:"footer" toml:"footer"`
+
+	// DocSidebar configures the documentation sidebar component
+	DocSidebar DocSidebarComponentConfig `json:"doc_sidebar" yaml:"doc_sidebar" toml:"doc_sidebar"`
+}
+
+// NavComponentConfig configures the navigation component.
+type NavComponentConfig struct {
+	// Enabled controls whether the nav component is rendered (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Position is where the nav is rendered: "header" or "sidebar" (default: "header")
+	Position string `json:"position" yaml:"position" toml:"position"`
+
+	// Style is the nav style: "horizontal" or "vertical" (default: "horizontal")
+	Style string `json:"style" yaml:"style" toml:"style"`
+}
+
+// IsEnabled returns whether the nav component is enabled.
+// Defaults to true if not explicitly set.
+func (n *NavComponentConfig) IsEnabled() bool {
+	if n.Enabled == nil {
+		return true
+	}
+	return *n.Enabled
+}
+
+// FooterComponentConfig configures the footer component.
+type FooterComponentConfig struct {
+	// Enabled controls whether the footer component is rendered (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Content is custom footer content (supports template variables)
+	Content string `json:"content,omitempty" yaml:"content,omitempty" toml:"content,omitempty"`
+}
+
+// IsEnabled returns whether the footer component is enabled.
+// Defaults to true if not explicitly set.
+func (f *FooterComponentConfig) IsEnabled() bool {
+	if f.Enabled == nil {
+		return true
+	}
+	return *f.Enabled
+}
+
+// DocSidebarComponentConfig configures the documentation sidebar component.
+// The sidebar displays a table of contents for the current page.
+type DocSidebarComponentConfig struct {
+	// Enabled controls whether the doc sidebar is rendered (default: false)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Position is where the sidebar is rendered: "left" or "right" (default: "right")
+	Position string `json:"position" yaml:"position" toml:"position"`
+
+	// MinDepth is the minimum heading level to include (default: 2)
+	MinDepth int `json:"min_depth" yaml:"min_depth" toml:"min_depth"`
+
+	// MaxDepth is the maximum heading level to include (default: 4)
+	MaxDepth int `json:"max_depth" yaml:"max_depth" toml:"max_depth"`
+}
+
+// IsEnabled returns whether the doc sidebar component is enabled.
+// Defaults to false if not explicitly set (requires opt-in).
+func (d *DocSidebarComponentConfig) IsEnabled() bool {
+	if d.Enabled == nil {
+		return false
+	}
+	return *d.Enabled
+}
+
+// NewComponentsConfig creates a new ComponentsConfig with default values.
+func NewComponentsConfig() ComponentsConfig {
+	navEnabled := true
+	footerEnabled := true
+	sidebarEnabled := false
+	return ComponentsConfig{
+		Nav: NavComponentConfig{
+			Enabled:  &navEnabled,
+			Position: "header",
+			Style:    "horizontal",
+		},
+		Footer: FooterComponentConfig{
+			Enabled: &footerEnabled,
+			Content: "",
+		},
+		DocSidebar: DocSidebarComponentConfig{
+			Enabled:  &sidebarEnabled,
+			Position: "right",
+			MinDepth: 2,
+			MaxDepth: 4,
+		},
+	}
+}
+
 // PostFormatsConfig configures the output formats for individual posts.
 // This controls what file formats are generated for each post.
 type PostFormatsConfig struct {
@@ -464,6 +624,9 @@ func NewConfig() *Config {
 		},
 		PostFormats: NewPostFormatsConfig(),
 		SEO:         NewSEOConfig(),
+		IndieAuth:   NewIndieAuthConfig(),
+		Webmention:  NewWebmentionConfig(),
+		Components:  NewComponentsConfig(),
 	}
 }
 
