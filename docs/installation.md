@@ -112,6 +112,7 @@ Download the appropriate archive for your platform from the [GitHub Releases](ht
 | macOS | ARM64 (Apple Silicon) | `markata-go_*_darwin_arm64.tar.gz` |
 | Windows | x86_64 | `markata-go_*_windows_x86_64.zip` |
 | FreeBSD | x86_64 | `markata-go_*_freebsd_x86_64.tar.gz` |
+| Android | ARM64 (Termux) | `markata-go_*_android_arm64.tar.gz` |
 
 ### Manual Installation Steps
 
