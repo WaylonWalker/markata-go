@@ -142,6 +142,26 @@ func configToMap(c *models.Config) map[string]interface{} {
 		return nil
 	}
 
+	// Convert nav items to maps
+	navItems := make([]map[string]interface{}, len(c.Nav))
+	for i, nav := range c.Nav {
+		navItems[i] = map[string]interface{}{
+			"label":    nav.Label,
+			"url":      nav.URL,
+			"external": nav.External,
+		}
+	}
+
+	// Convert footer to map
+	footerMap := map[string]interface{}{
+		"text": c.Footer.Text,
+	}
+	if c.Footer.ShowCopyright != nil {
+		footerMap["show_copyright"] = *c.Footer.ShowCopyright
+	} else {
+		footerMap["show_copyright"] = true // default to true
+	}
+
 	return map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
@@ -150,6 +170,8 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"author":        c.Author,
 		"assets_dir":    c.AssetsDir,
 		"templates_dir": c.TemplatesDir,
+		"nav":           navItems,
+		"footer":        footerMap,
 	}
 }
 

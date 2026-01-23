@@ -3,10 +3,10 @@
 
 [markata-go]
 # Site settings
-title = "My Site"
-description = "A site built with markata-go"
+title = "markata-go"
+description = "A fast, plugin-driven static site generator written in Go"
 url = "https://example.com"
-author = "Your Name"
+author = "Waylon Walker"
 
 # Build settings
 output_dir = "public"
@@ -19,6 +19,20 @@ concurrency = 0
 # Plugin configuration
 hooks = ["default"]
 disabled_hooks = []
+
+# Navigation links
+[[markata-go.nav]]
+label = "Docs"
+url = "/docs/"
+
+[[markata-go.nav]]
+label = "Blog"
+url = "/blog/"
+
+[[markata-go.nav]]
+label = "GitHub"
+url = "https://github.com/WaylonWalker/markata-go"
+external = true
 
 
 # NAME                      VARIANT  SOURCE     DESCRIPTION

@@ -20,11 +20,19 @@
 </head>
 <body>
     {% block header %}
-    <header>
-        <nav>
-            <a href="/">{{ config.title | default:"Home" }}</a>
-            <a href="/blog/">Blog</a>
-        </nav>
+    <header class="site-header">
+        <div class="container">
+            <a href="/" class="site-title">{{ config.title | default:"Home" }}</a>
+            <nav class="site-nav">
+                {% if config.nav %}
+                    {% for item in config.nav %}
+                <a href="{{ item.url }}"{% if item.external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.label }}</a>
+                    {% endfor %}
+                {% else %}
+                <a href="/blog/">Blog</a>
+                {% endif %}
+            </nav>
+        </div>
     </header>
     {% endblock %}
     
@@ -33,8 +41,14 @@
     </main>
     
     {% block footer %}
-    <footer>
-        <p>&copy; {{ "now" | date:"2006" }} {{ config.author | default:"" }}</p>
+    <footer class="site-footer">
+        <div class="container">
+            {% if config.footer.text %}
+            <p>{{ config.footer.text }}</p>
+            {% else %}
+            <p>&copy; {{ "now" | date:"2006" }} {{ config.author | default:"" }}. Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+            {% endif %}
+        </div>
     </footer>
     {% endblock %}
     

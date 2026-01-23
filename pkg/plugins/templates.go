@@ -134,7 +134,7 @@ func toModelsConfig(config *lifecycle.Config) *models.Config {
 		return nil
 	}
 	// Convert lifecycle.Config to models.Config
-	return &models.Config{
+	modelsConfig := &models.Config{
 		OutputDir:    config.OutputDir,
 		Title:        getStringFromExtra(config.Extra, "title"),
 		URL:          getStringFromExtra(config.Extra, "url"),
@@ -142,6 +142,18 @@ func toModelsConfig(config *lifecycle.Config) *models.Config {
 		Author:       getStringFromExtra(config.Extra, "author"),
 		TemplatesDir: getStringFromExtra(config.Extra, "templates_dir"),
 	}
+
+	// Copy nav items if available
+	if navItems, ok := config.Extra["nav"].([]models.NavItem); ok {
+		modelsConfig.Nav = navItems
+	}
+
+	// Copy footer config if available
+	if footer, ok := config.Extra["footer"].(models.FooterConfig); ok {
+		modelsConfig.Footer = footer
+	}
+
+	return modelsConfig
 }
 
 // getStringFromExtra safely gets a string value from the Extra map.
