@@ -75,6 +75,12 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// PostFormats - merge if override has any formats enabled
 	result.PostFormats = mergePostFormatsConfig(base.PostFormats, override.PostFormats)
 
+	// SEO - merge
+	result.SEO = mergeSEOConfig(base.SEO, override.SEO)
+
+	// Components - merge
+	result.Components = mergeComponentsConfig(base.Components, override.Components)
+
 	return result
 }
 
@@ -266,4 +272,73 @@ func AppendGlobPatterns(config *models.Config, patterns ...string) {
 // AppendFeeds appends feeds to the configuration's Feeds slice.
 func AppendFeeds(config *models.Config, feeds ...models.FeedConfig) {
 	config.Feeds = MergeSlice(config.Feeds, feeds, true)
+}
+
+// mergeSEOConfig merges SEOConfig values.
+func mergeSEOConfig(base, override models.SEOConfig) models.SEOConfig {
+	result := base
+
+	if override.TwitterHandle != "" {
+		result.TwitterHandle = override.TwitterHandle
+	}
+	if override.DefaultImage != "" {
+		result.DefaultImage = override.DefaultImage
+	}
+	if override.LogoURL != "" {
+		result.LogoURL = override.LogoURL
+	}
+
+	return result
+}
+
+// mergeComponentsConfig merges ComponentsConfig values.
+func mergeComponentsConfig(base, override models.ComponentsConfig) models.ComponentsConfig {
+	result := base
+
+	// Merge Nav component
+	if override.Nav.Enabled != nil {
+		result.Nav.Enabled = override.Nav.Enabled
+	}
+	if override.Nav.Position != "" {
+		result.Nav.Position = override.Nav.Position
+	}
+	if override.Nav.Style != "" {
+		result.Nav.Style = override.Nav.Style
+	}
+	if len(override.Nav.Items) > 0 {
+		result.Nav.Items = override.Nav.Items
+	}
+
+	// Merge Footer component
+	if override.Footer.Enabled != nil {
+		result.Footer.Enabled = override.Footer.Enabled
+	}
+	if override.Footer.Text != "" {
+		result.Footer.Text = override.Footer.Text
+	}
+	if override.Footer.ShowCopyright != nil {
+		result.Footer.ShowCopyright = override.Footer.ShowCopyright
+	}
+	if len(override.Footer.Links) > 0 {
+		result.Footer.Links = override.Footer.Links
+	}
+
+	// Merge DocSidebar component
+	if override.DocSidebar.Enabled != nil {
+		result.DocSidebar.Enabled = override.DocSidebar.Enabled
+	}
+	if override.DocSidebar.Position != "" {
+		result.DocSidebar.Position = override.DocSidebar.Position
+	}
+	if override.DocSidebar.Width != "" {
+		result.DocSidebar.Width = override.DocSidebar.Width
+	}
+	if override.DocSidebar.MinDepth != 0 {
+		result.DocSidebar.MinDepth = override.DocSidebar.MinDepth
+	}
+	if override.DocSidebar.MaxDepth != 0 {
+		result.DocSidebar.MaxDepth = override.DocSidebar.MaxDepth
+	}
+
+	return result
 }
