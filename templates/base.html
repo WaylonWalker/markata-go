@@ -96,6 +96,11 @@
     {% if config.webmention.enabled %}
     {% if config.webmention.endpoint %}<link rel="webmention" href="{{ config.webmention.endpoint }}">{% endif %}
     {% endif %}
+    
+    <!-- Pagefind Search CSS -->
+    {% if config.search.enabled %}
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    {% endif %}
     {% endblock %}
     
     <!-- Structured Data: JSON-LD -->
@@ -154,6 +159,9 @@
         <div class="container">
             <a href="/" class="site-title">{{ config.title | default:"Home" }}</a>
             {% include "components/nav.html" %}
+            {% if config.search.enabled and config.search.position == "navbar" %}
+            {% include "components/search.html" %}
+            {% endif %}
         </div>
     </header>
     {% endblock %}
@@ -169,5 +177,24 @@
     {% block htmx %}{% endblock %}
     {% block scripts %}{% endblock %}
     <script src="{{ 'js/tooltips.js' | theme_asset }}" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    {% if config.search.enabled %}
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: {{ config.search.show_images | default:true | yesno:"true,false" }},
+                    excerptLength: {{ config.search.excerpt_length | default:200 }},
+                    translations: {
+                        placeholder: "{{ config.search.placeholder | default:'Search...' }}"
+                    }
+                });
+            }
+        });
+    </script>
+    {% endif %}
 </body>
 </html>

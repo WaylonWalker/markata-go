@@ -64,6 +64,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["chroma_css"] = func() lifecycle.Plugin { return NewChromaCSSPlugin() }
 	pluginRegistry.constructors["overwrite_check"] = func() lifecycle.Plugin { return NewOverwriteCheckPlugin() }
 	pluginRegistry.constructors["structured_data"] = func() lifecycle.Plugin { return NewStructuredDataPlugin() }
+	pluginRegistry.constructors["pagefind"] = func() lifecycle.Plugin { return NewPagefindPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -145,6 +146,9 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewPublishHTMLPlugin(),
 		NewRedirectsPlugin(), // Generate redirect pages
 		NewSitemapPlugin(),
+
+		// Cleanup stage plugins
+		NewPagefindPlugin(), // Generate search index (requires all HTML written first)
 	}
 }
 
