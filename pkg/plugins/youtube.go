@@ -14,7 +14,8 @@ import (
 )
 
 // YouTubePlugin converts YouTube URLs into embedded iframes.
-// It runs at the render stage (after markdown conversion).
+// It runs at the render stage (after markdown conversion) and handles
+// both plain URLs and autolinked URLs (from the Linkify extension).
 type YouTubePlugin struct {
 	config models.YouTubeConfig
 }
@@ -83,8 +84,11 @@ func (p *YouTubePlugin) Render(m *lifecycle.Manager) error {
 }
 
 // youtubeURLRegex matches YouTube URLs in various formats.
+// Matches both plain URLs in <p> tags AND autolinked URLs (from Linkify extension).
+// Pattern 1: <p>URL</p> (plain URL, no Linkify)
+// Pattern 2: <p><a href="URL">URL</a></p> (autolinked by Linkify extension)
 var youtubeURLRegex = regexp.MustCompile(
-	`<p>\s*(https?://(?:www\.|m\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:\S*)?)\s*</p>`,
+	`<p>\s*(?:<a href="[^"]*">)?(https?://(?:www\.|m\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:[^<\s]*)?)\s*(?:</a>)?\s*</p>`,
 )
 
 // youtubeInCodeBlockRegex detects if a YouTube URL is inside a code block.
