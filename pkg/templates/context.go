@@ -128,6 +128,13 @@ func postToMap(p *models.Post) map[string]interface{} {
 		for k, v := range p.Extra {
 			// Don't override existing keys
 			if _, exists := m[k]; !exists {
+				// Special handling for structured_data
+				if k == "structured_data" {
+					if sd, ok := v.(*models.StructuredData); ok {
+						m[k] = structuredDataToMap(sd)
+						continue
+					}
+				}
 				m[k] = v
 			}
 		}
@@ -364,6 +371,37 @@ func headToMap(h *models.HeadConfig) map[string]interface{} {
 		"link":            linkTags,
 		"script":          scriptTags,
 		"alternate_feeds": alternateFeeds,
+	}
+}
+
+// structuredDataToMap converts a StructuredData to a map for template access.
+func structuredDataToMap(sd *models.StructuredData) map[string]interface{} {
+	if sd == nil {
+		return nil
+	}
+
+	// Convert OpenGraph tags
+	opengraphTags := make([]map[string]interface{}, len(sd.OpenGraph))
+	for i, og := range sd.OpenGraph {
+		opengraphTags[i] = map[string]interface{}{
+			"property": og.Property,
+			"content":  og.Content,
+		}
+	}
+
+	// Convert Twitter tags
+	twitterTags := make([]map[string]interface{}, len(sd.Twitter))
+	for i, tw := range sd.Twitter {
+		twitterTags[i] = map[string]interface{}{
+			"name":    tw.Name,
+			"content": tw.Content,
+		}
+	}
+
+	return map[string]interface{}{
+		"jsonld":    sd.JSONLD,
+		"opengraph": opengraphTags,
+		"twitter":   twitterTags,
 	}
 }
 

@@ -6,23 +6,35 @@
     <title>{% block title %}{% if post %}{{ post.title }} - {% endif %}{{ config.title | default:"My Site" }}{% endblock %}</title>
     {% if post.description %}<meta name="description" content="{{ post.description }}">{% elif config.description %}<meta name="description" content="{{ config.description }}">{% endif %}
     
-    <!-- Open Graph -->
-    {% if post %}
+    <!-- Structured Data: OpenGraph -->
+    {% if post.structured_data.opengraph %}
+    {% for meta in post.structured_data.opengraph %}
+    <meta property="{{ meta.property }}" content="{{ meta.content }}">
+    {% endfor %}
+    {% elif post %}
+    {# Fallback to basic OG tags if no structured data #}
     <meta property="og:title" content="{{ post.title }}">
     <meta property="og:description" content="{{ post.description | default:config.description }}">
     <meta property="og:url" content="{{ config.url }}{{ post.slug }}/">
     <meta property="og:type" content="article">
     {% if post.cover_image %}<meta property="og:image" content="{{ config.url }}{{ post.cover_image }}">{% elif config.seo.default_image %}<meta property="og:image" content="{{ config.url }}{{ config.seo.default_image }}">{% endif %}
+    <meta property="og:site_name" content="{{ config.title }}">
     {% else %}
     <meta property="og:title" content="{{ config.title }}">
     <meta property="og:description" content="{{ config.description }}">
     <meta property="og:url" content="{{ config.url }}">
     <meta property="og:type" content="website">
     {% if config.seo.default_image %}<meta property="og:image" content="{{ config.url }}{{ config.seo.default_image }}">{% endif %}
-    {% endif %}
     <meta property="og:site_name" content="{{ config.title }}">
+    {% endif %}
     
-    <!-- Twitter Card -->
+    <!-- Structured Data: Twitter Card -->
+    {% if post.structured_data.twitter %}
+    {% for meta in post.structured_data.twitter %}
+    <meta name="{{ meta.name }}" content="{{ meta.content }}">
+    {% endfor %}
+    {% else %}
+    {# Fallback to basic Twitter tags if no structured data #}
     <meta name="twitter:card" content="summary_large_image">
     {% if config.seo.twitter_handle %}<meta name="twitter:site" content="@{{ config.seo.twitter_handle }}">{% endif %}
     {% if post %}
@@ -33,6 +45,7 @@
     <meta name="twitter:title" content="{{ config.title }}">
     <meta name="twitter:description" content="{{ config.description }}">
     {% if config.seo.default_image %}<meta name="twitter:image" content="{{ config.url }}{{ config.seo.default_image }}">{% endif %}
+    {% endif %}
     {% endif %}
     
     <!-- Canonical URL -->
@@ -85,8 +98,13 @@
     {% endif %}
     {% endblock %}
     
-    <!-- Schema.org JSON-LD -->
-    {% if post %}
+    <!-- Structured Data: JSON-LD -->
+    {% if post.structured_data.jsonld %}
+    <script type="application/ld+json">
+    {{ post.structured_data.jsonld | safe }}
+    </script>
+    {% elif post %}
+    {# Fallback to static JSON-LD if no structured data #}
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
