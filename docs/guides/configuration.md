@@ -336,6 +336,103 @@ When enabled, this adds the following link tag to your site's `<head>`:
 - [webmention.io](https://webmention.io/) - Free hosted webmention service
 - [Bridgy](https://brid.gy/) - Connects social media interactions to webmentions
 
+### Head Configuration (`[markata-go.head]`)
+
+The head configuration allows you to customize elements in the HTML `<head>` section, including custom meta tags, links, scripts, and feed alternate links.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `text` | string | `""` | Raw HTML to include in head (use with caution) |
+| `meta` | array | `[]` | Custom meta tags |
+| `link` | array | `[]` | Custom link tags |
+| `script` | array | `[]` | Custom script tags |
+| `alternate_feeds` | array | `[]` | Feed alternate links (RSS, Atom, JSON) |
+
+#### Alternate Feed Links
+
+By default, markata-go includes RSS and Atom feed links in the `<head>`. You can customize which feeds are advertised:
+
+```toml
+[markata-go.head]
+# Customize which feeds get <link rel="alternate"> tags
+[[markata-go.head.alternate_feeds]]
+type = "rss"
+title = "RSS Feed"
+href = "/rss.xml"
+
+[[markata-go.head.alternate_feeds]]
+type = "atom"
+title = "Atom Feed"
+href = "/atom.xml"
+
+[[markata-go.head.alternate_feeds]]
+type = "json"
+title = "JSON Feed"
+href = "/feed.json"
+```
+
+**Supported feed types:**
+| Type | MIME Type | Description |
+|------|-----------|-------------|
+| `rss` | `application/rss+xml` | RSS 2.0 feed |
+| `atom` | `application/atom+xml` | Atom 1.0 feed |
+| `json` | `application/feed+json` | JSON Feed |
+
+**Example: Only advertise JSON Feed:**
+
+```toml
+[[markata-go.head.alternate_feeds]]
+type = "json"
+title = "JSON Feed"
+href = "/feed.json"
+```
+
+**Example: Feed per section:**
+
+```toml
+[[markata-go.head.alternate_feeds]]
+type = "rss"
+title = "Blog RSS"
+href = "/blog/rss.xml"
+
+[[markata-go.head.alternate_feeds]]
+type = "rss"
+title = "Tutorials RSS"
+href = "/tutorials/rss.xml"
+```
+
+#### Custom Meta Tags
+
+```toml
+[[markata-go.head.meta]]
+name = "author"
+content = "Jane Doe"
+
+[[markata-go.head.meta]]
+property = "og:site_name"
+content = "My Site"
+```
+
+#### Custom Link Tags
+
+```toml
+[[markata-go.head.link]]
+rel = "icon"
+href = "/favicon.ico"
+
+[[markata-go.head.link]]
+rel = "preconnect"
+href = "https://fonts.googleapis.com"
+crossorigin = true
+```
+
+#### Custom Script Tags
+
+```toml
+[[markata-go.head.script]]
+src = "/js/analytics.js"
+```
+
 ### Glob Settings (`[markata-go.glob]`)
 
 | Field | Type | Default | Description |

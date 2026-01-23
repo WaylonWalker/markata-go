@@ -61,9 +61,16 @@
     <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
     <link rel="stylesheet" href="/css/chroma.css">
     
-    <!-- RSS/Atom Feeds -->
+    <!-- RSS/Atom/JSON Feeds -->
+    {% if config.head.alternate_feeds %}
+    {% for feed in config.head.alternate_feeds %}
+    <link rel="alternate" type="{{ feed.mime_type }}" title="{{ feed.title }}" href="{{ feed.href }}">
+    {% endfor %}
+    {% else %}
+    {# Default feeds when no alternate_feeds configured #}
     <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
     <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    {% endif %}
     
     <!-- IndieAuth -->
     {% if config.indieauth.enabled %}
