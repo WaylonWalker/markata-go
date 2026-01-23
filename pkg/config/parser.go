@@ -117,6 +117,7 @@ type tomlFeedConfig struct {
 	Reverse         bool              `toml:"reverse"`
 	ItemsPerPage    int               `toml:"items_per_page"`
 	OrphanThreshold int               `toml:"orphan_threshold"`
+	PaginationType  string            `toml:"pagination_type"`
 	Formats         tomlFeedFormats   `toml:"formats"`
 	Templates       tomlFeedTemplates `toml:"templates"`
 }
@@ -141,6 +142,7 @@ type tomlFeedTemplates struct {
 type tomlFeedDefaults struct {
 	ItemsPerPage    int                   `toml:"items_per_page"`
 	OrphanThreshold int                   `toml:"orphan_threshold"`
+	PaginationType  string                `toml:"pagination_type"`
 	Formats         tomlFeedFormats       `toml:"formats"`
 	Templates       tomlFeedTemplates     `toml:"templates"`
 	Syndication     tomlSyndicationConfig `toml:"syndication"`
@@ -367,6 +369,7 @@ func (f *tomlFeedConfig) toFeedConfig() models.FeedConfig {
 		Reverse:         f.Reverse,
 		ItemsPerPage:    f.ItemsPerPage,
 		OrphanThreshold: f.OrphanThreshold,
+		PaginationType:  models.PaginationType(f.PaginationType),
 		Formats:         f.Formats.toFeedFormats(),
 		Templates:       f.Templates.toFeedTemplates(),
 	}
@@ -409,6 +412,7 @@ func (d *tomlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 	return models.FeedDefaults{
 		ItemsPerPage:    d.ItemsPerPage,
 		OrphanThreshold: d.OrphanThreshold,
+		PaginationType:  models.PaginationType(d.PaginationType),
 		Formats:         d.Formats.toFeedFormats(),
 		Templates:       d.Templates.toFeedTemplates(),
 		Syndication: models.SyndicationConfig{
@@ -472,6 +476,7 @@ type yamlFeedConfig struct {
 	Reverse         bool              `yaml:"reverse"`
 	ItemsPerPage    int               `yaml:"items_per_page"`
 	OrphanThreshold int               `yaml:"orphan_threshold"`
+	PaginationType  string            `yaml:"pagination_type"`
 	Formats         yamlFeedFormats   `yaml:"formats"`
 	Templates       yamlFeedTemplates `yaml:"templates"`
 }
@@ -496,6 +501,7 @@ type yamlFeedTemplates struct {
 type yamlFeedDefaults struct {
 	ItemsPerPage    int                   `yaml:"items_per_page"`
 	OrphanThreshold int                   `yaml:"orphan_threshold"`
+	PaginationType  string                `yaml:"pagination_type"`
 	Formats         yamlFeedFormats       `yaml:"formats"`
 	Templates       yamlFeedTemplates     `yaml:"templates"`
 	Syndication     yamlSyndicationConfig `yaml:"syndication"`
@@ -709,6 +715,7 @@ func (f *yamlFeedConfig) toFeedConfig() models.FeedConfig {
 		Reverse:         f.Reverse,
 		ItemsPerPage:    f.ItemsPerPage,
 		OrphanThreshold: f.OrphanThreshold,
+		PaginationType:  models.PaginationType(f.PaginationType),
 		Formats:         f.Formats.toFeedFormats(),
 		Templates:       f.Templates.toFeedTemplates(),
 	}
@@ -751,6 +758,7 @@ func (d *yamlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 	return models.FeedDefaults{
 		ItemsPerPage:    d.ItemsPerPage,
 		OrphanThreshold: d.OrphanThreshold,
+		PaginationType:  models.PaginationType(d.PaginationType),
 		Formats:         d.Formats.toFeedFormats(),
 		Templates:       d.Templates.toFeedTemplates(),
 		Syndication: models.SyndicationConfig{
@@ -814,6 +822,7 @@ type jsonFeedConfig struct {
 	Reverse         bool              `json:"reverse"`
 	ItemsPerPage    int               `json:"items_per_page"`
 	OrphanThreshold int               `json:"orphan_threshold"`
+	PaginationType  string            `json:"pagination_type"`
 	Formats         jsonFeedFormats   `json:"formats"`
 	Templates       jsonFeedTemplates `json:"templates"`
 }
@@ -838,6 +847,7 @@ type jsonFeedTemplates struct {
 type jsonFeedDefaults struct {
 	ItemsPerPage    int                   `json:"items_per_page"`
 	OrphanThreshold int                   `json:"orphan_threshold"`
+	PaginationType  string                `json:"pagination_type"`
 	Formats         jsonFeedFormats       `json:"formats"`
 	Templates       jsonFeedTemplates     `json:"templates"`
 	Syndication     jsonSyndicationConfig `json:"syndication"`
@@ -1051,6 +1061,7 @@ func (f *jsonFeedConfig) toFeedConfig() models.FeedConfig {
 		Reverse:         f.Reverse,
 		ItemsPerPage:    f.ItemsPerPage,
 		OrphanThreshold: f.OrphanThreshold,
+		PaginationType:  models.PaginationType(f.PaginationType),
 		Formats:         f.Formats.toFeedFormats(),
 		Templates:       f.Templates.toFeedTemplates(),
 	}
@@ -1093,6 +1104,7 @@ func (d *jsonFeedDefaults) toFeedDefaults() models.FeedDefaults {
 	return models.FeedDefaults{
 		ItemsPerPage:    d.ItemsPerPage,
 		OrphanThreshold: d.OrphanThreshold,
+		PaginationType:  models.PaginationType(d.PaginationType),
 		Formats:         d.Formats.toFeedFormats(),
 		Templates:       d.Templates.toFeedTemplates(),
 		Syndication: models.SyndicationConfig{
