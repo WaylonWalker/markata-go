@@ -73,6 +73,9 @@ type Config struct {
 
 	// Theme configures the site theme
 	Theme ThemeConfig `json:"theme" yaml:"theme" toml:"theme"`
+
+	// PostFormats configures output formats for individual posts
+	PostFormats PostFormatsConfig `json:"post_formats" yaml:"post_formats" toml:"post_formats"`
 }
 
 // ThemeConfig configures the site theme.
@@ -313,6 +316,42 @@ func NewWikilinkHoverConfig() WikilinkHoverConfig {
 	}
 }
 
+// PostFormatsConfig configures the output formats for individual posts.
+// This controls what file formats are generated for each post.
+type PostFormatsConfig struct {
+	// HTML enables standard HTML output (default: true)
+	// Generates: /slug/index.html
+	HTML *bool `json:"html,omitempty" yaml:"html,omitempty" toml:"html,omitempty"`
+
+	// Markdown enables raw markdown output (default: false)
+	// Generates: /slug/index.md (source with frontmatter)
+	Markdown bool `json:"markdown" yaml:"markdown" toml:"markdown"`
+
+	// OG enables OpenGraph card HTML output for social image generation (default: false)
+	// Generates: /slug/og/index.html (1200x630 optimized for screenshots)
+	OG bool `json:"og" yaml:"og" toml:"og"`
+}
+
+// NewPostFormatsConfig creates a new PostFormatsConfig with default values.
+// By default, only HTML output is enabled.
+func NewPostFormatsConfig() PostFormatsConfig {
+	enabled := true
+	return PostFormatsConfig{
+		HTML:     &enabled,
+		Markdown: false,
+		OG:       false,
+	}
+}
+
+// IsHTMLEnabled returns whether HTML output is enabled.
+// Defaults to true if not explicitly set.
+func (p *PostFormatsConfig) IsHTMLEnabled() bool {
+	if p.HTML == nil {
+		return true
+	}
+	return *p.HTML
+}
+
 // QRCodeConfig configures the qrcode plugin.
 type QRCodeConfig struct {
 	// Enabled controls whether QR codes are generated (default: true)
@@ -374,6 +413,7 @@ func NewConfig() *Config {
 			Palette:   "default-light",
 			Variables: make(map[string]string),
 		},
+		PostFormats: NewPostFormatsConfig(),
 	}
 }
 

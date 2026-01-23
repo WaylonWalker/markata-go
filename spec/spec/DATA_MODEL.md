@@ -119,6 +119,22 @@ The URL-safe identifier for the content.
 | `"Python 3.12"` | `python-312` |
 | `path: blog/my-post.md` | `my-post` |
 
+#### Special Case: `index.md` Files
+
+Files named `index.md` receive special slug handling to enable homepage and directory-based URLs:
+
+| File Path | Slug | Href |
+|-----------|------|------|
+| `./index.md` | `""` (empty) | `/` (homepage) |
+| `docs/index.md` | `docs` | `/docs/` |
+| `blog/guides/index.md` | `blog/guides` | `/blog/guides/` |
+
+This allows:
+- Creating a homepage with custom content instead of requiring a feed with `slug = ""`
+- Directory-based URL structures where `docs/index.md` becomes `/docs/` rather than `/docs/index/`
+
+**Note:** The filename check is case-insensitive (`INDEX.MD` also matches).
+
 #### `href`
 
 The relative URL path for the content.

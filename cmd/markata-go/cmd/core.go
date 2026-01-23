@@ -60,6 +60,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["use_gitignore"] = cfg.GlobConfig.UseGitignore
 	lcConfig.Extra["nav"] = cfg.Nav
 	lcConfig.Extra["footer"] = cfg.Footer
+	lcConfig.Extra["post_formats"] = cfg.PostFormats
 
 	// Pass theme configuration to plugins
 	lcConfig.Extra["theme"] = map[string]interface{}{

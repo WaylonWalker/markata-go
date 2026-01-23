@@ -446,3 +446,104 @@ func TestPost_SlugPreservesUnderscores(t *testing.T) {
 		})
 	}
 }
+
+// =============================================================================
+// Index.md Special Case Tests (Issue #11)
+// =============================================================================
+
+func TestPost_GenerateSlug_IndexMd(t *testing.T) {
+	// Test index.md special handling
+	// index.md files should use their directory path as the slug
+	tests := []struct {
+		name         string
+		path         string
+		expectedSlug string
+		expectedHref string
+	}{
+		{
+			name:         "root index.md becomes homepage",
+			path:         "index.md",
+			expectedSlug: "",
+			expectedHref: "/",
+		},
+		{
+			name:         "root index.md with dot prefix",
+			path:         "./index.md",
+			expectedSlug: "",
+			expectedHref: "/",
+		},
+		{
+			name:         "docs index.md",
+			path:         "docs/index.md",
+			expectedSlug: "docs",
+			expectedHref: "/docs/",
+		},
+		{
+			name:         "nested index.md",
+			path:         "blog/guides/index.md",
+			expectedSlug: "blog/guides",
+			expectedHref: "/blog/guides/",
+		},
+		{
+			name:         "uppercase INDEX.md",
+			path:         "docs/INDEX.MD",
+			expectedSlug: "docs",
+			expectedHref: "/docs/",
+		},
+		{
+			name:         "deeply nested index.md",
+			path:         "a/b/c/d/index.md",
+			expectedSlug: "a/b/c/d",
+			expectedHref: "/a/b/c/d/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewPost(tt.path)
+			p.GenerateSlug()
+			if p.Slug != tt.expectedSlug {
+				t.Errorf("Slug: got %q, want %q", p.Slug, tt.expectedSlug)
+			}
+			p.GenerateHref()
+			if p.Href != tt.expectedHref {
+				t.Errorf("Href: got %q, want %q", p.Href, tt.expectedHref)
+			}
+		})
+	}
+}
+
+func TestPost_GenerateSlug_RegularMdNotAffected(t *testing.T) {
+	// Ensure regular .md files are not affected by index.md handling
+	tests := []struct {
+		name         string
+		path         string
+		expectedSlug string
+	}{
+		{
+			name:         "regular md file",
+			path:         "docs/getting-started.md",
+			expectedSlug: "getting-started",
+		},
+		{
+			name:         "file with index in name",
+			path:         "docs/reindex.md",
+			expectedSlug: "reindex",
+		},
+		{
+			name:         "file named index-page.md",
+			path:         "docs/index-page.md",
+			expectedSlug: "index-page",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewPost(tt.path)
+			p.GenerateSlug()
+			if p.Slug != tt.expectedSlug {
+				t.Errorf("Slug: got %q, want %q", p.Slug, tt.expectedSlug)
+			}
+		})
+	}
+}

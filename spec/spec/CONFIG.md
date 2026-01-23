@@ -665,6 +665,35 @@ show_toc = true
 
 See [THEMES.md](./THEMES.md) for complete theming documentation.
 
+### Post Formats (`[my-ssg.post_formats]`)
+
+```toml
+[my-ssg.post_formats]
+html = true       # /slug/index.html (default: true)
+markdown = false  # /slug/index.md - raw source with frontmatter
+og = false        # /slug/og/index.html - social card for screenshots
+```
+
+This section controls what output formats are generated for each post:
+
+| Format | Default | Output Path | Description |
+|--------|---------|-------------|-------------|
+| `html` | `true` | `/slug/index.html` | Standard rendered HTML page |
+| `markdown` | `false` | `/slug/index.md` | Raw markdown with reconstructed frontmatter |
+| `og` | `false` | `/slug/og/index.html` | OpenGraph card HTML (1200x630) for social screenshots |
+
+**Use cases:**
+- **markdown**: API consumers, "view source" links, copy-paste code
+- **og**: Automated social image generation with puppeteer/playwright
+
+**Example:**
+```toml
+[markata-go.post_formats]
+html = true
+markdown = true  # Enable raw markdown output
+og = true        # Enable social card HTML for screenshot tools
+```
+
 ---
 
 ## See Also

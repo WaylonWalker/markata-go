@@ -212,6 +212,23 @@ Available extensions:
 extensions = ["tables", "strikethrough", "autolinks", "tasklist"]
 ```
 
+### Post Output Formats (`[markata-go.post_formats]`)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `html` | bool | `true` | Generate standard HTML pages |
+| `markdown` | bool | `false` | Generate raw markdown source |
+| `og` | bool | `false` | Generate OpenGraph card HTML |
+
+```toml
+[markata-go.post_formats]
+html = true       # /slug/index.html (default)
+markdown = true   # /slug/index.md (raw source)
+og = true         # /slug/og/index.html (social card)
+```
+
+See the [[post-formats|Post Output Formats Guide]] for detailed usage including social image generation.
+
 ### Feed Defaults (`[markata-go.feed_defaults]`)
 
 | Field | Type | Default | Description |
@@ -765,6 +782,7 @@ markata-go config validate
 
 - [[getting-started|Getting Started]] - Quick start guide
 - [[themes-and-styling|Themes Guide]] - Theme and palette customization
+- [[post-formats|Post Output Formats]] - Multiple output formats and social cards
 - [[feeds-guide|Feed System]] - Detailed feed configuration
 - [[built-in-plugins|Plugins]] - Plugin configuration and development
 - [[templates-guide|Templates]] - Template configuration and usage
