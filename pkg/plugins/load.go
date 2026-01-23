@@ -77,8 +77,9 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 		return nil, err
 	}
 
-	// Generate slug if not set
-	if post.Slug == "" {
+	// Generate slug if not explicitly set in frontmatter
+	// If slug was explicitly set (even to empty string), respect it
+	if !post.Has("_slug_explicit") && post.Slug == "" {
 		post.GenerateSlug()
 	}
 
@@ -141,9 +142,13 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		post.Template = template
 	}
 
-	// Slug
-	if slug := GetString(metadata, "slug"); slug != "" {
+	// Slug - support custom slugs including explicit empty string for homepage
+	if slugVal, exists := metadata["slug"]; exists {
+		slug := normalizeCustomSlug(GetString(metadata, "slug"))
 		post.Slug = slug
+		// Mark that slug was explicitly set (prevents auto-generation)
+		post.Set("_slug_explicit", true)
+		_ = slugVal // Exists check used, value handled via GetString
 	}
 
 	// Store unknown fields in Extra
@@ -253,4 +258,25 @@ func normalizeDateString(s string) string {
 	}
 
 	return s
+}
+
+// normalizeCustomSlug normalizes a slug from frontmatter.
+// It handles:
+//   - "/" or "" -> "" (homepage)
+//   - "/docs/page" -> "docs/page" (strip leading slash)
+//   - "docs/page/" -> "docs/page" (strip trailing slash)
+//   - Preserves internal structure for nested paths
+func normalizeCustomSlug(slug string) string {
+	// Trim whitespace
+	slug = strings.TrimSpace(slug)
+
+	// "/" means homepage (empty slug)
+	if slug == "/" {
+		return ""
+	}
+
+	// Strip leading and trailing slashes
+	slug = strings.Trim(slug, "/")
+
+	return slug
 }

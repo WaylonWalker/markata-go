@@ -136,6 +136,62 @@ title: "Go's Best Features"  # slug: gos-best-features
 title: "Part 1: The Basics"  # slug: part-1-the-basics
 ```
 
+#### Custom Slugs
+
+You can explicitly set any slug in frontmatter:
+
+```yaml
+# Simple custom slug
+slug: my-custom-url
+
+# Nested path (creates /docs/api/overview/)
+slug: docs/api/overview
+
+# Leading/trailing slashes are automatically stripped
+slug: /about/            # becomes: about
+slug: /docs/guides/      # becomes: docs/guides
+```
+
+#### Homepage from Custom Slug
+
+Any post can become the homepage by setting an empty or slash slug:
+
+```yaml
+---
+title: "Welcome to My Site"
+slug: ""                    # This post becomes the homepage at /
+published: true
+---
+
+Welcome to my site!
+```
+
+Or equivalently:
+
+```yaml
+---
+title: "Welcome to My Site"
+slug: /                     # Also becomes the homepage at /
+published: true
+---
+```
+
+This is useful when you want a custom homepage from content in any directory, rather than using a feed or `index.md` at the root.
+
+**Note:** If multiple posts have the same slug (including empty slug for homepage), the build will fail with a path conflict error to prevent accidental overwrites.
+
+#### Special Case: `index.md` Files
+
+Files named `index.md` automatically generate slugs based on their directory:
+
+| File Path | Auto-Generated Slug | URL |
+|-----------|---------------------|-----|
+| `./index.md` | `""` (empty) | `/` (homepage) |
+| `docs/index.md` | `docs` | `/docs/` |
+| `blog/guides/index.md` | `blog/guides` | `/blog/guides/` |
+
+This allows directory-based URL structures without needing to set explicit slugs.
+
 ### date (date)
 
 The publication date of the post.

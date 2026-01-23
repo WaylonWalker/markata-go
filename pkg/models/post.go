@@ -152,10 +152,9 @@ func (p *Post) GenerateSlug() {
 
 // GenerateHref generates the relative URL path from the slug.
 // The href follows the pattern /{slug}/ or / for empty slug (homepage).
+// Note: This method assumes the slug is already set. Use GenerateSlug() first
+// if automatic slug generation is needed.
 func (p *Post) GenerateHref() {
-	if p.Slug == "" {
-		p.GenerateSlug()
-	}
 	// Empty slug means homepage
 	if p.Slug == "" {
 		p.Href = "/"
