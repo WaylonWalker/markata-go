@@ -45,17 +45,54 @@ func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	// Check if pagefind is installed
-	pagefindPath, err := exec.LookPath("pagefind")
+	// Try to find or install Pagefind
+	pagefindPath, err := p.findOrInstallPagefind(searchConfig)
 	if err != nil {
-		// Pagefind not installed - log warning but don't fail the build
-		// The site will work fine, just without search functionality
-		fmt.Printf("[pagefind] WARNING: pagefind not found in PATH, skipping search index generation\n")
-		fmt.Printf("[pagefind] Install with: npm install -g pagefind  OR  cargo install pagefind\n")
+		// Log warning but don't fail the build
+		fmt.Printf("[pagefind] WARNING: %v\n", err)
+		fmt.Printf("[pagefind] The site will work fine, just without search functionality\n")
+		return nil
+	}
+
+	if pagefindPath == "" {
+		// No Pagefind available - already warned
 		return nil
 	}
 
 	return p.runPagefind(pagefindPath, config, searchConfig)
+}
+
+// findOrInstallPagefind locates or automatically installs the Pagefind binary.
+// It first checks the system PATH, then attempts auto-install if enabled.
+func (p *PagefindPlugin) findOrInstallPagefind(searchConfig models.SearchConfig) (string, error) {
+	// First, check if pagefind is in PATH
+	pagefindPath, err := exec.LookPath("pagefind")
+	if err == nil {
+		return pagefindPath, nil
+	}
+
+	// Check if auto-install is enabled
+	if !searchConfig.Pagefind.IsAutoInstallEnabled() {
+		fmt.Printf("[pagefind] WARNING: pagefind not found in PATH, skipping search index generation\n")
+		fmt.Printf("[pagefind] Install with: npm install -g pagefind  OR  cargo install pagefind\n")
+		fmt.Printf("[pagefind] Or enable auto_install in config: [search.pagefind] auto_install = true\n")
+		return "", nil
+	}
+
+	// Check if we have a cached version for the requested version
+	installer := NewPagefindInstallerWithConfig(PagefindInstallerConfig{
+		Version:  searchConfig.Pagefind.Version,
+		CacheDir: searchConfig.Pagefind.CacheDir,
+	})
+
+	// Attempt to install
+	fmt.Printf("[pagefind] Pagefind not found in PATH, attempting auto-install...\n")
+	installedPath, err := installer.Install()
+	if err != nil {
+		return "", fmt.Errorf("auto-install failed: %w", err)
+	}
+
+	return installedPath, nil
 }
 
 // runPagefind executes the Pagefind CLI to generate the search index.

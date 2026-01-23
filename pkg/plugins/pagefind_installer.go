@@ -1,0 +1,557 @@
+// Package plugins provides lifecycle plugins for markata-go.
+package plugins
+
+import (
+	"archive/tar"
+	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"time"
+)
+
+// PagefindInstaller handles automatic downloading and caching of Pagefind binaries.
+type PagefindInstaller struct {
+	// CacheDir is the directory where binaries are cached.
+	CacheDir string
+
+	// Version is the Pagefind version to install (e.g., "v1.4.0" or "latest").
+	Version string
+
+	// client is the HTTP client used for downloads.
+	client *http.Client
+}
+
+// PagefindInstallError indicates an error during Pagefind installation.
+type PagefindInstallError struct {
+	Operation string
+	Message   string
+	Err       error
+}
+
+func (e *PagefindInstallError) Error() string {
+	if e.Err != nil {
+		return fmt.Sprintf("pagefind install error during %s: %s: %v", e.Operation, e.Message, e.Err)
+	}
+	return fmt.Sprintf("pagefind install error during %s: %s", e.Operation, e.Message)
+}
+
+func (e *PagefindInstallError) Unwrap() error {
+	return e.Err
+}
+
+// NewPagefindInstallError creates a new PagefindInstallError.
+func NewPagefindInstallError(operation, message string, err error) *PagefindInstallError {
+	return &PagefindInstallError{
+		Operation: operation,
+		Message:   message,
+		Err:       err,
+	}
+}
+
+// PagefindInstallerConfig configures the Pagefind installer.
+type PagefindInstallerConfig struct {
+	// AutoInstall enables automatic Pagefind installation (default: true).
+	AutoInstall *bool `json:"auto_install,omitempty" yaml:"auto_install,omitempty" toml:"auto_install,omitempty"`
+
+	// Version is the Pagefind version to install (default: "latest").
+	Version string `json:"version,omitempty" yaml:"version,omitempty" toml:"version,omitempty"`
+
+	// CacheDir is the directory for caching binaries (default: ~/.markata-go/bin/).
+	CacheDir string `json:"cache_dir,omitempty" yaml:"cache_dir,omitempty" toml:"cache_dir,omitempty"`
+}
+
+// IsAutoInstallEnabled returns whether auto-install is enabled.
+// Defaults to true if not explicitly set.
+func (c *PagefindInstallerConfig) IsAutoInstallEnabled() bool {
+	if c.AutoInstall == nil {
+		return true
+	}
+	return *c.AutoInstall
+}
+
+// NewPagefindInstallerConfig creates a new PagefindInstallerConfig with default values.
+func NewPagefindInstallerConfig() PagefindInstallerConfig {
+	autoInstall := true
+	return PagefindInstallerConfig{
+		AutoInstall: &autoInstall,
+		Version:     "latest",
+		CacheDir:    "",
+	}
+}
+
+// defaultReleaseBaseURL is the base URL for Pagefind releases on GitHub.
+const defaultReleaseBaseURL = "https://github.com/CloudCannon/pagefind/releases"
+
+// defaultCacheDirName is the default cache directory name under user home.
+const defaultCacheDirName = ".markata-go"
+
+// defaultHTTPTimeout is the default timeout for HTTP requests.
+const defaultHTTPTimeout = 120 * time.Second
+
+// platformMapping maps Go's GOOS/GOARCH to Pagefind's asset naming convention.
+var platformMapping = map[string]map[string]string{
+	"darwin": {
+		"amd64": "x86_64-apple-darwin",
+		"arm64": "aarch64-apple-darwin",
+	},
+	"linux": {
+		"amd64": "x86_64-unknown-linux-musl",
+		"arm64": "aarch64-unknown-linux-musl",
+	},
+	"windows": {
+		"amd64": "x86_64-pc-windows-msvc",
+	},
+	"freebsd": {
+		"amd64": "x86_64-unknown-freebsd",
+	},
+}
+
+// NewPagefindInstaller creates a new PagefindInstaller with default settings.
+func NewPagefindInstaller() *PagefindInstaller {
+	return &PagefindInstaller{
+		CacheDir: "",
+		Version:  "latest",
+		client: &http.Client{
+			Timeout: defaultHTTPTimeout,
+		},
+	}
+}
+
+// NewPagefindInstallerWithConfig creates a new PagefindInstaller from config.
+func NewPagefindInstallerWithConfig(config PagefindInstallerConfig) *PagefindInstaller {
+	installer := NewPagefindInstaller()
+
+	if config.CacheDir != "" {
+		installer.CacheDir = expandPath(config.CacheDir)
+	}
+	if config.Version != "" {
+		installer.Version = config.Version
+	}
+
+	return installer
+}
+
+// GetPlatformAssetName returns the Pagefind asset name for the current platform.
+func GetPlatformAssetName() (string, error) {
+	return getPlatformAssetNameForOS(runtime.GOOS, runtime.GOARCH)
+}
+
+// getPlatformAssetNameForOS returns the asset name for a given OS/arch combination.
+func getPlatformAssetNameForOS(goos, goarch string) (string, error) {
+	archMap, ok := platformMapping[goos]
+	if !ok {
+		return "", NewPagefindInstallError(
+			"platform_detection",
+			fmt.Sprintf("unsupported operating system: %s", goos),
+			nil,
+		)
+	}
+
+	assetName, ok := archMap[goarch]
+	if !ok {
+		return "", NewPagefindInstallError(
+			"platform_detection",
+			fmt.Sprintf("unsupported architecture %s on %s", goarch, goos),
+			nil,
+		)
+	}
+
+	return assetName, nil
+}
+
+// GetCacheDir returns the cache directory, creating it if necessary.
+func (i *PagefindInstaller) GetCacheDir() (string, error) {
+	if i.CacheDir != "" {
+		cacheDir := expandPath(i.CacheDir)
+		if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+			return "", NewPagefindInstallError("cache_setup", "failed to create cache directory", err)
+		}
+		return cacheDir, nil
+	}
+
+	// Use XDG_CACHE_HOME or fallback to ~/.cache
+	cacheBase := os.Getenv("XDG_CACHE_HOME")
+	if cacheBase == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", NewPagefindInstallError("cache_setup", "failed to get user home directory", err)
+		}
+		cacheBase = filepath.Join(homeDir, ".cache")
+	}
+
+	cacheDir := filepath.Join(cacheBase, "markata-go", "bin")
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return "", NewPagefindInstallError("cache_setup", "failed to create cache directory", err)
+	}
+
+	return cacheDir, nil
+}
+
+// GetCachedBinaryPath returns the path to a cached Pagefind binary for the given version.
+func (i *PagefindInstaller) GetCachedBinaryPath(version string) (string, error) {
+	cacheDir, err := i.GetCacheDir()
+	if err != nil {
+		return "", err
+	}
+
+	binaryName := "pagefind"
+	if runtime.GOOS == "windows" {
+		binaryName = "pagefind.exe"
+	}
+
+	return filepath.Join(cacheDir, version, binaryName), nil
+}
+
+// IsCached checks if a specific version is already cached and valid.
+func (i *PagefindInstaller) IsCached(version string) (bool, error) {
+	binaryPath, err := i.GetCachedBinaryPath(version)
+	if err != nil {
+		return false, err
+	}
+
+	info, err := os.Stat(binaryPath)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, NewPagefindInstallError("cache_check", "failed to check cached binary", err)
+	}
+
+	// Check that it's executable (on Unix) and not empty
+	if info.Size() == 0 {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// GetLatestVersion fetches the latest Pagefind version from GitHub releases.
+func (i *PagefindInstaller) GetLatestVersion() (string, error) {
+	// Use GitHub's redirect to get the latest release
+	latestURL := defaultReleaseBaseURL + "/latest"
+
+	req, err := http.NewRequest("HEAD", latestURL, nil)
+	if err != nil {
+		return "", NewPagefindInstallError("version_check", "failed to create request", err)
+	}
+
+	// Use a client that doesn't follow redirects
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", NewPagefindInstallError("version_check", "failed to check latest version", err)
+	}
+	defer resp.Body.Close()
+
+	// The redirect location contains the version
+	location := resp.Header.Get("Location")
+	if location == "" {
+		return "", NewPagefindInstallError("version_check", "no redirect location in response", nil)
+	}
+
+	// Extract version from URL like https://github.com/CloudCannon/pagefind/releases/tag/v1.4.0
+	parts := strings.Split(location, "/")
+	if len(parts) == 0 {
+		return "", NewPagefindInstallError("version_check", "failed to parse version from redirect", nil)
+	}
+
+	version := parts[len(parts)-1]
+	if !strings.HasPrefix(version, "v") {
+		return "", NewPagefindInstallError("version_check", fmt.Sprintf("unexpected version format: %s", version), nil)
+	}
+
+	return version, nil
+}
+
+// ResolveVersion resolves "latest" to an actual version number.
+func (i *PagefindInstaller) ResolveVersion() (string, error) {
+	if i.Version != "latest" && i.Version != "" {
+		return i.Version, nil
+	}
+
+	return i.GetLatestVersion()
+}
+
+// buildAssetURL constructs the download URL for a Pagefind release asset.
+func buildAssetURL(version, platformAsset string) string {
+	// Format: pagefind-v1.4.0-x86_64-apple-darwin.tar.gz
+	filename := fmt.Sprintf("pagefind-%s-%s.tar.gz", version, platformAsset)
+	return fmt.Sprintf("%s/download/%s/%s", defaultReleaseBaseURL, version, filename)
+}
+
+// buildChecksumURL constructs the URL for the SHA256 checksum file.
+func buildChecksumURL(version, platformAsset string) string {
+	filename := fmt.Sprintf("pagefind-%s-%s.tar.gz.sha256", version, platformAsset)
+	return fmt.Sprintf("%s/download/%s/%s", defaultReleaseBaseURL, version, filename)
+}
+
+// fetchChecksum downloads and parses the SHA256 checksum for verification.
+func (i *PagefindInstaller) fetchChecksum(version, platformAsset string) (string, error) {
+	checksumURL := buildChecksumURL(version, platformAsset)
+
+	resp, err := i.client.Get(checksumURL)
+	if err != nil {
+		return "", NewPagefindInstallError("checksum_fetch", "failed to download checksum", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", NewPagefindInstallError(
+			"checksum_fetch",
+			fmt.Sprintf("checksum download failed with status %d", resp.StatusCode),
+			nil,
+		)
+	}
+
+	// Read the checksum file content
+	content, err := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	if err != nil {
+		return "", NewPagefindInstallError("checksum_fetch", "failed to read checksum", err)
+	}
+
+	// Parse checksum (format: "hash  filename" or just "hash")
+	checksumStr := strings.TrimSpace(string(content))
+	parts := strings.Fields(checksumStr)
+	if len(parts) == 0 {
+		return "", NewPagefindInstallError("checksum_fetch", "empty checksum file", nil)
+	}
+
+	checksum := parts[0]
+	if len(checksum) != 64 {
+		return "", NewPagefindInstallError(
+			"checksum_fetch",
+			fmt.Sprintf("invalid checksum length: expected 64, got %d", len(checksum)),
+			nil,
+		)
+	}
+
+	return strings.ToLower(checksum), nil
+}
+
+// downloadAsset downloads the Pagefind release archive to a temporary file.
+func (i *PagefindInstaller) downloadAsset(version, platformAsset string) (string, error) {
+	assetURL := buildAssetURL(version, platformAsset)
+
+	fmt.Printf("[pagefind] Downloading Pagefind %s for %s...\n", version, platformAsset)
+
+	resp, err := i.client.Get(assetURL)
+	if err != nil {
+		return "", NewPagefindInstallError("download", "failed to download asset", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", NewPagefindInstallError(
+			"download",
+			fmt.Sprintf("download failed with status %d", resp.StatusCode),
+			nil,
+		)
+	}
+
+	// Create a temporary file for the download
+	tmpFile, err := os.CreateTemp("", "pagefind-*.tar.gz")
+	if err != nil {
+		return "", NewPagefindInstallError("download", "failed to create temp file", err)
+	}
+	defer tmpFile.Close()
+
+	// Download with progress (if terminal)
+	written, err := io.Copy(tmpFile, resp.Body)
+	if err != nil {
+		os.Remove(tmpFile.Name())
+		return "", NewPagefindInstallError("download", "failed to write downloaded file", err)
+	}
+
+	fmt.Printf("[pagefind] Downloaded %d bytes\n", written)
+
+	return tmpFile.Name(), nil
+}
+
+// verifyChecksum verifies the SHA256 checksum of a downloaded file.
+func verifyChecksum(filePath, expectedChecksum string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return NewPagefindInstallError("verify", "failed to open file for verification", err)
+	}
+	defer file.Close()
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return NewPagefindInstallError("verify", "failed to compute checksum", err)
+	}
+
+	actualChecksum := hex.EncodeToString(hasher.Sum(nil))
+
+	if actualChecksum != expectedChecksum {
+		return NewPagefindInstallError(
+			"verify",
+			fmt.Sprintf("checksum mismatch: expected %s, got %s", expectedChecksum, actualChecksum),
+			nil,
+		)
+	}
+
+	fmt.Printf("[pagefind] Checksum verified: %s\n", actualChecksum[:16]+"...")
+	return nil
+}
+
+// extractBinary extracts the pagefind binary from the downloaded tar.gz archive.
+func (i *PagefindInstaller) extractBinary(archivePath, version string) (string, error) {
+	cacheDir, err := i.GetCacheDir()
+	if err != nil {
+		return "", err
+	}
+
+	// Create version-specific directory
+	versionDir := filepath.Join(cacheDir, version)
+	if err := os.MkdirAll(versionDir, 0o755); err != nil {
+		return "", NewPagefindInstallError("extract", "failed to create version directory", err)
+	}
+
+	// Open the archive
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return "", NewPagefindInstallError("extract", "failed to open archive", err)
+	}
+	defer file.Close()
+
+	// Create gzip reader
+	gzipReader, err := gzip.NewReader(file)
+	if err != nil {
+		return "", NewPagefindInstallError("extract", "failed to create gzip reader", err)
+	}
+	defer gzipReader.Close()
+
+	// Create tar reader
+	tarReader := tar.NewReader(gzipReader)
+
+	binaryName := "pagefind"
+	if runtime.GOOS == "windows" {
+		binaryName = "pagefind.exe"
+	}
+
+	var extractedPath string
+
+	// Extract files
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", NewPagefindInstallError("extract", "failed to read tar header", err)
+		}
+
+		// Only extract the pagefind binary
+		baseName := filepath.Base(header.Name)
+		if baseName != binaryName {
+			continue
+		}
+
+		extractedPath = filepath.Join(versionDir, binaryName)
+
+		// Create the output file
+		outFile, err := os.OpenFile(extractedPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
+		if err != nil {
+			return "", NewPagefindInstallError("extract", "failed to create output file", err)
+		}
+
+		// Copy the binary content
+		if _, err := io.Copy(outFile, tarReader); err != nil {
+			outFile.Close()
+			os.Remove(extractedPath)
+			return "", NewPagefindInstallError("extract", "failed to extract binary", err)
+		}
+		outFile.Close()
+
+		fmt.Printf("[pagefind] Extracted %s to %s\n", binaryName, versionDir)
+		break
+	}
+
+	if extractedPath == "" {
+		return "", NewPagefindInstallError("extract", fmt.Sprintf("binary '%s' not found in archive", binaryName), nil)
+	}
+
+	return extractedPath, nil
+}
+
+// Install downloads and caches the Pagefind binary for the current platform.
+// Returns the path to the installed binary.
+func (i *PagefindInstaller) Install() (string, error) {
+	// Resolve version
+	version, err := i.ResolveVersion()
+	if err != nil {
+		return "", err
+	}
+
+	// Check if already cached
+	cached, err := i.IsCached(version)
+	if err != nil {
+		return "", err
+	}
+
+	if cached {
+		binaryPath, err := i.GetCachedBinaryPath(version)
+		if err != nil {
+			return "", err
+		}
+		fmt.Printf("[pagefind] Using cached Pagefind %s\n", version)
+		return binaryPath, nil
+	}
+
+	// Get platform asset name
+	platformAsset, err := GetPlatformAssetName()
+	if err != nil {
+		return "", err
+	}
+
+	// Fetch expected checksum
+	expectedChecksum, err := i.fetchChecksum(version, platformAsset)
+	if err != nil {
+		return "", err
+	}
+
+	// Download the archive
+	archivePath, err := i.downloadAsset(version, platformAsset)
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(archivePath)
+
+	// Verify checksum (CRITICAL for security)
+	if err := verifyChecksum(archivePath, expectedChecksum); err != nil {
+		return "", err
+	}
+
+	// Extract the binary
+	binaryPath, err := i.extractBinary(archivePath, version)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Printf("[pagefind] Successfully installed Pagefind %s\n", version)
+	return binaryPath, nil
+}
+
+// expandPath expands ~ to the user's home directory.
+func expandPath(path string) string {
+	if strings.HasPrefix(path, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err == nil {
+			return filepath.Join(homeDir, path[2:])
+		}
+	}
+	return path
+}
