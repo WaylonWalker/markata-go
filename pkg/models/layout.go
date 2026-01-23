@@ -337,7 +337,7 @@ func (s *SidebarConfig) IsMultiFeed() bool {
 // It checks path-specific sidebars and returns the most specific match (longest prefix wins).
 // Returns the matching PathSidebarConfig and true if found, or nil and false otherwise.
 func (s *SidebarConfig) ResolveForPath(path string) (*PathSidebarConfig, bool) {
-	if s.Paths == nil || len(s.Paths) == 0 {
+	if len(s.Paths) == 0 {
 		return nil, false
 	}
 

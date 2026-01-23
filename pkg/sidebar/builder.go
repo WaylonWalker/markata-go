@@ -39,7 +39,7 @@ func NewBuilder(config *models.Config, feeds map[string]*models.FeedConfig, post
 
 // ResolveForPost returns the sidebar items and title for a specific post.
 // It resolves path-specific, multi-feed, or default sidebar configurations.
-func (b *Builder) ResolveForPost(post *models.Post) ([]models.SidebarNavItem, string) {
+func (b *Builder) ResolveForPost(post *models.Post) (items []models.SidebarNavItem, title string) {
 	if b.config == nil {
 		return nil, ""
 	}
@@ -124,7 +124,7 @@ func (b *Builder) buildGroupedFromFeed(feed *models.FeedConfig) []models.Sidebar
 		}
 	}
 
-	var items []models.SidebarNavItem
+	items := make([]models.SidebarNavItem, 0, len(groups)+len(ungrouped))
 
 	// Add grouped items
 	groupNames := make([]string, 0, len(groups))
@@ -168,9 +168,7 @@ func (b *Builder) BuildFromDirectory(config *models.SidebarAutoGenerate) []model
 	for _, post := range b.posts {
 		postPath := post.Path
 		// Normalize path for comparison
-		if strings.HasPrefix(postPath, "./") {
-			postPath = postPath[2:]
-		}
+		postPath = strings.TrimPrefix(postPath, "./")
 
 		if strings.HasPrefix(postPath, dirPrefix) || strings.HasPrefix(postPath, config.Directory+"/") {
 			// Check exclusions
@@ -190,10 +188,10 @@ func (b *Builder) BuildFromDirectory(config *models.SidebarAutoGenerate) []model
 // isExcluded checks if a path matches any of the exclude patterns.
 func (b *Builder) isExcluded(path string, patterns []string) bool {
 	for _, pattern := range patterns {
-		if matched, _ := filepath.Match(pattern, filepath.Base(path)); matched {
+		if matched, err := filepath.Match(pattern, filepath.Base(path)); err == nil && matched {
 			return true
 		}
-		if matched, _ := filepath.Match(pattern, path); matched {
+		if matched, err := filepath.Match(pattern, path); err == nil && matched {
 			return true
 		}
 	}
@@ -260,7 +258,7 @@ func nodeToItems(n *hierarchyNode) []models.SidebarNavItem {
 		name string
 		node *hierarchyNode
 	}
-	var entries []childEntry
+	entries := make([]childEntry, 0, len(n.children))
 	for name, child := range n.children {
 		entries = append(entries, childEntry{name, child})
 	}
@@ -356,7 +354,7 @@ func (b *Builder) BuildFromFeeds() []models.SidebarNavItem {
 	})
 
 	// Build items for each feed
-	var items []models.SidebarNavItem
+	items := make([]models.SidebarNavItem, 0, len(sidebarFeeds))
 	for _, feed := range sidebarFeeds {
 		sectionItem := b.buildFeedSection(feed, nil)
 		items = append(items, sectionItem)
@@ -394,11 +392,12 @@ func sortPosts(posts []*models.Post, orderBy string, reverse bool) {
 			}
 			less = ti < tj
 		case "date":
-			if posts[i].Date != nil && posts[j].Date != nil {
+			switch {
+			case posts[i].Date != nil && posts[j].Date != nil:
 				less = posts[i].Date.Before(*posts[j].Date)
-			} else if posts[i].Date != nil {
+			case posts[i].Date != nil:
 				less = true
-			} else {
+			default:
 				less = false
 			}
 		case "nav_order":
@@ -446,7 +445,7 @@ func titleCase(s string) string {
 	s = strings.ReplaceAll(s, "_", " ")
 	words := strings.Fields(s)
 	for i, word := range words {
-		if len(word) > 0 {
+		if word != "" {
 			words[i] = strings.ToUpper(word[:1]) + word[1:]
 		}
 	}
