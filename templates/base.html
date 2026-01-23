@@ -155,7 +155,7 @@
 </head>
 <body>
     {% block header %}
-    <header class="site-header">
+    <header class="site-header" data-pagefind-ignore>
         <div class="container">
             <a href="/" class="site-title">{{ config.title | default:"Home" }}</a>
             {% include "components/nav.html" %}
@@ -166,7 +166,7 @@
     </header>
     {% endblock %}
     
-    <main>
+    <main data-pagefind-body>
         {% block content %}{% endblock %}
     </main>
     
