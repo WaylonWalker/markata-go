@@ -633,6 +633,7 @@ func (p *yamlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	}
 }
 
+//nolint:dupl // Intentional duplication - each format (YAML/JSON/TOML) has its own conversion method
 func (c *yamlConfig) toConfig() *models.Config {
 	config := &models.Config{
 		OutputDir:     c.OutputDir,
@@ -974,6 +975,7 @@ func (p *jsonPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	}
 }
 
+//nolint:dupl // Intentional duplication - each format (YAML/JSON/TOML) has its own conversion method
 func (c *jsonConfig) toConfig() *models.Config {
 	config := &models.Config{
 		OutputDir:     c.OutputDir,

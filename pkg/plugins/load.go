@@ -225,9 +225,18 @@ func normalizeDateString(s string) string {
 	s = timeFixRegex.ReplaceAllStringFunc(s, func(match string) string {
 		parts := timeFixRegex.FindStringSubmatch(match)
 		if len(parts) == 4 {
-			h, _ := strconv.Atoi(parts[1])
-			m, _ := strconv.Atoi(parts[2])
-			sec, _ := strconv.Atoi(parts[3])
+			h, err := strconv.Atoi(parts[1])
+			if err != nil {
+				return match
+			}
+			m, err := strconv.Atoi(parts[2])
+			if err != nil {
+				return match
+			}
+			sec, err := strconv.Atoi(parts[3])
+			if err != nil {
+				return match
+			}
 			return fmt.Sprintf("%02d:%02d:%02d", h, m, sec)
 		}
 		return match
@@ -239,7 +248,7 @@ func normalizeDateString(s string) string {
 	s = singleDigitHourRegex.ReplaceAllString(s, "${1}0${2}:${3}")
 
 	// Handle time at start of string or after date with space
-	if matched, _ := regexp.MatchString(`^\d:\d{2}`, s); matched {
+	if matched, err := regexp.MatchString(`^\d:\d{2}`, s); err == nil && matched {
 		s = "0" + s
 	}
 
