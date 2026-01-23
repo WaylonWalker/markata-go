@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -167,16 +170,30 @@ func parseDate(value interface{}) (time.Time, error) {
 
 // parseDateString parses a date string using common formats.
 func parseDateString(s string) (time.Time, error) {
-	// Common date formats to try
+	// Normalize the date string first
+	s = normalizeDateString(s)
+
+	// Common date formats to try (most specific first)
 	formats := []string{
 		time.RFC3339,
+		time.RFC3339Nano,
+		"2006-01-02T15:04:05Z07:00",
 		"2006-01-02T15:04:05",
+		"2006-01-02T15:04",
 		"2006-01-02 15:04:05",
+		"2006-01-02 15:04",
 		"2006-01-02",
+		"2006/01/02 15:04:05",
+		"2006/01/02 15:04",
+		"2006/01/02",
+		"01/02/2006 15:04:05",
+		"01/02/2006 15:04",
 		"01/02/2006",
 		"02-01-2006",
 		"January 2, 2006",
 		"Jan 2, 2006",
+		"2 January 2006",
+		"2 Jan 2006",
 	}
 
 	for _, format := range formats {
@@ -186,4 +203,45 @@ func parseDateString(s string) (time.Time, error) {
 	}
 
 	return time.Time{}, fmt.Errorf("unable to parse date: %s", s)
+}
+
+// normalizeDateString normalizes a date string to handle common variations.
+// It handles:
+// - Single-digit hours/minutes (e.g., "1:00:00" -> "01:00:00")
+// - Malformed time components (e.g., "8:011:00" -> "8:11:00")
+// - Extra whitespace
+func normalizeDateString(s string) string {
+	// Trim whitespace
+	s = strings.TrimSpace(s)
+
+	// Early return if no time component
+	if !strings.Contains(s, ":") {
+		return s
+	}
+
+	// Fix malformed time components like "8:011:00" -> "08:11:00"
+	// This regex finds time components with potentially extra leading zeros
+	timeFixRegex := regexp.MustCompile(`(\d{1,2}):0*(\d{1,2}):0*(\d{1,2})`)
+	s = timeFixRegex.ReplaceAllStringFunc(s, func(match string) string {
+		parts := timeFixRegex.FindStringSubmatch(match)
+		if len(parts) == 4 {
+			h, _ := strconv.Atoi(parts[1])
+			m, _ := strconv.Atoi(parts[2])
+			sec, _ := strconv.Atoi(parts[3])
+			return fmt.Sprintf("%02d:%02d:%02d", h, m, sec)
+		}
+		return match
+	})
+
+	// Normalize single-digit hours in time component
+	// Match patterns like " 1:00" or "T1:00" and pad the hour
+	singleDigitHourRegex := regexp.MustCompile(`([ T])(\d):(\d{2})`)
+	s = singleDigitHourRegex.ReplaceAllString(s, "${1}0${2}:${3}")
+
+	// Handle time at start of string or after date with space
+	if matched, _ := regexp.MatchString(`^\d:\d{2}`, s); matched {
+		s = "0" + s
+	}
+
+	return s
 }
