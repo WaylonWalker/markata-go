@@ -74,6 +74,7 @@ type tomlConfig struct {
 	Concurrency   int                   `toml:"concurrency"`
 	Theme         tomlThemeConfig       `toml:"theme"`
 	PostFormats   tomlPostFormatsConfig `toml:"post_formats"`
+	SEO           tomlSEOConfig         `toml:"seo"`
 	UnknownFields map[string]any        `toml:"-"`
 }
 
@@ -153,6 +154,20 @@ type tomlPostFormatsConfig struct {
 	OG       bool  `toml:"og"`
 }
 
+type tomlSEOConfig struct {
+	TwitterHandle string `toml:"twitter_handle"`
+	DefaultImage  string `toml:"default_image"`
+	LogoURL       string `toml:"logo_url"`
+}
+
+func (s *tomlSEOConfig) toSEOConfig() models.SEOConfig {
+	return models.SEOConfig{
+		TwitterHandle: s.TwitterHandle,
+		DefaultImage:  s.DefaultImage,
+		LogoURL:       s.LogoURL,
+	}
+}
+
 func (p *tomlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	return models.PostFormatsConfig{
 		HTML:     p.HTML,
@@ -206,6 +221,9 @@ func (c *tomlConfig) toConfig() *models.Config {
 
 	// Convert post formats
 	config.PostFormats = c.PostFormats.toPostFormatsConfig()
+
+	// Convert SEO config
+	config.SEO = c.SEO.toSEOConfig()
 
 	return config
 }
@@ -310,6 +328,7 @@ type yamlConfig struct {
 	FeedDefaults  yamlFeedDefaults      `yaml:"feed_defaults"`
 	Concurrency   int                   `yaml:"concurrency"`
 	PostFormats   yamlPostFormatsConfig `yaml:"post_formats"`
+	SEO           yamlSEOConfig         `yaml:"seo"`
 }
 
 type yamlNavItem struct {
@@ -381,6 +400,20 @@ type yamlPostFormatsConfig struct {
 	OG       bool  `yaml:"og"`
 }
 
+type yamlSEOConfig struct {
+	TwitterHandle string `yaml:"twitter_handle"`
+	DefaultImage  string `yaml:"default_image"`
+	LogoURL       string `yaml:"logo_url"`
+}
+
+func (s *yamlSEOConfig) toSEOConfig() models.SEOConfig {
+	return models.SEOConfig{
+		TwitterHandle: s.TwitterHandle,
+		DefaultImage:  s.DefaultImage,
+		LogoURL:       s.LogoURL,
+	}
+}
+
 func (p *yamlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	return models.PostFormatsConfig{
 		HTML:     p.HTML,
@@ -434,6 +467,9 @@ func (c *yamlConfig) toConfig() *models.Config {
 
 	// Convert post formats
 	config.PostFormats = c.PostFormats.toPostFormatsConfig()
+
+	// Convert SEO config
+	config.SEO = c.SEO.toSEOConfig()
 
 	return config
 }
@@ -525,6 +561,7 @@ type jsonConfig struct {
 	FeedDefaults  jsonFeedDefaults      `json:"feed_defaults"`
 	Concurrency   int                   `json:"concurrency"`
 	PostFormats   jsonPostFormatsConfig `json:"post_formats"`
+	SEO           jsonSEOConfig         `json:"seo"`
 }
 
 type jsonNavItem struct {
@@ -596,6 +633,20 @@ type jsonPostFormatsConfig struct {
 	OG       bool  `json:"og"`
 }
 
+type jsonSEOConfig struct {
+	TwitterHandle string `json:"twitter_handle"`
+	DefaultImage  string `json:"default_image"`
+	LogoURL       string `json:"logo_url"`
+}
+
+func (s *jsonSEOConfig) toSEOConfig() models.SEOConfig {
+	return models.SEOConfig{
+		TwitterHandle: s.TwitterHandle,
+		DefaultImage:  s.DefaultImage,
+		LogoURL:       s.LogoURL,
+	}
+}
+
 func (p *jsonPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	return models.PostFormatsConfig{
 		HTML:     p.HTML,
@@ -649,6 +700,9 @@ func (c *jsonConfig) toConfig() *models.Config {
 
 	// Convert post formats
 	config.PostFormats = c.PostFormats.toPostFormatsConfig()
+
+	// Convert SEO config
+	config.SEO = c.SEO.toSEOConfig()
 
 	return config
 }

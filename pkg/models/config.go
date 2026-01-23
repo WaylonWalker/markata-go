@@ -76,6 +76,9 @@ type Config struct {
 
 	// PostFormats configures output formats for individual posts
 	PostFormats PostFormatsConfig `json:"post_formats" yaml:"post_formats" toml:"post_formats"`
+
+	// SEO configures SEO metadata generation
+	SEO SEOConfig `json:"seo" yaml:"seo" toml:"seo"`
 }
 
 // ThemeConfig configures the site theme.
@@ -316,6 +319,27 @@ func NewWikilinkHoverConfig() WikilinkHoverConfig {
 	}
 }
 
+// SEOConfig configures SEO metadata for the site.
+type SEOConfig struct {
+	// TwitterHandle is the Twitter/X username (without @) for twitter:site meta tag
+	TwitterHandle string `json:"twitter_handle" yaml:"twitter_handle" toml:"twitter_handle"`
+
+	// DefaultImage is the default Open Graph image URL for pages without a specific image
+	DefaultImage string `json:"default_image" yaml:"default_image" toml:"default_image"`
+
+	// LogoURL is the site logo URL for Schema.org structured data
+	LogoURL string `json:"logo_url" yaml:"logo_url" toml:"logo_url"`
+}
+
+// NewSEOConfig creates a new SEOConfig with default values.
+func NewSEOConfig() SEOConfig {
+	return SEOConfig{
+		TwitterHandle: "",
+		DefaultImage:  "",
+		LogoURL:       "",
+	}
+}
+
 // PostFormatsConfig configures the output formats for individual posts.
 // This controls what file formats are generated for each post.
 type PostFormatsConfig struct {
@@ -439,6 +463,7 @@ func NewConfig() *Config {
 			Variables: make(map[string]string),
 		},
 		PostFormats: NewPostFormatsConfig(),
+		SEO:         NewSEOConfig(),
 	}
 }
 
