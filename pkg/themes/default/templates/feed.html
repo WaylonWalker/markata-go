@@ -2,6 +2,12 @@
 
 {% block title %}{{ feed.title | default:config.title | default:'Posts' }}{% endblock %}
 
+{% block htmx %}
+{% if page.pagination_type == "htmx" %}
+<script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+{% endif %}
+{% endblock %}
+
 {% block content %}
 <div class="feed">
   {% if feed.title %}
@@ -11,7 +17,7 @@
   </header>
   {% endif %}
   
-  <div class="posts">
+  <div class="posts posts-list" id="posts-list">
     {% for post in page.posts %}
     {% include "partials/card.html" %}
     {% endfor %}
