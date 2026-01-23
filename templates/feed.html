@@ -3,6 +3,8 @@
 {% block htmx %}
 {% if page.pagination_type == "htmx" %}
 <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+{% elif page.pagination_type == "js" %}
+<script src="{{ 'js/pagination.js' | theme_asset }}" defer></script>
 {% endif %}
 {% endblock %}
 
@@ -16,9 +18,17 @@
   </header>
 
   <div class="posts posts-list" id="posts-list">
+    {% if page.pagination_type == "js" %}
+    {# For JS pagination, render ALL posts - JavaScript will handle showing/hiding #}
+    {% for post in feed.posts %}
+    {% include "partials/card.html" %}
+    {% endfor %}
+    {% else %}
+    {# For manual/htmx pagination, render only current page posts #}
     {% for post in page.posts %}
     {% include "partials/card.html" %}
     {% endfor %}
+    {% endif %}
   </div>
 
   {% include "partials/pagination.html" %}
