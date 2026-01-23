@@ -175,30 +175,6 @@ type tomlWebmentionConfig struct {
 	Endpoint string `toml:"endpoint"`
 }
 
-type tomlComponentsConfig struct {
-	Nav        tomlNavComponentConfig        `toml:"nav"`
-	Footer     tomlFooterComponentConfig     `toml:"footer"`
-	DocSidebar tomlDocSidebarComponentConfig `toml:"doc_sidebar"`
-}
-
-type tomlNavComponentConfig struct {
-	Enabled  *bool  `toml:"enabled"`
-	Position string `toml:"position"`
-	Style    string `toml:"style"`
-}
-
-type tomlFooterComponentConfig struct {
-	Enabled *bool  `toml:"enabled"`
-	Content string `toml:"content"`
-}
-
-type tomlDocSidebarComponentConfig struct {
-	Enabled  *bool  `toml:"enabled"`
-	Position string `toml:"position"`
-	MinDepth int    `toml:"min_depth"`
-	MaxDepth int    `toml:"max_depth"`
-}
-
 func (s *tomlSEOConfig) toSEOConfig() models.SEOConfig {
 	return models.SEOConfig{
 		TwitterHandle: s.TwitterHandle,
@@ -223,24 +199,75 @@ func (w *tomlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 	}
 }
 
+type tomlComponentsConfig struct {
+	Nav        tomlNavComponentConfig    `toml:"nav"`
+	Footer     tomlFooterComponentConfig `toml:"footer"`
+	DocSidebar tomlDocSidebarConfig      `toml:"doc_sidebar"`
+}
+
+type tomlNavComponentConfig struct {
+	Enabled  *bool         `toml:"enabled"`
+	Position string        `toml:"position"`
+	Style    string        `toml:"style"`
+	Items    []tomlNavItem `toml:"items"`
+}
+
+type tomlFooterComponentConfig struct {
+	Enabled       *bool         `toml:"enabled"`
+	Text          string        `toml:"text"`
+	ShowCopyright *bool         `toml:"show_copyright"`
+	Links         []tomlNavItem `toml:"links"`
+}
+
+type tomlDocSidebarConfig struct {
+	Enabled  *bool  `toml:"enabled"`
+	Position string `toml:"position"`
+	Width    string `toml:"width"`
+	MinDepth int    `toml:"min_depth"`
+	MaxDepth int    `toml:"max_depth"`
+}
+
+//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
-	return models.ComponentsConfig{
+	config := models.ComponentsConfig{
 		Nav: models.NavComponentConfig{
 			Enabled:  c.Nav.Enabled,
 			Position: c.Nav.Position,
 			Style:    c.Nav.Style,
 		},
 		Footer: models.FooterComponentConfig{
-			Enabled: c.Footer.Enabled,
-			Content: c.Footer.Content,
+			Enabled:       c.Footer.Enabled,
+			Text:          c.Footer.Text,
+			ShowCopyright: c.Footer.ShowCopyright,
 		},
-		DocSidebar: models.DocSidebarComponentConfig{
+		DocSidebar: models.DocSidebarConfig{
 			Enabled:  c.DocSidebar.Enabled,
 			Position: c.DocSidebar.Position,
+			Width:    c.DocSidebar.Width,
 			MinDepth: c.DocSidebar.MinDepth,
 			MaxDepth: c.DocSidebar.MaxDepth,
 		},
 	}
+
+	// Convert nav items
+	for _, item := range c.Nav.Items {
+		config.Nav.Items = append(config.Nav.Items, models.NavItem{
+			Label:    item.Label,
+			URL:      item.URL,
+			External: item.External,
+		})
+	}
+
+	// Convert footer links
+	for _, link := range c.Footer.Links {
+		config.Footer.Links = append(config.Footer.Links, models.NavItem{
+			Label:    link.Label,
+			URL:      link.URL,
+			External: link.External,
+		})
+	}
+
+	return config
 }
 
 func (p *tomlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
@@ -412,8 +439,8 @@ type yamlConfig struct {
 	PostFormats   yamlPostFormatsConfig `yaml:"post_formats"`
 	IndieAuth     yamlIndieAuthConfig   `yaml:"indieauth"`
 	Webmention    yamlWebmentionConfig  `yaml:"webmention"`
-	Components    yamlComponentsConfig  `yaml:"components"`
 	SEO           yamlSEOConfig         `yaml:"seo"`
+	Components    yamlComponentsConfig  `yaml:"components"`
 }
 
 type yamlNavItem struct {
@@ -503,30 +530,6 @@ type yamlWebmentionConfig struct {
 	Endpoint string `yaml:"endpoint"`
 }
 
-type yamlComponentsConfig struct {
-	Nav        yamlNavComponentConfig        `yaml:"nav"`
-	Footer     yamlFooterComponentConfig     `yaml:"footer"`
-	DocSidebar yamlDocSidebarComponentConfig `yaml:"doc_sidebar"`
-}
-
-type yamlNavComponentConfig struct {
-	Enabled  *bool  `yaml:"enabled"`
-	Position string `yaml:"position"`
-	Style    string `yaml:"style"`
-}
-
-type yamlFooterComponentConfig struct {
-	Enabled *bool  `yaml:"enabled"`
-	Content string `yaml:"content"`
-}
-
-type yamlDocSidebarComponentConfig struct {
-	Enabled  *bool  `yaml:"enabled"`
-	Position string `yaml:"position"`
-	MinDepth int    `yaml:"min_depth"`
-	MaxDepth int    `yaml:"max_depth"`
-}
-
 func (s *yamlSEOConfig) toSEOConfig() models.SEOConfig {
 	return models.SEOConfig{
 		TwitterHandle: s.TwitterHandle,
@@ -551,24 +554,75 @@ func (w *yamlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 	}
 }
 
+type yamlComponentsConfig struct {
+	Nav        yamlNavComponentConfig    `yaml:"nav"`
+	Footer     yamlFooterComponentConfig `yaml:"footer"`
+	DocSidebar yamlDocSidebarConfig      `yaml:"doc_sidebar"`
+}
+
+type yamlNavComponentConfig struct {
+	Enabled  *bool         `yaml:"enabled"`
+	Position string        `yaml:"position"`
+	Style    string        `yaml:"style"`
+	Items    []yamlNavItem `yaml:"items"`
+}
+
+type yamlFooterComponentConfig struct {
+	Enabled       *bool         `yaml:"enabled"`
+	Text          string        `yaml:"text"`
+	ShowCopyright *bool         `yaml:"show_copyright"`
+	Links         []yamlNavItem `yaml:"links"`
+}
+
+type yamlDocSidebarConfig struct {
+	Enabled  *bool  `yaml:"enabled"`
+	Position string `yaml:"position"`
+	Width    string `yaml:"width"`
+	MinDepth int    `yaml:"min_depth"`
+	MaxDepth int    `yaml:"max_depth"`
+}
+
+//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (c *yamlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
-	return models.ComponentsConfig{
+	config := models.ComponentsConfig{
 		Nav: models.NavComponentConfig{
 			Enabled:  c.Nav.Enabled,
 			Position: c.Nav.Position,
 			Style:    c.Nav.Style,
 		},
 		Footer: models.FooterComponentConfig{
-			Enabled: c.Footer.Enabled,
-			Content: c.Footer.Content,
+			Enabled:       c.Footer.Enabled,
+			Text:          c.Footer.Text,
+			ShowCopyright: c.Footer.ShowCopyright,
 		},
-		DocSidebar: models.DocSidebarComponentConfig{
+		DocSidebar: models.DocSidebarConfig{
 			Enabled:  c.DocSidebar.Enabled,
 			Position: c.DocSidebar.Position,
+			Width:    c.DocSidebar.Width,
 			MinDepth: c.DocSidebar.MinDepth,
 			MaxDepth: c.DocSidebar.MaxDepth,
 		},
 	}
+
+	// Convert nav items
+	for _, item := range c.Nav.Items {
+		config.Nav.Items = append(config.Nav.Items, models.NavItem{
+			Label:    item.Label,
+			URL:      item.URL,
+			External: item.External,
+		})
+	}
+
+	// Convert footer links
+	for _, link := range c.Footer.Links {
+		config.Footer.Links = append(config.Footer.Links, models.NavItem{
+			Label:    link.Label,
+			URL:      link.URL,
+			External: link.External,
+		})
+	}
+
+	return config
 }
 
 func (p *yamlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
@@ -727,6 +781,7 @@ type jsonConfig struct {
 	IndieAuth     jsonIndieAuthConfig   `json:"indieauth"`
 	Webmention    jsonWebmentionConfig  `json:"webmention"`
 	SEO           jsonSEOConfig         `json:"seo"`
+	Components    jsonComponentsConfig  `json:"components"`
 }
 
 type jsonNavItem struct {
@@ -840,6 +895,77 @@ func (w *jsonWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 	}
 }
 
+type jsonComponentsConfig struct {
+	Nav        jsonNavComponentConfig    `json:"nav"`
+	Footer     jsonFooterComponentConfig `json:"footer"`
+	DocSidebar jsonDocSidebarConfig      `json:"doc_sidebar"`
+}
+
+type jsonNavComponentConfig struct {
+	Enabled  *bool         `json:"enabled"`
+	Position string        `json:"position"`
+	Style    string        `json:"style"`
+	Items    []jsonNavItem `json:"items"`
+}
+
+type jsonFooterComponentConfig struct {
+	Enabled       *bool         `json:"enabled"`
+	Text          string        `json:"text"`
+	ShowCopyright *bool         `json:"show_copyright"`
+	Links         []jsonNavItem `json:"links"`
+}
+
+type jsonDocSidebarConfig struct {
+	Enabled  *bool  `json:"enabled"`
+	Position string `json:"position"`
+	Width    string `json:"width"`
+	MinDepth int    `json:"min_depth"`
+	MaxDepth int    `json:"max_depth"`
+}
+
+//nolint:dupl // Intentional duplication - each format has its own conversion method
+func (c *jsonComponentsConfig) toComponentsConfig() models.ComponentsConfig {
+	config := models.ComponentsConfig{
+		Nav: models.NavComponentConfig{
+			Enabled:  c.Nav.Enabled,
+			Position: c.Nav.Position,
+			Style:    c.Nav.Style,
+		},
+		Footer: models.FooterComponentConfig{
+			Enabled:       c.Footer.Enabled,
+			Text:          c.Footer.Text,
+			ShowCopyright: c.Footer.ShowCopyright,
+		},
+		DocSidebar: models.DocSidebarConfig{
+			Enabled:  c.DocSidebar.Enabled,
+			Position: c.DocSidebar.Position,
+			Width:    c.DocSidebar.Width,
+			MinDepth: c.DocSidebar.MinDepth,
+			MaxDepth: c.DocSidebar.MaxDepth,
+		},
+	}
+
+	// Convert nav items
+	for _, item := range c.Nav.Items {
+		config.Nav.Items = append(config.Nav.Items, models.NavItem{
+			Label:    item.Label,
+			URL:      item.URL,
+			External: item.External,
+		})
+	}
+
+	// Convert footer links
+	for _, link := range c.Footer.Links {
+		config.Footer.Links = append(config.Footer.Links, models.NavItem{
+			Label:    link.Label,
+			URL:      link.URL,
+			External: link.External,
+		})
+	}
+
+	return config
+}
+
 func (p *jsonPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	return models.PostFormatsConfig{
 		HTML:     p.HTML,
@@ -899,6 +1025,9 @@ func (c *jsonConfig) toConfig() *models.Config {
 	// Convert IndieAuth and Webmention config
 	config.IndieAuth = c.IndieAuth.toIndieAuthConfig()
 	config.Webmention = c.Webmention.toWebmentionConfig()
+
+	// Convert components config
+	config.Components = c.Components.toComponentsConfig()
 
 	return config
 }

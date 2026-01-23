@@ -21,6 +21,118 @@ type FooterConfig struct {
 	ShowCopyright *bool `json:"show_copyright,omitempty" yaml:"show_copyright,omitempty" toml:"show_copyright,omitempty"`
 }
 
+// ComponentsConfig configures the layout components system.
+// This enables configuration-driven control over common UI elements.
+type ComponentsConfig struct {
+	// Nav configures the navigation component
+	Nav NavComponentConfig `json:"nav" yaml:"nav" toml:"nav"`
+
+	// Footer configures the footer component
+	Footer FooterComponentConfig `json:"footer" yaml:"footer" toml:"footer"`
+
+	// DocSidebar configures the document sidebar (table of contents)
+	DocSidebar DocSidebarConfig `json:"doc_sidebar" yaml:"doc_sidebar" toml:"doc_sidebar"`
+}
+
+// NavComponentConfig configures the navigation component.
+type NavComponentConfig struct {
+	// Enabled controls whether navigation is displayed (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Position controls where navigation appears: "header", "sidebar" (default: "header")
+	Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
+
+	// Style controls the navigation style: "horizontal", "vertical" (default: "horizontal")
+	Style string `json:"style,omitempty" yaml:"style,omitempty" toml:"style,omitempty"`
+
+	// Items are the navigation links (overrides top-level nav if set)
+	Items []NavItem `json:"items,omitempty" yaml:"items,omitempty" toml:"items,omitempty"`
+}
+
+// FooterComponentConfig configures the footer component.
+type FooterComponentConfig struct {
+	// Enabled controls whether footer is displayed (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Text is the footer text (supports template variables)
+	Text string `json:"text,omitempty" yaml:"text,omitempty" toml:"text,omitempty"`
+
+	// ShowCopyright shows the copyright line (default: true)
+	ShowCopyright *bool `json:"show_copyright,omitempty" yaml:"show_copyright,omitempty" toml:"show_copyright,omitempty"`
+
+	// Links are additional footer links
+	Links []NavItem `json:"links,omitempty" yaml:"links,omitempty" toml:"links,omitempty"`
+}
+
+// DocSidebarConfig configures the document sidebar (table of contents).
+type DocSidebarConfig struct {
+	// Enabled controls whether the TOC sidebar is displayed (default: false)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Position controls sidebar position: "left", "right" (default: "right")
+	Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
+
+	// Width is the sidebar width (default: "250px")
+	Width string `json:"width,omitempty" yaml:"width,omitempty" toml:"width,omitempty"`
+
+	// MinDepth is the minimum heading level to include (default: 2)
+	MinDepth int `json:"min_depth,omitempty" yaml:"min_depth,omitempty" toml:"min_depth,omitempty"`
+
+	// MaxDepth is the maximum heading level to include (default: 4)
+	MaxDepth int `json:"max_depth,omitempty" yaml:"max_depth,omitempty" toml:"max_depth,omitempty"`
+}
+
+// NewComponentsConfig creates a new ComponentsConfig with default values.
+func NewComponentsConfig() ComponentsConfig {
+	navEnabled := true
+	footerEnabled := true
+	docSidebarEnabled := false
+	showCopyright := true
+
+	return ComponentsConfig{
+		Nav: NavComponentConfig{
+			Enabled:  &navEnabled,
+			Position: "header",
+			Style:    "horizontal",
+		},
+		Footer: FooterComponentConfig{
+			Enabled:       &footerEnabled,
+			ShowCopyright: &showCopyright,
+		},
+		DocSidebar: DocSidebarConfig{
+			Enabled:  &docSidebarEnabled,
+			Position: "right",
+			Width:    "250px",
+			MinDepth: 2,
+			MaxDepth: 4,
+		},
+	}
+}
+
+// IsNavEnabled returns whether navigation is enabled.
+func (c *ComponentsConfig) IsNavEnabled() bool {
+	if c.Nav.Enabled == nil {
+		return true
+	}
+	return *c.Nav.Enabled
+}
+
+// IsFooterEnabled returns whether footer is enabled.
+func (c *ComponentsConfig) IsFooterEnabled() bool {
+	if c.Footer.Enabled == nil {
+		return true
+	}
+	return *c.Footer.Enabled
+}
+
+// IsDocSidebarEnabled returns whether the document sidebar is enabled.
+func (c *ComponentsConfig) IsDocSidebarEnabled() bool {
+	if c.DocSidebar.Enabled == nil {
+		return false
+	}
+	return *c.DocSidebar.Enabled
+}
+
 // Config represents the site configuration for markata-go.
 type Config struct {
 	// OutputDir is the directory where generated files are written (default: "output")
@@ -396,107 +508,6 @@ func NewWebmentionConfig() WebmentionConfig {
 	return WebmentionConfig{
 		Enabled:  false,
 		Endpoint: "",
-	}
-}
-
-// ComponentsConfig configures layout components.
-// This allows users to customize navigation, footer, and sidebar behavior.
-type ComponentsConfig struct {
-	// Nav configures the navigation component
-	Nav NavComponentConfig `json:"nav" yaml:"nav" toml:"nav"`
-
-	// Footer configures the footer component
-	Footer FooterComponentConfig `json:"footer" yaml:"footer" toml:"footer"`
-
-	// DocSidebar configures the documentation sidebar component
-	DocSidebar DocSidebarComponentConfig `json:"doc_sidebar" yaml:"doc_sidebar" toml:"doc_sidebar"`
-}
-
-// NavComponentConfig configures the navigation component.
-type NavComponentConfig struct {
-	// Enabled controls whether the nav component is rendered (default: true)
-	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
-
-	// Position is where the nav is rendered: "header" or "sidebar" (default: "header")
-	Position string `json:"position" yaml:"position" toml:"position"`
-
-	// Style is the nav style: "horizontal" or "vertical" (default: "horizontal")
-	Style string `json:"style" yaml:"style" toml:"style"`
-}
-
-// IsEnabled returns whether the nav component is enabled.
-// Defaults to true if not explicitly set.
-func (n *NavComponentConfig) IsEnabled() bool {
-	if n.Enabled == nil {
-		return true
-	}
-	return *n.Enabled
-}
-
-// FooterComponentConfig configures the footer component.
-type FooterComponentConfig struct {
-	// Enabled controls whether the footer component is rendered (default: true)
-	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
-
-	// Content is custom footer content (supports template variables)
-	Content string `json:"content,omitempty" yaml:"content,omitempty" toml:"content,omitempty"`
-}
-
-// IsEnabled returns whether the footer component is enabled.
-// Defaults to true if not explicitly set.
-func (f *FooterComponentConfig) IsEnabled() bool {
-	if f.Enabled == nil {
-		return true
-	}
-	return *f.Enabled
-}
-
-// DocSidebarComponentConfig configures the documentation sidebar component.
-// The sidebar displays a table of contents for the current page.
-type DocSidebarComponentConfig struct {
-	// Enabled controls whether the doc sidebar is rendered (default: false)
-	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
-
-	// Position is where the sidebar is rendered: "left" or "right" (default: "right")
-	Position string `json:"position" yaml:"position" toml:"position"`
-
-	// MinDepth is the minimum heading level to include (default: 2)
-	MinDepth int `json:"min_depth" yaml:"min_depth" toml:"min_depth"`
-
-	// MaxDepth is the maximum heading level to include (default: 4)
-	MaxDepth int `json:"max_depth" yaml:"max_depth" toml:"max_depth"`
-}
-
-// IsEnabled returns whether the doc sidebar component is enabled.
-// Defaults to false if not explicitly set (requires opt-in).
-func (d *DocSidebarComponentConfig) IsEnabled() bool {
-	if d.Enabled == nil {
-		return false
-	}
-	return *d.Enabled
-}
-
-// NewComponentsConfig creates a new ComponentsConfig with default values.
-func NewComponentsConfig() ComponentsConfig {
-	navEnabled := true
-	footerEnabled := true
-	sidebarEnabled := false
-	return ComponentsConfig{
-		Nav: NavComponentConfig{
-			Enabled:  &navEnabled,
-			Position: "header",
-			Style:    "horizontal",
-		},
-		Footer: FooterComponentConfig{
-			Enabled: &footerEnabled,
-			Content: "",
-		},
-		DocSidebar: DocSidebarComponentConfig{
-			Enabled:  &sidebarEnabled,
-			Position: "right",
-			MinDepth: 2,
-			MaxDepth: 4,
-		},
 	}
 }
 

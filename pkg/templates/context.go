@@ -183,6 +183,9 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"endpoint": c.Webmention.Endpoint,
 	}
 
+	// Convert components to map
+	componentsMap := componentsToMap(&c.Components)
+
 	return map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
@@ -196,6 +199,77 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"seo":           seoMap,
 		"indieauth":     indieAuthMap,
 		"webmention":    webmentionMap,
+		"components":    componentsMap,
+	}
+}
+
+// componentsToMap converts a ComponentsConfig to a map for template access.
+func componentsToMap(c *models.ComponentsConfig) map[string]interface{} {
+	if c == nil {
+		return nil
+	}
+
+	// Convert nav component
+	navEnabled := true
+	if c.Nav.Enabled != nil {
+		navEnabled = *c.Nav.Enabled
+	}
+	navItems := make([]map[string]interface{}, len(c.Nav.Items))
+	for i, item := range c.Nav.Items {
+		navItems[i] = map[string]interface{}{
+			"label":    item.Label,
+			"url":      item.URL,
+			"external": item.External,
+		}
+	}
+	navMap := map[string]interface{}{
+		"enabled":  navEnabled,
+		"position": c.Nav.Position,
+		"style":    c.Nav.Style,
+		"items":    navItems,
+	}
+
+	// Convert footer component
+	footerEnabled := true
+	if c.Footer.Enabled != nil {
+		footerEnabled = *c.Footer.Enabled
+	}
+	showCopyright := true
+	if c.Footer.ShowCopyright != nil {
+		showCopyright = *c.Footer.ShowCopyright
+	}
+	footerLinks := make([]map[string]interface{}, len(c.Footer.Links))
+	for i, link := range c.Footer.Links {
+		footerLinks[i] = map[string]interface{}{
+			"label":    link.Label,
+			"url":      link.URL,
+			"external": link.External,
+		}
+	}
+	footerMap := map[string]interface{}{
+		"enabled":        footerEnabled,
+		"text":           c.Footer.Text,
+		"show_copyright": showCopyright,
+		"links":          footerLinks,
+	}
+
+	// Convert doc_sidebar component
+	docSidebarEnabled := false
+	if c.DocSidebar.Enabled != nil {
+		docSidebarEnabled = *c.DocSidebar.Enabled
+	}
+	docSidebarMap := map[string]interface{}{
+		"enabled":   docSidebarEnabled,
+		"position":  c.DocSidebar.Position,
+		"width":     c.DocSidebar.Width,
+		"min_depth": c.DocSidebar.MinDepth,
+		"max_depth": c.DocSidebar.MaxDepth,
+	}
+
+	return map[string]interface{}{
+		"nav":         navMap,
+		"footer":      footerMap,
+		"doc_sidebar": docSidebarMap,
 	}
 }
 
