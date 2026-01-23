@@ -1,22 +1,26 @@
 {% extends "base.html" %}
 
 {% block content %}
-<article>
-    <header>
-        <h1>{{ post.title }}</h1>
-        {% if post.date %}
-        <time datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
-        {% endif %}
-        {% if post.tags %}
-        <div class="tags">
-            {% for tag in post.tags %}
-            <a href="/tags/{{ tag | slugify }}/">{{ tag }}</a>
-            {% endfor %}
+<div class="content-wrapper{% if config.components.doc_sidebar.enabled and post.Extra.toc %} content-wrapper--with-sidebar content-wrapper--sidebar-{{ config.components.doc_sidebar.position | default:'right' }}{% endif %}">
+    <article>
+        <header>
+            <h1>{{ post.title }}</h1>
+            {% if post.date %}
+            <time datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+            {% endif %}
+            {% if post.tags %}
+            <div class="tags">
+                {% for tag in post.tags %}
+                <a href="/tags/{{ tag | slugify }}/">{{ tag }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </header>
+        <div class="post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
+            {{ body | safe }}
         </div>
-        {% endif %}
-    </header>
-    <div class="post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
-        {{ body | safe }}
-    </div>
-</article>
+    </article>
+    
+    {% include "components/doc_sidebar.html" %}
+</div>
 {% endblock %}
