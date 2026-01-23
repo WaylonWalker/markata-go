@@ -14,7 +14,7 @@ markata-go is a static site generator written in Go that processes Markdown file
 
 ### Key Features
 
-- **Plugin-driven architecture** - Extensible system with 14+ built-in plugins
+- **Plugin-driven architecture** - Extensible system with 30+ built-in plugins
 - **Powerful feed system** - Define feeds with filtering, sorting, and pagination; generate multiple output formats (HTML, RSS, Atom, JSON) from a single definition
 - **Jinja2-like templates** - Familiar template syntax via pongo2 with custom filters
 - **9-stage lifecycle** - Configure, Validate, Glob, Load, Transform, Render, Collect, Write, Cleanup
@@ -170,33 +170,23 @@ The feed system is markata-go's most powerful feature. Define feeds to create fi
 
 ```toml
 # Feed defaults - inherited by all feeds
-[markata-go.feeds.defaults]
+[markata-go.feed_defaults]
 items_per_page = 10
 orphan_threshold = 3
 
-[markata-go.feeds.defaults.formats]
+[markata-go.feed_defaults.formats]
 html = true
 rss = true
 atom = false
 json = false
 
-[markata-go.feeds.defaults.templates]
+[markata-go.feed_defaults.templates]
 html = "feed.html"
-card = "partials/card.html"
+card = "card.html"
 
-# Syndication settings (RSS/Atom/JSON)
-[markata-go.feeds.syndication]
+[markata-go.feed_defaults.syndication]
 max_items = 20
-include_content = false
-
-# Auto-generated tag feeds
-[markata-go.feeds.auto_tags]
-enabled = true
-slug_prefix = "tags"
-
-[markata-go.feeds.auto_tags.formats]
-html = true
-rss = true
+include_content = true
 ```
 
 ### Defining Feeds
