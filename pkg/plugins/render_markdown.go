@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"strings"
 
+	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
+
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
@@ -38,10 +40,21 @@ func NewRenderMarkdownPlugin() *RenderMarkdownPlugin {
 }
 
 // createMarkdownRenderer creates a goldmark instance with the specified highlighting options.
-func createMarkdownRenderer(chromaTheme string, _ bool) goldmark.Markdown {
+func createMarkdownRenderer(chromaTheme string, lineNumbers bool) goldmark.Markdown {
+	// Use CSS classes instead of inline styles for syntax highlighting.
+	// This enables theme customization via external CSS files.
+	formatOptions := []chromahtml.Option{
+		chromahtml.WithClasses(true),
+		chromahtml.WithAllClasses(true),
+	}
+
+	if lineNumbers {
+		formatOptions = append(formatOptions, chromahtml.WithLineNumbers(true))
+	}
+
 	highlightOpts := []highlighting.Option{
 		highlighting.WithStyle(chromaTheme),
-		highlighting.WithFormatOptions(),
+		highlighting.WithFormatOptions(formatOptions...),
 	}
 
 	return goldmark.New(

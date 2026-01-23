@@ -61,6 +61,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["wikilink_hover"] = func() lifecycle.Plugin { return NewWikilinkHoverPlugin() }
 	pluginRegistry.constructors["qrcode"] = func() lifecycle.Plugin { return NewQRCodePlugin() }
 	pluginRegistry.constructors["youtube"] = func() lifecycle.Plugin { return NewYouTubePlugin() }
+	pluginRegistry.constructors["chroma_css"] = func() lifecycle.Plugin { return NewChromaCSSPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -135,6 +136,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		// Write stage plugins
 		NewStaticAssetsPlugin(), // Copy static assets first
 		NewPaletteCSSPlugin(),   // Generate palette CSS (overwrites variables.css)
+		NewChromaCSSPlugin(),    // Generate syntax highlighting CSS
 		NewPublishFeedsPlugin(),
 		NewPublishHTMLPlugin(),
 		NewRedirectsPlugin(), // Generate redirect pages
