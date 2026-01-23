@@ -125,7 +125,7 @@ func TestYouTubePlugin_ProcessPost_URLWithExtraParams(t *testing.T) {
 	p := NewYouTubePlugin()
 
 	post := &models.Post{
-		ArticleHTML: `<p>https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s</p>`,
+		ArticleHTML: `<p>https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42</p>`,
 	}
 
 	err := p.processPost(post)
@@ -133,13 +133,13 @@ func TestYouTubePlugin_ProcessPost_URLWithExtraParams(t *testing.T) {
 		t.Errorf("processPost() error = %v", err)
 	}
 
-	// Should extract just the video ID
+	// Should extract video ID and timestamp
 	if !strings.Contains(post.ArticleHTML, `embed/dQw4w9WgXcQ`) {
 		t.Error("Expected video ID in embed URL")
 	}
-	// Should not include extra params in embed URL
-	if strings.Contains(post.ArticleHTML, `t=42`) {
-		t.Error("Extra params should not be in embed URL")
+	// Timestamp should be included as start parameter
+	if !strings.Contains(post.ArticleHTML, `?start=42`) {
+		t.Error("Expected start=42 parameter in embed URL")
 	}
 }
 
@@ -393,5 +393,111 @@ func TestYouTubePlugin_ProcessPost_SpecialCharactersInVideoID(t *testing.T) {
 
 	if !strings.Contains(post.ArticleHTML, `embed/a_B-c1D2e3F`) {
 		t.Error("Expected video ID with special characters")
+	}
+}
+
+// =============================================================================
+// Timestamp Parsing Tests
+// =============================================================================
+
+func TestYouTubePlugin_ParseTimestamp_Seconds(t *testing.T) {
+	p := NewYouTubePlugin()
+
+	tests := []struct {
+		url      string
+		expected int
+	}{
+		{"https://www.youtube.com/watch?v=abc12345678&t=42", 42},
+		{"https://youtu.be/abc12345678?t=123", 123},
+		{"https://www.youtube.com/watch?v=abc12345678&start=60", 60},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			got := p.parseTimestamp(tt.url)
+			if got != tt.expected {
+				t.Errorf("parseTimestamp(%q) = %d, want %d", tt.url, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestYouTubePlugin_ParseTimestamp_Duration(t *testing.T) {
+	p := NewYouTubePlugin()
+
+	tests := []struct {
+		url      string
+		expected int
+	}{
+		{"https://youtu.be/abc12345678?t=1h2m3s", 3723}, // 1*3600 + 2*60 + 3
+		{"https://youtu.be/abc12345678?t=2m30s", 150},   // 2*60 + 30
+		{"https://youtu.be/abc12345678?t=1h", 3600},     // 1*3600
+		{"https://youtu.be/abc12345678?t=5m", 300},      // 5*60
+		{"https://youtu.be/abc12345678?t=45s", 45},      // 45
+		{"https://youtu.be/abc12345678?t=1h30m", 5400},  // 1*3600 + 30*60
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			got := p.parseTimestamp(tt.url)
+			if got != tt.expected {
+				t.Errorf("parseTimestamp(%q) = %d, want %d", tt.url, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestYouTubePlugin_ParseTimestamp_NoTimestamp(t *testing.T) {
+	p := NewYouTubePlugin()
+
+	urls := []string{
+		"https://www.youtube.com/watch?v=abc12345678",
+		"https://youtu.be/abc12345678",
+		"https://www.youtube.com/watch?v=abc12345678&list=PLxyz",
+	}
+
+	for _, u := range urls {
+		t.Run(u, func(t *testing.T) {
+			got := p.parseTimestamp(u)
+			if got != 0 {
+				t.Errorf("parseTimestamp(%q) = %d, want 0", u, got)
+			}
+		})
+	}
+}
+
+func TestYouTubePlugin_ProcessPost_TimestampInEmbed(t *testing.T) {
+	p := NewYouTubePlugin()
+
+	post := &models.Post{
+		ArticleHTML: `<p>https://youtu.be/dQw4w9WgXcQ?t=1m30s</p>`,
+	}
+
+	err := p.processPost(post)
+	if err != nil {
+		t.Errorf("processPost() error = %v", err)
+	}
+
+	// Should have start=90 (1*60 + 30)
+	if !strings.Contains(post.ArticleHTML, `?start=90`) {
+		t.Error("Expected start=90 in embed URL for 1m30s timestamp")
+	}
+}
+
+func TestYouTubePlugin_ProcessPost_NoTimestamp(t *testing.T) {
+	p := NewYouTubePlugin()
+
+	post := &models.Post{
+		ArticleHTML: `<p>https://youtu.be/dQw4w9WgXcQ</p>`,
+	}
+
+	err := p.processPost(post)
+	if err != nil {
+		t.Errorf("processPost() error = %v", err)
+	}
+
+	// Should NOT have any start parameter
+	if strings.Contains(post.ArticleHTML, `?start=`) {
+		t.Error("Should not have start parameter when no timestamp in URL")
 	}
 }
