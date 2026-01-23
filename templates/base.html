@@ -187,7 +187,8 @@
                 new PagefindUI({
                     element: "#pagefind-search",
                     showImages: {{ config.search.show_images | default:true | yesno:"true,false" }},
-                    excerptLength: {{ config.search.excerpt_length | default:200 }},
+                    excerptLength: {{ config.search.excerpt_length | default:120 }},
+                    showSubResults: true,
                     translations: {
                         placeholder: "{{ config.search.placeholder | default:'Search...' }}"
                     }
