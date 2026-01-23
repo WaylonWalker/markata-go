@@ -220,23 +220,22 @@ func addFeatureTheme(reader *bufio.Reader, cfg *models.Config) error {
 
 	// List some available palettes
 	loader := palettes.NewLoader()
-	availablePalettes := loader.ListAll()
-
-	fmt.Println("Available palettes:")
-	// Show a sample of palettes
-	shown := 0
-	for _, p := range availablePalettes {
-		if shown < 10 {
-			variant := "light"
-			if p.Variant == "dark" {
-				variant = "dark"
+	availablePalettes, err := loader.Discover()
+	if err != nil {
+		fmt.Println("(Could not discover palettes, using default)")
+	} else {
+		fmt.Println("Available palettes:")
+		// Show a sample of palettes
+		shown := 0
+		for _, p := range availablePalettes {
+			if shown < 10 {
+				fmt.Printf("  - %s (%s)\n", p.Name, p.Variant)
+				shown++
 			}
-			fmt.Printf("  - %s (%s)\n", p.Name, variant)
-			shown++
 		}
-	}
-	if len(availablePalettes) > 10 {
-		fmt.Printf("  ... and %d more (run 'markata-go palette list' to see all)\n", len(availablePalettes)-10)
+		if len(availablePalettes) > 10 {
+			fmt.Printf("  ... and %d more (run 'markata-go palette list' to see all)\n", len(availablePalettes)-10)
+		}
 	}
 
 	palette := prompt(reader, "\nPalette name", "default-light")
@@ -659,49 +658,6 @@ func runInitCommand(_ *cobra.Command, _ []string) error {
 	fmt.Println()
 
 	return nil
-}
-
-// generateInitConfig creates a TOML config string from the provided values.
-// Deprecated: Use writeConfigTOML instead.
-func generateInitConfig(title, description, author, url string) string {
-	return fmt.Sprintf(`# Markata-go configuration file
-
-[markata-go]
-# Site metadata
-title = %q
-url = %q
-description = %q
-author = %q
-
-# Output settings
-output_dir = "output"
-templates_dir = "templates"
-assets_dir = "static"
-
-# File discovery
-[markata-go.glob]
-patterns = ["**/*.md"]
-use_gitignore = true
-
-# Feed defaults
-[markata-go.feed_defaults]
-items_per_page = 10
-orphan_threshold = 3
-
-[markata-go.feed_defaults.formats]
-html = true
-rss = true
-atom = false
-json = false
-
-# Define custom feeds
-# [[markata-go.feeds]]
-# slug = "blog"
-# title = "Blog Posts"
-# filter = "published == true"
-# sort = "date"
-# reverse = true
-`, title, url, description, author)
 }
 
 // Ensure toml package is used (for potential future direct encoding)
