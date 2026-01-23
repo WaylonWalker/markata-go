@@ -75,6 +75,9 @@ type tomlConfig struct {
 	Theme         tomlThemeConfig       `toml:"theme"`
 	PostFormats   tomlPostFormatsConfig `toml:"post_formats"`
 	SEO           tomlSEOConfig         `toml:"seo"`
+	IndieAuth     tomlIndieAuthConfig   `toml:"indieauth"`
+	Webmention    tomlWebmentionConfig  `toml:"webmention"`
+	Components    tomlComponentsConfig  `toml:"components"`
 	UnknownFields map[string]any        `toml:"-"`
 }
 
@@ -160,11 +163,83 @@ type tomlSEOConfig struct {
 	LogoURL       string `toml:"logo_url"`
 }
 
+type tomlIndieAuthConfig struct {
+	Enabled               bool   `toml:"enabled"`
+	AuthorizationEndpoint string `toml:"authorization_endpoint"`
+	TokenEndpoint         string `toml:"token_endpoint"`
+	MeURL                 string `toml:"me_url"`
+}
+
+type tomlWebmentionConfig struct {
+	Enabled  bool   `toml:"enabled"`
+	Endpoint string `toml:"endpoint"`
+}
+
+type tomlComponentsConfig struct {
+	Nav        tomlNavComponentConfig        `toml:"nav"`
+	Footer     tomlFooterComponentConfig     `toml:"footer"`
+	DocSidebar tomlDocSidebarComponentConfig `toml:"doc_sidebar"`
+}
+
+type tomlNavComponentConfig struct {
+	Enabled  *bool  `toml:"enabled"`
+	Position string `toml:"position"`
+	Style    string `toml:"style"`
+}
+
+type tomlFooterComponentConfig struct {
+	Enabled *bool  `toml:"enabled"`
+	Content string `toml:"content"`
+}
+
+type tomlDocSidebarComponentConfig struct {
+	Enabled  *bool  `toml:"enabled"`
+	Position string `toml:"position"`
+	MinDepth int    `toml:"min_depth"`
+	MaxDepth int    `toml:"max_depth"`
+}
+
 func (s *tomlSEOConfig) toSEOConfig() models.SEOConfig {
 	return models.SEOConfig{
 		TwitterHandle: s.TwitterHandle,
 		DefaultImage:  s.DefaultImage,
 		LogoURL:       s.LogoURL,
+	}
+}
+
+func (i *tomlIndieAuthConfig) toIndieAuthConfig() models.IndieAuthConfig {
+	return models.IndieAuthConfig{
+		Enabled:               i.Enabled,
+		AuthorizationEndpoint: i.AuthorizationEndpoint,
+		TokenEndpoint:         i.TokenEndpoint,
+		MeURL:                 i.MeURL,
+	}
+}
+
+func (w *tomlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
+	return models.WebmentionConfig{
+		Enabled:  w.Enabled,
+		Endpoint: w.Endpoint,
+	}
+}
+
+func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
+	return models.ComponentsConfig{
+		Nav: models.NavComponentConfig{
+			Enabled:  c.Nav.Enabled,
+			Position: c.Nav.Position,
+			Style:    c.Nav.Style,
+		},
+		Footer: models.FooterComponentConfig{
+			Enabled: c.Footer.Enabled,
+			Content: c.Footer.Content,
+		},
+		DocSidebar: models.DocSidebarComponentConfig{
+			Enabled:  c.DocSidebar.Enabled,
+			Position: c.DocSidebar.Position,
+			MinDepth: c.DocSidebar.MinDepth,
+			MaxDepth: c.DocSidebar.MaxDepth,
+		},
 	}
 }
 
@@ -224,6 +299,13 @@ func (c *tomlConfig) toConfig() *models.Config {
 
 	// Convert SEO config
 	config.SEO = c.SEO.toSEOConfig()
+
+	// Convert IndieAuth and Webmention config
+	config.IndieAuth = c.IndieAuth.toIndieAuthConfig()
+	config.Webmention = c.Webmention.toWebmentionConfig()
+
+	// Convert Components config
+	config.Components = c.Components.toComponentsConfig()
 
 	return config
 }
@@ -328,6 +410,9 @@ type yamlConfig struct {
 	FeedDefaults  yamlFeedDefaults      `yaml:"feed_defaults"`
 	Concurrency   int                   `yaml:"concurrency"`
 	PostFormats   yamlPostFormatsConfig `yaml:"post_formats"`
+	IndieAuth     yamlIndieAuthConfig   `yaml:"indieauth"`
+	Webmention    yamlWebmentionConfig  `yaml:"webmention"`
+	Components    yamlComponentsConfig  `yaml:"components"`
 	SEO           yamlSEOConfig         `yaml:"seo"`
 }
 
@@ -406,11 +491,83 @@ type yamlSEOConfig struct {
 	LogoURL       string `yaml:"logo_url"`
 }
 
+type yamlIndieAuthConfig struct {
+	Enabled               bool   `yaml:"enabled"`
+	AuthorizationEndpoint string `yaml:"authorization_endpoint"`
+	TokenEndpoint         string `yaml:"token_endpoint"`
+	MeURL                 string `yaml:"me_url"`
+}
+
+type yamlWebmentionConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	Endpoint string `yaml:"endpoint"`
+}
+
+type yamlComponentsConfig struct {
+	Nav        yamlNavComponentConfig        `yaml:"nav"`
+	Footer     yamlFooterComponentConfig     `yaml:"footer"`
+	DocSidebar yamlDocSidebarComponentConfig `yaml:"doc_sidebar"`
+}
+
+type yamlNavComponentConfig struct {
+	Enabled  *bool  `yaml:"enabled"`
+	Position string `yaml:"position"`
+	Style    string `yaml:"style"`
+}
+
+type yamlFooterComponentConfig struct {
+	Enabled *bool  `yaml:"enabled"`
+	Content string `yaml:"content"`
+}
+
+type yamlDocSidebarComponentConfig struct {
+	Enabled  *bool  `yaml:"enabled"`
+	Position string `yaml:"position"`
+	MinDepth int    `yaml:"min_depth"`
+	MaxDepth int    `yaml:"max_depth"`
+}
+
 func (s *yamlSEOConfig) toSEOConfig() models.SEOConfig {
 	return models.SEOConfig{
 		TwitterHandle: s.TwitterHandle,
 		DefaultImage:  s.DefaultImage,
 		LogoURL:       s.LogoURL,
+	}
+}
+
+func (i *yamlIndieAuthConfig) toIndieAuthConfig() models.IndieAuthConfig {
+	return models.IndieAuthConfig{
+		Enabled:               i.Enabled,
+		AuthorizationEndpoint: i.AuthorizationEndpoint,
+		TokenEndpoint:         i.TokenEndpoint,
+		MeURL:                 i.MeURL,
+	}
+}
+
+func (w *yamlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
+	return models.WebmentionConfig{
+		Enabled:  w.Enabled,
+		Endpoint: w.Endpoint,
+	}
+}
+
+func (c *yamlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
+	return models.ComponentsConfig{
+		Nav: models.NavComponentConfig{
+			Enabled:  c.Nav.Enabled,
+			Position: c.Nav.Position,
+			Style:    c.Nav.Style,
+		},
+		Footer: models.FooterComponentConfig{
+			Enabled: c.Footer.Enabled,
+			Content: c.Footer.Content,
+		},
+		DocSidebar: models.DocSidebarComponentConfig{
+			Enabled:  c.DocSidebar.Enabled,
+			Position: c.DocSidebar.Position,
+			MinDepth: c.DocSidebar.MinDepth,
+			MaxDepth: c.DocSidebar.MaxDepth,
+		},
 	}
 }
 
@@ -470,6 +627,13 @@ func (c *yamlConfig) toConfig() *models.Config {
 
 	// Convert SEO config
 	config.SEO = c.SEO.toSEOConfig()
+
+	// Convert IndieAuth and Webmention config
+	config.IndieAuth = c.IndieAuth.toIndieAuthConfig()
+	config.Webmention = c.Webmention.toWebmentionConfig()
+
+	// Convert Components config
+	config.Components = c.Components.toComponentsConfig()
 
 	return config
 }
@@ -561,6 +725,8 @@ type jsonConfig struct {
 	FeedDefaults  jsonFeedDefaults      `json:"feed_defaults"`
 	Concurrency   int                   `json:"concurrency"`
 	PostFormats   jsonPostFormatsConfig `json:"post_formats"`
+	IndieAuth     jsonIndieAuthConfig   `json:"indieauth"`
+	Webmention    jsonWebmentionConfig  `json:"webmention"`
 	SEO           jsonSEOConfig         `json:"seo"`
 }
 
@@ -639,11 +805,39 @@ type jsonSEOConfig struct {
 	LogoURL       string `json:"logo_url"`
 }
 
+type jsonIndieAuthConfig struct {
+	Enabled               bool   `json:"enabled"`
+	AuthorizationEndpoint string `json:"authorization_endpoint"`
+	TokenEndpoint         string `json:"token_endpoint"`
+	MeURL                 string `json:"me_url"`
+}
+
+type jsonWebmentionConfig struct {
+	Enabled  bool   `json:"enabled"`
+	Endpoint string `json:"endpoint"`
+}
+
 func (s *jsonSEOConfig) toSEOConfig() models.SEOConfig {
 	return models.SEOConfig{
 		TwitterHandle: s.TwitterHandle,
 		DefaultImage:  s.DefaultImage,
 		LogoURL:       s.LogoURL,
+	}
+}
+
+func (i *jsonIndieAuthConfig) toIndieAuthConfig() models.IndieAuthConfig {
+	return models.IndieAuthConfig{
+		Enabled:               i.Enabled,
+		AuthorizationEndpoint: i.AuthorizationEndpoint,
+		TokenEndpoint:         i.TokenEndpoint,
+		MeURL:                 i.MeURL,
+	}
+}
+
+func (w *jsonWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
+	return models.WebmentionConfig{
+		Enabled:  w.Enabled,
+		Endpoint: w.Endpoint,
 	}
 }
 
@@ -703,6 +897,10 @@ func (c *jsonConfig) toConfig() *models.Config {
 
 	// Convert SEO config
 	config.SEO = c.SEO.toSEOConfig()
+
+	// Convert IndieAuth and Webmention config
+	config.IndieAuth = c.IndieAuth.toIndieAuthConfig()
+	config.Webmention = c.Webmention.toWebmentionConfig()
 
 	return config
 }
