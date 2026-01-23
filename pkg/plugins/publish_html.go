@@ -47,21 +47,22 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 }
 
 // writePost writes a single post to its output location in all enabled formats.
+// Shadow pages: Unpublished posts are still rendered but not included in feeds.
+// This allows sharing draft content via direct URL while keeping it out of public listings.
 func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Config) error {
 	// Skip posts marked as skip
 	if post.Skip {
 		return nil
 	}
 
-	// Skip unpublished posts
-	if !post.Published {
-		return nil
-	}
-
-	// Skip drafts
+	// Skip drafts - these are truly private work-in-progress content
 	if post.Draft {
 		return nil
 	}
+
+	// Note: Unpublished posts (published: false) are still rendered as "shadow pages"
+	// They won't appear in feeds (which filter by published == True) but can be
+	// accessed via direct URL for review/sharing purposes.
 
 	// Determine output path
 	// Use the slug to create: output_dir/slug/index.html

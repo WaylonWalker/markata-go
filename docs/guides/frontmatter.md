@@ -192,7 +192,20 @@ published: true
 
 - **Type:** boolean
 - **Default:** `false`
-- **Used for:** Filtering posts in feeds
+- **Used for:** Filtering posts in feeds, sitemaps, and RSS
+
+**Shadow Pages:** Posts with `published: false` are still rendered to HTML and accessible via direct URL. They become "shadow pages" - accessible but not discoverable through normal site navigation.
+
+| `published` | Behavior |
+|-------------|----------|
+| `true` | Rendered + included in feeds, sitemaps, RSS |
+| `false` | Rendered as "shadow page" + NOT in feeds, sitemaps, RSS |
+
+**Use cases for shadow pages:**
+- Draft content accessible to reviewers via direct URL
+- Private documentation not linked publicly
+- Work-in-progress content shared with specific people
+- Admin pages or staging content
 
 **Accepted values:**
 
@@ -203,7 +216,7 @@ published: false   # or: no, off
 
 ### draft (boolean)
 
-Marks the post as a work-in-progress.
+Marks the post as a work-in-progress that should NOT be rendered at all.
 
 ```yaml
 draft: true
@@ -211,9 +224,22 @@ draft: true
 
 - **Type:** boolean
 - **Default:** `false`
-- **Used for:** Filtering, visual indicators in templates
+- **Used for:** Truly private content that shouldn't be accessible
 
-**Note:** `draft: true` doesn't automatically exclude posts from builds. Use `published: false` or feed filters to exclude drafts.
+**Important:** Posts with `draft: true` are **never rendered** to HTML. Use this for content you don't want accessible at all, even via direct URL.
+
+| `draft` | Behavior |
+|---------|----------|
+| `false` | Content is rendered (visibility depends on `published`) |
+| `true` | Content is NOT rendered at all |
+
+**Comparison with `published`:**
+
+| Scenario | `published` | `draft` | Rendered? | In Feeds? |
+|----------|-------------|---------|-----------|-----------|
+| Public post | `true` | `false` | Yes | Yes |
+| Shadow page | `false` | `false` | Yes | No |
+| Private WIP | any | `true` | No | No |
 
 ### tags (list)
 

@@ -34,9 +34,9 @@ These fields SHOULD be supported:
 |-------|------|---------|-------------|
 | `title` | string? | null | Content title |
 | `date` | date? | null | Publication date |
-| `published` | bool | false | Is publicly visible |
-| `draft` | bool | false | Is a draft |
-| `skip` | bool | false | Skip during build |
+| `published` | bool | false | Include in feeds (shadow pages if false) |
+| `draft` | bool | false | Work-in-progress (not rendered) |
+| `skip` | bool | false | Skip during build (not rendered) |
 | `tags` | string[] | [] | Content tags/categories |
 | `description` | string? | null | Summary/excerpt |
 | `template` | string | "post.html" | Template to render with |
@@ -45,6 +45,49 @@ These fields SHOULD be supported:
 | `article_html` | string? | null | Rendered content (without template) |
 
 ### Field Behaviors
+
+#### `published` - Shadow Pages
+
+Controls whether content appears in feeds, sitemaps, and RSS. **All non-draft, non-skip content is rendered regardless of published status.**
+
+| `published` | `draft` | Behavior |
+|-------------|---------|----------|
+| `true` | `false` | Rendered + in feeds + in sitemap |
+| `false` | `false` | Rendered as "shadow page" + NOT in feeds + NOT in sitemap |
+| any | `true` | NOT rendered (draft is for private WIP) |
+
+**Shadow Pages** are posts with `published: false` that are:
+- **Rendered** to HTML and accessible via direct URL
+- **Excluded** from feeds, sitemaps, and RSS
+- **Not discoverable** through normal site navigation
+
+**Use cases for shadow pages:**
+- Draft content accessible to reviewers via direct URL
+- Private documentation not linked publicly
+- Work-in-progress shared with specific people
+- Admin pages or development tools
+- Staging versions of pages
+
+**Example:**
+```yaml
+---
+title: "Draft Post - For Review"
+published: false  # Renders to /draft-post/, but not in feeds
+---
+This content is accessible at /draft-post/ but won't appear in 
+the blog feed or sitemap.
+```
+
+#### `draft` - True Private Content
+
+Posts with `draft: true` are **never rendered** regardless of other settings. Use this for truly private work-in-progress content that should not be accessible at all.
+
+```yaml
+---
+title: "Very Early Draft"
+draft: true  # Will NOT be rendered at all
+---
+```
 
 #### `config_overrides`
 
