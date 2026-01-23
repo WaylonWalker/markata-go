@@ -7,12 +7,14 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // PublishHTMLPlugin writes individual post HTML files during the write stage.
+// It supports multiple output formats: HTML, Markdown source, and OG card HTML.
 type PublishHTMLPlugin struct{}
 
 // NewPublishHTMLPlugin creates a new PublishHTMLPlugin.
@@ -25,7 +27,7 @@ func (p *PublishHTMLPlugin) Name() string {
 	return "publish_html"
 }
 
-// Write outputs each post's HTML to the configured output directory.
+// Write outputs each post to the configured output directory in enabled formats.
 func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
@@ -41,7 +43,7 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 	})
 }
 
-// writePost writes a single post to its output location.
+// writePost writes a single post to its output location in all enabled formats.
 func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Config) error {
 	// Skip posts marked as skip
 	if post.Skip {
@@ -72,6 +74,35 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 		return fmt.Errorf("creating post directory %s: %w", postDir, err)
 	}
 
+	// Get post formats config from Extra
+	postFormats := getPostFormatsConfig(config)
+
+	// Write HTML format (default)
+	if postFormats.IsHTMLEnabled() {
+		if err := p.writeHTMLFormat(post, config, postDir); err != nil {
+			return err
+		}
+	}
+
+	// Write Markdown format (raw source)
+	if postFormats.Markdown {
+		if err := p.writeMarkdownFormat(post, postDir); err != nil {
+			return err
+		}
+	}
+
+	// Write OG format (social card HTML)
+	if postFormats.OG {
+		if err := p.writeOGFormat(post, config, postDir); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// writeHTMLFormat writes the standard HTML output for a post.
+func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle.Config, postDir string) error {
 	// Determine HTML content to write
 	var htmlContent string
 	switch {
@@ -94,6 +125,244 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	}
 
 	return nil
+}
+
+// writeMarkdownFormat writes the raw markdown source with frontmatter.
+func (p *PublishHTMLPlugin) writeMarkdownFormat(post *models.Post, postDir string) error {
+	// Reconstruct frontmatter
+	var buf strings.Builder
+	buf.WriteString("---\n")
+
+	if post.Title != nil {
+		buf.WriteString(fmt.Sprintf("title: %q\n", *post.Title))
+	}
+	if post.Description != nil {
+		buf.WriteString(fmt.Sprintf("description: %q\n", *post.Description))
+	}
+	if post.Date != nil {
+		buf.WriteString(fmt.Sprintf("date: %s\n", post.Date.Format("2006-01-02")))
+	}
+	buf.WriteString(fmt.Sprintf("published: %t\n", post.Published))
+	if post.Draft {
+		buf.WriteString(fmt.Sprintf("draft: %t\n", post.Draft))
+	}
+	if len(post.Tags) > 0 {
+		buf.WriteString("tags:\n")
+		for _, tag := range post.Tags {
+			buf.WriteString(fmt.Sprintf("  - %s\n", tag))
+		}
+	}
+	if post.Template != "" && post.Template != "post.html" {
+		buf.WriteString(fmt.Sprintf("template: %s\n", post.Template))
+	}
+
+	buf.WriteString("---\n\n")
+	buf.WriteString(post.Content)
+
+	// Write index.md
+	outputPath := filepath.Join(postDir, "index.md")
+	//nolint:gosec // G306: Output files need 0644 for web serving
+	if err := os.WriteFile(outputPath, []byte(buf.String()), 0o644); err != nil {
+		return fmt.Errorf("writing %s: %w", outputPath, err)
+	}
+
+	return nil
+}
+
+// writeOGFormat writes the OpenGraph card HTML for social image generation.
+func (p *PublishHTMLPlugin) writeOGFormat(post *models.Post, config *lifecycle.Config, postDir string) error {
+	// Create og subdirectory
+	ogDir := filepath.Join(postDir, "og")
+	if err := os.MkdirAll(ogDir, 0o755); err != nil {
+		return fmt.Errorf("creating og directory %s: %w", ogDir, err)
+	}
+
+	// Generate OG HTML
+	ogHTML := p.generateOGHTML(post, config)
+
+	// Write og/index.html
+	outputPath := filepath.Join(ogDir, "index.html")
+	//nolint:gosec // G306: HTML output files need 0644 for web serving
+	if err := os.WriteFile(outputPath, []byte(ogHTML), 0o644); err != nil {
+		return fmt.Errorf("writing %s: %w", outputPath, err)
+	}
+
+	return nil
+}
+
+// generateOGHTML generates OpenGraph card HTML optimized for 1200x630 screenshots.
+func (p *PublishHTMLPlugin) generateOGHTML(post *models.Post, config *lifecycle.Config) string {
+	siteTitle := getSiteTitle(config)
+
+	title := post.Slug
+	if post.Title != nil {
+		title = *post.Title
+	}
+
+	description := ""
+	if post.Description != nil {
+		description = *post.Description
+	}
+
+	dateStr := ""
+	if post.Date != nil {
+		dateStr = post.Date.Format("January 2, 2006")
+	}
+
+	// Built-in OG card template (1200x630 optimized for social images)
+	ogTemplate := `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1200, height=630">
+    <title>{{.Title}} - OG Card</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            width: 1200px;
+            height: 630px;
+            overflow: hidden;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+        }
+        .og-card {
+            background: white;
+            border-radius: 20px;
+            padding: 60px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .og-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        h1 {
+            font-size: 56px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: #1a202c;
+            margin-bottom: 24px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+        .description {
+            font-size: 28px;
+            color: #4a5568;
+            line-height: 1.5;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        .og-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 30px;
+            border-top: 2px solid #e2e8f0;
+        }
+        .site-name {
+            font-size: 24px;
+            font-weight: 600;
+            color: #667eea;
+        }
+        .date {
+            font-size: 20px;
+            color: #718096;
+        }
+        {{if .Tags}}
+        .tags {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .tag {
+            background: #edf2f7;
+            color: #4a5568;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 18px;
+        }
+        {{end}}
+    </style>
+</head>
+<body>
+    <div class="og-card">
+        <div class="og-content">
+            <h1>{{.Title}}</h1>
+            {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
+            {{if .Tags}}
+            <div class="tags">
+                {{range .TagsDisplay}}
+                <span class="tag">{{.}}</span>
+                {{end}}
+            </div>
+            {{end}}
+        </div>
+        <div class="og-footer">
+            <span class="site-name">{{.SiteTitle}}</span>
+            {{if .DateStr}}<span class="date">{{.DateStr}}</span>{{end}}
+        </div>
+    </div>
+</body>
+</html>`
+
+	tmpl, err := template.New("og").Parse(ogTemplate)
+	if err != nil {
+		// Return minimal HTML on template error
+		return fmt.Sprintf("<html><body><h1>%s</h1></body></html>",
+			template.HTMLEscapeString(title))
+	}
+
+	// Limit tags to first 3 for display
+	tagsDisplay := post.Tags
+	if len(tagsDisplay) > 3 {
+		tagsDisplay = tagsDisplay[:3]
+	}
+
+	data := struct {
+		Title       string
+		Description string
+		DateStr     string
+		Tags        []string
+		TagsDisplay []string
+		SiteTitle   string
+	}{
+		Title:       title,
+		Description: description,
+		DateStr:     dateStr,
+		Tags:        post.Tags,
+		TagsDisplay: tagsDisplay,
+		SiteTitle:   siteTitle,
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		// Return minimal HTML on execution error
+		return fmt.Sprintf("<html><body><h1>%s</h1></body></html>",
+			template.HTMLEscapeString(title))
+	}
+
+	return buf.String()
 }
 
 // wrapInTemplate wraps post content in a basic HTML template.
@@ -208,3 +477,13 @@ var (
 	_ lifecycle.Plugin      = (*PublishHTMLPlugin)(nil)
 	_ lifecycle.WritePlugin = (*PublishHTMLPlugin)(nil)
 )
+
+// getPostFormatsConfig extracts PostFormatsConfig from lifecycle.Config.Extra.
+func getPostFormatsConfig(config *lifecycle.Config) models.PostFormatsConfig {
+	if config.Extra != nil {
+		if pf, ok := config.Extra["post_formats"].(models.PostFormatsConfig); ok {
+			return pf
+		}
+	}
+	return models.NewPostFormatsConfig()
+}

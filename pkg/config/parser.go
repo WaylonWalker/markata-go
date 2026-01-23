@@ -56,24 +56,25 @@ func ParseJSON(data []byte) (*models.Config, error) {
 
 // tomlConfig is an internal struct for parsing TOML configuration.
 type tomlConfig struct {
-	OutputDir     string             `toml:"output_dir"`
-	URL           string             `toml:"url"`
-	Title         string             `toml:"title"`
-	Description   string             `toml:"description"`
-	Author        string             `toml:"author"`
-	AssetsDir     string             `toml:"assets_dir"`
-	TemplatesDir  string             `toml:"templates_dir"`
-	Nav           []tomlNavItem      `toml:"nav"`
-	Footer        tomlFooterConfig   `toml:"footer"`
-	Hooks         []string           `toml:"hooks"`
-	DisabledHooks []string           `toml:"disabled_hooks"`
-	Glob          tomlGlobConfig     `toml:"glob"`
-	Markdown      tomlMarkdownConfig `toml:"markdown"`
-	Feeds         []tomlFeedConfig   `toml:"feeds"`
-	FeedDefaults  tomlFeedDefaults   `toml:"feed_defaults"`
-	Concurrency   int                `toml:"concurrency"`
-	Theme         tomlThemeConfig    `toml:"theme"`
-	UnknownFields map[string]any     `toml:"-"`
+	OutputDir     string                `toml:"output_dir"`
+	URL           string                `toml:"url"`
+	Title         string                `toml:"title"`
+	Description   string                `toml:"description"`
+	Author        string                `toml:"author"`
+	AssetsDir     string                `toml:"assets_dir"`
+	TemplatesDir  string                `toml:"templates_dir"`
+	Nav           []tomlNavItem         `toml:"nav"`
+	Footer        tomlFooterConfig      `toml:"footer"`
+	Hooks         []string              `toml:"hooks"`
+	DisabledHooks []string              `toml:"disabled_hooks"`
+	Glob          tomlGlobConfig        `toml:"glob"`
+	Markdown      tomlMarkdownConfig    `toml:"markdown"`
+	Feeds         []tomlFeedConfig      `toml:"feeds"`
+	FeedDefaults  tomlFeedDefaults      `toml:"feed_defaults"`
+	Concurrency   int                   `toml:"concurrency"`
+	Theme         tomlThemeConfig       `toml:"theme"`
+	PostFormats   tomlPostFormatsConfig `toml:"post_formats"`
+	UnknownFields map[string]any        `toml:"-"`
 }
 
 type tomlNavItem struct {
@@ -146,6 +147,20 @@ type tomlSyndicationConfig struct {
 	IncludeContent bool `toml:"include_content"`
 }
 
+type tomlPostFormatsConfig struct {
+	HTML     *bool `toml:"html"`
+	Markdown bool  `toml:"markdown"`
+	OG       bool  `toml:"og"`
+}
+
+func (p *tomlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
+	return models.PostFormatsConfig{
+		HTML:     p.HTML,
+		Markdown: p.Markdown,
+		OG:       p.OG,
+	}
+}
+
 func (c *tomlConfig) toConfig() *models.Config {
 	config := &models.Config{
 		OutputDir:     c.OutputDir,
@@ -188,6 +203,9 @@ func (c *tomlConfig) toConfig() *models.Config {
 
 	// Convert feed defaults
 	config.FeedDefaults = c.FeedDefaults.toFeedDefaults()
+
+	// Convert post formats
+	config.PostFormats = c.PostFormats.toPostFormatsConfig()
 
 	return config
 }
@@ -275,22 +293,23 @@ func (d *tomlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 
 // yamlConfig is an internal struct for parsing YAML configuration.
 type yamlConfig struct {
-	OutputDir     string             `yaml:"output_dir"`
-	URL           string             `yaml:"url"`
-	Title         string             `yaml:"title"`
-	Description   string             `yaml:"description"`
-	Author        string             `yaml:"author"`
-	AssetsDir     string             `yaml:"assets_dir"`
-	TemplatesDir  string             `yaml:"templates_dir"`
-	Nav           []yamlNavItem      `yaml:"nav"`
-	Footer        yamlFooterConfig   `yaml:"footer"`
-	Hooks         []string           `yaml:"hooks"`
-	DisabledHooks []string           `yaml:"disabled_hooks"`
-	Glob          yamlGlobConfig     `yaml:"glob"`
-	Markdown      yamlMarkdownConfig `yaml:"markdown"`
-	Feeds         []yamlFeedConfig   `yaml:"feeds"`
-	FeedDefaults  yamlFeedDefaults   `yaml:"feed_defaults"`
-	Concurrency   int                `yaml:"concurrency"`
+	OutputDir     string                `yaml:"output_dir"`
+	URL           string                `yaml:"url"`
+	Title         string                `yaml:"title"`
+	Description   string                `yaml:"description"`
+	Author        string                `yaml:"author"`
+	AssetsDir     string                `yaml:"assets_dir"`
+	TemplatesDir  string                `yaml:"templates_dir"`
+	Nav           []yamlNavItem         `yaml:"nav"`
+	Footer        yamlFooterConfig      `yaml:"footer"`
+	Hooks         []string              `yaml:"hooks"`
+	DisabledHooks []string              `yaml:"disabled_hooks"`
+	Glob          yamlGlobConfig        `yaml:"glob"`
+	Markdown      yamlMarkdownConfig    `yaml:"markdown"`
+	Feeds         []yamlFeedConfig      `yaml:"feeds"`
+	FeedDefaults  yamlFeedDefaults      `yaml:"feed_defaults"`
+	Concurrency   int                   `yaml:"concurrency"`
+	PostFormats   yamlPostFormatsConfig `yaml:"post_formats"`
 }
 
 type yamlNavItem struct {
@@ -356,6 +375,20 @@ type yamlSyndicationConfig struct {
 	IncludeContent bool `yaml:"include_content"`
 }
 
+type yamlPostFormatsConfig struct {
+	HTML     *bool `yaml:"html"`
+	Markdown bool  `yaml:"markdown"`
+	OG       bool  `yaml:"og"`
+}
+
+func (p *yamlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
+	return models.PostFormatsConfig{
+		HTML:     p.HTML,
+		Markdown: p.Markdown,
+		OG:       p.OG,
+	}
+}
+
 //nolint:dupl // Intentional duplication - each format has its own conversion method
 func (c *yamlConfig) toConfig() *models.Config {
 	config := &models.Config{
@@ -398,6 +431,9 @@ func (c *yamlConfig) toConfig() *models.Config {
 
 	// Convert feed defaults
 	config.FeedDefaults = c.FeedDefaults.toFeedDefaults()
+
+	// Convert post formats
+	config.PostFormats = c.PostFormats.toPostFormatsConfig()
 
 	return config
 }
@@ -472,22 +508,23 @@ func (d *yamlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 
 // jsonConfig is an internal struct for parsing JSON configuration.
 type jsonConfig struct {
-	OutputDir     string             `json:"output_dir"`
-	URL           string             `json:"url"`
-	Title         string             `json:"title"`
-	Description   string             `json:"description"`
-	Author        string             `json:"author"`
-	AssetsDir     string             `json:"assets_dir"`
-	TemplatesDir  string             `json:"templates_dir"`
-	Nav           []jsonNavItem      `json:"nav"`
-	Footer        jsonFooterConfig   `json:"footer"`
-	Hooks         []string           `json:"hooks"`
-	DisabledHooks []string           `json:"disabled_hooks"`
-	Glob          jsonGlobConfig     `json:"glob"`
-	Markdown      jsonMarkdownConfig `json:"markdown"`
-	Feeds         []jsonFeedConfig   `json:"feeds"`
-	FeedDefaults  jsonFeedDefaults   `json:"feed_defaults"`
-	Concurrency   int                `json:"concurrency"`
+	OutputDir     string                `json:"output_dir"`
+	URL           string                `json:"url"`
+	Title         string                `json:"title"`
+	Description   string                `json:"description"`
+	Author        string                `json:"author"`
+	AssetsDir     string                `json:"assets_dir"`
+	TemplatesDir  string                `json:"templates_dir"`
+	Nav           []jsonNavItem         `json:"nav"`
+	Footer        jsonFooterConfig      `json:"footer"`
+	Hooks         []string              `json:"hooks"`
+	DisabledHooks []string              `json:"disabled_hooks"`
+	Glob          jsonGlobConfig        `json:"glob"`
+	Markdown      jsonMarkdownConfig    `json:"markdown"`
+	Feeds         []jsonFeedConfig      `json:"feeds"`
+	FeedDefaults  jsonFeedDefaults      `json:"feed_defaults"`
+	Concurrency   int                   `json:"concurrency"`
+	PostFormats   jsonPostFormatsConfig `json:"post_formats"`
 }
 
 type jsonNavItem struct {
@@ -553,6 +590,20 @@ type jsonSyndicationConfig struct {
 	IncludeContent bool `json:"include_content"`
 }
 
+type jsonPostFormatsConfig struct {
+	HTML     *bool `json:"html"`
+	Markdown bool  `json:"markdown"`
+	OG       bool  `json:"og"`
+}
+
+func (p *jsonPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
+	return models.PostFormatsConfig{
+		HTML:     p.HTML,
+		Markdown: p.Markdown,
+		OG:       p.OG,
+	}
+}
+
 //nolint:dupl // Intentional duplication - each format has its own conversion method
 func (c *jsonConfig) toConfig() *models.Config {
 	config := &models.Config{
@@ -595,6 +646,9 @@ func (c *jsonConfig) toConfig() *models.Config {
 
 	// Convert feed defaults
 	config.FeedDefaults = c.FeedDefaults.toFeedDefaults()
+
+	// Convert post formats
+	config.PostFormats = c.PostFormats.toPostFormatsConfig()
 
 	return config
 }

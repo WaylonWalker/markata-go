@@ -97,14 +97,38 @@ var multiHyphenRegex = regexp.MustCompile(`-+`)
 
 // GenerateSlug generates a URL-safe slug from the title or path.
 // If a title is set, it uses the title; otherwise, it derives the slug from the file path.
+//
+// Special handling for index.md files:
+//   - ./index.md → "" (empty slug, becomes homepage)
+//   - docs/index.md → "docs"
+//   - blog/guides/index.md → "blog/guides"
 func (p *Post) GenerateSlug() {
 	var source string
+
+	// Check for index.md special case
+	base := filepath.Base(p.Path)
+	if strings.ToLower(base) == "index.md" {
+		// For index.md files, use the directory path as the slug
+		dir := filepath.Dir(p.Path)
+		// Clean up the directory path
+		dir = filepath.Clean(dir)
+		// Remove leading ./ or just .
+		if dir == "." {
+			p.Slug = "" // Root index.md becomes homepage
+			return
+		}
+		// Use directory path as slug (normalized)
+		slug := strings.ToLower(dir)
+		slug = strings.ReplaceAll(slug, string(filepath.Separator), "/")
+		slug = strings.TrimPrefix(slug, "./")
+		p.Slug = slug
+		return
+	}
 
 	if p.Title != nil && *p.Title != "" {
 		source = *p.Title
 	} else {
 		// Use the filename without extension
-		base := filepath.Base(p.Path)
 		source = strings.TrimSuffix(base, filepath.Ext(base))
 	}
 
@@ -127,10 +151,15 @@ func (p *Post) GenerateSlug() {
 }
 
 // GenerateHref generates the relative URL path from the slug.
-// The href follows the pattern /{slug}/
+// The href follows the pattern /{slug}/ or / for empty slug (homepage).
 func (p *Post) GenerateHref() {
 	if p.Slug == "" {
 		p.GenerateSlug()
+	}
+	// Empty slug means homepage
+	if p.Slug == "" {
+		p.Href = "/"
+		return
 	}
 	p.Href = "/" + p.Slug + "/"
 }
