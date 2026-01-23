@@ -1,0 +1,200 @@
+/* ==========================================================================
+   Component Styles - Layout Components System
+   ========================================================================== */
+
+/* ==========================================================================
+   Navigation Component
+   ========================================================================== */
+
+.site-nav {
+  display: flex;
+  gap: 1rem;
+}
+
+/* Horizontal navigation (default, for header) */
+.site-nav--header,
+.site-nav--horizontal {
+  flex-direction: row;
+  align-items: center;
+}
+
+/* Vertical navigation (for sidebar) */
+.site-nav--sidebar,
+.site-nav--vertical {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.nav-link {
+  color: var(--color-text);
+  text-decoration: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-link:hover {
+  color: var(--color-primary);
+  background-color: var(--color-surface);
+}
+
+/* ==========================================================================
+   Footer Component
+   ========================================================================== */
+
+.site-footer {
+  margin-top: auto;
+  padding: 2rem 0;
+  background-color: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+
+.footer-text {
+  margin-bottom: 1rem;
+}
+
+.footer-links {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.footer-links a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  color: var(--color-primary);
+}
+
+.footer-copyright {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.footer-copyright a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.footer-copyright a:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Document Sidebar (Table of Contents)
+   ========================================================================== */
+
+.content-wrapper {
+  display: block;
+}
+
+.content-wrapper--with-sidebar {
+  display: grid;
+  gap: 2rem;
+  max-width: 100%;
+}
+
+/* Sidebar on the right (default) */
+.content-wrapper--sidebar-right {
+  grid-template-columns: 1fr 250px;
+}
+
+.content-wrapper--sidebar-right article {
+  order: 1;
+}
+
+.content-wrapper--sidebar-right .doc-sidebar {
+  order: 2;
+}
+
+/* Sidebar on the left */
+.content-wrapper--sidebar-left {
+  grid-template-columns: 250px 1fr;
+}
+
+.content-wrapper--sidebar-left article {
+  order: 2;
+}
+
+.content-wrapper--sidebar-left .doc-sidebar {
+  order: 1;
+}
+
+.doc-sidebar {
+  position: sticky;
+  top: 1rem;
+  height: fit-content;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
+.toc {
+  padding: 1rem;
+  background-color: var(--color-surface);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.toc-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toc-list--nested {
+  margin-left: 1rem;
+  margin-top: 0.25rem;
+}
+
+.toc-item {
+  margin-bottom: 0.25rem;
+}
+
+.toc-item--level-2 {
+  /* Top-level items */
+}
+
+.toc-item--level-3 {
+  font-size: 0.9375rem;
+}
+
+.toc-item--level-4 {
+  font-size: 0.875rem;
+}
+
+.toc-link {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  display: block;
+  padding: 0.25rem 0;
+  transition: color 0.2s;
+}
+
+.toc-link:hover {
+  color: var(--color-primary);
+}
+
+/* Responsive: Hide sidebar on mobile */
+@media (max-width: 1024px) {
+  .content-wrapper--with-sidebar {
+    display: block;
+  }
+  
+  .doc-sidebar {
+    display: none;
+  }
+}

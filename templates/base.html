@@ -39,6 +39,7 @@
     <!-- Theme CSS -->
     <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
     <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
+    <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset }}">
     <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
     <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
     <link rel="stylesheet" href="/css/chroma.css">
@@ -110,15 +111,7 @@
     <header class="site-header">
         <div class="container">
             <a href="/" class="site-title">{{ config.title | default:"Home" }}</a>
-            <nav class="site-nav">
-                {% if config.nav %}
-                    {% for item in config.nav %}
-                <a href="{{ item.url }}"{% if item.external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.label }}</a>
-                    {% endfor %}
-                {% else %}
-                <a href="/blog/">Blog</a>
-                {% endif %}
-            </nav>
+            {% include "components/nav.html" %}
         </div>
     </header>
     {% endblock %}
@@ -128,15 +121,7 @@
     </main>
     
     {% block footer %}
-    <footer class="site-footer">
-        <div class="container">
-            {% if config.footer.text %}
-            <p>{{ config.footer.text }}</p>
-            {% else %}
-            <p>&copy; {{ "now" | date:"2006" }} {{ config.author | default:"" }}. Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
-            {% endif %}
-        </div>
-    </footer>
+    {% include "components/footer.html" %}
     {% endblock %}
     
     {% block htmx %}{% endblock %}
