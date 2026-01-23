@@ -66,10 +66,10 @@ border-focus = "green"
 
 # Layer 3: Component Colors
 [palette.components]
-code-bg       = "bg1"
+code-bg       = "bg0"
 code-text     = "fg"
-code-comment  = "grey0"
-code-keyword  = "red"
+code-comment  = "grey1"
+code-keyword  = "purple"
 code-string   = "green"
 code-number   = "purple"
 code-function = "blue"
