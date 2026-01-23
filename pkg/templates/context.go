@@ -162,6 +162,13 @@ func configToMap(c *models.Config) map[string]interface{} {
 		footerMap["show_copyright"] = true // default to true
 	}
 
+	// Convert SEO to map
+	seoMap := map[string]interface{}{
+		"twitter_handle": c.SEO.TwitterHandle,
+		"default_image":  c.SEO.DefaultImage,
+		"logo_url":       c.SEO.LogoURL,
+	}
+
 	return map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
@@ -172,6 +179,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"templates_dir": c.TemplatesDir,
 		"nav":           navItems,
 		"footer":        footerMap,
+		"seo":           seoMap,
 	}
 }
 
