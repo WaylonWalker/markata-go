@@ -241,6 +241,21 @@ type Config struct {
 
 	// Search configures site-wide search functionality using Pagefind
 	Search SearchConfig `json:"search" yaml:"search" toml:"search"`
+
+	// Layout configures the layout system for page structure
+	Layout LayoutConfig `json:"layout" yaml:"layout" toml:"layout"`
+
+	// Sidebar configures the sidebar navigation component
+	Sidebar SidebarConfig `json:"sidebar" yaml:"sidebar" toml:"sidebar"`
+
+	// Toc configures the table of contents component
+	Toc TocConfig `json:"toc" yaml:"toc" toml:"toc"`
+
+	// Header configures the header component for layouts
+	Header HeaderLayoutConfig `json:"header" yaml:"header" toml:"header"`
+
+	// FooterLayout configures the footer component for layouts
+	FooterLayout FooterLayoutConfig `json:"footer_layout" yaml:"footer_layout" toml:"footer_layout"`
 }
 
 // HeadConfig configures elements added to the HTML <head> section.
@@ -901,12 +916,17 @@ func NewConfig() *Config {
 			Palette:   "default-light",
 			Variables: make(map[string]string),
 		},
-		PostFormats: NewPostFormatsConfig(),
-		SEO:         NewSEOConfig(),
-		IndieAuth:   NewIndieAuthConfig(),
-		Webmention:  NewWebmentionConfig(),
-		Components:  NewComponentsConfig(),
-		Search:      NewSearchConfig(),
+		PostFormats:  NewPostFormatsConfig(),
+		SEO:          NewSEOConfig(),
+		IndieAuth:    NewIndieAuthConfig(),
+		Webmention:   NewWebmentionConfig(),
+		Components:   NewComponentsConfig(),
+		Search:       NewSearchConfig(),
+		Layout:       NewLayoutConfig(),
+		Sidebar:      NewSidebarConfig(),
+		Toc:          NewTocConfig(),
+		Header:       NewHeaderLayoutConfig(),
+		FooterLayout: NewFooterLayoutConfig(),
 	}
 }
 

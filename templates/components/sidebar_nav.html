@@ -1,0 +1,59 @@
+{# Sidebar Navigation Component - Hierarchical navigation for docs layout #}
+<nav class="sidebar-nav" aria-label="Sidebar navigation">
+    {% if config.sidebar.nav %}
+    <ul class="sidebar-nav-list">
+        {% for item in config.sidebar.nav %}
+        <li class="sidebar-nav-item{% if item.children %} sidebar-nav-item--has-children{% endif %}{% if post.href == item.href %} sidebar-nav-item--active{% endif %}">
+            {% if item.href %}
+            <a href="{{ item.href }}" class="sidebar-nav-link{% if post.href == item.href %} sidebar-nav-link--active{% endif %}">
+                {{ item.title }}
+            </a>
+            {% else %}
+            <span class="sidebar-nav-label">{{ item.title }}</span>
+            {% endif %}
+            
+            {% if item.children %}
+            <ul class="sidebar-nav-children">
+                {% for child in item.children %}
+                <li class="sidebar-nav-item{% if child.children %} sidebar-nav-item--has-children{% endif %}{% if post.href == child.href %} sidebar-nav-item--active{% endif %}">
+                    {% if child.href %}
+                    <a href="{{ child.href }}" class="sidebar-nav-link{% if post.href == child.href %} sidebar-nav-link--active{% endif %}">
+                        {{ child.title }}
+                    </a>
+                    {% else %}
+                    <span class="sidebar-nav-label">{{ child.title }}</span>
+                    {% endif %}
+                    
+                    {% if child.children %}
+                    <ul class="sidebar-nav-children">
+                        {% for grandchild in child.children %}
+                        <li class="sidebar-nav-item{% if post.href == grandchild.href %} sidebar-nav-item--active{% endif %}">
+                            <a href="{{ grandchild.href }}" class="sidebar-nav-link{% if post.href == grandchild.href %} sidebar-nav-link--active{% endif %}">
+                                {{ grandchild.title }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% elif feed_sidebar_posts %}
+    {# Auto-generated navigation from feed posts #}
+    <ul class="sidebar-nav-list">
+        {% for nav_post in feed_sidebar_posts %}
+        <li class="sidebar-nav-item{% if post.href == nav_post.href %} sidebar-nav-item--active{% endif %}">
+            <a href="{{ nav_post.href }}" class="sidebar-nav-link{% if post.href == nav_post.href %} sidebar-nav-link--active{% endif %}">
+                {{ nav_post.title }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="sidebar-empty">No navigation configured.</p>
+    {% endif %}
+</nav>

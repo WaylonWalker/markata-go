@@ -1,0 +1,30 @@
+{# TOC List Component - Table of contents list from post headings #}
+{% if post.Extra.toc %}
+<nav class="toc-nav" aria-label="Table of contents">
+    <ul class="toc-list">
+        {% for heading in post.Extra.toc %}
+        <li class="toc-item toc-item--h{{ heading.level }}" data-level="{{ heading.level }}">
+            <a href="#{{ heading.id }}" class="toc-link">{{ heading.text }}</a>
+            {% if heading.children %}
+            <ul class="toc-list toc-list--nested">
+                {% for child in heading.children %}
+                <li class="toc-item toc-item--h{{ child.level }}" data-level="{{ child.level }}">
+                    <a href="#{{ child.id }}" class="toc-link">{{ child.text }}</a>
+                    {% if child.children %}
+                    <ul class="toc-list toc-list--nested">
+                        {% for grandchild in child.children %}
+                        <li class="toc-item toc-item--h{{ grandchild.level }}" data-level="{{ grandchild.level }}">
+                            <a href="#{{ grandchild.id }}" class="toc-link">{{ grandchild.text }}</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}

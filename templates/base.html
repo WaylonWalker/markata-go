@@ -75,6 +75,7 @@
     <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
     <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
     <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset }}">
+    <link rel="stylesheet" href="{{ 'css/layouts.css' | theme_asset }}">
     <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
     <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
     <link rel="stylesheet" href="/css/chroma.css">
@@ -148,7 +149,7 @@
     </script>
     {% endif %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
     {% block header %}
     <header class="site-header" data-pagefind-ignore>
         <div class="container">
