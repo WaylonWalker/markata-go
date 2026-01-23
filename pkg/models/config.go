@@ -413,6 +413,31 @@ func NewQRCodeConfig() QRCodeConfig {
 	}
 }
 
+// YouTubeConfig configures the youtube plugin.
+type YouTubeConfig struct {
+	// Enabled controls whether YouTube URL conversion is active (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// PrivacyEnhanced uses youtube-nocookie.com for enhanced privacy (default: true)
+	PrivacyEnhanced bool `json:"privacy_enhanced" yaml:"privacy_enhanced" toml:"privacy_enhanced"`
+
+	// ContainerClass is the CSS class for the embed container (default: "youtube-embed")
+	ContainerClass string `json:"container_class" yaml:"container_class" toml:"container_class"`
+
+	// LazyLoad enables lazy loading of iframe (default: true)
+	LazyLoad bool `json:"lazy_load" yaml:"lazy_load" toml:"lazy_load"`
+}
+
+// NewYouTubeConfig creates a new YouTubeConfig with default values.
+func NewYouTubeConfig() YouTubeConfig {
+	return YouTubeConfig{
+		Enabled:         true,
+		PrivacyEnhanced: true,
+		ContainerClass:  "youtube-embed",
+		LazyLoad:        true,
+	}
+}
+
 // NewConfig creates a new Config with default values.
 func NewConfig() *Config {
 	return &Config{
