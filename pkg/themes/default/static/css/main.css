@@ -801,6 +801,28 @@ a.wikilink.wikilink-missing {
   font-size: var(--text-sm);
 }
 
+/* YouTube Embeds (youtube plugin) */
+.youtube-embed {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  height: 0;
+  overflow: hidden;
+  max-width: 100%;
+  margin: var(--space-6) 0;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.youtube-embed iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: var(--radius-lg);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   html {

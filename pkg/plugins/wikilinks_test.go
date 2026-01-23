@@ -78,7 +78,7 @@ func TestWikilinksPlugin_BasicWikilink(t *testing.T) {
 		}
 	}
 
-	// Check that link is created with correct href and class
+	// Check that link is created with correct href, class, and data attributes
 	if !strings.Contains(source.Content, `<a href="/other-post/" class="wikilink"`) {
 		t.Errorf("expected wikilink anchor tag in content, got %q", source.Content)
 	}
