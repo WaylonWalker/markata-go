@@ -3,6 +3,7 @@ package plugins
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -186,7 +187,7 @@ func TestPagefindInstaller_IsCached(t *testing.T) {
 			binaryName = "pagefind.exe"
 		}
 		binaryPath := filepath.Join(versionDir, binaryName)
-		if err := os.WriteFile(binaryPath, []byte("fake binary"), 0o755); err != nil {
+		if err := os.WriteFile(binaryPath, []byte("fake binary"), 0o600); err != nil {
 			t.Fatalf("failed to create fake binary: %v", err)
 		}
 
@@ -217,7 +218,7 @@ func TestPagefindInstaller_IsCached(t *testing.T) {
 			binaryName = "pagefind.exe"
 		}
 		binaryPath := filepath.Join(versionDir, binaryName)
-		if err := os.WriteFile(binaryPath, []byte{}, 0o755); err != nil {
+		if err := os.WriteFile(binaryPath, []byte{}, 0o600); err != nil {
 			t.Fatalf("failed to create empty binary: %v", err)
 		}
 
@@ -239,7 +240,7 @@ func TestVerifyChecksum(t *testing.T) {
 		// Create a test file
 		content := []byte("test content for checksum verification")
 		filePath := filepath.Join(tmpDir, "test_valid.bin")
-		if err := os.WriteFile(filePath, content, 0o644); err != nil {
+		if err := os.WriteFile(filePath, content, 0o600); err != nil {
 			t.Fatalf("failed to write test file: %v", err)
 		}
 
@@ -258,7 +259,7 @@ func TestVerifyChecksum(t *testing.T) {
 		// Create a test file
 		content := []byte("test content for checksum verification")
 		filePath := filepath.Join(tmpDir, "test_invalid.bin")
-		if err := os.WriteFile(filePath, content, 0o644); err != nil {
+		if err := os.WriteFile(filePath, content, 0o600); err != nil {
 			t.Fatalf("failed to write test file: %v", err)
 		}
 
@@ -271,12 +272,7 @@ func TestVerifyChecksum(t *testing.T) {
 		}
 
 		var installErr *PagefindInstallError
-		if err != nil {
-			if e, ok := err.(*PagefindInstallError); ok {
-				installErr = e
-			}
-		}
-		if installErr == nil {
+		if !errors.As(err, &installErr) {
 			t.Error("error should be *PagefindInstallError")
 		} else if installErr.Operation != "verify" {
 			t.Errorf("error operation = %v, want 'verify'", installErr.Operation)
@@ -436,8 +432,8 @@ func TestPagefindInstallError(t *testing.T) {
 			t.Errorf("Operation = %v, want 'download'", err.Operation)
 		}
 
-		if err.Unwrap() != wrappedErr {
-			t.Error("Unwrap() should return wrapped error")
+		if !errors.Is(err, wrappedErr) {
+			t.Error("errors.Is should find wrapped error")
 		}
 
 		errStr := err.Error()
@@ -481,11 +477,12 @@ func TestPagefindInstaller_FetchChecksum_MockServer(t *testing.T) {
 
 // TestPagefindInstaller_InterfaceConformance verifies the installer's error types.
 func TestPagefindInstaller_InterfaceConformance(t *testing.T) {
-	// Verify PagefindInstallError implements error interface
-	var _ error = (*PagefindInstallError)(nil)
+	// Verify PagefindInstallError implements error interface via compile-time check
+	// The blank identifier assignment ensures the type implements the interface
+	err := NewPagefindInstallError("test", "test message", fmt.Errorf("wrapped"))
+	var _ error = err
 
 	// Verify Unwrap method exists for errors.Is/errors.As support
-	err := NewPagefindInstallError("test", "test message", fmt.Errorf("wrapped"))
 	if err.Unwrap() == nil {
 		t.Error("Unwrap() should return the wrapped error")
 	}
