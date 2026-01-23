@@ -1,6 +1,6 @@
 ---
 title: "Built-in Plugins"
-description: "Reference documentation for all 27 built-in markata-go plugins organized by lifecycle stage"
+description: "Reference documentation for all 28 built-in markata-go plugins organized by lifecycle stage"
 date: 2024-01-15
 published: true
 template: doc.html
@@ -31,7 +31,7 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 | Glob | Discover content files | glob |
 | Load | Parse files into posts | load, frontmatter |
 | Transform | Pre-render modifications | description, reading_time, jinja_md, wikilinks, toc |
-| Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence |
+| Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube |
 | Collect | Build collections/feeds | feeds, auto_feeds, prevnext |
 | Write | Output files to disk | publish_html, publish_feeds, sitemap, rss, atom, jsonfeed, static_assets, redirects |
 | Cleanup | Post-build cleanup | (none built-in) |
@@ -708,6 +708,100 @@ controls = true
     border-radius: 4px;
 }
 ```
+
+---
+
+### youtube
+
+**Name:** `youtube`  
+**Stage:** Render (post_render)  
+**Purpose:** Converts YouTube URLs on their own line into responsive embedded iframes with privacy-enhanced mode by default.
+
+**Configuration (TOML):**
+```toml
+[markata.youtube]
+enabled = true              # Enable the plugin (default: true)
+privacy_enhanced = true     # Use youtube-nocookie.com (default: true)
+container_class = "youtube-embed"  # CSS class for container (default)
+lazy_load = true            # Enable lazy loading (default: true)
+```
+
+**Markdown usage:**
+
+Simply paste a YouTube URL on its own line:
+
+```markdown
+Check out this video:
+
+https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+More content below...
+```
+
+**Supported URL formats:**
+- `https://www.youtube.com/watch?v=VIDEO_ID`
+- `https://youtube.com/watch?v=VIDEO_ID`
+- `https://m.youtube.com/watch?v=VIDEO_ID`
+- `https://youtu.be/VIDEO_ID`
+- URLs with extra parameters like `&t=30` (timestamp is ignored in embed)
+
+**HTML output:**
+```html
+<div class="youtube-embed">
+  <iframe
+    src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+    title="YouTube video player"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowfullscreen
+    loading="lazy">
+  </iframe>
+</div>
+```
+
+**Privacy-enhanced mode:**
+
+By default, the plugin uses `youtube-nocookie.com` which prevents YouTube from storing cookies on visitors' browsers until they play the video. Disable this for standard embeds:
+
+```toml
+[markata.youtube]
+privacy_enhanced = false
+```
+
+**CSS styling (included in default theme):**
+```css
+.youtube-embed {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  height: 0;
+  overflow: hidden;
+  max-width: 100%;
+  margin: 1.5rem 0;
+  border-radius: 0.5rem;
+}
+
+.youtube-embed iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0.5rem;
+}
+```
+
+**Behavior:**
+1. Scans `ArticleHTML` for YouTube URLs in standalone `<p>` tags
+2. URLs inside code blocks or inline with text are NOT converted
+3. Extracts the 11-character video ID from the URL
+4. Generates responsive embed with configurable privacy mode
+5. Adds lazy loading by default for better page performance
+
+**Notes:**
+- URLs must be on their own line (in their own `<p>` tag) to be converted
+- Inline URLs like "Check out https://youtube.com/watch?v=xyz" are preserved as text
+- Invalid video IDs (not exactly 11 characters) are ignored
 
 ---
 
