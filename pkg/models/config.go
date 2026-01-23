@@ -235,6 +235,73 @@ type Config struct {
 
 	// Components configures layout components (nav, footer, sidebar)
 	Components ComponentsConfig `json:"components" yaml:"components" toml:"components"`
+
+	// Head configures elements added to the HTML <head> section
+	Head HeadConfig `json:"head" yaml:"head" toml:"head"`
+}
+
+// HeadConfig configures elements added to the HTML <head> section.
+type HeadConfig struct {
+	// Text is raw HTML/text to include in the head (use with caution)
+	Text string `json:"text,omitempty" yaml:"text,omitempty" toml:"text,omitempty"`
+
+	// Meta is a list of meta tags to include
+	Meta []MetaTag `json:"meta,omitempty" yaml:"meta,omitempty" toml:"meta,omitempty"`
+
+	// Link is a list of link tags to include
+	Link []LinkTag `json:"link,omitempty" yaml:"link,omitempty" toml:"link,omitempty"`
+
+	// Script is a list of script tags to include
+	Script []ScriptTag `json:"script,omitempty" yaml:"script,omitempty" toml:"script,omitempty"`
+
+	// AlternateFeeds configures which feeds get <link rel="alternate"> tags
+	// If empty, defaults to RSS and Atom feeds
+	AlternateFeeds []AlternateFeed `json:"alternate_feeds,omitempty" yaml:"alternate_feeds,omitempty" toml:"alternate_feeds,omitempty"`
+}
+
+// MetaTag represents a <meta> tag configuration.
+type MetaTag struct {
+	Name     string `json:"name,omitempty" yaml:"name,omitempty" toml:"name,omitempty"`
+	Property string `json:"property,omitempty" yaml:"property,omitempty" toml:"property,omitempty"`
+	Content  string `json:"content" yaml:"content" toml:"content"`
+}
+
+// LinkTag represents a <link> tag configuration.
+type LinkTag struct {
+	Rel         string `json:"rel" yaml:"rel" toml:"rel"`
+	Href        string `json:"href" yaml:"href" toml:"href"`
+	Crossorigin bool   `json:"crossorigin,omitempty" yaml:"crossorigin,omitempty" toml:"crossorigin,omitempty"`
+}
+
+// ScriptTag represents a <script> tag configuration.
+type ScriptTag struct {
+	Src string `json:"src" yaml:"src" toml:"src"`
+}
+
+// AlternateFeed configures a <link rel="alternate"> tag for feed discovery.
+type AlternateFeed struct {
+	// Type is the feed type: "rss", "atom", or "json"
+	Type string `json:"type" yaml:"type" toml:"type"`
+
+	// Title is the human-readable feed title (e.g., "RSS Feed")
+	Title string `json:"title" yaml:"title" toml:"title"`
+
+	// Href is the URL path to the feed (e.g., "/rss.xml")
+	Href string `json:"href" yaml:"href" toml:"href"`
+}
+
+// GetMIMEType returns the MIME type for this feed type.
+func (f *AlternateFeed) GetMIMEType() string {
+	switch f.Type {
+	case "rss":
+		return "application/rss+xml"
+	case "atom":
+		return "application/atom+xml"
+	case "json":
+		return "application/feed+json"
+	default:
+		return "application/xml"
+	}
 }
 
 // ThemeConfig configures the site theme.

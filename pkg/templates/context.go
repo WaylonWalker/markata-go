@@ -189,6 +189,9 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert post_formats to map
 	postFormatsMap := postFormatsToMap(&c.PostFormats)
 
+	// Convert head to map
+	headMap := headToMap(&c.Head)
+
 	return map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
@@ -204,6 +207,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"webmention":    webmentionMap,
 		"components":    componentsMap,
 		"post_formats":  postFormatsMap,
+		"head":          headMap,
 	}
 }
 
@@ -306,6 +310,60 @@ func postFormatsToMap(p *models.PostFormatsConfig) map[string]interface{} {
 		"html":     htmlEnabled,
 		"markdown": p.Markdown,
 		"og":       p.OG,
+	}
+}
+
+// headToMap converts a HeadConfig to a map for template access.
+func headToMap(h *models.HeadConfig) map[string]interface{} {
+	if h == nil {
+		return nil
+	}
+
+	// Convert meta tags
+	metaTags := make([]map[string]interface{}, len(h.Meta))
+	for i, meta := range h.Meta {
+		metaTags[i] = map[string]interface{}{
+			"name":     meta.Name,
+			"property": meta.Property,
+			"content":  meta.Content,
+		}
+	}
+
+	// Convert link tags
+	linkTags := make([]map[string]interface{}, len(h.Link))
+	for i, link := range h.Link {
+		linkTags[i] = map[string]interface{}{
+			"rel":         link.Rel,
+			"href":        link.Href,
+			"crossorigin": link.Crossorigin,
+		}
+	}
+
+	// Convert script tags
+	scriptTags := make([]map[string]interface{}, len(h.Script))
+	for i, script := range h.Script {
+		scriptTags[i] = map[string]interface{}{
+			"src": script.Src,
+		}
+	}
+
+	// Convert alternate feeds
+	alternateFeeds := make([]map[string]interface{}, len(h.AlternateFeeds))
+	for i, feed := range h.AlternateFeeds {
+		alternateFeeds[i] = map[string]interface{}{
+			"type":      feed.Type,
+			"title":     feed.Title,
+			"href":      feed.Href,
+			"mime_type": feed.GetMIMEType(),
+		}
+	}
+
+	return map[string]interface{}{
+		"text":            h.Text,
+		"meta":            metaTags,
+		"link":            linkTags,
+		"script":          scriptTags,
+		"alternate_feeds": alternateFeeds,
 	}
 }
 
