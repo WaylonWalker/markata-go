@@ -32,65 +32,71 @@ blue    = "#268bd2"
 cyan    = "#2aa198"
 green   = "#859900"
 
+# Lighter accent variants for better contrast on dark backgrounds
+yellow-light  = "#d9a400"
+cyan-light    = "#35c4b8"
+blue-light    = "#3ba3e8"
+green-light   = "#a8bf00"
+magenta-light = "#f06bb0"
+
 # Layer 2: Semantic Mapping
 [palette.semantic]
 # Text colors (dark background mode)
-text-primary   = "base0"
-text-secondary = "base1"
-text-muted     = "base01"
+text-primary   = "base1"
+text-secondary = "base0"
+text-muted     = "base00"
 
 # Background colors
 bg-primary   = "base03"
 bg-secondary = "base02"
 bg-surface   = "base02"
-bg-elevated  = "base01"
+bg-elevated  = "base02"
 
 # Accent colors
-accent       = "blue"
-accent-hover = "cyan"
-link         = "blue"
-link-hover   = "cyan"
+accent       = "blue-light"
+accent-hover = "cyan-light"
+link         = "blue-light"
+link-hover   = "cyan-light"
 link-visited = "violet"
 
 # Status colors
-success = "green"
-warning = "yellow"
+success = "green-light"
+warning = "yellow-light"
 error   = "red"
-info    = "cyan"
+info    = "cyan-light"
 
-# Border colors
 border       = "base01"
-border-focus = "blue"
+border-focus = "blue-light"
 
 # Layer 3: Component Colors
 [palette.components]
-code-bg       = "base02"
-code-text     = "base0"
-code-comment  = "base01"
-code-keyword  = "green"
-code-string   = "cyan"
-code-number   = "magenta"
-code-function = "blue"
-code-type     = "yellow"
+code-bg       = "base03"
+code-text     = "base1"
+code-comment  = "base00"
+code-keyword  = "magenta-light"
+code-string   = "cyan-light"
+code-number   = "violet"
+code-function = "blue-light"
+code-type     = "yellow-light"
 code-operator = "orange"
 
 admonition-note-bg     = "base02"
-admonition-note-border = "blue"
+admonition-note-border = "blue-light"
 admonition-tip-bg      = "base02"
-admonition-tip-border  = "green"
+admonition-tip-border  = "green-light"
 admonition-warn-bg     = "base02"
-admonition-warn-border = "yellow"
+admonition-warn-border = "yellow-light"
 admonition-error-bg    = "base02"
 admonition-error-border = "red"
 
-button-primary-bg     = "blue"
+button-primary-bg     = "blue-light"
 button-primary-text   = "base03"
-button-secondary-bg   = "base01"
-button-secondary-text = "base0"
+button-secondary-bg   = "base02"
+button-secondary-text = "base1"
 
 nav-bg     = "base02"
-nav-text   = "base0"
-nav-active = "blue"
+nav-text   = "base1"
+nav-active = "blue-light"
 
 card-bg     = "base02"
 card-border = "base01"

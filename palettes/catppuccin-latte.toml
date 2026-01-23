@@ -38,29 +38,37 @@ base      = "#eff1f5"
 mantle    = "#e6e9ef"
 crust     = "#dce0e8"
 
+# Darker variants for better contrast
+text-dark     = "#3c3e52"
+subtext-dark  = "#4c4e62"
+green-dark    = "#2a7a1b"
+yellow-dark   = "#a86600"
+blue-dark     = "#1550c2"
+mauve-dark    = "#6828c0"
+
 # Layer 2: Semantic Mapping
 [palette.semantic]
 # Text colors
-text-primary   = "text"
-text-secondary = "subtext1"
-text-muted     = "overlay1"
+text-primary   = "text-dark"
+text-secondary = "text"
+text-muted     = "subtext0"
 
 # Background colors
 bg-primary   = "base"
 bg-secondary = "mantle"
 bg-surface   = "surface0"
-bg-elevated  = "surface1"
+bg-elevated  = "surface0"
 
 # Accent colors
 accent       = "mauve"
 accent-hover = "lavender"
-link         = "blue"
+link         = "blue-dark"
 link-hover   = "sapphire"
 link-visited = "mauve"
 
 # Status colors
-success = "green"
-warning = "yellow"
+success = "green-dark"
+warning = "yellow-dark"
 error   = "red"
 info    = "blue"
 
@@ -71,31 +79,31 @@ border-focus = "mauve"
 # Layer 3: Component Colors
 [palette.components]
 code-bg       = "surface0"
-code-text     = "text"
-code-comment  = "overlay1"
-code-keyword  = "mauve"
-code-string   = "green"
+code-text     = "text-dark"
+code-comment  = "subtext0"
+code-keyword  = "mauve-dark"
+code-string   = "green-dark"
 code-number   = "peach"
 code-function = "blue"
-code-type     = "yellow"
-code-operator = "sky"
+code-type     = "yellow-dark"
+code-operator = "teal"
 
 admonition-note-bg     = "surface0"
 admonition-note-border = "blue"
 admonition-tip-bg      = "surface0"
-admonition-tip-border  = "green"
+admonition-tip-border  = "green-dark"
 admonition-warn-bg     = "surface0"
-admonition-warn-border = "yellow"
+admonition-warn-border = "yellow-dark"
 admonition-error-bg    = "surface0"
 admonition-error-border = "red"
 
 button-primary-bg     = "mauve"
 button-primary-text   = "base"
-button-secondary-bg   = "surface1"
-button-secondary-text = "text"
+button-secondary-bg   = "surface0"
+button-secondary-text = "text-dark"
 
 nav-bg     = "mantle"
-nav-text   = "text"
+nav-text   = "text-dark"
 nav-active = "mauve"
 
 card-bg     = "surface0"

@@ -27,25 +27,32 @@ highlight-low  = "#f4ede8"
 highlight-med  = "#dfdad9"
 highlight-high = "#cecacd"
 
+# Darker variants for accessibility
+text-dark     = "#3d3759"  # Darker text for better contrast
+subtle-dark   = "#575279"  # Darker subtle for secondary text
+muted-dark    = "#716b8a"  # Darker muted for contrast
+gold-dark     = "#a06810"  # Darker gold for warning
+iris-dark     = "#6a5888"  # Darker iris for code keywords
+
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "text"
-text-secondary = "subtle"
-text-muted     = "muted"
+text-secondary = "subtle-dark"
+text-muted     = "muted-dark"
 
 bg-primary   = "base"
 bg-secondary = "surface"
 bg-surface   = "overlay"
 bg-elevated  = "highlight-med"
 
-accent       = "iris"
+accent       = "iris-dark"
 accent-hover = "rose"
 link         = "pine"
 link-hover   = "foam"
 link-visited = "iris"
 
 success = "foam"
-warning = "gold"
+warning = "gold-dark"
 error   = "love"
 info    = "pine"
 
@@ -56,8 +63,8 @@ border-focus = "iris"
 [palette.components]
 code-bg       = "surface"
 code-text     = "text"
-code-comment  = "muted"
-code-keyword  = "iris"
+code-comment  = "muted-dark"
+code-keyword  = "iris-dark"
 code-string   = "gold"
 code-number   = "gold"
 code-function = "foam"
@@ -73,7 +80,7 @@ admonition-warn-border = "gold"
 admonition-error-bg    = "surface"
 admonition-error-border = "love"
 
-button-primary-bg     = "iris"
+button-primary-bg     = "iris-dark"
 button-primary-text   = "base"
 button-secondary-bg   = "overlay"
 button-secondary-text = "text"
