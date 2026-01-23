@@ -501,3 +501,90 @@ func TestYouTubePlugin_ProcessPost_NoTimestamp(t *testing.T) {
 		t.Error("Should not have start parameter when no timestamp in URL")
 	}
 }
+
+// =============================================================================
+// Autolinked URL Tests (Linkify extension)
+// =============================================================================
+
+func TestYouTubePlugin_ProcessPost_AutolinkedURL(t *testing.T) {
+	p := NewYouTubePlugin()
+
+	// This is what goldmark produces when Linkify extension is enabled
+	post := &models.Post{
+		ArticleHTML: `<p><a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">https://www.youtube.com/watch?v=dQw4w9WgXcQ</a></p>`,
+	}
+
+	err := p.processPost(post)
+	if err != nil {
+		t.Errorf("processPost() error = %v", err)
+	}
+
+	// Should contain youtube embed
+	if !strings.Contains(post.ArticleHTML, `class="youtube-embed"`) {
+		t.Errorf("Expected youtube-embed class in output, got: %s", post.ArticleHTML)
+	}
+	if !strings.Contains(post.ArticleHTML, `embed/dQw4w9WgXcQ`) {
+		t.Error("Expected video ID in embed URL")
+	}
+}
+
+func TestYouTubePlugin_ProcessPost_AutolinkedShortURL(t *testing.T) {
+	p := NewYouTubePlugin()
+
+	// youtu.be format with Linkify
+	post := &models.Post{
+		ArticleHTML: `<p><a href="https://youtu.be/dQw4w9WgXcQ">https://youtu.be/dQw4w9WgXcQ</a></p>`,
+	}
+
+	err := p.processPost(post)
+	if err != nil {
+		t.Errorf("processPost() error = %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, `class="youtube-embed"`) {
+		t.Errorf("Expected youtube-embed class for autolinked youtu.be URL, got: %s", post.ArticleHTML)
+	}
+}
+
+func TestYouTubePlugin_ProcessPost_AutolinkedURLWithTimestamp(t *testing.T) {
+	p := NewYouTubePlugin()
+
+	// Autolinked URL with timestamp
+	post := &models.Post{
+		ArticleHTML: `<p><a href="https://youtu.be/dQw4w9WgXcQ?t=1m30s">https://youtu.be/dQw4w9WgXcQ?t=1m30s</a></p>`,
+	}
+
+	err := p.processPost(post)
+	if err != nil {
+		t.Errorf("processPost() error = %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, `class="youtube-embed"`) {
+		t.Errorf("Expected youtube-embed class, got: %s", post.ArticleHTML)
+	}
+	// Should have start=90 (1*60 + 30)
+	if !strings.Contains(post.ArticleHTML, `?start=90`) {
+		t.Errorf("Expected start=90 in embed URL for 1m30s timestamp, got: %s", post.ArticleHTML)
+	}
+}
+
+func TestYouTubePlugin_ProcessPost_MixedAutolinkedAndPlain(t *testing.T) {
+	p := NewYouTubePlugin()
+
+	// Mix of autolinked and plain URLs
+	post := &models.Post{
+		ArticleHTML: `<p><a href="https://youtu.be/dQw4w9WgXcQ">https://youtu.be/dQw4w9WgXcQ</a></p>
+<p>https://youtu.be/xvFZjo5PgG0</p>`,
+	}
+
+	err := p.processPost(post)
+	if err != nil {
+		t.Errorf("processPost() error = %v", err)
+	}
+
+	// Should have two embeds
+	count := strings.Count(post.ArticleHTML, `class="youtube-embed"`)
+	if count != 2 {
+		t.Errorf("Expected 2 youtube embeds, got %d. HTML: %s", count, post.ArticleHTML)
+	}
+}
