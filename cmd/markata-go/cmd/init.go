@@ -220,8 +220,9 @@ func addFeatureTheme(reader *bufio.Reader, cfg *models.Config) error {
 	// List some available palettes
 	loader := palettes.NewLoader()
 	availablePalettes, err := loader.Discover()
-
-	if err == nil && len(availablePalettes) > 0 {
+	if err != nil {
+		fmt.Println("(Could not discover palettes, using default)")
+	} else if len(availablePalettes) > 0 {
 		fmt.Println("Available palettes:")
 		// Show a sample of palettes
 		shown := 0
@@ -659,46 +660,4 @@ func runInitCommand(_ *cobra.Command, _ []string) error {
 	fmt.Println()
 
 	return nil
-}
-
-// generateInitConfig creates a TOML config string from the provided values.
-// Deprecated: Use writeConfigTOML instead.
-func generateInitConfig(title, description, author, url string) string {
-	return fmt.Sprintf(`# Markata-go configuration file
-
-# Site metadata
-title = %q
-url = %q
-description = %q
-author = %q
-
-# Output settings
-output_dir = "output"
-templates_dir = "templates"
-assets_dir = "static"
-
-# File discovery
-[glob]
-patterns = ["**/*.md"]
-use_gitignore = true
-
-# Feed defaults
-[feed_defaults]
-items_per_page = 10
-orphan_threshold = 3
-
-[feed_defaults.formats]
-html = true
-rss = true
-atom = false
-json = false
-
-# Define custom feeds
-# [[feeds]]
-# slug = "blog"
-# title = "Blog Posts"
-# filter = "published == true"
-# sort = "date"
-# reverse = true
-`, title, url, description, author)
 }
