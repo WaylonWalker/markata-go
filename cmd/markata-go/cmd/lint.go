@@ -15,6 +15,14 @@ var (
 	lintFix bool
 )
 
+// ANSI color codes for terminal output.
+const (
+	colorRed    = "\033[31m"
+	colorYellow = "\033[33m"
+	colorBlue   = "\033[34m"
+	colorReset  = "\033[0m"
+)
+
 // lintCmd represents the lint command.
 var lintCmd = &cobra.Command{
 	Use:   "lint [files...]",
@@ -43,13 +51,50 @@ func init() {
 	lintCmd.Flags().BoolVar(&lintFix, "fix", false, "automatically fix issues")
 }
 
+// lintStats tracks linting statistics.
+type lintStats struct {
+	totalFiles      int
+	totalIssues     int
+	totalFixed      int
+	filesWithIssues int
+	hasErrors       bool
+}
+
 func runLintCommand(_ *cobra.Command, args []string) error {
-	// Expand glob patterns
+	files, err := expandGlobPatterns(args)
+	if err != nil {
+		return err
+	}
+
+	if len(files) == 0 {
+		return fmt.Errorf("no files to lint")
+	}
+
+	// Sort files for consistent output
+	sort.Strings(files)
+
+	stats := &lintStats{}
+	for _, file := range files {
+		processFile(file, stats)
+	}
+
+	printSummary(stats)
+
+	// Exit with error code if there are errors (not just warnings)
+	if stats.hasErrors && !lintFix {
+		return fmt.Errorf("linting found errors")
+	}
+
+	return nil
+}
+
+// expandGlobPatterns expands glob patterns from args into a list of files.
+func expandGlobPatterns(args []string) ([]string, error) {
 	var files []string
 	for _, pattern := range args {
 		matches, err := filepath.Glob(pattern)
 		if err != nil {
-			return fmt.Errorf("invalid pattern %q: %w", pattern, err)
+			return nil, fmt.Errorf("invalid pattern %q: %w", pattern, err)
 		}
 		if len(matches) == 0 {
 			// Try as a literal file path
@@ -62,110 +107,102 @@ func runLintCommand(_ *cobra.Command, args []string) error {
 			files = append(files, matches...)
 		}
 	}
+	return files, nil
+}
 
-	if len(files) == 0 {
-		return fmt.Errorf("no files to lint")
+// processFile lints a single file and updates stats.
+func processFile(file string, stats *lintStats) {
+	// Skip non-markdown files
+	ext := filepath.Ext(file)
+	if ext != ".md" && ext != ".markdown" {
+		return
 	}
 
-	// Sort files for consistent output
-	sort.Strings(files)
+	stats.totalFiles++
 
-	var (
-		totalFiles      int
-		totalIssues     int
-		totalFixed      int
-		filesWithIssues int
-		hasErrors       bool
-	)
+	content, err := os.ReadFile(file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading %s: %v\n", file, err)
+		return
+	}
 
-	for _, file := range files {
-		// Skip non-markdown files
-		ext := filepath.Ext(file)
-		if ext != ".md" && ext != ".markdown" {
-			continue
+	var result *lint.Result
+	if lintFix {
+		result = lint.Fix(file, string(content))
+	} else {
+		result = lint.Lint(file, string(content))
+	}
+
+	if len(result.Issues) == 0 {
+		return
+	}
+
+	stats.filesWithIssues++
+	stats.totalIssues += len(result.Issues)
+
+	fmt.Printf("\n%s:\n", file)
+	for _, issue := range result.Issues {
+		printIssue(issue)
+		if issue.Severity == lint.SeverityError {
+			stats.hasErrors = true
 		}
+	}
 
-		totalFiles++
-
-		content, err := os.ReadFile(file)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading %s: %v\n", file, err)
-			continue
-		}
-
-		var result *lint.Result
-		if lintFix {
-			result = lint.Fix(file, string(content))
+	// Write fixed content if --fix was used
+	if lintFix && result.Fixed != result.Content {
+		if err := os.WriteFile(file, []byte(result.Fixed), 0o600); err != nil {
+			fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", file, err)
 		} else {
-			result = lint.Lint(file, string(content))
-		}
-
-		if len(result.Issues) > 0 {
-			filesWithIssues++
-			totalIssues += len(result.Issues)
-
-			fmt.Printf("\n%s:\n", file)
-			for _, issue := range result.Issues {
-				severityColor := ""
-				resetColor := ""
-
-				// Use ANSI colors if terminal supports it
-				if isTerminal() {
-					switch issue.Severity {
-					case lint.SeverityError:
-						severityColor = "\033[31m" // Red
-					case lint.SeverityWarning:
-						severityColor = "\033[33m" // Yellow
-					case lint.SeverityInfo:
-						severityColor = "\033[34m" // Blue
-					}
-					resetColor = "\033[0m"
-				}
-
-				location := fmt.Sprintf("line %d", issue.Line)
-				if issue.Column > 0 {
-					location += fmt.Sprintf(", col %d", issue.Column)
-				}
-
-				fmt.Printf("  %s%s%s [%s]: %s\n",
-					severityColor, issue.Severity.String(), resetColor,
-					location, issue.Message)
-
-				if issue.Severity == lint.SeverityError {
-					hasErrors = true
-				}
-			}
-
-			// Write fixed content if --fix was used
-			if lintFix && result.Fixed != result.Content {
-				if err := os.WriteFile(file, []byte(result.Fixed), 0644); err != nil {
-					fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", file, err)
-				} else {
-					totalFixed++
-					fmt.Printf("  → Fixed %d issue(s)\n", len(result.Issues))
-				}
-			}
+			stats.totalFixed++
+			fmt.Printf("  → Fixed %d issue(s)\n", len(result.Issues))
 		}
 	}
+}
 
-	// Print summary
+// printIssue prints a single lint issue with colors.
+func printIssue(issue lint.Issue) {
+	severityColor, resetColor := getSeverityColors(issue.Severity)
+
+	location := fmt.Sprintf("line %d", issue.Line)
+	if issue.Column > 0 {
+		location += fmt.Sprintf(", col %d", issue.Column)
+	}
+
+	fmt.Printf("  %s%s%s [%s]: %s\n",
+		severityColor, issue.Severity.String(), resetColor,
+		location, issue.Message)
+}
+
+// getSeverityColors returns ANSI color codes for a severity level.
+func getSeverityColors(severity lint.Severity) (color, reset string) {
+	if !isTerminal() {
+		return "", ""
+	}
+
+	switch severity {
+	case lint.SeverityError:
+		return colorRed, colorReset
+	case lint.SeverityWarning:
+		return colorYellow, colorReset
+	case lint.SeverityInfo:
+		return colorBlue, colorReset
+	default:
+		return "", ""
+	}
+}
+
+// printSummary prints the linting summary.
+func printSummary(stats *lintStats) {
 	fmt.Println()
-	if totalIssues == 0 {
-		fmt.Printf("✓ %d file(s) linted, no issues found\n", totalFiles)
+	if stats.totalIssues == 0 {
+		fmt.Printf("✓ %d file(s) linted, no issues found\n", stats.totalFiles)
 	} else {
 		fmt.Printf("✗ %d file(s) linted, %d issue(s) in %d file(s)\n",
-			totalFiles, totalIssues, filesWithIssues)
+			stats.totalFiles, stats.totalIssues, stats.filesWithIssues)
 		if lintFix {
-			fmt.Printf("  → Fixed %d file(s)\n", totalFixed)
+			fmt.Printf("  → Fixed %d file(s)\n", stats.totalFixed)
 		}
 	}
-
-	// Exit with error code if there are errors (not just warnings)
-	if hasErrors && !lintFix {
-		return fmt.Errorf("linting found errors")
-	}
-
-	return nil
 }
 
 // isTerminal returns true if stdout appears to be a terminal.

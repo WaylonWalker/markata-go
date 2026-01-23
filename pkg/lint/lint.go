@@ -121,7 +121,7 @@ func Fix(filePath, content string) *Result {
 }
 
 // extractFrontmatter extracts frontmatter from content.
-func extractFrontmatter(content string) (frontmatter string, body string, hasFrontmatter bool) {
+func extractFrontmatter(content string) (frontmatter, body string, hasFrontmatter bool) {
 	if !strings.HasPrefix(content, "---") {
 		return "", content, false
 	}
@@ -350,7 +350,7 @@ func fixDuplicateKeys(content string) string {
 	flushCurrent()
 
 	// Rebuild frontmatter
-	var fixedLines []string
+	fixedLines := make([]string, 0, len(lines))
 	for _, kl := range lines {
 		fixedLines = append(fixedLines, kl.line)
 	}
@@ -372,9 +372,9 @@ func fixDateFormats(content string) string {
 		year := parts[1]
 		month := parts[2]
 		day := parts[3]
-		time := ""
+		timePart := ""
 		if len(parts) > 4 {
-			time = parts[4]
+			timePart = parts[4]
 		}
 
 		// Pad month and day
@@ -385,7 +385,7 @@ func fixDateFormats(content string) string {
 			day = "0" + day
 		}
 
-		return fmt.Sprintf("%s-%s-%s%s", year, month, day, time)
+		return fmt.Sprintf("%s-%s-%s%s", year, month, day, timePart)
 	})
 }
 
