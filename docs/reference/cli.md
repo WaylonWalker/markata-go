@@ -629,6 +629,67 @@ See [[deployment-guide|Deployment]] for detailed deployment guides.
 
 ---
 
+### explain
+
+Show detailed information about markata-go for AI agents and developers.
+
+#### Usage
+
+```bash
+markata-go explain [topic]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `topic` | The topic to explain | No (shows overview if omitted) |
+
+#### Available Topics
+
+| Topic | Description |
+|-------|-------------|
+| (none) | General overview of markata-go |
+| `build` | The build command and build process |
+| `serve` | The development server |
+| `new` | Creating new content |
+| `init` | Initializing projects |
+| `config` | Configuration system |
+| `plugins` | Plugin system and development |
+| `lifecycle` | Build lifecycle stages |
+| `templates` | Template system |
+| `feeds` | Feed generation system |
+
+#### Examples
+
+```bash
+# Show general overview
+markata-go explain
+
+# Get detailed info about the build process
+markata-go explain build
+
+# Learn about the plugin system
+markata-go explain plugins
+
+# Understand the build lifecycle
+markata-go explain lifecycle
+
+# Learn about feeds and filtering
+markata-go explain feeds
+```
+
+#### Use Cases
+
+The `explain` command is particularly useful for:
+
+- **AI coding agents**: Provides comprehensive context about markata-go's architecture and commands
+- **New developers**: Quick reference for understanding how different parts work together
+- **Debugging**: Understanding the build process and configuration options
+- **Writing plugins**: Learning the plugin interfaces and lifecycle stages
+
+---
+
 ## See Also
 
 - [[getting-started|Getting Started]] - Quick introduction to markata-go
