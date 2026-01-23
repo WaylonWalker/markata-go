@@ -381,6 +381,17 @@ markdown = true   # /slug/index.md (raw source)
 og = true         # /slug/og/index.html (social card)
 ```
 
+**Canonical URLs and Alternate Links**: When post formats are enabled, markata-go automatically adds:
+
+- `<link rel="canonical">` pointing to the post's primary URL (for SEO)
+- `<link rel="alternate">` for each enabled format:
+  - Markdown: `type="text/markdown"` linking to `index.md`
+  - OG Card: `type="text/html"` linking to `og/`
+
+OG card pages automatically include:
+- `<link rel="canonical">` pointing back to the original post
+- `<meta name="robots" content="noindex, nofollow">` to prevent search engine indexing
+
 See the [[post-formats|Post Output Formats Guide]] for detailed usage including social image generation.
 
 ### Feed Defaults (`[markata-go.feed_defaults]`)
