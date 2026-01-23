@@ -49,11 +49,32 @@ type FeedConfig struct {
 	// Templates specifies custom templates for each format
 	Templates FeedTemplates `json:"templates" yaml:"templates" toml:"templates"`
 
+	// Sidebar enables auto-generation of sidebar navigation from this feed's posts
+	Sidebar bool `json:"sidebar" yaml:"sidebar" toml:"sidebar"`
+
+	// SidebarTitle overrides the feed title in sidebar navigation
+	SidebarTitle string `json:"sidebar_title" yaml:"sidebar_title" toml:"sidebar_title"`
+
+	// SidebarOrder controls the position in multi-feed sidebars (lower = first, default: 0)
+	SidebarOrder int `json:"sidebar_order" yaml:"sidebar_order" toml:"sidebar_order"`
+
+	// SidebarGroupBy groups posts by a frontmatter field in the sidebar (e.g., "category")
+	SidebarGroupBy string `json:"sidebar_group_by" yaml:"sidebar_group_by" toml:"sidebar_group_by"`
+
 	// Posts holds the filtered posts at runtime (not serialized)
 	Posts []*Post `json:"-" yaml:"-" toml:"-"`
 
 	// Pages holds the paginated results at runtime (not serialized)
 	Pages []FeedPage `json:"-" yaml:"-" toml:"-"`
+}
+
+// GetSidebarTitle returns the effective title for sidebar navigation.
+// Returns SidebarTitle if set, otherwise returns Title.
+func (f *FeedConfig) GetSidebarTitle() string {
+	if f.SidebarTitle != "" {
+		return f.SidebarTitle
+	}
+	return f.Title
 }
 
 // FeedFormats specifies which output formats to generate for a feed.

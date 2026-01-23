@@ -1,6 +1,62 @@
-{# Sidebar Navigation Component - Hierarchical navigation for docs layout #}
+{# Sidebar Navigation Component - Multi-feed and path-based sidebar support #}
 <nav class="sidebar-nav" aria-label="Sidebar navigation">
-    {% if config.sidebar.nav %}
+    {% if sidebar_title %}
+    <h2 class="sidebar-title">{{ sidebar_title }}</h2>
+    {% endif %}
+
+    {% if sidebar_items %}
+    {# Use resolved sidebar items from the builder #}
+    <ul class="sidebar-nav-list">
+        {% for item in sidebar_items %}
+        <li class="sidebar-nav-item{% if item.has_children %} sidebar-nav-item--has-children{% endif %}{% if post.href == item.href %} sidebar-nav-item--active{% endif %}">
+            {% if item.href %}
+            <a href="{{ item.href }}" class="sidebar-nav-link{% if post.href == item.href %} sidebar-nav-link--active{% endif %}">
+                {{ item.title }}
+            </a>
+            {% else %}
+            {# Collapsible section header (for multi-feed mode) #}
+            <button class="sidebar-nav-toggle" 
+                    aria-expanded="true"
+                    aria-controls="sidebar-section-{{ loop.index }}">
+                <span class="sidebar-nav-label">{{ item.title }}</span>
+                <svg class="sidebar-nav-chevron" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </button>
+            {% endif %}
+            
+            {% if item.has_children %}
+            <ul class="sidebar-nav-children" id="sidebar-section-{{ loop.index }}">
+                {% for child in item.children %}
+                <li class="sidebar-nav-item{% if child.has_children %} sidebar-nav-item--has-children{% endif %}{% if post.href == child.href %} sidebar-nav-item--active{% endif %}">
+                    {% if child.href %}
+                    <a href="{{ child.href }}" class="sidebar-nav-link{% if post.href == child.href %} sidebar-nav-link--active{% endif %}">
+                        {{ child.title }}
+                    </a>
+                    {% else %}
+                    <span class="sidebar-nav-label">{{ child.title }}</span>
+                    {% endif %}
+                    
+                    {% if child.has_children %}
+                    <ul class="sidebar-nav-children">
+                        {% for grandchild in child.children %}
+                        <li class="sidebar-nav-item{% if post.href == grandchild.href %} sidebar-nav-item--active{% endif %}">
+                            <a href="{{ grandchild.href }}" class="sidebar-nav-link{% if post.href == grandchild.href %} sidebar-nav-link--active{% endif %}">
+                                {{ grandchild.title }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% elif config.sidebar.nav %}
+    {# Fallback to legacy nav config #}
     <ul class="sidebar-nav-list">
         {% for item in config.sidebar.nav %}
         <li class="sidebar-nav-item{% if item.children %} sidebar-nav-item--has-children{% endif %}{% if post.href == item.href %} sidebar-nav-item--active{% endif %}">

@@ -27,6 +27,12 @@ type Context struct {
 	// Posts is the list of all posts (for index/archive templates)
 	Posts []*models.Post
 
+	// SidebarItems holds the resolved sidebar navigation items for the current page
+	SidebarItems []models.SidebarNavItem
+
+	// SidebarTitle holds the title for the current page's sidebar
+	SidebarTitle string
+
 	// Core provides access to the lifecycle manager for filter/map operations
 	Core interface{}
 
@@ -64,6 +70,13 @@ func (c Context) WithCore(core interface{}) Context {
 // WithPosts returns a copy of the context with the Posts field set.
 func (c Context) WithPosts(posts []*models.Post) Context {
 	c.Posts = posts
+	return c
+}
+
+// WithSidebar returns a copy of the context with the SidebarItems and SidebarTitle fields set.
+func (c Context) WithSidebar(items []models.SidebarNavItem, title string) Context {
+	c.SidebarItems = items
+	c.SidebarTitle = title
 	return c
 }
 
@@ -529,19 +542,41 @@ func postsToMaps(posts []*models.Post) []map[string]interface{} {
 	return result
 }
 
+// sidebarItemsToMaps converts a slice of SidebarNavItems to a slice of maps.
+func sidebarItemsToMaps(items []models.SidebarNavItem) []map[string]interface{} {
+	if items == nil {
+		return nil
+	}
+	result := make([]map[string]interface{}, len(items))
+	for i, item := range items {
+		itemMap := map[string]interface{}{
+			"title":        item.Title,
+			"href":         item.Href,
+			"has_children": len(item.Children) > 0,
+		}
+		if len(item.Children) > 0 {
+			itemMap["children"] = sidebarItemsToMaps(item.Children)
+		}
+		result[i] = itemMap
+	}
+	return result
+}
+
 // ToPongo2 converts the Context to a pongo2.Context for template execution.
 func (c Context) ToPongo2() pongo2.Context {
 	postMap := postToMap(c.Post)
 	configMap := configToMap(c.Config)
 
 	ctx := pongo2.Context{
-		"post":   postMap,
-		"body":   c.Body,
-		"config": configMap,
-		"feed":   feedToMap(c.Feed),
-		"page":   feedPageToMap(c.FeedPage),
-		"posts":  postsToMaps(c.Posts),
-		"core":   c.Core,
+		"post":          postMap,
+		"body":          c.Body,
+		"config":        configMap,
+		"feed":          feedToMap(c.Feed),
+		"page":          feedPageToMap(c.FeedPage),
+		"posts":         postsToMaps(c.Posts),
+		"core":          c.Core,
+		"sidebar_items": sidebarItemsToMaps(c.SidebarItems),
+		"sidebar_title": c.SidebarTitle,
 	}
 
 	// Add post fields directly for convenience (if post exists)
@@ -612,6 +647,12 @@ func (c *Context) Merge(other Context) {
 	if other.Core != nil {
 		c.Core = other.Core
 	}
+	if other.SidebarItems != nil {
+		c.SidebarItems = other.SidebarItems
+	}
+	if other.SidebarTitle != "" {
+		c.SidebarTitle = other.SidebarTitle
+	}
 
 	if other.Extra != nil {
 		if c.Extra == nil {
@@ -626,18 +667,25 @@ func (c *Context) Merge(other Context) {
 // Clone creates a copy of the context.
 func (c Context) Clone() Context {
 	clone := Context{
-		Post:     c.Post,
-		Body:     c.Body,
-		Config:   c.Config,
-		Feed:     c.Feed,
-		FeedPage: c.FeedPage,
-		Core:     c.Core,
+		Post:         c.Post,
+		Body:         c.Body,
+		Config:       c.Config,
+		Feed:         c.Feed,
+		FeedPage:     c.FeedPage,
+		Core:         c.Core,
+		SidebarTitle: c.SidebarTitle,
 	}
 
 	// Copy Posts slice
 	if c.Posts != nil {
 		clone.Posts = make([]*models.Post, len(c.Posts))
 		copy(clone.Posts, c.Posts)
+	}
+
+	// Copy SidebarItems slice
+	if c.SidebarItems != nil {
+		clone.SidebarItems = make([]models.SidebarNavItem, len(c.SidebarItems))
+		copy(clone.SidebarItems, c.SidebarItems)
 	}
 
 	// Copy Extra map
