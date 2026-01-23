@@ -2,8 +2,11 @@
 package plugins
 
 import (
+	"fmt"
 	"html"
+	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -117,19 +120,88 @@ func (p *YouTubePlugin) processPost(post *models.Post) error {
 			return match
 		}
 
+		fullURL := submatches[1]
 		videoID := submatches[2]
-		return p.buildEmbed(videoID)
+
+		// Parse timestamp from URL
+		startTime := p.parseTimestamp(fullURL)
+
+		return p.buildEmbed(videoID, startTime)
 	})
 
 	post.ArticleHTML = result
 	return nil
 }
 
+// parseTimestamp extracts and converts timestamp from YouTube URL.
+// Supports formats: ?t=123, ?t=1h2m3s, ?t=2m30s, ?start=123
+// Returns the start time in seconds, or 0 if no timestamp found.
+func (p *YouTubePlugin) parseTimestamp(rawURL string) int {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return 0
+	}
+
+	query := parsedURL.Query()
+
+	// Check for ?start= parameter first
+	if start := query.Get("start"); start != "" {
+		if seconds, err := strconv.Atoi(start); err == nil {
+			return seconds
+		}
+	}
+
+	// Check for ?t= parameter
+	t := query.Get("t")
+	if t == "" {
+		return 0
+	}
+
+	// Try simple integer (seconds)
+	if seconds, err := strconv.Atoi(t); err == nil {
+		return seconds
+	}
+
+	// Parse duration format (1h2m3s)
+	var total int
+
+	// Parse hours
+	if idx := strings.Index(t, "h"); idx != -1 {
+		if hours, err := strconv.Atoi(t[:idx]); err == nil {
+			total += hours * 3600
+		}
+		t = t[idx+1:]
+	}
+
+	// Parse minutes
+	if idx := strings.Index(t, "m"); idx != -1 {
+		if minutes, err := strconv.Atoi(t[:idx]); err == nil {
+			total += minutes * 60
+		}
+		t = t[idx+1:]
+	}
+
+	// Parse seconds
+	if idx := strings.Index(t, "s"); idx != -1 {
+		if seconds, err := strconv.Atoi(t[:idx]); err == nil {
+			total += seconds
+		}
+	}
+
+	return total
+}
+
 // buildEmbed creates the HTML for a YouTube embed.
-func (p *YouTubePlugin) buildEmbed(videoID string) string {
+func (p *YouTubePlugin) buildEmbed(videoID string, startTime int) string {
 	domain := "www.youtube.com"
 	if p.config.PrivacyEnhanced {
 		domain = "www.youtube-nocookie.com"
+	}
+
+	// Build embed URL with optional start time
+	embedURL := fmt.Sprintf("https://%s/embed/%s", domain, html.EscapeString(videoID))
+	if startTime > 0 {
+		embedURL += fmt.Sprintf("?start=%d", startTime)
 	}
 
 	var sb strings.Builder
@@ -138,10 +210,8 @@ func (p *YouTubePlugin) buildEmbed(videoID string) string {
 	sb.WriteString("\">\n")
 	sb.WriteString(`  <iframe`)
 	sb.WriteString("\n")
-	sb.WriteString(`    src="https://`)
-	sb.WriteString(domain)
-	sb.WriteString(`/embed/`)
-	sb.WriteString(html.EscapeString(videoID))
+	sb.WriteString(`    src="`)
+	sb.WriteString(embedURL)
 	sb.WriteString("\"\n")
 	sb.WriteString(`    title="YouTube video player"`)
 	sb.WriteString("\n")
