@@ -93,6 +93,21 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 		if err := p.writeMarkdownFormat(post, postDir); err != nil {
 			return err
 		}
+		// Write redirect from /slug.md to /slug/index.md
+		if err := p.writeFormatRedirect(post.Slug, "md", config.OutputDir); err != nil {
+			return err
+		}
+	}
+
+	// Write Text format (plain text)
+	if postFormats.Text {
+		if err := p.writeTextFormat(post, postDir); err != nil {
+			return err
+		}
+		// Write redirect from /slug.txt to /slug/index.txt
+		if err := p.writeFormatRedirect(post.Slug, "txt", config.OutputDir); err != nil {
+			return err
+		}
 	}
 
 	// Write OG format (social card HTML)
@@ -168,6 +183,74 @@ func (p *PublishHTMLPlugin) writeMarkdownFormat(post *models.Post, postDir strin
 	//nolint:gosec // G306: Output files need 0644 for web serving
 	if err := os.WriteFile(outputPath, []byte(buf.String()), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", outputPath, err)
+	}
+
+	return nil
+}
+
+// writeTextFormat writes the plain text version of a post.
+// This outputs just the content without frontmatter or formatting.
+func (p *PublishHTMLPlugin) writeTextFormat(post *models.Post, postDir string) error {
+	var buf strings.Builder
+
+	// Write title as heading
+	if post.Title != nil {
+		buf.WriteString(*post.Title)
+		buf.WriteString("\n")
+		buf.WriteString(strings.Repeat("=", len(*post.Title)))
+		buf.WriteString("\n\n")
+	}
+
+	// Write description if present
+	if post.Description != nil && *post.Description != "" {
+		buf.WriteString(*post.Description)
+		buf.WriteString("\n\n")
+	}
+
+	// Write date if present
+	if post.Date != nil {
+		buf.WriteString("Date: ")
+		buf.WriteString(post.Date.Format("January 2, 2006"))
+		buf.WriteString("\n\n")
+	}
+
+	// Write the raw content (without markdown processing)
+	buf.WriteString(post.Content)
+
+	// Write index.txt
+	outputPath := filepath.Join(postDir, "index.txt")
+	//nolint:gosec // G306: Output files need 0644 for web serving
+	if err := os.WriteFile(outputPath, []byte(buf.String()), 0o644); err != nil {
+		return fmt.Errorf("writing %s: %w", outputPath, err)
+	}
+
+	return nil
+}
+
+// writeFormatRedirect writes a redirect file from /slug.ext to /slug/index.ext.
+// This allows cleaner URLs like /my-post.md instead of /my-post/index.md.
+// The redirect uses HTTP meta refresh for maximum compatibility.
+func (p *PublishHTMLPlugin) writeFormatRedirect(slug, ext, outputDir string) error {
+	// Create redirect HTML that points to the actual file
+	targetURL := fmt.Sprintf("/%s/index.%s", slug, ext)
+	redirectHTML := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="0; url=%s">
+<link rel="canonical" href="%s">
+<title>Redirecting...</title>
+</head>
+<body>
+<p>Redirecting to <a href="%s">%s</a>...</p>
+</body>
+</html>`, targetURL, targetURL, targetURL, targetURL)
+
+	// Write the redirect file at /slug.ext
+	outputPath := filepath.Join(outputDir, slug+"."+ext)
+	//nolint:gosec // G306: Output files need 0644 for web serving
+	if err := os.WriteFile(outputPath, []byte(redirectHTML), 0o644); err != nil {
+		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
 	}
 
 	return nil

@@ -763,6 +763,10 @@ type PostFormatsConfig struct {
 	// Generates: /slug/index.md (source with frontmatter)
 	Markdown bool `json:"markdown" yaml:"markdown" toml:"markdown"`
 
+	// Text enables plain text output (default: false)
+	// Generates: /slug/index.txt (content only, no formatting)
+	Text bool `json:"text" yaml:"text" toml:"text"`
+
 	// OG enables OpenGraph card HTML output for social image generation (default: false)
 	// Generates: /slug/og/index.html (1200x630 optimized for screenshots)
 	OG bool `json:"og" yaml:"og" toml:"og"`
@@ -775,6 +779,7 @@ func NewPostFormatsConfig() PostFormatsConfig {
 	return PostFormatsConfig{
 		HTML:     &enabled,
 		Markdown: false,
+		Text:     false,
 		OG:       false,
 	}
 }

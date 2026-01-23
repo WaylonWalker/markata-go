@@ -16,6 +16,7 @@
   <header class="feed-header">
     <h1>{{ feed.title }}</h1>
     {% if feed.description %}<p>{{ feed.description }}</p>{% endif %}
+    {% include "components/format-links.html" %}
   </header>
   {% endif %}
   
