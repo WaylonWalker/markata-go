@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -206,7 +207,7 @@ func TestOverwriteCheckPlugin_DetectsConflicts(t *testing.T) {
 		t.Errorf("Expected same output path for conflicting slugs, got %q and %q", path1, path2)
 	}
 
-	expected := "public/index.html"
+	expected := filepath.Join("public", "index.html")
 	if path1 != expected {
 		t.Errorf("Expected output path %q, got %q", expected, path1)
 	}
