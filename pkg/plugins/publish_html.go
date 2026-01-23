@@ -227,9 +227,13 @@ func (p *PublishHTMLPlugin) writeTextFormat(post *models.Post, postDir string) e
 	return nil
 }
 
-// writeFormatRedirect writes a redirect file from /slug.ext to /slug/index.ext.
-// This allows cleaner URLs like /my-post.md instead of /my-post/index.md.
-// The redirect uses HTTP meta refresh for maximum compatibility.
+// writeFormatRedirect writes a redirect from /slug.ext/ to /slug/index.ext.
+// This creates a directory named slug.ext containing index.html, allowing the
+// URL /slug.md/ or /slug.txt/ to properly serve the HTML redirect.
+//
+// Previously, this created flat files like /slug.md which web servers would
+// serve as text/plain based on the extension. By creating directories with
+// index.html files, the redirect is properly served as text/html.
 func (p *PublishHTMLPlugin) writeFormatRedirect(slug, ext, outputDir string) error {
 	// Create redirect HTML that points to the actual file
 	targetURL := fmt.Sprintf("/%s/index.%s", slug, ext)
@@ -246,8 +250,14 @@ func (p *PublishHTMLPlugin) writeFormatRedirect(slug, ext, outputDir string) err
 </body>
 </html>`, targetURL, targetURL, targetURL, targetURL)
 
-	// Write the redirect file at /slug.ext
-	outputPath := filepath.Join(outputDir, slug+"."+ext)
+	// Create directory at /slug.ext/ (e.g., /my-post.md/)
+	redirectDir := filepath.Join(outputDir, slug+"."+ext)
+	if err := os.MkdirAll(redirectDir, 0o755); err != nil {
+		return fmt.Errorf("creating redirect directory %s: %w", redirectDir, err)
+	}
+
+	// Write index.html inside the directory
+	outputPath := filepath.Join(redirectDir, "index.html")
 	//nolint:gosec // G306: Output files need 0644 for web serving
 	if err := os.WriteFile(outputPath, []byte(redirectHTML), 0o644); err != nil {
 		return fmt.Errorf("writing redirect %s: %w", outputPath, err)

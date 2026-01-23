@@ -223,3 +223,101 @@ func TestPublishHTMLPlugin_ShadowPagesDocumentation(t *testing.T) {
 		t.Error("Shadow page content should not be empty")
 	}
 }
+
+// TestPublishHTMLPlugin_FormatRedirectsCreateDirectories tests that .md and .txt redirects
+// create directories with index.html files instead of flat files.
+// This ensures web servers serve the redirect as HTML, not as text/plain.
+// Fixes: https://github.com/WaylonWalker/markata-go/issues/84
+func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
+	tempDir := t.TempDir()
+	plugin := NewPublishHTMLPlugin()
+
+	// Create config with Markdown and Text formats enabled
+	htmlEnabled := true
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"post_formats": models.PostFormatsConfig{
+				HTML:     &htmlEnabled,
+				Markdown: true,
+				Text:     true,
+			},
+		},
+	}
+
+	// Create test post
+	title := "Test Post"
+	post := &models.Post{
+		Path:        "test.md",
+		Slug:        "test-post",
+		Title:       &title,
+		Content:     "Test content",
+		HTML:        "<html><body>Test</body></html>",
+		Published:   true,
+		Draft:       false,
+		Skip:        false,
+		ArticleHTML: "<p>Test</p>",
+	}
+
+	// Write post (which includes format redirects)
+	if err := plugin.writePost(post, config); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+
+	// Test cases for each format redirect
+	tests := []struct {
+		name    string
+		dirPath string
+	}{
+		{
+			name:    "markdown redirect creates directory",
+			dirPath: filepath.Join(tempDir, "test-post.md"),
+		},
+		{
+			name:    "text redirect creates directory",
+			dirPath: filepath.Join(tempDir, "test-post.txt"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Check that the path is a directory, not a file
+			info, err := os.Stat(tt.dirPath)
+			if err != nil {
+				t.Fatalf("redirect path %s not found: %v", tt.dirPath, err)
+			}
+
+			if !info.IsDir() {
+				t.Errorf("expected %s to be a directory, but it's a file", tt.dirPath)
+			}
+
+			// Check that index.html exists inside the directory
+			indexPath := filepath.Join(tt.dirPath, "index.html")
+			indexInfo, err := os.Stat(indexPath)
+			if err != nil {
+				t.Fatalf("index.html not found in %s: %v", tt.dirPath, err)
+			}
+
+			if indexInfo.IsDir() {
+				t.Errorf("expected %s to be a file, but it's a directory", indexPath)
+			}
+
+			// Read content and verify it's valid redirect HTML
+			content, err := os.ReadFile(indexPath)
+			if err != nil {
+				t.Fatalf("failed to read %s: %v", indexPath, err)
+			}
+
+			contentStr := string(content)
+			if !strings.Contains(contentStr, "<!DOCTYPE html>") {
+				t.Error("redirect file should contain DOCTYPE")
+			}
+			if !strings.Contains(contentStr, "meta http-equiv=\"refresh\"") {
+				t.Error("redirect file should contain meta refresh")
+			}
+			if !strings.Contains(contentStr, "/test-post/index.") {
+				t.Error("redirect file should point to /test-post/index.*")
+			}
+		})
+	}
+}
