@@ -50,7 +50,7 @@ go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
 
 Download pre-built binaries from [GitHub Releases](https://github.com/WaylonWalker/markata-go/releases).
 
-Available platforms: Linux (amd64, arm64, armv7), macOS (Intel, Apple Silicon), Windows (amd64), FreeBSD (amd64).
+Available platforms: Linux (amd64, arm64, armv7), macOS (Intel, Apple Silicon), Windows (amd64), FreeBSD (amd64), Android (arm64/Termux).
 
 See [docs/installation.md](docs/installation.md) for detailed installation instructions.
 
