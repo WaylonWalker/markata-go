@@ -422,3 +422,107 @@ func TestMergeConfigs_FullExample(t *testing.T) {
 		t.Errorf("AssetsDir = %q, want default %q", result.AssetsDir, base.AssetsDir)
 	}
 }
+
+func TestMergePostFormatsConfig_OverrideMarkdownAndOG(t *testing.T) {
+	htmlEnabled := true
+	base := models.PostFormatsConfig{
+		HTML:     &htmlEnabled,
+		Markdown: false,
+		OG:       false,
+	}
+	override := models.PostFormatsConfig{
+		HTML:     nil, // Not set, should keep base
+		Markdown: true,
+		OG:       true,
+	}
+
+	result := mergePostFormatsConfig(base, override)
+
+	if result.HTML == nil || !*result.HTML {
+		t.Error("HTML should be true (from base)")
+	}
+	if !result.Markdown {
+		t.Error("Markdown should be true (from override)")
+	}
+	if !result.OG {
+		t.Error("OG should be true (from override)")
+	}
+}
+
+func TestMergePostFormatsConfig_OverrideHTML(t *testing.T) {
+	htmlEnabled := true
+	htmlDisabled := false
+	base := models.PostFormatsConfig{
+		HTML:     &htmlEnabled,
+		Markdown: false,
+		OG:       false,
+	}
+	override := models.PostFormatsConfig{
+		HTML:     &htmlDisabled, // Explicitly set to false
+		Markdown: false,
+		OG:       false,
+	}
+
+	result := mergePostFormatsConfig(base, override)
+
+	if result.HTML == nil || *result.HTML {
+		t.Error("HTML should be false (from override)")
+	}
+}
+
+func TestMergePostFormatsConfig_PreserveBase(t *testing.T) {
+	htmlEnabled := true
+	base := models.PostFormatsConfig{
+		HTML:     &htmlEnabled,
+		Markdown: true,
+		OG:       true,
+	}
+	override := models.PostFormatsConfig{
+		HTML:     nil,
+		Markdown: false, // Won't override since false is zero value
+		OG:       false,
+	}
+
+	result := mergePostFormatsConfig(base, override)
+
+	if result.HTML == nil || !*result.HTML {
+		t.Error("HTML should be true (from base)")
+	}
+	// Note: Markdown and OG from base are preserved since override is false
+	if !result.Markdown {
+		t.Error("Markdown should be true (preserved from base)")
+	}
+	if !result.OG {
+		t.Error("OG should be true (preserved from base)")
+	}
+}
+
+func TestMergeConfigs_PostFormats(t *testing.T) {
+	htmlEnabled := true
+	base := &models.Config{
+		PostFormats: models.PostFormatsConfig{
+			HTML:     &htmlEnabled,
+			Markdown: false,
+			OG:       false,
+		},
+	}
+	override := &models.Config{
+		PostFormats: models.PostFormatsConfig{
+			HTML:     nil,
+			Markdown: true,
+			OG:       true,
+		},
+	}
+
+	result := MergeConfigs(base, override)
+
+	if result.PostFormats.HTML == nil || !*result.PostFormats.HTML {
+		t.Error("PostFormats.HTML should be true (from base)")
+	}
+	if !result.PostFormats.Markdown {
+		t.Error("PostFormats.Markdown should be true (from override)")
+	}
+	if !result.PostFormats.OG {
+		t.Error("PostFormats.OG should be true (from override)")
+	}
+}
