@@ -36,12 +36,17 @@ nord13 = "#ebcb8b"  # Yellow
 nord14 = "#a3be8c"  # Green
 nord15 = "#b48ead"  # Purple
 
+# Extended colors for accessibility
+nord3-light = "#7b88a1"  # Lighter variant for muted text on dark bg
+nord3-lighter = "#8a98b3"  # Even lighter for code comments on code-bg
+nord9-light = "#a3bdd9"  # Lighter variant for code keywords
+
 # Layer 2: Semantic Mapping
 [palette.semantic]
 # Text colors
 text-primary   = "nord4"
 text-secondary = "nord5"
-text-muted     = "nord3"
+text-muted     = "nord3-light"
 
 # Background colors
 bg-primary   = "nord0"
@@ -70,8 +75,8 @@ border-focus = "nord8"
 [palette.components]
 code-bg       = "nord1"
 code-text     = "nord4"
-code-comment  = "nord3"
-code-keyword  = "nord9"
+code-comment  = "nord3-lighter"
+code-keyword  = "nord9-light"
 code-string   = "nord14"
 code-number   = "nord15"
 code-function = "nord8"

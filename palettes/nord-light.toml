@@ -36,6 +36,13 @@ nord13 = "#ebcb8b"  # yellow
 nord14 = "#a3be8c"  # green
 nord15 = "#b48ead"  # purple
 
+# Darker variants for accessibility on light backgrounds
+nord10-dark = "#3d5f8a"  # Darker blue for links
+nord14-dark = "#5a8050"  # Darker green for success
+nord13-dark = "#9a7a30"  # Darker yellow for warning
+nord8-dark  = "#4a8090"  # Darker cyan for info
+nord9-dark  = "#4a6890"  # Darker blue for code keywords
+
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "nord0"
@@ -47,16 +54,16 @@ bg-secondary = "nord5"
 bg-surface   = "nord5"
 bg-elevated  = "nord4"
 
-accent       = "nord10"
+accent       = "nord10-dark"
 accent-hover = "nord9"
-link         = "nord10"
+link         = "nord10-dark"
 link-hover   = "nord9"
 link-visited = "nord15"
 
-success = "nord14"
-warning = "nord13"
+success = "nord14-dark"
+warning = "nord13-dark"
 error   = "nord11"
-info    = "nord8"
+info    = "nord8-dark"
 
 border       = "nord4"
 border-focus = "nord10"
@@ -66,8 +73,8 @@ border-focus = "nord10"
 code-bg       = "nord5"
 code-text     = "nord0"
 code-comment  = "nord3"
-code-keyword  = "nord9"
-code-string   = "nord14"
+code-keyword  = "nord9-dark"
+code-string   = "nord14-dark"
 code-number   = "nord12"
 code-function = "nord8"
 code-type     = "nord13"
@@ -82,7 +89,7 @@ admonition-warn-border = "nord13"
 admonition-error-bg    = "nord5"
 admonition-error-border = "nord11"
 
-button-primary-bg     = "nord10"
+button-primary-bg     = "nord10-dark"
 button-primary-text   = "nord6"
 button-secondary-bg   = "nord4"
 button-secondary-text = "nord0"

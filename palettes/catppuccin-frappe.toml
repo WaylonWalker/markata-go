@@ -65,10 +65,10 @@ border-focus = "mauve"
 
 # Layer 3: Component Colors
 [palette.components]
-code-bg       = "surface0"
+code-bg       = "base"
 code-text     = "text"
-code-comment  = "overlay1"
-code-keyword  = "mauve"
+code-comment  = "overlay2"
+code-keyword  = "pink"
 code-string   = "green"
 code-number   = "peach"
 code-function = "blue"
