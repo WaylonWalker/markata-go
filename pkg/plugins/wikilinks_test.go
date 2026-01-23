@@ -3,6 +3,7 @@ package plugins
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -77,9 +78,15 @@ func TestWikilinksPlugin_BasicWikilink(t *testing.T) {
 		}
 	}
 
-	// Check wikilink was converted (now includes data attributes)
-	if !strings.Contains(source.Content, `href="/other-post/"`) || !strings.Contains(source.Content, `>Other Post</a>`) {
-		t.Errorf("expected wikilink in content, got %q", source.Content)
+	// Check that link is created with correct href, class, and data attributes
+	if !strings.Contains(source.Content, `<a href="/other-post/" class="wikilink"`) {
+		t.Errorf("expected wikilink anchor tag in content, got %q", source.Content)
+	}
+	if !strings.Contains(source.Content, `data-title="Other Post"`) {
+		t.Errorf("expected data-title attribute in content, got %q", source.Content)
+	}
+	if !strings.Contains(source.Content, ">Other Post</a>") {
+		t.Errorf("expected 'Other Post' as link text in content, got %q", source.Content)
 	}
 }
 
@@ -115,9 +122,12 @@ func TestWikilinksPlugin_WikilinkWithCustomText(t *testing.T) {
 		}
 	}
 
-	// Check wikilink was converted with custom text (now includes data attributes)
-	if !strings.Contains(source.Content, `href="/other-post/"`) || !strings.Contains(source.Content, `>this article</a>`) {
-		t.Errorf("expected wikilink in content, got %q", source.Content)
+	// Check that custom display text is used
+	if !strings.Contains(source.Content, `<a href="/other-post/" class="wikilink"`) {
+		t.Errorf("expected wikilink anchor tag in content, got %q", source.Content)
+	}
+	if !strings.Contains(source.Content, ">this article</a>") {
+		t.Errorf("expected 'this article' as link text in content, got %q", source.Content)
 	}
 }
 
@@ -193,9 +203,12 @@ func TestWikilinksPlugin_CaseInsensitiveLookup(t *testing.T) {
 		}
 	}
 
-	// Check case-insensitive lookup worked (now includes data attributes)
-	if !strings.Contains(source.Content, `href="/my-post/"`) || !strings.Contains(source.Content, `>My Post</a>`) {
-		t.Errorf("expected wikilink in content, got %q", source.Content)
+	// Check that case-insensitive match works
+	if !strings.Contains(source.Content, `<a href="/my-post/" class="wikilink"`) {
+		t.Errorf("expected case-insensitive match in content, got %q", source.Content)
+	}
+	if !strings.Contains(source.Content, ">My Post</a>") {
+		t.Errorf("expected 'My Post' as link text in content, got %q", source.Content)
 	}
 }
 
@@ -230,9 +243,12 @@ func TestWikilinksPlugin_SlugWithSpaces(t *testing.T) {
 		}
 	}
 
-	expected := `<a href="/hello-world/" class="wikilink">Hello World</a>`
-	if !strings.Contains(source.Content, expected) {
-		t.Errorf("expected space to hyphen conversion %q in content, got %q", expected, source.Content)
+	// Check that space to hyphen conversion works
+	if !strings.Contains(source.Content, `<a href="/hello-world/" class="wikilink"`) {
+		t.Errorf("expected space to hyphen conversion in content, got %q", source.Content)
+	}
+	if !strings.Contains(source.Content, ">Hello World</a>") {
+		t.Errorf("expected 'Hello World' as link text in content, got %q", source.Content)
 	}
 }
 
@@ -265,11 +281,17 @@ func TestWikilinksPlugin_MultipleWikilinks(t *testing.T) {
 		}
 	}
 
-	if !strings.Contains(source.Content, `<a href="/post-one/" class="wikilink">Post One</a>`) {
+	if !strings.Contains(source.Content, `<a href="/post-one/" class="wikilink"`) {
 		t.Errorf("expected first wikilink to be converted, got %q", source.Content)
 	}
-	if !strings.Contains(source.Content, `<a href="/post-two/" class="wikilink">Post Two</a>`) {
+	if !strings.Contains(source.Content, ">Post One</a>") {
+		t.Errorf("expected first wikilink text, got %q", source.Content)
+	}
+	if !strings.Contains(source.Content, `<a href="/post-two/" class="wikilink"`) {
 		t.Errorf("expected second wikilink to be converted, got %q", source.Content)
+	}
+	if !strings.Contains(source.Content, ">Post Two</a>") {
+		t.Errorf("expected second wikilink text, got %q", source.Content)
 	}
 }
 
@@ -437,9 +459,11 @@ func TestWikilinksPlugin_NoHref(t *testing.T) {
 	}
 
 	// Should generate href from slug
-	expected := `<a href="/target/" class="wikilink">Target</a>`
-	if !strings.Contains(source.Content, expected) {
-		t.Errorf("expected generated href %q in content, got %q", expected, source.Content)
+	if !strings.Contains(source.Content, `<a href="/target/" class="wikilink"`) {
+		t.Errorf("expected generated href in content, got %q", source.Content)
+	}
+	if !strings.Contains(source.Content, ">Target</a>") {
+		t.Errorf("expected 'Target' as link text in content, got %q", source.Content)
 	}
 }
 
@@ -560,8 +584,11 @@ Final link: [[getting-started]]`,
 	}
 
 	// Check that wikilinks outside code blocks are converted
-	if !strings.Contains(result.Content, `<a href="/getting-started/" class="wikilink">Getting Started</a>`) {
+	if !strings.Contains(result.Content, `<a href="/getting-started/" class="wikilink"`) {
 		t.Errorf("expected wikilinks outside code blocks to be converted, got %q", result.Content)
+	}
+	if !strings.Contains(result.Content, ">Getting Started</a>") {
+		t.Errorf("expected 'Getting Started' as link text in converted wikilinks, got %q", result.Content)
 	}
 
 	// Check that wikilinks inside backtick code blocks are preserved
@@ -575,7 +602,108 @@ Final link: [[getting-started]]`,
 	}
 
 	// Check custom text link is converted
-	if !strings.Contains(result.Content, `<a href="/getting-started/" class="wikilink">custom text</a>`) {
+	if !strings.Contains(result.Content, ">custom text</a>") {
 		t.Errorf("expected custom text wikilink to be converted, got %q", result.Content)
+	}
+}
+
+// TestWikilinksPlugin_DataAttributes tests that data attributes are added for tooltips.
+func TestWikilinksPlugin_DataAttributes(t *testing.T) {
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	targetTitle := "My Article"
+	targetDesc := "A great article about things"
+	targetDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	targetPost := &models.Post{
+		Slug:        "my-article",
+		Title:       &targetTitle,
+		Description: &targetDesc,
+		Date:        &targetDate,
+		Href:        "/my-article/",
+	}
+	sourcePost := &models.Post{
+		Content: "Read [[my-article]]",
+		Slug:    "source-post",
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// Check data-title attribute
+	if !strings.Contains(source.Content, `data-title="My Article"`) {
+		t.Errorf("expected data-title attribute, got %q", source.Content)
+	}
+
+	// Check data-description attribute
+	if !strings.Contains(source.Content, `data-description="A great article about things"`) {
+		t.Errorf("expected data-description attribute, got %q", source.Content)
+	}
+
+	// Check data-date attribute
+	if !strings.Contains(source.Content, `data-date="2024-01-15"`) {
+		t.Errorf("expected data-date attribute, got %q", source.Content)
+	}
+}
+
+// TestWikilinksPlugin_DataAttributesPartial tests that only available attributes are added.
+func TestWikilinksPlugin_DataAttributesPartial(t *testing.T) {
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	// Post with only title, no description or date
+	targetTitle := "Simple Post"
+	targetPost := &models.Post{
+		Slug:  "simple-post",
+		Title: &targetTitle,
+		Href:  "/simple-post/",
+	}
+	sourcePost := &models.Post{
+		Content: "Read [[simple-post]]",
+		Slug:    "source-post",
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// Check data-title is present
+	if !strings.Contains(source.Content, `data-title="Simple Post"`) {
+		t.Errorf("expected data-title attribute, got %q", source.Content)
+	}
+
+	// Check data-description is NOT present (no description)
+	if strings.Contains(source.Content, `data-description`) {
+		t.Errorf("expected no data-description attribute when description is nil, got %q", source.Content)
+	}
+
+	// Check data-date is NOT present (no date)
+	if strings.Contains(source.Content, `data-date`) {
+		t.Errorf("expected no data-date attribute when date is nil, got %q", source.Content)
 	}
 }

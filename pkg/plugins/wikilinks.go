@@ -175,8 +175,21 @@ func (p *WikilinksPlugin) processWikilinksInText(text string, postMap map[string
 			href = "/" + targetPost.Slug + "/"
 		}
 
-		return fmt.Sprintf(`<a href=%q class="wikilink">%s</a>`,
+		// Build data attributes for tooltip
+		dataAttrs := ""
+		if targetPost.Title != nil && *targetPost.Title != "" {
+			dataAttrs += fmt.Sprintf(` data-title=%q`, html.EscapeString(*targetPost.Title))
+		}
+		if targetPost.Description != nil && *targetPost.Description != "" {
+			dataAttrs += fmt.Sprintf(` data-description=%q`, html.EscapeString(*targetPost.Description))
+		}
+		if targetPost.Date != nil {
+			dataAttrs += fmt.Sprintf(` data-date=%q`, targetPost.Date.Format("2006-01-02"))
+		}
+
+		return fmt.Sprintf(`<a href=%q class="wikilink"%s>%s</a>`,
 			html.EscapeString(href),
+			dataAttrs,
 			html.EscapeString(displayText))
 	})
 }
