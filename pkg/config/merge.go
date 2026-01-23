@@ -49,6 +49,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	if len(override.DisabledHooks) > 0 {
 		result.DisabledHooks = override.DisabledHooks
 	}
+	if len(override.Nav) > 0 {
+		result.Nav = override.Nav
+	}
 
 	// Integer fields - override if non-zero
 	if override.Concurrency != 0 {
@@ -59,6 +62,7 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	result.GlobConfig = mergeGlobConfig(base.GlobConfig, override.GlobConfig)
 	result.MarkdownConfig = mergeMarkdownConfig(base.MarkdownConfig, override.MarkdownConfig)
 	result.FeedDefaults = mergeFeedDefaults(base.FeedDefaults, override.FeedDefaults)
+	result.Footer = mergeFooterConfig(base.Footer, override.Footer)
 
 	// Feeds array - replace if non-empty
 	if len(override.Feeds) > 0 {
@@ -92,6 +96,20 @@ func mergeThemeConfig(base, override models.ThemeConfig) models.ThemeConfig {
 		for k, v := range override.Variables {
 			result.Variables[k] = v
 		}
+	}
+
+	return result
+}
+
+// mergeFooterConfig merges FooterConfig values.
+func mergeFooterConfig(base, override models.FooterConfig) models.FooterConfig {
+	result := base
+
+	if override.Text != "" {
+		result.Text = override.Text
+	}
+	if override.ShowCopyright != nil {
+		result.ShowCopyright = override.ShowCopyright
 	}
 
 	return result

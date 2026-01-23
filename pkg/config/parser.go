@@ -63,6 +63,8 @@ type tomlConfig struct {
 	Author        string             `toml:"author"`
 	AssetsDir     string             `toml:"assets_dir"`
 	TemplatesDir  string             `toml:"templates_dir"`
+	Nav           []tomlNavItem      `toml:"nav"`
+	Footer        tomlFooterConfig   `toml:"footer"`
 	Hooks         []string           `toml:"hooks"`
 	DisabledHooks []string           `toml:"disabled_hooks"`
 	Glob          tomlGlobConfig     `toml:"glob"`
@@ -72,6 +74,17 @@ type tomlConfig struct {
 	Concurrency   int                `toml:"concurrency"`
 	Theme         tomlThemeConfig    `toml:"theme"`
 	UnknownFields map[string]any     `toml:"-"`
+}
+
+type tomlNavItem struct {
+	Label    string `toml:"label"`
+	URL      string `toml:"url"`
+	External bool   `toml:"external"`
+}
+
+type tomlFooterConfig struct {
+	Text          string `toml:"text"`
+	ShowCopyright *bool  `toml:"show_copyright"`
 }
 
 type tomlThemeConfig struct {
@@ -152,10 +165,20 @@ func (c *tomlConfig) toConfig() *models.Config {
 		},
 		Concurrency: c.Concurrency,
 		Theme:       c.Theme.toThemeConfig(),
+		Footer:      c.Footer.toFooterConfig(),
 	}
 
 	if c.Glob.UseGitignore != nil {
 		config.GlobConfig.UseGitignore = *c.Glob.UseGitignore
+	}
+
+	// Convert nav items
+	for _, nav := range c.Nav {
+		config.Nav = append(config.Nav, models.NavItem{
+			Label:    nav.Label,
+			URL:      nav.URL,
+			External: nav.External,
+		})
 	}
 
 	// Convert feeds
@@ -167,6 +190,13 @@ func (c *tomlConfig) toConfig() *models.Config {
 	config.FeedDefaults = c.FeedDefaults.toFeedDefaults()
 
 	return config
+}
+
+func (f *tomlFooterConfig) toFooterConfig() models.FooterConfig {
+	return models.FooterConfig{
+		Text:          f.Text,
+		ShowCopyright: f.ShowCopyright,
+	}
 }
 
 func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
@@ -252,6 +282,8 @@ type yamlConfig struct {
 	Author        string             `yaml:"author"`
 	AssetsDir     string             `yaml:"assets_dir"`
 	TemplatesDir  string             `yaml:"templates_dir"`
+	Nav           []yamlNavItem      `yaml:"nav"`
+	Footer        yamlFooterConfig   `yaml:"footer"`
 	Hooks         []string           `yaml:"hooks"`
 	DisabledHooks []string           `yaml:"disabled_hooks"`
 	Glob          yamlGlobConfig     `yaml:"glob"`
@@ -259,6 +291,17 @@ type yamlConfig struct {
 	Feeds         []yamlFeedConfig   `yaml:"feeds"`
 	FeedDefaults  yamlFeedDefaults   `yaml:"feed_defaults"`
 	Concurrency   int                `yaml:"concurrency"`
+}
+
+type yamlNavItem struct {
+	Label    string `yaml:"label"`
+	URL      string `yaml:"url"`
+	External bool   `yaml:"external"`
+}
+
+type yamlFooterConfig struct {
+	Text          string `yaml:"text"`
+	ShowCopyright *bool  `yaml:"show_copyright"`
 }
 
 type yamlGlobConfig struct {
@@ -332,10 +375,20 @@ func (c *yamlConfig) toConfig() *models.Config {
 			Extensions: c.Markdown.Extensions,
 		},
 		Concurrency: c.Concurrency,
+		Footer:      c.Footer.toFooterConfig(),
 	}
 
 	if c.Glob.UseGitignore != nil {
 		config.GlobConfig.UseGitignore = *c.Glob.UseGitignore
+	}
+
+	// Convert nav items
+	for _, nav := range c.Nav {
+		config.Nav = append(config.Nav, models.NavItem{
+			Label:    nav.Label,
+			URL:      nav.URL,
+			External: nav.External,
+		})
 	}
 
 	// Convert feeds
@@ -347,6 +400,13 @@ func (c *yamlConfig) toConfig() *models.Config {
 	config.FeedDefaults = c.FeedDefaults.toFeedDefaults()
 
 	return config
+}
+
+func (f *yamlFooterConfig) toFooterConfig() models.FooterConfig {
+	return models.FooterConfig{
+		Text:          f.Text,
+		ShowCopyright: f.ShowCopyright,
+	}
 }
 
 func (f *yamlFeedConfig) toFeedConfig() models.FeedConfig {
@@ -419,6 +479,8 @@ type jsonConfig struct {
 	Author        string             `json:"author"`
 	AssetsDir     string             `json:"assets_dir"`
 	TemplatesDir  string             `json:"templates_dir"`
+	Nav           []jsonNavItem      `json:"nav"`
+	Footer        jsonFooterConfig   `json:"footer"`
 	Hooks         []string           `json:"hooks"`
 	DisabledHooks []string           `json:"disabled_hooks"`
 	Glob          jsonGlobConfig     `json:"glob"`
@@ -426,6 +488,17 @@ type jsonConfig struct {
 	Feeds         []jsonFeedConfig   `json:"feeds"`
 	FeedDefaults  jsonFeedDefaults   `json:"feed_defaults"`
 	Concurrency   int                `json:"concurrency"`
+}
+
+type jsonNavItem struct {
+	Label    string `json:"label"`
+	URL      string `json:"url"`
+	External bool   `json:"external"`
+}
+
+type jsonFooterConfig struct {
+	Text          string `json:"text"`
+	ShowCopyright *bool  `json:"show_copyright"`
 }
 
 type jsonGlobConfig struct {
@@ -499,10 +572,20 @@ func (c *jsonConfig) toConfig() *models.Config {
 			Extensions: c.Markdown.Extensions,
 		},
 		Concurrency: c.Concurrency,
+		Footer:      c.Footer.toFooterConfig(),
 	}
 
 	if c.Glob.UseGitignore != nil {
 		config.GlobConfig.UseGitignore = *c.Glob.UseGitignore
+	}
+
+	// Convert nav items
+	for _, nav := range c.Nav {
+		config.Nav = append(config.Nav, models.NavItem{
+			Label:    nav.Label,
+			URL:      nav.URL,
+			External: nav.External,
+		})
 	}
 
 	// Convert feeds
@@ -514,6 +597,13 @@ func (c *jsonConfig) toConfig() *models.Config {
 	config.FeedDefaults = c.FeedDefaults.toFeedDefaults()
 
 	return config
+}
+
+func (f *jsonFooterConfig) toFooterConfig() models.FooterConfig {
+	return models.FooterConfig{
+		Text:          f.Text,
+		ShowCopyright: f.ShowCopyright,
+	}
 }
 
 func (f *jsonFeedConfig) toFeedConfig() models.FeedConfig {

@@ -566,7 +566,8 @@ main {
   color: var(--color-text-muted);
 }
 
-.posts {
+.posts,
+.post-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
