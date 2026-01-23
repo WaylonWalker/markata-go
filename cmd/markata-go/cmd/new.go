@@ -203,7 +203,10 @@ func promptNew(reader *bufio.Reader, question, defaultVal string) string {
 	} else {
 		fmt.Printf("%s: ", question)
 	}
-	input, _ := reader.ReadString('\n')
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		return defaultVal
+	}
 	input = strings.TrimSpace(input)
 	if input == "" {
 		return defaultVal
@@ -218,7 +221,10 @@ func promptYesNoNew(reader *bufio.Reader, question string, defaultYes bool) bool
 		defaultStr = "Y/n"
 	}
 	fmt.Printf("%s (%s): ", question, defaultStr)
-	input, _ := reader.ReadString('\n')
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		return defaultYes
+	}
 	input = strings.TrimSpace(strings.ToLower(input))
 
 	if input == "" {
