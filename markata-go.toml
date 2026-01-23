@@ -154,7 +154,7 @@ items_per_page = 10
 
 # Home page feed (empty slug = root index.html)
 [[markata-go.feeds]]
-slug = "latst"
+slug = ""
 title = "Latest Posts"
 filter = "published == True"
 sort = "date"
