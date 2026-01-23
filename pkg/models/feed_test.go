@@ -402,6 +402,87 @@ func TestFeedConfig_Paginate_ZeroItemsPerPage(t *testing.T) {
 	}
 }
 
+func TestFeedConfig_Paginate_PaginationType(t *testing.T) {
+	posts := make([]*Post, 15)
+	for i := range posts {
+		title := "Post " + itoa(i+1)
+		posts[i] = &Post{Title: &title}
+	}
+
+	tests := []struct {
+		name           string
+		paginationType PaginationType
+		wantType       PaginationType
+	}{
+		{"manual explicit", PaginationManual, PaginationManual},
+		{"htmx explicit", PaginationHTMX, PaginationHTMX},
+		{"js explicit", PaginationJS, PaginationJS},
+		{"empty defaults to manual", "", PaginationManual},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			feed := &FeedConfig{
+				ItemsPerPage:   5,
+				PaginationType: tt.paginationType,
+				Posts:          posts,
+			}
+
+			feed.Paginate("/blog")
+
+			for _, page := range feed.Pages {
+				if page.PaginationType != tt.wantType {
+					t.Errorf("page %d PaginationType: got %q, want %q", page.Number, page.PaginationType, tt.wantType)
+				}
+			}
+		})
+	}
+}
+
+func TestFeedConfig_Paginate_Metadata(t *testing.T) {
+	posts := make([]*Post, 15)
+	for i := range posts {
+		title := "Post " + itoa(i+1)
+		posts[i] = &Post{Title: &title}
+	}
+
+	feed := &FeedConfig{
+		ItemsPerPage: 5,
+		Posts:        posts,
+	}
+
+	feed.Paginate("/blog")
+
+	// Should have 3 pages
+	if len(feed.Pages) != 3 {
+		t.Fatalf("expected 3 pages, got %d", len(feed.Pages))
+	}
+
+	// Check metadata on all pages
+	for i, page := range feed.Pages {
+		if page.TotalPages != 3 {
+			t.Errorf("page %d TotalPages: got %d, want 3", i+1, page.TotalPages)
+		}
+		if page.TotalItems != 15 {
+			t.Errorf("page %d TotalItems: got %d, want 15", i+1, page.TotalItems)
+		}
+		if page.ItemsPerPage != 5 {
+			t.Errorf("page %d ItemsPerPage: got %d, want 5", i+1, page.ItemsPerPage)
+		}
+		if len(page.PageURLs) != 3 {
+			t.Errorf("page %d PageURLs: got %d URLs, want 3", i+1, len(page.PageURLs))
+		}
+	}
+
+	// Check PageURLs content
+	expectedURLs := []string{"/blog/", "/blog/page/2/", "/blog/page/3/"}
+	for i, url := range feed.Pages[0].PageURLs {
+		if url != expectedURLs[i] {
+			t.Errorf("PageURLs[%d]: got %q, want %q", i, url, expectedURLs[i])
+		}
+	}
+}
+
 // =============================================================================
 // Feed Formats Tests
 // =============================================================================

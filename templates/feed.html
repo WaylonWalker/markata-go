@@ -1,26 +1,26 @@
 {% extends "base.html" %}
 
-{% block content %}
-<h1>{{ feed.title | default:"Posts" }}</h1>
-{% if feed.description %}
-<p class="description">{{ feed.description }}</p>
+{% block htmx %}
+{% if page.pagination_type == "htmx" %}
+<script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
 {% endif %}
+{% endblock %}
 
-<div class="post-list">
+{% block content %}
+<div class="feed">
+  <header class="feed-header">
+    <h1>{{ feed.title | default:"Posts" }}</h1>
+    {% if feed.description %}
+    <p>{{ feed.description }}</p>
+    {% endif %}
+  </header>
+
+  <div class="posts posts-list" id="posts-list">
     {% for post in page.posts %}
     {% include "partials/card.html" %}
     {% endfor %}
-</div>
+  </div>
 
-{% if page.total_pages > 1 %}
-<nav class="pagination">
-    {% if page.has_prev %}
-    <a href="{{ page.prev_url }}">&laquo; Newer</a>
-    {% endif %}
-    <span>Page {{ page.number }} of {{ page.total_pages }}</span>
-    {% if page.has_next %}
-    <a href="{{ page.next_url }}">Older &raquo;</a>
-    {% endif %}
-</nav>
-{% endif %}
+  {% include "partials/pagination.html" %}
+</div>
 {% endblock %}
