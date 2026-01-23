@@ -29,6 +29,10 @@ func (p *StaticAssetsPlugin) Name() string {
 }
 
 // Write copies static assets to the output directory.
+// Files are copied in layers with increasing priority:
+// 1. Embedded theme static files (lowest priority, base layer)
+// 2. Filesystem theme static files (can override embedded)
+// 3. Project static files (highest priority, can override all)
 func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
@@ -47,21 +51,23 @@ func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Try to find theme static directory in various locations
-	themeStaticDir := p.findThemeStaticDir(themeName)
-	if themeStaticDir != "" {
-		// Found filesystem theme static dir
-		if err := p.copyDir(themeStaticDir, outputDir); err != nil {
-			return fmt.Errorf("copying theme static files: %w", err)
-		}
-	} else if themeName == ThemeDefault {
-		// Fall back to embedded static files for default theme
+	// Layer 1: Copy embedded static files for default theme (base layer)
+	// This ensures all default assets are present even if filesystem theme is incomplete
+	if themeName == ThemeDefault {
 		if err := p.copyEmbeddedStatic(outputDir); err != nil {
 			return fmt.Errorf("copying embedded static files: %w", err)
 		}
 	}
 
-	// Copy project static files (higher priority, can override theme files)
+	// Layer 2: Copy filesystem theme static files (overrides embedded)
+	themeStaticDir := p.findThemeStaticDir(themeName)
+	if themeStaticDir != "" {
+		if err := p.copyDir(themeStaticDir, outputDir); err != nil {
+			return fmt.Errorf("copying theme static files: %w", err)
+		}
+	}
+
+	// Layer 3: Copy project static files (highest priority, overrides theme files)
 	projectStaticDir := "static"
 	if _, err := os.Stat(projectStaticDir); err == nil {
 		if err := p.copyDir(projectStaticDir, outputDir); err != nil {
