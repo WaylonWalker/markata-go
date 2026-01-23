@@ -107,7 +107,7 @@ func (p *Post) GenerateSlug() {
 
 	// Check for index.md special case
 	base := filepath.Base(p.Path)
-	if strings.ToLower(base) == "index.md" {
+	if strings.EqualFold(base, "index.md") {
 		// For index.md files, use the directory path as the slug
 		dir := filepath.Dir(p.Path)
 		// Clean up the directory path

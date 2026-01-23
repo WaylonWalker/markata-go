@@ -13,6 +13,9 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+// defaultTemplate is the default template name for posts.
+const defaultTemplate = "post.html"
+
 // PublishHTMLPlugin writes individual post HTML files during the write stage.
 // It supports multiple output formats: HTML, Markdown source, and OG card HTML.
 type PublishHTMLPlugin struct{}
@@ -152,7 +155,7 @@ func (p *PublishHTMLPlugin) writeMarkdownFormat(post *models.Post, postDir strin
 			buf.WriteString(fmt.Sprintf("  - %s\n", tag))
 		}
 	}
-	if post.Template != "" && post.Template != "post.html" {
+	if post.Template != "" && post.Template != defaultTemplate {
 		buf.WriteString(fmt.Sprintf("template: %s\n", post.Template))
 	}
 
