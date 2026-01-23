@@ -23,6 +23,10 @@ comment   = "#565f89"
 dark3     = "#545c7e"
 dark5     = "#737aa2"
 
+# Lighter variants for accessibility
+comment-light = "#7a84ab"  # Lighter comment for better contrast
+dark3-light   = "#3a4261"  # Darker bg for secondary button to get contrast
+
 # Accent colors
 blue      = "#7aa2f7"
 blue0     = "#3d59a1"
@@ -48,12 +52,12 @@ yellow    = "#e0af68"
 [palette.semantic]
 text-primary   = "fg"
 text-secondary = "fg-dark"
-text-muted     = "comment"
+text-muted     = "dark5"
 
 bg-primary   = "bg"
 bg-secondary = "bg-dark"
 bg-surface   = "bg-float"
-bg-elevated  = "dark3"
+bg-elevated  = "bg-float"
 
 accent       = "magenta"
 accent-hover = "purple"
@@ -73,7 +77,7 @@ border-focus = "blue"
 [palette.components]
 code-bg       = "bg-dark"
 code-text     = "fg"
-code-comment  = "comment"
+code-comment  = "comment-light"
 code-keyword  = "magenta"
 code-string   = "green"
 code-number   = "orange"
@@ -92,7 +96,7 @@ admonition-error-border = "red"
 
 button-primary-bg     = "blue"
 button-primary-text   = "bg"
-button-secondary-bg   = "dark3"
+button-secondary-bg   = "dark3-light"
 button-secondary-text = "fg"
 
 nav-bg     = "bg-dark"

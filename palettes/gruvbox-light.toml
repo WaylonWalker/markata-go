@@ -73,7 +73,7 @@ border-focus = "blue-dim"
 [palette.components]
 code-bg       = "bg1"
 code-text     = "fg1"
-code-comment  = "gray"
+code-comment  = "fg4"
 code-keyword  = "red-dim"
 code-string   = "green-dim"
 code-number   = "purple-dim"
