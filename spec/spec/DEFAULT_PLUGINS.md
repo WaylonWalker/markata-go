@@ -33,6 +33,7 @@ This document specifies all built-in plugins that ship with the static site gene
 │    └─ feeds              Generate feed collections                   │
 │                                                                      │
 │  COLLECT                                                             │
+│    ├─ overwrite_check    Detect conflicting output paths             │
 │    └─ prevnext           Calculate prev/next from feeds/series       │
 │                                                                      │
 │  OUTPUT                                                              │
@@ -263,6 +264,116 @@ def pre_render(core):
             today=date.today(),
             now=datetime.now()
         )
+```
+
+---
+
+## Collect Phase
+
+### `overwrite_check`
+
+**Stage:** `collect` (with early priority)
+
+**Purpose:** Detect when multiple posts or feeds would write to the same output path, preventing accidental content overwrites.
+
+**Configuration:**
+```toml
+[name.overwrite_check]
+enabled = true
+warn_only = false              # If true, warn instead of fail
+```
+
+**Behavior:**
+1. Build a map of all output paths and their content sources
+2. For each post (not skipped/draft), calculate its output path: `{output_dir}/{slug}/index.html`
+3. For each feed, calculate all output paths based on enabled formats (HTML, RSS, Atom, JSON)
+4. Detect conflicts where multiple sources would write to the same path
+5. If conflicts found:
+   - `warn_only = false`: Return error with all conflicts listed
+   - `warn_only = true`: Log warning but continue
+
+**Output paths checked:**
+
+| Content Type | Path Pattern |
+|--------------|--------------|
+| Post | `{output_dir}/{slug}/index.html` |
+| Feed HTML | `{output_dir}/{feed_slug}/index.html` |
+| Feed RSS | `{output_dir}/{feed_slug}/rss.xml` |
+| Feed Atom | `{output_dir}/{feed_slug}/atom.xml` |
+| Feed JSON | `{output_dir}/{feed_slug}/index.json` |
+| Homepage | `{output_dir}/index.html` |
+
+**PathConflict structure:**
+```go
+type PathConflict struct {
+    OutputPath string   // The conflicting output path
+    Sources    []string // Content sources (e.g., "post:path/to/file.md", "feed:blog")
+}
+```
+
+**Error message format:**
+```
+detected 2 output path conflict(s):
+  - output/blog/index.html: post:posts/blog.md, feed:blog
+  - output/about/index.html: post:about.md, post:pages/about.md
+```
+
+**Common conflict scenarios:**
+
+| Scenario | Example | Resolution |
+|----------|---------|------------|
+| Post slug matches feed slug | Post with `slug: blog` and feed with `slug: blog` | Rename post slug or feed slug |
+| Duplicate post slugs | Two posts with same `slug` frontmatter | Use unique slugs |
+| Empty slug conflicts | Homepage feed and post with `slug: ""` | Only one can be the homepage |
+
+**Hook signature (Go):**
+```go
+func (p *OverwriteCheckPlugin) Collect(m *lifecycle.Manager) error {
+    pathSources := make(map[string][]string)
+    
+    // Check post output paths
+    for _, post := range m.Posts() {
+        if post.Skip || post.Draft {
+            continue
+        }
+        outputPath := filepath.Join(outputDir, post.Slug, "index.html")
+        pathSources[outputPath] = append(pathSources[outputPath], 
+            fmt.Sprintf("post:%s", post.Path))
+    }
+    
+    // Check feed output paths
+    for _, fc := range feedConfigs {
+        for _, path := range getFeedOutputPaths(outputDir, fc) {
+            pathSources[path] = append(pathSources[path], 
+                fmt.Sprintf("feed:%s", fc.Slug))
+        }
+    }
+    
+    // Detect conflicts
+    var conflicts []PathConflict
+    for path, sources := range pathSources {
+        if len(sources) > 1 {
+            conflicts = append(conflicts, PathConflict{
+                OutputPath: path,
+                Sources:    sources,
+            })
+        }
+    }
+    
+    if len(conflicts) > 0 && !p.warnOnly {
+        return fmt.Errorf("detected %d output path conflict(s)...", len(conflicts))
+    }
+    return nil
+}
+```
+
+**Interface compliance:**
+```go
+var (
+    _ lifecycle.Plugin         = (*OverwriteCheckPlugin)(nil)
+    _ lifecycle.CollectPlugin  = (*OverwriteCheckPlugin)(nil)
+    _ lifecycle.PriorityPlugin = (*OverwriteCheckPlugin)(nil)
+)
 ```
 
 ---
@@ -1297,6 +1408,7 @@ DEFAULT_PLUGINS = [
     "toc",                  # Generate TOC
     "link_collector",       # Track inlinks/outlinks
     "feeds",                # Create feed collections
+    "overwrite_check",      # Detect conflicting output paths
     "prevnext",             # Calculate prev/next from feeds/series
     "publish_feeds",        # Write feed files
     "publish_html",         # Write post files

@@ -62,6 +62,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["qrcode"] = func() lifecycle.Plugin { return NewQRCodePlugin() }
 	pluginRegistry.constructors["youtube"] = func() lifecycle.Plugin { return NewYouTubePlugin() }
 	pluginRegistry.constructors["chroma_css"] = func() lifecycle.Plugin { return NewChromaCSSPlugin() }
+	pluginRegistry.constructors["overwrite_check"] = func() lifecycle.Plugin { return NewOverwriteCheckPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -131,7 +132,8 @@ func DefaultPlugins() []lifecycle.Plugin {
 		// Collect stage plugins
 		NewFeedsPlugin(),
 		NewAutoFeedsPlugin(),
-		NewPrevNextPlugin(), // Calculate prev/next after feeds are built
+		NewPrevNextPlugin(),       // Calculate prev/next after feeds are built
+		NewOverwriteCheckPlugin(), // Detect conflicting output paths
 
 		// Write stage plugins
 		NewStaticAssetsPlugin(), // Copy static assets first
