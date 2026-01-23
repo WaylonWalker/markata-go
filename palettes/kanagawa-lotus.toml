@@ -55,6 +55,10 @@ lotusTeal2  = "#6693bf"
 lotusTeal3  = "#5a7785"
 lotusCyan   = "#d7e3d8"
 
+# Darker variants for accessibility
+lotusTeal1-dark = "#2d6a7e"    # Darker teal for better contrast on light bg
+lotusYellow3-dark = "#9a6800" # Darker yellow/orange for warning
+
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "lotusInk1"
@@ -68,12 +72,12 @@ bg-elevated  = "lotusWhite0"
 
 accent       = "lotusViolet4"
 accent-hover = "lotusViolet2"
-link         = "lotusTeal1"
+link         = "lotusTeal1-dark"
 link-hover   = "lotusTeal2"
 link-visited = "lotusViolet4"
 
 success = "lotusGreen"
-warning = "lotusYellow3"
+warning = "lotusYellow3-dark"
 error   = "lotusRed"
 info    = "lotusTeal1"
 
@@ -101,7 +105,7 @@ admonition-warn-border = "lotusYellow3"
 admonition-error-bg    = "lotusRed4"
 admonition-error-border = "lotusRed"
 
-button-primary-bg     = "lotusTeal1"
+button-primary-bg     = "lotusTeal1-dark"
 button-primary-text   = "lotusWhite3"
 button-secondary-bg   = "lotusWhite0"
 button-secondary-text = "lotusInk1"
