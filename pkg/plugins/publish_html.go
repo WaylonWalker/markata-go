@@ -95,6 +95,13 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 		}
 	}
 
+	// Write Text format (plain text)
+	if postFormats.Text {
+		if err := p.writeTextFormat(post, postDir); err != nil {
+			return err
+		}
+	}
+
 	// Write OG format (social card HTML)
 	if postFormats.OG {
 		if err := p.writeOGFormat(post, config, postDir); err != nil {
@@ -165,6 +172,45 @@ func (p *PublishHTMLPlugin) writeMarkdownFormat(post *models.Post, postDir strin
 
 	// Write index.md
 	outputPath := filepath.Join(postDir, "index.md")
+	//nolint:gosec // G306: Output files need 0644 for web serving
+	if err := os.WriteFile(outputPath, []byte(buf.String()), 0o644); err != nil {
+		return fmt.Errorf("writing %s: %w", outputPath, err)
+	}
+
+	return nil
+}
+
+// writeTextFormat writes the plain text version of a post.
+// This outputs just the content without frontmatter or formatting.
+func (p *PublishHTMLPlugin) writeTextFormat(post *models.Post, postDir string) error {
+	var buf strings.Builder
+
+	// Write title as heading
+	if post.Title != nil {
+		buf.WriteString(*post.Title)
+		buf.WriteString("\n")
+		buf.WriteString(strings.Repeat("=", len(*post.Title)))
+		buf.WriteString("\n\n")
+	}
+
+	// Write description if present
+	if post.Description != nil && *post.Description != "" {
+		buf.WriteString(*post.Description)
+		buf.WriteString("\n\n")
+	}
+
+	// Write date if present
+	if post.Date != nil {
+		buf.WriteString("Date: ")
+		buf.WriteString(post.Date.Format("January 2, 2006"))
+		buf.WriteString("\n\n")
+	}
+
+	// Write the raw content (without markdown processing)
+	buf.WriteString(post.Content)
+
+	// Write index.txt
+	outputPath := filepath.Join(postDir, "index.txt")
 	//nolint:gosec // G306: Output files need 0644 for web serving
 	if err := os.WriteFile(outputPath, []byte(buf.String()), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", outputPath, err)

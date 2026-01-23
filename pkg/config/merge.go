@@ -123,6 +123,9 @@ func mergePostFormatsConfig(base, override models.PostFormatsConfig) models.Post
 	if override.Markdown {
 		result.Markdown = true
 	}
+	if override.Text {
+		result.Text = true
+	}
 	if override.OG {
 		result.OG = true
 	}
