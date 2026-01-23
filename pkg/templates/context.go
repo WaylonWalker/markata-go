@@ -199,6 +199,9 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert head to map
 	headMap := headToMap(&c.Head)
 
+	// Convert search to map
+	searchMap := searchToMap(&c.Search)
+
 	return map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
@@ -215,6 +218,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"components":    componentsMap,
 		"post_formats":  postFormatsMap,
 		"head":          headMap,
+		"search":        searchMap,
 	}
 }
 
@@ -371,6 +375,74 @@ func headToMap(h *models.HeadConfig) map[string]interface{} {
 		"link":            linkTags,
 		"script":          scriptTags,
 		"alternate_feeds": alternateFeeds,
+	}
+}
+
+// searchToMap converts a SearchConfig to a map for template access.
+func searchToMap(s *models.SearchConfig) map[string]interface{} {
+	if s == nil {
+		return nil
+	}
+
+	// Determine enabled status (default: true)
+	enabled := true
+	if s.Enabled != nil {
+		enabled = *s.Enabled
+	}
+
+	// Determine show_images status (default: true)
+	showImages := true
+	if s.ShowImages != nil {
+		showImages = *s.ShowImages
+	}
+
+	// Defaults for optional fields
+	position := s.Position
+	if position == "" {
+		position = "navbar"
+	}
+
+	placeholder := s.Placeholder
+	if placeholder == "" {
+		placeholder = "Search..."
+	}
+
+	excerptLength := s.ExcerptLength
+	if excerptLength == 0 {
+		excerptLength = 200
+	}
+
+	// Convert pagefind config
+	bundleDir := s.Pagefind.BundleDir
+	if bundleDir == "" {
+		bundleDir = "_pagefind"
+	}
+
+	pagefindMap := map[string]interface{}{
+		"bundle_dir":        bundleDir,
+		"exclude_selectors": s.Pagefind.ExcludeSelectors,
+		"root_selector":     s.Pagefind.RootSelector,
+	}
+
+	// Convert feed-specific search configs
+	feedConfigs := make([]map[string]interface{}, len(s.Feeds))
+	for i, feed := range s.Feeds {
+		feedConfigs[i] = map[string]interface{}{
+			"name":        feed.Name,
+			"filter":      feed.Filter,
+			"position":    feed.Position,
+			"placeholder": feed.Placeholder,
+		}
+	}
+
+	return map[string]interface{}{
+		"enabled":        enabled,
+		"position":       position,
+		"placeholder":    placeholder,
+		"show_images":    showImages,
+		"excerpt_length": excerptLength,
+		"pagefind":       pagefindMap,
+		"feeds":          feedConfigs,
 	}
 }
 

@@ -1,0 +1,11 @@
+{# Search component template #}
+{# Usage: {% include "components/search.html" %} #}
+{# Requires: config.search (SearchConfig) #}
+
+{% with search = config.search %}
+{% if search.enabled %}
+<div id="search" class="search search--{{ search.position | default:'navbar' }}" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+{% endif %}
+{% endwith %}

@@ -491,6 +491,37 @@ OG card pages automatically include:
 
 See the [[post-formats|Post Output Formats Guide]] for detailed usage including social image generation.
 
+### Search Settings (`[search]`)
+
+Site-wide search is enabled by default using [Pagefind](https://pagefind.app/).
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Enable/disable search |
+| `position` | string | `"navbar"` | Where to show search: `navbar`, `sidebar`, `footer`, `custom` |
+| `placeholder` | string | `"Search..."` | Search input placeholder text |
+| `show_images` | bool | `true` | Show thumbnails in search results |
+| `excerpt_length` | int | `200` | Characters for result excerpts |
+
+```toml
+[search]
+enabled = true
+position = "navbar"
+placeholder = "Search..."
+show_images = true
+excerpt_length = 200
+
+# Pagefind CLI options
+[search.pagefind]
+bundle_dir = "_pagefind"    # Output directory for search index
+root_selector = "main"       # CSS selector for searchable content
+exclude_selectors = [".no-search", "nav", "footer"]  # Elements to exclude
+```
+
+**Requirements:** Pagefind CLI must be installed (`npm install -g pagefind`). If not installed, search is skipped with a warning.
+
+See the [[search|Search Guide]] for detailed usage and customization.
+
 ### Feed Defaults (`[markata-go.feed_defaults]`)
 
 | Field | Type | Default | Description |

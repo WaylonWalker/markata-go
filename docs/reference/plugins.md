@@ -1,6 +1,6 @@
 ---
 title: "Built-in Plugins"
-description: "Reference documentation for all 28 built-in markata-go plugins organized by lifecycle stage"
+description: "Reference documentation for all 29 built-in markata-go plugins organized by lifecycle stage"
 date: 2024-01-15
 published: true
 template: doc.html
@@ -34,7 +34,7 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 | Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube |
 | Collect | Build collections/feeds | feeds, auto_feeds, prevnext |
 | Write | Output files to disk | publish_html, publish_feeds, sitemap, rss, atom, jsonfeed, static_assets, redirects |
-| Cleanup | Post-build cleanup | (none built-in) |
+| Cleanup | Post-build tasks | pagefind |
 
 ---
 
@@ -2144,6 +2144,106 @@ pluginList, _ := plugins.PluginsByNames([]string{
     "csv_fence",
 })
 ```
+
+---
+
+## Cleanup Stage
+
+### pagefind
+
+**Name:** `pagefind`  
+**Stage:** Cleanup  
+**Priority:** Last (runs after all files are written)  
+**Purpose:** Generates a full-text search index using [Pagefind](https://pagefind.app/) after the site is built.
+
+**Configuration (TOML):**
+```toml
+[search]
+enabled = true              # Enable/disable search (default: true)
+position = "navbar"         # Search UI position: navbar, sidebar, footer, custom
+placeholder = "Search..."   # Search input placeholder text
+show_images = true          # Show thumbnails in results (default: true)
+excerpt_length = 200        # Characters for result excerpts (default: 200)
+
+[search.pagefind]
+bundle_dir = "_pagefind"    # Output directory for search index (default)
+root_selector = ""          # CSS selector for searchable content (optional)
+exclude_selectors = []      # CSS selectors to exclude from indexing
+```
+
+**Options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `true` | Enable/disable search functionality |
+| `position` | `"navbar"` | Where to show search UI |
+| `placeholder` | `"Search..."` | Search input placeholder |
+| `show_images` | `true` | Show thumbnails in results |
+| `excerpt_length` | `200` | Characters for result excerpts |
+| `pagefind.bundle_dir` | `"_pagefind"` | Output directory for index |
+| `pagefind.root_selector` | `""` | CSS selector for searchable content |
+| `pagefind.exclude_selectors` | `[]` | Elements to exclude from indexing |
+
+**Requirements:**
+- Pagefind CLI must be installed: `npm install -g pagefind`
+- If not installed, the plugin logs a warning but does not fail the build
+
+**Behavior:**
+1. Runs in Cleanup stage with `PriorityLast` (after all HTML files are written)
+2. Checks if search is enabled in configuration
+3. Checks if `pagefind` CLI is available in PATH
+4. Executes `pagefind --site {output_dir}` with configured options
+5. Generates search index in `{output_dir}/_pagefind/`
+
+**Generated files:**
+```
+output/
+  _pagefind/
+    pagefind.js           # Main search library
+    pagefind-ui.js        # UI component
+    pagefind-ui.css       # UI styles
+    pagefind.*.pf_index   # Index chunks
+    pagefind.*.pf_meta    # Metadata chunks
+```
+
+**Template integration:**
+
+The default post template includes `data-pagefind-*` attributes for indexing:
+
+```html
+<article data-pagefind-body>
+    <h1 data-pagefind-meta="title">{{ post.title }}</h1>
+    <p data-pagefind-meta="excerpt">{{ post.description }}</p>
+    
+    {% for tag in post.tags %}
+    <span data-pagefind-filter="tag" style="display:none">{{ tag }}</span>
+    {% endfor %}
+    
+    <div class="content">{{ body | safe }}</div>
+</article>
+```
+
+**Search UI component:**
+
+The base template includes the search component:
+
+```html
+{% if config.search.enabled %}
+{% include "components/search.html" %}
+{% endif %}
+```
+
+**Disabling search:**
+```toml
+[search]
+enabled = false
+```
+
+**Graceful degradation:**
+- If Pagefind is not installed, search UI is hidden
+- If search is disabled, no index is generated
+- Site functions normally without search functionality
+
+See [[search|Search Guide]] for detailed usage and customization.
 
 ---
 

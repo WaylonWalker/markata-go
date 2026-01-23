@@ -238,6 +238,9 @@ type Config struct {
 
 	// Head configures elements added to the HTML <head> section
 	Head HeadConfig `json:"head" yaml:"head" toml:"head"`
+
+	// Search configures site-wide search functionality using Pagefind
+	Search SearchConfig `json:"search" yaml:"search" toml:"search"`
 }
 
 // HeadConfig configures elements added to the HTML <head> section.
@@ -301,6 +304,94 @@ func (f *AlternateFeed) GetMIMEType() string {
 		return "application/feed+json"
 	default:
 		return "application/xml"
+	}
+}
+
+// SearchConfig configures site-wide search functionality using Pagefind.
+type SearchConfig struct {
+	// Enabled controls whether search is active (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Position controls where search UI appears: "navbar", "sidebar", "footer", "custom"
+	Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
+
+	// Placeholder is the search input placeholder text
+	Placeholder string `json:"placeholder,omitempty" yaml:"placeholder,omitempty" toml:"placeholder,omitempty"`
+
+	// ShowImages shows thumbnails in search results
+	ShowImages *bool `json:"show_images,omitempty" yaml:"show_images,omitempty" toml:"show_images,omitempty"`
+
+	// ExcerptLength is the character limit for result excerpts
+	ExcerptLength int `json:"excerpt_length,omitempty" yaml:"excerpt_length,omitempty" toml:"excerpt_length,omitempty"`
+
+	// Pagefind configures the Pagefind CLI options
+	Pagefind PagefindConfig `json:"pagefind,omitempty" yaml:"pagefind,omitempty" toml:"pagefind,omitempty"`
+
+	// Feeds configures feed-specific search instances
+	Feeds []SearchFeedConfig `json:"feeds,omitempty" yaml:"feeds,omitempty" toml:"feeds,omitempty"`
+}
+
+// IsEnabled returns whether search is enabled.
+// Defaults to true if not explicitly set.
+func (s *SearchConfig) IsEnabled() bool {
+	if s.Enabled == nil {
+		return true
+	}
+	return *s.Enabled
+}
+
+// IsShowImages returns whether to show images in search results.
+// Defaults to true if not explicitly set.
+func (s *SearchConfig) IsShowImages() bool {
+	if s.ShowImages == nil {
+		return true
+	}
+	return *s.ShowImages
+}
+
+// PagefindConfig configures Pagefind CLI behavior.
+type PagefindConfig struct {
+	// BundleDir is the output directory for search index (default: "_pagefind")
+	BundleDir string `json:"bundle_dir,omitempty" yaml:"bundle_dir,omitempty" toml:"bundle_dir,omitempty"`
+
+	// ExcludeSelectors are CSS selectors for elements to exclude from indexing
+	ExcludeSelectors []string `json:"exclude_selectors,omitempty" yaml:"exclude_selectors,omitempty" toml:"exclude_selectors,omitempty"`
+
+	// RootSelector is the CSS selector for the searchable content container
+	RootSelector string `json:"root_selector,omitempty" yaml:"root_selector,omitempty" toml:"root_selector,omitempty"`
+}
+
+// SearchFeedConfig configures a feed-specific search instance.
+type SearchFeedConfig struct {
+	// Name is the search instance identifier
+	Name string `json:"name" yaml:"name" toml:"name"`
+
+	// Filter is the filter expression for posts in this search
+	Filter string `json:"filter" yaml:"filter" toml:"filter"`
+
+	// Position controls where this search UI appears
+	Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
+
+	// Placeholder is the search input placeholder text
+	Placeholder string `json:"placeholder,omitempty" yaml:"placeholder,omitempty" toml:"placeholder,omitempty"`
+}
+
+// NewSearchConfig creates a new SearchConfig with default values.
+func NewSearchConfig() SearchConfig {
+	enabled := true
+	showImages := true
+	return SearchConfig{
+		Enabled:       &enabled,
+		Position:      "navbar",
+		Placeholder:   "Search...",
+		ShowImages:    &showImages,
+		ExcerptLength: 200,
+		Pagefind: PagefindConfig{
+			BundleDir:        "_pagefind",
+			ExcludeSelectors: []string{},
+			RootSelector:     "",
+		},
+		Feeds: []SearchFeedConfig{},
 	}
 }
 
@@ -788,6 +879,7 @@ func NewConfig() *Config {
 		IndieAuth:   NewIndieAuthConfig(),
 		Webmention:  NewWebmentionConfig(),
 		Components:  NewComponentsConfig(),
+		Search:      NewSearchConfig(),
 	}
 }
 
