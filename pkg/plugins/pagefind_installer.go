@@ -4,8 +4,10 @@ package plugins
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +16,27 @@ import (
 	"runtime"
 	"strings"
 	"time"
+)
+
+// Constants for Pagefind installer.
+const (
+	// pagefindBinaryName is the name of the Pagefind binary.
+	pagefindBinaryName = "pagefind"
+
+	// pagefindBinaryNameWindows is the name of the Pagefind binary on Windows.
+	pagefindBinaryNameWindows = "pagefind.exe"
+
+	// osWindows is the GOOS value for Windows.
+	osWindows = "windows"
+
+	// defaultReleaseBaseURL is the base URL for Pagefind releases on GitHub.
+	defaultReleaseBaseURL = "https://github.com/CloudCannon/pagefind/releases"
+
+	// defaultHTTPTimeout is the default timeout for HTTP requests.
+	defaultHTTPTimeout = 120 * time.Second
+
+	// maxBinarySize is the maximum allowed binary size (50MB) to prevent decompression bombs.
+	maxBinarySize = 50 * 1024 * 1024
 )
 
 // PagefindInstaller handles automatic downloading and caching of Pagefind binaries.
@@ -86,15 +109,6 @@ func NewPagefindInstallerConfig() PagefindInstallerConfig {
 	}
 }
 
-// defaultReleaseBaseURL is the base URL for Pagefind releases on GitHub.
-const defaultReleaseBaseURL = "https://github.com/CloudCannon/pagefind/releases"
-
-// defaultCacheDirName is the default cache directory name under user home.
-const defaultCacheDirName = ".markata-go"
-
-// defaultHTTPTimeout is the default timeout for HTTP requests.
-const defaultHTTPTimeout = 120 * time.Second
-
 // platformMapping maps Go's GOOS/GOARCH to Pagefind's asset naming convention.
 var platformMapping = map[string]map[string]string{
 	"darwin": {
@@ -105,7 +119,7 @@ var platformMapping = map[string]map[string]string{
 		"amd64": "x86_64-unknown-linux-musl",
 		"arm64": "aarch64-unknown-linux-musl",
 	},
-	"windows": {
+	osWindows: {
 		"amd64": "x86_64-pc-windows-msvc",
 	},
 	"freebsd": {
@@ -194,6 +208,14 @@ func (i *PagefindInstaller) GetCacheDir() (string, error) {
 	return cacheDir, nil
 }
 
+// getBinaryName returns the appropriate binary name for the current OS.
+func getBinaryName() string {
+	if runtime.GOOS == osWindows {
+		return pagefindBinaryNameWindows
+	}
+	return pagefindBinaryName
+}
+
 // GetCachedBinaryPath returns the path to a cached Pagefind binary for the given version.
 func (i *PagefindInstaller) GetCachedBinaryPath(version string) (string, error) {
 	cacheDir, err := i.GetCacheDir()
@@ -201,12 +223,7 @@ func (i *PagefindInstaller) GetCachedBinaryPath(version string) (string, error) 
 		return "", err
 	}
 
-	binaryName := "pagefind"
-	if runtime.GOOS == "windows" {
-		binaryName = "pagefind.exe"
-	}
-
-	return filepath.Join(cacheDir, version, binaryName), nil
+	return filepath.Join(cacheDir, version, getBinaryName()), nil
 }
 
 // IsCached checks if a specific version is already cached and valid.
@@ -237,7 +254,10 @@ func (i *PagefindInstaller) GetLatestVersion() (string, error) {
 	// Use GitHub's redirect to get the latest release
 	latestURL := defaultReleaseBaseURL + "/latest"
 
-	req, err := http.NewRequest("HEAD", latestURL, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "HEAD", latestURL, http.NoBody)
 	if err != nil {
 		return "", NewPagefindInstallError("version_check", "failed to create request", err)
 	}
@@ -245,7 +265,7 @@ func (i *PagefindInstaller) GetLatestVersion() (string, error) {
 	// Use a client that doesn't follow redirects
 	client := &http.Client{
 		Timeout: 30 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
@@ -302,7 +322,15 @@ func buildChecksumURL(version, platformAsset string) string {
 func (i *PagefindInstaller) fetchChecksum(version, platformAsset string) (string, error) {
 	checksumURL := buildChecksumURL(version, platformAsset)
 
-	resp, err := i.client.Get(checksumURL)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", checksumURL, http.NoBody)
+	if err != nil {
+		return "", NewPagefindInstallError("checksum_fetch", "failed to create request", err)
+	}
+
+	resp, err := i.client.Do(req)
 	if err != nil {
 		return "", NewPagefindInstallError("checksum_fetch", "failed to download checksum", err)
 	}
@@ -347,7 +375,15 @@ func (i *PagefindInstaller) downloadAsset(version, platformAsset string) (string
 
 	fmt.Printf("[pagefind] Downloading Pagefind %s for %s...\n", version, platformAsset)
 
-	resp, err := i.client.Get(assetURL)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", assetURL, http.NoBody)
+	if err != nil {
+		return "", NewPagefindInstallError("download", "failed to create request", err)
+	}
+
+	resp, err := i.client.Do(req)
 	if err != nil {
 		return "", NewPagefindInstallError("download", "failed to download asset", err)
 	}
@@ -437,17 +473,14 @@ func (i *PagefindInstaller) extractBinary(archivePath, version string) (string, 
 	// Create tar reader
 	tarReader := tar.NewReader(gzipReader)
 
-	binaryName := "pagefind"
-	if runtime.GOOS == "windows" {
-		binaryName = "pagefind.exe"
-	}
+	binaryName := getBinaryName()
 
 	var extractedPath string
 
 	// Extract files
 	for {
 		header, err := tarReader.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -468,13 +501,18 @@ func (i *PagefindInstaller) extractBinary(archivePath, version string) (string, 
 			return "", NewPagefindInstallError("extract", "failed to create output file", err)
 		}
 
-		// Copy the binary content
-		if _, err := io.Copy(outFile, tarReader); err != nil {
-			outFile.Close()
+		// Copy the binary content with size limit to prevent decompression bombs
+		written, err := io.Copy(outFile, io.LimitReader(tarReader, maxBinarySize))
+		outFile.Close()
+		if err != nil {
 			os.Remove(extractedPath)
 			return "", NewPagefindInstallError("extract", "failed to extract binary", err)
 		}
-		outFile.Close()
+
+		if written == maxBinarySize {
+			os.Remove(extractedPath)
+			return "", NewPagefindInstallError("extract", "binary exceeds maximum allowed size", nil)
+		}
 
 		fmt.Printf("[pagefind] Extracted %s to %s\n", binaryName, versionDir)
 		break

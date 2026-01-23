@@ -31,7 +31,7 @@ func NewPagefindPlugin() *PagefindPlugin {
 
 // Name returns the unique name of the plugin.
 func (p *PagefindPlugin) Name() string {
-	return "pagefind"
+	return pagefindBinaryName
 }
 
 // Cleanup runs Pagefind to index the generated site.
