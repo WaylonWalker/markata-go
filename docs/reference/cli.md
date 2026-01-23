@@ -338,6 +338,112 @@ The slug is automatically generated from the title by:
 
 ---
 
+### lint
+
+Lint markdown files for common issues that can cause build failures.
+
+#### Usage
+
+```bash
+markata-go lint [files...] [flags]
+```
+
+#### Arguments
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `files` | Glob patterns or file paths to lint | Yes |
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--fix` | Automatically fix detected issues | `false` |
+
+#### Detected Issues
+
+The linter checks for these common problems:
+
+| Issue | Severity | Auto-fixable | Description |
+|-------|----------|--------------|-------------|
+| `duplicate-key` | Error | Yes | Duplicate YAML keys in frontmatter |
+| `invalid-date` | Warning | Yes | Non-ISO 8601 date formats |
+| `missing-alt-text` | Warning | Yes | Image links without alt text `![]()` |
+| `protocol-less-url` | Warning | Yes | URLs starting with `//` instead of `https://` |
+
+#### Examples
+
+```bash
+# Lint all markdown files in posts directory
+markata-go lint posts/*.md
+
+# Lint with glob pattern (recursive)
+markata-go lint 'posts/**/*.md'
+
+# Lint multiple patterns
+markata-go lint posts/*.md pages/*.md docs/**/*.md
+
+# Lint and auto-fix issues
+markata-go lint posts/*.md --fix
+
+# Lint a specific file
+markata-go lint posts/hello-world.md
+
+# Lint with verbose output
+markata-go lint posts/*.md -v
+```
+
+#### Output Format
+
+```
+posts/example.md:
+  error [line 5]: duplicate key 'title' (first occurrence at line 2)
+  warning [line 3]: invalid date format for 'date': 2020-1-15 (single-digit month/day)
+  warning [line 12, col 1]: image link missing alt text
+
+✗ 5 file(s) linted, 3 issue(s) in 1 file(s)
+```
+
+#### Auto-fix Behavior
+
+When `--fix` is enabled:
+
+| Issue | Fix Applied |
+|-------|-------------|
+| `duplicate-key` | Keeps last occurrence, removes earlier duplicates |
+| `invalid-date` | Pads single-digit months/days (e.g., `2020-1-5` → `2020-01-05`) |
+| `missing-alt-text` | Adds placeholder alt text: `![]()` → `![image]()` |
+| `protocol-less-url` | Adds HTTPS protocol: `//example.com` → `https://example.com` |
+
+#### Exit Codes
+
+| Code | Description |
+|------|-------------|
+| `0` | No errors found (warnings are allowed) |
+| `1` | Errors found (or file read errors) |
+
+#### Use Cases
+
+**Migration from Python markata:**
+```bash
+# Find and fix common issues when migrating content
+markata-go lint content/**/*.md --fix
+```
+
+**CI/CD integration:**
+```bash
+# Fail CI if markdown has errors
+markata-go lint posts/**/*.md || exit 1
+```
+
+**Pre-commit hook:**
+```bash
+#!/bin/bash
+markata-go lint $(git diff --cached --name-only -- '*.md')
+```
+
+---
+
 ### config
 
 Configuration management commands for viewing, validating, and initializing configuration.
