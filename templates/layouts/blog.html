@@ -1,0 +1,112 @@
+{# Blog Layout - Single-column layout optimized for reading #}
+{% extends "base.html" %}
+
+{% block body_class %}layout layout--blog{% endblock %}
+
+{% block header %}
+<header class="site-header site-header--{{ config.layout.blog.header_style | default:'full' }}{% if config.header.sticky %} site-header--sticky{% endif %}" data-pagefind-ignore>
+    <div class="container">
+        {% if config.header.show_logo or config.header.show_title %}
+        <a href="/" class="site-title">
+            {% if config.header.show_logo and config.logo %}
+            <img src="{{ config.logo }}" alt="{{ config.title }}" class="site-logo">
+            {% endif %}
+            {% if config.header.show_title %}{{ config.title | default:"Home" }}{% endif %}
+        </a>
+        {% endif %}
+        {% if config.header.show_nav %}
+        {% include "components/nav.html" %}
+        {% endif %}
+        <div class="header-actions">
+            {% if config.search.enabled and config.header.show_search %}
+            {% include "components/search.html" %}
+            {% endif %}
+            {% if config.header.show_theme_toggle %}
+            <button class="theme-toggle" aria-label="Toggle theme">
+                <span class="theme-toggle-icon"></span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="layout-container layout-container--blog">
+    <main class="layout-content layout-content--blog" id="main-content" style="--content-max-width: {{ config.layout.blog.content_max_width | default:'720px' }}">
+        <a href="#main-content" class="skip-link">Skip to main content</a>
+        <article class="post post--blog">
+            <header class="post-header">
+                <h1>{{ post.title }}</h1>
+                <div class="post-meta">
+                    {% if config.layout.blog.show_date and post.date %}
+                    <time datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+                    {% endif %}
+                    {% if config.layout.blog.show_author and post.author %}
+                    <span class="post-author">by {{ post.author }}</span>
+                    {% elif config.layout.blog.show_author and config.author %}
+                    <span class="post-author">by {{ config.author }}</span>
+                    {% endif %}
+                    {% if config.layout.blog.show_reading_time and post.reading_time %}
+                    <span class="post-reading-time">{{ post.reading_time }} min read</span>
+                    {% endif %}
+                </div>
+                {% if config.layout.blog.show_tags and post.tags %}
+                <div class="tags">
+                    {% for tag in post.tags %}
+                    <a href="/tags/{{ tag | slugify }}/" class="tag">{{ tag }}</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </header>
+            
+            {% if post.cover_image %}
+            <figure class="post-cover">
+                <img src="{{ post.cover_image }}" alt="{{ post.title }}">
+            </figure>
+            {% endif %}
+            
+            <div class="post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
+                {{ body | safe }}
+            </div>
+            
+            {% if config.layout.blog.show_prev_next %}
+            <nav class="post-nav" aria-label="Post navigation">
+                {% if post.prev %}
+                <a href="{{ post.prev.href }}" class="post-nav-link post-nav-link--prev">
+                    <span class="post-nav-label">Previous</span>
+                    <span class="post-nav-title">{{ post.prev.title }}</span>
+                </a>
+                {% endif %}
+                {% if post.next %}
+                <a href="{{ post.next.href }}" class="post-nav-link post-nav-link--next">
+                    <span class="post-nav-label">Next</span>
+                    <span class="post-nav-title">{{ post.next.title }}</span>
+                </a>
+                {% endif %}
+            </nav>
+            {% endif %}
+        </article>
+    </main>
+    
+    {% if config.layout.blog.show_toc and post.Extra.toc %}
+    <aside class="layout-toc layout-toc--{{ config.layout.blog.toc_position | default:'right' }}" 
+           role="complementary" 
+           aria-label="Table of Contents"
+           style="--toc-width: {{ config.layout.blog.toc_width | default:'200px' }}">
+        <div class="toc-content">
+            <h2 class="toc-title">{{ config.toc.title | default:'On this page' }}</h2>
+            {% include "components/toc_list.html" %}
+        </div>
+    </aside>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block footer %}
+{% if config.layout.blog.footer_style != 'none' %}
+<footer class="site-footer site-footer--{{ config.layout.blog.footer_style | default:'full' }}" role="contentinfo">
+    {% include "components/footer.html" %}
+</footer>
+{% endif %}
+{% endblock %}

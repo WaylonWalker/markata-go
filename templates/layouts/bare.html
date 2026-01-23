@@ -1,0 +1,20 @@
+{# Bare Layout - Minimal layout with content only #}
+{% extends "base.html" %}
+
+{% block body_class %}layout layout--bare{% endblock %}
+
+{% block header %}
+{# No header in bare layout #}
+{% endblock %}
+
+{% block content %}
+<main class="layout-content layout-content--bare" id="main-content" style="--content-max-width: {{ config.layout.bare.content_max_width | default:'100%' }}">
+    <div class="post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
+        {{ body | safe }}
+    </div>
+</main>
+{% endblock %}
+
+{% block footer %}
+{# No footer in bare layout #}
+{% endblock %}
