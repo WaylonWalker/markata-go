@@ -1,0 +1,34 @@
+{# Document sidebar (Table of Contents) component template #}
+{# Usage: {% include "components/doc_sidebar.html" %} #}
+{# Requires: config.components.doc_sidebar (DocSidebarConfig) #}
+{# Requires: post.Extra.toc ([]TocEntry) from toc plugin #}
+
+{% with sidebar = config.components.doc_sidebar %}
+{% if sidebar.enabled and post.Extra.toc %}
+<aside class="doc-sidebar doc-sidebar--{{ sidebar.position | default:'right' }}" style="width: {{ sidebar.width | default:'250px' }}">
+    <nav class="toc" aria-label="Table of Contents">
+        <h2 class="toc-title">On this page</h2>
+        <ul class="toc-list">
+            {% for entry in post.Extra.toc %}
+            {% if entry.Level >= sidebar.min_depth and entry.Level <= sidebar.max_depth %}
+            <li class="toc-item toc-item--level-{{ entry.Level }}">
+                <a href="#{{ entry.ID }}" class="toc-link">{{ entry.Text }}</a>
+                {% if entry.Children %}
+                <ul class="toc-list toc-list--nested">
+                    {% for child in entry.Children %}
+                    {% if child.Level >= sidebar.min_depth and child.Level <= sidebar.max_depth %}
+                    <li class="toc-item toc-item--level-{{ child.Level }}">
+                        <a href="#{{ child.ID }}" class="toc-link">{{ child.Text }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </nav>
+</aside>
+{% endif %}
+{% endwith %}
