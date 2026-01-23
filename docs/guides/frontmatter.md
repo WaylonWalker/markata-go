@@ -144,17 +144,43 @@ The publication date of the post.
 date: 2024-01-15
 ```
 
-- **Type:** date (YYYY-MM-DD format)
+- **Type:** date (YYYY-MM-DD format recommended)
 - **Default:** None
 - **Used for:** Sorting, display, feeds, scheduled publishing
 
-**Supported formats:**
+**Supported date formats:**
+
+markata-go supports a wide variety of date formats for maximum flexibility:
 
 ```yaml
-date: 2024-01-15           # Recommended: YYYY-MM-DD
-date: 2024-01-15T10:30:00  # With time
-date: "2024-01-15"         # Quoted string
+# ISO 8601 formats (recommended)
+date: 2024-01-15                    # Date only
+date: 2024-01-15T10:30:00           # With time
+date: 2024-01-15T10:30:00Z          # With UTC timezone
+date: 2024-01-15T10:30:00+05:00     # With timezone offset
+date: 2024-01-15 10:30:00           # With space separator
+date: 2024-01-15 10:30              # Without seconds
+
+# Single-digit hours (automatically normalized)
+date: 2024-01-15 1:30:00            # 1am
+date: 2024-01-15 9:30:00            # 9am
+
+# Slash-separated dates
+date: 2024/01/15                    # YYYY/MM/DD
+date: 2024/01/15 10:30:00           # With time
+date: 01/15/2024                    # MM/DD/YYYY (US format)
+
+# Named month formats
+date: January 15, 2024              # Full month name
+date: Jan 15, 2024                  # Abbreviated month
+date: 15 January 2024               # Day first
+date: 15 Jan 2024                   # Day first, abbreviated
+
+# European format
+date: 15-01-2024                    # DD-MM-YYYY
 ```
+
+**Note:** Malformed time components are automatically corrected. For example, `2024-01-15 8:011:00` (typo) will be parsed as `2024-01-15 08:11:00`.
 
 ### published (boolean)
 

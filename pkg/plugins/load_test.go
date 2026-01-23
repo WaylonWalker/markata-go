@@ -1,0 +1,199 @@
+package plugins
+
+import (
+	"testing"
+	"time"
+)
+
+func TestParseDateString(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    time.Time
+		wantErr bool
+	}{
+		// Standard formats
+		{
+			name:  "RFC3339",
+			input: "2024-01-15T10:30:00Z",
+			want:  time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+		{
+			name:  "ISO datetime with T",
+			input: "2024-01-15T10:30:00",
+			want:  time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+		{
+			name:  "datetime with space",
+			input: "2024-01-15 10:30:00",
+			want:  time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+		{
+			name:  "date only",
+			input: "2024-01-15",
+			want:  time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		},
+
+		// Single-digit hours (issue #34)
+		{
+			name:  "single-digit hour",
+			input: "2025-02-08 1:00:00",
+			want:  time.Date(2025, 2, 8, 1, 0, 0, 0, time.UTC),
+		},
+		{
+			name:  "single-digit hour with T",
+			input: "2025-02-08T1:00:00",
+			want:  time.Date(2025, 2, 8, 1, 0, 0, 0, time.UTC),
+		},
+		{
+			name:  "single-digit hour 9am",
+			input: "2024-06-20 9:30:00",
+			want:  time.Date(2024, 6, 20, 9, 30, 0, 0, time.UTC),
+		},
+
+		// Malformed time components (issue #34)
+		{
+			name:  "malformed time with extra zero",
+			input: "2025-07-14 8:011:00",
+			want:  time.Date(2025, 7, 14, 8, 11, 0, 0, time.UTC),
+		},
+		{
+			name:  "malformed time multiple extra zeros",
+			input: "2025-07-14 08:001:030",
+			want:  time.Date(2025, 7, 14, 8, 1, 30, 0, time.UTC),
+		},
+
+		// Date without time
+		{
+			name:  "date with slashes",
+			input: "2024/01/15",
+			want:  time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:  "US date format",
+			input: "01/15/2024",
+			want:  time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		},
+
+		// Named month formats
+		{
+			name:  "full month name",
+			input: "January 15, 2024",
+			want:  time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:  "abbreviated month name",
+			input: "Jan 15, 2024",
+			want:  time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:  "day first with full month",
+			input: "15 January 2024",
+			want:  time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		},
+
+		// Datetime with slashes
+		{
+			name:  "datetime with slashes",
+			input: "2024/01/15 10:30:00",
+			want:  time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+
+		// Without seconds
+		{
+			name:  "datetime without seconds",
+			input: "2024-01-15 10:30",
+			want:  time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+		{
+			name:  "datetime with T without seconds",
+			input: "2024-01-15T10:30",
+			want:  time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC),
+		},
+
+		// Whitespace handling
+		{
+			name:  "leading whitespace",
+			input: "  2024-01-15",
+			want:  time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:  "trailing whitespace",
+			input: "2024-01-15  ",
+			want:  time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		},
+
+		// Error cases
+		{
+			name:    "invalid date",
+			input:   "not a date",
+			wantErr: true,
+		},
+		{
+			name:    "empty string",
+			input:   "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseDateString(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseDateString(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && !got.Equal(tt.want) {
+				t.Errorf("parseDateString(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeDateString(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "already normalized",
+			input: "2024-01-15 10:30:00",
+			want:  "2024-01-15 10:30:00",
+		},
+		{
+			name:  "single-digit hour with space",
+			input: "2024-01-15 1:30:00",
+			want:  "2024-01-15 01:30:00",
+		},
+		{
+			name:  "single-digit hour with T",
+			input: "2024-01-15T1:30:00",
+			want:  "2024-01-15T01:30:00",
+		},
+		{
+			name:  "malformed minutes",
+			input: "2024-01-15 8:011:00",
+			want:  "2024-01-15 08:11:00",
+		},
+		{
+			name:  "whitespace trimmed",
+			input: "  2024-01-15 10:30:00  ",
+			want:  "2024-01-15 10:30:00",
+		},
+		{
+			name:  "no time component",
+			input: "2024-01-15",
+			want:  "2024-01-15",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeDateString(tt.input)
+			if got != tt.want {
+				t.Errorf("normalizeDateString(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
