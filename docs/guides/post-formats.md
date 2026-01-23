@@ -46,7 +46,7 @@ Outputs the raw markdown source with reconstructed frontmatter. Useful for:
 - API consumers who want raw content
 - Copy-paste workflows
 
-**Output:** `/your-post/index.md`
+**Output:** `/your-post/index.md` (with redirect from `/your-post.md`)
 
 ```toml
 [markata-go.post_formats]
@@ -76,7 +76,7 @@ Outputs a plain text version of the content, perfect for:
 - Low-bandwidth situations
 - Text-based browsers
 
-**Output:** `/your-post/index.txt`
+**Output:** `/your-post/index.txt` (with redirect from `/your-post.txt`)
 
 ```toml
 [markata-go.post_formats]
@@ -133,6 +133,25 @@ The default OG card template includes:
 - Publication date
 
 You can customize the OG card appearance by providing your own `og.html` template.
+
+## Clean URL Redirects
+
+For convenience, markata-go generates redirect files that allow cleaner URLs for alternate formats:
+
+| User requests | Redirects to |
+|---------------|--------------|
+| `/my-post.md` | `/my-post/index.md` |
+| `/my-post.txt` | `/my-post/index.txt` |
+
+This means users can type `example.com/my-post.md` directly in their browser or use it with command-line tools:
+
+```bash
+# Both of these work:
+curl https://example.com/my-post.md
+curl https://example.com/my-post/index.md
+```
+
+The redirects use HTML meta refresh for maximum compatibility across browsers and HTTP clients.
 
 ## Visible Format Links
 
