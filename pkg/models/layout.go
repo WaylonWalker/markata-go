@@ -1,5 +1,7 @@
 package models
 
+import "strings"
+
 // LayoutConfig configures the site layout system.
 // Layouts control the overall page structure including sidebars, TOC, header, and footer.
 type LayoutConfig struct {
@@ -278,6 +280,25 @@ type SidebarConfig struct {
 
 	// Nav is the navigation structure (auto-generated from feeds if not specified)
 	Nav []SidebarNavItem `json:"nav,omitempty" yaml:"nav,omitempty" toml:"nav,omitempty"`
+
+	// Title is the optional sidebar title/header
+	Title string `json:"title,omitempty" yaml:"title,omitempty" toml:"title,omitempty"`
+
+	// Paths maps URL path prefixes to path-specific sidebar configs
+	// Keys should be paths like "/docs/", "/blog/", "/guides/"
+	Paths map[string]*PathSidebarConfig `json:"paths,omitempty" yaml:"paths,omitempty" toml:"paths,omitempty"`
+
+	// MultiFeed enables multi-feed mode with collapsible sections
+	MultiFeed *bool `json:"multi_feed,omitempty" yaml:"multi_feed,omitempty" toml:"multi_feed,omitempty"`
+
+	// Feeds is the list of feed slugs to show in multi-feed mode
+	Feeds []string `json:"feeds,omitempty" yaml:"feeds,omitempty" toml:"feeds,omitempty"`
+
+	// FeedSections provides detailed config for multi-feed sections
+	FeedSections []MultiFeedSection `json:"feed_sections,omitempty" yaml:"feed_sections,omitempty" toml:"feed_sections,omitempty"`
+
+	// AutoGenerate configures default auto-generation settings
+	AutoGenerate *SidebarAutoGenerate `json:"auto_generate,omitempty" yaml:"auto_generate,omitempty" toml:"auto_generate,omitempty"`
 }
 
 // IsEnabled returns whether the sidebar is enabled.
@@ -302,6 +323,145 @@ func (s *SidebarConfig) IsDefaultOpen() bool {
 		return true
 	}
 	return *s.DefaultOpen
+}
+
+// IsMultiFeed returns whether multi-feed mode is enabled.
+func (s *SidebarConfig) IsMultiFeed() bool {
+	if s.MultiFeed == nil {
+		return false
+	}
+	return *s.MultiFeed
+}
+
+// ResolveForPath finds the best matching sidebar configuration for a given path.
+// It checks path-specific sidebars and returns the most specific match (longest prefix wins).
+// Returns the matching PathSidebarConfig and true if found, or nil and false otherwise.
+func (s *SidebarConfig) ResolveForPath(path string) (*PathSidebarConfig, bool) {
+	if len(s.Paths) == 0 {
+		return nil, false
+	}
+
+	var bestMatch string
+	var bestConfig *PathSidebarConfig
+
+	for pathPrefix, config := range s.Paths {
+		if strings.HasPrefix(path, pathPrefix) {
+			if len(pathPrefix) > len(bestMatch) {
+				bestMatch = pathPrefix
+				bestConfig = config
+			}
+		}
+	}
+
+	return bestConfig, bestConfig != nil
+}
+
+// GetEffectiveConfig returns an effective sidebar configuration for a path,
+// merging path-specific settings with the default sidebar config.
+func (s *SidebarConfig) GetEffectiveConfig(path string) *SidebarConfig {
+	pathConfig, found := s.ResolveForPath(path)
+	if !found {
+		return s
+	}
+
+	// Create effective config by merging defaults with path-specific settings
+	effective := &SidebarConfig{
+		Enabled:     s.Enabled,
+		Position:    s.Position,
+		Width:       s.Width,
+		Collapsible: s.Collapsible,
+		DefaultOpen: s.DefaultOpen,
+		Title:       pathConfig.Title,
+		Nav:         pathConfig.Items,
+	}
+
+	// Override with path-specific values if set
+	if pathConfig.Position != "" {
+		effective.Position = pathConfig.Position
+	}
+	if pathConfig.Collapsible != nil {
+		effective.Collapsible = pathConfig.Collapsible
+	}
+
+	return effective
+}
+
+// SidebarAutoGenerate configures automatic sidebar generation from a directory or feed.
+type SidebarAutoGenerate struct {
+	// Directory is the source directory for auto-generation (relative to content root)
+	Directory string `json:"directory,omitempty" yaml:"directory,omitempty" toml:"directory,omitempty"`
+
+	// OrderBy specifies how to order items: "title", "date", "nav_order", "filename" (default: "filename")
+	OrderBy string `json:"order_by,omitempty" yaml:"order_by,omitempty" toml:"order_by,omitempty"`
+
+	// Reverse reverses the sort order (default: false)
+	Reverse *bool `json:"reverse,omitempty" yaml:"reverse,omitempty" toml:"reverse,omitempty"`
+
+	// MaxDepth limits how deep to recurse into subdirectories (0 = unlimited, default: 0)
+	MaxDepth int `json:"max_depth,omitempty" yaml:"max_depth,omitempty" toml:"max_depth,omitempty"`
+
+	// Exclude is a list of glob patterns to exclude from auto-generation
+	Exclude []string `json:"exclude,omitempty" yaml:"exclude,omitempty" toml:"exclude,omitempty"`
+}
+
+// IsReverse returns whether to reverse the sort order.
+func (a *SidebarAutoGenerate) IsReverse() bool {
+	if a.Reverse == nil {
+		return false
+	}
+	return *a.Reverse
+}
+
+// PathSidebarConfig configures a sidebar for a specific URL path prefix.
+type PathSidebarConfig struct {
+	// Title is the optional sidebar title/header for this path
+	Title string `json:"title,omitempty" yaml:"title,omitempty" toml:"title,omitempty"`
+
+	// AutoGenerate configures auto-generation from directory structure
+	AutoGenerate *SidebarAutoGenerate `json:"auto_generate,omitempty" yaml:"auto_generate,omitempty" toml:"auto_generate,omitempty"`
+
+	// Items is the manual navigation structure for this path
+	Items []SidebarNavItem `json:"items,omitempty" yaml:"items,omitempty" toml:"items,omitempty"`
+
+	// Feed links this sidebar to a specific feed slug for auto-generation
+	Feed string `json:"feed,omitempty" yaml:"feed,omitempty" toml:"feed,omitempty"`
+
+	// Position overrides the default sidebar position for this path
+	Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
+
+	// Collapsible overrides the default collapsible setting for this path
+	Collapsible *bool `json:"collapsible,omitempty" yaml:"collapsible,omitempty" toml:"collapsible,omitempty"`
+}
+
+// IsCollapsible returns whether the path sidebar is collapsible.
+func (p *PathSidebarConfig) IsCollapsible() bool {
+	if p.Collapsible == nil {
+		return true
+	}
+	return *p.Collapsible
+}
+
+// MultiFeedSection represents a section in a multi-feed sidebar.
+type MultiFeedSection struct {
+	// Feed is the feed slug to include in this section
+	Feed string `json:"feed" yaml:"feed" toml:"feed"`
+
+	// Title overrides the feed title for this section
+	Title string `json:"title,omitempty" yaml:"title,omitempty" toml:"title,omitempty"`
+
+	// Collapsed starts this section collapsed (default: false for first, true for others)
+	Collapsed *bool `json:"collapsed,omitempty" yaml:"collapsed,omitempty" toml:"collapsed,omitempty"`
+
+	// MaxItems limits the number of items shown (0 = unlimited, default: 0)
+	MaxItems int `json:"max_items,omitempty" yaml:"max_items,omitempty" toml:"max_items,omitempty"`
+}
+
+// IsCollapsed returns whether the section should start collapsed.
+func (m *MultiFeedSection) IsCollapsed() bool {
+	if m.Collapsed == nil {
+		return false
+	}
+	return *m.Collapsed
 }
 
 // TocConfig configures the table of contents component.
