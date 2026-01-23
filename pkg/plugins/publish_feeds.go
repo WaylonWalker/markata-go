@@ -113,7 +113,8 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 
 // publishHTMLPages publishes HTML pages for a paginated feed.
 func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, feedDir string) error {
-	for _, page := range fc.Pages {
+	for i := range fc.Pages {
+		page := &fc.Pages[i]
 		// Determine output path
 		var pagePath string
 		if page.Number == 1 {
@@ -127,7 +128,7 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 		}
 
 		// Generate HTML content
-		html, err := p.generateFeedPageHTML(fc, &page, config)
+		html, err := p.generateFeedPageHTML(fc, page, config)
 		if err != nil {
 			return fmt.Errorf("generating page %d: %w", page.Number, err)
 		}
