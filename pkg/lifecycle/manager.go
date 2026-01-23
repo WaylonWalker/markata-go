@@ -11,6 +11,19 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+// Pre-compiled regex patterns for filter expression evaluation.
+// These are compiled once at package init instead of per-call.
+var (
+	// containsOpRegex matches "field contains value" expressions
+	containsOpRegex = regexp.MustCompile(`^(\w+)\s+contains\s+(.+)$`)
+
+	// notEqualsOpRegex matches "field != value" expressions
+	notEqualsOpRegex = regexp.MustCompile(`^(\w+)\s*!=\s*(.+)$`)
+
+	// equalsOpRegex matches "field == value" expressions
+	equalsOpRegex = regexp.MustCompile(`^(\w+)\s*==\s*(.+)$`)
+)
+
 // Cache is an interface for caching data between stages.
 type Cache interface {
 	Get(key string) (interface{}, bool)
@@ -505,21 +518,21 @@ func evaluateCondition(post *models.Post, expr string) (bool, error) {
 	expr = strings.TrimSpace(expr)
 
 	// Contains operator
-	if match := regexp.MustCompile(`^(\w+)\s+contains\s+(.+)$`).FindStringSubmatch(expr); match != nil {
+	if match := containsOpRegex.FindStringSubmatch(expr); match != nil {
 		field := match[1]
 		value := strings.TrimSpace(match[2])
 		return containsValue(post, field, value), nil
 	}
 
 	// Not equals operator
-	if match := regexp.MustCompile(`^(\w+)\s*!=\s*(.+)$`).FindStringSubmatch(expr); match != nil {
+	if match := notEqualsOpRegex.FindStringSubmatch(expr); match != nil {
 		field := match[1]
 		value := strings.TrimSpace(match[2])
 		return !equalsValue(post, field, value), nil
 	}
 
 	// Equals operator
-	if match := regexp.MustCompile(`^(\w+)\s*==\s*(.+)$`).FindStringSubmatch(expr); match != nil {
+	if match := equalsOpRegex.FindStringSubmatch(expr); match != nil {
 		field := match[1]
 		value := strings.TrimSpace(match[2])
 		return equalsValue(post, field, value), nil
