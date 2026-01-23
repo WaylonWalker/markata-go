@@ -72,6 +72,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Theme - merge if override has any non-empty values
 	result.Theme = mergeThemeConfig(base.Theme, override.Theme)
 
+	// PostFormats - merge if override has any formats enabled
+	result.PostFormats = mergePostFormatsConfig(base.PostFormats, override.PostFormats)
+
 	return result
 }
 
@@ -96,6 +99,26 @@ func mergeThemeConfig(base, override models.ThemeConfig) models.ThemeConfig {
 		for k, v := range override.Variables {
 			result.Variables[k] = v
 		}
+	}
+
+	return result
+}
+
+// mergePostFormatsConfig merges PostFormatsConfig, preferring override values.
+func mergePostFormatsConfig(base, override models.PostFormatsConfig) models.PostFormatsConfig {
+	result := base
+
+	// HTML uses pointer, so check if override has it set
+	if override.HTML != nil {
+		result.HTML = override.HTML
+	}
+
+	// For bool fields, override if true (since default is false)
+	if override.Markdown {
+		result.Markdown = true
+	}
+	if override.OG {
+		result.OG = true
 	}
 
 	return result
