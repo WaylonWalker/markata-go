@@ -1,0 +1,134 @@
+// Package plugins provides lifecycle plugins for markata-go.
+package plugins
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
+)
+
+// PagefindPlugin runs Pagefind to generate a search index after all HTML files are written.
+// Pagefind is a static site search tool that creates an optimized search index
+// that can be queried entirely client-side.
+//
+// This plugin runs in the Cleanup stage with PriorityLast to ensure all HTML
+// files have been written before indexing begins.
+//
+// For more information about Pagefind, see: https://pagefind.app/
+type PagefindPlugin struct{}
+
+// NewPagefindPlugin creates a new PagefindPlugin.
+func NewPagefindPlugin() *PagefindPlugin {
+	return &PagefindPlugin{}
+}
+
+// Name returns the unique name of the plugin.
+func (p *PagefindPlugin) Name() string {
+	return "pagefind"
+}
+
+// Cleanup runs Pagefind to index the generated site.
+// This runs after all HTML files have been written in the Write stage.
+func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
+	config := m.Config()
+	searchConfig := getSearchConfig(config)
+
+	// Skip if search is disabled
+	if !searchConfig.IsEnabled() {
+		return nil
+	}
+
+	// Check if pagefind is installed
+	pagefindPath, err := exec.LookPath("pagefind")
+	if err != nil {
+		// Pagefind not installed - log warning but don't fail the build
+		// The site will work fine, just without search functionality
+		fmt.Printf("[pagefind] WARNING: pagefind not found in PATH, skipping search index generation\n")
+		fmt.Printf("[pagefind] Install with: npm install -g pagefind  OR  cargo install pagefind\n")
+		return nil
+	}
+
+	return p.runPagefind(pagefindPath, config, searchConfig)
+}
+
+// runPagefind executes the Pagefind CLI to generate the search index.
+func (p *PagefindPlugin) runPagefind(pagefindPath string, config *lifecycle.Config, searchConfig models.SearchConfig) error {
+	outputDir := config.OutputDir
+
+	// Verify output directory exists
+	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+		return fmt.Errorf("output directory does not exist: %s", outputDir)
+	}
+
+	// Build command arguments
+	args := []string{
+		"--site", outputDir,
+	}
+
+	// Configure bundle directory (where search index files go)
+	bundleDir := searchConfig.Pagefind.BundleDir
+	if bundleDir == "" {
+		bundleDir = "_pagefind"
+	}
+	args = append(args, "--bundle-dir", bundleDir)
+
+	// Configure root selector if specified
+	if searchConfig.Pagefind.RootSelector != "" {
+		args = append(args, "--root-selector", searchConfig.Pagefind.RootSelector)
+	}
+
+	// Configure exclude selectors
+	for _, selector := range searchConfig.Pagefind.ExcludeSelectors {
+		args = append(args, "--exclude-selectors", selector)
+	}
+
+	// Run pagefind
+	fmt.Printf("[pagefind] Generating search index in %s/%s\n", outputDir, bundleDir)
+	cmd := exec.Command(pagefindPath, args...)
+	cmd.Dir = "." // Run from project root
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("pagefind indexing failed: %w", err)
+	}
+
+	// Verify the index was created
+	indexPath := filepath.Join(outputDir, bundleDir, "pagefind.js")
+	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
+		return fmt.Errorf("pagefind did not create expected index file: %s", indexPath)
+	}
+
+	fmt.Printf("[pagefind] Search index generated successfully\n")
+	return nil
+}
+
+// Priority returns the plugin priority for the cleanup stage.
+// Pagefind runs last in cleanup to ensure all HTML files are written first.
+func (p *PagefindPlugin) Priority(stage lifecycle.Stage) int {
+	if stage == lifecycle.StageCleanup {
+		return lifecycle.PriorityLast
+	}
+	return lifecycle.PriorityDefault
+}
+
+// getSearchConfig extracts SearchConfig from lifecycle.Config.Extra.
+func getSearchConfig(config *lifecycle.Config) models.SearchConfig {
+	if config.Extra != nil {
+		if sc, ok := config.Extra["search"].(models.SearchConfig); ok {
+			return sc
+		}
+	}
+	return models.NewSearchConfig()
+}
+
+// Ensure PagefindPlugin implements the required interfaces.
+var (
+	_ lifecycle.Plugin         = (*PagefindPlugin)(nil)
+	_ lifecycle.CleanupPlugin  = (*PagefindPlugin)(nil)
+	_ lifecycle.PriorityPlugin = (*PagefindPlugin)(nil)
+)
