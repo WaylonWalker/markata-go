@@ -109,12 +109,13 @@ func (p *PagefindPlugin) runPagefind(pagefindPath string, config *lifecycle.Conf
 		"--site", outputDir,
 	}
 
-	// Configure bundle directory (where search index files go)
+	// Configure output subdirectory (where search index files go)
+	// Note: Using --output-subdir instead of deprecated --bundle-dir (deprecated in Pagefind 1.0)
 	bundleDir := searchConfig.Pagefind.BundleDir
 	if bundleDir == "" {
 		bundleDir = defaultBundleDir
 	}
-	args = append(args, "--bundle-dir", bundleDir)
+	args = append(args, "--output-subdir", bundleDir)
 
 	// Configure root selector if specified
 	if searchConfig.Pagefind.RootSelector != "" {
