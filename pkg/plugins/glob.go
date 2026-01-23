@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -203,21 +204,10 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 	}
 
 	// Sort for deterministic ordering
-	sortStrings(files)
+	sort.Strings(files)
 
 	m.SetFiles(files)
 	return nil
-}
-
-// sortStrings sorts a slice of strings in place.
-func sortStrings(s []string) {
-	for i := 0; i < len(s)-1; i++ {
-		for j := i + 1; j < len(s); j++ {
-			if s[i] > s[j] {
-				s[i], s[j] = s[j], s[i]
-			}
-		}
-	}
 }
 
 // SetPatterns sets the glob patterns to use for file discovery.
