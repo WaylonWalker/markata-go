@@ -14,6 +14,32 @@ markata-go is distributed as a single binary with no dependencies. Choose the in
 
 ## Quick Install (Recommended)
 
+### One-liner Install Script
+
+The easiest way to install markata-go on Linux and macOS:
+
+```bash
+curl -sSL https://waylonwalker.github.io/markata-go/install.sh | bash
+```
+
+This script:
+- Automatically detects your OS and architecture
+- Downloads the correct binary from GitHub releases
+- Installs to `/usr/local/bin` or `~/.local/bin`
+- Verifies the installation
+
+**Custom installation directory:**
+
+```bash
+INSTALL_DIR=/opt/bin curl -sSL https://waylonwalker.github.io/markata-go/install.sh | bash
+```
+
+**Install a specific version:**
+
+```bash
+VERSION=v0.1.0 curl -sSL https://waylonwalker.github.io/markata-go/install.sh | bash
+```
+
 ### Using jpillora/installer
 
 The fastest way to install on Linux and macOS:
