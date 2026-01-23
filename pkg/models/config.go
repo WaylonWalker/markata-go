@@ -359,6 +359,24 @@ type PagefindConfig struct {
 
 	// RootSelector is the CSS selector for the searchable content container
 	RootSelector string `json:"root_selector,omitempty" yaml:"root_selector,omitempty" toml:"root_selector,omitempty"`
+
+	// AutoInstall enables automatic Pagefind binary installation (default: true)
+	AutoInstall *bool `json:"auto_install,omitempty" yaml:"auto_install,omitempty" toml:"auto_install,omitempty"`
+
+	// Version is the Pagefind version to install (default: "latest")
+	Version string `json:"version,omitempty" yaml:"version,omitempty" toml:"version,omitempty"`
+
+	// CacheDir is the directory for caching Pagefind binaries (default: XDG cache)
+	CacheDir string `json:"cache_dir,omitempty" yaml:"cache_dir,omitempty" toml:"cache_dir,omitempty"`
+}
+
+// IsAutoInstallEnabled returns whether automatic Pagefind installation is enabled.
+// Defaults to true if not explicitly set.
+func (p *PagefindConfig) IsAutoInstallEnabled() bool {
+	if p.AutoInstall == nil {
+		return true
+	}
+	return *p.AutoInstall
 }
 
 // SearchFeedConfig configures a feed-specific search instance.
@@ -380,6 +398,7 @@ type SearchFeedConfig struct {
 func NewSearchConfig() SearchConfig {
 	enabled := true
 	showImages := true
+	autoInstall := true
 	return SearchConfig{
 		Enabled:       &enabled,
 		Position:      "navbar",
@@ -390,6 +409,9 @@ func NewSearchConfig() SearchConfig {
 			BundleDir:        "_pagefind",
 			ExcludeSelectors: []string{},
 			RootSelector:     "",
+			AutoInstall:      &autoInstall,
+			Version:          "latest",
+			CacheDir:         "",
 		},
 		Feeds: []SearchFeedConfig{},
 	}
