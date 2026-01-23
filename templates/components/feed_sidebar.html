@@ -5,7 +5,7 @@
 
 {% with sidebar = config.components.feed_sidebar %}
 {% if sidebar.enabled %}
-<aside class="feed-sidebar feed-sidebar--{{ sidebar.position | default:'left' }}" style="width: {{ sidebar.width | default:'250px' }}" aria-label="Feed navigation">
+<aside class="feed-sidebar feed-sidebar--{{ sidebar.position | default:'left' }}" style="width: {{ sidebar.width | default:'250px' }}" aria-label="Feed navigation" data-pagefind-ignore>
     <nav class="feed-nav">
         {% if sidebar.title %}
         <h2 class="feed-nav-title">{{ sidebar.title }}</h2>

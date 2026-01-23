@@ -288,7 +288,7 @@ func (p *PagefindPlugin) runPagefind(config *lifecycle.Config) error {
     
     args := []string{
         "--site", config.OutputDir,
-        "--bundle-dir", searchConfig.Pagefind.BundleDir,
+        "--output-subdir", searchConfig.Pagefind.BundleDir,
     }
     
     if searchConfig.Pagefind.RootSelector != "" {
