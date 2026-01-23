@@ -16,27 +16,70 @@ markata-go includes built-in full-text search powered by [Pagefind](https://page
 ## Features
 
 - **Enabled by default** - Search works out of the box with no configuration
+- **Automatic installation** - Pagefind binary is automatically downloaded if not found in PATH
 - **Fast and lightweight** - Only loads the index chunks needed for each query
 - **Offline capable** - Works entirely client-side, no server required
 - **Theme integrated** - Automatically matches your site's color palette
+- **Secure** - SHA256 checksum verification for all downloaded binaries
 
 ## Quick Start
 
 Search is enabled by default for all markata-go sites. Just build your site and the search will work:
 
 ```bash
-# Install Pagefind (one-time setup)
-npm install -g pagefind
-
-# Build your site
+# Build your site - Pagefind is automatically installed if needed
 markata-go build
 ```
 
 That's it! The search box appears in your navigation bar.
 
-## Installing Pagefind
+## Automatic Pagefind Installation
 
-Pagefind must be installed on your system to generate the search index. Choose your preferred method:
+As of markata-go v0.2.x, Pagefind is automatically downloaded and cached when you build your site. This eliminates the need for manual installation.
+
+### How It Works
+
+1. markata-go checks if `pagefind` is in your PATH
+2. If not found, it automatically downloads the appropriate binary for your platform
+3. The binary is verified using SHA256 checksums from official GitHub releases
+4. Downloaded binaries are cached in `~/.cache/markata-go/bin/` for future builds
+
+### Supported Platforms
+
+| OS | Architecture | Status |
+|----|--------------|--------|
+| macOS | x86_64 (Intel) | Supported |
+| macOS | arm64 (Apple Silicon) | Supported |
+| Linux | x86_64 | Supported |
+| Linux | arm64 | Supported |
+| Windows | x86_64 | Supported |
+| FreeBSD | x86_64 | Supported |
+
+### Configuring Auto-Installation
+
+```toml
+[search.pagefind]
+# Disable auto-install (requires manual Pagefind installation)
+auto_install = false
+
+# Pin to a specific version (default: "latest")
+version = "v1.4.0"
+
+# Custom cache directory (default: XDG cache)
+cache_dir = "~/.my-cache/pagefind/"
+```
+
+### Offline Environments
+
+After the first build, Pagefind is cached locally. Subsequent builds work offline. For CI/CD environments, consider:
+
+1. **Pre-cache in Docker image**: Include Pagefind in your CI image
+2. **Use `version` pinning**: Pin to a specific version for reproducible builds
+3. **Disable auto-install**: Set `auto_install = false` and install manually
+
+## Manual Installation (Optional)
+
+If you prefer to install Pagefind manually or need to use a custom build:
 
 ### npm (Recommended)
 
@@ -54,9 +97,16 @@ brew install pagefind
 
 Download from [Pagefind releases](https://github.com/CloudCannon/pagefind/releases).
 
-### Skip Search
+### Disabling Auto-Install
 
-If Pagefind is not installed, markata-go logs a warning but continues building. The search UI will be hidden.
+To require manual installation:
+
+```toml
+[search.pagefind]
+auto_install = false
+```
+
+If Pagefind is not installed and auto-install is disabled, markata-go logs a warning but continues building. The search UI will be hidden.
 
 ## Configuration
 
@@ -99,6 +149,11 @@ exclude_selectors = [       # Elements to exclude from indexing
     "nav",
     "footer"
 ]
+
+# Auto-installation options
+auto_install = true         # Automatically download Pagefind (default: true)
+version = "latest"          # Version to install (default: "latest")
+cache_dir = ""              # Custom cache directory (default: XDG cache)
 ```
 
 ## Search Positions
@@ -225,20 +280,47 @@ For sites with thousands of pages, Pagefind handles it efficiently:
 
 ### Search box not appearing
 
-1. **Check if Pagefind is installed:**
-   ```bash
-   pagefind --version
+1. **Check build logs for Pagefind output:**
+   Look for `[pagefind]` messages indicating download or execution.
+
+2. **Verify search is enabled:**
+   ```toml
+   [search]
+   enabled = true  # Should be true (default)
    ```
 
-2. **Check build logs for warnings:**
+3. **Check network connectivity:**
+   If auto-install is enabled and Pagefind isn't cached, internet access is required.
+
+### Auto-install failing
+
+1. **Network issues:**
    ```
-   WARN pagefind CLI not found, skipping search index generation
+   pagefind install error during download: failed to download asset
+   ```
+   Check your internet connection or firewall settings.
+
+2. **Unsupported platform:**
+   ```
+   pagefind install error during platform_detection: unsupported operating system
+   ```
+   Install Pagefind manually for unsupported platforms.
+
+3. **Checksum verification failure:**
+   ```
+   pagefind install error during verify: checksum mismatch
+   ```
+   This is a security feature. Try clearing the cache:
+   ```bash
+   rm -rf ~/.cache/markata-go/bin/
    ```
 
-3. **Verify search is enabled:**
-   ```bash
-   markata-go config get search.enabled
+4. **Fallback to manual installation:**
+   ```toml
+   [search.pagefind]
+   auto_install = false
    ```
+   Then install Pagefind manually via npm, Homebrew, or direct download.
 
 ### No search results
 
@@ -284,14 +366,22 @@ placeholder = "Search blog..."
 
 ## CI/CD Integration
 
+Thanks to automatic Pagefind installation, CI/CD setup is simpler than ever.
+
 ### GitHub Actions
 
 ```yaml
-- name: Install Pagefind
-  run: npm install -g pagefind
+- name: Build site
+  run: markata-go build  # Pagefind auto-installs
+```
 
+Or pin to a specific version for reproducible builds:
+
+```yaml
 - name: Build site
   run: markata-go build
+  env:
+    MARKATA_GO_SEARCH_PAGEFIND_VERSION: v1.4.0
 ```
 
 ### Netlify
@@ -300,19 +390,31 @@ Add to your `netlify.toml`:
 
 ```toml
 [build]
-  command = "npm install -g pagefind && markata-go build"
+  command = "markata-go build"
 ```
 
 ### Vercel
 
-Add to your `package.json`:
+Add to your `vercel.json`:
 
 ```json
 {
-  "scripts": {
-    "build": "npm install -g pagefind && markata-go build"
-  }
+  "buildCommand": "markata-go build"
 }
+```
+
+### Docker
+
+Pagefind is automatically cached. For faster builds, you can pre-install:
+
+```dockerfile
+# Option 1: Let auto-install handle it (simple)
+RUN markata-go build
+
+# Option 2: Pre-install for faster CI
+RUN npm install -g pagefind
+RUN markata-go build
+```
 ```
 
 ## How It Works
