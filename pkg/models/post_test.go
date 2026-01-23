@@ -253,7 +253,7 @@ func TestPost_GenerateHref_Basic(t *testing.T) {
 		{
 			name:     "empty slug",
 			slug:     "",
-			expected: "/test/", // GenerateHref will call GenerateSlug which uses path
+			expected: "/", // Empty slug means homepage - caller should call GenerateSlug first if auto-generation is needed
 		},
 	}
 
@@ -270,7 +270,8 @@ func TestPost_GenerateHref_Basic(t *testing.T) {
 }
 
 func TestPost_GenerateHref_FromTitle(t *testing.T) {
-	// When href is generated with no slug, it should generate slug first
+	// GenerateHref now requires the slug to be set first
+	// Callers should call GenerateSlug before GenerateHref if auto-generation is needed
 	tests := []struct {
 		name         string
 		title        string
@@ -292,7 +293,8 @@ func TestPost_GenerateHref_FromTitle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewPost("test.md")
 			p.Title = &tt.title
-			p.GenerateHref() // Should call GenerateSlug internally
+			p.GenerateSlug() // Must call GenerateSlug first
+			p.GenerateHref()
 			if p.Href != tt.expectedHref {
 				t.Errorf("got %q, want %q", p.Href, tt.expectedHref)
 			}

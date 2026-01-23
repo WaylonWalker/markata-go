@@ -143,7 +143,7 @@ See [HEAD_STYLE.md](./HEAD_STYLE.md) for detailed head/style override documentat
 The URL-safe identifier for the content.
 
 **Generation priority:**
-1. Explicit `slug` in frontmatter
+1. Explicit `slug` in frontmatter (including empty string)
 2. Derived from `title` (if present)
 3. Derived from file path (stem without extension)
 
@@ -161,6 +161,52 @@ The URL-safe identifier for the content.
 | `"What's New?"` | `whats-new` |
 | `"Python 3.12"` | `python-312` |
 | `path: blog/my-post.md` | `my-post` |
+
+#### Custom Slugs
+
+Slugs can be explicitly set in frontmatter to override automatic generation:
+
+```yaml
+---
+title: About Me
+slug: about  # Explicit slug
+---
+```
+
+**Custom slug normalization:**
+- Leading and trailing slashes are stripped: `/about/` → `about`
+- Nested paths are preserved: `/docs/guides/install` → `docs/guides/install`
+- Slash alone (`/`) means homepage (empty slug)
+- Empty string (`""`) means homepage (empty slug)
+
+**Homepage via custom slug:**
+
+Any post can become the homepage by setting an empty or slash slug:
+
+```yaml
+---
+title: Welcome
+slug: ""      # Becomes homepage at /
+published: true
+---
+```
+
+or equivalently:
+
+```yaml
+---
+title: Welcome
+slug: /       # Also becomes homepage at /
+published: true
+---
+```
+
+**Use cases for custom slugs:**
+- Create homepage from content in any directory
+- Control output paths independently of file location
+- Migrate from other SSGs with different URL structures
+- Create SEO-friendly URLs that differ from file names
+- Group related content under custom paths
 
 #### Special Case: `index.md` Files
 
@@ -662,6 +708,70 @@ Errors should include contextual information:
 | `ConfigValidationError` | Invalid configuration |
 | `PluginNotFoundError` | Plugin couldn't be loaded |
 | `CircularTemplateError` | Template inheritance cycle |
+| `PathConflictError` | Multiple posts/feeds would write to same path |
+
+---
+
+## Path Conflict Detection
+
+The build system detects when multiple content sources would write to the same output path. This prevents accidental content overwrites.
+
+### Conflict Sources
+
+Conflicts can occur between:
+- **Post vs Post**: Two posts with the same slug
+- **Post vs Feed**: A post slug matching a feed slug
+- **Feed vs Feed**: Two feeds with the same slug
+
+### Example Conflicts
+
+```yaml
+# posts/home.md
+---
+title: Welcome Home
+slug: ""          # Would write to /index.html
+---
+
+# posts/landing.md
+---
+title: Landing Page
+slug: /           # Also writes to /index.html - CONFLICT!
+---
+```
+
+```toml
+# markata-go.toml
+[[feeds]]
+slug = "blog"     # Would write to /blog/index.html
+
+# posts/blog.md
+---
+title: Blog Post
+slug: blog        # Also writes to /blog/index.html - CONFLICT!
+---
+```
+
+### Conflict Resolution
+
+When a conflict is detected:
+1. The build fails with a clear error message listing all conflicting paths
+2. Each conflict shows the sources that would collide
+3. Users must resolve by changing one of the slugs
+
+**Error example:**
+```
+detected 1 output path conflict(s):
+  - public/index.html: post:pages/home.md, post:pages/landing.md
+```
+
+### Warning Mode
+
+The overwrite check can be configured to warn instead of fail:
+
+```toml
+[plugins.overwrite_check]
+warn_only = true  # Warn but don't fail build
+```
 
 ---
 
