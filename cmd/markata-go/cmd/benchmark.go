@@ -145,7 +145,7 @@ output_dir = "%s/output"
 patterns = ["posts/**/*.md"]
 `, tempDir)
 
-	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
+	if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
 		result.ErrorMessage = fmt.Sprintf("failed to write config: %v", err)
 		return result
 	}
@@ -156,7 +156,7 @@ patterns = ["posts/**/*.md"]
 	runtime.ReadMemStats(&memBefore)
 
 	// Track peak memory during build
-	var peakAlloc uint64 = memBefore.Alloc
+	peakAlloc := memBefore.Alloc
 
 	// Run build
 	buildStart := time.Now()
@@ -225,7 +225,9 @@ func createBenchmarkManager(cfgPath, workDir string) (*lifecycle.Manager, error)
 	if err := os.Chdir(workDir); err != nil {
 		return nil, fmt.Errorf("changing to work dir: %w", err)
 	}
-	defer os.Chdir(originalDir)
+	defer func() {
+		_ = os.Chdir(originalDir) //nolint:errcheck // best-effort restore of original directory
+	}()
 
 	// Load config
 	cfg, err := config.Load(cfgPath)
@@ -287,7 +289,7 @@ func generateTestPosts(dir string, count int) error {
 
 		content := generatePostMarkdown(rng, title, i)
 
-		if err := os.WriteFile(filename, []byte(content), 0o644); err != nil {
+		if err := os.WriteFile(filename, []byte(content), 0o600); err != nil {
 			return fmt.Errorf("writing post %d: %w", i, err)
 		}
 	}
@@ -555,7 +557,7 @@ func printBenchmarkSummary(results []*BenchmarkResult) {
 }
 
 func stageHeaders(results []*BenchmarkResult) string {
-	var headers []string
+	headers := make([]string, 0, len(results))
 	for _, r := range results {
 		headers = append(headers, fmt.Sprintf(" %d posts", r.PostCount))
 	}
