@@ -298,12 +298,17 @@ func feedPageToMap(p *models.FeedPage) map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"number":   p.Number,
-		"posts":    postsToMaps(p.Posts),
-		"has_prev": p.HasPrev,
-		"has_next": p.HasNext,
-		"prev_url": p.PrevURL,
-		"next_url": p.NextURL,
+		"number":          p.Number,
+		"posts":           postsToMaps(p.Posts),
+		"has_prev":        p.HasPrev,
+		"has_next":        p.HasNext,
+		"prev_url":        p.PrevURL,
+		"next_url":        p.NextURL,
+		"total_pages":     p.TotalPages,
+		"total_items":     p.TotalItems,
+		"items_per_page":  p.ItemsPerPage,
+		"page_urls":       p.PageURLs,
+		"pagination_type": string(p.PaginationType),
 	}
 }
 
