@@ -182,6 +182,58 @@ custom_css = "my-styles.css"
 
 See the [[themes-and-styling|Themes Guide]] for detailed customization options.
 
+### IndieAuth Settings (`[markata-go.indieauth]`)
+
+[IndieAuth](https://indieauth.net/) is a decentralized identity protocol that allows you to use your own domain to sign in to websites. markata-go can add the necessary `<link>` tags to your site's HTML head.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Enable IndieAuth link tags in HTML head |
+| `authorization_endpoint` | string | `""` | URL of your authorization endpoint |
+| `token_endpoint` | string | `""` | URL of your token endpoint |
+| `me_url` | string | `""` | Your profile URL for `rel="me"` links |
+
+```toml
+[markata-go.indieauth]
+enabled = true
+authorization_endpoint = "https://indieauth.com/auth"
+token_endpoint = "https://tokens.indieauth.com/token"
+me_url = "https://github.com/yourusername"
+```
+
+When enabled, this adds the following link tags to your site's `<head>`:
+
+```html
+<link rel="authorization_endpoint" href="https://indieauth.com/auth">
+<link rel="token_endpoint" href="https://tokens.indieauth.com/token">
+<link rel="me" href="https://github.com/yourusername">
+```
+
+### Webmention Settings (`[markata-go.webmention]`)
+
+[Webmention](https://www.w3.org/TR/webmention/) is a web standard for conversations and interactions across websites. markata-go can add the webmention endpoint link tag to your site.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Enable Webmention link tag in HTML head |
+| `endpoint` | string | `""` | URL of your Webmention endpoint |
+
+```toml
+[markata-go.webmention]
+enabled = true
+endpoint = "https://webmention.io/example.com/webmention"
+```
+
+When enabled, this adds the following link tag to your site's `<head>`:
+
+```html
+<link rel="webmention" href="https://webmention.io/example.com/webmention">
+```
+
+**Popular Webmention services:**
+- [webmention.io](https://webmention.io/) - Free hosted webmention service
+- [Bridgy](https://brid.gy/) - Connects social media interactions to webmentions
+
 ### Glob Settings (`[markata-go.glob]`)
 
 | Field | Type | Default | Description |
