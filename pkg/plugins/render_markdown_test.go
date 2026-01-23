@@ -449,7 +449,7 @@ func TestRenderMarkdownPlugin_ConfigureWithPalette(t *testing.T) {
 					"palette": "catppuccin-mocha",
 				},
 			},
-			wantContain: "background-color:", // Chroma adds inline styles
+			wantContain: `class="chroma"`, // Uses CSS classes, not inline styles
 		},
 		{
 			name: "explicit theme override",
@@ -463,12 +463,12 @@ func TestRenderMarkdownPlugin_ConfigureWithPalette(t *testing.T) {
 					},
 				},
 			},
-			wantContain: "#282a36", // Dracula background color
+			wantContain: `class="kd"`, // keyword declaration class
 		},
 		{
 			name:        "no config uses default",
 			extra:       map[string]interface{}{},
-			wantContain: "background-color:",
+			wantContain: `class="chroma"`, // Uses CSS classes
 		},
 	}
 
