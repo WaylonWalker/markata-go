@@ -16,7 +16,20 @@
 <link rel="alternate" type="text/html" title="Social Card" href="{{ post.href }}og/">
 {% endif %}
 
-{# Open Graph meta tags #}
+{# Structured Data: JSON-LD #}
+{% if post.structured_data.jsonld %}
+<script type="application/ld+json">
+{{ post.structured_data.jsonld | safe }}
+</script>
+{% endif %}
+
+{# Structured Data: OpenGraph meta tags #}
+{% if post.structured_data.opengraph %}
+{% for meta in post.structured_data.opengraph %}
+<meta property="{{ meta.property }}" content="{{ meta.content }}">
+{% endfor %}
+{% else %}
+{# Fallback to basic OG tags if no structured data #}
 <meta property="og:title" content="{{ post.title }}">
 <meta property="og:type" content="article">
 <meta property="og:url" content="{{ config.url }}{{ post.href }}">
@@ -28,6 +41,14 @@
 {% endif %}
 {% if config.post_formats.og %}
 <meta property="og:image" content="{{ config.url }}{{ post.href }}og/">
+{% endif %}
+{% endif %}
+
+{# Structured Data: Twitter Card meta tags #}
+{% if post.structured_data.twitter %}
+{% for meta in post.structured_data.twitter %}
+<meta name="{{ meta.name }}" content="{{ meta.content }}">
+{% endfor %}
 {% endif %}
 {% endblock %}
 

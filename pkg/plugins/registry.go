@@ -63,6 +63,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["youtube"] = func() lifecycle.Plugin { return NewYouTubePlugin() }
 	pluginRegistry.constructors["chroma_css"] = func() lifecycle.Plugin { return NewChromaCSSPlugin() }
 	pluginRegistry.constructors["overwrite_check"] = func() lifecycle.Plugin { return NewOverwriteCheckPlugin() }
+	pluginRegistry.constructors["structured_data"] = func() lifecycle.Plugin { return NewStructuredDataPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -114,12 +115,13 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewLoadPlugin(),
 
 		// Transform stage plugins (in order)
-		NewAutoTitlePlugin(),   // Auto-generate titles first
-		NewDescriptionPlugin(), // Auto-generate descriptions early
-		NewReadingTimePlugin(), // Calculate reading time
-		NewWikilinksPlugin(),   // Process wikilinks before rendering
-		NewTocPlugin(),         // Extract TOC before rendering
-		NewJinjaMdPlugin(),     // Process Jinja templates in markdown
+		NewAutoTitlePlugin(),      // Auto-generate titles first
+		NewDescriptionPlugin(),    // Auto-generate descriptions early
+		NewStructuredDataPlugin(), // Generate structured data (needs title, description)
+		NewReadingTimePlugin(),    // Calculate reading time
+		NewWikilinksPlugin(),      // Process wikilinks before rendering
+		NewTocPlugin(),            // Extract TOC before rendering
+		NewJinjaMdPlugin(),        // Process Jinja templates in markdown
 
 		// Render stage plugins
 		NewRenderMarkdownPlugin(),

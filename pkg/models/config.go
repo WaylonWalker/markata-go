@@ -552,14 +552,62 @@ type SEOConfig struct {
 
 	// LogoURL is the site logo URL for Schema.org structured data
 	LogoURL string `json:"logo_url" yaml:"logo_url" toml:"logo_url"`
+
+	// StructuredData configures JSON-LD Schema.org generation
+	StructuredData StructuredDataConfig `json:"structured_data" yaml:"structured_data" toml:"structured_data"`
+}
+
+// StructuredDataConfig configures JSON-LD Schema.org structured data generation.
+type StructuredDataConfig struct {
+	// Enabled controls whether structured data is generated (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Publisher is the site publisher information for Schema.org
+	Publisher *EntityConfig `json:"publisher,omitempty" yaml:"publisher,omitempty" toml:"publisher,omitempty"`
+
+	// DefaultAuthor is the default author for posts without explicit author
+	DefaultAuthor *EntityConfig `json:"default_author,omitempty" yaml:"default_author,omitempty" toml:"default_author,omitempty"`
+}
+
+// IsEnabled returns whether structured data generation is enabled.
+// Defaults to true if not explicitly set.
+func (s *StructuredDataConfig) IsEnabled() bool {
+	if s.Enabled == nil {
+		return true
+	}
+	return *s.Enabled
+}
+
+// EntityConfig represents a Schema.org Person or Organization entity.
+type EntityConfig struct {
+	// Type is "Person" or "Organization" (default: "Organization")
+	Type string `json:"type" yaml:"type" toml:"type"`
+
+	// Name is the entity name
+	Name string `json:"name" yaml:"name" toml:"name"`
+
+	// URL is the entity's web page
+	URL string `json:"url,omitempty" yaml:"url,omitempty" toml:"url,omitempty"`
+
+	// Logo is the logo URL (for Organizations only)
+	Logo string `json:"logo,omitempty" yaml:"logo,omitempty" toml:"logo,omitempty"`
+}
+
+// NewStructuredDataConfig creates a new StructuredDataConfig with default values.
+func NewStructuredDataConfig() StructuredDataConfig {
+	enabled := true
+	return StructuredDataConfig{
+		Enabled: &enabled,
+	}
 }
 
 // NewSEOConfig creates a new SEOConfig with default values.
 func NewSEOConfig() SEOConfig {
 	return SEOConfig{
-		TwitterHandle: "",
-		DefaultImage:  "",
-		LogoURL:       "",
+		TwitterHandle:  "",
+		DefaultImage:   "",
+		LogoURL:        "",
+		StructuredData: NewStructuredDataConfig(),
 	}
 }
 
