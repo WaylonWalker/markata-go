@@ -5,13 +5,29 @@
 
 {% block meta %}
 {{ block.super }}
+{# Canonical URL for SEO #}
+<link rel="canonical" href="{{ config.url }}{{ post.href }}">
+
+{# Alternate format links #}
+{% if config.post_formats.markdown %}
+<link rel="alternate" type="text/markdown" title="Markdown Source" href="{{ post.href }}index.md">
+{% endif %}
+{% if config.post_formats.og %}
+<link rel="alternate" type="text/html" title="Social Card" href="{{ post.href }}og/">
+{% endif %}
+
+{# Open Graph meta tags #}
 <meta property="og:title" content="{{ post.title }}">
 <meta property="og:type" content="article">
+<meta property="og:url" content="{{ config.url }}{{ post.href }}">
 {% if post.description %}
 <meta property="og:description" content="{{ post.description }}">
 {% endif %}
 {% if post.date %}
 <meta property="article:published_time" content="{{ post.date | atom_date }}">
+{% endif %}
+{% if config.post_formats.og %}
+<meta property="og:image" content="{{ config.url }}{{ post.href }}og/">
 {% endif %}
 {% endblock %}
 

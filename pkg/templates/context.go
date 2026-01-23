@@ -186,6 +186,9 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert components to map
 	componentsMap := componentsToMap(&c.Components)
 
+	// Convert post_formats to map
+	postFormatsMap := postFormatsToMap(&c.PostFormats)
+
 	return map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
@@ -200,6 +203,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"indieauth":     indieAuthMap,
 		"webmention":    webmentionMap,
 		"components":    componentsMap,
+		"post_formats":  postFormatsMap,
 	}
 }
 
@@ -284,6 +288,24 @@ func componentsToMap(c *models.ComponentsConfig) map[string]interface{} {
 		"footer":       footerMap,
 		"doc_sidebar":  docSidebarMap,
 		"feed_sidebar": feedSidebarMap,
+	}
+}
+
+// postFormatsToMap converts a PostFormatsConfig to a map for template access.
+func postFormatsToMap(p *models.PostFormatsConfig) map[string]interface{} {
+	if p == nil {
+		return nil
+	}
+
+	htmlEnabled := true
+	if p.HTML != nil {
+		htmlEnabled = *p.HTML
+	}
+
+	return map[string]interface{}{
+		"html":     htmlEnabled,
+		"markdown": p.Markdown,
+		"og":       p.OG,
 	}
 }
 
