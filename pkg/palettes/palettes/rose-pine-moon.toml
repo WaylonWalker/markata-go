@@ -27,6 +27,9 @@ highlight-low  = "#2a283e"
 highlight-med  = "#44415a"
 highlight-high = "#56526e"
 
+# Lighter variants for accessibility
+muted-light   = "#908ca8"  # Lighter muted for code comments
+
 # Layer 2: Semantic Mapping
 [palette.semantic]
 text-primary   = "text"
@@ -56,7 +59,7 @@ border-focus = "iris"
 [palette.components]
 code-bg       = "surface"
 code-text     = "text"
-code-comment  = "muted"
+code-comment  = "muted-light"
 code-keyword  = "iris"
 code-string   = "gold"
 code-number   = "gold"

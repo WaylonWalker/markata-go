@@ -33,12 +33,15 @@ comment    = "#6272a4"
 bg-darker  = "#21222c"
 bg-lighter = "#343746"
 
+# Lighter comment color for better contrast
+comment-light = "#8394c4"
+
 # Layer 2: Semantic Mapping
 [palette.semantic]
 # Text colors
 text-primary   = "foreground"
-text-secondary = "comment"
-text-muted     = "comment"
+text-secondary = "comment-light"
+text-muted     = "comment-light"
 
 # Background colors
 bg-primary   = "background"
@@ -65,15 +68,15 @@ border-focus = "purple"
 
 # Layer 3: Component Colors
 [palette.components]
-code-bg       = "current-line"
+code-bg       = "background"
 code-text     = "foreground"
-code-comment  = "comment"
+code-comment  = "comment-light"
 code-keyword  = "pink"
 code-string   = "yellow"
 code-number   = "purple"
 code-function = "green"
 code-type     = "cyan"
-code-operator = "pink"
+code-operator = "orange"
 
 admonition-note-bg     = "current-line"
 admonition-note-border = "purple"
@@ -85,7 +88,7 @@ admonition-error-bg    = "current-line"
 admonition-error-border = "red"
 
 button-primary-bg     = "purple"
-button-primary-text   = "foreground"
+button-primary-text   = "background"
 button-secondary-bg   = "current-line"
 button-secondary-text = "foreground"
 

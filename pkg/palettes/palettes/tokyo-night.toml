@@ -45,7 +45,7 @@ terminal-black = "#414868"
 # Text colors
 text-primary   = "fg"
 text-secondary = "fg-dark"
-text-muted     = "comment"
+text-muted     = "dark5"
 
 # Background colors
 bg-primary   = "bg"
@@ -72,10 +72,10 @@ border-focus = "blue"
 
 # Layer 3: Component Colors
 [palette.components]
-code-bg       = "bg-light"
+code-bg       = "bg"
 code-text     = "fg"
-code-comment  = "comment"
-code-keyword  = "purple"
+code-comment  = "dark5"
+code-keyword  = "magenta"
 code-string   = "green"
 code-number   = "orange"
 code-function = "blue"
