@@ -24,6 +24,7 @@ builds:
       - darwin
       - windows
       - freebsd
+      - android
     goarch:
       - amd64
       - arm64
@@ -41,6 +42,11 @@ builds:
         goarch: arm
       - goos: freebsd
         goarch: arm64
+      # Android only supports arm64 without NDK
+      - goos: android
+        goarch: amd64
+      - goos: android
+        goarch: arm
     ldflags:
       - -s -w
       - -X github.com/WaylonWalker/markata-go/cmd/markata-go/cmd.Version={{.Version}}
