@@ -1,5 +1,19 @@
 package models
 
+// PaginationType represents the type of pagination to use.
+type PaginationType string
+
+const (
+	// PaginationManual uses traditional page links with full page reloads.
+	PaginationManual PaginationType = "manual"
+
+	// PaginationHTMX uses HTMX for seamless AJAX-based page loading.
+	PaginationHTMX PaginationType = "htmx"
+
+	// PaginationJS uses client-side JavaScript for pagination.
+	PaginationJS PaginationType = "js"
+)
+
 // FeedConfig represents a feed configuration.
 type FeedConfig struct {
 	// Slug is the URL-safe identifier for the feed
@@ -25,6 +39,9 @@ type FeedConfig struct {
 
 	// OrphanThreshold is the minimum number of items for a separate page (default: 3)
 	OrphanThreshold int `json:"orphan_threshold" yaml:"orphan_threshold" toml:"orphan_threshold"`
+
+	// PaginationType specifies the pagination strategy (manual, htmx, js)
+	PaginationType PaginationType `json:"pagination_type" yaml:"pagination_type" toml:"pagination_type"`
 
 	// Formats specifies which output formats to generate
 	Formats FeedFormats `json:"formats" yaml:"formats" toml:"formats"`
@@ -102,6 +119,21 @@ type FeedPage struct {
 
 	// NextURL is the URL of the next page
 	NextURL string `json:"next_url" yaml:"next_url" toml:"next_url"`
+
+	// TotalPages is the total number of pages in the feed
+	TotalPages int `json:"total_pages" yaml:"total_pages" toml:"total_pages"`
+
+	// TotalItems is the total number of posts in the feed
+	TotalItems int `json:"total_items" yaml:"total_items" toml:"total_items"`
+
+	// ItemsPerPage is the number of posts per page
+	ItemsPerPage int `json:"items_per_page" yaml:"items_per_page" toml:"items_per_page"`
+
+	// PageURLs contains URLs for all pages (for numbered pagination)
+	PageURLs []string `json:"page_urls" yaml:"page_urls" toml:"page_urls"`
+
+	// PaginationType is the pagination strategy used
+	PaginationType PaginationType `json:"pagination_type" yaml:"pagination_type" toml:"pagination_type"`
 }
 
 // FeedDefaults provides default values that feeds inherit.
@@ -111,6 +143,9 @@ type FeedDefaults struct {
 
 	// OrphanThreshold is the default minimum number of items for a separate page
 	OrphanThreshold int `json:"orphan_threshold" yaml:"orphan_threshold" toml:"orphan_threshold"`
+
+	// PaginationType is the default pagination strategy
+	PaginationType PaginationType `json:"pagination_type" yaml:"pagination_type" toml:"pagination_type"`
 
 	// Formats specifies the default output formats
 	Formats FeedFormats `json:"formats" yaml:"formats" toml:"formats"`
@@ -136,6 +171,7 @@ func NewFeedDefaults() FeedDefaults {
 	return FeedDefaults{
 		ItemsPerPage:    10,
 		OrphanThreshold: 3,
+		PaginationType:  PaginationManual,
 		Formats: FeedFormats{
 			HTML: true,
 			RSS:  true,
@@ -161,6 +197,7 @@ func NewFeedConfig(defaults FeedDefaults) *FeedConfig {
 	return &FeedConfig{
 		ItemsPerPage:    defaults.ItemsPerPage,
 		OrphanThreshold: defaults.OrphanThreshold,
+		PaginationType:  defaults.PaginationType,
 		Formats:         defaults.Formats,
 		Templates:       defaults.Templates,
 		Posts:           []*Post{},
@@ -176,6 +213,9 @@ func (f *FeedConfig) ApplyDefaults(defaults FeedDefaults) {
 	}
 	if f.OrphanThreshold == 0 {
 		f.OrphanThreshold = defaults.OrphanThreshold
+	}
+	if f.PaginationType == "" {
+		f.PaginationType = defaults.PaginationType
 	}
 
 	// Apply format defaults if no formats are explicitly enabled
@@ -213,6 +253,12 @@ func (f *FeedConfig) Paginate(baseURL string) {
 		itemsPerPage = 10
 	}
 
+	// Determine pagination type (default to manual)
+	paginationType := f.PaginationType
+	if paginationType == "" {
+		paginationType = PaginationManual
+	}
+
 	totalPosts := len(f.Posts)
 	var pages []FeedPage
 
@@ -243,9 +289,26 @@ func (f *FeedConfig) Paginate(baseURL string) {
 		}
 	}
 
-	// Set HasNext and URLs
+	totalPages := len(pages)
+
+	// Generate page URLs for numbered navigation
+	pageURLs := make([]string, totalPages)
+	for i := 0; i < totalPages; i++ {
+		if i == 0 {
+			pageURLs[i] = baseURL + "/"
+		} else {
+			pageURLs[i] = baseURL + "/page/" + itoa(i+1) + "/"
+		}
+	}
+
+	// Set HasNext, URLs, and metadata for each page
 	for i := range pages {
-		pages[i].HasNext = i < len(pages)-1
+		pages[i].HasNext = i < totalPages-1
+		pages[i].TotalPages = totalPages
+		pages[i].TotalItems = totalPosts
+		pages[i].ItemsPerPage = itemsPerPage
+		pages[i].PageURLs = pageURLs
+		pages[i].PaginationType = paginationType
 
 		if pages[i].HasPrev {
 			if i == 1 {
