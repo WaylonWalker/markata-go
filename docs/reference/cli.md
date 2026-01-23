@@ -181,6 +181,70 @@ markata-go serve -v
 
 ---
 
+### init
+
+Initialize a new markata-go project with interactive setup.
+
+#### Usage
+
+```bash
+markata-go init [flags]
+```
+
+#### Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--force` | Overwrite existing files | `false` |
+
+#### Examples
+
+```bash
+# Start interactive project setup
+markata-go init
+
+# Overwrite existing configuration
+markata-go init --force
+```
+
+#### Interactive Flow
+
+The `init` command guides you through setting up a new project:
+
+```
+$ markata-go init
+
+Welcome to markata-go!
+
+Site title [My Site]: My Awesome Blog
+Description [A site built with markata-go]: A blog about things
+Author []: Your Name
+URL [https://example.com]: https://myblog.com
+
+Creating project structure...
+  ✓ Created posts/
+  ✓ Created static/
+  ✓ Created markata-go.toml
+
+Create your first post? (Y/n): y
+Post title [Hello World]: My First Post
+
+  ✓ Created posts/my-first-post.md
+
+Done! Run 'markata-go serve' to start.
+```
+
+#### What Gets Created
+
+The command creates:
+
+1. **markata-go.toml** - Configuration file with your site settings
+2. **posts/** - Directory for your blog posts
+3. **static/** - Directory for static assets (images, CSS, etc.)
+4. **(Optional) First post** - A starter markdown file
+
+---
+
 ### new
 
 Create a new content file with frontmatter template.
@@ -188,14 +252,14 @@ Create a new content file with frontmatter template.
 #### Usage
 
 ```bash
-markata-go new <title> [flags]
+markata-go new [title] [flags]
 ```
 
 #### Arguments
 
 | Argument | Description | Required |
 |----------|-------------|----------|
-| `title` | The title of the new post | Yes |
+| `title` | The title of the new post | No (prompted if not provided) |
 
 #### Flags
 
@@ -203,6 +267,7 @@ markata-go new <title> [flags]
 |------|-------------|---------|
 | `--dir` | Directory to create the post in | `posts` |
 | `--draft` | Create as a draft | `true` |
+| `--tags` | Comma-separated list of tags | `""` |
 
 #### Examples
 
@@ -221,6 +286,29 @@ markata-go new "Work in Progress" --draft
 # Create as published
 markata-go new "Ready to Publish" --draft=false
 # Creates: posts/ready-to-publish.md with draft: false, published: true
+
+# Create with tags
+markata-go new "Go Tutorial" --tags "go,tutorial,programming"
+# Creates: posts/go-tutorial.md with tags: ["go", "tutorial", "programming"]
+
+# Interactive mode (no arguments)
+markata-go new
+# Prompts for title, directory, tags, and draft status
+```
+
+#### Interactive Mode
+
+When called without a title argument, the command enters interactive mode:
+
+```
+$ markata-go new
+
+Post title: My New Post
+Directory [posts]: blog
+Tags (comma-separated): go, tutorial
+Create as draft? (Y/n): y
+
+Created: blog/my-new-post.md
 ```
 
 #### Generated File
@@ -234,11 +322,13 @@ slug: "my-first-post"
 date: 2024-01-15
 draft: true
 published: false
-tags: []
+tags: ["go", "tutorial"]
+description: ""
 ---
 
 # My First Post
 
+Write your content here...
 ```
 
 The slug is automatically generated from the title by:

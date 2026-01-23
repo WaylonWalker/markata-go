@@ -504,17 +504,46 @@ Flags:
   --open                Open browser automatically
 ```
 
-### `new <path>`
+### `init`
+
+Initialize a new project with interactive setup.
+
+```bash
+[name] init [flags]
+
+Flags:
+  --force               Overwrite existing files
+```
+
+Creates:
+- `[name].toml` configuration file
+- `posts/` directory
+- `static/` directory
+- (Optional) First post
+
+### `new [title]`
 
 Create a new post with frontmatter template.
 
 ```bash
-[name] new posts/my-new-post.md [flags]
+[name] new [title] [flags]
 
 Flags:
-  -t, --title string    Post title
-  --edit                Open in $EDITOR after creation
+  --dir string          Directory for new post (default "posts")
+  --draft               Create as draft (default true)
+  --tags string         Comma-separated list of tags
+
+# Examples
+[name] new "My Post"                        # Create with title
+[name] new "My Post" --tags "go,tutorial"   # Create with tags
+[name] new                                  # Interactive mode
 ```
+
+When called without a title, enters interactive mode prompting for:
+- Post title
+- Directory
+- Tags
+- Draft status
 
 ### `validate`
 
