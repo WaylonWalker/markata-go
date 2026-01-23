@@ -47,7 +47,7 @@ func TestPagefindPlugin_DisabledByConfig(t *testing.T) {
 
 	// Create output directory with some content
 	indexPath := filepath.Join(config.OutputDir, "index.html")
-	if err := os.WriteFile(indexPath, []byte("<html><body>Test</body></html>"), 0o644); err != nil {
+	if err := os.WriteFile(indexPath, []byte("<html><body>Test</body></html>"), 0o600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -74,15 +74,15 @@ func TestPagefindPlugin_EnabledByDefault(t *testing.T) {
 
 	// Create output directory with some content
 	indexPath := filepath.Join(config.OutputDir, "index.html")
-	if err := os.WriteFile(indexPath, []byte("<html><body>Test</body></html>"), 0o644); err != nil {
+	if err := os.WriteFile(indexPath, []byte("<html><body>Test</body></html>"), 0o600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
 	m.SetConfig(config)
 
 	// This will fail if pagefind is not installed, but that's okay
-	// The plugin should handle that gracefully
-	_ = plugin.Cleanup(m)
+	// The plugin should handle that gracefully (we ignore the error here)
+	_ = plugin.Cleanup(m) //nolint:errcheck // Pagefind may not be installed in test environment
 
 	// Check that getSearchConfig returns enabled by default
 	searchConfig := getSearchConfig(config)
@@ -259,7 +259,7 @@ func TestNewSearchConfig(t *testing.T) {
 }
 
 // TestPagefindPlugin_InterfaceConformance verifies the plugin implements required interfaces.
-func TestPagefindPlugin_InterfaceConformance(t *testing.T) {
+func TestPagefindPlugin_InterfaceConformance(_ *testing.T) {
 	plugin := NewPagefindPlugin()
 
 	// Test lifecycle.Plugin

@@ -11,6 +11,9 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+// defaultBundleDir is the default directory name for Pagefind search index files.
+const defaultBundleDir = "_pagefind"
+
 // PagefindPlugin runs Pagefind to generate a search index after all HTML files are written.
 // Pagefind is a static site search tool that creates an optimized search index
 // that can be queried entirely client-side.
@@ -72,7 +75,7 @@ func (p *PagefindPlugin) runPagefind(pagefindPath string, config *lifecycle.Conf
 	// Configure bundle directory (where search index files go)
 	bundleDir := searchConfig.Pagefind.BundleDir
 	if bundleDir == "" {
-		bundleDir = "_pagefind"
+		bundleDir = defaultBundleDir
 	}
 	args = append(args, "--bundle-dir", bundleDir)
 
