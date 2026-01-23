@@ -187,7 +187,7 @@ func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeed
 			Slug:        slug,
 			Title:       fmt.Sprintf("Posts tagged: %s", tag),
 			Description: fmt.Sprintf("All posts with the tag %q", tag),
-			Filter:      fmt.Sprintf("tags contains %q", tag),
+			Filter:      fmt.Sprintf("%q in tags", tag),
 			Sort:        "date",
 			Reverse:     true,
 			Formats:     config.Formats,
