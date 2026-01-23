@@ -27,6 +27,9 @@ markata-go is a static site generator written in Go that processes Markdown file
 ### Quick Install (Recommended)
 
 ```bash
+# One-liner install script (Linux/macOS)
+curl -sSL https://waylonwalker.github.io/markata-go/install.sh | bash
+
 # Using jpillora/installer (Linux/macOS)
 curl -sL https://i.jpillora.com/WaylonWalker/markata-go | bash
 
