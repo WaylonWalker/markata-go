@@ -51,6 +51,11 @@ ranking_boost_heading = 1.5 # Boost heading matches (default: 1.5)
 bundle_dir = "_pagefind"    # Output directory for index (default: "_pagefind")
 exclude_selectors = [".no-search", "nav", "footer"]  # Elements to exclude
 root_selector = "main"      # Element containing searchable content
+
+# Automatic binary installation (new in v0.2.x)
+auto_install = true         # Automatically download Pagefind if not in PATH (default: true)
+version = "latest"          # Version to install: "latest" or specific like "v1.4.0" (default: "latest")
+cache_dir = ""              # Custom cache directory (default: XDG cache ~/.cache/markata-go/bin/)
 ```
 
 ### Feed-Specific Search
@@ -129,6 +134,15 @@ type PagefindConfig struct {
     
     // RootSelector is the CSS selector for the searchable content container
     RootSelector string `json:"root_selector,omitempty" yaml:"root_selector,omitempty" toml:"root_selector,omitempty"`
+    
+    // AutoInstall enables automatic Pagefind binary installation (default: true)
+    AutoInstall *bool `json:"auto_install,omitempty" yaml:"auto_install,omitempty" toml:"auto_install,omitempty"`
+    
+    // Version is the Pagefind version to install: "latest" or specific (default: "latest")
+    Version string `json:"version,omitempty" yaml:"version,omitempty" toml:"version,omitempty"`
+    
+    // CacheDir is the directory for caching Pagefind binaries (default: XDG cache)
+    CacheDir string `json:"cache_dir,omitempty" yaml:"cache_dir,omitempty" toml:"cache_dir,omitempty"`
 }
 
 // SearchFeedConfig configures a feed-specific search instance.
@@ -409,12 +423,24 @@ Pagefind automatically optimizes the search index:
 
 ## Error Handling
 
-### Pagefind Not Installed
+### Pagefind Not Found
 
-If `pagefind` CLI is not found:
-1. Warning logged during build
-2. Search UI shows placeholder message
-3. Site functions normally without search
+If `pagefind` CLI is not found in PATH:
+1. **Auto-install enabled (default)**: Automatically downloads and caches Pagefind binary
+   - Downloads from official GitHub releases
+   - Verifies SHA256 checksum before execution
+   - Caches in XDG cache directory for subsequent builds
+2. **Auto-install disabled**: Warning logged with installation instructions
+   - Site functions normally without search
+   - Search UI may show placeholder message
+
+### Auto-Install Failures
+
+If automatic installation fails:
+1. Network error: Falls back to PATH check, warns user
+2. Checksum mismatch: Aborts for security, warns user
+3. Unsupported platform: Warns user, suggests manual installation
+4. Disk space/permission issues: Warns user with specific error
 
 ### Empty Index
 
@@ -428,6 +454,27 @@ When JavaScript is disabled:
 1. Search UI hidden via CSS
 2. Site remains fully navigable
 3. Consider adding sitemap link as fallback
+
+## Security
+
+### Binary Verification
+
+All auto-installed Pagefind binaries are verified:
+1. Downloaded from official CloudCannon GitHub releases only
+2. SHA256 checksum fetched and verified before extraction
+3. Binaries are cached with version-specific directories
+4. Executable permissions set appropriately per platform
+
+### Supported Platforms
+
+| OS | Architecture | Asset Name |
+|----|--------------|------------|
+| macOS | x86_64 (Intel) | x86_64-apple-darwin |
+| macOS | arm64 (Apple Silicon) | aarch64-apple-darwin |
+| Linux | x86_64 | x86_64-unknown-linux-musl |
+| Linux | arm64 | aarch64-unknown-linux-musl |
+| Windows | x86_64 | x86_64-pc-windows-msvc |
+| FreeBSD | x86_64 | x86_64-unknown-freebsd |
 
 ## Future Enhancements
 
