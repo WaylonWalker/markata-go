@@ -35,6 +35,23 @@
     {% if config.seo.default_image %}<meta name="twitter:image" content="{{ config.url }}{{ config.seo.default_image }}">{% endif %}
     {% endif %}
     
+    <!-- Canonical URL -->
+    {% if post %}
+    <link rel="canonical" href="{{ config.url }}{{ post.href }}">
+    {% else %}
+    <link rel="canonical" href="{{ config.url }}/">
+    {% endif %}
+    
+    <!-- Alternate Post Formats -->
+    {% if post %}
+    {% if config.post_formats.markdown %}
+    <link rel="alternate" type="text/markdown" title="Markdown Source" href="{{ post.href }}index.md">
+    {% endif %}
+    {% if config.post_formats.og %}
+    <link rel="alternate" type="text/html" title="Social Card" href="{{ post.href }}og/">
+    {% endif %}
+    {% endif %}
+    
     {% block head %}
     <!-- Theme CSS -->
     <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
