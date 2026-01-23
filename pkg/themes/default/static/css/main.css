@@ -773,6 +773,28 @@ a.wikilink.wikilink-missing {
   text-decoration-style: dashed;
 }
 
+/* Wikilink Tooltips */
+.wikilink-tooltip {
+  position: fixed;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px;
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  animation: tooltipFadeIn 0.2s ease;
+}
+
+.tooltip-title { font-weight: 600; margin-bottom: 4px; }
+.tooltip-desc { font-size: 0.9em; color: var(--color-text-muted); }
+.tooltip-date { font-size: 0.8em; color: var(--color-text-muted); margin-top: 8px; }
+
+@keyframes tooltipFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Reading Time (reading_time plugin) */
 .reading-time {
   color: var(--color-text-muted);

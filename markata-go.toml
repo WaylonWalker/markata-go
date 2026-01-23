@@ -16,6 +16,12 @@ assets_dir = "static"
 # Concurrency (0 = auto based on CPU)
 concurrency = 0
 
+# SEO Configuration
+[markata-go.seo]
+twitter_handle = "waylonwalker"
+default_image = "/static/og-default.png"
+logo_url = "/static/logo.png"
+
 # Plugin configuration
 hooks = ["default"]
 disabled_hooks = []
