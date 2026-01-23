@@ -137,8 +137,10 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		post.Description = &desc
 	}
 
-	// Template
+	// Template - support both 'template' and 'templateKey' for Python markata compatibility
 	if template := GetString(metadata, "template"); template != "" {
+		post.Template = template
+	} else if template := GetString(metadata, "templateKey"); template != "" {
 		post.Template = template
 	}
 
