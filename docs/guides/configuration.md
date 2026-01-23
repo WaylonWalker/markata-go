@@ -182,6 +182,108 @@ custom_css = "my-styles.css"
 
 See the [[themes-and-styling|Themes Guide]] for detailed customization options.
 
+### Layout Components (`[markata-go.components]`)
+
+markata-go includes a configurable layout components system for navigation, footer, and sidebars. Each component can be enabled/disabled and positioned via configuration.
+
+#### Navigation Component (`[markata-go.components.nav]`)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Show navigation |
+| `position` | string | `"header"` | Position: `"header"` or `"sidebar"` |
+| `style` | string | `"horizontal"` | Style: `"horizontal"` or `"vertical"` |
+| `items` | array | `[]` | Navigation links (overrides top-level nav) |
+
+```toml
+[markata-go.components.nav]
+enabled = true
+position = "header"
+style = "horizontal"
+
+[[markata-go.components.nav.items]]
+label = "Home"
+url = "/"
+
+[[markata-go.components.nav.items]]
+label = "Blog"
+url = "/blog/"
+
+[[markata-go.components.nav.items]]
+label = "GitHub"
+url = "https://github.com/user"
+external = true
+```
+
+#### Footer Component (`[markata-go.components.footer]`)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Show footer |
+| `text` | string | `""` | Custom footer text |
+| `show_copyright` | bool | `true` | Show copyright line |
+| `links` | array | `[]` | Footer links |
+
+```toml
+[markata-go.components.footer]
+enabled = true
+text = "Thanks for reading!"
+show_copyright = true
+
+[[markata-go.components.footer.links]]
+label = "RSS"
+url = "/rss.xml"
+
+[[markata-go.components.footer.links]]
+label = "GitHub"
+url = "https://github.com/user"
+external = true
+```
+
+#### Document Sidebar (`[markata-go.components.doc_sidebar]`)
+
+Table of contents sidebar for long-form content.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Show TOC sidebar |
+| `position` | string | `"right"` | Position: `"left"` or `"right"` |
+| `width` | string | `"250px"` | Sidebar width |
+| `min_depth` | int | `2` | Minimum heading level (h2 = 2) |
+| `max_depth` | int | `4` | Maximum heading level (h4 = 4) |
+
+```toml
+[markata-go.components.doc_sidebar]
+enabled = true
+position = "right"
+width = "280px"
+min_depth = 2
+max_depth = 4
+```
+
+#### Feed Sidebar (`[markata-go.components.feed_sidebar]`)
+
+Series/collection navigation sidebar for posts in the same feed.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Show feed sidebar |
+| `position` | string | `"left"` | Position: `"left"` or `"right"` |
+| `width` | string | `"250px"` | Sidebar width |
+| `title` | string | `""` | Custom title (defaults to feed title) |
+| `feeds` | array | `[]` | Feed slugs to show navigation for |
+
+```toml
+[markata-go.components.feed_sidebar]
+enabled = true
+position = "left"
+width = "250px"
+title = "In this series"
+feeds = ["tutorials", "guides"]
+```
+
+**Responsive behavior:** Sidebars are hidden on mobile (< 768px) and shown inline on tablets (768px - 1024px).
+
 ### IndieAuth Settings (`[markata-go.indieauth]`)
 
 [IndieAuth](https://indieauth.net/) is a decentralized identity protocol that allows you to use your own domain to sign in to websites. markata-go can add the necessary `<link>` tags to your site's HTML head.

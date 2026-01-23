@@ -266,10 +266,24 @@ func componentsToMap(c *models.ComponentsConfig) map[string]interface{} {
 		"max_depth": c.DocSidebar.MaxDepth,
 	}
 
+	// Convert feed_sidebar component
+	feedSidebarEnabled := false
+	if c.FeedSidebar.Enabled != nil {
+		feedSidebarEnabled = *c.FeedSidebar.Enabled
+	}
+	feedSidebarMap := map[string]interface{}{
+		"enabled":  feedSidebarEnabled,
+		"position": c.FeedSidebar.Position,
+		"width":    c.FeedSidebar.Width,
+		"title":    c.FeedSidebar.Title,
+		"feeds":    c.FeedSidebar.Feeds,
+	}
+
 	return map[string]interface{}{
-		"nav":         navMap,
-		"footer":      footerMap,
-		"doc_sidebar": docSidebarMap,
+		"nav":          navMap,
+		"footer":       footerMap,
+		"doc_sidebar":  docSidebarMap,
+		"feed_sidebar": feedSidebarMap,
 	}
 }
 

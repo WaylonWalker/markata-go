@@ -13,6 +13,7 @@
   <!-- Theme CSS -->
   <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
   <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset }}">
   <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
   <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
   
@@ -79,15 +80,32 @@
 </head>
 <body>
   {% block header %}
-  {% include "partials/header.html" %}
+  <header class="site-header">
+    <div class="container">
+      <a href="/" class="site-title">{{ config.title | default:'My Site' }}</a>
+      {% include "components/nav.html" %}
+    </div>
+  </header>
   {% endblock %}
   
-  <main>
-    {% block content %}{% endblock %}
-  </main>
+  <div class="page-wrapper">
+    {# Left sidebar for feed navigation (if enabled) #}
+    {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
+    {% include "components/feed_sidebar.html" %}
+    {% endif %}
+    
+    <main class="main-content">
+      {% block content %}{% endblock %}
+    </main>
+    
+    {# Right sidebar for document TOC (if enabled) #}
+    {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'right' %}
+    {% include "components/doc_sidebar.html" %}
+    {% endif %}
+  </div>
   
   {% block footer %}
-  {% include "partials/footer.html" %}
+  {% include "components/footer.html" %}
   {% endblock %}
   
   {% block htmx %}{% endblock %}

@@ -32,6 +32,9 @@ type ComponentsConfig struct {
 
 	// DocSidebar configures the document sidebar (table of contents)
 	DocSidebar DocSidebarConfig `json:"doc_sidebar" yaml:"doc_sidebar" toml:"doc_sidebar"`
+
+	// FeedSidebar configures the feed sidebar (series/collection navigation)
+	FeedSidebar FeedSidebarConfig `json:"feed_sidebar" yaml:"feed_sidebar" toml:"feed_sidebar"`
 }
 
 // NavComponentConfig configures the navigation component.
@@ -82,11 +85,30 @@ type DocSidebarConfig struct {
 	MaxDepth int `json:"max_depth,omitempty" yaml:"max_depth,omitempty" toml:"max_depth,omitempty"`
 }
 
+// FeedSidebarConfig configures the feed sidebar (series/collection navigation).
+type FeedSidebarConfig struct {
+	// Enabled controls whether the feed sidebar is displayed (default: false)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Position controls sidebar position: "left", "right" (default: "left")
+	Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
+
+	// Width is the sidebar width (default: "250px")
+	Width string `json:"width,omitempty" yaml:"width,omitempty" toml:"width,omitempty"`
+
+	// Title is the sidebar title (default: uses feed title or "In this series")
+	Title string `json:"title,omitempty" yaml:"title,omitempty" toml:"title,omitempty"`
+
+	// Feeds is the list of feed slugs to show navigation for
+	Feeds []string `json:"feeds,omitempty" yaml:"feeds,omitempty" toml:"feeds,omitempty"`
+}
+
 // NewComponentsConfig creates a new ComponentsConfig with default values.
 func NewComponentsConfig() ComponentsConfig {
 	navEnabled := true
 	footerEnabled := true
 	docSidebarEnabled := false
+	feedSidebarEnabled := false
 	showCopyright := true
 
 	return ComponentsConfig{
@@ -105,6 +127,11 @@ func NewComponentsConfig() ComponentsConfig {
 			Width:    "250px",
 			MinDepth: 2,
 			MaxDepth: 4,
+		},
+		FeedSidebar: FeedSidebarConfig{
+			Enabled:  &feedSidebarEnabled,
+			Position: "left",
+			Width:    "250px",
 		},
 	}
 }
@@ -131,6 +158,14 @@ func (c *ComponentsConfig) IsDocSidebarEnabled() bool {
 		return false
 	}
 	return *c.DocSidebar.Enabled
+}
+
+// IsFeedSidebarEnabled returns whether the feed sidebar is enabled.
+func (c *ComponentsConfig) IsFeedSidebarEnabled() bool {
+	if c.FeedSidebar.Enabled == nil {
+		return false
+	}
+	return *c.FeedSidebar.Enabled
 }
 
 // Config represents the site configuration for markata-go.
