@@ -3,6 +3,7 @@ package plugins
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -118,6 +119,61 @@ func TestPublishHTMLPlugin_ShadowPages(t *testing.T) {
 				t.Errorf("post rendered = %v, want %v", wasRendered, tt.wantRendered)
 			}
 		})
+	}
+}
+
+// TestPublishHTMLPlugin_OGCardCanonicalURL tests that OG cards include canonical URL and robots meta.
+func TestPublishHTMLPlugin_OGCardCanonicalURL(t *testing.T) {
+	tempDir := t.TempDir()
+	plugin := NewPublishHTMLPlugin()
+
+	// Create config with OG format enabled and a site URL
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"url":          "https://example.com",
+			"title":        "Test Site",
+			"post_formats": models.PostFormatsConfig{OG: true},
+		},
+	}
+
+	// Create test post
+	title := "Test Post Title"
+	post := &models.Post{
+		Path:        "test.md",
+		Slug:        "test-post",
+		Title:       &title,
+		HTML:        "<html><body>Test content</body></html>",
+		Published:   true,
+		Draft:       false,
+		Skip:        false,
+		ArticleHTML: "<p>Test content</p>",
+	}
+
+	// Write post (which includes OG format)
+	if err := plugin.writePost(post, config); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+
+	// Read OG card content
+	ogPath := filepath.Join(tempDir, "test-post", "og", "index.html")
+	content, err := os.ReadFile(ogPath)
+	if err != nil {
+		t.Fatalf("failed to read OG card: %v", err)
+	}
+
+	ogHTML := string(content)
+
+	// Verify canonical URL is present
+	expectedCanonical := `<link rel="canonical" href="https://example.com/test-post/">`
+	if !strings.Contains(ogHTML, expectedCanonical) {
+		t.Errorf("OG card should contain canonical URL.\nExpected: %s\nGot: %s", expectedCanonical, ogHTML)
+	}
+
+	// Verify robots meta is present
+	expectedRobots := `<meta name="robots" content="noindex, nofollow">`
+	if !strings.Contains(ogHTML, expectedRobots) {
+		t.Errorf("OG card should contain robots meta.\nExpected: %s\nGot: %s", expectedRobots, ogHTML)
 	}
 }
 

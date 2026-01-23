@@ -197,6 +197,7 @@ func (p *PublishHTMLPlugin) writeOGFormat(post *models.Post, config *lifecycle.C
 // generateOGHTML generates OpenGraph card HTML optimized for 1200x630 screenshots.
 func (p *PublishHTMLPlugin) generateOGHTML(post *models.Post, config *lifecycle.Config) string {
 	siteTitle := getSiteTitle(config)
+	siteURL := getSiteURL(config)
 
 	title := post.Slug
 	if post.Title != nil {
@@ -213,12 +214,17 @@ func (p *PublishHTMLPlugin) generateOGHTML(post *models.Post, config *lifecycle.
 		dateStr = post.Date.Format("January 2, 2006")
 	}
 
+	// Build canonical URL for the original post
+	canonicalURL := siteURL + "/" + post.Slug + "/"
+
 	// Built-in OG card template (1200x630 optimized for social images)
 	ogTemplate := `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1200, height=630">
+    <link rel="canonical" href="{{.CanonicalURL}}">
+    <meta name="robots" content="noindex, nofollow">
     <title>{{.Title}} - OG Card</title>
     <style>
         * {
@@ -344,19 +350,21 @@ func (p *PublishHTMLPlugin) generateOGHTML(post *models.Post, config *lifecycle.
 	}
 
 	data := struct {
-		Title       string
-		Description string
-		DateStr     string
-		Tags        []string
-		TagsDisplay []string
-		SiteTitle   string
+		Title        string
+		Description  string
+		DateStr      string
+		Tags         []string
+		TagsDisplay  []string
+		SiteTitle    string
+		CanonicalURL string
 	}{
-		Title:       title,
-		Description: description,
-		DateStr:     dateStr,
-		Tags:        post.Tags,
-		TagsDisplay: tagsDisplay,
-		SiteTitle:   siteTitle,
+		Title:        title,
+		Description:  description,
+		DateStr:      dateStr,
+		Tags:         post.Tags,
+		TagsDisplay:  tagsDisplay,
+		SiteTitle:    siteTitle,
+		CanonicalURL: canonicalURL,
 	}
 
 	var buf bytes.Buffer
