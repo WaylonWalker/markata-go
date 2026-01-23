@@ -60,6 +60,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["one_line_link"] = func() lifecycle.Plugin { return NewOneLineLinkPlugin() }
 	pluginRegistry.constructors["wikilink_hover"] = func() lifecycle.Plugin { return NewWikilinkHoverPlugin() }
 	pluginRegistry.constructors["qrcode"] = func() lifecycle.Plugin { return NewQRCodePlugin() }
+	pluginRegistry.constructors["youtube"] = func() lifecycle.Plugin { return NewYouTubePlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -122,6 +123,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewRenderMarkdownPlugin(),
 		NewHeadingAnchorsPlugin(), // Add anchors after markdown rendering
 		NewMDVideoPlugin(),        // Convert video images to video tags
+		NewYouTubePlugin(),        // Convert YouTube URLs to embeds
 		NewLinkCollectorPlugin(),  // Collect links after markdown rendering
 		NewTemplatesPlugin(),
 

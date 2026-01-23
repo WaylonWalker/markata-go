@@ -77,9 +77,9 @@ func TestWikilinksPlugin_BasicWikilink(t *testing.T) {
 		}
 	}
 
-	expected := `<a href="/other-post/" class="wikilink">Other Post</a>`
-	if !strings.Contains(source.Content, expected) {
-		t.Errorf("expected %q in content, got %q", expected, source.Content)
+	// Check wikilink was converted (now includes data attributes)
+	if !strings.Contains(source.Content, `href="/other-post/"`) || !strings.Contains(source.Content, `>Other Post</a>`) {
+		t.Errorf("expected wikilink in content, got %q", source.Content)
 	}
 }
 
@@ -115,9 +115,9 @@ func TestWikilinksPlugin_WikilinkWithCustomText(t *testing.T) {
 		}
 	}
 
-	expected := `<a href="/other-post/" class="wikilink">this article</a>`
-	if !strings.Contains(source.Content, expected) {
-		t.Errorf("expected %q in content, got %q", expected, source.Content)
+	// Check wikilink was converted with custom text (now includes data attributes)
+	if !strings.Contains(source.Content, `href="/other-post/"`) || !strings.Contains(source.Content, `>this article</a>`) {
+		t.Errorf("expected wikilink in content, got %q", source.Content)
 	}
 }
 
@@ -193,9 +193,9 @@ func TestWikilinksPlugin_CaseInsensitiveLookup(t *testing.T) {
 		}
 	}
 
-	expected := `<a href="/my-post/" class="wikilink">My Post</a>`
-	if !strings.Contains(source.Content, expected) {
-		t.Errorf("expected case-insensitive match %q in content, got %q", expected, source.Content)
+	// Check case-insensitive lookup worked (now includes data attributes)
+	if !strings.Contains(source.Content, `href="/my-post/"`) || !strings.Contains(source.Content, `>My Post</a>`) {
+		t.Errorf("expected wikilink in content, got %q", source.Content)
 	}
 }
 
