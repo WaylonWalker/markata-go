@@ -7,10 +7,24 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+)
+
+// Pre-compiled regex patterns for date normalization.
+// These are compiled once at package init instead of per-call.
+var (
+	// timeFixRegex fixes malformed time components like "8:011:00" -> "08:11:00"
+	timeFixRegex = regexp.MustCompile(`(\d{1,2}):0*(\d{1,2}):0*(\d{1,2})`)
+
+	// singleDigitHourRegex normalizes single-digit hours in time component
+	singleDigitHourRegex = regexp.MustCompile(`([ T])(\d):(\d{2})`)
+
+	// startSingleDigitHourRegex matches time at start of string
+	startSingleDigitHourRegex = regexp.MustCompile(`^\d:\d{2}`)
 )
 
 // LoadPlugin parses markdown files into Post objects.
@@ -27,6 +41,7 @@ func (p *LoadPlugin) Name() string {
 }
 
 // Load reads and parses all discovered files into Post objects.
+// Files are loaded in parallel using a worker pool for improved I/O performance.
 func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 	files := m.Files()
 	config := m.Config()
@@ -35,6 +50,104 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 		baseDir = "."
 	}
 
+	// Use manager's concurrency setting for worker pool size
+	numWorkers := m.Concurrency()
+	if numWorkers < 1 {
+		numWorkers = 4
+	}
+
+	// For small file counts, don't bother with parallelism overhead
+	if len(files) <= numWorkers {
+		return p.loadSequential(m, files, baseDir)
+	}
+
+	// Channel for sending file paths to workers
+	jobs := make(chan string, len(files))
+
+	// Result type for collecting posts or errors
+	type loadResult struct {
+		post *models.Post
+		err  error
+		file string
+	}
+	results := make(chan loadResult, len(files))
+
+	// Start worker pool
+	var wg sync.WaitGroup
+	for w := 0; w < numWorkers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for file := range jobs {
+				// Construct full path
+				fullPath := file
+				if !filepath.IsAbs(file) {
+					fullPath = filepath.Join(baseDir, file)
+				}
+
+				// Read file content
+				content, err := os.ReadFile(fullPath)
+				if err != nil {
+					results <- loadResult{err: fmt.Errorf("failed to read %s: %w", file, err), file: file}
+					continue
+				}
+
+				// Parse the file
+				post, err := p.parseFile(file, string(content))
+				if err != nil {
+					results <- loadResult{err: fmt.Errorf("failed to parse %s: %w", file, err), file: file}
+					continue
+				}
+
+				results <- loadResult{post: post, file: file}
+			}
+		}()
+	}
+
+	// Send all files to workers
+	for _, file := range files {
+		jobs <- file
+	}
+	close(jobs)
+
+	// Wait for all workers to finish in a separate goroutine
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Collect results, preserving order for deterministic output
+	// We collect all results first, then add them in original file order
+	postMap := make(map[string]*models.Post, len(files))
+	var firstErr error
+
+	for result := range results {
+		if result.err != nil {
+			if firstErr == nil {
+				firstErr = result.err
+			}
+			continue
+		}
+		postMap[result.file] = result.post
+	}
+
+	// Return first error encountered
+	if firstErr != nil {
+		return firstErr
+	}
+
+	// Add posts in original file order for deterministic output
+	for _, file := range files {
+		if post, ok := postMap[file]; ok {
+			m.AddPost(post)
+		}
+	}
+
+	return nil
+}
+
+// loadSequential loads files one at a time (used for small file counts).
+func (p *LoadPlugin) loadSequential(m *lifecycle.Manager, files []string, baseDir string) error {
 	for _, file := range files {
 		// Construct full path
 		fullPath := file
@@ -228,7 +341,6 @@ func normalizeDateString(s string) string {
 
 	// Fix malformed time components like "8:011:00" -> "08:11:00"
 	// This regex finds time components with potentially extra leading zeros
-	timeFixRegex := regexp.MustCompile(`(\d{1,2}):0*(\d{1,2}):0*(\d{1,2})`)
 	s = timeFixRegex.ReplaceAllStringFunc(s, func(match string) string {
 		parts := timeFixRegex.FindStringSubmatch(match)
 		if len(parts) == 4 {
@@ -251,11 +363,10 @@ func normalizeDateString(s string) string {
 
 	// Normalize single-digit hours in time component
 	// Match patterns like " 1:00" or "T1:00" and pad the hour
-	singleDigitHourRegex := regexp.MustCompile(`([ T])(\d):(\d{2})`)
 	s = singleDigitHourRegex.ReplaceAllString(s, "${1}0${2}:${3}")
 
 	// Handle time at start of string or after date with space
-	if matched, err := regexp.MatchString(`^\d:\d{2}`, s); err == nil && matched {
+	if startSingleDigitHourRegex.MatchString(s) {
 		s = "0" + s
 	}
 
