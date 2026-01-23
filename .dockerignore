@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# GitHub
+.github
+
+# Documentation (except README)
+*.md
+!README.md
+docs/
+spec/
+
+# Build artifacts
+public/
+output/
+dist/
+*.exe
+*.test
+*.out
+coverage.out
+markata-go
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Release tooling
+.goreleaser.yml
+Makefile
+
+# Test fixtures that aren't needed
+tests/fixtures/
+tests/testdata/
+
+# Development files
+.env
+.env.*
+*.local
+
+# Temporary files
+tmp/
+*.tmp
+*.log
