@@ -764,6 +764,81 @@ func TestAutoFeedsPlugin_AppendsToExistingFeeds(t *testing.T) {
 	}
 }
 
+func TestAutoFeedsPlugin_TagFeedFilterExpression(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Python Tutorial"), Tags: []string{"python", "tutorial"}, Date: &date, Published: true},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("Go Basics"), Tags: []string{"go", "tutorial"}, Date: &date, Published: true},
+		{Path: "post3.md", Slug: "post3", Title: strPtr("Python Advanced"), Tags: []string{"python", "advanced"}, Date: &date, Published: true},
+	})
+
+	// Configure auto feeds for tags
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{
+				Enabled:    true,
+				SlugPrefix: "tags",
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+
+	// Create a map for easy lookup
+	feedMap := make(map[string]*lifecycle.Feed)
+	for _, f := range feeds {
+		feedMap[f.Name] = f
+	}
+
+	// Check python feed has correct posts (only posts with "python" tag)
+	pythonFeed, ok := feedMap["tags/python"]
+	if !ok {
+		t.Fatal("tags/python feed not found")
+	}
+
+	// Python feed should have exactly 2 posts (post1 and post3)
+	if len(pythonFeed.Posts) != 2 {
+		t.Errorf("python feed should have 2 posts, got %d", len(pythonFeed.Posts))
+	}
+
+	// Verify the posts are the correct ones
+	slugs := make(map[string]bool)
+	for _, p := range pythonFeed.Posts {
+		slugs[p.Slug] = true
+	}
+	if !slugs["post1"] || !slugs["post3"] {
+		t.Errorf("python feed should contain post1 and post3, got %v", slugs)
+	}
+	if slugs["post2"] {
+		t.Errorf("python feed should NOT contain post2 (go post)")
+	}
+
+	// Check go feed has correct posts (only posts with "go" tag)
+	goFeed, ok := feedMap["tags/go"]
+	if !ok {
+		t.Fatal("tags/go feed not found")
+	}
+
+	// Go feed should have exactly 1 post (post2)
+	if len(goFeed.Posts) != 1 {
+		t.Errorf("go feed should have 1 post, got %d", len(goFeed.Posts))
+	}
+	if goFeed.Posts[0].Slug != "post2" {
+		t.Errorf("go feed should contain post2, got %s", goFeed.Posts[0].Slug)
+	}
+}
+
 // =============================================================================
 // Slugify Tests
 // =============================================================================
