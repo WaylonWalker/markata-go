@@ -156,6 +156,7 @@ type tomlSyndicationConfig struct {
 type tomlPostFormatsConfig struct {
 	HTML     *bool `toml:"html"`
 	Markdown bool  `toml:"markdown"`
+	Text     bool  `toml:"text"`
 	OG       bool  `toml:"og"`
 }
 
@@ -276,6 +277,7 @@ func (p *tomlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	return models.PostFormatsConfig{
 		HTML:     p.HTML,
 		Markdown: p.Markdown,
+		Text:     p.Text,
 		OG:       p.OG,
 	}
 }
@@ -515,6 +517,7 @@ type yamlSyndicationConfig struct {
 type yamlPostFormatsConfig struct {
 	HTML     *bool `yaml:"html"`
 	Markdown bool  `yaml:"markdown"`
+	Text     bool  `yaml:"text"`
 	OG       bool  `yaml:"og"`
 }
 
@@ -635,6 +638,7 @@ func (p *yamlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	return models.PostFormatsConfig{
 		HTML:     p.HTML,
 		Markdown: p.Markdown,
+		Text:     p.Text,
 		OG:       p.OG,
 	}
 }
@@ -861,6 +865,7 @@ type jsonSyndicationConfig struct {
 type jsonPostFormatsConfig struct {
 	HTML     *bool `json:"html"`
 	Markdown bool  `json:"markdown"`
+	Text     bool  `json:"text"`
 	OG       bool  `json:"og"`
 }
 
@@ -981,6 +986,7 @@ func (p *jsonPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	return models.PostFormatsConfig{
 		HTML:     p.HTML,
 		Markdown: p.Markdown,
+		Text:     p.Text,
 		OG:       p.OG,
 	}
 }

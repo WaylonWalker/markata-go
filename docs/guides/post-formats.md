@@ -1,17 +1,18 @@
 ---
 title: "Post Output Formats"
-description: "Configure multiple output formats for posts including HTML, Markdown source, and OpenGraph cards"
+description: "Configure multiple output formats for posts including HTML, Markdown source, plain text, and OpenGraph cards"
 date: 2026-01-22
 published: true
 tags:
   - configuration
   - output
   - social-media
+  - content-negotiation
 ---
 
 # Post Output Formats
 
-markata-go can generate multiple output formats for each post beyond the standard HTML. This enables use cases like providing raw markdown for API consumers or generating social media preview cards.
+markata-go can generate multiple output formats for each post beyond the standard HTML. This enables use cases like providing raw markdown for API consumers, plain text for accessibility, or generating social media preview cards.
 
 ## Configuration
 
@@ -21,6 +22,7 @@ Configure output formats in your `markata-go.toml`:
 [markata-go.post_formats]
 html = true       # Standard HTML (default: true)
 markdown = false  # Raw markdown source
+text = false      # Plain text output
 og = false        # OpenGraph card HTML
 ```
 
@@ -44,7 +46,7 @@ Outputs the raw markdown source with reconstructed frontmatter. Useful for:
 - API consumers who want raw content
 - Copy-paste workflows
 
-**Output:** `/your-post/index.md`
+**Output:** `/your-post/index.md` (with redirect from `/your-post.md`)
 
 ```toml
 [markata-go.post_formats]
@@ -64,6 +66,39 @@ tags:
 ---
 
 Your original markdown content...
+```
+
+### Plain Text
+
+Outputs a plain text version of the content, perfect for:
+- Screen readers and accessibility tools
+- Command-line readers (curl, wget)
+- Low-bandwidth situations
+- Text-based browsers
+
+**Output:** `/your-post/index.txt` (with redirect from `/your-post.txt`)
+
+```toml
+[markata-go.post_formats]
+text = true
+```
+
+The text output includes:
+- Title (underlined with `=`)
+- Description (if present)
+- Date
+- Raw markdown content
+
+Example output:
+```
+My Post Title
+=============
+
+A description of the post.
+
+Date: January 22, 2026
+
+The actual content of the post in plain text form...
 ```
 
 ### OpenGraph Card (OG)
@@ -98,6 +133,142 @@ The default OG card template includes:
 - Publication date
 
 You can customize the OG card appearance by providing your own `og.html` template.
+
+## Clean URL Redirects
+
+For convenience, markata-go generates redirect files that allow cleaner URLs for alternate formats:
+
+| User requests | Redirects to |
+|---------------|--------------|
+| `/my-post.md` | `/my-post/index.md` |
+| `/my-post.txt` | `/my-post/index.txt` |
+
+This means users can type `example.com/my-post.md` directly in their browser or use it with command-line tools:
+
+```bash
+# Both of these work:
+curl https://example.com/my-post.md
+curl https://example.com/my-post/index.md
+```
+
+The redirects use HTML meta refresh for maximum compatibility across browsers and HTTP clients.
+
+## Visible Format Links
+
+When you enable alternate formats, markata-go automatically displays format links on your posts and feeds. These appear in the post footer (for posts) or feed header (for feeds).
+
+For posts with `markdown`, `text`, or `og` enabled, visitors see:
+- **View as:** Markdown | Text | Card
+
+For feeds, visitors see subscription options:
+- **Subscribe:** RSS | Atom | JSON | Markdown | Text
+
+## Content Negotiation
+
+markata-go's directory-based URL structure (`/slug/index.html`, `/slug/index.md`, `/slug/index.txt`) enables server-side content negotiation. This allows clients to request their preferred format using HTTP `Accept` headers.
+
+### How It Works
+
+Instead of requesting a specific file, clients request the directory URL:
+```
+GET /my-post/
+Accept: text/plain
+```
+
+The server returns the appropriate format based on the `Accept` header.
+
+### Nginx Configuration
+
+```nginx
+server {
+    listen 80;
+    server_name example.com;
+    root /var/www/html;
+
+    location / {
+        # Try the requested URI, then index files based on Accept header
+        try_files $uri $uri/ @negotiate;
+    }
+
+    location @negotiate {
+        # Map Accept header to file extension
+        set $ext "html";
+        
+        if ($http_accept ~* "text/plain") {
+            set $ext "txt";
+        }
+        if ($http_accept ~* "text/markdown") {
+            set $ext "md";
+        }
+        
+        # Try the negotiated format
+        try_files $uri/index.$ext $uri/index.html =404;
+    }
+}
+```
+
+### Caddy Configuration
+
+```caddyfile
+example.com {
+    root * /var/www/html
+    file_server
+    
+    @wantsText {
+        header Accept *text/plain*
+    }
+    @wantsMarkdown {
+        header Accept *text/markdown*
+    }
+    
+    # Rewrite to plain text when requested
+    rewrite @wantsText {path}/index.txt
+    
+    # Rewrite to markdown when requested
+    rewrite @wantsMarkdown {path}/index.md
+    
+    # Default to HTML
+    try_files {path} {path}/index.html {path}.html
+}
+```
+
+### Apache Configuration
+
+```apache
+<VirtualHost *:80>
+    ServerName example.com
+    DocumentRoot /var/www/html
+    
+    # Enable content negotiation
+    Options +MultiViews
+    
+    # Define type mappings
+    AddType text/html .html
+    AddType text/markdown .md
+    AddType text/plain .txt
+    
+    # Prefer HTML by default
+    DirectoryIndex index.html index.md index.txt
+</VirtualHost>
+```
+
+### Testing Content Negotiation
+
+Use `curl` to test different formats:
+
+```bash
+# Request HTML (default)
+curl https://example.com/my-post/
+
+# Request plain text
+curl -H "Accept: text/plain" https://example.com/my-post/
+
+# Request markdown
+curl -H "Accept: text/markdown" https://example.com/my-post/
+
+# Request with quality values
+curl -H "Accept: text/plain;q=0.9, text/html;q=0.8" https://example.com/my-post/
+```
 
 ## Homepage with index.md
 
@@ -153,6 +324,7 @@ title = "My Site"
 [markata-go.post_formats]
 html = true      # Standard pages
 markdown = true  # View source support
+text = true      # Plain text for accessibility
 og = true        # Social card generation
 ```
 

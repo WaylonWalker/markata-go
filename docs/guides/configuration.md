@@ -469,12 +469,14 @@ extensions = ["tables", "strikethrough", "autolinks", "tasklist"]
 |-------|------|---------|-------------|
 | `html` | bool | `true` | Generate standard HTML pages |
 | `markdown` | bool | `false` | Generate raw markdown source |
+| `text` | bool | `false` | Generate plain text output |
 | `og` | bool | `false` | Generate OpenGraph card HTML |
 
 ```toml
 [markata-go.post_formats]
 html = true       # /slug/index.html (default)
 markdown = true   # /slug/index.md (raw source)
+text = true       # /slug/index.txt (plain text)
 og = true         # /slug/og/index.html (social card)
 ```
 
@@ -485,11 +487,13 @@ og = true         # /slug/og/index.html (social card)
   - Markdown: `type="text/markdown"` linking to `index.md`
   - OG Card: `type="text/html"` linking to `og/`
 
+**Visible Format Links**: When alternate formats are enabled, posts and feeds display visible links allowing visitors to access content in their preferred format.
+
 OG card pages automatically include:
 - `<link rel="canonical">` pointing back to the original post
 - `<meta name="robots" content="noindex, nofollow">` to prevent search engine indexing
 
-See the [[post-formats|Post Output Formats Guide]] for detailed usage including social image generation.
+See the [[post-formats|Post Output Formats Guide]] for detailed usage including social image generation and content negotiation.
 
 ### Search Settings (`[search]`)
 
