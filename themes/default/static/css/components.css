@@ -365,25 +365,23 @@
 :root {
   --pagefind-ui-scale: 0.9;
   --pagefind-ui-primary: var(--color-primary, #2563eb);
-  --pagefind-ui-text: var(--color-text, #374151);
-  --pagefind-ui-background: var(--color-background, #ffffff);
-  --pagefind-ui-border: var(--color-border, #d1d5db);
-  --pagefind-ui-tag: #4b5563;
+  --pagefind-ui-text: var(--search-text, var(--color-text, #374151));
+  --pagefind-ui-background: var(--search-bg, var(--color-background, #ffffff));
+  --pagefind-ui-border: var(--search-border, var(--color-border, #d1d5db));
+  --pagefind-ui-tag: var(--search-tag-text, #4b5563);
+  --pagefind-ui-tag-bg: var(--search-tag-bg, var(--color-surface, #f3f4f6));
+  --pagefind-ui-highlight: var(--search-highlight, #fef08a);
+  --pagefind-ui-highlight-text: var(--search-highlight-text, #1f2937);
+  --pagefind-ui-result-bg: var(--search-result-bg, var(--color-background, #ffffff));
+  --pagefind-ui-result-hover: var(--search-result-hover, var(--color-surface, #f3f4f6));
   --pagefind-ui-border-width: 1px;
   --pagefind-ui-border-radius: 8px;
   --pagefind-ui-font: var(--font-body, system-ui, -apple-system, sans-serif);
 }
 
-/* Pagefind UI CSS custom properties - Dark mode */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --pagefind-ui-primary: #60a5fa;
-    --pagefind-ui-text: #f3f4f6;
-    --pagefind-ui-background: #1f2937;
-    --pagefind-ui-border: #4b5563;
-    --pagefind-ui-tag: #d1d5db;
-  }
-}
+/* Note: Dark mode is handled by the palette system.
+   When using a dark palette, the --search-* variables will contain
+   appropriate dark mode colors. No media query override needed. */
 
 /* Compact mode for navbar */
 .search--navbar .pagefind-ui__search-input {
@@ -437,39 +435,24 @@
 
 .pagefind-ui__search-input:focus {
   border-color: var(--pagefind-ui-primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pagefind-ui-primary) 15%, transparent);
   outline: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  .pagefind-ui__search-input:focus {
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
-  }
 }
 
 /* Result card styling - Visual separation between results */
 .pagefind-ui__result {
   padding: 1rem;
   margin: 0.5rem 0;
-  background: var(--pagefind-ui-background);
+  background: var(--pagefind-ui-result-bg);
   border: 1px solid var(--pagefind-ui-border);
   border-radius: 8px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
 .pagefind-ui__result:hover {
   border-color: var(--pagefind-ui-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-@media (prefers-color-scheme: dark) {
-  .pagefind-ui__result {
-    background: #111827;
-  }
-  
-  .pagefind-ui__result:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  }
+  background: var(--pagefind-ui-result-hover);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--pagefind-ui-text) 10%, transparent);
 }
 
 .pagefind-ui__result:first-child {
@@ -518,18 +501,11 @@
 
 /* Highlighted search terms in results */
 .pagefind-ui__result-excerpt mark {
-  background-color: #fef08a;
-  color: #1f2937;
+  background-color: var(--pagefind-ui-highlight);
+  color: var(--pagefind-ui-highlight-text);
   padding: 0.125em 0.25em;
   border-radius: 3px;
   font-weight: 500;
-}
-
-@media (prefers-color-scheme: dark) {
-  .pagefind-ui__result-excerpt mark {
-    background-color: #854d0e;
-    color: #fef9c3;
-  }
 }
 
 /* Result image thumbnail */
@@ -549,16 +525,10 @@
 .pagefind-ui__result-tag {
   font-size: 0.75rem;
   padding: 0.125rem 0.5rem;
-  background: var(--color-surface, #f3f4f6);
+  background: var(--pagefind-ui-tag-bg);
   color: var(--pagefind-ui-tag);
   border-radius: 9999px;
   border: 1px solid var(--pagefind-ui-border);
-}
-
-@media (prefers-color-scheme: dark) {
-  .pagefind-ui__result-tag {
-    background: #374151;
-  }
 }
 
 /* Message when no results found */

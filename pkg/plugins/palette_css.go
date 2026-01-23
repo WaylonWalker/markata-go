@@ -215,6 +215,31 @@ func (p *PaletteCSSPlugin) generateThemeCSS(palette *palettes.Palette) string {
 		}
 	}
 
+	// Add search colors if available
+	searchColorNames := []string{
+		"search-bg", "search-text", "search-border",
+		"search-highlight", "search-highlight-text",
+		"search-tag-bg", "search-tag-text",
+		"search-result-bg", "search-result-hover",
+	}
+
+	hasSearchColors := false
+	for _, name := range searchColorNames {
+		if palette.Resolve(name) != "" {
+			hasSearchColors = true
+			break
+		}
+	}
+
+	if hasSearchColors {
+		buf.WriteString("\n  /* Search colors (Pagefind integration) */\n")
+		for _, name := range searchColorNames {
+			if color := palette.Resolve(name); color != "" {
+				buf.WriteString(fmt.Sprintf("  --%s: %s;\n", name, color))
+			}
+		}
+	}
+
 	buf.WriteString("}\n")
 
 	return buf.String()
