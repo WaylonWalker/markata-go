@@ -5,7 +5,7 @@
 
 {% with sidebar = config.components.doc_sidebar %}
 {% if sidebar.enabled and post.Extra.toc %}
-<aside class="doc-sidebar doc-sidebar--{{ sidebar.position | default:'right' }}" style="width: {{ sidebar.width | default:'250px' }}">
+<aside class="doc-sidebar doc-sidebar--{{ sidebar.position | default:'right' }}" style="width: {{ sidebar.width | default:'250px' }}" data-pagefind-ignore>
     <nav class="toc" aria-label="Table of Contents">
         <h2 class="toc-title">On this page</h2>
         <ul class="toc-list">
