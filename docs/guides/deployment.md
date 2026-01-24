@@ -424,7 +424,7 @@ Cloudflare Pages offers fast global CDN deployment with Workers integration.
 Configure via the Cloudflare dashboard:
 
 1. **Framework preset**: None
-2. **Build command**: 
+2. **Build command**:
    ```
    curl -sSL https://go.dev/dl/go1.22.0.linux-amd64.tar.gz | tar -xzf - && ./go/bin/go install github.com/example/markata-go/cmd/markata-go@latest && ~/go/bin/markata-go build --clean
    ```
@@ -496,7 +496,7 @@ server {
     listen 80;
     listen [::]:80;
     server_name example.com www.example.com;
-    
+
     # Redirect HTTP to HTTPS
     return 301 https://$server_name$request_uri;
 }
@@ -532,7 +532,7 @@ server {
     gzip_vary on;
     gzip_proxied any;
     gzip_comp_level 6;
-    gzip_types text/plain text/css text/xml application/json application/javascript 
+    gzip_types text/plain text/css text/xml application/json application/javascript
                application/rss+xml application/atom+xml image/svg+xml;
 
     # Static assets caching
@@ -667,7 +667,7 @@ server {
     # Gzip
     gzip on;
     gzip_vary on;
-    gzip_types text/plain text/css application/json application/javascript 
+    gzip_types text/plain text/css application/json application/javascript
                text/xml application/xml application/rss+xml image/svg+xml;
 
     # Security headers
@@ -810,7 +810,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -868,7 +868,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:

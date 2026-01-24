@@ -39,9 +39,9 @@
 {% block content %}
 <div class="layout-container">
     {% if config.sidebar.enabled %}
-    <aside class="layout-sidebar layout-sidebar--{{ config.layout.docs.sidebar_position | default:'left' }}" 
-           id="sidebar" 
-           role="navigation" 
+    <aside class="layout-sidebar layout-sidebar--{{ config.layout.docs.sidebar_position | default:'left' }}"
+           id="sidebar"
+           role="navigation"
            aria-label="Documentation navigation"
            data-collapsible="{{ config.layout.docs.sidebar_collapsible | default:true | yesno:'true,false' }}"
            data-open="{{ config.layout.docs.sidebar_default_open | default:true | yesno:'true,false' }}"
@@ -52,7 +52,7 @@
     </aside>
     <div class="sidebar-overlay"></div>
     {% endif %}
-    
+
     <main class="layout-content" id="main-content" style="--content-max-width: {{ config.layout.docs.content_max_width | default:'800px' }}">
         <a href="#main-content" class="skip-link">Skip to main content</a>
         <article class="post">
@@ -67,10 +67,10 @@
             </div>
         </article>
     </main>
-    
+
     {% if config.toc.enabled and post.toc %}
-    <aside class="layout-toc layout-toc--{{ config.layout.docs.toc_position | default:'right' }}" 
-           role="complementary" 
+    <aside class="layout-toc layout-toc--{{ config.layout.docs.toc_position | default:'right' }}"
+           role="complementary"
            aria-label="Table of Contents"
            data-collapsible="{{ config.layout.docs.toc_collapsible | default:true | yesno:'true,false' }}"
            data-open="{{ config.layout.docs.toc_default_open | default:true | yesno:'true,false' }}"

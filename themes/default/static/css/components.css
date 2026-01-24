@@ -303,11 +303,11 @@
   .page-wrapper {
     flex-direction: column;
   }
-  
+
   .content-wrapper--with-sidebar {
     display: block;
   }
-  
+
   .doc-sidebar,
   .feed-sidebar {
     display: none;
@@ -354,7 +354,7 @@
 
 /* ==========================================================================
    Pagefind Search UI Customizations
-   
+
    Accessibility: All text meets WCAG AA contrast requirements (4.5:1 minimum)
    - Primary text on white: #374151 (7.5:1 ratio)
    - Secondary text on white: #4b5563 (6.1:1 ratio)
@@ -591,23 +591,23 @@
   .search--navbar {
     display: none;
   }
-  
+
   /* Show search in header menu on mobile */
   .site-header .search--navbar {
     display: block;
     width: 100%;
     margin: 1rem 0;
   }
-  
+
   .search--navbar .pagefind-ui__search-input {
     width: 100%;
     font-size: 16px; /* Prevent iOS zoom on focus */
   }
-  
+
   .search--navbar .pagefind-ui__search-input:focus {
     width: 100%;
   }
-  
+
   .search--navbar .pagefind-ui__results-area {
     position: fixed;
     top: auto;
@@ -622,17 +622,17 @@
     border-right: none;
     padding: 1rem;
   }
-  
+
   /* Mobile-optimized result cards */
   .pagefind-ui__result {
     padding: 0.875rem;
     margin-bottom: 0.75rem;
   }
-  
+
   .pagefind-ui__result-link {
     font-size: 0.9375rem;
   }
-  
+
   .pagefind-ui__result-excerpt {
     font-size: 0.8125rem;
     line-height: 1.4;
@@ -741,11 +741,11 @@
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .format-links-label {
     margin-bottom: 0.25rem;
   }
-  
+
   .format-link {
     width: 100%;
     justify-content: center;
@@ -954,7 +954,7 @@ kbd {
     max-width: 100%;
     margin: 0 0.5rem;
   }
-  
+
   .footer-bottom {
     flex-direction: column;
     align-items: flex-start;
@@ -966,7 +966,7 @@ kbd {
   .shortcuts-modal {
     animation: fadeIn 0.15s ease-out;
   }
-  
+
   .shortcuts-modal-content {
     animation: slideUp 0.15s ease-out;
   }
@@ -978,11 +978,11 @@ kbd {
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(10px);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0);
   }
@@ -1073,15 +1073,15 @@ kbd {
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE/Edge */
   }
-  
+
   .breadcrumb-list::-webkit-scrollbar {
     display: none; /* Chrome/Safari/Opera */
   }
-  
+
   .breadcrumb-item {
     white-space: nowrap;
   }
-  
+
   /* Truncate long labels */
   .breadcrumb-link,
   .breadcrumb-current {
@@ -1100,12 +1100,12 @@ kbd {
     padding: 0;
     margin-bottom: 0.5rem;
   }
-  
+
   .breadcrumb-link {
     color: var(--color-text);
     text-decoration: underline;
   }
-  
+
   .breadcrumb-separator::after {
     content: " > ";
   }

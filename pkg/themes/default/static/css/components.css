@@ -303,11 +303,11 @@
   .page-wrapper {
     flex-direction: column;
   }
-  
+
   .content-wrapper--with-sidebar {
     display: block;
   }
-  
+
   .doc-sidebar,
   .feed-sidebar {
     display: none;
@@ -354,7 +354,7 @@
 
 /* ==========================================================================
    Pagefind Search UI Customizations
-   
+
    Accessibility: All text meets WCAG AA contrast requirements (4.5:1 minimum)
    - Primary text on white: #374151 (7.5:1 ratio)
    - Secondary text on white: #4b5563 (6.1:1 ratio)
@@ -555,22 +555,22 @@
   .search--navbar {
     display: none;
   }
-  
+
   /* Show search in header menu on mobile */
   .site-header .search--navbar {
     display: block;
     width: 100%;
     margin: 1rem 0;
   }
-  
+
   .search--navbar .pagefind-ui__search-input {
     width: 100%;
   }
-  
+
   .search--navbar .pagefind-ui__search-input:focus {
     width: 100%;
   }
-  
+
   .search--navbar .pagefind-ui__results-area {
     position: fixed;
     top: auto;
@@ -583,13 +583,13 @@
     border-right: none;
     padding: 0.75rem;
   }
-  
+
   /* Smaller result cards on mobile */
   .pagefind-ui__result {
     padding: 0.75rem;
     margin: 0.375rem 0;
   }
-  
+
   /* Two-line limit on mobile for excerpts */
   .pagefind-ui__result-excerpt {
     -webkit-line-clamp: 2;
@@ -698,11 +698,11 @@
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .format-links-label {
     margin-bottom: 0.25rem;
   }
-  
+
   .format-link {
     width: 100%;
     justify-content: center;
@@ -794,15 +794,15 @@
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE/Edge */
   }
-  
+
   .breadcrumb-list::-webkit-scrollbar {
     display: none; /* Chrome/Safari/Opera */
   }
-  
+
   .breadcrumb-item {
     white-space: nowrap;
   }
-  
+
   /* Truncate long labels */
   .breadcrumb-link,
   .breadcrumb-current {
@@ -821,12 +821,12 @@
     padding: 0;
     margin-bottom: 0.5rem;
   }
-  
+
   .breadcrumb-link {
     color: var(--color-text);
     text-decoration: underline;
   }
-  
+
   .breadcrumb-separator::after {
     content: " > ";
   }

@@ -303,11 +303,11 @@ def post_render(core):
 // Plugin registers with fixed schema (defined at init)
 export const plugin: Plugin = {
   name: 'my-plugin',
-  
+
   transform(core) {
     // Pre-render processing
   },
-  
+
   collect(core) {
     // Build collections after render
   }
@@ -321,7 +321,7 @@ impl Plugin for MyPlugin {
     fn process(&self, core: &mut Core) {
         // All content processing here
     }
-    
+
     fn build(&self, core: &mut Core) {
         // Collection building here
     }
@@ -530,7 +530,7 @@ def validate_config(core):
 @hook_impl
 def glob(core):
     from pathlib import Path
-    
+
     for pattern in core.config.glob.glob_patterns:
         core.files.extend(Path().glob(pattern))
 ```
@@ -563,7 +563,7 @@ def load(core):
     for path in core.files:
         content = path.read_text()
         frontmatter, body = parse_frontmatter(content)
-        
+
         post = core.Post(
             path=path,
             content=body,

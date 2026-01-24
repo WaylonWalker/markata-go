@@ -53,11 +53,11 @@ filter = "published == True"
 my-ssg:
   output_dir: public
   url: https://example.com
-  
+
   feeds:
     defaults:
       items_per_page: 10
-    
+
     items:
       - slug: blog
         filter: "published == True"
@@ -154,7 +154,7 @@ from pydantic import BaseModel, Field
 
 class GlobConfig(BaseModel):
     """Configuration for the glob plugin."""
-    
+
     patterns: list[str] = Field(
         default=["**/*.md"],
         description="Glob patterns to find content files"
@@ -188,11 +188,11 @@ export const GlobConfig = z.object({
   patterns: z.array(z.string())
     .default(["**/*.md"])
     .describe("Glob patterns to find content files"),
-  
+
   use_gitignore: z.boolean()
     .default(true)
     .describe("Respect .gitignore when finding files"),
-  
+
   exclude: z.array(z.string())
     .default([])
     .describe("Patterns to exclude from results"),
@@ -208,10 +208,10 @@ export function configModel(core: Core) {
 type GlobConfig struct {
     // Glob patterns to find content files
     Patterns []string `toml:"patterns" default:"[\"**/*.md\"]" description:"Glob patterns to find content files"`
-    
+
     // Respect .gitignore when finding files
     UseGitignore bool `toml:"use_gitignore" default:"true" description:"Respect .gitignore when finding files"`
-    
+
     // Patterns to exclude from results
     Exclude []string `toml:"exclude" description:"Patterns to exclude from results"`
 }
@@ -234,11 +234,11 @@ pub struct GlobConfig {
     /// Glob patterns to find content files
     #[serde(default = "default_patterns")]
     pub patterns: Vec<String>,
-    
+
     /// Respect .gitignore when finding files
     #[serde(default = "default_true")]
     pub use_gitignore: bool,
-    
+
     /// Patterns to exclude from results
     #[serde(default)]
     pub exclude: Vec<String>,
@@ -275,31 +275,31 @@ Each config field should have:
 ```python
 class MarkdownConfig(BaseModel):
     """Markdown rendering configuration."""
-    
+
     backend: str = Field(
         default="auto",
         description="Markdown parser backend",
         examples=["markdown-it", "commonmark", "mistune"],
     )
-    
+
     extensions: list[str] = Field(
         default=["tables", "admonitions", "footnotes"],
         description="Markdown extensions to enable",
     )
-    
+
     highlight_theme: str = Field(
         default="github-dark",
         description="Syntax highlighting theme",
         deprecated="Use markdown.highlight.theme instead",
         see_also=["markdown.highlight"],
     )
-    
+
     class Highlight(BaseModel):
         """Syntax highlighting settings."""
         enabled: bool = Field(default=True, description="Enable syntax highlighting")
         theme: str = Field(default="github-dark", description="Color theme")
         line_numbers: bool = Field(default=False, description="Show line numbers")
-    
+
     highlight: Highlight = Field(
         default_factory=Highlight,
         description="Syntax highlighting configuration",

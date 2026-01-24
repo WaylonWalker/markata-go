@@ -2163,7 +2163,7 @@ edge_cases_unicode:
         title: Emoji Post
         ---
         Hello 👋 World 🌍
-        
+
         - Item 1 ✅
         - Item 2 ❌
     output:
@@ -2337,9 +2337,9 @@ edge_cases_empty:
         ---
         title: Whitespace Post
         ---
-        
-           
-        
+
+
+
     output:
       parsed: true
       content_trimmed: ""
@@ -2935,7 +2935,7 @@ chat_conversations:
         chat_avatars:
           Alice: /images/alice.jpg
         ---
-        
+
         !!! chat
             !!! chat-left "Alice"
                 Hello!
@@ -3399,9 +3399,9 @@ mermaid_plugin:
         graph TD
             A --> B
         ```
-        
+
         Some text.
-        
+
         ```mermaid
         pie
             title Votes
@@ -3460,7 +3460,7 @@ chartjs_plugin:
         ```chartjs
         {"type": "bar", "data": {}}
         ```
-        
+
         ```chartjs
         {"type": "line", "data": {}}
         ```
@@ -3731,9 +3731,9 @@ one_line_link_plugin:
           enabled: true
       content: |
         Check this out:
-        
+
         https://example.com/article
-        
+
         Cool right?
     output:
       html_contains:
@@ -3981,16 +3981,16 @@ optional_plugins_combined:
           - "csv_fence"
       content: |
         # My Post
-        
+
         ```mermaid
         graph TD
             A --> B
         ```
-        
+
         ```chartjs
         {"type": "bar", "data": {}}
         ```
-        
+
         ```csv
         A,B
         1,2
@@ -4014,7 +4014,7 @@ optional_plugins_combined:
         - slug: "test"
           content: |
             Use the API.
-            
+
             ```python
             response = API.call()
             ```
@@ -4028,7 +4028,7 @@ optional_plugins_combined:
           enabled: true
       content: |
         https://example.com
-        
+
         ```
         https://example.com/in-code
         ```

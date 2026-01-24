@@ -453,11 +453,11 @@ templates/
 <article>
   <h1>{{ post.Title }}</h1>
   <time>{{ post.Date|date:"January 2, 2006" }}</time>
-  
+
   <div class="content">
     {{ post.ArticleHTML|safe }}
   </div>
-  
+
   {% if post.Tags %}
   <div class="tags">
     {% for tag in post.Tags %}

@@ -578,23 +578,23 @@ Layout system uses CSS custom properties for easy theming:
   --layout-content-max-width: 800px;
   --layout-header-height: 64px;
   --layout-footer-min-height: 200px;
-  
+
   /* Responsive breakpoints */
   --breakpoint-sm: 640px;
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1280px;
-  
+
   /* Spacing */
   --layout-gutter: var(--space-6);
   --layout-padding: var(--space-4);
-  
+
   /* Z-index layers */
   --z-sidebar: 100;
   --z-header: 200;
   --z-overlay: 300;
   --z-modal: 400;
-  
+
   /* Transitions */
   --transition-sidebar: transform 0.3s ease-in-out;
   --transition-toc: opacity 0.2s ease;
@@ -749,7 +749,7 @@ On mobile devices (< 768px):
       "sidebar content"
       "footer  footer";
   }
-  
+
   .layout-toc {
     display: none;
   }
@@ -763,7 +763,7 @@ On mobile devices (< 768px):
       "content"
       "footer";
   }
-  
+
   .layout-sidebar {
     position: fixed;
     left: 0;
@@ -774,7 +774,7 @@ On mobile devices (< 768px):
     height: calc(100vh - var(--layout-header-height));
     width: min(var(--layout-sidebar-width), 85vw);
   }
-  
+
   .layout-sidebar[data-open="true"] {
     transform: translateX(0);
   }
@@ -794,8 +794,8 @@ On mobile devices (< 768px):
 The hamburger menu button toggles the sidebar:
 
 ```html
-<button class="mobile-menu-toggle" 
-        aria-label="Toggle navigation" 
+<button class="mobile-menu-toggle"
+        aria-label="Toggle navigation"
         aria-expanded="false"
         aria-controls="sidebar">
   <span class="hamburger-line"></span>
@@ -878,11 +878,11 @@ The layout system extends `base.html` with layout-specific structure:
   {% if layout.sidebar.enabled %}
   {% include "components/sidebar.html" %}
   {% endif %}
-  
+
   <main class="layout-content" id="main-content">
     {% block content %}{% endblock %}
   </main>
-  
+
   {% if layout.toc.enabled and post.Extra.toc %}
   {% include "components/toc.html" %}
   {% endif %}
@@ -920,11 +920,11 @@ The layout system extends `base.html` with layout-specific structure:
     </div>
     {% endif %}
   </header>
-  
+
   <div class="post-content">
     {{ body | safe }}
   </div>
-  
+
   {% if layout.show_prev_next %}
   <nav class="post-nav">
     {% if post.prev %}<a href="{{ post.prev.href }}" class="prev">&larr; {{ post.prev.title }}</a>{% endif %}
@@ -1171,13 +1171,13 @@ layout: landing
 type LayoutConfig struct {
     // Layout preset name
     Name string `toml:"name" default:"blog"`
-    
+
     // Layout-specific settings
     Docs    DocsLayoutConfig    `toml:"docs"`
     Blog    BlogLayoutConfig    `toml:"blog"`
     Landing LandingLayoutConfig `toml:"landing"`
     Bare    BareLayoutConfig    `toml:"bare"`
-    
+
     // Global defaults
     Defaults LayoutDefaults `toml:"defaults"`
 }

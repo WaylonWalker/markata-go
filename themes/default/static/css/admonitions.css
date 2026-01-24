@@ -165,7 +165,7 @@ aside.admonition.aside .admonition-title::before {
     margin-right: 0;
     margin-left: var(--space-4);
   }
-  
+
   aside.admonition.aside.aside-left {
     margin-left: 0;
     margin-right: var(--space-4);
@@ -344,12 +344,12 @@ details.admonition[open] > summary::before {
   .chat-container {
     background: var(--color-surface);
   }
-  
+
   .chat-left .chat-bubble {
     background: #374151;
     color: #f9fafb;
   }
-  
+
   .chat-left .chat-author {
     color: #9ca3af;
   }
@@ -360,7 +360,7 @@ details.admonition[open] > summary::before {
   .chat-message {
     max-width: 95%;
   }
-  
+
   .chat-avatar {
     width: 28px;
     height: 28px;

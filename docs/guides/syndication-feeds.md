@@ -142,7 +142,7 @@ rss = true                  # Enable RSS output
     <language>en-us</language>
     <lastBuildDate>Mon, 15 Jan 2024 12:00:00 +0000</lastBuildDate>
     <atom:link href="https://example.com/blog/rss.xml" rel="self" type="application/rss+xml"/>
-    
+
     <item>
       <title>My First Post</title>
       <link>https://example.com/my-first-post/</link>
@@ -212,7 +212,7 @@ atom = true                 # Enable Atom output
   <author>
     <name>Jane Doe</name>
   </author>
-  
+
   <entry>
     <title>My First Post</title>
     <id>https://example.com/my-first-post/</id>
@@ -445,23 +445,23 @@ Add these links to your base template's `<head>` section:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
-    
+
     <!-- RSS Feed Discovery -->
-    <link rel="alternate" 
-          type="application/rss+xml" 
-          title="{{ site.title }} (RSS)" 
+    <link rel="alternate"
+          type="application/rss+xml"
+          title="{{ site.title }} (RSS)"
           href="{{ site.url }}/blog/rss.xml">
-    
+
     <!-- Atom Feed Discovery -->
-    <link rel="alternate" 
-          type="application/atom+xml" 
-          title="{{ site.title }} (Atom)" 
+    <link rel="alternate"
+          type="application/atom+xml"
+          title="{{ site.title }} (Atom)"
           href="{{ site.url }}/blog/atom.xml">
-    
+
     <!-- JSON Feed Discovery -->
-    <link rel="alternate" 
-          type="application/feed+json" 
-          title="{{ site.title }} (JSON)" 
+    <link rel="alternate"
+          type="application/feed+json"
+          title="{{ site.title }} (JSON)"
           href="{{ site.url }}/blog/feed.json">
 </head>
 <body>
@@ -477,15 +477,15 @@ If you have multiple feeds (blog, tutorials, etc.), add discovery links for each
 ```html
 <head>
     <!-- Blog feeds -->
-    <link rel="alternate" type="application/rss+xml" 
+    <link rel="alternate" type="application/rss+xml"
           title="Blog (RSS)" href="/blog/rss.xml">
-    <link rel="alternate" type="application/atom+xml" 
+    <link rel="alternate" type="application/atom+xml"
           title="Blog (Atom)" href="/blog/atom.xml">
-    
+
     <!-- Tutorial feeds -->
-    <link rel="alternate" type="application/rss+xml" 
+    <link rel="alternate" type="application/rss+xml"
           title="Tutorials (RSS)" href="/tutorials/rss.xml">
-    <link rel="alternate" type="application/atom+xml" 
+    <link rel="alternate" type="application/atom+xml"
           title="Tutorials (Atom)" href="/tutorials/atom.xml">
 </head>
 ```
@@ -497,20 +497,20 @@ For feed-specific pages, use template variables:
 ```html
 {% if feed %}
     {% if feed.formats.rss %}
-    <link rel="alternate" type="application/rss+xml" 
-          title="{{ feed.title }} (RSS)" 
+    <link rel="alternate" type="application/rss+xml"
+          title="{{ feed.title }} (RSS)"
           href="{{ feed.href }}rss.xml">
     {% endif %}
-    
+
     {% if feed.formats.atom %}
-    <link rel="alternate" type="application/atom+xml" 
-          title="{{ feed.title }} (Atom)" 
+    <link rel="alternate" type="application/atom+xml"
+          title="{{ feed.title }} (Atom)"
           href="{{ feed.href }}atom.xml">
     {% endif %}
-    
+
     {% if feed.formats.json %}
-    <link rel="alternate" type="application/feed+json" 
-          title="{{ feed.title }} (JSON)" 
+    <link rel="alternate" type="application/feed+json"
+          title="{{ feed.title }} (JSON)"
           href="{{ feed.href }}feed.json">
     {% endif %}
 {% endif %}
@@ -645,19 +645,19 @@ json = true
 public/
   index.html                     # Home page
   sitemap.xml                    # Global sitemap
-  
+
   blog/
     index.html                   # Blog page 1
     page/2/index.html            # Blog page 2
     rss.xml                      # RSS feed
     atom.xml                     # Atom feed
     feed.json                    # JSON feed
-    
+
   tutorials/
     index.html                   # Tutorials page 1
     rss.xml                      # RSS feed
     atom.xml                     # Atom feed
-    
+
   api/
     posts/
       feed.json                  # JSON API (all posts)

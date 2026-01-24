@@ -9,7 +9,7 @@
         {% if footer.text %}
         <p class="footer-text">{{ footer.text }}</p>
         {% endif %}
-        
+
         {% if footer.links %}
         <nav class="footer-links">
             {% for link in footer.links %}
@@ -17,7 +17,7 @@
             {% endfor %}
         </nav>
         {% endif %}
-        
+
         <div class="footer-bottom">
             {% if footer.show_copyright %}
             <p class="footer-copyright">&copy; {{ "now" | date:"2006" }} {{ config.author | default:"" }}. Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>

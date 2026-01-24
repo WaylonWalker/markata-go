@@ -90,7 +90,7 @@ The command generates a new markdown file with:
 Template System:
   Templates control the default frontmatter and output directory for new content.
   Built-in templates: post, page, docs
-  
+
   Custom templates can be defined:
   1. In markata-go.toml under [content_templates]
   2. As markdown files in the content-templates/ directory

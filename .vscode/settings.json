@@ -1,0 +1,90 @@
+{
+  "go.useLanguageServer": true,
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": ["--fast"],
+  "go.lintOnSave": "package",
+  "go.formatTool": "goimports",
+  "go.buildOnSave": "package",
+  "go.vetOnSave": "package",
+  "go.testOnSave": false,
+  "go.coverOnSave": false,
+  "go.coverageDecorator": {
+    "type": "gutter",
+    "coveredHighlightColor": "rgba(64,128,128,0.5)",
+    "uncoveredHighlightColor": "rgba(128,64,64,0.25)"
+  },
+  "go.testFlags": ["-v", "-race"],
+  "go.testTimeout": "120s",
+  "gopls": {
+    "ui.semanticTokens": true,
+    "ui.diagnostic.analyses": {
+      "unusedparams": true,
+      "shadow": true,
+      "nilness": true
+    },
+    "formatting.gofumpt": false,
+    "ui.completion.usePlaceholders": true
+  },
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": false,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+  "editor.rulers": [100, 120],
+  "files.associations": {
+    "*.toml": "toml",
+    "*.yaml": "yaml",
+    "*.yml": "yaml",
+    "justfile": "just",
+    ".goreleaser.yml": "yaml",
+    ".golangci.yml": "yaml"
+  },
+  "[go]": {
+    "editor.insertSpaces": false,
+    "editor.tabSize": 4,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "golang.go"
+  },
+  "[yaml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.autoIndent": "full"
+  },
+  "[json]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2
+  },
+  "[toml]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2
+  },
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "editor.quickSuggestions": {
+      "other": true,
+      "comments": false,
+      "strings": false
+    }
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/node_modules": true,
+    "**/output": true,
+    "**/dist": true,
+    "**/*.exe": true,
+    "**/coverage.out": true,
+    "**/coverage.html": true
+  },
+  "files.watcherExclude": {
+    "**/output/**": true,
+    "**/dist/**": true,
+    "**/.git/objects/**": true
+  },
+  "search.exclude": {
+    "**/output": true,
+    "**/dist": true,
+    "**/vendor": true,
+    "**/*.min.js": true,
+    "**/*.min.css": true
+  }
+}

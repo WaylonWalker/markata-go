@@ -467,7 +467,7 @@ func TestCSVFencePlugin_WhitespaceHandling(t *testing.T) {
 	// CSV with extra whitespace
 	input := `<pre><code class="language-csv">
 Name,   Age,  City
-  Alice  ,  30  ,  New York  
+  Alice  ,  30  ,  New York
 </code></pre>`
 
 	post := &models.Post{ArticleHTML: input}

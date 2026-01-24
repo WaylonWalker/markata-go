@@ -333,7 +333,7 @@ Jekyll pioneered modern static site generation and remains popular due to GitHub
 | Filter syntax | `{{ text\|slugify }}` | `{{ text \| slugify }}` |
 | Template inheritance | `{% extends %}` | `{% include %}` |
 | Whitespace control | `{%- -%}` | `{%- -%}` |
-| Custom filters | Go functions | Ruby | 
+| Custom filters | Go functions | Ruby |
 
 Both are quite similar! Developers familiar with Liquid will find Pongo2 comfortable.
 
@@ -434,18 +434,18 @@ If you want Jinja2-like syntax, both work well. markata-go's Pongo2 and Eleventy
 Eleventy's data cascade is powerful:
 
 ```
-Global Data (from _data/) 
-  -> Layout Data 
-    -> Directory Data 
-      -> Template Data 
+Global Data (from _data/)
+  -> Layout Data
+    -> Directory Data
+      -> Template Data
         -> Front Matter
 ```
 
 markata-go's approach is simpler:
 
 ```
-Config 
-  -> Front Matter 
+Config
+  -> Front Matter
     -> Plugin-generated fields
 ```
 
@@ -532,7 +532,7 @@ import Counter from '../components/Counter.jsx';
   <body>
     <h1>My Blog Post</h1>
     <p>Static content here...</p>
-    
+
     <!-- Only this component ships JavaScript -->
     <Counter client:load />
   </body>
@@ -547,7 +547,7 @@ markata-go generates pure static HTML. For interactivity, you add JavaScript man
   <body>
     <h1>{{ post.Title }}</h1>
     {{ body|safe }}
-    
+
     <div id="counter"></div>
     <script src="/js/counter.js"></script>
   </body>
@@ -1008,7 +1008,7 @@ markata-go, Eleventy (Nunjucks), and Zola (Tera) have the most similar syntax.
    {{ .Title }}
    {{ .Content }}
    {{ range .Params.tags }}{{ . }}{{ end }}
-   
+
    // markata-go
    {{ post.Title }}
    {{ body|safe }}
@@ -1020,7 +1020,7 @@ markata-go, Eleventy (Nunjucks), and Zola (Tera) have the most similar syntax.
    # Hugo config.toml
    baseURL = "https://example.com"
    title = "My Site"
-   
+
    # markata-go.toml
    [markata-go]
    url = "https://example.com"
@@ -1044,7 +1044,7 @@ markata-go, Eleventy (Nunjucks), and Zola (Tera) have the most similar syntax.
    {{ page.title }}
    {{ content }}
    {% for tag in page.tags %}{{ tag }}{% endfor %}
-   
+
    <!-- markata-go (Pongo2) -->
    {{ post.Title }}
    {{ body|safe }}
@@ -1087,7 +1087,7 @@ markata-go, Eleventy (Nunjucks), and Zola (Tera) have the most similar syntax.
    # Zola config.toml
    base_url = "https://example.com"
    title = "My Site"
-   
+
    # markata-go.toml
    [markata-go]
    url = "https://example.com"
