@@ -1,8 +1,6 @@
 module github.com/WaylonWalker/markata-go
 
-go 1.24.0
-
-toolchain go1.24.12
+go 1.22.2
 
 require (
 	github.com/BurntSushi/toml v1.6.0
@@ -14,7 +12,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/yuin/goldmark v1.7.16
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
-	golang.org/x/text v0.33.0
+	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
