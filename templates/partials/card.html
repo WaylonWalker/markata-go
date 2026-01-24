@@ -4,7 +4,7 @@
     <time datetime="{{ post.date | atom_date }}">{{ post.date | date:"Jan 2, 2006" }}</time>
     {% endif %}
     {% if post.description %}
-    <p>{{ post.description | truncate:200 }}</p>
+    <p>{{ post.description | striptags | truncate:200 }}</p>
     {% endif %}
     {% if post.tags %}
     <div class="tags">

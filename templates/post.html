@@ -6,7 +6,7 @@
         <header>
             <h1 data-pagefind-meta="title">{{ post.title }}</h1>
             {% if post.description %}
-            <p class="visually-hidden" data-pagefind-meta="excerpt">{{ post.description }}</p>
+            <p class="visually-hidden" data-pagefind-meta="excerpt">{{ post.description | striptags }}</p>
             {% endif %}
             {# Pagefind image metadata for search thumbnails #}
             {% if post.cover_image %}
