@@ -9,6 +9,177 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+// configSource defines the interface for format-specific config structs (TOML, YAML, JSON)
+// to provide data for building a models.Config.
+type configSource interface {
+	getBaseConfig() baseConfigData
+	getNavItems() []navItemData
+	getFeeds() []feedConfigConverter
+	getFeedDefaults() feedDefaultsConverter
+	getPostFormats() postFormatsConverter
+	getSEO() seoConverter
+	getIndieAuth() indieAuthConverter
+	getWebmention() webmentionConverter
+	getComponents() componentsConverter
+	getLayout() layoutConverter
+	getSidebar() sidebarConverter
+	getToc() tocConverter
+	getHeader() headerConverter
+	getBlogroll() blogrollConverter
+}
+
+// baseConfigData holds the basic config fields that are directly assignable.
+type baseConfigData struct {
+	OutputDir     string
+	URL           string
+	Title         string
+	Description   string
+	Author        string
+	AssetsDir     string
+	TemplatesDir  string
+	Hooks         []string
+	DisabledHooks []string
+	GlobPatterns  []string
+	UseGitignore  *bool
+	Extensions    []string
+	Concurrency   int
+	Theme         models.ThemeConfig
+	Footer        models.FooterConfig
+}
+
+// navItemData holds nav item fields.
+type navItemData struct {
+	Label    string
+	URL      string
+	External bool
+}
+
+// Converter interfaces for nested config types.
+type feedConfigConverter interface {
+	toFeedConfig() models.FeedConfig
+}
+
+type feedDefaultsConverter interface {
+	toFeedDefaults() models.FeedDefaults
+}
+
+type postFormatsConverter interface {
+	toPostFormatsConfig() models.PostFormatsConfig
+}
+
+type seoConverter interface {
+	toSEOConfig() models.SEOConfig
+}
+
+type indieAuthConverter interface {
+	toIndieAuthConfig() models.IndieAuthConfig
+}
+
+type webmentionConverter interface {
+	toWebmentionConfig() models.WebmentionConfig
+}
+
+type componentsConverter interface {
+	toComponentsConfig() models.ComponentsConfig
+}
+
+type layoutConverter interface {
+	toLayoutConfig() models.LayoutConfig
+}
+
+type sidebarConverter interface {
+	toSidebarConfig() models.SidebarConfig
+}
+
+type tocConverter interface {
+	toTocConfig() models.TocConfig
+}
+
+type headerConverter interface {
+	toHeaderLayoutConfig() models.HeaderLayoutConfig
+}
+
+type blogrollConverter interface {
+	toBlogrollConfig() models.BlogrollConfig
+}
+
+// buildConfig constructs a models.Config from a configSource.
+// This helper eliminates code duplication across TOML, YAML, and JSON config converters.
+func buildConfig(src configSource) *models.Config {
+	base := src.getBaseConfig()
+	config := &models.Config{
+		OutputDir:     base.OutputDir,
+		URL:           base.URL,
+		Title:         base.Title,
+		Description:   base.Description,
+		Author:        base.Author,
+		AssetsDir:     base.AssetsDir,
+		TemplatesDir:  base.TemplatesDir,
+		Hooks:         base.Hooks,
+		DisabledHooks: base.DisabledHooks,
+		GlobConfig: models.GlobConfig{
+			Patterns: base.GlobPatterns,
+		},
+		MarkdownConfig: models.MarkdownConfig{
+			Extensions: base.Extensions,
+		},
+		Concurrency: base.Concurrency,
+		Theme:       base.Theme,
+		Footer:      base.Footer,
+	}
+
+	if base.UseGitignore != nil {
+		config.GlobConfig.UseGitignore = *base.UseGitignore
+	}
+
+	// Convert nav items
+	for _, nav := range src.getNavItems() {
+		config.Nav = append(config.Nav, models.NavItem{
+			Label:    nav.Label,
+			URL:      nav.URL,
+			External: nav.External,
+		})
+	}
+
+	// Convert feeds
+	for _, feed := range src.getFeeds() {
+		config.Feeds = append(config.Feeds, feed.toFeedConfig())
+	}
+
+	// Convert feed defaults
+	config.FeedDefaults = src.getFeedDefaults().toFeedDefaults()
+
+	// Convert post formats
+	config.PostFormats = src.getPostFormats().toPostFormatsConfig()
+
+	// Convert SEO config
+	config.SEO = src.getSEO().toSEOConfig()
+
+	// Convert IndieAuth and Webmention config
+	config.IndieAuth = src.getIndieAuth().toIndieAuthConfig()
+	config.Webmention = src.getWebmention().toWebmentionConfig()
+
+	// Convert Components config
+	config.Components = src.getComponents().toComponentsConfig()
+
+	// Convert Layout config
+	config.Layout = src.getLayout().toLayoutConfig()
+
+	// Convert Sidebar config
+	config.Sidebar = src.getSidebar().toSidebarConfig()
+
+	// Convert Toc config
+	config.Toc = src.getToc().toTocConfig()
+
+	// Convert Header config
+	config.Header = src.getHeader().toHeaderLayoutConfig()
+
+	// Convert Blogroll config
+	config.Blogroll = src.getBlogroll().toBlogrollConfig()
+
+	return config
+}
+
 // ParseTOML parses TOML configuration data into a Config struct.
 // The TOML data is expected to have a top-level [markata-go] section.
 func ParseTOML(data []byte) (*models.Config, error) {
@@ -98,10 +269,12 @@ type tomlFooterConfig struct {
 }
 
 type tomlThemeConfig struct {
-	Name      string            `toml:"name"`
-	Palette   string            `toml:"palette"`
-	Variables map[string]string `toml:"variables"`
-	CustomCSS string            `toml:"custom_css"`
+	Name         string            `toml:"name"`
+	Palette      string            `toml:"palette"`
+	PaletteLight string            `toml:"palette_light"`
+	PaletteDark  string            `toml:"palette_dark"`
+	Variables    map[string]string `toml:"variables"`
+	CustomCSS    string            `toml:"custom_css"`
 }
 
 type tomlGlobConfig struct {
@@ -631,8 +804,9 @@ func (p *tomlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	}
 }
 
-func (c *tomlConfig) toConfig() *models.Config {
-	config := &models.Config{
+// configSource interface implementation for tomlConfig.
+func (c *tomlConfig) getBaseConfig() baseConfigData {
+	return baseConfigData{
 		OutputDir:     c.OutputDir,
 		URL:           c.URL,
 		Title:         c.Title,
@@ -642,67 +816,45 @@ func (c *tomlConfig) toConfig() *models.Config {
 		TemplatesDir:  c.TemplatesDir,
 		Hooks:         c.Hooks,
 		DisabledHooks: c.DisabledHooks,
-		GlobConfig: models.GlobConfig{
-			Patterns: c.Glob.Patterns,
-		},
-		MarkdownConfig: models.MarkdownConfig{
-			Extensions: c.Markdown.Extensions,
-		},
-		Concurrency: c.Concurrency,
-		Theme:       c.Theme.toThemeConfig(),
-		Footer:      c.Footer.toFooterConfig(),
+		GlobPatterns:  c.Glob.Patterns,
+		UseGitignore:  c.Glob.UseGitignore,
+		Extensions:    c.Markdown.Extensions,
+		Concurrency:   c.Concurrency,
+		Theme:         c.Theme.toThemeConfig(),
+		Footer:        c.Footer.toFooterConfig(),
 	}
+}
 
-	if c.Glob.UseGitignore != nil {
-		config.GlobConfig.UseGitignore = *c.Glob.UseGitignore
+func (c *tomlConfig) getNavItems() []navItemData {
+	items := make([]navItemData, len(c.Nav))
+	for i, nav := range c.Nav {
+		items[i] = navItemData(nav)
 	}
+	return items
+}
 
-	// Convert nav items
-	for _, nav := range c.Nav {
-		config.Nav = append(config.Nav, models.NavItem{
-			Label:    nav.Label,
-			URL:      nav.URL,
-			External: nav.External,
-		})
-	}
-
-	// Convert feeds
+func (c *tomlConfig) getFeeds() []feedConfigConverter {
+	feeds := make([]feedConfigConverter, len(c.Feeds))
 	for i := range c.Feeds {
-		config.Feeds = append(config.Feeds, c.Feeds[i].toFeedConfig())
+		feeds[i] = &c.Feeds[i]
 	}
+	return feeds
+}
 
-	// Convert feed defaults
-	config.FeedDefaults = c.FeedDefaults.toFeedDefaults()
+func (c *tomlConfig) getFeedDefaults() feedDefaultsConverter { return &c.FeedDefaults }
+func (c *tomlConfig) getPostFormats() postFormatsConverter   { return &c.PostFormats }
+func (c *tomlConfig) getSEO() seoConverter                   { return &c.SEO }
+func (c *tomlConfig) getIndieAuth() indieAuthConverter       { return &c.IndieAuth }
+func (c *tomlConfig) getWebmention() webmentionConverter     { return &c.Webmention }
+func (c *tomlConfig) getComponents() componentsConverter     { return &c.Components }
+func (c *tomlConfig) getLayout() layoutConverter             { return &c.Layout }
+func (c *tomlConfig) getSidebar() sidebarConverter           { return &c.Sidebar }
+func (c *tomlConfig) getToc() tocConverter                   { return &c.Toc }
+func (c *tomlConfig) getHeader() headerConverter             { return &c.Header }
+func (c *tomlConfig) getBlogroll() blogrollConverter         { return &c.Blogroll }
 
-	// Convert post formats
-	config.PostFormats = c.PostFormats.toPostFormatsConfig()
-
-	// Convert SEO config
-	config.SEO = c.SEO.toSEOConfig()
-
-	// Convert IndieAuth and Webmention config
-	config.IndieAuth = c.IndieAuth.toIndieAuthConfig()
-	config.Webmention = c.Webmention.toWebmentionConfig()
-
-	// Convert Components config
-	config.Components = c.Components.toComponentsConfig()
-
-	// Convert Layout config
-	config.Layout = c.Layout.toLayoutConfig()
-
-	// Convert Sidebar config
-	config.Sidebar = c.Sidebar.toSidebarConfig()
-
-	// Convert Toc config
-	config.Toc = c.Toc.toTocConfig()
-
-	// Convert Header config
-	config.Header = c.Header.toHeaderLayoutConfig()
-
-	// Convert Blogroll config
-	config.Blogroll = c.Blogroll.toBlogrollConfig()
-
-	return config
+func (c *tomlConfig) toConfig() *models.Config {
+	return buildConfig(c)
 }
 
 func (f *tomlFooterConfig) toFooterConfig() models.FooterConfig {
@@ -718,10 +870,12 @@ func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
 		variables = make(map[string]string)
 	}
 	return models.ThemeConfig{
-		Name:      t.Name,
-		Palette:   t.Palette,
-		Variables: variables,
-		CustomCSS: t.CustomCSS,
+		Name:         t.Name,
+		Palette:      t.Palette,
+		PaletteLight: t.PaletteLight,
+		PaletteDark:  t.PaletteDark,
+		Variables:    variables,
+		CustomCSS:    t.CustomCSS,
 	}
 }
 
@@ -806,6 +960,7 @@ type yamlConfig struct {
 	Feeds         []yamlFeedConfig       `yaml:"feeds"`
 	FeedDefaults  yamlFeedDefaults       `yaml:"feed_defaults"`
 	Concurrency   int                    `yaml:"concurrency"`
+	Theme         yamlThemeConfig        `yaml:"theme"`
 	PostFormats   yamlPostFormatsConfig  `yaml:"post_formats"`
 	IndieAuth     yamlIndieAuthConfig    `yaml:"indieauth"`
 	Webmention    yamlWebmentionConfig   `yaml:"webmention"`
@@ -906,6 +1061,30 @@ type yamlIndieAuthConfig struct {
 type yamlWebmentionConfig struct {
 	Enabled  bool   `yaml:"enabled"`
 	Endpoint string `yaml:"endpoint"`
+}
+
+type yamlThemeConfig struct {
+	Name         string            `yaml:"name"`
+	Palette      string            `yaml:"palette"`
+	PaletteLight string            `yaml:"palette_light"`
+	PaletteDark  string            `yaml:"palette_dark"`
+	Variables    map[string]string `yaml:"variables"`
+	CustomCSS    string            `yaml:"custom_css"`
+}
+
+func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
+	variables := t.Variables
+	if variables == nil {
+		variables = make(map[string]string)
+	}
+	return models.ThemeConfig{
+		Name:         t.Name,
+		Palette:      t.Palette,
+		PaletteLight: t.PaletteLight,
+		PaletteDark:  t.PaletteDark,
+		Variables:    variables,
+		CustomCSS:    t.CustomCSS,
+	}
 }
 
 func (s *yamlSEOConfig) toSEOConfig() models.SEOConfig {
@@ -1356,9 +1535,9 @@ func (p *yamlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	}
 }
 
-//nolint:dupl // Intentional duplication - each format (YAML/JSON/TOML) has its own conversion method
-func (c *yamlConfig) toConfig() *models.Config {
-	config := &models.Config{
+// configSource interface implementation for yamlConfig.
+func (c *yamlConfig) getBaseConfig() baseConfigData {
+	return baseConfigData{
 		OutputDir:     c.OutputDir,
 		URL:           c.URL,
 		Title:         c.Title,
@@ -1368,66 +1547,45 @@ func (c *yamlConfig) toConfig() *models.Config {
 		TemplatesDir:  c.TemplatesDir,
 		Hooks:         c.Hooks,
 		DisabledHooks: c.DisabledHooks,
-		GlobConfig: models.GlobConfig{
-			Patterns: c.Glob.Patterns,
-		},
-		MarkdownConfig: models.MarkdownConfig{
-			Extensions: c.Markdown.Extensions,
-		},
-		Concurrency: c.Concurrency,
-		Footer:      c.Footer.toFooterConfig(),
+		GlobPatterns:  c.Glob.Patterns,
+		UseGitignore:  c.Glob.UseGitignore,
+		Extensions:    c.Markdown.Extensions,
+		Concurrency:   c.Concurrency,
+		Theme:         c.Theme.toThemeConfig(),
+		Footer:        c.Footer.toFooterConfig(),
 	}
+}
 
-	if c.Glob.UseGitignore != nil {
-		config.GlobConfig.UseGitignore = *c.Glob.UseGitignore
+func (c *yamlConfig) getNavItems() []navItemData {
+	items := make([]navItemData, len(c.Nav))
+	for i, nav := range c.Nav {
+		items[i] = navItemData(nav)
 	}
+	return items
+}
 
-	// Convert nav items
-	for _, nav := range c.Nav {
-		config.Nav = append(config.Nav, models.NavItem{
-			Label:    nav.Label,
-			URL:      nav.URL,
-			External: nav.External,
-		})
-	}
-
-	// Convert feeds
+func (c *yamlConfig) getFeeds() []feedConfigConverter {
+	feeds := make([]feedConfigConverter, len(c.Feeds))
 	for i := range c.Feeds {
-		config.Feeds = append(config.Feeds, c.Feeds[i].toFeedConfig())
+		feeds[i] = &c.Feeds[i]
 	}
+	return feeds
+}
 
-	// Convert feed defaults
-	config.FeedDefaults = c.FeedDefaults.toFeedDefaults()
+func (c *yamlConfig) getFeedDefaults() feedDefaultsConverter { return &c.FeedDefaults }
+func (c *yamlConfig) getPostFormats() postFormatsConverter   { return &c.PostFormats }
+func (c *yamlConfig) getSEO() seoConverter                   { return &c.SEO }
+func (c *yamlConfig) getIndieAuth() indieAuthConverter       { return &c.IndieAuth }
+func (c *yamlConfig) getWebmention() webmentionConverter     { return &c.Webmention }
+func (c *yamlConfig) getComponents() componentsConverter     { return &c.Components }
+func (c *yamlConfig) getLayout() layoutConverter             { return &c.Layout }
+func (c *yamlConfig) getSidebar() sidebarConverter           { return &c.Sidebar }
+func (c *yamlConfig) getToc() tocConverter                   { return &c.Toc }
+func (c *yamlConfig) getHeader() headerConverter             { return &c.Header }
+func (c *yamlConfig) getBlogroll() blogrollConverter         { return &c.Blogroll }
 
-	// Convert post formats
-	config.PostFormats = c.PostFormats.toPostFormatsConfig()
-
-	// Convert SEO config
-	config.SEO = c.SEO.toSEOConfig()
-
-	// Convert IndieAuth and Webmention config
-	config.IndieAuth = c.IndieAuth.toIndieAuthConfig()
-	config.Webmention = c.Webmention.toWebmentionConfig()
-
-	// Convert Components config
-	config.Components = c.Components.toComponentsConfig()
-
-	// Convert Layout config
-	config.Layout = c.Layout.toLayoutConfig()
-
-	// Convert Sidebar config
-	config.Sidebar = c.Sidebar.toSidebarConfig()
-
-	// Convert Toc config
-	config.Toc = c.Toc.toTocConfig()
-
-	// Convert Header config
-	config.Header = c.Header.toHeaderLayoutConfig()
-
-	// Convert Blogroll config
-	config.Blogroll = c.Blogroll.toBlogrollConfig()
-
-	return config
+func (c *yamlConfig) toConfig() *models.Config {
+	return buildConfig(c)
 }
 
 func (f *yamlFooterConfig) toFooterConfig() models.FooterConfig {
@@ -1518,6 +1676,7 @@ type jsonConfig struct {
 	Feeds         []jsonFeedConfig       `json:"feeds"`
 	FeedDefaults  jsonFeedDefaults       `json:"feed_defaults"`
 	Concurrency   int                    `json:"concurrency"`
+	Theme         jsonThemeConfig        `json:"theme"`
 	PostFormats   jsonPostFormatsConfig  `json:"post_formats"`
 	IndieAuth     jsonIndieAuthConfig    `json:"indieauth"`
 	Webmention    jsonWebmentionConfig   `json:"webmention"`
@@ -1618,6 +1777,30 @@ type jsonIndieAuthConfig struct {
 type jsonWebmentionConfig struct {
 	Enabled  bool   `json:"enabled"`
 	Endpoint string `json:"endpoint"`
+}
+
+type jsonThemeConfig struct {
+	Name         string            `json:"name"`
+	Palette      string            `json:"palette"`
+	PaletteLight string            `json:"palette_light"`
+	PaletteDark  string            `json:"palette_dark"`
+	Variables    map[string]string `json:"variables"`
+	CustomCSS    string            `json:"custom_css"`
+}
+
+func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
+	variables := t.Variables
+	if variables == nil {
+		variables = make(map[string]string)
+	}
+	return models.ThemeConfig{
+		Name:         t.Name,
+		Palette:      t.Palette,
+		PaletteLight: t.PaletteLight,
+		PaletteDark:  t.PaletteDark,
+		Variables:    variables,
+		CustomCSS:    t.CustomCSS,
+	}
 }
 
 func (s *jsonSEOConfig) toSEOConfig() models.SEOConfig {
@@ -2068,9 +2251,9 @@ func (p *jsonPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	}
 }
 
-//nolint:dupl // Intentional duplication - each format (YAML/JSON/TOML) has its own conversion method
-func (c *jsonConfig) toConfig() *models.Config {
-	config := &models.Config{
+// configSource interface implementation for jsonConfig.
+func (c *jsonConfig) getBaseConfig() baseConfigData {
+	return baseConfigData{
 		OutputDir:     c.OutputDir,
 		URL:           c.URL,
 		Title:         c.Title,
@@ -2080,66 +2263,45 @@ func (c *jsonConfig) toConfig() *models.Config {
 		TemplatesDir:  c.TemplatesDir,
 		Hooks:         c.Hooks,
 		DisabledHooks: c.DisabledHooks,
-		GlobConfig: models.GlobConfig{
-			Patterns: c.Glob.Patterns,
-		},
-		MarkdownConfig: models.MarkdownConfig{
-			Extensions: c.Markdown.Extensions,
-		},
-		Concurrency: c.Concurrency,
-		Footer:      c.Footer.toFooterConfig(),
+		GlobPatterns:  c.Glob.Patterns,
+		UseGitignore:  c.Glob.UseGitignore,
+		Extensions:    c.Markdown.Extensions,
+		Concurrency:   c.Concurrency,
+		Theme:         c.Theme.toThemeConfig(),
+		Footer:        c.Footer.toFooterConfig(),
 	}
+}
 
-	if c.Glob.UseGitignore != nil {
-		config.GlobConfig.UseGitignore = *c.Glob.UseGitignore
+func (c *jsonConfig) getNavItems() []navItemData {
+	items := make([]navItemData, len(c.Nav))
+	for i, nav := range c.Nav {
+		items[i] = navItemData(nav)
 	}
+	return items
+}
 
-	// Convert nav items
-	for _, nav := range c.Nav {
-		config.Nav = append(config.Nav, models.NavItem{
-			Label:    nav.Label,
-			URL:      nav.URL,
-			External: nav.External,
-		})
-	}
-
-	// Convert feeds
+func (c *jsonConfig) getFeeds() []feedConfigConverter {
+	feeds := make([]feedConfigConverter, len(c.Feeds))
 	for i := range c.Feeds {
-		config.Feeds = append(config.Feeds, c.Feeds[i].toFeedConfig())
+		feeds[i] = &c.Feeds[i]
 	}
+	return feeds
+}
 
-	// Convert feed defaults
-	config.FeedDefaults = c.FeedDefaults.toFeedDefaults()
+func (c *jsonConfig) getFeedDefaults() feedDefaultsConverter { return &c.FeedDefaults }
+func (c *jsonConfig) getPostFormats() postFormatsConverter   { return &c.PostFormats }
+func (c *jsonConfig) getSEO() seoConverter                   { return &c.SEO }
+func (c *jsonConfig) getIndieAuth() indieAuthConverter       { return &c.IndieAuth }
+func (c *jsonConfig) getWebmention() webmentionConverter     { return &c.Webmention }
+func (c *jsonConfig) getComponents() componentsConverter     { return &c.Components }
+func (c *jsonConfig) getLayout() layoutConverter             { return &c.Layout }
+func (c *jsonConfig) getSidebar() sidebarConverter           { return &c.Sidebar }
+func (c *jsonConfig) getToc() tocConverter                   { return &c.Toc }
+func (c *jsonConfig) getHeader() headerConverter             { return &c.Header }
+func (c *jsonConfig) getBlogroll() blogrollConverter         { return &c.Blogroll }
 
-	// Convert post formats
-	config.PostFormats = c.PostFormats.toPostFormatsConfig()
-
-	// Convert SEO config
-	config.SEO = c.SEO.toSEOConfig()
-
-	// Convert IndieAuth and Webmention config
-	config.IndieAuth = c.IndieAuth.toIndieAuthConfig()
-	config.Webmention = c.Webmention.toWebmentionConfig()
-
-	// Convert Components config
-	config.Components = c.Components.toComponentsConfig()
-
-	// Convert Layout config
-	config.Layout = c.Layout.toLayoutConfig()
-
-	// Convert Sidebar config
-	config.Sidebar = c.Sidebar.toSidebarConfig()
-
-	// Convert Toc config
-	config.Toc = c.Toc.toTocConfig()
-
-	// Convert Header config
-	config.Header = c.Header.toHeaderLayoutConfig()
-
-	// Convert Blogroll config
-	config.Blogroll = c.Blogroll.toBlogrollConfig()
-
-	return config
+func (c *jsonConfig) toConfig() *models.Config {
+	return buildConfig(c)
 }
 
 func (f *jsonFooterConfig) toFooterConfig() models.FooterConfig {

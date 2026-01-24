@@ -456,8 +456,18 @@ type ThemeConfig struct {
 	// Name is the theme name (default: "default")
 	Name string `json:"name" yaml:"name" toml:"name"`
 
-	// Palette is the color palette to use (default: "default-light")
+	// Palette is the base color palette to use (default: "default-light")
+	// When set to a base name like "everforest", the system will auto-detect
+	// light/dark variants (e.g., "everforest-light" and "everforest-dark")
 	Palette string `json:"palette" yaml:"palette" toml:"palette"`
+
+	// PaletteLight is the palette to use for light mode (optional)
+	// If not set, auto-detected from base Palette name
+	PaletteLight string `json:"palette_light,omitempty" yaml:"palette_light,omitempty" toml:"palette_light,omitempty"`
+
+	// PaletteDark is the palette to use for dark mode (optional)
+	// If not set, auto-detected from base Palette name
+	PaletteDark string `json:"palette_dark,omitempty" yaml:"palette_dark,omitempty" toml:"palette_dark,omitempty"`
 
 	// Variables allows overriding specific CSS variables
 	Variables map[string]string `json:"variables" yaml:"variables" toml:"variables"`

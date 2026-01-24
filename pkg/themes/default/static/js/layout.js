@@ -106,7 +106,13 @@
 
 /**
  * Theme Toggle
- * Handles light/dark theme switching with localStorage persistence
+ * Handles light/dark theme switching with localStorage persistence.
+ * Supports intelligent palette mapping where different palettes can be used
+ * for light and dark modes.
+ *
+ * CSS Variables used:
+ * - --palette-light: Name of the light mode palette
+ * - --palette-dark: Name of the dark mode palette
  */
 (function() {
   'use strict';
@@ -116,6 +122,18 @@
 
   const STORAGE_KEY = 'theme';
   const DARK_CLASS = 'dark';
+
+  /**
+   * Get palette names from CSS custom properties
+   * @returns {{light: string, dark: string}} Palette names
+   */
+  function getPaletteNames() {
+    const styles = getComputedStyle(document.documentElement);
+    return {
+      light: styles.getPropertyValue('--palette-light').trim().replace(/"/g, '') || 'default-light',
+      dark: styles.getPropertyValue('--palette-dark').trim().replace(/"/g, '') || 'default-dark'
+    };
+  }
 
   /**
    * Get current theme preference
@@ -138,9 +156,35 @@
    * @param {string} theme - 'dark' or 'light'
    */
   function setTheme(theme) {
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.classList.toggle(DARK_CLASS, theme === 'dark');
+    const root = document.documentElement;
+    const palettes = getPaletteNames();
+
+    // Set data-theme attribute (used by CSS for styling)
+    root.dataset.theme = theme;
+
+    // Set data-palette attribute for the current palette name
+    root.dataset.palette = theme === 'dark' ? palettes.dark : palettes.light;
+
+    // Toggle dark class for backward compatibility
+    root.classList.toggle(DARK_CLASS, theme === 'dark');
+
+    // Persist preference
     localStorage.setItem(STORAGE_KEY, theme);
+
+    // Update toggle button aria-label
+    const label = theme === 'dark'
+      ? `Switch to light mode (${palettes.light})`
+      : `Switch to dark mode (${palettes.dark})`;
+    toggle.setAttribute('aria-label', label);
+
+    // Dispatch custom event for other scripts to listen to
+    window.dispatchEvent(new CustomEvent('theme-change', {
+      detail: {
+        theme: theme,
+        palette: theme === 'dark' ? palettes.dark : palettes.light,
+        palettes: palettes
+      }
+    }));
   }
 
   /**
@@ -164,4 +208,13 @@
       setTheme(e.matches ? 'dark' : 'light');
     }
   });
+
+  // Expose theme API globally for programmatic control
+  window.markata = window.markata || {};
+  window.markata.theme = {
+    get: getTheme,
+    set: setTheme,
+    toggle: toggleTheme,
+    getPalettes: getPaletteNames
+  };
 })();
