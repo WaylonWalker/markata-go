@@ -49,7 +49,35 @@ cache_dir = "cache/blogroll"      # Where to cache fetched feeds
 cache_duration = "1h"             # How long to cache (default: 1 hour)
 timeout = 30                      # HTTP request timeout in seconds
 concurrent_requests = 5           # Max parallel feed fetches
-max_entries_per_feed = 50         # Limit entries fetched per feed
+max_entries_per_feed = 50         # Global default entries per feed
+```
+
+### Pagination Settings
+
+The reader page supports pagination to handle large numbers of entries:
+
+```toml
+[blogroll]
+enabled = true
+items_per_page = 50               # Entries per page (default: 50)
+orphan_threshold = 3              # Min entries for separate page (default: 3)
+pagination_type = "manual"        # "manual", "htmx", or "js"
+```
+
+**Pagination Types:**
+
+| Type | Description |
+|------|-------------|
+| `manual` | Traditional page links with full page reloads |
+| `htmx` | Seamless AJAX-based navigation using HTMX |
+| `js` | Client-side JavaScript pagination |
+
+The paginated reader generates:
+```
+/reader/              # Page 1
+/reader/page/2/       # Page 2
+/reader/page/3/       # Page 3
+/reader/page/2/partial/   # HTMX partial for page 2
 ```
 
 ### Adding Feeds
@@ -66,6 +94,37 @@ tags = ["python", "web"]                 # Optional: additional labels
 site_url = "https://example.com"         # Optional: main website URL
 image_url = "https://example.com/logo.png" # Optional: logo/icon
 active = true                            # Optional: set false to disable without removing
+max_entries = 50                         # Optional: override global max_entries_per_feed
+```
+
+### Per-Feed Entry Limits
+
+Override the global `max_entries_per_feed` for individual feeds:
+
+```toml
+[blogroll]
+enabled = true
+max_entries_per_feed = 50         # Global default
+
+[[blogroll.feeds]]
+url = "https://prolific-blogger.com/feed.xml"
+title = "Prolific Blogger"
+max_entries = 100                 # Override: this site posts frequently
+
+[[blogroll.feeds]]
+url = "https://micro.blog/user.xml"
+title = "Micro Blog"
+max_entries = 200                 # Override: many small posts
+
+[[blogroll.feeds]]
+url = "https://infrequent-poster.com/feed.xml"
+title = "Infrequent Poster"
+max_entries = 10                  # Override: rarely posts, save cache space
+
+[[blogroll.feeds]]
+url = "https://normal-blog.com/feed.xml"
+title = "Normal Blog"
+# Uses global default: 50 entries
 ```
 
 ### Feed Configuration Reference
@@ -80,6 +139,7 @@ active = true                            # Optional: set false to disable withou
 | `site_url` | No | Auto-fetched | Main website URL |
 | `image_url` | No | Auto-fetched | Logo or icon URL |
 | `active` | No | `true` | Set to `false` to disable |
+| `max_entries` | No | Global default | Override max entries for this feed |
 
 ### Custom Templates
 
@@ -241,11 +301,22 @@ The blogroll page lists all feeds grouped by category:
 
 ### Reader Page (`/reader/`)
 
-The reader page shows the latest posts from all feeds in reverse chronological order:
+The reader page shows the latest posts from all feeds in reverse chronological order with pagination:
 
 ```
 /reader/
-  index.html
+  index.html              # Page 1
+  partial/
+    index.html            # Page 1 partial (HTMX)
+  page/
+    2/
+      index.html          # Page 2
+      partial/
+        index.html        # Page 2 partial (HTMX)
+    3/
+      index.html
+      partial/
+        index.html
 ```
 
 **Default layout:**
@@ -253,6 +324,7 @@ The reader page shows the latest posts from all feeds in reverse chronological o
 - List of recent entries (newest first)
 - Each entry shows: title, source feed, date, description
 - Links to the original article
+- Pagination navigation (when more than one page)
 
 ## Custom Templates
 
@@ -365,8 +437,25 @@ Create `templates/reader.html`:
 |----------|------|-------------|
 | `title` | string | Page title ("Reader") |
 | `description` | string | Page description |
-| `entries` | []ExternalEntry | All entries (newest first) |
-| `entry_count` | int | Total number of entries |
+| `entries` | []ExternalEntry | Entries for current page (newest first) |
+| `entry_count` | int | Total number of entries across all pages |
+| `page` | ReaderPage | Pagination information |
+| `pagination_type` | string | Pagination type ("manual", "htmx", "js") |
+
+### ReaderPage Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `number` | int | Current page number (1-indexed) |
+| `has_prev` | bool | True if previous page exists |
+| `has_next` | bool | True if next page exists |
+| `prev_url` | string | URL of previous page |
+| `next_url` | string | URL of next page |
+| `total_pages` | int | Total number of pages |
+| `total_items` | int | Total number of entries |
+| `items_per_page` | int | Entries per page |
+| `page_urls` | []string | URLs for all pages |
+| `pagination_type` | string | Pagination type |
 
 ### ExternalFeed Fields
 
@@ -507,6 +596,11 @@ timeout = 30
 concurrent_requests = 5
 max_entries_per_feed = 50
 
+# Pagination settings
+items_per_page = 50
+orphan_threshold = 3
+pagination_type = "manual"    # "manual", "htmx", or "js"
+
 # Custom templates
 [blogroll.templates]
 blogroll = "blogroll.html"
@@ -522,6 +616,7 @@ tags = ["tag1", "tag2"]
 site_url = "https://example.com"
 image_url = "https://example.com/logo.png"
 active = true
+max_entries = 50              # Override global max_entries_per_feed
 ```
 
 ### Configuration Fields
@@ -533,7 +628,10 @@ active = true
 | `cache_duration` | string | `"1h"` | Cache TTL (Go duration) |
 | `timeout` | int | `30` | HTTP timeout in seconds |
 | `concurrent_requests` | int | `5` | Max parallel fetches |
-| `max_entries_per_feed` | int | `50` | Max entries per feed |
+| `max_entries_per_feed` | int | `50` | Global max entries per feed |
+| `items_per_page` | int | `50` | Entries per reader page |
+| `orphan_threshold` | int | `3` | Min entries for separate page |
+| `pagination_type` | string | `"manual"` | Pagination style |
 | `feeds` | []Feed | `[]` | List of feeds |
 | `templates.blogroll` | string | `"blogroll.html"` | Blogroll template |
 | `templates.reader` | string | `"reader.html"` | Reader template |
