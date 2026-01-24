@@ -64,6 +64,9 @@ type Model struct {
 	sortOrder    services.SortOrder // SortAsc or SortDesc
 	showSortMenu bool
 	sortMenuIdx  int
+
+	// Theme styling
+	theme *Theme
 }
 
 // Messages
@@ -101,8 +104,18 @@ var sortOptions = []sortOption{
 	{"Path", "path"},
 }
 
-// NewModel creates a new TUI model
+// NewModel creates a new TUI model with default theme.
 func NewModel(app *services.App) Model {
+	return NewModelWithTheme(app, nil)
+}
+
+// NewModelWithTheme creates a new TUI model with the specified theme.
+// If theme is nil, the default theme is used.
+func NewModelWithTheme(app *services.App, theme *Theme) Model {
+	if theme == nil {
+		theme = DefaultTheme()
+	}
+
 	filterInput := textinput.New()
 	filterInput.Placeholder = "e.g., published == True, 'python' in tags"
 	filterInput.CharLimit = 100
@@ -111,8 +124,8 @@ func NewModel(app *services.App) Model {
 	cmdInput.Placeholder = "Command..."
 	cmdInput.CharLimit = 100
 
-	// Initialize posts table with columns
-	postsTable := createPostsTable(80) // Default width, will be updated on resize
+	// Initialize posts table with columns and theme
+	postsTable := createPostsTableWithTheme(80, theme) // Default width, will be updated on resize
 
 	m := Model{
 		app:         app,
@@ -123,13 +136,14 @@ func NewModel(app *services.App) Model {
 		postsTable:  postsTable,
 		sortBy:      "date",
 		sortOrder:   services.SortDesc,
+		theme:       theme,
 	}
 
 	return m
 }
 
-// createPostsTable creates and configures the posts table with the given width
-func createPostsTable(width int) table.Model {
+// createPostsTableWithTheme creates and configures the posts table with theme colors.
+func createPostsTableWithTheme(width int, theme *Theme) table.Model {
 	// Column widths: TITLE(40) + DATE(12) + WORDS(8) + TAGS(20) + PATH(remaining)
 	// Account for padding/borders (approximately 10 chars)
 	pathWidth := width - 40 - 12 - 8 - 20 - 10
@@ -151,20 +165,20 @@ func createPostsTable(width int) table.Model {
 		table.WithHeight(10), // Will be updated on resize
 	)
 
-	// Apply k9s-inspired styles
+	// Apply theme-aware styles
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		BorderForeground(theme.Colors.Border).
 		BorderBottom(true).
 		Bold(true).
-		Foreground(lipgloss.Color("99"))
+		Foreground(theme.Colors.TableHeader)
 	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
+		Foreground(theme.Colors.SelectedText).
+		Background(theme.Colors.SelectedBg).
 		Bold(true)
 	s.Cell = s.Cell.
-		Foreground(lipgloss.Color("252"))
+		Foreground(theme.Colors.TableCell)
 	t.SetStyles(s)
 
 	return t
@@ -181,8 +195,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		// Update table dimensions
-		m.postsTable = createPostsTable(msg.Width)
+		// Update table dimensions with theme
+		m.postsTable = createPostsTableWithTheme(msg.Width, m.theme)
 		m.postsTable.SetHeight(msg.Height - 10) // Leave room for header/footer
 		// Repopulate table if we have posts
 		if len(m.posts) > 0 {
@@ -653,8 +667,8 @@ func (m Model) View() string {
 
 func (m Model) renderLayout(content string) string {
 	// Header
-	header := headerStyle.Render("markata-go")
-	header += " " + subtleStyle.Render(fmt.Sprintf("[%s]", m.view))
+	header := m.theme.HeaderStyle.Render("markata-go")
+	header += " " + m.theme.SubtleStyle.Render(fmt.Sprintf("[%s]", m.view))
 
 	// Status bar
 	var statusBar string
@@ -670,7 +684,7 @@ func (m Model) renderLayout(content string) string {
 			sortArrow = "↑"
 		}
 		sortIndicator := fmt.Sprintf("[%s%s]", sortArrow, m.sortBy)
-		statusBar = subtleStyle.Render(fmt.Sprintf("%s  j/k:move  s:sort  e:edit  f:feeds  /:filter  ::cmd  ?:help  q:quit", sortIndicator))
+		statusBar = m.theme.SubtleStyle.Render(fmt.Sprintf("%s  j/k:move  s:sort  e:edit  f:feeds  /:filter  ::cmd  ?:help  q:quit", sortIndicator))
 	}
 
 	return fmt.Sprintf("%s\n\n%s\n\n%s", header, content, statusBar)
@@ -685,7 +699,7 @@ func (m Model) renderPosts() string {
 
 	// Render the table with header showing count
 	header := fmt.Sprintf("Posts (%d)", len(m.posts))
-	sb.WriteString(headerStyle.Render(header))
+	sb.WriteString(m.theme.HeaderStyle.Render(header))
 	sb.WriteString("\n\n")
 	sb.WriteString(m.postsTable.View())
 
@@ -718,7 +732,7 @@ func (m Model) renderTags() string {
 		t := m.tags[i]
 		line := fmt.Sprintf("  %s (%d)", t.Name, t.Count)
 		if i == m.cursor {
-			line = selectedStyle.Render(fmt.Sprintf("> %s (%d)", t.Name, t.Count))
+			line = m.theme.SelectedStyle.Render(fmt.Sprintf("> %s (%d)", t.Name, t.Count))
 		}
 		sb.WriteString(line + "\n")
 	}
@@ -750,7 +764,7 @@ func (m Model) renderFeeds() string {
 		postsWidth, "POSTS",
 		filterWidth, "FILTER",
 		outputWidth, "OUTPUT")
-	sb.WriteString(subtleStyle.Render(header))
+	sb.WriteString(m.theme.SubtleStyle.Render(header))
 	sb.WriteString("\n")
 
 	// Calculate visible rows
@@ -810,7 +824,7 @@ func (m Model) renderFeeds() string {
 			outputWidth, output)
 
 		if i == m.feedCursor {
-			line = selectedStyle.Render(line)
+			line = m.theme.SelectedStyle.Render(line)
 		}
 
 		sb.WriteString(line + "\n")
@@ -899,35 +913,35 @@ func (m Model) renderPostDetail() string {
 	if p.Title != nil && *p.Title != "" {
 		title = *p.Title
 	}
-	metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Title:"), title))
+	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Title:"), title))
 
 	// Path
-	metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Path:"), p.Path))
+	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Path:"), p.Path))
 
 	// Date
 	dateStr := "(not set)"
 	if p.Date != nil {
 		dateStr = p.Date.Format("2006-01-02")
 	}
-	metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Date:"), dateStr))
+	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Date:"), dateStr))
 
 	// Published
 	publishedStr := "false"
 	if p.Published {
 		publishedStr = "true"
 	}
-	metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Published:"), publishedStr))
+	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Published:"), publishedStr))
 
 	// Tags
 	tagsStr := "(none)"
 	if len(p.Tags) > 0 {
 		tagsStr = strings.Join(p.Tags, ", ")
 	}
-	metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Tags:"), tagsStr))
+	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Tags:"), tagsStr))
 
 	// Word count
 	wordCount := countWords(p.Content)
-	metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Words:"), formatNumber(wordCount)))
+	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Words:"), formatNumber(wordCount)))
 
 	// Description
 	if p.Description != nil && *p.Description != "" {
@@ -935,7 +949,7 @@ func (m Model) renderPostDetail() string {
 		if len(desc) > contentWidth-15 {
 			desc = desc[:contentWidth-18] + "..."
 		}
-		metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Description:"), desc))
+		metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Description:"), desc))
 	}
 
 	// Separator
@@ -943,7 +957,7 @@ func (m Model) renderPostDetail() string {
 
 	// Content preview
 	var preview strings.Builder
-	preview.WriteString("\n  " + detailLabelStyle.Render("Content Preview:") + "\n")
+	preview.WriteString("\n  " + m.theme.DetailLabelStyle.Render("Content Preview:") + "\n")
 
 	// Get content preview (first ~500 chars or 15 lines)
 	previewContent := getContentPreview(p.Content, 500, 12, contentWidth-4)
@@ -955,18 +969,18 @@ func (m Model) renderPostDetail() string {
 	content := metadata.String() + "\n  " + separator + "\n" + preview.String()
 
 	// Create the detail box
-	detailBox := detailBoxStyle.
+	detailBox := m.theme.DetailBoxStyle.
 		Width(width).
 		Render(content)
 
 	// Status bar
-	statusBar := detailStatusStyle.
+	statusBar := m.theme.DetailStatusStyle.
 		Width(width).
 		Render("  [e]dit  [Esc] back  [q]uit")
 
 	// Header
-	header := headerStyle.Render("markata-go")
-	header += " " + subtleStyle.Render("[post_detail]")
+	header := m.theme.HeaderStyle.Render("markata-go")
+	header += " " + m.theme.SubtleStyle.Render("[post_detail]")
 
 	return header + "\n\n" + detailBox + "\n" + statusBar
 }
@@ -1122,32 +1136,5 @@ func (m Model) renderSortMenu() string {
 	sb.WriteString("│ [Enter] apply     │\n")
 	sb.WriteString("└───────────────────┘")
 
-	return sortMenuStyle.Render(sb.String())
+	return m.theme.SortMenuStyle.Render(sb.String())
 }
-
-// Styles
-var (
-	headerStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
-	subtleStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
-	selectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212"))
-
-	// Detail view styles
-	detailLabelStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("99")).
-				Width(12)
-
-	detailBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("99")).
-			Padding(1, 0)
-
-	detailStatusStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("241")).
-				Padding(0, 1)
-
-	// Sort menu style
-	sortMenuStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("252")).
-			Background(lipgloss.Color("236"))
-)
