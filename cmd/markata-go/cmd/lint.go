@@ -68,6 +68,7 @@ func init() {
 type lintStats struct {
 	totalFiles      int
 	totalIssues     int
+	fixableIssues   int
 	totalFixed      int
 	filesWithIssues int
 	hasErrors       bool
@@ -327,6 +328,13 @@ func processFile(file string, stats *lintStats) {
 	stats.filesWithIssues++
 	stats.totalIssues += len(result.Issues)
 
+	// Count fixable issues
+	for _, issue := range result.Issues {
+		if issue.Fixable {
+			stats.fixableIssues++
+		}
+	}
+
 	fmt.Printf("\n%s:\n", file)
 	for _, issue := range result.Issues {
 		printIssue(issue)
@@ -386,8 +394,19 @@ func printSummary(stats *lintStats) {
 	} else {
 		fmt.Printf("✗ %d file(s) linted, %d issue(s) in %d file(s)\n",
 			stats.totalFiles, stats.totalIssues, stats.filesWithIssues)
+
 		if lintFix {
 			fmt.Printf("  → Fixed %d file(s)\n", stats.totalFixed)
+		} else if stats.fixableIssues > 0 {
+			// Show fixable count and suggest fix command
+			nonFixable := stats.totalIssues - stats.fixableIssues
+			fmt.Printf("ℹ  %d issue(s) can be automatically fixed", stats.fixableIssues)
+			if nonFixable > 0 {
+				fmt.Printf(", %d cannot", nonFixable)
+			}
+			fmt.Println()
+			fmt.Println()
+			fmt.Println("Run 'markata-go lint --fix' to automatically fix fixable issues")
 		}
 	}
 }
