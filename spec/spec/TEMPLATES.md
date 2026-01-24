@@ -386,13 +386,15 @@ comment
 
 Implementations can add custom filters:
 
-```python
-def reading_time(content, wpm=200):
-    words = len(content.split())
-    minutes = max(1, words // wpm)
-    return f"{minutes} min read"
+**Example (pseudocode):**
 
-jinja_env.filters["reading_time"] = reading_time
+```
+function reading_time(content, wpm=200):
+    words = length(content.split())
+    minutes = max(1, words / wpm)
+    return "{minutes} min read"
+
+template_engine.add_filter("reading_time", reading_time)
 ```
 
 Usage:
@@ -492,16 +494,7 @@ Small reusable template fragments:
 | **Strict** | Undefined → error |
 | **Debug** | Undefined → `{{ undefined }}` |
 
-Configure silent mode:
-```python
-from jinja2 import Environment, Undefined
-
-class SilentUndefined(Undefined):
-    def _fail_with_undefined_error(self, *args, **kwargs):
-        return ""
-
-env = Environment(undefined=SilentUndefined)
-```
+Configure silent mode in your template engine's configuration to handle undefined variables gracefully.
 
 ### Template Not Found
 
@@ -522,17 +515,7 @@ Report with:
 
 ### Template Caching
 
-Cache compiled templates:
-
-```python
-from jinja2 import Environment, FileSystemBytecodeCache
-
-env = Environment(
-    bytecode_cache=FileSystemBytecodeCache(
-        directory=".tool.cache/templates"
-    )
-)
-```
+Cache compiled templates using your template engine's bytecode caching feature to improve performance.
 
 ### Avoid N+1 Queries
 
@@ -558,21 +541,16 @@ Good:
 
 ## Library Recommendations
 
-### Python
-- **Jinja2** - Standard, fast, full-featured
+The template engine SHOULD support Jinja2-like syntax for cross-platform consistency.
 
-### JavaScript
-- **Nunjucks** - Jinja-like, by Mozilla
-- **EJS** - Simple, embedded JS
-- **Handlebars** - Logic-less templates
+### Common Template Libraries
 
-### Go
-- **html/template** - Standard library
-- **pongo2** - Jinja-like
-
-### Rust
-- **Tera** - Jinja-like
-- **Handlebars** - Port of JS library
+| Language | Library | Notes |
+|----------|---------|-------|
+| Python | Jinja2 | Reference implementation |
+| JavaScript | Nunjucks | Jinja-compatible, by Mozilla |
+| Go | pongo2 | Jinja2-like syntax |
+| Rust | Tera | Jinja2 inspired |
 
 ---
 
@@ -642,11 +620,11 @@ Go uses reference time (`Mon Jan 2 15:04:05 MST 2006`) instead of format codes:
 {{ post.date | date:"Jan 02" }}              // Jan 15
 ```
 
-**Implementation Requirement:** If using pongo2, implement a `strftime` filter that translates standard format codes:
+**Implementation Requirement:** If the template engine uses a different date format system (like Go's reference time format), implement a `strftime` filter that translates standard format codes for cross-platform consistency:
 
-```go
-// Recommended: Add strftime filter for consistency
-{{ post.date | strftime:"%B %d, %Y" }}  // January 15, 2024
+```jinja2
+{# Recommended: Add strftime filter for consistency #}
+{{ post.date | strftime:"%B %d, %Y" }}  {# January 15, 2024 #}
 ```
 
 #### Examples Across Engines

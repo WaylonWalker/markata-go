@@ -951,45 +951,23 @@ All contrast checks passed!
 
 ### Contrast Ratio Calculation
 
-Implementations MUST use the WCAG 2.1 relative luminance formula for contrast calculations:
+Implementations MUST use the WCAG 2.1 relative luminance formula for contrast calculations.
 
-```go
-// ContrastRatio calculates the WCAG 2.1 contrast ratio between two colors.
-// Returns a value between 1:1 (same color) and 21:1 (black/white).
-func ContrastRatio(fg, bg color.Color) float64 {
-    l1 := RelativeLuminance(fg)
-    l2 := RelativeLuminance(bg)
+**Algorithm:**
 
-    // Ensure l1 is the lighter color
-    if l1 < l2 {
-        l1, l2 = l2, l1
-    }
+1. **Calculate contrast ratio between foreground and background colors:**
+   - Compute relative luminance for each color
+   - Ensure lighter color is used as L1
+   - Return: (L1 + 0.05) / (L2 + 0.05)
+   - Result ranges from 1:1 (same color) to 21:1 (black/white)
 
-    return (l1 + 0.05) / (l2 + 0.05)
-}
-
-// RelativeLuminance calculates the relative luminance of a color.
-// Based on WCAG 2.1 definition using sRGB color space.
-func RelativeLuminance(c color.Color) float64 {
-    r, g, b, _ := c.RGBA()
-
-    // Convert to 0-1 range
-    rLinear := linearize(float64(r) / 65535.0)
-    gLinear := linearize(float64(g) / 65535.0)
-    bLinear := linearize(float64(b) / 65535.0)
-
-    // ITU-R BT.709 coefficients
-    return 0.2126*rLinear + 0.7152*gLinear + 0.0722*bLinear
-}
-
-// linearize converts sRGB gamma-corrected value to linear RGB.
-func linearize(v float64) float64 {
-    if v <= 0.04045 {
-        return v / 12.92
-    }
-    return math.Pow((v+0.055)/1.055, 2.4)
-}
-```
+2. **Calculate relative luminance (per WCAG 2.1 sRGB):**
+   - Convert each RGB channel (0-255) to 0-1 range
+   - Linearize each channel:
+     - If value ≤ 0.04045: divide by 12.92
+     - Otherwise: ((value + 0.055) / 1.055) ^ 2.4
+   - Apply ITU-R BT.709 coefficients:
+     - L = 0.2126 × R_linear + 0.7152 × G_linear + 0.0722 × B_linear
 
 ### WCAG Compliance Levels
 
@@ -1007,44 +985,24 @@ func linearize(v float64) float64 {
 
 Implementations MUST validate these combinations:
 
-```go
-type ContrastCheck struct {
-    Foreground string  // Semantic color name
-    Background string  // Semantic color name
-    MinRatio   float64 // Minimum required ratio
-    Level      string  // "AA", "AAA", "AA Large"
-}
-
-var RequiredChecks = []ContrastCheck{
-    // Primary text must be readable
-    {"text-primary", "bg-primary", 4.5, "AA"},
-    {"text-primary", "bg-surface", 4.5, "AA"},
-    {"text-primary", "bg-elevated", 4.5, "AA"},
-
-    // Secondary text
-    {"text-secondary", "bg-primary", 4.5, "AA"},
-    {"text-muted", "bg-primary", 3.0, "AA Large"},
-
-    // Interactive elements
-    {"link", "bg-primary", 4.5, "AA"},
-    {"accent", "bg-primary", 3.0, "AA Large"},
-
-    // Status colors (used for UI, so 3:1 minimum)
-    {"success", "bg-primary", 3.0, "UI"},
-    {"warning", "bg-primary", 3.0, "UI"},
-    {"error", "bg-primary", 3.0, "UI"},
-    {"info", "bg-primary", 3.0, "UI"},
-
-    // Code blocks
-    {"code-text", "code-bg", 4.5, "AA"},
-    {"code-comment", "code-bg", 3.0, "AA Large"},
-    {"code-keyword", "code-bg", 4.5, "AA"},
-
-    // Buttons
-    {"button-primary-text", "button-primary-bg", 4.5, "AA"},
-    {"button-secondary-text", "button-secondary-bg", 4.5, "AA"},
-}
-```
+| Foreground | Background | Min Ratio | Level |
+|------------|------------|-----------|-------|
+| text-primary | bg-primary | 4.5:1 | AA |
+| text-primary | bg-surface | 4.5:1 | AA |
+| text-primary | bg-elevated | 4.5:1 | AA |
+| text-secondary | bg-primary | 4.5:1 | AA |
+| text-muted | bg-primary | 3.0:1 | AA Large |
+| link | bg-primary | 4.5:1 | AA |
+| accent | bg-primary | 3.0:1 | AA Large |
+| success | bg-primary | 3.0:1 | UI |
+| warning | bg-primary | 3.0:1 | UI |
+| error | bg-primary | 3.0:1 | UI |
+| info | bg-primary | 3.0:1 | UI |
+| code-text | code-bg | 4.5:1 | AA |
+| code-comment | code-bg | 3.0:1 | AA Large |
+| code-keyword | code-bg | 4.5:1 | AA |
+| button-primary-text | button-primary-bg | 4.5:1 | AA |
+| button-secondary-text | button-secondary-bg | 4.5:1 | AA |
 
 ### Testing Integration
 
@@ -1055,22 +1013,12 @@ Contrast validation SHOULD be available in multiple contexts:
 markata-go palette check <palette-name> [--strict]
 ```
 
-**2. Go Test Helper:**
-```go
-func TestPaletteContrast(t *testing.T) {
-    palette, err := palettes.Load("catppuccin-mocha")
-    require.NoError(t, err)
+**2. Automated Tests:**
 
-    // Check all required combinations
-    results := palette.CheckContrast()
-    for _, r := range results {
-        if !r.Passed {
-            t.Errorf("%s on %s: got %.2f:1, want %.2f:1 (%s)",
-                r.Foreground, r.Background, r.Ratio, r.Required, r.Level)
-        }
-    }
-}
-```
+Tests SHOULD verify all required contrast checks pass:
+- Load the palette
+- Run contrast checks for all required combinations
+- Report any failures with actual vs required ratios
 
 **3. CI Integration:**
 ```yaml
