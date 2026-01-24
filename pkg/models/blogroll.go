@@ -90,6 +90,10 @@ type ExternalFeedConfig struct {
 
 	// ImageURL is a logo or icon for the feed
 	ImageURL string `json:"image_url" yaml:"image_url" toml:"image_url"`
+
+	// Handle is an optional explicit handle for @mentions (e.g., "daverupert")
+	// If not set, a handle is auto-generated from the domain
+	Handle string `json:"handle" yaml:"handle" toml:"handle"`
 }
 
 // IsActive returns whether the feed is active (defaults to true).

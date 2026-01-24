@@ -164,7 +164,7 @@ func getSiteURL(config *lifecycle.Config) string {
 			return strings.TrimSuffix(url, "/")
 		}
 	}
-	return "https://example.com"
+	return DefaultSiteURL
 }
 
 // getSiteTitle retrieves the site title from config.

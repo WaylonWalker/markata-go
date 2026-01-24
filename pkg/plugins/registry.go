@@ -69,6 +69,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["breadcrumbs"] = func() lifecycle.Plugin { return NewBreadcrumbsPlugin() }
 	pluginRegistry.constructors["embeds"] = func() lifecycle.Plugin { return NewEmbedsPlugin() }
 	pluginRegistry.constructors["blogroll"] = func() lifecycle.Plugin { return NewBlogrollPlugin() }
+	pluginRegistry.constructors["mentions"] = func() lifecycle.Plugin { return NewMentionsPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -128,6 +129,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewBreadcrumbsPlugin(),    // Generate breadcrumb navigation
 		NewEmbedsPlugin(),         // Process embed syntax (before wikilinks)
 		NewWikilinksPlugin(),      // Process wikilinks before rendering
+		NewMentionsPlugin(),       // Process @mentions (after blogroll config is loaded)
 		NewTocPlugin(),            // Extract TOC before rendering
 		NewJinjaMdPlugin(),        // Process Jinja templates in markdown
 
@@ -184,6 +186,7 @@ func TransformPlugins() []lifecycle.Plugin {
 		NewBreadcrumbsPlugin(),
 		NewEmbedsPlugin(),
 		NewWikilinksPlugin(),
+		NewMentionsPlugin(),
 		NewTocPlugin(),
 		NewJinjaMdPlugin(),
 	}
