@@ -30,7 +30,8 @@ const (
 	osWindows = "windows"
 
 	// defaultReleaseBaseURL is the base URL for Pagefind releases on GitHub.
-	defaultReleaseBaseURL = "https://github.com/CloudCannon/pagefind/releases"
+	// Note: Pagefind moved from CloudCannon/pagefind to Pagefind/pagefind
+	defaultReleaseBaseURL = "https://github.com/Pagefind/pagefind/releases"
 
 	// defaultHTTPTimeout is the default timeout for HTTP requests.
 	defaultHTTPTimeout = 120 * time.Second
@@ -253,19 +254,15 @@ func (i *PagefindInstaller) IsCached(version string) (bool, error) {
 }
 
 // GetLatestVersion fetches the latest Pagefind version from GitHub releases.
+// It follows redirect chains (e.g., repo renames) until it finds the final URL with the version tag.
 func (i *PagefindInstaller) GetLatestVersion() (string, error) {
 	// Use GitHub's redirect to get the latest release
-	latestURL := defaultReleaseBaseURL + "/latest"
+	currentURL := defaultReleaseBaseURL + "/latest"
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "HEAD", latestURL, http.NoBody)
-	if err != nil {
-		return "", NewPagefindInstallError("version_check", "failed to create request", err)
-	}
-
-	// Use a client that doesn't follow redirects
+	// Use a client that doesn't follow redirects automatically
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
@@ -273,30 +270,57 @@ func (i *PagefindInstaller) GetLatestVersion() (string, error) {
 		},
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", NewPagefindInstallError("version_check", "failed to check latest version", err)
-	}
-	defer resp.Body.Close()
+	// Follow redirects manually until we find a version tag
+	// GitHub may redirect through multiple hops (e.g., repo rename + /latest -> /tag/vX.Y.Z)
+	const maxRedirects = 10
+	for redirectCount := 0; redirectCount < maxRedirects; redirectCount++ {
+		req, err := http.NewRequestWithContext(ctx, "HEAD", currentURL, http.NoBody)
+		if err != nil {
+			return "", NewPagefindInstallError("version_check", "failed to create request", err)
+		}
 
-	// The redirect location contains the version
-	location := resp.Header.Get("Location")
-	if location == "" {
-		return "", NewPagefindInstallError("version_check", "no redirect location in response", nil)
+		resp, err := client.Do(req)
+		if err != nil {
+			return "", NewPagefindInstallError("version_check", "failed to check latest version", err)
+		}
+		resp.Body.Close()
+
+		// Check if this is a redirect
+		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+			location := resp.Header.Get("Location")
+			if location == "" {
+				return "", NewPagefindInstallError("version_check", "redirect without location header", nil)
+			}
+
+			// Check if this redirect contains a version tag
+			parts := strings.Split(location, "/")
+			if len(parts) > 0 {
+				lastPart := parts[len(parts)-1]
+				if strings.HasPrefix(lastPart, "v") && strings.Contains(lastPart, ".") {
+					// Found a version tag like v1.4.0
+					return lastPart, nil
+				}
+			}
+
+			// Not a version URL, follow the redirect
+			currentURL = location
+			continue
+		}
+
+		// If we got a 200 OK, we're at the final URL - shouldn't happen for /latest
+		// Try to extract version from current URL
+		parts := strings.Split(currentURL, "/")
+		if len(parts) > 0 {
+			lastPart := parts[len(parts)-1]
+			if strings.HasPrefix(lastPart, "v") && strings.Contains(lastPart, ".") {
+				return lastPart, nil
+			}
+		}
+
+		return "", NewPagefindInstallError("version_check", "could not find version in final URL", nil)
 	}
 
-	// Extract version from URL like https://github.com/CloudCannon/pagefind/releases/tag/v1.4.0
-	parts := strings.Split(location, "/")
-	if len(parts) == 0 {
-		return "", NewPagefindInstallError("version_check", "failed to parse version from redirect", nil)
-	}
-
-	version := parts[len(parts)-1]
-	if !strings.HasPrefix(version, "v") {
-		return "", NewPagefindInstallError("version_check", fmt.Sprintf("unexpected version format: %s", version), nil)
-	}
-
-	return version, nil
+	return "", NewPagefindInstallError("version_check", "too many redirects", nil)
 }
 
 // ResolveVersion resolves "latest" to an actual version number.
