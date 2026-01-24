@@ -7,6 +7,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// topicTemplates is the constant for the "templates" topic.
+const topicTemplates = "templates"
+
 // explainCmd represents the explain command.
 var explainCmd = &cobra.Command{
 	Use:   "explain [topic]",
@@ -80,7 +83,7 @@ func runExplain(_ *cobra.Command, args []string) {
 		content = explainPlugins
 	case "lifecycle":
 		content = explainLifecycle
-	case "templates":
+	case topicTemplates:
 		content = explainTemplates
 	case "feeds":
 		content = explainFeeds

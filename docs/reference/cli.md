@@ -735,6 +735,95 @@ See [[deployment-guide|Deployment]] for detailed deployment guides.
 
 ---
 
+### migrate
+
+Migrate from Python markata to markata-go. Analyzes configuration files, filter expressions, and templates for compatibility.
+
+#### Usage
+
+```bash
+markata-go migrate [flags]
+markata-go migrate config [flags]
+markata-go migrate filter [expression]
+markata-go migrate templates [path]
+```
+
+#### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--input` | `-i` | Input config file path | Auto-detect |
+| `--output` | `-o` | Output config file path | None |
+| `--dry-run` | `-n` | Show changes without writing | `false` |
+| `--format` | `-f` | Output format (toml, yaml) | `toml` |
+| `--json` | | Output results as JSON | `false` |
+
+#### Subcommands
+
+##### config
+
+Migrate configuration file only.
+
+```bash
+markata-go migrate config -i markata.toml -o markata-go.toml
+```
+
+##### filter
+
+Check and migrate filter expressions.
+
+```bash
+# Check a specific expression
+markata-go migrate filter "published == 'True'"
+
+# Check all filters in config
+markata-go migrate filter
+```
+
+##### templates
+
+Check template compatibility with pongo2.
+
+```bash
+markata-go migrate templates
+markata-go migrate templates ./my-templates
+```
+
+#### Examples
+
+```bash
+# Full migration analysis
+markata-go migrate
+
+# Dry run to see what would change
+markata-go migrate --dry-run
+
+# Migrate and write output
+markata-go migrate -o markata-go.toml
+
+# Migrate from pyproject.toml
+markata-go migrate -i pyproject.toml -o markata-go.toml
+
+# Check a filter expression
+markata-go migrate filter "templateKey in ['blog', 'til']"
+
+# Check templates for compatibility
+markata-go migrate templates
+```
+
+#### Exit Codes
+
+| Code | Description |
+|------|-------------|
+| `0` | Migration successful, no issues |
+| `1` | Migration completed with warnings |
+| `2` | Migration has incompatibilities |
+| `3` | Migration failed (invalid input) |
+
+See [[migration-guide|Migration Guide]] for detailed migration instructions.
+
+---
+
 ### explain
 
 Show detailed information about markata-go for AI agents and developers.
