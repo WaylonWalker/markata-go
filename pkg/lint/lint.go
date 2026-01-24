@@ -28,6 +28,7 @@ type Issue struct {
 	Type       string   // Issue type (e.g., "duplicate-key", "invalid-date")
 	Severity   Severity // Severity level
 	Message    string   // Human-readable message
+	Fixable    bool     // Whether this issue can be automatically fixed
 	FixApplied bool     // Whether fix was applied
 }
 
@@ -69,6 +70,17 @@ func (r *Result) HasErrors() bool {
 		}
 	}
 	return false
+}
+
+// FixableCount returns the number of fixable issues.
+func (r *Result) FixableCount() int {
+	count := 0
+	for _, issue := range r.Issues {
+		if issue.Fixable {
+			count++
+		}
+	}
+	return count
 }
 
 // Lint analyzes content and returns any issues found.
@@ -157,6 +169,7 @@ func checkDuplicateKeys(filePath, frontmatter string) []Issue {
 					Type:     "duplicate-key",
 					Severity: SeverityError,
 					Message:  fmt.Sprintf("duplicate key '%s' (first occurrence at line %d)", key, firstLine),
+					Fixable:  true,
 				})
 			} else {
 				seen[key] = lineNum
@@ -209,6 +222,7 @@ func checkDateFormats(filePath, frontmatter string) []Issue {
 								Type:     "invalid-date",
 								Severity: SeverityWarning,
 								Message:  fmt.Sprintf("invalid date format for '%s': %s (%s)", key, value, p.desc),
+								Fixable:  true,
 							})
 							break
 						}
@@ -250,6 +264,7 @@ func checkImageLinks(filePath, body string, hasFrontmatter bool, frontmatter str
 					Type:     "missing-alt-text",
 					Severity: SeverityWarning,
 					Message:  "image link missing alt text",
+					Fixable:  true,
 				})
 			}
 		}
@@ -281,6 +296,7 @@ func checkProtocollessURLs(filePath, content string) []Issue {
 					Type:     "protocol-less-url",
 					Severity: SeverityWarning,
 					Message:  "protocol-less URL found (should use https://)",
+					Fixable:  true,
 				})
 			}
 		}
