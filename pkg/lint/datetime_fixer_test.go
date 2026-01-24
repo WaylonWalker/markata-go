@@ -71,20 +71,26 @@ func TestDateTimeFixer_Fix_ISO8601(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "ISO datetime with Z",
+			name:    "ISO datetime with Z preserves time",
 			input:   "2024-01-15T10:30:00Z",
-			want:    "2024-01-15",
+			want:    "2024-01-15T10:30:00Z",
 			wantErr: false,
 		},
 		{
-			name:    "ISO datetime with timezone offset",
+			name:    "ISO datetime with timezone offset preserves time",
 			input:   "2024-01-15T10:30:00+05:00",
-			want:    "2024-01-15",
+			want:    "2024-01-15T05:30:00Z", // Converted to UTC
 			wantErr: false,
 		},
 		{
-			name:    "ISO datetime without timezone",
+			name:    "ISO datetime without timezone preserves time",
 			input:   "2024-01-15T10:30:00",
+			want:    "2024-01-15T10:30:00Z",
+			wantErr: false,
+		},
+		{
+			name:    "ISO datetime midnight becomes date only",
+			input:   "2024-01-15T00:00:00Z",
 			want:    "2024-01-15",
 			wantErr: false,
 		},
@@ -813,6 +819,12 @@ func TestDefaultDateTimeFixerConfig(t *testing.T) {
 	if config.Format != "2006-01-02" {
 		t.Errorf("Format = %q, want %q", config.Format, "2006-01-02")
 	}
+	if config.DateTimeFormat != "2006-01-02T15:04:05Z" {
+		t.Errorf("DateTimeFormat = %q, want %q", config.DateTimeFormat, "2006-01-02T15:04:05Z")
+	}
+	if config.PreserveTime != true {
+		t.Errorf("PreserveTime = %v, want %v", config.PreserveTime, true)
+	}
 	if config.AmbiguousFormat != "mdy" {
 		t.Errorf("AmbiguousFormat = %q, want %q", config.AmbiguousFormat, "mdy")
 	}
@@ -824,5 +836,61 @@ func TestDefaultDateTimeFixerConfig(t *testing.T) {
 	}
 	if config.WarnOld != false {
 		t.Errorf("WarnOld = %v, want %v", config.WarnOld, false)
+	}
+}
+
+func TestDateTimeFixer_Fix_PreserveTime(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		preserveTime bool
+		want         string
+	}{
+		{
+			name:         "preserve time enabled - keeps time",
+			input:        "2024-01-15T14:30:00Z",
+			preserveTime: true,
+			want:         "2024-01-15T14:30:00Z",
+		},
+		{
+			name:         "preserve time disabled - strips time",
+			input:        "2024-01-15T14:30:00Z",
+			preserveTime: false,
+			want:         "2024-01-15",
+		},
+		{
+			name:         "preserve time enabled - date only stays date only",
+			input:        "2024-01-15",
+			preserveTime: true,
+			want:         "2024-01-15",
+		},
+		{
+			name:         "preserve time enabled - midnight becomes date only",
+			input:        "2024-01-15T00:00:00Z",
+			preserveTime: true,
+			want:         "2024-01-15",
+		},
+		{
+			name:         "preserve time enabled - RFC3339 with offset",
+			input:        "2024-01-15T14:30:00+05:00",
+			preserveTime: true,
+			want:         "2024-01-15T09:30:00Z", // Converted to UTC
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixer := NewDateTimeFixer(DateTimeFixerConfig{
+				PreserveTime: tt.preserveTime,
+			})
+			got, err := fixer.Fix(tt.input)
+			if err != nil {
+				t.Errorf("Fix() unexpected error: %v", err)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Fix() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
