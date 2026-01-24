@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -11,7 +12,8 @@ import (
 // TemplatesPlugin wraps rendered markdown content in HTML templates.
 // It operates during the render stage, after markdown has been converted to HTML.
 type TemplatesPlugin struct {
-	engine *templates.Engine
+	engine       *templates.Engine
+	layoutConfig *models.LayoutConfig
 }
 
 // NewTemplatesPlugin creates a new templates plugin.
@@ -61,7 +63,52 @@ func (p *TemplatesPlugin) Configure(m *lifecycle.Manager) error {
 	// Store engine in cache for other plugins to use
 	m.Cache().Set("templates.engine", engine)
 
+	// Get layout config if available
+	if layoutConfig, ok := config.Extra["layout"].(*models.LayoutConfig); ok {
+		p.layoutConfig = layoutConfig
+	} else if layoutConfig, ok := config.Extra["layout"].(models.LayoutConfig); ok {
+		p.layoutConfig = &layoutConfig
+	}
+
 	return nil
+}
+
+// resolveTemplate determines the template to use for a post.
+// Priority: frontmatter template > path-based layout > feed-based layout > global default > "post.html"
+func (p *TemplatesPlugin) resolveTemplate(post *models.Post) string {
+	// 1. Check for explicit template in frontmatter (highest priority)
+	if post.Template != "" {
+		return post.Template
+	}
+
+	// 2. Use layout configuration to determine template
+	if p.layoutConfig != nil {
+		// Get feed slug for feed-based layout lookup
+		// Check PrevNextFeed first, then look in Extra for feed information
+		feedSlug := post.PrevNextFeed
+		if feedSlug == "" {
+			if feed, ok := post.Extra["feed"].(string); ok {
+				feedSlug = feed
+			}
+		}
+
+		// Get post path for path-based layout lookup
+		// Use the Href which represents the URL structure (e.g., /docs/getting-started/)
+		postPath := post.Href
+		if postPath == "" {
+			// Fall back to Path if Href is not set
+			postPath = "/" + strings.TrimPrefix(post.Path, "/")
+		}
+
+		// Resolve layout based on path and feed
+		layout := p.layoutConfig.ResolveLayout(postPath, feedSlug)
+		if layout != "" {
+			return models.LayoutToTemplate(layout)
+		}
+	}
+
+	// 3. Fall back to default template
+	return "post.html"
 }
 
 // Render wraps markdown content in templates.
@@ -82,10 +129,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		}
 
 		// Determine which template to use
-		templateName := post.Template
-		if templateName == "" {
-			templateName = "post.html"
-		}
+		templateName := p.resolveTemplate(post)
 
 		// Check if template exists, fall back to post.html if not
 		if !p.engine.TemplateExists(templateName) {

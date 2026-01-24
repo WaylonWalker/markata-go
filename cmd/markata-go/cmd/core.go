@@ -70,6 +70,9 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 		"custom_css": cfg.Theme.CustomCSS,
 	}
 
+	// Pass layout configuration for automatic layout selection
+	lcConfig.Extra["layout"] = &cfg.Layout
+
 	m.SetConfig(lcConfig)
 
 	// Set concurrency if specified
