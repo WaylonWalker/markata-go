@@ -5,6 +5,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/config"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/plugins"
 )
 
@@ -123,6 +124,21 @@ type BuildResult struct {
 	FilesWritten   int
 	Warnings       []string
 	Duration       float64
+
+	// BlogrollStatus holds blogroll feature status
+	BlogrollStatus BlogrollStatus
+}
+
+// BlogrollStatus holds information about the blogroll feature.
+type BlogrollStatus struct {
+	// Configured indicates if blogroll section exists in config
+	Configured bool
+	// Enabled indicates if blogroll is enabled
+	Enabled bool
+	// FeedsConfigured is the number of feeds configured
+	FeedsConfigured int
+	// FeedsFetched is the number of feeds successfully fetched
+	FeedsFetched int
 }
 
 // runBuild executes a full build and returns the result.
@@ -168,10 +184,46 @@ func runBuild(m *lifecycle.Manager) (*BuildResult, error) {
 		FeedsGenerated: len(m.Feeds()),
 	}
 
+	// Collect blogroll status
+	result.BlogrollStatus = getBlogrollStatus(m)
+
 	// Collect warnings
 	for _, w := range m.Warnings() {
 		result.Warnings = append(result.Warnings, w.Error())
 	}
 
 	return result, nil
+}
+
+// getBlogrollStatus extracts blogroll feature status from the manager.
+func getBlogrollStatus(m *lifecycle.Manager) BlogrollStatus {
+	status := BlogrollStatus{}
+
+	cfg := m.Config()
+	if cfg == nil || cfg.Extra == nil {
+		return status
+	}
+
+	blogrollVal, ok := cfg.Extra["blogroll"]
+	if !ok {
+		return status
+	}
+
+	blogrollConfig, ok := blogrollVal.(models.BlogrollConfig)
+	if !ok {
+		return status
+	}
+
+	status.Configured = true
+	status.Enabled = blogrollConfig.Enabled
+	status.FeedsConfigured = len(blogrollConfig.Feeds)
+
+	// Get fetched feeds count from cache
+	if feedsVal, ok := m.Cache().Get("blogroll_feeds"); ok {
+		if feeds, ok := feedsVal.([]*models.ExternalFeed); ok {
+			status.FeedsFetched = len(feeds)
+		}
+	}
+
+	return status
 }
