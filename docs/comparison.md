@@ -21,9 +21,122 @@ A comprehensive comparison of markata-go against popular static site generators 
 | **Template Engine** | Pongo2 (Jinja2-like) | Go templates | Liquid | Multiple | JSX/Astro | Tera (Jinja2-like) | Jinja2 |
 | **Build Speed** | Fast | Very Fast | Slow | Medium | Medium | Very Fast | Medium |
 | **Learning Curve** | Low | Medium | Low | Low | Medium | Low | Low |
-| **Plugin System** | Lifecycle hooks | Limited | Ruby gems | JavaScript | Integrations | Limited | Python |
-| **Feed System** | Advanced | Basic | Basic | Manual | Manual | Basic | Basic |
+| **Plugin System** | 34 built-in plugins | Limited | Ruby gems | JavaScript | Integrations | Limited | Python |
+| **Feed Formats** | 7 (HTML, RSS, Atom, JSON, Markdown, Text, Sitemap) | Basic | Basic | Manual | Manual | Basic | Basic |
 | **Single Binary** | Yes | Yes | No | No | No | Yes | No |
+| **Built-in Search** | Pagefind (auto-install) | Manual | Manual | Manual | Manual | Built-in | Manual |
+| **Theme System** | 25+ palettes | Themes | Themes | Manual | Manual | Themes | Themes |
+
+---
+
+## markata-go Feature Highlights
+
+Before diving into comparisons, here's what makes markata-go unique:
+
+### 34 Built-in Plugins
+
+markata-go ships with a comprehensive plugin ecosystem:
+
+| Category | Plugins |
+|----------|---------|
+| **Core** | glob, load, jinja_md, render_markdown, templates |
+| **Feeds** | feeds, auto_feeds, publish_feeds, publish_html, sitemap |
+| **Content Enhancement** | wikilinks, toc, description, auto_title, reading_time, heading_anchors |
+| **Navigation** | prevnext, redirects |
+| **Media & Visualization** | md_video, youtube, chartjs, mermaid, csv_fence, qrcode |
+| **Linking** | link_collector, glossary, one_line_link, wikilink_hover |
+| **Styling** | palette_css, chroma_css, static_assets |
+| **SEO & Data** | structured_data, overwrite_check |
+| **Search** | pagefind |
+
+### 7 Feed Output Formats
+
+One feed definition generates multiple output formats:
+
+```toml
+[[markata-go.feeds]]
+slug = "tutorials"
+title = "Go Tutorials"
+filter = "published == True and 'go' in tags"
+
+[markata-go.feeds.formats]
+html = true      # /tutorials/index.html
+rss = true       # /tutorials/rss.xml
+atom = true      # /tutorials/atom.xml
+json = true      # /tutorials/feed.json
+markdown = true  # /tutorials/index.md
+text = true      # /tutorials/index.txt
+sitemap = true   # Included in sitemap.xml
+```
+
+### 25+ Built-in Color Palettes
+
+The theme system includes palettes for every preference:
+
+- **Catppuccin**: Frappe, Latte, Macchiato, Mocha
+- **Tokyo Night**: Standard, Day, Storm
+- **Kanagawa**: Wave, Dragon, Lotus
+- **Rose Pine**: Standard, Dawn, Moon
+- **Gruvbox**: Dark, Light
+- **Nord**: Dark, Light
+- **Everforest**: Dark, Light
+- **Solarized**: Dark, Light
+- **Dracula**
+- **Matte Black**
+- **Default**: Dark, Light
+
+```bash
+# List all available palettes
+markata-go palette list
+
+# Preview a palette
+markata-go palette show "Tokyo Night"
+
+# Set palette in config
+[markata-go]
+palette = "Catppuccin Mocha"
+```
+
+### 22+ Template Filters
+
+| Category | Filters |
+|----------|---------|
+| **Date** | `date`, `date_format`, `rss_date`, `atom_date`, `isoformat` |
+| **String** | `slugify`, `truncate`, `truncatewords` |
+| **Collection** | `length`, `first`, `last`, `join`, `reverse`, `sort` |
+| **HTML** | `striptags`, `linebreaks`, `linebreaksbr` |
+| **URL** | `urlencode`, `absolute_url` |
+| **Theme** | `theme_asset`, `asset_url` |
+| **Fallback** | `default_if_none` |
+
+```html
+<!-- Date formatting -->
+{{ post.Date | date:"January 2, 2006" }}
+{{ post.Date | rss_date }}
+{{ post.Date | isoformat }}
+
+<!-- String manipulation -->
+{{ post.Title | slugify }}
+{{ post.Description | truncate:160 }}
+
+<!-- Collections -->
+{{ post.Tags | join:", " }}
+{{ posts | length }} posts
+```
+
+### Comprehensive CLI
+
+```bash
+markata-go build          # Build the site
+markata-go serve          # Dev server with live reload
+markata-go new "Post"     # Create a new post
+markata-go lint           # Check for common issues
+markata-go explain        # Info for AI agents
+markata-go benchmark      # Performance testing
+markata-go config show    # Show configuration
+markata-go palette list   # List color palettes
+markata-go init           # Initialize new project
+```
 
 ---
 
@@ -44,7 +157,7 @@ Hugo is the most popular Go-based static site generator, known for its exception
 
 **Hugo excels**: Raw build speed is Hugo's primary strength. Its highly optimized Go code and aggressive caching make it the fastest SSG available.
 
-**markata-go excels**: Concurrent processing with configurable worker pools. While not quite as fast as Hugo for raw builds, markata-go offers more predictable performance scaling.
+**markata-go excels**: Concurrent processing with configurable worker pools. While not quite as fast as Hugo for raw builds, markata-go offers more predictable performance scaling and extensive built-in features.
 
 #### Template Language
 
@@ -96,7 +209,7 @@ This is where markata-go significantly differs from Hugo.
 | Feature | markata-go | Hugo |
 |---------|------------|------|
 | Feed definition | Single config block | Multiple templates |
-| Multiple formats | One definition, many outputs | One template per format |
+| Output formats | 7 from one definition | One template per format |
 | Filter expressions | `"published == True and 'go' in tags"` | Complex template logic |
 | Auto-generated feeds | Built-in (tags, categories) | Manual |
 | Pagination | Integrated | Separate config |
@@ -115,9 +228,11 @@ html = true
 rss = true
 atom = true
 json = true
+markdown = true
+text = true
 ```
 
-This single definition generates `/tutorials/index.html`, `/tutorials/rss.xml`, `/tutorials/atom.xml`, and `/tutorials/feed.json`.
+This single definition generates `/tutorials/index.html`, `/tutorials/rss.xml`, `/tutorials/atom.xml`, `/tutorials/feed.json`, `/tutorials/index.md`, and `/tutorials/index.txt`.
 
 **Hugo equivalent** requires separate template files for each format.
 
@@ -125,6 +240,7 @@ This single definition generates `/tutorials/index.html`, `/tutorials/rss.xml`, 
 
 | Aspect | markata-go | Hugo |
 |--------|------------|------|
+| Built-in plugins | 34 | Limited |
 | Extension method | Lifecycle plugins | Modules/themes |
 | Hook points | 9 lifecycle stages | Limited hooks |
 | Third-party plugins | Registry + local | Modules |
@@ -132,7 +248,20 @@ This single definition generates `/tutorials/index.html`, `/tutorials/rss.xml`, 
 
 **Hugo excels**: Hugo Modules provide versioned, composable themes and components.
 
-**markata-go excels**: Fine-grained lifecycle hooks allow plugins to modify content at any stage. A single file can be a complete plugin.
+**markata-go excels**: Fine-grained lifecycle hooks allow plugins to modify content at any stage. A single file can be a complete plugin. 34 built-in plugins cover most common needs.
+
+#### Additional markata-go Features Hugo Lacks
+
+| Feature | markata-go | Hugo |
+|---------|------------|------|
+| Built-in search | Pagefind (auto-install) | Manual setup |
+| Syntax highlighting CSS | Chroma with palette awareness | Chroma (manual CSS) |
+| Chart.js support | Built-in | Manual |
+| Mermaid diagrams | Built-in | Manual |
+| QR code generation | Built-in | Manual |
+| Wikilinks + hover | Built-in | Manual |
+| IndieWeb support | IndieAuth + Webmention | Manual |
+| Structured data | Built-in JSON-LD | Manual |
 
 #### When to Choose Hugo Over markata-go
 
@@ -145,9 +274,10 @@ This single definition generates `/tutorials/index.html`, `/tutorials/rss.xml`, 
 #### When to Choose markata-go Over Hugo
 
 - You prefer Jinja2-like template syntax
-- You need advanced feed filtering and multiple output formats
-- You want a simpler, feed-centric content model
+- You need advanced feed filtering with 7 output formats
+- You want 34 built-in plugins covering common needs
 - You need fine-grained plugin hooks
+- You want built-in search, charts, diagrams, and structured data
 - You're building a blog-focused site
 
 ---
@@ -214,13 +344,14 @@ Both are quite similar! Developers familiar with Liquid will find Pongo2 comfort
 |--------|------------|--------|
 | Plugin format | Go files | Ruby gems |
 | Installation | Built-in or local | `bundle install` |
-| Popular plugins | ~15 built-in | Thousands |
-| SEO plugins | Via templates | jekyll-seo-tag |
+| Built-in plugins | 34 | 10+ |
+| SEO plugins | Structured data built-in | jekyll-seo-tag |
 | Sitemap | Built-in | jekyll-sitemap |
+| Search | Pagefind built-in | jekyll-search (manual) |
 
 **Jekyll excels**: Massive plugin ecosystem for nearly any need.
 
-**markata-go excels**: Core features built-in (sitemap, feeds, TOC), no external dependencies.
+**markata-go excels**: Core features built-in (sitemap, feeds, TOC, search, structured data), no external dependencies.
 
 #### Build Speed
 
@@ -244,9 +375,10 @@ Both are quite similar! Developers familiar with Liquid will find Pongo2 comfort
 
 - Build speed is critical
 - You want zero Ruby dependencies
-- You need advanced feed capabilities
+- You need advanced feed capabilities with 7 formats
 - You prefer Jinja2-like syntax
 - You want concurrent processing
+- You need built-in search, charts, and structured data
 
 ---
 
@@ -261,7 +393,7 @@ Eleventy is a flexible, JavaScript-based SSG that supports multiple template lan
 | Template languages | Pongo2 only | 10+ options |
 | Data sources | Markdown + YAML | Multiple (JSON, YAML, JS, API) |
 | Configuration | TOML/YAML | JavaScript |
-| Customization | Plugins | Filters, shortcodes, plugins |
+| Customization | 34 plugins | Filters, shortcodes, plugins |
 
 **Eleventy excels**: Unmatched flexibility. Use Nunjucks, Liquid, Handlebars, Pug, EJS, or mix them. Pull data from APIs, databases, or files.
 
@@ -304,18 +436,18 @@ Eleventy's data cascade is powerful:
 
 ```
 Global Data (from _data/) 
-  → Layout Data 
-    → Directory Data 
-      → Template Data 
-        → Front Matter
+  -> Layout Data 
+    -> Directory Data 
+      -> Template Data 
+        -> Front Matter
 ```
 
 markata-go's approach is simpler:
 
 ```
 Config 
-  → Front Matter 
-    → Plugin-generated fields
+  -> Front Matter 
+    -> Plugin-generated fields
 ```
 
 **Eleventy excels**: Complex data merging from multiple sources.
@@ -327,6 +459,7 @@ Config
 | Feature | markata-go | Eleventy |
 |---------|------------|----------|
 | Plugin type | Lifecycle hooks | JavaScript |
+| Built-in plugins | 34 | Manual |
 | Async support | Concurrent stages | Async/await |
 | Filter addition | Go functions | JS functions |
 | Build hooks | 9 stages | Various events |
@@ -361,10 +494,11 @@ func (p *MyPlugin) Transform(ctx *lifecycle.Context) error {
 #### When to Choose markata-go Over Eleventy
 
 - You prefer a faster, compiled binary
-- You want opinionated defaults
-- You need the advanced feed system
+- You want opinionated defaults with 34 built-in plugins
+- You need the advanced feed system with 7 formats
 - You prefer Go's performance characteristics
 - You want simpler configuration
+- You need built-in search and visualization
 
 ---
 
@@ -461,6 +595,7 @@ Both produce static HTML by default, but Astro can switch to SSR mode.
 - Build speed is critical
 - You prefer Go's simplicity
 - You need the advanced feed system
+- You want 34 built-in plugins without configuration
 
 ---
 
@@ -544,6 +679,17 @@ slug_prefix = "tags"
 
 Both achieve similar results, but markata-go's feed system is more flexible for filtering.
 
+#### Feature Comparison
+
+| Feature | markata-go | Zola |
+|---------|------------|------|
+| Built-in plugins | 34 | N/A (no plugin system) |
+| Search | Pagefind (auto) | Built-in |
+| Sass compilation | No | Built-in |
+| Shortcodes | Via templates | Built-in |
+| Feed formats | 7 | 2 (RSS, Atom) |
+| Charts/Diagrams | Chart.js, Mermaid | Manual |
+
 #### When to Choose Zola Over markata-go
 
 - You need the absolute fastest builds
@@ -555,10 +701,11 @@ Both achieve similar results, but markata-go's feed system is more flexible for 
 #### When to Choose markata-go Over Zola
 
 - You prefer Go
-- You need the advanced feed system
-- You want fine-grained plugin hooks
-- You need multiple output formats from one feed definition
+- You need the advanced feed system with 7 formats
+- You want 34 fine-grained plugin hooks
+- You need built-in charts, diagrams, and QR codes
 - You want concurrent post processing
+- You need IndieWeb support (IndieAuth, Webmention)
 
 ---
 
@@ -586,7 +733,7 @@ Pelican is a Python-based SSG with Jinja2 templates.
 | Plugin hooks | 9 lifecycle stages | Signals |
 | Plugin format | Go interfaces | Python modules |
 | Plugin discovery | Registry | Entry points |
-| Built-in plugins | 15 | 10+ |
+| Built-in plugins | 34 | 10+ |
 
 ```python
 # Pelican plugin example
@@ -649,9 +796,10 @@ Pelican uses actual Jinja2, while markata-go uses Pongo2 (a Go port):
 
 - Build speed is important
 - You want single binary distribution
-- You need the advanced feed system
+- You need the advanced feed system with 7 formats
 - You prefer Go's concurrency model
 - You don't want Python dependencies
+- You want 34 built-in plugins
 
 ---
 
@@ -671,35 +819,151 @@ reverse = true
 items_per_page = 10
 
 [markata-go.feeds.formats]
-html = true    # /python/index.html + pagination
-rss = true     # /python/rss.xml
-atom = true    # /python/atom.xml
-json = true    # /python/feed.json
+html = true      # /python/index.html + pagination
+rss = true       # /python/rss.xml
+atom = true      # /python/atom.xml
+json = true      # /python/feed.json
+markdown = true  # /python/index.md
+text = true      # /python/index.txt
 ```
 
 **What other SSGs require:**
 
-| SSG | RSS Template | Atom Template | JSON Template | Total Files |
-|-----|--------------|---------------|---------------|-------------|
-| Hugo | Yes | Yes | Yes | 3+ templates |
-| Jekyll | Yes | Yes | Manual | 2+ templates |
-| Eleventy | Yes | Yes | Manual | 2+ templates |
-| Zola | Yes | Yes | Manual | 2+ templates |
-| Pelican | Built-in | Plugin | Manual | Variable |
+| SSG | RSS Template | Atom Template | JSON Template | Markdown | Text | Total Files |
+|-----|--------------|---------------|---------------|----------|------|-------------|
+| Hugo | Yes | Yes | Yes | Yes | Yes | 5+ templates |
+| Jekyll | Yes | Yes | Manual | Manual | Manual | 2+ templates |
+| Eleventy | Yes | Yes | Manual | Manual | Manual | 2+ templates |
+| Zola | Yes | Yes | Manual | Manual | Manual | 2+ templates |
+| Pelican | Built-in | Plugin | Manual | Manual | Manual | Variable |
 
-**markata-go:** One config block, zero templates needed.
+**markata-go:** One config block, zero templates needed, 7 output formats.
+
+### Theme and Palette System
+
+markata-go includes a sophisticated theming system:
+
+```toml
+[markata-go]
+palette = "Tokyo Night"  # Choose from 25+ palettes
+```
+
+**Features:**
+- 25+ built-in palettes (dark and light variants)
+- Automatic CSS variable generation
+- Palette-aware syntax highlighting (Chroma)
+- Light/dark mode support
+- `markata-go palette list` to see all options
+- `markata-go palette show "Name"` to preview colors
+
+**Generated CSS includes:**
+- Primary, secondary, accent colors
+- Background and surface colors
+- Text colors with proper contrast
+- Border and shadow colors
+- Syntax highlighting colors matched to palette
+
+### Search Integration
+
+markata-go integrates Pagefind for full-text search:
+
+```toml
+[markata-go.pagefind]
+enabled = true
+auto_install = true  # Automatically downloads Pagefind
+```
+
+**Features:**
+- Zero-configuration search indexing
+- Automatic Pagefind installation
+- Palette-aware styling
+- Works offline (client-side)
+- Minimal JavaScript footprint
+
+### Visualization Support
+
+Built-in support for data visualization:
+
+**Chart.js:**
+````markdown
+```chartjs
+{
+  "type": "bar",
+  "data": {
+    "labels": ["Q1", "Q2", "Q3", "Q4"],
+    "datasets": [{"data": [10, 20, 30, 40]}]
+  }
+}
+```
+````
+
+**Mermaid Diagrams:**
+````markdown
+```mermaid
+graph TD
+    A[Start] --> B[Process]
+    B --> C[End]
+```
+````
+
+**CSV Tables:**
+````markdown
+```csv
+Name,Age,City
+Alice,30,NYC
+Bob,25,LA
+```
+````
+
+### IndieWeb Support
+
+Built-in IndieWeb integration:
+
+```toml
+[markata-go.indieauth]
+enabled = true
+authorization_endpoint = "https://indieauth.com/auth"
+token_endpoint = "https://tokens.indieauth.com/token"
+me_url = "https://example.com"
+
+[markata-go.webmention]
+enabled = true
+endpoint = "https://webmention.io/example.com/webmention"
+```
+
+### Developer Experience
+
+**Live Reload Server:**
+```bash
+markata-go serve  # Builds and serves with live reload
+```
+
+**Linting:**
+```bash
+markata-go lint  # Check for common issues
+```
+
+**Performance Testing:**
+```bash
+markata-go benchmark  # Run build benchmarks
+```
+
+**AI Agent Support:**
+```bash
+markata-go explain  # Output info for AI coding assistants
+```
 
 ### Plugin Architecture Comparison
 
-| SSG | Plugin Language | Hook Points | Ease of Writing |
-|-----|-----------------|-------------|-----------------|
-| markata-go | Go | 9 stages | Medium |
-| Hugo | Go | Limited | Hard |
-| Jekyll | Ruby | Multiple | Easy |
-| Eleventy | JavaScript | Many | Easy |
-| Astro | JavaScript | Integrations | Easy |
-| Zola | None | N/A | N/A |
-| Pelican | Python | Signals | Easy |
+| SSG | Plugin Language | Hook Points | Built-in Plugins | Ease of Writing |
+|-----|-----------------|-------------|------------------|-----------------|
+| markata-go | Go | 9 stages | 34 | Medium |
+| Hugo | Go | Limited | N/A | Hard |
+| Jekyll | Ruby | Multiple | 10+ | Easy |
+| Eleventy | JavaScript | Many | Manual | Easy |
+| Astro | JavaScript | Integrations | Manual | Easy |
+| Zola | None | N/A | N/A | N/A |
+| Pelican | Python | Signals | 10+ | Easy |
 
 markata-go's 9-stage lifecycle provides predictable hook points:
 
@@ -773,7 +1037,7 @@ markata-go, Eleventy (Nunjucks), and Zola (Tera) have the most similar syntax.
 1. **Content Migration**
    - Move `_posts/` to `posts/`
    - Remove date prefix from filenames (optional)
-   - Update frontmatter: `layout` → `template`
+   - Update frontmatter: `layout` -> `template`
 
 2. **Template Migration**
    ```liquid
@@ -790,8 +1054,8 @@ markata-go, Eleventy (Nunjucks), and Zola (Tera) have the most similar syntax.
 
 3. **Plugin Migration**
    - Replace Ruby gems with markata-go plugins or built-ins
-   - `jekyll-sitemap` → built-in sitemap plugin
-   - `jekyll-feed` → feed system configuration
+   - `jekyll-sitemap` -> built-in sitemap plugin
+   - `jekyll-feed` -> feed system configuration
 
 ### Migrating from Eleventy
 
@@ -839,7 +1103,7 @@ markata-go, Eleventy (Nunjucks), and Zola (Tera) have the most similar syntax.
 
 2. **Template Migration**
    - Jinja2 and Pongo2 are nearly identical
-   - Update variable names (`article` → `post`)
+   - Update variable names (`article` -> `post`)
 
 3. **Plugin Migration**
    - Convert Python plugins to Go
@@ -851,12 +1115,17 @@ markata-go, Eleventy (Nunjucks), and Zola (Tera) have the most similar syntax.
 
 ### Choose markata-go if you need:
 
-- **Advanced feed system** - Multiple formats from one definition
+- **Advanced feed system** - 7 formats from one definition
 - **Jinja2-like templates** - Familiar syntax for Python developers
 - **Fast builds** - Go performance without Hugo complexity
-- **Plugin flexibility** - 9 lifecycle hooks for customization
+- **Plugin flexibility** - 34 built-in plugins, 9 lifecycle hooks
 - **Simple deployment** - Single binary, no runtime dependencies
 - **Concurrent processing** - Parallel post processing
+- **Built-in search** - Pagefind with auto-install
+- **Theme system** - 25+ color palettes with automatic CSS
+- **Visualization** - Chart.js, Mermaid, CSV tables built-in
+- **IndieWeb support** - IndieAuth and Webmention
+- **Developer tools** - Live reload, linting, benchmarks, AI support
 
 ### Choose an alternative if you need:
 
@@ -879,17 +1148,23 @@ markata-go, Eleventy (Nunjucks), and Zola (Tera) have the most similar syntax.
 markata-go occupies a unique position in the SSG landscape:
 
 **Strengths:**
-- Powerful, unified feed system unmatched by other SSGs
+- Powerful, unified feed system with 7 output formats
+- 34 built-in plugins covering most common needs
 - Jinja2-like templates that feel familiar
 - Fast Go performance with concurrent processing
 - Clean 9-stage plugin architecture
 - Single binary distribution
+- Built-in search with Pagefind
+- 25+ color palettes with automatic CSS generation
+- Chart.js, Mermaid, and CSV visualization
+- IndieWeb support (IndieAuth, Webmention)
+- Developer-friendly CLI with lint, benchmark, and explain commands
 
 **Trade-offs:**
 - Smaller ecosystem than Hugo or Jekyll
 - Less flexible than Eleventy
 - No frontend framework integration like Astro
-- Fewer built-in features than Hugo
+- Fewer built-in features than Hugo for complex sites
 
 **Ideal for:**
 - Content-focused blogs and publications
@@ -897,6 +1172,8 @@ markata-go occupies a unique position in the SSG landscape:
 - Developers who prefer Jinja2 syntax
 - Projects requiring custom plugin development
 - Teams wanting Go performance without Go template complexity
+- Sites needing built-in search, charts, and visualization
+- IndieWeb participants
 
 The best SSG is the one that fits your workflow. markata-go excels for content-heavy sites where the feed system shines, while alternatives may be better for complex web applications or specific ecosystem needs.
 
