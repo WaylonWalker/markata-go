@@ -14,6 +14,20 @@ const (
 	PaginationJS PaginationType = "js"
 )
 
+// FeedType represents the type of feed.
+type FeedType string
+
+const (
+	// FeedTypeBlog is a standard blog feed sorted by date.
+	FeedTypeBlog FeedType = "blog"
+
+	// FeedTypeSeries is a series of related posts.
+	FeedTypeSeries FeedType = "series"
+
+	// FeedTypeGuide is a guide series with ordered content and prerequisites.
+	FeedTypeGuide FeedType = "guide"
+)
+
 // FeedConfig represents a feed configuration.
 type FeedConfig struct {
 	// Slug is the URL-safe identifier for the feed
@@ -24,6 +38,9 @@ type FeedConfig struct {
 
 	// Description is the feed description
 	Description string `json:"description" yaml:"description" toml:"description"`
+
+	// Type is the feed type (blog, series, guide)
+	Type FeedType `json:"type" yaml:"type" toml:"type"`
 
 	// Filter is the filter expression for selecting posts
 	Filter string `json:"filter" yaml:"filter" toml:"filter"`
