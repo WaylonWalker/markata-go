@@ -43,6 +43,9 @@ A fast, plugin-driven static site generator written in Go.
 ### Publishing
 
 - [[deployment-guide|Deployment]] - Host your site
+- [[ci-cd-guide|CI/CD]] - Automated builds and deployments
+  - [[github-actions|GitHub Actions]] - Deploy with GitHub Actions
+  - [[gitlab-ci|GitLab CI]] - Deploy with GitLab CI
 
 ---
 
