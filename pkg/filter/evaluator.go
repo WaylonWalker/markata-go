@@ -163,6 +163,15 @@ func evalInExpr(e *InExpr, post *models.Post, ctx *EvalContext) (interface{}, er
 	if err != nil {
 		return nil, err
 	}
+
+	// Backward compatibility: if value is nil and came from an identifier,
+	// treat the identifier name as a string literal (for "tags contains go" syntax)
+	if value == nil {
+		if ident, ok := e.Value.(*Identifier); ok {
+			value = ident.Name
+		}
+	}
+
 	collection, err := eval(e.Collection, post, ctx)
 	if err != nil {
 		return nil, err

@@ -19,6 +19,7 @@ const (
 	TokenCompareOp // ==, !=, <, >, <=, >=
 	TokenLogicOp   // and, or
 	TokenIn
+	TokenContains // contains (legacy syntax support)
 	TokenNot
 	TokenLParen
 	TokenRParen
@@ -65,6 +66,7 @@ func tokenTypeName(t TokenType) string {
 		TokenCompareOp:  "COMPARE_OP",
 		TokenLogicOp:    "LOGIC_OP",
 		TokenIn:         "IN",
+		TokenContains:   "CONTAINS",
 		TokenNot:        "NOT",
 		TokenLParen:     "LPAREN",
 		TokenRParen:     "RPAREN",
@@ -295,9 +297,9 @@ func (l *Lexer) readIdentifier() (Token, error) {
 
 	// Check for keywords
 	switch value {
-	case "True":
+	case "True", "true":
 		return Token{Type: TokenBool, Value: value, Literal: true, Pos: pos}, nil
-	case "False":
+	case "False", "false":
 		return Token{Type: TokenBool, Value: value, Literal: false, Pos: pos}, nil
 	case "None":
 		return Token{Type: TokenNone, Value: value, Literal: nil, Pos: pos}, nil
@@ -309,6 +311,8 @@ func (l *Lexer) readIdentifier() (Token, error) {
 		return Token{Type: TokenNot, Value: value, Pos: pos}, nil
 	case "in":
 		return Token{Type: TokenIn, Value: value, Pos: pos}, nil
+	case "contains":
+		return Token{Type: TokenContains, Value: value, Pos: pos}, nil
 	case "today":
 		return Token{Type: TokenToday, Value: value, Pos: pos}, nil
 	case "now":
