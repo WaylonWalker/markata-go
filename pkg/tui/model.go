@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/services"
 )
@@ -38,6 +39,7 @@ type Model struct {
 	app         *services.App
 	posts       []*models.Post
 	tags        []services.TagInfo
+	feeds       []*lifecycle.Feed
 	cursor      int
 	view        View
 	mode        Mode
@@ -56,6 +58,10 @@ type postsLoadedMsg struct {
 
 type tagsLoadedMsg struct {
 	tags []services.TagInfo
+}
+
+type feedsLoadedMsg struct {
+	feeds []*lifecycle.Feed
 }
 
 type errMsg struct {
@@ -107,6 +113,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.tags = msg.tags
 		return m, nil
 
+	case feedsLoadedMsg:
+		m.feeds = msg.feeds
+		return m, nil
+
 	case errMsg:
 		m.err = msg.err
 		return m, nil
@@ -140,6 +150,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		maxIdx := len(m.posts) - 1
 		if m.view == ViewTags {
 			maxIdx = len(m.tags) - 1
+		} else if m.view == ViewFeeds {
+			maxIdx = len(m.feeds) - 1
 		}
 		if m.cursor < maxIdx {
 			m.cursor++
@@ -167,6 +179,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.view = ViewTags
 		m.cursor = 0
 		return m, m.loadTags()
+
+	case key.Matches(msg, keyMap.Feeds):
+		m.view = ViewFeeds
+		m.cursor = 0
+		return m, m.loadFeeds()
 	}
 
 	return m, nil
@@ -230,6 +247,10 @@ func (m Model) executeCommand(cmd string) (tea.Model, tea.Cmd) {
 		m.view = ViewTags
 		m.cursor = 0
 		return m, m.loadTags()
+	case "feeds", "f":
+		m.view = ViewFeeds
+		m.cursor = 0
+		return m, m.loadFeeds()
 	case "q", "quit":
 		return m, tea.Quit
 	}
@@ -261,6 +282,16 @@ func (m Model) loadTags() tea.Cmd {
 	}
 }
 
+func (m Model) loadFeeds() tea.Cmd {
+	return func() tea.Msg {
+		feeds, err := m.app.Feeds.List(context.Background())
+		if err != nil {
+			return errMsg{err}
+		}
+		return feedsLoadedMsg{feeds}
+	}
+}
+
 // View renders the UI
 func (m Model) View() string {
 	if m.err != nil {
@@ -274,7 +305,7 @@ func (m Model) View() string {
 	case ViewTags:
 		content = m.renderTags()
 	case ViewFeeds:
-		content = "Feeds view (coming soon)"
+		content = m.renderFeeds()
 	case ViewHelp:
 		content = m.renderHelp()
 	}
@@ -295,7 +326,7 @@ func (m Model) renderLayout(content string) string {
 	case ModeCommand:
 		statusBar = ":" + m.cmdInput.View()
 	default:
-		statusBar = subtleStyle.Render("j/k:move  /:filter  ::cmd  ?:help  q:quit")
+		statusBar = subtleStyle.Render("j/k:move  p:posts  t:tags  f:feeds  /:filter  ::cmd  ?:help  q:quit")
 	}
 
 	return fmt.Sprintf("%s\n\n%s\n\n%s", header, content, statusBar)
@@ -375,6 +406,87 @@ func (m Model) renderTags() string {
 	return sb.String()
 }
 
+func (m Model) renderFeeds() string {
+	if len(m.feeds) == 0 {
+		return "No feeds found."
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Feeds (%d)\n\n", len(m.feeds)))
+
+	// Column widths
+	nameWidth := 20
+	postsWidth := 6
+	filterWidth := 30
+
+	// Header row
+	header := fmt.Sprintf("%-*s  %*s  %-*s  %s",
+		nameWidth, "NAME",
+		postsWidth, "POSTS",
+		filterWidth, "FILTER",
+		"OUTPUT")
+	sb.WriteString(subtleStyle.Render(header) + "\n")
+
+	// Calculate visible range
+	visibleLines := m.height - 10
+	if visibleLines < 5 {
+		visibleLines = 5
+	}
+
+	start := 0
+	if m.cursor >= visibleLines {
+		start = m.cursor - visibleLines + 1
+	}
+	end := start + visibleLines
+	if end > len(m.feeds) {
+		end = len(m.feeds)
+	}
+
+	for i := start; i < end; i++ {
+		f := m.feeds[i]
+
+		name := truncateString(f.Name, nameWidth)
+		postCount := len(f.Posts)
+
+		filter := "(none)"
+		// Note: lifecycle.Feed doesn't have a Filter field, so we show "(none)"
+		// If we had filter info, we'd display it here
+
+		output := f.Path
+		if output == "" {
+			output = "-"
+		}
+
+		line := fmt.Sprintf("  %-*s  %*d  %-*s  %s",
+			nameWidth, name,
+			postsWidth, postCount,
+			filterWidth, truncateString(filter, filterWidth-2),
+			output)
+
+		if i == m.cursor {
+			line = selectedStyle.Render(fmt.Sprintf("> %-*s  %*d  %-*s  %s",
+				nameWidth-2, name,
+				postsWidth, postCount,
+				filterWidth, truncateString(filter, filterWidth-2),
+				output))
+		}
+		sb.WriteString(line + "\n")
+	}
+
+	return sb.String()
+}
+
+// truncateString truncates a string to a maximum width, adding "..." if truncated
+func truncateString(s string, maxWidth int) string {
+	if len(s) <= maxWidth {
+		return s
+	}
+	if maxWidth <= 3 {
+		return s[:maxWidth]
+	}
+	return s[:maxWidth-3] + "..."
+}
+
 func (m Model) renderHelp() string {
 	return `Help
 
@@ -384,6 +496,11 @@ Navigation:
   Enter      Select / view details
   Esc        Cancel / go back
 
+Views:
+  p          Posts view
+  t          Tags view
+  f          Feeds view
+
 Modes:
   /          Filter mode
   :          Command mode
@@ -391,6 +508,7 @@ Modes:
 Commands:
   :posts     Show posts
   :tags      Show tags
+  :feeds     Show feeds
   :quit      Exit
 
 Press Esc to return.`
