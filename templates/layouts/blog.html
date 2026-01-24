@@ -89,7 +89,7 @@
         </article>
     </main>
     
-    {% if config.layout.blog.show_toc and post.Extra.toc %}
+    {% if config.layout.blog.show_toc and post.toc %}
     <aside class="layout-toc layout-toc--{{ config.layout.blog.toc_position | default:'right' }}" 
            role="complementary" 
            aria-label="Table of Contents"

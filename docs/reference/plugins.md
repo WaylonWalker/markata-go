@@ -3,7 +3,7 @@ title: "Built-in Plugins"
 description: "Reference documentation for all 29 built-in markata-go plugins organized by lifecycle stage"
 date: 2024-01-15
 published: true
-template: doc.html
+slug: /docs/reference/plugins/
 tags:
   - documentation
   - reference

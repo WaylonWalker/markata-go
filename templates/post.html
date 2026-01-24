@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="content-wrapper{% if config.components.doc_sidebar.enabled and post.Extra.toc %} content-wrapper--with-sidebar content-wrapper--sidebar-{{ config.components.doc_sidebar.position | default:'right' }}{% endif %}">
+<div class="content-wrapper{% if config.components.doc_sidebar.enabled and post.toc %} content-wrapper--with-sidebar content-wrapper--sidebar-{{ config.components.doc_sidebar.position | default:'right' }}{% endif %}">
     <article>
         <header>
             <h1>{{ post.title }}</h1>

@@ -3,7 +3,7 @@ title: "Documentation"
 description: "Complete documentation for markata-go, a fast, plugin-driven static site generator written in Go"
 date: 2024-01-15
 published: true
-template: doc.html
+slug: /docs/
 tags:
   - documentation
 ---

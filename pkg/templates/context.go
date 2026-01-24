@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"reflect"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -148,6 +149,11 @@ func postToMap(p *models.Post) map[string]interface{} {
 						continue
 					}
 				}
+				// Special handling for toc entries (from toc plugin)
+				if k == "toc" {
+					m[k] = tocEntriesToMaps(v)
+					continue
+				}
 				m[k] = v
 			}
 		}
@@ -215,6 +221,18 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert search to map
 	searchMap := searchToMap(&c.Search)
 
+	// Convert layout to map
+	layoutMap := layoutToMap(&c.Layout)
+
+	// Convert sidebar to map
+	sidebarMap := sidebarToMap(&c.Sidebar)
+
+	// Convert toc to map
+	tocMap := tocToMap(&c.Toc)
+
+	// Convert header to map
+	headerMap := headerToMap(&c.Header)
+
 	return map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
@@ -232,6 +250,10 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"post_formats":  postFormatsMap,
 		"head":          headMap,
 		"search":        searchMap,
+		"layout":        layoutMap,
+		"sidebar":       sidebarMap,
+		"toc":           tocMap,
+		"header":        headerMap,
 	}
 }
 
@@ -458,6 +480,269 @@ func searchToMap(s *models.SearchConfig) map[string]interface{} {
 		"pagefind":       pagefindMap,
 		"feeds":          feedConfigs,
 	}
+}
+
+// layoutToMap converts a LayoutConfig to a map for template access.
+func layoutToMap(l *models.LayoutConfig) map[string]interface{} {
+	if l == nil {
+		return nil
+	}
+
+	// Convert docs layout config
+	docsMap := map[string]interface{}{
+		"sidebar_position":  l.Docs.SidebarPosition,
+		"sidebar_width":     l.Docs.SidebarWidth,
+		"toc_position":      l.Docs.TocPosition,
+		"toc_width":         l.Docs.TocWidth,
+		"content_max_width": l.Docs.ContentMaxWidth,
+		"header_style":      l.Docs.HeaderStyle,
+		"footer_style":      l.Docs.FooterStyle,
+	}
+	if l.Docs.SidebarCollapsible != nil {
+		docsMap["sidebar_collapsible"] = *l.Docs.SidebarCollapsible
+	}
+	if l.Docs.SidebarDefaultOpen != nil {
+		docsMap["sidebar_default_open"] = *l.Docs.SidebarDefaultOpen
+	}
+	if l.Docs.TocCollapsible != nil {
+		docsMap["toc_collapsible"] = *l.Docs.TocCollapsible
+	}
+	if l.Docs.TocDefaultOpen != nil {
+		docsMap["toc_default_open"] = *l.Docs.TocDefaultOpen
+	}
+
+	// Convert blog layout config
+	blogMap := map[string]interface{}{
+		"content_max_width": l.Blog.ContentMaxWidth,
+		"toc_position":      l.Blog.TocPosition,
+		"toc_width":         l.Blog.TocWidth,
+		"header_style":      l.Blog.HeaderStyle,
+		"footer_style":      l.Blog.FooterStyle,
+	}
+	if l.Blog.ShowToc != nil {
+		blogMap["show_toc"] = *l.Blog.ShowToc
+	}
+	if l.Blog.ShowAuthor != nil {
+		blogMap["show_author"] = *l.Blog.ShowAuthor
+	}
+	if l.Blog.ShowDate != nil {
+		blogMap["show_date"] = *l.Blog.ShowDate
+	}
+	if l.Blog.ShowTags != nil {
+		blogMap["show_tags"] = *l.Blog.ShowTags
+	}
+	if l.Blog.ShowReadingTime != nil {
+		blogMap["show_reading_time"] = *l.Blog.ShowReadingTime
+	}
+	if l.Blog.ShowPrevNext != nil {
+		blogMap["show_prev_next"] = *l.Blog.ShowPrevNext
+	}
+
+	// Convert landing layout config
+	landingMap := map[string]interface{}{
+		"content_max_width": l.Landing.ContentMaxWidth,
+		"header_style":      l.Landing.HeaderStyle,
+		"footer_style":      l.Landing.FooterStyle,
+	}
+	if l.Landing.HeaderSticky != nil {
+		landingMap["header_sticky"] = *l.Landing.HeaderSticky
+	}
+	if l.Landing.HeroEnabled != nil {
+		landingMap["hero_enabled"] = *l.Landing.HeroEnabled
+	}
+
+	// Convert bare layout config
+	bareMap := map[string]interface{}{
+		"content_max_width": l.Bare.ContentMaxWidth,
+	}
+
+	// Convert defaults
+	defaultsMap := map[string]interface{}{
+		"content_max_width": l.Defaults.ContentMaxWidth,
+	}
+	if l.Defaults.HeaderSticky != nil {
+		defaultsMap["header_sticky"] = *l.Defaults.HeaderSticky
+	}
+	if l.Defaults.FooterSticky != nil {
+		defaultsMap["footer_sticky"] = *l.Defaults.FooterSticky
+	}
+
+	return map[string]interface{}{
+		"name":     l.Name,
+		"paths":    l.Paths,
+		"feeds":    l.Feeds,
+		"docs":     docsMap,
+		"blog":     blogMap,
+		"landing":  landingMap,
+		"bare":     bareMap,
+		"defaults": defaultsMap,
+	}
+}
+
+// sidebarToMap converts a SidebarConfig to a map for template access.
+func sidebarToMap(s *models.SidebarConfig) map[string]interface{} {
+	if s == nil {
+		return nil
+	}
+
+	// Convert nav items
+	navItems := sidebarItemsToMaps(s.Nav)
+
+	result := map[string]interface{}{
+		"position": s.Position,
+		"width":    s.Width,
+		"title":    s.Title,
+		"nav":      navItems,
+	}
+
+	// Handle pointer fields with defaults
+	if s.Enabled != nil {
+		result["enabled"] = *s.Enabled
+	} else {
+		result["enabled"] = true // default for docs layout
+	}
+	if s.Collapsible != nil {
+		result["collapsible"] = *s.Collapsible
+	}
+	if s.DefaultOpen != nil {
+		result["default_open"] = *s.DefaultOpen
+	}
+
+	return result
+}
+
+// tocToMap converts a TocConfig to a map for template access.
+func tocToMap(t *models.TocConfig) map[string]interface{} {
+	if t == nil {
+		return nil
+	}
+
+	result := map[string]interface{}{
+		"position":  t.Position,
+		"width":     t.Width,
+		"min_depth": t.MinDepth,
+		"max_depth": t.MaxDepth,
+		"title":     t.Title,
+	}
+
+	// Handle pointer fields with defaults
+	if t.Enabled != nil {
+		result["enabled"] = *t.Enabled
+	} else {
+		result["enabled"] = true // default for docs layout
+	}
+	if t.Collapsible != nil {
+		result["collapsible"] = *t.Collapsible
+	}
+	if t.DefaultOpen != nil {
+		result["default_open"] = *t.DefaultOpen
+	}
+
+	return result
+}
+
+// headerToMap converts a HeaderLayoutConfig to a map for template access.
+func headerToMap(h *models.HeaderLayoutConfig) map[string]interface{} {
+	if h == nil {
+		return nil
+	}
+
+	result := map[string]interface{}{
+		"style": h.Style,
+	}
+
+	// Handle pointer fields with defaults
+	if h.Sticky != nil {
+		result["sticky"] = *h.Sticky
+	} else {
+		result["sticky"] = true // default
+	}
+	if h.ShowLogo != nil {
+		result["show_logo"] = *h.ShowLogo
+	} else {
+		result["show_logo"] = true // default
+	}
+	if h.ShowTitle != nil {
+		result["show_title"] = *h.ShowTitle
+	} else {
+		result["show_title"] = true // default
+	}
+	if h.ShowNav != nil {
+		result["show_nav"] = *h.ShowNav
+	} else {
+		result["show_nav"] = true // default
+	}
+	if h.ShowSearch != nil {
+		result["show_search"] = *h.ShowSearch
+	} else {
+		result["show_search"] = true // default
+	}
+	if h.ShowThemeToggle != nil {
+		result["show_theme_toggle"] = *h.ShowThemeToggle
+	} else {
+		result["show_theme_toggle"] = true // default
+	}
+
+	return result
+}
+
+// tocEntriesToMaps converts TOC entries (from the toc plugin) to template-friendly maps.
+// It uses reflection to avoid import cycles with the plugins package.
+func tocEntriesToMaps(entries interface{}) []map[string]interface{} {
+	if entries == nil {
+		return nil
+	}
+
+	// Use reflection to handle the []*plugins.TocEntry type
+	v := reflect.ValueOf(entries)
+	if v.Kind() != reflect.Slice {
+		return nil
+	}
+
+	result := make([]map[string]interface{}, 0, v.Len())
+	for i := 0; i < v.Len(); i++ {
+		entry := v.Index(i)
+		if entry.Kind() == reflect.Ptr {
+			entry = entry.Elem()
+		}
+		if entry.Kind() != reflect.Struct {
+			continue
+		}
+
+		// Extract fields by name
+		levelField := entry.FieldByName("Level")
+		textField := entry.FieldByName("Text")
+		idField := entry.FieldByName("ID")
+		childrenField := entry.FieldByName("Children")
+
+		entryMap := map[string]interface{}{
+			"level": 0,
+			"text":  "",
+			"id":    "",
+		}
+
+		if levelField.IsValid() {
+			entryMap["level"] = int(levelField.Int())
+		}
+		if textField.IsValid() {
+			entryMap["text"] = textField.String()
+		}
+		if idField.IsValid() {
+			entryMap["id"] = idField.String()
+		}
+
+		// Recursively convert children
+		if childrenField.IsValid() && !childrenField.IsNil() {
+			children := tocEntriesToMaps(childrenField.Interface())
+			if len(children) > 0 {
+				entryMap["children"] = children
+			}
+		}
+
+		result = append(result, entryMap)
+	}
+
+	return result
 }
 
 // structuredDataToMap converts a StructuredData to a map for template access.

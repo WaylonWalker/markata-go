@@ -81,6 +81,18 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Components - merge
 	result.Components = mergeComponentsConfig(base.Components, override.Components)
 
+	// Layout - merge
+	result.Layout = mergeLayoutConfig(base.Layout, override.Layout)
+
+	// Sidebar - merge
+	result.Sidebar = mergeSidebarConfig(base.Sidebar, override.Sidebar)
+
+	// Toc - merge
+	result.Toc = mergeTocConfig(base.Toc, override.Toc)
+
+	// Header - merge
+	result.Header = mergeHeaderLayoutConfig(base.Header, override.Header)
+
 	return result
 }
 
@@ -341,6 +353,263 @@ func mergeComponentsConfig(base, override models.ComponentsConfig) models.Compon
 	}
 	if override.DocSidebar.MaxDepth != 0 {
 		result.DocSidebar.MaxDepth = override.DocSidebar.MaxDepth
+	}
+
+	return result
+}
+
+// mergeLayoutConfig merges LayoutConfig values.
+func mergeLayoutConfig(base, override models.LayoutConfig) models.LayoutConfig {
+	result := base
+
+	if override.Name != "" {
+		result.Name = override.Name
+	}
+	if len(override.Paths) > 0 {
+		if result.Paths == nil {
+			result.Paths = make(map[string]string)
+		}
+		for k, v := range override.Paths {
+			result.Paths[k] = v
+		}
+	}
+	if len(override.Feeds) > 0 {
+		if result.Feeds == nil {
+			result.Feeds = make(map[string]string)
+		}
+		for k, v := range override.Feeds {
+			result.Feeds[k] = v
+		}
+	}
+
+	// Merge nested layout configs
+	result.Docs = mergeDocsLayoutConfig(base.Docs, override.Docs)
+	result.Blog = mergeBlogLayoutConfig(base.Blog, override.Blog)
+	result.Landing = mergeLandingLayoutConfig(base.Landing, override.Landing)
+	result.Bare = mergeBareLayoutConfig(base.Bare, override.Bare)
+	result.Defaults = mergeLayoutDefaults(base.Defaults, override.Defaults)
+
+	return result
+}
+
+// mergeDocsLayoutConfig merges DocsLayoutConfig values.
+func mergeDocsLayoutConfig(base, override models.DocsLayoutConfig) models.DocsLayoutConfig {
+	result := base
+
+	if override.SidebarPosition != "" {
+		result.SidebarPosition = override.SidebarPosition
+	}
+	if override.SidebarWidth != "" {
+		result.SidebarWidth = override.SidebarWidth
+	}
+	if override.SidebarCollapsible != nil {
+		result.SidebarCollapsible = override.SidebarCollapsible
+	}
+	if override.SidebarDefaultOpen != nil {
+		result.SidebarDefaultOpen = override.SidebarDefaultOpen
+	}
+	if override.TocPosition != "" {
+		result.TocPosition = override.TocPosition
+	}
+	if override.TocWidth != "" {
+		result.TocWidth = override.TocWidth
+	}
+	if override.TocCollapsible != nil {
+		result.TocCollapsible = override.TocCollapsible
+	}
+	if override.TocDefaultOpen != nil {
+		result.TocDefaultOpen = override.TocDefaultOpen
+	}
+	if override.ContentMaxWidth != "" {
+		result.ContentMaxWidth = override.ContentMaxWidth
+	}
+	if override.HeaderStyle != "" {
+		result.HeaderStyle = override.HeaderStyle
+	}
+	if override.FooterStyle != "" {
+		result.FooterStyle = override.FooterStyle
+	}
+
+	return result
+}
+
+// mergeBlogLayoutConfig merges BlogLayoutConfig values.
+func mergeBlogLayoutConfig(base, override models.BlogLayoutConfig) models.BlogLayoutConfig {
+	result := base
+
+	if override.ContentMaxWidth != "" {
+		result.ContentMaxWidth = override.ContentMaxWidth
+	}
+	if override.ShowToc != nil {
+		result.ShowToc = override.ShowToc
+	}
+	if override.TocPosition != "" {
+		result.TocPosition = override.TocPosition
+	}
+	if override.TocWidth != "" {
+		result.TocWidth = override.TocWidth
+	}
+	if override.HeaderStyle != "" {
+		result.HeaderStyle = override.HeaderStyle
+	}
+	if override.FooterStyle != "" {
+		result.FooterStyle = override.FooterStyle
+	}
+	if override.ShowAuthor != nil {
+		result.ShowAuthor = override.ShowAuthor
+	}
+	if override.ShowDate != nil {
+		result.ShowDate = override.ShowDate
+	}
+	if override.ShowTags != nil {
+		result.ShowTags = override.ShowTags
+	}
+	if override.ShowReadingTime != nil {
+		result.ShowReadingTime = override.ShowReadingTime
+	}
+	if override.ShowPrevNext != nil {
+		result.ShowPrevNext = override.ShowPrevNext
+	}
+
+	return result
+}
+
+// mergeLandingLayoutConfig merges LandingLayoutConfig values.
+func mergeLandingLayoutConfig(base, override models.LandingLayoutConfig) models.LandingLayoutConfig {
+	result := base
+
+	if override.ContentMaxWidth != "" {
+		result.ContentMaxWidth = override.ContentMaxWidth
+	}
+	if override.HeaderStyle != "" {
+		result.HeaderStyle = override.HeaderStyle
+	}
+	if override.HeaderSticky != nil {
+		result.HeaderSticky = override.HeaderSticky
+	}
+	if override.FooterStyle != "" {
+		result.FooterStyle = override.FooterStyle
+	}
+	if override.HeroEnabled != nil {
+		result.HeroEnabled = override.HeroEnabled
+	}
+
+	return result
+}
+
+// mergeBareLayoutConfig merges BareLayoutConfig values.
+func mergeBareLayoutConfig(base, override models.BareLayoutConfig) models.BareLayoutConfig {
+	result := base
+
+	if override.ContentMaxWidth != "" {
+		result.ContentMaxWidth = override.ContentMaxWidth
+	}
+
+	return result
+}
+
+// mergeLayoutDefaults merges LayoutDefaults values.
+func mergeLayoutDefaults(base, override models.LayoutDefaults) models.LayoutDefaults {
+	result := base
+
+	if override.ContentMaxWidth != "" {
+		result.ContentMaxWidth = override.ContentMaxWidth
+	}
+	if override.HeaderSticky != nil {
+		result.HeaderSticky = override.HeaderSticky
+	}
+	if override.FooterSticky != nil {
+		result.FooterSticky = override.FooterSticky
+	}
+
+	return result
+}
+
+// mergeSidebarConfig merges SidebarConfig values.
+func mergeSidebarConfig(base, override models.SidebarConfig) models.SidebarConfig {
+	result := base
+
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+	if override.Position != "" {
+		result.Position = override.Position
+	}
+	if override.Width != "" {
+		result.Width = override.Width
+	}
+	if override.Collapsible != nil {
+		result.Collapsible = override.Collapsible
+	}
+	if override.DefaultOpen != nil {
+		result.DefaultOpen = override.DefaultOpen
+	}
+	if len(override.Nav) > 0 {
+		result.Nav = override.Nav
+	}
+	if override.Title != "" {
+		result.Title = override.Title
+	}
+
+	return result
+}
+
+// mergeTocConfig merges TocConfig values.
+func mergeTocConfig(base, override models.TocConfig) models.TocConfig {
+	result := base
+
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+	if override.Position != "" {
+		result.Position = override.Position
+	}
+	if override.Width != "" {
+		result.Width = override.Width
+	}
+	if override.MinDepth != 0 {
+		result.MinDepth = override.MinDepth
+	}
+	if override.MaxDepth != 0 {
+		result.MaxDepth = override.MaxDepth
+	}
+	if override.Collapsible != nil {
+		result.Collapsible = override.Collapsible
+	}
+	if override.DefaultOpen != nil {
+		result.DefaultOpen = override.DefaultOpen
+	}
+	if override.Title != "" {
+		result.Title = override.Title
+	}
+
+	return result
+}
+
+// mergeHeaderLayoutConfig merges HeaderLayoutConfig values.
+func mergeHeaderLayoutConfig(base, override models.HeaderLayoutConfig) models.HeaderLayoutConfig {
+	result := base
+
+	if override.Style != "" {
+		result.Style = override.Style
+	}
+	if override.Sticky != nil {
+		result.Sticky = override.Sticky
+	}
+	if override.ShowLogo != nil {
+		result.ShowLogo = override.ShowLogo
+	}
+	if override.ShowTitle != nil {
+		result.ShowTitle = override.ShowTitle
+	}
+	if override.ShowNav != nil {
+		result.ShowNav = override.ShowNav
+	}
+	if override.ShowSearch != nil {
+		result.ShowSearch = override.ShowSearch
+	}
+	if override.ShowThemeToggle != nil {
+		result.ShowThemeToggle = override.ShowThemeToggle
 	}
 
 	return result
