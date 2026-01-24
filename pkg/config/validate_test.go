@@ -519,3 +519,106 @@ func TestValidateConfig_MultipleFeedErrors(t *testing.T) {
 		t.Errorf("Expected at least 1 warning, got %d", len(warnings))
 	}
 }
+
+func TestValidateConfigWithPositions(t *testing.T) {
+	tomlContent := `[markata-go]
+title = "My Site"
+url = "example.com"
+concurrency = -1
+
+[markata-go.glob]
+patterns = []
+`
+	tracker := NewPositionTracker([]byte(tomlContent), "markata-go.toml")
+
+	config := &models.Config{
+		URL:         "example.com",
+		Concurrency: -1,
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{},
+		},
+	}
+
+	configErrors := ValidateConfigWithPositions(config, tracker)
+
+	if !configErrors.HasErrors() {
+		t.Error("Expected errors for invalid config")
+	}
+
+	if !configErrors.HasWarnings() {
+		t.Error("Expected warnings for empty patterns")
+	}
+
+	// Check that we have specific errors
+	foundURL := false
+	foundConcurrency := false
+	foundPatterns := false
+
+	for _, err := range configErrors.Errors {
+		switch err.Field {
+		case "url":
+			foundURL = true
+			if err.Line == 0 {
+				t.Error("URL error should have line number")
+			}
+			if err.Fix == "" {
+				t.Error("URL error should have fix suggestion")
+			}
+		case "concurrency":
+			foundConcurrency = true
+			if err.Line == 0 {
+				t.Error("Concurrency error should have line number")
+			}
+		case "glob.patterns":
+			foundPatterns = true
+			if !err.IsWarn {
+				t.Error("Empty patterns should be a warning")
+			}
+		}
+	}
+
+	if !foundURL {
+		t.Error("Expected URL validation error")
+	}
+	if !foundConcurrency {
+		t.Error("Expected concurrency validation error")
+	}
+	if !foundPatterns {
+		t.Error("Expected patterns validation warning")
+	}
+}
+
+func TestValidateConfigWithPositions_NilTracker(t *testing.T) {
+	config := &models.Config{
+		URL: "example.com",
+	}
+
+	configErrors := ValidateConfigWithPositions(config, nil)
+
+	if !configErrors.HasErrors() {
+		t.Error("Expected errors even without tracker")
+	}
+
+	// Errors should still be present, just without position info
+	for _, err := range configErrors.Errors {
+		if err.Field == "url" {
+			if err.Line != 0 {
+				t.Error("Without tracker, Line should be 0")
+			}
+			return
+		}
+	}
+	t.Error("URL error not found")
+}
+
+func TestValidateConfigWithPositions_NilConfig(t *testing.T) {
+	configErrors := ValidateConfigWithPositions(nil, nil)
+
+	if len(configErrors.Errors) != 1 {
+		t.Errorf("Expected 1 error for nil config, got %d", len(configErrors.Errors))
+	}
+
+	if configErrors.Errors[0].Field != "config" {
+		t.Errorf("Expected 'config' field, got %q", configErrors.Errors[0].Field)
+	}
+}
