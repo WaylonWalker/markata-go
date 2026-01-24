@@ -144,18 +144,19 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 
 // createPostsTableWithTheme creates and configures the posts table with theme colors.
 func createPostsTableWithTheme(width int, theme *Theme) table.Model {
-	// Column widths: TITLE(40) + DATE(12) + WORDS(8) + TAGS(20) + PATH(remaining)
+	// Column widths: TITLE(35) + DATE(12) + WORDS(8) + READ(8) + TAGS(18) + PATH(remaining)
 	// Account for padding/borders (approximately 10 chars)
-	pathWidth := width - 40 - 12 - 8 - 20 - 10
+	pathWidth := width - 35 - 12 - 8 - 8 - 18 - 10
 	if pathWidth < 10 {
 		pathWidth = 10
 	}
 
 	columns := []table.Column{
-		{Title: "TITLE", Width: 40},
+		{Title: "TITLE", Width: 35},
 		{Title: "DATE", Width: 12},
 		{Title: "WORDS", Width: 8},
-		{Title: "TAGS", Width: 20},
+		{Title: "READ", Width: 8},
+		{Title: "TAGS", Width: 18},
 		{Title: "PATH", Width: pathWidth},
 	}
 
@@ -246,13 +247,13 @@ func (m Model) postsToRows() []table.Row {
 
 // postToRow converts a single post to a table row
 func postToRow(p *models.Post) table.Row {
-	// Title (truncate to 38 chars to leave room for selection indicator)
+	// Title (truncate to 33 chars to leave room for selection indicator)
 	title := "(untitled)"
 	if p.Title != nil && *p.Title != "" {
 		title = *p.Title
 	}
-	if len(title) > 38 {
-		title = title[:35] + "..."
+	if len(title) > 33 {
+		title = title[:30] + "..."
 	}
 
 	// Date (YYYY-MM-DD format)
@@ -261,22 +262,60 @@ func postToRow(p *models.Post) table.Row {
 		date = p.Date.Format("2006-01-02")
 	}
 
-	// Word count (from Extra field)
+	// Word count (from Extra field, populated by StatsPlugin)
 	words := ""
 	if wc, ok := p.Extra["word_count"].(int); ok {
-		words = fmt.Sprintf("%d", wc)
+		words = formatWordCount(wc)
 	}
 
-	// Tags (truncate to 18 chars)
+	// Reading time (from Extra field, populated by StatsPlugin)
+	readTime := ""
+	if rt, ok := p.Extra["reading_time"].(int); ok {
+		readTime = formatReadingTime(rt)
+	}
+
+	// Tags (truncate to 16 chars)
 	tags := strings.Join(p.Tags, ", ")
-	if len(tags) > 18 {
-		tags = tags[:15] + "..."
+	if len(tags) > 16 {
+		tags = tags[:13] + "..."
 	}
 
 	// Path (will be truncated by table column width)
 	path := p.Path
 
-	return table.Row{title, date, words, tags, path}
+	return table.Row{title, date, words, readTime, tags, path}
+}
+
+// formatWordCount formats a word count in a human-readable format (e.g., "1.5k")
+func formatWordCount(count int) string {
+	if count < 1000 {
+		return fmt.Sprintf("%d", count)
+	}
+	if count < 10000 {
+		// Show one decimal place for 1k-9.9k
+		return fmt.Sprintf("%.1fk", float64(count)/1000)
+	}
+	// Round to nearest k for 10k+
+	return fmt.Sprintf("%dk", count/1000)
+}
+
+// formatReadingTime formats reading time in a compact format (e.g., "2 min")
+func formatReadingTime(minutes int) string {
+	if minutes == 0 {
+		return "<1 min"
+	}
+	if minutes == 1 {
+		return "1 min"
+	}
+	if minutes < 60 {
+		return fmt.Sprintf("%d min", minutes)
+	}
+	hours := minutes / 60
+	mins := minutes % 60
+	if mins == 0 {
+		return fmt.Sprintf("%dh", hours)
+	}
+	return fmt.Sprintf("%dh%dm", hours, mins)
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -749,20 +788,24 @@ func (m Model) renderFeeds() string {
 	sb.WriteString(fmt.Sprintf("Feeds (%d)\n\n", len(m.feeds)))
 
 	// Calculate column widths based on terminal width
-	// NAME(20) + POSTS(8) + FILTER(30) + OUTPUT(remaining)
-	nameWidth := 20
-	postsWidth := 8
-	filterWidth := 30
-	outputWidth := m.width - nameWidth - postsWidth - filterWidth - 10
-	if outputWidth < 20 {
-		outputWidth = 20
+	// NAME(18) + POSTS(7) + WORDS(9) + TOT TIME(10) + AVG TIME(10) + OUTPUT(remaining)
+	nameWidth := 18
+	postsWidth := 7
+	wordsWidth := 9
+	totTimeWidth := 10
+	avgTimeWidth := 10
+	outputWidth := m.width - nameWidth - postsWidth - wordsWidth - totTimeWidth - avgTimeWidth - 14
+	if outputWidth < 15 {
+		outputWidth = 15
 	}
 
 	// Header
-	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s",
+	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s",
 		nameWidth, "NAME",
 		postsWidth, "POSTS",
-		filterWidth, "FILTER",
+		wordsWidth, "WORDS",
+		totTimeWidth, "TOT TIME",
+		avgTimeWidth, "AVG TIME",
 		outputWidth, "OUTPUT")
 	sb.WriteString(m.theme.SubtleStyle.Render(header))
 	sb.WriteString("\n")
@@ -794,15 +837,17 @@ func (m Model) renderFeeds() string {
 		// Posts count
 		postsCount := fmt.Sprintf("%d", len(f.Posts))
 
-		// Filter - show "(none)" if empty
-		filter := "(none)"
-		if f.Title != "" {
-			// Use Title as a proxy for filter info if available
-			filter = f.Title
+		// Calculate feed statistics from posts
+		totalWords, totalReadingTime := calculateFeedStats(f.Posts)
+		avgReadingTime := 0
+		if len(f.Posts) > 0 {
+			avgReadingTime = totalReadingTime / len(f.Posts)
 		}
-		if len(filter) > filterWidth {
-			filter = filter[:filterWidth-3] + "..."
-		}
+
+		// Format statistics
+		wordsStr := formatWordCount(totalWords)
+		totTimeStr := formatReadingTime(totalReadingTime)
+		avgTimeStr := formatReadingTime(avgReadingTime)
 
 		// Output path
 		output := f.Path
@@ -816,11 +861,13 @@ func (m Model) renderFeeds() string {
 			prefix = "> "
 		}
 
-		line := fmt.Sprintf("%s%-*s  %-*s  %-*s  %-*s",
+		line := fmt.Sprintf("%s%-*s  %-*s  %-*s  %-*s  %-*s  %-*s",
 			prefix,
 			nameWidth, name,
 			postsWidth, postsCount,
-			filterWidth, filter,
+			wordsWidth, wordsStr,
+			totTimeWidth, totTimeStr,
+			avgTimeWidth, avgTimeStr,
 			outputWidth, output)
 
 		if i == m.feedCursor {
@@ -831,6 +878,19 @@ func (m Model) renderFeeds() string {
 	}
 
 	return sb.String()
+}
+
+// calculateFeedStats calculates total words and reading time for a feed's posts
+func calculateFeedStats(posts []*models.Post) (totalWords, totalReadingTime int) {
+	for _, post := range posts {
+		if wc, ok := post.Extra["word_count"].(int); ok {
+			totalWords += wc
+		}
+		if rt, ok := post.Extra["reading_time"].(int); ok {
+			totalReadingTime += rt
+		}
+	}
+	return totalWords, totalReadingTime
 }
 
 func (m Model) renderHelp() string {
@@ -939,9 +999,24 @@ func (m Model) renderPostDetail() string {
 	}
 	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Tags:"), tagsStr))
 
-	// Word count
-	wordCount := countWords(p.Content)
+	// Word count (from stats plugin or fallback to counting)
+	wordCount := 0
+	if wc, ok := p.Extra["word_count"].(int); ok {
+		wordCount = wc
+	} else {
+		wordCount = countWords(p.Content)
+	}
 	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Words:"), formatNumber(wordCount)))
+
+	// Reading time (from stats plugin)
+	if rt, ok := p.Extra["reading_time"].(int); ok {
+		metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Read Time:"), formatReadingTime(rt)))
+	}
+
+	// Character count (from stats plugin)
+	if cc, ok := p.Extra["char_count"].(int); ok {
+		metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Chars:"), formatNumber(cc)))
+	}
 
 	// Description
 	if p.Description != nil && *p.Description != "" {
