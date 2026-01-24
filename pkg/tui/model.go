@@ -39,6 +39,12 @@ const (
 	ModeCommand Mode = "command"
 )
 
+// FilterContext tracks the active filter for drill-down navigation
+type FilterContext struct {
+	Type string // "tag" or "feed"
+	Name string // The tag name or feed name
+}
+
 // Model is the main Bubble Tea model
 type Model struct {
 	app          *services.App
@@ -67,6 +73,9 @@ type Model struct {
 
 	// Theme styling
 	theme *Theme
+
+	// Drill-down filter state
+	activeFilter *FilterContext // Active tag/feed filter for drill-down navigation
 }
 
 // Messages
@@ -342,6 +351,13 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Normal mode key handling
 	switch {
 	case key.Matches(msg, keyMap.Quit):
+		// If there's an active filter in posts view, clear it first instead of quitting
+		if m.view == ViewPosts && m.activeFilter != nil {
+			m.activeFilter = nil
+			m.cursor = 0
+			m.postsTable.SetCursor(0)
+			return m, m.loadPosts()
+		}
 		return m, tea.Quit
 
 	case key.Matches(msg, keyMap.Up), key.Matches(msg, keyMap.Down):
@@ -364,6 +380,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.view = ViewPosts
 		m.cursor = 0
 		m.postsTable.SetCursor(0)
+		m.activeFilter = nil // Clear any active filter when explicitly navigating to posts
 		return m, m.loadPosts()
 
 	case key.Matches(msg, keyMap.Tags):
@@ -499,6 +516,7 @@ func (m Model) executeCommand(cmd string) (tea.Model, tea.Cmd) {
 		m.view = ViewPosts
 		m.cursor = 0
 		m.postsTable.SetCursor(0)
+		m.activeFilter = nil // Clear any active filter when explicitly navigating to posts
 		return m, m.loadPosts()
 	case "tags", "t":
 		m.view = ViewTags
@@ -527,8 +545,32 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 	case ViewHelp:
 		// Return to previous view
 		m.view = ViewPosts
-	case ViewTags, ViewFeeds:
-		// TODO: implement detail views for tags and feeds
+	case ViewTags:
+		// Drill down into selected tag - show posts with this tag
+		if len(m.tags) > 0 && m.cursor < len(m.tags) {
+			selectedTag := m.tags[m.cursor]
+			m.activeFilter = &FilterContext{
+				Type: "tag",
+				Name: selectedTag.Name,
+			}
+			m.view = ViewPosts
+			m.cursor = 0
+			m.postsTable.SetCursor(0)
+			return m, m.loadPostsForTag(selectedTag.Name)
+		}
+	case ViewFeeds:
+		// Drill down into selected feed - show posts in this feed
+		if len(m.feeds) > 0 && m.feedCursor < len(m.feeds) {
+			selectedFeed := m.feeds[m.feedCursor]
+			m.activeFilter = &FilterContext{
+				Type: "feed",
+				Name: selectedFeed.Name,
+			}
+			m.view = ViewPosts
+			m.cursor = 0
+			m.postsTable.SetCursor(0)
+			return m, m.loadPostsForFeed(selectedFeed.Name)
+		}
 	}
 	return m, nil
 }
@@ -543,8 +585,16 @@ func (m Model) handleEscape() (tea.Model, tea.Cmd) {
 		m.selectedPost = nil
 	case ViewHelp:
 		m.view = ViewPosts
-	case ViewPosts, ViewTags, ViewFeeds:
-		// Escape does nothing in list views
+	case ViewPosts:
+		// If there's an active filter, clear it and reload all posts
+		if m.activeFilter != nil {
+			m.activeFilter = nil
+			m.cursor = 0
+			m.postsTable.SetCursor(0)
+			return m, m.loadPosts()
+		}
+	case ViewTags, ViewFeeds:
+		// Escape does nothing in tag/feed list views
 	}
 	return m, nil
 }
@@ -634,6 +684,36 @@ func (m Model) loadFeeds() tea.Cmd {
 	}
 }
 
+// loadPostsForTag loads posts filtered by a specific tag
+func (m Model) loadPostsForTag(tag string) tea.Cmd {
+	return func() tea.Msg {
+		opts := services.ListOptions{
+			SortBy:    m.sortBy,
+			SortOrder: m.sortOrder,
+		}
+		posts, err := m.app.Tags.GetPosts(context.Background(), tag, opts)
+		if err != nil {
+			return errMsg{err}
+		}
+		return postsLoadedMsg{posts}
+	}
+}
+
+// loadPostsForFeed loads posts filtered by a specific feed
+func (m Model) loadPostsForFeed(feedName string) tea.Cmd {
+	return func() tea.Msg {
+		opts := services.ListOptions{
+			SortBy:    m.sortBy,
+			SortOrder: m.sortOrder,
+		}
+		posts, err := m.app.Feeds.GetPosts(context.Background(), feedName, opts)
+		if err != nil {
+			return errMsg{err}
+		}
+		return postsLoadedMsg{posts}
+	}
+}
+
 // getSelectedPost returns the currently selected post, or nil if none selected
 func (m Model) getSelectedPost() *models.Post {
 	if m.view != ViewPosts || len(m.posts) == 0 {
@@ -709,6 +789,12 @@ func (m Model) renderLayout(content string) string {
 	header := m.theme.HeaderStyle.Render("markata-go")
 	header += " " + m.theme.SubtleStyle.Render(fmt.Sprintf("[%s]", m.view))
 
+	// Show active filter in header if present
+	if m.activeFilter != nil && m.view == ViewPosts {
+		filterLabel := fmt.Sprintf(" → %s: %s", m.activeFilter.Type, m.activeFilter.Name)
+		header += " " + activeFilterStyle.Render(filterLabel)
+	}
+
 	// Status bar
 	var statusBar string
 	switch m.mode {
@@ -723,7 +809,12 @@ func (m Model) renderLayout(content string) string {
 			sortArrow = "↑"
 		}
 		sortIndicator := fmt.Sprintf("[%s%s]", sortArrow, m.sortBy)
-		statusBar = m.theme.SubtleStyle.Render(fmt.Sprintf("%s  j/k:move  s:sort  e:edit  f:feeds  /:filter  ::cmd  ?:help  q:quit", sortIndicator))
+		// Show Esc hint when filter is active
+		if m.activeFilter != nil && m.view == ViewPosts {
+			statusBar = m.theme.SubtleStyle.Render(fmt.Sprintf("%s  j/k:move  s:sort  e:edit  Esc:clear filter  ?:help  q:quit", sortIndicator))
+		} else {
+			statusBar = m.theme.SubtleStyle.Render(fmt.Sprintf("%s  j/k:move  s:sort  e:edit  f:feeds  /:filter  ::cmd  ?:help  q:quit", sortIndicator))
+		}
 	}
 
 	return fmt.Sprintf("%s\n\n%s\n\n%s", header, content, statusBar)
@@ -900,12 +991,17 @@ Navigation:
   j / ↓      Move down
   k / ↑      Move up
   Enter      Select / view details
-  Esc        Cancel / go back
+  Esc        Cancel / go back / clear filter
 
 Views:
   p          Posts view
   t          Tags view
   f          Feeds view
+
+Drill-Down Navigation:
+  Enter      In tags view: show posts with selected tag
+             In feeds view: show posts in selected feed
+  Esc        Clear active filter, return to all posts
 
 Actions:
   e          Edit selected post in $EDITOR
@@ -1213,3 +1309,12 @@ func (m Model) renderSortMenu() string {
 
 	return m.theme.SortMenuStyle.Render(sb.String())
 }
+
+// Styles
+var (
+	// Active filter style - shows current tag/feed filter
+	activeFilterStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57"))
+)

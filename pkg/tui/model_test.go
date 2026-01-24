@@ -6,7 +6,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/services"
 )
 
 func TestFormatNumber(t *testing.T) {
@@ -240,4 +242,288 @@ func containsHelper(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// Tests for drill-down navigation (Issue #250)
+
+func TestHandleEnter_TagsView_DrillDown(t *testing.T) {
+	// Create a model with tags
+	m := Model{
+		view:   ViewTags,
+		cursor: 0,
+		tags: []services.TagInfo{
+			{Name: "go", Count: 5, Slug: "go"},
+			{Name: "python", Count: 3, Slug: "python"},
+		},
+	}
+
+	// Simulate pressing Enter on the first tag
+	newModel, cmd := m.handleEnter()
+	newM, ok := newModel.(Model)
+	if !ok {
+		t.Fatal("expected Model type")
+	}
+
+	// View should change to posts
+	if newM.view != ViewPosts {
+		t.Errorf("view = %q, want %q", newM.view, ViewPosts)
+	}
+
+	// Active filter should be set
+	if newM.activeFilter == nil {
+		t.Fatal("activeFilter should not be nil")
+	}
+	if newM.activeFilter.Type != "tag" {
+		t.Errorf("activeFilter.Type = %q, want %q", newM.activeFilter.Type, "tag")
+	}
+	if newM.activeFilter.Name != "go" {
+		t.Errorf("activeFilter.Name = %q, want %q", newM.activeFilter.Name, "go")
+	}
+
+	// Cursor should be reset
+	if newM.cursor != 0 {
+		t.Errorf("cursor = %d, want 0", newM.cursor)
+	}
+
+	// A command should be returned to load posts
+	if cmd == nil {
+		t.Error("expected command to load posts, got nil")
+	}
+}
+
+func TestHandleEnter_FeedsView_DrillDown(t *testing.T) {
+	// Create a model with feeds
+	m := Model{
+		view:       ViewFeeds,
+		feedCursor: 1,
+		feeds: []*lifecycle.Feed{
+			{Name: "main", Path: "feed/main.xml"},
+			{Name: "blog", Path: "feed/blog.xml"},
+		},
+	}
+
+	// Simulate pressing Enter on the second feed
+	newModel, cmd := m.handleEnter()
+	newM, ok := newModel.(Model)
+	if !ok {
+		t.Fatal("expected Model type")
+	}
+
+	// View should change to posts
+	if newM.view != ViewPosts {
+		t.Errorf("view = %q, want %q", newM.view, ViewPosts)
+	}
+
+	// Active filter should be set
+	if newM.activeFilter == nil {
+		t.Fatal("activeFilter should not be nil")
+	}
+	if newM.activeFilter.Type != "feed" {
+		t.Errorf("activeFilter.Type = %q, want %q", newM.activeFilter.Type, "feed")
+	}
+	if newM.activeFilter.Name != "blog" {
+		t.Errorf("activeFilter.Name = %q, want %q", newM.activeFilter.Name, "blog")
+	}
+
+	// Cursor should be reset
+	if newM.cursor != 0 {
+		t.Errorf("cursor = %d, want 0", newM.cursor)
+	}
+
+	// A command should be returned to load posts
+	if cmd == nil {
+		t.Error("expected command to load posts, got nil")
+	}
+}
+
+func TestHandleEscape_ClearActiveFilter(t *testing.T) {
+	// Create a model with an active filter
+	m := Model{
+		view: ViewPosts,
+		activeFilter: &FilterContext{
+			Type: "tag",
+			Name: "go",
+		},
+		cursor: 5,
+	}
+
+	// Simulate pressing Escape
+	newModel, cmd := m.handleEscape()
+	newM, ok := newModel.(Model)
+	if !ok {
+		t.Fatal("expected Model type")
+	}
+
+	// Active filter should be cleared
+	if newM.activeFilter != nil {
+		t.Error("activeFilter should be nil after escape")
+	}
+
+	// Cursor should be reset
+	if newM.cursor != 0 {
+		t.Errorf("cursor = %d, want 0", newM.cursor)
+	}
+
+	// A command should be returned to reload posts
+	if cmd == nil {
+		t.Error("expected command to load posts, got nil")
+	}
+}
+
+func TestHandleEscape_NoFilterNoOp(t *testing.T) {
+	// Create a model without an active filter in posts view
+	m := Model{
+		view:         ViewPosts,
+		activeFilter: nil,
+		cursor:       5,
+	}
+
+	// Simulate pressing Escape
+	newModel, cmd := m.handleEscape()
+	newM, ok := newModel.(Model)
+	if !ok {
+		t.Fatal("expected Model type")
+	}
+
+	// Cursor should not change
+	if newM.cursor != 5 {
+		t.Errorf("cursor = %d, want 5", newM.cursor)
+	}
+
+	// No command should be returned
+	if cmd != nil {
+		t.Error("expected nil command when no filter active")
+	}
+}
+
+func TestFilterContext(t *testing.T) {
+	tests := []struct {
+		name     string
+		filter   *FilterContext
+		wantType string
+		wantName string
+	}{
+		{
+			name:     "tag filter",
+			filter:   &FilterContext{Type: "tag", Name: "golang"},
+			wantType: "tag",
+			wantName: "golang",
+		},
+		{
+			name:     "feed filter",
+			filter:   &FilterContext{Type: "feed", Name: "main"},
+			wantType: "feed",
+			wantName: "main",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.filter.Type != tt.wantType {
+				t.Errorf("Type = %q, want %q", tt.filter.Type, tt.wantType)
+			}
+			if tt.filter.Name != tt.wantName {
+				t.Errorf("Name = %q, want %q", tt.filter.Name, tt.wantName)
+			}
+		})
+	}
+}
+
+func TestRenderLayout_WithActiveFilter(t *testing.T) {
+	m := Model{
+		view:  ViewPosts,
+		width: 80,
+		activeFilter: &FilterContext{
+			Type: "tag",
+			Name: "go",
+		},
+		sortBy:    "date",
+		sortOrder: services.SortDesc,
+	}
+
+	result := m.renderLayout("test content")
+
+	// Should show the filter indicator
+	if !contains(result, "tag: go") {
+		t.Error("expected filter indicator in header")
+	}
+
+	// Should show Esc hint for clearing filter
+	if !contains(result, "Esc:clear filter") {
+		t.Error("expected 'Esc:clear filter' in status bar")
+	}
+}
+
+func TestRenderLayout_WithoutActiveFilter(t *testing.T) {
+	m := Model{
+		view:         ViewPosts,
+		width:        80,
+		activeFilter: nil,
+		sortBy:       "date",
+		sortOrder:    services.SortDesc,
+	}
+
+	result := m.renderLayout("test content")
+
+	// Should not show filter indicator
+	if contains(result, "tag:") || contains(result, "feed:") {
+		t.Error("should not show filter indicator when no active filter")
+	}
+
+	// Should not show Esc hint for clearing filter
+	if contains(result, "Esc:clear filter") {
+		t.Error("should not show 'Esc:clear filter' when no active filter")
+	}
+}
+
+func TestHandleEnter_EmptyTags(t *testing.T) {
+	// Create a model with no tags
+	m := Model{
+		view:   ViewTags,
+		cursor: 0,
+		tags:   []services.TagInfo{},
+	}
+
+	// Simulate pressing Enter
+	newModel, cmd := m.handleEnter()
+	newM, ok := newModel.(Model)
+	if !ok {
+		t.Fatal("expected Model type")
+	}
+
+	// View should not change when no tags available
+	if newM.view != ViewTags {
+		t.Errorf("view should remain %q when no tags, got %q", ViewTags, newM.view)
+	}
+
+	// No command should be returned
+	if cmd != nil {
+		t.Error("expected nil command when no tags")
+	}
+}
+
+func TestHandleEnter_EmptyFeeds(t *testing.T) {
+	// Create a model with no feeds
+	m := Model{
+		view:       ViewFeeds,
+		feedCursor: 0,
+		feeds:      []*lifecycle.Feed{},
+	}
+
+	// Simulate pressing Enter
+	newModel, cmd := m.handleEnter()
+	newM, ok := newModel.(Model)
+	if !ok {
+		t.Fatal("expected Model type")
+	}
+
+	// View should not change when no feeds available
+	if newM.view != ViewFeeds {
+		t.Errorf("view should remain %q when no feeds, got %q", ViewFeeds, newM.view)
+	}
+
+	// No command should be returned
+	if cmd != nil {
+		t.Error("expected nil command when no feeds")
+	}
 }
