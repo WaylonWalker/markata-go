@@ -1,0 +1,62 @@
+package cmd
+
+import (
+	"fmt"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
+
+	"github.com/WaylonWalker/markata-go/pkg/services"
+	"github.com/WaylonWalker/markata-go/pkg/tui"
+)
+
+var tuiCmd = &cobra.Command{
+	Use:   "tui",
+	Short: "Launch interactive terminal UI",
+	Long: `Launch an interactive terminal user interface for browsing and managing
+your markata-go site content.
+
+The TUI provides:
+  - Post list with filtering and sorting
+  - Tag and feed browsing
+  - Quick editing via $EDITOR
+  - Build triggering
+
+Navigation:
+  j/k or ↑/↓  Move selection
+  Enter       View post details
+  /           Filter posts
+  :           Command mode
+  q           Quit`,
+	RunE: runTUI,
+}
+
+func init() {
+	rootCmd.AddCommand(tuiCmd)
+}
+
+func runTUI(cmd *cobra.Command, _ []string) error {
+	// Create the manager using the existing helper
+	manager, err := createManager(cfgFile)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Create services app
+	app := services.NewApp(manager)
+
+	// Load posts (run through Load stage)
+	if err := app.Build.LoadOnly(cmd.Context()); err != nil {
+		return fmt.Errorf("failed to load posts: %w", err)
+	}
+
+	// Create and run TUI
+	model := tui.NewModel(app)
+	p := tea.NewProgram(model, tea.WithAltScreen())
+
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("TUI error: %w", err)
+	}
+
+	return nil
+}
