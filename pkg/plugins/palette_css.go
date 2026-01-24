@@ -108,6 +108,7 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 
 // generateThemeCSSWithVariants generates CSS with both light and dark palette variants.
 // The CSS uses data-theme attribute for switching between variants.
+// It preserves all non-color variables (typography, spacing, layout, gradients) from the default theme.
 func (p *PaletteCSSPlugin) generateThemeCSSWithVariants(lightPalette, darkPalette *palettes.Palette, lightName, darkName string) string {
 	var buf bytes.Buffer
 
@@ -121,6 +122,10 @@ func (p *PaletteCSSPlugin) generateThemeCSSWithVariants(lightPalette, darkPalett
 	// CSS custom property values need the quotes as part of the value for JS to read
 	buf.WriteString(fmt.Sprintf("  --palette-light: %q;\n", lightName))
 	buf.WriteString(fmt.Sprintf("  --palette-dark: %q;\n", darkName))
+
+	// Write non-color variables (typography, spacing, layout, gradients)
+	// These are written once in :root and don't change between light/dark modes
+	p.writeNonColorVariables(&buf, "  ")
 	buf.WriteString("}\n\n")
 
 	// Generate light mode (default) styles
@@ -154,6 +159,78 @@ func (p *PaletteCSSPlugin) generateThemeCSSWithVariants(lightPalette, darkPalett
 // writePaletteVariables writes CSS custom properties for a palette.
 func (p *PaletteCSSPlugin) writePaletteVariables(buf *bytes.Buffer, palette *palettes.Palette) {
 	p.writePaletteVariablesIndented(buf, palette, "  ")
+}
+
+// writeNonColorVariables writes non-color CSS custom properties (typography, spacing, layout, gradients).
+// These are preserved from the default theme when applying a color palette.
+func (p *PaletteCSSPlugin) writeNonColorVariables(buf *bytes.Buffer, indent string) {
+	// Gradients - used for media borders and highlights
+	fmt.Fprintf(buf, "\n%s/* Accent gradients */\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-accent: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-vibrant: linear-gradient(135deg, #667eea, #764ba2, #f093fb);\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-warm: linear-gradient(135deg, #f093fb, #f5576c, #f8b500);\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-cool: linear-gradient(135deg, #4facfe, #00f2fe);\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-sunset: linear-gradient(135deg, #fa709a, #fee140);\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-ocean: linear-gradient(135deg, #2193b0, #6dd5ed);\n", indent)
+
+	// Palette-specific gradients
+	fmt.Fprintf(buf, "\n%s/* Palette-specific gradients */\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-catppuccin: linear-gradient(135deg, #cba6f7, #f5c2e7, #f38ba8);\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-nord: linear-gradient(135deg, #88c0d0, #81a1c1, #5e81ac);\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-dracula: linear-gradient(135deg, #bd93f9, #ff79c6, #8be9fd);\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-gruvbox: linear-gradient(135deg, #fabd2f, #fe8019, #fb4934);\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-rose-pine: linear-gradient(135deg, #c4a7e7, #ebbcba, #f6c177);\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-solarized: linear-gradient(135deg, #268bd2, #2aa198, #859900);\n", indent)
+	fmt.Fprintf(buf, "%s--gradient-tokyo-night: linear-gradient(135deg, #7aa2f7, #bb9af7, #f7768e);\n", indent)
+
+	// Media border settings
+	fmt.Fprintf(buf, "\n%s/* Media border settings */\n", indent)
+	fmt.Fprintf(buf, "%s--media-border-width: 3px;\n", indent)
+	fmt.Fprintf(buf, "%s--media-border-style: solid;\n", indent)
+	fmt.Fprintf(buf, "%s--media-border-color: var(--color-border);\n", indent)
+	fmt.Fprintf(buf, "%s--media-border-gradient: none;\n", indent)
+	fmt.Fprintf(buf, "%s--media-border-radius: var(--radius-lg);\n", indent)
+
+	// Font families
+	fmt.Fprintf(buf, "\n%s/* Font families */\n", indent)
+	fmt.Fprintf(buf, "%s--font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n", indent)
+	fmt.Fprintf(buf, "%s--font-heading: var(--font-body);\n", indent)
+	fmt.Fprintf(buf, "%s--font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;\n", indent)
+
+	// Font sizes (modular scale)
+	fmt.Fprintf(buf, "\n%s/* Font sizes */\n", indent)
+	fmt.Fprintf(buf, "%s--text-xs: 0.75rem;\n", indent)
+	fmt.Fprintf(buf, "%s--text-sm: 0.875rem;\n", indent)
+	fmt.Fprintf(buf, "%s--text-base: 1rem;\n", indent)
+	fmt.Fprintf(buf, "%s--text-lg: 1.125rem;\n", indent)
+	fmt.Fprintf(buf, "%s--text-xl: 1.25rem;\n", indent)
+	fmt.Fprintf(buf, "%s--text-2xl: 1.5rem;\n", indent)
+	fmt.Fprintf(buf, "%s--text-3xl: 1.875rem;\n", indent)
+	fmt.Fprintf(buf, "%s--text-4xl: 2.25rem;\n", indent)
+
+	// Line heights
+	fmt.Fprintf(buf, "\n%s/* Line heights */\n", indent)
+	fmt.Fprintf(buf, "%s--leading-tight: 1.25;\n", indent)
+	fmt.Fprintf(buf, "%s--leading-normal: 1.5;\n", indent)
+	fmt.Fprintf(buf, "%s--leading-relaxed: 1.75;\n", indent)
+
+	// Spacing scale
+	fmt.Fprintf(buf, "\n%s/* Spacing scale */\n", indent)
+	fmt.Fprintf(buf, "%s--space-1: 0.25rem;\n", indent)
+	fmt.Fprintf(buf, "%s--space-2: 0.5rem;\n", indent)
+	fmt.Fprintf(buf, "%s--space-3: 0.75rem;\n", indent)
+	fmt.Fprintf(buf, "%s--space-4: 1rem;\n", indent)
+	fmt.Fprintf(buf, "%s--space-6: 1.5rem;\n", indent)
+	fmt.Fprintf(buf, "%s--space-8: 2rem;\n", indent)
+	fmt.Fprintf(buf, "%s--space-12: 3rem;\n", indent)
+	fmt.Fprintf(buf, "%s--space-16: 4rem;\n", indent)
+
+	// Layout
+	fmt.Fprintf(buf, "\n%s/* Layout */\n", indent)
+	fmt.Fprintf(buf, "%s--content-width: 65ch;\n", indent)
+	fmt.Fprintf(buf, "%s--page-width: 1200px;\n", indent)
+	fmt.Fprintf(buf, "%s--radius: 0.375rem;\n", indent)
+	fmt.Fprintf(buf, "%s--radius-lg: 0.5rem;\n", indent)
 }
 
 // writePaletteVariablesIndented writes CSS custom properties with custom indentation.
