@@ -383,6 +383,10 @@ type PagefindConfig struct {
 
 	// CacheDir is the directory for caching Pagefind binaries (default: XDG cache)
 	CacheDir string `json:"cache_dir,omitempty" yaml:"cache_dir,omitempty" toml:"cache_dir,omitempty"`
+
+	// Verbose enables verbose output from Pagefind (default: false)
+	// When false, only errors are shown. When true or when --verbose CLI flag is used, all output is shown.
+	Verbose *bool `json:"verbose,omitempty" yaml:"verbose,omitempty" toml:"verbose,omitempty"`
 }
 
 // IsAutoInstallEnabled returns whether automatic Pagefind installation is enabled.
@@ -392,6 +396,15 @@ func (p *PagefindConfig) IsAutoInstallEnabled() bool {
 		return true
 	}
 	return *p.AutoInstall
+}
+
+// IsVerbose returns whether verbose output is enabled.
+// Defaults to false if not explicitly set.
+func (p *PagefindConfig) IsVerbose() bool {
+	if p.Verbose == nil {
+		return false
+	}
+	return *p.Verbose
 }
 
 // SearchFeedConfig configures a feed-specific search instance.

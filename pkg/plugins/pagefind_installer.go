@@ -47,6 +47,9 @@ type PagefindInstaller struct {
 	// Version is the Pagefind version to install (e.g., "v1.4.0" or "latest").
 	Version string
 
+	// Verbose enables verbose output during installation.
+	Verbose bool
+
 	// client is the HTTP client used for downloads.
 	client *http.Client
 }
@@ -373,7 +376,9 @@ func (i *PagefindInstaller) fetchChecksum(version, platformAsset string) (string
 func (i *PagefindInstaller) downloadAsset(version, platformAsset string) (string, error) {
 	assetURL := buildAssetURL(version, platformAsset)
 
-	fmt.Printf("[pagefind] Downloading Pagefind %s for %s...\n", version, platformAsset)
+	if i.Verbose {
+		fmt.Printf("[pagefind] Downloading Pagefind %s for %s...\n", version, platformAsset)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
 	defer cancel()
@@ -411,13 +416,15 @@ func (i *PagefindInstaller) downloadAsset(version, platformAsset string) (string
 		return "", NewPagefindInstallError("download", "failed to write downloaded file", err)
 	}
 
-	fmt.Printf("[pagefind] Downloaded %d bytes\n", written)
+	if i.Verbose {
+		fmt.Printf("[pagefind] Downloaded %d bytes\n", written)
+	}
 
 	return tmpFile.Name(), nil
 }
 
 // verifyChecksum verifies the SHA256 checksum of a downloaded file.
-func verifyChecksum(filePath, expectedChecksum string) error {
+func verifyChecksum(filePath, expectedChecksum string, verbose bool) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return NewPagefindInstallError("verify", "failed to open file for verification", err)
@@ -439,7 +446,9 @@ func verifyChecksum(filePath, expectedChecksum string) error {
 		)
 	}
 
-	fmt.Printf("[pagefind] Checksum verified: %s\n", actualChecksum[:16]+"...")
+	if verbose {
+		fmt.Printf("[pagefind] Checksum verified: %s\n", actualChecksum[:16]+"...")
+	}
 	return nil
 }
 
@@ -514,7 +523,9 @@ func (i *PagefindInstaller) extractBinary(archivePath, version string) (string, 
 			return "", NewPagefindInstallError("extract", "binary exceeds maximum allowed size", nil)
 		}
 
-		fmt.Printf("[pagefind] Extracted %s to %s\n", binaryName, versionDir)
+		if i.Verbose {
+			fmt.Printf("[pagefind] Extracted %s to %s\n", binaryName, versionDir)
+		}
 		break
 	}
 
@@ -545,7 +556,9 @@ func (i *PagefindInstaller) Install() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		fmt.Printf("[pagefind] Using cached Pagefind %s\n", version)
+		if i.Verbose {
+			fmt.Printf("[pagefind] Using cached Pagefind %s\n", version)
+		}
 		return binaryPath, nil
 	}
 
@@ -569,7 +582,7 @@ func (i *PagefindInstaller) Install() (string, error) {
 	defer os.Remove(archivePath)
 
 	// Verify checksum (CRITICAL for security)
-	if err := verifyChecksum(archivePath, expectedChecksum); err != nil {
+	if err := verifyChecksum(archivePath, expectedChecksum, i.Verbose); err != nil {
 		return "", err
 	}
 
@@ -579,7 +592,9 @@ func (i *PagefindInstaller) Install() (string, error) {
 		return "", err
 	}
 
-	fmt.Printf("[pagefind] Successfully installed Pagefind %s\n", version)
+	if i.Verbose {
+		fmt.Printf("[pagefind] Successfully installed Pagefind %s\n", version)
+	}
 	return binaryPath, nil
 }
 

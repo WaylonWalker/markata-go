@@ -78,6 +78,15 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["toc"] = cfg.Toc
 	lcConfig.Extra["header"] = cfg.Header
 
+	// Pass search configuration with verbose flag override from CLI
+	searchConfig := cfg.Search
+	if verbose {
+		// CLI --verbose flag overrides config setting
+		v := true
+		searchConfig.Pagefind.Verbose = &v
+	}
+	lcConfig.Extra["search"] = searchConfig
+
 	m.SetConfig(lcConfig)
 
 	// Set concurrency if specified
