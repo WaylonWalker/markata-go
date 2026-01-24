@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Default Plugins - My Site</title>
+    <meta name="description" content="This document specifies all built-in plugins that ship with the static site generator.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Default Plugins">
+    
+    <meta property="og:url" content="/default_plugins/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="This document specifies all built-in plugins that ship with the static site generator.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Default Plugins">
+    
+    <meta name="twitter:description" content="This document specifies all built-in plugins that ship with the static site generator.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/default_plugins/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Default Plugins",
+  "description": "This document specifies all built-in plugins that ship with the static site generator.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/default_plugins/"
+  },
+  "url": "/default_plugins/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Default Plugins</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="default-plugins-specification">Default Plugins Specification</h1>
+<p>This document specifies all built-in plugins that ship with the static site generator.</p>
+<h2 id="plugin-overview">Plugin Overview <a href="#plugin-overview" class="heading-anchor">#</a></h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                        DEFAULT PLUGIN SET                            │
+├─────────────────────────────────────────────────────────────────────┤
+│  CONFIGURATION PHASE                                                 │
+│    └─ config_defaults    Set default configuration values           │
+│                                                                      │
+│  CONTENT DISCOVERY                                                   │
+│    └─ glob               Find content files                          │
+│                                                                      │
+│  CONTENT LOADING                                                     │
+│    └─ load               Parse frontmatter + content                 │
+│                                                                      │
+│  PRE-RENDER PROCESSING                                               │
+│    ├─ auto_description   Generate descriptions from content         │
+│    └─ jinja_md           Process template expressions in content     │
+│                                                                      │
+│  RENDER                                                              │
+│    ├─ render_markdown    Convert markdown to HTML                    │
+│    └─ wikilinks          Resolve [[internal links]]                  │
+│                                                                      │
+│  POST-RENDER                                                         │
+│    ├─ heading_anchors    Add anchor links to headings               │
+│    ├─ md_video           Convert video images to video tags         │
+│    ├─ toc                Generate table of contents                  │
+│    ├─ link_collector     Track inlinks/outlinks between posts       │
+│    └─ feeds              Generate feed collections                   │
+│                                                                      │
+│  COLLECT                                                             │
+│    ├─ overwrite_check    Detect conflicting output paths             │
+│    └─ prevnext           Calculate prev/next from feeds/series       │
+│                                                                      │
+│  OUTPUT                                                              │
+│    ├─ publish_feeds      Write HTML/RSS/Atom/JSON/MD/TXT/Sitemap    │
+│    ├─ publish_html       Write individual post HTML files           │
+│    ├─ copy_assets        Copy static files                           │
+│    └─ redirects          Generate HTML redirect pages                │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2 id="configuration-phase">Configuration Phase <a href="#configuration-phase" class="heading-anchor">#</a></h2>
+<h3 id="config-defaults"><code>config_defaults</code> <a href="#config-defaults" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>load_config</code></p>
+<p><strong>Purpose:</strong> Set sensible defaults for all configuration.</p>
+<p><strong>Defaults:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">output_dir</span> <span class="p">=</span> <span class="s2">&#34;output&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content_dir</span> <span class="p">=</span> <span class="s2">&#34;.&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">assets_dir</span> <span class="p">=</span> <span class="s2">&#34;static&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">templates_dir</span> <span class="p">=</span> <span class="s2">&#34;templates&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">glob_patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;**/*.md&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">use_gitignore</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">exclude_patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;node_modules/**&#34;</span><span class="p">,</span> <span class="s2">&#34;.git/**&#34;</span><span class="p">,</span> <span class="s2">&#34;output/**&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">default_items_per_page</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span><span class="line"><span class="cl"><span class="nx">default_orphan_threshold</span> <span class="p">=</span> <span class="mi">3</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">default_formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">markdown</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sitemap</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span></code></pre><hr>
+<h2 id="content-discovery">Content Discovery <a href="#content-discovery" class="heading-anchor">#</a></h2>
+<h3 id="glob"><code>glob</code> <a href="#glob" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>glob</code></p>
+<p><strong>Purpose:</strong> Discover content files matching configured patterns.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">glob_patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;posts/**/*.md&#34;</span><span class="p">,</span> <span class="s2">&#34;pages/*.md&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">use_gitignore</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">exclude_patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;**/draft-*&#34;</span><span class="p">,</span> <span class="s2">&#34;**/wip-*&#34;</span><span class="p">]</span>
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>For each pattern in <code>glob_patterns</code>, find matching files</li>
+<li>If <code>use_gitignore</code>, exclude files matching <code>.gitignore</code> rules</li>
+<li>Apply <code>exclude_patterns</code> to filter results</li>
+<li>Deduplicate (same file from multiple patterns)</li>
+<li>Store in <code>core.files</code></li>
+</ol>
+<p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">glob</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">glob</span><span class="o">.</span><span class="n">glob_patterns</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">Path</span><span class="p">()</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">should_include</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">glob</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">                <span class="n">core</span><span class="o">.</span><span class="n">files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h2 id="content-loading">Content Loading <a href="#content-loading" class="heading-anchor">#</a></h2>
+<h3 id="load"><code>load</code> <a href="#load" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>load</code></p>
+<p><strong>Purpose:</strong> Parse files into Post objects.</p>
+<p><strong>Behavior:</strong></p>
+<ol>
+<li>Read file content (UTF-8)</li>
+<li>Extract YAML frontmatter between <code>---</code> delimiters</li>
+<li>Parse frontmatter into dict</li>
+<li>Create Post object with merged frontmatter + computed fields</li>
+<li>Store in <code>core.posts</code></li>
+</ol>
+<p><strong>Computed fields:</strong></p>
+<ul>
+<li><code>path</code> - Source file path</li>
+<li><code>content</code> - Raw content (after frontmatter extraction)</li>
+<li><code>slug</code> - From frontmatter, title, or filename</li>
+<li><code>href</code> - <code>/{slug}/</code></li>
+</ul>
+<p><strong>Error handling:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>File read error</td>
+<td>Skip file, log warning</td>
+</tr>
+<tr>
+<td>Invalid YAML</td>
+<td>Skip file, log error with path + line</td>
+</tr>
+<tr>
+<td>Invalid encoding</td>
+<td>Try fallback encodings, then skip</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">files</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">try</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">raw</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="n">frontmatter</span><span class="p">,</span> <span class="n">content</span> <span class="o">=</span> <span class="n">parse_frontmatter</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="n">post</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">Post</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">                <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="n">content</span><span class="o">=</span><span class="n">content</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="o">**</span><span class="n">frontmatter</span>
+</span></span><span class="line"><span class="cl">            <span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Failed to load </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h2 id="pre-render-processing">Pre-Render Processing <a href="#pre-render-processing" class="heading-anchor">#</a></h2>
+<h3 id="auto-description"><code>auto_description</code> <a href="#auto-description" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>pre_render</code></p>
+<p><strong>Purpose:</strong> Generate descriptions from content for posts that don't have one.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">auto_description</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">max_length</span> <span class="p">=</span> <span class="mi">160</span>               <span class="c"># Characters</span>
+</span></span><span class="line"><span class="cl"><span class="nx">strip_html</span> <span class="p">=</span> <span class="kc">true</span>              <span class="c"># Remove HTML tags</span>
+</span></span><span class="line"><span class="cl"><span class="nx">strip_markdown</span> <span class="p">=</span> <span class="kc">true</span>          <span class="c"># Remove markdown syntax</span>
+</span></span><span class="line"><span class="cl"><span class="nx">fallback</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>                  <span class="c"># If content too short</span>
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>For posts where <code>description</code> is None or empty</li>
+<li>Take first paragraph of content</li>
+<li>Strip HTML/markdown if configured</li>
+<li>Truncate to <code>max_length</code> at word boundary</li>
+<li>Add ellipsis if truncated</li>
+<li>Set <code>post.description</code></li>
+</ol>
+<p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">pre_render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">config</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">auto_description</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;description == None or description == &#39;&#39;&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="n">generate_description</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">content</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h3 id="jinja-md"><code>jinja_md</code> <a href="#jinja-md" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>pre_render</code></p>
+<p><strong>Purpose:</strong> Process Jinja template expressions within markdown content.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">jinja_md</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">default_enabled</span> <span class="p">=</span> <span class="kc">false</span>        <span class="c"># Require explicit jinja: true in frontmatter</span>
+</span></span></code></pre><p><strong>Activation:</strong></p>
+<ul>
+<li>If <code>default_enabled = true</code>: All posts processed unless <code>jinja: false</code></li>
+<li>If <code>default_enabled = false</code>: Only posts with <code>jinja: true</code> processed</li>
+</ul>
+<p><strong>Template context:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>post</code></td>
+<td>Post</td>
+<td>Current post</td>
+</tr>
+<tr>
+<td><code>core</code></td>
+<td>Core</td>
+<td>Core instance (for filtering)</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>Config</td>
+<td>Site configuration</td>
+</tr>
+<tr>
+<td><code>today</code></td>
+<td>date</td>
+<td>Current date</td>
+</tr>
+<tr>
+<td><code>now</code></td>
+<td>datetime</td>
+<td>Current datetime</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example content:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: Posts Index
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl"><span class="gh"># All Posts
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True&#34;)[:10] %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ p.title }}</span>](<span class="na">{{ p.href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">pre_render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">config</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">jinja_md</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="n">filter_expr</span> <span class="o">=</span> <span class="s2">&#34;jinja == True&#34;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">default_enabled</span> <span class="k">else</span> <span class="s2">&#34;jinja != False&#34;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">filter_expr</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">template</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">jinja_env</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">template</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">            <span class="n">post</span><span class="o">=</span><span class="n">post</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">core</span><span class="o">=</span><span class="n">core</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">config</span><span class="o">=</span><span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">today</span><span class="o">=</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">            <span class="n">now</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="p">)</span>
+</span></span></code></pre><hr>
+<h2 id="collect-phase">Collect Phase <a href="#collect-phase" class="heading-anchor">#</a></h2>
+<h3 id="overwrite-check"><code>overwrite_check</code> <a href="#overwrite-check" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>collect</code> (with early priority)</p>
+<p><strong>Purpose:</strong> Detect when multiple posts or feeds would write to the same output path, preventing accidental content overwrites.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">overwrite_check</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">warn_only</span> <span class="p">=</span> <span class="kc">false</span>              <span class="c"># If true, warn instead of fail</span>
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>Build a map of all output paths and their content sources</li>
+<li>For each post (not skipped/draft), calculate its output path: <code>{output_dir}/{slug}/index.html</code></li>
+<li>For each feed, calculate all output paths based on enabled formats (HTML, RSS, Atom, JSON)</li>
+<li>Detect conflicts where multiple sources would write to the same path</li>
+<li>If conflicts found:
+<ul>
+<li><code>warn_only = false</code>: Return error with all conflicts listed</li>
+<li><code>warn_only = true</code>: Log warning but continue</li>
+</ul>
+</li>
+</ol>
+<p><strong>Output paths checked:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Content Type</th>
+<th>Path Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Post</td>
+<td><code>{output_dir}/{slug}/index.html</code></td>
+</tr>
+<tr>
+<td>Feed HTML</td>
+<td><code>{output_dir}/{feed_slug}/index.html</code></td>
+</tr>
+<tr>
+<td>Feed RSS</td>
+<td><code>{output_dir}/{feed_slug}/rss.xml</code></td>
+</tr>
+<tr>
+<td>Feed Atom</td>
+<td><code>{output_dir}/{feed_slug}/atom.xml</code></td>
+</tr>
+<tr>
+<td>Feed JSON</td>
+<td><code>{output_dir}/{feed_slug}/index.json</code></td>
+</tr>
+<tr>
+<td>Homepage</td>
+<td><code>{output_dir}/index.html</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>PathConflict structure:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">PathConflict</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">OutputPath</span> <span class="kt">string</span>   <span class="c1">// The conflicting output path
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Sources</span>    <span class="p">[]</span><span class="kt">string</span> <span class="c1">// Content sources (e.g., &#34;post:path/to/file.md&#34;, &#34;feed:blog&#34;)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span></code></pre><p><strong>Error message format:</strong></p>
+<pre><code>detected 2 output path conflict(s):
+  - output/blog/index.html: post:posts/blog.md, feed:blog
+  - output/about/index.html: post:about.md, post:pages/about.md
+</code></pre>
+<p><strong>Common conflict scenarios:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Example</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Post slug matches feed slug</td>
+<td>Post with <code>slug: blog</code> and feed with <code>slug: blog</code></td>
+<td>Rename post slug or feed slug</td>
+</tr>
+<tr>
+<td>Duplicate post slugs</td>
+<td>Two posts with same <code>slug</code> frontmatter</td>
+<td>Use unique slugs</td>
+</tr>
+<tr>
+<td>Empty slug conflicts</td>
+<td>Homepage feed and post with <code>slug: &quot;&quot;</code></td>
+<td>Only one can be the homepage</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hook signature (Go):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">OverwriteCheckPlugin</span><span class="p">)</span> <span class="nf">Collect</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">pathSources</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">][]</span><span class="kt">string</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Check post output paths
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">post</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Posts</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Skip</span> <span class="o">||</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Draft</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">continue</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">outputPath</span> <span class="o">:=</span> <span class="nx">filepath</span><span class="p">.</span><span class="nf">Join</span><span class="p">(</span><span class="nx">outputDir</span><span class="p">,</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Slug</span><span class="p">,</span> <span class="s">&#34;index.html&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">pathSources</span><span class="p">[</span><span class="nx">outputPath</span><span class="p">]</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">pathSources</span><span class="p">[</span><span class="nx">outputPath</span><span class="p">],</span> 
+</span></span><span class="line"><span class="cl">            <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;post:%s&#34;</span><span class="p">,</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Path</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Check feed output paths
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">fc</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">feedConfigs</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">path</span> <span class="o">:=</span> <span class="k">range</span> <span class="nf">getFeedOutputPaths</span><span class="p">(</span><span class="nx">outputDir</span><span class="p">,</span> <span class="nx">fc</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">pathSources</span><span class="p">[</span><span class="nx">path</span><span class="p">]</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">pathSources</span><span class="p">[</span><span class="nx">path</span><span class="p">],</span> 
+</span></span><span class="line"><span class="cl">                <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;feed:%s&#34;</span><span class="p">,</span> <span class="nx">fc</span><span class="p">.</span><span class="nx">Slug</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Detect conflicts
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kd">var</span> <span class="nx">conflicts</span> <span class="p">[]</span><span class="nx">PathConflict</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">path</span><span class="p">,</span> <span class="nx">sources</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">pathSources</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">sources</span><span class="p">)</span> <span class="p">&gt;</span> <span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">conflicts</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">conflicts</span><span class="p">,</span> <span class="nx">PathConflict</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">OutputPath</span><span class="p">:</span> <span class="nx">path</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">Sources</span><span class="p">:</span>    <span class="nx">sources</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="p">})</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">conflicts</span><span class="p">)</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="p">!</span><span class="nx">p</span><span class="p">.</span><span class="nx">warnOnly</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;detected %d output path conflict(s)...&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">conflicts</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p><strong>Interface compliance:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span>         <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">OverwriteCheckPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">CollectPlugin</span>  <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">OverwriteCheckPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityPlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">OverwriteCheckPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><hr>
+<h3 id="prevnext"><code>prevnext</code> <a href="#prevnext" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>collect</code> (after feeds are created)</p>
+<p><strong>Purpose:</strong> Calculate previous/next post links for navigation based on feeds.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">prevnext</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">strategy</span> <span class="p">=</span> <span class="s2">&#34;first_feed&#34;</span>        <span class="c"># Resolution strategy (see below)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">default_feed</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>          <span class="c"># Feed to use when strategy = &#34;explicit_feed&#34;</span>
+</span></span></code></pre><p><strong>Strategy Options:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Strategy</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>first_feed</code></td>
+<td>Use first feed the post appears in (default)</td>
+</tr>
+<tr>
+<td><code>explicit_feed</code></td>
+<td>Always use <code>default_feed</code> for all posts</td>
+</tr>
+<tr>
+<td><code>series</code></td>
+<td>Use post's <code>series</code> frontmatter to find matching feed, fall back to <code>first_feed</code></td>
+</tr>
+<tr>
+<td><code>frontmatter</code></td>
+<td>Use post's <code>prevnext_feed</code> frontmatter to find matching feed, fall back to <code>first_feed</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Post frontmatter options:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">My Post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series</span><span class="p">:</span><span class="w"> </span><span class="l">python-tutorial      </span><span class="w"> </span><span class="c"># Feed slug to use for navigation (with strategy=&#34;series&#34;)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">prevnext_feed</span><span class="p">:</span><span class="w"> </span><span class="l">blog          </span><span class="w"> </span><span class="c"># Explicit feed for this post&#39;s navigation (with strategy=&#34;frontmatter&#34;)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Post fields added:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Prev</code></td>
+<td>*Post</td>
+<td>Previous post in sequence (nil if first)</td>
+</tr>
+<tr>
+<td><code>Next</code></td>
+<td>*Post</td>
+<td>Next post in sequence (nil if last)</td>
+</tr>
+<tr>
+<td><code>PrevNextFeed</code></td>
+<td>string</td>
+<td>Feed slug used for navigation</td>
+</tr>
+<tr>
+<td><code>PrevNextContext</code></td>
+<td>*PrevNextContext</td>
+<td>Full navigation context</td>
+</tr>
+</tbody>
+</table>
+<p><strong>PrevNextContext structure:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">PrevNextContext</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">FeedSlug</span>  <span class="kt">string</span>  <span class="c1">// Feed slug
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">FeedTitle</span> <span class="kt">string</span>  <span class="c1">// Feed title
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Position</span>  <span class="kt">int</span>     <span class="c1">// Position in sequence (1-indexed)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Total</span>     <span class="kt">int</span>     <span class="c1">// Total posts in sequence
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Prev</span>      <span class="o">*</span><span class="nx">Post</span>   <span class="c1">// Previous post (nil if first)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Next</span>      <span class="o">*</span><span class="nx">Post</span>   <span class="c1">// Next post (nil if last)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li><strong>Build post-to-feeds mapping</strong> - For each feed, map post slugs to feeds containing them</li>
+<li><strong>For each post, determine navigation context based on strategy:</strong>
+<ul>
+<li><code>first_feed</code>: Find first feed containing this post</li>
+<li><code>explicit_feed</code>: Always use <code>default_feed</code></li>
+<li><code>series</code>: Check post's <code>Extra[&quot;series&quot;]</code>, look up matching feed, fall back to first_feed</li>
+<li><code>frontmatter</code>: Check post's <code>Extra[&quot;prevnext_feed&quot;]</code>, look up matching feed, fall back to first_feed</li>
+</ul>
+</li>
+<li><strong>Find post's position in the feed's posts list</strong></li>
+<li><strong>Set Prev/Next based on position</strong></li>
+</ol>
+<p><strong>Hook signature (Go):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">PrevNextPlugin</span><span class="p">)</span> <span class="nf">Collect</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">config</span> <span class="o">:=</span> <span class="nf">getPrevNextConfig</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nf">Config</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">!</span><span class="nx">config</span><span class="p">.</span><span class="nx">Enabled</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nx">feeds</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Feeds</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">postToFeeds</span> <span class="o">:=</span> <span class="nf">buildPostToFeedsMap</span><span class="p">(</span><span class="nx">feeds</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">post</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Posts</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">feed</span> <span class="o">:=</span> <span class="nx">p</span><span class="p">.</span><span class="nf">resolveFeed</span><span class="p">(</span><span class="nx">post</span><span class="p">,</span> <span class="nx">config</span><span class="p">,</span> <span class="nx">feeds</span><span class="p">,</span> <span class="nx">postToFeeds</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">feed</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">continue</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1">// Find position and set prev/next
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">for</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">feedPost</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">feed</span><span class="p">.</span><span class="nx">Posts</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="nx">feedPost</span><span class="p">.</span><span class="nx">Slug</span> <span class="o">==</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Slug</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="k">if</span> <span class="nx">i</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                    <span class="nx">post</span><span class="p">.</span><span class="nx">Prev</span> <span class="p">=</span> <span class="nx">feed</span><span class="p">.</span><span class="nx">Posts</span><span class="p">[</span><span class="nx">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">                <span class="p">}</span>
+</span></span><span class="line"><span class="cl">                <span class="k">if</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">feed</span><span class="p">.</span><span class="nx">Posts</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                    <span class="nx">post</span><span class="p">.</span><span class="nx">Next</span> <span class="p">=</span> <span class="nx">feed</span><span class="p">.</span><span class="nx">Posts</span><span class="p">[</span><span class="nx">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">                <span class="p">}</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">post</span><span class="p">.</span><span class="nx">PrevNextFeed</span> <span class="p">=</span> <span class="nx">feed</span><span class="p">.</span><span class="nx">Name</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">post</span><span class="p">.</span><span class="nx">PrevNextContext</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">models</span><span class="p">.</span><span class="nx">PrevNextContext</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">                    <span class="nx">FeedSlug</span><span class="p">:</span>  <span class="nx">feed</span><span class="p">.</span><span class="nx">Name</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                    <span class="nx">FeedTitle</span><span class="p">:</span> <span class="nx">feed</span><span class="p">.</span><span class="nx">Title</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                    <span class="nx">Position</span><span class="p">:</span>  <span class="nx">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                    <span class="nx">Total</span><span class="p">:</span>     <span class="nb">len</span><span class="p">(</span><span class="nx">feed</span><span class="p">.</span><span class="nx">Posts</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">                    <span class="nx">Prev</span><span class="p">:</span>      <span class="nx">post</span><span class="p">.</span><span class="nx">Prev</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                    <span class="nx">Next</span><span class="p">:</span>      <span class="nx">post</span><span class="p">.</span><span class="nx">Next</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="p">}</span>
+</span></span><span class="line"><span class="cl">                <span class="k">break</span>
+</span></span><span class="line"><span class="cl">            <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p><strong>Template usage:</strong></p>
+<pre><code class="language-jinja2">{# Basic prev/next navigation #}
+&lt;nav class=&quot;post-navigation&quot;&gt;
+  {% if post.Prev %}
+  &lt;a href=&quot;{{ post.Prev.Href }}&quot; class=&quot;nav-prev&quot;&gt;
+    &lt;span class=&quot;nav-label&quot;&gt;Previous&lt;/span&gt;
+    &lt;span class=&quot;nav-title&quot;&gt;{{ post.Prev.Title }}&lt;/span&gt;
+  &lt;/a&gt;
+  {% endif %}
+  
+  {% if post.Next %}
+  &lt;a href=&quot;{{ post.Next.Href }}&quot; class=&quot;nav-next&quot;&gt;
+    &lt;span class=&quot;nav-label&quot;&gt;Next&lt;/span&gt;
+    &lt;span class=&quot;nav-title&quot;&gt;{{ post.Next.Title }}&lt;/span&gt;
+  &lt;/a&gt;
+  {% endif %}
+&lt;/nav&gt;
+
+{# Navigation with position indicator #}
+{% if post.PrevNextContext %}
+&lt;nav class=&quot;series-navigation&quot;&gt;
+  &lt;div class=&quot;series-info&quot;&gt;
+    &lt;span class=&quot;series-title&quot;&gt;{{ post.PrevNextContext.FeedTitle }}&lt;/span&gt;
+    &lt;span class=&quot;series-position&quot;&gt;
+      Part {{ post.PrevNextContext.Position }} of {{ post.PrevNextContext.Total }}
+    &lt;/span&gt;
+  &lt;/div&gt;
+  
+  &lt;div class=&quot;series-links&quot;&gt;
+    {% if post.PrevNextContext.Prev %}
+    &lt;a href=&quot;{{ post.PrevNextContext.Prev.Href }}&quot;&gt;← {{ post.PrevNextContext.Prev.Title }}&lt;/a&gt;
+    {% endif %}
+    {% if post.PrevNextContext.Next %}
+    &lt;a href=&quot;{{ post.PrevNextContext.Next.Href }}&quot;&gt;{{ post.PrevNextContext.Next.Title }} →&lt;/a&gt;
+    {% endif %}
+  &lt;/div&gt;
+&lt;/nav&gt;
+{% endif %}
+</code></pre>
+<p><strong>Example configurations:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Strategy 1: Use first feed (default)</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">prevnext</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">strategy</span> <span class="p">=</span> <span class="s2">&#34;first_feed&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Strategy 2: Always use specific feed</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">prevnext</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">strategy</span> <span class="p">=</span> <span class="s2">&#34;explicit_feed&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">default_feed</span> <span class="p">=</span> <span class="s2">&#34;all-posts&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Strategy 3: Series-based navigation (uses series frontmatter to find feed)</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">prevnext</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">strategy</span> <span class="p">=</span> <span class="s2">&#34;series&#34;</span>
+</span></span></code></pre><p><strong>Frontmatter examples:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Post using series frontmatter (strategy=&#34;series&#34;)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Variables in Python&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series</span><span class="p">:</span><span class="w"> </span><span class="l">python-basics   </span><span class="w"> </span><span class="c"># Must match a feed slug</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Post with explicit navigation feed (strategy=&#34;frontmatter&#34;)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Announcement Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">prevnext_feed</span><span class="p">:</span><span class="w"> </span><span class="l">announcements</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><hr>
+<h2 id="render">Render <a href="#render" class="heading-anchor">#</a></h2>
+<h3 id="render-markdown"><code>render_markdown</code> <a href="#render-markdown" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>render</code></p>
+<p><strong>Purpose:</strong> Convert markdown content to HTML.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">markdown</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">backend</span> <span class="p">=</span> <span class="s2">&#34;auto&#34;</span>               <span class="c"># &#34;markdown-it&#34;, &#34;commonmark&#34;, etc.</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">markdown</span><span class="p">.</span><span class="nx">extensions</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">tables</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">admonitions</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">footnotes</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">strikethrough</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">task_lists</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">heading_ids</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">markdown</span><span class="p">.</span><span class="nx">highlight</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">theme</span> <span class="p">=</span> <span class="s2">&#34;github-dark&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">line_numbers</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">guess_language</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><p><strong>Supported syntax:</strong></p>
+<ul>
+<li>CommonMark base</li>
+<li>GFM tables</li>
+<li>Admonitions (<code>!!! note &quot;Title&quot;</code>)</li>
+<li>Fenced code blocks with language</li>
+<li>Syntax highlighting</li>
+<li>Footnotes</li>
+<li>Strikethrough</li>
+<li>Task lists</li>
+</ul>
+<p><strong>Output:</strong>
+Sets <code>post.article_html</code> to rendered HTML (content only, no template wrapper).</p>
+<p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">article_html</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">markdown_parser</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h3 id="wikilinks"><code>wikilinks</code> <a href="#wikilinks" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>render</code> (after <code>render_markdown</code>)</p>
+<p><strong>Purpose:</strong> Resolve <code>[[internal links]]</code> to actual post URLs.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">wikilinks</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">warn_broken</span> <span class="p">=</span> <span class="kc">true</span>             <span class="c"># Warn about broken links</span>
+</span></span><span class="line"><span class="cl"><span class="nx">broken_class</span> <span class="p">=</span> <span class="s2">&#34;broken-link&#34;</span>   <span class="c"># CSS class for broken links</span>
+</span></span></code></pre><p><strong>Syntax:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Link to post: [[other-post-slug]]
+</span></span><span class="line"><span class="cl">With custom text: [[other-post-slug|Click here]]
+</span></span></code></pre><p><strong>Resolution:</strong></p>
+<ol>
+<li>Find post where <code>slug == link_target</code></li>
+<li>If found: <code>&lt;a href=&quot;{post.href}&quot;&gt;{text or post.title}&lt;/a&gt;</code></li>
+<li>If not found: Leave as <code>[[link]]</code> or wrap with broken-link class</li>
+</ol>
+<p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span><span class="p">(</span><span class="n">trylast</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># Run after render_markdown</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">config</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">wikilinks</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Build slug -&gt; post lookup</span>
+</span></span><span class="line"><span class="cl">    <span class="n">slug_map</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="o">.</span><span class="n">slug</span><span class="p">:</span> <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">article_html</span> <span class="o">=</span> <span class="n">resolve_wikilinks</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">            <span class="n">post</span><span class="o">.</span><span class="n">article_html</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">slug_map</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">config</span>
+</span></span><span class="line"><span class="cl">        <span class="p">)</span>
+</span></span></code></pre><hr>
+<h2 id="post-render">Post-Render <a href="#post-render" class="heading-anchor">#</a></h2>
+<h3 id="heading-anchors"><code>heading_anchors</code> <a href="#heading-anchors" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>render</code> (with late priority, after <code>render_markdown</code>)</p>
+<p><strong>Purpose:</strong> Add anchor links to headings for direct linking.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">heading_anchors</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">min_level</span> <span class="p">=</span> <span class="mi">2</span>                  <span class="c"># Start at h2</span>
+</span></span><span class="line"><span class="cl"><span class="nx">max_level</span> <span class="p">=</span> <span class="mi">4</span>                  <span class="c"># End at h4</span>
+</span></span><span class="line"><span class="cl"><span class="nx">position</span> <span class="p">=</span> <span class="s2">&#34;end&#34;</span>               <span class="c"># &#34;start&#34; or &#34;end&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">symbol</span> <span class="p">=</span> <span class="s2">&#34;#&#34;</span>                   <span class="c"># Link text</span>
+</span></span><span class="line"><span class="cl"><span class="nx">class</span> <span class="p">=</span> <span class="s2">&#34;heading-anchor&#34;</span>       <span class="c"># CSS class</span>
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>Find all headings in <code>article_html</code></li>
+<li>Generate ID from heading text (slugified)</li>
+<li>Handle duplicate IDs by appending numbers</li>
+<li>Insert anchor link at configured position</li>
+</ol>
+<p><strong>Example output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;my-section&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  My Section
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#my-section&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;heading-anchor&#34;</span><span class="p">&gt;</span>#<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">post_render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">config</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">heading_anchors</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">article_html</span> <span class="o">=</span> <span class="n">add_heading_anchors</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">article_html</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h3 id="md-video"><code>md_video</code> <a href="#md-video" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>render</code> (with late priority, after <code>render_markdown</code>)</p>
+<p><strong>Purpose:</strong> Convert markdown image syntax for video files into HTML video elements with GIF-like autoplay behavior.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">md_video</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">video_extensions</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;.mp4&#34;</span><span class="p">,</span> <span class="s2">&#34;.webm&#34;</span><span class="p">,</span> <span class="s2">&#34;.ogg&#34;</span><span class="p">,</span> <span class="s2">&#34;.ogv&#34;</span><span class="p">,</span> <span class="s2">&#34;.mov&#34;</span><span class="p">,</span> <span class="s2">&#34;.m4v&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">video_class</span> <span class="p">=</span> <span class="s2">&#34;md-video&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">controls</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">autoplay</span> <span class="p">=</span> <span class="kc">true</span>                    <span class="c"># GIF-like behavior</span>
+</span></span><span class="line"><span class="cl"><span class="nx">loop</span> <span class="p">=</span> <span class="kc">true</span>                        <span class="c"># GIF-like behavior</span>
+</span></span><span class="line"><span class="cl"><span class="nx">muted</span> <span class="p">=</span> <span class="kc">true</span>                       <span class="c"># Required for autoplay</span>
+</span></span><span class="line"><span class="cl"><span class="nx">playsinline</span> <span class="p">=</span> <span class="kc">true</span>                 <span class="c"># Inline on mobile</span>
+</span></span><span class="line"><span class="cl"><span class="nx">preload</span> <span class="p">=</span> <span class="s2">&#34;metadata&#34;</span>
+</span></span></code></pre><p><strong>Configuration Fields:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Enable/disable the plugin</td>
+</tr>
+<tr>
+<td><code>video_extensions</code></td>
+<td>[]string</td>
+<td><code>[&quot;.mp4&quot;, &quot;.webm&quot;, ...]</code></td>
+<td>Extensions to treat as video</td>
+</tr>
+<tr>
+<td><code>video_class</code></td>
+<td>string</td>
+<td><code>&quot;md-video&quot;</code></td>
+<td>CSS class for video elements</td>
+</tr>
+<tr>
+<td><code>controls</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Show video controls</td>
+</tr>
+<tr>
+<td><code>autoplay</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Auto-start playback</td>
+</tr>
+<tr>
+<td><code>loop</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Loop continuously</td>
+</tr>
+<tr>
+<td><code>muted</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Mute audio</td>
+</tr>
+<tr>
+<td><code>playsinline</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Play inline on iOS</td>
+</tr>
+<tr>
+<td><code>preload</code></td>
+<td>string</td>
+<td><code>&quot;metadata&quot;</code></td>
+<td>Preload hint</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Behavior:</strong></p>
+<ol>
+<li>Find all <code>&lt;img&gt;</code> tags in <code>article_html</code> after markdown rendering</li>
+<li>Check if <code>src</code> ends with a video extension (handles query params)</li>
+<li>Replace with <code>&lt;video&gt;</code> element with configured attributes</li>
+<li>Preserve alt text as fallback content</li>
+<li>Auto-detect MIME type from extension</li>
+</ol>
+<p><strong>Markdown syntax:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">![<span class="nt">kickflip down the 3 stair</span>](<span class="na">https://example.com/video.mp4</span>)
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">![<span class="nt">Demo</span>](<span class="na">demo.webm?width=500</span>)
+</span></span></code></pre><p><strong>Example output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">video</span> <span class="na">autoplay</span> <span class="na">loop</span> <span class="na">muted</span> <span class="na">playsinline</span> <span class="na">controls</span> <span class="na">preload</span><span class="o">=</span><span class="s">&#34;metadata&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;md-video&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">source</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;https://example.com/video.mp4&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;video/mp4&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  kickflip down the 3 stair
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">video</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>MIME type detection:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Extension</th>
+<th>MIME Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.mp4</code></td>
+<td><code>video/mp4</code></td>
+</tr>
+<tr>
+<td><code>.webm</code></td>
+<td><code>video/webm</code></td>
+</tr>
+<tr>
+<td><code>.ogg</code>, <code>.ogv</code></td>
+<td><code>video/ogg</code></td>
+</tr>
+<tr>
+<td><code>.mov</code></td>
+<td><code>video/quicktime</code></td>
+</tr>
+<tr>
+<td><code>.m4v</code></td>
+<td><code>video/x-m4v</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Interface compliance:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span>          <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MDVideoPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">ConfigurePlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MDVideoPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">RenderPlugin</span>    <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MDVideoPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityPlugin</span>  <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MDVideoPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><hr>
+<h3 id="toc"><code>toc</code> <a href="#toc" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>post_render</code></p>
+<p><strong>Purpose:</strong> Generate table of contents from headings.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">toc</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">min_level</span> <span class="p">=</span> <span class="mi">2</span>
+</span></span><span class="line"><span class="cl"><span class="nx">max_level</span> <span class="p">=</span> <span class="mi">4</span>
+</span></span><span class="line"><span class="cl"><span class="nx">min_headings</span> <span class="p">=</span> <span class="mi">3</span>               <span class="c"># Only generate if &gt;= 3 headings</span>
+</span></span></code></pre><p><strong>Post fields added:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>toc</code></td>
+<td>string</td>
+<td>HTML table of contents</td>
+</tr>
+<tr>
+<td><code>toc_items</code></td>
+<td>List[TocItem]</td>
+<td>Structured TOC data</td>
+</tr>
+</tbody>
+</table>
+<p><strong>TocItem structure:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">TocItem</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">level</span><span class="p">:</span> <span class="nb">int</span>      <span class="c1"># Heading level (2-6)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>         <span class="c1"># Heading ID</span>
+</span></span><span class="line"><span class="cl">    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span>       <span class="c1"># Heading text</span>
+</span></span><span class="line"><span class="cl">    <span class="n">children</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TocItem</span><span class="p">]</span>
+</span></span></code></pre><p><strong>Example output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;toc&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#introduction&#34;</span><span class="p">&gt;</span>Introduction<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#main&#34;</span><span class="p">&gt;</span>Main<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#subsection&#34;</span><span class="p">&gt;</span>Subsection<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>Template usage:</strong></p>
+<pre><code class="language-jinja2">{% if post.toc %}
+&lt;aside class=&quot;sidebar&quot;&gt;
+  {{ post.toc | safe }}
+&lt;/aside&gt;
+{% endif %}
+</code></pre>
+<hr>
+<h3 id="link-collector"><code>link_collector</code> <a href="#link-collector" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>render</code> (after <code>render_markdown</code>)</p>
+<p><strong>Purpose:</strong> Collect all hyperlinks from posts and track inlinks (pages linking TO this post) and outlinks (pages this post links TO). Enables backlink navigation and link graph visualization.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">link_collector</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">include_feeds</span> <span class="p">=</span> <span class="kc">false</span>          <span class="c"># Exclude feed pages from inlinks by default</span>
+</span></span><span class="line"><span class="cl"><span class="nx">include_index</span> <span class="p">=</span> <span class="kc">false</span>          <span class="c"># Exclude index page from inlinks by default</span>
+</span></span></code></pre><p><strong>Post fields added:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hrefs</code></td>
+<td>List[str]</td>
+<td>Raw href values from all links in post</td>
+</tr>
+<tr>
+<td><code>inlinks</code></td>
+<td>List[Link]</td>
+<td>Links pointing TO this post from other posts</td>
+</tr>
+<tr>
+<td><code>outlinks</code></td>
+<td>List[Link]</td>
+<td>Links FROM this post to other pages</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Link structure:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Link</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">source_url</span><span class="p">:</span> <span class="nb">str</span>            <span class="c1"># Absolute URL of the source post</span>
+</span></span><span class="line"><span class="cl">    <span class="n">source_post</span><span class="p">:</span> <span class="n">Post</span>          <span class="c1"># Reference to source post object</span>
+</span></span><span class="line"><span class="cl">    <span class="n">target_post</span><span class="p">:</span> <span class="n">Post</span> <span class="o">|</span> <span class="kc">None</span>   <span class="c1"># Reference to target post (None if external)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">raw_target</span><span class="p">:</span> <span class="nb">str</span>            <span class="c1"># Original href value</span>
+</span></span><span class="line"><span class="cl">    <span class="n">target_url</span><span class="p">:</span> <span class="nb">str</span>            <span class="c1"># Resolved absolute URL</span>
+</span></span><span class="line"><span class="cl">    <span class="n">target_domain</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>  <span class="c1"># Domain extracted from target_url</span>
+</span></span><span class="line"><span class="cl">    <span class="n">is_internal</span><span class="p">:</span> <span class="nb">bool</span>          <span class="c1"># True if link points to same site</span>
+</span></span><span class="line"><span class="cl">    <span class="n">is_self</span><span class="p">:</span> <span class="nb">bool</span>              <span class="c1"># True if link points to same post</span>
+</span></span><span class="line"><span class="cl">    <span class="n">source_text</span><span class="p">:</span> <span class="nb">str</span>           <span class="c1"># Cleaned link text from source</span>
+</span></span><span class="line"><span class="cl">    <span class="n">target_text</span><span class="p">:</span> <span class="nb">str</span>           <span class="c1"># Cleaned link text from target</span>
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>Parse <code>article_html</code> for all <code>&lt;a href=&quot;...&quot;&gt;</code> elements</li>
+<li>For each href:
+<ul>
+<li>Resolve relative URLs against post's base URL</li>
+<li>Determine if internal (same domain) or external</li>
+<li>Look up target post by slug if internal</li>
+<li>Create Link object with all metadata</li>
+</ul>
+</li>
+<li>Store all links in <code>core.links</code></li>
+<li>For each post, populate:
+<ul>
+<li><code>inlinks</code>: Links where <code>target_post == this_post</code> (deduplicated by source_url)</li>
+<li><code>outlinks</code>: Links where <code>source_post == this_post</code> (deduplicated by target_url)</li>
+</ul>
+</li>
+<li>Exclude self-links from both inlinks and outlinks</li>
+</ol>
+<p><strong>Caching:</strong>
+Results are cached per-post based on hash of:</p>
+<ul>
+<li>Plugin file</li>
+<li>Post slug</li>
+<li>Post title</li>
+<li>Post content</li>
+</ul>
+<p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="nd">@register_attr</span><span class="p">(</span><span class="s2">&#34;links&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">links</span> <span class="o">=</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">site_domain</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">url</span><span class="p">))</span><span class="o">.</span><span class="n">netloc</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Build slug -&gt; post lookup</span>
+</span></span><span class="line"><span class="cl">    <span class="n">post_by_slug</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="o">.</span><span class="n">slug</span><span class="p">:</span> <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">base_url</span> <span class="o">=</span> <span class="n">urljoin</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">url</span><span class="p">),</span> <span class="n">post</span><span class="o">.</span><span class="n">slug</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">soup</span> <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">article_html</span><span class="p">,</span> <span class="s2">&#34;html.parser&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1"># Optionally limit to post-body section</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post_body</span> <span class="o">=</span> <span class="n">soup</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">&#34;post-body&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">post_body</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">soup</span> <span class="o">=</span> <span class="n">post_body</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">hrefs</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span><span class="p">[</span><span class="s2">&#34;href&#34;</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">soup</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">&#34;a&#34;</span><span class="p">,</span> <span class="n">href</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">href</span> <span class="ow">in</span> <span class="n">post</span><span class="o">.</span><span class="n">hrefs</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">target_url</span> <span class="o">=</span> <span class="n">urljoin</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">href</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="n">domain</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="n">target_url</span><span class="p">)</span><span class="o">.</span><span class="n">netloc</span>
+</span></span><span class="line"><span class="cl">            <span class="n">is_internal</span> <span class="o">=</span> <span class="n">domain</span> <span class="o">==</span> <span class="n">site_domain</span>
+</span></span><span class="line"><span class="cl">            
+</span></span><span class="line"><span class="cl">            <span class="n">target_post</span> <span class="o">=</span> <span class="kc">None</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">is_internal</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">                <span class="n">target_slug</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="n">target_url</span><span class="p">)</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&#34;/&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">                <span class="n">target_post</span> <span class="o">=</span> <span class="n">post_by_slug</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">target_slug</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            
+</span></span><span class="line"><span class="cl">            <span class="n">links</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Link</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">                <span class="n">source_url</span><span class="o">=</span><span class="n">base_url</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="n">source_post</span><span class="o">=</span><span class="n">post</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="n">target_post</span><span class="o">=</span><span class="n">target_post</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="n">raw_target</span><span class="o">=</span><span class="n">href</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="n">target_url</span><span class="o">=</span><span class="n">target_url</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="n">target_domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="n">is_internal</span><span class="o">=</span><span class="n">is_internal</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="n">is_self</span><span class="o">=</span><span class="n">target_post</span> <span class="ow">and</span> <span class="n">post</span><span class="o">.</span><span class="n">slug</span> <span class="o">==</span> <span class="n">target_post</span><span class="o">.</span><span class="n">slug</span>
+</span></span><span class="line"><span class="cl">            <span class="p">))</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">links</span> <span class="o">=</span> <span class="n">links</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Assign inlinks/outlinks to each post</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">inlinks</span> <span class="o">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">            <span class="n">link</span> <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span> 
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">link</span><span class="o">.</span><span class="n">target_post</span> <span class="o">==</span> <span class="n">post</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">link</span><span class="o">.</span><span class="n">is_self</span>
+</span></span><span class="line"><span class="cl">        <span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">outlinks</span> <span class="o">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">            <span class="n">link</span> <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">link</span><span class="o">.</span><span class="n">source_post</span> <span class="o">==</span> <span class="n">post</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">link</span><span class="o">.</span><span class="n">is_self</span>
+</span></span><span class="line"><span class="cl">        <span class="p">]</span>
+</span></span></code></pre><p><strong>Template usage - Basic inlinks/outlinks:</strong></p>
+<pre><code class="language-jinja2">{% if post.inlinks %}
+&lt;section class=&quot;inlinks&quot;&gt;
+  &lt;h2&gt;Pages that link here&lt;/h2&gt;
+  &lt;ul&gt;
+    {% for link in post.inlinks %}
+    {% if link.source_post.slug not in core.feeds.keys() %}
+    &lt;li&gt;&lt;a href=&quot;{{ link.source_url }}&quot;&gt;{{ link.source_post.title }}&lt;/a&gt;&lt;/li&gt;
+    {% endif %}
+    {% endfor %}
+  &lt;/ul&gt;
+&lt;/section&gt;
+{% endif %}
+
+{% if post.outlinks %}
+&lt;section class=&quot;outlinks&quot;&gt;
+  &lt;h2&gt;Links from this page&lt;/h2&gt;
+  &lt;ul&gt;
+    {% for link in post.outlinks %}
+    {% if link.target_post %}
+    &lt;li&gt;&lt;a href=&quot;{{ link.target_url }}&quot;&gt;{{ link.target_post.title }}&lt;/a&gt;&lt;/li&gt;
+    {% else %}
+    &lt;li&gt;&lt;a href=&quot;{{ link.target_url }}&quot;&gt;{{ link.target_url }}&lt;/a&gt;&lt;/li&gt;
+    {% endif %}
+    {% endfor %}
+  &lt;/ul&gt;
+&lt;/section&gt;
+{% endif %}
+</code></pre>
+<p><strong>Template usage - Link graph visualization (Mermaid):</strong></p>
+<pre><code class="language-jinja2">{% if post.inlinks and post.outlinks %}
+&lt;section class=&quot;link-graph&quot;&gt;
+  &lt;h2&gt;Link Graph&lt;/h2&gt;
+  &lt;pre class=&quot;mermaid&quot;&gt;
+graph LR
+
+{% for link in post.inlinks %}
+{% if link.source_post.slug != 'index' and link.source_post.slug not in core.feeds.keys() %}
+    {{ link.source_post.slug }}:::inlink --&gt; {{ post.slug }}:::this
+{% endif %}
+{% endfor %}
+
+{% for link in post.outlinks %}
+{% if link.target_post %}
+    {{ post.slug }}:::this --&gt; {{ link.target_post.slug }}:::outlink
+{% else %}
+    {{ post.slug }}:::this --&gt; {{ link.target_text }}:::outlink
+{% endif %}
+{% endfor %}
+
+    classDef this stroke:#ffcc00
+    classDef outlink stroke:#50C878
+    classDef inlink stroke:#75E6DA
+  &lt;/pre&gt;
+&lt;/section&gt;
+{% endif %}
+</code></pre>
+<p><strong>CSS for link sections:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">.</span><span class="nc">inlinks</span><span class="o">,</span> <span class="p">.</span><span class="nc">outlinks</span><span class="o">,</span> <span class="p">.</span><span class="nc">link-graph</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">margin-top</span><span class="p">:</span> <span class="mi">3</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">padding</span><span class="p">:</span> <span class="mi">1</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">border-top</span><span class="p">:</span> <span class="mi">1</span><span class="kt">px</span> <span class="kc">solid</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">border</span><span class="o">-</span><span class="kc">color</span><span class="p">,</span> <span class="mh">#e0e0e0</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">inlinks</span> <span class="nt">h2</span><span class="o">,</span> <span class="p">.</span><span class="nc">outlinks</span> <span class="nt">h2</span><span class="o">,</span> <span class="p">.</span><span class="nc">link-graph</span> <span class="nt">h2</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">font-size</span><span class="p">:</span> <span class="mf">1.25</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">margin-bottom</span><span class="p">:</span> <span class="mf">0.5</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">inlinks</span> <span class="nt">ul</span><span class="o">,</span> <span class="p">.</span><span class="nc">outlinks</span> <span class="nt">ul</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">list-style</span><span class="p">:</span> <span class="kc">none</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">padding</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">inlinks</span> <span class="nt">li</span><span class="o">,</span> <span class="p">.</span><span class="nc">outlinks</span> <span class="nt">li</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">margin</span><span class="p">:</span> <span class="mf">0.25</span><span class="kt">rem</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">/* Mermaid graph styling */</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">link-graph</span> <span class="p">.</span><span class="nc">mermaid</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">background</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">bg</span><span class="o">-</span><span class="n">secondary</span><span class="p">,</span> <span class="mh">#f5f5f5</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="k">padding</span><span class="p">:</span> <span class="mi">1</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">border-radius</span><span class="p">:</span> <span class="mi">4</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p><strong>Utility functions:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">count_links</span><span class="p">(</span><span class="n">links</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Link</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Counter</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Count target_url frequency across all links.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">Counter</span><span class="p">(</span><span class="n">link</span><span class="o">.</span><span class="n">target_url</span> <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">count_domains</span><span class="p">(</span><span class="n">links</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Link</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Counter</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Count target_domain frequency across all links.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">Counter</span><span class="p">(</span><span class="n">link</span><span class="o">.</span><span class="n">target_domain</span> <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span> <span class="k">if</span> <span class="n">link</span><span class="o">.</span><span class="n">target_domain</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">get_external_links</span><span class="p">(</span><span class="n">links</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Link</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Link</span><span class="p">]:</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Filter to only external links.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="p">[</span><span class="n">link</span> <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">link</span><span class="o">.</span><span class="n">is_internal</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">get_broken_links</span><span class="p">(</span><span class="n">links</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Link</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Link</span><span class="p">]:</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Find internal links that don&#39;t resolve to a post.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="p">[</span><span class="n">link</span> <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span> <span class="k">if</span> <span class="n">link</span><span class="o">.</span><span class="n">is_internal</span> <span class="ow">and</span> <span class="n">link</span><span class="o">.</span><span class="n">target_post</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">]</span>
+</span></span></code></pre><hr>
+<h2 id="feeds--output">Feeds &amp; Output <a href="#feeds--output" class="heading-anchor">#</a></h2>
+<h3 id="feeds"><code>feeds</code> <a href="#feeds" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>post_render</code></p>
+<p><strong>Purpose:</strong> Generate feed collections from post queries.</p>
+<p>See <a href="./FEEDS.md">FEEDS.md</a> for complete specification.</p>
+<p><strong>Core behavior:</strong></p>
+<ol>
+<li>Read feed definitions from config</li>
+<li>Generate auto-feeds (tags, categories, dates) if enabled</li>
+<li>For each feed:
+<ul>
+<li>Run filter expression</li>
+<li>Sort results</li>
+<li>Paginate if configured</li>
+<li>Store in <code>core.feeds</code></li>
+</ul>
+</li>
+</ol>
+<p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">post_render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">feeds</span> <span class="o">=</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Process explicit feeds</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">feed_config</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">feeds</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">feed</span> <span class="o">=</span> <span class="n">create_feed</span><span class="p">(</span><span class="n">feed_config</span><span class="p">,</span> <span class="n">core</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">core</span><span class="o">.</span><span class="n">feeds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">feed</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Process auto-feeds</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">feeds</span><span class="o">.</span><span class="n">auto_tags</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">get_all_tags</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="n">feed</span> <span class="o">=</span> <span class="n">create_tag_feed</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">core</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="n">core</span><span class="o">.</span><span class="n">feeds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">feed</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h3 id="publish-feeds"><code>publish_feeds</code> <a href="#publish-feeds" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>save</code></p>
+<p><strong>Purpose:</strong> Write feed output files in all configured formats.</p>
+<p><strong>Behavior:</strong>
+For each feed, for each enabled format:</p>
+<ol>
+<li>Load format template</li>
+<li>Render with feed context</li>
+<li>Write to output path</li>
+</ol>
+<p><strong>Output paths:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Path Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTML</td>
+<td><code>/{slug}/index.html</code>, <code>/{slug}/page/{n}/index.html</code></td>
+</tr>
+<tr>
+<td>RSS</td>
+<td><code>/{slug}/rss.xml</code></td>
+</tr>
+<tr>
+<td>Atom</td>
+<td><code>/{slug}/atom.xml</code></td>
+</tr>
+<tr>
+<td>JSON</td>
+<td><code>/{slug}/feed.json</code></td>
+</tr>
+<tr>
+<td>Markdown</td>
+<td><code>/{slug}/index.md</code></td>
+</tr>
+<tr>
+<td>Text</td>
+<td><code>/{slug}/index.txt</code></td>
+</tr>
+<tr>
+<td>Sitemap</td>
+<td><code>/{slug}/sitemap.xml</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">feed</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">feeds</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">format_name</span><span class="p">,</span> <span class="n">enabled</span> <span class="ow">in</span> <span class="n">feed</span><span class="o">.</span><span class="n">formats</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="ow">not</span> <span class="n">enabled</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">                <span class="k">continue</span>
+</span></span><span class="line"><span class="cl">            
+</span></span><span class="line"><span class="cl">            <span class="n">template</span> <span class="o">=</span> <span class="n">get_feed_template</span><span class="p">(</span><span class="n">format_name</span><span class="p">,</span> <span class="n">feed</span><span class="p">,</span> <span class="n">core</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">format_name</span> <span class="o">==</span> <span class="s1">&#39;html&#39;</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">                <span class="c1"># Paginated output</span>
+</span></span><span class="line"><span class="cl">                <span class="k">for</span> <span class="n">page_num</span><span class="p">,</span> <span class="n">page_posts</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">feed</span><span class="o">.</span><span class="n">pages</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">                    <span class="n">output</span> <span class="o">=</span> <span class="n">template</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">                        <span class="n">feed</span><span class="o">=</span><span class="n">feed</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                        <span class="n">page_posts</span><span class="o">=</span><span class="n">page_posts</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                        <span class="n">pagination</span><span class="o">=</span><span class="n">get_pagination</span><span class="p">(</span><span class="n">feed</span><span class="p">,</span> <span class="n">page_num</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">                    <span class="p">)</span>
+</span></span><span class="line"><span class="cl">                    <span class="n">write_page</span><span class="p">(</span><span class="n">feed</span><span class="p">,</span> <span class="n">page_num</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">core</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="k">else</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">                <span class="c1"># Single file output</span>
+</span></span><span class="line"><span class="cl">                <span class="n">output</span> <span class="o">=</span> <span class="n">template</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">feed</span><span class="o">=</span><span class="n">feed</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">                <span class="n">write_feed_file</span><span class="p">(</span><span class="n">feed</span><span class="p">,</span> <span class="n">format_name</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">core</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h3 id="publish-html"><code>publish_html</code> <a href="#publish-html" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>save</code></p>
+<p><strong>Purpose:</strong> Write individual post HTML files.</p>
+<p><strong>Behavior:</strong></p>
+<ol>
+<li>For each post (not skipped)</li>
+<li>Load post template</li>
+<li>Render with post context</li>
+<li>Write to <code>{output_dir}/{slug}/index.html</code></li>
+</ol>
+<p><strong>Template context:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>post</code></td>
+<td>Post</td>
+<td>The post being rendered</td>
+</tr>
+<tr>
+<td><code>body</code></td>
+<td>string</td>
+<td><code>post.article_html</code></td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>Config</td>
+<td>Site configuration</td>
+</tr>
+<tr>
+<td><code>core</code></td>
+<td>Core</td>
+<td>Core instance</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">template_name</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">template</span> <span class="ow">or</span> <span class="s2">&#34;post.html&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="n">template</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">jinja_env</span><span class="o">.</span><span class="n">get_template</span><span class="p">(</span><span class="n">template_name</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="n">html</span> <span class="o">=</span> <span class="n">template</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">            <span class="n">post</span><span class="o">=</span><span class="n">post</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">body</span><span class="o">=</span><span class="n">post</span><span class="o">.</span><span class="n">article_html</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">config</span><span class="o">=</span><span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">core</span><span class="o">=</span><span class="n">core</span>
+</span></span><span class="line"><span class="cl">        <span class="p">)</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="n">output_path</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">post</span><span class="o">.</span><span class="n">slug</span> <span class="o">/</span> <span class="s2">&#34;index.html&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="n">output_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">output_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">html</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h3 id="copy-assets"><code>copy_assets</code> <a href="#copy-assets" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>save</code></p>
+<p><strong>Purpose:</strong> Copy static assets to output directory.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">assets</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">dir</span> <span class="p">=</span> <span class="s2">&#34;static&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">output_subdir</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>             <span class="c"># &#34;&#34; = root, &#34;assets&#34; = /assets/</span>
+</span></span><span class="line"><span class="cl"><span class="nx">exclude</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;*.psd&#34;</span><span class="p">,</span> <span class="s2">&#34;*.ai&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">fingerprint</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">assets</span><span class="p">.</span><span class="nx">fingerprint</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">algorithm</span> <span class="p">=</span> <span class="s2">&#34;sha256&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">length</span> <span class="p">=</span> <span class="mi">8</span>
+</span></span><span class="line"><span class="cl"><span class="nx">exclude</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;robots.txt&#34;</span><span class="p">,</span> <span class="s2">&#34;favicon.ico&#34;</span><span class="p">]</span>
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>Find all files in <code>assets_dir</code></li>
+<li>Apply exclusion patterns</li>
+<li>If fingerprinting enabled:
+<ul>
+<li>Compute content hash</li>
+<li>Rename: <code>style.css</code> → <code>style.a1b2c3d4.css</code></li>
+<li>Update manifest</li>
+</ul>
+</li>
+<li>Copy to output directory</li>
+<li>Preserve directory structure</li>
+</ol>
+<p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">config</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">assets</span>
+</span></span><span class="line"><span class="cl">    <span class="n">assets_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">dir</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">assets_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">src</span> <span class="ow">in</span> <span class="n">assets_dir</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">&#34;*&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">src</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_excluded</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">exclude</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="n">rel_path</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">assets_dir</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">should_fingerprint</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">                <span class="n">rel_path</span> <span class="o">=</span> <span class="n">fingerprint_path</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">rel_path</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            
+</span></span><span class="line"><span class="cl">            <span class="n">dst</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">config</span><span class="o">.</span><span class="n">output_subdir</span> <span class="o">/</span> <span class="n">rel_path</span>
+</span></span><span class="line"><span class="cl">            <span class="n">dst</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h3 id="redirects"><code>redirects</code> <a href="#redirects" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>write</code> (with late priority, after content is written)</p>
+<p><strong>Purpose:</strong> Generate HTML redirect pages from a <code>_redirects</code> file. Creates static HTML pages at old URLs that redirect browsers to new URLs.</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">redirects</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">redirects_file</span> <span class="p">=</span> <span class="s2">&#34;static/_redirects&#34;</span>    <span class="c"># Path to redirects file (default)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">redirect_template</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>                   <span class="c"># Optional custom template path</span>
+</span></span></code></pre><p><strong>Redirects file format:</strong></p>
+<p>The <code>_redirects</code> file follows Netlify's format - one redirect per line with source and destination paths:</p>
+<pre><code># Comments start with #
+/old-path /new-path
+/blog/old-post /blog/new-post
+/legacy/page /modern/page
+</code></pre>
+<p><strong>Syntax rules:</strong></p>
+<ul>
+<li>Lines starting with <code>#</code> are comments</li>
+<li>Empty lines are ignored</li>
+<li>Each line has two space-separated paths: <code>&lt;original&gt; &lt;new&gt;</code></li>
+<li>Both paths must start with <code>/</code></li>
+<li>Wildcards (<code>*</code>) are not supported (skipped)</li>
+</ul>
+<p><strong>Behavior:</strong></p>
+<ol>
+<li>Read the <code>_redirects</code> file (skip silently if not found)</li>
+<li>Parse each line into redirect rules</li>
+<li>For each redirect rule:
+<ul>
+<li>Create directory at <code>{output_dir}/{original_path}/</code></li>
+<li>Generate <code>index.html</code> with meta refresh redirect</li>
+</ul>
+</li>
+<li>Cache results based on file content hash</li>
+</ol>
+<p><strong>Output:</strong>
+For each redirect rule, creates <code>{output_dir}/{original_path}/index.html</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;en&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">http-equiv</span><span class="o">=</span><span class="s">&#34;Refresh&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;0; url=&#39;/new-path&#39;&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;UTF-8&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;canonical&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/new-path&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;description&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;/old-path has been moved to /new-path.&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>/old-path has been moved to /new-path<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="c">&lt;!-- Styled fallback content for users with JS disabled --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>Page Moved<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">code</span><span class="p">&gt;</span>/old-path<span class="p">&lt;/</span><span class="nt">code</span><span class="p">&gt;</span> has moved to <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/new-path&#34;</span><span class="p">&gt;</span>/new-path<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>Custom templates:</strong></p>
+<p>If <code>redirect_template</code> is set, the plugin loads a custom Go template with these variables:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.Original</code></td>
+<td>string</td>
+<td>The source path</td>
+</tr>
+<tr>
+<td><code>.New</code></td>
+<td>string</td>
+<td>The destination path</td>
+</tr>
+<tr>
+<td><code>.Config</code></td>
+<td>Config</td>
+<td>Site configuration</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example custom template:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">http-equiv</span><span class="o">=</span><span class="s">&#34;Refresh&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;0; url=&#39;{{ .New }}&#39;&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;canonical&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ .New }}&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Redirecting to <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ .New }}&#34;</span><span class="p">&gt;</span>{{ .New }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>...<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>Hook signature:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">RedirectsPlugin</span><span class="p">)</span> <span class="nf">Write</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Read _redirects file
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">content</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">ReadFile</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">config</span><span class="p">.</span><span class="nx">RedirectsFile</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">os</span><span class="p">.</span><span class="nf">IsNotExist</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="kc">nil</span> <span class="c1">// Skip silently
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Parse and generate redirect pages
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">redirect</span> <span class="o">:=</span> <span class="k">range</span> <span class="nf">parseRedirects</span><span class="p">(</span><span class="nx">content</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">outputPath</span> <span class="o">:=</span> <span class="nx">filepath</span><span class="p">.</span><span class="nf">Join</span><span class="p">(</span><span class="nx">outputDir</span><span class="p">,</span> <span class="nx">redirect</span><span class="p">.</span><span class="nx">Original</span><span class="p">,</span> <span class="s">&#34;index.html&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// Render template and write file
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p><strong>Example configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Basic usage (default settings)</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">redirects</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Uses static/_redirects by default</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Custom redirects file location</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">redirects</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">redirects_file</span> <span class="p">=</span> <span class="s2">&#34;_redirects&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># With custom template</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">redirects</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">redirects_file</span> <span class="p">=</span> <span class="s2">&#34;config/_redirects&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">redirect_template</span> <span class="p">=</span> <span class="s2">&#34;templates/redirect.html&#34;</span>
+</span></span></code></pre><p><strong>Example <code>_redirects</code> file:</strong></p>
+<pre><code># Blog post renames
+/blog/old-title /blog/new-title
+/posts/draft-post /posts/published-post
+
+# Section reorganization
+/tutorials/beginner /guides/getting-started
+/tutorials/advanced /guides/advanced-topics
+
+# Legacy URLs
+/about-me /about
+/contact-us /contact
+</code></pre>
+<hr>
+<h2 id="plugin-load-order">Plugin Load Order <a href="#plugin-load-order" class="heading-anchor">#</a></h2>
+<p>When <code>hooks = [&quot;default&quot;]</code>, plugins load in this order:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="n">DEFAULT_PLUGINS</span> <span class="o">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;config_defaults&#34;</span><span class="p">,</span>      <span class="c1"># Set defaults first</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;glob&#34;</span><span class="p">,</span>                 <span class="c1"># Find files</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;load&#34;</span><span class="p">,</span>                 <span class="c1"># Parse files</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;auto_description&#34;</span><span class="p">,</span>     <span class="c1"># Generate descriptions</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;jinja_md&#34;</span><span class="p">,</span>             <span class="c1"># Process jinja in markdown</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;render_markdown&#34;</span><span class="p">,</span>      <span class="c1"># Markdown → HTML</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;wikilinks&#34;</span><span class="p">,</span>            <span class="c1"># Resolve internal links</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;heading_anchors&#34;</span><span class="p">,</span>      <span class="c1"># Add heading anchors</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;toc&#34;</span><span class="p">,</span>                  <span class="c1"># Generate TOC</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;link_collector&#34;</span><span class="p">,</span>       <span class="c1"># Track inlinks/outlinks</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;feeds&#34;</span><span class="p">,</span>                <span class="c1"># Create feed collections</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;overwrite_check&#34;</span><span class="p">,</span>      <span class="c1"># Detect conflicting output paths</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;prevnext&#34;</span><span class="p">,</span>             <span class="c1"># Calculate prev/next from feeds/series</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;publish_feeds&#34;</span><span class="p">,</span>        <span class="c1"># Write feed files</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;publish_html&#34;</span><span class="p">,</span>         <span class="c1"># Write post files</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;copy_assets&#34;</span><span class="p">,</span>          <span class="c1"># Copy static files</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;redirects&#34;</span><span class="p">,</span>            <span class="c1"># Generate redirect pages</span>
+</span></span><span class="line"><span class="cl"><span class="p">]</span>
+</span></span></code></pre><hr>
+<h2 id="disabling-plugins">Disabling Plugins <a href="#disabling-plugins" class="heading-anchor">#</a></h2>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;default&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">disabled_hooks</span> <span class="p">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;toc&#34;</span><span class="p">,</span>              <span class="c"># Don&#39;t generate TOC</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;wikilinks&#34;</span><span class="p">,</span>        <span class="c"># Don&#39;t process wikilinks</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;link_collector&#34;</span><span class="p">,</span>   <span class="c"># Don&#39;t track inlinks/outlinks</span>
+</span></span><span class="line"><span class="cl"><span class="p">]</span>
+</span></span></code></pre><p>Or load specific plugins only:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;glob&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;load&#34;</span><span class="p">,</span> 
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;render_markdown&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;publish_html&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl"><span class="p">]</span>
+</span></span></code></pre><hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./FEEDS.md">FEEDS.md</a> - Feed system specification</li>
+<li><a href="./CONFIG.md">CONFIG.md</a> - Plugin configuration</li>
+<li><a href="./SPEC.md">SPEC.md</a> - Core specification</li>
+<li><a href="./LIFECYCLE.md">LIFECYCLE.md</a> - Lifecycle stages</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

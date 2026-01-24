@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Usage - My Site</title>
+    <meta name="description" content="Power user guide covering complex configurations, optimization techniques, and advanced patterns">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Advanced Usage">
+    
+    <meta property="og:url" content="/advanced-usage/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Power user guide covering complex configurations, optimization techniques, and advanced patterns">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="advanced">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Advanced Usage">
+    
+    <meta name="twitter:description" content="Power user guide covering complex configurations, optimization techniques, and advanced patterns">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/advanced-usage/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Advanced Usage",
+  "description": "Power user guide covering complex configurations, optimization techniques, and advanced patterns",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/advanced-usage/"
+  },
+  "keywords": [
+    "documentation",
+    "advanced"
+  ],
+  "url": "/advanced-usage/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Advanced Usage</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/advanced/">advanced</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="advanced-usage">Advanced Usage</h1>
+<p>This guide is for power users who want to leverage markata-go's full capabilities. It covers complex configurations, optimization techniques, and advanced patterns that go beyond the basics.</p>
+<h2 id="table-of-contents">Table of Contents <a href="#table-of-contents" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="#complex-feed-configurations">Complex Feed Configurations</a></li>
+<li><a href="#dynamic-content-with-jinja-in-markdown">Dynamic Content with Jinja-in-Markdown</a></li>
+<li><a href="#advanced-filtering">Advanced Filtering</a></li>
+<li><a href="#custom-plugin-development">Custom Plugin Development</a></li>
+<li><a href="#performance-optimization">Performance Optimization</a></li>
+<li><a href="#multi-environment-builds">Multi-Environment Builds</a></li>
+<li><a href="#advanced-templates">Advanced Templates</a></li>
+<li><a href="#wikilinks-and-internal-linking">Wikilinks and Internal Linking</a></li>
+<li><a href="#table-of-contents-generation">Table of Contents Generation</a></li>
+<li><a href="#admonitions-and-callouts">Admonitions and Callouts</a></li>
+</ul>
+<hr>
+<h2 id="complex-feed-configurations">Complex Feed Configurations <a href="#complex-feed-configurations" class="heading-anchor">#</a></h2>
+<p>The feed system is markata-go's most powerful feature. Beyond basic usage, you can create sophisticated content architectures with multiple feeds, nested hierarchies, and custom API endpoints.</p>
+<p><strong>Related guides:</strong> <a href="/feeds-guide/" class="wikilink" data-title="Feeds Guide" data-description="Deep dive into markata-go&#39;s powerful feed system for creating filtered, sorted, paginated collections" data-date="2024-01-15">Feeds Guide</a>, <a href="/syndication-feeds/" class="wikilink" data-title="Syndication Feeds" data-description="Guide to generating Sitemap, RSS, Atom, and JSON Feed outputs for your site" data-date="2024-01-15">Syndication Feeds</a></p>
+<h3 id="multiple-feeds-with-different-filters">Multiple Feeds with Different Filters <a href="#multiple-feeds-with-different-filters" class="heading-anchor">#</a></h3>
+<p>Create specialized feeds that slice your content in different ways:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Tech Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="c"># FEED DEFAULTS</span>
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">defaults</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">defaults</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="c"># CONTENT FEEDS</span>
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Home page - curated recent posts</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Home&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and date &lt;= today&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">5</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Main blog archive</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;All Posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Tutorials only</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">description</span> <span class="p">=</span> <span class="s2">&#34;Step-by-step programming guides&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;tutorial&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Featured/curated content</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;featured&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Featured Articles&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">description</span> <span class="p">=</span> <span class="s2">&#34;Hand-picked must-read articles&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and featured == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">6</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Quick tips (short-form content)</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;tips&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Quick Tips&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;tip&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">20</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Long-form essays</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;essays&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Essays&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and category == &#39;essay&#39;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">5</span>
+</span></span></code></pre><h3 id="nested-feeds-categories-within-tags">Nested Feeds (Categories within Tags) <a href="#nested-feeds-categories-within-tags" class="heading-anchor">#</a></h3>
+<p>Create hierarchical content organization with nested URL structures:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Top-level language categories</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;go&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Go Articles&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;go&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;python&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Python Articles&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;python&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Nested: Go tutorials</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;go/tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Go Tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;go&#39; in tags and &#39;tutorial&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Nested: Go tips</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;go/tips&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Go Tips&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;go&#39; in tags and &#39;tip&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Nested: Python tutorials</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;python/tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Python Tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;python&#39; in tags and &#39;tutorial&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Nested: Python advanced</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;python/advanced&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Advanced Python&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;python&#39; in tags and difficulty == &#39;advanced&#39;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><p><strong>Generated structure:</strong></p>
+<pre><code>/go/
+  index.html
+  rss.xml
+  tutorials/
+    index.html
+    rss.xml
+  tips/
+    index.html
+    rss.xml
+/python/
+  index.html
+  tutorials/
+    index.html
+  advanced/
+    index.html
+</code></pre>
+<h3 id="custom-json-api-endpoints">Custom JSON API Endpoints <a href="#custom-json-api-endpoints" class="heading-anchor">#</a></h3>
+<p>Create JSON-only feeds to serve as lightweight APIs:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Full posts API (all fields)</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;api/posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Posts API&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">0</span>                  <span class="c"># No pagination - all posts</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Lightweight posts list (for autocomplete, etc.)</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;api/posts/list&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Posts List&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">templates</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="s2">&#34;api-list.json&#34;</span>              <span class="c"># Custom minimal template</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Posts by year</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;api/posts/2024&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;2024 Posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and date &gt;= &#39;2024-01-01&#39; and date &lt; &#39;2025-01-01&#39;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span></code></pre><p>Custom API template (<code>templates/api-list.json</code>):</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;count&#34;</span><span class="p">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">feed.posts|length</span> <span class="p">}}</span><span class="err">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;posts&#34;</span><span class="err">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span><span class="err">%</span> <span class="err">for</span> <span class="err">post</span> <span class="err">in</span> <span class="err">feed.posts</span> <span class="err">%</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;title&#34;</span><span class="p">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.title|tojson</span> <span class="p">}},</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;slug&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.slug|tojson</span> <span class="p">}</span><span class="err">}</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;href&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.href|tojson</span> <span class="p">}</span><span class="err">}</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;date&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.date|atom_date|tojson</span> <span class="p">}</span><span class="err">}</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;tags&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.tags|tojson</span> <span class="p">}</span><span class="err">}</span>
+</span></span><span class="line"><span class="cl">    <span class="err">}</span><span class="p">{</span><span class="err">%</span> <span class="err">if</span> <span class="err">not</span> <span class="err">forloop.Last</span> <span class="err">%</span><span class="p">},{</span><span class="err">%</span> <span class="err">endif</span> <span class="err">%</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span><span class="err">%</span> <span class="err">endfor</span> <span class="err">%</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="err">}</span>
+</span></span></code></pre><h3 id="search-indexes">Search Indexes <a href="#search-indexes" class="heading-anchor">#</a></h3>
+<p>Generate a JSON index optimized for client-side search (e.g., with Lunr.js, Fuse.js, or Pagefind):</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;search-index&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Search Index&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">templates</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="s2">&#34;search-index.json&#34;</span>
+</span></span></code></pre><p>Search index template (<code>templates/search-index.json</code>):</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;index&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span><span class="err">%</span> <span class="err">for</span> <span class="err">post</span> <span class="err">in</span> <span class="err">feed.posts</span> <span class="err">%</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;id&#34;</span><span class="p">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">forloop.Counter0</span> <span class="p">}},</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;title&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.title|tojson</span> <span class="p">}</span><span class="err">}</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;href&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.href|tojson</span> <span class="p">}</span><span class="err">}</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;content&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.content|striptags|truncate:1000|tojson</span> <span class="p">}</span><span class="err">}</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;description&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.description|default_if_none:</span><span class="nt">&#34;&#34;</span><span class="err">|tojson</span> <span class="p">}</span><span class="err">}</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;tags&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.tags|tojson</span> <span class="p">}</span><span class="err">}</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;date&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.date|date_format:</span><span class="nt">&#34;2006-01-02&#34;</span><span class="err">|tojson</span> <span class="p">}</span><span class="err">}</span>
+</span></span><span class="line"><span class="cl">    <span class="err">}</span><span class="p">{</span><span class="err">%</span> <span class="err">if</span> <span class="err">not</span> <span class="err">forloop.Last</span> <span class="err">%</span><span class="p">},{</span><span class="err">%</span> <span class="err">endif</span> <span class="err">%</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span><span class="err">%</span> <span class="err">endfor</span> <span class="err">%</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p>JavaScript integration with Fuse.js:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Load search index
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">fetch</span><span class="p">(</span><span class="s1">&#39;/search-index/feed.json&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">r</span> <span class="p">=&gt;</span> <span class="nx">r</span><span class="p">.</span><span class="nx">json</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">  <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">data</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kr">const</span> <span class="nx">fuse</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Fuse</span><span class="p">(</span><span class="nx">data</span><span class="p">.</span><span class="nx">index</span><span class="p">,</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nx">keys</span><span class="o">:</span> <span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">,</span> <span class="s1">&#39;content&#39;</span><span class="p">,</span> <span class="s1">&#39;tags&#39;</span><span class="p">,</span> <span class="s1">&#39;description&#39;</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">      <span class="nx">threshold</span><span class="o">:</span> <span class="mf">0.3</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nx">includeScore</span><span class="o">:</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">    <span class="p">});</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Search function
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nb">window</span><span class="p">.</span><span class="nx">search</span> <span class="o">=</span> <span class="p">(</span><span class="nx">query</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="kr">const</span> <span class="nx">results</span> <span class="o">=</span> <span class="nx">fuse</span><span class="p">.</span><span class="nx">search</span><span class="p">(</span><span class="nx">query</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">      <span class="k">return</span> <span class="nx">results</span><span class="p">.</span><span class="nx">map</span><span class="p">(</span><span class="nx">r</span> <span class="p">=&gt;</span> <span class="p">({</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">title</span><span class="o">:</span> <span class="nx">r</span><span class="p">.</span><span class="nx">item</span><span class="p">.</span><span class="nx">title</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">href</span><span class="o">:</span> <span class="nx">r</span><span class="p">.</span><span class="nx">item</span><span class="p">.</span><span class="nx">href</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">score</span><span class="o">:</span> <span class="nx">r</span><span class="p">.</span><span class="nx">score</span>
+</span></span><span class="line"><span class="cl">      <span class="p">}));</span>
+</span></span><span class="line"><span class="cl">    <span class="p">};</span>
+</span></span><span class="line"><span class="cl">  <span class="p">});</span>
+</span></span></code></pre><hr>
+<h2 id="dynamic-content-with-jinja-in-markdown">Dynamic Content with Jinja-in-Markdown <a href="#dynamic-content-with-jinja-in-markdown" class="heading-anchor">#</a></h2>
+<p>The <code>jinja_md</code> plugin enables powerful dynamic content generation directly within your Markdown files.</p>
+<p><strong>Related guide:</strong> <a href="/dynamic-content/" class="wikilink" data-title="Dynamic Content" data-description="Using Jinja2 template syntax in Markdown files for dynamic content generation" data-date="2024-01-15">Dynamic Content</a></p>
+<h3 id="embedding-post-lists-in-content">Embedding Post Lists in Content <a href="#embedding-post-lists-in-content" class="heading-anchor">#</a></h3>
+<p>Create dynamic index pages that automatically update:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Documentation&#34;
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Documentation
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">Welcome to the docs. Here&#39;s everything organized by topic.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Getting Started
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True and &#39;getting-started&#39; in tags&#34;) %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>) - {{ p.Description|default_if_none:&#34;&#34;|truncate:80 }}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Core Concepts
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True and &#39;core-concepts&#39; in tags&#34;) %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## API Reference
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True and &#39;api&#39; in tags&#34;) %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><h3 id="series-navigation">Series Navigation <a href="#series-navigation" class="heading-anchor">#</a></h3>
+<p>Build automatic series navigation that stays in sync:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Building a CLI in Go: Part 2&#34;
+</span></span><span class="line"><span class="cl">series: &#34;go-cli&#34;
+</span></span><span class="line"><span class="cl">series_order: 2
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;series-nav&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">strong</span><span class="p">&gt;</span>Series: Building a CLI in Go<span class="p">&lt;/</span><span class="nt">strong</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% set series_posts = [] %}
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True&#34;) %}
+</span></span><span class="line"><span class="cl">{% if p.Extra.series == &#34;go-cli&#34; %}
+</span></span><span class="line"><span class="cl">{% set _ = series_posts.append(p) %}
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% for p in series_posts|sort(attribute=&#39;Extra.series_order&#39;) %}
+</span></span><span class="line"><span class="cl">{% if p.Extra.series_order == post.Extra.series_order %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">strong</span><span class="p">&gt;</span>{{ p.Title }}<span class="p">&lt;/</span><span class="nt">strong</span><span class="p">&gt;</span> (current)<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% else %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ p.Href }}&#34;</span><span class="p">&gt;</span>{{ p.Title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% set current_order = post.Extra.series_order %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;series-pagination&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% for p in series_posts %}
+</span></span><span class="line"><span class="cl">{% if p.Extra.series_order == current_order - 1 %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ p.Href }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;prev&#34;</span><span class="p">&gt;</span>Previous: {{ p.Title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% if p.Extra.series_order == current_order + 1 %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ p.Href }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;next&#34;</span><span class="p">&gt;</span>Next: {{ p.Title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Building a CLI in Go: Part 2
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">Now let&#39;s add subcommands to our CLI...
+</span></span></code></pre><h3 id="dynamic-table-of-contents">Dynamic Table of Contents <a href="#dynamic-table-of-contents" class="heading-anchor">#</a></h3>
+<p>Generate a table of contents from your content structure:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Complete Go Guide&#34;
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Complete Go Guide
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl"><span class="gu">## Table of Contents
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% set beginner = core.filter(&#34;published == True and &#39;go&#39; in tags and difficulty == &#39;beginner&#39;&#34;) %}
+</span></span><span class="line"><span class="cl">{% set intermediate = core.filter(&#34;published == True and &#39;go&#39; in tags and difficulty == &#39;intermediate&#39;&#34;) %}
+</span></span><span class="line"><span class="cl">{% set advanced = core.filter(&#34;published == True and &#39;go&#39; in tags and difficulty == &#39;advanced&#39;&#34;) %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Beginner ({{ beginner|length }} articles)
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in beginner %}
+</span></span><span class="line"><span class="cl"><span class="k">1.</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Intermediate ({{ intermediate|length }} articles)
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in intermediate %}
+</span></span><span class="line"><span class="cl"><span class="k">1.</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Advanced ({{ advanced|length }} articles)
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in advanced %}
+</span></span><span class="line"><span class="cl"><span class="k">1.</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><h3 id="related-posts-widget">Related Posts Widget <a href="#related-posts-widget" class="heading-anchor">#</a></h3>
+<p>Show contextually related posts:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Understanding Go Interfaces&#34;
+</span></span><span class="line"><span class="cl">tags: [go, interfaces, tutorial]
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Understanding Go Interfaces
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">[Your article content...]
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Related Articles
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% set related = [] %}
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True&#34;) %}
+</span></span><span class="line"><span class="cl">{% if p.Slug != post.Slug %}
+</span></span><span class="line"><span class="cl">{% for tag in post.Tags %}
+</span></span><span class="line"><span class="cl">{% if tag in p.Tags and p not in related %}
+</span></span><span class="line"><span class="cl">{% set _ = related.append(p) %}
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% for p in related[:5] %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><hr>
+<h2 id="advanced-filtering">Advanced Filtering <a href="#advanced-filtering" class="heading-anchor">#</a></h2>
+<p>The filter expression system supports complex queries for precise content selection.</p>
+<p><strong>Related guides:</strong> <a href="/frontmatter-guide/" class="wikilink" data-title="Frontmatter Guide" data-description="Complete guide to post metadata, built-in fields, and custom frontmatter in markata-go" data-date="2024-01-15">Frontmatter</a>, <a href="/feeds-guide/" class="wikilink" data-title="Feeds Guide" data-description="Deep dive into markata-go&#39;s powerful feed system for creating filtered, sorted, paginated collections" data-date="2024-01-15">Feeds Guide</a></p>
+<h3 id="complex-filter-expressions">Complex Filter Expressions <a href="#complex-filter-expressions" class="heading-anchor">#</a></h3>
+<p>Combine multiple conditions with logical operators:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Published, non-draft, with specific tag, from current year</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and draft == False and &#39;tutorial&#39; in tags and date &gt;= &#39;2024-01-01&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Multiple tags (OR logic)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and (&#39;go&#39; in tags or &#39;python&#39; in tags or &#39;rust&#39; in tags)&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Exclude specific content</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and slug != &#39;about&#39; and slug != &#39;contact&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Complex nested logic</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;(published == True and featured == True) or (published == True and &#39;highlight&#39; in tags)&#34;</span>
+</span></span></code></pre><h3 id="date-based-filtering">Date-Based Filtering <a href="#date-based-filtering" class="heading-anchor">#</a></h3>
+<p>Use dynamic date comparisons:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Only past/present posts (no scheduled future posts)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and date &lt;= today&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Posts from the last 30 days</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and date &gt;= today - 30&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Posts from a specific year</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and date &gt;= &#39;2024-01-01&#39; and date &lt; &#39;2025-01-01&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Posts from a specific month</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and date &gt;= &#39;2024-06-01&#39; and date &lt; &#39;2024-07-01&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Evergreen content (no date or old date is fine)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and (date == None or date &lt;= today)&#34;</span>
+</span></span></code></pre><h3 id="custom-field-filtering">Custom Field Filtering <a href="#custom-field-filtering" class="heading-anchor">#</a></h3>
+<p>Filter on any frontmatter field:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># By author</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and author == &#39;Jane Doe&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># By category</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and category == &#39;Backend&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># By difficulty level</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and difficulty == &#39;beginner&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># By custom boolean</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and sponsored == False&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># By series membership</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and series == &#39;Building a Blog&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># By numeric field</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and word_count &gt;= 1000&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># By reading time</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and reading_time_minutes &lt;= 5&#34;</span>
+</span></span></code></pre><h3 id="string-method-filters">String Method Filters <a href="#string-method-filters" class="heading-anchor">#</a></h3>
+<p>Use string methods for pattern matching:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Slugs with a prefix</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and slug.startswith(&#39;tutorials/&#39;)&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Slugs with a suffix</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and slug.endswith(&#39;-guide&#39;)&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Title contains keyword</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and title.lower().contains(&#39;docker&#39;)&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Category starts with</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and category.startswith(&#39;Web&#39;)&#34;</span>
+</span></span></code></pre><h3 id="filter-cheat-sheet">Filter Cheat Sheet <a href="#filter-cheat-sheet" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Equality</td>
+<td><code>field == 'value'</code></td>
+</tr>
+<tr>
+<td>Inequality</td>
+<td><code>field != 'value'</code></td>
+</tr>
+<tr>
+<td>Boolean check</td>
+<td><code>published == True</code></td>
+</tr>
+<tr>
+<td>Tag membership</td>
+<td><code>'tag' in tags</code></td>
+</tr>
+<tr>
+<td>Date comparison</td>
+<td><code>date &gt;= '2024-01-01'</code></td>
+</tr>
+<tr>
+<td>Today's date</td>
+<td><code>date &lt;= today</code></td>
+</tr>
+<tr>
+<td>Null check</td>
+<td><code>field == None</code></td>
+</tr>
+<tr>
+<td>String prefix</td>
+<td><code>slug.startswith('prefix/')</code></td>
+</tr>
+<tr>
+<td>String contains</td>
+<td><code>title.lower().contains('word')</code></td>
+</tr>
+<tr>
+<td>AND</td>
+<td><code>cond1 and cond2</code></td>
+</tr>
+<tr>
+<td>OR</td>
+<td><code>cond1 or cond2</code></td>
+</tr>
+<tr>
+<td>NOT</td>
+<td><code>not condition</code></td>
+</tr>
+<tr>
+<td>Grouping</td>
+<td><code>(cond1 or cond2) and cond3</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="custom-plugin-development">Custom Plugin Development <a href="#custom-plugin-development" class="heading-anchor">#</a></h2>
+<p>When built-in functionality isn't enough, write custom plugins to extend markata-go.</p>
+<p><strong>Related guide:</strong> <a href="/plugin-development/" class="wikilink" data-title="Plugin Development" data-description="Guide to creating custom plugins for markata-go using the 9-stage lifecycle" data-date="2024-01-15">Plugin Development</a></p>
+<h3 id="when-to-write-a-plugin">When to Write a Plugin <a href="#when-to-write-a-plugin" class="heading-anchor">#</a></h3>
+<p>Consider a custom plugin when you need to:</p>
+<ul>
+<li>Add computed fields to posts (reading time, word count, etc.)</li>
+<li>Process content in a custom way (shortcodes, custom syntax)</li>
+<li>Integrate with external services (APIs, databases)</li>
+<li>Generate additional output files</li>
+<li>Implement custom validation rules</li>
+</ul>
+<h3 id="plugin-architecture-overview">Plugin Architecture Overview <a href="#plugin-architecture-overview" class="heading-anchor">#</a></h3>
+<p>Plugins hook into markata-go's 9-stage lifecycle:</p>
+<pre><code>configure → validate → glob → load → transform → render → collect → write → cleanup
+</code></pre>
+<p>Each stage has a specific purpose:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Purpose</th>
+<th>Common Uses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Configure</td>
+<td>Initialize plugin state</td>
+<td>Read config, set up clients</td>
+</tr>
+<tr>
+<td>Validate</td>
+<td>Validate configuration</td>
+<td>Check required fields</td>
+</tr>
+<tr>
+<td>Glob</td>
+<td>Discover files</td>
+<td>Custom file patterns</td>
+</tr>
+<tr>
+<td>Load</td>
+<td>Parse files to posts</td>
+<td>Custom parsers</td>
+</tr>
+<tr>
+<td>Transform</td>
+<td>Pre-render processing</td>
+<td>Computed fields, shortcodes</td>
+</tr>
+<tr>
+<td>Render</td>
+<td>Convert to HTML</td>
+<td>Markdown extensions</td>
+</tr>
+<tr>
+<td>Collect</td>
+<td>Build aggregations</td>
+<td>Custom feeds, indexes</td>
+</tr>
+<tr>
+<td>Write</td>
+<td>Write output</td>
+<td>Custom file generation</td>
+</tr>
+<tr>
+<td>Cleanup</td>
+<td>Release resources</td>
+<td>Close connections</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-custom-shortcode-plugin">Example: Custom Shortcode Plugin <a href="#example-custom-shortcode-plugin" class="heading-anchor">#</a></h3>
+<p>Here's a complete plugin that adds shortcode support (e.g., <code>{{&lt; youtube id=&quot;...&quot; &gt;}}</code>):</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">plugins</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;fmt&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;regexp&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;strings&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/example/markata-go/pkg/lifecycle&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/example/markata-go/pkg/models&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ShortcodePlugin processes shortcodes in markdown content.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">ShortcodePlugin</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">shortcodes</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">ShortcodeFunc</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ShortcodeFunc is a function that processes a shortcode.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">ShortcodeFunc</span> <span class="kd">func</span><span class="p">(</span><span class="nx">params</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">string</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// NewShortcodePlugin creates a new ShortcodePlugin with built-in shortcodes.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">NewShortcodePlugin</span><span class="p">()</span> <span class="o">*</span><span class="nx">ShortcodePlugin</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">p</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">ShortcodePlugin</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">shortcodes</span><span class="p">:</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">ShortcodeFunc</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Register built-in shortcodes
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">p</span><span class="p">.</span><span class="nf">Register</span><span class="p">(</span><span class="s">&#34;youtube&#34;</span><span class="p">,</span> <span class="nx">youtubeShortcode</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">p</span><span class="p">.</span><span class="nf">Register</span><span class="p">(</span><span class="s">&#34;gist&#34;</span><span class="p">,</span> <span class="nx">gistShortcode</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">p</span><span class="p">.</span><span class="nf">Register</span><span class="p">(</span><span class="s">&#34;tweet&#34;</span><span class="p">,</span> <span class="nx">tweetShortcode</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">p</span><span class="p">.</span><span class="nf">Register</span><span class="p">(</span><span class="s">&#34;figure&#34;</span><span class="p">,</span> <span class="nx">figureShortcode</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">p</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Name returns the plugin name.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">ShortcodePlugin</span><span class="p">)</span> <span class="nf">Name</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="s">&#34;shortcodes&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Register adds a custom shortcode.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">ShortcodePlugin</span><span class="p">)</span> <span class="nf">Register</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">fn</span> <span class="nx">ShortcodeFunc</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">p</span><span class="p">.</span><span class="nx">shortcodes</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span> <span class="p">=</span> <span class="nx">fn</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Transform processes shortcodes in all posts.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">ShortcodePlugin</span><span class="p">)</span> <span class="nf">Transform</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">m</span><span class="p">.</span><span class="nf">ProcessPostsConcurrently</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">post</span> <span class="o">*</span><span class="nx">models</span><span class="p">.</span><span class="nx">Post</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Skip</span> <span class="o">||</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Content</span> <span class="o">==</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">post</span><span class="p">.</span><span class="nx">Content</span> <span class="p">=</span> <span class="nx">p</span><span class="p">.</span><span class="nf">processShortcodes</span><span class="p">(</span><span class="nx">post</span><span class="p">.</span><span class="nx">Content</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">    <span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Shortcode pattern: {{&lt; name param=&#34;value&#34; &gt;}}
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="nx">shortcodePattern</span> <span class="p">=</span> <span class="nx">regexp</span><span class="p">.</span><span class="nf">MustCompile</span><span class="p">(</span><span class="s">`\{\{&lt;\s*(\w+)\s*([^&gt;]*)\s*&gt;\}\}`</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Param pattern: key=&#34;value&#34; or key=&#39;value&#39;
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="nx">paramPattern</span> <span class="p">=</span> <span class="nx">regexp</span><span class="p">.</span><span class="nf">MustCompile</span><span class="p">(</span><span class="s">`(\w+)=[&#34;&#39;]([^&#34;&#39;]*)[&#34;&#39;]`</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">ShortcodePlugin</span><span class="p">)</span> <span class="nf">processShortcodes</span><span class="p">(</span><span class="nx">content</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">shortcodePattern</span><span class="p">.</span><span class="nf">ReplaceAllStringFunc</span><span class="p">(</span><span class="nx">content</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">match</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">submatches</span> <span class="o">:=</span> <span class="nx">shortcodePattern</span><span class="p">.</span><span class="nf">FindStringSubmatch</span><span class="p">(</span><span class="nx">match</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">submatches</span><span class="p">)</span> <span class="p">&lt;</span> <span class="mi">2</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="nx">match</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="nx">name</span> <span class="o">:=</span> <span class="nx">submatches</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">paramsStr</span> <span class="o">:=</span> <span class="s">&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">submatches</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">paramsStr</span> <span class="p">=</span> <span class="nx">submatches</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1">// Parse parameters
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nx">params</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">paramMatches</span> <span class="o">:=</span> <span class="nx">paramPattern</span><span class="p">.</span><span class="nf">FindAllStringSubmatch</span><span class="p">(</span><span class="nx">paramsStr</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">pm</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">paramMatches</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">pm</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">params</span><span class="p">[</span><span class="nx">pm</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="p">=</span> <span class="nx">pm</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">            <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1">// Execute shortcode
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">if</span> <span class="nx">fn</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">p</span><span class="p">.</span><span class="nx">shortcodes</span><span class="p">[</span><span class="nx">name</span><span class="p">];</span> <span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="nf">fn</span><span class="p">(</span><span class="nx">params</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="nx">match</span> <span class="c1">// Unknown shortcode, leave as-is
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Built-in shortcodes
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">youtubeShortcode</span><span class="p">(</span><span class="nx">params</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">id</span> <span class="o">:=</span> <span class="nx">params</span><span class="p">[</span><span class="s">&#34;id&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">id</span> <span class="o">==</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s">&#34;&lt;!-- youtube: missing id --&gt;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">`&lt;div class=&#34;video-container&#34;&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s">&lt;iframe src=&#34;https://www.youtube.com/embed/%s&#34; 
+</span></span></span><span class="line"><span class="cl"><span class="s">        frameborder=&#34;0&#34; 
+</span></span></span><span class="line"><span class="cl"><span class="s">        allowfullscreen
+</span></span></span><span class="line"><span class="cl"><span class="s">        loading=&#34;lazy&#34;&gt;&lt;/iframe&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s">&lt;/div&gt;`</span><span class="p">,</span> <span class="nx">id</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">gistShortcode</span><span class="p">(</span><span class="nx">params</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">user</span> <span class="o">:=</span> <span class="nx">params</span><span class="p">[</span><span class="s">&#34;user&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">id</span> <span class="o">:=</span> <span class="nx">params</span><span class="p">[</span><span class="s">&#34;id&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">user</span> <span class="o">==</span> <span class="s">&#34;&#34;</span> <span class="o">||</span> <span class="nx">id</span> <span class="o">==</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s">&#34;&lt;!-- gist: missing user or id --&gt;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">`&lt;script src=&#34;https://gist.github.com/%s/%s.js&#34;&gt;&lt;/script&gt;`</span><span class="p">,</span> <span class="nx">user</span><span class="p">,</span> <span class="nx">id</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">tweetShortcode</span><span class="p">(</span><span class="nx">params</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">id</span> <span class="o">:=</span> <span class="nx">params</span><span class="p">[</span><span class="s">&#34;id&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">id</span> <span class="o">==</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s">&#34;&lt;!-- tweet: missing id --&gt;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">`&lt;blockquote class=&#34;twitter-tweet&#34; data-dnt=&#34;true&#34;&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s">&lt;a href=&#34;https://twitter.com/x/status/%s&#34;&gt;&lt;/a&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s">&lt;/blockquote&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s">&lt;script async src=&#34;https://platform.twitter.com/widgets.js&#34;&gt;&lt;/script&gt;`</span><span class="p">,</span> <span class="nx">id</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">figureShortcode</span><span class="p">(</span><span class="nx">params</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">src</span> <span class="o">:=</span> <span class="nx">params</span><span class="p">[</span><span class="s">&#34;src&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">alt</span> <span class="o">:=</span> <span class="nx">params</span><span class="p">[</span><span class="s">&#34;alt&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">caption</span> <span class="o">:=</span> <span class="nx">params</span><span class="p">[</span><span class="s">&#34;caption&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">src</span> <span class="o">==</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s">&#34;&lt;!-- figure: missing src --&gt;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nx">html</span> <span class="o">:=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">`&lt;figure&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s">&lt;img src=&#34;%s&#34; alt=&#34;%s&#34; loading=&#34;lazy&#34;&gt;`</span><span class="p">,</span> <span class="nx">src</span><span class="p">,</span> <span class="nx">alt</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">caption</span> <span class="o">!=</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">html</span> <span class="o">+=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">`
+</span></span></span><span class="line"><span class="cl"><span class="s">&lt;figcaption&gt;%s&lt;/figcaption&gt;`</span><span class="p">,</span> <span class="nx">caption</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nx">html</span> <span class="o">+=</span> <span class="s">`
+</span></span></span><span class="line"><span class="cl"><span class="s">&lt;/figure&gt;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">html</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Interface verification
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span>          <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">ShortcodePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">TransformPlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">ShortcodePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><p><strong>Usage in markdown:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Video Tutorial&#34;
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Getting Started with Go
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">Watch the video tutorial:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{{<span class="p">&lt;</span> <span class="nt">youtube</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;YS4e4q9oBaU&#34;</span> <span class="p">&gt;</span>}}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Check out this code snippet:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{{<span class="p">&lt;</span> <span class="nt">gist</span> <span class="na">user</span><span class="o">=</span><span class="s">&#34;example&#34;</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;abc123&#34;</span> <span class="p">&gt;</span>}}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{{<span class="p">&lt;</span> <span class="nt">figure</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/images/diagram.png&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;Architecture&#34;</span> <span class="na">caption</span><span class="o">=</span><span class="s">&#34;System architecture diagram&#34;</span> <span class="p">&gt;</span>}}
+</span></span></code></pre><hr>
+<h2 id="performance-optimization">Performance Optimization <a href="#performance-optimization" class="heading-anchor">#</a></h2>
+<p>Optimize markata-go for large sites with thousands of posts.</p>
+<h3 id="concurrent-processing">Concurrent Processing <a href="#concurrent-processing" class="heading-anchor">#</a></h3>
+<p>markata-go processes posts concurrently by default. Control concurrency via configuration:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">concurrency</span> <span class="p">=</span> <span class="mi">0</span>    <span class="c"># 0 = auto-detect (uses all CPU cores)</span>
+</span></span><span class="line"><span class="cl"><span class="c"># concurrency = 4  # Limit to 4 workers</span>
+</span></span><span class="line"><span class="cl"><span class="c"># concurrency = 1  # Sequential processing (for debugging)</span>
+</span></span></code></pre><p>For custom plugins, use the built-in concurrent processor:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Transform</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">m</span><span class="p">.</span><span class="nf">ProcessPostsConcurrently</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">post</span> <span class="o">*</span><span class="nx">models</span><span class="p">.</span><span class="nx">Post</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// This runs in parallel across posts
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">return</span> <span class="nx">p</span><span class="p">.</span><span class="nf">processPost</span><span class="p">(</span><span class="nx">post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="incremental-builds">Incremental Builds <a href="#incremental-builds" class="heading-anchor">#</a></h3>
+<p>For faster development, markata-go can skip unchanged files:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Standard build (processes all files)</span>
+</span></span><span class="line"><span class="cl">markata-go build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Watch mode (only rebuilds changed files)</span>
+</span></span><span class="line"><span class="cl">markata-go serve --watch
+</span></span></code></pre><p>The watch mode tracks file modifications and only reprocesses changed posts, dramatically speeding up iterative development.</p>
+<h3 id="caching-strategies">Caching Strategies <a href="#caching-strategies" class="heading-anchor">#</a></h3>
+<p>For expensive operations, implement caching in your plugins:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Transform</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cache</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Cache</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">post</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Posts</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// Generate cache key from content hash
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nx">key</span> <span class="o">:=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;processed:%s&#34;</span><span class="p">,</span> <span class="nx">post</span><span class="p">.</span><span class="nf">ContentHash</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1">// Check cache
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">if</span> <span class="nx">cached</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">cache</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="nx">key</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">post</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="s">&#34;processed_data&#34;</span><span class="p">,</span> <span class="nx">cached</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="k">continue</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1">// Expensive operation
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nx">result</span> <span class="o">:=</span> <span class="nx">p</span><span class="p">.</span><span class="nf">expensiveOperation</span><span class="p">(</span><span class="nx">post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1">// Store in cache
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nx">cache</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="nx">result</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">post</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="s">&#34;processed_data&#34;</span><span class="p">,</span> <span class="nx">result</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="large-site-considerations">Large Site Considerations <a href="#large-site-considerations" class="heading-anchor">#</a></h3>
+<p>For sites with 1000+ posts:</p>
+<ol>
+<li>
+<p><strong>Limit feed items:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">syndication</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">max_items</span> <span class="p">=</span> <span class="mi">50</span>    <span class="c"># Don&#39;t include all posts in RSS/Atom</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Use pagination:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">20</span>    <span class="c"># Reasonable page size</span>
+</span></span><span class="line"><span class="cl"><span class="nx">orphan_threshold</span> <span class="p">=</span> <span class="mi">5</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Minimize Jinja-in-Markdown:</strong></p>
+<ul>
+<li>Pre-compute expensive queries</li>
+<li>Cache dynamic content</li>
+<li>Use feeds instead of inline queries</li>
+</ul>
+</li>
+<li>
+<p><strong>Optimize glob patterns:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;posts/**/*.md&#34;</span><span class="p">]</span>    <span class="c"># Specific patterns</span>
+</span></span><span class="line"><span class="cl"><span class="nx">use_gitignore</span> <span class="p">=</span> <span class="kc">true</span>            <span class="c"># Skip ignored files</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Profile builds:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build -v --profile
+</span></span></code></pre></li>
+</ol>
+<h3 id="build-time-benchmarks">Build Time Benchmarks <a href="#build-time-benchmarks" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Posts</th>
+<th>Cold Build</th>
+<th>Incremental</th>
+<th>With Watch</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100</td>
+<td>~1s</td>
+<td>~0.2s</td>
+<td>~50ms</td>
+</tr>
+<tr>
+<td>1,000</td>
+<td>~5s</td>
+<td>~0.5s</td>
+<td>~100ms</td>
+</tr>
+<tr>
+<td>10,000</td>
+<td>~30s</td>
+<td>~2s</td>
+<td>~200ms</td>
+</tr>
+</tbody>
+</table>
+<p><em>Times vary based on content complexity, plugins, and hardware.</em></p>
+<hr>
+<h2 id="multi-environment-builds">Multi-Environment Builds <a href="#multi-environment-builds" class="heading-anchor">#</a></h2>
+<p>Configure markata-go for different deployment environments.</p>
+<p><strong>Related guides:</strong> [[configuration-guide|Configuration]], [[deployment-guide|Deployment]]</p>
+<h3 id="staging-vs-production">Staging vs Production <a href="#staging-vs-production" class="heading-anchor">#</a></h3>
+<p>Use environment variables to customize builds:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Production build</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://example.com markata-go build --clean
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Staging build</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://staging.example.com markata-go build --clean
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Preview build (e.g., for PR previews)</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://preview-123.example.com markata-go build
+</span></span></code></pre><h3 id="environment-variables-reference">Environment Variables Reference <a href="#environment-variables-reference" class="heading-anchor">#</a></h3>
+<p>All configuration can be overridden via environment variables:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Core settings</span>
+</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://example.com
+</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">MARKATA_GO_TITLE</span><span class="o">=</span><span class="s2">&#34;My Site&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">MARKATA_GO_OUTPUT_DIR</span><span class="o">=</span>dist
+</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">MARKATA_GO_CONCURRENCY</span><span class="o">=</span><span class="m">4</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Feature flags</span>
+</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">MARKATA_GO_DRAFT_MODE</span><span class="o">=</span><span class="nb">true</span>           <span class="c1"># Include drafts</span>
+</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">MARKATA_GO_FUTURE_POSTS</span><span class="o">=</span><span class="nb">true</span>         <span class="c1"># Include scheduled posts</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Feed settings</span>
+</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">MARKATA_GO_FEED_DEFAULTS_ITEMS_PER_PAGE</span><span class="o">=</span><span class="m">20</span>
+</span></span></code></pre><h3 id="cicd-integration">CI/CD Integration <a href="#cicd-integration" class="heading-anchor">#</a></h3>
+<h4 id="github-actions">GitHub Actions <a href="#github-actions" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Deploy</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">on</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">push</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">main]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">pull_request</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">main]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">jobs</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">build</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l">ubuntu-latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/checkout@v4</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Setup Go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/setup-go@v5</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">go-version</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;1.22&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">cache</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Install markata-go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">go install github.com/example/markata-go/cmd/markata-go@latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build (Production)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l">github.ref == &#39;refs/heads/main&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go build --clean</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">MARKATA_GO_URL</span><span class="p">:</span><span class="w"> </span><span class="l">https://example.com</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build (Preview)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l">github.event_name == &#39;pull_request&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go build --clean</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">MARKATA_GO_URL</span><span class="p">:</span><span class="w"> </span><span class="l">https://preview-${{ github.event.number }}.example.com</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Deploy</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l">github.ref == &#39;refs/heads/main&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/deploy-pages@v4</span><span class="w">
+</span></span></span></code></pre><h4 id="netlify">Netlify <a href="#netlify" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># netlify.toml</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">build</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">command</span> <span class="p">=</span> <span class="s2">&#34;go install github.com/example/markata-go/cmd/markata-go@latest &amp;&amp; markata-go build --clean&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">publish</span> <span class="p">=</span> <span class="s2">&#34;public&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">context</span><span class="p">.</span><span class="nx">production</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">environment</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">MARKATA_GO_URL</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">context</span><span class="p">.</span><span class="nx">deploy-preview</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">environment</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">MARKATA_GO_URL</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span> <span class="p">}</span>  <span class="c"># Uses deploy preview URL</span>
+</span></span></code></pre><h4 id="docker">Docker <a href="#docker" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Build stage</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">FROM</span><span class="s"> golang:1.22-alpine AS builder</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">WORKDIR</span><span class="s"> /build</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">ARG</span> <span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://example.com<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">ENV</span> <span class="nv">MARKATA_GO_URL</span><span class="o">=</span><span class="nv">$MARKATA_GO_URL</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">RUN</span> go install github.com/example/markata-go/cmd/markata-go@latest<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">COPY</span> . .<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">RUN</span> markata-go build --clean<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="c"># Production stage</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">FROM</span><span class="s"> nginx:alpine</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">COPY</span> --from<span class="o">=</span>builder /build/public /usr/share/nginx/html<span class="err">
+</span></span></span></code></pre><p>Build for different environments:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Production</span>
+</span></span><span class="line"><span class="cl">docker build --build-arg <span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://example.com -t site:prod .
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Staging</span>
+</span></span><span class="line"><span class="cl">docker build --build-arg <span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://staging.example.com -t site:staging .
+</span></span></code></pre><hr>
+<h2 id="advanced-templates">Advanced Templates <a href="#advanced-templates" class="heading-anchor">#</a></h2>
+<p>Master template inheritance, conditionals, and reusable components.</p>
+<p><strong>Related guide:</strong> [[templates-guide|Templates Guide]]</p>
+<h3 id="template-inheritance-patterns">Template Inheritance Patterns <a href="#template-inheritance-patterns" class="heading-anchor">#</a></h3>
+<p>Create a flexible base template with multiple extension points:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# templates/base.html #}
+</span></span><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;en&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;UTF-8&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;viewport&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;width=device-width, initial-scale=1.0&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {# SEO block - can be fully overridden #}
+</span></span><span class="line"><span class="cl">    {% block seo %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>{% block title %}{{ config.Title }}{% endblock %}<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;description&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{% block description %}{{ config.Description }}{% endblock %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {# Open Graph - extendable #}
+</span></span><span class="line"><span class="cl">    {% block opengraph %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:title&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{% block og_title %}{{ config.Title }}{% endblock %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:type&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{% block og_type %}website{% endblock %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:url&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ config.URL }}{% block og_url %}/{% endblock %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {# Styles - extendable #}
+</span></span><span class="line"><span class="cl">    {% block styles %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;stylesheet&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/css/main.css&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {# Extra head content #}
+</span></span><span class="line"><span class="cl">    {% block head %}{% endblock %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;{% block body_class %}{% endblock %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% block skip_link %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#main&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;skip-link&#34;</span><span class="p">&gt;</span>Skip to content<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {% block header %}
+</span></span><span class="line"><span class="cl">    {% include &#34;partials/header.html&#34; %}
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {% block main %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">main</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;main&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% block content %}{% endblock %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">main</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {% block footer %}
+</span></span><span class="line"><span class="cl">    {% include &#34;partials/footer.html&#34; %}
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {% block scripts %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/js/main.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="conditional-layouts">Conditional Layouts <a href="#conditional-layouts" class="heading-anchor">#</a></h3>
+<p>Use different layouts based on post metadata:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# templates/post.html #}
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block body_class %}
+</span></span><span class="line"><span class="cl">post 
+</span></span><span class="line"><span class="cl">{% if post.Extra.featured %}featured{% endif %}
+</span></span><span class="line"><span class="cl">{% if post.Extra.wide %}wide-layout{% endif %}
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">article</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;{% if post.Extra.layout %}{{ post.Extra.layout }}{% else %}standard{% endif %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {# Hero section for featured posts #}
+</span></span><span class="line"><span class="cl">    {% if post.Extra.hero_image %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hero&#34;</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;background-image: url(&#39;{{ post.Extra.hero_image }}&#39;)&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% else %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {# Sidebar for posts with TOC #}
+</span></span><span class="line"><span class="cl">    {% if post.Extra.toc %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;with-sidebar&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">aside</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;toc&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {{ post.Extra.toc_html|safe }}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">aside</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {{ body|safe }}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% else %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {{ body|safe }}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {# Series navigation #}
+</span></span><span class="line"><span class="cl">    {% if post.Extra.series %}
+</span></span><span class="line"><span class="cl">    {% include &#34;partials/series-nav.html&#34; %}
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><h3 id="reusable-components">Reusable Components <a href="#reusable-components" class="heading-anchor">#</a></h3>
+<p>Create composable partial templates:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# templates/partials/card.html #}
+</span></span><span class="line"><span class="cl">{# 
+</span></span><span class="line"><span class="cl">  Expects: post object
+</span></span><span class="line"><span class="cl">  Optional: show_image, show_tags, show_excerpt
+</span></span><span class="line"><span class="cl">#}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">article</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card {% if post.Extra.featured %}card--featured{% endif %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% if show_image|default_if_none:true and post.Extra.cover_image %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.Href }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card__image&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;{{ post.Extra.cover_image }}&#34;</span> 
+</span></span><span class="line"><span class="cl">             <span class="na">alt</span><span class="o">=</span><span class="s">&#34;{{ post.Title }}&#34;</span>
+</span></span><span class="line"><span class="cl">             <span class="na">loading</span><span class="o">=</span><span class="s">&#34;lazy&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card__body&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h3</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card__title&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.Href }}&#34;</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">h3</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        {% if show_excerpt|default_if_none:true and post.Description %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">p</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card__excerpt&#34;</span><span class="p">&gt;</span>{{ post.Description|truncate:120 }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">footer</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card__meta&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% if post.Date %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">time</span> <span class="na">datetime</span><span class="o">=</span><span class="s">&#34;{{ post.Date|atom_date }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                {{ post.Date|date_format:&#34;Jan 2, 2006&#34; }}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">time</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endif %}
+</span></span><span class="line"><span class="cl">            
+</span></span><span class="line"><span class="cl">            {% if post.Extra.reading_time %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;reading-time&#34;</span><span class="p">&gt;</span>{{ post.Extra.reading_time }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endif %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        {% if show_tags|default_if_none:false and post.Tags %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">ul</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card__tags&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% for tag in post.Tags|slice:&#34;:3&#34; %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tags/{{ tag|slugify }}/&#34;</span><span class="p">&gt;</span>{{ tag }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endfor %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span></code></pre><p>Use the component with different configurations:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# Full card with image and tags #}
+</span></span><span class="line"><span class="cl">{% with show_image=true, show_tags=true %}
+</span></span><span class="line"><span class="cl">{% include &#34;partials/card.html&#34; %}
+</span></span><span class="line"><span class="cl">{% endwith %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{# Minimal card without image #}
+</span></span><span class="line"><span class="cl">{% with show_image=false %}
+</span></span><span class="line"><span class="cl">{% include &#34;partials/card.html&#34; %}
+</span></span><span class="line"><span class="cl">{% endwith %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{# Text-only card #}
+</span></span><span class="line"><span class="cl">{% with show_image=false, show_excerpt=false %}
+</span></span><span class="line"><span class="cl">{% include &#34;partials/card.html&#34; %}
+</span></span><span class="line"><span class="cl">{% endwith %}
+</span></span></code></pre><hr>
+<h2 id="wikilinks-and-internal-linking">Wikilinks and Internal Linking <a href="#wikilinks-and-internal-linking" class="heading-anchor">#</a></h2>
+<p>Use <code>[[wikilink]]</code> syntax for easy cross-referencing between posts.</p>
+<h3 id="basic-wikilink-syntax">Basic Wikilink Syntax <a href="#basic-wikilink-syntax" class="heading-anchor">#</a></h3>
+<p>Link to other posts using their slug:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Go Interfaces&#34;
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Understanding Go Interfaces
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">Interfaces in Go are implicit. See [[go-structs]] for how structs work.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">For more on type systems, check out [[go-type-system|the type system guide]].
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Related: [[go-generics]], [[go-methods]]
+</span></span></code></pre><p><strong>Syntax variants:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Syntax</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[[slug]]</code></td>
+<td>Link with auto-title</td>
+</tr>
+<tr>
+<td>`[[slug</td>
+<td>Custom Text]]`</td>
+</tr>
+<tr>
+<td><code>[[slug#section]]</code></td>
+<td>Link to specific section</td>
+</tr>
+<tr>
+<td>`[[slug#section</td>
+<td>Text]]`</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cross-referencing-posts">Cross-Referencing Posts <a href="#cross-referencing-posts" class="heading-anchor">#</a></h3>
+<p>Create bidirectional links for a wiki-like experience:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Go Structs&#34;
+</span></span><span class="line"><span class="cl">slug: &#34;go-structs&#34;
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Go Structs
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">Structs are the primary way to create custom types in Go.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">See also:
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [[go-interfaces]] - How interfaces work with structs
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [[go-methods]] - Adding methods to structs
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [[go-embedding]] - Struct embedding patterns
+</span></span></code></pre><h3 id="broken-link-detection">Broken Link Detection <a href="#broken-link-detection" class="heading-anchor">#</a></h3>
+<p>markata-go validates wikilinks during build and warns about broken links:</p>
+<pre><code>$ markata-go build
+Warning: Broken wikilink in posts/go-structs.md: [[go-embedding]] (post not found)
+Warning: Broken wikilink in posts/intro.md: [[getting-started#setup]] (section not found)
+</code></pre>
+<p>Enable strict mode to fail builds on broken links:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">strict_wikilinks</span> <span class="p">=</span> <span class="kc">true</span>    <span class="c"># Fail build on broken links</span>
+</span></span></code></pre><h3 id="backlinks">Backlinks <a href="#backlinks" class="heading-anchor">#</a></h3>
+<p>The wikilinks plugin can generate backlinks (posts that link to the current post):</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# In post.html template #}
+</span></span><span class="line"><span class="cl">{% if post.Extra.backlinks %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">aside</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;backlinks&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">h3</span><span class="p">&gt;</span>Linked from<span class="p">&lt;/</span><span class="nt">h3</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% for link in post.Extra.backlinks %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ link.Href }}&#34;</span><span class="p">&gt;</span>{{ link.Title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endfor %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">aside</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span></code></pre><hr>
+<h2 id="table-of-contents-generation">Table of Contents Generation <a href="#table-of-contents-generation" class="heading-anchor">#</a></h2>
+<p>Automatically generate navigation for long-form content.</p>
+<h3 id="enable-toc-generation">Enable TOC Generation <a href="#enable-toc-generation" class="heading-anchor">#</a></h3>
+<p>Add <code>toc: true</code> to your frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Complete Go Guide&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">toc</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">toc_depth: 3       # Include h1, h2, h3 (default</span><span class="p">:</span><span class="w"> </span><span class="m">2</span><span class="l">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">toc_min_items: 3   # Only show TOC if 3+ headings (default</span><span class="p">:</span><span class="w"> </span><span class="m">2</span><span class="l">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Introduction</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">## Getting Started</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">### Installation</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">### Configuration</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">## Core Concepts</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">### Variables</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">### Functions</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">## Advanced Topics</span><span class="w">
+</span></span></span></code></pre><h3 id="toc-output">TOC Output <a href="#toc-output" class="heading-anchor">#</a></h3>
+<p>The TOC is available as <code>post.Extra.toc_html</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;toc&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">h2</span><span class="p">&gt;</span>Contents<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#introduction&#34;</span><span class="p">&gt;</span>Introduction<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#getting-started&#34;</span><span class="p">&gt;</span>Getting Started<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#installation&#34;</span><span class="p">&gt;</span>Installation<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#configuration&#34;</span><span class="p">&gt;</span>Configuration<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#core-concepts&#34;</span><span class="p">&gt;</span>Core Concepts<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#variables&#34;</span><span class="p">&gt;</span>Variables<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#functions&#34;</span><span class="p">&gt;</span>Functions<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#advanced-topics&#34;</span><span class="p">&gt;</span>Advanced Topics<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="template-integration">Template Integration <a href="#template-integration" class="heading-anchor">#</a></h3>
+<p>Include the TOC in your post template:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">article</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {% if post.Extra.toc_html %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">aside</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;toc-sidebar&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {{ post.Extra.toc_html|safe }}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">aside</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {{ body|safe }}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><h3 id="styling-the-toc">Styling the TOC <a href="#styling-the-toc" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">.</span><span class="nc">toc</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">position</span><span class="p">:</span> <span class="kc">sticky</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">top</span><span class="p">:</span> <span class="mi">2</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">max-height</span><span class="p">:</span> <span class="nb">calc</span><span class="p">(</span><span class="mi">100</span><span class="kt">vh</span> <span class="o">-</span> <span class="mi">4</span><span class="kt">rem</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">overflow-y</span><span class="p">:</span> <span class="kc">auto</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">padding</span><span class="p">:</span> <span class="mi">1</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">background</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">bg</span><span class="o">-</span><span class="n">secondary</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">border-radius</span><span class="p">:</span> <span class="mi">8</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">toc</span> <span class="nt">ol</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">list-style</span><span class="p">:</span> <span class="kc">none</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">padding-left</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">toc</span> <span class="nt">ol</span> <span class="nt">ol</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">padding-left</span><span class="p">:</span> <span class="mi">1</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">margin-top</span><span class="p">:</span> <span class="mf">0.5</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">toc</span> <span class="nt">a</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">display</span><span class="p">:</span> <span class="kc">block</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">padding</span><span class="p">:</span> <span class="mf">0.25</span><span class="kt">rem</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">color</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="kc">text</span><span class="o">-</span><span class="n">secondary</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">text-decoration</span><span class="p">:</span> <span class="kc">none</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">toc</span> <span class="nt">a</span><span class="p">:</span><span class="nd">hover</span><span class="o">,</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">toc</span> <span class="nt">a</span><span class="p">.</span><span class="nc">active</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">color</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="kc">text</span><span class="o">-</span><span class="n">primary</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">/* Highlight current section with JavaScript */</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">toc</span> <span class="nt">a</span><span class="p">.</span><span class="nc">active</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">font-weight</span><span class="p">:</span> <span class="mi">600</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">color</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">accent</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><hr>
+<h2 id="admonitions-and-callouts">Admonitions and Callouts <a href="#admonitions-and-callouts" class="heading-anchor">#</a></h2>
+<p>Create visually distinct callout blocks for notes, warnings, tips, and more.</p>
+<h3 id="admonition-syntax">Admonition Syntax <a href="#admonition-syntax" class="heading-anchor">#</a></h3>
+<p>Use fenced blocks with type indicators:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">:::note
+</span></span><span class="line"><span class="cl">This is a note. Use it for additional information.
+</span></span><span class="line"><span class="cl">:::
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">:::tip
+</span></span><span class="line"><span class="cl">Pro tip! This helps users work more efficiently.
+</span></span><span class="line"><span class="cl">:::
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">:::warning
+</span></span><span class="line"><span class="cl">Be careful! This action has consequences.
+</span></span><span class="line"><span class="cl">:::
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">:::danger
+</span></span><span class="line"><span class="cl">Critical warning! This could cause data loss.
+</span></span><span class="line"><span class="cl">:::
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">:::info
+</span></span><span class="line"><span class="cl">Informational callout for context.
+</span></span><span class="line"><span class="cl">:::
+</span></span></code></pre><h3 id="admonition-with-custom-title">Admonition with Custom Title <a href="#admonition-with-custom-title" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">:::note Custom Title
+</span></span><span class="line"><span class="cl">This note has a custom title instead of &#34;Note&#34;.
+</span></span><span class="line"><span class="cl">:::
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">:::warning Before You Continue
+</span></span><span class="line"><span class="cl">Make sure you&#39;ve completed the prerequisites.
+</span></span><span class="line"><span class="cl">:::
+</span></span></code></pre><h3 id="rendered-output">Rendered Output <a href="#rendered-output" class="heading-anchor">#</a></h3>
+<p>Admonitions render as styled HTML:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition admonition-note&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition-title&#34;</span><span class="p">&gt;</span>Note<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition-content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>This is a note. Use it for additional information.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="available-types">Available Types <a href="#available-types" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Icon</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>note</code></td>
+<td>Info icon</td>
+<td>Additional context</td>
+</tr>
+<tr>
+<td><code>tip</code></td>
+<td>Lightbulb</td>
+<td>Helpful suggestions</td>
+</tr>
+<tr>
+<td><code>info</code></td>
+<td>Info circle</td>
+<td>Background information</td>
+</tr>
+<tr>
+<td><code>warning</code></td>
+<td>Warning triangle</td>
+<td>Potential issues</td>
+</tr>
+<tr>
+<td><code>danger</code></td>
+<td>X circle</td>
+<td>Critical warnings</td>
+</tr>
+<tr>
+<td><code>success</code></td>
+<td>Checkmark</td>
+<td>Confirmations</td>
+</tr>
+<tr>
+<td><code>example</code></td>
+<td>Code icon</td>
+<td>Code examples</td>
+</tr>
+<tr>
+<td><code>quote</code></td>
+<td>Quote icon</td>
+<td>Quotations</td>
+</tr>
+<tr>
+<td><code>abstract</code></td>
+<td>Document</td>
+<td>Summaries</td>
+</tr>
+</tbody>
+</table>
+<h3 id="custom-admonition-types">Custom Admonition Types <a href="#custom-admonition-types" class="heading-anchor">#</a></h3>
+<p>Define custom types in your configuration:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">admonitions</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Define a custom &#34;exercise&#34; type</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">admonitions</span><span class="p">.</span><span class="nx">exercise</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">icon</span> <span class="p">=</span> <span class="s2">&#34;pencil&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">color</span> <span class="p">=</span> <span class="s2">&#34;#6366f1&#34;</span>    <span class="c"># Indigo</span>
+</span></span></code></pre><p>Use in markdown:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">:::exercise Practice Problem
+</span></span><span class="line"><span class="cl">Write a function that reverses a string.
+</span></span><span class="line"><span class="cl">:::
+</span></span></code></pre><h3 id="styling-admonitions">Styling Admonitions <a href="#styling-admonitions" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">.</span><span class="nc">admonition</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">margin</span><span class="p">:</span> <span class="mf">1.5</span><span class="kt">rem</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">padding</span><span class="p">:</span> <span class="mi">1</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">border-left</span><span class="p">:</span> <span class="mi">4</span><span class="kt">px</span> <span class="kc">solid</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">border-radius</span><span class="p">:</span> <span class="mi">4</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">background</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">bg</span><span class="o">-</span><span class="n">secondary</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">admonition-title</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">font-weight</span><span class="p">:</span> <span class="mi">600</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">margin-bottom</span><span class="p">:</span> <span class="mf">0.5</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">display</span><span class="p">:</span> <span class="kc">flex</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">align-items</span><span class="p">:</span> <span class="kc">center</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">gap</span><span class="p">:</span> <span class="mf">0.5</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">admonition-note</span> <span class="p">{</span> <span class="k">border-color</span><span class="p">:</span> <span class="mh">#3b82f6</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">admonition-tip</span> <span class="p">{</span> <span class="k">border-color</span><span class="p">:</span> <span class="mh">#22c55e</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">admonition-warning</span> <span class="p">{</span> <span class="k">border-color</span><span class="p">:</span> <span class="mh">#f59e0b</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">admonition-danger</span> <span class="p">{</span> <span class="k">border-color</span><span class="p">:</span> <span class="mh">#ef4444</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">admonition-info</span> <span class="p">{</span> <span class="k">border-color</span><span class="p">:</span> <span class="mh">#06b6d4</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">admonition-note</span> <span class="p">.</span><span class="nc">admonition-title</span> <span class="p">{</span> <span class="k">color</span><span class="p">:</span> <span class="mh">#3b82f6</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">admonition-tip</span> <span class="p">.</span><span class="nc">admonition-title</span> <span class="p">{</span> <span class="k">color</span><span class="p">:</span> <span class="mh">#22c55e</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">admonition-warning</span> <span class="p">.</span><span class="nc">admonition-title</span> <span class="p">{</span> <span class="k">color</span><span class="p">:</span> <span class="mh">#f59e0b</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">admonition-danger</span> <span class="p">.</span><span class="nc">admonition-title</span> <span class="p">{</span> <span class="k">color</span><span class="p">:</span> <span class="mh">#ef4444</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">admonition-info</span> <span class="p">.</span><span class="nc">admonition-title</span> <span class="p">{</span> <span class="k">color</span><span class="p">:</span> <span class="mh">#06b6d4</span><span class="p">;</span> <span class="p">}</span>
+</span></span></code></pre><h3 id="collapsible-admonitions">Collapsible Admonitions <a href="#collapsible-admonitions" class="heading-anchor">#</a></h3>
+<p>Make admonitions collapsible with the <code>collapse</code> modifier:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">:::tip collapse Expand for Pro Tips
+</span></span><span class="line"><span class="cl">These tips are hidden by default to keep the content focused.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">-</span> Tip 1: Use keyboard shortcuts
+</span></span><span class="line"><span class="cl"><span class="k">-</span> Tip 2: Enable caching
+</span></span><span class="line"><span class="cl"><span class="k">-</span> Tip 3: Run in parallel
+</span></span><span class="line"><span class="cl">:::
+</span></span></code></pre><p>Renders as:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">details</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition admonition-tip&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">summary</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition-title&#34;</span><span class="p">&gt;</span>Expand for Pro Tips<span class="p">&lt;/</span><span class="nt">summary</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition-content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>These tips are hidden by default...<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">details</span><span class="p">&gt;</span>
+</span></span></code></pre><hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="/feeds-guide/" class="wikilink" data-title="Feeds Guide" data-description="Deep dive into markata-go&#39;s powerful feed system for creating filtered, sorted, paginated collections" data-date="2024-01-15">Feeds Guide</a> - Complete feed system documentation</li>
+<li><a href="/templates-guide/" class="wikilink" data-title="Templates Guide" data-description="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax" data-date="2024-01-15">Templates Guide</a> - Template system reference</li>
+<li><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration Guide</a> - Full configuration options</li>
+<li><a href="/plugin-development/" class="wikilink" data-title="Plugin Development" data-description="Guide to creating custom plugins for markata-go using the 9-stage lifecycle" data-date="2024-01-15">Plugin Development</a> - Create custom plugins</li>
+<li><a href="/dynamic-content/" class="wikilink" data-title="Dynamic Content" data-description="Using Jinja2 template syntax in Markdown files for dynamic content generation" data-date="2024-01-15">Dynamic Content</a> - Jinja-in-Markdown guide</li>
+<li><a href="/deployment-guide/" class="wikilink" data-title="Deployment Guide" data-description="Guide to deploying markata-go sites to GitHub Pages, Netlify, Vercel, and self-hosted solutions" data-date="2024-01-15">Deployment</a> - Deployment and CI/CD</li>
+<li><a href="/frontmatter-guide/" class="wikilink" data-title="Frontmatter Guide" data-description="Complete guide to post metadata, built-in fields, and custom frontmatter in markata-go" data-date="2024-01-15">Frontmatter</a> - Frontmatter field reference</li>
+<li><a href="/syndication-feeds/" class="wikilink" data-title="Syndication Feeds" data-description="Guide to generating Sitemap, RSS, Atom, and JSON Feed outputs for your site" data-date="2024-01-15">Syndication Feeds</a> - RSS, Atom, JSON feeds</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

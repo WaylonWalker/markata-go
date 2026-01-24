@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syndication Feeds - My Site</title>
+    <meta name="description" content="Guide to generating Sitemap, RSS, Atom, and JSON Feed outputs for your site">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Syndication Feeds">
+    
+    <meta property="og:url" content="/syndication-feeds/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Guide to generating Sitemap, RSS, Atom, and JSON Feed outputs for your site">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="feeds">
+    
+    <meta property="article:tag" content="rss">
+    
+    <meta property="article:tag" content="atom">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Syndication Feeds">
+    
+    <meta name="twitter:description" content="Guide to generating Sitemap, RSS, Atom, and JSON Feed outputs for your site">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/syndication-feeds/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Syndication Feeds",
+  "description": "Guide to generating Sitemap, RSS, Atom, and JSON Feed outputs for your site",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/syndication-feeds/"
+  },
+  "keywords": [
+    "documentation",
+    "feeds",
+    "rss",
+    "atom"
+  ],
+  "url": "/syndication-feeds/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Syndication Feeds</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/feeds/">feeds</a>
+                
+                <a href="/tags/rss/">rss</a>
+                
+                <a href="/tags/atom/">atom</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="syndication-feeds">Syndication Feeds</h1>
+<p>This guide covers generating syndication feeds for your markata-go site: <strong>Sitemap</strong>, <strong>RSS</strong>, <strong>Atom</strong>, and <strong>JSON Feed</strong>. Each format serves different consumers - search engines, feed readers, and JavaScript applications.</p>
+<h2 id="quick-reference">Quick Reference <a href="#quick-reference" class="heading-anchor">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>File</th>
+<th>MIME Type</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sitemap</td>
+<td><code>sitemap.xml</code></td>
+<td><code>application/xml</code></td>
+<td>Search engine indexing</td>
+</tr>
+<tr>
+<td>RSS 2.0</td>
+<td><code>rss.xml</code></td>
+<td><code>application/rss+xml</code></td>
+<td>Traditional feed readers</td>
+</tr>
+<tr>
+<td>Atom</td>
+<td><code>atom.xml</code></td>
+<td><code>application/atom+xml</code></td>
+<td>Modern feed readers</td>
+</tr>
+<tr>
+<td>JSON Feed</td>
+<td><code>feed.json</code></td>
+<td><code>application/feed+json</code></td>
+<td>JavaScript apps, APIs</td>
+</tr>
+</tbody>
+</table>
+<h2 id="prerequisites">Prerequisites <a href="#prerequisites" class="heading-anchor">#</a></h2>
+<p>Before generating syndication feeds, ensure your <code>markata-go.toml</code> has the required site metadata:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Blog&#34;</span>                      <span class="c"># Required for all feeds</span>
+</span></span><span class="line"><span class="cl"><span class="nx">description</span> <span class="p">=</span> <span class="s2">&#34;A blog about things&#34;</span>    <span class="c"># Used in RSS/Atom/JSON</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>            <span class="c"># Required for absolute URLs</span>
+</span></span><span class="line"><span class="cl"><span class="nx">author</span> <span class="p">=</span> <span class="s2">&#34;Jane Doe&#34;</span>                    <span class="c"># Used in Atom/JSON feeds</span>
+</span></span></code></pre><hr>
+<h2 id="1-generate-a-sitemap">1. Generate a Sitemap <a href="#1-generate-a-sitemap" class="heading-anchor">#</a></h2>
+<p>The sitemap plugin automatically generates a <code>sitemap.xml</code> file containing all published posts and feed index pages.</p>
+<h3 id="enable-the-sitemap">Enable the Sitemap <a href="#enable-the-sitemap" class="heading-anchor">#</a></h3>
+<p>The sitemap is generated automatically when the <code>sitemap</code> plugin runs. No additional configuration is required for basic usage.</p>
+<p><strong>Output:</strong> <code>/sitemap.xml</code> in your output directory</p>
+<h3 id="example-sitemap-output">Example Sitemap Output <a href="#example-sitemap-output" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34;?&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;urlset</span> <span class="na">xmlns=</span><span class="s">&#34;http://www.sitemaps.org/schemas/sitemap/0.9&#34;</span><span class="nt">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;url&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;loc&gt;</span>https://example.com/<span class="nt">&lt;/loc&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;lastmod&gt;</span>2024-01-15<span class="nt">&lt;/lastmod&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;changefreq&gt;</span>daily<span class="nt">&lt;/changefreq&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;priority&gt;</span>1.0<span class="nt">&lt;/priority&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;/url&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;url&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;loc&gt;</span>https://example.com/my-first-post/<span class="nt">&lt;/loc&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;lastmod&gt;</span>2024-01-15<span class="nt">&lt;/lastmod&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;changefreq&gt;</span>weekly<span class="nt">&lt;/changefreq&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;priority&gt;</span>0.8<span class="nt">&lt;/priority&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;/url&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;url&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;loc&gt;</span>https://example.com/blog/<span class="nt">&lt;/loc&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;lastmod&gt;</span>2024-01-15<span class="nt">&lt;/lastmod&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;changefreq&gt;</span>weekly<span class="nt">&lt;/changefreq&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="nt">&lt;priority&gt;</span>0.6<span class="nt">&lt;/priority&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;/url&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;/urlset&gt;</span>
+</span></span></code></pre><h3 id="customize-sitemap-values-via-frontmatter">Customize Sitemap Values via Frontmatter <a href="#customize-sitemap-values-via-frontmatter" class="heading-anchor">#</a></h3>
+<p>Override <code>changefreq</code> and <code>priority</code> per-post in your markdown frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Important Announcement&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">sitemap</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">changefreq: daily      # Options</span><span class="p">:</span><span class="w"> </span><span class="l">always, hourly, daily, weekly, monthly, yearly, never</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">priority: 0.9          # Range</span><span class="p">:</span><span class="w"> </span><span class="m">0.0</span><span class="w"> </span><span class="l">to 1.0</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="default-sitemap-values">Default Sitemap Values <a href="#default-sitemap-values" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Page Type</th>
+<th>changefreq</th>
+<th>priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Home page</td>
+<td><code>daily</code></td>
+<td><code>1.0</code></td>
+</tr>
+<tr>
+<td>Posts</td>
+<td><code>weekly</code></td>
+<td><code>0.8</code></td>
+</tr>
+<tr>
+<td>Feed index pages</td>
+<td><code>weekly</code></td>
+<td><code>0.6</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="exclude-posts-from-sitemap">Exclude Posts from Sitemap <a href="#exclude-posts-from-sitemap" class="heading-anchor">#</a></h3>
+<p>Use <code>skip: true</code> in frontmatter to exclude a post from the sitemap:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Draft Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">skip</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><hr>
+<h2 id="2-generate-rss-feeds">2. Generate RSS Feeds <a href="#2-generate-rss-feeds" class="heading-anchor">#</a></h2>
+<p>RSS 2.0 feeds are the most widely supported format for feed readers.</p>
+<h3 id="enable-rss-for-a-feed">Enable RSS for a Feed <a href="#enable-rss-for-a-feed" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>                  <span class="c"># Enable RSS output</span>
+</span></span></code></pre><p><strong>Output:</strong> <code>/blog/rss.xml</code></p>
+<h3 id="example-rss-output">Example RSS Output <a href="#example-rss-output" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34;?&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;rss</span> <span class="na">version=</span><span class="s">&#34;2.0&#34;</span> <span class="na">xmlns:atom=</span><span class="s">&#34;http://www.w3.org/2005/Atom&#34;</span><span class="nt">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;channel&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;title&gt;</span>My Blog<span class="nt">&lt;/title&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;link&gt;</span>https://example.com<span class="nt">&lt;/link&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;description&gt;</span>A blog about things<span class="nt">&lt;/description&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;language&gt;</span>en-us<span class="nt">&lt;/language&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;lastBuildDate&gt;</span>Mon, 15 Jan 2024 12:00:00 +0000<span class="nt">&lt;/lastBuildDate&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;atom:link</span> <span class="na">href=</span><span class="s">&#34;https://example.com/blog/rss.xml&#34;</span> <span class="na">rel=</span><span class="s">&#34;self&#34;</span> <span class="na">type=</span><span class="s">&#34;application/rss+xml&#34;</span><span class="nt">/&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;item&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&lt;title&gt;</span>My First Post<span class="nt">&lt;/title&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&lt;link&gt;</span>https://example.com/my-first-post/<span class="nt">&lt;/link&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&lt;description&gt;</span>This is the post description...<span class="nt">&lt;/description&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&lt;pubDate&gt;</span>Mon, 15 Jan 2024 12:00:00 +0000<span class="nt">&lt;/pubDate&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&lt;guid</span> <span class="na">isPermaLink=</span><span class="s">&#34;true&#34;</span><span class="nt">&gt;</span>https://example.com/my-first-post/<span class="nt">&lt;/guid&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;/item&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;/channel&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;/rss&gt;</span>
+</span></span></code></pre><h3 id="rss-configuration-options">RSS Configuration Options <a href="#rss-configuration-options" class="heading-anchor">#</a></h3>
+<p>Control RSS behavior via feed defaults:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feed_defaults</span><span class="p">.</span><span class="nx">syndication</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">max_items</span> <span class="p">=</span> <span class="mi">20</span>              <span class="c"># Maximum items in RSS feed (default: 20)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">include_content</span> <span class="p">=</span> <span class="kc">true</span>      <span class="c"># Include full content or just description</span>
+</span></span></code></pre><h3 id="rss-with-full-content">RSS with Full Content <a href="#rss-with-full-content" class="heading-anchor">#</a></h3>
+<p>To include full post content instead of just the description:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feed_defaults</span><span class="p">.</span><span class="nx">syndication</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">include_content</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><p>When <code>include_content = true</code>, the <code>&lt;description&gt;</code> element contains the rendered HTML content (truncated to 500 characters). When <code>false</code>, it uses the post's <code>description</code> frontmatter field.</p>
+<hr>
+<h2 id="3-generate-atom-feeds">3. Generate Atom Feeds <a href="#3-generate-atom-feeds" class="heading-anchor">#</a></h2>
+<p>Atom feeds (RFC 4287) provide richer metadata than RSS and are well-supported by modern feed readers.</p>
+<h3 id="enable-atom-for-a-feed">Enable Atom for a Feed <a href="#enable-atom-for-a-feed" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>                 <span class="c"># Enable Atom output</span>
+</span></span></code></pre><p><strong>Output:</strong> <code>/blog/atom.xml</code></p>
+<h3 id="example-atom-output">Example Atom Output <a href="#example-atom-output" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34;?&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;feed</span> <span class="na">xmlns=</span><span class="s">&#34;http://www.w3.org/2005/Atom&#34;</span><span class="nt">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;title&gt;</span>My Blog<span class="nt">&lt;/title&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;id&gt;</span>https://example.com/blog/atom.xml<span class="nt">&lt;/id&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;updated&gt;</span>2024-01-15T12:00:00Z<span class="nt">&lt;/updated&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;link</span> <span class="na">href=</span><span class="s">&#34;https://example.com&#34;</span> <span class="na">rel=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type=</span><span class="s">&#34;text/html&#34;</span><span class="nt">/&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;link</span> <span class="na">href=</span><span class="s">&#34;https://example.com/blog/atom.xml&#34;</span> <span class="na">rel=</span><span class="s">&#34;self&#34;</span> <span class="na">type=</span><span class="s">&#34;application/atom+xml&#34;</span><span class="nt">/&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;author&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;name&gt;</span>Jane Doe<span class="nt">&lt;/name&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;/author&gt;</span>
+</span></span><span class="line"><span class="cl">  
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;entry&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;title&gt;</span>My First Post<span class="nt">&lt;/title&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;id&gt;</span>https://example.com/my-first-post/<span class="nt">&lt;/id&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;updated&gt;</span>2024-01-15T12:00:00Z<span class="nt">&lt;/updated&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;published&gt;</span>2024-01-15T12:00:00Z<span class="nt">&lt;/published&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;link</span> <span class="na">href=</span><span class="s">&#34;https://example.com/my-first-post/&#34;</span> <span class="na">rel=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type=</span><span class="s">&#34;text/html&#34;</span><span class="nt">/&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;summary</span> <span class="na">type=</span><span class="s">&#34;text&#34;</span><span class="nt">&gt;</span>This is the post description...<span class="nt">&lt;/summary&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;content</span> <span class="na">type=</span><span class="s">&#34;html&#34;</span><span class="nt">&gt;</span><span class="ni">&amp;lt;</span>p<span class="ni">&amp;gt;</span>Full post content...<span class="ni">&amp;lt;</span>/p<span class="ni">&amp;gt;</span><span class="nt">&lt;/content&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;/entry&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;/feed&gt;</span>
+</span></span></code></pre><h3 id="atom-vs-rss-key-differences">Atom vs RSS: Key Differences <a href="#atom-vs-rss-key-differences" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>RSS 2.0</th>
+<th>Atom</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Author info</td>
+<td>Limited</td>
+<td>Full (name, email, URI)</td>
+</tr>
+<tr>
+<td>Content types</td>
+<td>Text only</td>
+<td>Text, HTML, XHTML</td>
+</tr>
+<tr>
+<td>Update tracking</td>
+<td><code>lastBuildDate</code></td>
+<td><code>updated</code> per-entry</td>
+</tr>
+<tr>
+<td>Self-reference</td>
+<td>Via extension</td>
+<td>Built-in <code>rel=&quot;self&quot;</code></td>
+</tr>
+<tr>
+<td>ID format</td>
+<td>URL (guid)</td>
+<td>IRI (more flexible)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="when-to-use-atom">When to Use Atom <a href="#when-to-use-atom" class="heading-anchor">#</a></h3>
+<ul>
+<li>You need author information (name, email)</li>
+<li>You want both summary and full content</li>
+<li>You need per-entry update timestamps</li>
+<li>Your audience uses modern feed readers</li>
+</ul>
+<h3 id="when-to-use-rss">When to Use RSS <a href="#when-to-use-rss" class="heading-anchor">#</a></h3>
+<ul>
+<li>Maximum compatibility with older readers</li>
+<li>Simpler format requirements</li>
+<li>Podcast feeds (RSS is the standard)</li>
+</ul>
+<p><strong>Recommendation:</strong> Enable both RSS and Atom - let your users choose.</p>
+<hr>
+<h2 id="4-generate-json-feeds">4. Generate JSON Feeds <a href="#4-generate-json-feeds" class="heading-anchor">#</a></h2>
+<p>JSON Feed (version 1.1) is a modern feed format designed for easy consumption by JavaScript applications.</p>
+<h3 id="enable-json-feed">Enable JSON Feed <a href="#enable-json-feed" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>                 <span class="c"># Enable JSON Feed output</span>
+</span></span></code></pre><p><strong>Output:</strong> <code>/blog/feed.json</code></p>
+<h3 id="example-json-feed-output">Example JSON Feed Output <a href="#example-json-feed-output" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;version&#34;</span><span class="p">:</span> <span class="s2">&#34;https://jsonfeed.org/version/1.1&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;title&#34;</span><span class="p">:</span> <span class="s2">&#34;My Blog&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;home_page_url&#34;</span><span class="p">:</span> <span class="s2">&#34;https://example.com&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;feed_url&#34;</span><span class="p">:</span> <span class="s2">&#34;https://example.com/blog/feed.json&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;description&#34;</span><span class="p">:</span> <span class="s2">&#34;A blog about things&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;language&#34;</span><span class="p">:</span> <span class="s2">&#34;en&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;authors&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;name&#34;</span><span class="p">:</span> <span class="s2">&#34;Jane Doe&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">],</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;items&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;id&#34;</span><span class="p">:</span> <span class="s2">&#34;https://example.com/my-first-post/&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;url&#34;</span><span class="p">:</span> <span class="s2">&#34;https://example.com/my-first-post/&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;title&#34;</span><span class="p">:</span> <span class="s2">&#34;My First Post&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;content_html&#34;</span><span class="p">:</span> <span class="s2">&#34;&lt;p&gt;Full post content...&lt;/p&gt;&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;content_text&#34;</span><span class="p">:</span> <span class="s2">&#34;Full post content...&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;summary&#34;</span><span class="p">:</span> <span class="s2">&#34;This is the post description...&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;date_published&#34;</span><span class="p">:</span> <span class="s2">&#34;2024-01-15T12:00:00Z&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;date_modified&#34;</span><span class="p">:</span> <span class="s2">&#34;2024-01-15T12:00:00Z&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;tags&#34;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&#34;go&#34;</span><span class="p">,</span> <span class="s2">&#34;tutorial&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="json-feed-use-cases">JSON Feed Use Cases <a href="#json-feed-use-cases" class="heading-anchor">#</a></h3>
+<ol>
+<li><strong>JavaScript consumption</strong> - Parse with <code>fetch()</code> and <code>JSON.parse()</code></li>
+<li><strong>API endpoints</strong> - Serve as a simple read-only API</li>
+<li><strong>Static search indexes</strong> - Power client-side search</li>
+<li><strong>Cross-origin requests</strong> - JSON has better CORS support than XML</li>
+</ol>
+<h3 id="using-json-feed-in-javascript">Using JSON Feed in JavaScript <a href="#using-json-feed-in-javascript" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">fetch</span><span class="p">(</span><span class="s1">&#39;/blog/feed.json&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">response</span> <span class="p">=&gt;</span> <span class="nx">response</span><span class="p">.</span><span class="nx">json</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">  <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">feed</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">feed</span><span class="p">.</span><span class="nx">items</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="nx">item</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">item</span><span class="p">.</span><span class="nx">title</span><span class="p">,</span> <span class="nx">item</span><span class="p">.</span><span class="nx">url</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">});</span>
+</span></span><span class="line"><span class="cl">  <span class="p">});</span>
+</span></span></code></pre><hr>
+<h2 id="5-combining-multiple-formats">5. Combining Multiple Formats <a href="#5-combining-multiple-formats" class="heading-anchor">#</a></h2>
+<p>The real power of markata-go's feed system is generating all formats from a single definition.</p>
+<h3 id="complete-multi-format-feed">Complete Multi-Format Feed <a href="#complete-multi-format-feed" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Tech Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">description</span> <span class="p">=</span> <span class="s2">&#34;Articles about Go, Python, and web development&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://techblog.example.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">author</span> <span class="p">=</span> <span class="s2">&#34;Jane Doe&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">output_dir</span> <span class="p">=</span> <span class="s2">&#34;public&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Global feed defaults</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feed_defaults</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feed_defaults</span><span class="p">.</span><span class="nx">syndication</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">max_items</span> <span class="p">=</span> <span class="mi">20</span>
+</span></span><span class="line"><span class="cl"><span class="nx">include_content</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Main blog feed with ALL formats</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Tech Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">description</span> <span class="p">=</span> <span class="s2">&#34;Latest articles about programming&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>                 <span class="c"># /blog/index.html, /blog/page/2/index.html</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>                  <span class="c"># /blog/rss.xml</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>                 <span class="c"># /blog/atom.xml</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>                 <span class="c"># /blog/feed.json</span>
+</span></span></code></pre><h3 id="output-structure">Output Structure <a href="#output-structure" class="heading-anchor">#</a></h3>
+<pre><code>public/
+  sitemap.xml                    # Global sitemap (auto-generated)
+  blog/
+    index.html                   # HTML page 1
+    page/
+      2/
+        index.html               # HTML page 2
+    rss.xml                      # RSS 2.0 feed
+    atom.xml                     # Atom feed
+    feed.json                    # JSON Feed
+</code></pre>
+<h3 id="multiple-feeds-with-different-formats">Multiple Feeds with Different Formats <a href="#multiple-feeds-with-different-formats" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Home page - HTML only</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Home&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">5</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Blog - All syndication formats</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># API endpoint - JSON only</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;api/posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Posts API&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">0</span>              <span class="c"># No pagination - all posts</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><hr>
+<h2 id="6-adding-feed-discovery-links">6. Adding Feed Discovery Links <a href="#6-adding-feed-discovery-links" class="heading-anchor">#</a></h2>
+<p>Help feed readers and browsers automatically discover your feeds by adding <code>&lt;link&gt;</code> tags to your HTML templates.</p>
+<h3 id="template-with-feed-discovery">Template with Feed Discovery <a href="#template-with-feed-discovery" class="heading-anchor">#</a></h3>
+<p>Add these links to your base template's <code>&lt;head&gt;</code> section:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;en&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;UTF-8&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;viewport&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;width=device-width, initial-scale=1.0&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>{{ title }}<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- RSS Feed Discovery --&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/rss+xml&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">title</span><span class="o">=</span><span class="s">&#34;{{ site.title }} (RSS)&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ site.url }}/blog/rss.xml&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- Atom Feed Discovery --&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/atom+xml&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">title</span><span class="o">=</span><span class="s">&#34;{{ site.title }} (Atom)&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ site.url }}/blog/atom.xml&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- JSON Feed Discovery --&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/feed+json&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">title</span><span class="o">=</span><span class="s">&#34;{{ site.title }} (JSON)&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ site.url }}/blog/feed.json&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- ... --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="feed-links-per-section">Feed Links Per Section <a href="#feed-links-per-section" class="heading-anchor">#</a></h3>
+<p>If you have multiple feeds (blog, tutorials, etc.), add discovery links for each:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- Blog feeds --&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/rss+xml&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">title</span><span class="o">=</span><span class="s">&#34;Blog (RSS)&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/rss.xml&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/atom+xml&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">title</span><span class="o">=</span><span class="s">&#34;Blog (Atom)&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/atom.xml&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- Tutorial feeds --&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/rss+xml&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">title</span><span class="o">=</span><span class="s">&#34;Tutorials (RSS)&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tutorials/rss.xml&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/atom+xml&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">title</span><span class="o">=</span><span class="s">&#34;Tutorials (Atom)&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tutorials/atom.xml&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="dynamic-feed-discovery-in-templates">Dynamic Feed Discovery in Templates <a href="#dynamic-feed-discovery-in-templates" class="heading-anchor">#</a></h3>
+<p>For feed-specific pages, use template variables:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% if feed %}
+</span></span><span class="line"><span class="cl">    {% if feed.formats.rss %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/rss+xml&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">title</span><span class="o">=</span><span class="s">&#34;{{ feed.title }} (RSS)&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ feed.href }}rss.xml&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {% if feed.formats.atom %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/atom+xml&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">title</span><span class="o">=</span><span class="s">&#34;{{ feed.title }} (Atom)&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ feed.href }}atom.xml&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {% if feed.formats.json %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/feed+json&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">title</span><span class="o">=</span><span class="s">&#34;{{ feed.title }} (JSON)&#34;</span> 
+</span></span><span class="line"><span class="cl">          <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ feed.href }}feed.json&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span></code></pre><h3 id="visible-feed-links">Visible Feed Links <a href="#visible-feed-links" class="heading-anchor">#</a></h3>
+<p>Also provide visible links for users who want to manually subscribe:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">h3</span><span class="p">&gt;</span>Subscribe<span class="p">&lt;/</span><span class="nt">h3</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">ul</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;feed-links&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/rss.xml&#34;</span><span class="p">&gt;</span>RSS Feed<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/atom.xml&#34;</span><span class="p">&gt;</span>Atom Feed<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/feed.json&#34;</span><span class="p">&gt;</span>JSON Feed<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span></code></pre><hr>
+<h2 id="complete-example-configuration">Complete Example Configuration <a href="#complete-example-configuration" class="heading-anchor">#</a></h2>
+<p>Here's a full <code>markata-go.toml</code> with all syndication features configured:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Site metadata (required for syndication feeds)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Tech Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">description</span> <span class="p">=</span> <span class="s2">&#34;Articles about Go, Python, and web development&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://techblog.example.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">author</span> <span class="p">=</span> <span class="s2">&#34;Jane Doe&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Build settings</span>
+</span></span><span class="line"><span class="cl"><span class="nx">output_dir</span> <span class="p">=</span> <span class="s2">&#34;public&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">templates_dir</span> <span class="p">=</span> <span class="s2">&#34;templates&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Content discovery</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;posts/**/*.md&#34;</span><span class="p">,</span> <span class="s2">&#34;pages/*.md&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Markdown extensions</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">markdown</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">extensions</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;tables&#34;</span><span class="p">,</span> <span class="s2">&#34;strikethrough&#34;</span><span class="p">,</span> <span class="s2">&#34;tasklist&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="c"># FEED DEFAULTS</span>
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feed_defaults</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span><span class="line"><span class="cl"><span class="nx">orphan_threshold</span> <span class="p">=</span> <span class="mi">3</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feed_defaults</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feed_defaults</span><span class="p">.</span><span class="nx">syndication</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">max_items</span> <span class="p">=</span> <span class="mi">20</span>                  <span class="c"># Items in RSS/Atom/JSON feeds</span>
+</span></span><span class="line"><span class="cl"><span class="nx">include_content</span> <span class="p">=</span> <span class="kc">true</span>          <span class="c"># Include full content in feeds</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="c"># FEEDS</span>
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Home page - HTML only, no syndication</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Recent Posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">5</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Main blog - Full syndication</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">description</span> <span class="p">=</span> <span class="s2">&#34;All blog posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Tutorials - RSS and Atom only</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">description</span> <span class="p">=</span> <span class="s2">&#34;Step-by-step programming guides&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;tutorial&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># JSON API endpoint</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;api/posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Posts API&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">0</span>              <span class="c"># All posts, no pagination</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><h3 id="generated-output">Generated Output <a href="#generated-output" class="heading-anchor">#</a></h3>
+<pre><code>public/
+  index.html                     # Home page
+  sitemap.xml                    # Global sitemap
+  
+  blog/
+    index.html                   # Blog page 1
+    page/2/index.html            # Blog page 2
+    rss.xml                      # RSS feed
+    atom.xml                     # Atom feed
+    feed.json                    # JSON feed
+    
+  tutorials/
+    index.html                   # Tutorials page 1
+    rss.xml                      # RSS feed
+    atom.xml                     # Atom feed
+    
+  api/
+    posts/
+      feed.json                  # JSON API (all posts)
+</code></pre>
+<hr>
+<h2 id="troubleshooting">Troubleshooting <a href="#troubleshooting" class="heading-anchor">#</a></h2>
+<h3 id="feed-urls-show-httpsexamplecom">Feed URLs show <code>https://example.com</code> <a href="#feed-urls-show-httpsexamplecom" class="heading-anchor">#</a></h3>
+<p>Ensure you've set the <code>url</code> field in your config:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://your-actual-domain.com&#34;</span>
+</span></span></code></pre><h3 id="feeds-are-empty">Feeds are empty <a href="#feeds-are-empty" class="heading-anchor">#</a></h3>
+<p>Check that posts have <code>published = true</code> (or your filter matches):</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">    </span><span class="c"># Required for most filters</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="author-missing-in-atomjson-feeds">Author missing in Atom/JSON feeds <a href="#author-missing-in-atomjson-feeds" class="heading-anchor">#</a></h3>
+<p>Set the <code>author</code> field:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">author</span> <span class="p">=</span> <span class="s2">&#34;Your Name&#34;</span>
+</span></span></code></pre><h3 id="feed-not-generating">Feed not generating <a href="#feed-not-generating" class="heading-anchor">#</a></h3>
+<p>Ensure the format is enabled:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>     <span class="c"># Must be explicitly true</span>
+</span></span></code></pre><hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="/feeds-guide/" class="wikilink" data-title="Feeds Guide" data-description="Deep dive into markata-go&#39;s powerful feed system for creating filtered, sorted, paginated collections" data-date="2024-01-15">Feeds Guide</a> - Complete feed system documentation</li>
+<li><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration Guide</a> - Full configuration reference</li>
+<li><a href="/templates-guide/" class="wikilink" data-title="Templates Guide" data-description="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax" data-date="2024-01-15">Templates Guide</a> - Template system and filters</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

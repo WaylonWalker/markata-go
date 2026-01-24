@@ -64,10 +64,11 @@ func (p *TemplatesPlugin) Configure(m *lifecycle.Manager) error {
 	m.Cache().Set("templates.engine", engine)
 
 	// Get layout config if available
-	if layoutConfig, ok := config.Extra["layout"].(*models.LayoutConfig); ok {
-		p.layoutConfig = layoutConfig
-	} else if layoutConfig, ok := config.Extra["layout"].(models.LayoutConfig); ok {
-		p.layoutConfig = &layoutConfig
+	switch lc := config.Extra["layout"].(type) {
+	case *models.LayoutConfig:
+		p.layoutConfig = lc
+	case models.LayoutConfig:
+		p.layoutConfig = &lc
 	}
 
 	return nil

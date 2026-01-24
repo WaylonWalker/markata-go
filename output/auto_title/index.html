@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Title - My Site</title>
+    <meta name="description" content="The auto title plugin automatically generates human-readable titles for posts that don&#39;t have a title specified in their frontmatter. It derives titles from...">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Auto Title">
+    
+    <meta property="og:url" content="/auto_title/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="The auto title plugin automatically generates human-readable titles for posts that don&#39;t have a title specified in their frontmatter. It derives titles from...">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Auto Title">
+    
+    <meta name="twitter:description" content="The auto title plugin automatically generates human-readable titles for posts that don&#39;t have a title specified in their frontmatter. It derives titles from...">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/auto_title/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Auto Title",
+  "description": "The auto title plugin automatically generates human-readable titles for posts that don't have a title specified in their frontmatter. It derives titles from...",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/auto_title/"
+  },
+  "url": "/auto_title/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Auto Title</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="auto-title-specification">Auto Title Specification</h1>
+<p>The auto title plugin automatically generates human-readable titles for posts that don't have a title specified in their frontmatter. It derives titles from filenames using simple text transformations.</p>
+<h2 id="overview">Overview <a href="#overview" class="heading-anchor">#</a></h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                       AUTO TITLE WORKFLOW                            │
+├─────────────────────────────────────────────────────────────────────┤
+│  INPUT                                                               │
+│    posts/my-first-post.md     (no title in frontmatter)             │
+│    posts/python_tips.md       (no title in frontmatter)             │
+│    posts/hello-world.md       (title: &quot;Hello!&quot; in frontmatter)      │
+│                                                                      │
+│  PROCESS                                                             │
+│    1. Filter posts where title == &quot;&quot; or title is None               │
+│    2. Extract filename stem (without extension)                      │
+│    3. Replace hyphens and underscores with spaces                   │
+│    4. Apply title case                                               │
+│                                                                      │
+│  OUTPUT                                                              │
+│    my-first-post.md  → title: &quot;My First Post&quot;                       │
+│    python_tips.md    → title: &quot;Python Tips&quot;                         │
+│    hello-world.md    → title: &quot;Hello!&quot; (unchanged - has title)      │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2 id="behavior">Behavior <a href="#behavior" class="heading-anchor">#</a></h2>
+<h3 id="title-generation-rules">Title Generation Rules <a href="#title-generation-rules" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Transformation</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Extract filename stem</td>
+<td><code>my-first-post.md</code> → <code>my-first-post</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Replace hyphens with spaces</td>
+<td><code>my-first-post</code> → <code>my first post</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Replace underscores with spaces</td>
+<td><code>python_tips</code> → <code>python tips</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Apply title case</td>
+<td><code>my first post</code> → <code>My First Post</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="examples">Examples <a href="#examples" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filename</th>
+<th>Generated Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>my-first-post.md</code></td>
+<td>My First Post</td>
+</tr>
+<tr>
+<td><code>python_tips_and_tricks.md</code></td>
+<td>Python Tips And Tricks</td>
+</tr>
+<tr>
+<td><code>hello-world.md</code></td>
+<td>Hello World</td>
+</tr>
+<tr>
+<td><code>2024-01-15-new-feature.md</code></td>
+<td>2024 01 15 New Feature</td>
+</tr>
+<tr>
+<td><code>README.md</code></td>
+<td>Readme</td>
+</tr>
+<tr>
+<td><code>api-v2-reference.md</code></td>
+<td>Api V2 Reference</td>
+</tr>
+<tr>
+<td><code>getting_started.md</code></td>
+<td>Getting Started</td>
+</tr>
+</tbody>
+</table>
+<h3 id="when-title-is-not-generated">When Title Is NOT Generated <a href="#when-title-is-not-generated" class="heading-anchor">#</a></h3>
+<p>The plugin skips posts that already have a title:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Custom Title&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p>Or explicitly set to a non-empty value:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Hello World!</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="when-title-is-generated">When Title IS Generated <a href="#when-title-is-generated" class="heading-anchor">#</a></h3>
+<p>The plugin processes posts where:</p>
+<ul>
+<li><code>title</code> is not present in frontmatter</li>
+<li><code>title</code> is empty string (<code>title: &quot;&quot;</code>)</li>
+<li><code>title</code> is null (<code>title: null</code> or <code>title: ~</code>)</li>
+</ul>
+<hr>
+<h2 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h2>
+<p>This plugin requires <strong>no configuration</strong>. It is enabled by default and processes all posts without titles automatically.</p>
+<h3 id="enabling-default">Enabling (Default) <a href="#enabling-default" class="heading-anchor">#</a></h3>
+<p>The plugin is included in the default plugin set:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;default&#34;</span><span class="p">]</span>
+</span></span></code></pre><h3 id="disabling">Disabling <a href="#disabling" class="heading-anchor">#</a></h3>
+<p>To disable auto title generation:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;default&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">disabled_hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;auto_title&#34;</span><span class="p">]</span>
+</span></span></code></pre><hr>
+<h2 id="hook-specification">Hook Specification <a href="#hook-specification" class="heading-anchor">#</a></h2>
+<h3 id="stage">Stage <a href="#stage" class="heading-anchor">#</a></h3>
+<p><code>pre_render</code></p>
+<h3 id="hook-signature">Hook Signature <a href="#hook-signature" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">pre_render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="cl"><span class="s2">    Generate titles for posts that don&#39;t have one.
+</span></span></span><span class="line"><span class="cl"><span class="s2">    
+</span></span></span><span class="line"><span class="cl"><span class="s2">    Processes posts where title is empty or None, deriving
+</span></span></span><span class="line"><span class="cl"><span class="s2">    a human-readable title from the filename.
+</span></span></span><span class="line"><span class="cl"><span class="s2">    &#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s1">&#39;title == &#34;&#34; or title == None&#39;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">filename_stem</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span>
+</span></span><span class="line"><span class="cl">        <span class="n">title</span> <span class="o">=</span> <span class="n">filename_stem</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&#34;-&#34;</span><span class="p">,</span> <span class="s2">&#34; &#34;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&#34;_&#34;</span><span class="p">,</span> <span class="s2">&#34; &#34;</span><span class="p">)</span><span class="o">.</span><span class="n">title</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="n">title</span>
+</span></span></code></pre><h3 id="filter-expression">Filter Expression <a href="#filter-expression" class="heading-anchor">#</a></h3>
+<p>The plugin uses the filter expression:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="s1">&#39;title == &#34;&#34; or title == None&#39;</span>
+</span></span></code></pre><p>This matches posts where:</p>
+<ul>
+<li><code>title</code> equals empty string</li>
+<li><code>title</code> equals None/null</li>
+</ul>
+<hr>
+<h2 id="post-model-impact">Post Model Impact <a href="#post-model-impact" class="heading-anchor">#</a></h2>
+<h3 id="field-modified">Field Modified <a href="#field-modified" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>title</code></td>
+<td>string</td>
+<td>Set to generated title if empty/None</td>
+</tr>
+</tbody>
+</table>
+<h3 id="beforeafter">Before/After <a href="#beforeafter" class="heading-anchor">#</a></h3>
+<p><strong>Before (in frontmatter):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l">my-first-post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>After (in memory):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="n">post</span><span class="o">.</span><span class="n">title</span> <span class="o">=</span> <span class="s2">&#34;My First Post&#34;</span>  <span class="c1"># Derived from filename</span>
+</span></span><span class="line"><span class="cl"><span class="n">post</span><span class="o">.</span><span class="n">slug</span> <span class="o">=</span> <span class="s2">&#34;my-first-post&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">post</span><span class="o">.</span><span class="n">date</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">15</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h2 id="interaction-with-other-plugins">Interaction with Other Plugins <a href="#interaction-with-other-plugins" class="heading-anchor">#</a></h2>
+<h3 id="slug-generation">Slug Generation <a href="#slug-generation" class="heading-anchor">#</a></h3>
+<p>If using a slug plugin that derives slugs from titles, auto_title should run <strong>before</strong> slug generation:</p>
+<pre><code>pre_render order:
+  1. auto_title     → Sets title from filename
+  2. slug_from_title → Could derive slug from title (if needed)
+</code></pre>
+<p>However, typically slugs are derived from filenames directly, making this ordering less critical.</p>
+<h3 id="seometa-plugins">SEO/Meta Plugins <a href="#seometa-plugins" class="heading-anchor">#</a></h3>
+<p>Auto-generated titles are available for:</p>
+<ul>
+<li><code>&lt;title&gt;</code> tag generation</li>
+<li>Open Graph <code>og:title</code> meta tags</li>
+<li>RSS/Atom feed titles</li>
+<li>Search index entries</li>
+</ul>
+<h3 id="prevnext-navigation">Prev/Next Navigation <a href="#prevnext-navigation" class="heading-anchor">#</a></h3>
+<p>The <code>prevnext</code> plugin uses titles for navigation links, so auto_title should run before it.</p>
+<hr>
+<h2 id="edge-cases">Edge Cases <a href="#edge-cases" class="heading-anchor">#</a></h2>
+<h3 id="date-prefixed-filenames">Date Prefixed Filenames <a href="#date-prefixed-filenames" class="heading-anchor">#</a></h3>
+<p>Files with date prefixes retain the date in the title:</p>
+<table>
+<thead>
+<tr>
+<th>Filename</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>2024-01-15-new-post.md</code></td>
+<td>2024 01 15 New Post</td>
+</tr>
+</tbody>
+</table>
+<p>To avoid this, either:</p>
+<ol>
+<li>Set explicit titles in frontmatter</li>
+<li>Use a separate plugin to strip date prefixes</li>
+<li>Organize files by date in directories instead</li>
+</ol>
+<h3 id="special-characters">Special Characters <a href="#special-characters" class="heading-anchor">#</a></h3>
+<p>Characters other than hyphens and underscores are preserved:</p>
+<table>
+<thead>
+<tr>
+<th>Filename</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>c++_tutorial.md</code></td>
+<td>C++ Tutorial</td>
+</tr>
+<tr>
+<td><code>node.js-guide.md</code></td>
+<td>Node.Js Guide</td>
+</tr>
+<tr>
+<td><code>q&amp;a.md</code></td>
+<td>Q&amp;A</td>
+</tr>
+</tbody>
+</table>
+<h3 id="acronyms-and-capitalization">Acronyms and Capitalization <a href="#acronyms-and-capitalization" class="heading-anchor">#</a></h3>
+<p>Title case may not handle acronyms ideally:</p>
+<table>
+<thead>
+<tr>
+<th>Filename</th>
+<th>Generated</th>
+<th>Preferred</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>api-reference.md</code></td>
+<td>Api Reference</td>
+<td>API Reference</td>
+</tr>
+<tr>
+<td><code>html-basics.md</code></td>
+<td>Html Basics</td>
+<td>HTML Basics</td>
+</tr>
+<tr>
+<td><code>aws-setup.md</code></td>
+<td>Aws Setup</td>
+<td>AWS Setup</td>
+</tr>
+</tbody>
+</table>
+<p>For proper acronym handling, set titles explicitly in frontmatter.</p>
+<hr>
+<h2 id="implementation-notes">Implementation Notes <a href="#implementation-notes" class="heading-anchor">#</a></h2>
+<h3 id="performance">Performance <a href="#performance" class="heading-anchor">#</a></h3>
+<ul>
+<li>Runs once per build during <code>pre_render</code></li>
+<li>Only processes posts matching filter (no title)</li>
+<li>No external dependencies</li>
+<li>No caching needed (fast string operations)</li>
+</ul>
+<h3 id="unicode-support">Unicode Support <a href="#unicode-support" class="heading-anchor">#</a></h3>
+<p>The plugin handles unicode filenames:</p>
+<table>
+<thead>
+<tr>
+<th>Filename</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>café-guide.md</code></td>
+<td>Café Guide</td>
+</tr>
+<tr>
+<td><code>日本語-post.md</code></td>
+<td>日本語 Post</td>
+</tr>
+</tbody>
+</table>
+<h3 id="path-handling">Path Handling <a href="#path-handling" class="heading-anchor">#</a></h3>
+<p>Only the filename stem is used, not the full path:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>posts/2024/my-post.md</code></td>
+<td>My Post</td>
+</tr>
+<tr>
+<td><code>blog/tutorials/getting-started.md</code></td>
+<td>Getting Started</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="comparison-with-explicit-titles">Comparison with Explicit Titles <a href="#comparison-with-explicit-titles" class="heading-anchor">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Auto Title</strong></td>
+<td>No frontmatter needed, fast authoring</td>
+<td>Less control, acronym issues</td>
+</tr>
+<tr>
+<td><strong>Explicit Title</strong></td>
+<td>Full control, proper formatting</td>
+<td>More typing, can forget</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommendation:</strong> Use auto title for quick drafts and simple posts. Set explicit titles for published content where formatting matters.</p>
+<hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./DATA_MODEL.md">DATA_MODEL.md</a> - Post model specification</li>
+<li><a href="./DEFAULT_PLUGINS.md">DEFAULT_PLUGINS.md</a> - Default plugin set</li>
+<li><a href="./LIFECYCLE.md">LIFECYCLE.md</a> - Build lifecycle (pre_render stage)</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

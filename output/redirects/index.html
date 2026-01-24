@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirects - My Site</title>
+    <meta name="description" content="Static redirects enable URL migrations and content reorganization without losing traffic or breaking bookmarks. This plugin generates HTML redirect pages...">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Redirects">
+    
+    <meta property="og:url" content="/redirects/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="Static redirects enable URL migrations and content reorganization without losing traffic or breaking bookmarks. This plugin generates HTML redirect pages...">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Redirects">
+    
+    <meta name="twitter:description" content="Static redirects enable URL migrations and content reorganization without losing traffic or breaking bookmarks. This plugin generates HTML redirect pages...">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/redirects/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Redirects",
+  "description": "Static redirects enable URL migrations and content reorganization without losing traffic or breaking bookmarks. This plugin generates HTML redirect pages...",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/redirects/"
+  },
+  "url": "/redirects/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Redirects</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="static-redirects-specification">Static Redirects Specification</h1>
+<p>Static redirects enable URL migrations and content reorganization without losing traffic or breaking bookmarks. This plugin generates HTML redirect pages from a simple configuration file, compatible with static hosting platforms.</p>
+<h2 id="overview">Overview <a href="#overview" class="heading-anchor">#</a></h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                        REDIRECTS WORKFLOW                            │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. READ                                                             │
+│     - Load _redirects file from configured location                  │
+│     - Parse redirect rules (source → destination)                    │
+│                                                                      │
+│  2. FILTER                                                           │
+│     - Skip comments (lines starting with #)                          │
+│     - Skip wildcard patterns (contain *)                             │
+│     - Skip malformed entries                                         │
+│                                                                      │
+│  3. GENERATE                                                         │
+│     - For each redirect, create index.html at source path            │
+│     - Use meta refresh + canonical link for redirect                 │
+│     - Apply template with styling from config                        │
+│                                                                      │
+│  4. CACHE                                                            │
+│     - Hash redirects file content                                    │
+│     - Skip regeneration if unchanged                                 │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h2>
+<h3 id="basic-configuration">Basic Configuration <a href="#basic-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">redirects</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">redirects_file</span> <span class="p">=</span> <span class="s2">&#34;static/_redirects&#34;</span>
+</span></span></code></pre><h3 id="full-configuration">Full Configuration <a href="#full-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">redirects</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Path to redirects file (relative to project root)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">redirects_file</span> <span class="p">=</span> <span class="s2">&#34;static/_redirects&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Custom template for redirect pages (optional)</span>
+</span></span><span class="line"><span class="cl"><span class="c"># If not specified, uses built-in default template</span>
+</span></span><span class="line"><span class="cl"><span class="nx">redirect_template</span> <span class="p">=</span> <span class="s2">&#34;templates/redirect.html&#34;</span>
+</span></span></code></pre><hr>
+<h2 id="redirects-file-format">Redirects File Format <a href="#redirects-file-format" class="heading-anchor">#</a></h2>
+<p>The redirects file uses a simple space-separated format, compatible with Cloudflare Pages and Netlify.</p>
+<h3 id="basic-syntax">Basic Syntax <a href="#basic-syntax" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"># Comments start with #
+</span></span><span class="line"><span class="cl">/old-path    /new-path
+</span></span><span class="line"><span class="cl">/legacy-url  /current-url
+</span></span></code></pre><h3 id="rules">Rules <a href="#rules" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Comments</td>
+<td>Lines starting with <code>#</code> are ignored</td>
+</tr>
+<tr>
+<td>Format</td>
+<td><code>&lt;source&gt; &lt;destination&gt;</code> separated by whitespace</td>
+</tr>
+<tr>
+<td>Paths</td>
+<td>Must start with <code>/</code></td>
+</tr>
+<tr>
+<td>Wildcards</td>
+<td>Patterns containing <code>*</code> are skipped (not supported for static generation)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-redirects-file">Example Redirects File <a href="#example-redirects-file" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"># Blog reorganization (2024)
+</span></span><span class="line"><span class="cl">/blog/old-post    /posts/new-post
+</span></span><span class="line"><span class="cl">/articles         /blog
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"># Legacy URLs
+</span></span><span class="line"><span class="cl">/about-me         /about
+</span></span><span class="line"><span class="cl">/contact-us       /contact
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"># Renamed sections
+</span></span><span class="line"><span class="cl">/tutorials/python-basics    /learn/python/getting-started
+</span></span><span class="line"><span class="cl">/tutorials/rust-intro       /learn/rust/introduction
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"># These are skipped (wildcards not supported):
+</span></span><span class="line"><span class="cl"># /old-blog/*    /blog/*
+</span></span><span class="line"><span class="cl"># /api/*         /v2/api/*
+</span></span></code></pre><hr>
+<h2 id="redirect-model">Redirect Model <a href="#redirect-model" class="heading-anchor">#</a></h2>
+<h3 id="redirect-object">Redirect Object <a href="#redirect-object" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>original</code></td>
+<td>string</td>
+<td>Source path (the old URL)</td>
+</tr>
+<tr>
+<td><code>new</code></td>
+<td>string</td>
+<td>Destination path (the new URL)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="generated-output">Generated Output <a href="#generated-output" class="heading-anchor">#</a></h2>
+<h3 id="output-structure">Output Structure <a href="#output-structure" class="heading-anchor">#</a></h3>
+<p>For each redirect rule, an <code>index.html</code> file is created:</p>
+<pre><code>output/
+├── old-path/
+│   └── index.html          # Redirects to /new-path
+├── legacy-url/
+│   └── index.html          # Redirects to /current-url
+└── about-me/
+    └── index.html          # Redirects to /about
+</code></pre>
+<h3 id="default-template">Default Template <a href="#default-template" class="heading-anchor">#</a></h3>
+<p>The default redirect template provides:</p>
+<ol>
+<li><strong>Instant redirect</strong> via <code>&lt;meta http-equiv=&quot;Refresh&quot;&gt;</code></li>
+<li><strong>SEO-friendly</strong> canonical link to new URL</li>
+<li><strong>Fallback content</strong> for users/bots that don't follow redirects</li>
+<li><strong>Styled page</strong> using site configuration colors</li>
+</ol>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;en&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">http-equiv</span><span class="o">=</span><span class="s">&#34;Refresh&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;0; url=&#39;{{ new }}&#39;&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;UTF-8&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;viewport&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;width=device-width, initial-scale=1&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;canonical&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ new }}&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;description&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ original }} has been moved to {{ new }}.&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>{{ original }} has been moved to {{ new }}<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">style</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">html</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="k">font-family</span><span class="p">:</span> <span class="n">system-ui</span><span class="p">,</span> <span class="kc">sans-serif</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">      <span class="k">background</span><span class="p">:</span> <span class="err">{{</span> <span class="n">config</span><span class="o">.</span><span class="kc">style</span><span class="o">.</span><span class="n">color_bg</span> <span class="o">|</span> <span class="nf">default</span><span class="p">(</span><span class="s1">&#39;#1f2022&#39;</span><span class="p">)</span> <span class="p">}</span><span class="err">}</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">color</span><span class="o">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">config.style.color_text</span> <span class="err">|</span> <span class="err">default(&#39;#eefbfe&#39;)</span> <span class="p">}</span><span class="err">}</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">    <span class="err">}</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">body</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="k">margin</span><span class="p">:</span> <span class="mi">5</span><span class="kt">rem</span> <span class="kc">auto</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">      <span class="k">max-width</span><span class="p">:</span> <span class="err">{{</span> <span class="n">config</span><span class="o">.</span><span class="kc">style</span><span class="o">.</span><span class="n">body_width</span> <span class="o">|</span> <span class="nf">default</span><span class="p">(</span><span class="s1">&#39;800px&#39;</span><span class="p">)</span> <span class="p">}</span><span class="err">}</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">    <span class="err">}</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">a</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="k">color</span><span class="p">:</span> <span class="err">{{</span> <span class="n">config</span><span class="o">.</span><span class="kc">style</span><span class="o">.</span><span class="n">color_link</span> <span class="o">|</span> <span class="nf">default</span><span class="p">(</span><span class="s1">&#39;#fb30c4&#39;</span><span class="p">)</span> <span class="p">}</span><span class="err">}</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">text-decoration-color</span><span class="o">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">config.style.color_accent</span> <span class="err">|</span> <span class="err">default(&#39;#e1bd00c9&#39;)</span> <span class="p">}</span><span class="err">}</span><span class="o">;</span>
+</span></span><span class="line"><span class="cl">    <span class="err">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">style</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>Page Moved<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">code</span><span class="p">&gt;</span>{{ original }}<span class="p">&lt;/</span><span class="nt">code</span><span class="p">&gt;</span> has moved to 
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ new }}&#34;</span><span class="p">&gt;</span>{{ new }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="template-context">Template Context <a href="#template-context" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>original</code></td>
+<td>string</td>
+<td>Original/source path</td>
+</tr>
+<tr>
+<td><code>new</code></td>
+<td>string</td>
+<td>New/destination path</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>Config</td>
+<td>Site configuration (for styling)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="behavior">Behavior <a href="#behavior" class="heading-anchor">#</a></h2>
+<h3 id="processing-rules">Processing Rules <a href="#processing-rules" class="heading-anchor">#</a></h3>
+<ol>
+<li><strong>Skip comments</strong>: Lines starting with <code>#</code> are ignored</li>
+<li><strong>Skip wildcards</strong>: Patterns containing <code>*</code> are not processed (static sites can't handle dynamic wildcards)</li>
+<li><strong>Skip malformed</strong>: Lines with fewer than 2 parts are skipped</li>
+<li><strong>Trim paths</strong>: Leading/trailing whitespace is removed from paths</li>
+</ol>
+<h3 id="caching">Caching <a href="#caching" class="heading-anchor">#</a></h3>
+<p>The plugin caches based on the content of the redirects file:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="n">key</span> <span class="o">=</span> <span class="nb">hash</span><span class="p">(</span><span class="s2">&#34;redirects&#34;</span><span class="p">,</span> <span class="n">raw_redirects_content</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&#34;done&#34;</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span>  <span class="c1"># Skip regeneration</span>
+</span></span></code></pre><p>This ensures redirects are only regenerated when the <code>_redirects</code> file changes.</p>
+<h3 id="directory-creation">Directory Creation <a href="#directory-creation" class="heading-anchor">#</a></h3>
+<p>For each redirect, the plugin:</p>
+<ol>
+<li>Creates the parent directory structure</li>
+<li>Writes <code>index.html</code> inside the source path directory</li>
+</ol>
+<p>Example: <code>/old/nested/path</code> → creates <code>output/old/nested/path/index.html</code></p>
+<hr>
+<h2 id="hook-specification">Hook Specification <a href="#hook-specification" class="heading-anchor">#</a></h2>
+<h3 id="stage">Stage <a href="#stage" class="heading-anchor">#</a></h3>
+<p><code>save</code></p>
+<h3 id="hook-signature">Hook Signature <a href="#hook-signature" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">config</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">redirects</span>
+</span></span><span class="line"><span class="cl">    <span class="n">redirects_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">redirects_file</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">redirects_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="n">raw_redirects</span> <span class="o">=</span> <span class="n">redirects_file</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&#34;</span><span class="se">\n</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Cache check</span>
+</span></span><span class="line"><span class="cl">    <span class="n">key</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">make_hash</span><span class="p">(</span><span class="s2">&#34;redirects&#34;</span><span class="p">,</span> <span class="n">raw_redirects</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">core</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&#34;done&#34;</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Parse redirects</span>
+</span></span><span class="line"><span class="cl">    <span class="n">redirects</span> <span class="o">=</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">raw_redirects</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span> <span class="ow">or</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&#34;#&#34;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&#34;*&#34;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="k">continue</span>
+</span></span><span class="line"><span class="cl">        <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">redirects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Redirect</span><span class="p">(</span><span class="n">original</span><span class="o">=</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">new</span><span class="o">=</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Load template</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">redirect_template</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">template</span> <span class="o">=</span> <span class="n">load_template</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">redirect_template</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">else</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">template</span> <span class="o">=</span> <span class="n">load_default_redirect_template</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Generate redirect pages</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">redirect</span> <span class="ow">in</span> <span class="n">redirects</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">output_path</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">redirect</span><span class="o">.</span><span class="n">original</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&#34;/&#34;</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&#34;index.html&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="n">output_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">output_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">template</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">            <span class="n">original</span><span class="o">=</span><span class="n">redirect</span><span class="o">.</span><span class="n">original</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">new</span><span class="o">=</span><span class="n">redirect</span><span class="o">.</span><span class="n">new</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">config</span><span class="o">=</span><span class="n">core</span><span class="o">.</span><span class="n">config</span>
+</span></span><span class="line"><span class="cl">        <span class="p">))</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="s2">&#34;done&#34;</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h2 id="configuration-model">Configuration Model <a href="#configuration-model" class="heading-anchor">#</a></h2>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">RedirectsConfig</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">redirects_file</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&#34;static/_redirects&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">redirect_template</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Config</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">redirects</span><span class="p">:</span> <span class="n">RedirectsConfig</span> <span class="o">=</span> <span class="n">RedirectsConfig</span><span class="p">()</span>
+</span></span></code></pre><hr>
+<h2 id="platform-compatibility">Platform Compatibility <a href="#platform-compatibility" class="heading-anchor">#</a></h2>
+<h3 id="supported-platforms">Supported Platforms <a href="#supported-platforms" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Native Support</th>
+<th>Static Fallback</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cloudflare Pages</td>
+<td>Yes (<code>_redirects</code> file)</td>
+<td>Yes (HTML redirects)</td>
+</tr>
+<tr>
+<td>Netlify</td>
+<td>Yes (<code>_redirects</code> file)</td>
+<td>Yes (HTML redirects)</td>
+</tr>
+<tr>
+<td>Vercel</td>
+<td>Yes (<code>vercel.json</code>)</td>
+<td>Yes (HTML redirects)</td>
+</tr>
+<tr>
+<td>GitHub Pages</td>
+<td>No</td>
+<td>Yes (HTML redirects)</td>
+</tr>
+<tr>
+<td>S3/Static hosting</td>
+<td>No</td>
+<td>Yes (HTML redirects)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="why-html-redirects">Why HTML Redirects? <a href="#why-html-redirects" class="heading-anchor">#</a></h3>
+<p>While platforms like Cloudflare and Netlify support <code>_redirects</code> files natively, generating HTML redirect pages provides:</p>
+<ol>
+<li><strong>Universal compatibility</strong>: Works on any static host</li>
+<li><strong>SEO preservation</strong>: Canonical links maintain search rankings</li>
+<li><strong>User experience</strong>: Provides fallback content if redirect fails</li>
+<li><strong>Debugging</strong>: Easy to inspect and verify redirect targets</li>
+</ol>
+<hr>
+<h2 id="limitations">Limitations <a href="#limitations" class="heading-anchor">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Limitation</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No wildcard support</td>
+<td>Static HTML can't handle dynamic patterns</td>
+</tr>
+<tr>
+<td>No status codes</td>
+<td>HTML meta refresh is always a 302-equivalent</td>
+</tr>
+<tr>
+<td>No query parameters</td>
+<td>Query strings are not preserved in meta refresh</td>
+</tr>
+<tr>
+<td>No conditional redirects</td>
+<td>Static files can't evaluate conditions</td>
+</tr>
+</tbody>
+</table>
+<p>For advanced redirect needs (wildcards, status codes, conditions), use your hosting platform's native redirect features alongside this plugin.</p>
+<hr>
+<h2 id="examples">Examples <a href="#examples" class="heading-anchor">#</a></h2>
+<h3 id="basic-blog-migration">Basic Blog Migration <a href="#basic-blog-migration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"># _redirects
+</span></span><span class="line"><span class="cl">/blog/2023/post-one    /posts/post-one
+</span></span><span class="line"><span class="cl">/blog/2023/post-two    /posts/post-two
+</span></span><span class="line"><span class="cl">/blog/2024/new-post    /posts/new-post
+</span></span></code></pre><h3 id="section-reorganization">Section Reorganization <a href="#section-reorganization" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"># _redirects
+</span></span><span class="line"><span class="cl">/tutorials    /learn
+</span></span><span class="line"><span class="cl">/guides       /learn
+</span></span><span class="line"><span class="cl">/howto        /learn
+</span></span><span class="line"><span class="cl">/docs/api     /reference/api
+</span></span><span class="line"><span class="cl">/docs/cli     /reference/cli
+</span></span></code></pre><h3 id="shortened-urls">Shortened URLs <a href="#shortened-urls" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"># _redirects
+</span></span><span class="line"><span class="cl">/go/github     https://github.com/myorg/myproject
+</span></span><span class="line"><span class="cl">/go/discord    https://discord.gg/invite-code
+</span></span><span class="line"><span class="cl">/go/docs       /documentation
+</span></span></code></pre><hr>
+<h2 id="error-handling">Error Handling <a href="#error-handling" class="heading-anchor">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Missing redirects file</td>
+<td>Skip silently (no redirects generated)</td>
+</tr>
+<tr>
+<td>Malformed line</td>
+<td>Skip line, continue processing</td>
+</tr>
+<tr>
+<td>Write error</td>
+<td>Log error, continue with other redirects</td>
+</tr>
+<tr>
+<td>Template error</td>
+<td>Use default template, log warning</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./SPEC.md">SPEC.md</a> - Core specification</li>
+<li><a href="./CONFIG.md">CONFIG.md</a> - Configuration system</li>
+<li><a href="./LIFECYCLE.md">LIFECYCLE.md</a> - Build lifecycle (save stage)</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

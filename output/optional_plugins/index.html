@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optional Plugins - My Site</title>
+    <meta name="description" content="This document specifies optional plugins that extend the static site generator with additional features. Unlike default plugins, these must be explicitly...">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Optional Plugins">
+    
+    <meta property="og:url" content="/optional_plugins/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="This document specifies optional plugins that extend the static site generator with additional features. Unlike default plugins, these must be explicitly...">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Optional Plugins">
+    
+    <meta name="twitter:description" content="This document specifies optional plugins that extend the static site generator with additional features. Unlike default plugins, these must be explicitly...">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/optional_plugins/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Optional Plugins",
+  "description": "This document specifies optional plugins that extend the static site generator with additional features. Unlike default plugins, these must be explicitly...",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/optional_plugins/"
+  },
+  "url": "/optional_plugins/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Optional Plugins</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="optional-plugins-specification">Optional Plugins Specification</h1>
+<p>This document specifies optional plugins that extend the static site generator with additional features. Unlike default plugins, these must be explicitly enabled in the configuration.</p>
+<h2 id="plugin-overview">Plugin Overview <a href="#plugin-overview" class="heading-anchor">#</a></h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                       OPTIONAL PLUGIN SET                           │
+├─────────────────────────────────────────────────────────────────────┤
+│  CONTENT ENHANCEMENT                                                │
+│    ├─ glossary          Auto-link terms to definition posts        │
+│    ├─ mermaid           Render Mermaid diagrams                    │
+│    ├─ chartjs           Render Chart.js charts                     │
+│    ├─ csv_fence         Convert CSV code blocks to tables          │
+│    └─ md_video          Convert image syntax to video tags         │
+│                                                                      │
+│  LINK ENHANCEMENT                                                    │
+│    ├─ one_line_link     Rich previews for URLs on own line         │
+│    └─ wikilink_hover    Hover previews for wikilinks               │
+│                                                                      │
+│  OUTPUT GENERATION                                                   │
+│    └─ qrcode            Generate QR codes for posts                │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2 id="enabling-optional-plugins">Enabling Optional Plugins <a href="#enabling-optional-plugins" class="heading-anchor">#</a></h2>
+<p>Optional plugins must be explicitly enabled in your configuration. Add them to the <code>hooks</code> list:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;default&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;glossary&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;mermaid&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;csv_fence&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl"><span class="p">]</span>
+</span></span></code></pre><p>Each plugin also has an <code>enabled</code> configuration option (default: <code>true</code>) that allows temporarily disabling a plugin without removing it from the hooks list:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">mermaid</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">false</span>  <span class="c"># Disable mermaid without removing from hooks</span>
+</span></span></code></pre><hr>
+<h2 id="content-enhancement-plugins">Content Enhancement Plugins <a href="#content-enhancement-plugins" class="heading-anchor">#</a></h2>
+<h3 id="glossary"><code>glossary</code> <a href="#glossary" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>render</code> (late priority, after markdown conversion) + <code>write</code> (for JSON export)</p>
+<p><strong>Purpose:</strong> Automatically link glossary terms in post content to their definition pages.</p>
+<p><strong>Dependencies:</strong> None (uses standard library)</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">glossary</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">link_class</span> <span class="p">=</span> <span class="s2">&#34;glossary-term&#34;</span>       <span class="c"># CSS class for glossary links</span>
+</span></span><span class="line"><span class="cl"><span class="nx">case_sensitive</span> <span class="p">=</span> <span class="kc">false</span>             <span class="c"># Match terms case-insensitively</span>
+</span></span><span class="line"><span class="cl"><span class="nx">tooltip</span> <span class="p">=</span> <span class="kc">true</span>                     <span class="c"># Add tooltip with description</span>
+</span></span><span class="line"><span class="cl"><span class="nx">max_links_per_term</span> <span class="p">=</span> <span class="mi">1</span>             <span class="c"># Link only first occurrence (0 = all)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">exclude_tags</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;glossary&#34;</span><span class="p">]</span>        <span class="c"># Don&#39;t link in glossary posts themselves</span>
+</span></span><span class="line"><span class="cl"><span class="nx">export_json</span> <span class="p">=</span> <span class="kc">true</span>                 <span class="c"># Export glossary.json to output</span>
+</span></span><span class="line"><span class="cl"><span class="nx">glossary_path</span> <span class="p">=</span> <span class="s2">&#34;glossary&#34;</span>         <span class="c"># Path prefix for glossary posts</span>
+</span></span><span class="line"><span class="cl"><span class="nx">template_key</span> <span class="p">=</span> <span class="s2">&#34;glossary&#34;</span>          <span class="c"># templateKey value identifying glossary posts</span>
+</span></span></code></pre><p><strong>Configuration Fields:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Whether the plugin is active</td>
+</tr>
+<tr>
+<td><code>link_class</code></td>
+<td>string</td>
+<td><code>&quot;glossary-term&quot;</code></td>
+<td>CSS class for glossary links</td>
+</tr>
+<tr>
+<td><code>case_sensitive</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+<td>Whether term matching is case-sensitive</td>
+</tr>
+<tr>
+<td><code>tooltip</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Add title attribute with description</td>
+</tr>
+<tr>
+<td><code>max_links_per_term</code></td>
+<td>int</td>
+<td><code>1</code></td>
+<td>Max links per term per post (0 = unlimited)</td>
+</tr>
+<tr>
+<td><code>exclude_tags</code></td>
+<td>[]string</td>
+<td><code>[&quot;glossary&quot;]</code></td>
+<td>Tags that should not have terms linked</td>
+</tr>
+<tr>
+<td><code>export_json</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Whether to export glossary.json</td>
+</tr>
+<tr>
+<td><code>glossary_path</code></td>
+<td>string</td>
+<td><code>&quot;glossary&quot;</code></td>
+<td>Path prefix for glossary definition posts</td>
+</tr>
+<tr>
+<td><code>template_key</code></td>
+<td>string</td>
+<td><code>&quot;glossary&quot;</code></td>
+<td>templateKey frontmatter value identifying glossary posts</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Post Frontmatter (Definition Posts):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">API</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">templateKey</span><span class="p">:</span><span class="w"> </span><span class="l">glossary</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l">Application Programming Interface - a set of protocols...</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">aliases</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">APIs</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">Application Programming Interface</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>Scan posts with <code>templateKey: glossary</code> or in configured glossary path</li>
+<li>Build term → definition lookup including aliases</li>
+<li>For each non-glossary post, find term occurrences in <code>article_html</code></li>
+<li>Replace with linked version: <code>&lt;a href=&quot;/glossary/api/&quot; class=&quot;glossary-term&quot; title=&quot;...&quot;&gt;API&lt;/a&gt;</code></li>
+<li>At write stage: optionally export <code>glossary.json</code> with all terms</li>
+</ol>
+<p><strong>Protected Content:</strong></p>
+<p>The plugin protects the following HTML elements from term linking:</p>
+<ul>
+<li><code>&lt;a&gt;</code> tags (prevents double-linking)</li>
+<li><code>&lt;code&gt;</code> tags (preserves code samples)</li>
+<li><code>&lt;pre&gt;</code> tags (preserves preformatted content)</li>
+</ul>
+<p><strong>Output Files:</strong></p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{output}/glossary.json</code></td>
+<td>JSON export of all terms</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example glossary.json:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;terms&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;term&#34;</span><span class="p">:</span> <span class="s2">&#34;API&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;slug&#34;</span><span class="p">:</span> <span class="s2">&#34;api&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;description&#34;</span><span class="p">:</span> <span class="s2">&#34;Application Programming Interface&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;aliases&#34;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&#34;APIs&#34;</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;href&#34;</span><span class="p">:</span> <span class="s2">&#34;/glossary/api/&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p><strong>Go Interface:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// GlossaryPlugin implements these lifecycle interfaces:
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span>          <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">GlossaryPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">ConfigurePlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">GlossaryPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">RenderPlugin</span>    <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">GlossaryPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>  <span class="c1">// Term linking
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">WritePlugin</span>     <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">GlossaryPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>  <span class="c1">// JSON export
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityPlugin</span>  <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">GlossaryPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><hr>
+<h3 id="mermaid"><code>mermaid</code> <a href="#mermaid" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>render</code> (late priority, after markdown conversion)</p>
+<p><strong>Purpose:</strong> Convert Mermaid code blocks into rendered diagrams.</p>
+<p><strong>Dependencies:</strong> None (client-side rendering via CDN)</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">mermaid</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">cdn_url</span> <span class="p">=</span> <span class="s2">&#34;https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">theme</span> <span class="p">=</span> <span class="s2">&#34;default&#34;</span>                  <span class="c"># default, dark, forest, neutral</span>
+</span></span></code></pre><p><strong>Configuration Fields:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Whether the plugin is active</td>
+</tr>
+<tr>
+<td><code>cdn_url</code></td>
+<td>string</td>
+<td><code>&quot;https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs&quot;</code></td>
+<td>URL for Mermaid.js library</td>
+</tr>
+<tr>
+<td><code>theme</code></td>
+<td>string</td>
+<td><code>&quot;default&quot;</code></td>
+<td>Mermaid theme (default, dark, forest, neutral)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Syntax:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="s">```mermaid
+</span></span></span><span class="line"><span class="cl"><span class="s"></span>graph TD
+</span></span><span class="line"><span class="cl">    A[Start] --&gt; B{Decision}
+</span></span><span class="line"><span class="cl">    B --&gt;|Yes| C[Action 1]
+</span></span><span class="line"><span class="cl">    B --&gt;|No| D[Action 2]
+</span></span><span class="line"><span class="cl"><span class="s">```</span>
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>Find all <code>&lt;pre&gt;&lt;code class=&quot;language-mermaid&quot;&gt;</code> blocks</li>
+<li>Replace with <code>&lt;pre class=&quot;mermaid&quot;&gt;{diagram code}&lt;/pre&gt;</code></li>
+<li>Inject Mermaid.js script (once per post with mermaid content)</li>
+</ol>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">pre</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;mermaid&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">graph TD
+</span></span><span class="line"><span class="cl">    A[Start] --&gt; B{Decision}
+</span></span><span class="line"><span class="cl">    B --&gt;|Yes| C[Action 1]
+</span></span><span class="line"><span class="cl">    B --&gt;|No| D[Action 2]
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">pre</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;module&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="kr">import</span> <span class="nx">mermaid</span> <span class="nx">from</span> <span class="s1">&#39;https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">mermaid</span><span class="p">.</span><span class="nx">initialize</span><span class="p">({</span> <span class="nx">startOnLoad</span><span class="o">:</span> <span class="kc">true</span><span class="p">,</span> <span class="nx">theme</span><span class="o">:</span> <span class="s1">&#39;default&#39;</span> <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>Supported Diagram Types:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>graph</code> / <code>flowchart</code></td>
+<td>Flow diagrams</td>
+</tr>
+<tr>
+<td><code>sequenceDiagram</code></td>
+<td>Sequence diagrams</td>
+</tr>
+<tr>
+<td><code>classDiagram</code></td>
+<td>Class diagrams</td>
+</tr>
+<tr>
+<td><code>stateDiagram</code></td>
+<td>State diagrams</td>
+</tr>
+<tr>
+<td><code>erDiagram</code></td>
+<td>Entity relationship</td>
+</tr>
+<tr>
+<td><code>gantt</code></td>
+<td>Gantt charts</td>
+</tr>
+<tr>
+<td><code>pie</code></td>
+<td>Pie charts</td>
+</tr>
+<tr>
+<td><code>gitGraph</code></td>
+<td>Git graphs</td>
+</tr>
+<tr>
+<td><code>mindmap</code></td>
+<td>Mind maps</td>
+</tr>
+<tr>
+<td><code>timeline</code></td>
+<td>Timelines</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Go Interface:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// MermaidPlugin implements these lifecycle interfaces:
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span>          <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MermaidPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">ConfigurePlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MermaidPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">RenderPlugin</span>    <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MermaidPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityPlugin</span>  <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MermaidPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><hr>
+<h3 id="chartjs"><code>chartjs</code> <a href="#chartjs" class="heading-anchor">#</a></h3>
+<blockquote>
+<p><strong>Note:</strong> This plugin is planned but not yet implemented.</p>
+</blockquote>
+<p><strong>Stage:</strong> <code>render</code> (late priority, after markdown conversion)</p>
+<p><strong>Purpose:</strong> Convert Chart.js JSON blocks into rendered charts.</p>
+<p><strong>Dependencies:</strong> None (client-side rendering via CDN)</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">chartjs</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">cdn_url</span> <span class="p">=</span> <span class="s2">&#34;https://cdn.jsdelivr.net/npm/chart.js&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">default_options</span> <span class="p">=</span> <span class="p">{}</span>               <span class="c"># Default Chart.js options</span>
+</span></span></code></pre><p><strong>Syntax:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="s">```chartjs
+</span></span></span><span class="line"><span class="cl"><span class="s"></span>{
+</span></span><span class="line"><span class="cl">  &#34;type&#34;: &#34;bar&#34;,
+</span></span><span class="line"><span class="cl">  &#34;data&#34;: {
+</span></span><span class="line"><span class="cl">    &#34;labels&#34;: [&#34;Red&#34;, &#34;Blue&#34;, &#34;Yellow&#34;],
+</span></span><span class="line"><span class="cl">    &#34;datasets&#34;: [{
+</span></span><span class="line"><span class="cl">      &#34;label&#34;: &#34;Votes&#34;,
+</span></span><span class="line"><span class="cl">      &#34;data&#34;: [12, 19, 3],
+</span></span><span class="line"><span class="cl">      &#34;backgroundColor&#34;: [&#34;#f87171&#34;, &#34;#60a5fa&#34;, &#34;#fbbf24&#34;]
+</span></span><span class="line"><span class="cl">    }]
+</span></span><span class="line"><span class="cl">  }
+</span></span><span class="line"><span class="cl">}
+</span></span><span class="line"><span class="cl"><span class="s">```</span>
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>Find all <code>&lt;pre&gt;&lt;code class=&quot;language-chartjs&quot;&gt;</code> blocks</li>
+<li>Parse JSON content</li>
+<li>Replace with canvas element and initialization script</li>
+<li>Inject Chart.js script (once per page)</li>
+</ol>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;chartjs-container&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">canvas</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;chart-1&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">canvas</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">new</span> <span class="nx">Chart</span><span class="p">(</span><span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;chart-1&#39;</span><span class="p">),</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">type</span><span class="o">:</span> <span class="s1">&#39;bar&#39;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">data</span><span class="o">:</span> <span class="p">{</span> <span class="p">...</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;https://cdn.jsdelivr.net/npm/chart.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>Supported Chart Types:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bar</code></td>
+<td>Bar chart</td>
+</tr>
+<tr>
+<td><code>line</code></td>
+<td>Line chart</td>
+</tr>
+<tr>
+<td><code>pie</code></td>
+<td>Pie chart</td>
+</tr>
+<tr>
+<td><code>doughnut</code></td>
+<td>Doughnut chart</td>
+</tr>
+<tr>
+<td><code>radar</code></td>
+<td>Radar chart</td>
+</tr>
+<tr>
+<td><code>polarArea</code></td>
+<td>Polar area chart</td>
+</tr>
+<tr>
+<td><code>bubble</code></td>
+<td>Bubble chart</td>
+</tr>
+<tr>
+<td><code>scatter</code></td>
+<td>Scatter plot</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="csv-fence"><code>csv_fence</code> <a href="#csv-fence" class="heading-anchor">#</a></h3>
+<p><strong>Stage:</strong> <code>render</code> (late priority, after markdown conversion)</p>
+<p><strong>Purpose:</strong> Convert CSV code blocks into HTML tables.</p>
+<p><strong>Dependencies:</strong> None (uses standard library csv module)</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">csv_fence</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">table_class</span> <span class="p">=</span> <span class="s2">&#34;csv-table&#34;</span>          <span class="c"># CSS class for table</span>
+</span></span><span class="line"><span class="cl"><span class="nx">has_header</span> <span class="p">=</span> <span class="kc">true</span>                  <span class="c"># First row is header</span>
+</span></span><span class="line"><span class="cl"><span class="nx">delimiter</span> <span class="p">=</span> <span class="s2">&#34;,&#34;</span>                    <span class="c"># CSV delimiter</span>
+</span></span></code></pre><p><strong>Configuration Fields:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Whether the plugin is active</td>
+</tr>
+<tr>
+<td><code>table_class</code></td>
+<td>string</td>
+<td><code>&quot;csv-table&quot;</code></td>
+<td>CSS class for generated table</td>
+</tr>
+<tr>
+<td><code>has_header</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Whether first row is a header</td>
+</tr>
+<tr>
+<td><code>delimiter</code></td>
+<td>string</td>
+<td><code>&quot;,&quot;</code></td>
+<td>CSV field delimiter</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Syntax:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="s">```csv
+</span></span></span><span class="line"><span class="cl"><span class="s"></span>Name,Age,City
+</span></span><span class="line"><span class="cl">Alice,30,New York
+</span></span><span class="line"><span class="cl">Bob,25,Los Angeles
+</span></span><span class="line"><span class="cl">Charlie,35,Chicago
+</span></span><span class="line"><span class="cl"><span class="s">```</span>
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>Find all <code>&lt;pre&gt;&lt;code class=&quot;language-csv&quot;&gt;</code> blocks</li>
+<li>Parse CSV content</li>
+<li>Generate HTML table with <code>&lt;thead&gt;</code> (if header) and <code>&lt;tbody&gt;</code></li>
+</ol>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">table</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;csv-table&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">thead</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">th</span><span class="p">&gt;</span>Name<span class="p">&lt;/</span><span class="nt">th</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">th</span><span class="p">&gt;</span>Age<span class="p">&lt;/</span><span class="nt">th</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">th</span><span class="p">&gt;</span>City<span class="p">&lt;/</span><span class="nt">th</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">thead</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">tbody</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span><span class="p">&gt;</span>Alice<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span><span class="p">&gt;</span>30<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span><span class="p">&gt;</span>New York<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span><span class="p">&gt;</span>Bob<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span><span class="p">&gt;</span>25<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span><span class="p">&gt;</span>Los Angeles<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span><span class="p">&gt;</span>Charlie<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span><span class="p">&gt;</span>35<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span><span class="p">&gt;</span>Chicago<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">tbody</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">table</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>Advanced Usage:</strong></p>
+<p>Per-block options can override global configuration:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">```csv delimiter=&#34;;&#34; has_header=&#34;false&#34; table_class=&#34;custom-table&#34;
+</span></span><span class="line"><span class="cl">1;2;3
+</span></span><span class="line"><span class="cl">4;5;6
+</span></span><span class="line"><span class="cl">```
+</span></span></code></pre><p><strong>Go Interface:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// CSVFencePlugin implements these lifecycle interfaces:
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span>          <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">CSVFencePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">ConfigurePlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">CSVFencePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">RenderPlugin</span>    <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">CSVFencePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityPlugin</span>  <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">CSVFencePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><hr>
+<h2 id="link-enhancement-plugins">Link Enhancement Plugins <a href="#link-enhancement-plugins" class="heading-anchor">#</a></h2>
+<h3 id="one-line-link"><code>one_line_link</code> <a href="#one-line-link" class="heading-anchor">#</a></h3>
+<blockquote>
+<p><strong>Note:</strong> This plugin is planned but not yet implemented.</p>
+</blockquote>
+<p><strong>Stage:</strong> <code>render</code> (late priority, after markdown conversion)</p>
+<p><strong>Purpose:</strong> Expand URLs that appear alone on a line into rich preview cards.</p>
+<p><strong>Dependencies:</strong> None (optional: external HTTP client for metadata fetching)</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">one_line_link</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">card_class</span> <span class="p">=</span> <span class="s2">&#34;link-card&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">fetch_metadata</span> <span class="p">=</span> <span class="kc">true</span>              <span class="c"># Fetch title/description from URL</span>
+</span></span><span class="line"><span class="cl"><span class="nx">cache_metadata</span> <span class="p">=</span> <span class="kc">true</span>              <span class="c"># Cache fetched metadata</span>
+</span></span><span class="line"><span class="cl"><span class="nx">fallback_title</span> <span class="p">=</span> <span class="s2">&#34;Link&#34;</span>            <span class="c"># Title when fetch fails</span>
+</span></span><span class="line"><span class="cl"><span class="nx">timeout</span> <span class="p">=</span> <span class="mi">5</span>                        <span class="c"># Fetch timeout in seconds</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># URL patterns to exclude from expansion</span>
+</span></span><span class="line"><span class="cl"><span class="nx">exclude_patterns</span> <span class="p">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;^https://twitter.com&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;^https://x.com&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl"><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Custom templates per domain</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">one_line_link</span><span class="p">.</span><span class="nx">templates</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;github.com&#34;</span> <span class="p">=</span> <span class="s2">&#34;github-card.html&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;youtube.com&#34;</span> <span class="p">=</span> <span class="s2">&#34;youtube-card.html&#34;</span>
+</span></span></code></pre><p><strong>Syntax:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Check out this article:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">https://example.com/awesome-article
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">And continue reading...
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>Find URLs that are alone on their own line (paragraph containing only a URL)</li>
+<li>Fetch page metadata (title, description, image) if enabled</li>
+<li>Replace with rich card HTML</li>
+</ol>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Check out this article:<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://example.com/awesome-article&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;link-card&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;link-card-image&#34;</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;background-image: url(&#39;...&#39;)&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;link-card-content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;link-card-title&#34;</span><span class="p">&gt;</span>Awesome Article Title<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;link-card-description&#34;</span><span class="p">&gt;</span>A brief description...<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;link-card-url&#34;</span><span class="p">&gt;</span>example.com<span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>And continue reading...<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>Detection Rules:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Expanded?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>https://example.com</code> (alone)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>Check out https://example.com</code></td>
+<td>No (inline)</td>
+</tr>
+<tr>
+<td><code>[Link](https://example.com)</code></td>
+<td>No (already link)</td>
+</tr>
+<tr>
+<td><code>&lt;https://example.com&gt;</code></td>
+<td>No (autolink)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="wikilink-hover"><code>wikilink_hover</code> <a href="#wikilink-hover" class="heading-anchor">#</a></h3>
+<blockquote>
+<p><strong>Note:</strong> This plugin is planned but not yet implemented.</p>
+</blockquote>
+<p><strong>Stage:</strong> <code>render</code> (late priority, after wikilinks plugin)</p>
+<p><strong>Purpose:</strong> Add hover previews to wikilinks showing target post content.</p>
+<p><strong>Dependencies:</strong> None</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">wikilink_hover</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">preview_length</span> <span class="p">=</span> <span class="mi">200</span>               <span class="c"># Characters to show in preview</span>
+</span></span><span class="line"><span class="cl"><span class="nx">include_image</span> <span class="p">=</span> <span class="kc">true</span>               <span class="c"># Include featured image if available</span>
+</span></span><span class="line"><span class="cl"><span class="nx">screenshot_service</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>            <span class="c"># URL of screenshot service (optional)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">screenshot_width</span> <span class="p">=</span> <span class="mi">400</span>
+</span></span><span class="line"><span class="cl"><span class="nx">screenshot_height</span> <span class="p">=</span> <span class="mi">300</span>
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>Find all wikilink anchors (<code>&lt;a&gt;</code> tags created by wikilinks plugin)</li>
+<li>Add <code>data-preview</code> attribute with preview content</li>
+<li>Optionally add screenshot URL</li>
+</ol>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/other-post/&#34;</span>
+</span></span><span class="line"><span class="cl">   <span class="na">class</span><span class="o">=</span><span class="s">&#34;wikilink&#34;</span>
+</span></span><span class="line"><span class="cl">   <span class="na">data-preview</span><span class="o">=</span><span class="s">&#34;Preview text from the target post...&#34;</span>
+</span></span><span class="line"><span class="cl">   <span class="na">data-preview-image</span><span class="o">=</span><span class="s">&#34;/other-post/featured.jpg&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  Other Post
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>JavaScript Integration:</strong></p>
+<p>The plugin adds data attributes; JavaScript handles the hover display:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nb">document</span><span class="p">.</span><span class="nx">querySelectorAll</span><span class="p">(</span><span class="s1">&#39;[data-preview]&#39;</span><span class="p">).</span><span class="nx">forEach</span><span class="p">(</span><span class="nx">link</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">link</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;mouseenter&#39;</span><span class="p">,</span> <span class="nx">showPreview</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">link</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;mouseleave&#39;</span><span class="p">,</span> <span class="nx">hidePreview</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">});</span>
+</span></span></code></pre><p><strong>Screenshot Service:</strong></p>
+<p>If <code>screenshot_service</code> is configured:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">screenshot_service</span> <span class="p">=</span> <span class="s2">&#34;https://screenshot.example.com/capture?url=&#34;</span>
+</span></span></code></pre><p>Output:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/other-post/&#34;</span>
+</span></span><span class="line"><span class="cl">   <span class="na">data-preview-screenshot</span><span class="o">=</span><span class="s">&#34;https://screenshot.example.com/capture?url=https://mysite.com/other-post/&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  Other Post
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span></code></pre><hr>
+<h2 id="output-generation-plugins">Output Generation Plugins <a href="#output-generation-plugins" class="heading-anchor">#</a></h2>
+<h3 id="qrcode"><code>qrcode</code> <a href="#qrcode" class="heading-anchor">#</a></h3>
+<blockquote>
+<p><strong>Note:</strong> This plugin is planned but not yet implemented.</p>
+</blockquote>
+<p><strong>Stage:</strong> <code>write</code></p>
+<p><strong>Purpose:</strong> Generate QR code images for each post's URL.</p>
+<p><strong>Dependencies:</strong> External QR code library (to be determined)</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">qrcode</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">format</span> <span class="p">=</span> <span class="s2">&#34;svg&#34;</span>                     <span class="c"># &#34;svg&#34; or &#34;png&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">size</span> <span class="p">=</span> <span class="mi">200</span>                         <span class="c"># Size in pixels</span>
+</span></span><span class="line"><span class="cl"><span class="nx">output_dir</span> <span class="p">=</span> <span class="s2">&#34;qrcodes&#34;</span>             <span class="c"># Subdirectory in output</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filename_template</span> <span class="p">=</span> <span class="s2">&#34;{slug}.{format}&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">error_correction</span> <span class="p">=</span> <span class="s2">&#34;M&#34;</span>             <span class="c"># L, M, Q, H</span>
+</span></span><span class="line"><span class="cl"><span class="nx">foreground</span> <span class="p">=</span> <span class="s2">&#34;#000000&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">background</span> <span class="p">=</span> <span class="s2">&#34;#ffffff&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">include_logo</span> <span class="p">=</span> <span class="kc">false</span>               <span class="c"># Embed site logo in center</span>
+</span></span><span class="line"><span class="cl"><span class="nx">logo_path</span> <span class="p">=</span> <span class="s2">&#34;static/logo.png&#34;</span>
+</span></span></code></pre><p><strong>Behavior:</strong></p>
+<ol>
+<li>For each post, generate QR code for its absolute URL</li>
+<li>Save to output directory</li>
+<li>Add <code>qrcode_url</code> field to post model</li>
+</ol>
+<p><strong>Output Files:</strong></p>
+<pre><code>output/
+  qrcodes/
+    hello-world.svg
+    another-post.svg
+</code></pre>
+<p><strong>Post Model Extension:</strong></p>
+<p>Posts with QR codes will have the <code>qrcode_url</code> field set in their Extra map.</p>
+<p><strong>Template Usage:</strong></p>
+<pre><code class="language-jinja2">{% if post.qrcode_url %}
+&lt;img src=&quot;{{ post.qrcode_url }}&quot; alt=&quot;QR Code&quot; class=&quot;qr-code&quot; /&gt;
+{% endif %}
+</code></pre>
+<hr>
+<h2 id="plugin-dependencies">Plugin Dependencies <a href="#plugin-dependencies" class="heading-anchor">#</a></h2>
+<p>For the implemented plugins:</p>
+<table>
+<thead>
+<tr>
+<th>Plugin</th>
+<th>Required</th>
+<th>Optional</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>glossary</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>mermaid</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>csv_fence</code></td>
+<td>-</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<p>Planned plugins may have additional dependencies when implemented.</p>
+<hr>
+<h2 id="plugin-interaction">Plugin Interaction <a href="#plugin-interaction" class="heading-anchor">#</a></h2>
+<h3 id="execution-order">Execution Order <a href="#execution-order" class="heading-anchor">#</a></h3>
+<p>When using multiple optional plugins, order matters:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;default&#34;</span><span class="p">,</span>           <span class="c"># Includes wikilinks</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;glossary&#34;</span><span class="p">,</span>          <span class="c"># After render (needs article_html)</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;mermaid&#34;</span><span class="p">,</span>           <span class="c"># After render</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;chartjs&#34;</span><span class="p">,</span>           <span class="c"># After render</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;csv_fence&#34;</span><span class="p">,</span>         <span class="c"># After render</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;md_video&#34;</span><span class="p">,</span>          <span class="c"># After render</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;one_line_link&#34;</span><span class="p">,</span>     <span class="c"># After render</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;wikilink_hover&#34;</span><span class="p">,</span>    <span class="c"># After wikilinks (needs wikilink anchors)</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;qrcode&#34;</span><span class="p">,</span>            <span class="c"># At save stage</span>
+</span></span><span class="line"><span class="cl"><span class="p">]</span>
+</span></span></code></pre><h3 id="conflicts">Conflicts <a href="#conflicts" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Plugins</th>
+<th>Issue</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>glossary</code> + <code>wikilinks</code></td>
+<td>Terms in wikilinks get double-linked</td>
+<td>Glossary excludes content inside <code>&lt;a&gt;</code> tags</td>
+</tr>
+<tr>
+<td><code>mermaid</code> + <code>csv_fence</code></td>
+<td>None</td>
+<td>Process independently</td>
+</tr>
+<tr>
+<td><code>one_line_link</code> + any</td>
+<td>URLs in code blocks</td>
+<td>Exclude <code>&lt;pre&gt;</code> and <code>&lt;code&gt;</code> content</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="disabling-optional-plugins">Disabling Optional Plugins <a href="#disabling-optional-plugins" class="heading-anchor">#</a></h2>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;default&#34;</span><span class="p">,</span> <span class="s2">&#34;mermaid&#34;</span><span class="p">,</span> <span class="s2">&#34;csv_fence&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">disabled_hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;mermaid&#34;</span><span class="p">]</span>  <span class="c"># Disable mermaid specifically</span>
+</span></span></code></pre><p>Or set the <code>enabled</code> config option to false:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">mermaid</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span></code></pre><hr>
+<h2 id="creating-custom-optional-plugins">Creating Custom Optional Plugins <a href="#creating-custom-optional-plugins" class="heading-anchor">#</a></h2>
+<p>Follow the pattern established by these plugins:</p>
+<ol>
+<li><strong>Configuration</strong>: Define config struct with sensible defaults</li>
+<li><strong>Enabled Check</strong>: Always check <code>config.Enabled</code> first</li>
+<li><strong>Priority</strong>: Use <code>lifecycle.PriorityLate</code> to run after markdown rendering</li>
+<li><strong>Concurrent Processing</strong>: Use <code>m.ProcessPostsConcurrently()</code> for post processing</li>
+<li><strong>Error Handling</strong>: Return errors, don't panic</li>
+</ol>
+<p>Example skeleton:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">plugins</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/example/markata-go/pkg/lifecycle&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/example/markata-go/pkg/models&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// MyPluginConfig holds configuration for the plugin.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">MyPluginConfig</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Enabled</span> <span class="kt">bool</span>   <span class="s">`json:&#34;enabled&#34; yaml:&#34;enabled&#34; toml:&#34;enabled&#34;`</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Option</span>  <span class="kt">string</span> <span class="s">`json:&#34;option&#34; yaml:&#34;option&#34; toml:&#34;option&#34;`</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// NewMyPluginConfig creates a config with default values.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">NewMyPluginConfig</span><span class="p">()</span> <span class="o">*</span><span class="nx">MyPluginConfig</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="o">&amp;</span><span class="nx">MyPluginConfig</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Enabled</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Option</span><span class="p">:</span>  <span class="s">&#34;default&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// MyPlugin does something useful.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">MyPlugin</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">config</span> <span class="o">*</span><span class="nx">MyPluginConfig</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">NewMyPlugin</span><span class="p">()</span> <span class="o">*</span><span class="nx">MyPlugin</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="o">&amp;</span><span class="nx">MyPlugin</span><span class="p">{</span><span class="nx">config</span><span class="p">:</span> <span class="nf">NewMyPluginConfig</span><span class="p">()}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Name</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span> <span class="k">return</span> <span class="s">&#34;my_plugin&#34;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Priority</span><span class="p">(</span><span class="nx">stage</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Stage</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">stage</span> <span class="o">==</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">StageRender</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityLate</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityDefault</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Configure</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Read config from m.Config().Extra[&#34;my_plugin&#34;]
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Render</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">!</span><span class="nx">p</span><span class="p">.</span><span class="nx">config</span><span class="p">.</span><span class="nx">Enabled</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">m</span><span class="p">.</span><span class="nf">ProcessPostsConcurrently</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">post</span> <span class="o">*</span><span class="nx">models</span><span class="p">.</span><span class="nx">Post</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Skip</span> <span class="o">||</span> <span class="nx">post</span><span class="p">.</span><span class="nx">ArticleHTML</span> <span class="o">==</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// Process post.ArticleHTML
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">    <span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Ensure interface compliance
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span>          <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">ConfigurePlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">RenderPlugin</span>    <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityPlugin</span>  <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./PLUGINS.md">PLUGINS.md</a> - Plugin development guide</li>
+<li><a href="./DEFAULT_PLUGINS.md">DEFAULT_PLUGINS.md</a> - Default plugins</li>
+<li><a href="./CONFIG.md">CONFIG.md</a> - Plugin configuration</li>
+<li><a href="./THEMES.md">THEMES.md</a> - Styling for plugin output</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

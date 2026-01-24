@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontmatter Guide - My Site</title>
+    <meta name="description" content="Complete guide to post metadata, built-in fields, and custom frontmatter in markata-go">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Frontmatter Guide">
+    
+    <meta property="og:url" content="/frontmatter-guide/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Complete guide to post metadata, built-in fields, and custom frontmatter in markata-go">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="frontmatter">
+    
+    <meta property="article:tag" content="content">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Frontmatter Guide">
+    
+    <meta name="twitter:description" content="Complete guide to post metadata, built-in fields, and custom frontmatter in markata-go">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/frontmatter-guide/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Frontmatter Guide",
+  "description": "Complete guide to post metadata, built-in fields, and custom frontmatter in markata-go",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/frontmatter-guide/"
+  },
+  "keywords": [
+    "documentation",
+    "frontmatter",
+    "content"
+  ],
+  "url": "/frontmatter-guide/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Frontmatter Guide</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/frontmatter/">frontmatter</a>
+                
+                <a href="/tags/content/">content</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="frontmatter">Frontmatter</h1>
+<p>Frontmatter is the <strong>metadata block</strong> at the top of your Markdown files that tells markata-go how to process, display, and organize your content. This guide covers everything you need to know about using frontmatter effectively.</p>
+<h2 id="table-of-contents">Table of Contents <a href="#table-of-contents" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="#what-is-frontmatter">What is Frontmatter?</a></li>
+<li><a href="#basic-frontmatter-fields">Basic Frontmatter Fields</a></li>
+<li><a href="#complete-field-reference">Complete Field Reference</a></li>
+<li><a href="#custom-fields-extra">Custom Fields (Extra)</a></li>
+<li><a href="#examples">Examples</a></li>
+<li><a href="#common-patterns">Common Patterns</a></li>
+<li><a href="#frontmatter-in-filtering">Frontmatter in Filtering</a></li>
+</ul>
+<hr>
+<h2 id="what-is-frontmatter">What is Frontmatter? <a href="#what-is-frontmatter" class="heading-anchor">#</a></h2>
+<p>Frontmatter is <strong>YAML metadata</strong> placed at the very top of a Markdown file, enclosed between two lines of three dashes (<code>---</code>). It defines properties like the post's title, date, tags, and any custom data you want to associate with the content.</p>
+<h3 id="visual-example">Visual Example <a href="#visual-example" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Getting Started with Go&#34;
+</span></span><span class="line"><span class="cl">date: 2024-01-15
+</span></span><span class="line"><span class="cl">published: true
+</span></span><span class="line"><span class="cl">tags:
+</span></span><span class="line"><span class="cl">  <span class="k">-</span> go
+</span></span><span class="line"><span class="cl">  <span class="k">-</span> tutorial
+</span></span><span class="line"><span class="cl">  <span class="k">-</span> beginners
+</span></span><span class="line"><span class="cl">description: &#34;A beginner-friendly introduction to Go programming.&#34;
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Welcome to Go!
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">This is where your actual content begins...
+</span></span></code></pre><h3 id="how-markata-go-parses-frontmatter">How markata-go Parses Frontmatter <a href="#how-markata-go-parses-frontmatter" class="heading-anchor">#</a></h3>
+<p>When markata-go processes your Markdown files, it:</p>
+<ol>
+<li><strong>Detects the opening delimiter</strong> - Looks for <code>---</code> at the very start of the file</li>
+<li><strong>Extracts the YAML block</strong> - Reads everything until the closing <code>---</code></li>
+<li><strong>Parses the YAML</strong> - Converts the metadata into structured data</li>
+<li><strong>Separates the content</strong> - Everything after the second <code>---</code> becomes the post body</li>
+</ol>
+<p><strong>Important notes:</strong></p>
+<ul>
+<li>The opening <code>---</code> must be on the very first line of the file</li>
+<li>The closing <code>---</code> must be on its own line</li>
+<li>Content before the opening <code>---</code> or malformed delimiters will cause errors</li>
+<li>Files without frontmatter are valid - they'll use default values</li>
+</ul>
+<h3 id="valid-frontmatter">Valid Frontmatter <a href="#valid-frontmatter" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: My Post
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">Content here
+</span></span></code></pre><h3 id="invalid-frontmatter-missing-closing-delimiter">Invalid Frontmatter (Missing Closing Delimiter) <a href="#invalid-frontmatter-missing-closing-delimiter" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: My Post
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Content here (ERROR: unclosed frontmatter)
+</span></span></code></pre><h3 id="no-frontmatter-also-valid">No Frontmatter (Also Valid) <a href="#no-frontmatter-also-valid" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gh"># My Post
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">Content starts immediately - defaults will be used.
+</span></span></code></pre><hr>
+<h2 id="basic-frontmatter-fields">Basic Frontmatter Fields <a href="#basic-frontmatter-fields" class="heading-anchor">#</a></h2>
+<p>These are the core fields that markata-go recognizes and uses directly.</p>
+<h3 id="title-string">title (string) <a href="#title-string" class="heading-anchor">#</a></h3>
+<p>The display title of your post.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Understanding Goroutines&#34;</span><span class="w">
+</span></span></span></code></pre><ul>
+<li><strong>Type:</strong> string</li>
+<li><strong>Default:</strong> None (derived from filename if not set)</li>
+<li><strong>Used for:</strong> Page title, <code>&lt;title&gt;</code> tag, feed listings, slug generation</li>
+</ul>
+<p>If not provided, the slug is derived from the filename instead.</p>
+<h3 id="slug-string">slug (string) <a href="#slug-string" class="heading-anchor">#</a></h3>
+<p>The URL-safe identifier for your post. Determines the URL path.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;understanding-goroutines&#34;</span><span class="w">
+</span></span></span></code></pre><ul>
+<li><strong>Type:</strong> string</li>
+<li><strong>Default:</strong> Auto-generated from <code>title</code> (or filename if no title)</li>
+<li><strong>Used for:</strong> URL path (<code>/understanding-goroutines/</code>)</li>
+</ul>
+<p><strong>Auto-generation rules:</strong></p>
+<ul>
+<li>Converts to lowercase</li>
+<li>Replaces spaces with hyphens</li>
+<li>Removes special characters</li>
+<li>Collapses multiple hyphens</li>
+</ul>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># These titles produce these slugs:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Hello World!&#34;</span><span class="w">        </span><span class="c"># slug: hello-world</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Go&#39;s Best Features&#34;</span><span class="w">  </span><span class="c"># slug: gos-best-features</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Part 1: The Basics&#34;</span><span class="w">  </span><span class="c"># slug: part-1-the-basics</span><span class="w">
+</span></span></span></code></pre><h4 id="custom-slugs">Custom Slugs <a href="#custom-slugs" class="heading-anchor">#</a></h4>
+<p>You can explicitly set any slug in frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Simple custom slug</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l">my-custom-url</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Nested path (creates /docs/api/overview/)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l">docs/api/overview</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Leading/trailing slashes are automatically stripped</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug: /about/            # becomes</span><span class="p">:</span><span class="w"> </span><span class="l">about</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug: /docs/guides/      # becomes</span><span class="p">:</span><span class="w"> </span><span class="l">docs/guides</span><span class="w">
+</span></span></span></code></pre><h4 id="homepage-from-custom-slug">Homepage from Custom Slug <a href="#homepage-from-custom-slug" class="heading-anchor">#</a></h4>
+<p>Any post can become the homepage by setting an empty or slash slug:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Welcome to My Site&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&#34;</span><span class="w">                    </span><span class="c"># This post becomes the homepage at /</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="l">Welcome to my site!</span><span class="w">
+</span></span></span></code></pre><p>Or equivalently:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Welcome to My Site&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l">/                    </span><span class="w"> </span><span class="c"># Also becomes the homepage at /</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p>This is useful when you want a custom homepage from content in any directory, rather than using a feed or <code>index.md</code> at the root.</p>
+<p><strong>Note:</strong> If multiple posts have the same slug (including empty slug for homepage), the build will fail with a path conflict error to prevent accidental overwrites.</p>
+<h4 id="special-case-indexmd-files">Special Case: <code>index.md</code> Files <a href="#special-case-indexmd-files" class="heading-anchor">#</a></h4>
+<p>Files named <code>index.md</code> automatically generate slugs based on their directory:</p>
+<table>
+<thead>
+<tr>
+<th>File Path</th>
+<th>Auto-Generated Slug</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>./index.md</code></td>
+<td><code>&quot;&quot;</code> (empty)</td>
+<td><code>/</code> (homepage)</td>
+</tr>
+<tr>
+<td><code>docs/index.md</code></td>
+<td><code>docs</code></td>
+<td><code>/docs/</code></td>
+</tr>
+<tr>
+<td><code>blog/guides/index.md</code></td>
+<td><code>blog/guides</code></td>
+<td><code>/blog/guides/</code></td>
+</tr>
+</tbody>
+</table>
+<p>This allows directory-based URL structures without needing to set explicit slugs.</p>
+<h3 id="date-date">date (date) <a href="#date-date" class="heading-anchor">#</a></h3>
+<p>The publication date of the post.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">
+</span></span></span></code></pre><ul>
+<li><strong>Type:</strong> date (YYYY-MM-DD format recommended)</li>
+<li><strong>Default:</strong> None</li>
+<li><strong>Used for:</strong> Sorting, display, feeds, scheduled publishing</li>
+</ul>
+<p><strong>Supported date formats:</strong></p>
+<p>markata-go supports a wide variety of date formats for maximum flexibility:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># ISO 8601 formats (recommended)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">                    </span><span class="c"># Date only</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15T10:30:00</span><span class="w">           </span><span class="c"># With time</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15T10:30:00Z</span><span class="w">          </span><span class="c"># With UTC timezone</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15T10:30:00</span><span class="m">+05</span><span class="p">:</span><span class="m">00</span><span class="w">     </span><span class="c"># With timezone offset</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15 10:30:00</span><span class="w">           </span><span class="c"># With space separator</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w"> </span><span class="m">10</span><span class="p">:</span><span class="m">30</span><span class="w">              </span><span class="c"># Without seconds</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Single-digit hours (automatically normalized)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w"> </span><span class="m">1</span><span class="p">:</span><span class="m">30</span><span class="p">:</span><span class="m">00</span><span class="w">            </span><span class="c"># 1am</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w"> </span><span class="m">9</span><span class="p">:</span><span class="m">30</span><span class="p">:</span><span class="m">00</span><span class="w">            </span><span class="c"># 9am</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Slash-separated dates</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="m">2024</span><span class="l">/01/15                   </span><span class="w"> </span><span class="c"># YYYY/MM/DD</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="m">2024</span><span class="l">/01/15 10:30:00          </span><span class="w"> </span><span class="c"># With time</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="m">01</span><span class="l">/15/2024                   </span><span class="w"> </span><span class="c"># MM/DD/YYYY (US format)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Named month formats</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="l">January 15, 2024             </span><span class="w"> </span><span class="c"># Full month name</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="l">Jan 15, 2024                 </span><span class="w"> </span><span class="c"># Abbreviated month</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="m">15</span><span class="w"> </span><span class="l">January 2024              </span><span class="w"> </span><span class="c"># Day first</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="m">15</span><span class="w"> </span><span class="l">Jan 2024                  </span><span class="w"> </span><span class="c"># Day first, abbreviated</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># European format</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="m">15-01-2024</span><span class="w">                    </span><span class="c"># DD-MM-YYYY</span><span class="w">
+</span></span></span></code></pre><p><strong>Note:</strong> Malformed time components are automatically corrected. For example, <code>2024-01-15 8:011:00</code> (typo) will be parsed as <code>2024-01-15 08:11:00</code>.</p>
+<h3 id="published-boolean">published (boolean) <a href="#published-boolean" class="heading-anchor">#</a></h3>
+<p>Whether the post should be included in public feeds and listings.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span></code></pre><ul>
+<li><strong>Type:</strong> boolean</li>
+<li><strong>Default:</strong> <code>false</code></li>
+<li><strong>Used for:</strong> Filtering posts in feeds, sitemaps, and RSS</li>
+</ul>
+<p><strong>Shadow Pages:</strong> Posts with <code>published: false</code> are still rendered to HTML and accessible via direct URL. They become &quot;shadow pages&quot; - accessible but not discoverable through normal site navigation.</p>
+<table>
+<thead>
+<tr>
+<th><code>published</code></th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>true</code></td>
+<td>Rendered + included in feeds, sitemaps, RSS</td>
+</tr>
+<tr>
+<td><code>false</code></td>
+<td>Rendered as &quot;shadow page&quot; + NOT in feeds, sitemaps, RSS</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Use cases for shadow pages:</strong></p>
+<ul>
+<li>Draft content accessible to reviewers via direct URL</li>
+<li>Private documentation not linked publicly</li>
+<li>Work-in-progress content shared with specific people</li>
+<li>Admin pages or staging content</li>
+</ul>
+<p><strong>Accepted values:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">published: true    # or</span><span class="p">:</span><span class="w"> </span><span class="kc">yes</span><span class="p">,</span><span class="w"> </span><span class="kc">on</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published: false   # or</span><span class="p">:</span><span class="w"> </span><span class="kc">no</span><span class="p">,</span><span class="w"> </span><span class="kc">off</span><span class="w">
+</span></span></span></code></pre><h3 id="draft-boolean">draft (boolean) <a href="#draft-boolean" class="heading-anchor">#</a></h3>
+<p>Marks the post as a work-in-progress that should NOT be rendered at all.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">draft</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span></code></pre><ul>
+<li><strong>Type:</strong> boolean</li>
+<li><strong>Default:</strong> <code>false</code></li>
+<li><strong>Used for:</strong> Truly private content that shouldn't be accessible</li>
+</ul>
+<p><strong>Important:</strong> Posts with <code>draft: true</code> are <strong>never rendered</strong> to HTML. Use this for content you don't want accessible at all, even via direct URL.</p>
+<table>
+<thead>
+<tr>
+<th><code>draft</code></th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>false</code></td>
+<td>Content is rendered (visibility depends on <code>published</code>)</td>
+</tr>
+<tr>
+<td><code>true</code></td>
+<td>Content is NOT rendered at all</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Comparison with <code>published</code>:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th><code>published</code></th>
+<th><code>draft</code></th>
+<th>Rendered?</th>
+<th>In Feeds?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Public post</td>
+<td><code>true</code></td>
+<td><code>false</code></td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Shadow page</td>
+<td><code>false</code></td>
+<td><code>false</code></td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Private WIP</td>
+<td>any</td>
+<td><code>true</code></td>
+<td>No</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tags-list">tags (list) <a href="#tags-list" class="heading-anchor">#</a></h3>
+<p>A list of tags for categorizing the post.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">tags</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">concurrency</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">tutorial</span><span class="w">
+</span></span></span></code></pre><p>Or inline format:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">go, concurrency, tutorial]</span><span class="w">
+</span></span></span></code></pre><ul>
+<li><strong>Type:</strong> list of strings</li>
+<li><strong>Default:</strong> <code>[]</code> (empty list)</li>
+<li><strong>Used for:</strong> Filtering, tag pages, SEO, organization</li>
+</ul>
+<h3 id="description-string">description (string) <a href="#description-string" class="heading-anchor">#</a></h3>
+<p>A brief summary of the post content.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Learn how to use goroutines for concurrent programming in Go.&#34;</span><span class="w">
+</span></span></span></code></pre><ul>
+<li><strong>Type:</strong> string</li>
+<li><strong>Default:</strong> Auto-generated from first ~160 characters of content</li>
+<li><strong>Used for:</strong> Meta description, feed summaries, social previews, cards</li>
+</ul>
+<p><strong>Auto-generation:</strong> If not provided, markata-go extracts the first paragraph or ~160 characters from your content (with HTML tags stripped).</p>
+<h3 id="template-string">template (string) <a href="#template-string" class="heading-anchor">#</a></h3>
+<p>The HTML template file to use for rendering this post.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;tutorial.html&#34;</span><span class="w">
+</span></span></span></code></pre><ul>
+<li><strong>Type:</strong> string</li>
+<li><strong>Default:</strong> <code>&quot;post.html&quot;</code></li>
+<li><strong>Used for:</strong> Custom layouts per post</li>
+</ul>
+<p>Templates are looked up in:</p>
+<ol>
+<li><code>templates/</code> directory in your project</li>
+<li>Theme templates</li>
+<li>Default theme fallback</li>
+</ol>
+<hr>
+<h2 id="complete-field-reference">Complete Field Reference <a href="#complete-field-reference" class="heading-anchor">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>title</code></td>
+<td>string</td>
+<td>None</td>
+<td>No</td>
+<td>Display title of the post</td>
+</tr>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>Auto-generated</td>
+<td>No</td>
+<td>URL path identifier</td>
+</tr>
+<tr>
+<td><code>date</code></td>
+<td>date</td>
+<td>None</td>
+<td>No</td>
+<td>Publication date (YYYY-MM-DD)</td>
+</tr>
+<tr>
+<td><code>published</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+<td>No</td>
+<td>Whether to include in public feeds</td>
+</tr>
+<tr>
+<td><code>draft</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+<td>No</td>
+<td>Whether this is a work-in-progress</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>[]string</td>
+<td><code>[]</code></td>
+<td>No</td>
+<td>List of categorization tags</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string</td>
+<td>Auto-generated</td>
+<td>No</td>
+<td>Brief summary for SEO/feeds</td>
+</tr>
+<tr>
+<td><code>template</code></td>
+<td>string</td>
+<td><code>&quot;post.html&quot;</code></td>
+<td>No</td>
+<td>Template file to use for rendering</td>
+</tr>
+<tr>
+<td><code>skip</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+<td>No</td>
+<td>Skip this file during processing entirely</td>
+</tr>
+</tbody>
+</table>
+<h3 id="field-details">Field Details <a href="#field-details" class="heading-anchor">#</a></h3>
+<h4 id="skip">skip <a href="#skip" class="heading-anchor">#</a></h4>
+<p>Completely exclude a file from processing:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">skip</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span></code></pre><p>Use this for files you want to keep in your content directory but never process (notes, drafts not ready for review, etc.).</p>
+<hr>
+<h2 id="custom-fields-extra">Custom Fields (Extra) <a href="#custom-fields-extra" class="heading-anchor">#</a></h2>
+<p>Any frontmatter field that isn't a built-in field is automatically stored in the <code>Extra</code> map. This allows you to add <strong>any custom metadata</strong> to your posts.</p>
+<h3 id="adding-custom-fields">Adding Custom Fields <a href="#adding-custom-fields" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Building a REST API&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Custom fields - stored in Extra</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">author</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Jane Doe&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">category</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Backend&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;API Development&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series_order</span><span class="p">:</span><span class="w"> </span><span class="m">1</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">featured</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">cover_image</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/images/api-cover.jpg&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">difficulty</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;intermediate&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">reading_time</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;8 min&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="accessing-custom-fields-in-templates">Accessing Custom Fields in Templates <a href="#accessing-custom-fields-in-templates" class="heading-anchor">#</a></h3>
+<p>Custom fields are available via <code>post.Extra</code> in templates:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% if post.Extra.featured %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;badge&#34;</span><span class="p">&gt;</span>Featured<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% if post.Extra.author %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;author&#34;</span><span class="p">&gt;</span>By {{ post.Extra.author }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% if post.Extra.cover_image %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;{{ post.Extra.cover_image }}&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;{{ post.Title }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% if post.Extra.series %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;series-info&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    Part {{ post.Extra.series_order }} of {{ post.Extra.series }}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span></code></pre><h3 id="common-custom-field-use-cases">Common Custom Field Use Cases <a href="#common-custom-field-use-cases" class="heading-anchor">#</a></h3>
+<h4 id="author-information">Author Information <a href="#author-information" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">author</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Jane Doe&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">author_email</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;jane@example.com&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">author_url</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;https://janedoe.dev&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">author_avatar</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/images/avatars/jane.jpg&#34;</span><span class="w">
+</span></span></span></code></pre><h4 id="seriescollections">Series/Collections <a href="#seriescollections" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">series</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Building a Blog with Go&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series_order</span><span class="p">:</span><span class="w"> </span><span class="m">3</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series_total</span><span class="p">:</span><span class="w"> </span><span class="m">5</span><span class="w">
+</span></span></span></code></pre><h4 id="visual-elements">Visual Elements <a href="#visual-elements" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">cover_image</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/images/posts/my-cover.jpg&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">thumbnail</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/images/posts/my-thumb.jpg&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">og_image</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/images/social/my-post-og.jpg&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">hero_video</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;https://youtube.com/watch?v=...&#34;</span><span class="w">
+</span></span></span></code></pre><h4 id="content-metadata">Content Metadata <a href="#content-metadata" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">difficulty</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;beginner&#34;</span><span class="w">          </span><span class="c"># beginner, intermediate, advanced</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">reading_time</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;5 min read&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">word_count</span><span class="p">:</span><span class="w"> </span><span class="m">1250</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">updated</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-02-20</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">revision</span><span class="p">:</span><span class="w"> </span><span class="m">3</span><span class="w">
+</span></span></span></code></pre><h4 id="categorization">Categorization <a href="#categorization" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">category</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Tutorials&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">subcategory</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Web Development&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">topic</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Go Programming&#34;</span><span class="w">
+</span></span></span></code></pre><h4 id="flags-and-features">Flags and Features <a href="#flags-and-features" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">featured</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">pinned</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">sponsored</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">comments_enabled</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">toc</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">                       </span><span class="c"># Enable table of contents</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">math</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">                      </span><span class="c"># Enable math rendering</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">mermaid</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">                   </span><span class="c"># Enable diagrams</span><span class="w">
+</span></span></span></code></pre><h4 id="external-links">External Links <a href="#external-links" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">canonical_url</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;https://example.com/original-post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">github_repo</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;https://github.com/user/project&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">demo_url</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;https://demo.example.com&#34;</span><span class="w">
+</span></span></span></code></pre><hr>
+<h2 id="examples">Examples <a href="#examples" class="heading-anchor">#</a></h2>
+<h3 id="minimal-frontmatter">Minimal Frontmatter <a href="#minimal-frontmatter" class="heading-anchor">#</a></h3>
+<p>The absolute minimum for a publishable post:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Hello World&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="l">Your content here.</span><span class="w">
+</span></span></span></code></pre><h3 id="full-frontmatter-example">Full Frontmatter Example <a href="#full-frontmatter-example" class="heading-anchor">#</a></h3>
+<p>A comprehensive example using all built-in fields:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Complete Guide to Error Handling in Go&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;go-error-handling-guide&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">draft</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">tags</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">error-handling</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">best-practices</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">tutorial</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Master error handling in Go with this comprehensive guide covering best practices, custom errors, and common patterns.&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;tutorial.html&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="l">Content begins here...</span><span class="w">
+</span></span></span></code></pre><h3 id="blog-post-example">Blog Post Example <a href="#blog-post-example" class="heading-anchor">#</a></h3>
+<p>A typical blog post with custom fields:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Why I Switched from Python to Go&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">tags</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">python</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">opinion</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">programming</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My journey from Python to Go and the lessons learned along the way.&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Custom fields</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">author</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Alex Chen&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">category</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Opinion&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">featured</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">cover_image</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/images/python-to-go.jpg&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">reading_time</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;6 min read&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Why I Switched from Python to Go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="l">After 5 years of Python development, I made the switch to Go...</span><span class="w">
+</span></span></span></code></pre><h3 id="documentation-page-example">Documentation Page Example <a href="#documentation-page-example" class="heading-anchor">#</a></h3>
+<p>For technical documentation:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Configuration Reference&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;docs/configuration&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">tags</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">documentation</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">reference</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Complete reference for markata-go configuration options.&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;docs.html&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Custom fields</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">section</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Reference&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">order</span><span class="p">:</span><span class="w"> </span><span class="m">10</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">toc</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">prev_page</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/docs/getting-started/&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">next_page</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/docs/plugins/&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Configuration Reference</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="l">This page documents all available configuration options...</span><span class="w">
+</span></span></span></code></pre><h3 id="landing-page-example">Landing Page Example <a href="#landing-page-example" class="heading-anchor">#</a></h3>
+<p>For standalone pages with custom layouts:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Welcome to My Site&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;landing.html&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Custom fields</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">hero_title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Build Faster with Go&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">hero_subtitle</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;A static site generator that respects your time&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">cta_text</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Get Started&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">cta_url</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/docs/getting-started/&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">features</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Fast Builds&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Compile thousands of pages in seconds&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;lightning&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Plugin System&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Extend functionality with Go plugins&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;puzzle&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Feed Generation&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;RSS, Atom, and JSON feeds built-in&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">icon</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;rss&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="l">Additional content for the landing page...</span><span class="w">
+</span></span></span></code></pre><h3 id="tutorial-with-series">Tutorial with Series <a href="#tutorial-with-series" class="heading-anchor">#</a></h3>
+<p>For posts that are part of a series:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Building a CLI Tool - Part 2: Adding Commands&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-20</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">tags</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">cli</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">tutorial</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Learn how to add subcommands to your Go CLI application using cobra.&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;tutorial.html&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Series information</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Building a CLI Tool in Go&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series_slug</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;go-cli-tutorial&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series_order</span><span class="p">:</span><span class="w"> </span><span class="m">2</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series_total</span><span class="p">:</span><span class="w"> </span><span class="m">5</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Tutorial metadata</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">difficulty</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;intermediate&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">prerequisites</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="s2">&#34;Basic Go knowledge&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="s2">&#34;Part 1 of this series&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">code_repo</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;https://github.com/example/go-cli-tutorial&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Adding Commands</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="l">In the previous part, we set up our project structure...</span><span class="w">
+</span></span></span></code></pre><hr>
+<h2 id="common-patterns">Common Patterns <a href="#common-patterns" class="heading-anchor">#</a></h2>
+<h3 id="draft-workflow">Draft Workflow <a href="#draft-workflow" class="heading-anchor">#</a></h3>
+<p>Use <code>draft</code> and <code>published</code> together for a clear workflow:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Work in progress - not visible anywhere</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Draft Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">draft</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Ready for review - still not public</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Draft Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">draft</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Published - visible to everyone</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Draft Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">draft</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Feed filter for published only:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span></code></pre><p><strong>Feed filter excluding drafts:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and draft == False&#34;</span>
+</span></span></code></pre><h3 id="scheduled-publishing">Scheduled Publishing <a href="#scheduled-publishing" class="heading-anchor">#</a></h3>
+<p>Combine <code>date</code> with feed filters for scheduled publishing:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;New Year Announcement&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2025-01-01</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Feed filter for past/current dates only:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and date &lt;= today&#34;</span>
+</span></span></code></pre><p>Posts with future dates won't appear until that date arrives. Rebuild your site daily (via CI/CD) to &quot;publish&quot; scheduled posts.</p>
+<h3 id="custom-templates-per-post">Custom Templates Per Post <a href="#custom-templates-per-post" class="heading-anchor">#</a></h3>
+<p>Use different layouts for different types of content:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Regular blog post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;post.html&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Tutorial with sidebar</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Go Tutorial&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;tutorial.html&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Full-width landing page</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;About Me&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;landing.html&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Documentation with navigation</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;API Reference&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;docs.html&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="series-of-posts">Series of Posts <a href="#series-of-posts" class="heading-anchor">#</a></h3>
+<p>Organize related posts into a series:</p>
+<p><strong>Post 1:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Web Scraping with Go - Part 1: Basics&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-10</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Web Scraping with Go&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series_order</span><span class="p">:</span><span class="w"> </span><span class="m">1</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">go, web-scraping, tutorial]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Post 2:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Web Scraping with Go - Part 2: Handling JavaScript&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-17</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Web Scraping with Go&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">series_order</span><span class="p">:</span><span class="w"> </span><span class="m">2</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">go, web-scraping, tutorial]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Filter for the series:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;series/web-scraping-go&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Web Scraping with Go&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;Extra.series == &#39;Web Scraping with Go&#39;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;Extra.series_order&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span></code></pre><h3 id="canonical-urls-for-cross-posted-content">Canonical URLs for Cross-Posted Content <a href="#canonical-urls-for-cross-posted-content" class="heading-anchor">#</a></h3>
+<p>When you publish the same content elsewhere:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">canonical_url</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;https://dev.to/username/my-post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p>Use in templates:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% if post.Extra.canonical_url %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;canonical&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.Extra.canonical_url }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% else %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;canonical&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ config.URL }}{{ post.Href }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span></code></pre><hr>
+<h2 id="frontmatter-in-filtering">Frontmatter in Filtering <a href="#frontmatter-in-filtering" class="heading-anchor">#</a></h2>
+<p>Frontmatter fields power the feed filtering system. You can filter posts based on any frontmatter value.</p>
+<h3 id="filter-syntax">Filter Syntax <a href="#filter-syntax" class="heading-anchor">#</a></h3>
+<p>Filters use a Python-like expression syntax:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;&#39;tutorial&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;date &gt;= &#39;2024-01-01&#39;&#34;</span>
+</span></span></code></pre><h3 id="filtering-by-built-in-fields">Filtering by Built-in Fields <a href="#filtering-by-built-in-fields" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Published posts only</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Exclude drafts</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;draft == False&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Posts with a specific tag</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;&#39;go&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Posts from 2024</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;date &gt;= &#39;2024-01-01&#39; and date &lt; &#39;2025-01-01&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Posts with a specific slug prefix</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;slug.startswith(&#39;tutorials/&#39;)&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Posts using a specific template</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;template == &#39;tutorial.html&#39;&#34;</span>
+</span></span></code></pre><h3 id="filtering-by-custom-fields-extra">Filtering by Custom Fields (Extra) <a href="#filtering-by-custom-fields-extra" class="heading-anchor">#</a></h3>
+<p>Access custom fields directly by name:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Featured posts</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;featured == True&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Posts by specific author</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;author == &#39;Jane Doe&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Posts in a specific category</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;category == &#39;Tutorials&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Posts in a series</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;series == &#39;Web Scraping with Go&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Intermediate difficulty tutorials</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;difficulty == &#39;intermediate&#39;&#34;</span>
+</span></span></code></pre><h3 id="combined-filters">Combined Filters <a href="#combined-filters" class="heading-anchor">#</a></h3>
+<p>Use <code>and</code>, <code>or</code>, and parentheses for complex filters:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Published tutorials</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;tutorial&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Featured posts from 2024</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and featured == True and date &gt;= &#39;2024-01-01&#39;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Go or Python tutorials</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and (&#39;go&#39; in tags or &#39;python&#39; in tags)&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Published, non-draft, with specific category</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and draft == False and category == &#39;Backend&#39;&#34;</span>
+</span></span></code></pre><h3 id="filtering-with-dates">Filtering with Dates <a href="#filtering-with-dates" class="heading-anchor">#</a></h3>
+<p>Special date values are available:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Posts up to today (no future posts)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;date &lt;= today&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Posts from the last 30 days</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;date &gt;= today - 30&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Recent posts (within current timestamp)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;date &lt;= now&#34;</span>
+</span></span></code></pre><h3 id="filter-operators-reference">Filter Operators Reference <a href="#filter-operators-reference" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>==</code></td>
+<td>Equal to</td>
+<td><code>published == True</code></td>
+</tr>
+<tr>
+<td><code>!=</code></td>
+<td>Not equal to</td>
+<td><code>draft != True</code></td>
+</tr>
+<tr>
+<td><code>&gt;</code></td>
+<td>Greater than</td>
+<td><code>date &gt; '2024-01-01'</code></td>
+</tr>
+<tr>
+<td><code>&gt;=</code></td>
+<td>Greater than or equal</td>
+<td><code>date &gt;= '2024-01-01'</code></td>
+</tr>
+<tr>
+<td><code>&lt;</code></td>
+<td>Less than</td>
+<td><code>date &lt; '2025-01-01'</code></td>
+</tr>
+<tr>
+<td><code>&lt;=</code></td>
+<td>Less than or equal</td>
+<td><code>date &lt;= today</code></td>
+</tr>
+<tr>
+<td><code>in</code></td>
+<td>Value in collection</td>
+<td><code>'go' in tags</code></td>
+</tr>
+<tr>
+<td><code>and</code></td>
+<td>Logical AND</td>
+<td><code>published == True and featured == True</code></td>
+</tr>
+<tr>
+<td><code>or</code></td>
+<td>Logical OR</td>
+<td><code>'go' in tags or 'python' in tags</code></td>
+</tr>
+<tr>
+<td><code>not</code></td>
+<td>Logical NOT</td>
+<td><code>not draft</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="string-methods-in-filters">String Methods in Filters <a href="#string-methods-in-filters" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Slugs starting with a prefix</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;slug.startswith(&#39;tutorials/&#39;)&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Slugs ending with a suffix</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;slug.endswith(&#39;-guide&#39;)&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Slugs containing a substring</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;slug.contains(&#39;api&#39;)&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Case-insensitive comparison</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;title.lower().contains(&#39;go&#39;)&#34;</span>
+</span></span></code></pre><h3 id="complete-filter-examples">Complete Filter Examples <a href="#complete-filter-examples" class="heading-anchor">#</a></h3>
+<p><strong>Home page - recent published posts:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Recent Posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and date &lt;= today&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">5</span>
+</span></span></code></pre><p><strong>Tutorials section:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;tutorial&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><p><strong>Featured posts:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;featured&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Featured&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and featured == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">6</span>
+</span></span></code></pre><p><strong>Author archive:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;authors/jane-doe&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Posts by Jane Doe&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and author == &#39;Jane Doe&#39;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><p><strong>Beginner-friendly content:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;beginners&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Beginner Guides&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and difficulty == &#39;beginner&#39;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="/feeds-guide/" class="wikilink" data-title="Feeds Guide" data-description="Deep dive into markata-go&#39;s powerful feed system for creating filtered, sorted, paginated collections" data-date="2024-01-15">Feeds Guide</a> - Complete guide to feed filtering and configuration</li>
+<li><a href="/templates-guide/" class="wikilink" data-title="Templates Guide" data-description="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax" data-date="2024-01-15">Templates Guide</a> - Using frontmatter in templates</li>
+<li><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration Guide</a> - Site-wide defaults and settings</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

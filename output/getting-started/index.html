@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started - My Site</title>
+    <meta name="description" content="Complete guide to installing markata-go, creating your first site, and building for production">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Getting Started">
+    
+    <meta property="og:url" content="/getting-started/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Complete guide to installing markata-go, creating your first site, and building for production">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="getting-started">
+    
+    <meta property="article:tag" content="tutorial">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Getting Started">
+    
+    <meta name="twitter:description" content="Complete guide to installing markata-go, creating your first site, and building for production">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/getting-started/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Getting Started",
+  "description": "Complete guide to installing markata-go, creating your first site, and building for production",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/getting-started/"
+  },
+  "keywords": [
+    "documentation",
+    "getting-started",
+    "tutorial"
+  ],
+  "url": "/getting-started/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Getting Started</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/getting-started/">getting-started</a>
+                
+                <a href="/tags/tutorial/">tutorial</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="getting-started-with-markata-go">Getting Started with markata-go</h1>
+<p>This guide will walk you through installing markata-go, creating your first site, and building it for production.</p>
+<h2 id="installation">Installation <a href="#installation" class="heading-anchor">#</a></h2>
+<p>markata-go is distributed as a single binary with no dependencies. Choose the installation method that works best for you.</p>
+<h3 id="quick-install-recommended">Quick Install (Recommended) <a href="#quick-install-recommended" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># One-liner install script (Linux/macOS)</span>
+</span></span><span class="line"><span class="cl">curl -sSL https://waylonwalker.github.io/markata-go/install.sh <span class="p">|</span> bash
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Using jpillora/installer (Linux/macOS)</span>
+</span></span><span class="line"><span class="cl">curl -sL https://i.jpillora.com/WaylonWalker/markata-go <span class="p">|</span> bash
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Using eget</span>
+</span></span><span class="line"><span class="cl">eget WaylonWalker/markata-go
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Using mise (installs from GitHub releases)</span>
+</span></span><span class="line"><span class="cl">mise use -g github:WaylonWalker/markata-go
+</span></span></code></pre><h3 id="go-install">Go Install <a href="#go-install" class="heading-anchor">#</a></h3>
+<p>If you have Go 1.22+ installed:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
+</span></span></code></pre><p>Note: This installs to <code>$GOPATH/bin</code> (usually <code>~/go/bin</code>). Ensure this is in your <code>PATH</code>.</p>
+<h3 id="manual-download">Manual Download <a href="#manual-download" class="heading-anchor">#</a></h3>
+<p>Download pre-built binaries from <a href="https://github.com/WaylonWalker/markata-go/releases">GitHub Releases</a>.</p>
+<p>Available platforms: Linux (amd64, arm64, armv7), macOS (Intel, Apple Silicon), Windows (amd64), FreeBSD (amd64), Android (arm64/Termux).</p>
+<p>See <a href="installation.md">Installation Guide</a> for detailed installation instructions.</p>
+<h3 id="verify-installation">Verify Installation <a href="#verify-installation" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go version
+</span></span><span class="line"><span class="cl">markata-go --help
+</span></span></code></pre><h2 id="quick-start">Quick Start <a href="#quick-start" class="heading-anchor">#</a></h2>
+<p>Get a site up and running in under a minute:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># 1. Create a project directory</span>
+</span></span><span class="line"><span class="cl">mkdir my-site <span class="o">&amp;&amp;</span> <span class="nb">cd</span> my-site
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 2. Initialize configuration</span>
+</span></span><span class="line"><span class="cl">markata-go config init
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 3. Create your first post</span>
+</span></span><span class="line"><span class="cl">markata-go new <span class="s2">&#34;Hello World&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># 4. Build and serve with live reload</span>
+</span></span><span class="line"><span class="cl">markata-go serve
+</span></span></code></pre><p>Open http://localhost:8000 to see your site.</p>
+<h2 id="project-structure">Project Structure <a href="#project-structure" class="heading-anchor">#</a></h2>
+<p>A typical markata-go project looks like this:</p>
+<pre><code>my-site/
+├── markata-go.toml      # Configuration file
+├── posts/               # Your markdown content
+│   └── hello-world.md
+├── pages/               # Static pages (about, contact, etc.)
+├── templates/           # Custom templates (optional)
+├── static/              # Static assets (images, CSS, JS)
+└── public/              # Generated output (created on build)
+</code></pre>
+<h3 id="directory-overview">Directory Overview <a href="#directory-overview" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Directory</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>posts/</code></td>
+<td>Blog posts and articles with dates</td>
+</tr>
+<tr>
+<td><code>pages/</code></td>
+<td>Static pages without dates</td>
+</tr>
+<tr>
+<td><code>templates/</code></td>
+<td>Custom HTML templates (overrides theme defaults)</td>
+</tr>
+<tr>
+<td><code>static/</code></td>
+<td>Static assets copied directly to output</td>
+</tr>
+<tr>
+<td><code>public/</code></td>
+<td>Generated site (default output directory)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h2>
+<p>markata-go uses TOML for configuration. The <code>config init</code> command creates a <code>markata-go.toml</code> file:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Site metadata</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Site&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">description</span> <span class="p">=</span> <span class="s2">&#34;A site built with markata-go&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">author</span> <span class="p">=</span> <span class="s2">&#34;Your Name&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Build settings</span>
+</span></span><span class="line"><span class="cl"><span class="nx">output_dir</span> <span class="p">=</span> <span class="s2">&#34;public&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">templates_dir</span> <span class="p">=</span> <span class="s2">&#34;templates&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">assets_dir</span> <span class="p">=</span> <span class="s2">&#34;static&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Content discovery</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;posts/**/*.md&#34;</span><span class="p">,</span> <span class="s2">&#34;pages/*.md&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">use_gitignore</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Markdown extensions</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">markdown</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">extensions</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;tables&#34;</span><span class="p">,</span> <span class="s2">&#34;strikethrough&#34;</span><span class="p">,</span> <span class="s2">&#34;autolinks&#34;</span><span class="p">,</span> <span class="s2">&#34;tasklist&#34;</span><span class="p">]</span>
+</span></span></code></pre><h3 id="key-configuration-options">Key Configuration Options <a href="#key-configuration-options" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>title</code></td>
+<td>-</td>
+<td>Site title (used in templates and feeds)</td>
+</tr>
+<tr>
+<td><code>url</code></td>
+<td>-</td>
+<td>Base URL for absolute links and sitemaps</td>
+</tr>
+<tr>
+<td><code>output_dir</code></td>
+<td><code>&quot;output&quot;</code></td>
+<td>Where generated files are written</td>
+</tr>
+<tr>
+<td><code>templates_dir</code></td>
+<td><code>&quot;templates&quot;</code></td>
+<td>Custom template directory</td>
+</tr>
+<tr>
+<td><code>assets_dir</code></td>
+<td><code>&quot;static&quot;</code></td>
+<td>Static assets directory</td>
+</tr>
+<tr>
+<td><code>concurrency</code></td>
+<td><code>0</code></td>
+<td>Worker threads (0 = auto based on CPU)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="environment-variable-overrides">Environment Variable Overrides <a href="#environment-variable-overrides" class="heading-anchor">#</a></h3>
+<p>Override any config option with environment variables using the <code>MARKATA_GO_</code> prefix:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nv">MARKATA_GO_OUTPUT_DIR</span><span class="o">=</span>dist markata-go build
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://staging.example.com markata-go build
+</span></span></code></pre><h2 id="creating-content">Creating Content <a href="#creating-content" class="heading-anchor">#</a></h2>
+<h3 id="your-first-post">Your First Post <a href="#your-first-post" class="heading-anchor">#</a></h3>
+<p>Create a new post with the <code>new</code> command:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go new <span class="s2">&#34;My First Post&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Creates: posts/my-first-post.md</span>
+</span></span></code></pre><p>This generates a markdown file with YAML frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;My First Post&#34;
+</span></span><span class="line"><span class="cl">slug: &#34;my-first-post&#34;
+</span></span><span class="line"><span class="cl">date: 2026-01-21
+</span></span><span class="line"><span class="cl">published: false
+</span></span><span class="line"><span class="cl">draft: true
+</span></span><span class="line"><span class="cl">tags: []
+</span></span><span class="line"><span class="cl">template: &#34;post.html&#34;
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># My First Post
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">Write your content here...
+</span></span></code></pre><h3 id="frontmatter-fields">Frontmatter Fields <a href="#frontmatter-fields" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>title</code></td>
+<td>string</td>
+<td>-</td>
+<td>Post title</td>
+</tr>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>auto</td>
+<td>URL-safe identifier (auto-generated from title)</td>
+</tr>
+<tr>
+<td><code>date</code></td>
+<td>date</td>
+<td>-</td>
+<td>Publication date</td>
+</tr>
+<tr>
+<td><code>published</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+<td>Whether the post is publicly visible</td>
+</tr>
+<tr>
+<td><code>draft</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+<td>Mark as work-in-progress</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>[]string</td>
+<td><code>[]</code></td>
+<td>List of tags for categorization</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string</td>
+<td>auto</td>
+<td>Meta description (auto-generated if not set)</td>
+</tr>
+<tr>
+<td><code>template</code></td>
+<td>string</td>
+<td><code>post.html</code></td>
+<td>Template file to use</td>
+</tr>
+</tbody>
+</table>
+<p>Any additional fields are stored in <code>Extra</code> and accessible in templates.</p>
+<h3 id="example-post">Example Post <a href="#example-post" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Getting Started with Go&#34;
+</span></span><span class="line"><span class="cl">date: 2026-01-21
+</span></span><span class="line"><span class="cl">published: true
+</span></span><span class="line"><span class="cl">tags: [&#34;go&#34;, &#34;tutorial&#34;, &#34;programming&#34;]
+</span></span><span class="line"><span class="cl">description: &#34;Learn the basics of Go programming&#34;
+</span></span><span class="line"><span class="cl">featured: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Go is a statically typed, compiled language designed for simplicity and efficiency.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Installation
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">Download Go from the official website...
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Hello World
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">```go
+</span></span><span class="line"><span class="cl">package main
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">import &#34;fmt&#34;
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">func main() {
+</span></span><span class="line"><span class="cl">    fmt.Println(&#34;Hello, World!&#34;)
+</span></span><span class="line"><span class="cl">}
+</span></span></code></pre><h2 id="next-steps">Next Steps <a href="#next-steps" class="heading-anchor">#</a></h2>
+<p>Check out the [[go-concurrency|concurrency guide]] for more advanced topics.</p>
+<pre><code>
+### Markdown Features
+
+markata-go supports GitHub Flavored Markdown plus extensions:
+
+- **Tables** - GFM table syntax
+- **Strikethrough** - `~~deleted text~~`
+- **Task lists** - `- [ ] todo` and `- [x] done`
+- **Syntax highlighting** - Fenced code blocks with language
+- **Admonitions** - Note, warning, tip blocks
+- **Wikilinks** - `[[other-post]]` internal links
+- **Table of contents** - Auto-generated from headings
+
+#### Admonitions
+
+```markdown
+!!! note &quot;Important&quot;
+    This is a note admonition.
+
+!!! warning
+    Be careful with this operation.
+
+!!! tip &quot;Pro Tip&quot;
+    Use wikilinks for internal navigation.
+</code></pre>
+<h4 id="wikilinks">Wikilinks <a href="#wikilinks" class="heading-anchor">#</a></h4>
+<p>Link to other posts using their slug:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Check out [[my-other-post]] for more details.
+</span></span><span class="line"><span class="cl">Or with custom text: [[my-other-post|click here]]
+</span></span></code></pre><h2 id="development-server">Development Server <a href="#development-server" class="heading-anchor">#</a></h2>
+<p>Start the development server with live reload:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go serve
+</span></span></code></pre><p>The server:</p>
+<ul>
+<li>Watches for file changes</li>
+<li>Automatically rebuilds on save</li>
+<li>Refreshes the browser</li>
+</ul>
+<h3 id="server-options">Server Options <a href="#server-options" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go serve              <span class="c1"># Default: localhost:8000</span>
+</span></span><span class="line"><span class="cl">markata-go serve -p <span class="m">3000</span>      <span class="c1"># Custom port</span>
+</span></span><span class="line"><span class="cl">markata-go serve --host 0.0.0.0  <span class="c1"># Bind to all interfaces</span>
+</span></span><span class="line"><span class="cl">markata-go serve --no-watch   <span class="c1"># Disable file watching</span>
+</span></span><span class="line"><span class="cl">markata-go serve -v           <span class="c1"># Verbose logging</span>
+</span></span></code></pre><h2 id="building-for-production">Building for Production <a href="#building-for-production" class="heading-anchor">#</a></h2>
+<p>Build your site for deployment:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build
+</span></span></code></pre><p>This generates static files in the <code>output_dir</code> (default: <code>public/</code>).</p>
+<h3 id="build-options">Build Options <a href="#build-options" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build              <span class="c1"># Standard build</span>
+</span></span><span class="line"><span class="cl">markata-go build --clean      <span class="c1"># Clean output directory first</span>
+</span></span><span class="line"><span class="cl">markata-go build --dry-run    <span class="c1"># Preview what would be built</span>
+</span></span><span class="line"><span class="cl">markata-go build -o dist      <span class="c1"># Custom output directory</span>
+</span></span><span class="line"><span class="cl">markata-go build -v           <span class="c1"># Verbose output</span>
+</span></span></code></pre><h3 id="output-structure">Output Structure <a href="#output-structure" class="heading-anchor">#</a></h3>
+<pre><code>public/
+├── index.html           # Home page (from feed)
+├── my-first-post/
+│   └── index.html       # Post page
+├── blog/
+│   ├── index.html       # Blog feed page 1
+│   ├── page/2/index.html
+│   ├── rss.xml          # RSS feed
+│   └── atom.xml         # Atom feed
+├── tags/
+│   └── go/
+│       └── index.html   # Tag archive
+├── sitemap.xml
+└── css/
+    └── ...              # Static assets
+</code></pre>
+<h2 id="feeds">Feeds <a href="#feeds" class="heading-anchor">#</a></h2>
+<p>markata-go has a powerful feed system for creating archives, tag pages, and syndication feeds.</p>
+<h3 id="basic-feed-configuration">Basic Feed Configuration <a href="#basic-feed-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Home page feed</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>                    <span class="c"># Empty slug = root index.html</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Latest Posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">5</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Blog archive with RSS</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><h3 id="auto-generated-tag-feeds">Auto-Generated Tag Feeds <a href="#auto-generated-tag-feeds" class="heading-anchor">#</a></h3>
+<p>Enable automatic tag pages:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">auto_tags</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug_prefix</span> <span class="p">=</span> <span class="s2">&#34;tags&#34;</span>
+</span></span></code></pre><p>This creates <code>/tags/{tag-name}/</code> pages for each tag in your posts.</p>
+<h2 id="cli-reference">CLI Reference <a href="#cli-reference" class="heading-anchor">#</a></h2>
+<h3 id="commands">Commands <a href="#commands" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>markata-go build</code></td>
+<td>Build the static site</td>
+</tr>
+<tr>
+<td><code>markata-go serve</code></td>
+<td>Development server with live reload</td>
+</tr>
+<tr>
+<td><code>markata-go new &lt;title&gt;</code></td>
+<td>Create a new post</td>
+</tr>
+<tr>
+<td><code>markata-go config show</code></td>
+<td>Display resolved configuration</td>
+</tr>
+<tr>
+<td><code>markata-go config init</code></td>
+<td>Create a new config file</td>
+</tr>
+<tr>
+<td><code>markata-go config validate</code></td>
+<td>Validate configuration</td>
+</tr>
+<tr>
+<td><code>markata-go config get &lt;key&gt;</code></td>
+<td>Get a specific config value</td>
+</tr>
+</tbody>
+</table>
+<h3 id="global-flags">Global Flags <a href="#global-flags" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">-c, --config string   Config file path <span class="o">(</span>default: auto-discover<span class="o">)</span>
+</span></span><span class="line"><span class="cl">-o, --output string   Output directory <span class="o">(</span>overrides config<span class="o">)</span>
+</span></span><span class="line"><span class="cl">-v, --verbose         Verbose output
+</span></span></code></pre><h3 id="examples">Examples <a href="#examples" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Create a draft post</span>
+</span></span><span class="line"><span class="cl">markata-go new <span class="s2">&#34;Work in Progress&#34;</span> --draft
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Create in a specific directory</span>
+</span></span><span class="line"><span class="cl">markata-go new <span class="s2">&#34;About Me&#34;</span> --dir pages
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Create as published</span>
+</span></span><span class="line"><span class="cl">markata-go new <span class="s2">&#34;Announcement&#34;</span> --draft<span class="o">=</span><span class="nb">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Show config as JSON</span>
+</span></span><span class="line"><span class="cl">markata-go config show --json
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Get nested config value</span>
+</span></span><span class="line"><span class="cl">markata-go config get glob.patterns
+</span></span></code></pre><h2 id="templates">Templates <a href="#templates" class="heading-anchor">#</a></h2>
+<p>markata-go uses <a href="https://github.com/flosch/pongo2">pongo2</a>, a Django/Jinja2-like template engine.</p>
+<h3 id="template-variables">Template Variables <a href="#template-variables" class="heading-anchor">#</a></h3>
+<p>In post templates (<code>post.html</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>post.Title</code></td>
+<td>Post title</td>
+</tr>
+<tr>
+<td><code>post.Slug</code></td>
+<td>URL slug</td>
+</tr>
+<tr>
+<td><code>post.Href</code></td>
+<td>Relative URL path</td>
+</tr>
+<tr>
+<td><code>post.Date</code></td>
+<td>Publication date</td>
+</tr>
+<tr>
+<td><code>post.Tags</code></td>
+<td>List of tags</td>
+</tr>
+<tr>
+<td><code>post.Description</code></td>
+<td>Post description</td>
+</tr>
+<tr>
+<td><code>post.ArticleHTML</code></td>
+<td>Rendered content HTML</td>
+</tr>
+<tr>
+<td><code>post.Extra</code></td>
+<td>Additional frontmatter fields</td>
+</tr>
+<tr>
+<td><code>config.Title</code></td>
+<td>Site title</td>
+</tr>
+<tr>
+<td><code>config.URL</code></td>
+<td>Site base URL</td>
+</tr>
+</tbody>
+</table>
+<h3 id="custom-templates">Custom Templates <a href="#custom-templates" class="heading-anchor">#</a></h3>
+<p>Override default templates by creating files in your <code>templates/</code> directory:</p>
+<pre><code>templates/
+├── base.html        # Base layout
+├── post.html        # Single post
+├── feed.html        # Feed/archive pages
+└── partials/
+    ├── header.html
+    └── footer.html
+</code></pre>
+<h3 id="template-example">Template Example <a href="#template-example" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">time</span><span class="p">&gt;</span>{{ post.Date|date:&#34;January 2, 2006&#34; }}<span class="p">&lt;/</span><span class="nt">time</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {{ post.ArticleHTML|safe }}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  
+</span></span><span class="line"><span class="cl">  {% if post.Tags %}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;tags&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% for tag in post.Tags %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tags/{{ tag|slugify }}/&#34;</span><span class="p">&gt;</span>{{ tag }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endfor %}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  {% endif %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><h2 id="deployment">Deployment <a href="#deployment" class="heading-anchor">#</a></h2>
+<p>The <code>public/</code> directory contains static files ready for any hosting platform.</p>
+<h3 id="popular-hosting-options">Popular Hosting Options <a href="#popular-hosting-options" class="heading-anchor">#</a></h3>
+<p><strong>Netlify:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># netlify.toml</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>build<span class="o">]</span>
+</span></span><span class="line"><span class="cl">  <span class="nb">command</span> <span class="o">=</span> <span class="s2">&#34;markata-go build&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nv">publish</span> <span class="o">=</span> <span class="s2">&#34;public&#34;</span>
+</span></span></code></pre><p><strong>Vercel:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;buildCommand&#34;</span><span class="p">:</span> <span class="s2">&#34;markata-go build&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;outputDirectory&#34;</span><span class="p">:</span> <span class="s2">&#34;public&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p><strong>GitHub Pages:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># .github/workflows/deploy.yml</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go build</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Deploy</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">peaceiris/actions-gh-pages@v3</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">publish_dir</span><span class="p">:</span><span class="w"> </span><span class="l">./public</span><span class="w">
+</span></span></span></code></pre><p><strong>Manual:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Build and upload</span>
+</span></span><span class="line"><span class="cl">markata-go build
+</span></span><span class="line"><span class="cl">rsync -avz public/ user@server:/var/www/html/
+</span></span></code></pre><h2 id="next-steps-1">Next Steps <a href="#next-steps-1" class="heading-anchor">#</a></h2>
+<ul>
+<li><strong><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration Reference</a></strong> - Full config options</li>
+<li><strong><a href="/templates-guide/" class="wikilink" data-title="Templates Guide" data-description="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax" data-date="2024-01-15">Templates Guide</a></strong> - Custom templates and filters</li>
+<li><strong><a href="/feeds-guide/" class="wikilink" data-title="Feeds Guide" data-description="Deep dive into markata-go&#39;s powerful feed system for creating filtered, sorted, paginated collections" data-date="2024-01-15">Feeds System</a></strong> - Advanced feed configuration</li>
+<li><strong><a href="/built-in-plugins/" class="wikilink" data-title="Built-in Plugins" data-description="Reference documentation for all 29 built-in markata-go plugins organized by lifecycle stage" data-date="2024-01-15">Plugins</a></strong> - Built-in plugins and customization</li>
+<li><strong><a href="/markdown-features/" class="wikilink" data-title="Markdown Features" data-description="Guide to supported Markdown syntax including GFM, admonitions, wikilinks, and table of contents" data-date="2024-01-15">Markdown Features</a></strong> - Admonitions, wikilinks, and more</li>
+</ul>
+<h2 id="getting-help">Getting Help <a href="#getting-help" class="heading-anchor">#</a></h2>
+<ul>
+<li><strong>GitHub Issues</strong> - Report bugs and request features</li>
+<li><strong>Documentation</strong> - Full reference at <code>/docs</code></li>
+<li><strong>Examples</strong> - Sample sites in <code>/examples</code></li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

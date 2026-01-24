@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Structured Data &amp; SEO - My Site</title>
+    <meta name="description" content="Configure JSON-LD Schema.org markup, OpenGraph, and Twitter Cards for better SEO and social sharing">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Structured Data &amp; SEO">
+    
+    <meta property="og:url" content="/structured-data-seo/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Configure JSON-LD Schema.org markup, OpenGraph, and Twitter Cards for better SEO and social sharing">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="seo">
+    
+    <meta property="article:tag" content="structured-data">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Structured Data &amp; SEO">
+    
+    <meta name="twitter:description" content="Configure JSON-LD Schema.org markup, OpenGraph, and Twitter Cards for better SEO and social sharing">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/structured-data-seo/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Structured Data \u0026 SEO",
+  "description": "Configure JSON-LD Schema.org markup, OpenGraph, and Twitter Cards for better SEO and social sharing",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/structured-data-seo/"
+  },
+  "keywords": [
+    "documentation",
+    "seo",
+    "structured-data"
+  ],
+  "url": "/structured-data-seo/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Structured Data &amp; SEO</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/seo/">seo</a>
+                
+                <a href="/tags/structured-data/">structured-data</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="structured-data--seo">Structured Data &amp; SEO</h1>
+<p>markata-go automatically generates comprehensive structured data for your posts to improve search engine visibility and social media sharing.</p>
+<h2 id="features">Features <a href="#features" class="heading-anchor">#</a></h2>
+<ul>
+<li><strong>JSON-LD Schema.org</strong> - Structured data for Google Rich Results</li>
+<li><strong>OpenGraph</strong> - Meta tags for Facebook, LinkedIn, and general social sharing</li>
+<li><strong>Twitter Cards</strong> - Meta tags for Twitter/X sharing previews</li>
+</ul>
+<h2 id="quick-start">Quick Start <a href="#quick-start" class="heading-anchor">#</a></h2>
+<p>Structured data is enabled by default. For basic usage, just ensure your posts have good frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Post Title&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;A compelling description for SEO&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;tag1&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;tag2&#34;</span><span class="p">]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h2 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h2>
+<h3 id="site-level-seo-configuration">Site-Level SEO Configuration <a href="#site-level-seo-configuration" class="heading-anchor">#</a></h3>
+<p>Configure SEO settings in your <code>markata-go.toml</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">seo</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Twitter/X username (without @)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">twitter_handle</span> <span class="p">=</span> <span class="s2">&#34;yourusername&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Default image for posts without images</span>
+</span></span><span class="line"><span class="cl"><span class="nx">default_image</span> <span class="p">=</span> <span class="s2">&#34;/images/og-default.jpg&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Site logo for Schema.org</span>
+</span></span><span class="line"><span class="cl"><span class="nx">logo_url</span> <span class="p">=</span> <span class="s2">&#34;/images/logo.png&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">seo</span><span class="p">.</span><span class="nx">structured_data</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Enable/disable structured data (default: true)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Publisher information</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">seo</span><span class="p">.</span><span class="nx">structured_data</span><span class="p">.</span><span class="nx">publisher</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">type</span> <span class="p">=</span> <span class="s2">&#34;Organization&#34;</span>  <span class="c"># or &#34;Person&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;Your Site Name&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">logo</span> <span class="p">=</span> <span class="s2">&#34;/images/logo.png&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Default author for posts without explicit author</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">seo</span><span class="p">.</span><span class="nx">structured_data</span><span class="p">.</span><span class="nx">default_author</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">type</span> <span class="p">=</span> <span class="s2">&#34;Person&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;Author Name&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com/about&#34;</span>
+</span></span></code></pre><h3 id="frontmatter-fields">Frontmatter Fields <a href="#frontmatter-fields" class="heading-anchor">#</a></h3>
+<p>Override structured data per-post via frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Post Title&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Post description for meta tags&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Optional fields</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">author</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Author Name&#34;</span><span class="w">          </span><span class="c"># Override default author</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/images/post.jpg&#34;</span><span class="w">      </span><span class="c"># OG/Twitter image</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">social_image</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;/images/og.jpg&#34;</span><span class="w"> </span><span class="c"># Specific OG image override</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">twitter</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;authorhandle&#34;</span><span class="w">        </span><span class="c"># Author&#39;s Twitter (without @)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">modified</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;2024-01-16&#34;</span><span class="w">         </span><span class="c"># Last modified date</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">tags</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;tag1&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;tag2&#34;</span><span class="p">]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h2 id="generated-output">Generated Output <a href="#generated-output" class="heading-anchor">#</a></h2>
+<h3 id="json-ld-schema">JSON-LD Schema <a href="#json-ld-schema" class="heading-anchor">#</a></h3>
+<p>For each post, markata-go generates a <code>BlogPosting</code> schema:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;@context&#34;</span><span class="p">:</span> <span class="s2">&#34;https://schema.org&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;@type&#34;</span><span class="p">:</span> <span class="s2">&#34;BlogPosting&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;headline&#34;</span><span class="p">:</span> <span class="s2">&#34;Post Title&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;description&#34;</span><span class="p">:</span> <span class="s2">&#34;Post description&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;datePublished&#34;</span><span class="p">:</span> <span class="s2">&#34;2024-01-15T00:00:00Z&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;dateModified&#34;</span><span class="p">:</span> <span class="s2">&#34;2024-01-16T00:00:00Z&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;author&#34;</span><span class="p">:</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;@type&#34;</span><span class="p">:</span> <span class="s2">&#34;Person&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;name&#34;</span><span class="p">:</span> <span class="s2">&#34;Author Name&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;url&#34;</span><span class="p">:</span> <span class="s2">&#34;https://example.com/about&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">},</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;publisher&#34;</span><span class="p">:</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;@type&#34;</span><span class="p">:</span> <span class="s2">&#34;Organization&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;name&#34;</span><span class="p">:</span> <span class="s2">&#34;Site Name&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;logo&#34;</span><span class="p">:</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;@type&#34;</span><span class="p">:</span> <span class="s2">&#34;ImageObject&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;url&#34;</span><span class="p">:</span> <span class="s2">&#34;https://example.com/logo.png&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">},</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;mainEntityOfPage&#34;</span><span class="p">:</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;@type&#34;</span><span class="p">:</span> <span class="s2">&#34;WebPage&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;@id&#34;</span><span class="p">:</span> <span class="s2">&#34;https://example.com/post-slug/&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">},</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;image&#34;</span><span class="p">:</span> <span class="s2">&#34;https://example.com/images/post.jpg&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;keywords&#34;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&#34;tag1&#34;</span><span class="p">,</span> <span class="s2">&#34;tag2&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="opengraph-tags">OpenGraph Tags <a href="#opengraph-tags" class="heading-anchor">#</a></h3>
+<p>Generated tags include:</p>
+<table>
+<thead>
+<tr>
+<th>Tag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>og:title</code></td>
+<td>Post title</td>
+</tr>
+<tr>
+<td><code>og:description</code></td>
+<td>Post description</td>
+</tr>
+<tr>
+<td><code>og:type</code></td>
+<td>&quot;article&quot; for posts, &quot;website&quot; for pages</td>
+</tr>
+<tr>
+<td><code>og:url</code></td>
+<td>Canonical URL</td>
+</tr>
+<tr>
+<td><code>og:site_name</code></td>
+<td>Site title</td>
+</tr>
+<tr>
+<td><code>og:image</code></td>
+<td>Post or default image</td>
+</tr>
+<tr>
+<td><code>og:locale</code></td>
+<td>Content locale</td>
+</tr>
+<tr>
+<td><code>article:published_time</code></td>
+<td>Publication date</td>
+</tr>
+<tr>
+<td><code>article:modified_time</code></td>
+<td>Last modified date</td>
+</tr>
+<tr>
+<td><code>article:author</code></td>
+<td>Author URL</td>
+</tr>
+<tr>
+<td><code>article:tag</code></td>
+<td>Post tags</td>
+</tr>
+</tbody>
+</table>
+<h3 id="twitter-card-tags">Twitter Card Tags <a href="#twitter-card-tags" class="heading-anchor">#</a></h3>
+<p>Generated tags include:</p>
+<table>
+<thead>
+<tr>
+<th>Tag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>twitter:card</code></td>
+<td>&quot;summary_large_image&quot; or &quot;summary&quot;</td>
+</tr>
+<tr>
+<td><code>twitter:site</code></td>
+<td>Site Twitter handle</td>
+</tr>
+<tr>
+<td><code>twitter:creator</code></td>
+<td>Author Twitter handle</td>
+</tr>
+<tr>
+<td><code>twitter:title</code></td>
+<td>Post title</td>
+</tr>
+<tr>
+<td><code>twitter:description</code></td>
+<td>Post description (truncated to 200 chars)</td>
+</tr>
+<tr>
+<td><code>twitter:image</code></td>
+<td>Post or default image</td>
+</tr>
+</tbody>
+</table>
+<h2 id="image-priority">Image Priority <a href="#image-priority" class="heading-anchor">#</a></h2>
+<p>Images are selected in this order:</p>
+<ol>
+<li><code>social_image</code> from frontmatter (OG-specific override)</li>
+<li><code>image</code> from frontmatter</li>
+<li><code>default_image</code> from SEO config</li>
+</ol>
+<h2 id="author-priority">Author Priority <a href="#author-priority" class="heading-anchor">#</a></h2>
+<p>Authors are determined in this order:</p>
+<ol>
+<li><code>author</code> field from frontmatter</li>
+<li><code>default_author</code> from structured data config</li>
+<li><code>author</code> from site config</li>
+</ol>
+<h2 id="disabling-structured-data">Disabling Structured Data <a href="#disabling-structured-data" class="heading-anchor">#</a></h2>
+<p>To disable structured data generation:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">seo</span><span class="p">.</span><span class="nx">structured_data</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span></code></pre><h2 id="testing-your-structured-data">Testing Your Structured Data <a href="#testing-your-structured-data" class="heading-anchor">#</a></h2>
+<p>Use these tools to validate your structured data:</p>
+<ul>
+<li><a href="https://search.google.com/test/rich-results">Google Rich Results Test</a></li>
+<li><a href="https://developers.facebook.com/tools/debug/">Facebook Sharing Debugger</a></li>
+<li><a href="https://cards-dev.twitter.com/validator">Twitter Card Validator</a></li>
+<li><a href="https://validator.schema.org/">Schema.org Validator</a></li>
+</ul>
+<h2 id="best-practices">Best Practices <a href="#best-practices" class="heading-anchor">#</a></h2>
+<ol>
+<li><strong>Always include descriptions</strong> - Good descriptions improve both SEO and social sharing</li>
+<li><strong>Use quality images</strong> - Social images should be at least 1200x630 pixels</li>
+<li><strong>Keep titles under 60 characters</strong> - Prevents truncation in search results</li>
+<li><strong>Set publication dates</strong> - Helps search engines understand content freshness</li>
+<li><strong>Use relevant tags</strong> - Tags become keywords in schema markup</li>
+</ol>
+<h2 id="template-access">Template Access <a href="#template-access" class="heading-anchor">#</a></h2>
+<p>Structured data is available in templates via <code>post.structured_data</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# JSON-LD #}
+</span></span><span class="line"><span class="cl">{% if post.structured_data.jsonld %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/ld+json&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">{{</span> <span class="nx">post</span><span class="p">.</span><span class="nx">structured_data</span><span class="p">.</span><span class="nx">jsonld</span> <span class="o">|</span> <span class="nx">safe</span> <span class="p">}}</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{# OpenGraph #}
+</span></span><span class="line"><span class="cl">{% for meta in post.structured_data.opengraph %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;{{ meta.property }}&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ meta.content }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{# Twitter Cards #}
+</span></span><span class="line"><span class="cl">{% for meta in post.structured_data.twitter %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;{{ meta.name }}&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ meta.content }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="/docs/guides/configuration/">Configuration Reference</a></li>
+<li><a href="/docs/guides/post-formats/">Post Formats</a></li>
+<li><a href="/docs/guides/themes/">Themes</a></li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

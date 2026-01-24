@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feeds - My Site</title>
+    <meta name="description" content="Feeds are the core differentiator of this static site generator. A feed is a ** that can output to ** simultaneously.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Feeds">
+    
+    <meta property="og:url" content="/feeds/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="Feeds are the core differentiator of this static site generator. A feed is a ** that can output to ** simultaneously.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Feeds">
+    
+    <meta name="twitter:description" content="Feeds are the core differentiator of this static site generator. A feed is a ** that can output to ** simultaneously.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/feeds/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Feeds",
+  "description": "Feeds are the core differentiator of this static site generator. A feed is a ** that can output to ** simultaneously.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/feeds/"
+  },
+  "url": "/feeds/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Feeds</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="feed-system-specification">Feed System Specification</h1>
+<p>Feeds are the core differentiator of this static site generator. A feed is a <strong>filtered, sorted, paginated collection of posts</strong> that can output to <strong>multiple formats</strong> simultaneously.</p>
+<h2 id="overview">Overview <a href="#overview" class="heading-anchor">#</a></h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                           FEED DEFINITION                            │
+│  filter: &quot;published == True and 'python' in tags&quot;                   │
+│  sort: &quot;date&quot;                                                        │
+│  reverse: true                                                       │
+│  items_per_page: 10                                                  │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                         OUTPUT FORMATS                               │
+├──────────┬──────────┬──────────┬──────────┬──────────┬─────────────┤
+│   HTML   │   RSS    │   Atom   │   JSON   │ Markdown │    Text     │ Sitemap  │
+│  index   │   feed   │   feed   │   API    │   list   │   list      │   XML    │
+└──────────┴──────────┴──────────┴──────────┴──────────┴─────────────┴──────────┘
+</code></pre>
+<h2 id="why-feeds-matter">Why Feeds Matter <a href="#why-feeds-matter" class="heading-anchor">#</a></h2>
+<ol>
+<li><strong>One definition, many outputs</strong> - Define a collection once, get HTML pages, RSS, Atom, JSON API, sitemap, etc.</li>
+<li><strong>Composable</strong> - Feeds can reference other feeds or share filters</li>
+<li><strong>Flexible</strong> - Every &quot;index page&quot; is a feed: home, archives, tags, categories, search indexes</li>
+<li><strong>Familiar</strong> - Mirrors how content platforms work (RSS readers, APIs, syndication)</li>
+</ol>
+<hr>
+<h2 id="feed-configuration">Feed Configuration <a href="#feed-configuration" class="heading-anchor">#</a></h2>
+<h3 id="basic-feed">Basic Feed <a href="#basic-feed" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><h3 id="full-configuration">Full Configuration <a href="#full-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Identity</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>                      <span class="c"># URL path: /blog/</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;All Posts&#34;</span>                <span class="c"># Display title</span>
+</span></span><span class="line"><span class="cl"><span class="nx">description</span> <span class="p">=</span> <span class="s2">&#34;Latest blog posts&#34;</span>  <span class="c"># Meta description</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Content Selection</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and date &lt;= today&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>                     <span class="c"># Newest first</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Pagination</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>                <span class="c"># 0 = no pagination (all on one page)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">orphan_threshold</span> <span class="p">=</span> <span class="mi">3</span>               <span class="c"># If last page has ≤3 items, merge with previous</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Output Formats (all optional, defaults shown)</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>                        <span class="c"># /blog/index.html, /blog/page/2/index.html</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>                         <span class="c"># /blog/rss.xml</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>                        <span class="c"># /blog/atom.xml</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>                        <span class="c"># /blog/feed.json</span>
+</span></span><span class="line"><span class="cl"><span class="nx">markdown</span> <span class="p">=</span> <span class="kc">false</span>                   <span class="c"># /blog/index.md</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text</span> <span class="p">=</span> <span class="kc">false</span>                       <span class="c"># /blog/index.txt</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sitemap</span> <span class="p">=</span> <span class="kc">false</span>                    <span class="c"># /blog/sitemap.xml</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Templates (can override per-format)</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">templates</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="s2">&#34;feed.html&#34;</span>                 <span class="c"># Template for HTML pages</span>
+</span></span><span class="line"><span class="cl"><span class="nx">card</span> <span class="p">=</span> <span class="s2">&#34;partials/card.html&#34;</span>        <span class="c"># Template for post cards in list</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="s2">&#34;rss.xml&#34;</span>                    <span class="c"># Template for RSS (usually default)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="s2">&#34;atom.xml&#34;</span>                  <span class="c"># Template for Atom</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="s2">&#34;feed.json&#34;</span>                 <span class="c"># Template for JSON</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sitemap</span> <span class="p">=</span> <span class="s2">&#34;sitemap.xml&#34;</span>            <span class="c"># Template for sitemap</span>
+</span></span></code></pre><hr>
+<h2 id="feed-model">Feed Model <a href="#feed-model" class="heading-anchor">#</a></h2>
+<h3 id="feed-object">Feed Object <a href="#feed-object" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>URL-safe identifier</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>string</td>
+<td>Display title</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string?</td>
+<td>Feed description</td>
+</tr>
+<tr>
+<td><code>href</code></td>
+<td>string</td>
+<td>Base URL path (<code>/blog/</code>)</td>
+</tr>
+<tr>
+<td><code>filter</code></td>
+<td>string</td>
+<td>Filter expression</td>
+</tr>
+<tr>
+<td><code>sort</code></td>
+<td>string?</td>
+<td>Sort field</td>
+</tr>
+<tr>
+<td><code>reverse</code></td>
+<td>bool</td>
+<td>Sort direction</td>
+</tr>
+<tr>
+<td><code>posts</code></td>
+<td>List[Post]</td>
+<td>All matching posts (pre-pagination)</td>
+</tr>
+<tr>
+<td><code>page_posts</code></td>
+<td>List[Post]</td>
+<td>Posts for current page</td>
+</tr>
+<tr>
+<td><code>pagination</code></td>
+<td>Pagination</td>
+<td>Pagination info</td>
+</tr>
+<tr>
+<td><code>formats</code></td>
+<td>FeedFormats</td>
+<td>Enabled output formats (html, rss, atom, json, markdown, text, sitemap)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pagination-object">Pagination Object <a href="#pagination-object" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>current_page</code></td>
+<td>int</td>
+<td>Current page number (1-indexed)</td>
+</tr>
+<tr>
+<td><code>total_pages</code></td>
+<td>int</td>
+<td>Total number of pages</td>
+</tr>
+<tr>
+<td><code>total_items</code></td>
+<td>int</td>
+<td>Total posts in feed</td>
+</tr>
+<tr>
+<td><code>items_per_page</code></td>
+<td>int</td>
+<td>Posts per page</td>
+</tr>
+<tr>
+<td><code>has_prev</code></td>
+<td>bool</td>
+<td>Has previous page</td>
+</tr>
+<tr>
+<td><code>has_next</code></td>
+<td>bool</td>
+<td>Has next page</td>
+</tr>
+<tr>
+<td><code>prev_url</code></td>
+<td>string?</td>
+<td>URL to previous page</td>
+</tr>
+<tr>
+<td><code>next_url</code></td>
+<td>string?</td>
+<td>URL to next page</td>
+</tr>
+<tr>
+<td><code>page_urls</code></td>
+<td>List[string]</td>
+<td>URLs for all pages</td>
+</tr>
+<tr>
+<td><code>pagination_type</code></td>
+<td>string</td>
+<td>Pagination strategy (htmx, manual, js)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="pagination-types">Pagination Types <a href="#pagination-types" class="heading-anchor">#</a></h2>
+<p>Feeds support multiple pagination strategies for different use cases and user experiences.</p>
+<h3 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>                     <span class="c"># Enable pagination</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>                <span class="c"># Posts per page</span>
+</span></span><span class="line"><span class="cl"><span class="nx">pagination_type</span> <span class="p">=</span> <span class="s2">&#34;htmx&#34;</span>           <span class="c"># Pagination strategy</span>
+</span></span></code></pre><h3 id="pagination-type-options">Pagination Type Options <a href="#pagination-type-options" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>htmx</code></td>
+<td>AJAX-based loading via HTMX</td>
+<td>Modern, seamless UX without full page reloads</td>
+</tr>
+<tr>
+<td><code>manual</code></td>
+<td>Traditional page links</td>
+<td>SEO-friendly, works without JavaScript</td>
+</tr>
+<tr>
+<td><code>js</code></td>
+<td>Custom JavaScript pagination</td>
+<td>Full control over pagination behavior</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="htmx-pagination">HTMX Pagination <a href="#htmx-pagination" class="heading-anchor">#</a></h2>
+<p>HTMX pagination provides a seamless user experience by loading new pages without full page reloads. Content is fetched via AJAX and swapped into the page dynamically.</p>
+<h3 id="how-it-works">How It Works <a href="#how-it-works" class="heading-anchor">#</a></h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                      HTMX PAGINATION FLOW                            │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. User clicks &quot;Next&quot; or page number                               │
+│  2. HTMX intercepts click, sends GET request                        │
+│  3. Server returns partial HTML (just the posts list)               │
+│  4. HTMX swaps new content into existing container                  │
+│  5. URL updates via pushState (browser history works)               │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="htmx-configuration">HTMX Configuration <a href="#htmx-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">htmx_version</span> <span class="p">=</span> <span class="s2">&#34;2.0.8&#34;</span>             <span class="c"># HTMX version to use</span>
+</span></span><span class="line"><span class="cl"><span class="nx">skip_htmx_integrity_check</span> <span class="p">=</span> <span class="kc">false</span>  <span class="c"># Skip SHA-256 verification (not recommended)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">pagination_type</span> <span class="p">=</span> <span class="s2">&#34;htmx&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span><span class="line"><span class="cl"><span class="nx">template</span> <span class="p">=</span> <span class="s2">&#34;feed.html&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">partial_template</span> <span class="p">=</span> <span class="s2">&#34;feed_partial.html&#34;</span>
+</span></span></code></pre><h3 id="htmx-library-management">HTMX Library Management <a href="#htmx-library-management" class="heading-anchor">#</a></h3>
+<p>The feeds plugin automatically handles HTMX library delivery:</p>
+<ol>
+<li><strong>Download</strong>: HTMX is downloaded from unpkg CDN during build</li>
+<li><strong>Verification</strong>: SHA-256 integrity hash is verified against known-good versions</li>
+<li><strong>Local hosting</strong>: Library is served from <code>/static/js/htmx.min.js</code></li>
+<li><strong>Auto-injection</strong>: Script tag is added to <code>&lt;head&gt;</code> via head configuration</li>
+</ol>
+<p><strong>Supported HTMX Versions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>SHA-256 Hash (first 16 chars)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2.0.8</td>
+<td><code>22283ef68cb75459...</code></td>
+</tr>
+<tr>
+<td>2.0.7</td>
+<td><code>60231ae6ba9db382...</code></td>
+</tr>
+<tr>
+<td>2.0.6</td>
+<td><code>b6768eed4f3af85b...</code></td>
+</tr>
+<tr>
+<td>1.9.12</td>
+<td><code>449317ade7881e94...</code></td>
+</tr>
+<tr>
+<td>1.9.10</td>
+<td><code>b3bdcf5c741897a5...</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="templates-for-htmx-pagination">Templates for HTMX Pagination <a href="#templates-for-htmx-pagination" class="heading-anchor">#</a></h3>
+<p><strong>Full page template (<code>feed.html</code>):</strong></p>
+<pre><code class="language-jinja2">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;title&gt;{{ feed.config.title }}&lt;/title&gt;
+  {# HTMX is auto-injected via head configuration #}
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;{{ feed.config.title }}&lt;/h1&gt;
+  
+  &lt;div id=&quot;feed-content&quot; hx-swap-oob=&quot;true&quot;&gt;
+    {% include &quot;feed_partial.html&quot; %}
+  &lt;/div&gt;
+  
+  {% include &quot;pagination_controls.html&quot; %}
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p><strong>Partial template (<code>feed_partial.html</code>):</strong></p>
+<pre><code class="language-jinja2">&lt;ul class=&quot;post-list&quot;&gt;
+{% for post in feed.posts %}
+  &lt;li&gt;
+    &lt;a href=&quot;{{ post.slug }}/&quot;&gt;{{ post.title }}&lt;/a&gt;
+    &lt;time&gt;{{ post.date }}&lt;/time&gt;
+  &lt;/li&gt;
+{% endfor %}
+&lt;/ul&gt;
+</code></pre>
+<p><strong>Pagination controls:</strong></p>
+<pre><code class="language-jinja2">&lt;nav class=&quot;pagination&quot; aria-label=&quot;Pagination&quot;&gt;
+  {% if pagination.has_prev %}
+  &lt;a href=&quot;{{ feed.config.slug }}/page/{{ pagination.prev_page }}/&quot;
+     hx-get=&quot;{{ feed.config.slug }}/page/{{ pagination.prev_page }}/partial/&quot;
+     hx-target=&quot;#feed-content&quot;
+     hx-push-url=&quot;true&quot;
+     class=&quot;pagination-prev&quot;&gt;
+    Previous
+  &lt;/a&gt;
+  {% endif %}
+  
+  &lt;span class=&quot;pagination-info&quot;&gt;
+    Page {{ pagination.current_page }} of {{ pagination.total_pages }}
+  &lt;/span&gt;
+  
+  {% if pagination.has_next %}
+  &lt;a href=&quot;{{ feed.config.slug }}/page/{{ pagination.next_page }}/&quot;
+     hx-get=&quot;{{ feed.config.slug }}/page/{{ pagination.next_page }}/partial/&quot;
+     hx-target=&quot;#feed-content&quot;
+     hx-push-url=&quot;true&quot;
+     class=&quot;pagination-next&quot;&gt;
+    Next
+  &lt;/a&gt;
+  {% endif %}
+&lt;/nav&gt;
+</code></pre>
+<h3 id="htmx-attributes-reference">HTMX Attributes Reference <a href="#htmx-attributes-reference" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hx-get</code></td>
+<td>URL to fetch partial content from</td>
+</tr>
+<tr>
+<td><code>hx-target</code></td>
+<td>CSS selector for content swap target</td>
+</tr>
+<tr>
+<td><code>hx-push-url</code></td>
+<td>Update browser URL (enables back/forward)</td>
+</tr>
+<tr>
+<td><code>hx-swap</code></td>
+<td>How to swap content (default: innerHTML)</td>
+</tr>
+<tr>
+<td><code>hx-swap-oob</code></td>
+<td>Out-of-band swap for multiple targets</td>
+</tr>
+</tbody>
+</table>
+<h3 id="output-structure">Output Structure <a href="#output-structure" class="heading-anchor">#</a></h3>
+<p>For a feed with <code>pagination_type = &quot;htmx&quot;</code>:</p>
+<pre><code>output/
+└── blog/
+    ├── index.html              # Full page (page 1)
+    ├── partial/
+    │   └── index.html          # Partial content (page 1)
+    ├── page/
+    │   ├── 2/
+    │   │   ├── index.html      # Full page (page 2)
+    │   │   └── partial/
+    │   │       └── index.html  # Partial content (page 2)
+    │   └── 3/
+    │       ├── index.html
+    │       └── partial/
+    │           └── index.html
+    ├── rss.xml
+    └── sitemap.xml
+</code></pre>
+<h3 id="security-considerations">Security Considerations <a href="#security-considerations" class="heading-anchor">#</a></h3>
+<ol>
+<li><strong>Integrity verification</strong>: HTMX downloads are verified against known SHA-256 hashes</li>
+<li><strong>Local hosting</strong>: HTMX is served locally, not from CDN at runtime</li>
+<li><strong>Path sanitization</strong>: Feed slugs are sanitized to prevent path traversal</li>
+<li><strong>CSP compatible</strong>: Works with Content-Security-Policy headers</li>
+</ol>
+<h3 id="fallback-behavior">Fallback Behavior <a href="#fallback-behavior" class="heading-anchor">#</a></h3>
+<p>If JavaScript is disabled:</p>
+<ul>
+<li>Standard links work normally (full page navigation)</li>
+<li><code>hx-get</code> is ignored, <code>href</code> is followed</li>
+<li>SEO crawlers see all pages linked normally</li>
+</ul>
+<hr>
+<h2 id="manual-pagination">Manual Pagination <a href="#manual-pagination" class="heading-anchor">#</a></h2>
+<p>Traditional pagination with full page reloads. Best for SEO and accessibility.</p>
+<h3 id="configuration-1">Configuration <a href="#configuration-1" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">pagination_type</span> <span class="p">=</span> <span class="s2">&#34;manual&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span></code></pre><h3 id="template-example">Template Example <a href="#template-example" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">&lt;nav class=&quot;pagination&quot;&gt;
+  {% if pagination.has_prev %}
+  &lt;a href=&quot;{{ feed.config.slug }}/page/{{ pagination.prev_page }}/&quot;&gt;Previous&lt;/a&gt;
+  {% endif %}
+  
+  {% for page_num in range(1, pagination.total_pages + 1) %}
+  &lt;a href=&quot;{{ feed.config.slug }}/page/{{ page_num }}/&quot;
+     {% if page_num == pagination.current_page %}class=&quot;active&quot;{% endif %}&gt;
+    {{ page_num }}
+  &lt;/a&gt;
+  {% endfor %}
+  
+  {% if pagination.has_next %}
+  &lt;a href=&quot;{{ feed.config.slug }}/page/{{ pagination.next_page }}/&quot;&gt;Next&lt;/a&gt;
+  {% endif %}
+&lt;/nav&gt;
+</code></pre>
+<hr>
+<h2 id="javascript-pagination">JavaScript Pagination <a href="#javascript-pagination" class="heading-anchor">#</a></h2>
+<p>For custom pagination behavior, a JavaScript configuration file is generated.</p>
+<h3 id="configuration-2">Configuration <a href="#configuration-2" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">pagination_type</span> <span class="p">=</span> <span class="s2">&#34;js&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span></code></pre><h3 id="generated-config-file">Generated Config File <a href="#generated-config-file" class="heading-anchor">#</a></h3>
+<p><code>/static/js/pagination-config.js</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nb">window</span><span class="p">.</span><span class="nx">paginationData</span> <span class="o">=</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;enabled&#34;</span><span class="o">:</span> <span class="kc">true</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;type&#34;</span><span class="o">:</span> <span class="s2">&#34;js&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;page&#34;</span><span class="o">:</span> <span class="mi">1</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;totalPages&#34;</span><span class="o">:</span> <span class="mi">5</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;totalPosts&#34;</span><span class="o">:</span> <span class="mi">47</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;itemsShown&#34;</span><span class="o">:</span> <span class="mi">10</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;feedName&#34;</span><span class="o">:</span> <span class="s2">&#34;blog&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;hasNext&#34;</span><span class="o">:</span> <span class="kc">true</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;config&#34;</span><span class="o">:</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;pagination_type&#34;</span><span class="o">:</span> <span class="s2">&#34;js&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;posts_per_page&#34;</span><span class="o">:</span> <span class="mi">10</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;template&#34;</span><span class="o">:</span> <span class="s2">&#34;feed.html&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span></code></pre><h3 id="custom-implementation">Custom Implementation <a href="#custom-implementation" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// pagination.js (custom implementation)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nb">document</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;DOMContentLoaded&#39;</span><span class="p">,</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kr">const</span> <span class="nx">data</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nx">paginationData</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">data</span> <span class="o">||</span> <span class="o">!</span><span class="nx">data</span><span class="p">.</span><span class="nx">enabled</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  
+</span></span><span class="line"><span class="cl">  <span class="c1">// Implement infinite scroll, load more button, etc.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="nx">data</span><span class="p">.</span><span class="nx">hasNext</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">loadMoreButton</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;click&#39;</span><span class="p">,</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nx">fetch</span><span class="p">(</span><span class="sb">`/</span><span class="si">${</span><span class="nx">data</span><span class="p">.</span><span class="nx">feedName</span><span class="si">}</span><span class="sb">/page/</span><span class="si">${</span><span class="nx">data</span><span class="p">.</span><span class="nx">page</span> <span class="o">+</span> <span class="mi">1</span><span class="si">}</span><span class="sb">/partial/`</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">r</span> <span class="p">=&gt;</span> <span class="nx">r</span><span class="p">.</span><span class="nx">text</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">        <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">html</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">          <span class="nx">container</span><span class="p">.</span><span class="nx">insertAdjacentHTML</span><span class="p">(</span><span class="s1">&#39;beforeend&#39;</span><span class="p">,</span> <span class="nx">html</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">          <span class="nx">data</span><span class="p">.</span><span class="nx">page</span><span class="o">++</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">          <span class="nx">data</span><span class="p">.</span><span class="nx">hasNext</span> <span class="o">=</span> <span class="nx">data</span><span class="p">.</span><span class="nx">page</span> <span class="o">&lt;</span> <span class="nx">data</span><span class="p">.</span><span class="nx">totalPages</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">});</span>
+</span></span><span class="line"><span class="cl">    <span class="p">});</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">});</span>
+</span></span></code></pre><hr>
+<h2 id="output-formats">Output Formats <a href="#output-formats" class="heading-anchor">#</a></h2>
+<h3 id="html">HTML <a href="#html" class="heading-anchor">#</a></h3>
+<p>Paginated HTML index pages.</p>
+<p><strong>Output paths:</strong></p>
+<pre><code>/blog/index.html           # Page 1
+/blog/page/2/index.html    # Page 2
+/blog/page/3/index.html    # Page 3
+</code></pre>
+<p><strong>Template context:</strong></p>
+<pre><code class="language-jinja2">{{ feed.title }}
+{{ feed.description }}
+{{ feed.page_posts }}      {# Posts for this page #}
+{{ feed.pagination }}
+</code></pre>
+<p><strong>Default template:</strong> <code>feed.html</code></p>
+<hr>
+<h3 id="rss-20">RSS 2.0 <a href="#rss-20" class="heading-anchor">#</a></h3>
+<p>RSS feed for feed readers.</p>
+<p><strong>Output path:</strong> <code>/blog/rss.xml</code></p>
+<p><strong>Required elements:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34;?&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;rss</span> <span class="na">version=</span><span class="s">&#34;2.0&#34;</span> <span class="na">xmlns:atom=</span><span class="s">&#34;http://www.w3.org/2005/Atom&#34;</span><span class="nt">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;channel&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;title&gt;</span>{{ feed.title }}<span class="nt">&lt;/title&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;link&gt;</span>{{ config.url }}{{ feed.href }}<span class="nt">&lt;/link&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;description&gt;</span>{{ feed.description }}<span class="nt">&lt;/description&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;language&gt;</span>{{ config.lang | default(&#39;en&#39;) }}<span class="nt">&lt;/language&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;lastBuildDate&gt;</span>{{ now | rss_date }}<span class="nt">&lt;/lastBuildDate&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;atom:link</span> <span class="na">href=</span><span class="s">&#34;{{ config.url }}{{ feed.href }}rss.xml&#34;</span> <span class="na">rel=</span><span class="s">&#34;self&#34;</span> <span class="na">type=</span><span class="s">&#34;application/rss+xml&#34;</span><span class="nt">/&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {% for post in feed.posts[:20] %}
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;item&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&lt;title&gt;</span>{{ post.title | xml_escape }}<span class="nt">&lt;/title&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&lt;link&gt;</span>{{ config.url }}{{ post.href }}<span class="nt">&lt;/link&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&lt;guid</span> <span class="na">isPermaLink=</span><span class="s">&#34;true&#34;</span><span class="nt">&gt;</span>{{ config.url }}{{ post.href }}<span class="nt">&lt;/guid&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&lt;pubDate&gt;</span>{{ post.date | rss_date }}<span class="nt">&lt;/pubDate&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&lt;description&gt;</span>{{ post.description | xml_escape }}<span class="nt">&lt;/description&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;/item&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endfor %}
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;/channel&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;/rss&gt;</span>
+</span></span></code></pre><p><strong>RSS date format:</strong> <code>Mon, 02 Jan 2006 15:04:05 -0700</code></p>
+<hr>
+<h3 id="atom">Atom <a href="#atom" class="heading-anchor">#</a></h3>
+<p>Atom feed (RFC 4287).</p>
+<p><strong>Output path:</strong> <code>/blog/atom.xml</code></p>
+<p><strong>Required elements:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34;?&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;feed</span> <span class="na">xmlns=</span><span class="s">&#34;http://www.w3.org/2005/Atom&#34;</span><span class="nt">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;title&gt;</span>{{ feed.title }}<span class="nt">&lt;/title&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;link</span> <span class="na">href=</span><span class="s">&#34;{{ config.url }}{{ feed.href }}&#34;</span> <span class="na">rel=</span><span class="s">&#34;alternate&#34;</span><span class="nt">/&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;link</span> <span class="na">href=</span><span class="s">&#34;{{ config.url }}{{ feed.href }}atom.xml&#34;</span> <span class="na">rel=</span><span class="s">&#34;self&#34;</span><span class="nt">/&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;id&gt;</span>{{ config.url }}{{ feed.href }}<span class="nt">&lt;/id&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;updated&gt;</span>{{ now | atom_date }}<span class="nt">&lt;/updated&gt;</span>
+</span></span><span class="line"><span class="cl">  
+</span></span><span class="line"><span class="cl">  {% for post in feed.posts[:20] %}
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;entry&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;title&gt;</span>{{ post.title | xml_escape }}<span class="nt">&lt;/title&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;link</span> <span class="na">href=</span><span class="s">&#34;{{ config.url }}{{ post.href }}&#34;</span> <span class="na">rel=</span><span class="s">&#34;alternate&#34;</span><span class="nt">/&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;id&gt;</span>{{ config.url }}{{ post.href }}<span class="nt">&lt;/id&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;published&gt;</span>{{ post.date | atom_date }}<span class="nt">&lt;/published&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;updated&gt;</span>{{ post.date | atom_date }}<span class="nt">&lt;/updated&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;summary&gt;</span>{{ post.description | xml_escape }}<span class="nt">&lt;/summary&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;author&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&lt;name&gt;</span>{{ post.author | default(config.author) }}<span class="nt">&lt;/name&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;/author&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;/entry&gt;</span>
+</span></span><span class="line"><span class="cl">  {% endfor %}
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;/feed&gt;</span>
+</span></span></code></pre><p><strong>Atom date format:</strong> <code>2006-01-02T15:04:05Z</code> (ISO 8601)</p>
+<hr>
+<h3 id="json-feed">JSON Feed <a href="#json-feed" class="heading-anchor">#</a></h3>
+<p>JSON Feed (version 1.1).</p>
+<p><strong>Output path:</strong> <code>/blog/feed.json</code></p>
+<p><strong>Structure:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;version&#34;</span><span class="p">:</span> <span class="s2">&#34;https://jsonfeed.org/version/1.1&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;title&#34;</span><span class="p">:</span> <span class="s2">&#34;{{ feed.title }}&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;home_page_url&#34;</span><span class="p">:</span> <span class="s2">&#34;{{ config.url }}&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;feed_url&#34;</span><span class="p">:</span> <span class="s2">&#34;{{ config.url }}{{ feed.href }}feed.json&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;description&#34;</span><span class="p">:</span> <span class="s2">&#34;{{ feed.description }}&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;items&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;id&#34;</span><span class="p">:</span> <span class="s2">&#34;{{ config.url }}{{ post.href }}&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;url&#34;</span><span class="p">:</span> <span class="s2">&#34;{{ config.url }}{{ post.href }}&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;title&#34;</span><span class="p">:</span> <span class="s2">&#34;{{ post.title }}&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;content_html&#34;</span><span class="p">:</span> <span class="s2">&#34;{{ post.article_html }}&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;summary&#34;</span><span class="p">:</span> <span class="s2">&#34;{{ post.description }}&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;date_published&#34;</span><span class="p">:</span> <span class="s2">&#34;{{ post.date | iso8601 }}&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;tags&#34;</span><span class="p">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.tags</span> <span class="err">|</span> <span class="err">tojson</span> <span class="p">}}</span>
+</span></span><span class="line"><span class="cl">    <span class="err">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><hr>
+<h3 id="markdown">Markdown <a href="#markdown" class="heading-anchor">#</a></h3>
+<p>Markdown list of posts (useful for READMEs, documentation).</p>
+<p><strong>Output path:</strong> <code>/blog/index.md</code></p>
+<p><strong>Default format:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gh"># {{ feed.title }}
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">{{ feed.description }}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% for post in feed.posts %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ post.title }}</span>](<span class="na">{{ post.href }}</span>) - {{ post.date }}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><hr>
+<h3 id="plain-text">Plain Text <a href="#plain-text" class="heading-anchor">#</a></h3>
+<p>Simple text list (useful for APIs, scripts, minimal readers).</p>
+<p><strong>Output path:</strong> <code>/blog/index.txt</code></p>
+<p><strong>Default format:</strong></p>
+<pre><code>{{ feed.title }}
+{{ '=' * feed.title|length }}
+
+{% for post in feed.posts %}
+{{ post.title }}
+{{ post.href }}
+{{ post.date }}
+
+{% endfor %}
+</code></pre>
+<hr>
+<h3 id="sitemap">Sitemap <a href="#sitemap" class="heading-anchor">#</a></h3>
+<p>XML sitemap for search engines (follows sitemaps.org protocol).</p>
+<p><strong>Output path:</strong> <code>/blog/sitemap.xml</code></p>
+<p><strong>Default format:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">&lt;?xml version=&#34;1.0&#34; encoding=&#34;UTF-8&#34;?&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;urlset</span> <span class="na">xmlns=</span><span class="s">&#34;http://www.sitemaps.org/schemas/sitemap/0.9&#34;</span><span class="nt">&gt;</span>
+</span></span><span class="line"><span class="cl">  {% for post in feed.posts %}
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;url&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;loc&gt;</span>{{ config.url }}{{ post.href }}<span class="nt">&lt;/loc&gt;</span>
+</span></span><span class="line"><span class="cl">    {% if post.date %}
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;lastmod&gt;</span>{{ post.date | iso8601 }}<span class="nt">&lt;/lastmod&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;changefreq&gt;</span>{{ post.changefreq | default(&#39;weekly&#39;) }}<span class="nt">&lt;/changefreq&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&lt;priority&gt;</span>{{ post.priority | default(&#39;0.5&#39;) }}<span class="nt">&lt;/priority&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&lt;/url&gt;</span>
+</span></span><span class="line"><span class="cl">  {% endfor %}
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;/urlset&gt;</span>
+</span></span></code></pre><p><strong>Sitemap fields:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Source</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>loc</code></td>
+<td><code>config.url</code> + <code>post.href</code></td>
+<td>Required</td>
+</tr>
+<tr>
+<td><code>lastmod</code></td>
+<td><code>post.date</code> or <code>post.updated</code></td>
+<td>Optional</td>
+</tr>
+<tr>
+<td><code>changefreq</code></td>
+<td><code>post.changefreq</code> frontmatter</td>
+<td><code>weekly</code></td>
+</tr>
+<tr>
+<td><code>priority</code></td>
+<td><code>post.priority</code> frontmatter</td>
+<td><code>0.5</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Configuration options:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">sitemap</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">include_feeds</span> <span class="p">=</span> <span class="kc">true</span>              <span class="c"># Include feed index pages in sitemap</span>
+</span></span><span class="line"><span class="cl"><span class="nx">default_changefreq</span> <span class="p">=</span> <span class="s2">&#34;weekly&#34;</span>     <span class="c"># daily, weekly, monthly, yearly, never</span>
+</span></span><span class="line"><span class="cl"><span class="nx">default_priority</span> <span class="p">=</span> <span class="mf">0.5</span>            <span class="c"># 0.0 to 1.0</span>
+</span></span></code></pre><p><strong>Per-post frontmatter:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Important Page</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">changefreq</span><span class="p">:</span><span class="w"> </span><span class="l">daily</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">priority</span><span class="p">:</span><span class="w"> </span><span class="m">0.8</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Global sitemap:</strong></p>
+<p>To generate a site-wide sitemap with all posts (not just feed posts), create a feed with no filter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;sitemap&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Sitemap&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>      <span class="c"># All published posts</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">sitemap</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>      <span class="c"># Only sitemap output</span>
+</span></span></code></pre><p>This generates <code>/sitemap.xml</code> at the root when <code>slug = &quot;&quot;</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>                         <span class="c"># Root sitemap</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Sitemap&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">sitemap</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>
+</span></span></code></pre><hr>
+<h2 id="common-feed-patterns">Common Feed Patterns <a href="#common-feed-patterns" class="heading-anchor">#</a></h2>
+<h3 id="home-page">Home Page <a href="#home-page" class="heading-anchor">#</a></h3>
+<p>The root index is just a feed with <code>slug = &quot;&quot;</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>                          <span class="c"># Outputs to /index.html</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Home&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">5</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span><span class="p">,</span> <span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span> <span class="p">}</span>
+</span></span></code></pre><h3 id="archive-all-posts">Archive (All Posts) <a href="#archive-all-posts" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;archive&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Archive&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">0</span>                 <span class="c"># No pagination - all on one page</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>
+</span></span></code></pre><h3 id="tag-pages">Tag Pages <a href="#tag-pages" class="heading-anchor">#</a></h3>
+<p>Generate a feed per tag dynamically:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">auto_tags</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug_prefix</span> <span class="p">=</span> <span class="s2">&#34;tags&#34;</span>               <span class="c"># /tags/python/, /tags/rust/</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title_template</span> <span class="p">=</span> <span class="s2">&#34;Posts tagged &#39;{{ tag }}&#39;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter_template</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;{{ tag }}&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span><span class="p">,</span> <span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>
+</span></span></code></pre><p>This auto-generates feeds for each unique tag found in posts.</p>
+<h3 id="category-pages">Category Pages <a href="#category-pages" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">auto_categories</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug_prefix</span> <span class="p">=</span> <span class="s2">&#34;category&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">source_field</span> <span class="p">=</span> <span class="s2">&#34;category&#34;</span>          <span class="c"># Frontmatter field to use</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title_template</span> <span class="p">=</span> <span class="s2">&#34;{{ category | title }}&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter_template</span> <span class="p">=</span> <span class="s2">&#34;published == True and category == &#39;{{ category }}&#39;&#34;</span>
+</span></span></code></pre><h3 id="yearmonth-archives">Year/Month Archives <a href="#yearmonth-archives" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">auto_date</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug_template</span> <span class="p">=</span> <span class="s2">&#34;{{ date.year }}/{{ date.month }}&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title_template</span> <span class="p">=</span> <span class="s2">&#34;Posts from {{ date | date(&#39;%B %Y&#39;) }}&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter_template</span> <span class="p">=</span> <span class="s2">&#34;published == True and date.year == {{ year }} and date.month == {{ month }}&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>
+</span></span></code></pre><h3 id="api-endpoint">API Endpoint <a href="#api-endpoint" class="heading-anchor">#</a></h3>
+<p>JSON-only feed for JavaScript consumption:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;api/posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Posts API&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>          <span class="c"># Only JSON output</span>
+</span></span></code></pre><h3 id="search-index">Search Index <a href="#search-index" class="heading-anchor">#</a></h3>
+<p>Generate a JSON index for client-side search:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;search&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Search Index&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="nx">templates</span><span class="p">.</span><span class="nx">json</span> <span class="p">=</span> <span class="s2">&#34;search-index.json&#34;</span>
+</span></span></code></pre><p>With custom template:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;posts&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span><span class="err">%</span> <span class="err">for</span> <span class="err">post</span> <span class="err">in</span> <span class="err">feed.posts</span> <span class="err">%</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;title&#34;</span><span class="p">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.title</span> <span class="err">|</span> <span class="err">tojson</span> <span class="p">}},</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;href&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.href</span> <span class="err">|</span> <span class="err">tojson</span> <span class="p">}</span><span class="err">}</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;content&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.content</span> <span class="err">|</span> <span class="err">striptags</span> <span class="err">|</span> <span class="err">truncate(500)</span> <span class="err">|</span> <span class="err">tojson</span> <span class="p">}</span><span class="err">}</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="s2">&#34;tags&#34;</span><span class="err">:</span> <span class="p">{</span><span class="err">{</span> <span class="err">post.tags</span> <span class="err">|</span> <span class="err">tojson</span> <span class="p">}</span><span class="err">}</span>
+</span></span><span class="line"><span class="cl">    <span class="err">}</span><span class="p">{</span><span class="err">%</span> <span class="err">if</span> <span class="err">not</span> <span class="err">loop.last</span> <span class="err">%</span><span class="p">},{</span><span class="err">%</span> <span class="err">endif</span> <span class="err">%</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span><span class="err">%</span> <span class="err">endfor</span> <span class="err">%</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><hr>
+<h2 id="feed-processing-pipeline">Feed Processing Pipeline <a href="#feed-processing-pipeline" class="heading-anchor">#</a></h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                          FEED LIFECYCLE                              │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. COLLECT                                                          │
+│     - Read feed definitions from config                              │
+│     - Generate auto-feeds (tags, categories, dates)                  │
+│                                                                      │
+│  2. FILTER                                                           │
+│     - For each feed, run filter expression against all posts        │
+│     - Store matching posts in feed.posts                             │
+│                                                                      │
+│  3. SORT                                                             │
+│     - Sort feed.posts by sort field                                  │
+│     - Apply reverse if specified                                     │
+│                                                                      │
+│  4. PAGINATE                                                         │
+│     - Split into pages based on items_per_page                       │
+│     - Generate pagination metadata                                   │
+│     - Handle orphan threshold                                        │
+│                                                                      │
+│  5. RENDER                                                           │
+│     - For each enabled format:                                       │
+│       - Load format template                                         │
+│       - Render with feed context                                     │
+│       - Write to output path                                         │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2 id="template-filters-for-feeds">Template Filters for Feeds <a href="#template-filters-for-feeds" class="heading-anchor">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rss_date</code></td>
+<td>Format as RSS date</td>
+<td><code>{{ date | rss_date }}</code></td>
+</tr>
+<tr>
+<td><code>atom_date</code></td>
+<td>Format as Atom/ISO date</td>
+<td><code>{{ date | atom_date }}</code></td>
+</tr>
+<tr>
+<td><code>iso8601</code></td>
+<td>Format as ISO 8601</td>
+<td><code>{{ date | iso8601 }}</code></td>
+</tr>
+<tr>
+<td><code>xml_escape</code></td>
+<td>Escape for XML</td>
+<td><code>{{ title | xml_escape }}</code></td>
+</tr>
+<tr>
+<td><code>cdata</code></td>
+<td>Wrap in CDATA</td>
+<td><code>{{ html | cdata }}</code></td>
+</tr>
+<tr>
+<td><code>tojson</code></td>
+<td>Convert to JSON</td>
+<td><code>{{ tags | tojson }}</code></td>
+</tr>
+<tr>
+<td><code>absolute_url</code></td>
+<td>Add base URL</td>
+<td><code>{{ href | absolute_url }}</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="feed-discovery">Feed Discovery <a href="#feed-discovery" class="heading-anchor">#</a></h2>
+<p>Help feed readers find feeds with <code>&lt;link&gt;</code> tags:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- In base.html &lt;head&gt; --&gt;</span>
+</span></span><span class="line"><span class="cl">{% for feed in core.feeds %}
+</span></span><span class="line"><span class="cl">  {% if feed.formats.rss %}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/rss+xml&#34;</span> 
+</span></span><span class="line"><span class="cl">        <span class="na">title</span><span class="o">=</span><span class="s">&#34;{{ feed.title }} (RSS)&#34;</span> 
+</span></span><span class="line"><span class="cl">        <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ feed.href }}rss.xml&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  {% endif %}
+</span></span><span class="line"><span class="cl">  {% if feed.formats.atom %}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/atom+xml&#34;</span> 
+</span></span><span class="line"><span class="cl">        <span class="na">title</span><span class="o">=</span><span class="s">&#34;{{ feed.title }} (Atom)&#34;</span> 
+</span></span><span class="line"><span class="cl">        <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ feed.href }}atom.xml&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  {% endif %}
+</span></span><span class="line"><span class="cl">  {% if feed.formats.json %}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/feed+json&#34;</span> 
+</span></span><span class="line"><span class="cl">        <span class="na">title</span><span class="o">=</span><span class="s">&#34;{{ feed.title }} (JSON)&#34;</span> 
+</span></span><span class="line"><span class="cl">        <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ feed.href }}feed.json&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  {% endif %}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><hr>
+<h2 id="configuration-inheritance">Configuration Inheritance <a href="#configuration-inheritance" class="heading-anchor">#</a></h2>
+<p>Feed configuration follows a <strong>defaults → override</strong> pattern. Global defaults apply to all feeds, and individual feeds can override any setting.</p>
+<h3 id="inheritance-rules">Inheritance Rules <a href="#inheritance-rules" class="heading-anchor">#</a></h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                    CONFIGURATION RESOLUTION                          │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. Start with built-in defaults                                     │
+│  2. Apply [name.feeds.defaults.*] settings                          │
+│  3. Apply [[name.feeds]] individual feed settings                   │
+│  4. Individual feed values WIN over defaults                         │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="configurable-at-both-levels">Configurable at Both Levels <a href="#configurable-at-both-levels" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Global Key</th>
+<th>Feed Override</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Items per page</td>
+<td><code>defaults.items_per_page</code></td>
+<td><code>items_per_page</code></td>
+</tr>
+<tr>
+<td>Orphan threshold</td>
+<td><code>defaults.orphan_threshold</code></td>
+<td><code>orphan_threshold</code></td>
+</tr>
+<tr>
+<td>HTML format</td>
+<td><code>defaults.formats.html</code></td>
+<td><code>formats.html</code></td>
+</tr>
+<tr>
+<td>RSS format</td>
+<td><code>defaults.formats.rss</code></td>
+<td><code>formats.rss</code></td>
+</tr>
+<tr>
+<td>Atom format</td>
+<td><code>defaults.formats.atom</code></td>
+<td><code>formats.atom</code></td>
+</tr>
+<tr>
+<td>JSON format</td>
+<td><code>defaults.formats.json</code></td>
+<td><code>formats.json</code></td>
+</tr>
+<tr>
+<td>Markdown format</td>
+<td><code>defaults.formats.markdown</code></td>
+<td><code>formats.markdown</code></td>
+</tr>
+<tr>
+<td>Text format</td>
+<td><code>defaults.formats.text</code></td>
+<td><code>formats.text</code></td>
+</tr>
+<tr>
+<td>Sitemap format</td>
+<td><code>defaults.formats.sitemap</code></td>
+<td><code>formats.sitemap</code></td>
+</tr>
+<tr>
+<td>HTML template</td>
+<td><code>defaults.templates.html</code></td>
+<td><code>templates.html</code></td>
+</tr>
+<tr>
+<td>RSS template</td>
+<td><code>defaults.templates.rss</code></td>
+<td><code>templates.rss</code></td>
+</tr>
+<tr>
+<td>Card template</td>
+<td><code>defaults.templates.card</code></td>
+<td><code>templates.card</code></td>
+</tr>
+<tr>
+<td>RSS max items</td>
+<td><code>syndication.max_items</code></td>
+<td><code>max_items</code></td>
+</tr>
+<tr>
+<td>Include content</td>
+<td><code>syndication.include_content</code></td>
+<td><code>include_content</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-defaults-with-overrides">Example: Defaults with Overrides <a href="#example-defaults-with-overrides" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="c"># GLOBAL FEED DEFAULTS</span>
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">defaults</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span><span class="line"><span class="cl"><span class="nx">orphan_threshold</span> <span class="p">=</span> <span class="mi">3</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">defaults</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span>                       <span class="c"># Atom OFF by default</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">false</span>                       <span class="c"># JSON OFF by default</span>
+</span></span><span class="line"><span class="cl"><span class="nx">markdown</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sitemap</span> <span class="p">=</span> <span class="kc">false</span>                    <span class="c"># Sitemap OFF by default</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">defaults</span><span class="p">.</span><span class="nx">templates</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="s2">&#34;feed.html&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">card</span> <span class="p">=</span> <span class="s2">&#34;partials/card.html&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="s2">&#34;rss.xml&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">syndication</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">max_items</span> <span class="p">=</span> <span class="mi">20</span>
+</span></span><span class="line"><span class="cl"><span class="nx">include_content</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="c"># INDIVIDUAL FEEDS (inherit from defaults, override as needed)</span>
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Home page - uses most defaults, but fewer items and no RSS</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Home&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">5</span>                 <span class="c"># Override: fewer items on home</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span> <span class="p">}</span>          <span class="c"># Override: no RSS for home page</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Blog - uses all defaults</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="c"># items_per_page: inherits 10 from defaults</span>
+</span></span><span class="line"><span class="cl"><span class="c"># formats: inherits html=true, rss=true from defaults</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># API endpoint - completely different format set</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;api/posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Posts API&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">0</span>                 <span class="c"># Override: no pagination</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>  <span class="c"># Override: JSON only</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Archive - different pagination</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;archive&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;All Posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">0</span>                 <span class="c"># Override: all posts on one page</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span> <span class="p">}</span>          <span class="c"># Override: no RSS for archive</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Tutorials - wants Atom too</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;tutorial&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>          <span class="c"># Override: enable Atom (adds to defaults)</span>
+</span></span></code></pre><h3 id="format-override-behavior">Format Override Behavior <a href="#format-override-behavior" class="heading-anchor">#</a></h3>
+<p>When overriding formats, you can:</p>
+<p><strong>1. Override specific formats (merge with defaults):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Defaults: html=true, rss=true, atom=false, json=false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Result: html=true, rss=true, atom=true, json=false</span>
+</span></span></code></pre><p><strong>2. Disable specific formats:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Defaults: html=true, rss=true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Result: html=true, rss=false</span>
+</span></span></code></pre><p><strong>3. Completely replace formats (explicit all):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Result: only JSON enabled</span>
+</span></span></code></pre><h3 id="template-override-behavior">Template Override Behavior <a href="#template-override-behavior" class="heading-anchor">#</a></h3>
+<p>Templates follow the same pattern:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Global default</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">defaults</span><span class="p">.</span><span class="nx">templates</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="s2">&#34;feed.html&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">card</span> <span class="p">=</span> <span class="s2">&#34;partials/card.html&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Individual feed override</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;featured&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">templates</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">=</span> <span class="s2">&#34;featured-feed.html&#34;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Result: html=&#34;featured-feed.html&#34;, card=&#34;partials/card.html&#34; (inherited)</span>
+</span></span></code></pre><hr>
+<h2 id="configuration-reference">Configuration Reference <a href="#configuration-reference" class="heading-anchor">#</a></h2>
+<h3 id="global-feed-defaults">Global Feed Defaults <a href="#global-feed-defaults" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">defaults</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Pagination</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span><span class="line"><span class="cl"><span class="nx">orphan_threshold</span> <span class="p">=</span> <span class="mi">3</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Formats enabled by default</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">defaults</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">markdown</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sitemap</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Templates used by default</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">defaults</span><span class="p">.</span><span class="nx">templates</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="s2">&#34;feed.html&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">card</span> <span class="p">=</span> <span class="s2">&#34;partials/card.html&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="s2">&#34;rss.xml&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="s2">&#34;atom.xml&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="s2">&#34;feed.json&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">markdown</span> <span class="p">=</span> <span class="s2">&#34;feed.md&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text</span> <span class="p">=</span> <span class="s2">&#34;feed.txt&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sitemap</span> <span class="p">=</span> <span class="s2">&#34;sitemap.xml&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Syndication settings (RSS/Atom/JSON)</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">syndication</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">max_items</span> <span class="p">=</span> <span class="mi">20</span>                     <span class="c"># Max items in RSS/Atom feeds</span>
+</span></span><span class="line"><span class="cl"><span class="nx">include_content</span> <span class="p">=</span> <span class="kc">false</span>            <span class="c"># Include full content or just summary</span>
+</span></span></code></pre><h3 id="built-in-defaults">Built-in Defaults <a href="#built-in-defaults" class="heading-anchor">#</a></h3>
+<p>If no <code>[name.feeds.defaults]</code> is specified, these built-in values apply:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Built-in Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>items_per_page</code></td>
+<td>10</td>
+</tr>
+<tr>
+<td><code>orphan_threshold</code></td>
+<td>3</td>
+</tr>
+<tr>
+<td><code>formats.html</code></td>
+<td>true</td>
+</tr>
+<tr>
+<td><code>formats.rss</code></td>
+<td>true</td>
+</tr>
+<tr>
+<td><code>formats.atom</code></td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>formats.json</code></td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>formats.markdown</code></td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>formats.text</code></td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>formats.sitemap</code></td>
+<td>false</td>
+</tr>
+<tr>
+<td><code>syndication.max_items</code></td>
+<td>20</td>
+</tr>
+<tr>
+<td><code>syndication.include_content</code></td>
+<td>false</td>
+</tr>
+</tbody>
+</table>
+<h3 id="feed-item-limits">Feed Item Limits <a href="#feed-item-limits" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Default Limit</th>
+<th>Configurable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTML</td>
+<td>Paginated</td>
+<td><code>items_per_page</code></td>
+</tr>
+<tr>
+<td>RSS</td>
+<td>20</td>
+<td><code>syndication.max_items</code> or <code>max_items</code></td>
+</tr>
+<tr>
+<td>Atom</td>
+<td>20</td>
+<td><code>syndication.max_items</code> or <code>max_items</code></td>
+</tr>
+<tr>
+<td>JSON</td>
+<td>All</td>
+<td><code>items_per_page</code></td>
+</tr>
+<tr>
+<td>Markdown</td>
+<td>All</td>
+<td><code>items_per_page</code></td>
+</tr>
+<tr>
+<td>Text</td>
+<td>All</td>
+<td><code>items_per_page</code></td>
+</tr>
+<tr>
+<td>Sitemap</td>
+<td>All</td>
+<td>N/A (always includes all posts)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="complete-example">Complete Example <a href="#complete-example" class="heading-anchor">#</a></h2>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Site config</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://myblog.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">author</span> <span class="p">=</span> <span class="s2">&#34;Jane Doe&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="c"># GLOBAL FEED DEFAULTS</span>
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">defaults</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span><span class="line"><span class="cl"><span class="nx">orphan_threshold</span> <span class="p">=</span> <span class="mi">3</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">defaults</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">defaults</span><span class="p">.</span><span class="nx">templates</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="s2">&#34;feed.html&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">card</span> <span class="p">=</span> <span class="s2">&#34;partials/card.html&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">syndication</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">max_items</span> <span class="p">=</span> <span class="mi">20</span>
+</span></span><span class="line"><span class="cl"><span class="nx">include_content</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="c"># INDIVIDUAL FEEDS</span>
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Home page - fewer items, no syndication feeds</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Recent Posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">5</span>                 <span class="c"># Override default</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">json</span> <span class="p">=</span> <span class="kc">false</span> <span class="p">}</span>  <span class="c"># Override: HTML only</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Main blog feed - uses all defaults</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">description</span> <span class="p">=</span> <span class="s2">&#34;All blog posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and templateKey == &#39;post&#39;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Inherits: items_per_page=10, all formats enabled</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Tutorials section - uses defaults</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;tutorial&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Archive - all posts, no pagination, HTML only</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;archive&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Archive&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">0</span>                 <span class="c"># Override: no pagination</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">json</span> <span class="p">=</span> <span class="kc">false</span> <span class="p">}</span>  <span class="c"># Override: HTML only</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># API endpoint - JSON only, no pagination</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;api/posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="c"># AUTO-GENERATED FEEDS</span>
+</span></span><span class="line"><span class="cl"><span class="c"># =============================================================================</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Tag pages - inherit some defaults, override formats</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">auto_tags</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug_prefix</span> <span class="p">=</span> <span class="s2">&#34;tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">json</span> <span class="p">=</span> <span class="kc">false</span> <span class="p">}</span>  <span class="c"># Override: HTML + RSS only</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">formats</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">html</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">rss</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">atom</span> <span class="p">=</span> <span class="kc">false</span><span class="p">,</span> <span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span> <span class="p">}</span>
+</span></span></code></pre><p><strong>Generated outputs:</strong></p>
+<pre><code>public/
+├── index.html                     # Home (5 posts)
+├── blog/
+│   ├── index.html                 # Blog page 1
+│   ├── page/2/index.html          # Blog page 2
+│   ├── rss.xml
+│   ├── atom.xml
+│   └── feed.json
+├── tutorials/
+│   ├── index.html
+│   ├── rss.xml
+│   ├── atom.xml
+│   └── feed.json
+├── archive/
+│   └── index.html                 # All posts, no pagination
+├── tags/
+│   ├── python/
+│   │   ├── index.html
+│   │   └── rss.xml
+│   ├── rust/
+│   │   ├── index.html
+│   │   └── rss.xml
+│   └── ...
+└── api/
+    └── posts/
+        └── feed.json              # JSON API
+</code></pre>
+<hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./SPEC.md">SPEC.md</a> - Core specification</li>
+<li><a href="./CONFIG.md">CONFIG.md</a> - Feed configuration details</li>
+<li><a href="./TEMPLATES.md">TEMPLATES.md</a> - Template system</li>
+<li><a href="./DATA_MODEL.md">DATA_MODEL.md</a> - Post model</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

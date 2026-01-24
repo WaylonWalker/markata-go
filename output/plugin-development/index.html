@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plugin Development - My Site</title>
+    <meta name="description" content="Guide to creating custom plugins for markata-go using the 9-stage lifecycle">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Plugin Development">
+    
+    <meta property="og:url" content="/plugin-development/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Guide to creating custom plugins for markata-go using the 9-stage lifecycle">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="plugins">
+    
+    <meta property="article:tag" content="development">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Plugin Development">
+    
+    <meta name="twitter:description" content="Guide to creating custom plugins for markata-go using the 9-stage lifecycle">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/plugin-development/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Plugin Development",
+  "description": "Guide to creating custom plugins for markata-go using the 9-stage lifecycle",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/plugin-development/"
+  },
+  "keywords": [
+    "documentation",
+    "plugins",
+    "development"
+  ],
+  "url": "/plugin-development/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Plugin Development</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/plugins/">plugins</a>
+                
+                <a href="/tags/development/">development</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="plugin-development-guide">Plugin Development Guide</h1>
+<p>This guide explains how to create plugins for markata-go, a fast, plugin-driven static site generator written in Go.</p>
+<h2 id="philosophy">Philosophy <a href="#philosophy" class="heading-anchor">#</a></h2>
+<p>Plugins are the primary extension mechanism in markata-go. A plugin can:</p>
+<ul>
+<li>Hook into any of the 9 lifecycle stages</li>
+<li>Extend configuration with new fields</li>
+<li>Add computed fields to posts</li>
+<li>Control execution order via priorities</li>
+<li>Process content concurrently for performance</li>
+</ul>
+<h2 id="plugin-architecture-overview">Plugin Architecture Overview <a href="#plugin-architecture-overview" class="heading-anchor">#</a></h2>
+<p>markata-go uses a <strong>Standard 9-stage lifecycle</strong> that provides a good balance between flexibility and simplicity. Each stage is a hook point where plugins can participate by implementing the corresponding interface.</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                        CONFIGURATION PHASE                          │
+├─────────────────────────────────────────────────────────────────────┤
+│  configure → validate                                               │
+│       │           │                                                 │
+│       ▼           ▼                                                 │
+│  [load config, [validate                                            │
+│   init plugins] config]                                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                         CONTENT PHASE                               │
+├─────────────────────────────────────────────────────────────────────┤
+│  glob → load → transform → render → collect                         │
+│    │      │        │          │         │                           │
+│    ▼      ▼        ▼          ▼         ▼                           │
+│  [find  [parse  [pre-proc  [markdown [feeds,                        │
+│   files] posts]  content]   → HTML]   nav]                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                         OUTPUT PHASE                                │
+├─────────────────────────────────────────────────────────────────────┤
+│  write → cleanup                                                    │
+│    │        │                                                       │
+│    ▼        ▼                                                       │
+│  [output  [close                                                    │
+│   files]   resources]                                               │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h2 id="the-9-stage-lifecycle">The 9-Stage Lifecycle <a href="#the-9-stage-lifecycle" class="heading-anchor">#</a></h2>
+<h3 id="stage-1-configure">Stage 1: Configure <a href="#stage-1-configure" class="heading-anchor">#</a></h3>
+<p><strong>Purpose:</strong> Load configuration and initialize plugin state.</p>
+<p><strong>When:</strong> First stage, runs before any content processing.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Read configuration options from <code>m.Config()</code></li>
+<li>Initialize internal state (parsers, clients, caches)</li>
+<li>Set up external connections</li>
+</ul>
+<h3 id="stage-2-validate">Stage 2: Validate <a href="#stage-2-validate" class="heading-anchor">#</a></h3>
+<p><strong>Purpose:</strong> Validate configuration after all plugins have configured.</p>
+<p><strong>When:</strong> After all plugins have initialized.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Validate plugin-specific configuration</li>
+<li>Check for required fields</li>
+<li>Return errors for invalid configurations</li>
+</ul>
+<h3 id="stage-3-glob">Stage 3: Glob <a href="#stage-3-glob" class="heading-anchor">#</a></h3>
+<p><strong>Purpose:</strong> Discover content files.</p>
+<p><strong>When:</strong> First content phase stage.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Find files matching patterns</li>
+<li>Filter based on gitignore</li>
+<li>Add files to the manager via <code>m.SetFiles()</code></li>
+</ul>
+<h3 id="stage-4-load">Stage 4: Load <a href="#stage-4-load" class="heading-anchor">#</a></h3>
+<p><strong>Purpose:</strong> Parse files into post objects.</p>
+<p><strong>When:</strong> After files are discovered.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Read file contents</li>
+<li>Parse frontmatter</li>
+<li>Create <code>*models.Post</code> objects</li>
+<li>Add posts via <code>m.AddPost()</code></li>
+</ul>
+<h3 id="stage-5-transform">Stage 5: Transform <a href="#stage-5-transform" class="heading-anchor">#</a></h3>
+<p><strong>Purpose:</strong> Pre-render content processing.</p>
+<p><strong>When:</strong> After content is loaded, before rendering.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Expand template expressions in content</li>
+<li>Calculate derived fields (reading time, descriptions)</li>
+<li>Process wikilinks, shortcodes</li>
+<li>Set up prev/next links</li>
+</ul>
+<h3 id="stage-6-render">Stage 6: Render <a href="#stage-6-render" class="heading-anchor">#</a></h3>
+<p><strong>Purpose:</strong> Convert markdown to HTML.</p>
+<p><strong>When:</strong> After transform processing.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Convert markdown to HTML</li>
+<li>Apply syntax highlighting</li>
+<li>Process admonitions</li>
+<li>Apply templates</li>
+</ul>
+<h3 id="stage-7-collect">Stage 7: Collect <a href="#stage-7-collect" class="heading-anchor">#</a></h3>
+<p><strong>Purpose:</strong> Build aggregated content.</p>
+<p><strong>When:</strong> After rendering is complete.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Build RSS/Atom/JSON feeds</li>
+<li>Generate sitemaps</li>
+<li>Create tag/category pages</li>
+<li>Build navigation structures</li>
+</ul>
+<h3 id="stage-8-write">Stage 8: Write <a href="#stage-8-write" class="heading-anchor">#</a></h3>
+<p><strong>Purpose:</strong> Write output files to disk.</p>
+<p><strong>When:</strong> After all content is processed.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Write HTML files</li>
+<li>Write feed files</li>
+<li>Copy static assets</li>
+<li>Generate any final output</li>
+</ul>
+<h3 id="stage-9-cleanup">Stage 9: Cleanup <a href="#stage-9-cleanup" class="heading-anchor">#</a></h3>
+<p><strong>Purpose:</strong> Release resources.</p>
+<p><strong>When:</strong> Final stage.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Close database connections</li>
+<li>Flush caches</li>
+<li>Clean up temporary files</li>
+<li>Log final statistics</li>
+</ul>
+<h2 id="plugin-interfaces">Plugin Interfaces <a href="#plugin-interfaces" class="heading-anchor">#</a></h2>
+<p>Every plugin must implement the base <code>Plugin</code> interface. Additional interfaces determine which stages the plugin participates in.</p>
+<h3 id="base-interface-required">Base Interface (Required) <a href="#base-interface-required" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Plugin is the base interface that all plugins must implement.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">Plugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Name returns the unique name of the plugin.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nf">Name</span><span class="p">()</span> <span class="kt">string</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="stage-interfaces">Stage Interfaces <a href="#stage-interfaces" class="heading-anchor">#</a></h3>
+<p>Implement these interfaces to participate in specific stages:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// ConfigurePlugin participates in the configure stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">ConfigurePlugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Plugin</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">Configure</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ValidatePlugin participates in the validate stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">ValidatePlugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Plugin</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">Validate</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// GlobPlugin participates in the glob stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">GlobPlugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Plugin</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">Glob</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// LoadPlugin participates in the load stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">LoadPlugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Plugin</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">Load</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// TransformPlugin participates in the transform stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">TransformPlugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Plugin</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">Transform</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// RenderPlugin participates in the render stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">RenderPlugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Plugin</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">Render</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// CollectPlugin participates in the collect stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">CollectPlugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Plugin</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">Collect</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// WritePlugin participates in the write stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">WritePlugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Plugin</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">Write</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// CleanupPlugin participates in the cleanup stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">CleanupPlugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Plugin</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">Cleanup</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h2 id="creating-a-basic-plugin">Creating a Basic Plugin <a href="#creating-a-basic-plugin" class="heading-anchor">#</a></h2>
+<p>Here's a minimal plugin that adds a custom field to each post:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">plugins</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/example/markata-go/pkg/lifecycle&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/example/markata-go/pkg/models&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// HelloPlugin is a minimal example plugin.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">HelloPlugin</span> <span class="kd">struct</span><span class="p">{}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// NewHelloPlugin creates a new HelloPlugin.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">NewHelloPlugin</span><span class="p">()</span> <span class="o">*</span><span class="nx">HelloPlugin</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="o">&amp;</span><span class="nx">HelloPlugin</span><span class="p">{}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Name returns the unique plugin identifier.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">HelloPlugin</span><span class="p">)</span> <span class="nf">Name</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="s">&#34;hello&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Transform adds a greeting to each post.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">HelloPlugin</span><span class="p">)</span> <span class="nf">Transform</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">post</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Posts</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Skip</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">continue</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">post</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="s">&#34;greeting&#34;</span><span class="p">,</span> <span class="s">&#34;Hello from markata-go!&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Ensure HelloPlugin implements the required interfaces.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span>          <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">HelloPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">TransformPlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">HelloPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><h2 id="plugin-priority-and-ordering">Plugin Priority and Ordering <a href="#plugin-priority-and-ordering" class="heading-anchor">#</a></h2>
+<p>Control when your plugin runs relative to other plugins within the same stage using the <code>PriorityPlugin</code> interface.</p>
+<h3 id="priority-constants">Priority Constants <a href="#priority-constants" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">const</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// PriorityFirst ensures a plugin runs before most others.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">PriorityFirst</span> <span class="p">=</span> <span class="o">-</span><span class="mi">1000</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// PriorityEarly ensures a plugin runs early in the stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">PriorityEarly</span> <span class="p">=</span> <span class="o">-</span><span class="mi">100</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// PriorityDefault is the default priority.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">PriorityDefault</span> <span class="p">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// PriorityLate ensures a plugin runs late in the stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">PriorityLate</span> <span class="p">=</span> <span class="mi">100</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// PriorityLast ensures a plugin runs after most others.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">PriorityLast</span> <span class="p">=</span> <span class="mi">1000</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><h3 id="implementing-priority">Implementing Priority <a href="#implementing-priority" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// PriorityPlugin can be implemented to control execution order.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">PriorityPlugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Plugin</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Priority returns the plugin&#39;s priority for a given stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="c1">// Lower values run first.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nf">Priority</span><span class="p">(</span><span class="nx">stage</span> <span class="nx">Stage</span><span class="p">)</span> <span class="kt">int</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p>Example implementation:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Priority returns the priority for the given stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Description should run early in transform to make descriptions
+</span></span></span><span class="line"><span class="cl"><span class="c1">// available for other plugins.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">DescriptionPlugin</span><span class="p">)</span> <span class="nf">Priority</span><span class="p">(</span><span class="nx">stage</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Stage</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">stage</span> <span class="o">==</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">StageTransform</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityEarly</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityDefault</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p>Plugins without the <code>PriorityPlugin</code> interface use <code>PriorityDefault</code> (0). Within the same priority level, plugins run in registration order.</p>
+<h2 id="accessing-the-manager">Accessing the Manager <a href="#accessing-the-manager" class="heading-anchor">#</a></h2>
+<p>The <code>*lifecycle.Manager</code> is passed to all hook methods and provides access to:</p>
+<h3 id="posts">Posts <a href="#posts" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Get all posts
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">posts</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Posts</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Add a new post
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">m</span><span class="p">.</span><span class="nf">AddPost</span><span class="p">(</span><span class="nx">post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Replace all posts
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">m</span><span class="p">.</span><span class="nf">SetPosts</span><span class="p">(</span><span class="nx">posts</span><span class="p">)</span>
+</span></span></code></pre><h3 id="files">Files <a href="#files" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Get discovered file paths
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">files</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Files</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Set file paths (typically done by glob plugins)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">m</span><span class="p">.</span><span class="nf">SetFiles</span><span class="p">(</span><span class="nx">files</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Add a single file
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">m</span><span class="p">.</span><span class="nf">AddFile</span><span class="p">(</span><span class="s">&#34;path/to/file.md&#34;</span><span class="p">)</span>
+</span></span></code></pre><h3 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Get the configuration
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">config</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Config</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Access standard config fields
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">contentDir</span> <span class="o">:=</span> <span class="nx">config</span><span class="p">.</span><span class="nx">ContentDir</span>  <span class="c1">// Source directory
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">outputDir</span> <span class="o">:=</span> <span class="nx">config</span><span class="p">.</span><span class="nx">OutputDir</span>    <span class="c1">// Output directory
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">patterns</span> <span class="o">:=</span> <span class="nx">config</span><span class="p">.</span><span class="nx">GlobPatterns</span>  <span class="c1">// Glob patterns for file discovery
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>
+</span></span><span class="line"><span class="cl"><span class="c1">// Access custom config via Extra map
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">if</span> <span class="nx">val</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">config</span><span class="p">.</span><span class="nx">Extra</span><span class="p">[</span><span class="s">&#34;my_setting&#34;</span><span class="p">].(</span><span class="kt">string</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Use val
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span></code></pre><h3 id="feeds">Feeds <a href="#feeds" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Get all feeds
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">feeds</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Feeds</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Add a feed
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">m</span><span class="p">.</span><span class="nf">AddFeed</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Feed</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Name</span><span class="p">:</span>    <span class="s">&#34;main&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Title</span><span class="p">:</span>   <span class="s">&#34;My Blog&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Posts</span><span class="p">:</span>   <span class="nx">posts</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Content</span><span class="p">:</span> <span class="nx">feedXML</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Path</span><span class="p">:</span>    <span class="s">&#34;feed.xml&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span>
+</span></span></code></pre><h3 id="cache">Cache <a href="#cache" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Get the cache
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">cache</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Cache</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Store a value
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">cache</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="s">&#34;key&#34;</span><span class="p">,</span> <span class="nx">value</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Retrieve a value
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">if</span> <span class="nx">val</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">cache</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="s">&#34;key&#34;</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Use val
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Delete a value
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">cache</span><span class="p">.</span><span class="nf">Delete</span><span class="p">(</span><span class="s">&#34;key&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Clear all cached data
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">cache</span><span class="p">.</span><span class="nf">Clear</span><span class="p">()</span>
+</span></span></code></pre><h3 id="filtering-posts">Filtering Posts <a href="#filtering-posts" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Filter posts using expressions
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">published</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Filter</span><span class="p">(</span><span class="s">&#34;published==true&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">drafts</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Filter</span><span class="p">(</span><span class="s">&#34;draft==true&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">tagged</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Filter</span><span class="p">(</span><span class="s">&#34;tags contains golang&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Complex filters with AND/OR
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">recent</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Filter</span><span class="p">(</span><span class="s">&#34;published==true and draft!=true&#34;</span><span class="p">)</span>
+</span></span></code></pre><h3 id="concurrent-processing">Concurrent Processing <a href="#concurrent-processing" class="heading-anchor">#</a></h3>
+<p>For performance, use the built-in concurrent processor:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Transform</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">m</span><span class="p">.</span><span class="nf">ProcessPostsConcurrently</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">post</span> <span class="o">*</span><span class="nx">models</span><span class="p">.</span><span class="nx">Post</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Skip</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// Process the post (runs in parallel)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nx">post</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="s">&#34;computed_field&#34;</span><span class="p">,</span> <span class="nf">computeValue</span><span class="p">(</span><span class="nx">post</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">    <span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h2 id="extending-configuration">Extending Configuration <a href="#extending-configuration" class="heading-anchor">#</a></h2>
+<p>Read custom configuration from the <code>Extra</code> map:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Configure</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">config</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Config</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Read configuration with defaults
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">if</span> <span class="nx">config</span><span class="p">.</span><span class="nx">Extra</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">enabled</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">config</span><span class="p">.</span><span class="nx">Extra</span><span class="p">[</span><span class="s">&#34;my_plugin_enabled&#34;</span><span class="p">].(</span><span class="kt">bool</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">p</span><span class="p">.</span><span class="nx">enabled</span> <span class="p">=</span> <span class="nx">enabled</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">threshold</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">config</span><span class="p">.</span><span class="nx">Extra</span><span class="p">[</span><span class="s">&#34;my_plugin_threshold&#34;</span><span class="p">].(</span><span class="kt">int</span><span class="p">);</span> <span class="nx">ok</span> <span class="o">&amp;&amp;</span> <span class="nx">threshold</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">p</span><span class="p">.</span><span class="nx">threshold</span> <span class="p">=</span> <span class="nx">threshold</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p>Users configure in their <code>markata.toml</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">my_plugin_enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">my_plugin_threshold</span> <span class="p">=</span> <span class="mi">100</span>
+</span></span></code></pre><h2 id="working-with-posts">Working with Posts <a href="#working-with-posts" class="heading-anchor">#</a></h2>
+<h3 id="post-structure">Post Structure <a href="#post-structure" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">Post</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Path</span>        <span class="kt">string</span>                 <span class="c1">// Source file path
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Content</span>     <span class="kt">string</span>                 <span class="c1">// Raw markdown content
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Slug</span>        <span class="kt">string</span>                 <span class="c1">// URL-safe identifier
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Href</span>        <span class="kt">string</span>                 <span class="c1">// Relative URL path (e.g., /my-post/)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Title</span>       <span class="o">*</span><span class="kt">string</span>                <span class="c1">// Optional title
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Date</span>        <span class="o">*</span><span class="nx">time</span><span class="p">.</span><span class="nx">Time</span>             <span class="c1">// Optional publication date
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Published</span>   <span class="kt">bool</span>                   <span class="c1">// Is the post published?
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Draft</span>       <span class="kt">bool</span>                   <span class="c1">// Is it a draft?
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Skip</span>        <span class="kt">bool</span>                   <span class="c1">// Should it be skipped?
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Tags</span>        <span class="p">[]</span><span class="kt">string</span>               <span class="c1">// Associated tags
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Description</span> <span class="o">*</span><span class="kt">string</span>                <span class="c1">// Meta description
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Template</span>    <span class="kt">string</span>                 <span class="c1">// Template file (default: &#34;post.html&#34;)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">HTML</span>        <span class="kt">string</span>                 <span class="c1">// Final rendered HTML
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">ArticleHTML</span> <span class="kt">string</span>                 <span class="c1">// Content HTML without template
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Extra</span>       <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kd">interface</span><span class="p">{}</span> <span class="c1">// Dynamic/custom fields
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span></code></pre><h3 id="getting-and-setting-custom-fields">Getting and Setting Custom Fields <a href="#getting-and-setting-custom-fields" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Get a custom field (returns nil if not found)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">value</span> <span class="o">:=</span> <span class="nx">post</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="s">&#34;custom_field&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Set a custom field
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">post</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="s">&#34;reading_time&#34;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">post</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="s">&#34;word_count&#34;</span><span class="p">,</span> <span class="mi">1200</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Check if a field exists
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">if</span> <span class="nx">post</span><span class="p">.</span><span class="nf">Has</span><span class="p">(</span><span class="s">&#34;custom_field&#34;</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// ...
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span></code></pre><h3 id="respecting-skip-flag">Respecting Skip Flag <a href="#respecting-skip-flag" class="heading-anchor">#</a></h3>
+<p>Always check the <code>Skip</code> flag before processing:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">post</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Posts</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Skip</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">continue</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Process the post
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span></code></pre><h2 id="complete-example-plugin">Complete Example Plugin <a href="#complete-example-plugin" class="heading-anchor">#</a></h2>
+<p>Here's a complete plugin that calculates reading time for posts:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">plugins</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;fmt&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;math&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;regexp&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;strings&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;unicode&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/example/markata-go/pkg/lifecycle&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/example/markata-go/pkg/models&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ReadingTimePlugin calculates word count and estimated reading time
+</span></span></span><span class="line"><span class="cl"><span class="c1">// for each post during the transform stage.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">ReadingTimePlugin</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// wordsPerMinute is the average reading speed (default: 200)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">wordsPerMinute</span> <span class="kt">int</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// NewReadingTimePlugin creates a new ReadingTimePlugin with default settings.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="nf">NewReadingTimePlugin</span><span class="p">()</span> <span class="o">*</span><span class="nx">ReadingTimePlugin</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="o">&amp;</span><span class="nx">ReadingTimePlugin</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">wordsPerMinute</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Name returns the unique name of the plugin.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">ReadingTimePlugin</span><span class="p">)</span> <span class="nf">Name</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="s">&#34;reading_time&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Configure reads configuration options for the plugin.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">ReadingTimePlugin</span><span class="p">)</span> <span class="nf">Configure</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">config</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Config</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">config</span><span class="p">.</span><span class="nx">Extra</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">wpm</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">config</span><span class="p">.</span><span class="nx">Extra</span><span class="p">[</span><span class="s">&#34;words_per_minute&#34;</span><span class="p">].(</span><span class="kt">int</span><span class="p">);</span> <span class="nx">ok</span> <span class="o">&amp;&amp;</span> <span class="nx">wpm</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">p</span><span class="p">.</span><span class="nx">wordsPerMinute</span> <span class="p">=</span> <span class="nx">wpm</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Transform calculates word count and reading time for each post.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">ReadingTimePlugin</span><span class="p">)</span> <span class="nf">Transform</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">m</span><span class="p">.</span><span class="nf">ProcessPostsConcurrently</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">post</span> <span class="o">*</span><span class="nx">models</span><span class="p">.</span><span class="nx">Post</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Skip</span> <span class="o">||</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Content</span> <span class="o">==</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// Count words
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nx">wordCount</span> <span class="o">:=</span> <span class="nx">p</span><span class="p">.</span><span class="nf">countWords</span><span class="p">(</span><span class="nx">post</span><span class="p">.</span><span class="nx">Content</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">post</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="s">&#34;word_count&#34;</span><span class="p">,</span> <span class="nx">wordCount</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// Calculate reading time in minutes
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nx">readingTime</span> <span class="o">:=</span> <span class="nx">p</span><span class="p">.</span><span class="nf">calculateReadingTime</span><span class="p">(</span><span class="nx">wordCount</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">post</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="s">&#34;reading_time&#34;</span><span class="p">,</span> <span class="nx">readingTime</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="c1">// Also store a formatted string
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nx">post</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="s">&#34;reading_time_text&#34;</span><span class="p">,</span> <span class="nx">p</span><span class="p">.</span><span class="nf">formatReadingTime</span><span class="p">(</span><span class="nx">readingTime</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">    <span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Regex pattern to match code blocks
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="nx">codeBlockPattern</span> <span class="p">=</span> <span class="nx">regexp</span><span class="p">.</span><span class="nf">MustCompile</span><span class="p">(</span><span class="s">&#34;(?s)```.*?```|~~~.*?~~~|`[^`]+`&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// countWords counts the number of words in markdown content.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">ReadingTimePlugin</span><span class="p">)</span> <span class="nf">countWords</span><span class="p">(</span><span class="nx">content</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Remove code blocks
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">text</span> <span class="o">:=</span> <span class="nx">codeBlockPattern</span><span class="p">.</span><span class="nf">ReplaceAllString</span><span class="p">(</span><span class="nx">content</span><span class="p">,</span> <span class="s">&#34; &#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// Count words
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">words</span> <span class="o">:=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">inWord</span> <span class="o">:=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">r</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">text</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">unicode</span><span class="p">.</span><span class="nf">IsLetter</span><span class="p">(</span><span class="nx">r</span><span class="p">)</span> <span class="o">||</span> <span class="nx">unicode</span><span class="p">.</span><span class="nf">IsDigit</span><span class="p">(</span><span class="nx">r</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="p">!</span><span class="nx">inWord</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">words</span><span class="o">++</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">inWord</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">            <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">inWord</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">words</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// calculateReadingTime estimates reading time in minutes.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">ReadingTimePlugin</span><span class="p">)</span> <span class="nf">calculateReadingTime</span><span class="p">(</span><span class="nx">wordCount</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">wordCount</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nx">minutes</span> <span class="o">:=</span> <span class="nb">float64</span><span class="p">(</span><span class="nx">wordCount</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float64</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">wordsPerMinute</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nx">math</span><span class="p">.</span><span class="nf">Ceil</span><span class="p">(</span><span class="nx">minutes</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// formatReadingTime creates a human-readable reading time string.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">ReadingTimePlugin</span><span class="p">)</span> <span class="nf">formatReadingTime</span><span class="p">(</span><span class="nx">minutes</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">minutes</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s">&#34;&lt; 1 min read&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">minutes</span> <span class="o">==</span> <span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s">&#34;1 min read&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;%d min read&#34;</span><span class="p">,</span> <span class="nx">minutes</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Ensure ReadingTimePlugin implements the required interfaces.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span>          <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">ReadingTimePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">ConfigurePlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">ReadingTimePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">TransformPlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">ReadingTimePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><h2 id="testing-plugins">Testing Plugins <a href="#testing-plugins" class="heading-anchor">#</a></h2>
+<h3 id="unit-test-example">Unit Test Example <a href="#unit-test-example" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">plugins</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;testing&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/example/markata-go/pkg/lifecycle&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/example/markata-go/pkg/models&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">TestReadingTimePlugin_Transform</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">tests</span> <span class="o">:=</span> <span class="p">[]</span><span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">name</span>            <span class="kt">string</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">content</span>         <span class="kt">string</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">wordsPerMinute</span>  <span class="kt">int</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">wantWordCount</span>   <span class="kt">int</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">wantReadingTime</span> <span class="kt">int</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}{</span>
+</span></span><span class="line"><span class="cl">        <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">name</span><span class="p">:</span>            <span class="s">&#34;short post&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">content</span><span class="p">:</span>         <span class="s">&#34;Hello world this is a test.&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">wordsPerMinute</span><span class="p">:</span>  <span class="mi">200</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">wantWordCount</span><span class="p">:</span>   <span class="mi">6</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">wantReadingTime</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="c1">// Minimum 1 minute
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="p">},</span>
+</span></span><span class="line"><span class="cl">        <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">name</span><span class="p">:</span>            <span class="s">&#34;longer post&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">content</span><span class="p">:</span>         <span class="nx">strings</span><span class="p">.</span><span class="nf">Repeat</span><span class="p">(</span><span class="s">&#34;word &#34;</span><span class="p">,</span> <span class="mi">400</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">wordsPerMinute</span><span class="p">:</span>  <span class="mi">200</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">wantReadingTime</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="p">},</span>
+</span></span><span class="line"><span class="cl">        <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">name</span><span class="p">:</span>            <span class="s">&#34;custom WPM&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">content</span><span class="p">:</span>         <span class="nx">strings</span><span class="p">.</span><span class="nf">Repeat</span><span class="p">(</span><span class="s">&#34;word &#34;</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">wordsPerMinute</span><span class="p">:</span>  <span class="mi">100</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">wantReadingTime</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">tt</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">tests</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">t</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="nx">tt</span><span class="p">.</span><span class="nx">name</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="c1">// Create plugin with custom WPM
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>            <span class="nx">plugin</span> <span class="o">:=</span> <span class="nf">NewReadingTimePlugin</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">plugin</span><span class="p">.</span><span class="nx">wordsPerMinute</span> <span class="p">=</span> <span class="nx">tt</span><span class="p">.</span><span class="nx">wordsPerMinute</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="c1">// Create manager with a test post
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>            <span class="nx">m</span> <span class="o">:=</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nf">NewManager</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">post</span> <span class="o">:=</span> <span class="nx">models</span><span class="p">.</span><span class="nf">NewPost</span><span class="p">(</span><span class="s">&#34;test.md&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">post</span><span class="p">.</span><span class="nx">Content</span> <span class="p">=</span> <span class="nx">tt</span><span class="p">.</span><span class="nx">content</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">m</span><span class="p">.</span><span class="nf">AddPost</span><span class="p">(</span><span class="nx">post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="c1">// Run transform
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>            <span class="nx">err</span> <span class="o">:=</span> <span class="nx">plugin</span><span class="p">.</span><span class="nf">Transform</span><span class="p">(</span><span class="nx">m</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">t</span><span class="p">.</span><span class="nf">Fatalf</span><span class="p">(</span><span class="s">&#34;Transform() error = %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="c1">// Check results
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>            <span class="nx">posts</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Posts</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">posts</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">t</span><span class="p">.</span><span class="nf">Fatalf</span><span class="p">(</span><span class="s">&#34;Expected 1 post, got %d&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">posts</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">            <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="nx">readingTime</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">posts</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">Get</span><span class="p">(</span><span class="s">&#34;reading_time&#34;</span><span class="p">).(</span><span class="kt">int</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">t</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="s">&#34;reading_time not set&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="p">}</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="nx">readingTime</span> <span class="o">!=</span> <span class="nx">tt</span><span class="p">.</span><span class="nx">wantReadingTime</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">t</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;reading_time = %d, want %d&#34;</span><span class="p">,</span> <span class="nx">readingTime</span><span class="p">,</span> <span class="nx">tt</span><span class="p">.</span><span class="nx">wantReadingTime</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="p">})</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">TestReadingTimePlugin_SkipsSkippedPosts</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">plugin</span> <span class="o">:=</span> <span class="nf">NewReadingTimePlugin</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nx">m</span> <span class="o">:=</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nf">NewManager</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">post</span> <span class="o">:=</span> <span class="nx">models</span><span class="p">.</span><span class="nf">NewPost</span><span class="p">(</span><span class="s">&#34;test.md&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">post</span><span class="p">.</span><span class="nx">Content</span> <span class="p">=</span> <span class="s">&#34;Some content here&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">post</span><span class="p">.</span><span class="nx">Skip</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">m</span><span class="p">.</span><span class="nf">AddPost</span><span class="p">(</span><span class="nx">post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nx">err</span> <span class="o">:=</span> <span class="nx">plugin</span><span class="p">.</span><span class="nf">Transform</span><span class="p">(</span><span class="nx">m</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">t</span><span class="p">.</span><span class="nf">Fatalf</span><span class="p">(</span><span class="s">&#34;Transform() error = %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// Verify reading_time was NOT set
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">if</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Posts</span><span class="p">()[</span><span class="mi">0</span><span class="p">].</span><span class="nf">Has</span><span class="p">(</span><span class="s">&#34;reading_time&#34;</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">t</span><span class="p">.</span><span class="nf">Error</span><span class="p">(</span><span class="s">&#34;reading_time should not be set for skipped posts&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="integration-test-example">Integration Test Example <a href="#integration-test-example" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">TestReadingTimePlugin_Integration</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Create a temporary directory with test files
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">tmpDir</span> <span class="o">:=</span> <span class="nx">t</span><span class="p">.</span><span class="nf">TempDir</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// Write a test markdown file
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">content</span> <span class="o">:=</span> <span class="s">`---
+</span></span></span><span class="line"><span class="cl"><span class="s">title: Test Post
+</span></span></span><span class="line"><span class="cl"><span class="s">published: true
+</span></span></span><span class="line"><span class="cl"><span class="s">---
+</span></span></span><span class="line"><span class="cl"><span class="s">
+</span></span></span><span class="line"><span class="cl"><span class="s">This is test content with enough words to calculate reading time.
+</span></span></span><span class="line"><span class="cl"><span class="s">`</span> <span class="o">+</span> <span class="nx">strings</span><span class="p">.</span><span class="nf">Repeat</span><span class="p">(</span><span class="s">&#34;word &#34;</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">WriteFile</span><span class="p">(</span><span class="nx">filepath</span><span class="p">.</span><span class="nf">Join</span><span class="p">(</span><span class="nx">tmpDir</span><span class="p">,</span> <span class="s">&#34;test.md&#34;</span><span class="p">),</span> <span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="nx">content</span><span class="p">),</span> <span class="mo">0644</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">t</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// Setup manager
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">m</span> <span class="o">:=</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nf">NewManager</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cfg</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Config</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cfg</span><span class="p">.</span><span class="nx">ContentDir</span> <span class="p">=</span> <span class="nx">tmpDir</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cfg</span><span class="p">.</span><span class="nx">OutputDir</span> <span class="p">=</span> <span class="nx">filepath</span><span class="p">.</span><span class="nf">Join</span><span class="p">(</span><span class="nx">tmpDir</span><span class="p">,</span> <span class="s">&#34;output&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// Register plugins
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">m</span><span class="p">.</span><span class="nf">RegisterPlugins</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">NewGlobPlugin</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">NewLoadPlugin</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">NewReadingTimePlugin</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">    <span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// Run through transform stage
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">err</span> <span class="p">=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">RunTo</span><span class="p">(</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">StageTransform</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">t</span><span class="p">.</span><span class="nf">Fatalf</span><span class="p">(</span><span class="s">&#34;RunTo() error = %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// Verify reading time was calculated
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">posts</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Posts</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">posts</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">t</span><span class="p">.</span><span class="nf">Fatalf</span><span class="p">(</span><span class="s">&#34;Expected 1 post, got %d&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">posts</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="nx">readingTime</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">posts</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nf">Get</span><span class="p">(</span><span class="s">&#34;reading_time&#34;</span><span class="p">).(</span><span class="kt">int</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">t</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="s">&#34;reading_time not set&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">readingTime</span> <span class="p">&lt;</span> <span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">t</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;reading_time = %d, expected &gt;= 1&#34;</span><span class="p">,</span> <span class="nx">readingTime</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h2 id="registering-plugins">Registering Plugins <a href="#registering-plugins" class="heading-anchor">#</a></h2>
+<h3 id="built-in-registry">Built-in Registry <a href="#built-in-registry" class="heading-anchor">#</a></h3>
+<p>markata-go includes a plugin registry for managing plugins by name:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Register a plugin constructor
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">plugins</span><span class="p">.</span><span class="nf">RegisterPluginConstructor</span><span class="p">(</span><span class="s">&#34;my_plugin&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">()</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nf">NewMyPlugin</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Get a plugin by name
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">plugin</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">plugins</span><span class="p">.</span><span class="nf">PluginByName</span><span class="p">(</span><span class="s">&#34;my_plugin&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="s">&#34;Plugin not found&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// List all registered plugins
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">names</span> <span class="o">:=</span> <span class="nx">plugins</span><span class="p">.</span><span class="nf">RegisteredPlugins</span><span class="p">()</span>
+</span></span></code></pre><h3 id="using-default-plugins">Using Default Plugins <a href="#using-default-plugins" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Get all default plugins
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">m</span> <span class="o">:=</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nf">NewManager</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="nx">m</span><span class="p">.</span><span class="nf">RegisterPlugins</span><span class="p">(</span><span class="nx">plugins</span><span class="p">.</span><span class="nf">DefaultPlugins</span><span class="p">()</span><span class="o">...</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Or use minimal set
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">m</span><span class="p">.</span><span class="nf">RegisterPlugins</span><span class="p">(</span><span class="nx">plugins</span><span class="p">.</span><span class="nf">MinimalPlugins</span><span class="p">()</span><span class="o">...</span><span class="p">)</span>
+</span></span></code></pre><h3 id="manual-registration">Manual Registration <a href="#manual-registration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">m</span> <span class="o">:=</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nf">NewManager</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Register individual plugins
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">m</span><span class="p">.</span><span class="nf">RegisterPlugin</span><span class="p">(</span><span class="nx">plugins</span><span class="p">.</span><span class="nf">NewGlobPlugin</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl"><span class="nx">m</span><span class="p">.</span><span class="nf">RegisterPlugin</span><span class="p">(</span><span class="nx">plugins</span><span class="p">.</span><span class="nf">NewLoadPlugin</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl"><span class="nx">m</span><span class="p">.</span><span class="nf">RegisterPlugin</span><span class="p">(</span><span class="nf">NewMyCustomPlugin</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Or register multiple at once
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">m</span><span class="p">.</span><span class="nf">RegisterPlugins</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">plugins</span><span class="p">.</span><span class="nf">NewGlobPlugin</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">plugins</span><span class="p">.</span><span class="nf">NewLoadPlugin</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">plugins</span><span class="p">.</span><span class="nf">NewRenderMarkdownPlugin</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">NewMyCustomPlugin</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><h3 id="plugin-loading-from-config">Plugin Loading from Config <a href="#plugin-loading-from-config" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Load plugins by name from configuration
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">pluginNames</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;glob&#34;</span><span class="p">,</span> <span class="s">&#34;load&#34;</span><span class="p">,</span> <span class="s">&#34;render_markdown&#34;</span><span class="p">,</span> <span class="s">&#34;templates&#34;</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="nx">loadedPlugins</span><span class="p">,</span> <span class="nx">warnings</span> <span class="o">:=</span> <span class="nx">plugins</span><span class="p">.</span><span class="nf">PluginsByNames</span><span class="p">(</span><span class="nx">pluginNames</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">w</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">warnings</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Warning: %s&#34;</span><span class="p">,</span> <span class="nx">w</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">m</span><span class="p">.</span><span class="nf">RegisterPlugins</span><span class="p">(</span><span class="nx">loadedPlugins</span><span class="o">...</span><span class="p">)</span>
+</span></span></code></pre><h2 id="error-handling">Error Handling <a href="#error-handling" class="heading-anchor">#</a></h2>
+<h3 id="returning-errors">Returning Errors <a href="#returning-errors" class="heading-anchor">#</a></h3>
+<p>Return errors from hook methods to signal failure:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Transform</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">post</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Posts</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">p</span><span class="p">.</span><span class="nf">processPost</span><span class="p">(</span><span class="nx">post</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;processing %s: %w&#34;</span><span class="p">,</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Path</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="critical-vs-non-critical-stages">Critical vs Non-Critical Stages <a href="#critical-vs-non-critical-stages" class="heading-anchor">#</a></h3>
+<p>Some stages are critical and halt execution on error:</p>
+<ul>
+<li><strong>Critical:</strong> Configure, Validate, Glob, Load</li>
+<li><strong>Non-Critical:</strong> Transform, Render, Collect, Write, Cleanup</li>
+</ul>
+<p>For non-critical stages, individual post errors can be logged while allowing the build to continue.</p>
+<h3 id="accessing-warnings">Accessing Warnings <a href="#accessing-warnings" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// After running stages
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">err</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Run</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Check warnings even if no error
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">warning</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Warnings</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Warning: %s&#34;</span><span class="p">,</span> <span class="nx">warning</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h2 id="best-practices">Best Practices <a href="#best-practices" class="heading-anchor">#</a></h2>
+<h3 id="1-always-check-configuration">1. Always Check Configuration <a href="#1-always-check-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Configure</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">config</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Config</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Provide sensible defaults
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">p</span><span class="p">.</span><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">p</span><span class="p">.</span><span class="nx">threshold</span> <span class="p">=</span> <span class="mi">100</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Override with config values if present
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">if</span> <span class="nx">config</span><span class="p">.</span><span class="nx">Extra</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">enabled</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">config</span><span class="p">.</span><span class="nx">Extra</span><span class="p">[</span><span class="s">&#34;my_plugin_enabled&#34;</span><span class="p">].(</span><span class="kt">bool</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">p</span><span class="p">.</span><span class="nx">enabled</span> <span class="p">=</span> <span class="nx">enabled</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="2-respect-the-skip-flag">2. Respect the Skip Flag <a href="#2-respect-the-skip-flag" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">post</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Posts</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Skip</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">continue</span>  <span class="c1">// Always skip posts marked for skipping
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Process the post
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span></code></pre><h3 id="3-use-concurrent-processing-for-performance">3. Use Concurrent Processing for Performance <a href="#3-use-concurrent-processing-for-performance" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Transform</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">m</span><span class="p">.</span><span class="nf">ProcessPostsConcurrently</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">post</span> <span class="o">*</span><span class="nx">models</span><span class="p">.</span><span class="nx">Post</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// This runs in parallel across posts
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">return</span> <span class="nx">p</span><span class="p">.</span><span class="nf">processPost</span><span class="p">(</span><span class="nx">post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="4-implement-interface-verification">4. Implement Interface Verification <a href="#4-implement-interface-verification" class="heading-anchor">#</a></h3>
+<p>At the end of your plugin file, verify interface implementation:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Ensure MyPlugin implements the required interfaces at compile time.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span>          <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">ConfigurePlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">TransformPlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><h3 id="5-handle-missing-fields-gracefully">5. Handle Missing Fields Gracefully <a href="#5-handle-missing-fields-gracefully" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Check for nil pointers
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">if</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Title</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">title</span> <span class="p">=</span> <span class="o">*</span><span class="nx">post</span><span class="p">.</span><span class="nx">Title</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">title</span> <span class="p">=</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Slug</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Use Get() with type assertion
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">if</span> <span class="nx">val</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">post</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="s">&#34;custom_field&#34;</span><span class="p">).(</span><span class="kt">string</span><span class="p">);</span> <span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Use val
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span></code></pre><h3 id="6-document-your-plugin">6. Document Your Plugin <a href="#6-document-your-plugin" class="heading-anchor">#</a></h3>
+<p>Include clear documentation at the top of your plugin file:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Package plugins provides lifecycle plugins for markata-go.
+</span></span></span><span class="line"><span class="cl"><span class="c1">//
+</span></span></span><span class="line"><span class="cl"><span class="c1">// MyPlugin does X, Y, and Z.
+</span></span></span><span class="line"><span class="cl"><span class="c1">//
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Configuration:
+</span></span></span><span class="line"><span class="cl"><span class="c1">//     [markata]
+</span></span></span><span class="line"><span class="cl"><span class="c1">//     my_plugin_enabled = true
+</span></span></span><span class="line"><span class="cl"><span class="c1">//     my_plugin_threshold = 100
+</span></span></span><span class="line"><span class="cl"><span class="c1">//
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Post fields set:
+</span></span></span><span class="line"><span class="cl"><span class="c1">//     - my_computed_field: Description of the field
+</span></span></span><span class="line"><span class="cl"><span class="c1">//
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Usage in templates:
+</span></span></span><span class="line"><span class="cl"><span class="c1">//     {{ post.my_computed_field }}
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kn">package</span> <span class="nx">plugins</span>
+</span></span></code></pre><h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="../../spec/spec/LIFECYCLE.md">Lifecycle Stages Specification</a> - Detailed stage documentation</li>
+<li><a href="../../spec/spec/PLUGINS.md">Plugin Specification</a> - Full plugin development specification</li>
+<li><a href="../plugins/">Built-in Plugins</a> - Documentation for built-in plugins</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

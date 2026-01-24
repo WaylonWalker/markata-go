@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation - My Site</title>
+    <meta name="description" content="How to install markata-go on your system">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Installation">
+    
+    <meta property="og:url" content="/installation/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="How to install markata-go on your system">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="getting-started">
+    
+    <meta property="article:tag" content="installation">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Installation">
+    
+    <meta name="twitter:description" content="How to install markata-go on your system">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/installation/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Installation",
+  "description": "How to install markata-go on your system",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/installation/"
+  },
+  "keywords": [
+    "getting-started",
+    "installation"
+  ],
+  "url": "/installation/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Installation</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/getting-started/">getting-started</a>
+                
+                <a href="/tags/installation/">installation</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="installation">Installation</h1>
+<p>markata-go is distributed as a single binary with no dependencies. Choose the installation method that works best for you.</p>
+<h2 id="quick-install-recommended">Quick Install (Recommended) <a href="#quick-install-recommended" class="heading-anchor">#</a></h2>
+<h3 id="one-liner-install-script">One-liner Install Script <a href="#one-liner-install-script" class="heading-anchor">#</a></h3>
+<p>The easiest way to install markata-go on Linux and macOS:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">curl -sSL https://waylonwalker.github.io/markata-go/install.sh <span class="p">|</span> bash
+</span></span></code></pre><p>This script:</p>
+<ul>
+<li>Automatically detects your OS and architecture</li>
+<li>Downloads the correct binary from GitHub releases</li>
+<li>Installs to <code>/usr/local/bin</code> or <code>~/.local/bin</code></li>
+<li>Verifies the installation</li>
+</ul>
+<p><strong>Custom installation directory:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nv">INSTALL_DIR</span><span class="o">=</span>/opt/bin curl -sSL https://waylonwalker.github.io/markata-go/install.sh <span class="p">|</span> bash
+</span></span></code></pre><p><strong>Install a specific version:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nv">VERSION</span><span class="o">=</span>v0.1.0 curl -sSL https://waylonwalker.github.io/markata-go/install.sh <span class="p">|</span> bash
+</span></span></code></pre><h3 id="using-jpillorainstaller">Using jpillora/installer <a href="#using-jpillorainstaller" class="heading-anchor">#</a></h3>
+<p>The fastest way to install on Linux and macOS:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">curl -sL https://i.jpillora.com/WaylonWalker/markata-go <span class="p">|</span> bash
+</span></span></code></pre><p>This automatically detects your OS and architecture and installs the latest release.</p>
+<h3 id="using-eget">Using eget <a href="#using-eget" class="heading-anchor">#</a></h3>
+<p><a href="https://github.com/zyedidia/eget">eget</a> is a convenient tool for downloading pre-built binaries:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Install eget first (if you haven&#39;t)</span>
+</span></span><span class="line"><span class="cl">go install github.com/zyedidia/eget@latest
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Install markata-go</span>
+</span></span><span class="line"><span class="cl">eget WaylonWalker/markata-go
+</span></span></code></pre><h3 id="using-mise">Using mise <a href="#using-mise" class="heading-anchor">#</a></h3>
+<p><a href="https://mise.jdx.dev/">mise</a> is a polyglot runtime manager that can install tools directly from GitHub releases:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Install globally</span>
+</span></span><span class="line"><span class="cl">mise use -g github:WaylonWalker/markata-go
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Or add to your project&#39;s mise.toml</span>
+</span></span><span class="line"><span class="cl">mise use github:WaylonWalker/markata-go
+</span></span></code></pre><p>This uses mise's <a href="https://mise.jdx.dev/dev-tools/backends/github.html">GitHub backend</a> which automatically detects the correct binary for your platform from GitHub releases.</p>
+<h2 id="package-managers">Package Managers <a href="#package-managers" class="heading-anchor">#</a></h2>
+<h3 id="homebrew-macoslinux">Homebrew (macOS/Linux) <a href="#homebrew-macoslinux" class="heading-anchor">#</a></h3>
+<p>Coming soon! For now, use one of the methods above.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Future support planned:</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># brew install example/tap/markata-go</span>
+</span></span></code></pre><h3 id="go-install">Go Install <a href="#go-install" class="heading-anchor">#</a></h3>
+<p>If you have Go 1.22+ installed:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
+</span></span></code></pre><p>Note: This installs to <code>$GOPATH/bin</code> (usually <code>~/go/bin</code>). Ensure this is in your <code>PATH</code>.</p>
+<h2 id="manual-download">Manual Download <a href="#manual-download" class="heading-anchor">#</a></h2>
+<p>Download the appropriate archive for your platform from the <a href="https://github.com/WaylonWalker/markata-go/releases">GitHub Releases</a> page.</p>
+<h3 id="available-platforms">Available Platforms <a href="#available-platforms" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>OS</th>
+<th>Architecture</th>
+<th>Archive</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Linux</td>
+<td>x86_64 (amd64)</td>
+<td><code>markata-go_*_linux_x86_64.tar.gz</code></td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>ARM64</td>
+<td><code>markata-go_*_linux_arm64.tar.gz</code></td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>ARMv7</td>
+<td><code>markata-go_*_linux_armv7.tar.gz</code></td>
+</tr>
+<tr>
+<td>macOS</td>
+<td>x86_64 (Intel)</td>
+<td><code>markata-go_*_darwin_x86_64.tar.gz</code></td>
+</tr>
+<tr>
+<td>macOS</td>
+<td>ARM64 (Apple Silicon)</td>
+<td><code>markata-go_*_darwin_arm64.tar.gz</code></td>
+</tr>
+<tr>
+<td>Windows</td>
+<td>x86_64</td>
+<td><code>markata-go_*_windows_x86_64.zip</code></td>
+</tr>
+<tr>
+<td>FreeBSD</td>
+<td>x86_64</td>
+<td><code>markata-go_*_freebsd_x86_64.tar.gz</code></td>
+</tr>
+<tr>
+<td>Android</td>
+<td>ARM64 (Termux)</td>
+<td><code>markata-go_*_android_arm64.tar.gz</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="manual-installation-steps">Manual Installation Steps <a href="#manual-installation-steps" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Download (replace VERSION and PLATFORM)</span>
+</span></span><span class="line"><span class="cl">curl -LO https://github.com/WaylonWalker/markata-go/releases/download/v0.1.0/markata-go_0.1.0_linux_x86_64.tar.gz
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Verify checksum (recommended)</span>
+</span></span><span class="line"><span class="cl">curl -LO https://github.com/WaylonWalker/markata-go/releases/download/v0.1.0/checksums.txt
+</span></span><span class="line"><span class="cl">sha256sum -c checksums.txt --ignore-missing
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Extract</span>
+</span></span><span class="line"><span class="cl">tar xzf markata-go_*.tar.gz
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Move to PATH</span>
+</span></span><span class="line"><span class="cl">sudo mv markata-go /usr/local/bin/
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Verify installation</span>
+</span></span><span class="line"><span class="cl">markata-go version
+</span></span></code></pre><h3 id="windows">Windows <a href="#windows" class="heading-anchor">#</a></h3>
+<ol>
+<li>Download the <code>.zip</code> file from releases</li>
+<li>Extract the archive</li>
+<li>Move <code>markata-go.exe</code> to a directory in your PATH</li>
+<li>Or add the extraction directory to your PATH</li>
+</ol>
+<h2 id="building-from-source">Building from Source <a href="#building-from-source" class="heading-anchor">#</a></h2>
+<p>Requirements:</p>
+<ul>
+<li>Go 1.22 or later</li>
+<li>Git</li>
+</ul>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Clone the repository</span>
+</span></span><span class="line"><span class="cl">git clone https://github.com/WaylonWalker/markata-go.git
+</span></span><span class="line"><span class="cl"><span class="nb">cd</span> markata-go
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Build with version info</span>
+</span></span><span class="line"><span class="cl">go build -ldflags<span class="o">=</span><span class="s2">&#34;-s -w&#34;</span> -o markata-go ./cmd/markata-go
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Or use just (if installed)</span>
+</span></span><span class="line"><span class="cl">just build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Install to GOPATH/bin</span>
+</span></span><span class="line"><span class="cl">just install
+</span></span></code></pre><h3 id="development-build">Development Build <a href="#development-build" class="heading-anchor">#</a></h3>
+<p>For development with full version information:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Using just</span>
+</span></span><span class="line"><span class="cl">just build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Or manually with ldflags</span>
+</span></span><span class="line"><span class="cl"><span class="nv">VERSION</span><span class="o">=</span><span class="k">$(</span>git describe --tags --always --dirty<span class="k">)</span>
+</span></span><span class="line"><span class="cl"><span class="nv">COMMIT</span><span class="o">=</span><span class="k">$(</span>git rev-parse --short HEAD<span class="k">)</span>
+</span></span><span class="line"><span class="cl"><span class="nv">DATE</span><span class="o">=</span><span class="k">$(</span>date -u +<span class="s2">&#34;%Y-%m-%dT%H:%M:%SZ&#34;</span><span class="k">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">go build -ldflags <span class="s2">&#34;-s -w \
+</span></span></span><span class="line"><span class="cl"><span class="s2">  -X github.com/WaylonWalker/markata-go/cmd/markata-go/cmd.Version=</span><span class="nv">$VERSION</span><span class="s2"> \
+</span></span></span><span class="line"><span class="cl"><span class="s2">  -X github.com/WaylonWalker/markata-go/cmd/markata-go/cmd.Commit=</span><span class="nv">$COMMIT</span><span class="s2"> \
+</span></span></span><span class="line"><span class="cl"><span class="s2">  -X github.com/WaylonWalker/markata-go/cmd/markata-go/cmd.Date=</span><span class="nv">$DATE</span><span class="s2">&#34;</span> <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>  -o markata-go ./cmd/markata-go
+</span></span></code></pre><h2 id="verifying-installation">Verifying Installation <a href="#verifying-installation" class="heading-anchor">#</a></h2>
+<p>After installation, verify it works:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Check version</span>
+</span></span><span class="line"><span class="cl">markata-go version
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Show help</span>
+</span></span><span class="line"><span class="cl">markata-go --help
+</span></span></code></pre><p>Expected output:</p>
+<pre><code>markata-go 0.1.0
+  commit:    abc1234
+  built:     2024-01-15T12:00:00Z
+  go:        go1.22.2
+  os/arch:   linux/amd64
+</code></pre>
+<h2 id="updating">Updating <a href="#updating" class="heading-anchor">#</a></h2>
+<h3 id="quick-update">Quick Update <a href="#quick-update" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Using jpillora/installer</span>
+</span></span><span class="line"><span class="cl">curl -sL https://i.jpillora.com/WaylonWalker/markata-go <span class="p">|</span> bash
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Using eget</span>
+</span></span><span class="line"><span class="cl">eget WaylonWalker/markata-go
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Using mise</span>
+</span></span><span class="line"><span class="cl">mise upgrade github:WaylonWalker/markata-go
+</span></span></code></pre><h3 id="go-install-update">Go Install Update <a href="#go-install-update" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
+</span></span></code></pre><h2 id="uninstalling">Uninstalling <a href="#uninstalling" class="heading-anchor">#</a></h2>
+<p>Remove the binary from your system:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># If installed to /usr/local/bin</span>
+</span></span><span class="line"><span class="cl">sudo rm /usr/local/bin/markata-go
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># If installed via go install</span>
+</span></span><span class="line"><span class="cl">rm <span class="k">$(</span>go env GOPATH<span class="k">)</span>/bin/markata-go
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># If using mise</span>
+</span></span><span class="line"><span class="cl">mise uninstall github:WaylonWalker/markata-go
+</span></span></code></pre><h2 id="troubleshooting">Troubleshooting <a href="#troubleshooting" class="heading-anchor">#</a></h2>
+<h3 id="command-not-found">&quot;command not found&quot; <a href="#command-not-found" class="heading-anchor">#</a></h3>
+<p>Ensure the installation directory is in your PATH:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Check if markata-go is in PATH</span>
+</span></span><span class="line"><span class="cl">which markata-go
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Add to PATH (bash)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s1">&#39;export PATH=&#34;$PATH:/usr/local/bin&#34;&#39;</span> &gt;&gt; ~/.bashrc
+</span></span><span class="line"><span class="cl"><span class="nb">source</span> ~/.bashrc
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Add Go bin to PATH</span>
+</span></span><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s1">&#39;export PATH=&#34;$PATH:$(go env GOPATH)/bin&#34;&#39;</span> &gt;&gt; ~/.bashrc
+</span></span><span class="line"><span class="cl"><span class="nb">source</span> ~/.bashrc
+</span></span></code></pre><h3 id="permission-denied">Permission Denied <a href="#permission-denied" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Make binary executable</span>
+</span></span><span class="line"><span class="cl">chmod +x markata-go
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Or use sudo for system-wide install</span>
+</span></span><span class="line"><span class="cl">sudo mv markata-go /usr/local/bin/
+</span></span></code></pre><h3 id="macos-security-warning">macOS Security Warning <a href="#macos-security-warning" class="heading-anchor">#</a></h3>
+<p>If macOS blocks the binary:</p>
+<ol>
+<li>Go to System Preferences &gt; Security &amp; Privacy</li>
+<li>Click &quot;Allow Anyway&quot; for markata-go</li>
+<li>Or remove the quarantine attribute:
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">xattr -d com.apple.quarantine markata-go
+</span></span></code></pre></li>
+</ol>
+<h2 id="next-steps">Next Steps <a href="#next-steps" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="/quickstart/" class="wikilink" data-title="Quickstart" data-description="Get a markata-go site running in under 5 minutes" data-date="2024-01-15">Quick Start Guide</a> - Build your first site</li>
+<li><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration</a> - Configure your site</li>
+<li><a href="/cli-reference/" class="wikilink" data-title="CLI Reference" data-description="Complete reference for all markata-go commands, flags, and options" data-date="2024-01-15">CLI Reference</a> - All available commands</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

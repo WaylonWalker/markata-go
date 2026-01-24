@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Framework Comparison - My Site</title>
+    <meta name="description" content="Comprehensive comparison of markata-go against Hugo, Jekyll, Eleventy, Astro, Zola, and Pelican">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Framework Comparison">
+    
+    <meta property="og:url" content="/framework-comparison/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Comprehensive comparison of markata-go against Hugo, Jekyll, Eleventy, Astro, Zola, and Pelican">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="comparison">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Framework Comparison">
+    
+    <meta name="twitter:description" content="Comprehensive comparison of markata-go against Hugo, Jekyll, Eleventy, Astro, Zola, and Pelican">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/framework-comparison/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Framework Comparison",
+  "description": "Comprehensive comparison of markata-go against Hugo, Jekyll, Eleventy, Astro, Zola, and Pelican",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/framework-comparison/"
+  },
+  "keywords": [
+    "documentation",
+    "comparison"
+  ],
+  "url": "/framework-comparison/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Framework Comparison</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/comparison/">comparison</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="static-site-generator-comparison-guide">Static Site Generator Comparison Guide</h1>
+<p>A comprehensive comparison of markata-go against popular static site generators to help you choose the right tool for your project.</p>
+<h2 id="quick-comparison-table">Quick Comparison Table <a href="#quick-comparison-table" class="heading-anchor">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>markata-go</th>
+<th>Hugo</th>
+<th>Jekyll</th>
+<th>Eleventy</th>
+<th>Astro</th>
+<th>Zola</th>
+<th>Pelican</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Language</strong></td>
+<td>Go</td>
+<td>Go</td>
+<td>Ruby</td>
+<td>JavaScript</td>
+<td>JavaScript</td>
+<td>Rust</td>
+<td>Python</td>
+</tr>
+<tr>
+<td><strong>Template Engine</strong></td>
+<td>Pongo2 (Jinja2-like)</td>
+<td>Go templates</td>
+<td>Liquid</td>
+<td>Multiple</td>
+<td>JSX/Astro</td>
+<td>Tera (Jinja2-like)</td>
+<td>Jinja2</td>
+</tr>
+<tr>
+<td><strong>Build Speed</strong></td>
+<td>Fast</td>
+<td>Very Fast</td>
+<td>Slow</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Very Fast</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td><strong>Learning Curve</strong></td>
+<td>Low</td>
+<td>Medium</td>
+<td>Low</td>
+<td>Low</td>
+<td>Medium</td>
+<td>Low</td>
+<td>Low</td>
+</tr>
+<tr>
+<td><strong>Plugin System</strong></td>
+<td>Lifecycle hooks</td>
+<td>Limited</td>
+<td>Ruby gems</td>
+<td>JavaScript</td>
+<td>Integrations</td>
+<td>Limited</td>
+<td>Python</td>
+</tr>
+<tr>
+<td><strong>Feed System</strong></td>
+<td>Advanced</td>
+<td>Basic</td>
+<td>Basic</td>
+<td>Manual</td>
+<td>Manual</td>
+<td>Basic</td>
+<td>Basic</td>
+</tr>
+<tr>
+<td><strong>Single Binary</strong></td>
+<td>Yes</td>
+<td>Yes</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="detailed-comparisons">Detailed Comparisons <a href="#detailed-comparisons" class="heading-anchor">#</a></h2>
+<h3 id="hugo-go">Hugo (Go) <a href="#hugo-go" class="heading-anchor">#</a></h3>
+<p>Hugo is the most popular Go-based static site generator, known for its exceptional build speed.</p>
+<h4 id="speed-comparison">Speed Comparison <a href="#speed-comparison" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>markata-go</th>
+<th>Hugo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Build 100 posts</td>
+<td>~200ms</td>
+<td>~150ms</td>
+</tr>
+<tr>
+<td>Build 1000 posts</td>
+<td>~1.5s</td>
+<td>~1s</td>
+</tr>
+<tr>
+<td>Incremental rebuild</td>
+<td>Partial</td>
+<td>Full</td>
+</tr>
+<tr>
+<td>Dev server startup</td>
+<td>Fast</td>
+<td>Very Fast</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hugo excels</strong>: Raw build speed is Hugo's primary strength. Its highly optimized Go code and aggressive caching make it the fastest SSG available.</p>
+<p><strong>markata-go excels</strong>: Concurrent processing with configurable worker pools. While not quite as fast as Hugo for raw builds, markata-go offers more predictable performance scaling.</p>
+<h4 id="template-language">Template Language <a href="#template-language" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>markata-go (Pongo2)</th>
+<th>Hugo (Go templates)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Syntax</td>
+<td><code>{{ post.Title }}</code></td>
+<td><code>{{ .Title }}</code></td>
+</tr>
+<tr>
+<td>Inheritance</td>
+<td><code>{% extends &quot;base.html&quot; %}</code></td>
+<td><code>{{ define &quot;main&quot; }}</code></td>
+</tr>
+<tr>
+<td>Conditionals</td>
+<td><code>{% if post.Draft %}</code></td>
+<td><code>{{ if .Draft }}</code></td>
+</tr>
+<tr>
+<td>Loops</td>
+<td><code>{% for tag in post.Tags %}</code></td>
+<td><code>{{ range .Params.tags }}</code></td>
+</tr>
+<tr>
+<td>Filters</td>
+<td><code>{{ title|slugify }}</code></td>
+<td><code>{{ .Title | urlize }}</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hugo excels</strong>: Go templates are powerful and allow inline Go code. Hugo's template functions are extensive.</p>
+<p><strong>markata-go excels</strong>: Jinja2-like syntax is more intuitive for developers coming from Python, Django, or Flask. Template inheritance with <code>{% extends %}</code> is cleaner than Hugo's partial system.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- markata-go: Familiar Jinja2 syntax --&gt;</span>
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  {{ body|safe }}
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">&lt;!-- Hugo: Go template syntax --&gt;</span>
+</span></span><span class="line"><span class="cl">{{ define &#34;main&#34; }}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ .Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  {{ .Content }}
+</span></span><span class="line"><span class="cl">{{ end }}
+</span></span></code></pre><h4 id="content-organization">Content Organization <a href="#content-organization" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>markata-go</th>
+<th>Hugo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Content types</td>
+<td>Single (posts)</td>
+<td>Multiple (page bundles)</td>
+</tr>
+<tr>
+<td>Taxonomies</td>
+<td>Tags via feeds</td>
+<td>Built-in taxonomies</td>
+</tr>
+<tr>
+<td>Archetypes</td>
+<td>Basic</td>
+<td>Advanced</td>
+</tr>
+<tr>
+<td>Page bundles</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Multilingual</td>
+<td>Via config</td>
+<td>Built-in</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hugo excels</strong>: Page bundles, multiple content types, built-in multilingual support, and sophisticated taxonomy system make Hugo better for complex content structures.</p>
+<p><strong>markata-go excels</strong>: Simpler mental model. Everything is a post, organization comes through the feed system's filtering.</p>
+<h4 id="feed-system-comparison">Feed System Comparison <a href="#feed-system-comparison" class="heading-anchor">#</a></h4>
+<p>This is where markata-go significantly differs from Hugo.</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>markata-go</th>
+<th>Hugo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Feed definition</td>
+<td>Single config block</td>
+<td>Multiple templates</td>
+</tr>
+<tr>
+<td>Multiple formats</td>
+<td>One definition, many outputs</td>
+<td>One template per format</td>
+</tr>
+<tr>
+<td>Filter expressions</td>
+<td><code>&quot;published == True and 'go' in tags&quot;</code></td>
+<td>Complex template logic</td>
+</tr>
+<tr>
+<td>Auto-generated feeds</td>
+<td>Built-in (tags, categories)</td>
+<td>Manual</td>
+</tr>
+<tr>
+<td>Pagination</td>
+<td>Integrated</td>
+<td>Separate config</td>
+</tr>
+</tbody>
+</table>
+<p><strong>markata-go example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Go Tutorials&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;go&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><p>This single definition generates <code>/tutorials/index.html</code>, <code>/tutorials/rss.xml</code>, <code>/tutorials/atom.xml</code>, and <code>/tutorials/feed.json</code>.</p>
+<p><strong>Hugo equivalent</strong> requires separate template files for each format.</p>
+<h4 id="pluginextension-model">Plugin/Extension Model <a href="#pluginextension-model" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>markata-go</th>
+<th>Hugo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Extension method</td>
+<td>Lifecycle plugins</td>
+<td>Modules/themes</td>
+</tr>
+<tr>
+<td>Hook points</td>
+<td>9 lifecycle stages</td>
+<td>Limited hooks</td>
+</tr>
+<tr>
+<td>Third-party plugins</td>
+<td>Registry + local</td>
+<td>Modules</td>
+</tr>
+<tr>
+<td>Custom plugins</td>
+<td>Single Go file</td>
+<td>Module system</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hugo excels</strong>: Hugo Modules provide versioned, composable themes and components.</p>
+<p><strong>markata-go excels</strong>: Fine-grained lifecycle hooks allow plugins to modify content at any stage. A single file can be a complete plugin.</p>
+<h4 id="when-to-choose-hugo-over-markata-go">When to Choose Hugo Over markata-go <a href="#when-to-choose-hugo-over-markata-go" class="heading-anchor">#</a></h4>
+<ul>
+<li>You need the absolute fastest build times</li>
+<li>Your site has complex content types (documentation, products, etc.)</li>
+<li>You need built-in multilingual support</li>
+<li>You prefer Go template syntax</li>
+<li>You need Hugo's massive theme ecosystem</li>
+</ul>
+<h4 id="when-to-choose-markata-go-over-hugo">When to Choose markata-go Over Hugo <a href="#when-to-choose-markata-go-over-hugo" class="heading-anchor">#</a></h4>
+<ul>
+<li>You prefer Jinja2-like template syntax</li>
+<li>You need advanced feed filtering and multiple output formats</li>
+<li>You want a simpler, feed-centric content model</li>
+<li>You need fine-grained plugin hooks</li>
+<li>You're building a blog-focused site</li>
+</ul>
+<hr>
+<h3 id="jekyll-ruby">Jekyll (Ruby) <a href="#jekyll-ruby" class="heading-anchor">#</a></h3>
+<p>Jekyll pioneered modern static site generation and remains popular due to GitHub Pages integration.</p>
+<h4 id="ease-of-use">Ease of Use <a href="#ease-of-use" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>markata-go</th>
+<th>Jekyll</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Installation</td>
+<td>Single binary</td>
+<td>Ruby + gems</td>
+</tr>
+<tr>
+<td>Configuration</td>
+<td>TOML/YAML/JSON</td>
+<td>YAML</td>
+</tr>
+<tr>
+<td>Getting started</td>
+<td><code>markata-go new &quot;Post&quot;</code></td>
+<td><code>jekyll new site</code></td>
+</tr>
+<tr>
+<td>Documentation</td>
+<td>Growing</td>
+<td>Extensive</td>
+</tr>
+<tr>
+<td>Community</td>
+<td>Small</td>
+<td>Large</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Jekyll excels</strong>: Mature ecosystem, extensive documentation, huge community.</p>
+<p><strong>markata-go excels</strong>: Zero dependencies, single binary installation, simpler setup.</p>
+<h4 id="github-pages-integration">GitHub Pages Integration <a href="#github-pages-integration" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>markata-go</th>
+<th>Jekyll</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Native support</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Build on push</td>
+<td>Via Actions</td>
+<td>Built-in</td>
+</tr>
+<tr>
+<td>Plugin support</td>
+<td>Full</td>
+<td>Limited on GH Pages</td>
+</tr>
+<tr>
+<td>Custom domains</td>
+<td>Manual</td>
+<td>Built-in</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Jekyll excels</strong>: First-class GitHub Pages support. Push and deploy with zero configuration.</p>
+<p><strong>markata-go excels</strong>: No plugin restrictions when using GitHub Actions. Full control over build process.</p>
+<h4 id="liquid-vs-jinja-templates">Liquid vs Jinja Templates <a href="#liquid-vs-jinja-templates" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- Jekyll (Liquid) --&gt;</span>
+</span></span><span class="line"><span class="cl">{% for post in site.posts %}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">h2</span><span class="p">&gt;</span>{{ post.title | escape }}<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  {{ post.excerpt }}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">&lt;!-- markata-go (Pongo2/Jinja) --&gt;</span>
+</span></span><span class="line"><span class="cl">{% for post in posts %}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">h2</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  {{ post.Description }}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>markata-go (Pongo2)</th>
+<th>Jekyll (Liquid)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Filter syntax</td>
+<td><code>{{ text|slugify }}</code></td>
+<td><code>{{ text | slugify }}</code></td>
+</tr>
+<tr>
+<td>Template inheritance</td>
+<td><code>{% extends %}</code></td>
+<td><code>{% include %}</code></td>
+</tr>
+<tr>
+<td>Whitespace control</td>
+<td><code>{%- -%}</code></td>
+<td><code>{%- -%}</code></td>
+</tr>
+<tr>
+<td>Custom filters</td>
+<td>Go functions</td>
+<td>Ruby</td>
+</tr>
+</tbody>
+</table>
+<p>Both are quite similar! Developers familiar with Liquid will find Pongo2 comfortable.</p>
+<h4 id="plugin-ecosystem">Plugin Ecosystem <a href="#plugin-ecosystem" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>markata-go</th>
+<th>Jekyll</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plugin format</td>
+<td>Go files</td>
+<td>Ruby gems</td>
+</tr>
+<tr>
+<td>Installation</td>
+<td>Built-in or local</td>
+<td><code>bundle install</code></td>
+</tr>
+<tr>
+<td>Popular plugins</td>
+<td>~15 built-in</td>
+<td>Thousands</td>
+</tr>
+<tr>
+<td>SEO plugins</td>
+<td>Via templates</td>
+<td>jekyll-seo-tag</td>
+</tr>
+<tr>
+<td>Sitemap</td>
+<td>Built-in</td>
+<td>jekyll-sitemap</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Jekyll excels</strong>: Massive plugin ecosystem for nearly any need.</p>
+<p><strong>markata-go excels</strong>: Core features built-in (sitemap, feeds, TOC), no external dependencies.</p>
+<h4 id="build-speed">Build Speed <a href="#build-speed" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Site Size</th>
+<th>markata-go</th>
+<th>Jekyll</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100 posts</td>
+<td>~200ms</td>
+<td>~2-3s</td>
+</tr>
+<tr>
+<td>500 posts</td>
+<td>~800ms</td>
+<td>~10-15s</td>
+</tr>
+<tr>
+<td>1000 posts</td>
+<td>~1.5s</td>
+<td>~30-60s</td>
+</tr>
+</tbody>
+</table>
+<p><strong>markata-go is 10-30x faster</strong> for large sites.</p>
+<h4 id="when-to-choose-jekyll-over-markata-go">When to Choose Jekyll Over markata-go <a href="#when-to-choose-jekyll-over-markata-go" class="heading-anchor">#</a></h4>
+<ul>
+<li>You need GitHub Pages native integration</li>
+<li>You want access to thousands of plugins</li>
+<li>Your team knows Ruby</li>
+<li>You need extensive community support</li>
+<li>You're building a simple blog or documentation site</li>
+</ul>
+<h4 id="when-to-choose-markata-go-over-jekyll">When to Choose markata-go Over Jekyll <a href="#when-to-choose-markata-go-over-jekyll" class="heading-anchor">#</a></h4>
+<ul>
+<li>Build speed is critical</li>
+<li>You want zero Ruby dependencies</li>
+<li>You need advanced feed capabilities</li>
+<li>You prefer Jinja2-like syntax</li>
+<li>You want concurrent processing</li>
+</ul>
+<hr>
+<h3 id="eleventy-11ty-javascript">Eleventy (11ty) (JavaScript) <a href="#eleventy-11ty-javascript" class="heading-anchor">#</a></h3>
+<p>Eleventy is a flexible, JavaScript-based SSG that supports multiple template languages.</p>
+<h4 id="flexibility">Flexibility <a href="#flexibility" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>markata-go</th>
+<th>Eleventy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Template languages</td>
+<td>Pongo2 only</td>
+<td>10+ options</td>
+</tr>
+<tr>
+<td>Data sources</td>
+<td>Markdown + YAML</td>
+<td>Multiple (JSON, YAML, JS, API)</td>
+</tr>
+<tr>
+<td>Configuration</td>
+<td>TOML/YAML</td>
+<td>JavaScript</td>
+</tr>
+<tr>
+<td>Customization</td>
+<td>Plugins</td>
+<td>Filters, shortcodes, plugins</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Eleventy excels</strong>: Unmatched flexibility. Use Nunjucks, Liquid, Handlebars, Pug, EJS, or mix them. Pull data from APIs, databases, or files.</p>
+<p><strong>markata-go excels</strong>: Opinionated choices reduce decision fatigue. One template language, one content format, one config format.</p>
+<h4 id="template-language-options">Template Language Options <a href="#template-language-options" class="heading-anchor">#</a></h4>
+<p>Eleventy supports:</p>
+<ul>
+<li>Nunjucks (Jinja2-like)</li>
+<li>Liquid</li>
+<li>Handlebars</li>
+<li>Mustache</li>
+<li>Pug</li>
+<li>EJS</li>
+<li>JavaScript template literals</li>
+<li>Custom</li>
+</ul>
+<p>markata-go supports:</p>
+<ul>
+<li>Pongo2 (Jinja2/Django-like)</li>
+</ul>
+<p>If you want Jinja2-like syntax, both work well. markata-go's Pongo2 and Eleventy's Nunjucks are nearly identical:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- Eleventy (Nunjucks) --&gt;</span>
+</span></span><span class="line"><span class="cl">{% extends &#34;base.njk&#34; %}
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl">  {{ content | safe }}
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">&lt;!-- markata-go (Pongo2) --&gt;</span>
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl">  {{ body|safe }}
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><h4 id="data-cascade">Data Cascade <a href="#data-cascade" class="heading-anchor">#</a></h4>
+<p>Eleventy's data cascade is powerful:</p>
+<pre><code>Global Data (from _data/) 
+  → Layout Data 
+    → Directory Data 
+      → Template Data 
+        → Front Matter
+</code></pre>
+<p>markata-go's approach is simpler:</p>
+<pre><code>Config 
+  → Front Matter 
+    → Plugin-generated fields
+</code></pre>
+<p><strong>Eleventy excels</strong>: Complex data merging from multiple sources.</p>
+<p><strong>markata-go excels</strong>: Predictable, straightforward data flow.</p>
+<h4 id="plugin-model">Plugin Model <a href="#plugin-model" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>markata-go</th>
+<th>Eleventy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plugin type</td>
+<td>Lifecycle hooks</td>
+<td>JavaScript</td>
+</tr>
+<tr>
+<td>Async support</td>
+<td>Concurrent stages</td>
+<td>Async/await</td>
+</tr>
+<tr>
+<td>Filter addition</td>
+<td>Go functions</td>
+<td>JS functions</td>
+</tr>
+<tr>
+<td>Build hooks</td>
+<td>9 stages</td>
+<td>Various events</td>
+</tr>
+</tbody>
+</table>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Eleventy plugin example
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">eleventyConfig</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">eleventyConfig</span><span class="p">.</span><span class="nx">addFilter</span><span class="p">(</span><span class="s2">&#34;slugify&#34;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">str</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">str</span><span class="p">.</span><span class="nx">toLowerCase</span><span class="p">().</span><span class="nx">replace</span><span class="p">(</span><span class="sr">/\s+/g</span><span class="p">,</span> <span class="s1">&#39;-&#39;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span></code></pre><pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// markata-go plugin example
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Transform</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">post</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">ctx</span><span class="p">.</span><span class="nx">Posts</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">post</span><span class="p">.</span><span class="nx">Extra</span><span class="p">[</span><span class="s">&#34;custom&#34;</span><span class="p">]</span> <span class="p">=</span> <span class="nf">processPost</span><span class="p">(</span><span class="nx">post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h4 id="when-to-choose-eleventy-over-markata-go">When to Choose Eleventy Over markata-go <a href="#when-to-choose-eleventy-over-markata-go" class="heading-anchor">#</a></h4>
+<ul>
+<li>You need multiple template language support</li>
+<li>Your site pulls data from APIs or databases</li>
+<li>You want maximum flexibility</li>
+<li>Your team knows JavaScript well</li>
+<li>You need complex data cascading</li>
+</ul>
+<h4 id="when-to-choose-markata-go-over-eleventy">When to Choose markata-go Over Eleventy <a href="#when-to-choose-markata-go-over-eleventy" class="heading-anchor">#</a></h4>
+<ul>
+<li>You prefer a faster, compiled binary</li>
+<li>You want opinionated defaults</li>
+<li>You need the advanced feed system</li>
+<li>You prefer Go's performance characteristics</li>
+<li>You want simpler configuration</li>
+</ul>
+<hr>
+<h3 id="astro-javascript">Astro (JavaScript) <a href="#astro-javascript" class="heading-anchor">#</a></h3>
+<p>Astro is a modern web framework with island architecture and component support.</p>
+<h4 id="modern-features">Modern Features <a href="#modern-features" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>markata-go</th>
+<th>Astro</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Partial hydration</td>
+<td>No</td>
+<td>Yes (Islands)</td>
+</tr>
+<tr>
+<td>Component support</td>
+<td>No</td>
+<td>React, Vue, Svelte, etc.</td>
+</tr>
+<tr>
+<td>SSR support</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>TypeScript</td>
+<td>No</td>
+<td>First-class</td>
+</tr>
+<tr>
+<td>CSS scoping</td>
+<td>No</td>
+<td>Built-in</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Astro excels</strong>: Modern frontend features, component frameworks, partial hydration for optimal performance.</p>
+<p><strong>markata-go excels</strong>: Simpler mental model for content-focused sites. No JavaScript framework overhead.</p>
+<h4 id="island-architecture">Island Architecture <a href="#island-architecture" class="heading-anchor">#</a></h4>
+<p>Astro's island architecture allows interactive components on otherwise static pages:</p>
+<pre><code class="language-astro">---
+// Astro component
+import Counter from '../components/Counter.jsx';
+---
+&lt;html&gt;
+  &lt;body&gt;
+    &lt;h1&gt;My Blog Post&lt;/h1&gt;
+    &lt;p&gt;Static content here...&lt;/p&gt;
+    
+    &lt;!-- Only this component ships JavaScript --&gt;
+    &lt;Counter client:load /&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>markata-go generates pure static HTML. For interactivity, you add JavaScript manually:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- markata-go template --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {{ body|safe }}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;counter&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/js/counter.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</span></span></code></pre><h4 id="component-support">Component Support <a href="#component-support" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Framework</th>
+<th>markata-go</th>
+<th>Astro</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>React</td>
+<td>Manual</td>
+<td>Built-in</td>
+</tr>
+<tr>
+<td>Vue</td>
+<td>Manual</td>
+<td>Built-in</td>
+</tr>
+<tr>
+<td>Svelte</td>
+<td>Manual</td>
+<td>Built-in</td>
+</tr>
+<tr>
+<td>SolidJS</td>
+<td>Manual</td>
+<td>Built-in</td>
+</tr>
+<tr>
+<td>Preact</td>
+<td>Manual</td>
+<td>Built-in</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Astro excels</strong>: Use any frontend framework. Mix and match components.</p>
+<p><strong>markata-go excels</strong>: No framework lock-in. Pure HTML output.</p>
+<h4 id="build-output">Build Output <a href="#build-output" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>markata-go</th>
+<th>Astro</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Default output</td>
+<td>Static HTML</td>
+<td>Static HTML</td>
+</tr>
+<tr>
+<td>JavaScript</td>
+<td>Only what you add</td>
+<td>Minimal (islands)</td>
+</tr>
+<tr>
+<td>Bundle size</td>
+<td>Zero baseline</td>
+<td>Small baseline</td>
+</tr>
+<tr>
+<td>SSR option</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<p>Both produce static HTML by default, but Astro can switch to SSR mode.</p>
+<h4 id="when-to-choose-astro-over-markata-go">When to Choose Astro Over markata-go <a href="#when-to-choose-astro-over-markata-go" class="heading-anchor">#</a></h4>
+<ul>
+<li>You need interactive components</li>
+<li>You want to use React/Vue/Svelte</li>
+<li>You need server-side rendering</li>
+<li>You're building a web application, not just a blog</li>
+<li>You want TypeScript support</li>
+</ul>
+<h4 id="when-to-choose-markata-go-over-astro">When to Choose markata-go Over Astro <a href="#when-to-choose-markata-go-over-astro" class="heading-anchor">#</a></h4>
+<ul>
+<li>You want pure static HTML</li>
+<li>You don't need frontend frameworks</li>
+<li>Build speed is critical</li>
+<li>You prefer Go's simplicity</li>
+<li>You need the advanced feed system</li>
+</ul>
+<hr>
+<h3 id="zola-rust">Zola (Rust) <a href="#zola-rust" class="heading-anchor">#</a></h3>
+<p>Zola is a fast, Rust-based SSG with no dependencies.</p>
+<h4 id="speed">Speed <a href="#speed" class="heading-anchor">#</a></h4>
+<p>Both markata-go and Zola are extremely fast:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>markata-go</th>
+<th>Zola</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Language</td>
+<td>Go</td>
+<td>Rust</td>
+</tr>
+<tr>
+<td>Build 100 posts</td>
+<td>~200ms</td>
+<td>~100ms</td>
+</tr>
+<tr>
+<td>Build 1000 posts</td>
+<td>~1.5s</td>
+<td>~800ms</td>
+</tr>
+<tr>
+<td>Memory usage</td>
+<td>Low</td>
+<td>Very Low</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Zola excels</strong>: Slightly faster than markata-go in raw benchmarks due to Rust's zero-cost abstractions.</p>
+<p><strong>markata-go excels</strong>: Go's simpler concurrency model and faster compile times make plugin development easier.</p>
+<h4 id="single-binary">Single Binary <a href="#single-binary" class="heading-anchor">#</a></h4>
+<p>Both tools ship as single binaries with no runtime dependencies.</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>markata-go</th>
+<th>Zola</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Binary size</td>
+<td>~15MB</td>
+<td>~10MB</td>
+</tr>
+<tr>
+<td>Dependencies</td>
+<td>None</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Installation</td>
+<td><code>go install</code> or download</td>
+<td>Download</td>
+</tr>
+<tr>
+<td>Cross-platform</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h4 id="tera-vs-pongo2-templates">Tera vs Pongo2 Templates <a href="#tera-vs-pongo2-templates" class="heading-anchor">#</a></h4>
+<p>Both use Jinja2-inspired template languages:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- Zola (Tera) --&gt;</span>
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ page.title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  {{ page.content | safe }}
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">&lt;!-- markata-go (Pongo2) --&gt;</span>
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  {{ body|safe }}
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><p>Nearly identical syntax! Both inherit from Jinja2/Django templates.</p>
+<h4 id="taxonomy-system">Taxonomy System <a href="#taxonomy-system" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>markata-go</th>
+<th>Zola</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tags</td>
+<td>Via feed filter</td>
+<td>Built-in taxonomy</td>
+</tr>
+<tr>
+<td>Categories</td>
+<td>Via feed filter</td>
+<td>Built-in taxonomy</td>
+</tr>
+<tr>
+<td>Custom taxonomies</td>
+<td>Via feeds</td>
+<td>Built-in</td>
+</tr>
+<tr>
+<td>Taxonomy templates</td>
+<td>Feed templates</td>
+<td>Dedicated templates</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Zola approach:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Zola config.toml</span>
+</span></span><span class="line"><span class="cl"><span class="nx">taxonomies</span> <span class="p">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;tags&#34;</span> <span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;categories&#34;</span> <span class="p">},</span>
+</span></span><span class="line"><span class="cl"><span class="p">]</span>
+</span></span></code></pre><p><strong>markata-go approach:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># markata-go.toml</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">auto_tags</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug_prefix</span> <span class="p">=</span> <span class="s2">&#34;tags&#34;</span>
+</span></span></code></pre><p>Both achieve similar results, but markata-go's feed system is more flexible for filtering.</p>
+<h4 id="when-to-choose-zola-over-markata-go">When to Choose Zola Over markata-go <a href="#when-to-choose-zola-over-markata-go" class="heading-anchor">#</a></h4>
+<ul>
+<li>You need the absolute fastest builds</li>
+<li>You prefer Rust</li>
+<li>You want Zola's built-in taxonomy system</li>
+<li>You need Sass compilation built-in</li>
+<li>You like Zola's shortcode system</li>
+</ul>
+<h4 id="when-to-choose-markata-go-over-zola">When to Choose markata-go Over Zola <a href="#when-to-choose-markata-go-over-zola" class="heading-anchor">#</a></h4>
+<ul>
+<li>You prefer Go</li>
+<li>You need the advanced feed system</li>
+<li>You want fine-grained plugin hooks</li>
+<li>You need multiple output formats from one feed definition</li>
+<li>You want concurrent post processing</li>
+</ul>
+<hr>
+<h3 id="pelican-python">Pelican (Python) <a href="#pelican-python" class="heading-anchor">#</a></h3>
+<p>Pelican is a Python-based SSG with Jinja2 templates.</p>
+<h4 id="python-ecosystem">Python Ecosystem <a href="#python-ecosystem" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>markata-go</th>
+<th>Pelican</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Language</td>
+<td>Go</td>
+<td>Python</td>
+</tr>
+<tr>
+<td>Templates</td>
+<td>Pongo2 (Jinja2-like)</td>
+<td>Jinja2</td>
+</tr>
+<tr>
+<td>Config</td>
+<td>TOML/YAML</td>
+<td>Python</td>
+</tr>
+<tr>
+<td>Plugins</td>
+<td>Go</td>
+<td>Python</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pelican excels</strong>: Native Python. Configuration in Python allows programmatic setup. Plugins can use the entire Python ecosystem.</p>
+<p><strong>markata-go excels</strong>: Faster builds, single binary distribution, no Python environment needed.</p>
+<h4 id="plugin-model-1">Plugin Model <a href="#plugin-model-1" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>markata-go</th>
+<th>Pelican</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plugin hooks</td>
+<td>9 lifecycle stages</td>
+<td>Signals</td>
+</tr>
+<tr>
+<td>Plugin format</td>
+<td>Go interfaces</td>
+<td>Python modules</td>
+</tr>
+<tr>
+<td>Plugin discovery</td>
+<td>Registry</td>
+<td>Entry points</td>
+</tr>
+<tr>
+<td>Built-in plugins</td>
+<td>15</td>
+<td>10+</td>
+</tr>
+</tbody>
+</table>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Pelican plugin example</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">pelican</span> <span class="kn">import</span> <span class="n">signals</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">add_reading_time</span><span class="p">(</span><span class="n">generator</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">article</span> <span class="ow">in</span> <span class="n">generator</span><span class="o">.</span><span class="n">articles</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">words</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">article</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">        <span class="n">article</span><span class="o">.</span><span class="n">reading_time</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">words</span> <span class="o">//</span> <span class="mi">200</span><span class="si">}</span><span class="s2"> min read&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">register</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">    <span class="n">signals</span><span class="o">.</span><span class="n">article_generator_finalized</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">add_reading_time</span><span class="p">)</span>
+</span></span></code></pre><pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// markata-go plugin example
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">ReadingTimePlugin</span><span class="p">)</span> <span class="nf">Transform</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">post</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">ctx</span><span class="p">.</span><span class="nx">Posts</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">words</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">strings</span><span class="p">.</span><span class="nf">Fields</span><span class="p">(</span><span class="nx">post</span><span class="p">.</span><span class="nx">Content</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">post</span><span class="p">.</span><span class="nx">Extra</span><span class="p">[</span><span class="s">&#34;reading_time&#34;</span><span class="p">]</span> <span class="p">=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;%d min read&#34;</span><span class="p">,</span> <span class="nx">words</span><span class="o">/</span><span class="mi">200</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h4 id="jinja2-templates">Jinja2 Templates <a href="#jinja2-templates" class="heading-anchor">#</a></h4>
+<p>Pelican uses actual Jinja2, while markata-go uses Pongo2 (a Go port):</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- Pelican (Jinja2) --&gt;</span>
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl">  {% for article in articles %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">h2</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ article.url }}&#34;</span><span class="p">&gt;</span>{{ article.title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {{ article.summary }}
+</span></span><span class="line"><span class="cl">  {% endfor %}
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">&lt;!-- markata-go (Pongo2) --&gt;</span>
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl">  {% for post in posts %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">h2</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.Href }}&#34;</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {{ post.Description }}
+</span></span><span class="line"><span class="cl">  {% endfor %}
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><p>99% compatible syntax. The main difference is variable naming conventions.</p>
+<h4 id="when-to-choose-pelican-over-markata-go">When to Choose Pelican Over markata-go <a href="#when-to-choose-pelican-over-markata-go" class="heading-anchor">#</a></h4>
+<ul>
+<li>Your team knows Python</li>
+<li>You need Python-based plugins</li>
+<li>You want configuration in Python</li>
+<li>You need Pelican's theme ecosystem</li>
+</ul>
+<h4 id="when-to-choose-markata-go-over-pelican">When to Choose markata-go Over Pelican <a href="#when-to-choose-markata-go-over-pelican" class="heading-anchor">#</a></h4>
+<ul>
+<li>Build speed is important</li>
+<li>You want single binary distribution</li>
+<li>You need the advanced feed system</li>
+<li>You prefer Go's concurrency model</li>
+<li>You don't want Python dependencies</li>
+</ul>
+<hr>
+<h2 id="feature-deep-dives">Feature Deep Dives <a href="#feature-deep-dives" class="heading-anchor">#</a></h2>
+<h3 id="the-feed-system-advantage">The Feed System Advantage <a href="#the-feed-system-advantage" class="heading-anchor">#</a></h3>
+<p>markata-go's feed system is its primary differentiator. One feed definition produces multiple outputs:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;python&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Python Posts&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and &#39;python&#39; in tags&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>    <span class="c"># /python/index.html + pagination</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>     <span class="c"># /python/rss.xml</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>    <span class="c"># /python/atom.xml</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>    <span class="c"># /python/feed.json</span>
+</span></span></code></pre><p><strong>What other SSGs require:</strong></p>
+<table>
+<thead>
+<tr>
+<th>SSG</th>
+<th>RSS Template</th>
+<th>Atom Template</th>
+<th>JSON Template</th>
+<th>Total Files</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hugo</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>3+ templates</td>
+</tr>
+<tr>
+<td>Jekyll</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Manual</td>
+<td>2+ templates</td>
+</tr>
+<tr>
+<td>Eleventy</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Manual</td>
+<td>2+ templates</td>
+</tr>
+<tr>
+<td>Zola</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Manual</td>
+<td>2+ templates</td>
+</tr>
+<tr>
+<td>Pelican</td>
+<td>Built-in</td>
+<td>Plugin</td>
+<td>Manual</td>
+<td>Variable</td>
+</tr>
+</tbody>
+</table>
+<p><strong>markata-go:</strong> One config block, zero templates needed.</p>
+<h3 id="plugin-architecture-comparison">Plugin Architecture Comparison <a href="#plugin-architecture-comparison" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>SSG</th>
+<th>Plugin Language</th>
+<th>Hook Points</th>
+<th>Ease of Writing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>markata-go</td>
+<td>Go</td>
+<td>9 stages</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Hugo</td>
+<td>Go</td>
+<td>Limited</td>
+<td>Hard</td>
+</tr>
+<tr>
+<td>Jekyll</td>
+<td>Ruby</td>
+<td>Multiple</td>
+<td>Easy</td>
+</tr>
+<tr>
+<td>Eleventy</td>
+<td>JavaScript</td>
+<td>Many</td>
+<td>Easy</td>
+</tr>
+<tr>
+<td>Astro</td>
+<td>JavaScript</td>
+<td>Integrations</td>
+<td>Easy</td>
+</tr>
+<tr>
+<td>Zola</td>
+<td>None</td>
+<td>N/A</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>Pelican</td>
+<td>Python</td>
+<td>Signals</td>
+<td>Easy</td>
+</tr>
+</tbody>
+</table>
+<p>markata-go's 9-stage lifecycle provides predictable hook points:</p>
+<ol>
+<li><strong>Configure</strong> - Load config, init plugins</li>
+<li><strong>Validate</strong> - Check configuration</li>
+<li><strong>Glob</strong> - Find content files</li>
+<li><strong>Load</strong> - Parse markdown and frontmatter</li>
+<li><strong>Transform</strong> - Pre-render processing</li>
+<li><strong>Render</strong> - Markdown to HTML</li>
+<li><strong>Collect</strong> - Build feeds and collections</li>
+<li><strong>Write</strong> - Output files</li>
+<li><strong>Cleanup</strong> - Release resources</li>
+</ol>
+<h3 id="template-syntax-comparison">Template Syntax Comparison <a href="#template-syntax-comparison" class="heading-anchor">#</a></h3>
+<p>All Jinja2-inspired:</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>markata-go</th>
+<th>Hugo</th>
+<th>Jekyll</th>
+<th>Eleventy (Nunjucks)</th>
+<th>Zola</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Variable</td>
+<td><code>{{ post.Title }}</code></td>
+<td><code>{{ .Title }}</code></td>
+<td><code>{{ page.title }}</code></td>
+<td><code>{{ post.title }}</code></td>
+<td><code>{{ page.title }}</code></td>
+</tr>
+<tr>
+<td>Filter</td>
+<td><code>{{ text|upper }}</code></td>
+<td><code>{{ .Text | upper }}</code></td>
+<td><code>{{ text | upcase }}</code></td>
+<td><code>{{ text | upper }}</code></td>
+<td><code>{{ text | upper }}</code></td>
+</tr>
+<tr>
+<td>If</td>
+<td><code>{% if x %}</code></td>
+<td><code>{{ if .X }}</code></td>
+<td><code>{% if x %}</code></td>
+<td><code>{% if x %}</code></td>
+<td><code>{% if x %}</code></td>
+</tr>
+<tr>
+<td>For</td>
+<td><code>{% for x in list %}</code></td>
+<td><code>{{ range .List }}</code></td>
+<td><code>{% for x in list %}</code></td>
+<td><code>{% for x in list %}</code></td>
+<td><code>{% for x in list %}</code></td>
+</tr>
+<tr>
+<td>Extends</td>
+<td><code>{% extends &quot;x&quot; %}</code></td>
+<td><code>{{ define }}</code></td>
+<td>Includes</td>
+<td><code>{% extends &quot;x&quot; %}</code></td>
+<td><code>{% extends &quot;x&quot; %}</code></td>
+</tr>
+</tbody>
+</table>
+<p>markata-go, Eleventy (Nunjucks), and Zola (Tera) have the most similar syntax.</p>
+<hr>
+<h2 id="migration-guides">Migration Guides <a href="#migration-guides" class="heading-anchor">#</a></h2>
+<h3 id="migrating-from-hugo">Migrating from Hugo <a href="#migrating-from-hugo" class="heading-anchor">#</a></h3>
+<ol>
+<li>
+<p><strong>Content Migration</strong></p>
+<ul>
+<li>Hugo frontmatter is largely compatible</li>
+<li>Change <code>draft: true</code> to <code>draft: true</code> (same!)</li>
+<li>Change <code>tags: [&quot;go&quot;, &quot;web&quot;]</code> to <code>tags: [&quot;go&quot;, &quot;web&quot;]</code> (same!)</li>
+<li>Remove Hugo-specific fields (<code>type</code>, <code>layout</code>)</li>
+</ul>
+</li>
+<li>
+<p><strong>Template Migration</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Hugo
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">{{</span> <span class="p">.</span><span class="nx">Title</span> <span class="p">}}</span>
+</span></span><span class="line"><span class="cl"><span class="p">{{</span> <span class="p">.</span><span class="nx">Content</span> <span class="p">}}</span>
+</span></span><span class="line"><span class="cl"><span class="p">{{</span> <span class="k">range</span> <span class="p">.</span><span class="nx">Params</span><span class="p">.</span><span class="nx">tags</span> <span class="p">}}{{</span> <span class="p">.</span> <span class="p">}}{{</span> <span class="nx">end</span> <span class="p">}}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// markata-go
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">{{</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Title</span> <span class="p">}}</span>
+</span></span><span class="line"><span class="cl"><span class="p">{{</span> <span class="nx">body</span><span class="p">|</span><span class="nx">safe</span> <span class="p">}}</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span><span class="o">%</span> <span class="k">for</span> <span class="nx">tag</span> <span class="nx">in</span> <span class="nx">post</span><span class="p">.</span><span class="nx">Tags</span> <span class="o">%</span><span class="p">}{{</span> <span class="nx">tag</span> <span class="p">}}{</span><span class="o">%</span> <span class="nx">endfor</span> <span class="o">%</span><span class="p">}</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Configuration Migration</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Hugo config.toml</span>
+</span></span><span class="line"><span class="cl"><span class="nx">baseURL</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Site&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># markata-go.toml</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Site&#34;</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Feed Migration</strong></p>
+<ul>
+<li>Replace RSS template with feed configuration</li>
+<li>Convert taxonomy templates to auto-feed config</li>
+</ul>
+</li>
+</ol>
+<h3 id="migrating-from-jekyll">Migrating from Jekyll <a href="#migrating-from-jekyll" class="heading-anchor">#</a></h3>
+<ol>
+<li>
+<p><strong>Content Migration</strong></p>
+<ul>
+<li>Move <code>_posts/</code> to <code>posts/</code></li>
+<li>Remove date prefix from filenames (optional)</li>
+<li>Update frontmatter: <code>layout</code> → <code>template</code></li>
+</ul>
+</li>
+<li>
+<p><strong>Template Migration</strong></p>
+<pre><code class="language-liquid">&lt;!-- Jekyll (Liquid) --&gt;
+{{ page.title }}
+{{ content }}
+{% for tag in page.tags %}{{ tag }}{% endfor %}
+
+&lt;!-- markata-go (Pongo2) --&gt;
+{{ post.Title }}
+{{ body|safe }}
+{% for tag in post.Tags %}{{ tag }}{% endfor %}
+</code></pre>
+</li>
+<li>
+<p><strong>Plugin Migration</strong></p>
+<ul>
+<li>Replace Ruby gems with markata-go plugins or built-ins</li>
+<li><code>jekyll-sitemap</code> → built-in sitemap plugin</li>
+<li><code>jekyll-feed</code> → feed system configuration</li>
+</ul>
+</li>
+</ol>
+<h3 id="migrating-from-eleventy">Migrating from Eleventy <a href="#migrating-from-eleventy" class="heading-anchor">#</a></h3>
+<ol>
+<li>
+<p><strong>Content Migration</strong></p>
+<ul>
+<li>Nunjucks frontmatter is compatible</li>
+<li>Data files need conversion to frontmatter or config</li>
+</ul>
+</li>
+<li>
+<p><strong>Template Migration</strong></p>
+<ul>
+<li>Nunjucks templates work with minimal changes</li>
+<li>Update variable names (<code>post</code> vs lowercase)</li>
+<li>Replace shortcodes with template includes</li>
+</ul>
+</li>
+<li>
+<p><strong>Configuration Migration</strong></p>
+<ul>
+<li>Convert <code>.eleventy.js</code> to <code>markata-go.toml</code></li>
+<li>Convert filters to Go plugin functions</li>
+</ul>
+</li>
+</ol>
+<h3 id="migrating-from-zola">Migrating from Zola <a href="#migrating-from-zola" class="heading-anchor">#</a></h3>
+<ol>
+<li>
+<p><strong>Content Migration</strong></p>
+<ul>
+<li>Tera frontmatter is largely compatible</li>
+<li>Remove Zola-specific fields (<code>weight</code>, <code>extra</code>)</li>
+</ul>
+</li>
+<li>
+<p><strong>Template Migration</strong></p>
+<ul>
+<li>Tera and Pongo2 syntax is nearly identical</li>
+<li>Update variable names</li>
+<li>Convert shortcodes to template includes</li>
+</ul>
+</li>
+<li>
+<p><strong>Configuration Migration</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Zola config.toml</span>
+</span></span><span class="line"><span class="cl"><span class="nx">base_url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Site&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># markata-go.toml</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Site&#34;</span>
+</span></span></code></pre></li>
+</ol>
+<h3 id="migrating-from-pelican">Migrating from Pelican <a href="#migrating-from-pelican" class="heading-anchor">#</a></h3>
+<ol>
+<li>
+<p><strong>Content Migration</strong></p>
+<ul>
+<li>Pelican metadata format differs slightly</li>
+<li>Convert <code>Title:</code> to YAML frontmatter</li>
+</ul>
+</li>
+<li>
+<p><strong>Template Migration</strong></p>
+<ul>
+<li>Jinja2 and Pongo2 are nearly identical</li>
+<li>Update variable names (<code>article</code> → <code>post</code>)</li>
+</ul>
+</li>
+<li>
+<p><strong>Plugin Migration</strong></p>
+<ul>
+<li>Convert Python plugins to Go</li>
+<li>Many Pelican plugins have markata-go equivalents</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2 id="decision-matrix">Decision Matrix <a href="#decision-matrix" class="heading-anchor">#</a></h2>
+<h3 id="choose-markata-go-if-you-need">Choose markata-go if you need: <a href="#choose-markata-go-if-you-need" class="heading-anchor">#</a></h3>
+<ul>
+<li><strong>Advanced feed system</strong> - Multiple formats from one definition</li>
+<li><strong>Jinja2-like templates</strong> - Familiar syntax for Python developers</li>
+<li><strong>Fast builds</strong> - Go performance without Hugo complexity</li>
+<li><strong>Plugin flexibility</strong> - 9 lifecycle hooks for customization</li>
+<li><strong>Simple deployment</strong> - Single binary, no runtime dependencies</li>
+<li><strong>Concurrent processing</strong> - Parallel post processing</li>
+</ul>
+<h3 id="choose-an-alternative-if-you-need">Choose an alternative if you need: <a href="#choose-an-alternative-if-you-need" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Need</th>
+<th>Best Choice</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fastest possible builds</td>
+<td>Hugo or Zola</td>
+</tr>
+<tr>
+<td>GitHub Pages native</td>
+<td>Jekyll</td>
+</tr>
+<tr>
+<td>Multiple template languages</td>
+<td>Eleventy</td>
+</tr>
+<tr>
+<td>Frontend frameworks</td>
+<td>Astro</td>
+</tr>
+<tr>
+<td>Python ecosystem</td>
+<td>Pelican</td>
+</tr>
+<tr>
+<td>Built-in taxonomies</td>
+<td>Hugo or Zola</td>
+</tr>
+<tr>
+<td>SSR/hybrid rendering</td>
+<td>Astro</td>
+</tr>
+<tr>
+<td>Maximum flexibility</td>
+<td>Eleventy</td>
+</tr>
+<tr>
+<td>Largest theme ecosystem</td>
+<td>Hugo or Jekyll</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="conclusion">Conclusion <a href="#conclusion" class="heading-anchor">#</a></h2>
+<p>markata-go occupies a unique position in the SSG landscape:</p>
+<p><strong>Strengths:</strong></p>
+<ul>
+<li>Powerful, unified feed system unmatched by other SSGs</li>
+<li>Jinja2-like templates that feel familiar</li>
+<li>Fast Go performance with concurrent processing</li>
+<li>Clean 9-stage plugin architecture</li>
+<li>Single binary distribution</li>
+</ul>
+<p><strong>Trade-offs:</strong></p>
+<ul>
+<li>Smaller ecosystem than Hugo or Jekyll</li>
+<li>Less flexible than Eleventy</li>
+<li>No frontend framework integration like Astro</li>
+<li>Fewer built-in features than Hugo</li>
+</ul>
+<p><strong>Ideal for:</strong></p>
+<ul>
+<li>Content-focused blogs and publications</li>
+<li>Sites needing multiple feed formats</li>
+<li>Developers who prefer Jinja2 syntax</li>
+<li>Projects requiring custom plugin development</li>
+<li>Teams wanting Go performance without Go template complexity</li>
+</ul>
+<p>The best SSG is the one that fits your workflow. markata-go excels for content-heavy sites where the feed system shines, while alternatives may be better for complex web applications or specific ecosystem needs.</p>
+<hr>
+<h2 id="further-reading">Further Reading <a href="#further-reading" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="/getting-started/" class="wikilink" data-title="Getting Started" data-description="Complete guide to installing markata-go, creating your first site, and building for production" data-date="2024-01-15">Getting Started Guide</a></li>
+<li><a href="/feeds-guide/" class="wikilink" data-title="Feeds Guide" data-description="Deep dive into markata-go&#39;s powerful feed system for creating filtered, sorted, paginated collections" data-date="2024-01-15">Feed System Guide</a></li>
+<li><a href="/plugin-development/" class="wikilink" data-title="Plugin Development" data-description="Guide to creating custom plugins for markata-go using the 9-stage lifecycle" data-date="2024-01-15">Plugin Development Guide</a></li>
+<li><a href="/templates-guide/" class="wikilink" data-title="Templates Guide" data-description="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax" data-date="2024-01-15">Template Guide</a></li>
+<li><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration Guide</a></li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>002 Incomplete Spec File Implementation - My Site</title>
+    <meta name="description" content="When implementing the specification, not all spec files are being processed and implemented. The implementation is missing coverage for several specification...">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="002 Incomplete Spec File Implementation">
+    
+    <meta property="og:url" content="/002-incomplete-spec-file-implementation/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="When implementing the specification, not all spec files are being processed and implemented. The implementation is missing coverage for several specification...">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="002 Incomplete Spec File Implementation">
+    
+    <meta name="twitter:description" content="When implementing the specification, not all spec files are being processed and implemented. The implementation is missing coverage for several specification...">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/002-incomplete-spec-file-implementation/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "002 Incomplete Spec File Implementation",
+  "description": "When implementing the specification, not all spec files are being processed and implemented. The implementation is missing coverage for several specification...",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/002-incomplete-spec-file-implementation/"
+  },
+  "url": "/002-incomplete-spec-file-implementation/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>002 Incomplete Spec File Implementation</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="issue-002-incomplete-spec-file-implementation">Issue #002: Incomplete Spec File Implementation</h1>
+<h2 id="summary">Summary <a href="#summary" class="heading-anchor">#</a></h2>
+<p>When implementing the specification, not all spec files are being processed and implemented. The implementation is missing coverage for several specification documents, resulting in incomplete feature implementations.</p>
+<h2 id="current-behavior">Current Behavior <a href="#current-behavior" class="heading-anchor">#</a></h2>
+<p>The implementation process reads and implements some spec files but misses others. For example:</p>
+<ul>
+<li><code>spec/spec/THEMES.md</code> - Not implemented (themes, CSS variables, admonitions styling, theme CLI commands)</li>
+<li>Potentially other spec files may be partially or fully skipped</li>
+</ul>
+<p>This results in:</p>
+<ol>
+<li>Missing theme system functionality</li>
+<li>Missing CSS customization features</li>
+<li>Missing admonition styling</li>
+<li>Missing <code>theme list</code>, <code>theme info</code>, <code>theme install</code>, <code>theme new</code> CLI commands</li>
+<li>Incomplete feature parity with the specification</li>
+</ol>
+<h2 id="expected-behavior">Expected Behavior <a href="#expected-behavior" class="heading-anchor">#</a></h2>
+<p>All spec files listed in the README should be fully implemented:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>INSTALL.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>SPEC.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>CONFIG.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td><strong>THEMES.md</strong></td>
+<td><strong>Missing</strong></td>
+</tr>
+<tr>
+<td>LIFECYCLE.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>FEEDS.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>DEFAULT_PLUGINS.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>PLUGINS.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>DATA_MODEL.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>CONTENT.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>TEMPLATES.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>OPTIONAL_PLUGINS.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>HEAD_STYLE.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>REDIRECTS.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>AUTO_TITLE.md</td>
+<td>?</td>
+</tr>
+<tr>
+<td>IMPLEMENTATION.md</td>
+<td>?</td>
+</tr>
+</tbody>
+</table>
+<h2 id="missing-features-from-themesmd">Missing Features from THEMES.md <a href="#missing-features-from-themesmd" class="heading-anchor">#</a></h2>
+<h3 id="theme-system">Theme System <a href="#theme-system" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> Theme directory structure (<code>themes/[name]/</code>)</li>
+<li><input disabled="" type="checkbox"> <code>theme.toml</code> metadata parsing</li>
+<li><input disabled="" type="checkbox"> Theme resolution order (project local -&gt; project theme -&gt; installed -&gt; built-in -&gt; default)</li>
+<li><input disabled="" type="checkbox"> Theme inheritance (<code>[theme.extends]</code>)</li>
+</ul>
+<h3 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> <code>[name.theme]</code> config section</li>
+<li><input disabled="" type="checkbox"> <code>[name.theme.options]</code> for theme-specific options</li>
+<li><input disabled="" type="checkbox"> <code>[name.theme.variables]</code> CSS variable overrides</li>
+<li><input disabled="" type="checkbox"> <code>custom_css</code> option</li>
+</ul>
+<h3 id="built-in-themes">Built-in Themes <a href="#built-in-themes" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> Default theme with templates and CSS</li>
+<li><input disabled="" type="checkbox"> Minimal theme (optional)</li>
+<li><input disabled="" type="checkbox"> CSS custom properties (colors, typography, spacing)</li>
+</ul>
+<h3 id="admonition-styles">Admonition Styles <a href="#admonition-styles" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> All admonition type styles (note, tip, warning, danger, etc.)</li>
+<li><input disabled="" type="checkbox"> Aside/sidebar styles</li>
+<li><input disabled="" type="checkbox"> Chat/conversation styles</li>
+<li><input disabled="" type="checkbox"> Collapsible admonitions</li>
+<li><input disabled="" type="checkbox"> Dark mode support for all admonitions</li>
+</ul>
+<h3 id="code-block-styles">Code Block Styles <a href="#code-block-styles" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> Base code styles (inline and blocks)</li>
+<li><input disabled="" type="checkbox"> Line numbers support</li>
+<li><input disabled="" type="checkbox"> Language labels</li>
+<li><input disabled="" type="checkbox"> Syntax highlighting theme options</li>
+</ul>
+<h3 id="template-requirements">Template Requirements <a href="#template-requirements" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> <code>base.html</code> with required blocks</li>
+<li><input disabled="" type="checkbox"> <code>post.html</code> template</li>
+<li><input disabled="" type="checkbox"> <code>feed.html</code> template</li>
+<li><input disabled="" type="checkbox"> <code>card.html</code> template</li>
+<li><input disabled="" type="checkbox"> Template filters (<code>theme_asset</code>, <code>asset_url</code>, etc.)</li>
+</ul>
+<h3 id="cli-commands">CLI Commands <a href="#cli-commands" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> <code>[name] theme list</code> - List available themes</li>
+<li><input disabled="" type="checkbox"> <code>[name] theme info [theme]</code> - Show theme details</li>
+<li><input disabled="" type="checkbox"> <code>[name] theme install [url]</code> - Install theme from URL</li>
+<li><input disabled="" type="checkbox"> <code>[name] theme new [name]</code> - Scaffold new theme</li>
+</ul>
+<h2 id="root-cause">Root Cause <a href="#root-cause" class="heading-anchor">#</a></h2>
+<p>The spec processing workflow needs to:</p>
+<ol>
+<li>Enumerate ALL spec files in <code>spec/spec/</code> directory</li>
+<li>Track which files have been processed</li>
+<li>Verify each file's requirements have been implemented</li>
+<li>Report any gaps in implementation</li>
+</ol>
+<h2 id="proposed-solution">Proposed Solution <a href="#proposed-solution" class="heading-anchor">#</a></h2>
+<h3 id="option-a-spec-checklist-generation">Option A: Spec Checklist Generation <a href="#option-a-spec-checklist-generation" class="heading-anchor">#</a></h3>
+<p>Generate a checklist from all spec files before implementation:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Discover all spec files</span>
+</span></span><span class="line"><span class="cl">ls spec/spec/*.md
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Generate implementation checklist</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> spec check --generate-checklist
+</span></span></code></pre><h3 id="option-b-spec-coverage-report">Option B: Spec Coverage Report <a href="#option-b-spec-coverage-report" class="heading-anchor">#</a></h3>
+<p>After implementation, generate a coverage report:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> spec coverage
+</span></span><span class="line"><span class="cl"><span class="c1"># Output:</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># SPEC.md: 45/50 requirements (90%)</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># THEMES.md: 0/35 requirements (0%) &lt;- MISSING</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># ...</span>
+</span></span></code></pre><h3 id="option-c-structured-spec-processing">Option C: Structured Spec Processing <a href="#option-c-structured-spec-processing" class="heading-anchor">#</a></h3>
+<p>Ensure spec processing follows a structured approach:</p>
+<ol>
+<li>Parse spec README to get list of all spec files</li>
+<li>Process each file in order</li>
+<li>Track implementation status</li>
+<li>Block completion until all specs addressed</li>
+</ol>
+<h2 id="implementation-priority">Implementation Priority <a href="#implementation-priority" class="heading-anchor">#</a></h2>
+<p>High - Missing entire feature areas results in an incomplete implementation that doesn't match the specification.</p>
+<h2 id="files-to-audit">Files to Audit <a href="#files-to-audit" class="heading-anchor">#</a></h2>
+<p>All spec files should be reviewed for implementation coverage:</p>
+<pre><code>spec/spec/
+├── AUTO_TITLE.md
+├── CONFIG.md
+├── CONTENT.md
+├── DATA_MODEL.md
+├── DEFAULT_PLUGINS.md
+├── FEEDS.md
+├── HEAD_STYLE.md
+├── IMPLEMENTATION.md
+├── INSTALL.md
+├── LIFECYCLE.md
+├── OPTIONAL_PLUGINS.md
+├── PLUGINS.md
+├── REDIRECTS.md
+├── SPEC.md
+├── TEMPLATES.md
+└── THEMES.md        &lt;- Confirmed missing
+</code></pre>
+<h2 id="related">Related <a href="#related" class="heading-anchor">#</a></h2>
+<ul>
+<li>spec/README.md lists all specification files</li>
+<li>Each spec file defines MUST/SHOULD/MAY requirements</li>
+<li>tests.yaml should have test cases for each spec area</li>
+</ul>
+<h2 id="labels">Labels <a href="#labels" class="heading-anchor">#</a></h2>
+<p><code>bug</code>, <code>spec</code>, <code>implementation-gap</code>, <code>high-priority</code></p>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

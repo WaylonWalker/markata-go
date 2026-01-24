@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deployment Guide - My Site</title>
+    <meta name="description" content="Guide to deploying markata-go sites to GitHub Pages, Netlify, Vercel, and self-hosted solutions">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Deployment Guide">
+    
+    <meta property="og:url" content="/deployment-guide/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Guide to deploying markata-go sites to GitHub Pages, Netlify, Vercel, and self-hosted solutions">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="deployment">
+    
+    <meta property="article:tag" content="hosting">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Deployment Guide">
+    
+    <meta name="twitter:description" content="Guide to deploying markata-go sites to GitHub Pages, Netlify, Vercel, and self-hosted solutions">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/deployment-guide/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Deployment Guide",
+  "description": "Guide to deploying markata-go sites to GitHub Pages, Netlify, Vercel, and self-hosted solutions",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/deployment-guide/"
+  },
+  "keywords": [
+    "documentation",
+    "deployment",
+    "hosting"
+  ],
+  "url": "/deployment-guide/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Deployment Guide</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/deployment/">deployment</a>
+                
+                <a href="/tags/hosting/">hosting</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="deployment-and-hosting-guide">Deployment and Hosting Guide</h1>
+<p>This guide covers deploying markata-go sites to various hosting platforms, from managed services like GitHub Pages and Netlify to self-hosted solutions using nginx or Docker.</p>
+<h2 id="building-for-production">Building for Production <a href="#building-for-production" class="heading-anchor">#</a></h2>
+<h3 id="build-command">Build Command <a href="#build-command" class="heading-anchor">#</a></h3>
+<p>Build your site for production using the <code>build</code> command:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Standard production build</span>
+</span></span><span class="line"><span class="cl">markata-go build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Clean build (removes output directory first)</span>
+</span></span><span class="line"><span class="cl">markata-go build --clean
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Build with verbose output</span>
+</span></span><span class="line"><span class="cl">markata-go build -v
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Build to a custom output directory</span>
+</span></span><span class="line"><span class="cl">markata-go build -o dist
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Dry run (show what would be built without writing files)</span>
+</span></span><span class="line"><span class="cl">markata-go build --dry-run
+</span></span></code></pre><h3 id="output-directory-structure">Output Directory Structure <a href="#output-directory-structure" class="heading-anchor">#</a></h3>
+<p>After building, your output directory (default: <code>public/</code>) contains the complete static site:</p>
+<pre><code>public/
+├── index.html              # Home page (from empty-slug feed)
+├── blog/
+│   ├── index.html          # Blog feed page 1
+│   ├── page/2/index.html   # Blog feed page 2
+│   ├── rss.xml             # RSS feed
+│   └── atom.xml            # Atom feed
+├── tags/
+│   ├── go/
+│   │   ├── index.html      # Tag archive
+│   │   └── rss.xml         # Tag RSS feed
+│   └── tutorial/
+│       └── index.html
+├── my-first-post/
+│   └── index.html          # Individual post
+├── about/
+│   └── index.html          # Page
+├── static/                 # Copied assets
+│   ├── css/
+│   ├── js/
+│   └── images/
+└── sitemap.xml
+</code></pre>
+<h3 id="clean-builds">Clean Builds <a href="#clean-builds" class="heading-anchor">#</a></h3>
+<p>For production deployments, always use clean builds to ensure no stale files remain:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build --clean
+</span></span></code></pre><p>Or manually remove the output directory before building:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">rm -rf public <span class="o">&amp;&amp;</span> markata-go build
+</span></span></code></pre><h3 id="environment-specific-builds">Environment-Specific Builds <a href="#environment-specific-builds" class="heading-anchor">#</a></h3>
+<p>Use environment variables to customize builds for different environments:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Production</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://example.com markata-go build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Staging</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://staging.example.com markata-go build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Preview/development</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://preview-123.example.com markata-go build
+</span></span></code></pre><hr>
+<h2 id="deploying-to-github-pages">Deploying to GitHub Pages <a href="#deploying-to-github-pages" class="heading-anchor">#</a></h2>
+<p>GitHub Pages is a free hosting service for static sites directly from a GitHub repository.</p>
+<h3 id="github-actions-workflow-recommended">GitHub Actions Workflow (Recommended) <a href="#github-actions-workflow-recommended" class="heading-anchor">#</a></h3>
+<p>Create <code>.github/workflows/deploy.yml</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Deploy to GitHub Pages</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">on</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">push</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">main</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">workflow_dispatch</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">permissions</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">contents</span><span class="p">:</span><span class="w"> </span><span class="l">read</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">pages</span><span class="p">:</span><span class="w"> </span><span class="l">write</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">id-token</span><span class="p">:</span><span class="w"> </span><span class="l">write</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">concurrency</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;pages&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">cancel-in-progress</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">jobs</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">build</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l">ubuntu-latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Checkout</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/checkout@v4</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Setup Go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/setup-go@v5</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">go-version</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;1.22&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">cache</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Install markata-go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">go install github.com/example/markata-go/cmd/markata-go@latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build site</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go build --clean</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">MARKATA_GO_URL</span><span class="p">:</span><span class="w"> </span><span class="l">${{ vars.SITE_URL || &#39;https://username.github.io/repo-name&#39; }}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Upload artifact</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/upload-pages-artifact@v3</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">./public</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">deploy</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">environment</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">github-pages</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l">${{ steps.deployment.outputs.page_url }}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l">ubuntu-latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">needs</span><span class="p">:</span><span class="w"> </span><span class="l">build</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Deploy to GitHub Pages</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l">deployment</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/deploy-pages@v4</span><span class="w">
+</span></span></span></code></pre><h3 id="repository-settings">Repository Settings <a href="#repository-settings" class="heading-anchor">#</a></h3>
+<ol>
+<li>Go to your repository's <strong>Settings</strong> &gt; <strong>Pages</strong></li>
+<li>Under <strong>Source</strong>, select <strong>GitHub Actions</strong></li>
+<li>The workflow will deploy on every push to <code>main</code></li>
+</ol>
+<h3 id="custom-domains">Custom Domains <a href="#custom-domains" class="heading-anchor">#</a></h3>
+<p>To use a custom domain with GitHub Pages:</p>
+<ol>
+<li>Add a <code>CNAME</code> file to your <code>static/</code> directory:</li>
+</ol>
+<pre><code>example.com
+</code></pre>
+<ol start="2">
+<li>
+<p>Configure DNS at your domain registrar:</p>
+<ul>
+<li>For apex domain: Add <code>A</code> records pointing to GitHub's IPs</li>
+<li>For subdomain: Add a <code>CNAME</code> record pointing to <code>username.github.io</code></li>
+</ul>
+</li>
+<li>
+<p>Update your config:</p>
+</li>
+</ol>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span></code></pre><h3 id="manual-deployment">Manual Deployment <a href="#manual-deployment" class="heading-anchor">#</a></h3>
+<p>For manual deployment without GitHub Actions:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Build the site</span>
+</span></span><span class="line"><span class="cl">markata-go build --clean
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Deploy using gh-pages branch</span>
+</span></span><span class="line"><span class="cl"><span class="nb">cd</span> public
+</span></span><span class="line"><span class="cl">git init
+</span></span><span class="line"><span class="cl">git add -A
+</span></span><span class="line"><span class="cl">git commit -m <span class="s2">&#34;Deploy&#34;</span>
+</span></span><span class="line"><span class="cl">git push -f git@github.com:username/repo.git main:gh-pages
+</span></span></code></pre><p>Or use the <code>gh-pages</code> npm package:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">npm install -g gh-pages
+</span></span><span class="line"><span class="cl">markata-go build --clean
+</span></span><span class="line"><span class="cl">gh-pages -d public
+</span></span></code></pre><hr>
+<h2 id="deploying-to-netlify">Deploying to Netlify <a href="#deploying-to-netlify" class="heading-anchor">#</a></h2>
+<p>Netlify provides continuous deployment, serverless functions, and edge features.</p>
+<h3 id="netlifytoml-configuration">netlify.toml Configuration <a href="#netlifytoml-configuration" class="heading-anchor">#</a></h3>
+<p>Create <code>netlify.toml</code> in your repository root:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">build</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">command</span> <span class="p">=</span> <span class="s2">&#34;go install github.com/example/markata-go/cmd/markata-go@latest &amp;&amp; markata-go build --clean&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">publish</span> <span class="p">=</span> <span class="s2">&#34;public&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">build</span><span class="p">.</span><span class="nx">environment</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">GO_VERSION</span> <span class="p">=</span> <span class="s2">&#34;1.22&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">MARKATA_GO_URL</span> <span class="p">=</span> <span class="s2">&#34;https://example.netlify.app&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Production context</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">context</span><span class="p">.</span><span class="nx">production</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">environment</span> <span class="p">=</span> <span class="p">{</span> <span class="nx">MARKATA_GO_URL</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Deploy previews</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">context</span><span class="p">.</span><span class="nx">deploy-preview</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">command</span> <span class="p">=</span> <span class="s2">&#34;go install github.com/example/markata-go/cmd/markata-go@latest &amp;&amp; markata-go build&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">context</span><span class="p">.</span><span class="nx">deploy-preview</span><span class="p">.</span><span class="nx">environment</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="c"># URL is set automatically by Netlify</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Branch deploys</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">context</span><span class="p">.</span><span class="nx">branch-deploy</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">command</span> <span class="p">=</span> <span class="s2">&#34;go install github.com/example/markata-go/cmd/markata-go@latest &amp;&amp; markata-go build&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Headers</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">headers</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">for</span> <span class="p">=</span> <span class="s2">&#34;/*&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">[</span><span class="nx">headers</span><span class="p">.</span><span class="nx">values</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">X-Frame-Options</span> <span class="p">=</span> <span class="s2">&#34;DENY&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">X-Content-Type-Options</span> <span class="p">=</span> <span class="s2">&#34;nosniff&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Referrer-Policy</span> <span class="p">=</span> <span class="s2">&#34;strict-origin-when-cross-origin&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">headers</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">for</span> <span class="p">=</span> <span class="s2">&#34;/static/*&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">[</span><span class="nx">headers</span><span class="p">.</span><span class="nx">values</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Cache-Control</span> <span class="p">=</span> <span class="s2">&#34;public, max-age=31536000, immutable&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">headers</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">for</span> <span class="p">=</span> <span class="s2">&#34;/*.html&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">[</span><span class="nx">headers</span><span class="p">.</span><span class="nx">values</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Cache-Control</span> <span class="p">=</span> <span class="s2">&#34;public, max-age=0, must-revalidate&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Redirects</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">redirects</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">from</span> <span class="p">=</span> <span class="s2">&#34;/old-path/*&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">to</span> <span class="p">=</span> <span class="s2">&#34;/new-path/:splat&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">status</span> <span class="p">=</span> <span class="mi">301</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">redirects</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">from</span> <span class="p">=</span> <span class="s2">&#34;/api/*&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">to</span> <span class="p">=</span> <span class="s2">&#34;https://api.example.com/:splat&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">status</span> <span class="p">=</span> <span class="mi">200</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">force</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># SPA fallback (if needed)</span>
+</span></span><span class="line"><span class="cl"><span class="c"># [[redirects]]</span>
+</span></span><span class="line"><span class="cl"><span class="c">#   from = &#34;/*&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="c">#   to = &#34;/index.html&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="c">#   status = 200</span>
+</span></span></code></pre><h3 id="build-settings-via-ui">Build Settings via UI <a href="#build-settings-via-ui" class="heading-anchor">#</a></h3>
+<p>Alternatively, configure through the Netlify dashboard:</p>
+<ol>
+<li><strong>Base directory</strong>: (leave empty or set if site is in subdirectory)</li>
+<li><strong>Build command</strong>: <code>go install github.com/example/markata-go/cmd/markata-go@latest &amp;&amp; markata-go build --clean</code></li>
+<li><strong>Publish directory</strong>: <code>public</code></li>
+<li><strong>Environment variables</strong>:
+<ul>
+<li><code>GO_VERSION</code>: <code>1.22</code></li>
+<li><code>MARKATA_GO_URL</code>: <code>https://your-site.netlify.app</code></li>
+</ul>
+</li>
+</ol>
+<h3 id="deploy-via-cli">Deploy via CLI <a href="#deploy-via-cli" class="heading-anchor">#</a></h3>
+<p>Install the Netlify CLI and deploy manually:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Install CLI</span>
+</span></span><span class="line"><span class="cl">npm install -g netlify-cli
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Login</span>
+</span></span><span class="line"><span class="cl">netlify login
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Initialize (first time)</span>
+</span></span><span class="line"><span class="cl">netlify init
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Deploy preview</span>
+</span></span><span class="line"><span class="cl">markata-go build --clean
+</span></span><span class="line"><span class="cl">netlify deploy --dir<span class="o">=</span>public
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Deploy to production</span>
+</span></span><span class="line"><span class="cl">netlify deploy --dir<span class="o">=</span>public --prod
+</span></span></code></pre><hr>
+<h2 id="deploying-to-vercel">Deploying to Vercel <a href="#deploying-to-vercel" class="heading-anchor">#</a></h2>
+<p>Vercel offers zero-configuration deployments with excellent performance.</p>
+<h3 id="verceljson-configuration">vercel.json Configuration <a href="#verceljson-configuration" class="heading-anchor">#</a></h3>
+<p>Create <code>vercel.json</code> in your repository root:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;buildCommand&#34;</span><span class="p">:</span> <span class="s2">&#34;go install github.com/example/markata-go/cmd/markata-go@latest &amp;&amp; markata-go build --clean&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;outputDirectory&#34;</span><span class="p">:</span> <span class="s2">&#34;public&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;installCommand&#34;</span><span class="p">:</span> <span class="s2">&#34;echo &#39;No npm dependencies&#39;&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;framework&#34;</span><span class="p">:</span> <span class="kc">null</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;headers&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;source&#34;</span><span class="p">:</span> <span class="s2">&#34;/static/(.*)&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;headers&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">        <span class="p">{</span>
+</span></span><span class="line"><span class="cl">          <span class="nt">&#34;key&#34;</span><span class="p">:</span> <span class="s2">&#34;Cache-Control&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">          <span class="nt">&#34;value&#34;</span><span class="p">:</span> <span class="s2">&#34;public, max-age=31536000, immutable&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">      <span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;source&#34;</span><span class="p">:</span> <span class="s2">&#34;/(.*).html&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;headers&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">        <span class="p">{</span>
+</span></span><span class="line"><span class="cl">          <span class="nt">&#34;key&#34;</span><span class="p">:</span> <span class="s2">&#34;Cache-Control&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">          <span class="nt">&#34;value&#34;</span><span class="p">:</span> <span class="s2">&#34;public, max-age=0, must-revalidate&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">      <span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">],</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;redirects&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;source&#34;</span><span class="p">:</span> <span class="s2">&#34;/old-path/:path*&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;destination&#34;</span><span class="p">:</span> <span class="s2">&#34;/new-path/:path*&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;permanent&#34;</span><span class="p">:</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">],</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;rewrites&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;source&#34;</span><span class="p">:</span> <span class="s2">&#34;/api/:path*&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;destination&#34;</span><span class="p">:</span> <span class="s2">&#34;https://api.example.com/:path*&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="environment-variables">Environment Variables <a href="#environment-variables" class="heading-anchor">#</a></h3>
+<p>Set environment variables in the Vercel dashboard or via CLI:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Via CLI</span>
+</span></span><span class="line"><span class="cl">vercel env add MARKATA_GO_URL production
+</span></span><span class="line"><span class="cl"><span class="c1"># Enter: https://example.com</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">vercel env add MARKATA_GO_URL preview
+</span></span><span class="line"><span class="cl"><span class="c1"># Enter: (leave blank to use Vercel&#39;s preview URL)</span>
+</span></span></code></pre><h3 id="deploy-via-cli-1">Deploy via CLI <a href="#deploy-via-cli-1" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Install CLI</span>
+</span></span><span class="line"><span class="cl">npm install -g vercel
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Login</span>
+</span></span><span class="line"><span class="cl">vercel login
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Deploy preview</span>
+</span></span><span class="line"><span class="cl">markata-go build --clean
+</span></span><span class="line"><span class="cl">vercel --cwd public
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Deploy to production</span>
+</span></span><span class="line"><span class="cl">vercel --cwd public --prod
+</span></span></code></pre><h3 id="using-verceljson-with-go">Using vercel.json with Go <a href="#using-verceljson-with-go" class="heading-anchor">#</a></h3>
+<p>Since Vercel needs Go installed, use their Go runtime:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;build&#34;</span><span class="p">:</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;env&#34;</span><span class="p">:</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nt">&#34;GO_VERSION&#34;</span><span class="p">:</span> <span class="s2">&#34;1.22&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">},</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;buildCommand&#34;</span><span class="p">:</span> <span class="s2">&#34;curl -sSL https://go.dev/dl/go1.22.0.linux-amd64.tar.gz | tar -C /usr/local -xzf - &amp;&amp; export PATH=$PATH:/usr/local/go/bin &amp;&amp; go install github.com/example/markata-go/cmd/markata-go@latest &amp;&amp; ~/go/bin/markata-go build --clean&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;outputDirectory&#34;</span><span class="p">:</span> <span class="s2">&#34;public&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><hr>
+<h2 id="deploying-to-cloudflare-pages">Deploying to Cloudflare Pages <a href="#deploying-to-cloudflare-pages" class="heading-anchor">#</a></h2>
+<p>Cloudflare Pages offers fast global CDN deployment with Workers integration.</p>
+<h3 id="build-configuration">Build Configuration <a href="#build-configuration" class="heading-anchor">#</a></h3>
+<p>Configure via the Cloudflare dashboard:</p>
+<ol>
+<li><strong>Framework preset</strong>: None</li>
+<li><strong>Build command</strong>:
+<pre><code>curl -sSL https://go.dev/dl/go1.22.0.linux-amd64.tar.gz | tar -xzf - &amp;&amp; ./go/bin/go install github.com/example/markata-go/cmd/markata-go@latest &amp;&amp; ~/go/bin/markata-go build --clean
+</code></pre>
+</li>
+<li><strong>Build output directory</strong>: <code>public</code></li>
+<li><strong>Root directory</strong>: (leave empty)</li>
+</ol>
+<h3 id="environment-variables-1">Environment Variables <a href="#environment-variables-1" class="heading-anchor">#</a></h3>
+<p>Set in the Cloudflare dashboard under <strong>Settings</strong> &gt; <strong>Environment variables</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Production</th>
+<th>Preview</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MARKATA_GO_URL</code></td>
+<td><code>https://example.com</code></td>
+<td>(leave empty)</td>
+</tr>
+<tr>
+<td><code>GO_VERSION</code></td>
+<td><code>1.22</code></td>
+<td><code>1.22</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="-headers-file">_headers File <a href="#-headers-file" class="heading-anchor">#</a></h3>
+<p>Create <code>static/_headers</code> for custom headers (copied to output):</p>
+<pre><code>/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+</code></pre>
+<h3 id="-redirects-file">_redirects File <a href="#-redirects-file" class="heading-anchor">#</a></h3>
+<p>Create <code>static/_redirects</code> for redirects:</p>
+<pre><code>/old-path/* /new-path/:splat 301
+/blog/old-post /blog/new-post 301
+
+# Proxy example
+/api/* https://api.example.com/:splat 200
+</code></pre>
+<h3 id="wrangler-cli-deployment">Wrangler CLI Deployment <a href="#wrangler-cli-deployment" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Install wrangler</span>
+</span></span><span class="line"><span class="cl">npm install -g wrangler
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Login</span>
+</span></span><span class="line"><span class="cl">wrangler login
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Build and deploy</span>
+</span></span><span class="line"><span class="cl">markata-go build --clean
+</span></span><span class="line"><span class="cl">wrangler pages deploy public --project-name<span class="o">=</span>my-site
+</span></span></code></pre><hr>
+<h2 id="self-hosting">Self-Hosting <a href="#self-hosting" class="heading-anchor">#</a></h2>
+<h3 id="using-nginx">Using nginx <a href="#using-nginx" class="heading-anchor">#</a></h3>
+<p>nginx configuration for serving a markata-go site:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">server</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">listen</span> <span class="s">[::]:80</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">server_name</span> <span class="s">example.com</span> <span class="s">www.example.com</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Redirect HTTP to HTTPS
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">return</span> <span class="mi">301</span> <span class="s">https://</span><span class="nv">$server_name$request_uri</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">server</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">listen</span> <span class="mi">443</span> <span class="s">ssl</span> <span class="s">http2</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">listen</span> <span class="s">[::]:443</span> <span class="s">ssl</span> <span class="s">http2</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">server_name</span> <span class="s">example.com</span> <span class="s">www.example.com</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># SSL configuration
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">ssl_certificate</span> <span class="s">/etc/letsencrypt/live/example.com/fullchain.pem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">ssl_certificate_key</span> <span class="s">/etc/letsencrypt/live/example.com/privkey.pem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">ssl_session_timeout</span> <span class="s">1d</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">ssl_session_cache</span> <span class="s">shared:SSL:50m</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">ssl_protocols</span> <span class="s">TLSv1.2</span> <span class="s">TLSv1.3</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">ssl_ciphers</span> <span class="s">ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">ssl_prefer_server_ciphers</span> <span class="no">off</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># HSTS
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">add_header</span> <span class="s">Strict-Transport-Security</span> <span class="s">&#34;max-age=63072000&#34;</span> <span class="s">always</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># Document root
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">root</span> <span class="s">/var/www/example.com/public</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">index</span> <span class="s">index.html</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># Security headers
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">add_header</span> <span class="s">X-Frame-Options</span> <span class="s">&#34;DENY&#34;</span> <span class="s">always</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">add_header</span> <span class="s">X-Content-Type-Options</span> <span class="s">&#34;nosniff&#34;</span> <span class="s">always</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">add_header</span> <span class="s">Referrer-Policy</span> <span class="s">&#34;strict-origin-when-cross-origin&#34;</span> <span class="s">always</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># Gzip compression
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">gzip</span> <span class="no">on</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">gzip_vary</span> <span class="no">on</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">gzip_proxied</span> <span class="s">any</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">gzip_comp_level</span> <span class="mi">6</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">gzip_types</span> <span class="s">text/plain</span> <span class="s">text/css</span> <span class="s">text/xml</span> <span class="s">application/json</span> <span class="s">application/javascript</span> 
+</span></span><span class="line"><span class="cl">               <span class="s">application/rss+xml</span> <span class="s">application/atom+xml</span> <span class="s">image/svg+xml</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># Static assets caching
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">location</span> <span class="s">/static/</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">expires</span> <span class="s">1y</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">add_header</span> <span class="s">Cache-Control</span> <span class="s">&#34;public,</span> <span class="s">immutable&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># HTML files - no caching
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">location</span> <span class="p">~</span><span class="sr">*</span> <span class="s">\.html</span>$ <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">expires</span> <span class="s">-1</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">add_header</span> <span class="s">Cache-Control</span> <span class="s">&#34;no-store,</span> <span class="s">no-cache,</span> <span class="s">must-revalidate&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># XML feeds
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">location</span> <span class="p">~</span><span class="sr">*</span> <span class="s">\.(xml|rss|atom)</span>$ <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">expires</span> <span class="s">1h</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">add_header</span> <span class="s">Cache-Control</span> <span class="s">&#34;public&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># Clean URLs - try file, then directory, then 404
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">try_files</span> <span class="nv">$uri</span> <span class="nv">$uri/</span> <span class="p">=</span><span class="mi">404</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># Custom error pages
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">error_page</span> <span class="mi">404</span> <span class="s">/404.html</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">location</span> <span class="p">=</span> <span class="s">/404.html</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">internal</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="using-caddy">Using Caddy <a href="#using-caddy" class="heading-anchor">#</a></h3>
+<p>Caddy provides automatic HTTPS and simpler configuration:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gh">example.com</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">root</span> <span class="nd">*</span> <span class="s">/var/www/example.com/public</span>
+</span></span><span class="line"><span class="cl">    <span class="k">file_server</span><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">    # Compression
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">encode</span> <span class="s">gzip</span><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">    # Security headers
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">header</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">X-Frame-Options</span> <span class="s">&#34;DENY&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">X-Content-Type-Options</span> <span class="s">&#34;nosniff&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">Referrer-Policy</span> <span class="s">&#34;strict-origin-when-cross-origin&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">Strict-Transport-Security</span> <span class="s">&#34;max-age=63072000&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">    # Static assets caching
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nd">@static</span> <span class="k">path</span> <span class="s">/static/*</span>
+</span></span><span class="line"><span class="cl">    <span class="k">header</span> <span class="nd">@static</span> <span class="s">Cache-Control</span> <span class="s">&#34;public,</span> <span class="s">max-age=31536000,</span> <span class="s">immutable&#34;</span><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">    # HTML no-cache
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nd">@html</span> <span class="k">path</span> <span class="s">*.html</span>
+</span></span><span class="line"><span class="cl">    <span class="k">header</span> <span class="nd">@html</span> <span class="s">Cache-Control</span> <span class="s">&#34;no-cache,</span> <span class="s">no-store,</span> <span class="s">must-revalidate&#34;</span><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">    # Handle clean URLs
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">try_files</span> <span class="se">{path}</span> <span class="se">{path}</span><span class="s">/</span> <span class="se">{path}</span><span class="s">/index.html</span><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">    # Custom 404
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">handle_errors</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">rewrite</span> <span class="nd">*</span> <span class="s">/404.html</span>
+</span></span><span class="line"><span class="cl">        <span class="k">file_server</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1"># Redirect www to non-www
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="gh">www.example.com</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">redir</span> <span class="s">https://example.com</span><span class="se">{uri}</span> <span class="s">permanent</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="docker-deployment">Docker Deployment <a href="#docker-deployment" class="heading-anchor">#</a></h3>
+<h4 id="dockerfile">Dockerfile <a href="#dockerfile" class="heading-anchor">#</a></h4>
+<p>Create a multi-stage <code>Dockerfile</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Build stage</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">FROM</span><span class="s"> golang:1.22-alpine AS builder</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">WORKDIR</span><span class="s"> /build</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="c"># Install markata-go</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">RUN</span> go install github.com/example/markata-go/cmd/markata-go@latest<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="c"># Copy source</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">COPY</span> . .<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="c"># Build site</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">ARG</span> <span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://example.com<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">ENV</span> <span class="nv">MARKATA_GO_URL</span><span class="o">=</span><span class="nv">$MARKATA_GO_URL</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">RUN</span> markata-go build --clean<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="c"># Production stage</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">FROM</span><span class="s"> nginx:alpine</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="c"># Copy nginx config</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">COPY</span> nginx.conf /etc/nginx/conf.d/default.conf<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="c"># Copy built site</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">COPY</span> --from<span class="o">=</span>builder /build/public /usr/share/nginx/html<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="c"># Healthcheck</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">HEALTHCHECK --interval=30s --timeout=3s </span>--start-period<span class="o">=</span>5s --retries<span class="o">=</span><span class="m">3</span> <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>    CMD wget --no-verbose --tries<span class="o">=</span><span class="m">1</span> --spider http://localhost/ <span class="o">||</span> <span class="nb">exit</span> <span class="m">1</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">EXPOSE</span><span class="s"> 80</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">CMD</span> <span class="p">[</span><span class="s2">&#34;nginx&#34;</span><span class="p">,</span> <span class="s2">&#34;-g&#34;</span><span class="p">,</span> <span class="s2">&#34;daemon off;&#34;</span><span class="p">]</span><span class="err">
+</span></span></span></code></pre><h4 id="docker-nginxconf">Docker nginx.conf <a href="#docker-nginxconf" class="heading-anchor">#</a></h4>
+<p>Create <code>nginx.conf</code> for the container:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">server</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">server_name</span> <span class="s">_</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kn">root</span> <span class="s">/usr/share/nginx/html</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">index</span> <span class="s">index.html</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># Gzip
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">gzip</span> <span class="no">on</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">gzip_vary</span> <span class="no">on</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">gzip_types</span> <span class="s">text/plain</span> <span class="s">text/css</span> <span class="s">application/json</span> <span class="s">application/javascript</span> 
+</span></span><span class="line"><span class="cl">               <span class="s">text/xml</span> <span class="s">application/xml</span> <span class="s">application/rss+xml</span> <span class="s">image/svg+xml</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># Security headers
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">add_header</span> <span class="s">X-Frame-Options</span> <span class="s">&#34;DENY&#34;</span> <span class="s">always</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">add_header</span> <span class="s">X-Content-Type-Options</span> <span class="s">&#34;nosniff&#34;</span> <span class="s">always</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># Static caching
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">location</span> <span class="s">/static/</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">expires</span> <span class="s">1y</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">add_header</span> <span class="s">Cache-Control</span> <span class="s">&#34;public,</span> <span class="s">immutable&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># Clean URLs
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">try_files</span> <span class="nv">$uri</span> <span class="nv">$uri/</span> <span class="p">=</span><span class="mi">404</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kn">error_page</span> <span class="mi">404</span> <span class="s">/404.html</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h4 id="docker-composeyml">docker-compose.yml <a href="#docker-composeyml" class="heading-anchor">#</a></h4>
+<p>For easy deployment with Docker Compose:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;3.8&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">services</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">site</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">build</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">context</span><span class="p">:</span><span class="w"> </span><span class="l">.</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">args</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">MARKATA_GO_URL</span><span class="p">:</span><span class="w"> </span><span class="l">https://example.com</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">ports</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="s2">&#34;80:80&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">restart</span><span class="p">:</span><span class="w"> </span><span class="l">unless-stopped</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">healthcheck</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">test</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&#34;CMD&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;wget&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;--spider&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;-q&#34;</span><span class="p">,</span><span class="w"> </span><span class="s2">&#34;http://localhost/&#34;</span><span class="p">]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l">30s</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l">10s</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">retries</span><span class="p">:</span><span class="w"> </span><span class="m">3</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># Optional: Caddy reverse proxy with auto-HTTPS</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">caddy</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">caddy:alpine</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">ports</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="s2">&#34;80:80&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="s2">&#34;443:443&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">./Caddyfile:/etc/caddy/Caddyfile</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">caddy_data:/data</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">caddy_config:/config</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">depends_on</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">site</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">volumes</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">caddy_data</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">caddy_config</span><span class="p">:</span><span class="w">
+</span></span></span></code></pre><h4 id="build-and-run">Build and Run <a href="#build-and-run" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Build image</span>
+</span></span><span class="line"><span class="cl">docker build -t my-site --build-arg <span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://example.com .
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Run container</span>
+</span></span><span class="line"><span class="cl">docker run -d -p 80:80 --name my-site my-site
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Or with docker-compose</span>
+</span></span><span class="line"><span class="cl">docker-compose up -d
+</span></span></code></pre><hr>
+<h2 id="cicd-best-practices">CI/CD Best Practices <a href="#cicd-best-practices" class="heading-anchor">#</a></h2>
+<h3 id="caching-dependencies">Caching Dependencies <a href="#caching-dependencies" class="heading-anchor">#</a></h3>
+<h4 id="github-actions">GitHub Actions <a href="#github-actions" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Setup Go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/setup-go@v5</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">go-version</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;1.22&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">cache</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">  </span><span class="c"># Caches Go modules automatically</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Cache markata-go binary</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/cache@v4</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">~/go/bin/markata-go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go-${{ runner.os }}-${{ hashFiles(&#39;go.sum&#39;) }}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Install markata-go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p">|</span><span class="sd">
+</span></span></span><span class="line"><span class="cl"><span class="sd">    if [ ! -f ~/go/bin/markata-go ]; then
+</span></span></span><span class="line"><span class="cl"><span class="sd">      go install github.com/example/markata-go/cmd/markata-go@latest
+</span></span></span><span class="line"><span class="cl"><span class="sd">    fi</span><span class="w">    
+</span></span></span></code></pre><h4 id="gitlab-ci">GitLab CI <a href="#gitlab-ci" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">variables</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">GOPATH</span><span class="p">:</span><span class="w"> </span><span class="l">$CI_PROJECT_DIR/.go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">cache</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l">${CI_COMMIT_REF_SLUG}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">paths</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">.go/pkg/mod/</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">.go/bin/</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">build</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">golang:1.22</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">script</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">go install github.com/example/markata-go/cmd/markata-go@latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span>- <span class="l">markata-go build --clean</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">artifacts</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">paths</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">public/</span><span class="w">
+</span></span></span></code></pre><h3 id="environment-specific-builds-1">Environment-Specific Builds <a href="#environment-specific-builds-1" class="heading-anchor">#</a></h3>
+<p>Create separate workflows or jobs for different environments:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Deploy</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">on</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">push</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">main]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">pull_request</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">main]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">jobs</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">build</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l">ubuntu-latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/checkout@v4</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Setup Go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/setup-go@v5</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">go-version</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;1.22&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">cache</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Install markata-go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">go install github.com/example/markata-go/cmd/markata-go@latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build (Production)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l">github.ref == &#39;refs/heads/main&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go build --clean</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">MARKATA_GO_URL</span><span class="p">:</span><span class="w"> </span><span class="l">https://example.com</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build (Preview)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l">github.event_name == &#39;pull_request&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go build --clean</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">MARKATA_GO_URL</span><span class="p">:</span><span class="w"> </span><span class="l">https://preview-${{ github.event.number }}.example.com</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Upload artifact</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/upload-artifact@v4</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">site</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">public/</span><span class="w">
+</span></span></span></code></pre><h3 id="preview-deployments">Preview Deployments <a href="#preview-deployments" class="heading-anchor">#</a></h3>
+<p>Automatically deploy preview environments for pull requests:</p>
+<h4 id="netlify-automatic">Netlify (automatic) <a href="#netlify-automatic" class="heading-anchor">#</a></h4>
+<p>Netlify automatically creates deploy previews for PRs.</p>
+<h4 id="vercel-automatic">Vercel (automatic) <a href="#vercel-automatic" class="heading-anchor">#</a></h4>
+<p>Vercel automatically creates preview deployments for PRs.</p>
+<h4 id="github-pages-with-pr-previews">GitHub Pages with PR Previews <a href="#github-pages-with-pr-previews" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Preview</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">on</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">pull_request</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">types</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">opened, synchronize]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">jobs</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">preview</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l">ubuntu-latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">permissions</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">contents</span><span class="p">:</span><span class="w"> </span><span class="l">write</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">pull-requests</span><span class="p">:</span><span class="w"> </span><span class="l">write</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/checkout@v4</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Setup Go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/setup-go@v5</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">go-version</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;1.22&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">cache</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p">|</span><span class="sd">
+</span></span></span><span class="line"><span class="cl"><span class="sd">          go install github.com/example/markata-go/cmd/markata-go@latest
+</span></span></span><span class="line"><span class="cl"><span class="sd">          markata-go build --clean</span><span class="w">          
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">MARKATA_GO_URL</span><span class="p">:</span><span class="w"> </span><span class="l">https://username.github.io/repo/pr-${{ github.event.number }}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Deploy Preview</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">peaceiris/actions-gh-pages@v4</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">github_token</span><span class="p">:</span><span class="w"> </span><span class="l">${{ secrets.GITHUB_TOKEN }}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">publish_dir</span><span class="p">:</span><span class="w"> </span><span class="l">./public</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">destination_dir</span><span class="p">:</span><span class="w"> </span><span class="l">pr-${{ github.event.number }}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Comment PR</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/github-script@v7</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">script</span><span class="p">:</span><span class="w"> </span><span class="p">|</span><span class="sd">
+</span></span></span><span class="line"><span class="cl"><span class="sd">            github.rest.issues.createComment({
+</span></span></span><span class="line"><span class="cl"><span class="sd">              issue_number: context.issue.number,
+</span></span></span><span class="line"><span class="cl"><span class="sd">              owner: context.repo.owner,
+</span></span></span><span class="line"><span class="cl"><span class="sd">              repo: context.repo.repo,
+</span></span></span><span class="line"><span class="cl"><span class="sd">              body: &#39;🚀 Preview deployed to https://username.github.io/repo/pr-${{ github.event.number }}/&#39;
+</span></span></span><span class="line"><span class="cl"><span class="sd">            })</span><span class="w">            
+</span></span></span></code></pre><h3 id="build-validation">Build Validation <a href="#build-validation" class="heading-anchor">#</a></h3>
+<p>Add validation steps before deployment:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build site</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go build --clean</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Validate HTML</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p">|</span><span class="sd">
+</span></span></span><span class="line"><span class="cl"><span class="sd">    npm install -g html-validate
+</span></span></span><span class="line"><span class="cl"><span class="sd">    html-validate &#34;public/**/*.html&#34; || true</span><span class="w">    
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Check for broken links</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p">|</span><span class="sd">
+</span></span></span><span class="line"><span class="cl"><span class="sd">    npm install -g linkinator
+</span></span></span><span class="line"><span class="cl"><span class="sd">    linkinator public --recurse --skip &#34;^(?!https?://example.com)&#34; || true</span><span class="w">    
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Validate feeds</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p">|</span><span class="sd">
+</span></span></span><span class="line"><span class="cl"><span class="sd">    # Validate RSS
+</span></span></span><span class="line"><span class="cl"><span class="sd">    xmllint --noout public/blog/rss.xml
+</span></span></span><span class="line"><span class="cl"><span class="sd">    # Validate Atom
+</span></span></span><span class="line"><span class="cl"><span class="sd">    xmllint --noout public/blog/atom.xml</span><span class="w">    
+</span></span></span></code></pre><h3 id="complete-cicd-workflow">Complete CI/CD Workflow <a href="#complete-cicd-workflow" class="heading-anchor">#</a></h3>
+<p>A full workflow with caching, validation, and deployment:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build and Deploy</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">on</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">push</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">main]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">pull_request</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">main]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">permissions</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">contents</span><span class="p">:</span><span class="w"> </span><span class="l">read</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">pages</span><span class="p">:</span><span class="w"> </span><span class="l">write</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">id-token</span><span class="p">:</span><span class="w"> </span><span class="l">write</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">concurrency</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l">${{ github.workflow }}-${{ github.ref }}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">cancel-in-progress</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">jobs</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">build</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l">ubuntu-latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Checkout</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/checkout@v4</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">fetch-depth</span><span class="p">:</span><span class="w"> </span><span class="m">0</span><span class="w">  </span><span class="c"># Full history for git dates</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Setup Go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/setup-go@v5</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">go-version</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;1.22&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">cache</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Install markata-go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">go install github.com/example/markata-go/cmd/markata-go@latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Validate config</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go config validate</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build site</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go build --clean -v</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">MARKATA_GO_URL</span><span class="p">:</span><span class="w"> </span><span class="l">${{ github.event_name == &#39;push&#39; &amp;&amp; &#39;https://example.com&#39; || &#39;&#39; }}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Upload artifact</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/upload-pages-artifact@v3</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">with</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l">./public</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">deploy</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="l">github.event_name == &#39;push&#39; &amp;&amp; github.ref == &#39;refs/heads/main&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">needs</span><span class="p">:</span><span class="w"> </span><span class="l">build</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l">ubuntu-latest</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">environment</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">github-pages</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l">${{ steps.deployment.outputs.page_url }}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">steps</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Deploy to GitHub Pages</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l">deployment</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l">actions/deploy-pages@v4</span><span class="w">
+</span></span></span></code></pre><hr>
+<h2 id="troubleshooting">Troubleshooting <a href="#troubleshooting" class="heading-anchor">#</a></h2>
+<h3 id="common-issues">Common Issues <a href="#common-issues" class="heading-anchor">#</a></h3>
+<p><strong>Build fails with &quot;command not found&quot;</strong></p>
+<p>Ensure Go is in your PATH and markata-go is installed:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span><span class="nv">$PATH</span>:<span class="k">$(</span>go env GOPATH<span class="k">)</span>/bin
+</span></span><span class="line"><span class="cl">go install github.com/example/markata-go/cmd/markata-go@latest
+</span></span></code></pre><p><strong>Assets not loading</strong></p>
+<p>Check that your <code>url</code> config matches your deployment URL:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>  <span class="c"># Must match actual deployment URL</span>
+</span></span></code></pre><p><strong>RSS/Atom feeds show wrong URLs</strong></p>
+<p>The base URL must be set correctly for feeds to work:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://example.com markata-go build
+</span></span></code></pre><p><strong>404 errors on page refresh</strong></p>
+<p>Ensure your server is configured to serve <code>index.html</code> for directory requests. All hosting platforms in this guide handle this automatically.</p>
+<h3 id="debugging-deployments">Debugging Deployments <a href="#debugging-deployments" class="heading-anchor">#</a></h3>
+<p>Use verbose mode to debug build issues:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build --clean -v
+</span></span></code></pre><p>Check the resolved configuration:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config show --sources
+</span></span></code></pre><p>Validate before deploying:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config validate
+</span></span></code></pre>
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

@@ -8,33 +8,32 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/filter"
 )
 
-// MigrateFilter migrates a Python markata filter expression to markata-go syntax.
+// Filter migrates a Python markata filter expression to markata-go syntax.
 // It returns the migrated expression and a list of changes made.
-func MigrateFilter(expr string) (string, []string) {
+func Filter(expr string) (migrated string, changes []string) {
 	if expr == "" {
 		return expr, nil
 	}
 
-	var changes []string
-	result := expr
+	migrated = expr
 
 	// 1. Migrate boolean literals: 'True'/'False' -> True/False
-	result, boolChanges := migrateBooleanLiterals(result)
+	migrated, boolChanges := migrateBooleanLiterals(migrated)
 	changes = append(changes, boolChanges...)
 
 	// 2. Migrate 'in' operator with lists
-	result, inChanges := migrateInOperator(result)
+	migrated, inChanges := migrateInOperator(migrated)
 	changes = append(changes, inChanges...)
 
 	// 3. Fix operator spacing
-	result, spaceChanges := fixOperatorSpacing(result)
+	migrated, spaceChanges := fixOperatorSpacing(migrated)
 	changes = append(changes, spaceChanges...)
 
 	// 4. Migrate None comparisons
-	result, noneChanges := migrateNoneComparisons(result)
+	migrated, noneChanges := migrateNoneComparisons(migrated)
 	changes = append(changes, noneChanges...)
 
-	return result, changes
+	return migrated, changes
 }
 
 // ValidateFilter validates a filter expression using the markata-go filter parser.
@@ -56,9 +55,8 @@ func ValidateFilter(expr string) error {
 // Examples:
 //   - published == 'True' -> published == True
 //   - draft == "false" -> draft == False
-func migrateBooleanLiterals(expr string) (string, []string) {
-	var changes []string
-	result := expr
+func migrateBooleanLiterals(expr string) (result string, changes []string) {
+	result = expr
 
 	// Patterns for quoted booleans (Go regex doesn't support backreferences)
 	patterns := []struct {
@@ -120,9 +118,7 @@ func migrateBooleanLiterals(expr string) (string, []string) {
 
 // migrateInOperator converts 'in' operator with lists to 'or' expressions.
 // Example: templateKey in ['blog-post', 'til'] -> templateKey == 'blog-post' or templateKey == 'til'
-func migrateInOperator(expr string) (string, []string) {
-	var changes []string
-
+func migrateInOperator(expr string) (result string, changes []string) {
 	// Pattern to match: identifier in [list]
 	// This handles: field in ['a', 'b', 'c'] or field in ["a", "b", "c"]
 	inPattern := regexp.MustCompile(`(\w+)\s+in\s+\[((?:[^]]+))\]`)
@@ -132,7 +128,7 @@ func migrateInOperator(expr string) (string, []string) {
 		return expr, changes
 	}
 
-	result := expr
+	result = expr
 	for _, match := range matches {
 		if len(match) < 3 {
 			continue
@@ -148,7 +144,7 @@ func migrateInOperator(expr string) (string, []string) {
 		}
 
 		// Build or expression
-		var orParts []string
+		orParts := make([]string, 0, len(items))
 		for _, item := range items {
 			orParts = append(orParts, fmt.Sprintf("%s == %s", field, item))
 		}
@@ -196,9 +192,8 @@ func parseListItems(listContent string) []string {
 // Examples:
 //   - date<=today -> date <= today
 //   - count>=10 -> count >= 10
-func fixOperatorSpacing(expr string) (string, []string) {
-	var changes []string
-	result := expr
+func fixOperatorSpacing(expr string) (result string, changes []string) {
+	result = expr
 
 	// Operators that need spacing
 	operators := []string{"<=", ">=", "==", "!=", "<", ">"}
@@ -238,9 +233,8 @@ func fixOperatorSpacing(expr string) (string, []string) {
 // Examples:
 //   - image is None -> image == None
 //   - image is not None -> image != None
-func migrateNoneComparisons(expr string) (string, []string) {
-	var changes []string
-	result := expr
+func migrateNoneComparisons(expr string) (result string, changes []string) {
+	result = expr
 
 	// is not None -> != None
 	isNotNonePattern := regexp.MustCompile(`(\w+)\s+is\s+not\s+None`)

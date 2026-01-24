@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Templates Guide - My Site</title>
+    <meta name="description" content="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Templates Guide">
+    
+    <meta property="og:url" content="/templates-guide/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="templates">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Templates Guide">
+    
+    <meta name="twitter:description" content="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/templates-guide/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Templates Guide",
+  "description": "Complete guide to creating and customizing templates with pongo2/Jinja2 syntax",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/templates-guide/"
+  },
+  "keywords": [
+    "documentation",
+    "templates"
+  ],
+  "url": "/templates-guide/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Templates Guide</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/templates/">templates</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="templates-guide">Templates Guide</h1>
+<p>markata-go uses <a href="https://github.com/flosch/pongo2">pongo2</a>, a Django/Jinja2-like template engine for Go. This guide covers everything you need to know about creating and customizing templates.</p>
+<h2 id="table-of-contents">Table of Contents <a href="#table-of-contents" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#template-location">Template Location</a></li>
+<li><a href="#template-syntax">Template Syntax</a></li>
+<li><a href="#available-variables">Available Variables</a></li>
+<li><a href="#built-in-filters">Built-in Filters</a></li>
+<li><a href="#template-inheritance">Template Inheritance</a></li>
+<li><a href="#including-partials">Including Partials</a></li>
+<li><a href="#post-vs-feed-templates">Post vs Feed Templates</a></li>
+<li><a href="#custom-templates-per-post">Custom Templates Per Post</a></li>
+<li><a href="#complete-examples">Complete Examples</a></li>
+</ul>
+<hr>
+<h2 id="overview">Overview <a href="#overview" class="heading-anchor">#</a></h2>
+<p>Templates wrap your rendered Markdown content in HTML layouts. The template system supports:</p>
+<ul>
+<li><strong>Template inheritance</strong> - Base templates with extendable blocks</li>
+<li><strong>Includes</strong> - Reusable partial templates</li>
+<li><strong>Variables and expressions</strong> - Access post, config, and feed data</li>
+<li><strong>Control flow</strong> - Conditionals and loops</li>
+<li><strong>Filters</strong> - Transform data for display</li>
+<li><strong>Custom templates per post</strong> - Override templates in frontmatter</li>
+</ul>
+<hr>
+<h2 id="template-location">Template Location <a href="#template-location" class="heading-anchor">#</a></h2>
+<p>Templates are loaded from these locations (in order of priority):</p>
+<ol>
+<li><strong>Project templates:</strong> <code>templates/</code> directory in project root</li>
+<li><strong>Theme templates:</strong> <code>themes/{theme}/templates/</code> for custom themes</li>
+<li><strong>Default theme:</strong> <code>themes/default/templates/</code> as fallback</li>
+</ol>
+<pre><code>my-site/
+├── templates/           # Project templates (highest priority)
+│   ├── base.html
+│   ├── post.html
+│   ├── feed.html
+│   └── partials/
+│       ├── header.html
+│       ├── footer.html
+│       └── card.html
+├── themes/
+│   └── my-theme/
+│       └── templates/   # Theme templates
+└── posts/
+</code></pre>
+<p>Configure the templates directory in <code>markata-go.toml</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">templates_dir</span> <span class="p">=</span> <span class="s2">&#34;templates&#34;</span>
+</span></span></code></pre><hr>
+<h2 id="template-syntax">Template Syntax <a href="#template-syntax" class="heading-anchor">#</a></h2>
+<h3 id="variables">Variables <a href="#variables" class="heading-anchor">#</a></h3>
+<p>Access data using double curly braces:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">{{</span> <span class="nv">post.Title</span> <span class="cp">}}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{{</span> <span class="nv">config.URL</span> <span class="cp">}}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{{</span> <span class="nv">post.Date</span> <span class="cp">}}</span><span class="x">
+</span></span></span></code></pre><h3 id="attribute-access">Attribute Access <a href="#attribute-access" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">{{</span> <span class="nv">post.Title</span> <span class="cp">}}</span><span class="x">              </span><span class="c">{# Direct attribute access #}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{{</span> <span class="nv">post.Extra.custom_field</span> <span class="cp">}}</span><span class="x"> </span><span class="c">{# Nested attributes #}</span><span class="x">
+</span></span></span></code></pre><h3 id="filters">Filters <a href="#filters" class="heading-anchor">#</a></h3>
+<p>Transform values using the pipe (<code>|</code>) operator:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">{{</span> <span class="nv">post.Title</span><span class="o">|</span><span class="nf">upper</span> <span class="cp">}}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{{</span> <span class="nv">post.Description</span><span class="o">|</span><span class="nf">truncate</span><span class="o">:</span><span class="m">160</span> <span class="cp">}}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{{</span> <span class="nv">post.Date</span><span class="o">|</span><span class="nf">date_format</span><span class="s2">:&#34;January 2, 2006&#34;</span> <span class="cp">}}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{{</span> <span class="nv">post.Tags</span><span class="o">|</span><span class="nf">join</span><span class="s2">:&#34;, &#34;</span> <span class="cp">}}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{{</span> <span class="nv">post.ArticleHTML</span><span class="o">|</span><span class="nf">safe</span> <span class="cp">}}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{{</span> <span class="nv">value</span><span class="o">|</span><span class="nf">default_if_none</span><span class="s2">:&#34;N/A&#34;</span> <span class="cp">}}</span><span class="x">
+</span></span></span></code></pre><h3 id="comments">Comments <a href="#comments" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">{# This is a comment and won&#39;t appear in output #}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="c">{#
+</span></span></span><span class="line"><span class="cl"><span class="c">Multi-line
+</span></span></span><span class="line"><span class="cl"><span class="c">comment
+</span></span></span><span class="line"><span class="cl"><span class="c">#}</span><span class="x">
+</span></span></span></code></pre><h3 id="control-flow">Control Flow <a href="#control-flow" class="heading-anchor">#</a></h3>
+<h4 id="conditionals">Conditionals <a href="#conditionals" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">{%</span> <span class="k">if</span> <span class="nv">post.Published</span> <span class="cp">%}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">    &lt;span class=&#34;status&#34;&gt;Published&lt;/span&gt;
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{%</span> <span class="k">elif</span> <span class="nv">post.Draft</span> <span class="cp">%}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">    &lt;span class=&#34;status&#34;&gt;Draft&lt;/span&gt;
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{%</span> <span class="k">else</span> <span class="cp">%}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">    &lt;span class=&#34;status&#34;&gt;Private&lt;/span&gt;
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{%</span> <span class="k">endif</span> <span class="cp">%}</span><span class="x">
+</span></span></span></code></pre><h4 id="loops">Loops <a href="#loops" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">{%</span> <span class="k">for</span> <span class="nv">tag</span> <span class="k">in</span> <span class="nv">post.Tags</span> <span class="cp">%}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">    &lt;a href=&#34;/tags/</span><span class="cp">{{</span> <span class="nv">tag</span><span class="o">|</span><span class="nf">slugify</span> <span class="cp">}}</span><span class="x">/&#34;&gt;</span><span class="cp">{{</span> <span class="nv">tag</span> <span class="cp">}}</span><span class="x">&lt;/a&gt;
+</span></span></span><span class="line"><span class="cl"><span class="x">    </span><span class="cp">{%</span> <span class="k">if</span> <span class="k">not</span> <span class="nb">forloop</span><span class="nv">.Last</span> <span class="cp">%}</span><span class="x">, </span><span class="cp">{%</span> <span class="k">endif</span> <span class="cp">%}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{%</span> <span class="k">endfor</span> <span class="cp">%}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{%</span> <span class="k">for</span> <span class="nv">post</span> <span class="k">in</span> <span class="nv">posts</span> <span class="cp">%}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">    &lt;li&gt;</span><span class="cp">{{</span> <span class="nv">post.Title</span> <span class="cp">}}</span><span class="x">&lt;/li&gt;
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{%</span> <span class="k">empty</span> <span class="cp">%}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">    &lt;li&gt;No posts found&lt;/li&gt;
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{%</span> <span class="k">endfor</span> <span class="cp">%}</span><span class="x">
+</span></span></span></code></pre><h4 id="loop-variables">Loop Variables <a href="#loop-variables" class="heading-anchor">#</a></h4>
+<p>Inside <code>{% for %}</code> loops, these variables are available:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>forloop.Counter</code></td>
+<td>Current iteration (1-indexed)</td>
+</tr>
+<tr>
+<td><code>forloop.Counter0</code></td>
+<td>Current iteration (0-indexed)</td>
+</tr>
+<tr>
+<td><code>forloop.First</code></td>
+<td>True if first iteration</td>
+</tr>
+<tr>
+<td><code>forloop.Last</code></td>
+<td>True if last iteration</td>
+</tr>
+<tr>
+<td><code>forloop.Revcounter</code></td>
+<td>Iterations remaining (1-indexed)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="available-variables">Available Variables <a href="#available-variables" class="heading-anchor">#</a></h2>
+<h3 id="post-context">Post Context <a href="#post-context" class="heading-anchor">#</a></h3>
+<p>When rendering individual posts, these variables are available:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>post</code></td>
+<td>object</td>
+<td>The post being rendered</td>
+</tr>
+<tr>
+<td><code>post.Title</code></td>
+<td>string</td>
+<td>Post title</td>
+</tr>
+<tr>
+<td><code>post.Slug</code></td>
+<td>string</td>
+<td>URL slug</td>
+</tr>
+<tr>
+<td><code>post.Href</code></td>
+<td>string</td>
+<td>Relative URL path (e.g., <code>/my-post/</code>)</td>
+</tr>
+<tr>
+<td><code>post.Date</code></td>
+<td>time</td>
+<td>Publication date</td>
+</tr>
+<tr>
+<td><code>post.Published</code></td>
+<td>bool</td>
+<td>Whether the post is published</td>
+</tr>
+<tr>
+<td><code>post.Draft</code></td>
+<td>bool</td>
+<td>Whether the post is a draft</td>
+</tr>
+<tr>
+<td><code>post.Tags</code></td>
+<td>[]string</td>
+<td>List of tags</td>
+</tr>
+<tr>
+<td><code>post.Description</code></td>
+<td>string</td>
+<td>Post description</td>
+</tr>
+<tr>
+<td><code>post.Content</code></td>
+<td>string</td>
+<td>Raw Markdown content</td>
+</tr>
+<tr>
+<td><code>post.ArticleHTML</code></td>
+<td>string</td>
+<td>Rendered HTML content (use with <code>|safe</code>)</td>
+</tr>
+<tr>
+<td><code>post.Extra</code></td>
+<td>map</td>
+<td>Additional frontmatter fields</td>
+</tr>
+<tr>
+<td><code>body</code></td>
+<td>string</td>
+<td>Rendered article HTML (alias for <code>post.ArticleHTML</code>)</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>object</td>
+<td>Site configuration</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config-context">Config Context <a href="#config-context" class="heading-anchor">#</a></h3>
+<p>Site configuration is available via <code>config</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config.Title</code></td>
+<td>string</td>
+<td>Site title</td>
+</tr>
+<tr>
+<td><code>config.Description</code></td>
+<td>string</td>
+<td>Site description</td>
+</tr>
+<tr>
+<td><code>config.URL</code></td>
+<td>string</td>
+<td>Site base URL</td>
+</tr>
+<tr>
+<td><code>config.Author</code></td>
+<td>string</td>
+<td>Site author</td>
+</tr>
+</tbody>
+</table>
+<p>Shorthand aliases are also available:</p>
+<table>
+<thead>
+<tr>
+<th>Alias</th>
+<th>Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>site_title</code></td>
+<td><code>config.Title</code></td>
+</tr>
+<tr>
+<td><code>site_url</code></td>
+<td><code>config.URL</code></td>
+</tr>
+<tr>
+<td><code>site_description</code></td>
+<td><code>config.Description</code></td>
+</tr>
+<tr>
+<td><code>site_author</code></td>
+<td><code>config.Author</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="feed-context">Feed Context <a href="#feed-context" class="heading-anchor">#</a></h3>
+<p>When rendering feeds/archives, these additional variables are available:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>feed</code></td>
+<td>object</td>
+<td>Feed configuration</td>
+</tr>
+<tr>
+<td><code>feed.Title</code></td>
+<td>string</td>
+<td>Feed title</td>
+</tr>
+<tr>
+<td><code>feed.Description</code></td>
+<td>string</td>
+<td>Feed description</td>
+</tr>
+<tr>
+<td><code>feed.Slug</code></td>
+<td>string</td>
+<td>Feed slug</td>
+</tr>
+<tr>
+<td><code>feed.Posts</code></td>
+<td>[]post</td>
+<td>All posts in the feed</td>
+</tr>
+<tr>
+<td><code>page</code></td>
+<td>object</td>
+<td>Current page info</td>
+</tr>
+<tr>
+<td><code>page.Number</code></td>
+<td>int</td>
+<td>Current page number</td>
+</tr>
+<tr>
+<td><code>page.Posts</code></td>
+<td>[]post</td>
+<td>Posts on this page</td>
+</tr>
+<tr>
+<td><code>page.HasPrev</code></td>
+<td>bool</td>
+<td>Whether there's a previous page</td>
+</tr>
+<tr>
+<td><code>page.HasNext</code></td>
+<td>bool</td>
+<td>Whether there's a next page</td>
+</tr>
+<tr>
+<td><code>page.PrevURL</code></td>
+<td>string</td>
+<td>URL to previous page</td>
+</tr>
+<tr>
+<td><code>page.NextURL</code></td>
+<td>string</td>
+<td>URL to next page</td>
+</tr>
+<tr>
+<td><code>posts</code></td>
+<td>[]post</td>
+<td>Posts on current page (alias for <code>page.Posts</code>)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="built-in-filters">Built-in Filters <a href="#built-in-filters" class="heading-anchor">#</a></h2>
+<h3 id="date-formatting">Date Formatting <a href="#date-formatting" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Example</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>date_format</code></td>
+<td><code>{{ date|date_format:&quot;2006-01-02&quot; }}</code></td>
+<td><code>2024-01-15</code></td>
+</tr>
+<tr>
+<td><code>date_format</code></td>
+<td><code>{{ date|date_format:&quot;January 2, 2006&quot; }}</code></td>
+<td><code>January 15, 2024</code></td>
+</tr>
+<tr>
+<td><code>rss_date</code></td>
+<td><code>{{ date|rss_date }}</code></td>
+<td>RFC 1123Z format for RSS</td>
+</tr>
+<tr>
+<td><code>atom_date</code></td>
+<td><code>{{ date|atom_date }}</code></td>
+<td>RFC 3339 format for Atom</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note:</strong> Go uses reference time formatting. Common formats:</p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Go Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2024-01-15</td>
+<td><code>2006-01-02</code></td>
+</tr>
+<tr>
+<td>January 15, 2024</td>
+<td><code>January 2, 2006</code></td>
+</tr>
+<tr>
+<td>Jan 15, 2024</td>
+<td><code>Jan 2, 2006</code></td>
+</tr>
+<tr>
+<td>15 Jan 2024</td>
+<td><code>02 Jan 2006</code></td>
+</tr>
+<tr>
+<td>2024-01-15T10:30:00Z</td>
+<td><code>2006-01-02T15:04:05Z07:00</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="string-manipulation">String Manipulation <a href="#string-manipulation" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Example</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slugify</code></td>
+<td><code>{{ &quot;Hello World&quot;|slugify }}</code></td>
+<td>Outputs <code>hello-world</code></td>
+</tr>
+<tr>
+<td><code>truncate</code></td>
+<td><code>{{ text|truncate:100 }}</code></td>
+<td>Truncate to 100 characters with ellipsis</td>
+</tr>
+<tr>
+<td><code>truncatewords</code></td>
+<td><code>{{ text|truncatewords:20 }}</code></td>
+<td>Truncate to 20 words</td>
+</tr>
+<tr>
+<td><code>upper</code></td>
+<td><code>{{ text|upper }}</code></td>
+<td>Convert to uppercase</td>
+</tr>
+<tr>
+<td><code>lower</code></td>
+<td><code>{{ text|lower }}</code></td>
+<td>Convert to lowercase</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td><code>{{ text|title }}</code></td>
+<td>Title case</td>
+</tr>
+<tr>
+<td><code>striptags</code></td>
+<td><code>{{ html|striptags }}</code></td>
+<td>Remove HTML tags</td>
+</tr>
+</tbody>
+</table>
+<h3 id="collections">Collections <a href="#collections" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Example</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>length</code></td>
+<td><code>{{ list|length }}</code></td>
+<td>Get length</td>
+</tr>
+<tr>
+<td><code>first</code></td>
+<td><code>{{ list|first }}</code></td>
+<td>Get first element</td>
+</tr>
+<tr>
+<td><code>last</code></td>
+<td><code>{{ list|last }}</code></td>
+<td>Get last element</td>
+</tr>
+<tr>
+<td><code>join</code></td>
+<td><code>{{ list|join:&quot;, &quot; }}</code></td>
+<td>Join with separator</td>
+</tr>
+<tr>
+<td><code>reverse</code></td>
+<td><code>{{ list|reverse }}</code></td>
+<td>Reverse order</td>
+</tr>
+<tr>
+<td><code>sort</code></td>
+<td><code>{{ list|sort }}</code></td>
+<td>Sort alphabetically</td>
+</tr>
+</tbody>
+</table>
+<h3 id="htmltext">HTML/Text <a href="#htmltext" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Example</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>safe</code></td>
+<td><code>{{ html|safe }}</code></td>
+<td>Mark HTML as safe (don't escape)</td>
+</tr>
+<tr>
+<td><code>escape</code></td>
+<td><code>{{ text|escape }}</code></td>
+<td>HTML escape (default behavior)</td>
+</tr>
+<tr>
+<td><code>linebreaks</code></td>
+<td><code>{{ text|linebreaks }}</code></td>
+<td>Convert newlines to <code>&lt;p&gt;</code> and <code>&lt;br&gt;</code></td>
+</tr>
+<tr>
+<td><code>linebreaksbr</code></td>
+<td><code>{{ text|linebreaksbr }}</code></td>
+<td>Convert newlines to <code>&lt;br&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="urls">URLs <a href="#urls" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Example</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>urlencode</code></td>
+<td><code>{{ path|urlencode }}</code></td>
+<td>URL encode</td>
+</tr>
+<tr>
+<td><code>absolute_url</code></td>
+<td><code>{{ post.Href|absolute_url:config.URL }}</code></td>
+<td>Convert to absolute URL</td>
+</tr>
+</tbody>
+</table>
+<h3 id="default-values">Default Values <a href="#default-values" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Example</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>default_if_none</code></td>
+<td><code>{{ value|default_if_none:&quot;fallback&quot; }}</code></td>
+<td>Provide fallback for nil/empty</td>
+</tr>
+<tr>
+<td><code>default</code></td>
+<td><code>{{ value|default:&quot;fallback&quot; }}</code></td>
+<td>pongo2 built-in default</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="template-inheritance">Template Inheritance <a href="#template-inheritance" class="heading-anchor">#</a></h2>
+<p>Template inheritance lets you create a base layout that child templates extend.</p>
+<h3 id="base-template">Base Template <a href="#base-template" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# templates/base.html #}
+</span></span><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;en&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;UTF-8&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;viewport&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;width=device-width, initial-scale=1.0&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>{% block title %}{{ config.Title }}{% endblock %}<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;description&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{% block description %}{{ config.Description }}{% endblock %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% block head %}{% endblock %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% block header %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/&#34;</span><span class="p">&gt;</span>{{ config.Title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/&#34;</span><span class="p">&gt;</span>Blog<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/about/&#34;</span><span class="p">&gt;</span>About<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">main</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% block content %}{% endblock %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">main</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {% block footer %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span><span class="ni">&amp;copy;</span> {{ config.Author }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {% block scripts %}{% endblock %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="extending-the-base">Extending the Base <a href="#extending-the-base" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# templates/post.html #}
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block title %}{{ post.Title }} | {{ config.Title }}{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block description %}{{ post.Description|default_if_none:config.Description }}{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block head %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:title&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ post.Title }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:type&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;article&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:url&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ config.URL }}{{ post.Href }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% if post.Date %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;article:published_time&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ post.Date|atom_date }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {{ body|safe }}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><h3 id="using--blocksuper-">Using <code>{{ block.super }}</code> <a href="#using--blocksuper-" class="heading-anchor">#</a></h3>
+<p>Include parent block content with <code>{{ block.super }}</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% block scripts %}
+</span></span><span class="line"><span class="cl">{{ block.super }}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/js/post.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><hr>
+<h2 id="including-partials">Including Partials <a href="#including-partials" class="heading-anchor">#</a></h2>
+<p>Partials are reusable template fragments. Use <code>{% include %}</code> to embed them:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% include &#34;partials/header.html&#34; %}
+</span></span><span class="line"><span class="cl">{% include &#34;partials/card.html&#34; %}
+</span></span><span class="line"><span class="cl">{% include &#34;partials/footer.html&#34; %}
+</span></span></code></pre><h3 id="example-partial-card">Example Partial: Card <a href="#example-partial-card" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# templates/partials/card.html #}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">article</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.Href }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% if post.Extra.cover_image %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;{{ post.Extra.cover_image }}&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;{{ post.Title }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h2</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% if post.Description %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>{{ post.Description }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% if post.Date %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">time</span> <span class="na">datetime</span><span class="o">=</span><span class="s">&#34;{{ post.Date|atom_date }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {{ post.Date|date_format:&#34;Jan 2, 2006&#34; }}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">time</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">        {% if post.Extra.reading_time %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">span</span><span class="p">&gt;</span>{{ post.Extra.reading_time }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="example-partial-navigation">Example Partial: Navigation <a href="#example-partial-navigation" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# templates/partials/nav.html #}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;main-nav&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;logo&#34;</span><span class="p">&gt;</span>{{ config.Title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/&#34;</span><span class="p">&gt;</span>Blog<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tags/&#34;</span><span class="p">&gt;</span>Tags<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/about/&#34;</span><span class="p">&gt;</span>About<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span></code></pre><hr>
+<h2 id="post-vs-feed-templates">Post vs Feed Templates <a href="#post-vs-feed-templates" class="heading-anchor">#</a></h2>
+<h3 id="post-templates">Post Templates <a href="#post-templates" class="heading-anchor">#</a></h3>
+<p>Post templates render individual content pages. They receive the <code>post</code> and <code>body</code> variables.</p>
+<p><strong>Default template:</strong> <code>post.html</code></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# templates/post.html #}
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block title %}{{ post.Title }} | {{ config.Title }}{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">article</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% if post.Date %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">time</span> <span class="na">datetime</span><span class="o">=</span><span class="s">&#34;{{ post.Date|atom_date }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {{ post.Date|date_format:&#34;January 2, 2006&#34; }}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">time</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        {% if post.Tags %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">ul</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;tags&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% for tag in post.Tags %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tags/{{ tag|slugify }}/&#34;</span><span class="p">&gt;</span>{{ tag }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endfor %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {{ body|safe }}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><h3 id="feed-templates">Feed Templates <a href="#feed-templates" class="heading-anchor">#</a></h3>
+<p>Feed templates render lists/archives of posts. They receive <code>feed</code>, <code>page</code>, and <code>posts</code> variables.</p>
+<p><strong>Default template:</strong> <code>feed.html</code></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# templates/feed.html #}
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block title %}{{ feed.Title }} | {{ config.Title }}{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">section</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;feed&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ feed.Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% if feed.Description %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">p</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;description&#34;</span><span class="p">&gt;</span>{{ feed.Description }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">ul</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-list&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% for post in posts %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% include &#34;partials/card.html&#34; %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endfor %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {% if page.HasPrev or page.HasNext %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;pagination&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% if page.HasPrev %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ page.PrevURL }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;prev&#34;</span><span class="p">&gt;</span><span class="ni">&amp;larr;</span> Previous<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">span</span><span class="p">&gt;</span>Page {{ page.Number }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        {% if page.HasNext %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ page.NextURL }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;next&#34;</span><span class="p">&gt;</span>Next <span class="ni">&amp;rarr;</span><span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">section</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><hr>
+<h2 id="custom-templates-per-post">Custom Templates Per Post <a href="#custom-templates-per-post" class="heading-anchor">#</a></h2>
+<p>Override the default template for specific posts using the <code>template</code> frontmatter field.</p>
+<h3 id="simple-override">Simple Override <a href="#simple-override" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Landing Page&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;landing.html&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p>This post will use <code>templates/landing.html</code> instead of the default <code>post.html</code>.</p>
+<h3 id="creating-a-landing-page-template">Creating a Landing Page Template <a href="#creating-a-landing-page-template" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# templates/landing.html #}
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block title %}{{ post.Title }}{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block header %}
+</span></span><span class="line"><span class="cl">{# No header on landing page #}
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;landing&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">section</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hero&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% if post.Description %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">p</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;tagline&#34;</span><span class="p">&gt;</span>{{ post.Description }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">section</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">section</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {{ body|safe }}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">section</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {% if post.Extra.cta_text %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">section</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;cta&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.Extra.cta_url }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;button&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {{ post.Extra.cta_text }}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">section</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block footer %}
+</span></span><span class="line"><span class="cl">{# Minimal footer #}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">footer</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;minimal&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span><span class="ni">&amp;copy;</span> {{ config.Author }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><h3 id="template-fallback">Template Fallback <a href="#template-fallback" class="heading-anchor">#</a></h3>
+<p>If a specified template doesn't exist, markata-go falls back to:</p>
+<ol>
+<li><code>post.html</code> (for posts)</li>
+<li><code>feed.html</code> (for feeds)</li>
+</ol>
+<hr>
+<h2 id="complete-examples">Complete Examples <a href="#complete-examples" class="heading-anchor">#</a></h2>
+<h3 id="basehtml">base.html <a href="#basehtml" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;en&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;UTF-8&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;viewport&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;width=device-width, initial-scale=1.0&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>{% block title %}{{ config.Title }}{% endblock %}<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;description&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{% block description %}{{ config.Description }}{% endblock %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {# Open Graph #}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:title&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{% block og_title %}{{ config.Title }}{% endblock %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:description&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{% block og_description %}{{ config.Description }}{% endblock %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:url&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ config.URL }}{% block og_url %}/{% endblock %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:site_name&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ config.Title }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {# Feeds #}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/rss+xml&#34;</span> <span class="na">title</span><span class="o">=</span><span class="s">&#34;{{ config.Title }} RSS&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ config.URL }}/blog/rss.xml&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;alternate&#34;</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/atom+xml&#34;</span> <span class="na">title</span><span class="o">=</span><span class="s">&#34;{{ config.Title }} Atom&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ config.URL }}/blog/atom.xml&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {# Styles #}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;stylesheet&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/css/style.css&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {% block head %}{% endblock %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#main&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;skip-link&#34;</span><span class="p">&gt;</span>Skip to content<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {% block header %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">header</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;site-header&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;container&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;logo&#34;</span><span class="p">&gt;</span>{{ config.Title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;main-nav&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/&#34;</span><span class="p">&gt;</span>Blog<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tags/&#34;</span><span class="p">&gt;</span>Tags<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/about/&#34;</span><span class="p">&gt;</span>About<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">main</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;main&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;container&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% block content %}{% endblock %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">main</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {% block footer %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">footer</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;site-footer&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;container&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span><span class="ni">&amp;copy;</span> {{ config.Author }}. Built with <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://github.com/example/markata-go&#34;</span><span class="p">&gt;</span>markata-go<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {% block scripts %}{% endblock %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="posthtml">post.html <a href="#posthtml" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block title %}{{ post.Title }} | {{ config.Title }}{% endblock %}
+</span></span><span class="line"><span class="cl">{% block description %}{{ post.Description|default_if_none:config.Description }}{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block og_title %}{{ post.Title }}{% endblock %}
+</span></span><span class="line"><span class="cl">{% block og_description %}{{ post.Description|default_if_none:config.Description }}{% endblock %}
+</span></span><span class="line"><span class="cl">{% block og_url %}{{ post.Href }}{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block head %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:type&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;article&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% if post.Date %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;article:published_time&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ post.Date|atom_date }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% if post.Tags %}
+</span></span><span class="line"><span class="cl">{% for tag in post.Tags %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;article:tag&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ tag }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{# JSON-LD structured data #}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;application/ld+json&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;@context&#34;</span><span class="o">:</span> <span class="s2">&#34;https://schema.org&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;@type&#34;</span><span class="o">:</span> <span class="s2">&#34;BlogPosting&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;headline&#34;</span><span class="o">:</span> <span class="s2">&#34;{{ post.Title }}&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;description&#34;</span><span class="o">:</span> <span class="s2">&#34;{{ post.Description }}&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;author&#34;</span><span class="o">:</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;@type&#34;</span><span class="o">:</span> <span class="s2">&#34;Person&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;name&#34;</span><span class="o">:</span> <span class="s2">&#34;{{ config.Author }}&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span><span class="o">%</span> <span class="k">if</span> <span class="nx">post</span><span class="p">.</span><span class="nb">Date</span> <span class="o">%</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;datePublished&#34;</span><span class="o">:</span> <span class="s2">&#34;{{ post.Date|atom_date }}&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span><span class="o">%</span> <span class="nx">endif</span> <span class="o">%</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;url&#34;</span><span class="o">:</span> <span class="s2">&#34;{{ config.URL }}{{ post.Href }}&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">article</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post h-entry&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">header</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-header&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h1</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-title p-name&#34;</span><span class="p">&gt;</span>{{ post.Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-meta&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% if post.Date %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">time</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;dt-published&#34;</span> <span class="na">datetime</span><span class="o">=</span><span class="s">&#34;{{ post.Date|atom_date }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                {{ post.Date|date_format:&#34;January 2, 2006&#34; }}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">time</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            {% if post.Extra.reading_time %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;reading-time&#34;</span><span class="p">&gt;</span>{{ post.Extra.reading_time }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endif %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        {% if post.Tags %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">ul</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-tags&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% for tag in post.Tags %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tags/{{ tag|slugify }}/&#34;</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;tag&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;p-category&#34;</span><span class="p">&gt;</span>{{ tag }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endfor %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-content e-content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {{ body|safe }}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">footer</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-footer&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;author-info&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">span</span><span class="p">&gt;</span>Written by<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/about/&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;p-author h-card&#34;</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;author&#34;</span><span class="p">&gt;</span>{{ config.Author }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        {% if post.Extra.prev or post.Extra.next %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-nav&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% if post.Extra.prev %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.Extra.prev.Href }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;prev&#34;</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;prev&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">span</span><span class="p">&gt;</span><span class="ni">&amp;larr;</span> Previous<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;title&#34;</span><span class="p">&gt;</span>{{ post.Extra.prev.Title }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endif %}
+</span></span><span class="line"><span class="cl">            {% if post.Extra.next %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.Extra.next.Href }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;next&#34;</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;next&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">span</span><span class="p">&gt;</span>Next <span class="ni">&amp;rarr;</span><span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;title&#34;</span><span class="p">&gt;</span>{{ post.Extra.next.Title }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endif %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><h3 id="feedhtml">feed.html <a href="#feedhtml" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block title %}{{ feed.Title }} | {{ config.Title }}{% endblock %}
+</span></span><span class="line"><span class="cl">{% block description %}{{ feed.Description|default_if_none:config.Description }}{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block og_title %}{{ feed.Title }}{% endblock %}
+</span></span><span class="line"><span class="cl">{% block og_url %}/{{ feed.Slug }}/{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block head %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:type&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;website&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">section</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;feed&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">header</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;feed-header&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ feed.Title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% if feed.Description %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">p</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;feed-description&#34;</span><span class="p">&gt;</span>{{ feed.Description }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {% if posts|length &gt; 0 %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">ul</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-list&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% for post in posts %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-item&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">article</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card h-entry&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">h2</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card-title&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.href }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;p-name u-url&#34;</span><span class="p">&gt;</span>{{ post.title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">                {% if post.description %}
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">p</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card-description p-summary&#34;</span><span class="p">&gt;</span>{{ post.description }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                {% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">footer</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card-meta&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    {% if post.date %}
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;</span><span class="nt">time</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;dt-published&#34;</span> <span class="na">datetime</span><span class="o">=</span><span class="s">&#34;{{ post.date|atom_date }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                        {{ post.date|date_format:&#34;Jan 2, 2006&#34; }}
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;/</span><span class="nt">time</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    {% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">                    {% if post.tags %}
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;</span><span class="nt">ul</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card-tags&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                        {% for tag in post.tags %}
+</span></span><span class="line"><span class="cl">                        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tags/{{ tag|slugify }}/&#34;</span><span class="p">&gt;</span>{{ tag }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                        {% endfor %}
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    {% endif %}
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endfor %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {% if page.HasPrev or page.HasNext %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;pagination&#34;</span> <span class="na">aria-label</span><span class="o">=</span><span class="s">&#34;Pagination&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% if page.HasPrev %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ page.PrevURL }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;pagination-prev&#34;</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;prev&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="ni">&amp;larr;</span> Newer Posts
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% else %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;pagination-prev disabled&#34;</span><span class="p">&gt;</span><span class="ni">&amp;larr;</span> Newer Posts<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;pagination-info&#34;</span><span class="p">&gt;</span>Page {{ page.Number }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        {% if page.HasNext %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ page.NextURL }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;pagination-next&#34;</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;next&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            Older Posts <span class="ni">&amp;rarr;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% else %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;pagination-next disabled&#34;</span><span class="p">&gt;</span>Older Posts <span class="ni">&amp;rarr;</span><span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    {% else %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">p</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;no-posts&#34;</span><span class="p">&gt;</span>No posts found.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">section</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><h3 id="partialscardhtml">partials/card.html <a href="#partialscardhtml" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">article</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card h-entry&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% if post.cover_image %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.href }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card-image&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;{{ post.cover_image }}&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;{{ post.title }}&#34;</span> <span class="na">loading</span><span class="o">=</span><span class="s">&#34;lazy&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card-body&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h2</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card-title&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.href }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;p-name u-url&#34;</span><span class="p">&gt;</span>{{ post.title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        {% if post.description %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">p</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card-description p-summary&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {{ post.description|truncate:160 }}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">footer</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card-footer&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% if post.date %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">time</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;dt-published&#34;</span> <span class="na">datetime</span><span class="o">=</span><span class="s">&#34;{{ post.date|atom_date }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                {{ post.date|date_format:&#34;Jan 2, 2006&#34; }}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">time</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            {% if post.reading_time %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;reading-time&#34;</span><span class="p">&gt;</span>{{ post.reading_time }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endif %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            {% if post.tags %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">ul</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card-tags&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                {% for tag in post.tags|slice:&#34;:3&#34; %}
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tags/{{ tag|slugify }}/&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;p-category&#34;</span><span class="p">&gt;</span>{{ tag }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                {% endfor %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endif %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="partialsheaderhtml">partials/header.html <a href="#partialsheaderhtml" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">header</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;site-header&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;container&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;site-logo&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% if config.Extra.logo %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;{{ config.Extra.logo }}&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;{{ config.Title }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% else %}
+</span></span><span class="line"><span class="cl">            {{ config.Title }}
+</span></span><span class="line"><span class="cl">            {% endif %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;main-nav&#34;</span> <span class="na">aria-label</span><span class="o">=</span><span class="s">&#34;Main navigation&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">button</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;nav-toggle&#34;</span> <span class="na">aria-expanded</span><span class="o">=</span><span class="s">&#34;false&#34;</span> <span class="na">aria-controls</span><span class="o">=</span><span class="s">&#34;nav-menu&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;sr-only&#34;</span><span class="p">&gt;</span>Menu<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hamburger&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">ul</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;nav-menu&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;nav-menu&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/&#34;</span><span class="p">&gt;</span>Home<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/&#34;</span><span class="p">&gt;</span>Blog<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tags/&#34;</span><span class="p">&gt;</span>Tags<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/about/&#34;</span><span class="p">&gt;</span>About<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="partialsfooterhtml">partials/footer.html <a href="#partialsfooterhtml" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">footer</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;site-footer&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;container&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;footer-content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;footer-section&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">h3</span><span class="p">&gt;</span>{{ config.Title }}<span class="p">&lt;/</span><span class="nt">h3</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>{{ config.Description }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;footer-section&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">h3</span><span class="p">&gt;</span>Links<span class="p">&lt;/</span><span class="nt">h3</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/&#34;</span><span class="p">&gt;</span>Blog<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tags/&#34;</span><span class="p">&gt;</span>Tags<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/about/&#34;</span><span class="p">&gt;</span>About<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;footer-section&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">h3</span><span class="p">&gt;</span>Subscribe<span class="p">&lt;/</span><span class="nt">h3</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/rss.xml&#34;</span><span class="p">&gt;</span>RSS Feed<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/atom.xml&#34;</span><span class="p">&gt;</span>Atom Feed<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/blog/feed.json&#34;</span><span class="p">&gt;</span>JSON Feed<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">                <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;footer-bottom&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span><span class="ni">&amp;copy;</span> {{ config.Author }}. Built with <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://github.com/example/markata-go&#34;</span><span class="p">&gt;</span>markata-go<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span></code></pre><hr>
+<h2 id="tips-and-best-practices">Tips and Best Practices <a href="#tips-and-best-practices" class="heading-anchor">#</a></h2>
+<ol>
+<li>
+<p><strong>Always use <code>|safe</code> for HTML content</strong> - When outputting rendered HTML (like <code>body</code> or <code>post.ArticleHTML</code>), use the <code>safe</code> filter to prevent double-escaping.</p>
+</li>
+<li>
+<p><strong>Provide fallbacks with <code>default_if_none</code></strong> - Use fallback values for optional fields to avoid empty output.</p>
+</li>
+<li>
+<p><strong>Use template inheritance</strong> - Create a solid <code>base.html</code> and extend it for consistency across your site.</p>
+</li>
+<li>
+<p><strong>Keep partials small and focused</strong> - Each partial should do one thing well.</p>
+</li>
+<li>
+<p><strong>Use semantic HTML</strong> - Include appropriate ARIA attributes and semantic elements for accessibility.</p>
+</li>
+<li>
+<p><strong>Add microformats</strong> - Include h-entry, h-card, and other microformats for better interoperability.</p>
+</li>
+<li>
+<p><strong>Cache considerations</strong> - Templates are cached for performance. Clear the cache during development if changes don't appear.</p>
+</li>
+</ol>
+<hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration Guide</a> - Configure template settings</li>
+<li><a href="/feeds-guide/" class="wikilink" data-title="Feeds Guide" data-description="Deep dive into markata-go&#39;s powerful feed system for creating filtered, sorted, paginated collections" data-date="2024-01-15">Feeds Guide</a> - Learn about the feed system</li>
+<li><a href="/themes-and-styling/" class="wikilink" data-title="Themes and Styling" data-description="Complete guide to customizing your site&#39;s appearance with themes, color palettes, and CSS" data-date="2024-01-15">Themes Guide</a> - Create and customize themes</li>
+<li><a href="https://github.com/flosch/pongo2">pongo2 Documentation</a> - Full template engine reference</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

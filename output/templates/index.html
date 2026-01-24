@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Templates - My Site</title>
+    <meta name="description" content="This document specifies the template system for rendering content.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Templates">
+    
+    <meta property="og:url" content="/templates/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="This document specifies the template system for rendering content.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Templates">
+    
+    <meta name="twitter:description" content="This document specifies the template system for rendering content.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/templates/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Templates",
+  "description": "This document specifies the template system for rendering content.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/templates/"
+  },
+  "url": "/templates/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Templates</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="template-system-specification">Template System Specification</h1>
+<p>This document specifies the template system for rendering content.</p>
+<h2 id="overview">Overview <a href="#overview" class="heading-anchor">#</a></h2>
+<p>Templates wrap rendered markdown content in HTML layouts. The system supports:</p>
+<ul>
+<li>Template inheritance (base templates)</li>
+<li>Includes (partials)</li>
+<li>Variables and expressions</li>
+<li>Control flow (if/for)</li>
+<li>Filters and functions</li>
+<li>Custom template per post</li>
+</ul>
+<hr>
+<h2 id="template-location">Template Location <a href="#template-location" class="heading-anchor">#</a></h2>
+<p>Templates are loaded from (in order):</p>
+<ol>
+<li><strong>User templates:</strong> <code>templates/</code> directory in project root</li>
+<li><strong>Cache templates:</strong> <code>.tool.cache/templates/</code> (generated)</li>
+<li><strong>Package templates:</strong> Built-in default templates</li>
+</ol>
+<pre><code>my-site/
+├── templates/           # User templates (highest priority)
+│   ├── base.html
+│   ├── post.html
+│   └── partials/
+│       └── nav.html
+├── .tool.cache/
+│   └── templates/       # Generated templates
+└── posts/
+</code></pre>
+<hr>
+<h2 id="base-template">Base Template <a href="#base-template" class="heading-anchor">#</a></h2>
+<p>The foundation template that others extend:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- templates/base.html --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="cp">&lt;!DOCTYPE html&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">html</span> <span class="na">lang</span><span class="o">=</span><span class="s">&#34;{{ config.lang | default(&#39;en&#39;) }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;UTF-8&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;viewport&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;width=device-width, initial-scale=1.0&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">title</span><span class="p">&gt;</span>{% block title %}{{ config.title }}{% endblock %}<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;description&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{% block description %}{{ config.description }}{% endblock %}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% block head %}{% endblock %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">head</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% block header %}
+</span></span><span class="line"><span class="cl">    {% include &#34;partials/header.html&#34; %}
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">main</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% block content %}{% endblock %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">main</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {% block footer %}
+</span></span><span class="line"><span class="cl">    {% include &#34;partials/footer.html&#34; %}
+</span></span><span class="line"><span class="cl">    {% endblock %}
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {% block scripts %}{% endblock %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">html</span><span class="p">&gt;</span>
+</span></span></code></pre><hr>
+<h2 id="post-template">Post Template <a href="#post-template" class="heading-anchor">#</a></h2>
+<p>Template for individual posts:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- templates/post.html --&gt;</span>
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block title %}{{ post.title }} | {{ config.title }}{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block description %}{{ post.description | default(config.description) }}{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block head %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:title&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ post.title }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:type&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;article&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:url&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ config.url }}{{ post.href }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% if post.date %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;article:published_time&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ post.date.isoformat() }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ post.title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% if post.date %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">time</span> <span class="na">datetime</span><span class="o">=</span><span class="s">&#34;{{ post.date.isoformat() }}&#34;</span><span class="p">&gt;</span>{{ post.date.strftime(&#39;%B %d, %Y&#39;) }}<span class="p">&lt;/</span><span class="nt">time</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">        {% if post.tags %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">ul</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;tags&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% for tag in post.tags %}
+</span></span><span class="line"><span class="cl">            <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tags/{{ tag | slugify }}/&#34;</span><span class="p">&gt;</span>{{ tag }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% endfor %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">header</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {{ body | safe }}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {% if post.prev or post.next %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-nav&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% if post.prev %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.prev.href }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;prev&#34;</span><span class="p">&gt;</span>← {{ post.prev.title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">        {% if post.next %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.next.href }}&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;next&#34;</span><span class="p">&gt;</span>{{ post.next.title }} →<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><hr>
+<h2 id="feed-template">Feed Template <a href="#feed-template" class="heading-anchor">#</a></h2>
+<p>Template for index/listing pages:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- templates/feed.html --&gt;</span>
+</span></span><span class="line"><span class="cl">{% extends &#34;base.html&#34; %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block title %}{{ feed.title }} | {{ config.title }}{% endblock %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% block content %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">section</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;feed&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>{{ feed.title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">ul</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;post-list&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% for post in feed.posts %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {% include &#34;partials/card.html&#34; %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endfor %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    {% if feed.pagination.total_pages &gt; 1 %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;pagination&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% if feed.pagination.has_prev %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ feed.pagination.prev_url }}&#34;</span><span class="p">&gt;</span>← Previous<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">span</span><span class="p">&gt;</span>Page {{ feed.pagination.current_page }} of {{ feed.pagination.total_pages }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        {% if feed.pagination.has_next %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ feed.pagination.next_url }}&#34;</span><span class="p">&gt;</span>Next →<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">section</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endblock %}
+</span></span></code></pre><hr>
+<h2 id="template-context">Template Context <a href="#template-context" class="heading-anchor">#</a></h2>
+<h3 id="post-templates">Post Templates <a href="#post-templates" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>post</code></td>
+<td>Post</td>
+<td>The post being rendered</td>
+</tr>
+<tr>
+<td><code>body</code></td>
+<td>str</td>
+<td>Rendered HTML content</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>Config</td>
+<td>Site configuration</td>
+</tr>
+<tr>
+<td><code>core</code></td>
+<td>Core</td>
+<td>Core instance</td>
+</tr>
+</tbody>
+</table>
+<h3 id="feed-templates">Feed Templates <a href="#feed-templates" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>feed</code></td>
+<td>Feed</td>
+<td>Feed configuration and posts</td>
+</tr>
+<tr>
+<td><code>feed.posts</code></td>
+<td>List[Post]</td>
+<td>Posts in this feed page</td>
+</tr>
+<tr>
+<td><code>feed.pagination</code></td>
+<td>Pagination</td>
+<td>Pagination info</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>Config</td>
+<td>Site configuration</td>
+</tr>
+<tr>
+<td><code>core</code></td>
+<td>Core</td>
+<td>Core instance</td>
+</tr>
+</tbody>
+</table>
+<h3 id="global-variables">Global Variables <a href="#global-variables" class="heading-anchor">#</a></h3>
+<p>Always available:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>today</code></td>
+<td>date</td>
+<td>Current date</td>
+</tr>
+<tr>
+<td><code>now</code></td>
+<td>datetime</td>
+<td>Current datetime</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="template-syntax">Template Syntax <a href="#template-syntax" class="heading-anchor">#</a></h2>
+<h3 id="variables">Variables <a href="#variables" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{{ post.title }}
+{{ config.url }}
+{{ post.date.year }}
+</code></pre>
+<h3 id="attribute-access">Attribute Access <a href="#attribute-access" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{{ post.title }}             {# Attribute #}
+{{ post[&quot;title&quot;] }}          {# Item access #}
+{{ post.get(&quot;title&quot;, &quot;&quot;) }}  {# With default #}
+</code></pre>
+<h3 id="filters">Filters <a href="#filters" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{{ post.title | upper }}
+{{ post.title | lower }}
+{{ post.title | title }}
+{{ post.description | truncate(160) }}
+{{ post.date | date('%Y-%m-%d') }}
+{{ tags | join(', ') }}
+{{ body | safe }}            {# Don't escape HTML #}
+{{ value | default('N/A') }} {# Default value #}
+</code></pre>
+<h3 id="control-flow">Control Flow <a href="#control-flow" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{% if post.published %}
+    &lt;span class=&quot;status&quot;&gt;Published&lt;/span&gt;
+{% elif post.draft %}
+    &lt;span class=&quot;status&quot;&gt;Draft&lt;/span&gt;
+{% else %}
+    &lt;span class=&quot;status&quot;&gt;Private&lt;/span&gt;
+{% endif %}
+
+{% for tag in post.tags %}
+    &lt;a href=&quot;/tags/{{ tag | slugify }}/&quot;&gt;{{ tag }}&lt;/a&gt;
+    {% if not loop.last %}, {% endif %}
+{% endfor %}
+
+{% for post in core.filter(&quot;published == True&quot;) %}
+    &lt;li&gt;{{ post.title }}&lt;/li&gt;
+{% empty %}
+    &lt;li&gt;No posts found&lt;/li&gt;
+{% endfor %}
+</code></pre>
+<h3 id="loop-variables">Loop Variables <a href="#loop-variables" class="heading-anchor">#</a></h3>
+<p>Inside <code>{% for %}</code> loops:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>loop.index</code></td>
+<td>Current iteration (1-indexed)</td>
+</tr>
+<tr>
+<td><code>loop.index0</code></td>
+<td>Current iteration (0-indexed)</td>
+</tr>
+<tr>
+<td><code>loop.first</code></td>
+<td>True if first iteration</td>
+</tr>
+<tr>
+<td><code>loop.last</code></td>
+<td>True if last iteration</td>
+</tr>
+<tr>
+<td><code>loop.length</code></td>
+<td>Total number of items</td>
+</tr>
+<tr>
+<td><code>loop.revindex</code></td>
+<td>Iterations remaining (1-indexed)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="template-inheritance">Template Inheritance <a href="#template-inheritance" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{# child.html #}
+{% extends &quot;base.html&quot; %}
+
+{% block content %}
+    &lt;h1&gt;Child content&lt;/h1&gt;
+    {{ super() }}  {# Include parent block content #}
+{% endblock %}
+</code></pre>
+<h3 id="includes">Includes <a href="#includes" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{% include &quot;partials/header.html&quot; %}
+
+{% include &quot;partials/card.html&quot; with context %}
+
+{% include &quot;partials/sidebar.html&quot; ignore missing %}
+</code></pre>
+<h3 id="macros">Macros <a href="#macros" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{% macro post_card(post) %}
+&lt;article class=&quot;card&quot;&gt;
+    &lt;h2&gt;&lt;a href=&quot;{{ post.href }}&quot;&gt;{{ post.title }}&lt;/a&gt;&lt;/h2&gt;
+    &lt;p&gt;{{ post.description }}&lt;/p&gt;
+&lt;/article&gt;
+{% endmacro %}
+
+{# Usage #}
+{{ post_card(post) }}
+
+{% for p in posts %}
+    {{ post_card(p) }}
+{% endfor %}
+</code></pre>
+<h3 id="comments">Comments <a href="#comments" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{# This is a comment and won't appear in output #}
+
+{#
+Multi-line
+comment
+#}
+</code></pre>
+<hr>
+<h2 id="built-in-filters">Built-in Filters <a href="#built-in-filters" class="heading-anchor">#</a></h2>
+<h3 id="string-filters">String Filters <a href="#string-filters" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Example</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>upper</code></td>
+<td><code>{{ &quot;hello&quot; | upper }}</code></td>
+<td><code>HELLO</code></td>
+</tr>
+<tr>
+<td><code>lower</code></td>
+<td><code>{{ &quot;HELLO&quot; | lower }}</code></td>
+<td><code>hello</code></td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td><code>{{ &quot;hello world&quot; | title }}</code></td>
+<td><code>Hello World</code></td>
+</tr>
+<tr>
+<td><code>capitalize</code></td>
+<td><code>{{ &quot;hello&quot; | capitalize }}</code></td>
+<td><code>Hello</code></td>
+</tr>
+<tr>
+<td><code>trim</code></td>
+<td><code>{{ &quot;  hi  &quot; | trim }}</code></td>
+<td><code>hi</code></td>
+</tr>
+<tr>
+<td><code>truncate(n)</code></td>
+<td><code>{{ text | truncate(100) }}</code></td>
+<td>First 100 chars...</td>
+</tr>
+<tr>
+<td><code>striptags</code></td>
+<td><code>{{ html | striptags }}</code></td>
+<td>Remove HTML tags</td>
+</tr>
+<tr>
+<td><code>escape</code></td>
+<td><code>{{ html | escape }}</code></td>
+<td>HTML escape (default)</td>
+</tr>
+<tr>
+<td><code>safe</code></td>
+<td><code>{{ html | safe }}</code></td>
+<td>Don't escape</td>
+</tr>
+<tr>
+<td><code>slugify</code></td>
+<td><code>{{ &quot;Hello World&quot; | slugify }}</code></td>
+<td><code>hello-world</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="list-filters">List Filters <a href="#list-filters" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Example</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>length</code></td>
+<td><code>{{ list | length }}</code></td>
+<td>Count</td>
+</tr>
+<tr>
+<td><code>first</code></td>
+<td><code>{{ list | first }}</code></td>
+<td>First item</td>
+</tr>
+<tr>
+<td><code>last</code></td>
+<td><code>{{ list | last }}</code></td>
+<td>Last item</td>
+</tr>
+<tr>
+<td><code>join(sep)</code></td>
+<td><code>{{ list | join(&quot;, &quot;) }}</code></td>
+<td>Joined string</td>
+</tr>
+<tr>
+<td><code>sort</code></td>
+<td><code>{{ list | sort }}</code></td>
+<td>Sorted list</td>
+</tr>
+<tr>
+<td><code>reverse</code></td>
+<td><code>{{ list | reverse }}</code></td>
+<td>Reversed list</td>
+</tr>
+<tr>
+<td><code>unique</code></td>
+<td><code>{{ list | unique }}</code></td>
+<td>Deduplicated</td>
+</tr>
+<tr>
+<td><code>map(attr)</code></td>
+<td><code>{{ posts | map(attribute='title') }}</code></td>
+<td>Extract field</td>
+</tr>
+<tr>
+<td><code>selectattr</code></td>
+<td><code>{{ posts | selectattr('published') }}</code></td>
+<td>Filter by attr</td>
+</tr>
+<tr>
+<td><code>rejectattr</code></td>
+<td><code>{{ posts | rejectattr('draft') }}</code></td>
+<td>Exclude by attr</td>
+</tr>
+<tr>
+<td><code>batch(n)</code></td>
+<td><code>{{ list | batch(3) }}</code></td>
+<td>Group into chunks</td>
+</tr>
+</tbody>
+</table>
+<h3 id="number-filters">Number Filters <a href="#number-filters" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Example</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>round</code></td>
+<td><code>{{ 3.7 | round }}</code></td>
+<td><code>4</code></td>
+</tr>
+<tr>
+<td><code>int</code></td>
+<td><code>{{ &quot;42&quot; | int }}</code></td>
+<td><code>42</code></td>
+</tr>
+<tr>
+<td><code>float</code></td>
+<td><code>{{ &quot;3.14&quot; | float }}</code></td>
+<td><code>3.14</code></td>
+</tr>
+<tr>
+<td><code>abs</code></td>
+<td><code>{{ -5 | abs }}</code></td>
+<td><code>5</code></td>
+</tr>
+<tr>
+<td><code>filesizeformat</code></td>
+<td><code>{{ 1024 | filesizeformat }}</code></td>
+<td><code>1.0 KB</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="date-filters">Date Filters <a href="#date-filters" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Example</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>date(fmt)</code></td>
+<td><code>{{ post.date | date('%Y-%m-%d') }}</code></td>
+<td><code>2024-01-15</code></td>
+</tr>
+<tr>
+<td><code>strftime(fmt)</code></td>
+<td><code>{{ post.date.strftime('%B %d') }}</code></td>
+<td><code>January 15</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="utility-filters">Utility Filters <a href="#utility-filters" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Example</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>default(val)</code></td>
+<td><code>{{ x | default('N/A') }}</code></td>
+<td>Value or default</td>
+</tr>
+<tr>
+<td><code>tojson</code></td>
+<td><code>{{ obj | tojson }}</code></td>
+<td>JSON string</td>
+</tr>
+<tr>
+<td><code>pprint</code></td>
+<td><code>{{ obj | pprint }}</code></td>
+<td>Pretty print</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="custom-filters">Custom Filters <a href="#custom-filters" class="heading-anchor">#</a></h2>
+<p>Implementations can add custom filters:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">reading_time</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">wpm</span><span class="o">=</span><span class="mi">200</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">words</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">    <span class="n">minutes</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">words</span> <span class="o">//</span> <span class="n">wpm</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">minutes</span><span class="si">}</span><span class="s2"> min read&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">jinja_env</span><span class="o">.</span><span class="n">filters</span><span class="p">[</span><span class="s2">&#34;reading_time&#34;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reading_time</span>
+</span></span></code></pre><p>Usage:</p>
+<pre><code class="language-jinja2">{{ post.content | reading_time }}
+{{ post.content | reading_time(250) }}
+</code></pre>
+<hr>
+<h2 id="querying-in-templates">Querying in Templates <a href="#querying-in-templates" class="heading-anchor">#</a></h2>
+<p>Access the full query API:</p>
+<pre><code class="language-jinja2">{# Recent posts #}
+{% for post in core.filter(&quot;published == True and date &lt;= today&quot;)[:5] %}
+    &lt;li&gt;{{ post.title }}&lt;/li&gt;
+{% endfor %}
+
+{# Posts by tag #}
+{% for post in core.filter(&quot;'python' in tags&quot;) %}
+    &lt;li&gt;{{ post.title }}&lt;/li&gt;
+{% endfor %}
+
+{# Get specific post #}
+{% set about = core.one(&quot;slug == 'about'&quot;) %}
+&lt;a href=&quot;{{ about.href }}&quot;&gt;{{ about.title }}&lt;/a&gt;
+
+{# Map to get field list #}
+{% set all_tags = core.map(&quot;tags&quot;) | flatten | unique | sort %}
+</code></pre>
+<hr>
+<h2 id="custom-templates-per-post">Custom Templates Per Post <a href="#custom-templates-per-post" class="heading-anchor">#</a></h2>
+<p>Posts can specify their template:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Special Post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="l">special.html</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p>Or multiple templates for different contexts:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Feature Post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l">feature.html</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">card</span><span class="p">:</span><span class="w"> </span><span class="l">feature-card.html</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">feed</span><span class="p">:</span><span class="w"> </span><span class="l">feature-feed-item.html</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><hr>
+<h2 id="partials">Partials <a href="#partials" class="heading-anchor">#</a></h2>
+<p>Small reusable template fragments:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- templates/partials/card.html --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">article</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;card&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ post.href }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% if post.cover_image %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;{{ post.cover_image }}&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;{{ post.title }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h2</span><span class="p">&gt;</span>{{ post.title }}<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% if post.description %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>{{ post.description }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% if post.date %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">time</span><span class="p">&gt;</span>{{ post.date | date(&#39;%b %d, %Y&#39;) }}<span class="p">&lt;/</span><span class="nt">time</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">        {% if post.reading_time %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">span</span><span class="p">&gt;</span>{{ post.reading_time }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endif %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span></code></pre><hr>
+<h2 id="error-handling">Error Handling <a href="#error-handling" class="heading-anchor">#</a></h2>
+<h3 id="undefined-variables">Undefined Variables <a href="#undefined-variables" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Silent</strong> (recommended)</td>
+<td>Undefined → empty string</td>
+</tr>
+<tr>
+<td><strong>Strict</strong></td>
+<td>Undefined → error</td>
+</tr>
+<tr>
+<td><strong>Debug</strong></td>
+<td>Undefined → <code>{{ undefined }}</code></td>
+</tr>
+</tbody>
+</table>
+<p>Configure silent mode:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">jinja2</span> <span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Undefined</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">SilentUndefined</span><span class="p">(</span><span class="n">Undefined</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">_fail_with_undefined_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s2">&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">(</span><span class="n">undefined</span><span class="o">=</span><span class="n">SilentUndefined</span><span class="p">)</span>
+</span></span></code></pre><h3 id="template-not-found">Template Not Found <a href="#template-not-found" class="heading-anchor">#</a></h3>
+<p>If a post's template doesn't exist:</p>
+<ol>
+<li>Fall back to <code>post.html</code></li>
+<li>If <code>post.html</code> missing, error</li>
+</ol>
+<h3 id="template-syntax-errors">Template Syntax Errors <a href="#template-syntax-errors" class="heading-anchor">#</a></h3>
+<p>Report with:</p>
+<ul>
+<li>Template file path</li>
+<li>Line number</li>
+<li>Error description</li>
+</ul>
+<hr>
+<h2 id="performance">Performance <a href="#performance" class="heading-anchor">#</a></h2>
+<h3 id="template-caching">Template Caching <a href="#template-caching" class="heading-anchor">#</a></h3>
+<p>Cache compiled templates:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">jinja2</span> <span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">FileSystemBytecodeCache</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="n">bytecode_cache</span><span class="o">=</span><span class="n">FileSystemBytecodeCache</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">        <span class="n">directory</span><span class="o">=</span><span class="s2">&#34;.tool.cache/templates&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><h3 id="avoid-n1-queries">Avoid N+1 Queries <a href="#avoid-n1-queries" class="heading-anchor">#</a></h3>
+<p>Bad:</p>
+<pre><code class="language-jinja2">{% for post in posts %}
+    {# This queries for each post #}
+    {% set related = core.filter(&quot;'&quot; ~ post.tags[0] ~ &quot;' in tags&quot;)[:3] %}
+{% endfor %}
+</code></pre>
+<p>Good:</p>
+<pre><code class="language-jinja2">{# Pre-compute in plugin, pass to template #}
+{% for post in posts %}
+    {% for related in post.related_posts %}
+        ...
+    {% endfor %}
+{% endfor %}
+</code></pre>
+<hr>
+<h2 id="library-recommendations">Library Recommendations <a href="#library-recommendations" class="heading-anchor">#</a></h2>
+<h3 id="python">Python <a href="#python" class="heading-anchor">#</a></h3>
+<ul>
+<li><strong>Jinja2</strong> - Standard, fast, full-featured</li>
+</ul>
+<h3 id="javascript">JavaScript <a href="#javascript" class="heading-anchor">#</a></h3>
+<ul>
+<li><strong>Nunjucks</strong> - Jinja-like, by Mozilla</li>
+<li><strong>EJS</strong> - Simple, embedded JS</li>
+<li><strong>Handlebars</strong> - Logic-less templates</li>
+</ul>
+<h3 id="go">Go <a href="#go" class="heading-anchor">#</a></h3>
+<ul>
+<li><strong>html/template</strong> - Standard library</li>
+<li><strong>pongo2</strong> - Jinja-like</li>
+</ul>
+<h3 id="rust">Rust <a href="#rust" class="heading-anchor">#</a></h3>
+<ul>
+<li><strong>Tera</strong> - Jinja-like</li>
+<li><strong>Handlebars</strong> - Port of JS library</li>
+</ul>
+<hr>
+<h2 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h2>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">tool-name</span><span class="p">.</span><span class="nx">templates</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Template directory</span>
+</span></span><span class="line"><span class="cl"><span class="nx">dir</span> <span class="p">=</span> <span class="s2">&#34;templates&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Autoescape HTML</span>
+</span></span><span class="line"><span class="cl"><span class="nx">autoescape</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Undefined variable behavior</span>
+</span></span><span class="line"><span class="cl"><span class="nx">undefined</span> <span class="p">=</span> <span class="s2">&#34;silent&#34;</span>  <span class="c"># &#34;silent&#34;, &#34;strict&#34;, &#34;debug&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Cache compiled templates</span>
+</span></span><span class="line"><span class="cl"><span class="nx">cache</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Extensions to treat as templates</span>
+</span></span><span class="line"><span class="cl"><span class="nx">extensions</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;.html&#34;</span><span class="p">,</span> <span class="s2">&#34;.xml&#34;</span><span class="p">,</span> <span class="s2">&#34;.txt&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Custom filters module</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filters</span> <span class="p">=</span> <span class="s2">&#34;my_site.filters&#34;</span>
+</span></span></code></pre><hr>
+<h2 id="template-engine-differences">Template Engine Differences <a href="#template-engine-differences" class="heading-anchor">#</a></h2>
+<p>When implementing in different languages, template engines have subtle differences. This section documents key variations to ensure consistent behavior.</p>
+<h3 id="recommended-libraries-by-language">Recommended Libraries by Language <a href="#recommended-libraries-by-language" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Language</th>
+<th>Library</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python</td>
+<td>Jinja2</td>
+<td>Reference implementation</td>
+</tr>
+<tr>
+<td>JavaScript</td>
+<td>Nunjucks</td>
+<td>Jinja-compatible, by Mozilla</td>
+</tr>
+<tr>
+<td>Go</td>
+<td>pongo2</td>
+<td>Jinja2-like syntax</td>
+</tr>
+<tr>
+<td>Rust</td>
+<td>Tera</td>
+<td>Jinja2 inspired</td>
+</tr>
+</tbody>
+</table>
+<h3 id="date-formatting-differences">Date Formatting Differences <a href="#date-formatting-differences" class="heading-anchor">#</a></h3>
+<p>Date formatting is a common source of incompatibility. The spec uses a <strong>strftime-like</strong> format as the canonical reference.</p>
+<h4 id="format-string-mapping">Format String Mapping <a href="#format-string-mapping" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Description</th>
+<th>Jinja2 (Python)</th>
+<th>Nunjucks (JS)</th>
+<th>pongo2 (Go)</th>
+<th>Tera (Rust)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Full date</td>
+<td>2024-01-15</td>
+<td><code>%Y-%m-%d</code></td>
+<td><code>%Y-%m-%d</code></td>
+<td><code>2006-01-02</code></td>
+<td><code>%Y-%m-%d</code></td>
+</tr>
+<tr>
+<td>Month name</td>
+<td>January</td>
+<td><code>%B</code></td>
+<td><code>%B</code></td>
+<td><code>January</code></td>
+<td><code>%B</code></td>
+</tr>
+<tr>
+<td>Month abbr</td>
+<td>Jan</td>
+<td><code>%b</code></td>
+<td><code>%b</code></td>
+<td><code>Jan</code></td>
+<td><code>%b</code></td>
+</tr>
+<tr>
+<td>Day of month</td>
+<td>15</td>
+<td><code>%d</code></td>
+<td><code>%d</code></td>
+<td><code>02</code></td>
+<td><code>%d</code></td>
+</tr>
+<tr>
+<td>Year</td>
+<td>2024</td>
+<td><code>%Y</code></td>
+<td><code>%Y</code></td>
+<td><code>2006</code></td>
+<td><code>%Y</code></td>
+</tr>
+<tr>
+<td>Hour (24h)</td>
+<td>14</td>
+<td><code>%H</code></td>
+<td><code>%H</code></td>
+<td><code>15</code></td>
+<td><code>%H</code></td>
+</tr>
+<tr>
+<td>Minute</td>
+<td>30</td>
+<td><code>%M</code></td>
+<td><code>%M</code></td>
+<td><code>04</code></td>
+<td><code>%M</code></td>
+</tr>
+<tr>
+<td>ISO 8601</td>
+<td>2024-01-15T14:30:00Z</td>
+<td><code>.isoformat()</code></td>
+<td><code>.toISOString()</code></td>
+<td><code>.Format(time.RFC3339)</code></td>
+<td><code>%+</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="gos-unique-format-system">Go's Unique Format System <a href="#gos-unique-format-system" class="heading-anchor">#</a></h4>
+<p>Go uses reference time (<code>Mon Jan 2 15:04:05 MST 2006</code>) instead of format codes:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Go (pongo2)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">{{</span> <span class="nx">post</span><span class="p">.</span><span class="nx">date</span> <span class="p">|</span> <span class="nx">date</span><span class="p">:</span><span class="s">&#34;January 2, 2006&#34;</span> <span class="p">}}</span>     <span class="c1">// January 15, 2024
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">{{</span> <span class="nx">post</span><span class="p">.</span><span class="nx">date</span> <span class="p">|</span> <span class="nx">date</span><span class="p">:</span><span class="s">&#34;2006-01-02&#34;</span> <span class="p">}}</span>          <span class="c1">// 2024-01-15
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">{{</span> <span class="nx">post</span><span class="p">.</span><span class="nx">date</span> <span class="p">|</span> <span class="nx">date</span><span class="p">:</span><span class="s">&#34;Jan 02&#34;</span> <span class="p">}}</span>              <span class="c1">// Jan 15
+</span></span></span></code></pre><p><strong>Implementation Requirement:</strong> If using pongo2, implement a <code>strftime</code> filter that translates standard format codes:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Recommended: Add strftime filter for consistency
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">{{</span> <span class="nx">post</span><span class="p">.</span><span class="nx">date</span> <span class="p">|</span> <span class="nx">strftime</span><span class="p">:</span><span class="s">&#34;%B %d, %Y&#34;</span> <span class="p">}}</span>  <span class="c1">// January 15, 2024
+</span></span></span></code></pre><h4 id="examples-across-engines">Examples Across Engines <a href="#examples-across-engines" class="heading-anchor">#</a></h4>
+<p><strong>Display &quot;January 15, 2024&quot;:</strong></p>
+<pre><code class="language-jinja2">{# Jinja2 (Python) #}
+{{ post.date.strftime('%B %d, %Y') }}
+{{ post.date | date('%B %d, %Y') }}
+
+{# Nunjucks (JavaScript) #}
+{{ post.date | date('%B %d, %Y') }}
+
+{# pongo2 (Go) - native format #}
+{{ post.date | date:&quot;January 02, 2006&quot; }}
+
+{# pongo2 (Go) - with strftime filter #}
+{{ post.date | strftime:&quot;%B %d, %Y&quot; }}
+
+{# Tera (Rust) #}
+{{ post.date | date(format=&quot;%B %d, %Y&quot;) }}
+</code></pre>
+<p><strong>Display ISO 8601 for <code>&lt;time&gt;</code> element:</strong></p>
+<pre><code class="language-jinja2">{# Jinja2 #}
+&lt;time datetime=&quot;{{ post.date.isoformat() }}&quot;&gt;
+
+{# Nunjucks #}
+&lt;time datetime=&quot;{{ post.date.toISOString() }}&quot;&gt;
+
+{# pongo2 #}
+&lt;time datetime=&quot;{{ post.date | date:&quot;2006-01-02T15:04:05Z07:00&quot; }}&quot;&gt;
+
+{# Tera #}
+&lt;time datetime=&quot;{{ post.date | date(format=&quot;%+&quot;) }}&quot;&gt;
+</code></pre>
+<h3 id="filter-syntax-differences">Filter Syntax Differences <a href="#filter-syntax-differences" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Jinja2</th>
+<th>Nunjucks</th>
+<th>pongo2</th>
+<th>Tera</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Filter args</td>
+<td><code>| truncate(100)</code></td>
+<td><code>| truncate(100)</code></td>
+<td><code>| truncate:100</code></td>
+<td><code>| truncate(length=100)</code></td>
+</tr>
+<tr>
+<td>Multiple args</td>
+<td><code>| replace(&quot;a&quot;, &quot;b&quot;)</code></td>
+<td><code>| replace(&quot;a&quot;, &quot;b&quot;)</code></td>
+<td>N/A (use custom)</td>
+<td><code>| replace(from=&quot;a&quot;, to=&quot;b&quot;)</code></td>
+</tr>
+<tr>
+<td>Chaining</td>
+<td><code>| upper | trim</code></td>
+<td><code>| upper | trim</code></td>
+<td><code>| upper | trim</code></td>
+<td><code>| upper | trim</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="booleantruthiness-differences">Boolean/Truthiness Differences <a href="#booleantruthiness-differences" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Jinja2</th>
+<th>Nunjucks</th>
+<th>pongo2</th>
+<th>Tera</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Empty string <code>&quot;&quot;</code></td>
+<td>Falsy</td>
+<td>Falsy</td>
+<td>Falsy</td>
+<td>Falsy</td>
+</tr>
+<tr>
+<td>Empty list <code>[]</code></td>
+<td>Falsy</td>
+<td>Falsy</td>
+<td>Truthy*</td>
+<td>Falsy</td>
+</tr>
+<tr>
+<td>Zero <code>0</code></td>
+<td>Falsy</td>
+<td>Falsy</td>
+<td>Falsy</td>
+<td>Falsy</td>
+</tr>
+<tr>
+<td><code>None</code>/<code>nil</code>/<code>null</code></td>
+<td>Falsy</td>
+<td>Falsy</td>
+<td>Falsy</td>
+<td>Falsy</td>
+</tr>
+</tbody>
+</table>
+<p>*pongo2 note: Empty slices are truthy by Go convention; use <code>| length &gt; 0</code> for explicit checks.</p>
+<h3 id="saferaw-html-output">Safe/Raw HTML Output <a href="#saferaw-html-output" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Engine</th>
+<th>Syntax</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Jinja2</td>
+<td><code>{{ html | safe }}</code></td>
+</tr>
+<tr>
+<td>Nunjucks</td>
+<td><code>{{ html | safe }}</code></td>
+</tr>
+<tr>
+<td>pongo2</td>
+<td><code>{{ html | safe }}</code></td>
+</tr>
+<tr>
+<td>Tera</td>
+<td><code>{{ html | safe }}</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="undefined-variable-handling">Undefined Variable Handling <a href="#undefined-variable-handling" class="heading-anchor">#</a></h3>
+<p>Configure silent undefined behavior for all engines:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Jinja2</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">jinja2</span> <span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">ChainableUndefined</span>
+</span></span><span class="line"><span class="cl"><span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">(</span><span class="n">undefined</span><span class="o">=</span><span class="n">ChainableUndefined</span><span class="p">)</span>
+</span></span></code></pre><pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Nunjucks
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kr">const</span> <span class="nx">env</span> <span class="o">=</span> <span class="nx">nunjucks</span><span class="p">.</span><span class="nx">configure</span><span class="p">({</span> <span class="nx">throwOnUndefined</span><span class="o">:</span> <span class="kc">false</span> <span class="p">});</span>
+</span></span></code></pre><pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// pongo2 - undefined variables are empty by default
+</span></span></span></code></pre><pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Tera
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">tera</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Tera</span>::<span class="n">new</span><span class="p">(</span><span class="s">&#34;templates/**/*&#34;</span><span class="p">)</span><span class="o">?</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="n">tera</span><span class="p">.</span><span class="n">set_undefined_behavior</span><span class="p">(</span><span class="n">UndefinedBehavior</span>::<span class="n">Silent</span><span class="p">);</span><span class="w">
+</span></span></span></code></pre><h3 id="required-custom-filters">Required Custom Filters <a href="#required-custom-filters" class="heading-anchor">#</a></h3>
+<p>Regardless of engine, implementations MUST provide these filters with consistent behavior:</p>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slugify</code></td>
+<td><code>(str) -&gt; str</code></td>
+<td>Convert to URL-safe slug</td>
+</tr>
+<tr>
+<td><code>date</code></td>
+<td><code>(datetime, format) -&gt; str</code></td>
+<td>Format date (strftime syntax)</td>
+</tr>
+<tr>
+<td><code>reading_time</code></td>
+<td><code>(str, wpm=200) -&gt; str</code></td>
+<td>Estimate reading time</td>
+</tr>
+<tr>
+<td><code>filesizeformat</code></td>
+<td><code>(int) -&gt; str</code></td>
+<td>Human-readable file size</td>
+</tr>
+</tbody>
+</table>
+<h3 id="testing-template-compatibility">Testing Template Compatibility <a href="#testing-template-compatibility" class="heading-anchor">#</a></h3>
+<p>Include these test cases to verify cross-engine behavior:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">template_engine_compat</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;date formatting consistency&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">input</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;{{ date | date(&#34;%Y-%m-%d&#34;) }}&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">context</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;2024-01-15T10:30:00Z&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">output</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;2024-01-15&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;empty list truthiness&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">input</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s1">&#39;{% if items | length &gt; 0 %}yes{% else %}no{% endif %}&#39;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">context</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">items</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">output</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;no&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;undefined variable silent&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">input</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Hello {{ name | default(&#39;World&#39;) }}&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">context</span><span class="p">:</span><span class="w"> </span>{}<span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">output</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Hello World&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;slugify filter&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">input</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;{{ title | slugify }}&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">context</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Hello World!&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">output</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;hello-world&#34;</span><span class="w">
+</span></span></span></code></pre><hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./SPEC.md">SPEC.md</a> - Full specification</li>
+<li><a href="./THEMES.md">THEMES.md</a> - Theming and template overrides</li>
+<li><a href="./CONFIG.md">CONFIG.md</a> - Template configuration</li>
+<li><a href="./CONTENT.md">CONTENT.md</a> - Markdown processing</li>
+<li><a href="./PLUGINS.md">PLUGINS.md</a> - Plugin development</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

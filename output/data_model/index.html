@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Model - My Site</title>
+    <meta name="description" content="This document specifies the content and configuration data models.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Data Model">
+    
+    <meta property="og:url" content="/data_model/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="This document specifies the content and configuration data models.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Data Model">
+    
+    <meta name="twitter:description" content="This document specifies the content and configuration data models.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/data_model/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Data Model",
+  "description": "This document specifies the content and configuration data models.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/data_model/"
+  },
+  "url": "/data_model/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Data Model</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="data-model-specification">Data Model Specification</h1>
+<p>This document specifies the content and configuration data models.</p>
+<h2 id="overview">Overview <a href="#overview" class="heading-anchor">#</a></h2>
+<p>The system uses two main models:</p>
+<ol>
+<li><strong>Post</strong> - Represents a single piece of content</li>
+<li><strong>Config</strong> - Represents site configuration</li>
+</ol>
+<p>Both models are dynamically constructed by merging fragments from plugins.</p>
+<hr>
+<h2 id="post-model">Post Model <a href="#post-model" class="heading-anchor">#</a></h2>
+<h3 id="required-fields">Required Fields <a href="#required-fields" class="heading-anchor">#</a></h3>
+<p>Every Post MUST have these fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>path</code></td>
+<td>Path</td>
+<td>Source file path</td>
+</tr>
+<tr>
+<td><code>content</code></td>
+<td>string</td>
+<td>Raw content (after frontmatter extraction)</td>
+</tr>
+<tr>
+<td><code>slug</code></td>
+<td>string</td>
+<td>URL-safe identifier</td>
+</tr>
+<tr>
+<td><code>href</code></td>
+<td>string</td>
+<td>Relative URL path (e.g., <code>/my-post/</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="standard-optional-fields">Standard Optional Fields <a href="#standard-optional-fields" class="heading-anchor">#</a></h3>
+<p>These fields SHOULD be supported:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>title</code></td>
+<td>string?</td>
+<td>null</td>
+<td>Content title</td>
+</tr>
+<tr>
+<td><code>date</code></td>
+<td>date?</td>
+<td>null</td>
+<td>Publication date</td>
+</tr>
+<tr>
+<td><code>published</code></td>
+<td>bool</td>
+<td>false</td>
+<td>Include in feeds (shadow pages if false)</td>
+</tr>
+<tr>
+<td><code>draft</code></td>
+<td>bool</td>
+<td>false</td>
+<td>Work-in-progress (not rendered)</td>
+</tr>
+<tr>
+<td><code>skip</code></td>
+<td>bool</td>
+<td>false</td>
+<td>Skip during build (not rendered)</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>string[]</td>
+<td>[]</td>
+<td>Content tags/categories</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string?</td>
+<td>null</td>
+<td>Summary/excerpt</td>
+</tr>
+<tr>
+<td><code>template</code></td>
+<td>string</td>
+<td>&quot;post.html&quot;</td>
+<td>Template to render with</td>
+</tr>
+<tr>
+<td><code>config_overrides</code></td>
+<td>object?</td>
+<td>null</td>
+<td>Per-post configuration overrides</td>
+</tr>
+<tr>
+<td><code>html</code></td>
+<td>string?</td>
+<td>null</td>
+<td>Final rendered HTML</td>
+</tr>
+<tr>
+<td><code>article_html</code></td>
+<td>string?</td>
+<td>null</td>
+<td>Rendered content (without template)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="field-behaviors">Field Behaviors <a href="#field-behaviors" class="heading-anchor">#</a></h3>
+<h4 id="published---shadow-pages"><code>published</code> - Shadow Pages <a href="#published---shadow-pages" class="heading-anchor">#</a></h4>
+<p>Controls whether content appears in feeds, sitemaps, and RSS. <strong>All non-draft, non-skip content is rendered regardless of published status.</strong></p>
+<table>
+<thead>
+<tr>
+<th><code>published</code></th>
+<th><code>draft</code></th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>true</code></td>
+<td><code>false</code></td>
+<td>Rendered + in feeds + in sitemap</td>
+</tr>
+<tr>
+<td><code>false</code></td>
+<td><code>false</code></td>
+<td>Rendered as &quot;shadow page&quot; + NOT in feeds + NOT in sitemap</td>
+</tr>
+<tr>
+<td>any</td>
+<td><code>true</code></td>
+<td>NOT rendered (draft is for private WIP)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Shadow Pages</strong> are posts with <code>published: false</code> that are:</p>
+<ul>
+<li><strong>Rendered</strong> to HTML and accessible via direct URL</li>
+<li><strong>Excluded</strong> from feeds, sitemaps, and RSS</li>
+<li><strong>Not discoverable</strong> through normal site navigation</li>
+</ul>
+<p><strong>Use cases for shadow pages:</strong></p>
+<ul>
+<li>Draft content accessible to reviewers via direct URL</li>
+<li>Private documentation not linked publicly</li>
+<li>Work-in-progress shared with specific people</li>
+<li>Admin pages or development tools</li>
+<li>Staging versions of pages</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Draft Post - For Review&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">  </span><span class="c"># Renders to /draft-post/, but not in feeds</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="l">This content is accessible at /draft-post/ but won&#39;t appear in </span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="l">the blog feed or sitemap.</span><span class="w">
+</span></span></span></code></pre><h4 id="draft---true-private-content"><code>draft</code> - True Private Content <a href="#draft---true-private-content" class="heading-anchor">#</a></h4>
+<p>Posts with <code>draft: true</code> are <strong>never rendered</strong> regardless of other settings. Use this for truly private work-in-progress content that should not be accessible at all.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Very Early Draft&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">draft</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">  </span><span class="c"># Will NOT be rendered at all</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h4 id="config-overrides"><code>config_overrides</code> <a href="#config-overrides" class="heading-anchor">#</a></h4>
+<p>Allows a post to override <strong>any</strong> configuration value. The overrides are deep-merged with the global configuration when rendering this specific post.</p>
+<p><strong>Syntax:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Special Post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">config_overrides</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># Override any config key</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">markdown</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">highlight</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">theme</span><span class="p">:</span><span class="w"> </span><span class="l">monokai</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">head</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">meta</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">robots</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">content</span><span class="p">:</span><span class="w"> </span><span class="l">noindex</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">style</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">color_bg</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;#000000&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">theme</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">options</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">show_toc</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># Disable plugins for this post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">toc</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Merge behavior:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scalars</td>
+<td>Post value replaces global value</td>
+</tr>
+<tr>
+<td>Objects</td>
+<td>Deep merge (post keys override, others preserved)</td>
+</tr>
+<tr>
+<td>Arrays</td>
+<td>Post array replaces global array</td>
+</tr>
+<tr>
+<td>Special</td>
+<td><code>head.meta</code>, <code>head.link</code>, <code>head.script</code> arrays are appended</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>Disable features for a specific post (TOC, prev/next)</li>
+<li>Change code highlighting theme</li>
+<li>Add post-specific meta tags or scripts</li>
+<li>Override styling for landing pages</li>
+<li>Use different markdown extensions</li>
+</ul>
+<p>See <a href="./HEAD_STYLE.md">HEAD_STYLE.md</a> for detailed head/style override documentation.</p>
+<h4 id="slug"><code>slug</code> <a href="#slug" class="heading-anchor">#</a></h4>
+<p>The URL-safe identifier for the content.</p>
+<p><strong>Generation priority:</strong></p>
+<ol>
+<li>Explicit <code>slug</code> in frontmatter (including empty string)</li>
+<li>Derived from <code>title</code> (if present)</li>
+<li>Derived from file path (stem without extension)</li>
+</ol>
+<p><strong>Transformation rules:</strong></p>
+<ul>
+<li>Lowercase</li>
+<li>Replace spaces with hyphens</li>
+<li>Remove special characters except hyphens</li>
+<li>Collapse multiple hyphens</li>
+<li>Strip leading/trailing hyphens</li>
+</ul>
+<p><strong>Examples:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Slug</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;Hello World&quot;</code></td>
+<td><code>hello-world</code></td>
+</tr>
+<tr>
+<td><code>&quot;What's New?&quot;</code></td>
+<td><code>whats-new</code></td>
+</tr>
+<tr>
+<td><code>&quot;Python 3.12&quot;</code></td>
+<td><code>python-312</code></td>
+</tr>
+<tr>
+<td><code>path: blog/my-post.md</code></td>
+<td><code>my-post</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="custom-slugs">Custom Slugs <a href="#custom-slugs" class="heading-anchor">#</a></h4>
+<p>Slugs can be explicitly set in frontmatter to override automatic generation:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">About Me</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l">about </span><span class="w"> </span><span class="c"># Explicit slug</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Custom slug normalization:</strong></p>
+<ul>
+<li>Leading and trailing slashes are stripped: <code>/about/</code> → <code>about</code></li>
+<li>Nested paths are preserved: <code>/docs/guides/install</code> → <code>docs/guides/install</code></li>
+<li>Slash alone (<code>/</code>) means homepage (empty slug)</li>
+<li>Empty string (<code>&quot;&quot;</code>) means homepage (empty slug)</li>
+</ul>
+<p><strong>Homepage via custom slug:</strong></p>
+<p>Any post can become the homepage by setting an empty or slash slug:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Welcome</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&#34;</span><span class="w">      </span><span class="c"># Becomes homepage at /</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p>or equivalently:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Welcome</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l">/      </span><span class="w"> </span><span class="c"># Also becomes homepage at /</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Use cases for custom slugs:</strong></p>
+<ul>
+<li>Create homepage from content in any directory</li>
+<li>Control output paths independently of file location</li>
+<li>Migrate from other SSGs with different URL structures</li>
+<li>Create SEO-friendly URLs that differ from file names</li>
+<li>Group related content under custom paths</li>
+</ul>
+<h4 id="special-case-indexmd-files">Special Case: <code>index.md</code> Files <a href="#special-case-indexmd-files" class="heading-anchor">#</a></h4>
+<p>Files named <code>index.md</code> receive special slug handling to enable homepage and directory-based URLs:</p>
+<table>
+<thead>
+<tr>
+<th>File Path</th>
+<th>Slug</th>
+<th>Href</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>./index.md</code></td>
+<td><code>&quot;&quot;</code> (empty)</td>
+<td><code>/</code> (homepage)</td>
+</tr>
+<tr>
+<td><code>docs/index.md</code></td>
+<td><code>docs</code></td>
+<td><code>/docs/</code></td>
+</tr>
+<tr>
+<td><code>blog/guides/index.md</code></td>
+<td><code>blog/guides</code></td>
+<td><code>/blog/guides/</code></td>
+</tr>
+</tbody>
+</table>
+<p>This allows:</p>
+<ul>
+<li>Creating a homepage with custom content instead of requiring a feed with <code>slug = &quot;&quot;</code></li>
+<li>Directory-based URL structures where <code>docs/index.md</code> becomes <code>/docs/</code> rather than <code>/docs/index/</code></li>
+</ul>
+<p><strong>Note:</strong> The filename check is case-insensitive (<code>INDEX.MD</code> also matches).</p>
+<h4 id="href"><code>href</code> <a href="#href" class="heading-anchor">#</a></h4>
+<p>The relative URL path for the content.</p>
+<p><strong>Format:</strong> <code>/{slug}/</code></p>
+<p>Always starts with <code>/</code> and ends with <code>/</code>.</p>
+<p><strong>Examples:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Slug</th>
+<th>Href</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hello-world</code></td>
+<td><code>/hello-world/</code></td>
+</tr>
+<tr>
+<td><code>blog/post-1</code></td>
+<td><code>/blog/post-1/</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="date"><code>date</code> <a href="#date" class="heading-anchor">#</a></h4>
+<p>Publication date for the content.</p>
+<p><strong>Accepted formats:</strong></p>
+<ul>
+<li>ISO 8601: <code>2024-01-15</code></li>
+<li>ISO 8601 with time: <code>2024-01-15T10:30:00</code></li>
+<li>Common formats: <code>January 15, 2024</code>, <code>15/01/2024</code></li>
+</ul>
+<p><strong>Auto-detection (optional):</strong></p>
+<ul>
+<li>From file modification time</li>
+<li>From filename pattern: <code>2024-01-15-my-post.md</code></li>
+<li>From path pattern: <code>posts/2024/01/my-post.md</code></li>
+</ul>
+<h4 id="published-vs-draft"><code>published</code> vs <code>draft</code> <a href="#published-vs-draft" class="heading-anchor">#</a></h4>
+<p>These are related but distinct:</p>
+<table>
+<thead>
+<tr>
+<th>published</th>
+<th>draft</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>true</td>
+<td>false</td>
+<td>Visible in production</td>
+</tr>
+<tr>
+<td>false</td>
+<td>false</td>
+<td>Not visible (explicit unpublish)</td>
+</tr>
+<tr>
+<td>false</td>
+<td>true</td>
+<td>Work in progress</td>
+</tr>
+<tr>
+<td>true</td>
+<td>true</td>
+<td>Invalid (treat as draft)</td>
+</tr>
+</tbody>
+</table>
+<p>Default behavior:</p>
+<ul>
+<li>New posts: <code>published: false, draft: false</code></li>
+<li>Published posts: <code>published: true, draft: false</code></li>
+</ul>
+<h4 id="skip"><code>skip</code> <a href="#skip" class="heading-anchor">#</a></h4>
+<p>When true, the post is loaded but not rendered or saved.</p>
+<p>Use cases:</p>
+<ul>
+<li>Temporarily exclude content</li>
+<li>Content used only for data (not pages)</li>
+<li>Failed content that shouldn't block build</li>
+</ul>
+<h4 id="template"><code>template</code> <a href="#template" class="heading-anchor">#</a></h4>
+<p>Can be a string or object:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Simple: use a single template</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="l">post.html</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Complex: different templates for different contexts</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l">post.html</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">card</span><span class="p">:</span><span class="w"> </span><span class="l">card.html</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">feed</span><span class="p">:</span><span class="w"> </span><span class="l">feed-item.html</span><span class="w">
+</span></span></span></code></pre><hr>
+<h2 id="config-model">Config Model <a href="#config-model" class="heading-anchor">#</a></h2>
+<h3 id="required-fields-1">Required Fields <a href="#required-fields-1" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>output_dir</code></td>
+<td>Path</td>
+<td><code>&quot;output&quot;</code></td>
+<td>Build output directory</td>
+</tr>
+<tr>
+<td><code>hooks</code></td>
+<td>string[]</td>
+<td><code>[&quot;default&quot;]</code></td>
+<td>Plugins to load</td>
+</tr>
+<tr>
+<td><code>disabled_hooks</code></td>
+<td>string[]</td>
+<td><code>[]</code></td>
+<td>Plugins to exclude</td>
+</tr>
+</tbody>
+</table>
+<h3 id="standard-optional-fields-1">Standard Optional Fields <a href="#standard-optional-fields-1" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>url</code></td>
+<td>URL?</td>
+<td>null</td>
+<td>Site base URL</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>string?</td>
+<td>null</td>
+<td>Site title</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string?</td>
+<td>null</td>
+<td>Site description</td>
+</tr>
+<tr>
+<td><code>author</code></td>
+<td>string?</td>
+<td>null</td>
+<td>Default author</td>
+</tr>
+<tr>
+<td><code>assets_dir</code></td>
+<td>Path</td>
+<td><code>&quot;static&quot;</code></td>
+<td>Static assets directory</td>
+</tr>
+<tr>
+<td><code>templates_dir</code></td>
+<td>Path</td>
+<td><code>&quot;templates&quot;</code></td>
+<td>Templates directory</td>
+</tr>
+</tbody>
+</table>
+<h3 id="nested-configuration">Nested Configuration <a href="#nested-configuration" class="heading-anchor">#</a></h3>
+<p>Plugins add their own sections:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">tool-name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">output_dir</span> <span class="p">=</span> <span class="s2">&#34;public&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">tool-name</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">glob_patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;posts/**/*.md&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">use_gitignore</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">tool-name</span><span class="p">.</span><span class="nx">markdown</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">extensions</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;tables&#34;</span><span class="p">,</span> <span class="s2">&#34;admonitions&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">tool-name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span></code></pre><h3 id="hooks-configuration">Hooks Configuration <a href="#hooks-configuration" class="heading-anchor">#</a></h3>
+<p>The <code>hooks</code> field controls which plugins are loaded:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Load only default plugins</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;default&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Load default plus custom</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;default&#34;</span><span class="p">,</span> <span class="s2">&#34;my_plugins.reading_time&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Load only specific plugins</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;your_ssg.plugins.glob&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;your_ssg.plugins.load&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;your_ssg.plugins.render&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;your_ssg.plugins.save&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl"><span class="p">]</span>
+</span></span></code></pre><p>The special value <code>&quot;default&quot;</code> expands to the standard plugin set.</p>
+<h3 id="disabled-hooks">Disabled Hooks <a href="#disabled-hooks" class="heading-anchor">#</a></h3>
+<p>Exclude specific plugins:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;default&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">disabled_hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;toc&#34;</span><span class="p">,</span> <span class="s2">&#34;wikilinks&#34;</span><span class="p">]</span>
+</span></span></code></pre><hr>
+<h2 id="model-extension">Model Extension <a href="#model-extension" class="heading-anchor">#</a></h2>
+<h3 id="how-plugins-extend-models">How Plugins Extend Models <a href="#how-plugins-extend-models" class="heading-anchor">#</a></h3>
+<p>Plugins contribute model fragments that are merged:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Plugin A contributes:</span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">PostFieldsA</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">reading_time</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Plugin B contributes:</span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">PostFieldsB</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">word_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">    <span class="n">featured</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Core merges into:</span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Post</span><span class="p">(</span><span class="n">PostFieldsA</span><span class="p">,</span> <span class="n">PostFieldsB</span><span class="p">,</span> <span class="n">BasePost</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">pass</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Result: Post has reading_time, word_count, featured, plus base fields</span>
+</span></span></code></pre><h3 id="merge-rules">Merge Rules <a href="#merge-rules" class="heading-anchor">#</a></h3>
+<ol>
+<li><strong>Field conflicts:</strong> Later plugins override earlier plugins</li>
+<li><strong>Type conflicts:</strong> Must be compatible or error</li>
+<li><strong>Default conflicts:</strong> Later default wins</li>
+<li><strong>Validator conflicts:</strong> All validators run</li>
+</ol>
+<h3 id="type-mapping">Type Mapping <a href="#type-mapping" class="heading-anchor">#</a></h3>
+<p>Abstract types map to language-specific types:</p>
+<table>
+<thead>
+<tr>
+<th>Abstract</th>
+<th>Python</th>
+<th>TypeScript</th>
+<th>Go</th>
+<th>Rust</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>string</td>
+<td>str</td>
+<td>string</td>
+<td>string</td>
+<td>String</td>
+</tr>
+<tr>
+<td>string?</td>
+<td>Optional[str]</td>
+<td>string | null</td>
+<td>*string</td>
+<td>Option<String></td>
+</tr>
+<tr>
+<td>int</td>
+<td>int</td>
+<td>number</td>
+<td>int</td>
+<td>i64</td>
+</tr>
+<tr>
+<td>float</td>
+<td>float</td>
+<td>number</td>
+<td>float64</td>
+<td>f64</td>
+</tr>
+<tr>
+<td>bool</td>
+<td>bool</td>
+<td>boolean</td>
+<td>bool</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>date</td>
+<td>datetime.date</td>
+<td>Date</td>
+<td>time.Time</td>
+<td>NaiveDate</td>
+</tr>
+<tr>
+<td>datetime</td>
+<td>datetime.datetime</td>
+<td>Date</td>
+<td>time.Time</td>
+<td>DateTime</td>
+</tr>
+<tr>
+<td>string[]</td>
+<td>List[str]</td>
+<td>string[]</td>
+<td>[]string</td>
+<td>Vec<String></td>
+</tr>
+<tr>
+<td>Path</td>
+<td>pathlib.Path</td>
+<td>string</td>
+<td>string</td>
+<td>PathBuf</td>
+</tr>
+<tr>
+<td>URL</td>
+<td>pydantic.AnyUrl</td>
+<td>string</td>
+<td>*url.URL</td>
+<td>Url</td>
+</tr>
+<tr>
+<td>any</td>
+<td>Any</td>
+<td>any</td>
+<td>interface{}</td>
+<td>serde_json::Value</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="validation">Validation <a href="#validation" class="heading-anchor">#</a></h2>
+<h3 id="required-vs-optional">Required vs Optional <a href="#required-vs-optional" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Required field - must be provided</span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Post</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span>  <span class="c1"># Required</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Optional with None default</span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Post</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">title</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Optional</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Optional with value default</span>
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Post</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">published</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># Optional, defaults to False</span>
+</span></span></code></pre><h3 id="custom-validators">Custom Validators <a href="#custom-validators" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">pydantic</span> <span class="kn">import</span> <span class="n">field_validator</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Post</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">date</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">date</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&#34;date&#34;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&#34;before&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nd">@classmethod</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">parse_date</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="n">parse_date_string</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">v</span>
+</span></span></code></pre><h3 id="computed-fields">Computed Fields <a href="#computed-fields" class="heading-anchor">#</a></h3>
+<p>Fields derived from other fields:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">pydantic</span> <span class="kn">import</span> <span class="n">computed_field</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Post</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">title</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span></span><span class="line"><span class="cl">    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nd">@computed_field</span>
+</span></span><span class="line"><span class="cl">    <span class="nd">@property</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">slug</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="n">slugify</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">stem</span>
+</span></span></code></pre><hr>
+<h2 id="frontmatter">Frontmatter <a href="#frontmatter" class="heading-anchor">#</a></h2>
+<h3 id="format">Format <a href="#format" class="heading-anchor">#</a></h3>
+<p>YAML between <code>---</code> delimiters:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: My Post
+</span></span><span class="line"><span class="cl">date: 2024-01-15
+</span></span><span class="line"><span class="cl">tags:
+</span></span><span class="line"><span class="cl">  <span class="k">-</span> python
+</span></span><span class="line"><span class="cl">  <span class="k">-</span> tutorial
+</span></span><span class="line"><span class="cl">published: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Content starts here.
+</span></span></code></pre><h3 id="parsing">Parsing <a href="#parsing" class="heading-anchor">#</a></h3>
+<ol>
+<li>Check for opening <code>---</code> at start of file</li>
+<li>Find closing <code>---</code></li>
+<li>Parse YAML between delimiters</li>
+<li>Remainder is content</li>
+</ol>
+<h3 id="edge-cases">Edge Cases <a href="#edge-cases" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No frontmatter</td>
+<td>All content, empty metadata</td>
+</tr>
+<tr>
+<td>Empty frontmatter (<code>---\n---</code>)</td>
+<td>Empty metadata, all content</td>
+</tr>
+<tr>
+<td>Invalid YAML</td>
+<td>Error with file path</td>
+</tr>
+<tr>
+<td>Extra <code>---</code> in content</td>
+<td>Only first two delimiters matter</td>
+</tr>
+</tbody>
+</table>
+<h3 id="unknown-fields">Unknown Fields <a href="#unknown-fields" class="heading-anchor">#</a></h3>
+<p>Frontmatter may contain fields not in the Post model:</p>
+<p><strong>Options:</strong></p>
+<ol>
+<li><strong>Strict:</strong> Error on unknown fields</li>
+<li><strong>Ignore:</strong> Silently drop unknown fields (default)</li>
+<li><strong>Extra:</strong> Store in an <code>extra</code> dict</li>
+</ol>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Post</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&#34;allow&#34;</span><span class="p">)</span>  <span class="c1"># Store unknown fields</span>
+</span></span></code></pre><hr>
+<h2 id="querying">Querying <a href="#querying" class="heading-anchor">#</a></h2>
+<h3 id="filter-syntax">Filter Syntax <a href="#filter-syntax" class="heading-anchor">#</a></h3>
+<p>Filter posts with Python-like expressions:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Boolean comparison</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;published == True&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;draft == False&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Date comparison</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;date &lt;= today&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;date &gt;= date(2024, 1, 1)&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># String containment</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;&#39;python&#39; in tags&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;&#39;tutorial&#39; in title.lower()&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Compound expressions</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;published == True and date &lt;= today&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;status == &#39;draft&#39; or &#39;wip&#39; in tags&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Negation</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not draft&#34;</span><span class="p">)</span>
+</span></span></code></pre><h3 id="built-in-variables">Built-in Variables <a href="#built-in-variables" class="heading-anchor">#</a></h3>
+<p>Available in filter expressions:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>today</code></td>
+<td>date</td>
+<td>Current date</td>
+</tr>
+<tr>
+<td><code>now</code></td>
+<td>datetime</td>
+<td>Current datetime</td>
+</tr>
+<tr>
+<td><code>True</code></td>
+<td>bool</td>
+<td>Boolean true</td>
+</tr>
+<tr>
+<td><code>False</code></td>
+<td>bool</td>
+<td>Boolean false</td>
+</tr>
+<tr>
+<td><code>None</code></td>
+<td>null</td>
+<td>Null value</td>
+</tr>
+</tbody>
+</table>
+<h3 id="map-function">Map Function <a href="#map-function" class="heading-anchor">#</a></h3>
+<p>Extract fields from posts:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Get single field</span>
+</span></span><span class="line"><span class="cl"><span class="n">titles</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="s2">&#34;title&#34;</span><span class="p">)</span>  <span class="c1"># [&#34;Post 1&#34;, &#34;Post 2&#34;, ...]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># With filter</span>
+</span></span><span class="line"><span class="cl"><span class="n">published_titles</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="s2">&#34;title&#34;</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="s2">&#34;published == True&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># With sort</span>
+</span></span><span class="line"><span class="cl"><span class="n">sorted_titles</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="s2">&#34;title&#34;</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="s2">&#34;date&#34;</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Get post objects</span>
+</span></span><span class="line"><span class="cl"><span class="n">posts</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="s2">&#34;post&#34;</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="s2">&#34;True&#34;</span><span class="p">)</span>
+</span></span></code></pre><h3 id="convenience-methods">Convenience Methods <a href="#convenience-methods" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Get first matching post</span>
+</span></span><span class="line"><span class="cl"><span class="n">latest</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">first</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="s2">&#34;published == True&#34;</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="s2">&#34;date&#34;</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Get last matching post  </span>
+</span></span><span class="line"><span class="cl"><span class="n">oldest</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">last</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="s2">&#34;published == True&#34;</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="s2">&#34;date&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Get exactly one match (error if 0 or &gt;1)</span>
+</span></span><span class="line"><span class="cl"><span class="n">about</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">one</span><span class="p">(</span><span class="nb">filter</span><span class="o">=</span><span class="s2">&#34;slug == &#39;about&#39;&#34;</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h2 id="serialization">Serialization <a href="#serialization" class="heading-anchor">#</a></h2>
+<h3 id="to-json">To JSON <a href="#to-json" class="heading-anchor">#</a></h3>
+<p>Posts should serialize to JSON for:</p>
+<ul>
+<li>API responses</li>
+<li>Template data</li>
+<li>Caching</li>
+</ul>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="n">post</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>  <span class="c1"># Pydantic v2</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Output:</span>
+</span></span><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;path&#34;</span><span class="p">:</span> <span class="s2">&#34;posts/hello.md&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;slug&#34;</span><span class="p">:</span> <span class="s2">&#34;hello-world&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;title&#34;</span><span class="p">:</span> <span class="s2">&#34;Hello World&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;date&#34;</span><span class="p">:</span> <span class="s2">&#34;2024-01-15&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;published&#34;</span><span class="p">:</span> <span class="n">true</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;tags&#34;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&#34;python&#34;</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;content&#34;</span><span class="p">:</span> <span class="s2">&#34;...&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="s2">&#34;html&#34;</span><span class="p">:</span> <span class="s2">&#34;...&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="excluded-fields">Excluded Fields <a href="#excluded-fields" class="heading-anchor">#</a></h3>
+<p>Some fields should not serialize:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Post</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span>
+</span></span><span class="line"><span class="cl">    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+</span></span><span class="line"><span class="cl">    <span class="n">markata</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># Don&#39;t serialize</span>
+</span></span></code></pre><hr>
+<h2 id="post-mutation">Post Mutation <a href="#post-mutation" class="heading-anchor">#</a></h2>
+<h3 id="during-lifecycle">During Lifecycle <a href="#during-lifecycle" class="heading-anchor">#</a></h3>
+<ul>
+<li>Posts are <strong>mutable</strong> during lifecycle stages</li>
+<li>Changes are held in memory only</li>
+<li>Changes are <strong>NOT</strong> persisted back to source files</li>
+<li>Each stage sees mutations from previous stages</li>
+</ul>
+<h3 id="field-mutation-rules">Field Mutation Rules <a href="#field-mutation-rules" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Mutable</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>path</code></td>
+<td>No</td>
+<td>Set at load, immutable</td>
+</tr>
+<tr>
+<td><code>content</code></td>
+<td>Yes</td>
+<td>Can be modified in pre_render</td>
+</tr>
+<tr>
+<td><code>slug</code></td>
+<td>Yes</td>
+<td>If changed, href auto-updates</td>
+</tr>
+<tr>
+<td><code>href</code></td>
+<td>Computed</td>
+<td>Derived from slug</td>
+</tr>
+<tr>
+<td><code>article_html</code></td>
+<td>Yes</td>
+<td>Set in render stage</td>
+</tr>
+<tr>
+<td><code>html</code></td>
+<td>Yes</td>
+<td>Set in post_render stage</td>
+</tr>
+<tr>
+<td>Custom fields</td>
+<td>Yes</td>
+<td>Via dynamic field API</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dynamic-fields">Dynamic Fields <a href="#dynamic-fields" class="heading-anchor">#</a></h3>
+<p>For fields not in the Post schema, use dynamic field storage:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Set a dynamic field</span>
+</span></span><span class="line"><span class="cl"><span class="n">post</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&#34;reading_time&#34;</span><span class="p">,</span> <span class="s2">&#34;5 min read&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Get a dynamic field</span>
+</span></span><span class="line"><span class="cl"><span class="n">rt</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&#34;reading_time&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Check if field exists</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">has</span><span class="p">(</span><span class="s2">&#34;reading_time&#34;</span><span class="p">):</span> <span class="o">...</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># All dynamic fields</span>
+</span></span><span class="line"><span class="cl"><span class="n">extras</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">extra</span><span class="p">()</span>  <span class="c1"># returns dict</span>
+</span></span></code></pre><h3 id="computed-field-recalculation">Computed Field Recalculation <a href="#computed-field-recalculation" class="heading-anchor">#</a></h3>
+<p>When <code>slug</code> is modified, <code>href</code> is automatically recalculated:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="n">post</span><span class="o">.</span><span class="n">slug</span> <span class="o">=</span> <span class="s2">&#34;new-slug&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># post.href is now &#34;/new-slug/&#34;</span>
+</span></span></code></pre><hr>
+<h2 id="error-types">Error Types <a href="#error-types" class="heading-anchor">#</a></h2>
+<h3 id="structured-errors">Structured Errors <a href="#structured-errors" class="heading-anchor">#</a></h3>
+<p>Errors should include contextual information:</p>
+<ul>
+<li><code>stage</code> - which lifecycle stage</li>
+<li><code>plugin</code> - which plugin caused it</li>
+<li><code>path</code> - file path if applicable</li>
+<li><code>line</code> - line number if applicable</li>
+<li><code>message</code> - human-readable description</li>
+<li><code>cause</code> - underlying error</li>
+</ul>
+<h3 id="standard-error-types">Standard Error Types <a href="#standard-error-types" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FrontmatterParseError</code></td>
+<td>Invalid YAML in frontmatter</td>
+</tr>
+<tr>
+<td><code>FilterExpressionError</code></td>
+<td>Invalid filter syntax</td>
+</tr>
+<tr>
+<td><code>TemplateNotFoundError</code></td>
+<td>Template file doesn't exist</td>
+</tr>
+<tr>
+<td><code>TemplateSyntaxError</code></td>
+<td>Invalid template syntax</td>
+</tr>
+<tr>
+<td><code>ConfigValidationError</code></td>
+<td>Invalid configuration</td>
+</tr>
+<tr>
+<td><code>PluginNotFoundError</code></td>
+<td>Plugin couldn't be loaded</td>
+</tr>
+<tr>
+<td><code>CircularTemplateError</code></td>
+<td>Template inheritance cycle</td>
+</tr>
+<tr>
+<td><code>PathConflictError</code></td>
+<td>Multiple posts/feeds would write to same path</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="path-conflict-detection">Path Conflict Detection <a href="#path-conflict-detection" class="heading-anchor">#</a></h2>
+<p>The build system detects when multiple content sources would write to the same output path. This prevents accidental content overwrites.</p>
+<h3 id="conflict-sources">Conflict Sources <a href="#conflict-sources" class="heading-anchor">#</a></h3>
+<p>Conflicts can occur between:</p>
+<ul>
+<li><strong>Post vs Post</strong>: Two posts with the same slug</li>
+<li><strong>Post vs Feed</strong>: A post slug matching a feed slug</li>
+<li><strong>Feed vs Feed</strong>: Two feeds with the same slug</li>
+</ul>
+<h3 id="example-conflicts">Example Conflicts <a href="#example-conflicts" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># posts/home.md</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Welcome Home</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;&#34;</span><span class="w">          </span><span class="c"># Would write to /index.html</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># posts/landing.md</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Landing Page</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="l">/          </span><span class="w"> </span><span class="c"># Also writes to /index.html - CONFLICT!</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># markata-go.toml</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>     <span class="c"># Would write to /blog/index.html</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># posts/blog.md</span>
+</span></span><span class="line"><span class="cl"><span class="nx">---</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span><span class="err">:</span> <span class="nx">Blog</span> <span class="nx">Post</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span><span class="err">:</span> <span class="nx">blog</span>        <span class="c"># Also writes to /blog/index.html - CONFLICT!</span>
+</span></span><span class="line"><span class="cl"><span class="nx">---</span>
+</span></span></code></pre><h3 id="conflict-resolution">Conflict Resolution <a href="#conflict-resolution" class="heading-anchor">#</a></h3>
+<p>When a conflict is detected:</p>
+<ol>
+<li>The build fails with a clear error message listing all conflicting paths</li>
+<li>Each conflict shows the sources that would collide</li>
+<li>Users must resolve by changing one of the slugs</li>
+</ol>
+<p><strong>Error example:</strong></p>
+<pre><code>detected 1 output path conflict(s):
+  - public/index.html: post:pages/home.md, post:pages/landing.md
+</code></pre>
+<h3 id="warning-mode">Warning Mode <a href="#warning-mode" class="heading-anchor">#</a></h3>
+<p>The overwrite check can be configured to warn instead of fail:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">plugins</span><span class="p">.</span><span class="nx">overwrite_check</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">warn_only</span> <span class="p">=</span> <span class="kc">true</span>  <span class="c"># Warn but don&#39;t fail build</span>
+</span></span></code></pre><hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./SPEC.md">SPEC.md</a> - Full specification</li>
+<li><a href="./CONFIG.md">CONFIG.md</a> - Configuration system</li>
+<li><a href="./PLUGINS.md">PLUGINS.md</a> - How plugins extend models</li>
+<li><a href="./CONTENT.md">CONTENT.md</a> - Content processing</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

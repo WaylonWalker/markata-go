@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embedding YouTube Videos - My Site</title>
+    <meta name="description" content="How to embed YouTube videos in your posts with a simple one-line URL">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Embedding YouTube Videos">
+    
+    <meta property="og:url" content="/embedding-youtube-videos/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="How to embed YouTube videos in your posts with a simple one-line URL">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="guides">
+    
+    <meta property="article:tag" content="youtube">
+    
+    <meta property="article:tag" content="media">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Embedding YouTube Videos">
+    
+    <meta name="twitter:description" content="How to embed YouTube videos in your posts with a simple one-line URL">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/embedding-youtube-videos/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Embedding YouTube Videos",
+  "description": "How to embed YouTube videos in your posts with a simple one-line URL",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/embedding-youtube-videos/"
+  },
+  "keywords": [
+    "documentation",
+    "guides",
+    "youtube",
+    "media"
+  ],
+  "url": "/embedding-youtube-videos/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Embedding YouTube Videos</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/guides/">guides</a>
+                
+                <a href="/tags/youtube/">youtube</a>
+                
+                <a href="/tags/media/">media</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="embedding-youtube-videos">Embedding YouTube Videos</h1>
+<p>markata-go automatically converts YouTube URLs into responsive embedded videos. Just paste a YouTube link on its own line, and it becomes a playable video embed.</p>
+<h2 id="quick-start">Quick Start <a href="#quick-start" class="heading-anchor">#</a></h2>
+<p>Simply paste a YouTube URL on its own line in your markdown:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Check out this video:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">https://www.youtube.com/watch?v=dQw4w9WgXcQ
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">More content below...
+</span></span></code></pre><p>That's it! The URL will be converted into a responsive video player.</p>
+<h2 id="supported-url-formats">Supported URL Formats <a href="#supported-url-formats" class="heading-anchor">#</a></h2>
+<p>All common YouTube URL formats work:</p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard</td>
+<td><code>https://www.youtube.com/watch?v=VIDEO_ID</code></td>
+</tr>
+<tr>
+<td>Short</td>
+<td><code>https://youtu.be/VIDEO_ID</code></td>
+</tr>
+<tr>
+<td>Mobile</td>
+<td><code>https://m.youtube.com/watch?v=VIDEO_ID</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="timestamps">Timestamps <a href="#timestamps" class="heading-anchor">#</a></h2>
+<p>Start videos at a specific time by adding a timestamp:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">https://youtu.be/dQw4w9WgXcQ?t=1m30s
+</span></span></code></pre><p>Supported timestamp formats:</p>
+<ul>
+<li>Seconds: <code>?t=90</code></li>
+<li>Minutes and seconds: <code>?t=1m30s</code></li>
+<li>Hours, minutes, seconds: <code>?t=1h2m3s</code></li>
+<li>Start parameter: <code>?start=90</code></li>
+</ul>
+<h2 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h2>
+<p>Configure the YouTube plugin in your <code>markata-go.toml</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">youtube</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>              <span class="c"># Enable/disable embeds (default: true)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">privacy_enhanced</span> <span class="p">=</span> <span class="kc">true</span>     <span class="c"># Use privacy-enhanced mode (default: true)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">container_class</span> <span class="p">=</span> <span class="s2">&#34;youtube-embed&#34;</span>  <span class="c"># CSS class for styling</span>
+</span></span><span class="line"><span class="cl"><span class="nx">lazy_load</span> <span class="p">=</span> <span class="kc">true</span>            <span class="c"># Lazy load videos (default: true)</span>
+</span></span></code></pre><h3 id="privacy-enhanced-mode">Privacy-Enhanced Mode <a href="#privacy-enhanced-mode" class="heading-anchor">#</a></h3>
+<p>By default, videos use YouTube's privacy-enhanced mode (<code>youtube-nocookie.com</code>):</p>
+<ul>
+<li><strong>No tracking cookies</strong> until the user clicks play</li>
+<li><strong>GDPR compliant</strong> - helps meet privacy regulations</li>
+<li><strong>Same video experience</strong> - playback works identically</li>
+</ul>
+<p>To use standard YouTube embeds:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">youtube</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">privacy_enhanced</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span></code></pre><h3 id="lazy-loading">Lazy Loading <a href="#lazy-loading" class="heading-anchor">#</a></h3>
+<p>Lazy loading (enabled by default) improves page performance by only loading video iframes when they're about to enter the viewport.</p>
+<h2 id="styling">Styling <a href="#styling" class="heading-anchor">#</a></h2>
+<p>Videos are automatically responsive with a 16:9 aspect ratio. The default theme includes styling, but you can customize:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">/* Custom video container styling */</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">youtube-embed</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">margin</span><span class="p">:</span> <span class="mi">2</span><span class="kt">rem</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">border-radius</span><span class="p">:</span> <span class="mi">8</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">box-shadow</span><span class="p">:</span> <span class="mi">0</span> <span class="mi">4</span><span class="kt">px</span> <span class="mi">6</span><span class="kt">px</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h2 id="what-doesnt-get-embedded">What Doesn't Get Embedded <a href="#what-doesnt-get-embedded" class="heading-anchor">#</a></h2>
+<p>The plugin only converts URLs that are <strong>on their own line</strong>. These patterns are NOT converted:</p>
+<h3 id="inline-urls">Inline URLs <a href="#inline-urls" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Check out https://youtu.be/dQw4w9WgXcQ for more info.
+</span></span></code></pre><p>This stays as a regular link because it's inline with other text.</p>
+<h3 id="code-blocks">Code Blocks <a href="#code-blocks" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">To embed a video, use: <span class="sb">`https://youtu.be/VIDEO_ID`</span>
+</span></span></code></pre><p>URLs in code are preserved for documentation purposes.</p>
+<h3 id="invalid-video-ids">Invalid Video IDs <a href="#invalid-video-ids" class="heading-anchor">#</a></h3>
+<p>URLs with invalid video IDs (not exactly 11 characters) are left unchanged.</p>
+<h2 id="output-html">Output HTML <a href="#output-html" class="heading-anchor">#</a></h2>
+<p>The plugin generates this HTML structure:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;youtube-embed&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">iframe</span>
+</span></span><span class="line"><span class="cl">    <span class="na">src</span><span class="o">=</span><span class="s">&#34;https://www.youtube-nocookie.com/embed/VIDEO_ID&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="na">title</span><span class="o">=</span><span class="s">&#34;YouTube video player&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="na">frameborder</span><span class="o">=</span><span class="s">&#34;0&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="na">allow</span><span class="o">=</span><span class="s">&#34;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="na">allowfullscreen</span>
+</span></span><span class="line"><span class="cl">    <span class="na">loading</span><span class="o">=</span><span class="s">&#34;lazy&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">iframe</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre><h2 id="tips">Tips <a href="#tips" class="heading-anchor">#</a></h2>
+<ol>
+<li><strong>One URL per line</strong> - Each video should be on its own line with blank lines before and after</li>
+<li><strong>Use short URLs</strong> - <code>youtu.be</code> links are cleaner in your markdown</li>
+<li><strong>Add context</strong> - Include a brief description before your video embed</li>
+<li><strong>Test timestamps</strong> - Preview your post to ensure timestamps work correctly</li>
+</ol>
+<h2 id="troubleshooting">Troubleshooting <a href="#troubleshooting" class="heading-anchor">#</a></h2>
+<h3 id="video-not-embedding">Video Not Embedding <a href="#video-not-embedding" class="heading-anchor">#</a></h3>
+<ul>
+<li>Ensure the URL is on its own line (not inline with text)</li>
+<li>Check that the video ID is valid (11 characters)</li>
+<li>Verify the plugin is enabled in your config</li>
+</ul>
+<h3 id="video-not-playing">Video Not Playing <a href="#video-not-playing" class="heading-anchor">#</a></h3>
+<ul>
+<li>Check if the video is available in your region</li>
+<li>Some videos may have embedding disabled by the uploader</li>
+<li>Try with <code>privacy_enhanced = false</code> if issues persist</li>
+</ul>
+<h2 id="related">Related <a href="#related" class="heading-anchor">#</a></h2>
+<ul>
+<li>[[markdown|Markdown Features]] - Other markdown enhancements</li>
+<li>[[md-video|Video Embeds]] - Embed local video files</li>
+<li><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration</a> - Global settings</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

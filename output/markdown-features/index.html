@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Features - My Site</title>
+    <meta name="description" content="Guide to supported Markdown syntax including GFM, admonitions, wikilinks, and table of contents">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Markdown Features">
+    
+    <meta property="og:url" content="/markdown-features/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Guide to supported Markdown syntax including GFM, admonitions, wikilinks, and table of contents">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="markdown">
+    
+    <meta property="article:tag" content="content">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Markdown Features">
+    
+    <meta name="twitter:description" content="Guide to supported Markdown syntax including GFM, admonitions, wikilinks, and table of contents">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/markdown-features/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Markdown Features",
+  "description": "Guide to supported Markdown syntax including GFM, admonitions, wikilinks, and table of contents",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/markdown-features/"
+  },
+  "keywords": [
+    "documentation",
+    "markdown",
+    "content"
+  ],
+  "url": "/markdown-features/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Markdown Features</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/markdown/">markdown</a>
+                
+                <a href="/tags/content/">content</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content shadow bordered">
+            <h1 id="markdown-features">Markdown Features</h1>
+<p>markata-go supports standard Markdown (CommonMark), GitHub Flavored Markdown (GFM) extensions, and several powerful additions like admonitions, wikilinks, and automatic table of contents generation. This guide covers everything you need to know about writing content in markata-go.</p>
+<h2 id="table-of-contents">Table of Contents <a href="#table-of-contents" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="#basic-markdown">Basic Markdown</a></li>
+<li><a href="#extended-markdown-gfm">Extended Markdown (GFM)</a></li>
+<li><a href="#code-blocks">Code Blocks</a></li>
+<li><a href="#admonitions">Admonitions</a></li>
+<li><a href="#wikilinks">Wikilinks</a></li>
+<li><a href="#table-of-contents">Table of Contents</a></li>
+<li><a href="#heading-anchors">Heading Anchors</a></li>
+<li><a href="#footnotes">Footnotes</a></li>
+</ul>
+<hr>
+<p>video</p>
+<p><video autoplay loop muted playsinline controls preload="metadata" class="md-video"><source src="https://dropper.waylonwalker.com/file/6f042a91-1e90-445d-b91d-8d4ee187af2c.mp4" type="video/mp4">kickflip down the 3 stair - fingerboarding</video></p>
+<p>image</p>
+<p><img src="https://dropper.waylonwalker.com/file/1b7f257c-5193-4b74-b768-2fa4a7ccdec8.webp" alt=""></p>
+<h2 id="basic-markdown">Basic Markdown <a href="#basic-markdown" class="heading-anchor">#</a></h2>
+<p>markata-go supports all standard Markdown syntax as defined by CommonMark.</p>
+<h3 id="headings">Headings <a href="#headings" class="heading-anchor">#</a></h3>
+<p>Use <code>#</code> characters to create headings (levels 1-6):</p>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gh"># Heading 1
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span><span class="gu">## Heading 2
+</span></span></span><span class="line"><span class="cl"><span class="gu">### Heading 3
+</span></span></span><span class="line"><span class="cl"><span class="gu">#### Heading 4
+</span></span></span><span class="line"><span class="cl"><span class="gu">##### Heading 5
+</span></span></span><span class="line"><span class="cl"><span class="gu">###### Heading 6
+</span></span></span></code></pre><p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h1</span><span class="p">&gt;</span>Heading 1<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span><span class="p">&gt;</span>Heading 2<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h3</span><span class="p">&gt;</span>Heading 3<span class="p">&lt;/</span><span class="nt">h3</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h4</span><span class="p">&gt;</span>Heading 4<span class="p">&lt;/</span><span class="nt">h4</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h5</span><span class="p">&gt;</span>Heading 5<span class="p">&lt;/</span><span class="nt">h5</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h6</span><span class="p">&gt;</span>Heading 6<span class="p">&lt;/</span><span class="nt">h6</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="paragraphs">Paragraphs <a href="#paragraphs" class="heading-anchor">#</a></h3>
+<p>Paragraphs are separated by blank lines:</p>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">This is the first paragraph. It can span
+</span></span><span class="line"><span class="cl">multiple lines in the source.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">This is the second paragraph.
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p>This is the first paragraph. It can span
+multiple lines in the source.</p>
+<p>This is the second paragraph.</p>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>This is the first paragraph. It can span
+</span></span><span class="line"><span class="cl">multiple lines in the source.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>This is the second paragraph.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="emphasis-and-strong">Emphasis and Strong <a href="#emphasis-and-strong" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">*Italic text* or <span class="ge">_italic text_</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gs">**Bold text**</span> or <span class="gs">__bold text__</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="ge">**</span>*Bold and italic*** or <span class="gs">___bold and italic___</span>
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p><em>Italic text</em> or <em>italic text</em></p>
+<p><strong>Bold text</strong> or <strong>bold text</strong></p>
+<p><em><strong>Bold and italic</strong></em> or <em><strong>bold and italic</strong></em></p>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">em</span><span class="p">&gt;</span>Italic text<span class="p">&lt;/</span><span class="nt">em</span><span class="p">&gt;</span> or <span class="p">&lt;</span><span class="nt">em</span><span class="p">&gt;</span>italic text<span class="p">&lt;/</span><span class="nt">em</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">strong</span><span class="p">&gt;</span>Bold text<span class="p">&lt;/</span><span class="nt">strong</span><span class="p">&gt;</span> or <span class="p">&lt;</span><span class="nt">strong</span><span class="p">&gt;</span>bold text<span class="p">&lt;/</span><span class="nt">strong</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">strong</span><span class="p">&gt;&lt;</span><span class="nt">em</span><span class="p">&gt;</span>Bold and italic<span class="p">&lt;/</span><span class="nt">em</span><span class="p">&gt;&lt;/</span><span class="nt">strong</span><span class="p">&gt;</span> or <span class="p">&lt;</span><span class="nt">strong</span><span class="p">&gt;&lt;</span><span class="nt">em</span><span class="p">&gt;</span>bold and italic<span class="p">&lt;/</span><span class="nt">em</span><span class="p">&gt;&lt;/</span><span class="nt">strong</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="links">Links <a href="#links" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">[<span class="nt">Link text</span>](<span class="na">https://example.com</span>)
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[<span class="nt">Link with title</span>](<span class="na">https://example.com &#34;Example Site&#34;</span>)
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">https:</span><span class="err">//</span><span class="na">example</span><span class="err">.</span><span class="na">com</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[Reference link][ref]
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[ref]: https://example.com
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p><a href="https://example.com">Link text</a></p>
+<p><a href="https://example.com" title="Example Site">Link with title</a></p>
+<p><a href="https://example.com">https://example.com</a></p>
+<p><a href="https://example.com">Reference link</a></p>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://example.com&#34;</span><span class="p">&gt;</span>Link text<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://example.com&#34;</span> <span class="na">title</span><span class="o">=</span><span class="s">&#34;Example Site&#34;</span><span class="p">&gt;</span>Link with title<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://example.com&#34;</span><span class="p">&gt;</span>https://example.com<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://example.com&#34;</span><span class="p">&gt;</span>Reference link<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="images">Images <a href="#images" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">![<span class="nt">Alt text</span>](<span class="na">/images/photo.jpg</span>)
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">![<span class="nt">Alt text</span>](<span class="na">/images/photo.jpg &#34;Image title&#34;</span>)
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[<span class="nt">![Clickable image</span>](<span class="na">/images/photo.jpg</span>)](https://example.com)
+</span></span></code></pre><p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/images/photo.jpg&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;Alt text&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/images/photo.jpg&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;Alt text&#34;</span> <span class="na">title</span><span class="o">=</span><span class="s">&#34;Image title&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://example.com&#34;</span><span class="p">&gt;&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/images/photo.jpg&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;Clickable image&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="unordered-lists">Unordered Lists <a href="#unordered-lists" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">-</span> Item one
+</span></span><span class="line"><span class="cl"><span class="k">-</span> Item two
+</span></span><span class="line"><span class="cl">  <span class="k">-</span> Nested item
+</span></span><span class="line"><span class="cl">  <span class="k">-</span> Another nested item
+</span></span><span class="line"><span class="cl"><span class="k">-</span> Item three
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">*</span> Also works with asterisks
+</span></span><span class="line"><span class="cl"><span class="k">*</span> Like this
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<ul>
+<li>Item one</li>
+<li>Item two
+<ul>
+<li>Nested item</li>
+<li>Another nested item</li>
+</ul>
+</li>
+<li>Item three</li>
+</ul>
+<ul>
+<li>Also works with asterisks</li>
+<li>Like this</li>
+</ul>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>Item one<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>Item two
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>Nested item<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>Another nested item<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>Item three<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="ordered-lists">Ordered Lists <a href="#ordered-lists" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">1.</span> First item
+</span></span><span class="line"><span class="cl"><span class="k">2.</span> Second item
+</span></span><span class="line"><span class="cl">   <span class="k">1.</span> Nested numbered item
+</span></span><span class="line"><span class="cl">   <span class="k">2.</span> Another nested item
+</span></span><span class="line"><span class="cl"><span class="k">3.</span> Third item
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">1.</span> Numbers don&#39;t have to be sequential
+</span></span><span class="line"><span class="cl"><span class="k">1.</span> Markdown will number them correctly
+</span></span><span class="line"><span class="cl"><span class="k">1.</span> This becomes 3
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<ol>
+<li>
+<p>First item</p>
+</li>
+<li>
+<p>Second item</p>
+<ol>
+<li>Nested numbered item</li>
+<li>Another nested item</li>
+</ol>
+</li>
+<li>
+<p>Third item</p>
+</li>
+<li>
+<p>Numbers don't have to be sequential</p>
+</li>
+<li>
+<p>Markdown will number them correctly</p>
+</li>
+<li>
+<p>This becomes 3</p>
+</li>
+</ol>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>First item<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>Second item
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>Nested numbered item<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>Another nested item<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>Third item<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="blockquotes">Blockquotes <a href="#blockquotes" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">&gt; </span><span class="ge">This is a blockquote.
+</span></span></span><span class="line"><span class="cl"><span class="ge"></span><span class="k">&gt; </span><span class="ge">It can span multiple lines.
+</span></span></span><span class="line"><span class="cl"><span class="ge"></span><span class="k">
+</span></span></span><span class="line"><span class="cl"><span class="k">&gt; </span><span class="ge">Blockquotes can be nested.
+</span></span></span><span class="line"><span class="cl"><span class="ge"></span><span class="k">&gt;
+</span></span></span><span class="line"><span class="cl"><span class="k"></span><span class="ge">&gt; &gt; Like this inner quote.
+</span></span></span><span class="line"><span class="cl"><span class="ge"></span><span class="k">
+</span></span></span><span class="line"><span class="cl"><span class="k">&gt; </span><span class="ge">Blockquotes can contain **other** *Markdown* elements.
+</span></span></span><span class="line"><span class="cl"><span class="ge"></span><span class="k">&gt;
+</span></span></span><span class="line"><span class="cl"><span class="k"></span><span class="ge">&gt; - Including lists
+</span></span></span><span class="line"><span class="cl"><span class="ge"></span><span class="k">&gt; </span><span class="ge">- Like this
+</span></span></span></code></pre><p><strong>Live examples:</strong></p>
+<blockquote>
+<p>This is a blockquote.
+It can span multiple lines.</p>
+</blockquote>
+<blockquote>
+<p>Blockquotes can be nested.</p>
+<blockquote>
+<p>Like this inner quote.</p>
+</blockquote>
+</blockquote>
+<blockquote>
+<p>Blockquotes can contain <strong>other</strong> <em>Markdown</em> elements.</p>
+<ul>
+<li>Including lists</li>
+<li>Like this</li>
+</ul>
+</blockquote>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">blockquote</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>This is a blockquote.
+</span></span><span class="line"><span class="cl">  It can span multiple lines.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">blockquote</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">blockquote</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Blockquotes can be nested.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">blockquote</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Like this inner quote.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">blockquote</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">blockquote</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="inline-code">Inline Code <a href="#inline-code" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Use <span class="sb">`backticks`</span> for inline code.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Use `` <span class="sb">`backticks`</span> `` to show literal backticks.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">The <span class="sb">`fmt.Println()`</span> function prints to stdout.
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p>Use <code>backticks</code> for inline code.</p>
+<p>Use <code>`backticks`</code> to show literal backticks.</p>
+<p>The <code>fmt.Println()</code> function prints to stdout.</p>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Use <span class="p">&lt;</span><span class="nt">code</span><span class="p">&gt;</span>backticks<span class="p">&lt;/</span><span class="nt">code</span><span class="p">&gt;</span> for inline code.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Use <span class="p">&lt;</span><span class="nt">code</span><span class="p">&gt;</span>`backticks`<span class="p">&lt;/</span><span class="nt">code</span><span class="p">&gt;</span> to show literal backticks.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>The <span class="p">&lt;</span><span class="nt">code</span><span class="p">&gt;</span>fmt.Println()<span class="p">&lt;/</span><span class="nt">code</span><span class="p">&gt;</span> function prints to stdout.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="horizontal-rules">Horizontal Rules <a href="#horizontal-rules" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Content above
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Content below
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="ge">**</span>*
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Also works with asterisks
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">___
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">And underscores
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p>Content above</p>
+<hr>
+<p>Content below</p>
+<hr>
+<p>Also works with asterisks</p>
+<hr>
+<p>And underscores</p>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Content above<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">hr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Content below<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">hr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Also works with asterisks<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">hr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>And underscores<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><hr>
+<h2 id="extended-markdown-gfm">Extended Markdown (GFM) <a href="#extended-markdown-gfm" class="heading-anchor">#</a></h2>
+<p>markata-go supports GitHub Flavored Markdown extensions.</p>
+<h3 id="tables">Tables <a href="#tables" class="heading-anchor">#</a></h3>
+<p>Tables use pipes (<code>|</code>) and hyphens (<code>-</code>) to define structure. Use colons (<code>:</code>) for alignment.</p>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">| Feature      | Status      | Notes                    |
+</span></span><span class="line"><span class="cl">|--------------|:-----------:|-------------------------:|
+</span></span><span class="line"><span class="cl">| Tables       | Supported   | Left-aligned by default  |
+</span></span><span class="line"><span class="cl">| Alignment    | Supported   | Center with <span class="sb">`:`</span>          |
+</span></span><span class="line"><span class="cl">| Right align  | Supported   | Colon on right           |
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th style="text-align:center">Status</th>
+<th style="text-align:right">Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tables</td>
+<td style="text-align:center">Supported</td>
+<td style="text-align:right">Left-aligned by default</td>
+</tr>
+<tr>
+<td>Alignment</td>
+<td style="text-align:center">Supported</td>
+<td style="text-align:right">Center with <code>:</code></td>
+</tr>
+<tr>
+<td>Right align</td>
+<td style="text-align:center">Supported</td>
+<td style="text-align:right">Colon on right</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">table</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">thead</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">th</span><span class="p">&gt;</span>Feature<span class="p">&lt;/</span><span class="nt">th</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">th</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;text-align: center&#34;</span><span class="p">&gt;</span>Status<span class="p">&lt;/</span><span class="nt">th</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">th</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;text-align: right&#34;</span><span class="p">&gt;</span>Notes<span class="p">&lt;/</span><span class="nt">th</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">thead</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">tbody</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span><span class="p">&gt;</span>Tables<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;text-align: center&#34;</span><span class="p">&gt;</span>Supported<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;text-align: right&#34;</span><span class="p">&gt;</span>Left-aligned by default<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span><span class="p">&gt;</span>Alignment<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;text-align: center&#34;</span><span class="p">&gt;</span>Supported<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;text-align: right&#34;</span><span class="p">&gt;</span>Center with <span class="p">&lt;</span><span class="nt">code</span><span class="p">&gt;</span>:<span class="p">&lt;/</span><span class="nt">code</span><span class="p">&gt;&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span><span class="p">&gt;</span>Right align<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;text-align: center&#34;</span><span class="p">&gt;</span>Supported<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">td</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;text-align: right&#34;</span><span class="p">&gt;</span>Colon on right<span class="p">&lt;/</span><span class="nt">td</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">tr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">tbody</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">table</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>Alignment reference:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Syntax</th>
+<th>Alignment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>|---|</code></td>
+<td>Left (default)</td>
+</tr>
+<tr>
+<td><code>|:---|</code></td>
+<td>Left (explicit)</td>
+</tr>
+<tr>
+<td><code>|:---:|</code></td>
+<td>Center</td>
+</tr>
+<tr>
+<td><code>|---:|</code></td>
+<td>Right</td>
+</tr>
+</tbody>
+</table>
+<h3 id="strikethrough">Strikethrough <a href="#strikethrough" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">~~This text is struck through~~
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Use strikethrough for <span class="gd">~~old information~~</span> corrections.
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p><del>This text is struck through</del></p>
+<p>Use strikethrough for <del>old information</del> corrections.</p>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">del</span><span class="p">&gt;</span>This text is struck through<span class="p">&lt;/</span><span class="nt">del</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Use strikethrough for <span class="p">&lt;</span><span class="nt">del</span><span class="p">&gt;</span>old information<span class="p">&lt;/</span><span class="nt">del</span><span class="p">&gt;</span> corrections.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="task-lists">Task Lists <a href="#task-lists" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">- [x]</span> Completed task
+</span></span><span class="line"><span class="cl"><span class="k">- [x]</span> Another completed task
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Incomplete task
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Another incomplete task
+</span></span><span class="line"><span class="cl">  <span class="k">- [x]</span> Nested completed
+</span></span><span class="line"><span class="cl">  <span class="k">- [ ]</span> Nested incomplete
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<ul>
+<li><input checked="" disabled="" type="checkbox"> Completed task</li>
+<li><input checked="" disabled="" type="checkbox"> Another completed task</li>
+<li><input disabled="" type="checkbox"> Incomplete task</li>
+<li><input disabled="" type="checkbox"> Another incomplete task
+<ul>
+<li><input checked="" disabled="" type="checkbox"> Nested completed</li>
+<li><input disabled="" type="checkbox"> Nested incomplete</li>
+</ul>
+</li>
+</ul>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">ul</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;task-list&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">li</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;task-list-item&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">input</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;checkbox&#34;</span> <span class="na">checked</span> <span class="na">disabled</span><span class="p">&gt;</span> Completed task
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">li</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;task-list-item&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">input</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;checkbox&#34;</span> <span class="na">checked</span> <span class="na">disabled</span><span class="p">&gt;</span> Another completed task
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">li</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;task-list-item&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">input</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;checkbox&#34;</span> <span class="na">disabled</span><span class="p">&gt;</span> Incomplete task
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">li</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;task-list-item&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">input</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;checkbox&#34;</span> <span class="na">disabled</span><span class="p">&gt;</span> Another incomplete task
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">ul</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;task-list&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">li</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;task-list-item&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">input</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;checkbox&#34;</span> <span class="na">checked</span> <span class="na">disabled</span><span class="p">&gt;</span> Nested completed
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">li</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;task-list-item&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">input</span> <span class="na">type</span><span class="o">=</span><span class="s">&#34;checkbox&#34;</span> <span class="na">disabled</span><span class="p">&gt;</span> Nested incomplete
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="autolinks">Autolinks <a href="#autolinks" class="heading-anchor">#</a></h3>
+<p>URLs and email addresses are automatically converted to links:</p>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Visit https://example.com for more info.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Contact us at support@example.com.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">www.example.com also works.
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p>Visit <a href="https://example.com">https://example.com</a> for more info.</p>
+<p>Contact us at <a href="mailto:support@example.com">support@example.com</a>.</p>
+<p><a href="http://www.example.com">www.example.com</a> also works.</p>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Visit <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://example.com&#34;</span><span class="p">&gt;</span>https://example.com<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span> for more info.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Contact us at <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;mailto:support@example.com&#34;</span><span class="p">&gt;</span>support@example.com<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;http://www.example.com&#34;</span><span class="p">&gt;</span>www.example.com<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span> also works.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><hr>
+<h2 id="code-blocks">Code Blocks <a href="#code-blocks" class="heading-anchor">#</a></h2>
+<p>Fenced code blocks support syntax highlighting for many languages.</p>
+<h3 id="basic-code-block">Basic Code Block <a href="#basic-code-block" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="s">```
+</span></span></span><span class="line"><span class="cl"><span class="s"></span>Plain code block without language
+</span></span><span class="line"><span class="cl">No syntax highlighting applied
+</span></span><span class="line"><span class="cl"><span class="s">```</span>
+</span></span></code></pre><p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">pre</span><span class="p">&gt;&lt;</span><span class="nt">code</span><span class="p">&gt;</span>Plain code block without language
+</span></span><span class="line"><span class="cl">No syntax highlighting applied
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">code</span><span class="p">&gt;&lt;/</span><span class="nt">pre</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="syntax-highlighting">Syntax Highlighting <a href="#syntax-highlighting" class="heading-anchor">#</a></h3>
+<p>Specify the language after the opening fence for syntax highlighting:</p>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="s">```go
+</span></span></span><span class="line"><span class="cl"><span class="s"></span><span class="kn">package</span> <span class="nx">main</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="s">&#34;fmt&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;Hello, World!&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="s">```</span>
+</span></span></code></pre><p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">pre</span><span class="p">&gt;&lt;</span><span class="nt">code</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;language-go&#34;</span><span class="p">&gt;</span>package main
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">import &#34;fmt&#34;
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">func main() {
+</span></span><span class="line"><span class="cl">    fmt.Println(&#34;Hello, World!&#34;)
+</span></span><span class="line"><span class="cl">}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">code</span><span class="p">&gt;&lt;/</span><span class="nt">pre</span><span class="p">&gt;</span>
+</span></span></code></pre><p>With syntax highlighting enabled, the output includes highlight spans:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">pre</span><span class="p">&gt;&lt;</span><span class="nt">code</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;language-go hljs&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hljs-keyword&#34;</span><span class="p">&gt;</span>package<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span> main
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hljs-keyword&#34;</span><span class="p">&gt;</span>import<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span> <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hljs-string&#34;</span><span class="p">&gt;</span>&#34;fmt&#34;<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hljs-function&#34;</span><span class="p">&gt;&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hljs-keyword&#34;</span><span class="p">&gt;</span>func<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span> <span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hljs-title&#34;</span><span class="p">&gt;</span>main<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hljs-params&#34;</span><span class="p">&gt;</span>()<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;&lt;/</span><span class="nt">span</span><span class="p">&gt;</span> {
+</span></span><span class="line"><span class="cl">    fmt.<span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hljs-title function_&#34;</span><span class="p">&gt;</span>Println<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>(<span class="p">&lt;</span><span class="nt">span</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;hljs-string&#34;</span><span class="p">&gt;</span>&#34;Hello, World!&#34;<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>)
+</span></span><span class="line"><span class="cl">}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">code</span><span class="p">&gt;&lt;/</span><span class="nt">pre</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="supported-languages">Supported Languages <a href="#supported-languages" class="heading-anchor">#</a></h3>
+<p>markata-go supports syntax highlighting for many languages including:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Languages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Web</strong></td>
+<td>html, css, javascript, typescript, jsx, tsx, json, xml</td>
+</tr>
+<tr>
+<td><strong>Backend</strong></td>
+<td>go, python, ruby, java, c, cpp, rust, php</td>
+</tr>
+<tr>
+<td><strong>Shell</strong></td>
+<td>bash, sh, zsh, powershell, shell</td>
+</tr>
+<tr>
+<td><strong>Data</strong></td>
+<td>yaml, toml, ini, sql</td>
+</tr>
+<tr>
+<td><strong>Markup</strong></td>
+<td>markdown, latex, tex</td>
+</tr>
+<tr>
+<td><strong>Config</strong></td>
+<td>dockerfile, nginx, apache</td>
+</tr>
+<tr>
+<td><strong>Other</strong></td>
+<td>diff, plaintext, text</td>
+</tr>
+</tbody>
+</table>
+<h3 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h3>
+<p>Configure syntax highlighting in <code>markata-go.toml</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">markdown</span><span class="p">.</span><span class="nx">highlight</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">theme</span> <span class="p">=</span> <span class="s2">&#34;github-dark&#34;</span>    <span class="c"># Chroma theme (optional)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">line_numbers</span> <span class="p">=</span> <span class="kc">false</span>     <span class="c"># Line numbers (if supported)</span>
+</span></span></code></pre><h4 id="automatic-theme-from-palette">Automatic Theme from Palette <a href="#automatic-theme-from-palette" class="heading-anchor">#</a></h4>
+<p>By default, the syntax highlighting theme is <strong>automatically derived</strong> from your site's color palette. This ensures code blocks match your site's overall look:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">palette</span> <span class="p">=</span> <span class="s2">&#34;catppuccin-mocha&#34;</span>  <span class="c"># Code blocks will use catppuccin-mocha highlighting</span>
+</span></span></code></pre><table>
+<thead>
+<tr>
+<th>Site Palette</th>
+<th>Code Theme</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>catppuccin-mocha</td>
+<td>catppuccin-mocha</td>
+</tr>
+<tr>
+<td>catppuccin-latte</td>
+<td>catppuccin-latte</td>
+</tr>
+<tr>
+<td>rose-pine</td>
+<td>rose-pine</td>
+</tr>
+<tr>
+<td>gruvbox-dark</td>
+<td>gruvbox</td>
+</tr>
+<tr>
+<td>gruvbox-light</td>
+<td>gruvbox-light</td>
+</tr>
+<tr>
+<td>tokyo-night</td>
+<td>tokyonight-night</td>
+</tr>
+<tr>
+<td>dracula</td>
+<td>dracula</td>
+</tr>
+<tr>
+<td>solarized-dark</td>
+<td>solarized-dark</td>
+</tr>
+<tr>
+<td>nord-dark</td>
+<td>nord</td>
+</tr>
+</tbody>
+</table>
+<p>For palettes without an exact match, defaults are used based on light/dark variant.</p>
+<h4 id="explicit-override">Explicit Override <a href="#explicit-override" class="heading-anchor">#</a></h4>
+<p>To use a different code theme than your palette suggests:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">palette</span> <span class="p">=</span> <span class="s2">&#34;catppuccin-mocha&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">markdown</span><span class="p">.</span><span class="nx">highlight</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">theme</span> <span class="p">=</span> <span class="s2">&#34;dracula&#34;</span>  <span class="c"># Override: use Dracula instead of Catppuccin</span>
+</span></span></code></pre><h4 id="available-themes">Available Themes <a href="#available-themes" class="heading-anchor">#</a></h4>
+<p>Popular themes include:</p>
+<table>
+<thead>
+<tr>
+<th>Theme</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>github</code> / <code>github-dark</code></td>
+<td>Clean, neutral (default)</td>
+</tr>
+<tr>
+<td><code>monokai</code></td>
+<td>Classic dark theme</td>
+</tr>
+<tr>
+<td><code>dracula</code></td>
+<td>Vibrant dark theme</td>
+</tr>
+<tr>
+<td><code>nord</code></td>
+<td>Arctic, blue-tinted</td>
+</tr>
+<tr>
+<td><code>catppuccin-mocha</code></td>
+<td>Soothing pastel (dark)</td>
+</tr>
+<tr>
+<td><code>catppuccin-latte</code></td>
+<td>Soothing pastel (light)</td>
+</tr>
+<tr>
+<td><code>rose-pine</code></td>
+<td>Soho vibes</td>
+</tr>
+<tr>
+<td><code>gruvbox</code> / <code>gruvbox-light</code></td>
+<td>Retro groove</td>
+</tr>
+<tr>
+<td><code>tokyonight-night</code></td>
+<td>Tokyo city lights</td>
+</tr>
+<tr>
+<td><code>solarized-dark</code> / <code>solarized-light</code></td>
+<td>Scientifically designed</td>
+</tr>
+</tbody>
+</table>
+<p>See the <a href="https://xyproto.github.io/splash/docs/">Chroma Style Gallery</a> for all available themes.</p>
+<h3 id="language-aliases">Language Aliases <a href="#language-aliases" class="heading-anchor">#</a></h3>
+<p>Common aliases are supported:</p>
+<table>
+<thead>
+<tr>
+<th>Alias</th>
+<th>Language</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>js</code></td>
+<td>javascript</td>
+</tr>
+<tr>
+<td><code>ts</code></td>
+<td>typescript</td>
+</tr>
+<tr>
+<td><code>py</code></td>
+<td>python</td>
+</tr>
+<tr>
+<td><code>rb</code></td>
+<td>ruby</td>
+</tr>
+<tr>
+<td><code>sh</code></td>
+<td>bash</td>
+</tr>
+<tr>
+<td><code>yml</code></td>
+<td>yaml</td>
+</tr>
+<tr>
+<td><code>md</code></td>
+<td>markdown</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="admonitions">Admonitions <a href="#admonitions" class="heading-anchor">#</a></h2>
+<p>Admonitions (also called callouts) are visually distinct blocks for notes, warnings, tips, and other highlighted content.</p>
+<h3 id="basic-syntax">Basic Syntax <a href="#basic-syntax" class="heading-anchor">#</a></h3>
+<p>Use <code>!!!</code> followed by the type and optional title:</p>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! note &#34;Optional Title&#34;
+</span></span><span class="line"><span class="cl">    Admonition content here.
+</span></span><span class="line"><span class="cl">    Can span multiple lines.
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    Supports <span class="gs">**Markdown**</span> formatting.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">!!! warning
+</span></span><span class="line"><span class="cl">    Warning without custom title uses type as title.
+</span></span></code></pre><p><strong>Live examples:</strong></p>
+<div class="admonition note">
+<p class="admonition-title">Optional Title</p>
+<pre><code>Can span multiple lines.
+</code></pre>
+</div>
+<pre><code>Supports **Markdown** formatting.
+</code></pre>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+</div>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition note&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition-title&#34;</span><span class="p">&gt;</span>Optional Title<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Admonition content here.
+</span></span><span class="line"><span class="cl">  Can span multiple lines.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Supports <span class="p">&lt;</span><span class="nt">strong</span><span class="p">&gt;</span>Markdown<span class="p">&lt;/</span><span class="nt">strong</span><span class="p">&gt;</span> formatting.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition warning&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition-title&#34;</span><span class="p">&gt;</span>Warning<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Warning without custom title uses type as title.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="admonition-types">Admonition Types <a href="#admonition-types" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Default Title</th>
+<th>Typical Color</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>note</code></td>
+<td>Note</td>
+<td>Blue</td>
+<td>Additional information</td>
+</tr>
+<tr>
+<td><code>info</code></td>
+<td>Info</td>
+<td>Blue</td>
+<td>Background context</td>
+</tr>
+<tr>
+<td><code>tip</code></td>
+<td>Tip</td>
+<td>Green</td>
+<td>Helpful suggestions</td>
+</tr>
+<tr>
+<td><code>hint</code></td>
+<td>Hint</td>
+<td>Green</td>
+<td>Subtle guidance</td>
+</tr>
+<tr>
+<td><code>success</code></td>
+<td>Success</td>
+<td>Green</td>
+<td>Positive outcomes</td>
+</tr>
+<tr>
+<td><code>warning</code></td>
+<td>Warning</td>
+<td>Yellow/Orange</td>
+<td>Potential issues</td>
+</tr>
+<tr>
+<td><code>caution</code></td>
+<td>Caution</td>
+<td>Yellow/Orange</td>
+<td>Proceed carefully</td>
+</tr>
+<tr>
+<td><code>danger</code></td>
+<td>Danger</td>
+<td>Red</td>
+<td>Critical warnings</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td>Error</td>
+<td>Red</td>
+<td>Error conditions</td>
+</tr>
+<tr>
+<td><code>bug</code></td>
+<td>Bug</td>
+<td>Red</td>
+<td>Known issues</td>
+</tr>
+<tr>
+<td><code>example</code></td>
+<td>Example</td>
+<td>Purple</td>
+<td>Code examples</td>
+</tr>
+<tr>
+<td><code>quote</code></td>
+<td>Quote</td>
+<td>Gray</td>
+<td>Quotations</td>
+</tr>
+<tr>
+<td><code>abstract</code></td>
+<td>Abstract</td>
+<td>Cyan</td>
+<td>Summaries</td>
+</tr>
+<tr>
+<td><code>aside</code></td>
+<td>(none)</td>
+<td>Gray</td>
+<td>Sidebar/marginal notes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="examples-of-each-type">Examples of Each Type <a href="#examples-of-each-type" class="heading-anchor">#</a></h3>
+<p>Each example below shows the markdown syntax followed by how it renders.</p>
+<p><strong>Note:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! note
+</span></span><span class="line"><span class="cl">    This is a general note providing additional context or information
+</span></span><span class="line"><span class="cl">    that might be helpful but isn&#39;t critical.
+</span></span></code></pre><div class="admonition note">
+<p class="admonition-title">Note</p>
+<pre><code>that might be helpful but isn't critical.
+</code></pre>
+</div>
+<p><strong>Tip:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! tip &#34;Pro Tip&#34;
+</span></span><span class="line"><span class="cl">    Use keyboard shortcuts to speed up your workflow.
+</span></span><span class="line"><span class="cl">    Press <span class="sb">`Ctrl+Shift+P`</span> to open the command palette.
+</span></span></code></pre><div class="admonition tip">
+<p class="admonition-title">Pro Tip</p>
+<pre><code>Press `Ctrl+Shift+P` to open the command palette.
+</code></pre>
+</div>
+<p><strong>Warning:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! warning &#34;Deprecation Notice&#34;
+</span></span><span class="line"><span class="cl">    This API will be removed in version 3.0.
+</span></span><span class="line"><span class="cl">    Please migrate to the new API before upgrading.
+</span></span></code></pre><div class="admonition warning">
+<p class="admonition-title">Deprecation Notice</p>
+<pre><code>Please migrate to the new API before upgrading.
+</code></pre>
+</div>
+<p><strong>Danger:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! danger &#34;Data Loss Warning&#34;
+</span></span><span class="line"><span class="cl">    This operation cannot be undone. Make sure you have
+</span></span><span class="line"><span class="cl">    a backup before proceeding.
+</span></span></code></pre><div class="admonition danger">
+<p class="admonition-title">Data Loss Warning</p>
+<pre><code>a backup before proceeding.
+</code></pre>
+</div>
+<p><strong>Info:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! info
+</span></span><span class="line"><span class="cl">    This feature was introduced in version 2.5 and requires
+</span></span><span class="line"><span class="cl">    Go 1.21 or later.
+</span></span></code></pre><div class="admonition info">
+<p class="admonition-title">Info</p>
+<pre><code>Go 1.21 or later.
+</code></pre>
+</div>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! example &#34;Usage Example&#34;
+</span></span><span class="line"><span class="cl">    ```go
+</span></span><span class="line"><span class="cl">    result := myFunction(input)
+</span></span><span class="line"><span class="cl">    fmt.Println(result)
+</span></span><span class="line"><span class="cl">    ```
+</span></span></code></pre><div class="admonition example">
+<p class="admonition-title">Usage Example</p>
+<pre><code>result := myFunction(input)
+```
+</code></pre>
+</div>
+<p><strong>Success:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! success &#34;Build Complete&#34;
+</span></span><span class="line"><span class="cl">    Your site has been successfully built and deployed.
+</span></span></code></pre><div class="admonition success">
+<p class="admonition-title">Build Complete</p>
+</div>
+<p><strong>Bug:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! bug &#34;Known Issue&#34;
+</span></span><span class="line"><span class="cl">    There is a known issue with Safari where animations may flicker.
+</span></span><span class="line"><span class="cl">    A fix is planned for the next release.
+</span></span></code></pre><div class="admonition bug">
+<p class="admonition-title">Known Issue</p>
+<pre><code>A fix is planned for the next release.
+</code></pre>
+</div>
+<p><strong>Quote:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! quote &#34;Albert Einstein&#34;
+</span></span><span class="line"><span class="cl">    Imagination is more important than knowledge. Knowledge is limited.
+</span></span><span class="line"><span class="cl">    Imagination encircles the world.
+</span></span></code></pre><div class="admonition quote">
+<p class="admonition-title">Albert Einstein</p>
+<pre><code>Imagination encircles the world.
+</code></pre>
+</div>
+<p><strong>Abstract:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! abstract &#34;Summary&#34;
+</span></span><span class="line"><span class="cl">    This article covers the basics of static site generation,
+</span></span><span class="line"><span class="cl">    including configuration, templating, and deployment strategies.
+</span></span></code></pre><div class="admonition abstract">
+<p class="admonition-title">Summary</p>
+<pre><code>including configuration, templating, and deployment strategies.
+</code></pre>
+</div>
+<h3 id="collapsible-admonitions">Collapsible Admonitions <a href="#collapsible-admonitions" class="heading-anchor">#</a></h3>
+<p>Use <code>???</code> for collapsed (closed by default) or <code>???+</code> for expanded (open by default):</p>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">??? note &#34;Click to expand&#34;
+</span></span><span class="line"><span class="cl">    This content is hidden by default.
+</span></span><span class="line"><span class="cl">    Click the title to reveal it.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">???+ tip &#34;Expanded by default&#34;
+</span></span><span class="line"><span class="cl">    This content is visible initially.
+</span></span><span class="line"><span class="cl">    Click to collapse.
+</span></span></code></pre><p><strong>Live examples:</strong></p>
+<details class="admonition note">
+<summary class="admonition-title">Click to expand</summary>
+<pre><code>Click the title to reveal it.
+</code></pre>
+</details>
+<details class="admonition tip" open>
+<summary class="admonition-title">Expanded by default</summary>
+<pre><code>Click to collapse.
+</code></pre>
+</details>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">details</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition note&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">summary</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition-title&#34;</span><span class="p">&gt;</span>Click to expand<span class="p">&lt;/</span><span class="nt">summary</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>This content is hidden by default.
+</span></span><span class="line"><span class="cl">  Click the title to reveal it.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">details</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">details</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition tip&#34;</span> <span class="na">open</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">summary</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;admonition-title&#34;</span><span class="p">&gt;</span>Expanded by default<span class="p">&lt;/</span><span class="nt">summary</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>This content is visible initially.
+</span></span><span class="line"><span class="cl">  Click to collapse.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">details</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="nested-content-in-admonitions">Nested Content in Admonitions <a href="#nested-content-in-admonitions" class="heading-anchor">#</a></h3>
+<p>Admonitions can contain any Markdown content:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! example &#34;Complete Example&#34;
+</span></span><span class="line"><span class="cl">    Here&#39;s a full working example:
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    ```python
+</span></span><span class="line"><span class="cl">    def greet(name):
+</span></span><span class="line"><span class="cl">        return f&#34;Hello, {name}!&#34;
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    print(greet(&#34;World&#34;))
+</span></span><span class="line"><span class="cl">    ```
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="gs">**Output:**</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    ```
+</span></span><span class="line"><span class="cl">    Hello, World!
+</span></span><span class="line"><span class="cl">    ```
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">-</span> Works with Python 3.6+
+</span></span><span class="line"><span class="cl">    <span class="k">-</span> Requires no dependencies
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<div class="admonition example">
+<p class="admonition-title">Complete Example</p>
+<pre><code>def greet(name):
+
+```
+</code></pre>
+</div>
+<pre><code>**Output:**
+
+```
+Hello, World!
+```
+
+- Works with Python 3.6+
+- Requires no dependencies
+</code></pre>
+<h3 id="aside-marginal-notes">Aside (Marginal Notes) <a href="#aside-marginal-notes" class="heading-anchor">#</a></h3>
+<p>The <code>aside</code> type creates sidebar or marginal notes:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! aside
+</span></span><span class="line"><span class="cl">    This is a marginal note that floats to the side.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">!!! aside &#34;Definition&#34;
+</span></span><span class="line"><span class="cl">    A <span class="gs">**static site generator**</span> converts source files into static HTML.
+</span></span></code></pre><aside class="admonition aside aside-right">
+</aside>
+<aside class="admonition aside aside-right">
+<p class="admonition-title">Definition</p>
+</aside>
+<p>Control positioning with inline modifiers:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">!!! aside inline
+</span></span><span class="line"><span class="cl">    Floats to the left of content.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">!!! aside inline end
+</span></span><span class="line"><span class="cl">    Floats to the right of content (default).
+</span></span></code></pre><p>See <a href="../advanced-usage.md#admonitions-and-callouts">Advanced Usage</a> for styling and customization options.</p>
+<hr>
+<h2 id="wikilinks">Wikilinks <a href="#wikilinks" class="heading-anchor">#</a></h2>
+<p>Wikilinks provide an easy way to link between posts using <code>[[slug]]</code> syntax.</p>
+<h3 id="basic-syntax-1">Basic Syntax <a href="#basic-syntax-1" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Check out [[getting-started]] for installation instructions.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">See also: [[quickstart]], [[advanced-usage]]
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p>Check out <a href="/getting-started/" class="wikilink" data-title="Getting Started" data-description="Complete guide to installing markata-go, creating your first site, and building for production" data-date="2024-01-15">Getting Started</a> for installation instructions.</p>
+<p>See also: <a href="/quickstart/" class="wikilink" data-title="Quickstart" data-description="Get a markata-go site running in under 5 minutes" data-date="2024-01-15">Quickstart</a>, <a href="/advanced-usage/" class="wikilink" data-title="Advanced Usage" data-description="Power user guide covering complex configurations, optimization techniques, and advanced patterns" data-date="2024-01-15">Advanced Usage</a></p>
+<p><strong>Output (when posts exist):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Check out <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/getting-started/&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;wikilink&#34;</span><span class="p">&gt;</span>Getting Started<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span> for installation instructions.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>See also: <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/quickstart/&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;wikilink&#34;</span><span class="p">&gt;</span>Quickstart<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>, <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/advanced-usage/&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;wikilink&#34;</span><span class="p">&gt;</span>Advanced Usage<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="custom-link-text">Custom Link Text <a href="#custom-link-text" class="heading-anchor">#</a></h3>
+<p>Use the pipe (<code>|</code>) to specify custom link text:</p>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Read the [[getting-started|installation guide]] first.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">For more details, see [[advanced-usage|the advanced guide]].
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p>Read the <a href="/getting-started/" class="wikilink" data-title="Getting Started" data-description="Complete guide to installing markata-go, creating your first site, and building for production" data-date="2024-01-15">installation guide</a> first.</p>
+<p>For more details, see <a href="/advanced-usage/" class="wikilink" data-title="Advanced Usage" data-description="Power user guide covering complex configurations, optimization techniques, and advanced patterns" data-date="2024-01-15">the advanced guide</a>.</p>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Read the <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/getting-started/&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;wikilink&#34;</span><span class="p">&gt;</span>installation guide<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span> first.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>For more details, see <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/advanced-usage/&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;wikilink&#34;</span><span class="p">&gt;</span>the advanced guide<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="linking-to-sections">Linking to Sections <a href="#linking-to-sections" class="heading-anchor">#</a></h3>
+<p>Link to specific headings within posts:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">See [[feeds-guide#feed-configuration]] for feed setup.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Check the [[templates-guide#available-variables|template variables section]].
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p>See [[feeds-guide#feed-configuration]] for feed setup.</p>
+<p>Check the [[templates-guide#available-variables|template variables section]].</p>
+<h3 id="wikilink-resolution">Wikilink Resolution <a href="#wikilink-resolution" class="heading-anchor">#</a></h3>
+<p>markata-go resolves wikilinks by:</p>
+<ol>
+<li>Finding a post where <code>slug == link_target</code></li>
+<li>If found: renders as <code>&lt;a href=&quot;{post.href}&quot;&gt;{text}&lt;/a&gt;</code></li>
+<li>If not found: leaves as literal <code>[[link]]</code> and warns</li>
+</ol>
+<h3 id="broken-link-handling">Broken Link Handling <a href="#broken-link-handling" class="heading-anchor">#</a></h3>
+<p>When a wikilink target doesn't exist:</p>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">See [[nonexistent-post]] for more.
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p>See [[nonexistent-post]] for more.</p>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>See [[nonexistent-post]] for more.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>Build warning:</strong></p>
+<pre><code>Warning: Broken wikilink in posts/my-post.md: [[nonexistent-post]] (post not found)
+</code></pre>
+<p>Enable strict mode to fail builds on broken links:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">strict_wikilinks</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><h3 id="syntax-reference">Syntax Reference <a href="#syntax-reference" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Syntax</th>
+<th>Description</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>[[slug]]</code></td>
+<td>Basic link (auto-title)</td>
+<td>Link with post title</td>
+</tr>
+<tr>
+<td><code>[[slug|Text]]</code></td>
+<td>Custom text</td>
+<td>Link with &quot;Text&quot;</td>
+</tr>
+<tr>
+<td><code>[[slug#section]]</code></td>
+<td>Section link</td>
+<td>Link to heading anchor</td>
+</tr>
+<tr>
+<td><code>[[slug#section|Text]]</code></td>
+<td>Section with text</td>
+<td>Custom text to section</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="table-of-contents-1">Table of Contents <a href="#table-of-contents-1" class="heading-anchor">#</a></h2>
+<p>markata-go can automatically generate a table of contents from your headings.</p>
+<h3 id="enabling-toc">Enabling TOC <a href="#enabling-toc" class="heading-anchor">#</a></h3>
+<p>Add <code>toc: true</code> to your frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Long Article&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">toc</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c"># Introduction</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">## Getting Started</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">### Prerequisites</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">### Installation</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">## Core Concepts</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">## Advanced Topics</span><span class="w">
+</span></span></span></code></pre><h3 id="toc-options">TOC Options <a href="#toc-options" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>toc</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+<td>Enable TOC generation</td>
+</tr>
+<tr>
+<td><code>toc_depth</code></td>
+<td>int</td>
+<td><code>2</code></td>
+<td>Maximum heading level (1-6)</td>
+</tr>
+<tr>
+<td><code>toc_min_items</code></td>
+<td>int</td>
+<td><code>2</code></td>
+<td>Minimum headings to show TOC</td>
+</tr>
+</tbody>
+</table>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Deep Dive Article&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">toc</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">toc_depth</span><span class="p">:</span><span class="w"> </span><span class="m">3</span><span class="w">       </span><span class="c"># Include h1, h2, h3</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">toc_min_items</span><span class="p">:</span><span class="w"> </span><span class="m">3</span><span class="w">   </span><span class="c"># Only show if 3+ headings</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="generated-toc-structure">Generated TOC Structure <a href="#generated-toc-structure" class="heading-anchor">#</a></h3>
+<p>The TOC is available as <code>post.Extra.toc_html</code>:</p>
+<p><strong>Example output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;toc&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#introduction&#34;</span><span class="p">&gt;</span>Introduction<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#getting-started&#34;</span><span class="p">&gt;</span>Getting Started<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#prerequisites&#34;</span><span class="p">&gt;</span>Prerequisites<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#installation&#34;</span><span class="p">&gt;</span>Installation<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#core-concepts&#34;</span><span class="p">&gt;</span>Core Concepts<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#advanced-topics&#34;</span><span class="p">&gt;</span>Advanced Topics<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="using-toc-in-templates">Using TOC in Templates <a href="#using-toc-in-templates" class="heading-anchor">#</a></h3>
+<p>Include the TOC in your post template:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">{%</span> <span class="k">if</span> <span class="nv">post.Extra.toc_html</span> <span class="cp">%}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">&lt;aside class=&#34;toc-sidebar&#34;&gt;
+</span></span></span><span class="line"><span class="cl"><span class="x">    </span><span class="cp">{{</span> <span class="nv">post.Extra.toc_html</span><span class="o">|</span><span class="nf">safe</span> <span class="cp">}}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">&lt;/aside&gt;
+</span></span></span><span class="line"><span class="cl"><span class="x"></span><span class="cp">{%</span> <span class="k">endif</span> <span class="cp">%}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">&lt;div class=&#34;post-content&#34;&gt;
+</span></span></span><span class="line"><span class="cl"><span class="x">    </span><span class="cp">{{</span> <span class="nv">body</span><span class="o">|</span><span class="nf">safe</span> <span class="cp">}}</span><span class="x">
+</span></span></span><span class="line"><span class="cl"><span class="x">&lt;/div&gt;
+</span></span></span></code></pre><p>See <a href="/templates-guide/" class="wikilink" data-title="Templates Guide" data-description="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax" data-date="2024-01-15">Templates</a> for more template examples.</p>
+<h3 id="configuration-1">Configuration <a href="#configuration-1" class="heading-anchor">#</a></h3>
+<p>Configure TOC defaults in <code>markata-go.toml</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">toc</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">default_depth</span> <span class="p">=</span> <span class="mi">2</span>
+</span></span><span class="line"><span class="cl"><span class="nx">min_items</span> <span class="p">=</span> <span class="mi">2</span>
+</span></span></code></pre><hr>
+<h2 id="heading-anchors">Heading Anchors <a href="#heading-anchors" class="heading-anchor">#</a></h2>
+<p>markata-go automatically generates anchor IDs for all headings, enabling direct linking to sections.</p>
+<h3 id="auto-generated-ids">Auto-Generated IDs <a href="#auto-generated-ids" class="heading-anchor">#</a></h3>
+<p>Headings are automatically assigned IDs based on their text:</p>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gu">## Hello World
+</span></span></span><span class="line"><span class="cl"><span class="gu">## What&#39;s New?
+</span></span></span><span class="line"><span class="cl"><span class="gu">## 2024 Updates
+</span></span></span><span class="line"><span class="cl"><span class="gu">## FAQ
+</span></span></span></code></pre><p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;hello-world&#34;</span><span class="p">&gt;</span>Hello World<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;whats-new&#34;</span><span class="p">&gt;</span>What&#39;s New?<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;2024-updates&#34;</span><span class="p">&gt;</span>2024 Updates<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;faq&#34;</span><span class="p">&gt;</span>FAQ<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span></code></pre><div class="admonition tip">
+<p class="admonition-title">Try it</p>
+</div>
+<h3 id="id-generation-rules">ID Generation Rules <a href="#id-generation-rules" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Heading</th>
+<th>Generated ID</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>## Hello World</code></td>
+<td><code>hello-world</code></td>
+</tr>
+<tr>
+<td><code>## What's New?</code></td>
+<td><code>whats-new</code></td>
+</tr>
+<tr>
+<td><code>## C++ Tutorial</code></td>
+<td><code>c-tutorial</code></td>
+</tr>
+<tr>
+<td><code>## 100% Complete</code></td>
+<td><code>100-complete</code></td>
+</tr>
+<tr>
+<td><code>## Leading Space</code></td>
+<td><code>leading-space</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="duplicate-handling">Duplicate Handling <a href="#duplicate-handling" class="heading-anchor">#</a></h3>
+<p>When multiple headings have the same text, numbers are appended:</p>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gu">## FAQ
+</span></span></span><span class="line"><span class="cl"><span class="gu">## FAQ
+</span></span></span><span class="line"><span class="cl"><span class="gu">## FAQ
+</span></span></span></code></pre><p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;faq&#34;</span><span class="p">&gt;</span>FAQ<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;faq-1&#34;</span><span class="p">&gt;</span>FAQ<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;faq-2&#34;</span><span class="p">&gt;</span>FAQ<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="custom-ids">Custom IDs <a href="#custom-ids" class="heading-anchor">#</a></h3>
+<p>Override the auto-generated ID with custom syntax:</p>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gu">## My Section {#custom-id}
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl"><span class="gu">## Installation Guide {#install}
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl"><span class="gu">## Frequently Asked Questions {#faq-section}
+</span></span></span></code></pre><p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;custom-id&#34;</span><span class="p">&gt;</span>My Section<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;install&#34;</span><span class="p">&gt;</span>Installation Guide<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;faq-section&#34;</span><span class="p">&gt;</span>Frequently Asked Questions<span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="anchor-links">Anchor Links <a href="#anchor-links" class="heading-anchor">#</a></h3>
+<p>markata-go can add clickable anchor links to headings:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">h2</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;my-section&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  My Section
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#my-section&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;heading-anchor&#34;</span><span class="p">&gt;</span>#<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">h2</span><span class="p">&gt;</span>
+</span></span></code></pre><p>Configure anchor link appearance:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">markdown</span><span class="p">.</span><span class="nx">anchors</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">position</span> <span class="p">=</span> <span class="s2">&#34;end&#34;</span>    <span class="c"># &#34;start&#34; or &#34;end&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">symbol</span> <span class="p">=</span> <span class="s2">&#34;#&#34;</span>        <span class="c"># or &#34;link&#34;, &#34;paragraph&#34;, etc.</span>
+</span></span></code></pre><h3 id="linking-to-headings">Linking to Headings <a href="#linking-to-headings" class="heading-anchor">#</a></h3>
+<p>Link to headings using their IDs:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">See [<span class="nt">the installation section</span>](<span class="na">#installation</span>) for setup instructions.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Jump to [<span class="nt">FAQ</span>](<span class="na">#faq</span>) for common questions.
+</span></span></code></pre><p>Or use wikilinks with section anchors:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">See [[getting-started#installation]] for setup.
+</span></span></code></pre><hr>
+<h2 id="footnotes">Footnotes <a href="#footnotes" class="heading-anchor">#</a></h2>
+<p>Footnotes let you add references without interrupting the flow of your content.</p>
+<h3 id="basic-syntax-2">Basic Syntax <a href="#basic-syntax-2" class="heading-anchor">#</a></h3>
+<p><strong>Input:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Here&#39;s a sentence with a footnote.[^1]
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Another sentence with a named footnote.[^note]
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[^1]: This is the first footnote content.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[^note]: This is a named footnote. It can be referenced
+</span></span><span class="line"><span class="cl">    multiple times and span multiple lines.
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    It can even contain multiple paragraphs.
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p>Here's a sentence with a footnote.[^example-1]</p>
+<p>Another sentence with a named footnote.[^example-note]</p>
+<p>[^example-1]: This is the first footnote content.</p>
+<p>[^example-note]: This is a named footnote. It can be referenced
+multiple times and span multiple lines.</p>
+<pre><code>It can even contain multiple paragraphs.
+</code></pre>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Here&#39;s a sentence with a footnote.<span class="p">&lt;</span><span class="nt">sup</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;fnref:1&#34;</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#fn:1&#34;</span><span class="p">&gt;</span>1<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">sup</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>Another sentence with a named footnote.<span class="p">&lt;</span><span class="nt">sup</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;fnref:note&#34;</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#fn:note&#34;</span><span class="p">&gt;</span>2<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">sup</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;footnotes&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">hr</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;fn:1&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>This is the first footnote content. <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#fnref:1&#34;</span><span class="p">&gt;</span><span class="ni">&amp;#8617;</span><span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;fn:note&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>This is a named footnote. It can be referenced
+</span></span><span class="line"><span class="cl">      multiple times and span multiple lines.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>It can even contain multiple paragraphs. <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;#fnref:note&#34;</span><span class="p">&gt;</span><span class="ni">&amp;#8617;</span><span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="inline-footnotes">Inline Footnotes <a href="#inline-footnotes" class="heading-anchor">#</a></h3>
+<p>For short notes, use inline syntax:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Here&#39;s an inline footnote.^[This is the footnote content inline.]
+</span></span></code></pre><p><strong>Live example:</strong></p>
+<p>Here's an inline footnote.^[This is the footnote content inline.]</p>
+<h3 id="footnote-best-practices">Footnote Best Practices <a href="#footnote-best-practices" class="heading-anchor">#</a></h3>
+<ol>
+<li>
+<p><strong>Placement</strong>: Footnote definitions can be anywhere in the document, but are typically placed at the end.</p>
+</li>
+<li>
+<p><strong>Naming</strong>: Use descriptive names for complex documents:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">[^citation-smith-2024]: Smith, J. (2024). <span class="ge">*The Article*</span>. Journal.
+</span></span><span class="line"><span class="cl">[^definition-ssr]: Server-Side Rendering: Generating HTML on the server.
+</span></span></code></pre></li>
+<li>
+<p><strong>Multi-paragraph footnotes</strong>: Indent continuation lines with 4 spaces:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">[^long-note]: First paragraph of the footnote.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    Second paragraph must be indented.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    Third paragraph too.
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="/templates-guide/" class="wikilink" data-title="Templates Guide" data-description="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax" data-date="2024-01-15">Templates</a> - Using TOC and content in templates</li>
+<li><a href="/advanced-usage/" class="wikilink" data-title="Advanced Usage" data-description="Power user guide covering complex configurations, optimization techniques, and advanced patterns" data-date="2024-01-15">Advanced Usage</a> - Advanced admonition customization</li>
+<li><a href="/dynamic-content/" class="wikilink" data-title="Dynamic Content" data-description="Using Jinja2 template syntax in Markdown files for dynamic content generation" data-date="2024-01-15">Dynamic Content</a> - Using Jinja in Markdown</li>
+<li><a href="/frontmatter-guide/" class="wikilink" data-title="Frontmatter Guide" data-description="Complete guide to post metadata, built-in fields, and custom frontmatter in markata-go" data-date="2024-01-15">Frontmatter</a> - Frontmatter fields and metadata</li>
+<li><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration</a> - Markdown configuration options</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

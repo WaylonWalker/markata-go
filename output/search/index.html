@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search - My Site</title>
+    <meta name="description" content="This document specifies the search functionality for markata-go sites using Pagefind.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Search">
+    
+    <meta property="og:url" content="/search/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="This document specifies the search functionality for markata-go sites using Pagefind.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Search">
+    
+    <meta name="twitter:description" content="This document specifies the search functionality for markata-go sites using Pagefind.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/search/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Search",
+  "description": "This document specifies the search functionality for markata-go sites using Pagefind.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/search/"
+  },
+  "url": "/search/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Search</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="search-specification">Search Specification</h1>
+<p>This document specifies the search functionality for markata-go sites using Pagefind.</p>
+<h2 id="overview">Overview <a href="#overview" class="heading-anchor">#</a></h2>
+<p>Search is <strong>enabled by default</strong> for all markata-go sites. The implementation uses <a href="https://pagefind.app/">Pagefind</a>, a static site search library that generates an optimized search index during the build process.</p>
+<h2 id="architecture">Architecture <a href="#architecture" class="heading-anchor">#</a></h2>
+<h3 id="build-process">Build Process <a href="#build-process" class="heading-anchor">#</a></h3>
+<ol>
+<li><strong>Write Stage</strong> - HTML files are generated normally</li>
+<li><strong>Cleanup Stage</strong> - Pagefind plugin runs after all files are written:
+<ul>
+<li>Executes <code>pagefind</code> CLI to index the output directory</li>
+<li>Generates search index in <code>_pagefind/</code> directory</li>
+<li>Copies Pagefind UI assets</li>
+</ul>
+</li>
+</ol>
+<h3 id="runtime-behavior">Runtime Behavior <a href="#runtime-behavior" class="heading-anchor">#</a></h3>
+<ol>
+<li>Pagefind JavaScript loads asynchronously</li>
+<li>Search UI renders in configured position (navbar by default)</li>
+<li>User queries are matched against the pre-built index</li>
+<li>Results display with excerpts and highlighting</li>
+</ol>
+<h2 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h2>
+<h3 id="basic-configuration">Basic Configuration <a href="#basic-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>              <span class="c"># Default: true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">position</span> <span class="p">=</span> <span class="s2">&#34;navbar&#34;</span>         <span class="c"># navbar, sidebar, footer, custom</span>
+</span></span><span class="line"><span class="cl"><span class="nx">placeholder</span> <span class="p">=</span> <span class="s2">&#34;Search...&#34;</span>   <span class="c"># Search input placeholder text</span>
+</span></span></code></pre><h3 id="advanced-configuration">Advanced Configuration <a href="#advanced-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">position</span> <span class="p">=</span> <span class="s2">&#34;navbar&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">placeholder</span> <span class="p">=</span> <span class="s2">&#34;Search...&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">show_images</span> <span class="p">=</span> <span class="kc">true</span>          <span class="c"># Show thumbnails in results (default: true)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">excerpt_length</span> <span class="p">=</span> <span class="mi">200</span>        <span class="c"># Characters for result excerpts (default: 200)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">ranking_boost_title</span> <span class="p">=</span> <span class="mf">2.0</span>   <span class="c"># Boost title matches (default: 2.0)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">ranking_boost_heading</span> <span class="p">=</span> <span class="mf">1.5</span> <span class="c"># Boost heading matches (default: 1.5)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Pagefind CLI options</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">.</span><span class="nx">pagefind</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">bundle_dir</span> <span class="p">=</span> <span class="s2">&#34;_pagefind&#34;</span>    <span class="c"># Output directory for index (default: &#34;_pagefind&#34;)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">exclude_selectors</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;.no-search&#34;</span><span class="p">,</span> <span class="s2">&#34;nav&#34;</span><span class="p">,</span> <span class="s2">&#34;footer&#34;</span><span class="p">]</span>  <span class="c"># Elements to exclude</span>
+</span></span><span class="line"><span class="cl"><span class="nx">root_selector</span> <span class="p">=</span> <span class="s2">&#34;main&#34;</span>      <span class="c"># Element containing searchable content</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Automatic binary installation (new in v0.2.x)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">auto_install</span> <span class="p">=</span> <span class="kc">true</span>         <span class="c"># Automatically download Pagefind if not in PATH (default: true)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">version</span> <span class="p">=</span> <span class="s2">&#34;latest&#34;</span>          <span class="c"># Version to install: &#34;latest&#34; or specific like &#34;v1.4.0&#34; (default: &#34;latest&#34;)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">cache_dir</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>              <span class="c"># Custom cache directory (default: XDG cache ~/.cache/markata-go/bin/)</span>
+</span></span></code></pre><h3 id="feed-specific-search">Feed-Specific Search <a href="#feed-specific-search" class="heading-anchor">#</a></h3>
+<p>For sites with multiple content types, configure feed-specific search instances:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Global search (all published content)</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">position</span> <span class="p">=</span> <span class="s2">&#34;navbar&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Feed-specific search instances</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">search</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;guides&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published &amp;&amp; feed:guides&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">position</span> <span class="p">=</span> <span class="s2">&#34;sidebar&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">placeholder</span> <span class="p">=</span> <span class="s2">&#34;Search guides...&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">search</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published &amp;&amp; feed:blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">position</span> <span class="p">=</span> <span class="s2">&#34;navbar&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">placeholder</span> <span class="p">=</span> <span class="s2">&#34;Search blog...&#34;</span>
+</span></span></code></pre><h3 id="frontmatter-control">Frontmatter Control <a href="#frontmatter-control" class="heading-anchor">#</a></h3>
+<p>Posts can override search behavior:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">search_exclude</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">        </span><span class="c"># Exclude from search index</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">search_instance</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;guides&#34;</span><span class="w">   </span><span class="c"># Use specific search instance</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">search_boost</span><span class="p">:</span><span class="w"> </span><span class="m">2.0</span><span class="w">          </span><span class="c"># Boost this page in results</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h2 id="data-model">Data Model <a href="#data-model" class="heading-anchor">#</a></h2>
+<h3 id="searchconfig">SearchConfig <a href="#searchconfig" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// SearchConfig configures site-wide search functionality.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">SearchConfig</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Enabled controls whether search is active (default: true)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Enabled</span> <span class="o">*</span><span class="kt">bool</span> <span class="s">`json:&#34;enabled,omitempty&#34; yaml:&#34;enabled,omitempty&#34; toml:&#34;enabled,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Position controls where search UI appears: &#34;navbar&#34;, &#34;sidebar&#34;, &#34;footer&#34;, &#34;custom&#34;
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Position</span> <span class="kt">string</span> <span class="s">`json:&#34;position,omitempty&#34; yaml:&#34;position,omitempty&#34; toml:&#34;position,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Placeholder is the search input placeholder text
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Placeholder</span> <span class="kt">string</span> <span class="s">`json:&#34;placeholder,omitempty&#34; yaml:&#34;placeholder,omitempty&#34; toml:&#34;placeholder,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// ShowImages shows thumbnails in search results
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">ShowImages</span> <span class="o">*</span><span class="kt">bool</span> <span class="s">`json:&#34;show_images,omitempty&#34; yaml:&#34;show_images,omitempty&#34; toml:&#34;show_images,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// ExcerptLength is the character limit for result excerpts
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">ExcerptLength</span> <span class="kt">int</span> <span class="s">`json:&#34;excerpt_length,omitempty&#34; yaml:&#34;excerpt_length,omitempty&#34; toml:&#34;excerpt_length,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Pagefind configures the Pagefind CLI options
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Pagefind</span> <span class="nx">PagefindConfig</span> <span class="s">`json:&#34;pagefind,omitempty&#34; yaml:&#34;pagefind,omitempty&#34; toml:&#34;pagefind,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Feeds configures feed-specific search instances
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Feeds</span> <span class="p">[]</span><span class="nx">SearchFeedConfig</span> <span class="s">`json:&#34;feeds,omitempty&#34; yaml:&#34;feeds,omitempty&#34; toml:&#34;feeds,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// PagefindConfig configures Pagefind CLI behavior.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">PagefindConfig</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// BundleDir is the output directory for search index (default: &#34;_pagefind&#34;)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">BundleDir</span> <span class="kt">string</span> <span class="s">`json:&#34;bundle_dir,omitempty&#34; yaml:&#34;bundle_dir,omitempty&#34; toml:&#34;bundle_dir,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// ExcludeSelectors are CSS selectors for elements to exclude from indexing
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">ExcludeSelectors</span> <span class="p">[]</span><span class="kt">string</span> <span class="s">`json:&#34;exclude_selectors,omitempty&#34; yaml:&#34;exclude_selectors,omitempty&#34; toml:&#34;exclude_selectors,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// RootSelector is the CSS selector for the searchable content container
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">RootSelector</span> <span class="kt">string</span> <span class="s">`json:&#34;root_selector,omitempty&#34; yaml:&#34;root_selector,omitempty&#34; toml:&#34;root_selector,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// AutoInstall enables automatic Pagefind binary installation (default: true)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">AutoInstall</span> <span class="o">*</span><span class="kt">bool</span> <span class="s">`json:&#34;auto_install,omitempty&#34; yaml:&#34;auto_install,omitempty&#34; toml:&#34;auto_install,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Version is the Pagefind version to install: &#34;latest&#34; or specific (default: &#34;latest&#34;)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Version</span> <span class="kt">string</span> <span class="s">`json:&#34;version,omitempty&#34; yaml:&#34;version,omitempty&#34; toml:&#34;version,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// CacheDir is the directory for caching Pagefind binaries (default: XDG cache)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">CacheDir</span> <span class="kt">string</span> <span class="s">`json:&#34;cache_dir,omitempty&#34; yaml:&#34;cache_dir,omitempty&#34; toml:&#34;cache_dir,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// SearchFeedConfig configures a feed-specific search instance.
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">type</span> <span class="nx">SearchFeedConfig</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Name is the search instance identifier
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Name</span> <span class="kt">string</span> <span class="s">`json:&#34;name&#34; yaml:&#34;name&#34; toml:&#34;name&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Filter is the filter expression for posts in this search
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Filter</span> <span class="kt">string</span> <span class="s">`json:&#34;filter&#34; yaml:&#34;filter&#34; toml:&#34;filter&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Position controls where this search UI appears
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Position</span> <span class="kt">string</span> <span class="s">`json:&#34;position,omitempty&#34; yaml:&#34;position,omitempty&#34; toml:&#34;position,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Placeholder is the search input placeholder text
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Placeholder</span> <span class="kt">string</span> <span class="s">`json:&#34;placeholder,omitempty&#34; yaml:&#34;placeholder,omitempty&#34; toml:&#34;placeholder,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="default-values">Default Values <a href="#default-values" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">NewSearchConfig</span><span class="p">()</span> <span class="nx">SearchConfig</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">enabled</span> <span class="o">:=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">showImages</span> <span class="o">:=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">SearchConfig</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Enabled</span><span class="p">:</span>       <span class="o">&amp;</span><span class="nx">enabled</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Position</span><span class="p">:</span>      <span class="s">&#34;navbar&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Placeholder</span><span class="p">:</span>   <span class="s">&#34;Search...&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">ShowImages</span><span class="p">:</span>    <span class="o">&amp;</span><span class="nx">showImages</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">ExcerptLength</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Pagefind</span><span class="p">:</span> <span class="nx">PagefindConfig</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">BundleDir</span><span class="p">:</span>        <span class="s">&#34;_pagefind&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">ExcludeSelectors</span><span class="p">:</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{},</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">RootSelector</span><span class="p">:</span>     <span class="s">&#34;&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="p">},</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Feeds</span><span class="p">:</span> <span class="p">[]</span><span class="nx">SearchFeedConfig</span><span class="p">{},</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h2 id="template-integration">Template Integration <a href="#template-integration" class="heading-anchor">#</a></h2>
+<h3 id="data-attributes">Data Attributes <a href="#data-attributes" class="heading-anchor">#</a></h3>
+<p>Templates add Pagefind data attributes to enable indexing:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- Main content area --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">main</span> <span class="na">data-pagefind-body</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">h1</span> <span class="na">data-pagefind-meta</span><span class="o">=</span><span class="s">&#34;title&#34;</span><span class="p">&gt;</span>{{ post.title }}<span class="p">&lt;/</span><span class="nt">h1</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">data-pagefind-meta</span><span class="o">=</span><span class="s">&#34;excerpt&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;description&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {{ post.description }}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c">&lt;!-- Filter by feed membership --&gt;</span>
+</span></span><span class="line"><span class="cl">        {% for feed in post.feeds %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">span</span> <span class="na">data-pagefind-filter</span><span class="o">=</span><span class="s">&#34;feed&#34;</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;display:none&#34;</span><span class="p">&gt;</span>{{ feed }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endfor %}
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c">&lt;!-- Filter by tags --&gt;</span>
+</span></span><span class="line"><span class="cl">        {% for tag in post.tags %}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">span</span> <span class="na">data-pagefind-filter</span><span class="o">=</span><span class="s">&#34;tag&#34;</span> <span class="na">style</span><span class="o">=</span><span class="s">&#34;display:none&#34;</span><span class="p">&gt;</span>{{ tag }}<span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">        {% endfor %}
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;content&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">            {{ post.article_html | safe }}
+</span></span><span class="line"><span class="cl">        <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">main</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="excluding-content">Excluding Content <a href="#excluding-content" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- Exclude specific elements --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">nav</span> <span class="na">data-pagefind-ignore</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- Navigation not indexed --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">aside</span> <span class="na">data-pagefind-ignore</span><span class="o">=</span><span class="s">&#34;all&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="c">&lt;!-- Sidebar and all descendants excluded --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">aside</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="search-ui-component">Search UI Component <a href="#search-ui-component" class="heading-anchor">#</a></h3>
+<p>The search component is included via template:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% if config.search.enabled %}
+</span></span><span class="line"><span class="cl">{% include &#34;components/search.html&#34; %}
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span></code></pre><h3 id="componentssearchhtml">components/search.html <a href="#componentssearchhtml" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{# Search component template #}
+</span></span><span class="line"><span class="cl">{# Requires: config.search (SearchConfig) #}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% with search = config.search %}
+</span></span><span class="line"><span class="cl">{% if search.enabled %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;search&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;search search--{{ search.position | default:&#39;navbar&#39; }}&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">div</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;pagefind-search&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">link</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/_pagefind/pagefind-ui.css&#34;</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;stylesheet&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/_pagefind/pagefind-ui.js&#34;</span> <span class="na">defer</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">window</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="s1">&#39;DOMContentLoaded&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nx">event</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">new</span> <span class="nx">PagefindUI</span><span class="p">({</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">element</span><span class="o">:</span> <span class="s2">&#34;#pagefind-search&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">showImages</span><span class="o">:</span> <span class="p">{{</span> <span class="nx">search</span><span class="p">.</span><span class="nx">show_images</span> <span class="o">|</span> <span class="k">default</span><span class="o">:</span><span class="kc">true</span> <span class="o">|</span> <span class="nx">lower</span> <span class="p">}},</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">excerptLength</span><span class="o">:</span> <span class="p">{{</span> <span class="nx">search</span><span class="p">.</span><span class="nx">excerpt_length</span> <span class="o">|</span> <span class="k">default</span><span class="o">:</span><span class="mi">200</span> <span class="p">}},</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">translations</span><span class="o">:</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">placeholder</span><span class="o">:</span> <span class="s2">&#34;{{ search.placeholder | default:&#39;Search...&#39; }}&#34;</span>
+</span></span><span class="line"><span class="cl">            <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="p">});</span>
+</span></span><span class="line"><span class="cl">    <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endwith %}
+</span></span></code></pre><h2 id="plugin-implementation">Plugin Implementation <a href="#plugin-implementation" class="heading-anchor">#</a></h2>
+<h3 id="pagefindplugin">PagefindPlugin <a href="#pagefindplugin" class="heading-anchor">#</a></h3>
+<p>The plugin runs in the <strong>Cleanup stage</strong> (after Write) to ensure all HTML files exist:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">PagefindPlugin</span> <span class="kd">struct</span><span class="p">{}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">PagefindPlugin</span><span class="p">)</span> <span class="nf">Name</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="s">&#34;pagefind&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">PagefindPlugin</span><span class="p">)</span> <span class="nf">Cleanup</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">config</span> <span class="o">:=</span> <span class="nf">getSearchConfig</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nf">Config</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">!</span><span class="nx">config</span><span class="p">.</span><span class="nf">IsEnabled</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Check if pagefind is installed
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">LookPath</span><span class="p">(</span><span class="s">&#34;pagefind&#34;</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// Log warning but don&#39;t fail - search will just not work
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">p</span><span class="p">.</span><span class="nf">runPagefind</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nf">Config</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">PagefindPlugin</span><span class="p">)</span> <span class="nf">runPagefind</span><span class="p">(</span><span class="nx">config</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Config</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">searchConfig</span> <span class="o">:=</span> <span class="nf">getSearchConfig</span><span class="p">(</span><span class="nx">config</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nx">args</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="s">&#34;--site&#34;</span><span class="p">,</span> <span class="nx">config</span><span class="p">.</span><span class="nx">OutputDir</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="s">&#34;--output-subdir&#34;</span><span class="p">,</span> <span class="nx">searchConfig</span><span class="p">.</span><span class="nx">Pagefind</span><span class="p">.</span><span class="nx">BundleDir</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">searchConfig</span><span class="p">.</span><span class="nx">Pagefind</span><span class="p">.</span><span class="nx">RootSelector</span> <span class="o">!=</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">args</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">args</span><span class="p">,</span> <span class="s">&#34;--root-selector&#34;</span><span class="p">,</span> <span class="nx">searchConfig</span><span class="p">.</span><span class="nx">Pagefind</span><span class="p">.</span><span class="nx">RootSelector</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">selector</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">searchConfig</span><span class="p">.</span><span class="nx">Pagefind</span><span class="p">.</span><span class="nx">ExcludeSelectors</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">args</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">args</span><span class="p">,</span> <span class="s">&#34;--exclude-selectors&#34;</span><span class="p">,</span> <span class="nx">selector</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span> <span class="o">:=</span> <span class="nx">exec</span><span class="p">.</span><span class="nf">Command</span><span class="p">(</span><span class="s">&#34;pagefind&#34;</span><span class="p">,</span> <span class="nx">args</span><span class="o">...</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stdout</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">cmd</span><span class="p">.</span><span class="nx">Stderr</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nx">Stderr</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">cmd</span><span class="p">.</span><span class="nf">Run</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="priority">Priority <a href="#priority" class="heading-anchor">#</a></h3>
+<p>The plugin runs with <code>PriorityLast</code> in the Cleanup stage to ensure all files are written first:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">PagefindPlugin</span><span class="p">)</span> <span class="nf">Priority</span><span class="p">(</span><span class="nx">stage</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Stage</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">stage</span> <span class="o">==</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">StageCleanup</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityLast</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityDefault</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h2 id="css-styling">CSS Styling <a href="#css-styling" class="heading-anchor">#</a></h2>
+<h3 id="default-search-styles">Default Search Styles <a href="#default-search-styles" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">/* Search container positioning */</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">search</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">position</span><span class="p">:</span> <span class="kc">relative</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">search--navbar</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">display</span><span class="p">:</span> <span class="kc">flex</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">align-items</span><span class="p">:</span> <span class="kc">center</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">margin-left</span><span class="p">:</span> <span class="kc">auto</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">search--sidebar</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">margin-bottom</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">spacing</span><span class="o">-</span><span class="n">lg</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">search--footer</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">margin-top</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">spacing</span><span class="o">-</span><span class="n">lg</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">/* Pagefind UI overrides for theme integration */</span>
+</span></span><span class="line"><span class="cl"><span class="p">:</span><span class="nd">root</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-scale</span><span class="p">:</span> <span class="mf">0.9</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-primary</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">primary</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-text</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="kc">text</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-background</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">surface</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-border</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">border</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-tag</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">secondary</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-border-width</span><span class="p">:</span> <span class="mi">1</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-border-radius</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">radius</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-font</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">font</span><span class="o">-</span><span class="n">family</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">/* Compact mode for navbar */</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">search--navbar</span> <span class="p">.</span><span class="nc">pagefind-ui__search-input</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">width</span><span class="p">:</span> <span class="mi">200</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">transition</span><span class="p">:</span> <span class="k">width</span> <span class="mf">0.2</span><span class="kt">s</span> <span class="kc">ease</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">search--navbar</span> <span class="p">.</span><span class="nc">pagefind-ui__search-input</span><span class="p">:</span><span class="nd">focus</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">width</span><span class="p">:</span> <span class="mi">300</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">/* Results dropdown */</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">search--navbar</span> <span class="p">.</span><span class="nc">pagefind-ui__results</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">position</span><span class="p">:</span> <span class="kc">absolute</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">top</span><span class="p">:</span> <span class="mi">100</span><span class="kt">%</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">right</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">width</span><span class="p">:</span> <span class="mi">400</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">max-height</span><span class="p">:</span> <span class="mi">80</span><span class="kt">vh</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">overflow-y</span><span class="p">:</span> <span class="kc">auto</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">background</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">surface</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">border</span><span class="p">:</span> <span class="mi">1</span><span class="kt">px</span> <span class="kc">solid</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">border</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">border-radius</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">radius</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">box-shadow</span><span class="p">:</span> <span class="mi">0</span> <span class="mi">4</span><span class="kt">px</span> <span class="mi">12</span><span class="kt">px</span> <span class="nb">rgba</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h2 id="accessibility">Accessibility <a href="#accessibility" class="heading-anchor">#</a></h2>
+<p>The search component follows WCAG 2.1 guidelines:</p>
+<ul>
+<li>Proper ARIA labels and roles</li>
+<li>Keyboard navigation support (Tab, Enter, Escape, Arrow keys)</li>
+<li>Focus management for results</li>
+<li>Screen reader announcements for results count</li>
+<li>Sufficient color contrast in all themes</li>
+</ul>
+<h2 id="performance">Performance <a href="#performance" class="heading-anchor">#</a></h2>
+<h3 id="index-size-optimization">Index Size Optimization <a href="#index-size-optimization" class="heading-anchor">#</a></h3>
+<p>Pagefind automatically optimizes the search index:</p>
+<ul>
+<li>Content is chunked and compressed</li>
+<li>Only relevant chunks are loaded on search</li>
+<li>Typical index size: ~1KB per page indexed</li>
+</ul>
+<h3 id="loading-strategy">Loading Strategy <a href="#loading-strategy" class="heading-anchor">#</a></h3>
+<ul>
+<li>Pagefind JS/CSS loaded with <code>defer</code> attribute</li>
+<li>Search index loaded lazily on first interaction</li>
+<li>Results cached for repeated queries</li>
+</ul>
+<h2 id="error-handling">Error Handling <a href="#error-handling" class="heading-anchor">#</a></h2>
+<h3 id="pagefind-not-found">Pagefind Not Found <a href="#pagefind-not-found" class="heading-anchor">#</a></h3>
+<p>If <code>pagefind</code> CLI is not found in PATH:</p>
+<ol>
+<li><strong>Auto-install enabled (default)</strong>: Automatically downloads and caches Pagefind binary
+<ul>
+<li>Downloads from official GitHub releases</li>
+<li>Verifies SHA256 checksum before execution</li>
+<li>Caches in XDG cache directory for subsequent builds</li>
+</ul>
+</li>
+<li><strong>Auto-install disabled</strong>: Warning logged with installation instructions
+<ul>
+<li>Site functions normally without search</li>
+<li>Search UI may show placeholder message</li>
+</ul>
+</li>
+</ol>
+<h3 id="auto-install-failures">Auto-Install Failures <a href="#auto-install-failures" class="heading-anchor">#</a></h3>
+<p>If automatic installation fails:</p>
+<ol>
+<li>Network error: Falls back to PATH check, warns user</li>
+<li>Checksum mismatch: Aborts for security, warns user</li>
+<li>Unsupported platform: Warns user, suggests manual installation</li>
+<li>Disk space/permission issues: Warns user with specific error</li>
+</ol>
+<h3 id="empty-index">Empty Index <a href="#empty-index" class="heading-anchor">#</a></h3>
+<p>If no content is indexed:</p>
+<ol>
+<li>Warning logged during build</li>
+<li>Search UI shows &quot;No results&quot; for all queries</li>
+</ol>
+<h3 id="javascript-disabled">JavaScript Disabled <a href="#javascript-disabled" class="heading-anchor">#</a></h3>
+<p>When JavaScript is disabled:</p>
+<ol>
+<li>Search UI hidden via CSS</li>
+<li>Site remains fully navigable</li>
+<li>Consider adding sitemap link as fallback</li>
+</ol>
+<h2 id="security">Security <a href="#security" class="heading-anchor">#</a></h2>
+<h3 id="binary-verification">Binary Verification <a href="#binary-verification" class="heading-anchor">#</a></h3>
+<p>All auto-installed Pagefind binaries are verified:</p>
+<ol>
+<li>Downloaded from official CloudCannon GitHub releases only</li>
+<li>SHA256 checksum fetched and verified before extraction</li>
+<li>Binaries are cached with version-specific directories</li>
+<li>Executable permissions set appropriately per platform</li>
+</ol>
+<h3 id="supported-platforms">Supported Platforms <a href="#supported-platforms" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>OS</th>
+<th>Architecture</th>
+<th>Asset Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>macOS</td>
+<td>x86_64 (Intel)</td>
+<td>x86_64-apple-darwin</td>
+</tr>
+<tr>
+<td>macOS</td>
+<td>arm64 (Apple Silicon)</td>
+<td>aarch64-apple-darwin</td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>x86_64</td>
+<td>x86_64-unknown-linux-musl</td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>arm64</td>
+<td>aarch64-unknown-linux-musl</td>
+</tr>
+<tr>
+<td>Windows</td>
+<td>x86_64</td>
+<td>x86_64-pc-windows-msvc</td>
+</tr>
+<tr>
+<td>FreeBSD</td>
+<td>x86_64</td>
+<td>x86_64-unknown-freebsd</td>
+</tr>
+</tbody>
+</table>
+<h2 id="future-enhancements">Future Enhancements <a href="#future-enhancements" class="heading-anchor">#</a></h2>
+<ol>
+<li><strong>Search Analytics</strong> - Track popular queries</li>
+<li><strong>Instant Search</strong> - Search-as-you-type with debouncing</li>
+<li><strong>Search Suggestions</strong> - Autocomplete based on content</li>
+<li><strong>Federated Search</strong> - Search across multiple sites</li>
+<li><strong>Voice Search</strong> - Web Speech API integration</li>
+</ol>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

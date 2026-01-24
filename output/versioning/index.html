@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Versioning - My Site</title>
+    <meta name="description" content="This document specifies the versioning scheme and release process for markata-go.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Versioning">
+    
+    <meta property="og:url" content="/versioning/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="This document specifies the versioning scheme and release process for markata-go.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Versioning">
+    
+    <meta name="twitter:description" content="This document specifies the versioning scheme and release process for markata-go.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/versioning/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Versioning",
+  "description": "This document specifies the versioning scheme and release process for markata-go.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/versioning/"
+  },
+  "url": "/versioning/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Versioning</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="versioning-and-release-specification">Versioning and Release Specification</h1>
+<p>This document specifies the versioning scheme and release process for markata-go.</p>
+<h2 id="versioning-scheme">Versioning Scheme <a href="#versioning-scheme" class="heading-anchor">#</a></h2>
+<p>markata-go follows <a href="https://semver.org/">Semantic Versioning 2.0.0</a>:</p>
+<pre><code>MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
+</code></pre>
+<h3 id="version-components">Version Components <a href="#version-components" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MAJOR</td>
+<td>Breaking changes to CLI, config, or public API</td>
+<td><code>1.0.0</code> → <code>2.0.0</code></td>
+</tr>
+<tr>
+<td>MINOR</td>
+<td>New features, backward-compatible</td>
+<td><code>0.1.0</code> → <code>0.2.0</code></td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td>Bug fixes, backward-compatible</td>
+<td><code>0.1.0</code> → <code>0.1.1</code></td>
+</tr>
+<tr>
+<td>PRERELEASE</td>
+<td>Pre-release identifier</td>
+<td><code>0.1.0-alpha.1</code>, <code>0.1.0-beta.2</code>, <code>0.1.0-rc.1</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="zero-version-0xy">Zero-Version (0.x.y) <a href="#zero-version-0xy" class="heading-anchor">#</a></h3>
+<p>During initial development (version <code>0.x.y</code>):</p>
+<ul>
+<li>The public API is not considered stable</li>
+<li>MINOR version bumps may include breaking changes</li>
+<li>PATCH versions are for bug fixes only</li>
+<li>Users should expect rapid iteration</li>
+</ul>
+<h3 id="stability-promise">Stability Promise <a href="#stability-promise" class="heading-anchor">#</a></h3>
+<p>Once <code>1.0.0</code> is released:</p>
+<ul>
+<li>PATCH releases never break existing functionality</li>
+<li>MINOR releases are backward-compatible</li>
+<li>MAJOR releases may include breaking changes (with migration guides)</li>
+</ul>
+<h2 id="version-information">Version Information <a href="#version-information" class="heading-anchor">#</a></h2>
+<h3 id="embedded-version-data">Embedded Version Data <a href="#embedded-version-data" class="heading-anchor">#</a></h3>
+<p>The binary embeds version information via ldflags at build time:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// cmd/markata-go/cmd/version.go
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Version</span> <span class="p">=</span> <span class="s">&#34;dev&#34;</span>     <span class="c1">// Semantic version (e.g., &#34;0.1.0&#34;)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Commit</span>  <span class="p">=</span> <span class="s">&#34;none&#34;</span>    <span class="c1">// Git commit SHA
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="nx">Date</span>    <span class="p">=</span> <span class="s">&#34;unknown&#34;</span> <span class="c1">// Build timestamp (RFC3339)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">)</span>
+</span></span></code></pre><h3 id="version-command">Version Command <a href="#version-command" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">$ markata-go version
+</span></span><span class="line"><span class="cl">markata-go 0.1.0
+</span></span><span class="line"><span class="cl">  commit:    abc1234
+</span></span><span class="line"><span class="cl">  built:     2024-01-15T12:00:00Z
+</span></span><span class="line"><span class="cl">  go:        go1.22.2
+</span></span><span class="line"><span class="cl">  os/arch:   linux/amd64
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">$ markata-go version --short
+</span></span><span class="line"><span class="cl">0.1.0
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">$ markata-go --version
+</span></span><span class="line"><span class="cl">markata-go version 0.1.0
+</span></span></code></pre><h2 id="release-process">Release Process <a href="#release-process" class="heading-anchor">#</a></h2>
+<h3 id="git-tags">Git Tags <a href="#git-tags" class="heading-anchor">#</a></h3>
+<p>Releases are triggered by Git tags matching <code>v*</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Create annotated tag</span>
+</span></span><span class="line"><span class="cl">git tag -a v0.1.0 -m <span class="s2">&#34;Release v0.1.0&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Push tag to trigger release</span>
+</span></span><span class="line"><span class="cl">git push origin v0.1.0
+</span></span></code></pre><h3 id="pre-release-tags">Pre-release Tags <a href="#pre-release-tags" class="heading-anchor">#</a></h3>
+<p>Pre-release versions use suffixes:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">git tag -a v0.1.0-alpha.1 -m <span class="s2">&#34;Alpha release&#34;</span>
+</span></span><span class="line"><span class="cl">git tag -a v0.1.0-beta.1 -m <span class="s2">&#34;Beta release&#34;</span>
+</span></span><span class="line"><span class="cl">git tag -a v0.1.0-rc.1 -m <span class="s2">&#34;Release candidate&#34;</span>
+</span></span></code></pre><h3 id="release-workflow">Release Workflow <a href="#release-workflow" class="heading-anchor">#</a></h3>
+<ol>
+<li><strong>Version Bump</strong> - Update any version references in docs</li>
+<li><strong>Changelog</strong> - Update CHANGELOG.md (if manual)</li>
+<li><strong>Tag</strong> - Create annotated Git tag</li>
+<li><strong>Push</strong> - Push tag to trigger GitHub Actions</li>
+<li><strong>Verify</strong> - Check release artifacts on GitHub</li>
+</ol>
+<h3 id="automated-release">Automated Release <a href="#automated-release" class="heading-anchor">#</a></h3>
+<p>The GitHub Actions release workflow:</p>
+<ol>
+<li>Runs tests</li>
+<li>Builds binaries for all platforms via GoReleaser</li>
+<li>Creates GitHub release with:
+<ul>
+<li>Platform-specific archives</li>
+<li>Checksums file</li>
+<li>SBOM (Software Bill of Materials)</li>
+<li>Signed artifacts (via cosign)</li>
+</ul>
+</li>
+<li>Generates changelog from conventional commits</li>
+</ol>
+<h2 id="build-artifacts">Build Artifacts <a href="#build-artifacts" class="heading-anchor">#</a></h2>
+<h3 id="supported-platforms">Supported Platforms <a href="#supported-platforms" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>OS</th>
+<th>Architecture</th>
+<th>Binary Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Linux</td>
+<td>amd64</td>
+<td><code>markata-go</code></td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>arm64</td>
+<td><code>markata-go</code></td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>armv7</td>
+<td><code>markata-go</code></td>
+</tr>
+<tr>
+<td>macOS</td>
+<td>amd64 (Intel)</td>
+<td><code>markata-go</code></td>
+</tr>
+<tr>
+<td>macOS</td>
+<td>arm64 (Apple Silicon)</td>
+<td><code>markata-go</code></td>
+</tr>
+<tr>
+<td>Windows</td>
+<td>amd64</td>
+<td><code>markata-go.exe</code></td>
+</tr>
+<tr>
+<td>FreeBSD</td>
+<td>amd64</td>
+<td><code>markata-go</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="archive-naming">Archive Naming <a href="#archive-naming" class="heading-anchor">#</a></h3>
+<pre><code>markata-go_{version}_{os}_{arch}.{ext}
+</code></pre>
+<p>Examples:</p>
+<ul>
+<li><code>markata-go_0.1.0_linux_x86_64.tar.gz</code></li>
+<li><code>markata-go_0.1.0_darwin_arm64.tar.gz</code></li>
+<li><code>markata-go_0.1.0_windows_x86_64.zip</code></li>
+</ul>
+<h3 id="release-assets">Release Assets <a href="#release-assets" class="heading-anchor">#</a></h3>
+<p>Each release includes:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>markata-go_*_{os}_{arch}.{tar.gz,zip}</code></td>
+<td>Platform binary + README</td>
+</tr>
+<tr>
+<td><code>checksums.txt</code></td>
+<td>SHA256 checksums for all archives</td>
+</tr>
+<tr>
+<td><code>checksums.txt.pem</code></td>
+<td>Cosign certificate</td>
+</tr>
+<tr>
+<td><code>checksums.txt.sig</code></td>
+<td>Cosign signature</td>
+</tr>
+<tr>
+<td><code>markata-go_*_{os}_{arch}.tar.gz.sbom.json</code></td>
+<td>SBOM in SPDX format</td>
+</tr>
+</tbody>
+</table>
+<h2 id="installation-methods">Installation Methods <a href="#installation-methods" class="heading-anchor">#</a></h2>
+<h3 id="supported-installers">Supported Installers <a href="#supported-installers" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>jpillora/installer</td>
+<td><code>curl -sL https://i.jpillora.com/WaylonWalker/markata-go | bash</code></td>
+</tr>
+<tr>
+<td>eget</td>
+<td><code>eget WaylonWalker/markata-go</code></td>
+</tr>
+<tr>
+<td>mise</td>
+<td><code>mise use -g github:WaylonWalker/markata-go</code></td>
+</tr>
+<tr>
+<td>go install</td>
+<td><code>go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="compatibility-requirements">Compatibility Requirements <a href="#compatibility-requirements" class="heading-anchor">#</a></h3>
+<p>For jpillora/installer and eget compatibility:</p>
+<ol>
+<li>Archive naming must follow <code>{project}_{version}_{os}_{arch}</code> pattern</li>
+<li>Binary must be at archive root (not in subdirectory)</li>
+<li>Checksums file must be named <code>checksums.txt</code></li>
+<li>GitHub releases must be public</li>
+</ol>
+<h2 id="local-development">Local Development <a href="#local-development" class="heading-anchor">#</a></h2>
+<h3 id="building-with-version-info">Building with Version Info <a href="#building-with-version-info" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Using just</span>
+</span></span><span class="line"><span class="cl">just build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Manual with ldflags</span>
+</span></span><span class="line"><span class="cl">go build -ldflags <span class="s2">&#34;-s -w \
+</span></span></span><span class="line"><span class="cl"><span class="s2">  -X github.com/WaylonWalker/markata-go/cmd/markata-go/cmd.Version=</span><span class="k">$(</span>git describe --tags<span class="k">)</span><span class="s2"> \
+</span></span></span><span class="line"><span class="cl"><span class="s2">  -X github.com/WaylonWalker/markata-go/cmd/markata-go/cmd.Commit=</span><span class="k">$(</span>git rev-parse --short HEAD<span class="k">)</span><span class="s2"> \
+</span></span></span><span class="line"><span class="cl"><span class="s2">  -X github.com/WaylonWalker/markata-go/cmd/markata-go/cmd.Date=</span><span class="k">$(</span>date -u +%Y-%m-%dT%H:%M:%SZ<span class="k">)</span><span class="s2">&#34;</span> <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>  -o markata-go ./cmd/markata-go
+</span></span></code></pre><h3 id="snapshot-builds">Snapshot Builds <a href="#snapshot-builds" class="heading-anchor">#</a></h3>
+<p>Test the full release process locally:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Using just</span>
+</span></span><span class="line"><span class="cl">just snapshot
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Using goreleaser directly</span>
+</span></span><span class="line"><span class="cl">goreleaser release --snapshot --clean --skip<span class="o">=</span>publish
+</span></span></code></pre><h2 id="changelog">Changelog <a href="#changelog" class="heading-anchor">#</a></h2>
+<p>Changelog is auto-generated from conventional commits:</p>
+<table>
+<thead>
+<tr>
+<th>Prefix</th>
+<th>Section</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>feat:</code></td>
+<td>New Features</td>
+</tr>
+<tr>
+<td><code>fix:</code></td>
+<td>Bug Fixes</td>
+</tr>
+<tr>
+<td><code>perf:</code></td>
+<td>Performance</td>
+</tr>
+<tr>
+<td><code>docs:</code></td>
+<td>(excluded)</td>
+</tr>
+<tr>
+<td><code>test:</code></td>
+<td>(excluded)</td>
+</tr>
+<tr>
+<td><code>ci:</code></td>
+<td>(excluded)</td>
+</tr>
+<tr>
+<td><code>chore:</code></td>
+<td>(excluded)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="commit-message-format">Commit Message Format <a href="#commit-message-format" class="heading-anchor">#</a></h3>
+<pre><code>type(scope): description
+
+[optional body]
+
+[optional footer]
+</code></pre>
+<p>Examples:</p>
+<pre><code>feat(feeds): add JSON Feed 1.1 support
+fix(template): handle nil values in conditionals
+perf(render): parallelize markdown processing
+docs(readme): update installation instructions
+</code></pre>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

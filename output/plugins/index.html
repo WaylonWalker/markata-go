@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plugins - My Site</title>
+    <meta name="description" content="This guide explains how to create plugins for the static site generator.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Plugins">
+    
+    <meta property="og:url" content="/plugins/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="This guide explains how to create plugins for the static site generator.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Plugins">
+    
+    <meta name="twitter:description" content="This guide explains how to create plugins for the static site generator.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/plugins/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Plugins",
+  "description": "This guide explains how to create plugins for the static site generator.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/plugins/"
+  },
+  "url": "/plugins/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Plugins</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="plugin-development-guide">Plugin Development Guide</h1>
+<p>This guide explains how to create plugins for the static site generator.</p>
+<h2 id="philosophy">Philosophy <a href="#philosophy" class="heading-anchor">#</a></h2>
+<p>Plugins are the primary extension mechanism. A single file should be able to:</p>
+<ul>
+<li>Hook into any lifecycle stage</li>
+<li>Extend configuration with new fields</li>
+<li>Extend the post model with new fields</li>
+<li>Register attributes on the core instance</li>
+<li>Add CLI commands</li>
+</ul>
+<h2 id="plugin-structure">Plugin Structure <a href="#plugin-structure" class="heading-anchor">#</a></h2>
+<p>A minimal plugin is a single file (or module) that exports hook implementations:</p>
+<pre><code>my_plugin.[ext]
+├── Configuration model (optional)
+├── Post model extension (optional)
+├── Hook implementations
+└── Helper functions (private)
+</code></pre>
+<h2 id="hook-implementation">Hook Implementation <a href="#hook-implementation" class="heading-anchor">#</a></h2>
+<h3 id="basic-hook">Basic Hook <a href="#basic-hook" class="heading-anchor">#</a></h3>
+<p>Hooks are functions that receive the core orchestrator instance:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Python with pluggy</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">your_ssg.hookspec</span> <span class="kn">import</span> <span class="n">hook_impl</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Process posts during the render stage.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">custom_field</span> <span class="o">=</span> <span class="n">process</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
+</span></span></code></pre><pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// TypeScript with tapable
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kr">export</span> <span class="kd">function</span> <span class="nx">render</span><span class="p">(</span><span class="nx">core</span>: <span class="kt">Core</span><span class="p">)</span><span class="o">:</span> <span class="k">void</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">for</span> <span class="p">(</span><span class="kr">const</span> <span class="nx">post</span> <span class="k">of</span> <span class="nx">core</span><span class="p">.</span><span class="nx">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">))</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">post</span><span class="p">.</span><span class="nx">customField</span> <span class="o">=</span> <span class="nx">process</span><span class="p">(</span><span class="nx">post</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Go with interfaces
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">MyPlugin</span><span class="p">)</span> <span class="nf">Render</span><span class="p">(</span><span class="nx">core</span> <span class="o">*</span><span class="nx">Core</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">post</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">core</span><span class="p">.</span><span class="nf">Filter</span><span class="p">(</span><span class="s">&#34;not skip&#34;</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">post</span><span class="p">.</span><span class="nx">CustomField</span> <span class="p">=</span> <span class="nf">process</span><span class="p">(</span><span class="nx">post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="hook-ordering">Hook Ordering <a href="#hook-ordering" class="heading-anchor">#</a></h3>
+<p>Control when your hook runs relative to other plugins:</p>
+<table>
+<thead>
+<tr>
+<th>Modifier</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tryfirst</code></td>
+<td>Run before other plugins in this stage</td>
+</tr>
+<tr>
+<td><code>trylast</code></td>
+<td>Run after other plugins in this stage</td>
+</tr>
+<tr>
+<td>(none)</td>
+<td>Run in registration order</td>
+</tr>
+</tbody>
+</table>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span><span class="p">(</span><span class="n">tryfirst</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">configure</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Run early in configure stage.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">pass</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span><span class="p">(</span><span class="n">trylast</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Run late in render stage.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">pass</span>
+</span></span></code></pre><h3 id="attribute-registration">Attribute Registration <a href="#attribute-registration" class="heading-anchor">#</a></h3>
+<p>Declare attributes your plugin creates so the system can track dependencies:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="nd">@register_attr</span><span class="p">(</span><span class="s2">&#34;reading_times&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">configure</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Initialize reading times storage.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">reading_times</span> <span class="o">=</span> <span class="p">{}</span>
+</span></span></code></pre><p>This allows:</p>
+<ul>
+<li>Documentation of what attributes exist</li>
+<li>Dependency checking between plugins</li>
+<li>IDE autocompletion (with proper typing)</li>
+</ul>
+<hr>
+<h2 id="available-hooks">Available Hooks <a href="#available-hooks" class="heading-anchor">#</a></h2>
+<h3 id="configuration-phase">Configuration Phase <a href="#configuration-phase" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Hook</th>
+<th>Stage</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config_model</code></td>
+<td>config_model</td>
+<td>Register configuration schema</td>
+</tr>
+<tr>
+<td><code>post_model</code></td>
+<td>post_model</td>
+<td>Register post field schema</td>
+</tr>
+<tr>
+<td><code>configure</code></td>
+<td>configure</td>
+<td>Initialize plugin state</td>
+</tr>
+<tr>
+<td><code>validate_config</code></td>
+<td>validate_config</td>
+<td>Validate configuration</td>
+</tr>
+</tbody>
+</table>
+<h3 id="content-phase">Content Phase <a href="#content-phase" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Hook</th>
+<th>Stage</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>glob</code></td>
+<td>glob</td>
+<td>Discover content files</td>
+</tr>
+<tr>
+<td><code>load</code></td>
+<td>load</td>
+<td>Parse and load content</td>
+</tr>
+<tr>
+<td><code>pre_render</code></td>
+<td>pre_render</td>
+<td>Process before rendering</td>
+</tr>
+<tr>
+<td><code>render</code></td>
+<td>render</td>
+<td>Convert content to HTML</td>
+</tr>
+<tr>
+<td><code>post_render</code></td>
+<td>post_render</td>
+<td>Process after rendering</td>
+</tr>
+</tbody>
+</table>
+<h3 id="output-phase">Output Phase <a href="#output-phase" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Hook</th>
+<th>Stage</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>save</code></td>
+<td>save</td>
+<td>Write files to disk</td>
+</tr>
+<tr>
+<td><code>teardown</code></td>
+<td>teardown</td>
+<td>Cleanup resources</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cli-phase">CLI Phase <a href="#cli-phase" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Hook</th>
+<th>When</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cli</code></td>
+<td>CLI init</td>
+<td>Add CLI commands</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="extending-configuration">Extending Configuration <a href="#extending-configuration" class="heading-anchor">#</a></h2>
+<p>Plugins can add their own configuration sections:</p>
+<h3 id="python-pydantic">Python (Pydantic) <a href="#python-pydantic" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">pydantic</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">WordCountConfig</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Configuration for word count plugin.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+</span></span><span class="line"><span class="cl">    <span class="n">words_per_minute</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">200</span>
+</span></span><span class="line"><span class="cl">    <span class="n">count_code_blocks</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Config</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Adds word_count section to config.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">word_count</span><span class="p">:</span> <span class="n">WordCountConfig</span> <span class="o">=</span> <span class="n">WordCountConfig</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">config_model</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">config_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Config</span><span class="p">)</span>
+</span></span></code></pre><h3 id="typescript-zod">TypeScript (Zod) <a href="#typescript-zod" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kr">import</span> <span class="p">{</span> <span class="nx">z</span> <span class="p">}</span> <span class="kr">from</span> <span class="s1">&#39;zod&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">WordCountConfig</span> <span class="o">=</span> <span class="nx">z</span><span class="p">.</span><span class="kt">object</span><span class="p">({</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">enabled</span>: <span class="kt">z.boolean</span><span class="p">().</span><span class="k">default</span><span class="p">(</span><span class="kc">true</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">words_per_minute</span>: <span class="kt">z.number</span><span class="p">().</span><span class="k">default</span><span class="p">(</span><span class="mi">200</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">count_code_blocks</span>: <span class="kt">z.boolean</span><span class="p">().</span><span class="k">default</span><span class="p">(</span><span class="kc">false</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl"><span class="p">});</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kr">export</span> <span class="kd">function</span> <span class="nx">configModel</span><span class="p">(</span><span class="nx">core</span>: <span class="kt">Core</span><span class="p">)</span><span class="o">:</span> <span class="k">void</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">core</span><span class="p">.</span><span class="nx">configModels</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span> <span class="nx">word_count</span>: <span class="kt">WordCountConfig</span> <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="go-struct-tags">Go (Struct Tags) <a href="#go-struct-tags" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">WordCountConfig</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Enabled</span>        <span class="kt">bool</span> <span class="s">`toml:&#34;enabled&#34; default:&#34;true&#34;`</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">WordsPerMinute</span> <span class="kt">int</span>  <span class="s">`toml:&#34;words_per_minute&#34; default:&#34;200&#34;`</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">CountCodeBlocks</span> <span class="kt">bool</span> <span class="s">`toml:&#34;count_code_blocks&#34; default:&#34;false&#34;`</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">WordCountPlugin</span><span class="p">)</span> <span class="nf">ConfigModel</span><span class="p">(</span><span class="nx">core</span> <span class="o">*</span><span class="nx">Core</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">core</span><span class="p">.</span><span class="nf">RegisterConfigSection</span><span class="p">(</span><span class="s">&#34;word_count&#34;</span><span class="p">,</span> <span class="nx">WordCountConfig</span><span class="p">{})</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="rust-serde">Rust (Serde) <a href="#rust-serde" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">#[derive(Debug, Deserialize, Default)]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="k">pub</span><span class="w"> </span><span class="k">struct</span> <span class="nc">WordCountConfig</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="cp">#[serde(default = </span><span class="s">&#34;default_true&#34;</span><span class="cp">)]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">enabled</span>: <span class="kt">bool</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="cp">#[serde(default = </span><span class="s">&#34;default_wpm&#34;</span><span class="cp">)]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">words_per_minute</span>: <span class="kt">u32</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="cp">#[serde(default)]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">pub</span><span class="w"> </span><span class="n">count_code_blocks</span>: <span class="kt">bool</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="k">fn</span> <span class="nf">default_true</span><span class="p">()</span><span class="w"> </span>-&gt; <span class="kt">bool</span> <span class="p">{</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="k">fn</span> <span class="nf">default_wpm</span><span class="p">()</span><span class="w"> </span>-&gt; <span class="kt">u32</span> <span class="p">{</span><span class="w"> </span><span class="mi">200</span><span class="w"> </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="k">impl</span><span class="w"> </span><span class="n">Plugin</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">WordCount</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">fn</span> <span class="nf">config_model</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">core</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="n">Core</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">core</span><span class="p">.</span><span class="n">register_config</span>::<span class="o">&lt;</span><span class="n">WordCountConfig</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&#34;word_count&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="p">}</span><span class="w">
+</span></span></span></code></pre><p>Users configure in their config file:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">your-ssg</span><span class="p">.</span><span class="nx">word_count</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">words_per_minute</span> <span class="p">=</span> <span class="mi">250</span>
+</span></span><span class="line"><span class="cl"><span class="nx">count_code_blocks</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><p>Access in your plugin:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">word_count</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="n">wpm</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">word_count</span><span class="o">.</span><span class="n">words_per_minute</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># ...</span>
+</span></span></code></pre><hr>
+<h2 id="extending-the-post-model">Extending the Post Model <a href="#extending-the-post-model" class="heading-anchor">#</a></h2>
+<p>Add fields to every post:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">pydantic</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">WordCountPostFields</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Fields added to Post model.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">word_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">    <span class="n">reading_time_minutes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">    <span class="n">reading_time_display</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">post_model</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">post_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">WordCountPostFields</span><span class="p">)</span>
+</span></span></code></pre><p>Now every post has these fields with defaults. Populate them:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">pre_render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">wpm</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">word_count</span><span class="o">.</span><span class="n">words_per_minute</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">words</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">word_count</span> <span class="o">=</span> <span class="n">words</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">reading_time_minutes</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">words</span> <span class="o">//</span> <span class="n">wpm</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">reading_time_display</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">post</span><span class="o">.</span><span class="n">reading_time_minutes</span><span class="si">}</span><span class="s2"> min read&#34;</span>
+</span></span></code></pre><hr>
+<h2 id="accessing-core-features">Accessing Core Features <a href="#accessing-core-features" class="heading-anchor">#</a></h2>
+<h3 id="filtering-posts">Filtering Posts <a href="#filtering-posts" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># All posts</span>
+</span></span><span class="line"><span class="cl"><span class="n">all_posts</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">posts</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Published posts</span>
+</span></span><span class="line"><span class="cl"><span class="n">published</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;published == True&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Posts with specific tag</span>
+</span></span><span class="line"><span class="cl"><span class="n">python_posts</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;&#39;python&#39; in tags&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Complex filter</span>
+</span></span><span class="line"><span class="cl"><span class="n">recent_published</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;published == True and date &lt;= today and date &gt;= today - timedelta(days=30)&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><h3 id="mapping-posts">Mapping Posts <a href="#mapping-posts" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Get all titles</span>
+</span></span><span class="line"><span class="cl"><span class="n">titles</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="s2">&#34;title&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Get titles of published posts, sorted by date</span>
+</span></span><span class="line"><span class="cl"><span class="n">recent_titles</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;title&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">filter</span><span class="o">=</span><span class="s2">&#34;published == True&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="n">sort</span><span class="o">=</span><span class="s2">&#34;date&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Get post objects (not just a field)</span>
+</span></span><span class="line"><span class="cl"><span class="n">posts</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="s2">&#34;post&#34;</span><span class="p">,</span> <span class="nb">filter</span><span class="o">=</span><span class="s2">&#34;True&#34;</span><span class="p">)</span>
+</span></span></code></pre><h3 id="using-the-cache">Using the Cache <a href="#using-the-cache" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">cache_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&#34;expensive_op:</span><span class="si">{</span><span class="n">post</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="nb">hash</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">content</span><span class="p">)</span><span class="si">}</span><span class="s2">&#34;</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="n">cached</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">post</span><span class="o">.</span><span class="n">expensive_result</span> <span class="o">=</span> <span class="n">cached</span>
+</span></span><span class="line"><span class="cl">            <span class="k">continue</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="n">result</span> <span class="o">=</span> <span class="n">expensive_operation</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">core</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">cache_key</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">expensive_result</span> <span class="o">=</span> <span class="n">result</span>
+</span></span></code></pre><h3 id="accessing-configuration">Accessing Configuration <a href="#accessing-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="n">output_dir</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">output_dir</span>
+</span></span><span class="line"><span class="cl"><span class="n">site_url</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">url</span>
+</span></span><span class="line"><span class="cl"><span class="n">custom_setting</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">my_plugin</span><span class="o">.</span><span class="n">setting</span>
+</span></span></code></pre><hr>
+<h2 id="adding-cli-commands">Adding CLI Commands <a href="#adding-cli-commands" class="heading-anchor">#</a></h2>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">cli</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">word_stats</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;&#34;&#34;Show word count statistics for all posts.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">from</span> <span class="nn">your_ssg</span> <span class="kn">import</span> <span class="n">Core</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="n">core</span> <span class="o">=</span> <span class="n">Core</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="n">core</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&#34;pre_render&#34;</span><span class="p">)</span>  <span class="c1"># Run up to pre_render stage</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="n">total_words</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">word_count</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">avg_words</span> <span class="o">=</span> <span class="n">total_words</span> <span class="o">//</span> <span class="nb">len</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">)</span> <span class="k">if</span> <span class="n">core</span><span class="o">.</span><span class="n">posts</span> <span class="k">else</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Total posts: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">)</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Total words: </span><span class="si">{</span><span class="n">total_words</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Average words: </span><span class="si">{</span><span class="n">avg_words</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h2 id="complete-plugin-example">Complete Plugin Example <a href="#complete-plugin-example" class="heading-anchor">#</a></h2>
+<p>Here's a full plugin that adds reading time to posts:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="cl"><span class="s2">Reading Time Plugin
+</span></span></span><span class="line"><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="cl"><span class="s2">Calculates and displays estimated reading time for posts.
+</span></span></span><span class="line"><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="cl"><span class="s2">Configuration:
+</span></span></span><span class="line"><span class="cl"><span class="s2">    [your-ssg.reading_time]
+</span></span></span><span class="line"><span class="cl"><span class="s2">    enabled = true
+</span></span></span><span class="line"><span class="cl"><span class="s2">    words_per_minute = 200
+</span></span></span><span class="line"><span class="cl"><span class="s2">    format = &#34;</span><span class="si">{minutes}</span><span class="s2"> min read&#34;
+</span></span></span><span class="line"><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="cl"><span class="s2">Usage in templates:
+</span></span></span><span class="line"><span class="cl"><span class="s2">    {{ post.reading_time }}
+</span></span></span><span class="line"><span class="cl"><span class="s2">&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Optional</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">pydantic</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">your_ssg.hookspec</span> <span class="kn">import</span> <span class="n">hook_impl</span><span class="p">,</span> <span class="n">register_attr</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">from</span> <span class="nn">your_ssg</span> <span class="kn">import</span> <span class="n">Core</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Configuration</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># =============================================================================</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">ReadingTimeConfig</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Plugin configuration.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+</span></span><span class="line"><span class="cl">    <span class="n">words_per_minute</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">200</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">format</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;</span><span class="si">{minutes}</span><span class="s2"> min read&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Config</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Config model fragment.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">reading_time</span><span class="p">:</span> <span class="n">ReadingTimeConfig</span> <span class="o">=</span> <span class="n">ReadingTimeConfig</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Post Model</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># =============================================================================</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">ReadingTimePostFields</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Post model fragment.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">word_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">    <span class="n">reading_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># =============================================================================</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Hooks</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># =============================================================================</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">config_model</span><span class="p">(</span><span class="n">core</span><span class="p">:</span> <span class="s2">&#34;Core&#34;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Register configuration model.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">config_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Config</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">post_model</span><span class="p">(</span><span class="n">core</span><span class="p">:</span> <span class="s2">&#34;Core&#34;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Register post model fields.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">post_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ReadingTimePostFields</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">pre_render</span><span class="p">(</span><span class="n">core</span><span class="p">:</span> <span class="s2">&#34;Core&#34;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Calculate reading time for each post.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">config</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reading_time</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># Count words</span>
+</span></span><span class="line"><span class="cl">        <span class="n">words</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">word_count</span> <span class="o">=</span> <span class="n">words</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1"># Calculate reading time</span>
+</span></span><span class="line"><span class="cl">        <span class="n">minutes</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">words</span> <span class="o">//</span> <span class="n">config</span><span class="o">.</span><span class="n">words_per_minute</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">reading_time</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">format</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">minutes</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">cli</span><span class="p">(</span><span class="n">app</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Add CLI command.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">reading_stats</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;&#34;&#34;Show reading time statistics.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">from</span> <span class="nn">your_ssg</span> <span class="kn">import</span> <span class="n">Core</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="n">core</span> <span class="o">=</span> <span class="n">Core</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="n">core</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&#34;pre_render&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="ow">not</span> <span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="nb">print</span><span class="p">(</span><span class="s2">&#34;No posts found&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="k">return</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="n">times</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">word_count</span> <span class="o">//</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reading_time</span><span class="o">.</span><span class="n">words_per_minute</span> 
+</span></span><span class="line"><span class="cl">                 <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Posts: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">)</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Shortest: </span><span class="si">{</span><span class="nb">min</span><span class="p">(</span><span class="n">times</span><span class="p">)</span><span class="si">}</span><span class="s2"> min&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Longest: </span><span class="si">{</span><span class="nb">max</span><span class="p">(</span><span class="n">times</span><span class="p">)</span><span class="si">}</span><span class="s2"> min&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Average: </span><span class="si">{</span><span class="nb">sum</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="o">//</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span><span class="si">}</span><span class="s2"> min&#34;</span><span class="p">)</span>
+</span></span></code></pre><hr>
+<h2 id="plugin-best-practices">Plugin Best Practices <a href="#plugin-best-practices" class="heading-anchor">#</a></h2>
+<h3 id="1-check-configuration">1. Check Configuration <a href="#1-check-configuration" class="heading-anchor">#</a></h3>
+<p>Always check if your plugin is enabled:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="ow">not</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">my_plugin</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># ... rest of plugin</span>
+</span></span></code></pre><h3 id="2-use-not-skip-filter">2. Use <code>not skip</code> Filter <a href="#2-use-not-skip-filter" class="heading-anchor">#</a></h3>
+<p>Respect the skip flag that other plugins set:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>  <span class="c1"># Good</span>
+</span></span><span class="line"><span class="cl">    <span class="n">process</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">:</span>  <span class="c1"># May process posts that should be skipped</span>
+</span></span><span class="line"><span class="cl">    <span class="n">process</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
+</span></span></code></pre><h3 id="3-handle-missing-fields-gracefully">3. Handle Missing Fields Gracefully <a href="#3-handle-missing-fields-gracefully" class="heading-anchor">#</a></h3>
+<p>Posts may not have all optional fields:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Good</span>
+</span></span><span class="line"><span class="cl"><span class="n">title</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="s1">&#39;title&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">post</span><span class="o">.</span><span class="n">slug</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Also good (with Pydantic defaults)</span>
+</span></span><span class="line"><span class="cl"><span class="n">title</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">title</span> <span class="ow">or</span> <span class="n">post</span><span class="o">.</span><span class="n">slug</span>
+</span></span></code></pre><h3 id="4-cache-expensive-operations">4. Cache Expensive Operations <a href="#4-cache-expensive-operations" class="heading-anchor">#</a></h3>
+<p>Use content hashes for cache keys:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">hashlib</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">get_cache_key</span><span class="p">(</span><span class="n">post</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">content_hash</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">md5</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">content</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">8</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="sa">f</span><span class="s2">&#34;my_plugin:</span><span class="si">{</span><span class="n">post</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">content_hash</span><span class="si">}</span><span class="s2">&#34;</span>
+</span></span></code></pre><h3 id="5-log-appropriately">5. Log Appropriately <a href="#5-log-appropriately" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">logging</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Processing </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">)</span><span class="si">}</span><span class="s2"> posts&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Processing: </span><span class="si">{</span><span class="n">post</span><span class="o">.</span><span class="n">path</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># ...</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Processed </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">)</span><span class="si">}</span><span class="s2"> posts&#34;</span><span class="p">)</span>
+</span></span></code></pre><h3 id="6-document-your-plugin">6. Document Your Plugin <a href="#6-document-your-plugin" class="heading-anchor">#</a></h3>
+<p>Include a docstring with:</p>
+<ul>
+<li>What the plugin does</li>
+<li>Configuration options</li>
+<li>Template usage examples</li>
+</ul>
+<hr>
+<h2 id="testing-plugins">Testing Plugins <a href="#testing-plugins" class="heading-anchor">#</a></h2>
+<h3 id="unit-test-example">Unit Test Example <a href="#unit-test-example" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">pytest</span>
+</span></span><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">your_ssg</span> <span class="kn">import</span> <span class="n">Core</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">test_reading_time_calculation</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Test that reading time is calculated correctly.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span> <span class="o">=</span> <span class="n">Core</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reading_time</span><span class="o">.</span><span class="n">words_per_minute</span> <span class="o">=</span> <span class="mi">200</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Create a mock post with 400 words</span>
+</span></span><span class="line"><span class="cl">    <span class="n">post</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">Post</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">        <span class="n">path</span><span class="o">=</span><span class="s2">&#34;test.md&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">        <span class="n">content</span><span class="o">=</span><span class="s2">&#34; &#34;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s2">&#34;word&#34;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">400</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">        <span class="n">slug</span><span class="o">=</span><span class="s2">&#34;test&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">articles</span> <span class="o">=</span> <span class="p">[</span><span class="n">post</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Run the pre_render stage (which calculates reading time)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&#34;pre_render&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">assert</span> <span class="n">post</span><span class="o">.</span><span class="n">word_count</span> <span class="o">==</span> <span class="mi">400</span>
+</span></span><span class="line"><span class="cl">    <span class="k">assert</span> <span class="n">post</span><span class="o">.</span><span class="n">reading_time</span> <span class="o">==</span> <span class="s2">&#34;2 min read&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">test_reading_time_disabled</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Test that plugin respects enabled flag.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span> <span class="o">=</span> <span class="n">Core</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">reading_time</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">False</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="n">post</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">Post</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s2">&#34;test.md&#34;</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="s2">&#34;words&#34;</span><span class="p">,</span> <span class="n">slug</span><span class="o">=</span><span class="s2">&#34;test&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">articles</span> <span class="o">=</span> <span class="p">[</span><span class="n">post</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&#34;pre_render&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">assert</span> <span class="n">post</span><span class="o">.</span><span class="n">reading_time</span> <span class="ow">is</span> <span class="kc">None</span>
+</span></span></code></pre><h3 id="integration-test">Integration Test <a href="#integration-test" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">test_full_build_with_reading_time</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Test reading time in full build.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># Create test content</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&#34;posts&#34;</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&#34;posts&#34;</span> <span class="o">/</span> <span class="s2">&#34;test.md&#34;</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s2">&#34;&#34;&#34;---
+</span></span></span><span class="line"><span class="cl"><span class="s2">title: Test Post
+</span></span></span><span class="line"><span class="cl"><span class="s2">published: true
+</span></span></span><span class="line"><span class="cl"><span class="s2">---
+</span></span></span><span class="line"><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="cl"><span class="s2">This is test content with enough words to calculate reading time.
+</span></span></span><span class="line"><span class="cl"><span class="s2">&#34;&#34;&#34;</span> <span class="o">+</span> <span class="s2">&#34; word&#34;</span> <span class="o">*</span> <span class="mi">200</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Create config</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&#34;config.toml&#34;</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="cl"><span class="s2">[your-ssg]
+</span></span></span><span class="line"><span class="cl"><span class="s2">output_dir = &#34;output&#34;
+</span></span></span><span class="line"><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="cl"><span class="s2">[your-ssg.glob]
+</span></span></span><span class="line"><span class="cl"><span class="s2">glob_patterns = [&#34;posts/*.md&#34;]
+</span></span></span><span class="line"><span class="cl"><span class="s2">&#34;&#34;&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Run build</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">from</span> <span class="nn">your_ssg</span> <span class="kn">import</span> <span class="n">Core</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span> <span class="o">=</span> <span class="n">Core</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">tmp_path</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Verify output</span>
+</span></span><span class="line"><span class="cl">    <span class="n">output</span> <span class="o">=</span> <span class="p">(</span><span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&#34;output&#34;</span> <span class="o">/</span> <span class="s2">&#34;test-post&#34;</span> <span class="o">/</span> <span class="s2">&#34;index.html&#34;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">assert</span> <span class="s2">&#34;1 min read&#34;</span> <span class="ow">in</span> <span class="n">output</span>
+</span></span></code></pre><hr>
+<h2 id="registering-your-plugin">Registering Your Plugin <a href="#registering-your-plugin" class="heading-anchor">#</a></h2>
+<h3 id="option-1-local-plugin">Option 1: Local Plugin <a href="#option-1-local-plugin" class="heading-anchor">#</a></h3>
+<p>Put your plugin file in your project:</p>
+<pre><code>my-site/
+├── plugins/
+│   └── reading_time.py
+├── posts/
+└── config.toml
+</code></pre>
+<p>Configure:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">your-ssg</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;default&#34;</span><span class="p">,</span> <span class="s2">&#34;plugins.reading_time&#34;</span><span class="p">]</span>
+</span></span></code></pre><h3 id="option-2-installed-package">Option 2: Installed Package <a href="#option-2-installed-package" class="heading-anchor">#</a></h3>
+<p>Create a package and install it:</p>
+<pre><code>pip install your-ssg-reading-time
+</code></pre>
+<p>Configure:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">your-ssg</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;default&#34;</span><span class="p">,</span> <span class="s2">&#34;your_ssg_reading_time&#34;</span><span class="p">]</span>
+</span></span></code></pre><h3 id="option-3-entry-points-python">Option 3: Entry Points (Python) <a href="#option-3-entry-points-python" class="heading-anchor">#</a></h3>
+<p>In your package's <code>pyproject.toml</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">project</span><span class="p">.</span><span class="nx">entry-points</span><span class="p">.</span><span class="s2">&#34;your_ssg&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reading_time</span> <span class="p">=</span> <span class="s2">&#34;your_ssg_reading_time:plugin&#34;</span>
+</span></span></code></pre><p>The plugin is auto-discovered if the system supports entry points.</p>
+<hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./SPEC.md">SPEC.md</a> - Full specification</li>
+<li><a href="./CONFIG.md">CONFIG.md</a> - Plugin configuration declaration</li>
+<li><a href="./LIFECYCLE.md">LIFECYCLE.md</a> - Lifecycle stages detail</li>
+<li><a href="./DATA_MODEL.md">DATA_MODEL.md</a> - Post and config models</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

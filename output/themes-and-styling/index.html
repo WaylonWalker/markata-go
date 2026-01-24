@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Themes and Styling - My Site</title>
+    <meta name="description" content="Complete guide to customizing your site&#39;s appearance with themes, color palettes, and CSS">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Themes and Styling">
+    
+    <meta property="og:url" content="/themes-and-styling/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Complete guide to customizing your site&#39;s appearance with themes, color palettes, and CSS">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="themes">
+    
+    <meta property="article:tag" content="styling">
+    
+    <meta property="article:tag" content="customization">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Themes and Styling">
+    
+    <meta name="twitter:description" content="Complete guide to customizing your site&#39;s appearance with themes, color palettes, and CSS">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/themes-and-styling/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Themes and Styling",
+  "description": "Complete guide to customizing your site's appearance with themes, color palettes, and CSS",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/themes-and-styling/"
+  },
+  "keywords": [
+    "documentation",
+    "themes",
+    "styling",
+    "customization"
+  ],
+  "url": "/themes-and-styling/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Themes and Styling</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/themes/">themes</a>
+                
+                <a href="/tags/styling/">styling</a>
+                
+                <a href="/tags/customization/">customization</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="themes-and-styling">Themes and Styling</h1>
+<p>markata-go makes it easy to customize your site's appearance. You can go from zero configuration to a beautiful site, then progressively customize as needed.</p>
+<h2 id="quick-start">Quick Start <a href="#quick-start" class="heading-anchor">#</a></h2>
+<p>The fastest way to change your site's look is to pick a color palette:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">palette</span> <span class="p">=</span> <span class="s2">&#34;catppuccin-mocha&#34;</span>
+</span></span></code></pre><p>That's it! Your entire site now uses the Catppuccin Mocha color scheme.</p>
+<hr>
+<h2 id="available-palettes">Available Palettes <a href="#available-palettes" class="heading-anchor">#</a></h2>
+<p>markata-go includes 10 built-in color palettes. Use <code>markata-go palette list</code> to see them all:</p>
+<table>
+<thead>
+<tr>
+<th>Palette</th>
+<th>Variant</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>default-light</code></td>
+<td>light</td>
+<td>Clean, minimal light theme</td>
+</tr>
+<tr>
+<td><code>default-dark</code></td>
+<td>dark</td>
+<td>Clean, minimal dark theme</td>
+</tr>
+<tr>
+<td><code>catppuccin-mocha</code></td>
+<td>dark</td>
+<td>Soothing pastel colors, high contrast</td>
+</tr>
+<tr>
+<td><code>catppuccin-latte</code></td>
+<td>light</td>
+<td>Soothing pastel colors, light variant</td>
+</tr>
+<tr>
+<td><code>nord-dark</code></td>
+<td>dark</td>
+<td>Arctic, north-bluish colors</td>
+</tr>
+<tr>
+<td><code>gruvbox-dark</code></td>
+<td>dark</td>
+<td>Retro groove, warm colors</td>
+</tr>
+<tr>
+<td><code>dracula</code></td>
+<td>dark</td>
+<td>Vibrant purple on dark</td>
+</tr>
+<tr>
+<td><code>rose-pine</code></td>
+<td>dark</td>
+<td>Soho vibes, natural colors</td>
+</tr>
+<tr>
+<td><code>solarized-dark</code></td>
+<td>dark</td>
+<td>Scientifically designed colors</td>
+</tr>
+<tr>
+<td><code>tokyo-night</code></td>
+<td>dark</td>
+<td>Tokyo city lights inspired</td>
+</tr>
+</tbody>
+</table>
+<h3 id="previewing-palettes">Previewing Palettes <a href="#previewing-palettes" class="heading-anchor">#</a></h3>
+<p>Preview a palette before using it:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Show palette colors and contrast info</span>
+</span></span><span class="line"><span class="cl">markata-go palette info catppuccin-mocha
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Check WCAG accessibility compliance</span>
+</span></span><span class="line"><span class="cl">markata-go palette check catppuccin-mocha
+</span></span></code></pre><hr>
+<h2 id="configuration-levels">Configuration Levels <a href="#configuration-levels" class="heading-anchor">#</a></h2>
+<p>markata-go supports progressive customization - start simple and add complexity only when needed.</p>
+<h3 id="level-1-just-pick-a-palette">Level 1: Just Pick a Palette <a href="#level-1-just-pick-a-palette" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">palette</span> <span class="p">=</span> <span class="s2">&#34;dracula&#34;</span>
+</span></span></code></pre><h3 id="level-2-override-specific-colors">Level 2: Override Specific Colors <a href="#level-2-override-specific-colors" class="heading-anchor">#</a></h3>
+<p>Keep your palette but tweak a few colors:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">palette</span> <span class="p">=</span> <span class="s2">&#34;nord-dark&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">.</span><span class="nx">variables</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;--color-primary&#34;</span> <span class="p">=</span> <span class="s2">&#34;#88c0d0&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;--color-link&#34;</span> <span class="p">=</span> <span class="s2">&#34;#8fbcbb&#34;</span>
+</span></span></code></pre><h3 id="level-3-add-custom-css">Level 3: Add Custom CSS <a href="#level-3-add-custom-css" class="heading-anchor">#</a></h3>
+<p>Add a custom CSS file that loads after the theme:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">palette</span> <span class="p">=</span> <span class="s2">&#34;catppuccin-mocha&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">custom_css</span> <span class="p">=</span> <span class="s2">&#34;my-styles.css&#34;</span>
+</span></span></code></pre><p>Then create <code>static/my-styles.css</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">/* Override any theme styles */</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">post-title</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">font-family</span><span class="p">:</span> <span class="s1">&#39;Georgia&#39;</span><span class="p">,</span> <span class="kc">serif</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">site-header</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">border-bottom</span><span class="p">:</span> <span class="mi">2</span><span class="kt">px</span> <span class="kc">solid</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="kc">color</span><span class="o">-</span><span class="n">primary</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="level-4-override-templates">Level 4: Override Templates <a href="#level-4-override-templates" class="heading-anchor">#</a></h3>
+<p>Override specific template files by creating them in your <code>templates/</code> directory:</p>
+<pre><code>my-site/
+├── templates/
+│   └── partials/
+│       └── footer.html    # Your custom footer
+└── markata-go.toml
+</code></pre>
+<p>Your custom templates take precedence over theme templates.</p>
+<hr>
+<h2 id="theme-configuration-reference">Theme Configuration Reference <a href="#theme-configuration-reference" class="heading-anchor">#</a></h2>
+<p>Full configuration options:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Theme name (currently only &#34;default&#34; is available)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;default&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Color palette to use</span>
+</span></span><span class="line"><span class="cl"><span class="nx">palette</span> <span class="p">=</span> <span class="s2">&#34;catppuccin-mocha&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># CSS variable overrides</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">.</span><span class="nx">variables</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;--color-primary&#34;</span> <span class="p">=</span> <span class="s2">&#34;#8b5cf6&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;--color-background&#34;</span> <span class="p">=</span> <span class="s2">&#34;#1a1a2e&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;--color-text&#34;</span> <span class="p">=</span> <span class="s2">&#34;#eaeaea&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;--color-link&#34;</span> <span class="p">=</span> <span class="s2">&#34;#06b6d4&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;--color-link-hover&#34;</span> <span class="p">=</span> <span class="s2">&#34;#22d3ee&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;--content-width&#34;</span> <span class="p">=</span> <span class="s2">&#34;800px&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;--font-family&#34;</span> <span class="p">=</span> <span class="s2">&#34;&#39;Inter&#39;, sans-serif&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Custom CSS file (relative to static/ directory)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">custom_css</span> <span class="p">=</span> <span class="s2">&#34;custom.css&#34;</span>
+</span></span></code></pre><h3 id="available-css-variables">Available CSS Variables <a href="#available-css-variables" class="heading-anchor">#</a></h3>
+<p>These CSS custom properties can be overridden:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--color-background</code></td>
+<td>Page background</td>
+<td>Depends on palette</td>
+</tr>
+<tr>
+<td><code>--color-text</code></td>
+<td>Body text</td>
+<td>Depends on palette</td>
+</tr>
+<tr>
+<td><code>--color-primary</code></td>
+<td>Primary accent color</td>
+<td>Depends on palette</td>
+</tr>
+<tr>
+<td><code>--color-link</code></td>
+<td>Link color</td>
+<td>Depends on palette</td>
+</tr>
+<tr>
+<td><code>--color-link-hover</code></td>
+<td>Link hover color</td>
+<td>Depends on palette</td>
+</tr>
+<tr>
+<td><code>--color-border</code></td>
+<td>Border color</td>
+<td>Depends on palette</td>
+</tr>
+<tr>
+<td><code>--color-code-bg</code></td>
+<td>Code block background</td>
+<td>Depends on palette</td>
+</tr>
+<tr>
+<td><code>--content-width</code></td>
+<td>Max content width</td>
+<td><code>720px</code></td>
+</tr>
+<tr>
+<td><code>--font-family</code></td>
+<td>Body font</td>
+<td>System fonts</td>
+</tr>
+<tr>
+<td><code>--font-family-mono</code></td>
+<td>Code font</td>
+<td>Monospace fonts</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="dark-mode-support">Dark Mode Support <a href="#dark-mode-support" class="heading-anchor">#</a></h2>
+<p>markata-go supports automatic dark/light mode switching based on user's system preference.</p>
+<h3 id="using-different-palettes-for-lightdark">Using Different Palettes for Light/Dark <a href="#using-different-palettes-for-lightdark" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">palette</span> <span class="p">=</span> <span class="s2">&#34;catppuccin-latte&#34;</span>        <span class="c"># Light mode</span>
+</span></span><span class="line"><span class="cl"><span class="nx">palette_dark</span> <span class="p">=</span> <span class="s2">&#34;catppuccin-mocha&#34;</span>   <span class="c"># Dark mode (prefers-color-scheme: dark)</span>
+</span></span></code></pre><p>The site automatically switches based on the visitor's system settings.</p>
+<hr>
+<h2 id="palette-cli-commands">Palette CLI Commands <a href="#palette-cli-commands" class="heading-anchor">#</a></h2>
+<h3 id="list-all-palettes">List All Palettes <a href="#list-all-palettes" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go palette list
+</span></span></code></pre><p>Output:</p>
+<pre><code>NAME                      VARIANT  SOURCE     DESCRIPTION
+----------------------------------------------------------------------
+Catppuccin Mocha          dark     builtin    Soothing pastel theme
+Catppuccin Latte          light    builtin    Soothing pastel theme (light)
+Nord Dark                 dark     builtin    Arctic, north-bluish
+...
+</code></pre>
+<h3 id="get-palette-info">Get Palette Info <a href="#get-palette-info" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go palette info catppuccin-mocha
+</span></span></code></pre><p>Shows all colors in the palette with their hex values.</p>
+<h3 id="check-accessibility">Check Accessibility <a href="#check-accessibility" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go palette check catppuccin-mocha
+</span></span></code></pre><p>Checks WCAG 2.1 AA contrast requirements for text readability.</p>
+<h3 id="export-palette">Export Palette <a href="#export-palette" class="heading-anchor">#</a></h3>
+<p>Export a palette to different formats:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Export as CSS custom properties</span>
+</span></span><span class="line"><span class="cl">markata-go palette <span class="nb">export</span> catppuccin-mocha --format css
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Export as SCSS variables</span>
+</span></span><span class="line"><span class="cl">markata-go palette <span class="nb">export</span> catppuccin-mocha --format scss
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Export as JSON</span>
+</span></span><span class="line"><span class="cl">markata-go palette <span class="nb">export</span> catppuccin-mocha --format json
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Export as Tailwind config</span>
+</span></span><span class="line"><span class="cl">markata-go palette <span class="nb">export</span> catppuccin-mocha --format tailwind
+</span></span></code></pre><h3 id="create-new-palette">Create New Palette <a href="#create-new-palette" class="heading-anchor">#</a></h3>
+<p>Generate a starter palette file:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go palette new my-palette
+</span></span></code></pre><p>Creates <code>palettes/my-palette.toml</code> that you can customize.</p>
+<hr>
+<h2 id="creating-custom-palettes">Creating Custom Palettes <a href="#creating-custom-palettes" class="heading-anchor">#</a></h2>
+<p>Create a custom palette by adding a TOML file to <code>palettes/</code> in your project:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># palettes/my-brand.toml</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">palette</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;My Brand&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">variant</span> <span class="p">=</span> <span class="s2">&#34;light&#34;</span>  <span class="c"># or &#34;dark&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">author</span> <span class="p">=</span> <span class="s2">&#34;Your Name&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Raw colors</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">palette</span><span class="p">.</span><span class="nx">colors</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">brand-primary</span> <span class="p">=</span> <span class="s2">&#34;#3b82f6&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">brand-secondary</span> <span class="p">=</span> <span class="s2">&#34;#8b5cf6&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">brand-accent</span> <span class="p">=</span> <span class="s2">&#34;#06b6d4&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">white</span> <span class="p">=</span> <span class="s2">&#34;#ffffff&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">gray-50</span> <span class="p">=</span> <span class="s2">&#34;#f9fafb&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">gray-100</span> <span class="p">=</span> <span class="s2">&#34;#f3f4f6&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">gray-700</span> <span class="p">=</span> <span class="s2">&#34;#374151&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">gray-800</span> <span class="p">=</span> <span class="s2">&#34;#1f2937&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">gray-900</span> <span class="p">=</span> <span class="s2">&#34;#111827&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Semantic mapping</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">palette</span><span class="p">.</span><span class="nx">semantic</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text-primary</span> <span class="p">=</span> <span class="s2">&#34;gray-800&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text-secondary</span> <span class="p">=</span> <span class="s2">&#34;gray-700&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">bg-primary</span> <span class="p">=</span> <span class="s2">&#34;white&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">bg-secondary</span> <span class="p">=</span> <span class="s2">&#34;gray-50&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">accent</span> <span class="p">=</span> <span class="s2">&#34;brand-primary&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">link</span> <span class="p">=</span> <span class="s2">&#34;brand-primary&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">link-hover</span> <span class="p">=</span> <span class="s2">&#34;brand-secondary&#34;</span>
+</span></span></code></pre><p>Then use it:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">palette</span> <span class="p">=</span> <span class="s2">&#34;my-brand&#34;</span>
+</span></span></code></pre><hr>
+<h2 id="template-overrides">Template Overrides <a href="#template-overrides" class="heading-anchor">#</a></h2>
+<p>Override any template by placing it in your <code>templates/</code> directory.</p>
+<h3 id="template-search-order">Template Search Order <a href="#template-search-order" class="heading-anchor">#</a></h3>
+<ol>
+<li><code>templates/</code> - Your project templates (highest priority)</li>
+<li><code>themes/{theme}/templates/</code> - Theme templates</li>
+<li>Embedded default templates (fallback)</li>
+</ol>
+<h3 id="available-templates">Available Templates <a href="#available-templates" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>base.html</code></td>
+<td>HTML skeleton, head, header, footer</td>
+</tr>
+<tr>
+<td><code>post.html</code></td>
+<td>Single post/article layout</td>
+</tr>
+<tr>
+<td><code>feed.html</code></td>
+<td>List of posts (index, archive, tags)</td>
+</tr>
+<tr>
+<td><code>card.html</code></td>
+<td>Post preview card in feeds</td>
+</tr>
+<tr>
+<td><code>partials/header.html</code></td>
+<td>Site header/navigation</td>
+</tr>
+<tr>
+<td><code>partials/footer.html</code></td>
+<td>Site footer</td>
+</tr>
+<tr>
+<td><code>partials/head.html</code></td>
+<td>Additional head content</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-custom-footer">Example: Custom Footer <a href="#example-custom-footer" class="heading-anchor">#</a></h3>
+<p>Create <code>templates/partials/footer.html</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">footer</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;site-footer&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;container&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span><span class="ni">&amp;copy;</span> {{ now().year }} {{ config.title }}. Built with markata-go.<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/about/&#34;</span><span class="p">&gt;</span>About<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/contact/&#34;</span><span class="p">&gt;</span>Contact<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://github.com/yourusername&#34;</span><span class="p">&gt;</span>GitHub<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">footer</span><span class="p">&gt;</span>
+</span></span></code></pre><hr>
+<h2 id="static-assets">Static Assets <a href="#static-assets" class="heading-anchor">#</a></h2>
+<p>Add custom CSS, JavaScript, images, and fonts to the <code>static/</code> directory:</p>
+<pre><code>my-site/
+├── static/
+│   ├── css/
+│   │   └── custom.css
+│   ├── js/
+│   │   └── analytics.js
+│   ├── images/
+│   │   └── logo.png
+│   └── fonts/
+│       └── MyFont.woff2
+└── markata-go.toml
+</code></pre>
+<p>Files in <code>static/</code> are copied directly to the output directory.</p>
+<p>Reference them in templates:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;stylesheet&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/css/custom.css&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/js/analytics.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/images/logo.png&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;Logo&#34;</span><span class="p">&gt;</span>
+</span></span></code></pre><hr>
+<h2 id="per-post-styling">Per-Post Styling <a href="#per-post-styling" class="heading-anchor">#</a></h2>
+<p>Override styles for specific posts using frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Special Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="l">landing.html </span><span class="w"> </span><span class="c"># Use a different template</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p>Or add custom CSS classes:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Featured Article&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">css_class</span><span class="p">:</span><span class="w"> </span><span class="l">featured-post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p>Then style it:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">.</span><span class="nc">featured-post</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">background</span><span class="p">:</span> <span class="nb">linear-gradient</span><span class="p">(</span><span class="kc">to</span> <span class="kc">right</span><span class="p">,</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="kc">color</span><span class="o">-</span><span class="n">primary</span><span class="p">),</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="kc">color</span><span class="o">-</span><span class="n">accent</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><hr>
+<h2 id="media-borders-and-gradient-effects">Media Borders and Gradient Effects <a href="#media-borders-and-gradient-effects" class="heading-anchor">#</a></h2>
+<p>markata-go provides beautiful, configurable borders for images and videos. From subtle solid borders to animated gradients, you have full control over how your media looks.</p>
+<h3 id="default-media-styling">Default Media Styling <a href="#default-media-styling" class="heading-anchor">#</a></h3>
+<p>By default, images and videos in your content get:</p>
+<ul>
+<li>Rounded corners (<code>--media-border-radius</code>)</li>
+<li>A subtle border (<code>--media-border-width</code>, <code>--media-border-color</code>)</li>
+<li>Proper spacing and centering</li>
+</ul>
+<h3 id="configuring-media-borders">Configuring Media Borders <a href="#configuring-media-borders" class="heading-anchor">#</a></h3>
+<p>Customize the default borders via CSS variables:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">/* In your custom CSS or via theme.variables */</span>
+</span></span><span class="line"><span class="cl"><span class="p">:</span><span class="nd">root</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nv">--media-border-width</span><span class="p">:</span> <span class="mi">3</span><span class="kt">px</span><span class="p">;</span>      <span class="c">/* Border thickness */</span>
+</span></span><span class="line"><span class="cl">  <span class="nv">--media-border-color</span><span class="p">:</span> <span class="mh">#e5e7eb</span><span class="p">;</span>  <span class="c">/* Border color */</span>
+</span></span><span class="line"><span class="cl">  <span class="nv">--media-border-radius</span><span class="p">:</span> <span class="mf">0.5</span><span class="kt">rem</span><span class="p">;</span>  <span class="c">/* Corner rounding */</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p>Or via config:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">.</span><span class="nx">variables</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;--media-border-width&#34;</span> <span class="p">=</span> <span class="s2">&#34;4px&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;--media-border-color&#34;</span> <span class="p">=</span> <span class="s2">&#34;#8b5cf6&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="s2">&#34;--media-border-radius&#34;</span> <span class="p">=</span> <span class="s2">&#34;1rem&#34;</span>
+</span></span></code></pre><h3 id="gradient-borders">Gradient Borders <a href="#gradient-borders" class="heading-anchor">#</a></h3>
+<p>Enable colorful gradient borders for a modern, eye-catching look. Add a class to your post content to enable gradients for all media:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Post with Gradient Borders&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">css_class</span><span class="p">:</span><span class="w"> </span><span class="l">gradient-borders</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p>This applies the default accent gradient to all images and videos in that post.</p>
+<h3 id="available-gradient-presets">Available Gradient Presets <a href="#available-gradient-presets" class="heading-anchor">#</a></h3>
+<p>markata-go includes several beautiful gradient presets:</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Colors</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gradient-borders</code></td>
+<td>Primary to primary-dark</td>
+<td>Brand-consistent</td>
+</tr>
+<tr>
+<td><code>gradient-vibrant</code></td>
+<td>Purple to pink</td>
+<td>Creative, artistic</td>
+</tr>
+<tr>
+<td><code>gradient-warm</code></td>
+<td>Pink to orange</td>
+<td>Energetic, warm</td>
+</tr>
+<tr>
+<td><code>gradient-cool</code></td>
+<td>Blue to cyan</td>
+<td>Professional, tech</td>
+</tr>
+<tr>
+<td><code>gradient-sunset</code></td>
+<td>Pink to yellow</td>
+<td>Warm, inviting</td>
+</tr>
+<tr>
+<td><code>gradient-ocean</code></td>
+<td>Teal to light blue</td>
+<td>Calm, refreshing</td>
+</tr>
+</tbody>
+</table>
+<p>Use them in frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Ocean-Themed Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">css_class</span><span class="p">:</span><span class="w"> </span><span class="l">gradient-ocean</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="animated-gradient-borders">Animated Gradient Borders <a href="#animated-gradient-borders" class="heading-anchor">#</a></h3>
+<p>For extra visual impact, use animated gradients that slowly shift colors:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Attention-Grabbing Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">css_class</span><span class="p">:</span><span class="w"> </span><span class="l">gradient-animated</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p>The animation cycles through purple, pink, and blue over 6 seconds.</p>
+<h3 id="glow-effects">Glow Effects <a href="#glow-effects" class="heading-anchor">#</a></h3>
+<p>Add a subtle glow behind your media:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Glowing Media&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">css_class</span><span class="p">:</span><span class="w"> </span><span class="l">glow</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p>Combine glow with gradients:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Maximum Impact&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">css_class</span><span class="p">:</span><span class="w"> </span><span class="l">gradient-vibrant glow</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="per-image-styling">Per-Image Styling <a href="#per-image-styling" class="heading-anchor">#</a></h3>
+<p>For fine-grained control, add classes directly to images in your Markdown using HTML:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/images/hero.jpg&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;Hero&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;gradient-vibrant glow&#34;</span><span class="p">&gt;</span>
+</span></span></code></pre><p>Or use a wrapper div:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;media-frame gradient-sunset glow&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/images/featured.jpg&#34;</span> <span class="na">alt</span><span class="o">=</span><span class="s">&#34;Featured&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="css-variable-reference-for-media">CSS Variable Reference for Media <a href="#css-variable-reference-for-media" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--media-border-width</code></td>
+<td>Border thickness</td>
+<td><code>3px</code></td>
+</tr>
+<tr>
+<td><code>--media-border-style</code></td>
+<td>Border style</td>
+<td><code>solid</code></td>
+</tr>
+<tr>
+<td><code>--media-border-color</code></td>
+<td>Border color</td>
+<td><code>var(--color-border)</code></td>
+</tr>
+<tr>
+<td><code>--media-border-radius</code></td>
+<td>Corner rounding</td>
+<td><code>0.5rem</code></td>
+</tr>
+<tr>
+<td><code>--gradient-accent</code></td>
+<td>Default gradient</td>
+<td>Primary colors</td>
+</tr>
+<tr>
+<td><code>--gradient-vibrant</code></td>
+<td>Purple-pink gradient</td>
+<td><code>#667eea</code> to <code>#f093fb</code></td>
+</tr>
+<tr>
+<td><code>--gradient-warm</code></td>
+<td>Pink-orange gradient</td>
+<td><code>#f093fb</code> to <code>#f8b500</code></td>
+</tr>
+<tr>
+<td><code>--gradient-cool</code></td>
+<td>Blue-cyan gradient</td>
+<td><code>#4facfe</code> to <code>#00f2fe</code></td>
+</tr>
+<tr>
+<td><code>--gradient-sunset</code></td>
+<td>Pink-yellow gradient</td>
+<td><code>#fa709a</code> to <code>#fee140</code></td>
+</tr>
+<tr>
+<td><code>--gradient-ocean</code></td>
+<td>Teal-blue gradient</td>
+<td><code>#2193b0</code> to <code>#6dd5ed</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="palette-matching-gradients">Palette-Matching Gradients <a href="#palette-matching-gradients" class="heading-anchor">#</a></h3>
+<p>If you're using a specific color palette, use the matching gradient for visual consistency:</p>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Palette</th>
+<th>Colors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gradient-catppuccin</code></td>
+<td>Catppuccin</td>
+<td>Mauve → Pink → Red</td>
+</tr>
+<tr>
+<td><code>gradient-nord</code></td>
+<td>Nord</td>
+<td>Frost colors (cyan → blue)</td>
+</tr>
+<tr>
+<td><code>gradient-dracula</code></td>
+<td>Dracula</td>
+<td>Purple → Pink → Cyan</td>
+</tr>
+<tr>
+<td><code>gradient-gruvbox</code></td>
+<td>Gruvbox</td>
+<td>Yellow → Orange → Red</td>
+</tr>
+<tr>
+<td><code>gradient-rose-pine</code></td>
+<td>Rosé Pine</td>
+<td>Iris → Rose → Gold</td>
+</tr>
+<tr>
+<td><code>gradient-solarized</code></td>
+<td>Solarized</td>
+<td>Blue → Cyan → Green</td>
+</tr>
+<tr>
+<td><code>gradient-tokyo-night</code></td>
+<td>Tokyo Night</td>
+<td>Blue → Purple → Pink</td>
+</tr>
+</tbody>
+</table>
+<p>Example: If your site uses <code>catppuccin-mocha</code> palette, use <code>gradient-catppuccin</code> for borders:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># markata-go.toml</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">theme</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">palette</span> <span class="p">=</span> <span class="s2">&#34;catppuccin-mocha&#34;</span>
+</span></span></code></pre><pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># In your post frontmatter</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Catppuccin-Styled Gallery&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">css_class</span><span class="p">:</span><span class="w"> </span><span class="l">gradient-catppuccin</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="custom-gradients">Custom Gradients <a href="#custom-gradients" class="heading-anchor">#</a></h3>
+<p>Create your own gradient by overriding the variables:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">/* In static/custom.css */</span>
+</span></span><span class="line"><span class="cl"><span class="p">:</span><span class="nd">root</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nv">--gradient-accent</span><span class="p">:</span> <span class="nb">linear-gradient</span><span class="p">(</span><span class="mi">135</span><span class="kt">deg</span><span class="p">,</span> <span class="mh">#ff6b6b</span><span class="p">,</span> <span class="mh">#feca57</span><span class="p">,</span> <span class="mh">#48dbfb</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p>Or define a completely new one:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">.</span><span class="nc">post-content</span><span class="p">.</span><span class="nc">gradient-custom</span> <span class="nt">img</span><span class="o">,</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">post-content</span><span class="p">.</span><span class="nc">gradient-custom</span> <span class="nt">video</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">border</span><span class="p">:</span> <span class="kc">none</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">padding</span><span class="p">:</span> <span class="mi">3</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">background</span><span class="p">:</span> <span class="nb">linear-gradient</span><span class="p">(</span><span class="mi">45</span><span class="kt">deg</span><span class="p">,</span> <span class="mh">#12c2e9</span><span class="p">,</span> <span class="mh">#c471ed</span><span class="p">,</span> <span class="mh">#f64f59</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="k">background-origin</span><span class="p">:</span> <span class="kc">border-box</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p>Then use in frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">css_class</span><span class="p">:</span><span class="w"> </span><span class="l">gradient-custom</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="dark-mode-considerations">Dark Mode Considerations <a href="#dark-mode-considerations" class="heading-anchor">#</a></h3>
+<p>Gradient borders adapt to dark mode:</p>
+<ul>
+<li>Glow effects become more prominent</li>
+<li>Border colors adjust automatically</li>
+<li>Gradients remain vibrant on dark backgrounds</li>
+</ul>
+<p>Test your gradient choices in both light and dark mode.</p>
+<hr>
+<h2 id="best-practices">Best Practices <a href="#best-practices" class="heading-anchor">#</a></h2>
+<h3 id="1-start-with-a-palette">1. Start with a Palette <a href="#1-start-with-a-palette" class="heading-anchor">#</a></h3>
+<p>Don't write CSS from scratch. Pick the closest palette and customize from there.</p>
+<h3 id="2-use-css-variables">2. Use CSS Variables <a href="#2-use-css-variables" class="heading-anchor">#</a></h3>
+<p>Override <code>--color-*</code> variables instead of hardcoding colors. This ensures consistency and makes future changes easier.</p>
+<h3 id="3-keep-customizations-minimal">3. Keep Customizations Minimal <a href="#3-keep-customizations-minimal" class="heading-anchor">#</a></h3>
+<p>The less you customize, the easier upgrades will be. Only override what you need.</p>
+<h3 id="4-test-dark-mode">4. Test Dark Mode <a href="#4-test-dark-mode" class="heading-anchor">#</a></h3>
+<p>If you customize colors, test both light and dark mode to ensure readability.</p>
+<h3 id="5-check-accessibility">5. Check Accessibility <a href="#5-check-accessibility" class="heading-anchor">#</a></h3>
+<p>Use <code>markata-go palette check</code> to verify your color choices meet WCAG guidelines.</p>
+<hr>
+<h2 id="troubleshooting">Troubleshooting <a href="#troubleshooting" class="heading-anchor">#</a></h2>
+<h3 id="styles-not-loading">Styles Not Loading <a href="#styles-not-loading" class="heading-anchor">#</a></h3>
+<ol>
+<li>Check that CSS files exist in <code>public/css/</code> after building</li>
+<li>Verify your browser's network tab shows CSS loading</li>
+<li>Clear browser cache and rebuild: <code>markata-go build</code></li>
+</ol>
+<h3 id="custom-css-not-applying">Custom CSS Not Applying <a href="#custom-css-not-applying" class="heading-anchor">#</a></h3>
+<ol>
+<li>Ensure <code>custom_css</code> path is relative to <code>static/</code></li>
+<li>Check for CSS specificity issues (theme styles may override yours)</li>
+<li>Use browser dev tools to inspect applied styles</li>
+</ol>
+<h3 id="template-not-found">Template Not Found <a href="#template-not-found" class="heading-anchor">#</a></h3>
+<ol>
+<li>Verify the template file exists in <code>templates/</code></li>
+<li>Check the filename matches exactly (case-sensitive)</li>
+<li>Ensure frontmatter <code>template:</code> value includes <code>.html</code> extension</li>
+</ol>
+<hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration Guide</a> - All configuration options</li>
+<li><a href="/templates-guide/" class="wikilink" data-title="Templates Guide" data-description="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax" data-date="2024-01-15">Templates Guide</a> - Template syntax and customization</li>
+<li><a href="/frontmatter-guide/" class="wikilink" data-title="Frontmatter Guide" data-description="Complete guide to post metadata, built-in fields, and custom frontmatter in markata-go" data-date="2024-01-15">Frontmatter Guide</a> - Post-level configuration</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

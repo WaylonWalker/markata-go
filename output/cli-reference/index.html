@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLI Reference - My Site</title>
+    <meta name="description" content="Complete reference for all markata-go commands, flags, and options">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="CLI Reference">
+    
+    <meta property="og:url" content="/cli-reference/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Complete reference for all markata-go commands, flags, and options">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="reference">
+    
+    <meta property="article:tag" content="cli">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="CLI Reference">
+    
+    <meta name="twitter:description" content="Complete reference for all markata-go commands, flags, and options">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/cli-reference/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "CLI Reference",
+  "description": "Complete reference for all markata-go commands, flags, and options",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/cli-reference/"
+  },
+  "keywords": [
+    "documentation",
+    "reference",
+    "cli"
+  ],
+  "url": "/cli-reference/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>CLI Reference</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/reference/">reference</a>
+                
+                <a href="/tags/cli/">cli</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="cli-reference">CLI Reference</h1>
+<p>markata-go provides a command-line interface for building, serving, and managing your static site.</p>
+<h2 id="overview">Overview <a href="#overview" class="heading-anchor">#</a></h2>
+<p>The markata-go CLI follows a subcommand pattern similar to tools like <code>git</code> and <code>docker</code>. Each command has its own set of flags, with some global flags available across all commands.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go <span class="o">[</span>global flags<span class="o">]</span> &lt;command&gt; <span class="o">[</span><span class="nb">command</span> flags<span class="o">]</span> <span class="o">[</span>arguments<span class="o">]</span>
+</span></span></code></pre><h2 id="global-flags">Global Flags <a href="#global-flags" class="heading-anchor">#</a></h2>
+<p>These flags are available for all commands:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td><code>-c</code></td>
+<td>Path to configuration file</td>
+<td>Auto-discovered</td>
+</tr>
+<tr>
+<td><code>--output</code></td>
+<td><code>-o</code></td>
+<td>Output directory (overrides config)</td>
+<td><code>public</code></td>
+</tr>
+<tr>
+<td><code>--verbose</code></td>
+<td><code>-v</code></td>
+<td>Enable verbose output</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="config-file-discovery">Config File Discovery <a href="#config-file-discovery" class="heading-anchor">#</a></h3>
+<p>When <code>--config</code> is not specified, markata-go searches for configuration files in the following order:</p>
+<ol>
+<li><code>markata-go.toml</code></li>
+<li><code>markata-go.yaml</code> / <code>markata-go.yml</code></li>
+<li><code>markata-go.json</code></li>
+<li><code>.markata-go.toml</code></li>
+<li><code>.markata-go.yaml</code> / <code>.markata-go.yml</code></li>
+<li><code>.markata-go.json</code></li>
+</ol>
+<p>See <a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration</a> for details on configuration options.</p>
+<hr>
+<h2 id="commands">Commands <a href="#commands" class="heading-anchor">#</a></h2>
+<h3 id="build">build <a href="#build" class="heading-anchor">#</a></h3>
+<p>Build the static site by processing all content files through the plugin lifecycle.</p>
+<h4 id="usage">Usage <a href="#usage" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build <span class="o">[</span>flags<span class="o">]</span>
+</span></span></code></pre><h4 id="flags">Flags <a href="#flags" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--clean</code></td>
+<td></td>
+<td>Remove output directory before building</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td></td>
+<td>Show what would be built without writing files</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--verbose</code></td>
+<td><code>-v</code></td>
+<td>Enable verbose logging</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--output</code></td>
+<td><code>-o</code></td>
+<td>Override output directory</td>
+<td>from config</td>
+</tr>
+</tbody>
+</table>
+<h4 id="examples">Examples <a href="#examples" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Standard build</span>
+</span></span><span class="line"><span class="cl">markata-go build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Clean build (removes output directory first)</span>
+</span></span><span class="line"><span class="cl">markata-go build --clean
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Preview what would be built</span>
+</span></span><span class="line"><span class="cl">markata-go build --dry-run
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Build with verbose output</span>
+</span></span><span class="line"><span class="cl">markata-go build -v
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Build to a custom output directory</span>
+</span></span><span class="line"><span class="cl">markata-go build -o dist
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Build with a specific config file</span>
+</span></span><span class="line"><span class="cl">markata-go build -c production.toml
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Combine flags</span>
+</span></span><span class="line"><span class="cl">markata-go build --clean -v -o dist
+</span></span></code></pre><h4 id="exit-codes">Exit Codes <a href="#exit-codes" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>Build completed successfully</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>Build failed (configuration error, plugin error, etc.)</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>No content files found</td>
+</tr>
+</tbody>
+</table>
+<h4 id="build-process">Build Process <a href="#build-process" class="heading-anchor">#</a></h4>
+<p>The build command executes the full 9-stage lifecycle:</p>
+<ol>
+<li><strong>Configure</strong> - Load and merge configuration</li>
+<li><strong>Validate</strong> - Validate configuration settings</li>
+<li><strong>Glob</strong> - Discover content files</li>
+<li><strong>Load</strong> - Parse markdown files and frontmatter</li>
+<li><strong>Transform</strong> - Pre-render processing (wikilinks, jinja-md, etc.)</li>
+<li><strong>Render</strong> - Convert markdown to HTML</li>
+<li><strong>Collect</strong> - Build feeds and collections</li>
+<li><strong>Write</strong> - Output files to disk</li>
+<li><strong>Cleanup</strong> - Release resources</li>
+</ol>
+<hr>
+<h3 id="serve">serve <a href="#serve" class="heading-anchor">#</a></h3>
+<p>Start a development server with live reload support.</p>
+<h4 id="usage-1">Usage <a href="#usage-1" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go serve <span class="o">[</span>flags<span class="o">]</span>
+</span></span></code></pre><h4 id="flags-1">Flags <a href="#flags-1" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--port</code></td>
+<td><code>-p</code></td>
+<td>Port to listen on</td>
+<td><code>8000</code></td>
+</tr>
+<tr>
+<td><code>--host</code></td>
+<td></td>
+<td>Host address to bind to</td>
+<td><code>localhost</code></td>
+</tr>
+<tr>
+<td><code>--no-watch</code></td>
+<td></td>
+<td>Disable file watching and auto-rebuild</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--verbose</code></td>
+<td><code>-v</code></td>
+<td>Enable verbose logging</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="examples-1">Examples <a href="#examples-1" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Serve on default port (localhost:8000)</span>
+</span></span><span class="line"><span class="cl">markata-go serve
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Serve on a custom port</span>
+</span></span><span class="line"><span class="cl">markata-go serve -p <span class="m">3000</span>
+</span></span><span class="line"><span class="cl">markata-go serve --port <span class="m">3000</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Bind to all network interfaces (accessible from other devices)</span>
+</span></span><span class="line"><span class="cl">markata-go serve --host 0.0.0.0
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Serve without file watching</span>
+</span></span><span class="line"><span class="cl">markata-go serve --no-watch
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Serve with verbose logging</span>
+</span></span><span class="line"><span class="cl">markata-go serve -v
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Combine options</span>
+</span></span><span class="line"><span class="cl">markata-go serve -p <span class="m">8080</span> --host 0.0.0.0 -v
+</span></span></code></pre><h4 id="features">Features <a href="#features" class="heading-anchor">#</a></h4>
+<ul>
+<li><strong>Automatic rebuild</strong>: File changes trigger a rebuild automatically</li>
+<li><strong>Live reload</strong>: Connected browsers refresh when content changes</li>
+<li><strong>Static file serving</strong>: Serves the output directory</li>
+<li><strong>MIME type detection</strong>: Correct content types for all file types</li>
+</ul>
+<h4 id="development-workflow">Development Workflow <a href="#development-workflow" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Terminal 1: Start the server</span>
+</span></span><span class="line"><span class="cl">markata-go serve -v
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># The server will:</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># - Build your site</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># - Start serving at http://localhost:8000</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># - Watch for file changes</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># - Rebuild and reload on changes</span>
+</span></span></code></pre><hr>
+<h3 id="init">init <a href="#init" class="heading-anchor">#</a></h3>
+<p>Initialize a new markata-go project with interactive setup.</p>
+<h4 id="usage-2">Usage <a href="#usage-2" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go init <span class="o">[</span>flags<span class="o">]</span>
+</span></span></code></pre><h4 id="flags-2">Flags <a href="#flags-2" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--force</code></td>
+<td>Overwrite existing files</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="examples-2">Examples <a href="#examples-2" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Start interactive project setup</span>
+</span></span><span class="line"><span class="cl">markata-go init
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Overwrite existing configuration</span>
+</span></span><span class="line"><span class="cl">markata-go init --force
+</span></span></code></pre><h4 id="interactive-flow">Interactive Flow <a href="#interactive-flow" class="heading-anchor">#</a></h4>
+<p>The <code>init</code> command guides you through setting up a new project:</p>
+<pre><code>$ markata-go init
+
+Welcome to markata-go!
+
+Site title [My Site]: My Awesome Blog
+Description [A site built with markata-go]: A blog about things
+Author []: Your Name
+URL [https://example.com]: https://myblog.com
+
+Creating project structure...
+  ✓ Created posts/
+  ✓ Created static/
+  ✓ Created markata-go.toml
+
+Create your first post? (Y/n): y
+Post title [Hello World]: My First Post
+
+  ✓ Created posts/my-first-post.md
+
+Done! Run 'markata-go serve' to start.
+</code></pre>
+<h4 id="what-gets-created">What Gets Created <a href="#what-gets-created" class="heading-anchor">#</a></h4>
+<p>The command creates:</p>
+<ol>
+<li><strong>markata-go.toml</strong> - Configuration file with your site settings</li>
+<li><strong>posts/</strong> - Directory for your blog posts</li>
+<li><strong>static/</strong> - Directory for static assets (images, CSS, etc.)</li>
+<li><strong>(Optional) First post</strong> - A starter markdown file</li>
+</ol>
+<hr>
+<h3 id="new">new <a href="#new" class="heading-anchor">#</a></h3>
+<p>Create a new content file with frontmatter template.</p>
+<h4 id="usage-3">Usage <a href="#usage-3" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go new <span class="o">[</span>title<span class="o">]</span> <span class="o">[</span>flags<span class="o">]</span>
+</span></span></code></pre><h4 id="arguments">Arguments <a href="#arguments" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Description</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>title</code></td>
+<td>The title of the new post</td>
+<td>No (prompted if not provided)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="flags-3">Flags <a href="#flags-3" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--dir</code></td>
+<td>Directory to create the post in</td>
+<td><code>posts</code></td>
+</tr>
+<tr>
+<td><code>--draft</code></td>
+<td>Create as a draft</td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td><code>--tags</code></td>
+<td>Comma-separated list of tags</td>
+<td><code>&quot;&quot;</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="examples-3">Examples <a href="#examples-3" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Create a new post (creates posts/my-first-post.md)</span>
+</span></span><span class="line"><span class="cl">markata-go new <span class="s2">&#34;My First Post&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Create in a specific directory</span>
+</span></span><span class="line"><span class="cl">markata-go new <span class="s2">&#34;Hello World&#34;</span> --dir blog
+</span></span><span class="line"><span class="cl"><span class="c1"># Creates: blog/hello-world.md</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Create as a draft (default behavior)</span>
+</span></span><span class="line"><span class="cl">markata-go new <span class="s2">&#34;Work in Progress&#34;</span> --draft
+</span></span><span class="line"><span class="cl"><span class="c1"># Creates: posts/work-in-progress.md with draft: true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Create as published</span>
+</span></span><span class="line"><span class="cl">markata-go new <span class="s2">&#34;Ready to Publish&#34;</span> --draft<span class="o">=</span><span class="nb">false</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Creates: posts/ready-to-publish.md with draft: false, published: true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Create with tags</span>
+</span></span><span class="line"><span class="cl">markata-go new <span class="s2">&#34;Go Tutorial&#34;</span> --tags <span class="s2">&#34;go,tutorial,programming&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Creates: posts/go-tutorial.md with tags: [&#34;go&#34;, &#34;tutorial&#34;, &#34;programming&#34;]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Interactive mode (no arguments)</span>
+</span></span><span class="line"><span class="cl">markata-go new
+</span></span><span class="line"><span class="cl"><span class="c1"># Prompts for title, directory, tags, and draft status</span>
+</span></span></code></pre><h4 id="interactive-mode">Interactive Mode <a href="#interactive-mode" class="heading-anchor">#</a></h4>
+<p>When called without a title argument, the command enters interactive mode:</p>
+<pre><code>$ markata-go new
+
+Post title: My New Post
+Directory [posts]: blog
+Tags (comma-separated): go, tutorial
+Create as draft? (Y/n): y
+
+Created: blog/my-new-post.md
+</code></pre>
+<h4 id="generated-file">Generated File <a href="#generated-file" class="heading-anchor">#</a></h4>
+<p>The command creates a markdown file with this template:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;My First Post&#34;
+</span></span><span class="line"><span class="cl">slug: &#34;my-first-post&#34;
+</span></span><span class="line"><span class="cl">date: 2024-01-15
+</span></span><span class="line"><span class="cl">draft: true
+</span></span><span class="line"><span class="cl">published: false
+</span></span><span class="line"><span class="cl">tags: [&#34;go&#34;, &#34;tutorial&#34;]
+</span></span><span class="line"><span class="cl">description: &#34;&#34;
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># My First Post
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">Write your content here...
+</span></span></code></pre><p>The slug is automatically generated from the title by:</p>
+<ul>
+<li>Converting to lowercase</li>
+<li>Replacing spaces with hyphens</li>
+<li>Removing special characters</li>
+</ul>
+<hr>
+<h3 id="lint">lint <a href="#lint" class="heading-anchor">#</a></h3>
+<p>Lint markdown files for common issues that can cause build failures.</p>
+<h4 id="usage-4">Usage <a href="#usage-4" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go lint <span class="o">[</span>files...<span class="o">]</span> <span class="o">[</span>flags<span class="o">]</span>
+</span></span></code></pre><h4 id="arguments-1">Arguments <a href="#arguments-1" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Description</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>files</code></td>
+<td>Glob patterns or file paths to lint</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h4 id="flags-4">Flags <a href="#flags-4" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--fix</code></td>
+<td>Automatically fix detected issues</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="detected-issues">Detected Issues <a href="#detected-issues" class="heading-anchor">#</a></h4>
+<p>The linter checks for these common problems:</p>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Severity</th>
+<th>Auto-fixable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>duplicate-key</code></td>
+<td>Error</td>
+<td>Yes</td>
+<td>Duplicate YAML keys in frontmatter</td>
+</tr>
+<tr>
+<td><code>invalid-date</code></td>
+<td>Warning</td>
+<td>Yes</td>
+<td>Non-ISO 8601 date formats</td>
+</tr>
+<tr>
+<td><code>missing-alt-text</code></td>
+<td>Warning</td>
+<td>Yes</td>
+<td>Image links without alt text <code>![]()</code></td>
+</tr>
+<tr>
+<td><code>protocol-less-url</code></td>
+<td>Warning</td>
+<td>Yes</td>
+<td>URLs starting with <code>//</code> instead of <code>https://</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="examples-4">Examples <a href="#examples-4" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Lint all markdown files in posts directory</span>
+</span></span><span class="line"><span class="cl">markata-go lint posts/*.md
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Lint with glob pattern (recursive)</span>
+</span></span><span class="line"><span class="cl">markata-go lint <span class="s1">&#39;posts/**/*.md&#39;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Lint multiple patterns</span>
+</span></span><span class="line"><span class="cl">markata-go lint posts/*.md pages/*.md docs/**/*.md
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Lint and auto-fix issues</span>
+</span></span><span class="line"><span class="cl">markata-go lint posts/*.md --fix
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Lint a specific file</span>
+</span></span><span class="line"><span class="cl">markata-go lint posts/hello-world.md
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Lint with verbose output</span>
+</span></span><span class="line"><span class="cl">markata-go lint posts/*.md -v
+</span></span></code></pre><h4 id="output-format">Output Format <a href="#output-format" class="heading-anchor">#</a></h4>
+<pre><code>posts/example.md:
+  error [line 5]: duplicate key 'title' (first occurrence at line 2)
+  warning [line 3]: invalid date format for 'date': 2020-1-15 (single-digit month/day)
+  warning [line 12, col 1]: image link missing alt text
+
+✗ 5 file(s) linted, 3 issue(s) in 1 file(s)
+</code></pre>
+<h4 id="auto-fix-behavior">Auto-fix Behavior <a href="#auto-fix-behavior" class="heading-anchor">#</a></h4>
+<p>When <code>--fix</code> is enabled:</p>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Fix Applied</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>duplicate-key</code></td>
+<td>Keeps last occurrence, removes earlier duplicates</td>
+</tr>
+<tr>
+<td><code>invalid-date</code></td>
+<td>Pads single-digit months/days (e.g., <code>2020-1-5</code> → <code>2020-01-05</code>)</td>
+</tr>
+<tr>
+<td><code>missing-alt-text</code></td>
+<td>Adds placeholder alt text: <code>![]()</code> → <code>![image]()</code></td>
+</tr>
+<tr>
+<td><code>protocol-less-url</code></td>
+<td>Adds HTTPS protocol: <code>//example.com</code> → <code>https://example.com</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="exit-codes-1">Exit Codes <a href="#exit-codes-1" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>No errors found (warnings are allowed)</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>Errors found (or file read errors)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="use-cases">Use Cases <a href="#use-cases" class="heading-anchor">#</a></h4>
+<p><strong>Migration from Python markata:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Find and fix common issues when migrating content</span>
+</span></span><span class="line"><span class="cl">markata-go lint content/**/*.md --fix
+</span></span></code></pre><p><strong>CI/CD integration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Fail CI if markdown has errors</span>
+</span></span><span class="line"><span class="cl">markata-go lint posts/**/*.md <span class="o">||</span> <span class="nb">exit</span> <span class="m">1</span>
+</span></span></code></pre><p><strong>Pre-commit hook:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">#!/bin/bash
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>markata-go lint <span class="k">$(</span>git diff --cached --name-only -- <span class="s1">&#39;*.md&#39;</span><span class="k">)</span>
+</span></span></code></pre><hr>
+<h3 id="config">config <a href="#config" class="heading-anchor">#</a></h3>
+<p>Configuration management commands for viewing, validating, and initializing configuration.</p>
+<h4 id="usage-5">Usage <a href="#usage-5" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config &lt;subcommand&gt; <span class="o">[</span>flags<span class="o">]</span>
+</span></span></code></pre><h4 id="subcommands">Subcommands <a href="#subcommands" class="heading-anchor">#</a></h4>
+<h5 id="show">show</h5>
+<p>Display the resolved configuration after merging defaults, config file, and environment variables.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config show <span class="o">[</span>flags<span class="o">]</span>
+</span></span></code></pre><table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--json</code></td>
+<td>Output as JSON</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>--toml</code></td>
+<td>Output as TOML</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td>(none)</td>
+<td>Output as YAML</td>
+<td>default</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Examples:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Show config as YAML (default)</span>
+</span></span><span class="line"><span class="cl">markata-go config show
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Show config as JSON</span>
+</span></span><span class="line"><span class="cl">markata-go config show --json
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Show config as TOML</span>
+</span></span><span class="line"><span class="cl">markata-go config show --toml
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Show config from specific file</span>
+</span></span><span class="line"><span class="cl">markata-go config show -c production.toml
+</span></span></code></pre><h5 id="get">get</h5>
+<p>Get a specific configuration value using dot notation for nested keys.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config get &lt;key&gt;
+</span></span></code></pre><p><strong>Examples:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Get top-level value</span>
+</span></span><span class="line"><span class="cl">markata-go config get output_dir
+</span></span><span class="line"><span class="cl"><span class="c1"># Output: public</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Get nested value</span>
+</span></span><span class="line"><span class="cl">markata-go config get glob.patterns
+</span></span><span class="line"><span class="cl"><span class="c1"># Output: [&#34;posts/**/*.md&#34;, &#34;pages/*.md&#34;]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Get deeply nested value</span>
+</span></span><span class="line"><span class="cl">markata-go config get feeds.defaults.items_per_page
+</span></span><span class="line"><span class="cl"><span class="c1"># Output: 10</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Get from specific config file</span>
+</span></span><span class="line"><span class="cl">markata-go config get url -c production.toml
+</span></span><span class="line"><span class="cl"><span class="c1"># Output: https://example.com</span>
+</span></span></code></pre><h5 id="validate">validate</h5>
+<p>Validate the configuration file and report any errors or warnings.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config validate <span class="o">[</span>flags<span class="o">]</span>
+</span></span></code></pre><table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--config</code></td>
+<td><code>-c</code></td>
+<td>Config file to validate</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Examples:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Validate default config</span>
+</span></span><span class="line"><span class="cl">markata-go config validate
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Validate specific config file</span>
+</span></span><span class="line"><span class="cl">markata-go config validate -c production.toml
+</span></span><span class="line"><span class="cl">markata-go config validate -c custom.yaml
+</span></span></code></pre><p><strong>Output:</strong></p>
+<pre><code>Validating configuration...
+OK: Configuration is valid
+
+# Or with errors:
+ERROR: Invalid configuration
+  - output_dir: directory does not exist
+  - glob.patterns: at least one pattern required
+  - feeds[0].filter: invalid filter expression
+</code></pre>
+<h5 id="init-1">init</h5>
+<p>Create a new configuration file with sensible defaults.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config init <span class="o">[</span>filename<span class="o">]</span> <span class="o">[</span>flags<span class="o">]</span>
+</span></span></code></pre><table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--force</code></td>
+<td>Overwrite existing config file</td>
+<td><code>false</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Examples:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Create markata-go.toml with defaults</span>
+</span></span><span class="line"><span class="cl">markata-go config init
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Create YAML config</span>
+</span></span><span class="line"><span class="cl">markata-go config init markata-go.yaml
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Create with specific name</span>
+</span></span><span class="line"><span class="cl">markata-go config init site.toml
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Overwrite existing config</span>
+</span></span><span class="line"><span class="cl">markata-go config init --force
+</span></span></code></pre><p><strong>Generated Config:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Site&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">description</span> <span class="p">=</span> <span class="s2">&#34;A site built with markata-go&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">author</span> <span class="p">=</span> <span class="s2">&#34;Your Name&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">output_dir</span> <span class="p">=</span> <span class="s2">&#34;public&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">templates_dir</span> <span class="p">=</span> <span class="s2">&#34;templates&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">assets_dir</span> <span class="p">=</span> <span class="s2">&#34;static&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;posts/**/*.md&#34;</span><span class="p">,</span> <span class="s2">&#34;pages/*.md&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">markdown</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">extensions</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;tables&#34;</span><span class="p">,</span> <span class="s2">&#34;strikethrough&#34;</span><span class="p">,</span> <span class="s2">&#34;autolinks&#34;</span><span class="p">,</span> <span class="s2">&#34;tasklist&#34;</span><span class="p">]</span>
+</span></span></code></pre><hr>
+<h2 id="environment-variables">Environment Variables <a href="#environment-variables" class="heading-anchor">#</a></h2>
+<p>markata-go configuration can be overridden using environment variables with the <code>MARKATA_GO_</code> prefix.</p>
+<h3 id="variable-naming-convention">Variable Naming Convention <a href="#variable-naming-convention" class="heading-anchor">#</a></h3>
+<p>Environment variables follow this pattern:</p>
+<ul>
+<li>Prefix: <code>MARKATA_GO_</code></li>
+<li>Key names: UPPERCASE with underscores</li>
+<li>Nested keys: Use single underscore separation</li>
+</ul>
+<h3 id="common-variables">Common Variables <a href="#common-variables" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MARKATA_GO_OUTPUT_DIR</code></td>
+<td>Output directory</td>
+<td><code>dist</code></td>
+</tr>
+<tr>
+<td><code>MARKATA_GO_URL</code></td>
+<td>Site base URL</td>
+<td><code>https://staging.example.com</code></td>
+</tr>
+<tr>
+<td><code>MARKATA_GO_TITLE</code></td>
+<td>Site title</td>
+<td><code>My Staging Site</code></td>
+</tr>
+<tr>
+<td><code>MARKATA_GO_CONCURRENCY</code></td>
+<td>Worker count (0=auto)</td>
+<td><code>4</code></td>
+</tr>
+<tr>
+<td><code>MARKATA_GO_TEMPLATES_DIR</code></td>
+<td>Templates directory</td>
+<td><code>themes/custom/templates</code></td>
+</tr>
+<tr>
+<td><code>MARKATA_GO_ASSETS_DIR</code></td>
+<td>Static assets directory</td>
+<td><code>assets</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="examples-5">Examples <a href="#examples-5" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Build to a different directory</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_OUTPUT_DIR</span><span class="o">=</span>dist markata-go build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Build for staging environment</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://staging.example.com markata-go build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Limit concurrency for debugging</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_CONCURRENCY</span><span class="o">=</span><span class="m">1</span> markata-go build -v
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Multiple overrides</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_OUTPUT_DIR</span><span class="o">=</span>dist <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://prod.example.com <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>markata-go build --clean
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># In CI/CD pipelines</span>
+</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">MARKATA_GO_URL</span><span class="o">=</span><span class="s2">&#34;</span><span class="si">${</span><span class="nv">DEPLOY_URL</span><span class="si">}</span><span class="s2">&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">MARKATA_GO_OUTPUT_DIR</span><span class="o">=</span><span class="s2">&#34;build&#34;</span>
+</span></span><span class="line"><span class="cl">markata-go build --clean
+</span></span></code></pre><h3 id="override-precedence">Override Precedence <a href="#override-precedence" class="heading-anchor">#</a></h3>
+<p>Configuration values are resolved in this order (later sources override earlier):</p>
+<ol>
+<li>Built-in defaults</li>
+<li>Configuration file</li>
+<li>Environment variables</li>
+<li>Command-line flags</li>
+</ol>
+<hr>
+<h2 id="exit-codes-2">Exit Codes <a href="#exit-codes-2" class="heading-anchor">#</a></h2>
+<p>All markata-go commands use standard exit codes:</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>Success</td>
+<td>Command completed successfully</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>Error</td>
+<td>General error (configuration, plugin, I/O, etc.)</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>No Content</td>
+<td>No content files found matching glob patterns</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td>Validation Error</td>
+<td>Configuration validation failed</td>
+</tr>
+<tr>
+<td><code>130</code></td>
+<td>Interrupted</td>
+<td>Command interrupted by user (Ctrl+C)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="using-exit-codes-in-scripts">Using Exit Codes in Scripts <a href="#using-exit-codes-in-scripts" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">#!/bin/bash
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Build and check for success</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> markata-go build --clean<span class="p">;</span> <span class="k">then</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">echo</span> <span class="s2">&#34;Build successful!&#34;</span>
+</span></span><span class="line"><span class="cl">    rsync -av public/ user@server:/var/www/
+</span></span><span class="line"><span class="cl"><span class="k">else</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">echo</span> <span class="s2">&#34;Build failed with exit code </span><span class="nv">$?</span><span class="s2">&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">exit</span> <span class="m">1</span>
+</span></span><span class="line"><span class="cl"><span class="k">fi</span>
+</span></span></code></pre><pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Validate before deploying</span>
+</span></span><span class="line"><span class="cl">markata-go config validate
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="o">[</span> <span class="nv">$?</span> -eq <span class="m">0</span> <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
+</span></span><span class="line"><span class="cl">    markata-go build --clean
+</span></span><span class="line"><span class="cl"><span class="k">fi</span>
+</span></span></code></pre><hr>
+<h2 id="common-workflows">Common Workflows <a href="#common-workflows" class="heading-anchor">#</a></h2>
+<h3 id="development">Development <a href="#development" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Start development server</span>
+</span></span><span class="line"><span class="cl">markata-go serve -v
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># In another terminal, create new content</span>
+</span></span><span class="line"><span class="cl">markata-go new <span class="s2">&#34;My New Post&#34;</span>
+</span></span></code></pre><h3 id="production-build">Production Build <a href="#production-build" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Clean build for production</span>
+</span></span><span class="line"><span class="cl">markata-go build --clean -v
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Or with environment-specific URL</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://example.com markata-go build --clean
+</span></span></code></pre><h3 id="cicd-pipeline">CI/CD Pipeline <a href="#cicd-pipeline" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">#!/bin/bash
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span><span class="nb">set</span> -e
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Validate configuration</span>
+</span></span><span class="line"><span class="cl">markata-go config validate
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Build with production settings</span>
+</span></span><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span><span class="s2">&#34;</span><span class="si">${</span><span class="nv">DEPLOY_URL</span><span class="si">}</span><span class="s2">&#34;</span> markata-go build --clean
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Deploy (example)</span>
+</span></span><span class="line"><span class="cl">aws s3 sync public/ s3://my-bucket/ --delete
+</span></span></code></pre><p>See <a href="/deployment-guide/" class="wikilink" data-title="Deployment Guide" data-description="Guide to deploying markata-go sites to GitHub Pages, Netlify, Vercel, and self-hosted solutions" data-date="2024-01-15">Deployment</a> for detailed deployment guides.</p>
+<hr>
+<h3 id="explain">explain <a href="#explain" class="heading-anchor">#</a></h3>
+<p>Show detailed information about markata-go for AI agents and developers.</p>
+<h4 id="usage-6">Usage <a href="#usage-6" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go explain <span class="o">[</span>topic<span class="o">]</span>
+</span></span></code></pre><h4 id="arguments-2">Arguments <a href="#arguments-2" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Description</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>topic</code></td>
+<td>The topic to explain</td>
+<td>No (shows overview if omitted)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="available-topics">Available Topics <a href="#available-topics" class="heading-anchor">#</a></h4>
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(none)</td>
+<td>General overview of markata-go</td>
+</tr>
+<tr>
+<td><code>build</code></td>
+<td>The build command and build process</td>
+</tr>
+<tr>
+<td><code>serve</code></td>
+<td>The development server</td>
+</tr>
+<tr>
+<td><code>new</code></td>
+<td>Creating new content</td>
+</tr>
+<tr>
+<td><code>init</code></td>
+<td>Initializing projects</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>Configuration system</td>
+</tr>
+<tr>
+<td><code>plugins</code></td>
+<td>Plugin system and development</td>
+</tr>
+<tr>
+<td><code>lifecycle</code></td>
+<td>Build lifecycle stages</td>
+</tr>
+<tr>
+<td><code>templates</code></td>
+<td>Template system</td>
+</tr>
+<tr>
+<td><code>feeds</code></td>
+<td>Feed generation system</td>
+</tr>
+</tbody>
+</table>
+<h4 id="examples-6">Examples <a href="#examples-6" class="heading-anchor">#</a></h4>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Show general overview</span>
+</span></span><span class="line"><span class="cl">markata-go explain
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Get detailed info about the build process</span>
+</span></span><span class="line"><span class="cl">markata-go explain build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Learn about the plugin system</span>
+</span></span><span class="line"><span class="cl">markata-go explain plugins
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Understand the build lifecycle</span>
+</span></span><span class="line"><span class="cl">markata-go explain lifecycle
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Learn about feeds and filtering</span>
+</span></span><span class="line"><span class="cl">markata-go explain feeds
+</span></span></code></pre><h4 id="use-cases-1">Use Cases <a href="#use-cases-1" class="heading-anchor">#</a></h4>
+<p>The <code>explain</code> command is particularly useful for:</p>
+<ul>
+<li><strong>AI coding agents</strong>: Provides comprehensive context about markata-go's architecture and commands</li>
+<li><strong>New developers</strong>: Quick reference for understanding how different parts work together</li>
+<li><strong>Debugging</strong>: Understanding the build process and configuration options</li>
+<li><strong>Writing plugins</strong>: Learning the plugin interfaces and lifecycle stages</li>
+</ul>
+<hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="/getting-started/" class="wikilink" data-title="Getting Started" data-description="Complete guide to installing markata-go, creating your first site, and building for production" data-date="2024-01-15">Getting Started</a> - Quick introduction to markata-go</li>
+<li><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration</a> - Detailed configuration reference</li>
+<li><a href="/deployment-guide/" class="wikilink" data-title="Deployment Guide" data-description="Guide to deploying markata-go sites to GitHub Pages, Netlify, Vercel, and self-hosted solutions" data-date="2024-01-15">Deployment</a> - Deployment guides for various platforms</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

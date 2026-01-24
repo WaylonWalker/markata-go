@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agents - My Site</title>
+    <meta name="description" content="This document provides guidelines for AI coding agents working in the markata-go codebase.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Agents">
+    
+    <meta property="og:url" content="/agents/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="This document provides guidelines for AI coding agents working in the markata-go codebase.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Agents">
+    
+    <meta name="twitter:description" content="This document provides guidelines for AI coding agents working in the markata-go codebase.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/agents/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Agents",
+  "description": "This document provides guidelines for AI coding agents working in the markata-go codebase.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/agents/"
+  },
+  "url": "/agents/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Agents</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="agentsmd---ai-coding-agent-guidelines-for-markata-go">AGENTS.md - AI Coding Agent Guidelines for markata-go</h1>
+<p>This document provides guidelines for AI coding agents working in the markata-go codebase.</p>
+<h2 id="github-workflow">GitHub Workflow <a href="#github-workflow" class="heading-anchor">#</a></h2>
+<p><strong>This project uses a formal GitHub workflow.</strong> All work should be tracked and managed through GitHub:</p>
+<h3 id="issues">Issues <a href="#issues" class="heading-anchor">#</a></h3>
+<ul>
+<li><strong>All work starts with an issue</strong> - Before implementing features, fixes, or changes, ensure there's a GitHub issue tracking the work</li>
+<li><strong>Reference issues in commits</strong> - Use <code>Fixes #123</code> or <code>Refs #123</code> in commit messages to link work to issues</li>
+<li><strong>Check existing issues first</strong> - Before creating new issues, search for existing ones that may cover the same topic</li>
+</ul>
+<h3 id="pull-requests">Pull Requests <a href="#pull-requests" class="heading-anchor">#</a></h3>
+<ul>
+<li><strong>Feature branches</strong> - Create branches from <code>main</code> for all changes (e.g., <code>feat/chartjs-plugin</code>, <code>fix/template-error</code>)</li>
+<li><strong>PR descriptions</strong> - Include a summary, link to the issue, and list of changes</li>
+<li><strong>CI must pass</strong> - All PRs require passing CI (lint, test, build) before merge</li>
+<li><strong>Keep PRs focused</strong> - One feature or fix per PR when possible</li>
+</ul>
+<h3 id="releases">Releases <a href="#releases" class="heading-anchor">#</a></h3>
+<ul>
+<li><strong>Semantic Versioning</strong> - This project follows <a href="https://semver.org/">semver</a>: <code>MAJOR.MINOR.PATCH</code></li>
+<li><strong>CRITICAL: Do NOT bump MAJOR version</strong> - Only the project owner can authorize major version bumps. This includes any breaking changes.</li>
+<li><strong>Minor versions</strong> - New features that are backward compatible</li>
+<li><strong>Patch versions</strong> - Bug fixes and minor improvements</li>
+<li><strong>Releases are created via GitHub Releases</strong> - Use <code>gh release create</code> or the GitHub UI</li>
+<li><strong>GoReleaser handles binaries</strong> - Release automation is configured in <code>.goreleaser.yml</code></li>
+</ul>
+<h3 id="branch-naming">Branch Naming <a href="#branch-naming" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Pattern</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Feature</td>
+<td><code>feat/&lt;description&gt;</code></td>
+<td><code>feat/chartjs-plugin</code></td>
+</tr>
+<tr>
+<td>Bug fix</td>
+<td><code>fix/&lt;description&gt;</code></td>
+<td><code>fix/feed-pagination</code></td>
+</tr>
+<tr>
+<td>Docs</td>
+<td><code>docs/&lt;description&gt;</code></td>
+<td><code>docs/plugin-guide</code></td>
+</tr>
+<tr>
+<td>Refactor</td>
+<td><code>refactor/&lt;description&gt;</code></td>
+<td><code>refactor/lifecycle</code></td>
+</tr>
+<tr>
+<td>Chore</td>
+<td><code>chore/&lt;description&gt;</code></td>
+<td><code>chore/update-deps</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="useful-commands">Useful Commands <a href="#useful-commands" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Issues</span>
+</span></span><span class="line"><span class="cl">gh issue list                        <span class="c1"># List open issues</span>
+</span></span><span class="line"><span class="cl">gh issue create                      <span class="c1"># Create new issue</span>
+</span></span><span class="line"><span class="cl">gh issue view <span class="m">123</span>                    <span class="c1"># View issue details</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Pull Requests</span>
+</span></span><span class="line"><span class="cl">gh pr create                         <span class="c1"># Create PR from current branch</span>
+</span></span><span class="line"><span class="cl">gh pr list                           <span class="c1"># List open PRs</span>
+</span></span><span class="line"><span class="cl">gh pr checks                         <span class="c1"># View CI status</span>
+</span></span><span class="line"><span class="cl">gh pr merge                          <span class="c1"># Merge PR (after approval)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Releases</span>
+</span></span><span class="line"><span class="cl">gh release list                      <span class="c1"># List releases</span>
+</span></span><span class="line"><span class="cl">gh release create v0.2.0 --generate-notes  <span class="c1"># Create release with auto-generated notes</span>
+</span></span></code></pre><hr>
+<h2 id="project-overview">Project Overview <a href="#project-overview" class="heading-anchor">#</a></h2>
+<p><strong>markata-go</strong> is a static site generator written in Go 1.22+. It processes Markdown files with frontmatter through a plugin-based lifecycle system to generate HTML sites.</p>
+<p>Key dependencies: cobra (CLI), pongo2 (templating), goldmark (Markdown), fsnotify (live reload)</p>
+<h2 id="spec-driven-development">Spec-Driven Development <a href="#spec-driven-development" class="heading-anchor">#</a></h2>
+<p><strong>This is a spec-driven project.</strong> All changes must follow this workflow:</p>
+<ol>
+<li>
+<p><strong>Spec First</strong> - Before implementing any feature or change, update or create the relevant specification in <code>spec/</code>. The spec defines the expected behavior, data models, and interfaces.</p>
+</li>
+<li>
+<p><strong>Review Spec</strong> - Ensure the spec is complete and covers edge cases, error handling, and integration with existing components.</p>
+</li>
+<li>
+<p><strong>Implement from Spec</strong> - Write code that conforms to the specification. The spec is the source of truth.</p>
+</li>
+<li>
+<p><strong>Test Against Spec</strong> - Tests should verify behavior defined in the spec, not implementation details.</p>
+</li>
+<li>
+<p><strong>Document for Users</strong> - Every feature MUST have corresponding user documentation in <code>docs/</code>. See Documentation Requirements below.</p>
+</li>
+</ol>
+<p><strong>Spec directory structure:</strong></p>
+<pre><code>spec/
+├── README.md         # Spec overview and index
+├── spec/
+│   ├── SPEC.md           # Core architecture overview
+│   ├── CONFIG.md         # Configuration system
+│   ├── LIFECYCLE.md      # Build stages and hooks
+│   ├── PLUGINS.md        # Plugin development guide
+│   ├── DATA_MODEL.md     # Post, Config, Feed schemas
+│   ├── TEMPLATES.md      # Template system
+│   ├── THEMES.md         # Theme and palette system
+│   ├── FEEDS.md          # Feed generation
+│   └── ...
+</code></pre>
+<p><strong>When making changes:</strong></p>
+<ul>
+<li>For new features: Create or update the relevant spec file first</li>
+<li>For bug fixes: Check if the spec needs clarification</li>
+<li>For refactoring: Ensure changes still conform to the spec</li>
+<li>If spec and code disagree: The spec should be updated first, then code follows</li>
+</ul>
+<h2 id="documentation-requirements">Documentation Requirements <a href="#documentation-requirements" class="heading-anchor">#</a></h2>
+<p><strong>CRITICAL: Every feature must be documented.</strong> The documentation lives in <code>docs/</code> and is built as part of this site.</p>
+<h3 id="documentation-workflow">Documentation Workflow <a href="#documentation-workflow" class="heading-anchor">#</a></h3>
+<ol>
+<li><strong>Spec defines behavior</strong> - Technical specification in <code>spec/spec/*.md</code></li>
+<li><strong>Docs explain usage</strong> - User-friendly guides in <code>docs/guides/*.md</code></li>
+<li><strong>Docs are part of the site</strong> - All docs are Markdown files processed by markata-go itself</li>
+</ol>
+<h3 id="documentation-structure">Documentation Structure <a href="#documentation-structure" class="heading-anchor">#</a></h3>
+<pre><code>docs/
+├── index.md              # Documentation home
+├── getting-started.md    # Quick start guide
+├── quickstart.md         # 5-minute tutorial
+├── guides/
+│   ├── configuration.md  # Config reference
+│   ├── themes.md         # Themes and palettes
+│   ├── templates.md      # Template customization
+│   ├── feeds.md          # Feed system
+│   ├── frontmatter.md    # Frontmatter fields
+│   ├── markdown.md       # Markdown features
+│   └── ...
+├── reference/
+│   ├── cli.md            # CLI commands
+│   └── plugins.md        # Plugin reference
+└── troubleshooting.md    # Common issues
+</code></pre>
+<h3 id="documentation-standards">Documentation Standards <a href="#documentation-standards" class="heading-anchor">#</a></h3>
+<p><strong>Every doc file must have frontmatter:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Human-Readable Title&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;One-line description for SEO and feeds&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">tags</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">documentation</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span>- <span class="l">relevant-topic</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Documentation principles:</strong></p>
+<ul>
+<li><strong>User-focused</strong> - Explain how to USE features, not how they're implemented</li>
+<li><strong>Examples first</strong> - Show working examples before explaining details</li>
+<li><strong>Progressive disclosure</strong> - Simple cases first, advanced options later</li>
+<li><strong>Complete</strong> - Cover all options, edge cases, and common mistakes</li>
+<li><strong>Tested</strong> - All code examples should actually work</li>
+</ul>
+<h3 id="when-to-create-documentation">When to Create Documentation <a href="#when-to-create-documentation" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Change Type</th>
+<th>Documentation Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>New feature</td>
+<td>New guide or section in existing guide</td>
+</tr>
+<tr>
+<td>New CLI command</td>
+<td>Add to <code>docs/reference/cli.md</code></td>
+</tr>
+<tr>
+<td>New config option</td>
+<td>Add to <code>docs/guides/configuration.md</code></td>
+</tr>
+<tr>
+<td>New plugin</td>
+<td>Add to <code>docs/reference/plugins.md</code></td>
+</tr>
+<tr>
+<td>Bug fix</td>
+<td>Update docs if behavior was unclear</td>
+</tr>
+<tr>
+<td>Breaking change</td>
+<td>Update all affected docs + migration guide</td>
+</tr>
+</tbody>
+</table>
+<h3 id="documentation-checklist">Documentation Checklist <a href="#documentation-checklist" class="heading-anchor">#</a></h3>
+<p>Before completing any feature, verify:</p>
+<ul>
+<li><input disabled="" type="checkbox"> Spec is updated in <code>spec/spec/</code> (behavior, config options, data model changes)</li>
+<li><input disabled="" type="checkbox"> User documentation exists in <code>docs/</code></li>
+<li><input disabled="" type="checkbox"> Config options are documented in <code>docs/guides/configuration.md</code></li>
+<li><input disabled="" type="checkbox"> New plugins are documented in <code>docs/reference/plugins.md</code></li>
+<li><input disabled="" type="checkbox"> CLI commands are documented in <code>docs/reference/cli.md</code></li>
+<li><input disabled="" type="checkbox"> Examples are provided and tested</li>
+<li><input disabled="" type="checkbox"> Cross-references link to related docs</li>
+</ul>
+<h2 id="buildlinttest-commands">Build/Lint/Test Commands <a href="#buildlinttest-commands" class="heading-anchor">#</a></h2>
+<h3 id="building">Building <a href="#building" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go build ./cmd/markata-go        <span class="c1"># Build the binary</span>
+</span></span><span class="line"><span class="cl">go run ./cmd/markata-go build    <span class="c1"># Run without building</span>
+</span></span></code></pre><h3 id="testing">Testing <a href="#testing" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go <span class="nb">test</span> ./...                           <span class="c1"># Run all tests</span>
+</span></span><span class="line"><span class="cl">go <span class="nb">test</span> -v ./...                        <span class="c1"># Verbose output</span>
+</span></span><span class="line"><span class="cl">go <span class="nb">test</span> -race ./...                     <span class="c1"># Race detection</span>
+</span></span><span class="line"><span class="cl">go <span class="nb">test</span> -coverprofile<span class="o">=</span>coverage.out ./...  <span class="c1"># Coverage</span>
+</span></span></code></pre><h3 id="running-a-single-test">Running a Single Test <a href="#running-a-single-test" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go <span class="nb">test</span> -v -run TestParseFrontmatter ./pkg/plugins/    <span class="c1"># Specific test</span>
+</span></span><span class="line"><span class="cl">go <span class="nb">test</span> -v -run <span class="s2">&#34;TestConfig.*&#34;</span> ./pkg/config/           <span class="c1"># Pattern match</span>
+</span></span><span class="line"><span class="cl">go <span class="nb">test</span> -v ./pkg/filter/...                            <span class="c1"># Entire package</span>
+</span></span><span class="line"><span class="cl">go <span class="nb">test</span> -v ./tests/...                                 <span class="c1"># Integration tests</span>
+</span></span></code></pre><h3 id="linting-and-formatting">Linting and Formatting <a href="#linting-and-formatting" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go fmt ./...          <span class="c1"># Format all code (ALWAYS run before committing)</span>
+</span></span><span class="line"><span class="cl">go vet ./...          <span class="c1"># Check for common issues</span>
+</span></span><span class="line"><span class="cl">golangci-lint run     <span class="c1"># Full linting (if installed)</span>
+</span></span></code></pre><h2 id="project-structure">Project Structure <a href="#project-structure" class="heading-anchor">#</a></h2>
+<pre><code>cmd/markata-go/       # CLI entry point and commands
+pkg/
+├── config/           # Configuration loading, parsing, validation
+├── models/           # Data models (Post, Config, Feed, errors)
+├── filter/           # Filter expression lexer/parser/evaluator
+├── lifecycle/        # Build lifecycle manager (9 stages)
+├── plugins/          # Built-in plugins (15+)
+└── templates/        # Pongo2 template engine wrapper
+templates/            # Default HTML templates
+tests/                # Integration tests
+spec/                 # Specification documents
+</code></pre>
+<h2 id="code-style-guidelines">Code Style Guidelines <a href="#code-style-guidelines" class="heading-anchor">#</a></h2>
+<h3 id="import-organization">Import Organization <a href="#import-organization" class="heading-anchor">#</a></h3>
+<p><strong>Three groups separated by blank lines, alphabetically sorted within each:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// 1. Standard library
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="s">&#34;errors&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;fmt&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;sync&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// 2. Project-internal
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="s">&#34;github.com/example/markata-go/pkg/models&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// 3. Third-party
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="s">&#34;github.com/yuin/goldmark&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;gopkg.in/yaml.v3&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><h3 id="naming-conventions">Naming Conventions <a href="#naming-conventions" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Convention</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Files</td>
+<td>snake_case</td>
+<td><code>render_markdown.go</code></td>
+</tr>
+<tr>
+<td>Exported</td>
+<td>PascalCase</td>
+<td><code>NewManager()</code>, <code>Post</code></td>
+</tr>
+<tr>
+<td>Unexported</td>
+<td>camelCase</td>
+<td><code>runStage()</code>, <code>memoryCache</code></td>
+</tr>
+<tr>
+<td>Constructors</td>
+<td><code>New</code> prefix</td>
+<td><code>NewConfig()</code>, <code>NewFrontmatterParseError()</code></td>
+</tr>
+<tr>
+<td>Sentinel errors</td>
+<td><code>var Err</code> prefix</td>
+<td><code>var ErrConfigNotFound</code></td>
+</tr>
+<tr>
+<td>Error types</td>
+<td><code>Error</code> suffix</td>
+<td><code>FrontmatterParseError</code></td>
+</tr>
+<tr>
+<td>Interfaces</td>
+<td>Capability name</td>
+<td><code>Plugin</code>, <code>Cache</code>, <code>ConfigurePlugin</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="error-handling">Error Handling <a href="#error-handling" class="heading-anchor">#</a></h3>
+<p><strong>Sentinel errors</strong> - for expected, checkable conditions:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">var</span> <span class="nx">ErrConfigNotFound</span> <span class="p">=</span> <span class="nx">errors</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="s">&#34;no configuration file found&#34;</span><span class="p">)</span>
+</span></span></code></pre><p><strong>Custom error types</strong> - with context and <code>Unwrap()</code> for wrapping:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">FrontmatterParseError</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Path</span>    <span class="kt">string</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Message</span> <span class="kt">string</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Err</span>     <span class="kt">error</span>  <span class="c1">// wrapped error
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">FrontmatterParseError</span><span class="p">)</span> <span class="nf">Error</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;frontmatter parse error in %s: %s&#34;</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">Path</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">Message</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">FrontmatterParseError</span><span class="p">)</span> <span class="nf">Unwrap</span><span class="p">()</span> <span class="kt">error</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">e</span><span class="p">.</span><span class="nx">Err</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">NewFrontmatterParseError</span><span class="p">(</span><span class="nx">path</span><span class="p">,</span> <span class="nx">message</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="o">*</span><span class="nx">FrontmatterParseError</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="o">&amp;</span><span class="nx">FrontmatterParseError</span><span class="p">{</span><span class="nx">Path</span><span class="p">:</span> <span class="nx">path</span><span class="p">,</span> <span class="nx">Message</span><span class="p">:</span> <span class="nx">message</span><span class="p">,</span> <span class="nx">Err</span><span class="p">:</span> <span class="nx">err</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p><strong>Error wrapping</strong> - always use <code>%w</code> verb:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">return</span> <span class="kc">nil</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;failed to read config file %s: %w&#34;</span><span class="p">,</span> <span class="nx">path</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+</span></span></code></pre><p><strong>Error checking</strong> - use <code>errors.Is()</code> and <code>errors.As()</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">if</span> <span class="nx">errors</span><span class="p">.</span><span class="nf">Is</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">ErrConfigNotFound</span><span class="p">)</span> <span class="p">{</span> <span class="o">...</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">var</span> <span class="nx">parseErr</span> <span class="o">*</span><span class="nx">FrontmatterParseError</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="nx">errors</span><span class="p">.</span><span class="nf">As</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">parseErr</span><span class="p">)</span> <span class="p">{</span> <span class="o">...</span> <span class="p">}</span>
+</span></span></code></pre><h3 id="struct-patterns">Struct Patterns <a href="#struct-patterns" class="heading-anchor">#</a></h3>
+<p><strong>Struct tags</strong> - support all three serialization formats:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">Post</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Path</span>  <span class="kt">string</span>  <span class="s">`json:&#34;path&#34; yaml:&#34;path&#34; toml:&#34;path&#34;`</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Title</span> <span class="o">*</span><span class="kt">string</span> <span class="s">`json:&#34;title,omitempty&#34; yaml:&#34;title,omitempty&#34; toml:&#34;title,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p><strong>Optional fields</strong> - use pointers for optional scalars:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">Title</span>       <span class="o">*</span><span class="kt">string</span>    <span class="s">`json:&#34;title,omitempty&#34;`</span>
+</span></span><span class="line"><span class="cl"><span class="nx">PublishDate</span> <span class="o">*</span><span class="nx">time</span><span class="p">.</span><span class="nx">Time</span> <span class="s">`json:&#34;publish_date,omitempty&#34;`</span>
+</span></span></code></pre><h3 id="interface-patterns">Interface Patterns <a href="#interface-patterns" class="heading-anchor">#</a></h3>
+<p><strong>Small, composable interfaces:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">Plugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">Name</span><span class="p">()</span> <span class="kt">string</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">ConfigurePlugin</span> <span class="kd">interface</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Plugin</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">Configure</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p><strong>Compile-time interface verification:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span>          <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">RenderMarkdownPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">ConfigurePlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">RenderMarkdownPlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><h3 id="concurrency-patterns">Concurrency Patterns <a href="#concurrency-patterns" class="heading-anchor">#</a></h3>
+<p><strong>Mutex for shared state</strong> - use <code>sync.RWMutex</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">Manager</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">mu</span>    <span class="nx">sync</span><span class="p">.</span><span class="nx">RWMutex</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">posts</span> <span class="p">[]</span><span class="o">*</span><span class="nx">models</span><span class="p">.</span><span class="nx">Post</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">Manager</span><span class="p">)</span> <span class="nf">Posts</span><span class="p">()</span> <span class="p">[]</span><span class="o">*</span><span class="nx">models</span><span class="p">.</span><span class="nx">Post</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">m</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">RLock</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">defer</span> <span class="nx">m</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">RUnlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nb">append</span><span class="p">([]</span><span class="o">*</span><span class="nx">models</span><span class="p">.</span><span class="nx">Post</span><span class="p">{},</span> <span class="nx">m</span><span class="p">.</span><span class="nx">posts</span><span class="o">...</span><span class="p">)</span>  <span class="c1">// Return copy
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="p">}</span>
+</span></span></code></pre><p><strong>Semaphore for limiting concurrency:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">semaphore</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{},</span> <span class="nx">concurrency</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">item</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">items</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">i</span> <span class="nx">Item</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">semaphore</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span>        <span class="c1">// Acquire
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="o">&lt;-</span><span class="nx">semaphore</span> <span class="p">}()</span> <span class="c1">// Release
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nf">process</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}(</span><span class="nx">item</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="documentation">Documentation <a href="#documentation" class="heading-anchor">#</a></h3>
+<p><strong>Package docs</strong> in <code>doc.go</code> with <code># Heading</code> sections:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Package templates provides a Jinja2-like template engine.
+</span></span></span><span class="line"><span class="cl"><span class="c1">//
+</span></span></span><span class="line"><span class="cl"><span class="c1">// # Template Engine
+</span></span></span><span class="line"><span class="cl"><span class="c1">//
+</span></span></span><span class="line"><span class="cl"><span class="c1">// The Engine type manages template loading:
+</span></span></span><span class="line"><span class="cl"><span class="c1">//
+</span></span></span><span class="line"><span class="cl"><span class="c1">//  engine, err := templates.NewEngine(&#34;templates/&#34;)
+</span></span></span></code></pre><p><strong>Function docs</strong> - describe behavior, parameters, return values:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// ExtractFrontmatter splits content into frontmatter and body.
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Returns ErrInvalidFrontmatter if the frontmatter is malformed.
+</span></span></span></code></pre><h3 id="testing-patterns">Testing Patterns <a href="#testing-patterns" class="heading-anchor">#</a></h3>
+<p><strong>Test naming:</strong> <code>Test{Type}_{Scenario}</code></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">TestConfig_DefaultOutputDir</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">TestParseFrontmatter_MissingDelimiter</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span>
+</span></span></code></pre><p><strong>Table-driven tests:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">tests</span> <span class="o">:=</span> <span class="p">[]</span><span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">name</span>    <span class="kt">string</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">input</span>   <span class="kt">string</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">want</span>    <span class="kt">string</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">wantErr</span> <span class="kt">bool</span>
+</span></span><span class="line"><span class="cl"><span class="p">}{</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span><span class="s">&#34;basic&#34;</span><span class="p">,</span> <span class="s">&#34;input&#34;</span><span class="p">,</span> <span class="s">&#34;expected&#34;</span><span class="p">,</span> <span class="kc">false</span><span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span><span class="s">&#34;empty&#34;</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">,</span> <span class="kc">true</span><span class="p">},</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">tt</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">tests</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">t</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="nx">tt</span><span class="p">.</span><span class="nx">name</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">got</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nf">Process</span><span class="p">(</span><span class="nx">tt</span><span class="p">.</span><span class="nx">input</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">)</span> <span class="o">!=</span> <span class="nx">tt</span><span class="p">.</span><span class="nx">wantErr</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">t</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;error = %v, wantErr %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">,</span> <span class="nx">tt</span><span class="p">.</span><span class="nx">wantErr</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">got</span> <span class="o">!=</span> <span class="nx">tt</span><span class="p">.</span><span class="nx">want</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">t</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;got %q, want %q&#34;</span><span class="p">,</span> <span class="nx">got</span><span class="p">,</span> <span class="nx">tt</span><span class="p">.</span><span class="nx">want</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p><strong>Test helpers</strong> - always call <code>t.Helper()</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">newTestSite</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="o">*</span><span class="nx">testSite</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">t</span><span class="p">.</span><span class="nf">Helper</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">dir</span> <span class="o">:=</span> <span class="nx">t</span><span class="p">.</span><span class="nf">TempDir</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// setup...
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">return</span> <span class="o">&amp;</span><span class="nx">testSite</span><span class="p">{</span><span class="nx">dir</span><span class="p">:</span> <span class="nx">dir</span><span class="p">,</span> <span class="nx">t</span><span class="p">:</span> <span class="nx">t</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="file-organization">File Organization <a href="#file-organization" class="heading-anchor">#</a></h3>
+<ul>
+<li><code>doc.go</code> - Package documentation</li>
+<li><code>errors.go</code> - Error types and sentinels</li>
+<li>One primary type per file for large types</li>
+<li>Tests adjacent to source: <code>foo.go</code> -&gt; <code>foo_test.go</code></li>
+</ul>
+<h2 id="lifecycle-stages">Lifecycle Stages <a href="#lifecycle-stages" class="heading-anchor">#</a></h2>
+<p>Build runs through 9 stages: Configure -&gt; Validate -&gt; Glob -&gt; Load -&gt; Transform -&gt; Render -&gt; Collect -&gt; Write -&gt; Cleanup</p>
+<h2 id="plugin-development">Plugin Development <a href="#plugin-development" class="heading-anchor">#</a></h2>
+<p>Implement <code>lifecycle.Plugin</code> plus stage interfaces (<code>ConfigurePlugin</code>, <code>RenderPlugin</code>, etc.). Use <code>PriorityPlugin</code> for execution order control.</p>
+<h2 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h2>
+<p>Primary: TOML (<code>markata-go.toml</code>). Also: YAML, JSON. Env override: <code>MARKATA_GO_</code> prefix.</p>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

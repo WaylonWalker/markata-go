@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Youtube - My Site</title>
+    <meta name="description" content="This document specifies the YouTube embed plugin for markata-go.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Youtube">
+    
+    <meta property="og:url" content="/youtube/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="This document specifies the YouTube embed plugin for markata-go.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Youtube">
+    
+    <meta name="twitter:description" content="This document specifies the YouTube embed plugin for markata-go.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/youtube/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Youtube",
+  "description": "This document specifies the YouTube embed plugin for markata-go.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/youtube/"
+  },
+  "url": "/youtube/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Youtube</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="youtube-plugin-specification">YouTube Plugin Specification</h1>
+<p>This document specifies the YouTube embed plugin for markata-go.</p>
+<h2 id="overview">Overview <a href="#overview" class="heading-anchor">#</a></h2>
+<p>The YouTube plugin automatically converts YouTube URLs in markdown content into responsive embedded iframes. It processes URLs that appear on their own line (in a <code>&lt;p&gt;</code> tag) and replaces them with privacy-enhanced video embeds.</p>
+<h2 id="plugin-information">Plugin Information <a href="#plugin-information" class="heading-anchor">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Name</strong></td>
+<td><code>youtube</code></td>
+</tr>
+<tr>
+<td><strong>Stage</strong></td>
+<td>Render (with late priority)</td>
+</tr>
+<tr>
+<td><strong>Interfaces</strong></td>
+<td><code>Plugin</code>, <code>ConfigurePlugin</code>, <code>RenderPlugin</code>, <code>PriorityPlugin</code></td>
+</tr>
+<tr>
+<td><strong>Default Enabled</strong></td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h2>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">youtube</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>              <span class="c"># Enable/disable the plugin (default: true)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">privacy_enhanced</span> <span class="p">=</span> <span class="kc">true</span>     <span class="c"># Use youtube-nocookie.com (default: true)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">container_class</span> <span class="p">=</span> <span class="s2">&#34;youtube-embed&#34;</span>  <span class="c"># CSS class for container div (default)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">lazy_load</span> <span class="p">=</span> <span class="kc">true</span>            <span class="c"># Enable lazy loading of iframe (default: true)</span>
+</span></span></code></pre><h3 id="configuration-options">Configuration Options <a href="#configuration-options" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Enable or disable YouTube URL conversion</td>
+</tr>
+<tr>
+<td><code>privacy_enhanced</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Use <code>youtube-nocookie.com</code> domain for GDPR compliance</td>
+</tr>
+<tr>
+<td><code>container_class</code></td>
+<td>string</td>
+<td><code>&quot;youtube-embed&quot;</code></td>
+<td>CSS class applied to the container div</td>
+</tr>
+<tr>
+<td><code>lazy_load</code></td>
+<td>bool</td>
+<td><code>true</code></td>
+<td>Add <code>loading=&quot;lazy&quot;</code> attribute to iframe</td>
+</tr>
+</tbody>
+</table>
+<h2 id="supported-url-formats">Supported URL Formats <a href="#supported-url-formats" class="heading-anchor">#</a></h2>
+<p>The plugin recognizes the following YouTube URL patterns:</p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard watch URL</td>
+<td><code>https://www.youtube.com/watch?v=dQw4w9WgXcQ</code></td>
+</tr>
+<tr>
+<td>Without www</td>
+<td><code>https://youtube.com/watch?v=dQw4w9WgXcQ</code></td>
+</tr>
+<tr>
+<td>Mobile URL</td>
+<td><code>https://m.youtube.com/watch?v=dQw4w9WgXcQ</code></td>
+</tr>
+<tr>
+<td>Short URL</td>
+<td><code>https://youtu.be/dQw4w9WgXcQ</code></td>
+</tr>
+<tr>
+<td>With timestamp</td>
+<td><code>https://youtu.be/dQw4w9WgXcQ?t=1h2m3s</code></td>
+</tr>
+<tr>
+<td>With start param</td>
+<td><code>https://www.youtube.com/watch?v=dQw4w9WgXcQ&amp;start=123</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="video-id-requirements">Video ID Requirements <a href="#video-id-requirements" class="heading-anchor">#</a></h3>
+<ul>
+<li>Must be exactly 11 characters</li>
+<li>Alphanumeric plus hyphen (<code>-</code>) and underscore (<code>_</code>)</li>
+<li>Invalid IDs are ignored (URL left unchanged)</li>
+</ul>
+<h2 id="timestamp-support">Timestamp Support <a href="#timestamp-support" class="heading-anchor">#</a></h2>
+<p>The plugin extracts and converts timestamps to the embed <code>start</code> parameter:</p>
+<table>
+<thead>
+<tr>
+<th>Input Format</th>
+<th>Converted To</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>?t=123</code></td>
+<td><code>?start=123</code></td>
+</tr>
+<tr>
+<td><code>?t=1h2m3s</code></td>
+<td><code>?start=3723</code></td>
+</tr>
+<tr>
+<td><code>?t=2m30s</code></td>
+<td><code>?start=150</code></td>
+</tr>
+<tr>
+<td><code>?t=45s</code></td>
+<td><code>?start=45</code></td>
+</tr>
+<tr>
+<td><code>?start=123</code></td>
+<td><code>?start=123</code> (preserved)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="behavior">Behavior <a href="#behavior" class="heading-anchor">#</a></h2>
+<h3 id="url-detection">URL Detection <a href="#url-detection" class="heading-anchor">#</a></h3>
+<ol>
+<li><strong>Standalone URLs only</strong>: URLs must be on their own line, resulting in a <code>&lt;p&gt;</code> tag containing only the URL</li>
+<li><strong>Handles autolinked URLs</strong>: Works with both plain URLs and URLs converted to <code>&lt;a&gt;</code> tags by the Linkify extension</li>
+<li><strong>Preserves inline URLs</strong>: URLs within text are not converted</li>
+</ol>
+<h3 id="detection-patterns">Detection Patterns <a href="#detection-patterns" class="heading-anchor">#</a></h3>
+<p>The plugin matches URLs in two formats after markdown rendering:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- Pattern 1: Plain URL (no Linkify) --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>https://www.youtube.com/watch?v=VIDEO_ID<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">&lt;!-- Pattern 2: Autolinked URL (with Linkify extension) --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://www.youtube.com/watch?v=VIDEO_ID&#34;</span><span class="p">&gt;</span>https://www.youtube.com/watch?v=VIDEO_ID<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="code-block-protection">Code Block Protection <a href="#code-block-protection" class="heading-anchor">#</a></h3>
+<p>URLs inside <code>&lt;code&gt;</code> blocks are never converted, allowing documentation of YouTube URLs without embedding:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">To embed a video, use: <span class="sb">`https://youtu.be/VIDEO_ID`</span>
+</span></span></code></pre><h2 id="output">Output <a href="#output" class="heading-anchor">#</a></h2>
+<h3 id="html-structure">HTML Structure <a href="#html-structure" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;youtube-embed&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">iframe</span>
+</span></span><span class="line"><span class="cl">    <span class="na">src</span><span class="o">=</span><span class="s">&#34;https://www.youtube-nocookie.com/embed/VIDEO_ID&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="na">title</span><span class="o">=</span><span class="s">&#34;YouTube video player&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="na">frameborder</span><span class="o">=</span><span class="s">&#34;0&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="na">allow</span><span class="o">=</span><span class="s">&#34;accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="na">allowfullscreen</span>
+</span></span><span class="line"><span class="cl">    <span class="na">loading</span><span class="o">=</span><span class="s">&#34;lazy&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">iframe</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="with-timestamp">With Timestamp <a href="#with-timestamp" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;youtube-embed&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">iframe</span>
+</span></span><span class="line"><span class="cl">    <span class="na">src</span><span class="o">=</span><span class="s">&#34;https://www.youtube-nocookie.com/embed/VIDEO_ID?start=3723&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="err">...</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">iframe</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="standard-mode-privacy-enhanced-false">Standard Mode (privacy_enhanced: false) <a href="#standard-mode-privacy-enhanced-false" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;youtube-embed&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">iframe</span>
+</span></span><span class="line"><span class="cl">    <span class="na">src</span><span class="o">=</span><span class="s">&#34;https://www.youtube.com/embed/VIDEO_ID&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="err">...</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">iframe</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre><h2 id="css-styling">CSS Styling <a href="#css-styling" class="heading-anchor">#</a></h2>
+<p>The default theme includes responsive styling for YouTube embeds:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">.</span><span class="nc">youtube-embed</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">position</span><span class="p">:</span> <span class="kc">relative</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">padding-bottom</span><span class="p">:</span> <span class="mf">56.25</span><span class="kt">%</span><span class="p">;</span> <span class="c">/* 16:9 aspect ratio */</span>
+</span></span><span class="line"><span class="cl">  <span class="k">height</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">overflow</span><span class="p">:</span> <span class="kc">hidden</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">max-width</span><span class="p">:</span> <span class="mi">100</span><span class="kt">%</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">margin</span><span class="p">:</span> <span class="mf">1.5</span><span class="kt">rem</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">border-radius</span><span class="p">:</span> <span class="mf">0.5</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">youtube-embed</span> <span class="nt">iframe</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">position</span><span class="p">:</span> <span class="kc">absolute</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">top</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">left</span><span class="p">:</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">width</span><span class="p">:</span> <span class="mi">100</span><span class="kt">%</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">height</span><span class="p">:</span> <span class="mi">100</span><span class="kt">%</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">border</span><span class="p">:</span> <span class="kc">none</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="k">border-radius</span><span class="p">:</span> <span class="mf">0.5</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h2 id="privacy-mode">Privacy Mode <a href="#privacy-mode" class="heading-anchor">#</a></h2>
+<p>When <code>privacy_enhanced</code> is enabled (default), the plugin uses <code>youtube-nocookie.com</code>:</p>
+<ul>
+<li><strong>No cookies until play</strong>: YouTube does not store cookies until the user clicks play</li>
+<li><strong>GDPR compliance</strong>: Helps meet privacy regulations</li>
+<li><strong>Same functionality</strong>: Video playback works identically</li>
+</ul>
+<p>To use standard YouTube embeds:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">youtube</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">privacy_enhanced</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span></code></pre><h2 id="processing-order">Processing Order <a href="#processing-order" class="heading-anchor">#</a></h2>
+<ol>
+<li>Plugin runs during the <strong>Render</strong> stage with <strong>late priority</strong></li>
+<li>Executes after <code>render_markdown</code> (which converts markdown to HTML)</li>
+<li>Processes <code>post.ArticleHTML</code> for each post</li>
+<li>Uses concurrent processing for performance</li>
+</ol>
+<h2 id="error-handling">Error Handling <a href="#error-handling" class="heading-anchor">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Invalid video ID</td>
+<td>URL left unchanged</td>
+</tr>
+<tr>
+<td>URL in code block</td>
+<td>URL left unchanged</td>
+</tr>
+<tr>
+<td>Inline URL (not standalone)</td>
+<td>URL left unchanged</td>
+</tr>
+<tr>
+<td>Malformed URL</td>
+<td>URL left unchanged</td>
+</tr>
+<tr>
+<td>Empty ArticleHTML</td>
+<td>Skipped</td>
+</tr>
+<tr>
+<td>Skipped post</td>
+<td>Skipped</td>
+</tr>
+</tbody>
+</table>
+<h2 id="interface-compliance">Interface Compliance <a href="#interface-compliance" class="heading-anchor">#</a></h2>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">var</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Plugin</span>          <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">YouTubePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">ConfigurePlugin</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">YouTubePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">RenderPlugin</span>    <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">YouTubePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">_</span> <span class="nx">lifecycle</span><span class="p">.</span><span class="nx">PriorityPlugin</span>  <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">YouTubePlugin</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span></code></pre><h2 id="examples">Examples <a href="#examples" class="heading-anchor">#</a></h2>
+<h3 id="basic-usage">Basic Usage <a href="#basic-usage" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Check out this video:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">https://www.youtube.com/watch?v=dQw4w9WgXcQ
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">More content below...
+</span></span></code></pre><h3 id="with-timestamp-1">With Timestamp <a href="#with-timestamp-1" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Skip to the good part:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">https://youtu.be/dQw4w9WgXcQ?t=1m30s
+</span></span></code></pre><h3 id="short-url">Short URL <a href="#short-url" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">https://youtu.be/dQw4w9WgXcQ
+</span></span></code></pre><h3 id="not-converted-inline">NOT Converted (inline) <a href="#not-converted-inline" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">Check out https://youtu.be/dQw4w9WgXcQ for more info.
+</span></span></code></pre><h3 id="not-converted-code-block">NOT Converted (code block) <a href="#not-converted-code-block" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">To embed: <span class="sb">`https://youtu.be/VIDEO_ID`</span>
+</span></span></code></pre><h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="CONFIG.md">Configuration Reference</a> - Global configuration options</li>
+<li><a href="LIFECYCLE.md">Lifecycle Stages</a> - Plugin execution order</li>
+<li><a href="DEFAULT_PLUGINS.md">Default Plugins</a> - All built-in plugins</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

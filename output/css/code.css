@@ -1,0 +1,88 @@
+/* Code Styles - Default Theme */
+
+/* Inline code */
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 0.125em 0.375em;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  color: var(--color-text);
+}
+
+/* Code blocks */
+pre {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  margin: var(--space-4) 0;
+  border: 1px solid var(--color-border);
+}
+
+pre code {
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* Code block with language label */
+pre[data-language] {
+  position: relative;
+  padding-top: calc(var(--space-4) + 1.5em);
+}
+
+pre[data-language]::before {
+  content: attr(data-language);
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+/* Line numbers (optional) */
+pre.line-numbers {
+  padding-left: 3.5em;
+  position: relative;
+}
+
+pre.line-numbers .line-numbers-rows {
+  position: absolute;
+  left: 0;
+  top: var(--space-4);
+  width: 3em;
+  text-align: right;
+  color: var(--color-text-muted);
+  border-right: 1px solid var(--color-border);
+  padding-right: var(--space-2);
+  user-select: none;
+  pointer-events: none;
+}
+
+pre.line-numbers .line-numbers-rows > span {
+  display: block;
+  counter-increment: line;
+}
+
+pre.line-numbers .line-numbers-rows > span::before {
+  content: counter(line);
+}
+
+/* 
+ * Syntax Highlighting Colors
+ * 
+ * Syntax highlighting colors are provided by chroma.css, which is
+ * dynamically generated based on the selected palette's Chroma theme.
+ * See pkg/plugins/chroma_css.go and pkg/palettes/chroma.go for details.
+ *
+ * Do NOT add .chroma or .highlight color rules here - they will conflict
+ * with the palette-based chroma.css styles.
+ */

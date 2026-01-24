@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Output Formats - My Site</title>
+    <meta name="description" content="Configure multiple output formats for posts including HTML, Markdown source, plain text, and OpenGraph cards">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Post Output Formats">
+    
+    <meta property="og:url" content="/post-output-formats/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Configure multiple output formats for posts including HTML, Markdown source, plain text, and OpenGraph cards">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2026-01-22T00:00:00Z">
+    
+    <meta property="article:tag" content="configuration">
+    
+    <meta property="article:tag" content="output">
+    
+    <meta property="article:tag" content="social-media">
+    
+    <meta property="article:tag" content="content-negotiation">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Post Output Formats">
+    
+    <meta name="twitter:description" content="Configure multiple output formats for posts including HTML, Markdown source, plain text, and OpenGraph cards">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/post-output-formats/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Post Output Formats",
+  "description": "Configure multiple output formats for posts including HTML, Markdown source, plain text, and OpenGraph cards",
+  "datePublished": "2026-01-22T00:00:00Z",
+  "dateModified": "2026-01-22T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/post-output-formats/"
+  },
+  "keywords": [
+    "configuration",
+    "output",
+    "social-media",
+    "content-negotiation"
+  ],
+  "url": "/post-output-formats/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Post Output Formats</h1>
+            
+            <time datetime="2026-01-22T00:00:00Z">January 22, 2026</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/configuration/">configuration</a>
+                
+                <a href="/tags/output/">output</a>
+                
+                <a href="/tags/social-media/">social-media</a>
+                
+                <a href="/tags/content-negotiation/">content-negotiation</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="post-output-formats">Post Output Formats</h1>
+<p>markata-go can generate multiple output formats for each post beyond the standard HTML. This enables use cases like providing raw markdown for API consumers, plain text for accessibility, or generating social media preview cards.</p>
+<h2 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h2>
+<p>Configure output formats in your <code>markata-go.toml</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">post_formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>       <span class="c"># Standard HTML (default: true)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">markdown</span> <span class="p">=</span> <span class="kc">false</span>  <span class="c"># Raw markdown source</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text</span> <span class="p">=</span> <span class="kc">false</span>      <span class="c"># Plain text output</span>
+</span></span><span class="line"><span class="cl"><span class="nx">og</span> <span class="p">=</span> <span class="kc">false</span>        <span class="c"># OpenGraph card HTML</span>
+</span></span></code></pre><h2 id="available-formats">Available Formats <a href="#available-formats" class="heading-anchor">#</a></h2>
+<h3 id="html-default">HTML (default) <a href="#html-default" class="heading-anchor">#</a></h3>
+<p>The standard HTML output, generated by default.</p>
+<p><strong>Output:</strong> <code>/your-post/index.html</code></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">post_formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>  <span class="c"># This is the default</span>
+</span></span></code></pre><h3 id="markdown">Markdown <a href="#markdown" class="heading-anchor">#</a></h3>
+<p>Outputs the raw markdown source with reconstructed frontmatter. Useful for:</p>
+<ul>
+<li>&quot;View Source&quot; links on your site</li>
+<li>API consumers who want raw content</li>
+<li>Copy-paste workflows</li>
+</ul>
+<p><strong>Output:</strong> <code>/your-post/index.md</code> (with redirect from <code>/your-post.md</code>)</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">post_formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">markdown</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><p>The markdown output includes the original frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Your Post Title&#34;
+</span></span><span class="line"><span class="cl">description: &#34;Post description&#34;
+</span></span><span class="line"><span class="cl">date: 2026-01-22
+</span></span><span class="line"><span class="cl">published: true
+</span></span><span class="line"><span class="cl">tags:
+</span></span><span class="line"><span class="cl">  <span class="k">-</span> example
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Your original markdown content...
+</span></span></code></pre><h3 id="plain-text">Plain Text <a href="#plain-text" class="heading-anchor">#</a></h3>
+<p>Outputs a plain text version of the content, perfect for:</p>
+<ul>
+<li>Screen readers and accessibility tools</li>
+<li>Command-line readers (curl, wget)</li>
+<li>Low-bandwidth situations</li>
+<li>Text-based browsers</li>
+</ul>
+<p><strong>Output:</strong> <code>/your-post/index.txt</code> (with redirect from <code>/your-post.txt</code>)</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">post_formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><p>The text output includes:</p>
+<ul>
+<li>Title (underlined with <code>=</code>)</li>
+<li>Description (if present)</li>
+<li>Date</li>
+<li>Raw markdown content</li>
+</ul>
+<p>Example output:</p>
+<pre><code>My Post Title
+=============
+
+A description of the post.
+
+Date: January 22, 2026
+
+The actual content of the post in plain text form...
+</code></pre>
+<h3 id="opengraph-card-og">OpenGraph Card (OG) <a href="#opengraph-card-og" class="heading-anchor">#</a></h3>
+<p>Generates a special HTML page optimized for screenshot tools to create social media preview images. The page is sized at 1200x630 pixels (standard OG image dimensions).</p>
+<p><strong>Output:</strong> <code>/your-post/og/index.html</code></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">post_formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">og</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><h4 id="using-og-cards-for-social-images">Using OG Cards for Social Images <a href="#using-og-cards-for-social-images" class="heading-anchor">#</a></h4>
+<p>The OG card HTML is designed to be captured by screenshot tools like Puppeteer or Playwright:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Example with Puppeteer
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kr">const</span> <span class="nx">browser</span> <span class="o">=</span> <span class="kr">await</span> <span class="nx">puppeteer</span><span class="p">.</span><span class="nx">launch</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">page</span> <span class="o">=</span> <span class="kr">await</span> <span class="nx">browser</span><span class="p">.</span><span class="nx">newPage</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl"><span class="kr">await</span> <span class="nx">page</span><span class="p">.</span><span class="nx">setViewport</span><span class="p">({</span> <span class="nx">width</span><span class="o">:</span> <span class="mi">1200</span><span class="p">,</span> <span class="nx">height</span><span class="o">:</span> <span class="mi">630</span> <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="kr">await</span> <span class="nx">page</span><span class="p">.</span><span class="kr">goto</span><span class="p">(</span><span class="s1">&#39;https://yoursite.com/your-post/og/&#39;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="kr">await</span> <span class="nx">page</span><span class="p">.</span><span class="nx">screenshot</span><span class="p">({</span> <span class="nx">path</span><span class="o">:</span> <span class="s1">&#39;og-image.png&#39;</span> <span class="p">});</span>
+</span></span></code></pre><p>The default OG card template includes:</p>
+<ul>
+<li>Post title (large, prominent)</li>
+<li>Post description (if available)</li>
+<li>Up to 3 tags</li>
+<li>Site title</li>
+<li>Publication date</li>
+</ul>
+<p>You can customize the OG card appearance by providing your own <code>og.html</code> template.</p>
+<h2 id="clean-url-redirects">Clean URL Redirects <a href="#clean-url-redirects" class="heading-anchor">#</a></h2>
+<p>For convenience, markata-go generates redirect files that allow cleaner URLs for alternate formats:</p>
+<table>
+<thead>
+<tr>
+<th>User requests</th>
+<th>Redirects to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/my-post.md</code></td>
+<td><code>/my-post/index.md</code></td>
+</tr>
+<tr>
+<td><code>/my-post.txt</code></td>
+<td><code>/my-post/index.txt</code></td>
+</tr>
+</tbody>
+</table>
+<p>This means users can type <code>example.com/my-post.md</code> directly in their browser or use it with command-line tools:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Both of these work:</span>
+</span></span><span class="line"><span class="cl">curl https://example.com/my-post.md
+</span></span><span class="line"><span class="cl">curl https://example.com/my-post/index.md
+</span></span></code></pre><p>The redirects use HTML meta refresh for maximum compatibility across browsers and HTTP clients.</p>
+<h2 id="visible-format-links">Visible Format Links <a href="#visible-format-links" class="heading-anchor">#</a></h2>
+<p>When you enable alternate formats, markata-go automatically displays format links on your posts and feeds. These appear in the post footer (for posts) or feed header (for feeds).</p>
+<p>For posts with <code>markdown</code>, <code>text</code>, or <code>og</code> enabled, visitors see:</p>
+<ul>
+<li><strong>View as:</strong> Markdown | Text | Card</li>
+</ul>
+<p>For feeds, visitors see subscription options:</p>
+<ul>
+<li><strong>Subscribe:</strong> RSS | Atom | JSON | Markdown | Text</li>
+</ul>
+<h2 id="content-negotiation">Content Negotiation <a href="#content-negotiation" class="heading-anchor">#</a></h2>
+<p>markata-go's directory-based URL structure (<code>/slug/index.html</code>, <code>/slug/index.md</code>, <code>/slug/index.txt</code>) enables server-side content negotiation. This allows clients to request their preferred format using HTTP <code>Accept</code> headers.</p>
+<h3 id="how-it-works">How It Works <a href="#how-it-works" class="heading-anchor">#</a></h3>
+<p>Instead of requesting a specific file, clients request the directory URL:</p>
+<pre><code>GET /my-post/
+Accept: text/plain
+</code></pre>
+<p>The server returns the appropriate format based on the <code>Accept</code> header.</p>
+<h3 id="nginx-configuration">Nginx Configuration <a href="#nginx-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">server</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">listen</span> <span class="mi">80</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">server_name</span> <span class="s">example.com</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">root</span> <span class="s">/var/www/html</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># Try the requested URI, then index files based on Accept header
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="kn">try_files</span> <span class="nv">$uri</span> <span class="nv">$uri/</span> <span class="s">@negotiate</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kn">location</span> <span class="s">@negotiate</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># Map Accept header to file extension
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="kn">set</span> <span class="nv">$ext</span> <span class="s">&#34;html&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="kn">if</span> <span class="s">(</span><span class="nv">$http_accept</span> <span class="p">~</span><span class="sr">*</span> <span class="s">&#34;text/plain&#34;)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="kn">set</span> <span class="nv">$ext</span> <span class="s">&#34;txt&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="kn">if</span> <span class="s">(</span><span class="nv">$http_accept</span> <span class="p">~</span><span class="sr">*</span> <span class="s">&#34;text/markdown&#34;)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="kn">set</span> <span class="nv">$ext</span> <span class="s">&#34;md&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1"># Try the negotiated format
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="kn">try_files</span> <span class="nv">$uri/index.$ext</span> <span class="nv">$uri/index.html</span> <span class="p">=</span><span class="mi">404</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="caddy-configuration">Caddy Configuration <a href="#caddy-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gh">example.com</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">root</span> <span class="nd">*</span> <span class="s">/var/www/html</span>
+</span></span><span class="line"><span class="cl">    <span class="k">file_server</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nd">@wantsText</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">header</span> <span class="s">Accept</span> <span class="s">*text/plain*</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="nd">@wantsMarkdown</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">header</span> <span class="s">Accept</span> <span class="s">*text/markdown*</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">    
+</span></span></span><span class="line"><span class="cl"><span class="c1">    # Rewrite to plain text when requested
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">rewrite</span> <span class="nd">@wantsText</span> <span class="se">{path}</span><span class="s">/index.txt</span><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">    
+</span></span></span><span class="line"><span class="cl"><span class="c1">    # Rewrite to markdown when requested
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">rewrite</span> <span class="nd">@wantsMarkdown</span> <span class="se">{path}</span><span class="s">/index.md</span><span class="c1">
+</span></span></span><span class="line"><span class="cl"><span class="c1">    
+</span></span></span><span class="line"><span class="cl"><span class="c1">    # Default to HTML
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">try_files</span> <span class="se">{path}</span> <span class="se">{path}</span><span class="s">/index.html</span> <span class="se">{path}</span><span class="s">.html</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="apache-configuration">Apache Configuration <a href="#apache-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">&lt;VirtualHost</span> <span class="s">*:80</span><span class="nt">&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">ServerName</span> example.com
+</span></span><span class="line"><span class="cl">    <span class="nb">DocumentRoot</span> <span class="sx">/var/www/html</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c"># Enable content negotiation</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">Options</span> +MultiViews
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c"># Define type mappings</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">AddType</span> text/html .html
+</span></span><span class="line"><span class="cl">    <span class="nb">AddType</span> text/markdown .md
+</span></span><span class="line"><span class="cl">    <span class="nb">AddType</span> text/plain .txt
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c"># Prefer HTML by default</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">DirectoryIndex</span> index.html index.md index.txt
+</span></span><span class="line"><span class="cl"><span class="nt">&lt;/VirtualHost&gt;</span>
+</span></span></code></pre><h3 id="testing-content-negotiation">Testing Content Negotiation <a href="#testing-content-negotiation" class="heading-anchor">#</a></h3>
+<p>Use <code>curl</code> to test different formats:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Request HTML (default)</span>
+</span></span><span class="line"><span class="cl">curl https://example.com/my-post/
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Request plain text</span>
+</span></span><span class="line"><span class="cl">curl -H <span class="s2">&#34;Accept: text/plain&#34;</span> https://example.com/my-post/
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Request markdown</span>
+</span></span><span class="line"><span class="cl">curl -H <span class="s2">&#34;Accept: text/markdown&#34;</span> https://example.com/my-post/
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Request with quality values</span>
+</span></span><span class="line"><span class="cl">curl -H <span class="s2">&#34;Accept: text/plain;q=0.9, text/html;q=0.8&#34;</span> https://example.com/my-post/
+</span></span></code></pre><h2 id="homepage-with-indexmd">Homepage with index.md <a href="#homepage-with-indexmd" class="heading-anchor">#</a></h2>
+<p>markata-go provides special handling for <code>index.md</code> files to create homepages and directory-based URLs:</p>
+<table>
+<thead>
+<tr>
+<th>File Path</th>
+<th>Generated URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>./index.md</code></td>
+<td><code>/</code> (homepage)</td>
+</tr>
+<tr>
+<td><code>docs/index.md</code></td>
+<td><code>/docs/</code></td>
+</tr>
+<tr>
+<td><code>blog/guides/index.md</code></td>
+<td><code>/blog/guides/</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="creating-a-homepage">Creating a Homepage <a href="#creating-a-homepage" class="heading-anchor">#</a></h3>
+<p>Simply create an <code>index.md</code> file in your content root:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Welcome to My Site&#34;
+</span></span><span class="line"><span class="cl">description: &#34;A personal blog about programming&#34;
+</span></span><span class="line"><span class="cl">published: true
+</span></span><span class="line"><span class="cl">template: home.html
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Welcome
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">This is my homepage content...
+</span></span></code></pre><p>This generates <code>/index.html</code> as your site's homepage, allowing custom content instead of requiring a feed with empty slug.</p>
+<h3 id="directory-index-pages">Directory Index Pages <a href="#directory-index-pages" class="heading-anchor">#</a></h3>
+<p>Create <code>index.md</code> files in subdirectories for section landing pages:</p>
+<pre><code>docs/
+  index.md          -&gt; /docs/
+  getting-started.md -&gt; /docs/getting-started/
+  guides/
+    index.md        -&gt; /docs/guides/
+    advanced.md     -&gt; /docs/guides/advanced/
+</code></pre>
+<h2 id="example-configuration">Example Configuration <a href="#example-configuration" class="heading-anchor">#</a></h2>
+<p>A typical configuration enabling all formats:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Site&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">post_formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>      <span class="c"># Standard pages</span>
+</span></span><span class="line"><span class="cl"><span class="nx">markdown</span> <span class="p">=</span> <span class="kc">true</span>  <span class="c"># View source support</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text</span> <span class="p">=</span> <span class="kc">true</span>      <span class="c"># Plain text for accessibility</span>
+</span></span><span class="line"><span class="cl"><span class="nx">og</span> <span class="p">=</span> <span class="kc">true</span>        <span class="c"># Social card generation</span>
+</span></span></code></pre><h2 id="automation-example">Automation Example <a href="#automation-example" class="heading-anchor">#</a></h2>
+<p>Here's a complete workflow for generating social images:</p>
+<ol>
+<li>
+<p><strong>Enable OG format</strong> in your config:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">post_formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">og</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Build your site</strong>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build
+</span></span></code></pre></li>
+<li>
+<p><strong>Generate screenshots</strong> with a script:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="cp">#!/bin/bash
+</span></span></span><span class="line"><span class="cl"><span class="cp"></span><span class="k">for</span> og_page in output/*/og/index.html<span class="p">;</span> <span class="k">do</span>
+</span></span><span class="line"><span class="cl">  <span class="nv">post_dir</span><span class="o">=</span><span class="k">$(</span>dirname <span class="k">$(</span>dirname <span class="s2">&#34;</span><span class="nv">$og_page</span><span class="s2">&#34;</span><span class="k">))</span>
+</span></span><span class="line"><span class="cl">  <span class="nv">slug</span><span class="o">=</span><span class="k">$(</span>basename <span class="s2">&#34;</span><span class="nv">$post_dir</span><span class="s2">&#34;</span><span class="k">)</span>
+</span></span><span class="line"><span class="cl">  npx puppeteer screenshot <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>    --viewport 1200x630 <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>    <span class="s2">&#34;file://</span><span class="nv">$og_page</span><span class="s2">&#34;</span> <span class="se">\
+</span></span></span><span class="line"><span class="cl"><span class="se"></span>    <span class="s2">&#34;</span><span class="nv">$post_dir</span><span class="s2">/og-image.png&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="k">done</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Reference in templates</strong>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:image&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;{{ config.url }}{{ post.href }}og-image.png&#34;</span><span class="p">&gt;</span>
+</span></span></code></pre></li>
+</ol>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./configuration.md">Configuration Guide</a> - Full configuration reference</li>
+<li><a href="./templates.md">Templates Guide</a> - Customizing templates including og.html</li>
+<li><a href="./deployment.md">Deployment Guide</a> - Deploying your generated site</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

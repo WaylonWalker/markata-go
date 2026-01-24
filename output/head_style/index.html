@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head Style - My Site</title>
+    <meta name="description" content="The head and style injection system allows global and per-post customization of HTML elements and CSS styling. This enables adding meta tags, scripts,...">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Head Style">
+    
+    <meta property="og:url" content="/head_style/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="The head and style injection system allows global and per-post customization of HTML elements and CSS styling. This enables adding meta tags, scripts,...">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Head Style">
+    
+    <meta name="twitter:description" content="The head and style injection system allows global and per-post customization of HTML elements and CSS styling. This enables adding meta tags, scripts,...">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/head_style/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Head Style",
+  "description": "The head and style injection system allows global and per-post customization of HTML elements and CSS styling. This enables adding meta tags, scripts,...",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/head_style/"
+  },
+  "url": "/head_style/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Head Style</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="head-and-style-injection-specification">Head and Style Injection Specification</h1>
+<p>The head and style injection system allows global and per-post customization of HTML <code>&lt;head&gt;</code> elements and CSS styling. This enables adding meta tags, scripts, stylesheets, and custom CSS without modifying templates.</p>
+<h2 id="integration-with-themes">Integration with Themes <a href="#integration-with-themes" class="heading-anchor">#</a></h2>
+<p>This system works alongside the <a href="./THEMES.md">THEMES.md</a> theming system:</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                    STYLE RESOLUTION ORDER                            │
+├─────────────────────────────────────────────────────────────────────┤
+│  1. Theme CSS (base styles from theme)                              │
+│     └─ themes/default/static/css/main.css                           │
+│                                                                      │
+│  2. Theme CSS Variables (from theme.toml options)                   │
+│     └─ [name.theme.variables] overrides                             │
+│                                                                      │
+│  3. Global head/style config ([name.head], [name.style])            │
+│     └─ Site-wide meta tags, scripts, color overrides                │
+│                                                                      │
+│  4. Per-post config_overrides (frontmatter)                         │
+│     └─ Post-specific customizations                                 │
+│                                                                      │
+│  LATER SOURCES OVERRIDE EARLIER ONES                                 │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>When to use each:</strong></p>
+<ul>
+<li><strong>Theme</strong> (<code>[name.theme]</code>): Visual identity, fonts, layout, component styles</li>
+<li><strong>Theme Variables</strong> (<code>[name.theme.variables]</code>): Quick color/spacing tweaks</li>
+<li><strong>Head/Style</strong> (<code>[name.head]</code>, <code>[name.style]</code>): Meta tags, scripts, analytics, color overrides</li>
+<li><strong>Post Overrides</strong> (<code>config_overrides</code>): Per-post customizations</li>
+</ul>
+<h2 id="overview">Overview <a href="#overview" class="heading-anchor">#</a></h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                    HEAD/STYLE INJECTION FLOW                         │
+├─────────────────────────────────────────────────────────────────────┤
+│  CONFIGURATION SOURCES (in order of precedence)                      │
+│                                                                      │
+│  1. Post frontmatter config_overrides                               │
+│     └─ Highest priority, applies to single post                     │
+│                                                                      │
+│  2. Global config [name.head] and [name.style]                      │
+│     └─ Applies to all posts                                          │
+│                                                                      │
+│  3. Theme defaults                                                   │
+│     └─ Fallback values from theme                                   │
+│                                                                      │
+│  MERGE STRATEGY                                                      │
+│     - Post overrides extend (not replace) global config              │
+│     - Lists are concatenated (meta tags, links, scripts)            │
+│     - Style values override individually                             │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2 id="head-configuration">Head Configuration <a href="#head-configuration" class="heading-anchor">#</a></h2>
+<h3 id="meta-tags">Meta Tags <a href="#meta-tags" class="heading-anchor">#</a></h3>
+<p>Add meta tags to every page:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">meta</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;author&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content</span> <span class="p">=</span> <span class="s2">&#34;Jane Doe&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">meta</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;robots&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content</span> <span class="p">=</span> <span class="s2">&#34;index, follow&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Open Graph tags use &#39;property&#39; instead of &#39;name&#39;</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">meta</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">property</span> <span class="p">=</span> <span class="s2">&#34;og:type&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content</span> <span class="p">=</span> <span class="s2">&#34;article&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">meta</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">property</span> <span class="p">=</span> <span class="s2">&#34;og:site_name&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content</span> <span class="p">=</span> <span class="s2">&#34;My Blog&#34;</span>
+</span></span></code></pre><p><strong>Generated HTML:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;author&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;Jane Doe&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">name</span><span class="o">=</span><span class="s">&#34;robots&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;index, follow&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:type&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;article&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">property</span><span class="o">=</span><span class="s">&#34;og:site_name&#34;</span> <span class="na">content</span><span class="o">=</span><span class="s">&#34;My Blog&#34;</span> <span class="p">/&gt;</span>
+</span></span></code></pre><h3 id="link-tags">Link Tags <a href="#link-tags" class="heading-anchor">#</a></h3>
+<p>Add link elements (stylesheets, canonical URLs, favicons):</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">link</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rel</span> <span class="p">=</span> <span class="s2">&#34;stylesheet&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">href</span> <span class="p">=</span> <span class="s2">&#34;/css/custom.css&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">link</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rel</span> <span class="p">=</span> <span class="s2">&#34;icon&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">href</span> <span class="p">=</span> <span class="s2">&#34;/favicon.ico&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">link</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rel</span> <span class="p">=</span> <span class="s2">&#34;preconnect&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">href</span> <span class="p">=</span> <span class="s2">&#34;https://fonts.googleapis.com&#34;</span>
+</span></span></code></pre><p><strong>Generated HTML:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;stylesheet&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/css/custom.css&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;icon&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/favicon.ico&#34;</span> <span class="p">/&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;preconnect&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://fonts.googleapis.com&#34;</span> <span class="p">/&gt;</span>
+</span></span></code></pre><h3 id="script-tags">Script Tags <a href="#script-tags" class="heading-anchor">#</a></h3>
+<p>Add scripts to the head:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">script</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">src</span> <span class="p">=</span> <span class="s2">&#34;https://cdn.tailwindcss.com&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">script</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">src</span> <span class="p">=</span> <span class="s2">&#34;/js/analytics.js&#34;</span>
+</span></span></code></pre><p><strong>Generated HTML:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;https://cdn.tailwindcss.com&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/js/analytics.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="raw-html-text">Raw HTML Text <a href="#raw-html-text" class="heading-anchor">#</a></h3>
+<p>For complex head content, use raw text:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text</span> <span class="p">=</span> <span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="cl"><span class="s1">&lt;style&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s1">  :root {
+</span></span></span><span class="line"><span class="cl"><span class="s1">    --custom-color: #ff6600;
+</span></span></span><span class="line"><span class="cl"><span class="s1">  }
+</span></span></span><span class="line"><span class="cl"><span class="s1">&lt;/style&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s1">&lt;script&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s1">  console.log(&#39;</span><span class="nx">Site</span> <span class="nx">loaded</span><span class="s1">&#39;);
+</span></span></span><span class="line"><span class="cl"><span class="s1">&lt;/script&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s1">&#39;&#39;&#39;</span>
+</span></span></code></pre><p>Or as a list of text blocks:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">text</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">value</span> <span class="p">=</span> <span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="cl"><span class="s1">&lt;style&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s1">  .custom-class { color: red; }
+</span></span></span><span class="line"><span class="cl"><span class="s1">&lt;/style&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s1">&#39;&#39;&#39;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">text</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">value</span> <span class="p">=</span> <span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="cl"><span class="s1">&lt;script type=&#34;application/ld+json&#34;&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s1">  {&#34;@context&#34;: &#34;https://schema.org&#34;, &#34;@type&#34;: &#34;WebSite&#34;}
+</span></span></span><span class="line"><span class="cl"><span class="s1">&lt;/script&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s1">&#39;&#39;&#39;</span>
+</span></span></code></pre><hr>
+<h2 id="style-configuration">Style Configuration <a href="#style-configuration" class="heading-anchor">#</a></h2>
+<h3 id="color-scheme">Color Scheme <a href="#color-scheme" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">style</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Dark mode colors (default)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">color_bg</span> <span class="p">=</span> <span class="s2">&#34;#1f2022&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">color_bg_code</span> <span class="p">=</span> <span class="s2">&#34;#1f2022&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">color_text</span> <span class="p">=</span> <span class="s2">&#34;#eefbfe&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">color_link</span> <span class="p">=</span> <span class="s2">&#34;#fb30c4&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">color_accent</span> <span class="p">=</span> <span class="s2">&#34;#e1bd00c9&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Light mode colors</span>
+</span></span><span class="line"><span class="cl"><span class="nx">color_bg_light</span> <span class="p">=</span> <span class="s2">&#34;#eefbfe&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">color_bg_code_light</span> <span class="p">=</span> <span class="s2">&#34;#eefbfe&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">color_text_light</span> <span class="p">=</span> <span class="s2">&#34;#1f2022&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">color_link_light</span> <span class="p">=</span> <span class="s2">&#34;#fb30c4&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">color_accent_light</span> <span class="p">=</span> <span class="s2">&#34;#ffeb00&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Layout</span>
+</span></span><span class="line"><span class="cl"><span class="nx">body_width</span> <span class="p">=</span> <span class="s2">&#34;800px&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">overlay_brightness</span> <span class="p">=</span> <span class="s2">&#34;.85&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">overlay_brightness_light</span> <span class="p">=</span> <span class="s2">&#34;.95&#34;</span>
+</span></span></code></pre><h3 id="style-variables">Style Variables <a href="#style-variables" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>color_bg</code></td>
+<td>Background color (dark)</td>
+<td><code>#1f2022</code></td>
+</tr>
+<tr>
+<td><code>color_bg_code</code></td>
+<td>Code block background (dark)</td>
+<td><code>#1f2022</code></td>
+</tr>
+<tr>
+<td><code>color_text</code></td>
+<td>Text color (dark)</td>
+<td><code>#eefbfe</code></td>
+</tr>
+<tr>
+<td><code>color_link</code></td>
+<td>Link color (dark)</td>
+<td><code>#fb30c4</code></td>
+</tr>
+<tr>
+<td><code>color_accent</code></td>
+<td>Accent color (dark)</td>
+<td><code>#e1bd00c9</code></td>
+</tr>
+<tr>
+<td><code>color_bg_light</code></td>
+<td>Background color (light)</td>
+<td><code>#eefbfe</code></td>
+</tr>
+<tr>
+<td><code>color_bg_code_light</code></td>
+<td>Code block background (light)</td>
+<td><code>#eefbfe</code></td>
+</tr>
+<tr>
+<td><code>color_text_light</code></td>
+<td>Text color (light)</td>
+<td><code>#1f2022</code></td>
+</tr>
+<tr>
+<td><code>color_link_light</code></td>
+<td>Link color (light)</td>
+<td><code>#fb30c4</code></td>
+</tr>
+<tr>
+<td><code>color_accent_light</code></td>
+<td>Accent color (light)</td>
+<td><code>#ffeb00</code></td>
+</tr>
+<tr>
+<td><code>body_width</code></td>
+<td>Maximum content width</td>
+<td><code>800px</code></td>
+</tr>
+<tr>
+<td><code>overlay_brightness</code></td>
+<td>Image overlay brightness (dark)</td>
+<td><code>.85</code></td>
+</tr>
+<tr>
+<td><code>overlay_brightness_light</code></td>
+<td>Image overlay brightness (light)</td>
+<td><code>.95</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="per-post-overrides">Per-Post Overrides <a href="#per-post-overrides" class="heading-anchor">#</a></h2>
+<p>The <code>config_overrides</code> frontmatter key allows posts to override <strong>any</strong> configuration value, not just head and style. This is the primary mechanism for per-post customization.</p>
+<h3 id="generic-config-override-syntax">Generic Config Override Syntax <a href="#generic-config-override-syntax" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Special Post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">config_overrides</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># Override ANY config key using dot notation or nested structure</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">output_dir</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;special-output&#34;</span><span class="w">           </span><span class="c"># Override top-level config</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">markdown</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">extensions</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">tables</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">                      </span><span class="c"># Override nested config</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">feeds</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">defaults</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">items_per_page</span><span class="p">:</span><span class="w"> </span><span class="m">5</span><span class="w">                  </span><span class="c"># Override feed defaults</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">head</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">meta</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">robots</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">content</span><span class="p">:</span><span class="w"> </span><span class="l">noindex</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">style</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">color_bg</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;#000000&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">theme</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">options</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">show_toc</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">                    </span><span class="c"># Override theme option</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="c"># Custom plugin configuration</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">my_plugin</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="override-resolution">Override Resolution <a href="#override-resolution" class="heading-anchor">#</a></h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                    CONFIG OVERRIDE RESOLUTION                        │
+├─────────────────────────────────────────────────────────────────────┤
+│  For each post, configuration is resolved as:                        │
+│                                                                      │
+│  1. Start with global config (merged from all sources)              │
+│  2. Deep merge post.config_overrides                                 │
+│  3. Result is used when rendering this specific post                │
+│                                                                      │
+│  MERGE RULES:                                                        │
+│  - Scalars: Post value replaces global value                        │
+│  - Objects: Deep merge (post keys override, others preserved)       │
+│  - Arrays: Post array replaces global array (no concatenation)      │
+│  - Special: head.meta/link/script arrays are APPENDED               │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="common-override-patterns">Common Override Patterns <a href="#common-override-patterns" class="heading-anchor">#</a></h3>
+<p><strong>Disable a feature for one post:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="kc">No</span><span class="w"> </span><span class="l">TOC Post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">config_overrides</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">toc</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Use different template:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Landing Page</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="l">landing.html</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">config_overrides</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">style</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">body_width</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;100%&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Override markdown processing:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Code-Heavy Post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">config_overrides</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">markdown</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">highlight</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">theme</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;monokai&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">line_numbers</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Skip from feeds:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Hidden Post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">config_overrides</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">feeds</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">exclude</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">                        </span><span class="c"># Don&#39;t include in any feed</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="headstyle-overrides-detailed">Head/Style Overrides (Detailed) <a href="#headstyle-overrides-detailed" class="heading-anchor">#</a></h3>
+<p>For backwards compatibility and clarity, head and style have special merge behavior:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Special Post</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">config_overrides</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">head</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">meta</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">robots</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">content</span><span class="p">:</span><span class="w"> </span><span class="l">noindex</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">property</span><span class="p">:</span><span class="w"> </span><span class="l">og:type</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">content</span><span class="p">:</span><span class="w"> </span><span class="l">video</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="p">|</span><span class="sd">
+</span></span></span><span class="line"><span class="cl"><span class="sd">      </span><span class="w">      </span><span class="l">&lt;script src=&#34;/js/special-feature.js&#34;&gt;&lt;/script&gt;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">style</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">color_bg</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;#000000&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">color_text</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;#ffffff&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="override-behavior">Override Behavior <a href="#override-behavior" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>meta</code></td>
+<td>Post meta tags are <strong>added</strong> to global meta tags</td>
+</tr>
+<tr>
+<td><code>link</code></td>
+<td>Post links are <strong>added</strong> to global links</td>
+</tr>
+<tr>
+<td><code>script</code></td>
+<td>Post scripts are <strong>added</strong> to global scripts</td>
+</tr>
+<tr>
+<td><code>text</code></td>
+<td>Post text is <strong>appended</strong> to global text</td>
+</tr>
+<tr>
+<td><code>style.*</code></td>
+<td>Post style values <strong>override</strong> global values</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-video-post">Example: Video Post <a href="#example-video-post" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">My Video Tutorial</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">config_overrides</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">head</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">meta</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">property</span><span class="p">:</span><span class="w"> </span><span class="l">og:type</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">content</span><span class="p">:</span><span class="w"> </span><span class="l">video.other</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">property</span><span class="p">:</span><span class="w"> </span><span class="l">og:video</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">content</span><span class="p">:</span><span class="w"> </span><span class="l">https://example.com/video.mp4</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">script</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">src</span><span class="p">:</span><span class="w"> </span><span class="l">/js/video-player.js</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">style</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">body_width</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;1200px&#34;</span><span class="w">  </span><span class="c"># Wider for video content</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h3 id="example-landing-page">Example: Landing Page <a href="#example-landing-page" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l">Welcome</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="l">landing.html</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">config_overrides</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">head</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">link</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="nt">rel</span><span class="p">:</span><span class="w"> </span><span class="l">stylesheet</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">href</span><span class="p">:</span><span class="w"> </span><span class="l">/css/landing.css</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="p">|</span><span class="sd">
+</span></span></span><span class="line"><span class="cl"><span class="sd">      &lt;style&gt;
+</span></span></span><span class="line"><span class="cl"><span class="sd">        body { margin: 0; padding: 0; }
+</span></span></span><span class="line"><span class="cl"><span class="sd">      &lt;/style&gt;</span><span class="w">      
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">style</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">body_width</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;100%&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><hr>
+<h2 id="template-integration">Template Integration <a href="#template-integration" class="heading-anchor">#</a></h2>
+<h3 id="rendering-head-content">Rendering Head Content <a href="#rendering-head-content" class="heading-anchor">#</a></h3>
+<p>Templates access head configuration through <code>config.head</code>:</p>
+<pre><code class="language-jinja2">&lt;head&gt;
+  &lt;meta charset=&quot;UTF-8&quot;&gt;
+  &lt;title&gt;{{ post.title }} - {{ config.title }}&lt;/title&gt;
+  
+  {# Render raw text first #}
+  {{ config.head.text | safe }}
+  
+  {# Render meta tags #}
+  {% for meta in config.head.meta %}
+    {% if meta.name %}
+    &lt;meta name=&quot;{{ meta.name }}&quot; content=&quot;{{ meta.content }}&quot; /&gt;
+    {% elif meta.property %}
+    &lt;meta property=&quot;{{ meta.property }}&quot; content=&quot;{{ meta.content }}&quot; /&gt;
+    {% endif %}
+  {% endfor %}
+  
+  {# Render link tags #}
+  {% for link in config.head.link %}
+    &lt;link rel=&quot;{{ link.rel }}&quot; href=&quot;{{ link.href }}&quot; /&gt;
+  {% endfor %}
+  
+  {# Render script tags #}
+  {% for script in config.head.script %}
+    &lt;script src=&quot;{{ script.src }}&quot;&gt;&lt;/script&gt;
+  {% endfor %}
+&lt;/head&gt;
+</code></pre>
+<h3 id="using-style-variables">Using Style Variables <a href="#using-style-variables" class="heading-anchor">#</a></h3>
+<p>Access style configuration in templates:</p>
+<pre><code class="language-jinja2">&lt;style&gt;
+  :root {
+    --color-bg: {{ config.style.color_bg }};
+    --color-text: {{ config.style.color_text }};
+    --color-link: {{ config.style.color_link }};
+    --color-accent: {{ config.style.color_accent }};
+    --body-width: {{ config.style.body_width }};
+  }
+  
+  @media (prefers-color-scheme: light) {
+    :root {
+      --color-bg: {{ config.style.color_bg_light }};
+      --color-text: {{ config.style.color_text_light }};
+      --color-link: {{ config.style.color_link_light }};
+      --color-accent: {{ config.style.color_accent_light }};
+    }
+  }
+  
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    max-width: var(--body-width);
+    margin: 0 auto;
+  }
+  
+  a {
+    color: var(--color-link);
+    text-decoration-color: var(--color-accent);
+  }
+&lt;/style&gt;
+</code></pre>
+<h3 id="dynamic-head-content">Dynamic Head Content <a href="#dynamic-head-content" class="heading-anchor">#</a></h3>
+<p>Use Jinja expressions in head configuration:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">link</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rel</span> <span class="p">=</span> <span class="s2">&#34;canonical&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">href</span> <span class="p">=</span> <span class="s2">&#34;{{ config.url }}/{{ post.slug }}/&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">meta</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">property</span> <span class="p">=</span> <span class="s2">&#34;og:url&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content</span> <span class="p">=</span> <span class="s2">&#34;{{ config.url }}/{{ post.slug }}/&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">meta</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">property</span> <span class="p">=</span> <span class="s2">&#34;og:title&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content</span> <span class="p">=</span> <span class="s2">&#34;{{ post.title }}&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">meta</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">property</span> <span class="p">=</span> <span class="s2">&#34;og:description&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content</span> <span class="p">=</span> <span class="s2">&#34;{{ post.description }}&#34;</span>
+</span></span></code></pre><hr>
+<h2 id="configuration-model">Configuration Model <a href="#configuration-model" class="heading-anchor">#</a></h2>
+<h3 id="headconfig">HeadConfig <a href="#headconfig" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Meta</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">property</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+</span></span><span class="line"><span class="cl">    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nd">@validator</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">check_og</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">v</span> <span class="ow">and</span> <span class="n">v</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;og:&#39;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&#34;Use &#39;property&#39; for og: tags, not &#39;name&#39;&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">v</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nd">@root_validator</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">check_name_or_property</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="ow">not</span> <span class="n">values</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">values</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;property&#39;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&#34;Either &#39;name&#39; or &#39;property&#39; must be set&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">values</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Link</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">rel</span><span class="p">:</span> <span class="nb">str</span>
+</span></span><span class="line"><span class="cl">    <span class="n">href</span><span class="p">:</span> <span class="nb">str</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Script</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">src</span><span class="p">:</span> <span class="nb">str</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Text</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">value</span><span class="p">:</span> <span class="nb">str</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">HeadConfig</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">meta</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Meta</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">link</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Link</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">script</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Script</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">text</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Text</span><span class="p">],</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nd">@validator</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="n">pre</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">normalize_text</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="k">return</span> <span class="s2">&#34;</span><span class="se">\n</span><span class="s2">&#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">v</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">v</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="nd">@property</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">html</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="s2">&#34;&#34;&#34;Render all head content as HTML string.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">text</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">meta</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">meta</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">                <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;meta name=&#34;</span><span class="si">{</span><span class="n">meta</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1">&#34; content=&#34;</span><span class="si">{</span><span class="n">meta</span><span class="o">.</span><span class="n">content</span><span class="si">}</span><span class="s1">&#34; /&gt;&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="k">elif</span> <span class="n">meta</span><span class="o">.</span><span class="n">property</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">                <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;meta property=&#34;</span><span class="si">{</span><span class="n">meta</span><span class="o">.</span><span class="n">property</span><span class="si">}</span><span class="s1">&#34; content=&#34;</span><span class="si">{</span><span class="n">meta</span><span class="o">.</span><span class="n">content</span><span class="si">}</span><span class="s1">&#34; /&gt;&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">link</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;link rel=&#34;</span><span class="si">{</span><span class="n">link</span><span class="o">.</span><span class="n">rel</span><span class="si">}</span><span class="s1">&#34; href=&#34;</span><span class="si">{</span><span class="n">link</span><span class="o">.</span><span class="n">href</span><span class="si">}</span><span class="s1">&#34; /&gt;&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">script</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">script</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&lt;script src=&#34;</span><span class="si">{</span><span class="n">script</span><span class="o">.</span><span class="n">src</span><span class="si">}</span><span class="s1">&#34;&gt;&lt;/script&gt;&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="s2">&#34;</span><span class="se">\n</span><span class="s2">&#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
+</span></span></code></pre><h3 id="styleconfig">StyleConfig <a href="#styleconfig" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Style</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># Dark mode</span>
+</span></span><span class="line"><span class="cl">    <span class="n">color_bg</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;#1f2022&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">color_bg_code</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;#1f2022&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">color_text</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;#eefbfe&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">color_link</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;#fb30c4&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">color_accent</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;#e1bd00c9&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">overlay_brightness</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;.85&#34;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Light mode</span>
+</span></span><span class="line"><span class="cl">    <span class="n">color_bg_light</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;#eefbfe&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">color_bg_code_light</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;#eefbfe&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">color_text_light</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;#1f2022&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">color_link_light</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;#fb30c4&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">color_accent_light</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;#ffeb00&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">overlay_brightness_light</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;.95&#34;</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1"># Layout</span>
+</span></span><span class="line"><span class="cl">    <span class="n">body_width</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&#34;800px&#34;</span>
+</span></span></code></pre><h3 id="postoverrides">PostOverrides <a href="#postoverrides" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">PostOverrides</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">head</span><span class="p">:</span> <span class="n">HeadConfig</span> <span class="o">=</span> <span class="n">HeadConfig</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="n">style</span><span class="p">:</span> <span class="n">Style</span> <span class="o">=</span> <span class="n">Style</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Post</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">config_overrides</span><span class="p">:</span> <span class="n">PostOverrides</span> <span class="o">=</span> <span class="n">PostOverrides</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># ... other post fields</span>
+</span></span></code></pre><hr>
+<h2 id="hook-specification">Hook Specification <a href="#hook-specification" class="heading-anchor">#</a></h2>
+<h3 id="stages">Stages <a href="#stages" class="heading-anchor">#</a></h3>
+<ul>
+<li><code>config_model</code>: Register HeadConfig and Style models</li>
+<li><code>post_model</code>: Register PostOverrides on post model</li>
+<li><code>pre_render</code>: Merge post overrides with global config</li>
+</ul>
+<h3 id="hook-signatures">Hook Signatures <a href="#hook-signatures" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span><span class="p">(</span><span class="n">tryfirst</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">config_model</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Register head and style configuration models.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">config_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Config</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span><span class="p">(</span><span class="n">tryfirst</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">post_model</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Register post override model.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">post_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span><span class="p">(</span><span class="n">tryfirst</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">pre_render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Process post config overrides, merging text lists.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="s1">&#39;config_overrides&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">post</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="k">continue</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1"># Normalize text list to string</span>
+</span></span><span class="line"><span class="cl">        <span class="n">raw_text</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">config_overrides</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;head&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_text</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="n">post</span><span class="o">.</span><span class="n">config_overrides</span><span class="p">[</span><span class="s1">&#39;head&#39;</span><span class="p">][</span><span class="s1">&#39;text&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&#34;</span><span class="se">\n</span><span class="s2">&#34;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">                <span class="n">item</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">raw_text</span>
+</span></span><span class="line"><span class="cl">            <span class="p">)</span>
+</span></span></code></pre><hr>
+<h2 id="merged-configuration">Merged Configuration <a href="#merged-configuration" class="heading-anchor">#</a></h2>
+<p>When rendering, the template receives a merged configuration:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">get_merged_config</span><span class="p">(</span><span class="n">core</span><span class="p">,</span> <span class="n">post</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;&#34;&#34;Merge global config with post overrides.&#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">config</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">post</span><span class="o">.</span><span class="n">config_overrides</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># Merge head</span>
+</span></span><span class="line"><span class="cl">        <span class="n">config</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">config_overrides</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">meta</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">config</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">link</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">config_overrides</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">link</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">config</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">script</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">config_overrides</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">script</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">config</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">text</span> <span class="o">+=</span> <span class="s2">&#34;</span><span class="se">\n</span><span class="s2">&#34;</span> <span class="o">+</span> <span class="n">post</span><span class="o">.</span><span class="n">config_overrides</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">text</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1"># Merge style (override individual values)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">post</span><span class="o">.</span><span class="n">config_overrides</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">__fields__</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">config_overrides</span><span class="o">.</span><span class="n">style</span><span class="p">,</span> <span class="n">field</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">                <span class="nb">setattr</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">style</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">config</span>
+</span></span></code></pre><hr>
+<h2 id="common-patterns">Common Patterns <a href="#common-patterns" class="heading-anchor">#</a></h2>
+<h3 id="analytics-integration">Analytics Integration <a href="#analytics-integration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">script</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">src</span> <span class="p">=</span> <span class="s2">&#34;https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text</span> <span class="p">=</span> <span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="cl"><span class="s1">&lt;script&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s1">  window.dataLayer = window.dataLayer || [];
+</span></span></span><span class="line"><span class="cl"><span class="s1">  function gtag(){dataLayer.push(arguments);}
+</span></span></span><span class="line"><span class="cl"><span class="s1">  gtag(&#39;</span><span class="nx">js</span><span class="s1">&#39;, new Date());
+</span></span></span><span class="line"><span class="cl"><span class="s1">  gtag(&#39;</span><span class="nx">config</span><span class="s1">&#39;, &#39;</span><span class="nx">GA_MEASUREMENT_ID</span><span class="s1">&#39;);
+</span></span></span><span class="line"><span class="cl"><span class="s1">&lt;/script&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s1">&#39;&#39;&#39;</span>
+</span></span></code></pre><h3 id="font-loading">Font Loading <a href="#font-loading" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">link</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rel</span> <span class="p">=</span> <span class="s2">&#34;preconnect&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">href</span> <span class="p">=</span> <span class="s2">&#34;https://fonts.googleapis.com&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">link</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rel</span> <span class="p">=</span> <span class="s2">&#34;preconnect&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">href</span> <span class="p">=</span> <span class="s2">&#34;https://fonts.gstatic.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">crossorigin</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">link</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rel</span> <span class="p">=</span> <span class="s2">&#34;stylesheet&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">href</span> <span class="p">=</span> <span class="s2">&#34;https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap&#34;</span>
+</span></span></code></pre><h3 id="social-media-cards">Social Media Cards <a href="#social-media-cards" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">meta</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">property</span> <span class="p">=</span> <span class="s2">&#34;og:type&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content</span> <span class="p">=</span> <span class="s2">&#34;website&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">meta</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">property</span> <span class="p">=</span> <span class="s2">&#34;og:image&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content</span> <span class="p">=</span> <span class="s2">&#34;{{ config.url }}/og-image.png&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">meta</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;twitter:card&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content</span> <span class="p">=</span> <span class="s2">&#34;summary_large_image&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nx">meta</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;twitter:site&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content</span> <span class="p">=</span> <span class="s2">&#34;@myhandle&#34;</span>
+</span></span></code></pre><h3 id="structured-data">Structured Data <a href="#structured-data" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">head</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">text</span> <span class="p">=</span> <span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="cl"><span class="s1">&lt;script type=&#34;application/ld+json&#34;&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s1">{
+</span></span></span><span class="line"><span class="cl"><span class="s1">  &#34;@context&#34;: &#34;https://schema.org&#34;,
+</span></span></span><span class="line"><span class="cl"><span class="s1">  &#34;@type&#34;: &#34;WebSite&#34;,
+</span></span></span><span class="line"><span class="cl"><span class="s1">  &#34;name&#34;: &#34;{{ config.title }}&#34;,
+</span></span></span><span class="line"><span class="cl"><span class="s1">  &#34;url&#34;: &#34;{{ config.url }}&#34;
+</span></span></span><span class="line"><span class="cl"><span class="s1">}
+</span></span></span><span class="line"><span class="cl"><span class="s1">&lt;/script&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s1">&#39;&#39;&#39;</span>
+</span></span></code></pre><hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./TEMPLATES.md">TEMPLATES.md</a> - Template system specification</li>
+<li><a href="./CONFIG.md">CONFIG.md</a> - Configuration system</li>
+<li><a href="./THEMES.md">THEMES.md</a> - Theme customization</li>
+<li><a href="./DATA_MODEL.md">DATA_MODEL.md</a> - Post model specification</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

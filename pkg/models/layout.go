@@ -2,6 +2,11 @@ package models
 
 import "strings"
 
+// Layout name constants
+const (
+	layoutBlog = "blog"
+)
+
 // LayoutConfig configures the site layout system.
 // Layouts control the overall page structure including sidebars, TOC, header, and footer.
 type LayoutConfig struct {
@@ -78,7 +83,7 @@ func LayoutToTemplate(layout string) string {
 	switch layout {
 	case "docs":
 		return "docs.html"
-	case "blog", "":
+	case layoutBlog, "":
 		return "post.html"
 	case "landing":
 		return "landing.html"
@@ -736,7 +741,7 @@ func NewLayoutConfig() LayoutConfig {
 	showPrevNext := true
 
 	return LayoutConfig{
-		Name:  "blog",
+		Name:  layoutBlog,
 		Paths: make(map[string]string),
 		Feeds: make(map[string]string),
 		Docs: DocsLayoutConfig{

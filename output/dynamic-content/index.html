@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Content - My Site</title>
+    <meta name="description" content="Using Jinja2 template syntax in Markdown files for dynamic content generation">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Dynamic Content">
+    
+    <meta property="og:url" content="/dynamic-content/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Using Jinja2 template syntax in Markdown files for dynamic content generation">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="jinja">
+    
+    <meta property="article:tag" content="templates">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Dynamic Content">
+    
+    <meta name="twitter:description" content="Using Jinja2 template syntax in Markdown files for dynamic content generation">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/dynamic-content/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Dynamic Content",
+  "description": "Using Jinja2 template syntax in Markdown files for dynamic content generation",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/dynamic-content/"
+  },
+  "keywords": [
+    "documentation",
+    "jinja",
+    "templates"
+  ],
+  "url": "/dynamic-content/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Dynamic Content</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/jinja/">jinja</a>
+                
+                <a href="/tags/templates/">templates</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="dynamic-content-jinja-in-markdown">Dynamic Content (Jinja in Markdown)</h1>
+<p>The <code>jinja_md</code> plugin lets you use Jinja2 template syntax directly inside your Markdown files. This enables dynamic content generation: listing recent posts, showing related articles, creating series navigation, and more.</p>
+<h2 id="table-of-contents">Table of Contents <a href="#table-of-contents" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#enabling-jinja-in-markdown">Enabling Jinja in Markdown</a></li>
+<li><a href="#accessing-posts-in-markdown">Accessing Posts in Markdown</a></li>
+<li><a href="#including-recent-posts-from-a-feed">Including Recent Posts from a Feed</a></li>
+<li><a href="#common-use-cases">Common Use Cases</a></li>
+<li><a href="#available-variables">Available Variables</a></li>
+<li><a href="#available-filters">Available Filters</a></li>
+<li><a href="#practical-examples">Practical Examples</a></li>
+<li><a href="#tips-and-troubleshooting">Tips and Troubleshooting</a></li>
+</ul>
+<hr>
+<h2 id="overview">Overview <a href="#overview" class="heading-anchor">#</a></h2>
+<p>The <code>jinja_md</code> plugin processes Jinja2 template syntax in your Markdown content <strong>before</strong> it's converted to HTML. This means you can:</p>
+<ul>
+<li>Loop through posts and create dynamic lists</li>
+<li>Filter posts by tags, dates, or any frontmatter field</li>
+<li>Access site configuration and post metadata</li>
+<li>Create reusable content patterns within your posts</li>
+</ul>
+<p>The plugin uses the same template engine as HTML templates, so all filters and syntax work identically.</p>
+<hr>
+<h2 id="enabling-jinja-in-markdown">Enabling Jinja in Markdown <a href="#enabling-jinja-in-markdown" class="heading-anchor">#</a></h2>
+<p>The <code>jinja_md</code> plugin is <strong>included by default</strong>, but Jinja processing is <strong>opt-in per post</strong>. You must explicitly enable it in the frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Homepage&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">jinja</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c">## Recent Posts</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>{<span class="l">% for post in core.filter(&#34;published == True&#34;)[:5] %}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>- <span class="p">[</span>{{<span class="w"> </span><span class="l">post.Title }}]({{ post.Href }})</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span>{<span class="l">% endfor %}</span><span class="w">
+</span></span></span></code></pre><h3 id="why-opt-in">Why Opt-In? <a href="#why-opt-in" class="heading-anchor">#</a></h3>
+<p>Jinja processing is opt-in because:</p>
+<ol>
+<li><strong>Performance</strong> - Not every post needs template processing</li>
+<li><strong>Safety</strong> - Prevents accidental template interpretation in code examples</li>
+<li><strong>Clarity</strong> - Makes it obvious which files contain dynamic content</li>
+</ol>
+<h3 id="valid-values">Valid Values <a href="#valid-values" class="heading-anchor">#</a></h3>
+<p>The <code>jinja</code> frontmatter field accepts:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">jinja</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">      </span><span class="c"># Enable (boolean)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">jinja</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;true&#34;</span><span class="w">    </span><span class="c"># Enable (string)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">jinja</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;yes&#34;</span><span class="w">     </span><span class="c"># Enable (string)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">jinja</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;1&#34;</span><span class="w">       </span><span class="c"># Enable (string)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">jinja</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w">     </span><span class="c"># Disable (default)</span><span class="w">
+</span></span></span></code></pre><hr>
+<h2 id="accessing-posts-in-markdown">Accessing Posts in Markdown <a href="#accessing-posts-in-markdown" class="heading-anchor">#</a></h2>
+<p>When Jinja is enabled, you have access to three key objects for working with posts:</p>
+<h3 id="coreposts"><code>core.Posts()</code> <a href="#coreposts" class="heading-anchor">#</a></h3>
+<p>Returns <strong>all posts</strong> as a list:</p>
+<pre><code class="language-jinja2">{% for post in core.Posts() %}
+- {{ post.Title }}
+{% endfor %}
+</code></pre>
+<h3 id="corefilterexpression"><code>core.filter(expression)</code> <a href="#corefilterexpression" class="heading-anchor">#</a></h3>
+<p>Returns posts matching a <strong>filter expression</strong>:</p>
+<pre><code class="language-jinja2">{% for post in core.filter(&quot;published == True&quot;) %}
+- {{ post.Title }}
+{% endfor %}
+</code></pre>
+<p>The filter syntax matches what you use in feed configuration:</p>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;published == True&quot;</code></td>
+<td>Published posts</td>
+</tr>
+<tr>
+<td><code>&quot;draft == False&quot;</code></td>
+<td>Non-draft posts</td>
+</tr>
+<tr>
+<td><code>&quot;'python' in tags&quot;</code></td>
+<td>Posts tagged with &quot;python&quot;</td>
+</tr>
+<tr>
+<td><code>&quot;date &gt;= '2024-01-01'&quot;</code></td>
+<td>Posts from 2024 onwards</td>
+</tr>
+<tr>
+<td><code>&quot;published == True and 'tutorial' in tags&quot;</code></td>
+<td>Published tutorials</td>
+</tr>
+</tbody>
+</table>
+<h3 id="corefeeds"><code>core.feeds</code> <a href="#corefeeds" class="heading-anchor">#</a></h3>
+<p>Access to configured feed collections (coming soon):</p>
+<pre><code class="language-jinja2">{% for post in core.feeds.blog.posts[:5] %}
+- {{ post.Title }}
+{% endfor %}
+</code></pre>
+<hr>
+<h2 id="including-recent-posts-from-a-feed">Including Recent Posts from a Feed <a href="#including-recent-posts-from-a-feed" class="heading-anchor">#</a></h2>
+<p>This is the most common use case: showing a list of recent posts on a homepage or landing page.</p>
+<h3 id="basic-example-last-3-posts-as-links">Basic Example: Last 3 Posts as Links <a href="#basic-example-last-3-posts-as-links" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Welcome to My Blog&#34;
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Welcome
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">Check out my latest articles:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Recent Posts
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for post in core.filter(&#34;published == True&#34;)[:3] %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ post.Title }}</span>](<span class="na">{{ post.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gh"># Welcome
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">Check out my latest articles:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Recent Posts
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">Getting Started with Go</span>](<span class="na">/getting-started-with-go/</span>)
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">Why I Switched to Neovim</span>](<span class="na">/why-i-switched-to-neovim/</span>)
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">Building a Static Site Generator</span>](<span class="na">/building-a-static-site-generator/</span>)
+</span></span></code></pre><h3 id="with-dates">With Dates <a href="#with-dates" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gu">## Recent Posts
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for post in core.filter(&#34;published == True&#34;)[:5] %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ post.Title }}</span>](<span class="na">{{ post.Href }}</span>) - {{ post.Date|date_format:&#34;Jan 2, 2006&#34; }}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><h3 id="with-descriptions">With Descriptions <a href="#with-descriptions" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gu">## Recent Posts
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for post in core.filter(&#34;published == True&#34;)[:3] %}
+</span></span><span class="line"><span class="cl"><span class="gu">### [{{ post.Title }}]({{ post.Href }})
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{{ post.Description|default_if_none:&#34;&#34; }}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><h3 id="excluding-the-current-post">Excluding the Current Post <a href="#excluding-the-current-post" class="heading-anchor">#</a></h3>
+<p>When showing related posts, exclude the current post:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gu">## Other Posts You Might Like
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for post in core.filter(&#34;published == True&#34;) %}
+</span></span><span class="line"><span class="cl">{% if post.Slug != slug %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ post.Title }}</span>](<span class="na">{{ post.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><hr>
+<h2 id="common-use-cases">Common Use Cases <a href="#common-use-cases" class="heading-anchor">#</a></h2>
+<h3 id="related-posts-by-tag">Related Posts by Tag <a href="#related-posts-by-tag" class="heading-anchor">#</a></h3>
+<p>Show posts that share tags with the current post:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Python Tips and Tricks&#34;
+</span></span><span class="line"><span class="cl">tags: [&#34;python&#34;, &#34;programming&#34;]
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Python Tips and Tricks
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">[Your article content here]
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Related Posts
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True&#34;) %}
+</span></span><span class="line"><span class="cl">{% if p.Slug != post.Slug %}
+</span></span><span class="line"><span class="cl">{% for tag in post.Tags %}
+</span></span><span class="line"><span class="cl">{% if tag in p.Tags %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><h3 id="posts-in-a-series">Posts in a Series <a href="#posts-in-a-series" class="heading-anchor">#</a></h3>
+<p>Create navigation for a multi-part series:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Go Tutorial Part 2: Variables&#34;
+</span></span><span class="line"><span class="cl">series: &#34;go-tutorial&#34;
+</span></span><span class="line"><span class="cl">series_order: 2
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Series Navigation
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True&#34;) %}
+</span></span><span class="line"><span class="cl">{% if p.Extra.series == &#34;go-tutorial&#34; %}
+</span></span><span class="line"><span class="cl">{% if p.Extra.series_order == post.Extra.series_order %}
+</span></span><span class="line"><span class="cl"><span class="ge">**</span>{{ p.Extra.series_order }}. {{ p.Title }}** (You are here)
+</span></span><span class="line"><span class="cl">{% else %}
+</span></span><span class="line"><span class="cl">{{ p.Extra.series_order }}. [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><h3 id="featured-posts-section">Featured Posts Section <a href="#featured-posts-section" class="heading-anchor">#</a></h3>
+<p>Show posts marked as featured:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Home&#34;
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Featured Articles
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for post in core.filter(&#34;published == True and featured == True&#34;)[:3] %}
+</span></span><span class="line"><span class="cl"><span class="gu">### [{{ post.Title }}]({{ post.Href }})
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{{ post.Description|default_if_none:&#34;&#34; }}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><h3 id="table-of-contents-from-other-posts">Table of Contents from Other Posts <a href="#table-of-contents-from-other-posts" class="heading-anchor">#</a></h3>
+<p>Generate a table of contents from a category:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Documentation Index&#34;
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Documentation
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl"><span class="gu">## Getting Started
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for post in core.filter(&#34;published == True and &#39;getting-started&#39; in tags&#34;) %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ post.Title }}</span>](<span class="na">{{ post.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Advanced Topics
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for post in core.filter(&#34;published == True and &#39;advanced&#39; in tags&#34;) %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ post.Title }}</span>](<span class="na">{{ post.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## API Reference
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for post in core.filter(&#34;published == True and &#39;api&#39; in tags&#34;) %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ post.Title }}</span>](<span class="na">{{ post.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><h3 id="dynamic-navigation">Dynamic Navigation <a href="#dynamic-navigation" class="heading-anchor">#</a></h3>
+<p>Create a navigation section that updates automatically:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Python Guide&#34;
+</span></span><span class="line"><span class="cl">category: &#34;python&#34;
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;sidebar&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True and category == &#39;python&#39;&#34;) %}
+</span></span><span class="line"><span class="cl">{% if p.Slug == post.Slug %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">strong</span><span class="p">&gt;</span>{{ p.Title }}<span class="p">&lt;/</span><span class="nt">strong</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% else %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ p.Href }}&#34;</span><span class="p">&gt;</span>{{ p.Title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Python Guide
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">[Content here]
+</span></span></code></pre><hr>
+<h2 id="available-variables">Available Variables <a href="#available-variables" class="heading-anchor">#</a></h2>
+<p>When Jinja is enabled in a Markdown file, these variables are available:</p>
+<h3 id="post---the-current-post"><code>post</code> - The Current Post <a href="#post---the-current-post" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>post.Title</code></td>
+<td>string</td>
+<td>Post title</td>
+</tr>
+<tr>
+<td><code>post.Slug</code></td>
+<td>string</td>
+<td>URL slug</td>
+</tr>
+<tr>
+<td><code>post.Href</code></td>
+<td>string</td>
+<td>Relative URL (e.g., <code>/my-post/</code>)</td>
+</tr>
+<tr>
+<td><code>post.Date</code></td>
+<td>time</td>
+<td>Publication date</td>
+</tr>
+<tr>
+<td><code>post.Published</code></td>
+<td>bool</td>
+<td>Whether the post is published</td>
+</tr>
+<tr>
+<td><code>post.Draft</code></td>
+<td>bool</td>
+<td>Whether it's a draft</td>
+</tr>
+<tr>
+<td><code>post.Tags</code></td>
+<td>[]string</td>
+<td>List of tags</td>
+</tr>
+<tr>
+<td><code>post.Description</code></td>
+<td>string</td>
+<td>Post description</td>
+</tr>
+<tr>
+<td><code>post.Content</code></td>
+<td>string</td>
+<td>Raw Markdown content</td>
+</tr>
+<tr>
+<td><code>post.Extra</code></td>
+<td>map</td>
+<td>Custom frontmatter fields</td>
+</tr>
+</tbody>
+</table>
+<p>Access custom frontmatter via <code>post.Extra</code>:</p>
+<pre><code class="language-jinja2">Series: {{ post.Extra.series }}
+Order: {{ post.Extra.series_order }}
+Custom Field: {{ post.Extra.my_custom_field }}
+</code></pre>
+<h3 id="config---site-configuration"><code>config</code> - Site Configuration <a href="#config---site-configuration" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config.Title</code></td>
+<td>string</td>
+<td>Site title</td>
+</tr>
+<tr>
+<td><code>config.Description</code></td>
+<td>string</td>
+<td>Site description</td>
+</tr>
+<tr>
+<td><code>config.URL</code></td>
+<td>string</td>
+<td>Site base URL</td>
+</tr>
+<tr>
+<td><code>config.Author</code></td>
+<td>string</td>
+<td>Site author</td>
+</tr>
+</tbody>
+</table>
+<h3 id="core---the-lifecycle-manager"><code>core</code> - The Lifecycle Manager <a href="#core---the-lifecycle-manager" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>core.Posts()</code></td>
+<td>[]Post</td>
+<td>All posts</td>
+</tr>
+<tr>
+<td><code>core.filter(expr)</code></td>
+<td>[]Post</td>
+<td>Posts matching expression</td>
+</tr>
+</tbody>
+</table>
+<h3 id="posts---all-posts-alias"><code>posts</code> - All Posts (Alias) <a href="#posts---all-posts-alias" class="heading-anchor">#</a></h3>
+<p>A convenience alias for <code>core.Posts()</code>:</p>
+<pre><code class="language-jinja2">{% for p in posts %}
+- {{ p.Title }}
+{% endfor %}
+</code></pre>
+<h3 id="shorthand-aliases">Shorthand Aliases <a href="#shorthand-aliases" class="heading-anchor">#</a></h3>
+<p>These aliases are also available for convenience:</p>
+<table>
+<thead>
+<tr>
+<th>Alias</th>
+<th>Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>site_title</code></td>
+<td><code>config.Title</code></td>
+</tr>
+<tr>
+<td><code>site_url</code></td>
+<td><code>config.URL</code></td>
+</tr>
+<tr>
+<td><code>site_description</code></td>
+<td><code>config.Description</code></td>
+</tr>
+<tr>
+<td><code>site_author</code></td>
+<td><code>config.Author</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="available-filters">Available Filters <a href="#available-filters" class="heading-anchor">#</a></h2>
+<p>All template filters work in Jinja Markdown. Here are the most useful ones:</p>
+<h3 id="date-formatting">Date Formatting <a href="#date-formatting" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{{ post.Date|date_format:&quot;January 2, 2006&quot; }}
+{{ post.Date|date_format:&quot;2006-01-02&quot; }}
+{{ post.Date|date_format:&quot;Jan 2&quot; }}
+</code></pre>
+<p>Go date format reference:</p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>2006-01-02</code></td>
+<td>2024-03-15</td>
+</tr>
+<tr>
+<td><code>January 2, 2006</code></td>
+<td>March 15, 2024</td>
+</tr>
+<tr>
+<td><code>Jan 2, 2006</code></td>
+<td>Mar 15, 2024</td>
+</tr>
+<tr>
+<td><code>02 Jan 2006</code></td>
+<td>15 Mar 2024</td>
+</tr>
+<tr>
+<td><code>Monday, January 2</code></td>
+<td>Friday, March 15</td>
+</tr>
+</tbody>
+</table>
+<h3 id="string-manipulation">String Manipulation <a href="#string-manipulation" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{{ post.Title|slugify }}           {# my-post-title #}
+{{ post.Description|truncate:100 }} {# First 100 chars... #}
+{{ post.Description|truncatewords:20 }} {# First 20 words... #}
+{{ &quot;Hello World&quot;|upper }}          {# HELLO WORLD #}
+{{ &quot;Hello World&quot;|lower }}          {# hello world #}
+</code></pre>
+<h3 id="default-values">Default Values <a href="#default-values" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{{ post.Description|default_if_none:&quot;No description&quot; }}
+{{ post.Extra.custom|default_if_none:&quot;Default value&quot; }}
+</code></pre>
+<h3 id="collections">Collections <a href="#collections" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{{ post.Tags|length }}             {# Number of tags #}
+{{ post.Tags|join:&quot;, &quot; }}          {# tag1, tag2, tag3 #}
+{{ post.Tags|first }}              {# First tag #}
+{{ post.Tags|last }}               {# Last tag #}
+{{ post.Tags|sort|join:&quot;, &quot; }}     {# Alphabetically sorted #}
+</code></pre>
+<h3 id="htmltext">HTML/Text <a href="#htmltext" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{{ html_content|striptags }}       {# Remove HTML tags #}
+{{ text|linebreaksbr }}            {# Convert \n to &lt;br&gt; #}
+</code></pre>
+<h3 id="urls">URLs <a href="#urls" class="heading-anchor">#</a></h3>
+<pre><code class="language-jinja2">{{ post.Href|absolute_url:config.URL }}  {# https://example.com/my-post/ #}
+{{ &quot;search query&quot;|urlencode }}           {# search%20query #}
+</code></pre>
+<hr>
+<h2 id="practical-examples">Practical Examples <a href="#practical-examples" class="heading-anchor">#</a></h2>
+<h3 id="blog-homepage">Blog Homepage <a href="#blog-homepage" class="heading-anchor">#</a></h3>
+<p>A complete homepage showing featured posts, recent posts, and categories:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Home&#34;
+</span></span><span class="line"><span class="cl">template: &#34;landing.html&#34;
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Welcome to My Blog
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">I write about programming, technology, and life.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Featured Posts
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True and featured == True&#34;)[:3] %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">article</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;featured&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">h3</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ p.Href }}&#34;</span><span class="p">&gt;</span>{{ p.Title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">h3</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">p</span><span class="p">&gt;</span>{{ p.Description|default_if_none:&#34;&#34; }}<span class="p">&lt;/</span><span class="nt">p</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">time</span><span class="p">&gt;</span>{{ p.Date|date_format:&#34;January 2, 2006&#34; }}<span class="p">&lt;/</span><span class="nt">time</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">article</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Recent Posts
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True&#34;)[:10] %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>) <span class="p">&lt;</span><span class="nt">small</span><span class="p">&gt;</span>{{ p.Date|date_format:&#34;Jan 2&#34; }}<span class="p">&lt;/</span><span class="nt">small</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[<span class="nt">View all posts</span>](<span class="na">/archive/</span>)
+</span></span></code></pre><h3 id="series-navigation-component">Series Navigation Component <a href="#series-navigation-component" class="heading-anchor">#</a></h3>
+<p>Reusable series navigation that appears at the top and bottom of series posts:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Building a CLI in Go: Part 3&#34;
+</span></span><span class="line"><span class="cl">series: &#34;go-cli&#34;
+</span></span><span class="line"><span class="cl">series_order: 3
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;series-nav&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">strong</span><span class="p">&gt;</span>Series: Building a CLI in Go<span class="p">&lt;/</span><span class="nt">strong</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  {% for p in core.filter(&#34;published == True&#34;) %}
+</span></span><span class="line"><span class="cl">  {% if p.Extra.series == post.Extra.series %}
+</span></span><span class="line"><span class="cl">    {% if p.Slug == post.Slug %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;current&#34;</span><span class="p">&gt;</span>{{ p.Title }}<span class="p">&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% else %}
+</span></span><span class="line"><span class="cl">    <span class="p">&lt;</span><span class="nt">li</span><span class="p">&gt;&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;{{ p.Href }}&#34;</span><span class="p">&gt;</span>{{ p.Title }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;&lt;/</span><span class="nt">li</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">  {% endif %}
+</span></span><span class="line"><span class="cl">  {% endfor %}
+</span></span><span class="line"><span class="cl">  <span class="p">&lt;/</span><span class="nt">ol</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">nav</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Building a CLI in Go: Part 3
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">[Your content here]
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">nav</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;series-nav&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">  {% set series_posts = [] %}
+</span></span><span class="line"><span class="cl">  {% for p in core.filter(&#34;published == True&#34;) %}
+</span></span><span class="line"><span class="cl">  {% if p.Extra.series == post.Extra.series %}
+</span></span><span class="line"><span class="cl">  {% set _ = series_posts.append(p) %}
+</span></span><span class="line"><span class="cl">  {% endif %}
+</span></span><span class="line"><span class="cl">  {% endfor %}
+</span></span><span class="line"><span class="cl">  
+</span></span><span class="line"><span class="cl">  {% if post.Extra.series_order &gt; 1 %}
+</span></span><span class="line"><span class="cl">  [<span class="nt">Previous: Part {{ post.Extra.series_order - 1 }}</span>](<span class="na">#</span>)
+</span></span><span class="line"><span class="cl">  {% endif %}
+</span></span><span class="line"><span class="cl">  
+</span></span><span class="line"><span class="cl">  {% if post.Extra.series_order <span class="p">&lt;</span> <span class="nt">series_posts</span><span class="err">|</span><span class="na">length</span> <span class="err">%}</span>
+</span></span><span class="line"><span class="cl">  [<span class="nt">Next: Part {{ post.Extra.series_order + 1 }}</span>](<span class="na">#</span>)
+</span></span><span class="line"><span class="cl">  <span class="err">{%</span> <span class="na">endif</span> <span class="err">%}</span>
+</span></span><span class="line"><span class="cl"><span class="err">&lt;/</span><span class="na">nav</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="tag-cloud">Tag Cloud <a href="#tag-cloud" class="heading-anchor">#</a></h3>
+<p>Generate a tag cloud showing all tags:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Tags&#34;
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># All Tags
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;tag-cloud&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% set all_tags = [] %}
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True&#34;) %}
+</span></span><span class="line"><span class="cl">  {% for tag in p.Tags %}
+</span></span><span class="line"><span class="cl">    {% if tag not in all_tags %}
+</span></span><span class="line"><span class="cl">      {% set _ = all_tags.append(tag) %}
+</span></span><span class="line"><span class="cl">    {% endif %}
+</span></span><span class="line"><span class="cl">  {% endfor %}
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% for tag in all_tags|sort %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">a</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/tags/{{ tag|slugify }}/&#34;</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;tag&#34;</span><span class="p">&gt;</span>{{ tag }}<span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre><h3 id="archive-by-year">Archive by Year <a href="#archive-by-year" class="heading-anchor">#</a></h3>
+<p>Create an archive organized by year:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Archive&#34;
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Archive
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">{% set current_year = &#34;&#34; %}
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True&#34;) %}
+</span></span><span class="line"><span class="cl">{% set year = p.Date|date_format:&#34;2006&#34; %}
+</span></span><span class="line"><span class="cl">{% if year != current_year %}
+</span></span><span class="line"><span class="cl">{% set current_year = year %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## {{ year }}
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>) <span class="p">&lt;</span><span class="nt">small</span><span class="p">&gt;</span>{{ p.Date|date_format:&#34;Jan 2&#34; }}<span class="p">&lt;/</span><span class="nt">small</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><h3 id="posts-by-category">Posts by Category <a href="#posts-by-category" class="heading-anchor">#</a></h3>
+<p>Group posts by a custom category field:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;All Articles&#34;
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># All Articles
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl"><span class="gu">## Tutorials
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True and category == &#39;tutorial&#39;&#34;) %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Essays
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True and category == &#39;essay&#39;&#34;) %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">## Reviews
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True and category == &#39;review&#39;&#34;) %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ p.Title }}</span>](<span class="na">{{ p.Href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><h3 id="dynamic-changelog">Dynamic Changelog <a href="#dynamic-changelog" class="heading-anchor">#</a></h3>
+<p>Show recent posts as a changelog:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;Changelog&#34;
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gh"># Changelog
+</span></span></span><span class="line"><span class="cl"><span class="gh"></span>
+</span></span><span class="line"><span class="cl">{% for p in core.filter(&#34;published == True and &#39;changelog&#39; in tags&#34;) %}
+</span></span><span class="line"><span class="cl"><span class="gu">## {{ p.Date|date_format:&#34;January 2, 2006&#34; }} - {{ p.Title }}
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">{{ p.Description|default_if_none:&#34;&#34; }}
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[<span class="nt">Read more</span>](<span class="na">{{ p.Href }}</span>)
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><hr>
+<h2 id="tips-and-troubleshooting">Tips and Troubleshooting <a href="#tips-and-troubleshooting" class="heading-anchor">#</a></h2>
+<h3 id="escaping-jinja-syntax">Escaping Jinja Syntax <a href="#escaping-jinja-syntax" class="heading-anchor">#</a></h3>
+<p>If you need to show literal Jinja syntax (like in documentation), use raw blocks:</p>
+<pre><code class="language-jinja2">{% raw %}
+This won't be processed: {{ variable }}
+Neither will this: {% for item in list %}
+{% endraw %}
+</code></pre>
+<h3 id="debugging">Debugging <a href="#debugging" class="heading-anchor">#</a></h3>
+<p>Print variables to see their values:</p>
+<pre><code class="language-jinja2">&lt;!-- Debug: {{ post.Extra }} --&gt;
+&lt;!-- Tags: {{ post.Tags }} --&gt;
+&lt;!-- Post count: {{ core.Posts()|length }} --&gt;
+</code></pre>
+<h3 id="performance-considerations">Performance Considerations <a href="#performance-considerations" class="heading-anchor">#</a></h3>
+<ul>
+<li>Use specific filters rather than filtering all posts in templates</li>
+<li>Limit results with slicing: <code>[:10]</code> instead of processing everything</li>
+<li>Consider using feeds for complex aggregations</li>
+</ul>
+<h3 id="common-mistakes">Common Mistakes <a href="#common-mistakes" class="heading-anchor">#</a></h3>
+<p><strong>Forgetting <code>jinja: true</code>:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">jinja</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">  </span><span class="c"># Don&#39;t forget this!</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><p><strong>Wrong field names:</strong></p>
+<pre><code class="language-jinja2">{{ post.title }}  # Wrong: lowercase
+{{ post.Title }}  # Correct: PascalCase
+</code></pre>
+<p><strong>Missing safe filter for HTML:</strong></p>
+<pre><code class="language-jinja2">{{ post.ArticleHTML }}        # Escaped HTML (wrong)
+{{ post.ArticleHTML|safe }}   # Raw HTML (correct)
+</code></pre>
+<p><strong>Comparing to string instead of boolean:</strong></p>
+<pre><code class="language-jinja2">{% if post.Published == &quot;true&quot; %}  # Wrong
+{% if post.Published %}             # Correct
+{% if post.Published == True %}     # Also correct
+</code></pre>
+<hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="/templates-guide/" class="wikilink" data-title="Templates Guide" data-description="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax" data-date="2024-01-15">Templates Guide</a> - Full template syntax and filters</li>
+<li><a href="/feeds-guide/" class="wikilink" data-title="Feeds Guide" data-description="Deep dive into markata-go&#39;s powerful feed system for creating filtered, sorted, paginated collections" data-date="2024-01-15">Feeds Guide</a> - Configure feed collections</li>
+<li><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration Guide</a> - Site-wide settings</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

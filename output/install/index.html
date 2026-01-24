@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Install - My Site</title>
+    <meta name="description" content="Fill in the two values below, then hand this spec to an AI agent.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Install">
+    
+    <meta property="og:url" content="/install/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="Fill in the two values below, then hand this spec to an AI agent.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Install">
+    
+    <meta name="twitter:description" content="Fill in the two values below, then hand this spec to an AI agent.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/install/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Install",
+  "description": "Fill in the two values below, then hand this spec to an AI agent.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/install/"
+  },
+  "url": "/install/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Install</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="build-your-static-site-generator">Build Your Static Site Generator</h1>
+<blockquote>
+<p>Fill in the two values below, then hand this spec to an AI agent.</p>
+</blockquote>
+<h2 id="your-choices">Your Choices <a href="#your-choices" class="heading-anchor">#</a></h2>
+<pre><code>Name:     [name]
+Language: [language]
+</code></pre>
+<p><strong>Name:</strong> What to call your SSG (e.g., <code>blogkit</code>, <code>sitegen</code>, <code>pylon</code>, <code>grove</code>)</p>
+<p><strong>Language:</strong> <code>Python</code>, <code>TypeScript</code>, <code>Go</code>, or <code>Rust</code></p>
+<p>That's it. The agent will select appropriate libraries for your language.</p>
+<hr>
+<h2 id="prompt-for-ai-agent">Prompt for AI Agent <a href="#prompt-for-ai-agent" class="heading-anchor">#</a></h2>
+<p>Copy everything below and give it to your AI coding assistant:</p>
+<hr>
+<p><strong>Build a static site generator called <code>markata-go</code> following this specification.</strong></p>
+<h3 id="language--stack">Language &amp; Stack <a href="#language--stack" class="heading-anchor">#</a></h3>
+<p>Use <strong>go</strong> with idiomatic libraries:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Python</th>
+<th>TypeScript</th>
+<th>Go</th>
+<th>Rust</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plugin system</td>
+<td>pluggy</td>
+<td>tapable</td>
+<td>interfaces</td>
+<td>traits</td>
+</tr>
+<tr>
+<td>Markdown</td>
+<td>markdown-it-py</td>
+<td>markdown-it</td>
+<td>goldmark</td>
+<td>pulldown-cmark</td>
+</tr>
+<tr>
+<td>Templates</td>
+<td>Jinja2</td>
+<td>Nunjucks</td>
+<td>html/template</td>
+<td>tera</td>
+</tr>
+<tr>
+<td>Config</td>
+<td>tomllib + pydantic</td>
+<td>@iarna/toml + zod</td>
+<td>BurntSushi/toml</td>
+<td>toml + serde</td>
+</tr>
+<tr>
+<td>CLI</td>
+<td>typer</td>
+<td>commander</td>
+<td>cobra</td>
+<td>clap</td>
+</tr>
+<tr>
+<td>Cache</td>
+<td>diskcache</td>
+<td>keyv</td>
+<td>badger</td>
+<td>sled</td>
+</tr>
+</tbody>
+</table>
+<p>Choose the standard/popular option for each component in the selected language.</p>
+<h3 id="what-to-build">What to Build <a href="#what-to-build" class="heading-anchor">#</a></h3>
+<p>Create a plugin-driven static site generator with:</p>
+<ol>
+<li>
+<p><strong>Core Orchestrator</strong></p>
+<ul>
+<li>Manages 13 lifecycle stages (see LIFECYCLE.md)</li>
+<li>Loads plugins from configuration</li>
+<li>Provides <code>filter(expr)</code> and <code>map(field, filter?, sort?)</code> for querying posts</li>
+<li>Caches expensive operations</li>
+</ul>
+</li>
+<li>
+<p><strong>Feed System</strong> (the differentiator - see FEEDS.md)</p>
+<ul>
+<li>Define feeds with filter/sort/pagination</li>
+<li>Output to multiple formats from one definition:
+<ul>
+<li>HTML (paginated index pages)</li>
+<li>RSS 2.0</li>
+<li>Atom</li>
+<li>JSON Feed</li>
+<li>Markdown</li>
+<li>Plain text</li>
+</ul>
+</li>
+<li>Auto-generate tag/category/date archive feeds</li>
+</ul>
+</li>
+<li>
+<p><strong>Standard Plugins</strong> (see DEFAULT_PLUGINS.md)</p>
+<ul>
+<li><code>glob</code> - Find markdown files</li>
+<li><code>load</code> - Parse frontmatter + content into Post objects</li>
+<li><code>render_markdown</code> - Convert markdown to HTML (tables, code blocks, admonitions)</li>
+<li><code>jinja_md</code> - Process template expressions in markdown content</li>
+<li><code>templates</code> - Wrap content in HTML templates</li>
+<li><code>feeds</code> - Generate feed collections</li>
+<li><code>publish_feeds</code> - Write HTML/RSS/Atom/JSON/MD/TXT</li>
+<li><code>publish_html</code> - Write individual post HTML files</li>
+</ul>
+</li>
+<li>
+<p><strong>Data Models</strong></p>
+<ul>
+<li><code>Post</code>: path, content, slug, href, title, date, published, tags, html</li>
+<li><code>Config</code>: output_dir, hooks, url, title, glob_patterns, feeds</li>
+<li><code>Feed</code>: slug, title, filter, sort, posts, pagination, formats</li>
+</ul>
+</li>
+<li>
+<p><strong>CLI Commands</strong></p>
+<ul>
+<li><code>build</code> - Run full build</li>
+<li><code>serve</code> - Build + local dev server with file watching</li>
+<li><code>new &lt;title&gt;</code> - Create new post from template</li>
+</ul>
+</li>
+</ol>
+<h3 id="key-behaviors">Key Behaviors <a href="#key-behaviors" class="heading-anchor">#</a></h3>
+<p><strong>Plugin hooks:</strong></p>
+<pre><code>@hook_impl
+def render(core):
+    for post in core.filter(&quot;not skip&quot;):
+        post.html = process(post)
+</code></pre>
+<p><strong>Querying posts:</strong></p>
+<pre><code>core.filter(&quot;published == True and date &lt;= today&quot;)
+core.filter(&quot;'python' in tags&quot;)
+core.map(&quot;title&quot;, filter=&quot;published == True&quot;, sort=&quot;date&quot;, reverse=True)
+</code></pre>
+<p><strong>Jinja in markdown</strong> (when <code>jinja: true</code> in frontmatter):</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: All Posts
+</span></span><span class="line"><span class="cl">jinja: true
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">{% for post in core.filter(&#34;published == True&#34;) %}
+</span></span><span class="line"><span class="cl"><span class="k">-</span> [<span class="nt">{{ post.title }}</span>](<span class="na">{{ post.href }}</span>)
+</span></span><span class="line"><span class="cl">{% endfor %}
+</span></span></code></pre><p><strong>Configuration</strong> (<code>[name].toml</code>):</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">output_dir</span> <span class="p">=</span> <span class="s2">&#34;public&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">glob_patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;posts/**/*.md&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Feeds - the core feature</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">items_per_page</span> <span class="p">=</span> <span class="mi">10</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">json</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Auto-generate tag pages</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">auto_tags</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug_prefix</span> <span class="p">=</span> <span class="s2">&#34;tags&#34;</span>
+</span></span></code></pre><h3 id="output-structure">Output Structure <a href="#output-structure" class="heading-anchor">#</a></h3>
+<pre><code>public/
+├── index.html               # From default feed
+├── my-post/
+│   └── index.html           # Individual post
+├── blog/
+│   ├── index.html           # Feed page 1
+│   ├── page/2/index.html    # Feed page 2
+│   ├── rss.xml              # RSS feed
+│   ├── atom.xml             # Atom feed
+│   └── feed.json            # JSON Feed
+├── tags/
+│   ├── python/
+│   │   ├── index.html
+│   │   └── rss.xml
+│   └── rust/
+│       ├── index.html
+│       └── rss.xml
+└── sitemap.xml
+</code></pre>
+<h3 id="specification-files">Specification Files <a href="#specification-files" class="heading-anchor">#</a></h3>
+<p>Read these for complete details:</p>
+<ul>
+<li><code>spec/SPEC.md</code> - Architecture overview</li>
+<li><code>spec/LIFECYCLE.md</code> - Build stages</li>
+<li><code>spec/FEEDS.md</code> - Feed system (multi-format output)</li>
+<li><code>spec/DEFAULT_PLUGINS.md</code> - Built-in plugins</li>
+<li><code>spec/PLUGINS.md</code> - Plugin development</li>
+<li><code>spec/DATA_MODEL.md</code> - Post/Config schemas</li>
+<li><code>spec/CONTENT.md</code> - Markdown processing</li>
+<li><code>spec/TEMPLATES.md</code> - Template system</li>
+<li><code>spec/tests.yaml</code> - Test cases to pass</li>
+</ul>
+<h3 id="deliverables">Deliverables <a href="#deliverables" class="heading-anchor">#</a></h3>
+<p>Generate:</p>
+<ol>
+<li>Complete source code with all plugins</li>
+<li>Default templates (base.html, post.html, feed.html)</li>
+<li>Example config file</li>
+<li>README with usage instructions</li>
+<li>Tests that verify behavior matches <code>tests.yaml</code></li>
+</ol>
+<p>The implementation is complete when <code>tests.yaml</code> test cases pass.</p>
+<hr>
+<h2 id="example-usage-after-generation">Example Usage (After Generation) <a href="#example-usage-after-generation" class="heading-anchor">#</a></h2>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Install</span>
+</span></span><span class="line"><span class="cl">pip install ./<span class="o">[</span>name<span class="o">]</span>  <span class="c1"># or npm install, go install, cargo install</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Create a post</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> new <span class="s2">&#34;Hello World&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Build</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Serve locally</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> serve
+</span></span></code></pre><hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./SPEC.md">SPEC.md</a> - Core architecture and CLI</li>
+<li><a href="./CONFIG.md">CONFIG.md</a> - Configuration system</li>
+<li><a href="./THEMES.md">THEMES.md</a> - Theming and customization</li>
+<li><a href="./LIFECYCLE.md">LIFECYCLE.md</a> - Build lifecycle stages</li>
+<li><a href="./FEEDS.md">FEEDS.md</a> - Feed system (core differentiator)</li>
+<li><a href="./DEFAULT_PLUGINS.md">DEFAULT_PLUGINS.md</a> - Built-in plugins</li>
+<li><a href="./tests.yaml">tests.yaml</a> - Test cases for verification</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

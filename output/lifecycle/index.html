@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lifecycle - My Site</title>
+    <meta name="description" content="The build process runs through ordered stages. Each stage is a hook point where plugins can participate.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Lifecycle">
+    
+    <meta property="og:url" content="/lifecycle/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="The build process runs through ordered stages. Each stage is a hook point where plugins can participate.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Lifecycle">
+    
+    <meta name="twitter:description" content="The build process runs through ordered stages. Each stage is a hook point where plugins can participate.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/lifecycle/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Lifecycle",
+  "description": "The build process runs through ordered stages. Each stage is a hook point where plugins can participate.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/lifecycle/"
+  },
+  "url": "/lifecycle/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Lifecycle</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="lifecycle-stages-specification">Lifecycle Stages Specification</h1>
+<p>The build process runs through ordered stages. Each stage is a hook point where plugins can participate.</p>
+<p>This specification offers <strong>three lifecycle variants</strong> to suit different implementation needs. Implementations MUST choose one variant and document which they use.</p>
+<hr>
+<h2 id="lifecycle-variants">Lifecycle Variants <a href="#lifecycle-variants" class="heading-anchor">#</a></h2>
+<h3 id="choosing-a-variant">Choosing a Variant <a href="#choosing-a-variant" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Stages</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Full (13 stages)</strong></td>
+<td>13</td>
+<td>Plugin ecosystems, maximum flexibility, dynamic languages</td>
+</tr>
+<tr>
+<td><strong>Standard (9 stages)</strong></td>
+<td>9</td>
+<td>Most implementations, good balance of flexibility and simplicity</td>
+</tr>
+<tr>
+<td><strong>Minimal (6 stages)</strong></td>
+<td>6</td>
+<td>Simple implementations, compiled languages, embedded use</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Decision guide:</strong></p>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                    WHICH LIFECYCLE TO CHOOSE?                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Do you need runtime schema extension by plugins?                    │
+│    YES → Use FULL (13 stages)                                        │
+│    NO  ↓                                                             │
+│                                                                      │
+│  Do you need separate pre/post render hooks?                         │
+│    YES → Use STANDARD (9 stages)                                     │
+│    NO  ↓                                                             │
+│                                                                      │
+│  Is simplicity/performance the priority?                             │
+│    YES → Use MINIMAL (6 stages)                                      │
+│                                                                      │
+├─────────────────────────────────────────────────────────────────────┤
+│  LANGUAGE RECOMMENDATIONS                                            │
+│                                                                      │
+│  Python/Ruby    → Full or Standard (dynamic, plugin-friendly)        │
+│  TypeScript/JS  → Standard (good balance)                            │
+│  Go             → Standard or Minimal (simplicity, compilation)      │
+│  Rust           → Minimal or Standard (compile-time schemas)         │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2 id="variant-a-full-lifecycle-13-stages">Variant A: Full Lifecycle (13 Stages) <a href="#variant-a-full-lifecycle-13-stages" class="heading-anchor">#</a></h2>
+<p><strong>Best for:</strong> Python, Ruby, or any implementation prioritizing plugin ecosystem extensibility.</p>
+<p><strong>Characteristics:</strong></p>
+<ul>
+<li>Maximum hook points for plugins</li>
+<li>Runtime schema composition (plugins extend config/post models)</li>
+<li>Fine-grained error handling per stage</li>
+<li>Higher implementation complexity</li>
+</ul>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                        CONFIGURATION PHASE                          │
+├─────────────────────────────────────────────────────────────────────┤
+│  config_model → post_model → create_models → load_config            │
+│       │              │             │              │                 │
+│       ▼              ▼             ▼              ▼                 │
+│  [register      [register     [merge all    [load from             │
+│   config         post          models]       files]                 │
+│   schemas]       schemas]                                           │
+├─────────────────────────────────────────────────────────────────────┤
+│  configure → validate_config                                        │
+│       │              │                                              │
+│       ▼              ▼                                              │
+│  [plugin         [validate                                          │
+│   init]           config]                                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                         CONTENT PHASE                               │
+├─────────────────────────────────────────────────────────────────────┤
+│  glob → load → pre_render → render → post_render                    │
+│    │      │         │          │          │                         │
+│    ▼      ▼         ▼          ▼          ▼                         │
+│  [find  [parse   [process   [markdown  [enhance                     │
+│   files] content] before]    → HTML]    HTML]                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                         OUTPUT PHASE                                │
+├─────────────────────────────────────────────────────────────────────┤
+│  save → teardown                                                    │
+│    │        │                                                       │
+│    ▼        ▼                                                       │
+│  [write  [cleanup]                                                  │
+│   files]                                                            │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Stages:</strong></p>
+<ol>
+<li><code>config_model</code> - Register config schema fragments</li>
+<li><code>post_model</code> - Register post schema fragments</li>
+<li><code>create_models</code> - Merge schemas into final models</li>
+<li><code>load_config</code> - Load configuration from files</li>
+<li><code>configure</code> - Plugin initialization</li>
+<li><code>validate_config</code> - Validate final configuration</li>
+<li><code>glob</code> - Discover content files</li>
+<li><code>load</code> - Parse files into posts</li>
+<li><code>pre_render</code> - Process content before rendering</li>
+<li><code>render</code> - Convert markdown to HTML</li>
+<li><code>post_render</code> - Enhance HTML, build feeds/navigation</li>
+<li><code>save</code> - Write output files</li>
+<li><code>teardown</code> - Cleanup resources</li>
+</ol>
+<hr>
+<h2 id="variant-b-standard-lifecycle-9-stages">Variant B: Standard Lifecycle (9 Stages) <a href="#variant-b-standard-lifecycle-9-stages" class="heading-anchor">#</a></h2>
+<p><strong>Best for:</strong> TypeScript, Go, or balanced implementations.</p>
+<p><strong>Characteristics:</strong></p>
+<ul>
+<li>Good plugin flexibility without over-engineering</li>
+<li>Config/post schemas defined at compile/init time (not runtime-composed)</li>
+<li>Separates collection-building from HTML post-processing</li>
+<li>Recommended for most implementations</li>
+</ul>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                        CONFIGURATION PHASE                          │
+├─────────────────────────────────────────────────────────────────────┤
+│  configure → validate                                               │
+│       │           │                                                 │
+│       ▼           ▼                                                 │
+│  [load config, [validate                                            │
+│   init plugins] config]                                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                         CONTENT PHASE                               │
+├─────────────────────────────────────────────────────────────────────┤
+│  glob → load → transform → render → collect                         │
+│    │      │        │          │         │                           │
+│    ▼      ▼        ▼          ▼         ▼                           │
+│  [find  [parse  [pre-proc  [markdown [feeds,                        │
+│   files] posts]  content]   → HTML]   nav]                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                         OUTPUT PHASE                                │
+├─────────────────────────────────────────────────────────────────────┤
+│  write → cleanup                                                    │
+│    │        │                                                       │
+│    ▼        ▼                                                       │
+│  [output  [close                                                    │
+│   files]   resources]                                               │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Stages:</strong></p>
+<ol>
+<li><code>configure</code> - Load config, initialize plugins, set up resources</li>
+<li><code>validate</code> - Validate configuration</li>
+<li><code>glob</code> - Discover content files</li>
+<li><code>load</code> - Parse files into posts</li>
+<li><code>transform</code> - Pre-render processing (jinja-md, descriptions, etc.)</li>
+<li><code>render</code> - Convert markdown to HTML, apply templates</li>
+<li><code>collect</code> - Build feeds, series, prev/next, navigation</li>
+<li><code>write</code> - Write all output files</li>
+<li><code>cleanup</code> - Release resources</li>
+</ol>
+<p><strong>Key differences from Full:</strong></p>
+<ul>
+<li><code>configure</code> combines model creation + config loading + plugin init</li>
+<li><code>transform</code> replaces <code>pre_render</code> (clearer name)</li>
+<li><code>render</code> includes template application</li>
+<li><code>collect</code> is new - separates feed/navigation building from HTML processing</li>
+<li><code>write</code> + <code>cleanup</code> replace <code>save</code> + <code>teardown</code> (clearer names)</li>
+</ul>
+<p><strong>Stage mapping (Full → Standard):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Full Stage</th>
+<th>Standard Stage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>config_model</td>
+<td>configure</td>
+</tr>
+<tr>
+<td>post_model</td>
+<td>configure</td>
+</tr>
+<tr>
+<td>create_models</td>
+<td>configure</td>
+</tr>
+<tr>
+<td>load_config</td>
+<td>configure</td>
+</tr>
+<tr>
+<td>configure</td>
+<td>configure</td>
+</tr>
+<tr>
+<td>validate_config</td>
+<td>validate</td>
+</tr>
+<tr>
+<td>glob</td>
+<td>glob</td>
+</tr>
+<tr>
+<td>load</td>
+<td>load</td>
+</tr>
+<tr>
+<td>pre_render</td>
+<td>transform</td>
+</tr>
+<tr>
+<td>render</td>
+<td>render</td>
+</tr>
+<tr>
+<td>post_render</td>
+<td>render + collect</td>
+</tr>
+<tr>
+<td>save</td>
+<td>write</td>
+</tr>
+<tr>
+<td>teardown</td>
+<td>cleanup</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="variant-c-minimal-lifecycle-6-stages">Variant C: Minimal Lifecycle (6 Stages) <a href="#variant-c-minimal-lifecycle-6-stages" class="heading-anchor">#</a></h2>
+<p><strong>Best for:</strong> Rust, embedded use, or maximum simplicity.</p>
+<p><strong>Characteristics:</strong></p>
+<ul>
+<li>Minimal hook points</li>
+<li>Schemas defined at compile time</li>
+<li>Single content processing stage</li>
+<li>Easiest to implement and reason about</li>
+</ul>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                        CONFIGURATION PHASE                          │
+├─────────────────────────────────────────────────────────────────────┤
+│  init                                                               │
+│    │                                                                │
+│    ▼                                                                │
+│  [load config, validate, init plugins]                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                         CONTENT PHASE                               │
+├─────────────────────────────────────────────────────────────────────┤
+│  load → process → build                                             │
+│    │       │         │                                              │
+│    ▼       ▼         ▼                                              │
+│  [find &amp; [transform [feeds,                                         │
+│   parse]  &amp; render]  nav, HTML]                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                         OUTPUT PHASE                                │
+├─────────────────────────────────────────────────────────────────────┤
+│  output                                                             │
+│    │                                                                │
+│    ▼                                                                │
+│  [write files, cleanup]                                             │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Stages:</strong></p>
+<ol>
+<li><code>init</code> - Load config, validate, initialize everything</li>
+<li><code>load</code> - Find files and parse into posts</li>
+<li><code>process</code> - All content transformation and rendering</li>
+<li><code>build</code> - Build feeds, collections, navigation, final HTML</li>
+<li><code>output</code> - Write files and cleanup</li>
+</ol>
+<p><strong>Key differences:</strong></p>
+<ul>
+<li>Single <code>init</code> stage for all setup</li>
+<li><code>load</code> combines glob + load</li>
+<li><code>process</code> combines transform + render</li>
+<li><code>build</code> handles collections and final assembly</li>
+<li><code>output</code> combines write + cleanup</li>
+</ul>
+<p><strong>Stage mapping (Full → Minimal):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Full Stage</th>
+<th>Minimal Stage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>config_model</td>
+<td>init</td>
+</tr>
+<tr>
+<td>post_model</td>
+<td>init</td>
+</tr>
+<tr>
+<td>create_models</td>
+<td>init</td>
+</tr>
+<tr>
+<td>load_config</td>
+<td>init</td>
+</tr>
+<tr>
+<td>configure</td>
+<td>init</td>
+</tr>
+<tr>
+<td>validate_config</td>
+<td>init</td>
+</tr>
+<tr>
+<td>glob</td>
+<td>load</td>
+</tr>
+<tr>
+<td>load</td>
+<td>load</td>
+</tr>
+<tr>
+<td>pre_render</td>
+<td>process</td>
+</tr>
+<tr>
+<td>render</td>
+<td>process</td>
+</tr>
+<tr>
+<td>post_render</td>
+<td>build</td>
+</tr>
+<tr>
+<td>save</td>
+<td>output</td>
+</tr>
+<tr>
+<td>teardown</td>
+<td>output</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="variant-comparison">Variant Comparison <a href="#variant-comparison" class="heading-anchor">#</a></h2>
+<h3 id="hook-points">Hook Points <a href="#hook-points" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Full</th>
+<th>Standard</th>
+<th>Minimal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Extend config schema at runtime</td>
+<td>✓</td>
+<td>✗</td>
+<td>✗</td>
+</tr>
+<tr>
+<td>Extend post schema at runtime</td>
+<td>✓</td>
+<td>✗</td>
+<td>✗</td>
+</tr>
+<tr>
+<td>Separate config validation</td>
+<td>✓</td>
+<td>✓</td>
+<td>✗</td>
+</tr>
+<tr>
+<td>Pre-render hook</td>
+<td>✓</td>
+<td>✓</td>
+<td>✗</td>
+</tr>
+<tr>
+<td>Post-render hook</td>
+<td>✓</td>
+<td>✗</td>
+<td>✗</td>
+</tr>
+<tr>
+<td>Separate collection building</td>
+<td>✗</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Separate cleanup stage</td>
+<td>✓</td>
+<td>✓</td>
+<td>✗</td>
+</tr>
+</tbody>
+</table>
+<h3 id="implementation-complexity">Implementation Complexity <a href="#implementation-complexity" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Full</th>
+<th>Standard</th>
+<th>Minimal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lines of core code</td>
+<td>~2000</td>
+<td>~1200</td>
+<td>~600</td>
+</tr>
+<tr>
+<td>Plugin API surface</td>
+<td>Large</td>
+<td>Medium</td>
+<td>Small</td>
+</tr>
+<tr>
+<td>Mental model</td>
+<td>Complex</td>
+<td>Moderate</td>
+<td>Simple</td>
+</tr>
+<tr>
+<td>Testing surface</td>
+<td>13 stages</td>
+<td>9 stages</td>
+<td>6 stages</td>
+</tr>
+</tbody>
+</table>
+<h3 id="plugin-capabilities-by-variant">Plugin Capabilities by Variant <a href="#plugin-capabilities-by-variant" class="heading-anchor">#</a></h3>
+<p><strong>Full (13 stages):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Plugin can extend the Post model at runtime</span>
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">post_model</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">post_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">MyFields</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Plugin can hook pre and post render separately</span>
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">pre_render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># Before markdown processing</span>
+</span></span><span class="line"><span class="cl">    <span class="k">pass</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>  
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">post_render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># After markdown, before save</span>
+</span></span><span class="line"><span class="cl">    <span class="k">pass</span>
+</span></span></code></pre><p><strong>Standard (9 stages):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Plugin registers with fixed schema (defined at init)
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="kr">export</span> <span class="kr">const</span> <span class="nx">plugin</span>: <span class="kt">Plugin</span> <span class="o">=</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">name</span><span class="o">:</span> <span class="s1">&#39;my-plugin&#39;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  
+</span></span><span class="line"><span class="cl">  <span class="nx">transform</span><span class="p">(</span><span class="nx">core</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Pre-render processing
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="p">},</span>
+</span></span><span class="line"><span class="cl">  
+</span></span><span class="line"><span class="cl">  <span class="nx">collect</span><span class="p">(</span><span class="nx">core</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Build collections after render
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p><strong>Minimal (6 stages):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1">// Plugin implements trait with fixed hooks
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="k">impl</span><span class="w"> </span><span class="n">Plugin</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">MyPlugin</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">fn</span> <span class="nf">process</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">core</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="n">Core</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">// All content processing here
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">fn</span> <span class="nf">build</span><span class="p">(</span><span class="o">&amp;</span><span class="bp">self</span><span class="p">,</span><span class="w"> </span><span class="n">core</span>: <span class="kp">&amp;</span><span class="nc">mut</span><span class="w"> </span><span class="n">Core</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">// Collection building here
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="p">}</span><span class="w">
+</span></span></span></code></pre><hr>
+<h2 id="stage-overview-full-variant---reference">Stage Overview (Full Variant - Reference) <a href="#stage-overview-full-variant---reference" class="heading-anchor">#</a></h2>
+<p>The following detailed stage documentation uses the <strong>Full (13 stage)</strong> variant. Implementations using Standard or Minimal variants should map stages according to the tables above.</p>
+<hr>
+<h2 id="stage-1-config-model">Stage 1: <code>config_model</code> <a href="#stage-1-config-model" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Register configuration schema fragments.</p>
+<p><strong>When:</strong> First stage, before any configuration is loaded.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Append Pydantic/Zod/etc. models to <code>core.config_models</code></li>
+<li>Define configuration sections with defaults</li>
+</ul>
+<p><strong>Core actions:</strong></p>
+<ul>
+<li>Initialize <code>core.config_models</code> list</li>
+<li>Call all <code>config_model</code> hooks</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">MyPluginConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+</span></span><span class="line"><span class="cl">    <span class="n">threshold</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Config</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">my_plugin</span><span class="p">:</span> <span class="n">MyPluginConfig</span> <span class="o">=</span> <span class="n">MyPluginConfig</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">config_model</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">config_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Config</span><span class="p">)</span>
+</span></span></code></pre><p><strong>After this stage:</strong></p>
+<ul>
+<li><code>core.config_models</code> contains all config schema fragments</li>
+</ul>
+<hr>
+<h2 id="stage-2-post-model">Stage 2: <code>post_model</code> <a href="#stage-2-post-model" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Register post/content model fragments.</p>
+<p><strong>When:</strong> After config models are registered.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Append field definitions to <code>core.post_models</code></li>
+<li>Define post attributes with types and defaults</li>
+</ul>
+<p><strong>Core actions:</strong></p>
+<ul>
+<li>Initialize <code>core.post_models</code> list</li>
+<li>Call all <code>post_model</code> hooks</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">ReadingTimeFields</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">reading_time</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">    <span class="n">word_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">post_model</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">post_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ReadingTimeFields</span><span class="p">)</span>
+</span></span></code></pre><p><strong>After this stage:</strong></p>
+<ul>
+<li><code>core.post_models</code> contains all post schema fragments</li>
+</ul>
+<hr>
+<h2 id="stage-3-create-models">Stage 3: <code>create_models</code> <a href="#stage-3-create-models" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Merge all schema fragments into final models.</p>
+<p><strong>When:</strong> After all model hooks have run.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Usually nothing (core handles this)</li>
+<li>Advanced: modify merged models</li>
+</ul>
+<p><strong>Core actions:</strong></p>
+<ul>
+<li>Merge <code>core.config_models</code> into <code>core.Config</code></li>
+<li>Merge <code>core.post_models</code> into <code>core.Post</code></li>
+<li>Create factory functions for model instantiation</li>
+</ul>
+<p><strong>After this stage:</strong></p>
+<ul>
+<li><code>core.Config</code> - the merged configuration class</li>
+<li><code>core.Post</code> - the merged post class</li>
+</ul>
+<hr>
+<h2 id="stage-4-load-config">Stage 4: <code>load_config</code> <a href="#stage-4-load-config" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Load configuration from files and environment.</p>
+<p><strong>When:</strong> After models are created.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Usually nothing (core handles this)</li>
+<li>Advanced: provide custom config sources</li>
+</ul>
+<p><strong>Core actions:</strong></p>
+<ul>
+<li>Find config files (local, global)</li>
+<li>Parse and merge configuration</li>
+<li>Apply environment variable overrides</li>
+<li>Instantiate <code>core.config</code> from <code>core.Config</code></li>
+</ul>
+<p><strong>Resolution order (highest precedence first):</strong></p>
+<ol>
+<li>Environment variables (<code>TOOL_SECTION_KEY</code>)</li>
+<li>CLI arguments</li>
+<li>Local config file (<code>tool.toml</code> or <code>pyproject.toml</code>)</li>
+<li>Global config file (<code>~/.tool.toml</code>)</li>
+<li>Model defaults</li>
+</ol>
+<p><strong>After this stage:</strong></p>
+<ul>
+<li><code>core.config</code> - the loaded configuration object</li>
+</ul>
+<hr>
+<h2 id="stage-5-configure">Stage 5: <code>configure</code> <a href="#stage-5-configure" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Plugin initialization with access to configuration.</p>
+<p><strong>When:</strong> After configuration is loaded.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Initialize plugin state</li>
+<li>Set up external connections</li>
+<li>Create shared resources</li>
+<li>Register attributes on core</li>
+</ul>
+<p><strong>Core actions:</strong></p>
+<ul>
+<li>Initialize cache at <code>.tool.cache/</code></li>
+<li>Set up logging</li>
+<li>Call all <code>configure</code> hooks</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="nd">@register_attr</span><span class="p">(</span><span class="s2">&#34;markdown_parser&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">configure</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">from</span> <span class="nn">markdown_it</span> <span class="kn">import</span> <span class="n">MarkdownIt</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">markdown_parser</span> <span class="o">=</span> <span class="n">MarkdownIt</span><span class="p">()</span>
+</span></span></code></pre><p><strong>After this stage:</strong></p>
+<ul>
+<li><code>core.cache</code> - persistent cache instance</li>
+<li>Plugin-registered attributes available</li>
+</ul>
+<hr>
+<h2 id="stage-6-validate-config">Stage 6: <code>validate_config</code> <a href="#stage-6-validate-config" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Validate configuration after all plugins have configured.</p>
+<p><strong>When:</strong> After all plugins have initialized.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Validate plugin-specific configuration</li>
+<li>Check for required fields</li>
+<li>Emit warnings for deprecated options</li>
+<li>Raise errors for invalid configurations</li>
+</ul>
+<p><strong>Core actions:</strong></p>
+<ul>
+<li>Call all <code>validate_config</code> hooks</li>
+<li>Aggregate validation errors</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">validate_config</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">my_plugin</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="ow">not</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">my_plugin</span><span class="o">.</span><span class="n">api_key</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="k">raise</span> <span class="n">ConfigError</span><span class="p">(</span><span class="s2">&#34;my_plugin.api_key is required when enabled&#34;</span><span class="p">)</span>
+</span></span></code></pre><p><strong>After this stage:</strong></p>
+<ul>
+<li>Configuration is validated and ready to use</li>
+</ul>
+<hr>
+<h2 id="stage-7-glob">Stage 7: <code>glob</code> <a href="#stage-7-glob" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Discover content files.</p>
+<p><strong>When:</strong> First content phase stage.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Find files matching patterns</li>
+<li>Filter based on gitignore (optional)</li>
+<li>Add files to <code>core.files</code></li>
+</ul>
+<p><strong>Core actions:</strong></p>
+<ul>
+<li>Initialize <code>core.files</code> list</li>
+<li>Call all <code>glob</code> hooks</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">glob</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">glob</span><span class="o">.</span><span class="n">glob_patterns</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">core</span><span class="o">.</span><span class="n">files</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">Path</span><span class="p">()</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">))</span>
+</span></span></code></pre><p><strong>After this stage:</strong></p>
+<ul>
+<li><code>core.files</code> - list of Path objects to process</li>
+</ul>
+<hr>
+<h2 id="stage-8-load">Stage 8: <code>load</code> <a href="#stage-8-load" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Parse files into content objects.</p>
+<p><strong>When:</strong> After files are discovered.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Read file contents</li>
+<li>Parse frontmatter</li>
+<li>Create Post objects</li>
+<li>Handle encoding issues</li>
+</ul>
+<p><strong>Core actions:</strong></p>
+<ul>
+<li>Initialize <code>core.articles</code> / <code>core.posts</code> list</li>
+<li>Call all <code>load</code> hooks</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">files</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">content</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="n">frontmatter</span><span class="p">,</span> <span class="n">body</span> <span class="o">=</span> <span class="n">parse_frontmatter</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="n">post</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">Post</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">            <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">content</span><span class="o">=</span><span class="n">body</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="o">**</span><span class="n">frontmatter</span>
+</span></span><span class="line"><span class="cl">        <span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">core</span><span class="o">.</span><span class="n">articles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
+</span></span></code></pre><p><strong>After this stage:</strong></p>
+<ul>
+<li><code>core.articles</code> / <code>core.posts</code> - list of Post objects</li>
+</ul>
+<hr>
+<h2 id="stage-9-pre-render">Stage 9: <code>pre_render</code> <a href="#stage-9-pre-render" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Process content before markdown rendering.</p>
+<p><strong>When:</strong> After content is loaded, before rendering.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Expand template expressions in content (Jinja-in-Markdown)</li>
+<li>Process shortcodes</li>
+<li>Calculate derived fields (reading time, etc.)</li>
+<li>Set up prev/next links</li>
+<li>Auto-generate descriptions</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">pre_render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;jinja == True&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">template</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">jinja_env</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="n">template</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">            <span class="n">post</span><span class="o">=</span><span class="n">post</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">core</span><span class="o">=</span><span class="n">core</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">config</span><span class="o">=</span><span class="n">core</span><span class="o">.</span><span class="n">config</span>
+</span></span><span class="line"><span class="cl">        <span class="p">)</span>
+</span></span></code></pre><p><strong>After this stage:</strong></p>
+<ul>
+<li>Post <code>content</code> fields are processed and ready for rendering</li>
+</ul>
+<hr>
+<h2 id="stage-10-render">Stage 10: <code>render</code> <a href="#stage-10-render" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Convert content to HTML.</p>
+<p><strong>When:</strong> After pre-render processing.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Convert markdown to HTML</li>
+<li>Apply syntax highlighting</li>
+<li>Process admonitions</li>
+<li>Expand internal links</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">article_html</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">markdown_parser</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+</span></span></code></pre><p><strong>After this stage:</strong></p>
+<ul>
+<li><code>post.article_html</code> - rendered HTML content (without template)</li>
+</ul>
+<hr>
+<h2 id="stage-11-post-render">Stage 11: <code>post_render</code> <a href="#stage-11-post-render" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Post-process rendered HTML.</p>
+<p><strong>When:</strong> After markdown is rendered.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Add heading anchors</li>
+<li>Process images (lazy loading, etc.)</li>
+<li>Inject scripts/styles</li>
+<li>Apply templates to wrap content</li>
+<li>Build navigation elements</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">post_render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="c1"># Wrap in template</span>
+</span></span><span class="line"><span class="cl">        <span class="n">template</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">jinja_env</span><span class="o">.</span><span class="n">get_template</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">template</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">post</span><span class="o">.</span><span class="n">html</span> <span class="o">=</span> <span class="n">template</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">            <span class="n">post</span><span class="o">=</span><span class="n">post</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">body</span><span class="o">=</span><span class="n">post</span><span class="o">.</span><span class="n">article_html</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">config</span><span class="o">=</span><span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="n">core</span><span class="o">=</span><span class="n">core</span>
+</span></span><span class="line"><span class="cl">        <span class="p">)</span>
+</span></span></code></pre><p><strong>After this stage:</strong></p>
+<ul>
+<li><code>post.html</code> - final HTML ready to write</li>
+</ul>
+<hr>
+<h2 id="stage-12-save">Stage 12: <code>save</code> <a href="#stage-12-save" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Write output files to disk.</p>
+<p><strong>When:</strong> After all rendering is complete.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Write post HTML files</li>
+<li>Write feed/index pages</li>
+<li>Write RSS/Atom feeds</li>
+<li>Write sitemap</li>
+<li>Copy static assets</li>
+<li>Generate service workers</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">post</span> <span class="ow">in</span> <span class="n">core</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="s2">&#34;not skip&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">output_path</span> <span class="o">=</span> <span class="n">core</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">post</span><span class="o">.</span><span class="n">slug</span> <span class="o">/</span> <span class="s2">&#34;index.html&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="n">output_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">output_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">html</span><span class="p">)</span>
+</span></span></code></pre><p><strong>After this stage:</strong></p>
+<ul>
+<li>All output files written to <code>core.config.output_dir</code></li>
+</ul>
+<hr>
+<h2 id="stage-13-teardown">Stage 13: <code>teardown</code> <a href="#stage-13-teardown" class="heading-anchor">#</a></h2>
+<p><strong>Purpose:</strong> Cleanup resources.</p>
+<p><strong>When:</strong> Final stage, after save.</p>
+<p><strong>What plugins do:</strong></p>
+<ul>
+<li>Close database connections</li>
+<li>Flush caches</li>
+<li>Clean up temporary files</li>
+<li>Log final statistics</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">teardown</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">core</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Built </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">core</span><span class="o">.</span><span class="n">posts</span><span class="p">)</span><span class="si">}</span><span class="s2"> posts&#34;</span><span class="p">)</span>
+</span></span></code></pre><p><strong>After this stage:</strong></p>
+<ul>
+<li>Build complete</li>
+<li>All resources released</li>
+</ul>
+<hr>
+<h2 id="running-specific-stages">Running Specific Stages <a href="#running-specific-stages" class="heading-anchor">#</a></h2>
+<p>The core <code>run()</code> method accepts an optional stage parameter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Run full build</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Run up to (and including) a specific stage</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&#34;render&#34;</span><span class="p">)</span>  <span class="c1"># Stops after render, doesn&#39;t save</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Run from current point to a stage</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&#34;pre_render&#34;</span><span class="p">)</span>  <span class="c1"># Run through pre_render</span>
+</span></span><span class="line"><span class="cl"><span class="n">core</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="s2">&#34;render&#34;</span><span class="p">)</span>      <span class="c1"># Continue to render (won&#39;t re-run earlier stages)</span>
+</span></span></code></pre><p><strong>Use cases:</strong></p>
+<ul>
+<li>Testing: <code>core.run(&quot;pre_render&quot;)</code> to check content processing</li>
+<li>CLI commands: Run partial builds for specific operations</li>
+<li>Development: Incremental builds</li>
+</ul>
+<hr>
+<h2 id="stage-dependencies">Stage Dependencies <a href="#stage-dependencies" class="heading-anchor">#</a></h2>
+<p>Each stage has implicit dependencies on previous stages:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Requires</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config_model</code></td>
+<td>(none)</td>
+</tr>
+<tr>
+<td><code>post_model</code></td>
+<td><code>config_model</code></td>
+</tr>
+<tr>
+<td><code>create_models</code></td>
+<td><code>post_model</code></td>
+</tr>
+<tr>
+<td><code>load_config</code></td>
+<td><code>create_models</code></td>
+</tr>
+<tr>
+<td><code>configure</code></td>
+<td><code>load_config</code></td>
+</tr>
+<tr>
+<td><code>validate_config</code></td>
+<td><code>configure</code></td>
+</tr>
+<tr>
+<td><code>glob</code></td>
+<td><code>validate_config</code></td>
+</tr>
+<tr>
+<td><code>load</code></td>
+<td><code>glob</code></td>
+</tr>
+<tr>
+<td><code>pre_render</code></td>
+<td><code>load</code></td>
+</tr>
+<tr>
+<td><code>render</code></td>
+<td><code>pre_render</code></td>
+</tr>
+<tr>
+<td><code>post_render</code></td>
+<td><code>render</code></td>
+</tr>
+<tr>
+<td><code>save</code></td>
+<td><code>post_render</code></td>
+</tr>
+<tr>
+<td><code>teardown</code></td>
+<td><code>save</code></td>
+</tr>
+</tbody>
+</table>
+<p>Running a stage automatically runs all preceding stages that haven't run yet.</p>
+<hr>
+<h2 id="hook-execution-order">Hook Execution Order <a href="#hook-execution-order" class="heading-anchor">#</a></h2>
+<p>Within a stage, hooks execute in this order:</p>
+<ol>
+<li>Hooks marked <code>tryfirst=True</code> (in registration order)</li>
+<li>Hooks with no modifier (in registration order)</li>
+<li>Hooks marked <code>trylast=True</code> (in registration order)</li>
+</ol>
+<p><strong>Example:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># These hooks are in the same stage</span>
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span><span class="p">(</span><span class="n">tryfirst</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>  <span class="c1"># Runs first</span>
+</span></span><span class="line"><span class="cl">    <span class="k">pass</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>  <span class="c1"># Runs second</span>
+</span></span><span class="line"><span class="cl">    <span class="k">pass</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nd">@hook_impl</span><span class="p">(</span><span class="n">trylast</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">render</span><span class="p">(</span><span class="n">core</span><span class="p">):</span>  <span class="c1"># Runs last</span>
+</span></span><span class="line"><span class="cl">    <span class="k">pass</span>
+</span></span></code></pre><hr>
+<h2 id="error-handling-by-stage">Error Handling by Stage <a href="#error-handling-by-stage" class="heading-anchor">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Error Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config_model</code></td>
+<td>Fatal - cannot proceed without models</td>
+</tr>
+<tr>
+<td><code>post_model</code></td>
+<td>Fatal</td>
+</tr>
+<tr>
+<td><code>create_models</code></td>
+<td>Fatal</td>
+</tr>
+<tr>
+<td><code>load_config</code></td>
+<td>Fatal - invalid config stops build</td>
+</tr>
+<tr>
+<td><code>configure</code></td>
+<td>Fatal by default, can be configured to warn</td>
+</tr>
+<tr>
+<td><code>validate_config</code></td>
+<td>Fatal - validation errors stop build</td>
+</tr>
+<tr>
+<td><code>glob</code></td>
+<td>Warn if no files found</td>
+</tr>
+<tr>
+<td><code>load</code></td>
+<td>Skip invalid files, log warnings</td>
+</tr>
+<tr>
+<td><code>pre_render</code></td>
+<td>Skip post on error, continue others</td>
+</tr>
+<tr>
+<td><code>render</code></td>
+<td>Skip post on error, continue others</td>
+</tr>
+<tr>
+<td><code>post_render</code></td>
+<td>Skip post on error, continue others</td>
+</tr>
+<tr>
+<td><code>save</code></td>
+<td>Log error, continue other files</td>
+</tr>
+<tr>
+<td><code>teardown</code></td>
+<td>Log errors, attempt all cleanup</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="incremental-builds">Incremental Builds <a href="#incremental-builds" class="heading-anchor">#</a></h2>
+<p>Incremental builds only process content that has changed since the last build, dramatically improving build times for large sites.</p>
+<h3 id="change-detection">Change Detection <a href="#change-detection" class="heading-anchor">#</a></h3>
+<p>The system detects changes using multiple signals:</p>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Detection Method</th>
+<th>Triggers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Content file modified</td>
+<td>File mtime or content hash</td>
+<td>Rebuild that post</td>
+</tr>
+<tr>
+<td>Content file added</td>
+<td>File not in cache</td>
+<td>Build new post</td>
+</tr>
+<tr>
+<td>Content file deleted</td>
+<td>File in cache but not on disk</td>
+<td>Remove from output</td>
+</tr>
+<tr>
+<td>Template modified</td>
+<td>Template mtime</td>
+<td>Rebuild all posts using that template</td>
+</tr>
+<tr>
+<td>Config modified</td>
+<td>Config file mtime or hash</td>
+<td>Full rebuild</td>
+</tr>
+<tr>
+<td>Plugin changed</td>
+<td>Plugin file mtime</td>
+<td>Full rebuild</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cache-keys">Cache Keys <a href="#cache-keys" class="heading-anchor">#</a></h3>
+<p>Each post's cache entry includes:</p>
+<pre><code>post:{path}:
+  content_hash: &quot;sha256:abc123...&quot;   # Hash of raw file content
+  mtime: 1706123456                  # File modification time
+  frontmatter_hash: &quot;sha256:def...&quot;  # Hash of parsed frontmatter
+  dependencies:                      # Files this post depends on
+    - templates/post.html
+    - templates/base.html
+    - partials/header.html
+  rendered_hash: &quot;sha256:ghi...&quot;     # Hash of final HTML output
+  article_html: &quot;&lt;p&gt;...&lt;/p&gt;&quot;         # Cached rendered markdown
+</code></pre>
+<h3 id="dependency-tracking">Dependency Tracking <a href="#dependency-tracking" class="heading-anchor">#</a></h3>
+<p>Posts may depend on:</p>
+<ol>
+<li><strong>Templates</strong> - The template chain used to render</li>
+<li><strong>Includes</strong> - Partials included by templates</li>
+<li><strong>Other posts</strong> - Via wikilinks or queries in Jinja-in-Markdown</li>
+<li><strong>Static assets</strong> - Images or files referenced in content</li>
+</ol>
+<p>When a dependency changes, all dependent posts are marked for rebuild.</p>
+<h3 id="rebuild-strategy">Rebuild Strategy <a href="#rebuild-strategy" class="heading-anchor">#</a></h3>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│                    INCREMENTAL BUILD                         │
+├─────────────────────────────────────────────────────────────┤
+│  1. Load previous build cache                                │
+│  2. Scan content directory for files                         │
+│  3. For each file:                                           │
+│     ├─ If new: mark for full processing                      │
+│     ├─ If deleted: mark output for removal                   │
+│     ├─ If modified: mark for rebuild                         │
+│     └─ If unchanged: load from cache                         │
+│  4. Check template/config changes                            │
+│     ├─ If template changed: mark dependent posts             │
+│     └─ If config changed: mark all posts                     │
+│  5. Process only marked posts through render stages          │
+│  6. Merge cached + newly rendered posts                      │
+│  7. Run save stage (write changed files only)                │
+│  8. Update cache with new state                              │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="cache-invalidation-rules">Cache Invalidation Rules <a href="#cache-invalidation-rules" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Change</th>
+<th>Invalidation Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Single post content</td>
+<td>That post only</td>
+</tr>
+<tr>
+<td>Post frontmatter (no template change)</td>
+<td>That post only</td>
+</tr>
+<tr>
+<td>Post template assignment</td>
+<td>That post only</td>
+</tr>
+<tr>
+<td>Template file</td>
+<td>All posts using that template</td>
+</tr>
+<tr>
+<td>Base template</td>
+<td>All posts (cascades through inheritance)</td>
+</tr>
+<tr>
+<td>Partial/include</td>
+<td>All posts whose templates use it</td>
+</tr>
+<tr>
+<td>Config change</td>
+<td>Full rebuild</td>
+</tr>
+<tr>
+<td>Plugin code change</td>
+<td>Full rebuild</td>
+</tr>
+<tr>
+<td>Markdown extension settings</td>
+<td>Full rebuild</td>
+</tr>
+</tbody>
+</table>
+<h3 id="implementation-notes">Implementation Notes <a href="#implementation-notes" class="heading-anchor">#</a></h3>
+<p><strong>Hash vs Mtime:</strong></p>
+<ul>
+<li>Use content hash for correctness (handles git checkout, rsync, etc.)</li>
+<li>Use mtime as fast-path optimization (skip hash if mtime unchanged)</li>
+<li>Always fall back to hash comparison when mtime differs</li>
+</ul>
+<p><strong>Query Dependencies:</strong>
+Posts with Jinja-in-Markdown queries like:</p>
+<pre><code class="language-jinja2">{% for p in core.filter(&quot;'python' in tags&quot;)[:5] %}
+</code></pre>
+<p>Depend on the query result set. Track which posts match the query; if that set changes, rebuild the querying post.</p>
+<p><strong>Atomic Cache Updates:</strong></p>
+<ul>
+<li>Write cache updates atomically (write to temp, then rename)</li>
+<li>On failed build, don't update cache</li>
+<li>Store cache format version; invalidate on version mismatch</li>
+</ul>
+<h3 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Enable/disable incremental builds</span>
+</span></span><span class="line"><span class="cl"><span class="nx">incremental</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Force full rebuild (ignore cache)</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Useful for CI or when cache may be stale</span>
+</span></span><span class="line"><span class="cl"><span class="nx">force_rebuild</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Cache directory</span>
+</span></span><span class="line"><span class="cl"><span class="nx">cache_dir</span> <span class="p">=</span> <span class="s2">&#34;.name.cache&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># What to use for change detection</span>
+</span></span><span class="line"><span class="cl"><span class="nx">change_detection</span> <span class="p">=</span> <span class="s2">&#34;hash&#34;</span>  <span class="c"># &#34;hash&#34;, &#34;mtime&#34;, or &#34;both&#34;</span>
+</span></span></code></pre><h3 id="cli-integration">CLI Integration <a href="#cli-integration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Normal build (incremental if enabled)</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> build
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Force full rebuild</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> build --clean
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Show what would be rebuilt</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> build --dry-run
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Clear cache</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> cache clear
+</span></span></code></pre><hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./SPEC.md">SPEC.md</a> - Full specification</li>
+<li><a href="./CONFIG.md">CONFIG.md</a> - Configuration system</li>
+<li><a href="./PLUGINS.md">PLUGINS.md</a> - Plugin development guide</li>
+<li><a href="./DATA_MODEL.md">DATA_MODEL.md</a> - Post and config models</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

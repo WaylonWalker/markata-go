@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>001 Batch Parse Error Reporting - My Site</title>
+    <meta name="description" content="When loading markdown files, the build currently fails on the first parsing error encountered. Users with multiple malformed files must fix them one at a...">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="001 Batch Parse Error Reporting">
+    
+    <meta property="og:url" content="/001-batch-parse-error-reporting/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="When loading markdown files, the build currently fails on the first parsing error encountered. Users with multiple malformed files must fix them one at a...">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="001 Batch Parse Error Reporting">
+    
+    <meta name="twitter:description" content="When loading markdown files, the build currently fails on the first parsing error encountered. Users with multiple malformed files must fix them one at a...">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/001-batch-parse-error-reporting/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "001 Batch Parse Error Reporting",
+  "description": "When loading markdown files, the build currently fails on the first parsing error encountered. Users with multiple malformed files must fix them one at a...",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/001-batch-parse-error-reporting/"
+  },
+  "url": "/001-batch-parse-error-reporting/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>001 Batch Parse Error Reporting</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="issue-001-batch-parse-error-reporting">Issue #001: Batch Parse Error Reporting</h1>
+<h2 id="summary">Summary <a href="#summary" class="heading-anchor">#</a></h2>
+<p>When loading markdown files, the build currently fails on the first parsing error encountered. Users with multiple malformed files must fix them one at a time, running the build repeatedly to discover each error.</p>
+<h2 id="current-behavior">Current Behavior <a href="#current-behavior" class="heading-anchor">#</a></h2>
+<pre><code>$ markata-go build -v
+Verbose mode enabled
+Starting build...
+Configuration loaded (output: public, patterns: [posts/**/*.md pages/**/*.md])
+Error: build failed: [error] load plugin &quot;load&quot;: failed to parse pages/blog/about.md: invalid frontmatter: yaml: unmarshal errors:
+  line 4: mapping key &quot;tags&quot; already defined at line 2
+</code></pre>
+<p>The build stops at the first error. If there are 10 files with issues, the user must run the build 10 times to discover all of them.</p>
+<h2 id="desired-behavior">Desired Behavior <a href="#desired-behavior" class="heading-anchor">#</a></h2>
+<p>Report all parsing errors at once, then fail:</p>
+<pre><code>$ markata-go build -v
+Verbose mode enabled
+Starting build...
+Configuration loaded (output: public, patterns: [posts/**/*.md pages/**/*.md])
+  [configure] running...
+  [validate] running...
+  [glob] running...
+  [glob] discovered 25 files
+  [load] running...
+
+Parse errors found in 3 files:
+
+  pages/blog/about.md:
+    - invalid frontmatter: yaml: unmarshal errors:
+        line 4: mapping key &quot;tags&quot; already defined at line 2
+
+  posts/draft-post.md:
+    - invalid date: unable to parse date: &quot;not-a-date&quot;
+
+  posts/old-post.md:
+    - failed to read file: permission denied
+
+Error: build failed: 3 files failed to parse (see errors above)
+</code></pre>
+<h2 id="implementation-notes">Implementation Notes <a href="#implementation-notes" class="heading-anchor">#</a></h2>
+<h3 id="option-a-collect-errors-fail-at-end-recommended">Option A: Collect errors, fail at end (Recommended) <a href="#option-a-collect-errors-fail-at-end-recommended" class="heading-anchor">#</a></h3>
+<p>Modify <code>LoadPlugin.Load()</code> to:</p>
+<ol>
+<li>Continue processing all files even when errors occur</li>
+<li>Collect all errors in a slice</li>
+<li>After processing all files, if any errors occurred:
+<ul>
+<li>Print a summary of all errors with file paths and line numbers</li>
+<li>Return a combined error</li>
+</ul>
+</li>
+</ol>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">LoadPlugin</span><span class="p">)</span> <span class="nf">Load</span><span class="p">(</span><span class="nx">m</span> <span class="o">*</span><span class="nx">lifecycle</span><span class="p">.</span><span class="nx">Manager</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">files</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">.</span><span class="nf">Files</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">parseErrors</span> <span class="p">[]</span><span class="nx">ParseError</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">file</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">files</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">post</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">p</span><span class="p">.</span><span class="nf">loadFile</span><span class="p">(</span><span class="nx">file</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">parseErrors</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">parseErrors</span><span class="p">,</span> <span class="nx">ParseError</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">File</span><span class="p">:</span>  <span class="nx">file</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">Error</span><span class="p">:</span> <span class="nx">err</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="p">})</span>
+</span></span><span class="line"><span class="cl">            <span class="k">continue</span> <span class="c1">// Continue to next file
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">m</span><span class="p">.</span><span class="nf">AddPost</span><span class="p">(</span><span class="nx">post</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">parseErrors</span><span class="p">)</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// Print detailed error report
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span>        <span class="nf">printParseErrors</span><span class="p">(</span><span class="nx">parseErrors</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;%d files failed to parse&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">parseErrors</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="option-b-add---fail-fast-flag">Option B: Add <code>--fail-fast</code> flag <a href="#option-b-add---fail-fast-flag" class="heading-anchor">#</a></h3>
+<p>Keep current behavior as default but add a flag:</p>
+<ul>
+<li><code>--fail-fast</code> (or <code>-f</code>): Stop on first error (current behavior)</li>
+<li>Default: Collect and report all errors</li>
+</ul>
+<h3 id="option-c-warning-mode-with---strict">Option C: Warning mode with <code>--strict</code> <a href="#option-c-warning-mode-with---strict" class="heading-anchor">#</a></h3>
+<ul>
+<li>Default: Log parse errors as warnings, skip problematic files, continue build</li>
+<li><code>--strict</code>: Fail on any parse error (current behavior)</li>
+</ul>
+<h2 id="additional-considerations">Additional Considerations <a href="#additional-considerations" class="heading-anchor">#</a></h2>
+<ol>
+<li>
+<p><strong>Error formatting</strong>: Use consistent formatting that's easy to scan:</p>
+<ul>
+<li>Group by file</li>
+<li>Include line numbers where available</li>
+<li>Use color coding if terminal supports it (red for errors)</li>
+</ul>
+</li>
+<li>
+<p><strong>Exit code</strong>: Should still be non-zero when errors occur</p>
+</li>
+<li>
+<p><strong>Partial builds</strong>: Consider allowing partial builds where valid files are processed and only problematic ones are skipped (with warnings)</p>
+</li>
+<li>
+<p><strong>JSON output</strong>: Consider <code>--format=json</code> for CI/tooling integration:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;errors&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span><span class="nt">&#34;file&#34;</span><span class="p">:</span> <span class="s2">&#34;pages/about.md&#34;</span><span class="p">,</span> <span class="nt">&#34;line&#34;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="nt">&#34;message&#34;</span><span class="p">:</span> <span class="s2">&#34;duplicate key &#39;tags&#39;&#34;</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></li>
+</ol>
+<h2 id="files-to-modify">Files to Modify <a href="#files-to-modify" class="heading-anchor">#</a></h2>
+<ul>
+<li><code>pkg/plugins/load.go</code> - Main implementation</li>
+<li><code>cmd/markata-go/cmd/build.go</code> - Add flags if implementing Option B/C</li>
+<li><code>pkg/plugins/frontmatter.go</code> - Enhance error messages with line numbers</li>
+</ul>
+<h2 id="related">Related <a href="#related" class="heading-anchor">#</a></h2>
+<ul>
+<li>Error reporting was previously silent due to <code>SilenceErrors: true</code> in cobra (fixed)</li>
+<li>Verbose mode now shows stage-by-stage progress</li>
+</ul>
+<h2 id="priority">Priority <a href="#priority" class="heading-anchor">#</a></h2>
+<p>Medium - Quality of life improvement for content authors</p>
+<h2 id="labels">Labels <a href="#labels" class="heading-anchor">#</a></h2>
+<p><code>enhancement</code>, <code>ux</code>, <code>error-handling</code></p>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

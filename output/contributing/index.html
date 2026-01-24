@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contributing - My Site</title>
+    <meta name="description" content="markata-go is ** but **.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Contributing">
+    
+    <meta property="og:url" content="/contributing/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="markata-go is ** but **.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Contributing">
+    
+    <meta name="twitter:description" content="markata-go is ** but **.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/contributing/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Contributing",
+  "description": "markata-go is ** but **.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/contributing/"
+  },
+  "url": "/contributing/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Contributing</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="contributing-to-markata-go">Contributing to markata-go</h1>
+<h2 id="open-source-not-open-contribution">Open Source, Not Open Contribution <a href="#open-source-not-open-contribution" class="heading-anchor">#</a></h2>
+<p>markata-go is <strong>open source</strong> but <strong>not open contribution</strong>.</p>
+<p>This means:</p>
+<ul>
+<li><strong>You CAN</strong> read, use, fork, and modify the code under the MIT license</li>
+<li><strong>You CAN</strong> report bugs and security vulnerabilities via GitHub Issues</li>
+<li><strong>You CAN</strong> build your own SSG using this code or the <a href="spec/">spec</a> as a starting point</li>
+<li><strong>You SHOULD NOT</strong> submit pull requests - they will not be reviewed or merged</li>
+</ul>
+<h2 id="why-this-model">Why This Model? <a href="#why-this-model" class="heading-anchor">#</a></h2>
+<p>This project follows a &quot;spec-as-product&quot; philosophy. The specification and implementation are tightly coupled, and maintaining that coherence requires a single vision. External contributions, while well-intentioned, create overhead that detracts from the core goal.</p>
+<p>If you want to:</p>
+<ol>
+<li>
+<p><strong>Build your own SSG</strong> - Fork this repo or start fresh using the <a href="spec/">spec</a> as your guide. The spec is designed to be language-agnostic; implement it in Python, TypeScript, Rust, or any language you prefer.</p>
+</li>
+<li>
+<p><strong>Fix a bug you found</strong> - Open an issue describing the bug. If it's critical, explain the impact and provide a minimal reproduction case.</p>
+</li>
+<li>
+<p><strong>Request a feature</strong> - Open an issue. Features that align with the spec's vision may be implemented. Features that don't may be better suited for your own fork.</p>
+</li>
+</ol>
+<h2 id="reporting-bugs">Reporting Bugs <a href="#reporting-bugs" class="heading-anchor">#</a></h2>
+<p>When reporting bugs, please include:</p>
+<ul>
+<li>markata-go version (<code>markata-go version</code>)</li>
+<li>Operating system and architecture</li>
+<li>Minimal reproduction steps</li>
+<li>Expected vs actual behavior</li>
+<li>Relevant configuration (sanitize any secrets)</li>
+</ul>
+<h2 id="security-vulnerabilities">Security Vulnerabilities <a href="#security-vulnerabilities" class="heading-anchor">#</a></h2>
+<p>For security issues, please email security concerns privately rather than opening a public issue. Include:</p>
+<ul>
+<li>Description of the vulnerability</li>
+<li>Steps to reproduce</li>
+<li>Potential impact</li>
+<li>Suggested fix (if you have one)</li>
+</ul>
+<h2 id="building-your-own">Building Your Own <a href="#building-your-own" class="heading-anchor">#</a></h2>
+<p>The <a href="spec/">spec</a> directory contains a complete specification for building a static site generator with markata-go's feature set. It includes:</p>
+<ul>
+<li><a href="spec/spec/SPEC.md">SPEC.md</a> - Core architecture</li>
+<li><a href="spec/spec/CONFIG.md">CONFIG.md</a> - Configuration system</li>
+<li><a href="spec/spec/LIFECYCLE.md">LIFECYCLE.md</a> - Build stages</li>
+<li><a href="spec/spec/FEEDS.md">FEEDS.md</a> - Feed system</li>
+<li><a href="spec/spec/PLUGINS.md">PLUGINS.md</a> - Plugin development</li>
+<li><a href="spec/spec/DATA_MODEL.md">DATA_MODEL.md</a> - Data structures</li>
+<li><a href="spec/spec/tests.yaml">tests.yaml</a> - Test cases for verification</li>
+</ul>
+<p>Use these specs to build your own implementation in any language. The spec includes recommended libraries for Python, TypeScript, Go, and Rust.</p>
+<h2 id="code-of-conduct">Code of Conduct <a href="#code-of-conduct" class="heading-anchor">#</a></h2>
+<p>Be respectful in issues and discussions. Harassment, spam, and bad-faith arguments will result in being blocked.</p>
+<h2 id="license">License <a href="#license" class="heading-anchor">#</a></h2>
+<p>By using this project, you agree to the terms of the <a href="LICENSE">MIT License</a>. Any code you write based on this project or the spec is yours to license as you choose.</p>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

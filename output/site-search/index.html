@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Site Search - My Site</title>
+    <meta name="description" content="Add full-text search to your markata-go site using Pagefind">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Site Search">
+    
+    <meta property="og:url" content="/site-search/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Add full-text search to your markata-go site using Pagefind">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="search">
+    
+    <meta property="article:tag" content="pagefind">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Site Search">
+    
+    <meta name="twitter:description" content="Add full-text search to your markata-go site using Pagefind">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/site-search/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Site Search",
+  "description": "Add full-text search to your markata-go site using Pagefind",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/site-search/"
+  },
+  "keywords": [
+    "documentation",
+    "search",
+    "pagefind"
+  ],
+  "url": "/site-search/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Site Search</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/search/">search</a>
+                
+                <a href="/tags/pagefind/">pagefind</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="site-search">Site Search</h1>
+<p>markata-go includes built-in full-text search powered by <a href="https://pagefind.app/">Pagefind</a>, a static site search library that generates an optimized search index during the build process.</p>
+<h2 id="features">Features <a href="#features" class="heading-anchor">#</a></h2>
+<ul>
+<li><strong>Enabled by default</strong> - Search works out of the box with no configuration</li>
+<li><strong>Automatic installation</strong> - Pagefind binary is automatically downloaded if not found in PATH</li>
+<li><strong>Fast and lightweight</strong> - Only loads the index chunks needed for each query</li>
+<li><strong>Offline capable</strong> - Works entirely client-side, no server required</li>
+<li><strong>Theme integrated</strong> - Automatically matches your site's color palette</li>
+<li><strong>Secure</strong> - SHA256 checksum verification for all downloaded binaries</li>
+</ul>
+<h2 id="quick-start">Quick Start <a href="#quick-start" class="heading-anchor">#</a></h2>
+<p>Search is enabled by default for all markata-go sites. Just build your site and the search will work:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Build your site - Pagefind is automatically installed if needed</span>
+</span></span><span class="line"><span class="cl">markata-go build
+</span></span></code></pre><p>That's it! The search box appears in your navigation bar.</p>
+<h2 id="automatic-pagefind-installation">Automatic Pagefind Installation <a href="#automatic-pagefind-installation" class="heading-anchor">#</a></h2>
+<p>As of markata-go v0.2.x, Pagefind is automatically downloaded and cached when you build your site. This eliminates the need for manual installation.</p>
+<h3 id="how-it-works">How It Works <a href="#how-it-works" class="heading-anchor">#</a></h3>
+<ol>
+<li>markata-go checks if <code>pagefind</code> is in your PATH</li>
+<li>If not found, it automatically downloads the appropriate binary for your platform</li>
+<li>The binary is verified using SHA256 checksums from official GitHub releases</li>
+<li>Downloaded binaries are cached in <code>~/.cache/markata-go/bin/</code> for future builds</li>
+</ol>
+<h3 id="supported-platforms">Supported Platforms <a href="#supported-platforms" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>OS</th>
+<th>Architecture</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>macOS</td>
+<td>x86_64 (Intel)</td>
+<td>Supported</td>
+</tr>
+<tr>
+<td>macOS</td>
+<td>arm64 (Apple Silicon)</td>
+<td>Supported</td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>x86_64</td>
+<td>Supported</td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>arm64</td>
+<td>Supported</td>
+</tr>
+<tr>
+<td>Windows</td>
+<td>x86_64</td>
+<td>Supported</td>
+</tr>
+<tr>
+<td>FreeBSD</td>
+<td>x86_64</td>
+<td>Supported</td>
+</tr>
+</tbody>
+</table>
+<h3 id="configuring-auto-installation">Configuring Auto-Installation <a href="#configuring-auto-installation" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">.</span><span class="nx">pagefind</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Disable auto-install (requires manual Pagefind installation)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">auto_install</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Pin to a specific version (default: &#34;latest&#34;)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">version</span> <span class="p">=</span> <span class="s2">&#34;v1.4.0&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Custom cache directory (default: XDG cache)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">cache_dir</span> <span class="p">=</span> <span class="s2">&#34;~/.my-cache/pagefind/&#34;</span>
+</span></span></code></pre><h3 id="offline-environments">Offline Environments <a href="#offline-environments" class="heading-anchor">#</a></h3>
+<p>After the first build, Pagefind is cached locally. Subsequent builds work offline. For CI/CD environments, consider:</p>
+<ol>
+<li><strong>Pre-cache in Docker image</strong>: Include Pagefind in your CI image</li>
+<li><strong>Use <code>version</code> pinning</strong>: Pin to a specific version for reproducible builds</li>
+<li><strong>Disable auto-install</strong>: Set <code>auto_install = false</code> and install manually</li>
+</ol>
+<h2 id="manual-installation-optional">Manual Installation (Optional) <a href="#manual-installation-optional" class="heading-anchor">#</a></h2>
+<p>If you prefer to install Pagefind manually or need to use a custom build:</p>
+<h3 id="npm-recommended">npm (Recommended) <a href="#npm-recommended" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">npm install -g pagefind
+</span></span></code></pre><h3 id="homebrew-macos">Homebrew (macOS) <a href="#homebrew-macos" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">brew install pagefind
+</span></span></code></pre><h3 id="binary-download">Binary Download <a href="#binary-download" class="heading-anchor">#</a></h3>
+<p>Download from <a href="https://github.com/CloudCannon/pagefind/releases">Pagefind releases</a>.</p>
+<h3 id="disabling-auto-install">Disabling Auto-Install <a href="#disabling-auto-install" class="heading-anchor">#</a></h3>
+<p>To require manual installation:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">.</span><span class="nx">pagefind</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">auto_install</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span></code></pre><p>If Pagefind is not installed and auto-install is disabled, markata-go logs a warning but continues building. The search UI will be hidden.</p>
+<h2 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h2>
+<h3 id="basic-configuration">Basic Configuration <a href="#basic-configuration" class="heading-anchor">#</a></h3>
+<p>Configure search in your <code>markata-go.toml</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>              <span class="c"># Default: true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">position</span> <span class="p">=</span> <span class="s2">&#34;navbar&#34;</span>         <span class="c"># Where to show search: navbar, sidebar, footer</span>
+</span></span><span class="line"><span class="cl"><span class="nx">placeholder</span> <span class="p">=</span> <span class="s2">&#34;Search...&#34;</span>   <span class="c"># Search input placeholder text</span>
+</span></span></code></pre><h3 id="disable-search">Disable Search <a href="#disable-search" class="heading-anchor">#</a></h3>
+<p>To disable search entirely:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span></code></pre><h3 id="advanced-configuration">Advanced Configuration <a href="#advanced-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">position</span> <span class="p">=</span> <span class="s2">&#34;navbar&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">placeholder</span> <span class="p">=</span> <span class="s2">&#34;Search...&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">show_images</span> <span class="p">=</span> <span class="kc">true</span>          <span class="c"># Show thumbnails in results (default: true)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">excerpt_length</span> <span class="p">=</span> <span class="mi">200</span>        <span class="c"># Characters for result excerpts (default: 200)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Pagefind CLI options</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">.</span><span class="nx">pagefind</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">bundle_dir</span> <span class="p">=</span> <span class="s2">&#34;_pagefind&#34;</span>    <span class="c"># Output directory for index (default: &#34;_pagefind&#34;)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">root_selector</span> <span class="p">=</span> <span class="s2">&#34;main&#34;</span>      <span class="c"># Element containing searchable content</span>
+</span></span><span class="line"><span class="cl"><span class="nx">exclude_selectors</span> <span class="p">=</span> <span class="p">[</span>       <span class="c"># Elements to exclude from indexing</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;.no-search&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;nav&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;footer&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Auto-installation options</span>
+</span></span><span class="line"><span class="cl"><span class="nx">auto_install</span> <span class="p">=</span> <span class="kc">true</span>         <span class="c"># Automatically download Pagefind (default: true)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">version</span> <span class="p">=</span> <span class="s2">&#34;latest&#34;</span>          <span class="c"># Version to install (default: &#34;latest&#34;)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">cache_dir</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>              <span class="c"># Custom cache directory (default: XDG cache)</span>
+</span></span></code></pre><h2 id="search-positions">Search Positions <a href="#search-positions" class="heading-anchor">#</a></h2>
+<p>The <code>position</code> option controls where the search UI appears:</p>
+<table>
+<thead>
+<tr>
+<th>Position</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>navbar</code></td>
+<td>Right side of the navigation bar (default)</td>
+</tr>
+<tr>
+<td><code>sidebar</code></td>
+<td>In the sidebar (if enabled)</td>
+</tr>
+<tr>
+<td><code>footer</code></td>
+<td>In the footer section</td>
+</tr>
+<tr>
+<td><code>custom</code></td>
+<td>Hidden; use for custom placement via templates</td>
+</tr>
+</tbody>
+</table>
+<h3 id="custom-placement">Custom Placement <a href="#custom-placement" class="heading-anchor">#</a></h3>
+<p>For full control over search placement, set <code>position = &quot;custom&quot;</code> and include the search component manually in your templates:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% include &#34;components/search.html&#34; %}
+</span></span></code></pre><h2 id="what-gets-indexed">What Gets Indexed <a href="#what-gets-indexed" class="heading-anchor">#</a></h2>
+<p>By default, Pagefind indexes:</p>
+<ul>
+<li><strong>Post content</strong> - The main article body</li>
+<li><strong>Title</strong> - Displayed in search results</li>
+<li><strong>Description</strong> - Shown as result excerpt</li>
+<li><strong>Tags</strong> - Available as filters</li>
+<li><strong>Feed membership</strong> - Available as filters</li>
+</ul>
+<h3 id="excluding-content-from-search">Excluding Content from Search <a href="#excluding-content-from-search" class="heading-anchor">#</a></h3>
+<h4 id="via-frontmatter">Via Frontmatter <a href="#via-frontmatter" class="heading-anchor">#</a></h4>
+<p>Exclude a post from the search index:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;Draft Post&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">search_exclude</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre><h4 id="via-css-classes">Via CSS Classes <a href="#via-css-classes" class="heading-anchor">#</a></h4>
+<p>Content with <code>data-pagefind-ignore</code> is excluded:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">data-pagefind-ignore</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">    This content won&#39;t be indexed
+</span></span><span class="line"><span class="cl"><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</span></span></code></pre><h2 id="search-results">Search Results <a href="#search-results" class="heading-anchor">#</a></h2>
+<p>Results include:</p>
+<ul>
+<li><strong>Title</strong> - Clickable link to the post</li>
+<li><strong>Excerpt</strong> - Highlighted text showing where the match was found</li>
+<li><strong>Thumbnail</strong> - Post image (if available and <code>show_images</code> is enabled)</li>
+</ul>
+<h3 id="filtering-results">Filtering Results <a href="#filtering-results" class="heading-anchor">#</a></h3>
+<p>Pagefind supports filtering by metadata. Users can click on tags or feeds in results to filter.</p>
+<h2 id="theming">Theming <a href="#theming" class="heading-anchor">#</a></h2>
+<p>The search UI automatically inherits your site's theme colors through CSS variables:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">:</span><span class="nd">root</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-primary</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">primary</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-text</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="kc">text</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-background</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">surface</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">--pagefind-ui-border</span><span class="p">:</span> <span class="nf">var</span><span class="p">(</span><span class="o">--</span><span class="n">border</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="custom-styling">Custom Styling <a href="#custom-styling" class="heading-anchor">#</a></h3>
+<p>Override Pagefind styles in your custom CSS:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">/* Larger search input */</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">pagefind-ui__search-input</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">font-size</span><span class="p">:</span> <span class="mf">1.1</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">padding</span><span class="p">:</span> <span class="mf">0.75</span><span class="kt">rem</span> <span class="mi">1</span><span class="kt">rem</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">/* Wider results dropdown */</span>
+</span></span><span class="line"><span class="cl"><span class="p">.</span><span class="nc">search--navbar</span> <span class="p">.</span><span class="nc">pagefind-ui__results</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">width</span><span class="p">:</span> <span class="mi">500</span><span class="kt">px</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h2 id="keyboard-navigation">Keyboard Navigation <a href="#keyboard-navigation" class="heading-anchor">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/</code></td>
+<td>Focus search input (when implemented)</td>
+</tr>
+<tr>
+<td><code>Enter</code></td>
+<td>Go to first result</td>
+</tr>
+<tr>
+<td><code>↑</code> / <code>↓</code></td>
+<td>Navigate results</td>
+</tr>
+<tr>
+<td><code>Escape</code></td>
+<td>Close results dropdown</td>
+</tr>
+</tbody>
+</table>
+<h2 id="performance">Performance <a href="#performance" class="heading-anchor">#</a></h2>
+<p>Pagefind is highly optimized:</p>
+<ul>
+<li><strong>Index size</strong>: ~1KB per page indexed</li>
+<li><strong>Initial load</strong>: Only loads the search UI (~10KB)</li>
+<li><strong>On search</strong>: Loads only relevant index chunks</li>
+<li><strong>Caching</strong>: Results cached for repeated queries</li>
+</ul>
+<h3 id="large-sites">Large Sites <a href="#large-sites" class="heading-anchor">#</a></h3>
+<p>For sites with thousands of pages, Pagefind handles it efficiently:</p>
+<ul>
+<li>Index is split into chunks</li>
+<li>Only relevant chunks are loaded per query</li>
+<li>Typical search latency: 10-50ms</li>
+</ul>
+<h2 id="troubleshooting">Troubleshooting <a href="#troubleshooting" class="heading-anchor">#</a></h2>
+<h3 id="search-box-not-appearing">Search box not appearing <a href="#search-box-not-appearing" class="heading-anchor">#</a></h3>
+<ol>
+<li>
+<p><strong>Check build logs for Pagefind output:</strong>
+Look for <code>[pagefind]</code> messages indicating download or execution.</p>
+</li>
+<li>
+<p><strong>Verify search is enabled:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>  <span class="c"># Should be true (default)</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Check network connectivity:</strong>
+If auto-install is enabled and Pagefind isn't cached, internet access is required.</p>
+</li>
+</ol>
+<h3 id="auto-install-failing">Auto-install failing <a href="#auto-install-failing" class="heading-anchor">#</a></h3>
+<ol>
+<li>
+<p><strong>Network issues:</strong></p>
+<pre><code>pagefind install error during download: failed to download asset
+</code></pre>
+<p>Check your internet connection or firewall settings.</p>
+</li>
+<li>
+<p><strong>Unsupported platform:</strong></p>
+<pre><code>pagefind install error during platform_detection: unsupported operating system
+</code></pre>
+<p>Install Pagefind manually for unsupported platforms.</p>
+</li>
+<li>
+<p><strong>Checksum verification failure:</strong></p>
+<pre><code>pagefind install error during verify: checksum mismatch
+</code></pre>
+<p>This is a security feature. Try clearing the cache:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">rm -rf ~/.cache/markata-go/bin/
+</span></span></code></pre></li>
+<li>
+<p><strong>Fallback to manual installation:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">.</span><span class="nx">pagefind</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">auto_install</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span></code></pre><p>Then install Pagefind manually via npm, Homebrew, or direct download.</p>
+</li>
+</ol>
+<h3 id="no-search-results">No search results <a href="#no-search-results" class="heading-anchor">#</a></h3>
+<ol>
+<li>
+<p><strong>Check if content has <code>data-pagefind-body</code>:</strong>
+The default post template includes this. Custom templates need it too.</p>
+</li>
+<li>
+<p><strong>Verify posts are published:</strong>
+Draft posts (<code>published: false</code>) may not be indexed.</p>
+</li>
+<li>
+<p><strong>Check exclude selectors:</strong>
+Ensure your content isn't excluded by <code>exclude_selectors</code>.</p>
+</li>
+</ol>
+<h3 id="search-results-missing-content">Search results missing content <a href="#search-results-missing-content" class="heading-anchor">#</a></h3>
+<ol>
+<li>
+<p><strong>Check <code>root_selector</code>:</strong>
+If set, only content within that selector is indexed.</p>
+</li>
+<li>
+<p><strong>Verify template structure:</strong>
+Content must be within <code>data-pagefind-body</code> element.</p>
+</li>
+</ol>
+<h2 id="feed-specific-search">Feed-Specific Search <a href="#feed-specific-search" class="heading-anchor">#</a></h2>
+<p>For sites with multiple content types, you can configure feed-specific search instances:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">search</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">enabled</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">position</span> <span class="p">=</span> <span class="s2">&#34;navbar&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Feed-specific search instances</span>
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">search</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;guides&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published &amp;&amp; feed:guides&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">position</span> <span class="p">=</span> <span class="s2">&#34;sidebar&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">placeholder</span> <span class="p">=</span> <span class="s2">&#34;Search guides...&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">search</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published &amp;&amp; feed:blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">position</span> <span class="p">=</span> <span class="s2">&#34;navbar&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">placeholder</span> <span class="p">=</span> <span class="s2">&#34;Search blog...&#34;</span>
+</span></span></code></pre><h2 id="cicd-integration">CI/CD Integration <a href="#cicd-integration" class="heading-anchor">#</a></h2>
+<p>Thanks to automatic Pagefind installation, CI/CD setup is simpler than ever.</p>
+<h3 id="github-actions">GitHub Actions <a href="#github-actions" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build site</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go build </span><span class="w"> </span><span class="c"># Pagefind auto-installs</span><span class="w">
+</span></span></span></code></pre><p>Or pin to a specific version for reproducible builds:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build site</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go build</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">MARKATA_GO_SEARCH_PAGEFIND_VERSION</span><span class="p">:</span><span class="w"> </span><span class="l">v1.4.0</span><span class="w">
+</span></span></span></code></pre><h3 id="netlify">Netlify <a href="#netlify" class="heading-anchor">#</a></h3>
+<p>Add to your <code>netlify.toml</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">build</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">command</span> <span class="p">=</span> <span class="s2">&#34;markata-go build&#34;</span>
+</span></span></code></pre><h3 id="vercel">Vercel <a href="#vercel" class="heading-anchor">#</a></h3>
+<p>Add to your <code>vercel.json</code>:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;buildCommand&#34;</span><span class="p">:</span> <span class="s2">&#34;markata-go build&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><h3 id="docker">Docker <a href="#docker" class="heading-anchor">#</a></h3>
+<p>Pagefind is automatically cached. For faster builds, you can pre-install:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Option 1: Let auto-install handle it (simple)</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">RUN</span> markata-go build<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="c"># Option 2: Pre-install for faster CI</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">RUN</span> npm install -g pagefind<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err"></span><span class="k">RUN</span> markata-go build<span class="err">
+</span></span></span></code></pre><pre><code>
+## How It Works
+
+1. **Build stage**: markata-go generates HTML files with `data-pagefind-*` attributes
+2. **Cleanup stage**: PagefindPlugin runs `pagefind` CLI to index the output directory
+3. **Index generation**: Pagefind creates optimized search index in `_pagefind/`
+4. **Runtime**: Pagefind JS loads the index and handles search queries client-side
+
+## See Also
+
+- [Configuration Reference](/docs/guides/configuration/) - Full configuration options
+- [Themes](/docs/guides/themes/) - Customize search appearance
+- [Pagefind Documentation](https://pagefind.app/docs/) - Official Pagefind docs
+</code></pre>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

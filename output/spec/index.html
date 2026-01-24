@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spec - My Site</title>
+    <meta name="description" content="A specification for building plugin-driven static site generators. Inspired by markata and the whenwords spec-as-product philosophy.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Spec">
+    
+    <meta property="og:url" content="/spec/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="A specification for building plugin-driven static site generators. Inspired by markata and the whenwords spec-as-product philosophy.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Spec">
+    
+    <meta name="twitter:description" content="A specification for building plugin-driven static site generators. Inspired by markata and the whenwords spec-as-product philosophy.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/spec/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Spec",
+  "description": "A specification for building plugin-driven static site generators. Inspired by markata and the whenwords spec-as-product philosophy.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/spec/"
+  },
+  "url": "/spec/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Spec</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="static-site-generator-specification">Static Site Generator Specification</h1>
+<p>A specification for building plugin-driven static site generators. Inspired by <a href="https://github.com/waylonwalker/markata">markata</a> and the <a href="https://github.com/dbreunig/whenwords">whenwords</a> spec-as-product philosophy.</p>
+<h2 id="design-principles">Design Principles <a href="#design-principles" class="heading-anchor">#</a></h2>
+<h3 id="1-the-core-provides-only-what-plugins-cannot">1. The Core Provides Only What Plugins Cannot <a href="#1-the-core-provides-only-what-plugins-cannot" class="heading-anchor">#</a></h3>
+<p>The core should be minimal, providing only:</p>
+<ul>
+<li><strong>Lifecycle orchestration</strong> - Running build stages in order</li>
+<li><strong>Plugin loading</strong> - Discovering, registering, and calling plugins</li>
+<li><strong>Caching</strong> - Persistent cache for expensive operations</li>
+<li><strong>Data access</strong> - Querying and filtering content</li>
+<li><strong>Configuration merging</strong> - Combining config from multiple sources</li>
+</ul>
+<p>Everything else is a plugin: file discovery, content loading, markdown rendering, templating, feed generation, asset copying, etc.</p>
+<h3 id="2-plugins-are-first-class">2. Plugins Are First-Class <a href="#2-plugins-are-first-class" class="heading-anchor">#</a></h3>
+<p>A single file should be able to:</p>
+<ul>
+<li>Hook into any build stage</li>
+<li>Extend the configuration schema</li>
+<li>Extend the post/content model</li>
+<li>Register new attributes on the core instance</li>
+<li>Add CLI commands</li>
+</ul>
+<p>Plugins should be trivial for humans or AI agents to write.</p>
+<h3 id="3-content-is-queryable-data">3. Content Is Queryable Data <a href="#3-content-is-queryable-data" class="heading-anchor">#</a></h3>
+<p>All content becomes structured data that can be:</p>
+<ul>
+<li>Filtered with expressions: <code>filter(&quot;published == True and date &lt;= today&quot;)</code></li>
+<li>Mapped to extract fields: <code>map(&quot;title&quot;, filter=&quot;'python' in tags&quot;)</code></li>
+<li>Sorted, limited, and paginated</li>
+<li>Accessed from templates and markdown</li>
+</ul>
+<h3 id="4-configuration-is-hierarchical-and-mergeable">4. Configuration Is Hierarchical and Mergeable <a href="#4-configuration-is-hierarchical-and-mergeable" class="heading-anchor">#</a></h3>
+<p>Configuration comes from (in order of precedence):</p>
+<ol>
+<li>CLI arguments / environment variables</li>
+<li>Local config file (<code>[name].toml</code> or <code>pyproject.toml</code>)</li>
+<li>Global config file (<code>~/.[name].toml</code>)</li>
+<li>Plugin defaults</li>
+</ol>
+<h3 id="5-markdown-is-enhanced-not-replaced">5. Markdown Is Enhanced, Not Replaced <a href="#5-markdown-is-enhanced-not-replaced" class="heading-anchor">#</a></h3>
+<p>Writers use markdown with modern extensions:</p>
+<ul>
+<li>Frontmatter metadata</li>
+<li>Admonitions/callouts</li>
+<li>Tables</li>
+<li>Code blocks with syntax highlighting</li>
+<li>Template expressions within content</li>
+<li>Wikilinks / internal links</li>
+</ul>
+<h3 id="6-the-build-is-deterministic-and-cacheable">6. The Build Is Deterministic and Cacheable <a href="#6-the-build-is-deterministic-and-cacheable" class="heading-anchor">#</a></h3>
+<p>Given the same inputs, produce the same outputs. Cache expensive operations (markdown parsing, image processing) keyed by content hash.</p>
+<hr>
+<h2 id="architecture-overview">Architecture Overview <a href="#architecture-overview" class="heading-anchor">#</a></h2>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│                         CLI                                  │
+├─────────────────────────────────────────────────────────────┤
+│                    Core Orchestrator                         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │  Lifecycle  │  │   Plugin    │  │    Data     │         │
+│  │  Manager    │  │   Manager   │  │   Access    │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │   Config    │  │    Cache    │  │  Attribute  │         │
+│  │   Loader    │  │   Manager   │  │   Storage   │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+├─────────────────────────────────────────────────────────────┤
+│                       Plugins                                │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐    │
+│  │ glob │ │ load │ │render│ │feeds │ │ save │ │ ...  │    │
+│  └──────┘ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘    │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2 id="core-interface">Core Interface <a href="#core-interface" class="heading-anchor">#</a></h2>
+<p>The central orchestrator that plugins interact with.</p>
+<h3 id="properties">Properties <a href="#properties" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config</code></td>
+<td>Config</td>
+<td>Merged configuration object</td>
+</tr>
+<tr>
+<td><code>posts</code></td>
+<td>List[Post]</td>
+<td>All loaded content items</td>
+</tr>
+<tr>
+<td><code>files</code></td>
+<td>List[Path]</td>
+<td>Discovered content files</td>
+</tr>
+<tr>
+<td><code>cache</code></td>
+<td>Cache</td>
+<td>Persistent key-value cache</td>
+</tr>
+</tbody>
+</table>
+<h3 id="query-methods">Query Methods <a href="#query-methods" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>filter</code></td>
+<td><code>(expr: string) -&gt; List[Post]</code></td>
+<td>Query posts with expression</td>
+</tr>
+<tr>
+<td><code>map</code></td>
+<td><code>(field: string, filter?: string, sort?: string, reverse?: bool) -&gt; List[Any]</code></td>
+<td>Extract field from filtered posts</td>
+</tr>
+<tr>
+<td><code>first</code></td>
+<td><code>(filter?: string, sort?: string) -&gt; Post?</code></td>
+<td>First matching post</td>
+</tr>
+<tr>
+<td><code>last</code></td>
+<td><code>(filter?: string, sort?: string) -&gt; Post?</code></td>
+<td>Last matching post</td>
+</tr>
+<tr>
+<td><code>one</code></td>
+<td><code>(expr: string) -&gt; Post</code></td>
+<td>Exactly one match (error if 0 or &gt;1)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="lifecycle-methods">Lifecycle Methods <a href="#lifecycle-methods" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>register(plugin)</code></td>
+<td>Register a plugin</td>
+</tr>
+<tr>
+<td><code>run(stage?)</code></td>
+<td>Run build up to optional stage</td>
+</tr>
+</tbody>
+</table>
+<h3 id="attribute-storage">Attribute Storage <a href="#attribute-storage" class="heading-anchor">#</a></h3>
+<p>For plugin communication:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>set(key, value)</code></td>
+<td>Store a value</td>
+</tr>
+<tr>
+<td><code>get(key) -&gt; Any</code></td>
+<td>Retrieve a value</td>
+</tr>
+<tr>
+<td><code>has(key) -&gt; bool</code></td>
+<td>Check if key exists</td>
+</tr>
+</tbody>
+</table>
+<h3 id="model-registration">Model Registration <a href="#model-registration" class="heading-anchor">#</a></h3>
+<p>Called during <code>config_model</code> / <code>post_model</code> stages:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>register_config_model(model)</code></td>
+<td>Add config schema fragment</td>
+</tr>
+<tr>
+<td><code>register_post_fields(fields)</code></td>
+<td>Add post schema fragment</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="lifecycle-stages">Lifecycle Stages <a href="#lifecycle-stages" class="heading-anchor">#</a></h2>
+<p>The build runs through ordered stages. Plugins implement hooks for stages they care about.</p>
+<p><strong>This spec offers three lifecycle variants.</strong> Choose based on your implementation language and plugin ecosystem needs:</p>
+<table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Stages</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Full</strong></td>
+<td>13</td>
+<td>Python, Ruby - maximum plugin flexibility</td>
+</tr>
+<tr>
+<td><strong>Standard</strong></td>
+<td>9</td>
+<td>TypeScript, Go - balanced flexibility/simplicity</td>
+</tr>
+<tr>
+<td><strong>Minimal</strong></td>
+<td>6</td>
+<td>Rust, embedded - maximum simplicity</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="./LIFECYCLE.md">LIFECYCLE.md</a> for detailed variant documentation and selection guide.</p>
+<h3 id="full-lifecycle-13-stages---reference">Full Lifecycle (13 Stages) - Reference <a href="#full-lifecycle-13-stages---reference" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Purpose</th>
+<th>Example Plugin Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config_model</code></td>
+<td>Register configuration schema fragments</td>
+<td>Add <code>feeds</code> config section</td>
+</tr>
+<tr>
+<td><code>post_model</code></td>
+<td>Register content model fragments</td>
+<td>Add <code>reading_time</code> field</td>
+</tr>
+<tr>
+<td><code>create_models</code></td>
+<td>Merge all model fragments</td>
+<td>Core merges schemas</td>
+</tr>
+<tr>
+<td><code>load_config</code></td>
+<td>Load and validate configuration</td>
+<td>Core loads from files</td>
+</tr>
+<tr>
+<td><code>configure</code></td>
+<td>Plugin initialization</td>
+<td>Set up markdown parser</td>
+</tr>
+<tr>
+<td><code>validate_config</code></td>
+<td>Final config validation</td>
+<td>Check required fields</td>
+</tr>
+<tr>
+<td><code>glob</code></td>
+<td>Discover content files</td>
+<td>Find <code>**/*.md</code> files</td>
+</tr>
+<tr>
+<td><code>load</code></td>
+<td>Parse files into content objects</td>
+<td>Parse frontmatter + content</td>
+</tr>
+<tr>
+<td><code>pre_render</code></td>
+<td>Process content before rendering</td>
+<td>Expand template expressions</td>
+</tr>
+<tr>
+<td><code>render</code></td>
+<td>Convert content to HTML</td>
+<td>Markdown → HTML</td>
+</tr>
+<tr>
+<td><code>post_render</code></td>
+<td>Post-process rendered content</td>
+<td>Add heading anchors</td>
+</tr>
+<tr>
+<td><code>save</code></td>
+<td>Write output files</td>
+<td>Write HTML to disk</td>
+</tr>
+<tr>
+<td><code>teardown</code></td>
+<td>Cleanup</td>
+<td>Close connections</td>
+</tr>
+</tbody>
+</table>
+<h3 id="standard-lifecycle-9-stages">Standard Lifecycle (9 Stages) <a href="#standard-lifecycle-9-stages" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>configure</code></td>
+<td>Load config, init plugins, set up resources</td>
+</tr>
+<tr>
+<td><code>validate</code></td>
+<td>Validate configuration</td>
+</tr>
+<tr>
+<td><code>glob</code></td>
+<td>Discover content files</td>
+</tr>
+<tr>
+<td><code>load</code></td>
+<td>Parse files into posts</td>
+</tr>
+<tr>
+<td><code>transform</code></td>
+<td>Pre-render processing</td>
+</tr>
+<tr>
+<td><code>render</code></td>
+<td>Markdown → HTML + templates</td>
+</tr>
+<tr>
+<td><code>collect</code></td>
+<td>Build feeds, series, navigation</td>
+</tr>
+<tr>
+<td><code>write</code></td>
+<td>Write output files</td>
+</tr>
+<tr>
+<td><code>cleanup</code></td>
+<td>Release resources</td>
+</tr>
+</tbody>
+</table>
+<h3 id="minimal-lifecycle-6-stages">Minimal Lifecycle (6 Stages) <a href="#minimal-lifecycle-6-stages" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>init</code></td>
+<td>Load config, validate, init plugins</td>
+</tr>
+<tr>
+<td><code>load</code></td>
+<td>Find files and parse into posts</td>
+</tr>
+<tr>
+<td><code>process</code></td>
+<td>All content transformation and rendering</td>
+</tr>
+<tr>
+<td><code>build</code></td>
+<td>Build feeds, collections, final HTML</td>
+</tr>
+<tr>
+<td><code>output</code></td>
+<td>Write files and cleanup</td>
+</tr>
+</tbody>
+</table>
+<h3 id="stage-guarantees">Stage Guarantees <a href="#stage-guarantees" class="heading-anchor">#</a></h3>
+<ul>
+<li>Stages run in order</li>
+<li>All plugins for a stage complete before the next stage starts</li>
+<li>Within a stage, plugins can specify ordering (<code>tryfirst</code>, <code>trylast</code>)</li>
+<li>Plugins can access attributes registered by earlier stages</li>
+</ul>
+<hr>
+<h2 id="concurrency">Concurrency <a href="#concurrency" class="heading-anchor">#</a></h2>
+<h3 id="post-processing">Post Processing <a href="#post-processing" class="heading-anchor">#</a></h3>
+<ul>
+<li><code>pre_render</code>, <code>render</code>, <code>post_render</code> stages SHOULD process posts concurrently</li>
+<li>Use worker pool pattern with configurable concurrency limit</li>
+<li>Default: number of CPU cores</li>
+</ul>
+<h3 id="thread-safety">Thread Safety <a href="#thread-safety" class="heading-anchor">#</a></h3>
+<ul>
+<li>Plugins MUST NOT modify shared state without synchronization</li>
+<li>Each post can be processed independently</li>
+<li><code>core.posts</code> list is read-only during concurrent stages</li>
+</ul>
+<h3 id="configuration">Configuration <a href="#configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">concurrency</span> <span class="p">=</span> <span class="mi">4</span>  <span class="c"># 0 = auto (CPU count)</span>
+</span></span></code></pre><hr>
+<h2 id="configuration-1">Configuration <a href="#configuration-1" class="heading-anchor">#</a></h2>
+<p>Configuration is namespaced under the tool name and supports multiple file formats (TOML, YAML, JSON) from multiple locations.</p>
+<p><strong>Resolution Order (highest to lowest precedence):</strong></p>
+<ol>
+<li>CLI arguments (<code>--output-dir public</code>)</li>
+<li>Environment variables (<code>[NAME]_[SECTION]_[KEY]</code>)</li>
+<li>Local config file (<code>./[name].toml</code>)</li>
+<li>Global config file (<code>~/.config/[name]/config.toml</code>)</li>
+<li>Plugin defaults</li>
+</ol>
+<h3 id="core-fields">Core Fields <a href="#core-fields" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>output_dir</code></td>
+<td>Path</td>
+<td><code>&quot;output&quot;</code></td>
+<td>Build output directory</td>
+</tr>
+<tr>
+<td><code>url</code></td>
+<td>URL?</td>
+<td>null</td>
+<td>Site base URL</td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>string?</td>
+<td>null</td>
+<td>Site title</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string?</td>
+<td>null</td>
+<td>Site description</td>
+</tr>
+<tr>
+<td><code>hooks</code></td>
+<td>List[str]</td>
+<td><code>[&quot;default&quot;]</code></td>
+<td>Plugins to load</td>
+</tr>
+<tr>
+<td><code>disabled_hooks</code></td>
+<td>List[str]</td>
+<td><code>[]</code></td>
+<td>Plugins to exclude</td>
+</tr>
+<tr>
+<td><code>concurrency</code></td>
+<td>int</td>
+<td>0</td>
+<td>Worker count (0 = auto)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-configuration">Example Configuration <a href="#example-configuration" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">output_dir</span> <span class="p">=</span> <span class="s2">&#34;public&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Site&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;default&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;posts/**/*.md&#34;</span><span class="p">,</span> <span class="s2">&#34;pages/*.md&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">markdown</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">extensions</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;tables&#34;</span><span class="p">,</span> <span class="s2">&#34;admonitions&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">name</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">sort</span> <span class="p">=</span> <span class="s2">&#34;date&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">reverse</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre><p><strong>For complete configuration documentation, see <a href="./CONFIG.md">CONFIG.md</a>.</strong></p>
+<hr>
+<h2 id="data-access-layer">Data Access Layer <a href="#data-access-layer" class="heading-anchor">#</a></h2>
+<p>Enables querying content as structured data.</p>
+<h3 id="filter-expression-syntax">Filter Expression Syntax <a href="#filter-expression-syntax" class="heading-anchor">#</a></h3>
+<pre><code># Boolean fields
+&quot;published == True&quot;
+&quot;draft == False&quot;
+
+# Comparisons
+&quot;date &lt;= today&quot;
+&quot;word_count &gt; 1000&quot;
+
+# String operations
+&quot;'python' in tags&quot;
+&quot;title.startswith('How to')&quot;
+
+# Compound expressions
+&quot;published == True and date &lt;= today&quot;
+&quot;status == 'draft' or 'wip' in tags&quot;
+
+# Negation
+&quot;not skip&quot;
+&quot;not draft&quot;
+</code></pre>
+<h3 id="built-in-variables">Built-in Variables <a href="#built-in-variables" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>today</code></td>
+<td>Current date</td>
+</tr>
+<tr>
+<td><code>now</code></td>
+<td>Current datetime</td>
+</tr>
+<tr>
+<td><code>True</code> / <code>False</code></td>
+<td>Boolean literals</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="cache-manager">Cache Manager <a href="#cache-manager" class="heading-anchor">#</a></h2>
+<p>Persistent caching for expensive operations.</p>
+<h3 id="interface">Interface <a href="#interface" class="heading-anchor">#</a></h3>
+<pre><code>cache.get(key) -&gt; value | None
+cache.set(key, value, expire?) -&gt; None
+cache.delete(key) -&gt; None
+cache.get_or_set(key, factory_fn) -&gt; value
+</code></pre>
+<h3 id="cache-keys">Cache Keys <a href="#cache-keys" class="heading-anchor">#</a></h3>
+<pre><code>post:{path}:mtime     → file modification time
+post:{path}:hash      → content hash
+post:{path}:rendered  → cached article_html
+template:{path}:mtime → template modification time
+</code></pre>
+<h3 id="location">Location <a href="#location" class="heading-anchor">#</a></h3>
+<p><code>.[name].cache/</code> in project root</p>
+<hr>
+<h2 id="standard-plugins">Standard Plugins <a href="#standard-plugins" class="heading-anchor">#</a></h2>
+<p>Implementations SHOULD provide these plugins:</p>
+<h3 id="file-discovery-glob">File Discovery (<code>glob</code>) <a href="#file-discovery-glob" class="heading-anchor">#</a></h3>
+<ul>
+<li>Find content files matching patterns</li>
+<li>Respect <code>.gitignore</code> optionally</li>
+<li>Configuration: <code>glob_patterns</code>, <code>use_gitignore</code></li>
+</ul>
+<h3 id="content-loading-load">Content Loading (<code>load</code>) <a href="#content-loading-load" class="heading-anchor">#</a></h3>
+<ul>
+<li>Parse frontmatter and content</li>
+<li>Create Post objects</li>
+<li>Handle encoding</li>
+</ul>
+<h3 id="markdown-rendering-render-markdown">Markdown Rendering (<code>render_markdown</code>) <a href="#markdown-rendering-render-markdown" class="heading-anchor">#</a></h3>
+<ul>
+<li>Convert markdown to HTML</li>
+<li>Support extensions: tables, code blocks, admonitions</li>
+<li>Configuration: <code>markdown_extensions</code></li>
+</ul>
+<h3 id="template-processing-templates">Template Processing (<code>templates</code>) <a href="#template-processing-templates" class="heading-anchor">#</a></h3>
+<ul>
+<li>Render posts through templates</li>
+<li>Provide template context: <code>post</code>, <code>config</code>, <code>core</code></li>
+<li>Support template inheritance</li>
+</ul>
+<h3 id="feed-generation-feeds">Feed Generation (<code>feeds</code>) <a href="#feed-generation-feeds" class="heading-anchor">#</a></h3>
+<ul>
+<li>Create filtered/sorted post collections</li>
+<li>Generate index pages</li>
+<li>Support pagination</li>
+<li>Configuration: <code>feeds</code> list with <code>filter</code>, <code>sort</code>, <code>template</code></li>
+</ul>
+<h3 id="html-publishing-publish-html">HTML Publishing (<code>publish_html</code>) <a href="#html-publishing-publish-html" class="heading-anchor">#</a></h3>
+<ul>
+<li>Write rendered HTML to output directory</li>
+<li>Create directory structure</li>
+</ul>
+<h3 id="asset-copying-copy-assets">Asset Copying (<code>copy_assets</code>) <a href="#asset-copying-copy-assets" class="heading-anchor">#</a></h3>
+<ul>
+<li>Copy static files to output</li>
+<li>Preserve directory structure</li>
+<li>Configuration: <code>assets_dir</code>, <code>ignore</code></li>
+</ul>
+<h4 id="asset-fingerprinting">Asset Fingerprinting <a href="#asset-fingerprinting" class="heading-anchor">#</a></h4>
+<p>For cache busting, assets can be fingerprinted with content hashes:</p>
+<p><strong>Configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">assets</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">dir</span> <span class="p">=</span> <span class="s2">&#34;static&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">fingerprint</span> <span class="p">=</span> <span class="kc">true</span>                    <span class="c"># Enable fingerprinting</span>
+</span></span><span class="line"><span class="cl"><span class="nx">fingerprint_algorithm</span> <span class="p">=</span> <span class="s2">&#34;sha256&#34;</span>      <span class="c"># or &#34;md5&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">fingerprint_length</span> <span class="p">=</span> <span class="mi">8</span>                <span class="c"># Characters of hash to use</span>
+</span></span><span class="line"><span class="cl"><span class="nx">exclude_fingerprint</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;robots.txt&#34;</span><span class="p">,</span> <span class="s2">&#34;favicon.ico&#34;</span><span class="p">]</span>  <span class="c"># Files to skip</span>
+</span></span></code></pre><p><strong>How It Works:</strong></p>
+<ol>
+<li>Read asset file content</li>
+<li>Compute hash of content</li>
+<li>Rename file: <code>style.css</code> → <code>style.a1b2c3d4.css</code></li>
+<li>Generate manifest mapping original → fingerprinted names</li>
+<li>Provide <code>asset_url()</code> function/filter for templates</li>
+</ol>
+<p><strong>Manifest Format:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;css/style.css&#34;</span><span class="p">:</span> <span class="s2">&#34;css/style.a1b2c3d4.css&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;js/app.js&#34;</span><span class="p">:</span> <span class="s2">&#34;js/app.e5f6g7h8.js&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;images/logo.png&#34;</span><span class="p">:</span> <span class="s2">&#34;images/logo.i9j0k1l2.png&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre><p><strong>Template Usage:</strong></p>
+<pre><code class="language-jinja2">&lt;link rel=&quot;stylesheet&quot; href=&quot;{{ 'css/style.css' | asset_url }}&quot;&gt;
+&lt;script src=&quot;{{ 'js/app.js' | asset_url }}&quot;&gt;&lt;/script&gt;
+</code></pre>
+<p><strong>Output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;stylesheet&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/css/style.a1b2c3d4.css&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">script</span> <span class="na">src</span><span class="o">=</span><span class="s">&#34;/js/app.js.e5f6g7h8.js&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</span></span></code></pre><p><strong>Implementation Notes:</strong></p>
+<ul>
+<li>Only fingerprint on production builds (not during <code>serve</code>)</li>
+<li>Store manifest in cache for incremental builds</li>
+<li>Only re-fingerprint assets that changed</li>
+<li>Support CDN prefix: <code>{{ 'css/style.css' | asset_url(cdn=True) }}</code></li>
+</ul>
+<h3 id="rssatom-generation">RSS/Atom Generation <a href="#rssatom-generation" class="heading-anchor">#</a></h3>
+<p>RSS/Atom feeds are generated through the <strong>feeds</strong> plugin, not a separate plugin. Any feed can output RSS, Atom, JSON, or other formats by enabling them in the feed configuration.</p>
+<p>See <a href="./FEEDS.md">FEEDS.md</a> for complete feed format configuration.</p>
+<h3 id="sitemap-generation">Sitemap Generation <a href="#sitemap-generation" class="heading-anchor">#</a></h3>
+<p>Sitemaps are generated through the <strong>feeds</strong> plugin. Create a feed with <code>sitemap = true</code> format to generate a sitemap for that collection of posts.</p>
+<p>See <a href="./FEEDS.md">FEEDS.md</a> for sitemap format configuration.</p>
+<hr>
+<h2 id="plugin-resolution">Plugin Resolution <a href="#plugin-resolution" class="heading-anchor">#</a></h2>
+<p>When loading plugins from the <code>hooks</code> config:</p>
+<ol>
+<li>
+<p><strong>&quot;default&quot;</strong> - Expands to the built-in plugin set:</p>
+<ul>
+<li>glob, load, render_markdown, jinja_md, templates, feeds, publish_html, publish_feeds, copy_assets</li>
+</ul>
+</li>
+<li>
+<p><strong>Built-in name</strong> (e.g., <code>&quot;glob&quot;</code>, <code>&quot;render_markdown&quot;</code>)</p>
+<ul>
+<li>Resolves to internal plugins</li>
+</ul>
+</li>
+<li>
+<p><strong>Full module path</strong> (language-specific)</p>
+<ul>
+<li>Python: <code>&quot;my_package.plugins.custom&quot;</code></li>
+<li>TypeScript: <code>&quot;my-package/plugins/custom&quot;</code></li>
+<li>Go: <code>&quot;github.com/user/ssg-plugin&quot;</code></li>
+<li>Rust: <code>&quot;my_crate::plugins::custom&quot;</code></li>
+</ul>
+</li>
+<li>
+<p><strong>Local path</strong> (e.g., <code>&quot;./plugins/myplugin&quot;</code>)</p>
+<ul>
+<li>Loads from project-relative path</li>
+</ul>
+</li>
+</ol>
+<h3 id="example">Example <a href="#example" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;default&#34;</span><span class="p">,</span>                    <span class="c"># Built-in set</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;./plugins/reading_time&#34;</span><span class="p">,</span>     <span class="c"># Local plugin</span>
+</span></span><span class="line"><span class="cl"><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">disabled_hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;toc&#34;</span><span class="p">,</span> <span class="s2">&#34;wikilinks&#34;</span><span class="p">]</span>  <span class="c"># Disable specific plugins</span>
+</span></span></code></pre><hr>
+<h2 id="cli-specification">CLI Specification <a href="#cli-specification" class="heading-anchor">#</a></h2>
+<h3 id="build"><code>build</code> <a href="#build" class="heading-anchor">#</a></h3>
+<p>Build the static site.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> build <span class="o">[</span>flags<span class="o">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Flags:
+</span></span><span class="line"><span class="cl">  -c, --config string   Config file path <span class="o">(</span>default <span class="s2">&#34;[name].toml&#34;</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl">  -o, --output string   Output directory <span class="o">(</span>overrides config<span class="o">)</span>
+</span></span><span class="line"><span class="cl">  -v, --verbose         Verbose output
+</span></span><span class="line"><span class="cl">  --clean               Remove output dir before build
+</span></span><span class="line"><span class="cl">  --drafts              Include draft posts
+</span></span><span class="line"><span class="cl">  --future              Include future-dated posts
+</span></span></code></pre><h3 id="serve"><code>serve</code> <a href="#serve" class="heading-anchor">#</a></h3>
+<p>Start development server with live reload.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> serve <span class="o">[</span>flags<span class="o">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Flags:
+</span></span><span class="line"><span class="cl">  -p, --port int        Server port <span class="o">(</span>default 3000<span class="o">)</span>
+</span></span><span class="line"><span class="cl">  -H, --host string     Bind address <span class="o">(</span>default <span class="s2">&#34;localhost&#34;</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl">  --no-reload           Disable live reload
+</span></span><span class="line"><span class="cl">  --no-watch            Disable file watching
+</span></span><span class="line"><span class="cl">  --open                Open browser automatically
+</span></span></code></pre><h3 id="init"><code>init</code> <a href="#init" class="heading-anchor">#</a></h3>
+<p>Initialize a new project with interactive setup.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> init <span class="o">[</span>flags<span class="o">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Flags:
+</span></span><span class="line"><span class="cl">  --force               Overwrite existing files
+</span></span></code></pre><p>Creates:</p>
+<ul>
+<li><code>[name].toml</code> configuration file</li>
+<li><code>posts/</code> directory</li>
+<li><code>static/</code> directory</li>
+<li>(Optional) First post</li>
+</ul>
+<h3 id="new-title"><code>new [title]</code> <a href="#new-title" class="heading-anchor">#</a></h3>
+<p>Create a new post with frontmatter template.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> new <span class="o">[</span>title<span class="o">]</span> <span class="o">[</span>flags<span class="o">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Flags:
+</span></span><span class="line"><span class="cl">  --dir string          Directory <span class="k">for</span> new post <span class="o">(</span>default <span class="s2">&#34;posts&#34;</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl">  --draft               Create as draft <span class="o">(</span>default <span class="nb">true</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl">  --tags string         Comma-separated list of tags
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Examples</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> new <span class="s2">&#34;My Post&#34;</span>                        <span class="c1"># Create with title</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> new <span class="s2">&#34;My Post&#34;</span> --tags <span class="s2">&#34;go,tutorial&#34;</span>   <span class="c1"># Create with tags</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> new                                  <span class="c1"># Interactive mode</span>
+</span></span></code></pre><p>When called without a title, enters interactive mode prompting for:</p>
+<ul>
+<li>Post title</li>
+<li>Directory</li>
+<li>Tags</li>
+<li>Draft status</li>
+</ul>
+<h3 id="validate"><code>validate</code> <a href="#validate" class="heading-anchor">#</a></h3>
+<p>Validate configuration and content without building.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="o">[</span>name<span class="o">]</span> validate <span class="o">[</span>flags<span class="o">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Flags:
+</span></span><span class="line"><span class="cl">  --strict              Treat warnings as errors
+</span></span></code></pre><h3 id="exit-codes">Exit Codes <a href="#exit-codes" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Success</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Build error</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Config error</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Validation error</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="development-server">Development Server <a href="#development-server" class="heading-anchor">#</a></h2>
+<h3 id="features">Features <a href="#features" class="heading-anchor">#</a></h3>
+<ul>
+<li>HTTP server for previewing the built site</li>
+<li>File watching for automatic rebuilds</li>
+<li>Live reload for browser refresh</li>
+</ul>
+<h3 id="configuration-2">Configuration <a href="#configuration-2" class="heading-anchor">#</a></h3>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">serve</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">port</span> <span class="p">=</span> <span class="mi">3000</span>
+</span></span><span class="line"><span class="cl"><span class="nx">host</span> <span class="p">=</span> <span class="s2">&#34;localhost&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">livereload</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">open_browser</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="cl"><span class="nx">debounce_ms</span> <span class="p">=</span> <span class="mi">100</span>  <span class="c"># wait before rebuilding after file change</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Watch patterns (defaults shown)</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">name</span><span class="p">.</span><span class="nx">serve</span><span class="p">.</span><span class="nx">watch</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">content</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;**/*.md&#34;</span><span class="p">]</span>                    <span class="c"># Post files</span>
+</span></span><span class="line"><span class="cl"><span class="nx">config</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;[name].toml&#34;</span><span class="p">,</span> <span class="s2">&#34;pyproject.toml&#34;</span><span class="p">,</span> <span class="s2">&#34;*.yaml&#34;</span><span class="p">,</span> <span class="s2">&#34;*.json&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">templates</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;templates/**/*.html&#34;</span><span class="p">,</span> <span class="s2">&#34;templates/**/*.jinja2&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">assets</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;static/**/*&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">plugins</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;plugins/**/*.py&#34;</span><span class="p">,</span> <span class="s2">&#34;plugins/**/*.ts&#34;</span><span class="p">]</span>  <span class="c"># Local plugins</span>
+</span></span></code></pre><h3 id="watch-patterns-and-cache-busting">Watch Patterns and Cache Busting <a href="#watch-patterns-and-cache-busting" class="heading-anchor">#</a></h3>
+<p>File changes trigger different rebuild behaviors based on what changed:</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                    WATCH PATTERN CACHE INVALIDATION                  │
+├─────────────────────────────────────────────────────────────────────┤
+│  CONTENT FILES (*.md)                                                │
+│    ├─ Invalidate: Post cache for changed file only                  │
+│    ├─ Rebuild: Changed posts + feeds containing them                │
+│    └─ Action: Incremental rebuild                                   │
+│                                                                      │
+│  CONFIG FILES ([name].toml, etc.)                                    │
+│    ├─ Invalidate: ALL caches (config affects everything)            │
+│    ├─ Rebuild: Full site                                            │
+│    └─ Action: Full rebuild                                          │
+│                                                                      │
+│  TEMPLATE FILES (templates/**/*.html)                                │
+│    ├─ Invalidate: Template cache + all posts using that template    │
+│    ├─ Rebuild: All posts that use the changed template              │
+│    └─ Action: Smart rebuild (template dependency tracking)          │
+│                                                                      │
+│  ASSET FILES (static/**/*)                                           │
+│    ├─ Invalidate: Asset manifest only                               │
+│    ├─ Rebuild: None (just copy)                                     │
+│    └─ Action: Copy changed assets                                   │
+│                                                                      │
+│  PLUGIN FILES (plugins/**/*.py)                                      │
+│    ├─ Invalidate: ALL caches (plugin may affect any stage)          │
+│    ├─ Rebuild: Full site                                            │
+│    └─ Action: Full rebuild with plugin reload                       │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="cache-key-dependencies">Cache Key Dependencies <a href="#cache-key-dependencies" class="heading-anchor">#</a></h3>
+<p>Cache entries are keyed to include all dependencies:</p>
+<table>
+<thead>
+<tr>
+<th>Cache Entry</th>
+<th>Key Components</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Post content</td>
+<td><code>post:{path}:{content_hash}</code></td>
+</tr>
+<tr>
+<td>Post rendered</td>
+<td><code>post:{path}:{content_hash}:{template_hash}:{config_hash}</code></td>
+</tr>
+<tr>
+<td>Template</td>
+<td><code>template:{path}:{content_hash}:{parent_hash}</code></td>
+</tr>
+<tr>
+<td>Feed</td>
+<td><code>feed:{slug}:{filter_hash}:{post_hashes}:{config_hash}</code></td>
+</tr>
+<tr>
+<td>Asset</td>
+<td><code>asset:{path}:{content_hash}</code></td>
+</tr>
+</tbody>
+</table>
+<p>When any component of the key changes, the cache entry is invalidated.</p>
+<h3 id="template-dependency-tracking">Template Dependency Tracking <a href="#template-dependency-tracking" class="heading-anchor">#</a></h3>
+<p>Templates can extend or include other templates. The server tracks these dependencies:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Example dependency graph</span>
+</span></span><span class="line"><span class="cl"><span class="n">base</span><span class="o">.</span><span class="n">html</span> <span class="err">→</span> <span class="p">[]</span>  <span class="c1"># No dependencies</span>
+</span></span><span class="line"><span class="cl"><span class="n">post</span><span class="o">.</span><span class="n">html</span> <span class="err">→</span> <span class="p">[</span><span class="n">base</span><span class="o">.</span><span class="n">html</span><span class="p">]</span>  <span class="c1"># Extends base</span>
+</span></span><span class="line"><span class="cl"><span class="n">feed</span><span class="o">.</span><span class="n">html</span> <span class="err">→</span> <span class="p">[</span><span class="n">base</span><span class="o">.</span><span class="n">html</span><span class="p">,</span> <span class="n">partials</span><span class="o">/</span><span class="n">card</span><span class="o">.</span><span class="n">html</span><span class="p">]</span>  <span class="c1"># Extends base, includes card</span>
+</span></span><span class="line"><span class="cl"><span class="n">partials</span><span class="o">/</span><span class="n">card</span><span class="o">.</span><span class="n">html</span> <span class="err">→</span> <span class="p">[]</span>  <span class="c1"># No dependencies</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># When base.html changes:</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Invalidate: base.html, post.html, feed.html (all dependents)</span>
+</span></span></code></pre><h3 id="rebuild-triggers">Rebuild Triggers <a href="#rebuild-triggers" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Change Type</th>
+<th>Action</th>
+<th>Cache Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Content file (*.md)</td>
+<td>Incremental rebuild</td>
+<td>Post + downstream feeds</td>
+</tr>
+<tr>
+<td>Template file</td>
+<td>Smart rebuild</td>
+<td>Posts using template</td>
+</tr>
+<tr>
+<td>Config file</td>
+<td>Full rebuild</td>
+<td>Everything</td>
+</tr>
+<tr>
+<td>Static asset</td>
+<td>Copy only</td>
+<td>Asset manifest</td>
+</tr>
+<tr>
+<td>Plugin file</td>
+<td>Full rebuild</td>
+<td>Everything</td>
+</tr>
+<tr>
+<td>Theme file</td>
+<td>Full rebuild</td>
+<td>Everything</td>
+</tr>
+</tbody>
+</table>
+<h3 id="live-reload">Live Reload <a href="#live-reload" class="heading-anchor">#</a></h3>
+<ul>
+<li>Inject reload script into HTML pages during serve</li>
+<li>Use WebSocket or Server-Sent Events</li>
+<li>Trigger reload after successful build</li>
+</ul>
+<hr>
+<h2 id="output-structure">Output Structure <a href="#output-structure" class="heading-anchor">#</a></h2>
+<pre><code>[output_dir]/
+├── index.html              # Home page (from feed)
+├── [post-slug]/
+│   └── index.html          # Individual posts
+├── [feed-slug]/
+│   ├── index.html          # Feed page 1
+│   ├── page/2/index.html   # Feed page 2
+│   └── ...
+├── rss.xml                 # RSS feed
+├── sitemap.xml             # Sitemap
+└── [assets]/               # Copied static files
+</code></pre>
+<hr>
+<h2 id="error-handling">Error Handling <a href="#error-handling" class="heading-anchor">#</a></h2>
+<h3 id="error-types">Error Types <a href="#error-types" class="heading-anchor">#</a></h3>
+<p>Errors should include contextual information:</p>
+<ul>
+<li><code>stage</code> - which lifecycle stage</li>
+<li><code>plugin</code> - which plugin caused it</li>
+<li><code>path</code> - file path if applicable</li>
+<li><code>line</code> - line number if applicable</li>
+<li><code>message</code> - human-readable description</li>
+</ul>
+<h3 id="standard-errors">Standard Errors <a href="#standard-errors" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FrontmatterParseError</code></td>
+<td>Invalid YAML in frontmatter</td>
+</tr>
+<tr>
+<td><code>FilterExpressionError</code></td>
+<td>Invalid filter syntax</td>
+</tr>
+<tr>
+<td><code>TemplateNotFoundError</code></td>
+<td>Template file doesn't exist</td>
+</tr>
+<tr>
+<td><code>TemplateSyntaxError</code></td>
+<td>Invalid template syntax</td>
+</tr>
+<tr>
+<td><code>ConfigValidationError</code></td>
+<td>Invalid configuration</td>
+</tr>
+<tr>
+<td><code>PluginNotFoundError</code></td>
+<td>Plugin couldn't be loaded</td>
+</tr>
+<tr>
+<td><code>CircularTemplateError</code></td>
+<td>Template inheritance cycle</td>
+</tr>
+</tbody>
+</table>
+<h3 id="graceful-degradation">Graceful Degradation <a href="#graceful-degradation" class="heading-anchor">#</a></h3>
+<ul>
+<li>Missing optional fields use defaults</li>
+<li>Unknown frontmatter fields are preserved</li>
+<li>Plugin errors log but don't halt build (configurable)</li>
+</ul>
+<hr>
+<h2 id="implementation-checklist">Implementation Checklist <a href="#implementation-checklist" class="heading-anchor">#</a></h2>
+<p>An implementation is complete when it:</p>
+<h3 id="core">Core <a href="#core" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> Runs lifecycle stages in order</li>
+<li><input disabled="" type="checkbox"> Supports concurrent post processing</li>
+<li><input disabled="" type="checkbox"> Loads plugins from configuration</li>
+<li><input disabled="" type="checkbox"> Resolves plugin names to implementations</li>
+<li><input disabled="" type="checkbox"> Merges config from multiple sources</li>
+<li><input disabled="" type="checkbox"> Provides thread-safe attribute storage</li>
+</ul>
+<h3 id="content">Content <a href="#content" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> Discovers content files via glob patterns</li>
+<li><input disabled="" type="checkbox"> Parses YAML frontmatter</li>
+<li><input disabled="" type="checkbox"> Handles unicode filenames</li>
+<li><input disabled="" type="checkbox"> Supports <code>filter()</code> with expressions</li>
+<li><input disabled="" type="checkbox"> Supports <code>map()</code> for field extraction</li>
+</ul>
+<h3 id="rendering">Rendering <a href="#rendering" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> Renders markdown to HTML</li>
+<li><input disabled="" type="checkbox"> Processes templates</li>
+<li><input disabled="" type="checkbox"> Supports template inheritance</li>
+<li><input disabled="" type="checkbox"> Detects circular template inheritance</li>
+</ul>
+<h3 id="output">Output <a href="#output" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> Generates feeds with filtering/sorting/pagination</li>
+<li><input disabled="" type="checkbox"> Writes output to configured directory</li>
+<li><input disabled="" type="checkbox"> Copies static assets</li>
+<li><input disabled="" type="checkbox"> Generates RSS feed</li>
+<li><input disabled="" type="checkbox"> Generates sitemap</li>
+</ul>
+<h3 id="caching">Caching <a href="#caching" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> Caches expensive operations</li>
+<li><input disabled="" type="checkbox"> Supports incremental builds</li>
+<li><input disabled="" type="checkbox"> Invalidates cache on config change</li>
+</ul>
+<h3 id="cli">CLI <a href="#cli" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> <code>build</code> command with all flags</li>
+<li><input disabled="" type="checkbox"> <code>serve</code> command with live reload</li>
+<li><input disabled="" type="checkbox"> <code>new</code> command for post creation</li>
+<li><input disabled="" type="checkbox"> <code>validate</code> command for checking</li>
+</ul>
+<h3 id="plugins">Plugins <a href="#plugins" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> Allows single-file plugin creation</li>
+<li><input disabled="" type="checkbox"> Plugin can extend config schema</li>
+<li><input disabled="" type="checkbox"> Plugin can extend post model</li>
+<li><input disabled="" type="checkbox"> Plugin can add CLI commands</li>
+<li><input disabled="" type="checkbox"> Plugin errors don't crash build (configurable)</li>
+</ul>
+<h3 id="testing">Testing <a href="#testing" class="heading-anchor">#</a></h3>
+<ul>
+<li><input disabled="" type="checkbox"> Passes all tests in <code>tests.yaml</code></li>
+<li><input disabled="" type="checkbox"> Handles edge cases (large files, unicode, etc.)</li>
+</ul>
+<hr>
+<h2 id="see-also">See Also <a href="#see-also" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="./IMPLEMENTATION.md">IMPLEMENTATION.md</a> - Step-by-step implementation guide</li>
+<li><a href="./INSTALL.md">INSTALL.md</a> - Quick start with tech choices</li>
+<li><a href="./CONFIG.md">CONFIG.md</a> - Complete configuration documentation</li>
+<li><a href="./THEMES.md">THEMES.md</a> - Theming and customization</li>
+<li><a href="./LIFECYCLE.md">LIFECYCLE.md</a> - Detailed lifecycle specification</li>
+<li><a href="./FEEDS.md">FEEDS.md</a> - Feed system specification (core differentiator)</li>
+<li><a href="./DEFAULT_PLUGINS.md">DEFAULT_PLUGINS.md</a> - Built-in plugins</li>
+<li><a href="./PLUGINS.md">PLUGINS.md</a> - Plugin development guide</li>
+<li><a href="./DATA_MODEL.md">DATA_MODEL.md</a> - Content model specification</li>
+<li><a href="./CONTENT.md">CONTENT.md</a> - Markdown processing specification</li>
+<li><a href="./TEMPLATES.md">TEMPLATES.md</a> - Template system specification</li>
+<li><a href="./tests.yaml">tests.yaml</a> - Test cases for implementations</li>
+</ul>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recommendations - My Site</title>
+    <meta name="description" content="Review of the static site generator specification with actionable improvements.">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Recommendations">
+    
+    <meta property="og:url" content="/recommendations/">
+    
+    <meta property="og:type" content="website">
+    
+    <meta property="og:description" content="Review of the static site generator specification with actionable improvements.">
+    
+    <meta property="og:locale" content="en_US">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Recommendations">
+    
+    <meta name="twitter:description" content="Review of the static site generator specification with actionable improvements.">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/recommendations/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Recommendations",
+  "description": "Review of the static site generator specification with actionable improvements.",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/recommendations/"
+  },
+  "url": "/recommendations/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Recommendations</h1>
+            
+            
+        </header>
+        <div class="post-content">
+            <h1 id="spec-review-recommendations">Spec Review: Recommendations</h1>
+<blockquote>
+<p>Review of the static site generator specification with actionable improvements.</p>
+</blockquote>
+<h2 id="overall-assessment">Overall Assessment <a href="#overall-assessment" class="heading-anchor">#</a></h2>
+<p>This is a <strong>well-designed spec</strong> inspired by markata and the &quot;spec-as-product&quot; philosophy. The documentation is comprehensive, covering lifecycle, plugins, data models, templates, and content processing. However, there are several areas that need clarification or expansion before implementation.</p>
+<hr>
+<h2 id="strengths">Strengths <a href="#strengths" class="heading-anchor">#</a></h2>
+<ol>
+<li><strong>Clear separation of concerns</strong> - Core vs plugins philosophy is solid</li>
+<li><strong>Comprehensive lifecycle</strong> - 13 stages cover all SSG needs</li>
+<li><strong>Language-agnostic design</strong> - Spec works for Python, TypeScript, Go, Rust, etc.</li>
+<li><strong>Detailed test cases</strong> - <code>tests.yaml</code> provides excellent behavior specifications</li>
+</ol>
+<hr>
+<h2 id="high-priority-recommendations">High Priority Recommendations <a href="#high-priority-recommendations" class="heading-anchor">#</a></h2>
+<h3 id="1-add-concurrency-model">1. Add Concurrency Model <a href="#1-add-concurrency-model" class="heading-anchor">#</a></h3>
+<p><strong>Problem:</strong> The spec doesn't address parallelism, which is crucial for performance.</p>
+<p><strong>Solution:</strong> Add the following to SPEC.md:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gu">## Concurrency
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl"><span class="gu">### Post Processing
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span><span class="k">-</span> <span class="sb">`pre_render`</span>, <span class="sb">`render`</span>, <span class="sb">`post_render`</span> stages SHOULD process posts concurrently
+</span></span><span class="line"><span class="cl"><span class="k">-</span> Use worker pool pattern with configurable concurrency limit
+</span></span><span class="line"><span class="cl"><span class="k">-</span> Default: number of CPU cores
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Thread Safety
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span><span class="k">-</span> Plugins MUST NOT modify shared state without synchronization
+</span></span><span class="line"><span class="cl"><span class="k">-</span> Each post can be processed independently
+</span></span><span class="line"><span class="cl"><span class="k">-</span> Core.Posts list is read-only during concurrent stages
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Configuration
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>```toml
+</span></span><span class="line"><span class="cl">[ssg]
+</span></span><span class="line"><span class="cl">concurrency = 4  # 0 = auto (CPU count)
+</span></span></code></pre><pre><code>
+---
+
+### 2. Document Plugin Discovery/Resolution
+
+**Problem:** PLUGINS.md shows registration but not how plugins are discovered from config strings.
+
+**Solution:** Add to PLUGINS.md:
+
+```markdown
+## Plugin Resolution
+
+When loading plugins from the `hooks` config, resolution follows this order:
+
+1. **&quot;default&quot;** - Expands to the built-in plugin set:
+   - glob, load, render_markdown, templates, feeds, publish_html, rss, sitemap
+
+2. **Built-in name** (e.g., `&quot;glob&quot;`, `&quot;render_markdown&quot;`)
+   - Resolves to internal plugins
+
+3. **Full module path** (language-specific)
+   - Python: `&quot;my_package.plugins.custom&quot;`
+   - TypeScript: `&quot;my-package/plugins/custom&quot;`
+   - Go: `&quot;github.com/user/ssg-plugin&quot;`
+   - Rust: `&quot;my_crate::plugins::custom&quot;`
+
+4. **Local path** (e.g., `&quot;./plugins/myplugin&quot;`)
+   - Loads from project-relative path
+
+### Example
+```toml
+[ssg]
+hooks = [
+    &quot;default&quot;,                    # Built-in set
+    &quot;./plugins/reading_time&quot;,     # Local plugin
+]
+disabled_hooks = [&quot;rss&quot;, &quot;sitemap&quot;]
+</code></pre>
+<pre><code>
+---
+
+### 3. Define Core Interface
+
+**Problem:** PLUGINS.md shows plugin interfaces but the Core interface they interact with is undefined.
+
+**Solution:** Add to SPEC.md under &quot;Core Components&quot;:
+
+```markdown
+## Core Interface
+
+The central orchestrator that plugins interact with.
+
+### Properties
+| Property | Type | Description |
+|----------|------|-------------|
+| `config` | Config | Merged configuration object |
+| `posts` | List[Post] | All loaded content items |
+| `files` | List[Path] | Discovered content files |
+| `cache` | Cache | Persistent key-value cache |
+
+### Query Methods
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `filter` | `(expr: string) -&gt; List[Post]` | Query posts with expression |
+| `map` | `(field: string, filter?: string, sort?: string, reverse?: bool) -&gt; List[Any]` | Extract field from filtered posts |
+| `first` | `(filter?: string, sort?: string) -&gt; Post?` | First matching post |
+| `last` | `(filter?: string, sort?: string) -&gt; Post?` | Last matching post |
+| `one` | `(expr: string) -&gt; Post` | Exactly one match (error if 0 or &gt;1) |
+
+### Lifecycle Methods
+| Method | Description |
+|--------|-------------|
+| `register(plugin)` | Register a plugin |
+| `run(stage?)` | Run build up to optional stage |
+
+### Attribute Storage (for plugin communication)
+| Method | Description |
+|--------|-------------|
+| `set(key, value)` | Store a value |
+| `get(key) -&gt; Any` | Retrieve a value |
+| `has(key) -&gt; bool` | Check if key exists |
+</code></pre>
+<hr>
+<h2 id="medium-priority-recommendations">Medium Priority Recommendations <a href="#medium-priority-recommendations" class="heading-anchor">#</a></h2>
+<h3 id="4-define-error-types">4. Define Error Types <a href="#4-define-error-types" class="heading-anchor">#</a></h3>
+<p><strong>Problem:</strong> Error handling section mentions error names but doesn't define them.</p>
+<p><strong>Solution:</strong> Add to DATA_MODEL.md:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gu">## Error Types
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl"><span class="gu">### Structured Error
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>Errors should include contextual information:
+</span></span><span class="line"><span class="cl"><span class="k">-</span> <span class="sb">`stage`</span> - which lifecycle stage
+</span></span><span class="line"><span class="cl"><span class="k">-</span> <span class="sb">`plugin`</span> - which plugin caused it
+</span></span><span class="line"><span class="cl"><span class="k">-</span> <span class="sb">`path`</span> - file path if applicable
+</span></span><span class="line"><span class="cl"><span class="k">-</span> <span class="sb">`line`</span> - line number if applicable
+</span></span><span class="line"><span class="cl"><span class="k">-</span> <span class="sb">`message`</span> - human-readable description
+</span></span><span class="line"><span class="cl"><span class="k">-</span> <span class="sb">`cause`</span> - underlying error
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Standard Error Types
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>| Error | When |
+</span></span><span class="line"><span class="cl">|-------|------|
+</span></span><span class="line"><span class="cl">| <span class="sb">`FrontmatterParseError`</span> | Invalid YAML in frontmatter |
+</span></span><span class="line"><span class="cl">| <span class="sb">`FilterExpressionError`</span> | Invalid filter syntax |
+</span></span><span class="line"><span class="cl">| <span class="sb">`TemplateNotFoundError`</span> | Template file doesn&#39;t exist |
+</span></span><span class="line"><span class="cl">| <span class="sb">`TemplateSyntaxError`</span> | Invalid template syntax |
+</span></span><span class="line"><span class="cl">| <span class="sb">`ConfigValidationError`</span> | Invalid configuration |
+</span></span><span class="line"><span class="cl">| <span class="sb">`PluginNotFoundError`</span> | Plugin couldn&#39;t be loaded |
+</span></span><span class="line"><span class="cl">| <span class="sb">`CircularTemplateError`</span> | Template inheritance cycle |
+</span></span></code></pre><hr>
+<h3 id="5-add-development-server-specification">5. Add Development Server Specification <a href="#5-add-development-server-specification" class="heading-anchor">#</a></h3>
+<p><strong>Problem:</strong> INSTALL.md mentions <code>serve</code> command but no spec exists.</p>
+<p><strong>Solution:</strong> Add to SPEC.md or create CLI.md:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gu">## Development Server
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl"><span class="gu">### Features
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span><span class="k">-</span> HTTP server for previewing the built site
+</span></span><span class="line"><span class="cl"><span class="k">-</span> File watching for automatic rebuilds
+</span></span><span class="line"><span class="cl"><span class="k">-</span> Live reload for browser refresh
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Configuration
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>```toml
+</span></span><span class="line"><span class="cl">[ssg.serve]
+</span></span><span class="line"><span class="cl">port = 3000
+</span></span><span class="line"><span class="cl">host = &#34;localhost&#34;
+</span></span><span class="line"><span class="cl">livereload = true
+</span></span><span class="line"><span class="cl">open_browser = false
+</span></span><span class="line"><span class="cl">debounce_ms = 100  # wait before rebuilding after file change
+</span></span></code></pre><h3 id="rebuild-triggers">Rebuild Triggers <a href="#rebuild-triggers" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Change Type</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Content file (*.md)</td>
+<td>Incremental rebuild</td>
+</tr>
+<tr>
+<td>Template file</td>
+<td>Full rebuild</td>
+</tr>
+<tr>
+<td>Config file</td>
+<td>Full rebuild</td>
+</tr>
+<tr>
+<td>Static asset</td>
+<td>Copy only</td>
+</tr>
+</tbody>
+</table>
+<h3 id="live-reload">Live Reload <a href="#live-reload" class="heading-anchor">#</a></h3>
+<ul>
+<li>Inject reload script into HTML pages during serve</li>
+<li>Use WebSocket or Server-Sent Events</li>
+<li>Trigger reload after successful build</li>
+</ul>
+<pre><code>
+---
+
+### 6. Clarify Post Mutation Behavior
+
+**Problem:** Can plugins mutate posts directly? When are changes persisted?
+
+**Solution:** Add to DATA_MODEL.md:
+
+```markdown
+## Post Mutation
+
+### During Lifecycle
+- Posts are **mutable** during lifecycle stages
+- Changes are held in memory only
+- Changes are **NOT** persisted back to source files
+- Each stage sees mutations from previous stages
+
+### Field Mutation Rules
+| Field | Mutable | Notes |
+|-------|---------|-------|
+| `path` | No | Set at load, immutable |
+| `content` | Yes | Can be modified in pre_render |
+| `slug` | Yes | If changed, href auto-updates |
+| `href` | Computed | Derived from slug |
+| `article_html` | Yes | Set in render stage |
+| `html` | Yes | Set in post_render stage |
+
+### Dynamic Fields
+For fields not in the Post schema, use dynamic field storage:
+
+```python
+# Set a dynamic field
+post.set(&quot;reading_time&quot;, &quot;5 min read&quot;)
+
+# Get a dynamic field
+rt = post.get(&quot;reading_time&quot;)
+
+# Check if field exists
+if post.has(&quot;reading_time&quot;): ...
+</code></pre>
+<pre><code>
+---
+
+### 7. Add Incremental Build Specification
+
+**Problem:** No specification for incremental/watch builds.
+
+**Solution:** Add to LIFECYCLE.md:
+
+```markdown
+## Incremental Builds
+
+### Change Detection
+Track file state in cache:
+- Path
+- Modification time
+- Content hash
+
+### Rebuild Strategy
+| Change | Rebuild Scope |
+|--------|---------------|
+| Single post content | That post only |
+| Post frontmatter | That post + feeds containing it |
+| Template file | All posts using that template |
+| Config file | Full rebuild |
+| Plugin change | Full rebuild |
+
+### Cache Keys
+</code></pre>
+<p>post:{path}:mtime     → file modification time
+post:{path}:hash      → content hash
+post:{path}:rendered  → cached article_html
+template:{path}:mtime → template modification time</p>
+<pre><code></code></pre>
+<hr>
+<h2 id="low-priority-recommendations">Low Priority Recommendations <a href="#low-priority-recommendations" class="heading-anchor">#</a></h2>
+<h3 id="8-document-template-engine-differences">8. Document Template Engine Differences <a href="#8-document-template-engine-differences" class="heading-anchor">#</a></h3>
+<p><strong>Problem:</strong> TEMPLATES.md shows Jinja syntax but other engines have differences.</p>
+<p><strong>Solution:</strong> Add to TEMPLATES.md:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gu">## Template Engine Compatibility
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">This spec uses Jinja2-style syntax. Other engines have differences:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Date Formatting
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>| Engine | Syntax |
+</span></span><span class="line"><span class="cl">|--------|--------|
+</span></span><span class="line"><span class="cl">| Jinja2 (Python) | <span class="sb">`{{ date \| strftime(&#39;%Y-%m-%d&#39;) }}`</span> |
+</span></span><span class="line"><span class="cl">| Nunjucks (JS) | <span class="sb">`{{ date \| date(&#39;YYYY-MM-DD&#39;) }}`</span> |
+</span></span><span class="line"><span class="cl">| pongo2 (Go) | <span class="sb">`{{ date \| date:&#34;2006-01-02&#34; }}`</span> |
+</span></span><span class="line"><span class="cl">| Tera (Rust) | <span class="sb">`{{ date \| date(format=&#34;%Y-%m-%d&#34;) }}`</span> |
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Struct/Object Access
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>| Engine | Syntax |
+</span></span><span class="line"><span class="cl">|--------|--------|
+</span></span><span class="line"><span class="cl">| Jinja2 | <span class="sb">`post.title`</span> |
+</span></span><span class="line"><span class="cl">| pongo2 | <span class="sb">`post.Title`</span> (exported fields) |
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Implementations should document any deviations from Jinja2 syntax.
+</span></span></code></pre><hr>
+<h3 id="9-add-full-cli-specification">9. Add Full CLI Specification <a href="#9-add-full-cli-specification" class="heading-anchor">#</a></h3>
+<p><strong>Problem:</strong> Commands are mentioned but not fully specified.</p>
+<p><strong>Solution:</strong> Add to SPEC.md or create CLI.md:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gu">## CLI Commands
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl"><span class="gu">### `build`
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>Build the static site.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">```bash
+</span></span><span class="line"><span class="cl">ssg build [flags]
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Flags:
+</span></span><span class="line"><span class="cl">  -c, --config string   Config file path (default &#34;ssg.toml&#34;)
+</span></span><span class="line"><span class="cl">  -o, --output string   Output directory (overrides config)
+</span></span><span class="line"><span class="cl">  -v, --verbose         Verbose output
+</span></span><span class="line"><span class="cl">  --clean               Remove output dir before build
+</span></span><span class="line"><span class="cl">  --drafts              Include draft posts
+</span></span><span class="line"><span class="cl">  --future              Include future-dated posts
+</span></span></code></pre><h3 id="serve"><code>serve</code> <a href="#serve" class="heading-anchor">#</a></h3>
+<p>Start development server with live reload.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">ssg serve <span class="o">[</span>flags<span class="o">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Flags:
+</span></span><span class="line"><span class="cl">  -p, --port int        Server port <span class="o">(</span>default 3000<span class="o">)</span>
+</span></span><span class="line"><span class="cl">  -H, --host string     Bind address <span class="o">(</span>default <span class="s2">&#34;localhost&#34;</span><span class="o">)</span>
+</span></span><span class="line"><span class="cl">  --no-reload           Disable live reload
+</span></span><span class="line"><span class="cl">  --no-watch            Disable file watching
+</span></span></code></pre><h3 id="new-path"><code>new &lt;path&gt;</code> <a href="#new-path" class="heading-anchor">#</a></h3>
+<p>Create a new post with frontmatter template.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">ssg new posts/my-new-post.md <span class="o">[</span>flags<span class="o">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Flags:
+</span></span><span class="line"><span class="cl">  -t, --title string    Post title
+</span></span><span class="line"><span class="cl">  --edit                Open in <span class="nv">$EDITOR</span> after creation
+</span></span></code></pre><h3 id="validate"><code>validate</code> <a href="#validate" class="heading-anchor">#</a></h3>
+<p>Validate configuration and content without building.</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">ssg validate <span class="o">[</span>flags<span class="o">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Flags:
+</span></span><span class="line"><span class="cl">  --strict              Treat warnings as errors
+</span></span></code></pre><h3 id="exit-codes">Exit Codes <a href="#exit-codes" class="heading-anchor">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Success</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Build error</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Config error</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Validation error</td>
+</tr>
+</tbody>
+</table>
+<pre><code>
+---
+
+### 10. Add Asset Pipeline Specification
+
+**Problem:** `copy_assets` plugin mentioned but no processing spec.
+
+**Solution:** Add to SPEC.md under Standard Plugins:
+
+```markdown
+### Asset Processing (`assets`)
+
+#### Copy Assets
+- Copy all files from `assets_dir` to `output_dir`
+- Preserve directory structure
+- Skip files matching ignore patterns
+
+#### Configuration
+```toml
+[ssg.assets]
+dir = &quot;static&quot;
+ignore = [&quot;*.scss&quot;, &quot;*.ts&quot;, &quot;.DS_Store&quot;]
+</code></pre>
+<h4 id="optional-asset-fingerprinting">Optional: Asset Fingerprinting <a href="#optional-asset-fingerprinting" class="heading-anchor">#</a></h4>
+<p>Add content hash to filenames for cache busting:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">ssg</span><span class="p">.</span><span class="nx">assets</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">fingerprint</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">fingerprint_extensions</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;.css&#34;</span><span class="p">,</span> <span class="s2">&#34;.js&#34;</span><span class="p">]</span>
+</span></span></code></pre><ul>
+<li><code>style.css</code> → <code>style.a1b2c3d4.css</code></li>
+<li>Update references in HTML automatically</li>
+</ul>
+<pre><code>
+---
+
+## Additional Test Cases
+
+Add these to `tests.yaml`:
+
+```yaml
+# =============================================================================
+# CONCURRENCY
+# =============================================================================
+concurrency:
+  - name: &quot;concurrent post rendering produces correct results&quot;
+    input:
+      posts_count: 100
+      concurrency: 8
+    output:
+      all_posts_rendered: true
+
+# =============================================================================
+# EDGE CASES
+# =============================================================================
+edge_cases:
+  - name: &quot;large post (10k+ words)&quot;
+    input:
+      content_words: 10000
+    output:
+      renders_successfully: true
+      
+  - name: &quot;unicode filename&quot;
+    input:
+      path: &quot;posts/日本語の記事.md&quot;
+    output:
+      loads_successfully: true
+
+  - name: &quot;circular template inheritance&quot;
+    input:
+      templates:
+        a.html: &quot;{% extends 'b.html' %}&quot;
+        b.html: &quot;{% extends 'a.html' %}&quot;
+    error: true
+    error_type: &quot;CircularTemplateError&quot;
+
+  - name: &quot;plugin error isolation&quot;
+    input:
+      plugins:
+        - { name: &quot;failing_plugin&quot;, throws: true }
+        - { name: &quot;good_plugin&quot; }
+      continue_on_error: true
+    output:
+      good_plugin_ran: true
+      build_completed: true
+
+  - name: &quot;empty content directory&quot;
+    input:
+      files: []
+    output:
+      posts_count: 0
+      build_succeeds: true
+</code></pre>
+<hr>
+<h2 id="updated-implementation-checklist">Updated Implementation Checklist <a href="#updated-implementation-checklist" class="heading-anchor">#</a></h2>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="gu">## Implementation Checklist
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span>
+</span></span><span class="line"><span class="cl">An implementation is complete when it:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Core
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span><span class="k">- [ ]</span> Runs lifecycle stages in order
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Supports concurrent post processing
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Loads plugins from configuration
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Resolves plugin names to implementations
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Merges config from multiple sources
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Provides thread-safe attribute storage
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Content
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span><span class="k">- [ ]</span> Discovers content files via glob patterns
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Parses YAML frontmatter
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Handles unicode filenames
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Supports <span class="sb">`filter()`</span> with expressions
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Supports <span class="sb">`map()`</span> for field extraction
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Rendering
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span><span class="k">- [ ]</span> Renders markdown to HTML
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Processes templates
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Supports template inheritance
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Detects circular template inheritance
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Output
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span><span class="k">- [ ]</span> Generates feeds with filtering/sorting/pagination
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Writes output to configured directory
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Copies static assets
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Generates RSS feed
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Generates sitemap
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Caching
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span><span class="k">- [ ]</span> Caches expensive operations
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Supports incremental builds
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Invalidates cache on config change
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### CLI
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span><span class="k">- [ ]</span> <span class="sb">`build`</span> command with all flags
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> <span class="sb">`serve`</span> command with live reload
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> <span class="sb">`new`</span> command for post creation
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> <span class="sb">`validate`</span> command for checking
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Plugins
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span><span class="k">- [ ]</span> Allows single-file plugin creation
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Plugin can extend config schema
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Plugin can extend post model
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Plugin can add CLI commands
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Plugin errors don&#39;t crash build (configurable)
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="gu">### Testing
+</span></span></span><span class="line"><span class="cl"><span class="gu"></span><span class="k">- [ ]</span> Passes all tests in <span class="sb">`tests.yaml`</span>
+</span></span><span class="line"><span class="cl"><span class="k">- [ ]</span> Handles edge cases (large files, unicode, etc.)
+</span></span></code></pre><hr>
+<h2 id="summary">Summary <a href="#summary" class="heading-anchor">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Issue</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>High</strong></td>
+<td>No concurrency model</td>
+<td>Add to SPEC.md</td>
+</tr>
+<tr>
+<td><strong>High</strong></td>
+<td>Plugin discovery unclear</td>
+<td>Add to PLUGINS.md</td>
+</tr>
+<tr>
+<td><strong>High</strong></td>
+<td>Core interface undefined</td>
+<td>Add to SPEC.md</td>
+</tr>
+<tr>
+<td><strong>Medium</strong></td>
+<td>Error types undefined</td>
+<td>Add to DATA_MODEL.md</td>
+</tr>
+<tr>
+<td><strong>Medium</strong></td>
+<td>No dev server spec</td>
+<td>Add to SPEC.md or CLI.md</td>
+</tr>
+<tr>
+<td><strong>Medium</strong></td>
+<td>Post mutation unclear</td>
+<td>Add to DATA_MODEL.md</td>
+</tr>
+<tr>
+<td><strong>Medium</strong></td>
+<td>No incremental build spec</td>
+<td>Add to LIFECYCLE.md</td>
+</tr>
+<tr>
+<td><strong>Low</strong></td>
+<td>Template engine differences</td>
+<td>Add to TEMPLATES.md</td>
+</tr>
+<tr>
+<td><strong>Low</strong></td>
+<td>CLI not fully specified</td>
+<td>Add to SPEC.md or CLI.md</td>
+</tr>
+<tr>
+<td><strong>Low</strong></td>
+<td>Asset pipeline vague</td>
+<td>Add to SPEC.md</td>
+</tr>
+</tbody>
+</table>
+<p>Addressing these recommendations will make the spec implementation-ready and reduce ambiguity for developers and AI agents.</p>
+
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

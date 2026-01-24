@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshooting - My Site</title>
+    <meta name="description" content="Solutions for common issues when working with markata-go">
+    
+    <!-- Structured Data: OpenGraph -->
+    
+    
+    <meta property="og:title" content="Troubleshooting">
+    
+    <meta property="og:url" content="/troubleshooting/">
+    
+    <meta property="og:type" content="article">
+    
+    <meta property="og:description" content="Solutions for common issues when working with markata-go">
+    
+    <meta property="og:locale" content="en_US">
+    
+    <meta property="article:published_time" content="2024-01-15T00:00:00Z">
+    
+    <meta property="article:tag" content="documentation">
+    
+    <meta property="article:tag" content="troubleshooting">
+    
+    
+    
+    <!-- Structured Data: Twitter Card -->
+    
+    
+    <meta name="twitter:card" content="summary">
+    
+    <meta name="twitter:title" content="Troubleshooting">
+    
+    <meta name="twitter:description" content="Solutions for common issues when working with markata-go">
+    
+    
+    
+    <!-- Canonical URL -->
+    
+    <link rel="canonical" href="/troubleshooting/">
+    
+    
+    <!-- Alternate Post Formats -->
+    
+    
+    
+    
+    
+    
+    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
+    
+    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
+    
+    
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admonitions.css">
+    <link rel="stylesheet" href="/css/code.css">
+    <link rel="stylesheet" href="/css/chroma.css">
+    
+    <!-- RSS/Atom/JSON Feeds -->
+    
+    
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+    
+    
+    
+    
+    
+    
+    <!-- Structured Data: JSON-LD -->
+    
+    <script type="application/ld+json">
+    {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Troubleshooting",
+  "description": "Solutions for common issues when working with markata-go",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-15T00:00:00Z",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/troubleshooting/"
+  },
+  "keywords": [
+    "documentation",
+    "troubleshooting"
+  ],
+  "url": "/troubleshooting/"
+}
+    </script>
+    
+</head>
+<body>
+    
+    <header class="site-header" data-pagefind-ignore>
+        <div class="container">
+            <a href="/" class="site-title">Home</a>
+            
+
+
+
+
+
+<nav class="site-nav site-nav--header site-nav--horizontal">
+    
+    <a href="/blog/" class="nav-link">Blog</a>
+    
+</nav>
+
+
+
+            
+            
+
+
+
+
+
+<div id="search" class="search search--navbar" data-pagefind-ignore>
+    <div id="pagefind-search"></div>
+</div>
+
+
+
+            
+        </div>
+    </header>
+    
+    
+    <main data-pagefind-body>
+        
+<div class="content-wrapper">
+    <article>
+        <header>
+            <h1>Troubleshooting</h1>
+            
+            <time datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+            
+            
+            <div class="tags">
+                
+                <a href="/tags/documentation/">documentation</a>
+                
+                <a href="/tags/troubleshooting/">troubleshooting</a>
+                
+            </div>
+            
+        </header>
+        <div class="post-content">
+            <h1 id="troubleshooting">Troubleshooting</h1>
+<p>This guide covers common issues users encounter when working with markata-go and how to resolve them.</p>
+<h2 id="table-of-contents">Table of Contents <a href="#table-of-contents" class="heading-anchor">#</a></h2>
+<ul>
+<li><a href="#installation-issues">Installation Issues</a></li>
+<li><a href="#configuration-issues">Configuration Issues</a></li>
+<li><a href="#content-issues">Content Issues</a></li>
+<li><a href="#build-issues">Build Issues</a></li>
+<li><a href="#feed-issues">Feed Issues</a></li>
+<li><a href="#serve-issues">Serve Issues</a></li>
+<li><a href="#deployment-issues">Deployment Issues</a></li>
+<li><a href="#plugin-issues">Plugin Issues</a></li>
+<li><a href="#getting-help">Getting Help</a></li>
+</ul>
+<hr>
+<h2 id="installation-issues">Installation Issues <a href="#installation-issues" class="heading-anchor">#</a></h2>
+<h3 id="go-not-installed">Go Not Installed <a href="#go-not-installed" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>bash: go: command not found
+</code></pre>
+<p>Or on Windows:</p>
+<pre><code>'go' is not recognized as an internal or external command
+</code></pre>
+<p><strong>Cause:</strong> Go is not installed on your system or not in your PATH.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>Download Go from <a href="https://go.dev/dl/">https://go.dev/dl/</a></li>
+<li>Follow the installation instructions for your operating system</li>
+<li>Verify installation:
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go version
+</span></span></code></pre></li>
+</ol>
+<p><strong>Example output:</strong></p>
+<pre><code>go version go1.22.2 linux/amd64
+</code></pre>
+<hr>
+<h3 id="wrong-go-version">Wrong Go Version <a href="#wrong-go-version" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>note: module requires Go 1.22
+</code></pre>
+<p>Or build errors mentioning unsupported language features.</p>
+<p><strong>Cause:</strong> markata-go requires Go 1.22 or later, but an older version is installed.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p>Check your current version:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go version
+</span></span></code></pre></li>
+<li>
+<p>If it's older than 1.22, update Go:</p>
+<ul>
+<li>Download the latest version from <a href="https://go.dev/dl/">https://go.dev/dl/</a></li>
+<li>Remove the old version and install the new one</li>
+<li>Or use a version manager like <a href="https://github.com/moovweb/gvm">gvm</a> or <a href="https://github.com/syndbg/goenv">goenv</a></li>
+</ul>
+</li>
+<li>
+<p>Verify the update:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go version
+</span></span><span class="line"><span class="cl"><span class="c1"># Should show go1.22.x or higher</span>
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="path-issues">PATH Issues <a href="#path-issues" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>bash: markata-go: command not found
+</code></pre>
+<p>After running <code>go install</code> successfully.</p>
+<p><strong>Cause:</strong> The Go bin directory is not in your PATH.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p>Find your Go bin directory:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go env GOPATH
+</span></span><span class="line"><span class="cl"><span class="c1"># Typically: /home/username/go (Linux/macOS) or C:\Users\username\go (Windows)</span>
+</span></span></code></pre></li>
+<li>
+<p>Add the bin directory to your PATH:</p>
+<p><strong>Linux/macOS (bash/zsh):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Add to ~/.bashrc, ~/.zshrc, or ~/.profile</span>
+</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span><span class="nv">$PATH</span>:<span class="k">$(</span>go env GOPATH<span class="k">)</span>/bin
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Reload the shell</span>
+</span></span><span class="line"><span class="cl"><span class="nb">source</span> ~/.bashrc  <span class="c1"># or ~/.zshrc</span>
+</span></span></code></pre><p><strong>Windows (PowerShell):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># Add to your PowerShell profile</span>
+</span></span><span class="line"><span class="cl"><span class="nv">$env:PATH</span> <span class="p">+=</span> <span class="s2">&#34;;</span><span class="p">$(</span><span class="n">go</span> <span class="n">env</span> <span class="n">GOPATH</span><span class="p">)</span><span class="s2">\bin&#34;</span>
+</span></span></code></pre><p><strong>Windows (permanently):</strong></p>
+<ul>
+<li>Open System Properties &gt; Environment Variables</li>
+<li>Edit the <code>PATH</code> variable</li>
+<li>Add <code>%USERPROFILE%\go\bin</code></li>
+</ul>
+</li>
+<li>
+<p>Verify markata-go is accessible:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go --version
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="installation-fails-with-network-error">Installation Fails with Network Error <a href="#installation-fails-with-network-error" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>go: github.com/example/markata-go@latest: module lookup disabled by GOPROXY=off
+</code></pre>
+<p>Or timeout errors during installation.</p>
+<p><strong>Cause:</strong> Network issues or proxy misconfiguration.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p>Check your proxy settings:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go env GOPROXY
+</span></span></code></pre></li>
+<li>
+<p>Reset to default if needed:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go env -w <span class="nv">GOPROXY</span><span class="o">=</span>https://proxy.golang.org,direct
+</span></span></code></pre></li>
+<li>
+<p>If behind a corporate proxy, configure it:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">HTTP_PROXY</span><span class="o">=</span>http://proxy.example.com:8080
+</span></span><span class="line"><span class="cl"><span class="nb">export</span> <span class="nv">HTTPS_PROXY</span><span class="o">=</span>http://proxy.example.com:8080
+</span></span></code></pre></li>
+<li>
+<p>Retry installation:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">go install github.com/example/markata-go/cmd/markata-go@latest
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h2 id="configuration-issues">Configuration Issues <a href="#configuration-issues" class="heading-anchor">#</a></h2>
+<h3 id="config-file-not-found">Config File Not Found <a href="#config-file-not-found" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: no configuration file found
+</code></pre>
+<p>Or markata-go uses unexpected default values.</p>
+<p><strong>Cause:</strong> No configuration file exists in the expected locations, or it has the wrong name.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p>Check that a config file exists with the correct name:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">ls -la markata-go.toml markata-go.yaml markata-go.yml markata-go.json 2&gt;/dev/null
+</span></span></code></pre></li>
+<li>
+<p>Create a config file if missing:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config init
+</span></span></code></pre></li>
+<li>
+<p>Or specify a custom config path:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build --config path/to/my-config.toml
+</span></span></code></pre></li>
+</ol>
+<p><strong>Supported config file names (in priority order):</strong></p>
+<ul>
+<li><code>markata-go.toml</code> (recommended)</li>
+<li><code>markata-go.yaml</code></li>
+<li><code>markata-go.yml</code></li>
+<li><code>markata-go.json</code></li>
+</ul>
+<p>See the <a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration Guide</a> for details on config file locations.</p>
+<hr>
+<h3 id="invalid-tomlyaml-syntax">Invalid TOML/YAML Syntax <a href="#invalid-tomlyaml-syntax" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: failed to parse config: toml: line 15: expected '=' after key
+</code></pre>
+<p>Or:</p>
+<pre><code>Error: yaml: line 10: did not find expected key
+</code></pre>
+<p><strong>Cause:</strong> Syntax error in your configuration file.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p>Validate your config file:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config validate
+</span></span></code></pre></li>
+<li>
+<p>Common TOML mistakes:</p>
+<p><strong>Wrong - missing quotes on strings with special characters:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="nx">My</span> <span class="nx">Site</span><span class="err">:</span> <span class="nx">The</span> <span class="nx">Best</span><span class="err">!</span>
+</span></span></code></pre><p><strong>Correct:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Site: The Best!&#34;</span>
+</span></span></code></pre><p><strong>Wrong - using colons instead of equals:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">title</span><span class="err">:</span> <span class="s2">&#34;My Site&#34;</span>
+</span></span></code></pre><p><strong>Correct:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;My Site&#34;</span>
+</span></span></code></pre></li>
+<li>
+<p>Common YAML mistakes:</p>
+<p><strong>Wrong - incorrect indentation:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">markata-go</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Site&#34;</span><span class="w">
+</span></span></span></code></pre><p><strong>Correct:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">markata-go</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Site&#34;</span><span class="w">
+</span></span></span></code></pre><p><strong>Wrong - tabs instead of spaces:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">markata-go</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">	</span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Site&#34;</span><span class="w">  </span><span class="c"># Tab character</span><span class="w">
+</span></span></span></code></pre><p><strong>Correct:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">markata-go</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Site&#34;</span><span class="w">  </span><span class="c"># Two spaces</span><span class="w">
+</span></span></span></code></pre></li>
+<li>
+<p>Use an online validator:</p>
+<ul>
+<li>TOML: <a href="https://www.toml-lint.com/">toml-lint.com</a></li>
+<li>YAML: <a href="http://www.yamllint.com/">yamllint.com</a></li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3 id="unknown-configuration-options">Unknown Configuration Options <a href="#unknown-configuration-options" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Warning: unknown configuration key: output-dir
+</code></pre>
+<p>Or a setting doesn't seem to take effect.</p>
+<p><strong>Cause:</strong> Typo in configuration key or using the wrong format.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p>Check for typos. Common mistakes:</p>
+<ul>
+<li><code>output-dir</code> should be <code>output_dir</code></li>
+<li><code>templatesDir</code> should be <code>templates_dir</code></li>
+<li>Keys are case-sensitive</li>
+</ul>
+</li>
+<li>
+<p>Verify the correct key names:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config show
+</span></span></code></pre></li>
+<li>
+<p>Reference the <a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration Guide</a> for the complete list of options.</p>
+</li>
+</ol>
+<p><strong>Example of correct configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">output_dir</span> <span class="p">=</span> <span class="s2">&#34;public&#34;</span>      <span class="c"># Correct: underscore</span>
+</span></span><span class="line"><span class="cl"><span class="nx">templates_dir</span> <span class="p">=</span> <span class="s2">&#34;templates&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">assets_dir</span> <span class="p">=</span> <span class="s2">&#34;static&#34;</span>
+</span></span></code></pre><hr>
+<h3 id="how-to-validate-config">How to Validate Config <a href="#how-to-validate-config" class="heading-anchor">#</a></h3>
+<p><strong>Solution:</strong></p>
+<p>Run the validation command:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config validate
+</span></span></code></pre><p><strong>Example success output:</strong></p>
+<pre><code>Configuration is valid
+</code></pre>
+<p><strong>Example error output:</strong></p>
+<pre><code>Configuration errors:
+  - url: URL must include a scheme (e.g., https://)
+  - concurrency: must be &gt;= 0 (0 means auto-detect)
+
+Configuration warnings:
+  - glob.patterns: no glob patterns specified, no files will be processed
+</code></pre>
+<p>To see the fully resolved configuration:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config show
+</span></span></code></pre><p>To see a specific value:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config get output_dir
+</span></span><span class="line"><span class="cl">markata-go config get glob.patterns
+</span></span></code></pre><hr>
+<h2 id="content-issues">Content Issues <a href="#content-issues" class="heading-anchor">#</a></h2>
+<h3 id="invalid-frontmatter-yaml">Invalid Frontmatter YAML <a href="#invalid-frontmatter-yaml" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: failed to parse frontmatter in posts/my-post.md: yaml: line 5: could not find expected ':'
+</code></pre>
+<p><strong>Cause:</strong> YAML syntax error in the frontmatter block.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p>Check the frontmatter structure:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;My Post&#34;
+</span></span><span class="line"><span class="cl">date: 2024-01-15
+</span></span><span class="line"><span class="cl">tags:
+</span></span><span class="line"><span class="cl">  <span class="k">-</span> go
+</span></span><span class="line"><span class="cl">  <span class="k">-</span> tutorial
+</span></span><span class="line"><span class="cl">---
+</span></span></code></pre></li>
+<li>
+<p>Common frontmatter mistakes:</p>
+<p><strong>Wrong - missing closing delimiter:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;My Post&#34;
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Content starts here...
+</span></span></code></pre><p><strong>Correct:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;My Post&#34;
+</span></span><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Content starts here...
+</span></span></code></pre><p><strong>Wrong - invalid date format:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">date: January 15, 2024
+</span></span><span class="line"><span class="cl">---
+</span></span></code></pre><p><strong>Correct:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">date: 2024-01-15
+</span></span><span class="line"><span class="cl">---
+</span></span></code></pre><p><strong>Wrong - unquoted special characters:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: My Post: A Guide
+</span></span><span class="line"><span class="cl">---
+</span></span></code></pre><p><strong>Correct:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;My Post: A Guide&#34;
+</span></span><span class="line"><span class="cl">---
+</span></span></code></pre></li>
+<li>
+<p>Validate YAML online at <a href="http://www.yamllint.com/">yamllint.com</a></p>
+</li>
+</ol>
+<p>See the <a href="/frontmatter-guide/" class="wikilink" data-title="Frontmatter Guide" data-description="Complete guide to post metadata, built-in fields, and custom frontmatter in markata-go" data-date="2024-01-15">Frontmatter Guide</a> for complete frontmatter documentation.</p>
+<hr>
+<h3 id="posts-not-appearing">Posts Not Appearing <a href="#posts-not-appearing" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong> You created a post but it doesn't appear on your site.</p>
+<p><strong>Cause:</strong> Multiple possible causes:</p>
+<ul>
+<li>Post not published</li>
+<li>Filtered out by feed configuration</li>
+<li>File not matched by glob patterns</li>
+<li>File in .gitignore</li>
+</ul>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Check if the post is published:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;My Post&#34;
+</span></span><span class="line"><span class="cl">published: true    # Must be true
+</span></span><span class="line"><span class="cl">draft: false       # Should be false for production
+</span></span><span class="line"><span class="cl">---
+</span></span></code></pre></li>
+<li>
+<p><strong>Check your feed filter:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>  <span class="c"># Make sure your post matches</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Check glob patterns:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;posts/**/*.md&#34;</span><span class="p">]</span>  <span class="c"># Does your file match this pattern?</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Check if the file is gitignored:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">git check-ignore posts/my-post.md
+</span></span><span class="line"><span class="cl"><span class="c1"># If it returns the filename, the file is ignored</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Run a verbose build to see what's being processed:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build -v
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="drafts-showing-in-production">Drafts Showing in Production <a href="#drafts-showing-in-production" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong> Draft posts appear on the live site.</p>
+<p><strong>Cause:</strong> Feed filters don't exclude drafts.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p>Add draft filtering to your feed configuration:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True and draft == False&#34;</span>
+</span></span></code></pre></li>
+<li>
+<p>Or filter only by published status (drafts should have <code>published: false</code>):</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span></code></pre></li>
+<li>
+<p>Verify draft status in frontmatter:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">---
+</span></span><span class="line"><span class="cl">title: &#34;My Draft&#34;
+</span></span><span class="line"><span class="cl">published: false
+</span></span><span class="line"><span class="cl">draft: true
+</span></span><span class="line"><span class="cl">---
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="date-format-problems">Date Format Problems <a href="#date-format-problems" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: cannot parse &quot;January 15, 2024&quot; as &quot;2006-01-02&quot;
+</code></pre>
+<p>Or dates display incorrectly.</p>
+<p><strong>Cause:</strong> Using an unsupported date format in frontmatter.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p>Use ISO 8601 format (recommended):</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">
+</span></span></span></code></pre></li>
+<li>
+<p>Supported date formats:</p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">              </span><span class="c"># YYYY-MM-DD (recommended)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15T10:30:00</span><span class="w">     </span><span class="c"># With time</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15T10:30:00Z</span><span class="w">    </span><span class="c"># With timezone</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;2024-01-15&#34;</span><span class="w">            </span><span class="c"># Quoted string</span><span class="w">
+</span></span></span></code></pre></li>
+<li>
+<p><strong>NOT supported:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="l">January 15, 2024       </span><span class="w"> </span><span class="c"># Wrong</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="m">15</span><span class="l">/01/2024             </span><span class="w"> </span><span class="c"># Wrong</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="m">01-15-2024</span><span class="w">              </span><span class="c"># Wrong (MM-DD-YYYY)</span><span class="w">
+</span></span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="encoding-issues-utf-8">Encoding Issues (UTF-8) <a href="#encoding-issues-utf-8" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<ul>
+<li>Special characters display as <code>?</code> or garbled text</li>
+<li>Build errors mentioning encoding</li>
+</ul>
+<p><strong>Cause:</strong> File is not saved as UTF-8, or has a BOM (Byte Order Mark).</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Check file encoding:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">file -i posts/my-post.md
+</span></span><span class="line"><span class="cl"><span class="c1"># Should show: text/plain; charset=utf-8</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Convert to UTF-8 (Linux/macOS):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">iconv -f ISO-8859-1 -t UTF-8 posts/my-post.md -o posts/my-post-utf8.md
+</span></span><span class="line"><span class="cl">mv posts/my-post-utf8.md posts/my-post.md
+</span></span></code></pre></li>
+<li>
+<p><strong>Remove BOM if present:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">sed -i <span class="s1">&#39;1s/^\xEF\xBB\xBF//&#39;</span> posts/my-post.md
+</span></span></code></pre></li>
+<li>
+<p><strong>Configure your editor to use UTF-8:</strong></p>
+<ul>
+<li>VS Code: Bottom status bar shows encoding, click to change</li>
+<li>Vim: <code>:set encoding=utf-8</code></li>
+<li>Ensure files are saved without BOM</li>
+</ul>
+</li>
+<li>
+<p><strong>Verify your HTML templates include charset:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">&#34;UTF-8&#34;</span><span class="p">&gt;</span>
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h2 id="build-issues">Build Issues <a href="#build-issues" class="heading-anchor">#</a></h2>
+<h3 id="empty-output-directory">Empty Output Directory <a href="#empty-output-directory" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong> After building, the output directory is empty or missing files.</p>
+<p><strong>Cause:</strong> No files matched the glob patterns, or all posts are filtered out.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Check glob patterns match your files:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;posts/**/*.md&#34;</span><span class="p">,</span> <span class="s2">&#34;pages/*.md&#34;</span><span class="p">]</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Verify files exist in the expected location:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">ls -la posts/
+</span></span></code></pre></li>
+<li>
+<p><strong>Check if files are being processed:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build -v
+</span></span></code></pre></li>
+<li>
+<p><strong>Check feed filters aren't excluding everything:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>  <span class="c"># Do any posts have published: true?</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Do a dry run to see what would be built:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build --dry-run
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="missing-templates">Missing Templates <a href="#missing-templates" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: template &quot;post.html&quot; not found
+</code></pre>
+<p>Or:</p>
+<pre><code>Error: template &quot;custom-layout.html&quot; not found
+</code></pre>
+<p><strong>Cause:</strong> Template file doesn't exist in the templates directory.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Check templates directory exists:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">ls -la templates/
+</span></span></code></pre></li>
+<li>
+<p><strong>Verify template filename matches what's specified:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># In frontmatter</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;post.html&#34;</span><span class="w">  </span><span class="c"># Must exist as templates/post.html</span><span class="w">
+</span></span></span></code></pre></li>
+<li>
+<p><strong>Create missing templates or use defaults:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Create a minimal post template</span>
+</span></span><span class="line"><span class="cl">mkdir -p templates
+</span></span><span class="line"><span class="cl">cat &gt; templates/post.html <span class="s">&lt;&lt; &#39;EOF&#39;
+</span></span></span><span class="line"><span class="cl"><span class="s">{% extends &#34;base.html&#34; %}
+</span></span></span><span class="line"><span class="cl"><span class="s">{% block content %}
+</span></span></span><span class="line"><span class="cl"><span class="s">&lt;article&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s">  &lt;h1&gt;{{ post.Title }}&lt;/h1&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s">  {{ body|safe }}
+</span></span></span><span class="line"><span class="cl"><span class="s">&lt;/article&gt;
+</span></span></span><span class="line"><span class="cl"><span class="s">{% endblock %}
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Check templates_dir configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">templates_dir</span> <span class="p">=</span> <span class="s2">&#34;templates&#34;</span>  <span class="c"># Must match your directory</span>
+</span></span></code></pre></li>
+</ol>
+<p>See the <a href="/templates-guide/" class="wikilink" data-title="Templates Guide" data-description="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax" data-date="2024-01-15">Templates Guide</a> for template setup.</p>
+<hr>
+<h3 id="template-errors">Template Errors <a href="#template-errors" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: template error in post.html: unexpected tag &quot;endif&quot;
+</code></pre>
+<p>Or:</p>
+<pre><code>Error: template error: variable &quot;post.title&quot; not found
+</code></pre>
+<p><strong>Cause:</strong> Syntax error in template or incorrect variable access.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Check template syntax:</strong></p>
+<p><strong>Wrong - mismatched tags:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% if post.Tags %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>...<span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% end %}  <span class="c">&lt;!-- Wrong --&gt;</span>
+</span></span></code></pre><p><strong>Correct:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{% if post.Tags %}
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">ul</span><span class="p">&gt;</span>...<span class="p">&lt;/</span><span class="nt">ul</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">{% endif %}
+</span></span></code></pre></li>
+<li>
+<p><strong>Check variable names are correct (case-sensitive):</strong></p>
+<p><strong>Wrong:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{{ post.title }}  <span class="c">&lt;!-- Wrong case --&gt;</span>
+</span></span></code></pre><p><strong>Correct:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{{ post.Title }}  <span class="c">&lt;!-- Correct --&gt;</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Use safe filter for HTML content:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{{ body|safe }}
+</span></span><span class="line"><span class="cl">{{ post.ArticleHTML|safe }}
+</span></span></code></pre></li>
+<li>
+<p><strong>Handle missing values:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">{{ post.Description|default_if_none:&#34;No description&#34; }}
+</span></span></code></pre></li>
+</ol>
+<p><strong>Common template variables:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>post.Title</code></td>
+<td>Post title</td>
+</tr>
+<tr>
+<td><code>post.Slug</code></td>
+<td>URL slug</td>
+</tr>
+<tr>
+<td><code>post.Href</code></td>
+<td>Relative URL path</td>
+</tr>
+<tr>
+<td><code>post.Date</code></td>
+<td>Publication date</td>
+</tr>
+<tr>
+<td><code>post.Tags</code></td>
+<td>List of tags</td>
+</tr>
+<tr>
+<td><code>post.ArticleHTML</code></td>
+<td>Rendered HTML content</td>
+</tr>
+<tr>
+<td><code>body</code></td>
+<td>Alias for ArticleHTML</td>
+</tr>
+<tr>
+<td><code>config.Title</code></td>
+<td>Site title</td>
+</tr>
+<tr>
+<td><code>config.URL</code></td>
+<td>Site URL</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h3 id="slow-builds">Slow Builds <a href="#slow-builds" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong> Build takes much longer than expected.</p>
+<p><strong>Cause:</strong> Too many files, inefficient configuration, or resource constraints.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Increase concurrency:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">concurrency</span> <span class="p">=</span> <span class="mi">8</span>  <span class="c"># Adjust based on CPU cores</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Narrow glob patterns:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Instead of:</span>
+</span></span><span class="line"><span class="cl"><span class="c"># patterns = [&#34;**/*.md&#34;]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c"># Be more specific:</span>
+</span></span><span class="line"><span class="cl"><span class="nx">patterns</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;posts/*.md&#34;</span><span class="p">,</span> <span class="s2">&#34;pages/*.md&#34;</span><span class="p">]</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Enable gitignore filtering:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">glob</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">use_gitignore</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Profile the build:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nb">time</span> markata-go build -v
+</span></span></code></pre></li>
+<li>
+<p><strong>Check for large files or images in content directories:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">find posts/ -type f -size +1M
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h2 id="feed-issues">Feed Issues <a href="#feed-issues" class="heading-anchor">#</a></h2>
+<h3 id="rssatom-not-generating">RSS/Atom Not Generating <a href="#rssatom-not-generating" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong> No <code>rss.xml</code> or <code>atom.xml</code> files in the output.</p>
+<p><strong>Cause:</strong> Feed formats are not enabled in configuration.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Enable RSS/Atom formats:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">title</span> <span class="p">=</span> <span class="s2">&#34;Blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Or set defaults for all feeds:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feed_defaults</span><span class="p">.</span><span class="nx">formats</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">html</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Verify the feed is being generated:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build -v
+</span></span><span class="line"><span class="cl">ls -la public/blog/rss.xml public/blog/atom.xml
+</span></span></code></pre></li>
+</ol>
+<p>See the <a href="/feeds-guide/" class="wikilink" data-title="Feeds Guide" data-description="Deep dive into markata-go&#39;s powerful feed system for creating filtered, sorted, paginated collections" data-date="2024-01-15">Feeds Guide</a> for detailed feed configuration.</p>
+<hr>
+<h3 id="empty-feeds">Empty Feeds <a href="#empty-feeds" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong> RSS/Atom files are generated but contain no items.</p>
+<p><strong>Cause:</strong> No posts match the feed filter, or posts lack required fields.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Check feed filter matches posts:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;blog&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;published == True&#34;</span>  <span class="c"># Do posts have published: true?</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Verify posts have required frontmatter:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;My Post&#34;</span><span class="w">        </span><span class="c"># Required for feed items</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">        </span><span class="c"># Required for feed ordering</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">published</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">         </span><span class="c"># Required to match filter</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre></li>
+<li>
+<p><strong>Check syndication settings:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feed_defaults</span><span class="p">.</span><span class="nx">syndication</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">max_items</span> <span class="p">=</span> <span class="mi">20</span>          <span class="c"># Not set to 0</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Debug by removing the filter temporarily:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feeds</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">slug</span> <span class="p">=</span> <span class="s2">&#34;debug&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">filter</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>  <span class="c"># No filter - should include all posts</span>
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="missing-site-url">Missing Site URL <a href="#missing-site-url" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<ul>
+<li>Feed URLs show as relative paths or empty</li>
+<li>Feed validators report &quot;missing link&quot; errors</li>
+<li>Social sharing doesn't work</li>
+</ul>
+<p><strong>Cause:</strong> The <code>url</code> configuration is not set.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Set the site URL in configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Or set via environment variable:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://example.com markata-go build
+</span></span></code></pre></li>
+<li>
+<p><strong>Verify the URL is set:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config get url
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="feed-validation-errors">Feed Validation Errors <a href="#feed-validation-errors" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong> Feed validators report errors like:</p>
+<ul>
+<li>&quot;Missing required element&quot;</li>
+<li>&quot;Invalid date format&quot;</li>
+<li>&quot;URL must be absolute&quot;</li>
+</ul>
+<p><strong>Cause:</strong> Missing configuration or invalid content.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Ensure site URL is set (required for valid feeds):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Ensure all posts have dates:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">date</span><span class="p">:</span><span class="w"> </span><span class="ld">2024-01-15</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre></li>
+<li>
+<p><strong>Validate generated feeds:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># RSS</span>
+</span></span><span class="line"><span class="cl">xmllint --noout public/blog/rss.xml
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Atom  </span>
+</span></span><span class="line"><span class="cl">xmllint --noout public/blog/atom.xml
+</span></span></code></pre></li>
+<li>
+<p><strong>Use online validators:</strong></p>
+<ul>
+<li><a href="https://validator.w3.org/feed/">W3C Feed Validator</a></li>
+<li><a href="https://www.feedvalidator.org/">Feed Validator</a></li>
+</ul>
+</li>
+<li>
+<p><strong>Check feed templates if using custom ones:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">.</span><span class="nx">feed_defaults</span><span class="p">.</span><span class="nx">templates</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">rss</span> <span class="p">=</span> <span class="s2">&#34;rss.xml&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">atom</span> <span class="p">=</span> <span class="s2">&#34;atom.xml&#34;</span>
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h2 id="serve-issues">Serve Issues <a href="#serve-issues" class="heading-anchor">#</a></h2>
+<h3 id="port-already-in-use">Port Already in Use <a href="#port-already-in-use" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: listen tcp :8000: bind: address already in use
+</code></pre>
+<p><strong>Cause:</strong> Another process is using port 8000.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Use a different port:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go serve -p <span class="m">3000</span>
+</span></span><span class="line"><span class="cl">markata-go serve -p <span class="m">8080</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Find what's using the port:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Linux/macOS</span>
+</span></span><span class="line"><span class="cl">lsof -i :8000
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Windows</span>
+</span></span><span class="line"><span class="cl">netstat -ano <span class="p">|</span> findstr :8000
+</span></span></code></pre></li>
+<li>
+<p><strong>Kill the process using the port:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Linux/macOS</span>
+</span></span><span class="line"><span class="cl"><span class="nb">kill</span> <span class="k">$(</span>lsof -t -i :8000<span class="k">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Or force kill</span>
+</span></span><span class="line"><span class="cl"><span class="nb">kill</span> -9 <span class="k">$(</span>lsof -t -i :8000<span class="k">)</span>
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="live-reload-not-working">Live Reload Not Working <a href="#live-reload-not-working" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong> Changes to files don't trigger a browser refresh.</p>
+<p><strong>Cause:</strong> File watcher not detecting changes, or browser cache.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Ensure file watching is enabled (default):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go serve  <span class="c1"># Watching is on by default</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># NOT this:</span>
+</span></span><span class="line"><span class="cl">markata-go serve --no-watch  <span class="c1"># This disables watching</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Check for file system notification limits (Linux):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Check current limit</span>
+</span></span><span class="line"><span class="cl">cat /proc/sys/fs/inotify/max_user_watches
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Increase if needed</span>
+</span></span><span class="line"><span class="cl"><span class="nb">echo</span> fs.inotify.max_user_watches<span class="o">=</span><span class="m">524288</span> <span class="p">|</span> sudo tee -a /etc/sysctl.conf
+</span></span><span class="line"><span class="cl">sudo sysctl -p
+</span></span></code></pre></li>
+<li>
+<p><strong>Hard refresh your browser:</strong></p>
+<ul>
+<li>Chrome/Firefox: <code>Ctrl+Shift+R</code> (Windows/Linux) or <code>Cmd+Shift+R</code> (Mac)</li>
+<li>Or open in incognito/private mode</li>
+</ul>
+</li>
+<li>
+<p><strong>Check the terminal for rebuild messages:</strong></p>
+<ul>
+<li>The server should show &quot;Rebuilding...&quot; when files change</li>
+<li>If not, the file watcher isn't detecting changes</li>
+</ul>
+</li>
+<li>
+<p><strong>Try verbose mode:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go serve -v
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="changes-not-reflecting">Changes Not Reflecting <a href="#changes-not-reflecting" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong> You made changes but the browser shows old content.</p>
+<p><strong>Cause:</strong> Browser caching, or changes to files outside watched directories.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Hard refresh the browser:</strong></p>
+<ul>
+<li><code>Ctrl+Shift+R</code> or <code>Cmd+Shift+R</code></li>
+</ul>
+</li>
+<li>
+<p><strong>Clear browser cache:</strong></p>
+<ul>
+<li>Developer Tools &gt; Application &gt; Clear Storage</li>
+</ul>
+</li>
+<li>
+<p><strong>Verify the file is in a watched directory:</strong></p>
+<ul>
+<li>Files must match glob patterns to be watched</li>
+<li>Check <code>patterns</code> in your config</li>
+</ul>
+</li>
+<li>
+<p><strong>Rebuild manually if needed:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Stop the server and rebuild</span>
+</span></span><span class="line"><span class="cl">markata-go build --clean
+</span></span><span class="line"><span class="cl">markata-go serve
+</span></span></code></pre></li>
+<li>
+<p><strong>Check file permissions:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">ls -la posts/my-post.md
+</span></span><span class="line"><span class="cl"><span class="c1"># Ensure the file is readable</span>
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h2 id="deployment-issues">Deployment Issues <a href="#deployment-issues" class="heading-anchor">#</a></h2>
+<h3 id="404-errors">404 Errors <a href="#404-errors" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong> Pages return 404 Not Found after deployment.</p>
+<p><strong>Cause:</strong> Wrong base URL, incorrect paths, or server configuration.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Check base URL matches deployment:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://yourdomain.com&#34;</span>  <span class="c"># Must match exactly</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>For GitHub Pages with repo subdirectory:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c"># If deployed to https://username.github.io/repo-name/</span>
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://username.github.io/repo-name&#34;</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Verify files exist in output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">ls -la public/
+</span></span><span class="line"><span class="cl">ls -la public/my-post/index.html
+</span></span></code></pre></li>
+<li>
+<p><strong>Check server is configured for clean URLs:</strong></p>
+<ul>
+<li>Ensure <code>/my-post/</code> serves <code>/my-post/index.html</code></li>
+<li>Most static hosts handle this automatically</li>
+</ul>
+</li>
+<li>
+<p><strong>For custom servers (nginx), ensure proper config:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="k">location</span> <span class="s">/</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kn">try_files</span> <span class="nv">$uri</span> <span class="nv">$uri/</span> <span class="p">=</span><span class="mi">404</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="broken-links">Broken Links <a href="#broken-links" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong> Links on the site lead to 404 pages.</p>
+<p><strong>Cause:</strong> Internal links are incorrect or posts have moved/been deleted.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Validate links before deploying:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Install linkinator</span>
+</span></span><span class="line"><span class="cl">npm install -g linkinator
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Check for broken links</span>
+</span></span><span class="line"><span class="cl">linkinator public --recurse
+</span></span></code></pre></li>
+<li>
+<p><strong>Check wikilinks are correct:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">[[other-post]]           # Must match a slug exactly
+</span></span><span class="line"><span class="cl">[[other-post|Link Text]] # Custom link text
+</span></span></code></pre></li>
+<li>
+<p><strong>Verify slug values:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nn">---</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nt">slug</span><span class="p">:</span><span class="w"> </span><span class="s2">&#34;my-post&#34;</span><span class="w">  </span><span class="c"># Links should reference this exact slug</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="nn">---</span><span class="w">
+</span></span></span></code></pre></li>
+<li>
+<p><strong>Add redirects for moved content:</strong></p>
+<p><strong>Netlify (_redirects or netlify.toml):</strong></p>
+<pre><code>/old-post  /new-post  301
+</code></pre>
+<p><strong>Vercel (vercel.json):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nt">&#34;redirects&#34;</span><span class="p">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="nt">&#34;source&#34;</span><span class="p">:</span> <span class="s2">&#34;/old-post&#34;</span><span class="p">,</span> <span class="nt">&#34;destination&#34;</span><span class="p">:</span> <span class="s2">&#34;/new-post&#34;</span><span class="p">,</span> <span class="nt">&#34;permanent&#34;</span><span class="p">:</span> <span class="kc">true</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="missing-assets">Missing Assets <a href="#missing-assets" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong> CSS, JavaScript, or images don't load.</p>
+<p><strong>Cause:</strong> Assets not copied to output, wrong paths, or base URL issues.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Check assets_dir is configured:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">assets_dir</span> <span class="p">=</span> <span class="s2">&#34;static&#34;</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Verify assets are in the correct directory:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">ls -la static/
+</span></span><span class="line"><span class="cl"><span class="c1"># Should contain css/, js/, images/, etc.</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Check assets were copied to output:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">ls -la public/static/
+</span></span><span class="line"><span class="cl"><span class="c1"># or</span>
+</span></span><span class="line"><span class="cl">ls -la public/css/
+</span></span></code></pre></li>
+<li>
+<p><strong>Use correct paths in templates:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- Absolute path (recommended) --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;stylesheet&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/css/style.css&#34;</span><span class="p">&gt;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c">&lt;!-- NOT relative --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;stylesheet&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;css/style.css&#34;</span><span class="p">&gt;</span>  <span class="c">&lt;!-- May break on subpages --&gt;</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>For GitHub Pages subdirectory deployment:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c">&lt;!-- If deployed to /repo-name/ --&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">&#34;stylesheet&#34;</span> <span class="na">href</span><span class="o">=</span><span class="s">&#34;/repo-name/css/style.css&#34;</span><span class="p">&gt;</span>
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h3 id="wrong-base-url">Wrong Base URL <a href="#wrong-base-url" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<ul>
+<li>Absolute URLs point to wrong domain</li>
+<li>RSS/Atom feeds have incorrect links</li>
+<li>Social sharing shows wrong URLs</li>
+</ul>
+<p><strong>Cause:</strong> The <code>url</code> config doesn't match the deployment URL.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Set the correct URL for each environment:</strong></p>
+<p><strong>Production (config file):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">url</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span></code></pre><p><strong>Staging (environment variable):</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="nv">MARKATA_GO_URL</span><span class="o">=</span>https://staging.example.com markata-go build
+</span></span></code></pre></li>
+<li>
+<p><strong>For different deployment environments, use CI/CD variables:</strong></p>
+<p><strong>GitHub Actions:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">- <span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l">Build</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l">markata-go build</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">env</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">MARKATA_GO_URL</span><span class="p">:</span><span class="w"> </span><span class="l">${{ vars.SITE_URL }}</span><span class="w">
+</span></span></span></code></pre><p><strong>Netlify:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">context</span><span class="p">.</span><span class="nx">production</span><span class="p">.</span><span class="nx">environment</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">MARKATA_GO_URL</span> <span class="p">=</span> <span class="s2">&#34;https://example.com&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">context</span><span class="p">.</span><span class="nx">deploy-preview</span><span class="p">.</span><span class="nx">environment</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">MARKATA_GO_URL</span> <span class="p">=</span> <span class="s2">&#34;&#34;</span>  <span class="c"># Use relative URLs for previews</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Verify the URL is correct:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go config get url
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h2 id="plugin-issues">Plugin Issues <a href="#plugin-issues" class="heading-anchor">#</a></h2>
+<h3 id="plugin-not-loading">Plugin Not Loading <a href="#plugin-not-loading" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<ul>
+<li>Plugin features don't work</li>
+<li>Warning about unknown plugin name</li>
+</ul>
+<p><strong>Cause:</strong> Plugin not registered, typo in name, or disabled.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Check hooks configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;default&#34;</span><span class="p">]</span>  <span class="c"># Loads all default plugins</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Check disabled_hooks doesn't include your plugin:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">disabled_hooks</span> <span class="p">=</span> <span class="p">[]</span>  <span class="c"># Make sure it&#39;s not listed here</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Verify plugin name is correct:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># List available plugins</span>
+</span></span><span class="line"><span class="cl">markata-go plugins list
+</span></span></code></pre></li>
+<li>
+<p><strong>For custom plugins, ensure they're registered properly:</strong></p>
+<ul>
+<li>See the <a href="/plugin-development/" class="wikilink" data-title="Plugin Development" data-description="Guide to creating custom plugins for markata-go using the 9-stage lifecycle" data-date="2024-01-15">Plugin Development Guide</a></li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3 id="plugin-errors">Plugin Errors <a href="#plugin-errors" class="heading-anchor">#</a></h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: plugin &quot;my_plugin&quot; failed: &lt;specific error message&gt;
+</code></pre>
+<p><strong>Cause:</strong> Plugin-specific issue, usually configuration or data related.</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>
+<p><strong>Check plugin configuration:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c"># Plugin-specific options go under the main namespace</span>
+</span></span><span class="line"><span class="cl"><span class="nx">my_plugin_option</span> <span class="p">=</span> <span class="s2">&#34;value&#34;</span>
+</span></span></code></pre></li>
+<li>
+<p><strong>Enable verbose output to see detailed errors:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build -v
+</span></span></code></pre></li>
+<li>
+<p><strong>Check posts have required fields for the plugin:</strong></p>
+<ul>
+<li>Reading time plugin needs content</li>
+<li>Feed plugins need dates for sorting</li>
+</ul>
+</li>
+<li>
+<p><strong>Review the plugin documentation for requirements</strong></p>
+</li>
+<li>
+<p><strong>Try disabling the plugin to isolate the issue:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="p">[</span><span class="nx">markata-go</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">disabled_hooks</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;my_plugin&#34;</span><span class="p">]</span>
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h2 id="getting-help">Getting Help <a href="#getting-help" class="heading-anchor">#</a></h2>
+<p>If you can't resolve your issue with this guide:</p>
+<ol>
+<li>
+<p><strong>Check existing issues:</strong></p>
+<ul>
+<li><a href="https://github.com/example/markata-go/issues">GitHub Issues</a></li>
+</ul>
+</li>
+<li>
+<p><strong>Search the documentation:</strong></p>
+<ul>
+<li><a href="/getting-started/" class="wikilink" data-title="Getting Started" data-description="Complete guide to installing markata-go, creating your first site, and building for production" data-date="2024-01-15">Getting Started</a></li>
+<li><a href="/configuration-guide/" class="wikilink" data-title="Configuration Guide" data-description="Complete reference for markata-go configuration options, file formats, and environment variables" data-date="2024-01-15">Configuration Guide</a></li>
+<li><a href="/feeds-guide/" class="wikilink" data-title="Feeds Guide" data-description="Deep dive into markata-go&#39;s powerful feed system for creating filtered, sorted, paginated collections" data-date="2024-01-15">Feeds Guide</a></li>
+<li><a href="/templates-guide/" class="wikilink" data-title="Templates Guide" data-description="Complete guide to creating and customizing templates with pongo2/Jinja2 syntax" data-date="2024-01-15">Templates Guide</a></li>
+</ul>
+</li>
+<li>
+<p><strong>Create a minimal reproduction:</strong></p>
+<ul>
+<li>Create the smallest possible project that shows the issue</li>
+<li>Include your config file and a sample post</li>
+</ul>
+</li>
+<li>
+<p><strong>Open a new issue with:</strong></p>
+<ul>
+<li>markata-go version (<code>markata-go --version</code>)</li>
+<li>Go version (<code>go version</code>)</li>
+<li>Operating system</li>
+<li>Full error message</li>
+<li>Steps to reproduce</li>
+<li>Relevant configuration</li>
+</ul>
+</li>
+<li>
+<p><strong>Use verbose mode when reporting issues:</strong></p>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl">markata-go build -v 2&gt;<span class="p">&amp;</span><span class="m">1</span> <span class="p">|</span> tee build-output.txt
+</span></span></code></pre></li>
+</ol>
+<hr>
+<h2 id="quick-reference-common-commands">Quick Reference: Common Commands <a href="#quick-reference-common-commands" class="heading-anchor">#</a></h2>
+<pre tabindex="0" class="chroma"><code><span class="line"><span class="cl"><span class="c1"># Validate configuration</span>
+</span></span><span class="line"><span class="cl">markata-go config validate
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Show resolved configuration</span>
+</span></span><span class="line"><span class="cl">markata-go config show
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Get a specific config value</span>
+</span></span><span class="line"><span class="cl">markata-go config get url
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Build with verbose output</span>
+</span></span><span class="line"><span class="cl">markata-go build -v
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Dry run (preview without writing)</span>
+</span></span><span class="line"><span class="cl">markata-go build --dry-run
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Clean build</span>
+</span></span><span class="line"><span class="cl">markata-go build --clean
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Serve on a different port</span>
+</span></span><span class="line"><span class="cl">markata-go serve -p <span class="m">3000</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Create a new post</span>
+</span></span><span class="line"><span class="cl">markata-go new <span class="s2">&#34;My Post Title&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Check version</span>
+</span></span><span class="line"><span class="cl">markata-go --version
+</span></span></code></pre>
+        </div>
+    </article>
+    
+    
+
+
+
+
+
+
+
+
+</div>
+
+    </main>
+    
+    
+    
+
+
+
+
+
+<footer class="site-footer" data-pagefind-ignore>
+    <div class="container">
+        
+        
+        
+        
+        
+        <p class="footer-copyright">&copy;  . Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+        
+    </div>
+</footer>
+
+
+
+    
+    
+    
+    
+    <script src="/js/tooltips.js" defer></script>
+    
+    <!-- Pagefind Search JS -->
+    
+    <script src="/_pagefind/pagefind-ui.js" defer></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof PagefindUI !== 'undefined') {
+                new PagefindUI({
+                    element: "#pagefind-search",
+                    showImages: true,
+                    excerptLength: 200,
+                    showSubResults: true,
+                    translations: {
+                        placeholder: "Search..."
+                    }
+                });
+            }
+        });
+    </script>
+    
+</body>
+</html>

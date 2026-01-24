@@ -35,7 +35,7 @@
 //
 // Filter migration:
 //
-//	migrated, changes := migrate.MigrateFilter("published == 'True'")
+//	migrated, changes := migrate.Filter("published == 'True'")
 //	// migrated = "published == True"
 //	// changes = ["Boolean literal: 'True' -> True"]
 package migrate
