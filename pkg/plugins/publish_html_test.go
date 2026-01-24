@@ -225,9 +225,10 @@ func TestPublishHTMLPlugin_ShadowPagesDocumentation(t *testing.T) {
 }
 
 // TestPublishHTMLPlugin_FormatRedirectsCreateDirectories tests that .md and .txt redirects
-// create directories with index.html files instead of flat files.
-// This ensures web servers serve the redirect as HTML, not as text/plain.
+// create slug.ext/index.html files, allowing /slug.ext URLs to serve the redirect.
+// This ensures web servers serve the redirect as HTML at /slug.ext (without trailing slash).
 // Fixes: https://github.com/WaylonWalker/markata-go/issues/84
+// Related: https://github.com/WaylonWalker/markata-go/issues/160
 func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 	tempDir := t.TempDir()
 	plugin := NewPublishHTMLPlugin()

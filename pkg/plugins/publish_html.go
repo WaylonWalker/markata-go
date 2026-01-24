@@ -227,13 +227,15 @@ func (p *PublishHTMLPlugin) writeTextFormat(post *models.Post, postDir string) e
 	return nil
 }
 
-// writeFormatRedirect writes a redirect from /slug.ext/ to /slug/index.ext.
-// This creates a directory named slug.ext containing index.html, allowing the
-// URL /slug.md/ or /slug.txt/ to properly serve the HTML redirect.
+// writeFormatRedirect writes a redirect from /slug.ext to /slug/index.ext.
+// This creates a file at slug.ext/index.html, which allows the URL /slug.ext
+// (without trailing slash) to serve the HTML redirect on most static hosts.
 //
-// Previously, this created flat files like /slug.md which web servers would
-// serve as text/plain based on the extension. By creating directories with
-// index.html files, the redirect is properly served as text/html.
+// For example, requesting /my-post.md will serve the redirect HTML that
+// points to /my-post/index.md where the actual markdown content lives.
+//
+// Note: Web servers serve slug.ext/index.html when /slug.ext is requested,
+// without adding a trailing slash redirect (unlike directory-only approaches).
 func (p *PublishHTMLPlugin) writeFormatRedirect(slug, ext, outputDir string) error {
 	// Create redirect HTML that points to the actual file
 	targetURL := fmt.Sprintf("/%s/index.%s", slug, ext)
@@ -257,6 +259,7 @@ func (p *PublishHTMLPlugin) writeFormatRedirect(slug, ext, outputDir string) err
 	}
 
 	// Write index.html inside the directory
+	// This allows /slug.ext to be served without trailing slash on most static hosts
 	outputPath := filepath.Join(redirectDir, "index.html")
 	//nolint:gosec // G306: Output files need 0644 for web serving
 	if err := os.WriteFile(outputPath, []byte(redirectHTML), 0o644); err != nil {
