@@ -242,6 +242,7 @@ func (m Model) loadPosts() tea.Cmd {
 		opts := services.ListOptions{
 			SortBy:    "date",
 			SortOrder: services.SortDesc,
+			Filter:    m.filter,
 		}
 		posts, err := m.app.Posts.List(context.Background(), opts)
 		if err != nil {
