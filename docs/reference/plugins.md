@@ -416,6 +416,169 @@ type TocEntry struct {
 
 ---
 
+### structured_data
+
+**Name:** `structured_data`  
+**Stage:** Transform  
+**Purpose:** Generates JSON-LD Schema.org markup, OpenGraph meta tags, and Twitter Cards for SEO and social media optimization.
+
+**Configuration (TOML):**
+```toml
+[seo]
+twitter_handle = "yourusername"           # Twitter/X handle (without @)
+default_image = "/images/default-og.jpg"  # Fallback social image
+logo_url = "/images/logo.png"             # Site logo for Schema.org
+
+[seo.structured_data]
+enabled = true  # Enable/disable (default: true)
+
+[seo.structured_data.default_author]
+type = "Person"
+name = "Author Name"
+url = "https://example.com/about"
+
+[seo.structured_data.publisher]
+type = "Organization"
+name = "Site Name"
+url = "https://example.com"
+logo = "/images/logo.png"
+```
+
+**Behavior:**
+1. Runs during Transform stage for each published post
+2. Skips posts without titles (required for structured data)
+3. Generates JSON-LD Schema.org BlogPosting markup
+4. Generates OpenGraph meta tags for social sharing
+5. Generates Twitter Card meta tags
+6. Stores all data in `post.Extra["structured_data"]`
+
+**Post fields set (in `Extra`):**
+| Field | Type | Description |
+|-------|------|-------------|
+| `structured_data` | *StructuredData | Container for all SEO metadata |
+
+**StructuredData contains:**
+- `JSONLD` - JSON-LD script content (string)
+- `OpenGraph` - Array of `{Property, Content}` pairs
+- `Twitter` - Array of `{Name, Content}` pairs
+
+**Frontmatter fields used:**
+```yaml
+---
+title: "Post Title"           # Required
+description: "Description"    # For meta description
+date: 2024-01-15             # Publication date
+author: "Author Name"         # Override default author
+image: "/images/post.jpg"     # Featured image
+social_image: "/images/og.jpg"  # Override for OG image
+twitter: "authorhandle"       # Author's Twitter (without @)
+modified: "2024-01-16"        # Last modified date
+tags: ["tag1", "tag2"]        # Become keywords
+---
+```
+
+**Example JSON-LD Output:**
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "My Blog Post",
+  "description": "A description of my post",
+  "url": "https://example.com/my-post/",
+  "datePublished": "2024-01-15T00:00:00Z",
+  "dateModified": "2024-01-16T00:00:00Z",
+  "author": {
+    "@type": "Person",
+    "name": "Author Name",
+    "url": "https://example.com/about"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Site Name",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://example.com/images/logo.png"
+    }
+  },
+  "image": "https://example.com/images/post.jpg",
+  "keywords": ["tag1", "tag2"]
+}
+```
+
+**Example OpenGraph Tags:**
+```html
+<meta property="og:title" content="My Blog Post">
+<meta property="og:description" content="A description of my post">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://example.com/my-post/">
+<meta property="og:site_name" content="Site Name">
+<meta property="og:image" content="https://example.com/images/post.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2024-01-15T00:00:00Z">
+<meta property="article:tag" content="tag1">
+<meta property="article:tag" content="tag2">
+```
+
+**Example Twitter Card Tags:**
+```html
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@yourusername">
+<meta name="twitter:creator" content="@authorhandle">
+<meta name="twitter:title" content="My Blog Post">
+<meta name="twitter:description" content="A description of my post">
+<meta name="twitter:image" content="https://example.com/images/post.jpg">
+```
+
+**Template usage:**
+```html
+{# JSON-LD in head #}
+{% if post.structured_data.jsonld %}
+<script type="application/ld+json">
+{{ post.structured_data.jsonld | safe }}
+</script>
+{% endif %}
+
+{# OpenGraph tags #}
+{% for meta in post.structured_data.opengraph %}
+<meta property="{{ meta.property }}" content="{{ meta.content }}">
+{% endfor %}
+
+{# Twitter Card tags #}
+{% for meta in post.structured_data.twitter %}
+<meta name="{{ meta.name }}" content="{{ meta.content }}">
+{% endfor %}
+```
+
+**Image priority:**
+1. `social_image` from frontmatter (OG-specific override)
+2. `image` from frontmatter
+3. `default_image` from SEO config
+
+**Author priority:**
+1. `author` field from frontmatter
+2. `default_author` from structured data config
+3. `author` from site config
+
+**Disabling structured data:**
+```toml
+[seo.structured_data]
+enabled = false
+```
+
+**Testing tools:**
+- [Google Rich Results Test](https://search.google.com/test/rich-results)
+- [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
+- [Twitter Card Validator](https://cards-dev.twitter.com/validator)
+- [Schema.org Validator](https://validator.schema.org/)
+
+**Related:**
+- [[structured-data-guide|Structured Data Guide]] - Detailed user guide
+- [[#templates|templates]] - Template integration
+
+---
+
 ## Render Stage
 
 ### admonitions
@@ -1086,6 +1249,73 @@ The plugin checks these Extra fields for images:
 
 ## Collect Stage
 
+### overwrite_check
+
+**Name:** `overwrite_check`  
+**Stage:** Collect (early priority)  
+**Purpose:** Detects when multiple posts or feeds would write to the same output path, preventing accidental content overwrites and catching slug conflicts early in the build.
+
+**Configuration:** No user-facing configuration required. The plugin runs automatically.
+
+**Behavior:**
+1. Runs early in the Collect stage (before feeds plugin)
+2. Checks all post output paths (`{output_dir}/{slug}/index.html`)
+3. Checks all feed output paths (HTML, RSS, Atom, JSON)
+4. Detects conflicts where multiple sources would write to the same file
+5. Fails the build with detailed error messages
+
+**Error Output Example:**
+```
+detected 2 output path conflict(s):
+  - markout/about/index.html: post:content/about.md, feed:about
+  - markout/blog/index.html: post:content/blog.md, post:content/blog-page.md
+```
+
+**Common Conflict Scenarios:**
+
+1. **Post and feed with same slug:**
+```yaml
+# content/about.md
+---
+slug: "about"
+---
+```
+```toml
+# markata-go.toml - conflicts!
+[[markata.feeds]]
+slug = "about"
+```
+
+2. **Two posts with same slug:**
+```yaml
+# content/post-a.md
+---
+slug: "my-page"
+---
+```
+```yaml
+# content/post-b.md
+---
+slug: "my-page"  # Conflict!
+---
+```
+
+**Resolution strategies:**
+- Rename one of the conflicting slugs
+- Use different paths for feeds vs content
+- Remove duplicate content
+
+**Files checked for conflicts:**
+| Source | Output Path |
+|--------|-------------|
+| Post | `{output_dir}/{slug}/index.html` |
+| Feed HTML | `{output_dir}/{feed_slug}/index.html` |
+| Feed RSS | `{output_dir}/{feed_slug}/rss.xml` |
+| Feed Atom | `{output_dir}/{feed_slug}/atom.xml` |
+| Feed JSON | `{output_dir}/{feed_slug}/index.json` |
+
+---
+
 ### feeds
 
 **Name:** `feeds`  
@@ -1651,6 +1881,84 @@ Variables are automatically available in your CSS:
 
 ---
 
+### chroma_css
+
+**Name:** `chroma_css`  
+**Stage:** Configure + Write  
+**Purpose:** Generates CSS for syntax highlighting from Chroma themes. Creates `css/chroma.css` with syntax highlighting styles that work with `render_markdown`'s CSS-class-based highlighting.
+
+**Configuration (TOML):**
+```toml
+# Explicit theme setting
+[markdown.highlight]
+theme = "github-dark"  # Chroma theme name
+```
+
+Or auto-derived from palette:
+```toml
+[theme]
+palette = "catppuccin-mocha"  # Automatically selects matching Chroma theme
+```
+
+**Behavior:**
+1. During Configure: Reads theme from `markdown.highlight.theme` or derives from palette
+2. Falls back to variant-appropriate default (dark palettes -> github-dark, light palettes -> github)
+3. During Write: Generates `{output_dir}/css/chroma.css` with syntax highlighting styles
+
+**Available Chroma Themes:**
+
+Light themes:
+- `github`, `gruvbox-light`, `solarized-light`, `catppuccin-latte`
+- `rose-pine-dawn`, `xcode`, `vs`, `friendly`, `tango`
+
+Dark themes:
+- `github-dark`, `gruvbox`, `solarized-dark`, `catppuccin-mocha`
+- `dracula`, `monokai`, `nord`, `onedark`, `rose-pine`
+- `tokyo-night`, `vim`
+
+**Example CSS Output:**
+```css
+/* Syntax highlighting - generated from Chroma theme: github-dark */
+
+.chroma { color: #e6edf3; background-color: #0d1117 }
+.chroma .err { color: #f85149 }
+.chroma .lntd { vertical-align: top; padding: 0; margin: 0; border: 0; }
+.chroma .lntable { border-spacing: 0; padding: 0; margin: 0; border: 0; }
+.chroma .hl { background-color: #2d333b }
+.chroma .ln { color: #6e7681; }
+.chroma .k { color: #ff7b72 }  /* Keyword */
+.chroma .kc { color: #79c0ff }  /* KeywordConstant */
+.chroma .kd { color: #ff7b72 }  /* KeywordDeclaration */
+/* ... additional token styles ... */
+```
+
+**Template usage:**
+Include the generated CSS in your base template:
+```html
+<link rel="stylesheet" href="/css/chroma.css">
+```
+
+**Palette to Chroma Theme Mapping:**
+
+| Palette | Chroma Theme |
+|---------|--------------|
+| `catppuccin-mocha` | `catppuccin-mocha` |
+| `catppuccin-latte` | `catppuccin-latte` |
+| `dracula` | `dracula` |
+| `nord` | `nord` |
+| `gruvbox-dark` | `gruvbox` |
+| `gruvbox-light` | `gruvbox-light` |
+| `solarized-dark` | `solarized-dark` |
+| `solarized-light` | `solarized-light` |
+| `rose-pine` | `rose-pine` |
+| `tokyo-night` | `tokyo-night` |
+
+**Related plugins:**
+- [[#render_markdown|render_markdown]] - Uses CSS classes for syntax highlighting
+- [[#palette_css|palette_css]] - Generates theme color variables
+
+---
+
 ### redirects
 
 **Name:** `redirects`  
@@ -1846,11 +2154,13 @@ When using `DefaultPlugins()`, plugins execute in this order:
     NewLoadPlugin(),
 
     // Transform stage (in order)
-    NewDescriptionPlugin(),  // Auto-generate descriptions early
-    NewReadingTimePlugin(),  // Calculate reading time
-    NewWikilinksPlugin(),    // Process wikilinks
-    NewTocPlugin(),          // Extract TOC
-    NewJinjaMdPlugin(),      // Process Jinja templates
+    NewAutoTitlePlugin(),      // Auto-generate titles from filenames
+    NewDescriptionPlugin(),    // Auto-generate descriptions early
+    NewReadingTimePlugin(),    // Calculate reading time
+    NewStructuredDataPlugin(), // Generate SEO metadata
+    NewWikilinksPlugin(),      // Process wikilinks
+    NewTocPlugin(),            // Extract TOC
+    NewJinjaMdPlugin(),        // Process Jinja templates
 
     // Render stage
     NewRenderMarkdownPlugin(),
@@ -1859,16 +2169,18 @@ When using `DefaultPlugins()`, plugins execute in this order:
     NewTemplatesPlugin(),
 
     // Collect stage
+    NewOverwriteCheckPlugin(), // Check for output path conflicts (early)
     NewFeedsPlugin(),
     NewAutoFeedsPlugin(),
-    NewPrevNextPlugin(),      // Calculate prev/next navigation
+    NewPrevNextPlugin(),       // Calculate prev/next navigation
 
     // Write stage
-    NewStaticAssetsPlugin(), // Copy static assets first
+    NewStaticAssetsPlugin(),   // Copy static assets first
+    NewChromaCSSPlugin(),      // Generate syntax highlighting CSS
     NewPublishFeedsPlugin(),
     NewPublishHTMLPlugin(),
     NewSitemapPlugin(),
-    NewRedirectsPlugin(),    // Generate redirect pages
+    NewRedirectsPlugin(),      // Generate redirect pages
 }
 ```
 
