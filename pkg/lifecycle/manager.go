@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -149,7 +150,16 @@ type Manager struct {
 }
 
 // NewManager creates a new lifecycle Manager with default settings.
+// Concurrency is auto-detected from CPU cores, capped at 16.
 func NewManager() *Manager {
+	concurrency := runtime.NumCPU()
+	if concurrency > 16 {
+		concurrency = 16 // Cap to avoid excessive goroutine overhead
+	}
+	if concurrency < 1 {
+		concurrency = 1
+	}
+
 	return &Manager{
 		plugins:     make([]Plugin, 0),
 		config:      NewConfig(),
@@ -159,7 +169,7 @@ func NewManager() *Manager {
 		stagesRun:   make(map[Stage]bool),
 		cache:       newMemoryCache(),
 		warnings:    make([]*HookError, 0),
-		concurrency: 4, // Default concurrency
+		concurrency: concurrency,
 	}
 }
 
