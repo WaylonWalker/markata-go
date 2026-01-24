@@ -448,3 +448,23 @@ func (e *Engine) SetDir(dir string) error {
 
 	return nil
 }
+
+// RenderToString renders a template by name with a raw map context.
+// This is useful for rendering templates from plugins that don't use the full Context type.
+// The ctx map is converted to a pongo2.Context for template execution.
+func (e *Engine) RenderToString(templateName string, ctx map[string]interface{}) (string, error) {
+	tpl, err := e.LoadTemplate(templateName)
+	if err != nil {
+		return "", fmt.Errorf("failed to load template %q: %w", templateName, err)
+	}
+
+	// Convert map to pongo2.Context
+	pctx := pongo2.Context(ctx)
+
+	result, err := tpl.Execute(pctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute template %q: %w", templateName, err)
+	}
+
+	return result, nil
+}
