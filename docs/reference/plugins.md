@@ -51,7 +51,7 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 [markata]
 glob_patterns = ["**/*.md"]  # Patterns to match
 
-[markata.glob]
+[markata-go.glob]
 use_gitignore = true  # Respect .gitignore patterns
 ```
 
@@ -70,7 +70,7 @@ glob_patterns = [
     "docs/**/*.md"
 ]
 
-[markata.glob]
+[markata-go.glob]
 use_gitignore = true
 ```
 
@@ -274,7 +274,7 @@ words_per_minute = 200  # Average reading speed (default: 200)
 
 **Configuration (TOML):**
 ```toml
-[markata.stats]
+[markata-go.stats]
 words_per_minute = 200      # Average reading speed (default: 200)
 include_code_in_count = false  # Include code blocks in word count (default: false)
 track_code_blocks = true    # Count lines of code in code blocks (default: true)
@@ -351,7 +351,7 @@ Same fields as feed statistics, aggregated across all posts.
 
 **Configuration (TOML):**
 ```toml
-[markata.breadcrumbs]
+[markata-go.breadcrumbs]
 enabled = true           # Enable/disable breadcrumbs globally
 show_home = true         # Include "Home" as first breadcrumb
 home_label = "Home"      # Label for home breadcrumb
@@ -360,7 +360,7 @@ max_depth = 0            # Maximum depth (0 = unlimited)
 structured_data = true   # Generate JSON-LD for SEO
 
 # Alternative: under components section
-[markata.components.breadcrumbs]
+[markata-go.components.breadcrumbs]
 enabled = true
 show_home = true
 ```
@@ -913,7 +913,7 @@ templates_dir = "templates"  # Templates directory (default: "templates")
 theme = "default"            # Theme name (default: "default")
 
 # Or with theme options:
-[markata.theme]
+[markata-go.theme]
 name = "default"
 ```
 
@@ -964,7 +964,7 @@ name = "default"
 
 **Configuration (TOML):**
 ```toml
-[markata.heading_anchors]
+[markata-go.heading_anchors]
 enabled = true        # Enable/disable the plugin (default: true)
 min_level = 2         # Minimum heading level to process (default: 2, h2)
 max_level = 4         # Maximum heading level to process (default: 4, h4)
@@ -1017,7 +1017,7 @@ h4:hover .heading-anchor {
 
 **Configuration (TOML):**
 ```toml
-[markata.md_video]
+[markata-go.md_video]
 enabled = true                    # Enable the plugin (default: true)
 video_extensions = [".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v"]  # Extensions to treat as video
 video_class = "md-video"          # CSS class for video elements (default)
@@ -1035,7 +1035,7 @@ The default configuration mimics animated GIF behavior because most embedded vid
 
 To use traditional video behavior (click to play with sound):
 ```toml
-[markata.md_video]
+[markata-go.md_video]
 autoplay = false
 loop = false
 muted = false
@@ -1096,7 +1096,7 @@ controls = true
 
 **Configuration (TOML):**
 ```toml
-[markata.youtube]
+[markata-go.youtube]
 enabled = true              # Enable the plugin (default: true)
 privacy_enhanced = true     # Use youtube-nocookie.com (default: true)
 container_class = "youtube-embed"  # CSS class for container (default)
@@ -1141,7 +1141,7 @@ More content below...
 By default, the plugin uses `youtube-nocookie.com` which prevents YouTube from storing cookies on visitors' browsers until they play the video. Disable this for standard embeds:
 
 ```toml
-[markata.youtube]
+[markata-go.youtube]
 privacy_enhanced = false
 ```
 
@@ -1190,7 +1190,7 @@ privacy_enhanced = false
 
 **Configuration (TOML):**
 ```toml
-[markata.link_collector]
+[markata-go.link_collector]
 include_feeds = false  # Include feed pages in inlinks (default: false)
 include_index = false  # Include index page in inlinks (default: false)
 ```
@@ -1269,7 +1269,7 @@ type Link struct {
 
 **Configuration (TOML):**
 ```toml
-[markata.chartjs]
+[markata-go.chartjs]
 enabled = true
 cdn_url = "https://cdn.jsdelivr.net/npm/chart.js"
 container_class = "chartjs-container"
@@ -1503,7 +1503,7 @@ A doughnut chart is useful for showing a primary metric with breakdown:
 
 **Configuration (TOML):**
 ```toml
-[markata.one_line_link]
+[markata-go.one_line_link]
 enabled = true
 card_class = "link-card"
 fallback_title = "Link"
@@ -1573,7 +1573,7 @@ exclude_patterns = ["^https://twitter\\.com", "^https://x\\.com"]
 
 **Configuration (TOML):**
 ```toml
-[markata.wikilink_hover]
+[markata-go.wikilink_hover]
 enabled = true
 preview_length = 200
 include_image = true
@@ -1748,7 +1748,7 @@ Style your wikilinks to indicate they have preview functionality:
 Configure a screenshot service for richer previews:
 
 ```toml
-[markata.wikilink_hover]
+[markata-go.wikilink_hover]
 enabled = true
 preview_length = 200
 include_image = true
@@ -1802,7 +1802,7 @@ slug: "about"
 ```
 ```toml
 # markata-go.toml - conflicts!
-[[markata.feeds]]
+[[markata-go.feeds]]
 slug = "about"
 ```
 
@@ -1844,7 +1844,7 @@ slug: "my-page"  # Conflict!
 
 **Configuration (TOML):**
 ```toml
-[[markata.feeds]]
+[[markata-go.feeds]]
 slug = "blog"
 title = "Blog Posts"
 description = "All blog posts"
@@ -1853,13 +1853,13 @@ sort = "date"
 reverse = true
 items_per_page = 10
 
-[markata.feeds.formats]
+[markata-go.feeds.formats]
 html = true
 rss = true
 atom = false
 json = false
 
-[[markata.feeds]]
+[[markata-go.feeds]]
 slug = "tutorials"
 title = "Tutorials"
 filter = "tags contains 'tutorial'"
@@ -1908,29 +1908,29 @@ See [[feeds-guide|Feeds Guide]] for complete filter syntax.
 
 **Configuration (TOML):**
 ```toml
-[markata.auto_feeds.tags]
+[markata-go.auto_feeds.tags]
 enabled = true
 slug_prefix = "tags"  # Results in /tags/python/, /tags/go/, etc.
 
-[markata.auto_feeds.tags.formats]
+[markata-go.auto_feeds.tags.formats]
 html = true
 rss = true
 
-[markata.auto_feeds.categories]
+[markata-go.auto_feeds.categories]
 enabled = true
 slug_prefix = "categories"
 
-[markata.auto_feeds.categories.formats]
+[markata-go.auto_feeds.categories.formats]
 html = true
 rss = true
 
-[markata.auto_feeds.archives]
+[markata-go.auto_feeds.archives]
 enabled = true
 slug_prefix = "archive"
 yearly_feeds = true   # /archive/2024/
 monthly_feeds = false # /archive/2024/01/
 
-[markata.auto_feeds.archives.formats]
+[markata-go.auto_feeds.archives.formats]
 html = true
 rss = false
 ```
@@ -1958,7 +1958,7 @@ For archives:
 
 **Configuration (TOML):**
 ```toml
-[markata.prevnext]
+[markata-go.prevnext]
 enabled = true           # Enable/disable the plugin (default: true)
 strategy = "first_feed"  # Strategy for determining navigation context
 default_feed = "blog"    # Default feed slug (for "explicit_feed" strategy)
@@ -2037,7 +2037,7 @@ series: "go-tutorial"
 ```
 
 ```toml
-[markata.prevnext]
+[markata-go.prevnext]
 strategy = "series"
 ```
 
@@ -2301,7 +2301,7 @@ mysite/
 
 **Configuration (TOML):**
 ```toml
-[markata.theme]
+[markata-go.theme]
 palette = "nord"  # Palette name (built-in or custom)
 ```
 
@@ -2487,7 +2487,7 @@ Include the generated CSS in your base template:
 
 **Configuration (TOML):**
 ```toml
-[markata.redirects]
+[markata-go.redirects]
 redirects_file = "static/_redirects"  # Path to redirects file (default)
 redirect_template = ""                 # Custom template path (optional)
 ```
@@ -2551,7 +2551,7 @@ Create a custom template with these available variables:
 ```
 
 ```toml
-[markata.redirects]
+[markata-go.redirects]
 redirect_template = "templates/redirect.html"
 ```
 
@@ -2572,7 +2572,7 @@ redirect_template = "templates/redirect.html"
 
 **Configuration (TOML):**
 ```toml
-[markata.qrcode]
+[markata-go.qrcode]
 enabled = true
 format = "svg"              # "svg" or "png"
 size = 200                  # Size in pixels
@@ -2654,7 +2654,7 @@ output/
 
 **Custom colors example:**
 ```toml
-[markata.qrcode]
+[markata-go.qrcode]
 foreground = "#2e3440"  # Nord dark
 background = "#eceff4"  # Nord light
 ```
@@ -2718,7 +2718,7 @@ The following plugins are not enabled by default and must be explicitly configur
 
 **Configuration (TOML):**
 ```toml
-[markata.mermaid]
+[markata-go.mermaid]
 enabled = true                                              # Enable the plugin (default: false)
 cdn_url = "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs"  # Mermaid CDN URL
 theme = "default"                                           # Mermaid theme (default, dark, forest, neutral)
@@ -3013,7 +3013,7 @@ gitGraph
 
 **Configuration (TOML):**
 ```toml
-[markata.glossary]
+[markata-go.glossary]
 enabled = true              # Enable the plugin (default: true when configured)
 link_class = "glossary-term"  # CSS class for glossary links (default)
 case_sensitive = false      # Case-sensitive term matching (default: false)
@@ -3101,7 +3101,7 @@ plugins := append(plugins.DefaultPlugins(), plugins.NewGlossaryPlugin())
 
 **Configuration (TOML):**
 ```toml
-[markata.csv_fence]
+[markata-go.csv_fence]
 enabled = true          # Enable the plugin (default: true when configured)
 table_class = "csv-table"  # CSS class for generated tables (default)
 has_header = true       # Treat first row as header (default: true)

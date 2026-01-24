@@ -14,9 +14,9 @@ This system works alongside the [THEMES.md](./THEMES.md) theming system:
 │     └─ themes/default/static/css/main.css                           │
 │                                                                      │
 │  2. Theme CSS Variables (from theme.toml options)                   │
-│     └─ [name.theme.variables] overrides                             │
+│     └─ [markata-go.theme.variables] overrides                             │
 │                                                                      │
-│  3. Global head/style config ([name.head], [name.style])            │
+│  3. Global head/style config ([markata-go.head], [markata-go.style])            │
 │     └─ Site-wide meta tags, scripts, color overrides                │
 │                                                                      │
 │  4. Per-post config_overrides (frontmatter)                         │
@@ -27,9 +27,9 @@ This system works alongside the [THEMES.md](./THEMES.md) theming system:
 ```
 
 **When to use each:**
-- **Theme** (`[name.theme]`): Visual identity, fonts, layout, component styles
-- **Theme Variables** (`[name.theme.variables]`): Quick color/spacing tweaks
-- **Head/Style** (`[name.head]`, `[name.style]`): Meta tags, scripts, analytics, color overrides
+- **Theme** (`[markata-go.theme]`): Visual identity, fonts, layout, component styles
+- **Theme Variables** (`[markata-go.theme.variables]`): Quick color/spacing tweaks
+- **Head/Style** (`[markata-go.head]`, `[markata-go.style]`): Meta tags, scripts, analytics, color overrides
 - **Post Overrides** (`config_overrides`): Per-post customizations
 
 ## Overview
@@ -43,7 +43,7 @@ This system works alongside the [THEMES.md](./THEMES.md) theming system:
 │  1. Post frontmatter config_overrides                               │
 │     └─ Highest priority, applies to single post                     │
 │                                                                      │
-│  2. Global config [name.head] and [name.style]                      │
+│  2. Global config [markata-go.head] and [markata-go.style]                      │
 │     └─ Applies to all posts                                          │
 │                                                                      │
 │  3. Theme defaults                                                   │
@@ -65,20 +65,20 @@ This system works alongside the [THEMES.md](./THEMES.md) theming system:
 Add meta tags to every page:
 
 ```toml
-[[name.head.meta]]
+[[markata-go.head.meta]]
 name = "author"
 content = "Jane Doe"
 
-[[name.head.meta]]
+[[markata-go.head.meta]]
 name = "robots"
 content = "index, follow"
 
 # Open Graph tags use 'property' instead of 'name'
-[[name.head.meta]]
+[[markata-go.head.meta]]
 property = "og:type"
 content = "article"
 
-[[name.head.meta]]
+[[markata-go.head.meta]]
 property = "og:site_name"
 content = "My Blog"
 ```
@@ -96,15 +96,15 @@ content = "My Blog"
 Add link elements (stylesheets, canonical URLs, favicons):
 
 ```toml
-[[name.head.link]]
+[[markata-go.head.link]]
 rel = "stylesheet"
 href = "/css/custom.css"
 
-[[name.head.link]]
+[[markata-go.head.link]]
 rel = "icon"
 href = "/favicon.ico"
 
-[[name.head.link]]
+[[markata-go.head.link]]
 rel = "preconnect"
 href = "https://fonts.googleapis.com"
 ```
@@ -121,10 +121,10 @@ href = "https://fonts.googleapis.com"
 Add scripts to the head:
 
 ```toml
-[[name.head.script]]
+[[markata-go.head.script]]
 src = "https://cdn.tailwindcss.com"
 
-[[name.head.script]]
+[[markata-go.head.script]]
 src = "/js/analytics.js"
 ```
 
@@ -139,7 +139,7 @@ src = "/js/analytics.js"
 For complex head content, use raw text:
 
 ```toml
-[name.head]
+[markata-go.head]
 text = '''
 <style>
   :root {
@@ -155,14 +155,14 @@ text = '''
 Or as a list of text blocks:
 
 ```toml
-[[name.head.text]]
+[[markata-go.head.text]]
 value = '''
 <style>
   .custom-class { color: red; }
 </style>
 '''
 
-[[name.head.text]]
+[[markata-go.head.text]]
 value = '''
 <script type="application/ld+json">
   {"@context": "https://schema.org", "@type": "WebSite"}
@@ -177,7 +177,7 @@ value = '''
 ### Color Scheme
 
 ```toml
-[name.style]
+[markata-go.style]
 # Dark mode colors (default)
 color_bg = "#1f2022"
 color_bg_code = "#1f2022"
@@ -472,19 +472,19 @@ Access style configuration in templates:
 Use Jinja expressions in head configuration:
 
 ```toml
-[[name.head.link]]
+[[markata-go.head.link]]
 rel = "canonical"
 href = "{{ config.url }}/{{ post.slug }}/"
 
-[[name.head.meta]]
+[[markata-go.head.meta]]
 property = "og:url"
 content = "{{ config.url }}/{{ post.slug }}/"
 
-[[name.head.meta]]
+[[markata-go.head.meta]]
 property = "og:title"
 content = "{{ post.title }}"
 
-[[name.head.meta]]
+[[markata-go.head.meta]]
 property = "og:description"
 content = "{{ post.description }}"
 ```
@@ -666,10 +666,10 @@ def get_merged_config(core, post):
 ### Analytics Integration
 
 ```toml
-[[name.head.script]]
+[[markata-go.head.script]]
 src = "https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"
 
-[name.head]
+[markata-go.head]
 text = '''
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -683,16 +683,16 @@ text = '''
 ### Font Loading
 
 ```toml
-[[name.head.link]]
+[[markata-go.head.link]]
 rel = "preconnect"
 href = "https://fonts.googleapis.com"
 
-[[name.head.link]]
+[[markata-go.head.link]]
 rel = "preconnect"
 href = "https://fonts.gstatic.com"
 crossorigin = true
 
-[[name.head.link]]
+[[markata-go.head.link]]
 rel = "stylesheet"
 href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
 ```
@@ -700,19 +700,19 @@ href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=
 ### Social Media Cards
 
 ```toml
-[[name.head.meta]]
+[[markata-go.head.meta]]
 property = "og:type"
 content = "website"
 
-[[name.head.meta]]
+[[markata-go.head.meta]]
 property = "og:image"
 content = "{{ config.url }}/og-image.png"
 
-[[name.head.meta]]
+[[markata-go.head.meta]]
 name = "twitter:card"
 content = "summary_large_image"
 
-[[name.head.meta]]
+[[markata-go.head.meta]]
 name = "twitter:site"
 content = "@myhandle"
 ```
@@ -720,7 +720,7 @@ content = "@myhandle"
 ### Structured Data
 
 ```toml
-[name.head]
+[markata-go.head]
 text = '''
 <script type="application/ld+json">
 {

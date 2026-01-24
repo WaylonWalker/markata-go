@@ -248,19 +248,19 @@ Configuration is namespaced under the tool name and supports multiple file forma
 ### Example Configuration
 
 ```toml
-[name]
+[markata-go]
 output_dir = "public"
 url = "https://example.com"
 title = "My Site"
 hooks = ["default"]
 
-[name.glob]
+[markata-go.glob]
 patterns = ["posts/**/*.md", "pages/*.md"]
 
-[name.markdown]
+[markata-go.markdown]
 extensions = ["tables", "admonitions"]
 
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "blog"
 title = "Blog"
 filter = "published == True"
@@ -334,7 +334,7 @@ template:{path}:mtime → template modification time
 
 ### Location
 
-`.[name].cache/` in project root
+`.[markata-go].cache/` in project root
 
 ---
 
@@ -383,7 +383,7 @@ For cache busting, assets can be fingerprinted with content hashes:
 
 **Configuration:**
 ```toml
-[name.assets]
+[markata-go.assets]
 dir = "static"
 fingerprint = true                    # Enable fingerprinting
 fingerprint_algorithm = "sha256"      # or "md5"
@@ -578,7 +578,7 @@ Flags:
 ### Configuration
 
 ```toml
-[name.serve]
+[markata-go.serve]
 port = 3000
 host = "localhost"
 livereload = true
@@ -586,7 +586,7 @@ open_browser = false
 debounce_ms = 100  # wait before rebuilding after file change
 
 # Watch patterns (defaults shown)
-[name.serve.watch]
+[markata-go.serve.watch]
 content = ["**/*.md"]                    # Post files
 config = ["[name].toml", "pyproject.toml", "*.yaml", "*.json"]
 templates = ["templates/**/*.html", "templates/**/*.jinja2"]

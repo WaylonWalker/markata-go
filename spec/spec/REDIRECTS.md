@@ -35,14 +35,14 @@ Static redirects enable URL migrations and content reorganization without losing
 ### Basic Configuration
 
 ```toml
-[name.redirects]
+[markata-go.redirects]
 redirects_file = "static/_redirects"
 ```
 
 ### Full Configuration
 
 ```toml
-[name.redirects]
+[markata-go.redirects]
 # Path to redirects file (relative to project root)
 redirects_file = "static/_redirects"
 
