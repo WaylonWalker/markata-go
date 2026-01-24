@@ -663,7 +663,7 @@ func (f *DateTimeFixer) FixDateInContent(content string) (string, []DateFixChang
 
 	fixed := dateKeyRegex.ReplaceAllStringFunc(content, func(match string) string {
 		parts := dateKeyRegex.FindStringSubmatch(match)
-		if parts == nil || len(parts) < 3 {
+		if len(parts) < 3 {
 			return match
 		}
 

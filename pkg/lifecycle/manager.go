@@ -3,29 +3,17 @@ package lifecycle
 import (
 	"fmt"
 	"reflect"
-	"regexp"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/WaylonWalker/markata-go/pkg/filter"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
-// Pre-compiled regex patterns for filter expression evaluation.
-// These are compiled once at package init instead of per-call.
-var (
-	// containsOpRegex matches "field contains value" expressions
-	containsOpRegex = regexp.MustCompile(`^(\w+)\s+contains\s+(.+)$`)
-
-	// notEqualsOpRegex matches "field != value" expressions
-	notEqualsOpRegex = regexp.MustCompile(`^(\w+)\s*!=\s*(.+)$`)
-
-	// equalsOpRegex matches "field == value" expressions
-	equalsOpRegex = regexp.MustCompile(`^(\w+)\s*==\s*(.+)$`)
-)
-
 // Cache is an interface for caching data between stages.
+// Implementations must be thread-safe for concurrent access.
 type Cache interface {
 	Get(key string) (interface{}, bool)
 	Set(key string, value interface{})
@@ -427,40 +415,43 @@ func (m *Manager) Reset() {
 }
 
 // Filter returns posts matching the given expression.
-// The expression supports simple field comparisons:
-//   - "published==true" - field equals value
-//   - "draft!=true" - field not equals value
-//   - "tags contains golang" - slice contains value
-//   - Multiple conditions can be combined with " and " or " or "
+// The expression supports the AST-based filter syntax:
+//   - "published == True" - field equals value
+//   - "draft != True" - field not equals value
+//   - "'go' in tags" - value in slice (or "tags contains go" for legacy syntax)
+//   - "date <= today" - date comparisons with special values
+//   - Multiple conditions can be combined with "and" or "or"
+//   - Supports "not" for negation
 func (m *Manager) Filter(expr string) ([]*models.Post, error) {
 	if expr == "" {
 		return m.Posts(), nil
 	}
 
-	posts := m.Posts()
-	result := make([]*models.Post, 0)
-
-	for _, post := range posts {
-		match, err := evaluateFilter(post, expr)
-		if err != nil {
-			return nil, err
-		}
-		if match {
-			result = append(result, post)
-		}
+	// Parse once (AST-based)
+	f, err := filter.Parse(expr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid filter expression: %w", err)
 	}
 
-	return result, nil
+	// Use MatchAllWithErrors to get both results and any evaluation errors
+	posts := m.Posts()
+	results, errs := f.MatchAllWithErrors(posts)
+	if len(errs) > 0 {
+		// Return first error encountered
+		return nil, errs[0]
+	}
+
+	return results, nil
 }
 
 // Map extracts field values from posts, with optional filtering and sorting.
 // Parameters:
 //   - field: the field to extract (supports dot notation for nested fields)
-//   - filter: optional filter expression (same syntax as Filter)
+//   - filterExpr: optional filter expression (same syntax as Filter)
 //   - sortField: field to sort by (empty for no sorting)
 //   - reverse: if true, sort in descending order
-func (m *Manager) Map(field, filter, sortField string, reverse bool) ([]interface{}, error) {
-	posts, err := m.Filter(filter)
+func (m *Manager) Map(field, filterExpr, sortField string, reverse bool) ([]interface{}, error) {
+	posts, err := m.Filter(filterExpr)
 	if err != nil {
 		return nil, err
 	}
@@ -485,70 +476,6 @@ func (m *Manager) Map(field, filter, sortField string, reverse bool) ([]interfac
 	}
 
 	return result, nil
-}
-
-// evaluateFilter evaluates a filter expression against a post.
-func evaluateFilter(post *models.Post, expr string) (bool, error) {
-	// Handle OR conditions
-	if strings.Contains(expr, " or ") {
-		parts := strings.Split(expr, " or ")
-		for _, part := range parts {
-			match, err := evaluateFilter(post, strings.TrimSpace(part))
-			if err != nil {
-				return false, err
-			}
-			if match {
-				return true, nil
-			}
-		}
-		return false, nil
-	}
-
-	// Handle AND conditions
-	if strings.Contains(expr, " and ") {
-		parts := strings.Split(expr, " and ")
-		for _, part := range parts {
-			match, err := evaluateFilter(post, strings.TrimSpace(part))
-			if err != nil {
-				return false, err
-			}
-			if !match {
-				return false, nil
-			}
-		}
-		return true, nil
-	}
-
-	// Parse single condition
-	return evaluateCondition(post, expr)
-}
-
-// evaluateCondition evaluates a single condition against a post.
-func evaluateCondition(post *models.Post, expr string) (bool, error) {
-	expr = strings.TrimSpace(expr)
-
-	// Contains operator
-	if match := containsOpRegex.FindStringSubmatch(expr); match != nil {
-		field := match[1]
-		value := strings.TrimSpace(match[2])
-		return containsValue(post, field, value), nil
-	}
-
-	// Not equals operator
-	if match := notEqualsOpRegex.FindStringSubmatch(expr); match != nil {
-		field := match[1]
-		value := strings.TrimSpace(match[2])
-		return !equalsValue(post, field, value), nil
-	}
-
-	// Equals operator
-	if match := equalsOpRegex.FindStringSubmatch(expr); match != nil {
-		field := match[1]
-		value := strings.TrimSpace(match[2])
-		return equalsValue(post, field, value), nil
-	}
-
-	return false, fmt.Errorf("invalid filter expression: %s", expr)
 }
 
 // getPostField retrieves a field value from a post using reflection.
@@ -580,40 +507,6 @@ func getPostField(post *models.Post, field string) interface{} {
 	}
 
 	return nil
-}
-
-// equalsValue checks if a post field equals a given value.
-func equalsValue(post *models.Post, field, value string) bool {
-	fv := getPostField(post, field)
-	if fv == nil {
-		return value == "nil" || value == "null" || value == ""
-	}
-
-	// Convert field value to string for comparison
-	str := fmt.Sprintf("%v", fv)
-	return str == value
-}
-
-// containsValue checks if a post field (slice) contains a given value.
-func containsValue(post *models.Post, field, value string) bool {
-	fv := getPostField(post, field)
-	if fv == nil {
-		return false
-	}
-
-	rv := reflect.ValueOf(fv)
-	if rv.Kind() != reflect.Slice {
-		return false
-	}
-
-	for i := 0; i < rv.Len(); i++ {
-		item := rv.Index(i).Interface()
-		if fmt.Sprintf("%v", item) == value {
-			return true
-		}
-	}
-
-	return false
 }
 
 // compareValues compares two values for sorting.
