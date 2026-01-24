@@ -1,6 +1,6 @@
 ---
 title: "Built-in Plugins"
-description: "Reference documentation for all 29 built-in markata-go plugins organized by lifecycle stage"
+description: "Reference documentation for all 30 built-in markata-go plugins organized by lifecycle stage"
 date: 2024-01-15
 published: true
 slug: /docs/reference/plugins/
@@ -30,7 +30,7 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 | Configure | Initialize plugin settings | templates |
 | Glob | Discover content files | glob |
 | Load | Parse files into posts | load, frontmatter |
-| Transform | Pre-render modifications | description, reading_time, jinja_md, wikilinks, toc |
+| Transform | Pre-render modifications | description, reading_time, stats, jinja_md, wikilinks, toc |
 | Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube |
 | Collect | Build collections/feeds | feeds, auto_feeds, prevnext |
 | Write | Output files to disk | publish_html, publish_feeds, sitemap, rss, atom, jsonfeed, static_assets, redirects |
@@ -263,6 +263,83 @@ words_per_minute = 200  # Average reading speed (default: 200)
 <span class="reading-time">{{ post.Extra.reading_time_text }}</span>
 <span class="word-count">{{ post.Extra.word_count }} words</span>
 ```
+
+---
+
+### stats
+
+**Name:** `stats`  
+**Stage:** Transform, Collect  
+**Purpose:** Calculates comprehensive content statistics for posts and aggregates them at feed and site levels.
+
+**Configuration (TOML):**
+```toml
+[markata.stats]
+words_per_minute = 200      # Average reading speed (default: 200)
+include_code_in_count = false  # Include code blocks in word count (default: false)
+track_code_blocks = true    # Count lines of code in code blocks (default: true)
+```
+
+**Behavior:**
+1. **Transform stage:** Calculates per-post statistics
+   - Word count (excluding code blocks by default)
+   - Character count (letters and digits only)
+   - Reading time estimate
+   - Code block count and lines of code
+2. **Collect stage:** Aggregates statistics
+   - Per-feed totals and averages
+   - Site-wide totals and averages
+
+**Post fields added (in `Extra`):**
+| Field | Type | Description |
+|-------|------|-------------|
+| `word_count` | int | Number of words |
+| `char_count` | int | Number of characters (no whitespace) |
+| `reading_time` | int | Minutes to read |
+| `reading_time_text` | string | Formatted (e.g., "5 min read") |
+| `code_lines` | int | Lines of code in code blocks |
+| `code_blocks` | int | Number of code blocks |
+| `stats` | PostStats | All stats as structured object |
+
+**Feed statistics (via cache):**
+| Field | Type | Description |
+|-------|------|-------------|
+| `post_count` | int | Number of posts in feed |
+| `total_words` | int | Sum of word counts |
+| `total_reading_time` | int | Sum of reading times |
+| `total_reading_time_text` | string | Formatted (e.g., "2 hours 30 min") |
+| `average_words` | int | Average word count |
+| `average_reading_time` | int | Average reading time |
+| `total_code_lines` | int | Total lines of code |
+| `total_code_blocks` | int | Total code blocks |
+
+**Site statistics (in `config.Extra.site_stats`):**
+Same fields as feed statistics, aggregated across all posts.
+
+**Template usage:**
+```html
+{# Post-level stats #}
+<div class="post-meta">
+    <span>{{ post.Extra.reading_time_text }}</span>
+    <span>{{ post.Extra.word_count }} words</span>
+    {% if post.Extra.code_blocks > 0 %}
+    <span>{{ post.Extra.code_lines }} lines of code</span>
+    {% endif %}
+</div>
+
+{# Site-level stats #}
+<div class="site-stats">
+    <p>{{ config.Extra.site_stats.total_posts }} posts</p>
+    <p>{{ config.Extra.site_stats.total_reading_time_text }} total reading time</p>
+</div>
+```
+
+**Use cases:**
+- Display "X min read" on post cards
+- Show word count for documentation pages
+- Aggregate stats for feed index pages ("25 tutorials, ~8 hours")
+- Track content creation metrics
+- Display code-heavy post indicators
 
 ---
 

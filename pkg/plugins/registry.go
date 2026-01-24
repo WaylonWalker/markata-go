@@ -65,6 +65,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["overwrite_check"] = func() lifecycle.Plugin { return NewOverwriteCheckPlugin() }
 	pluginRegistry.constructors["structured_data"] = func() lifecycle.Plugin { return NewStructuredDataPlugin() }
 	pluginRegistry.constructors["pagefind"] = func() lifecycle.Plugin { return NewPagefindPlugin() }
+	pluginRegistry.constructors["stats"] = func() lifecycle.Plugin { return NewStatsPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -120,6 +121,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewDescriptionPlugin(),    // Auto-generate descriptions early
 		NewStructuredDataPlugin(), // Generate structured data (needs title, description)
 		NewReadingTimePlugin(),    // Calculate reading time
+		NewStatsPlugin(),          // Calculate comprehensive content stats
 		NewWikilinksPlugin(),      // Process wikilinks before rendering
 		NewTocPlugin(),            // Extract TOC before rendering
 		NewJinjaMdPlugin(),        // Process Jinja templates in markdown
@@ -135,6 +137,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		// Collect stage plugins
 		NewFeedsPlugin(),
 		NewAutoFeedsPlugin(),
+		NewStatsPlugin(),          // Aggregate stats after feeds are built (runs Collect)
 		NewPrevNextPlugin(),       // Calculate prev/next after feeds are built
 		NewOverwriteCheckPlugin(), // Detect conflicting output paths
 
@@ -171,6 +174,7 @@ func TransformPlugins() []lifecycle.Plugin {
 		NewAutoTitlePlugin(),
 		NewDescriptionPlugin(),
 		NewReadingTimePlugin(),
+		NewStatsPlugin(),
 		NewWikilinksPlugin(),
 		NewTocPlugin(),
 		NewJinjaMdPlugin(),
