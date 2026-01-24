@@ -259,15 +259,25 @@ markata-go new [title] [flags]
 
 | Argument | Description | Required |
 |----------|-------------|----------|
-| `title` | The title of the new post | No (prompted if not provided) |
+| `title` | The title of the new content | No (prompted if not provided) |
 
 #### Flags
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--dir` | Directory to create the post in | `posts` |
-| `--draft` | Create as a draft | `true` |
-| `--tags` | Comma-separated list of tags | `""` |
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--template` | `-t` | Content template to use | `post` |
+| `--list` | `-l` | List available templates | `false` |
+| `--dir` | | Directory to create the content in (overrides template) | Template's default |
+| `--draft` | | Create as a draft | `true` |
+| `--tags` | | Comma-separated list of tags | `""` |
+
+#### Built-in Templates
+
+| Template | Directory | Description |
+|----------|-----------|-------------|
+| `post` | `posts/` | Blog posts with standard frontmatter |
+| `page` | `pages/` | Static pages |
+| `docs` | `docs/` | Documentation pages |
 
 #### Examples
 
@@ -275,8 +285,18 @@ markata-go new [title] [flags]
 # Create a new post (creates posts/my-first-post.md)
 markata-go new "My First Post"
 
-# Create in a specific directory
-markata-go new "Hello World" --dir blog
+# Use a different template
+markata-go new "About" --template page
+# Creates: pages/about.md
+
+markata-go new "Getting Started" -t docs
+# Creates: docs/getting-started.md
+
+# List available templates
+markata-go new --list
+
+# Override the template's directory
+markata-go new "Hello World" --template post --dir blog
 # Creates: blog/hello-world.md
 
 # Create as a draft (default behavior)
@@ -293,8 +313,63 @@ markata-go new "Go Tutorial" --tags "go,tutorial,programming"
 
 # Interactive mode (no arguments)
 markata-go new
-# Prompts for title, directory, tags, and draft status
+# Prompts for title, template, directory, tags, and draft status
 ```
+
+#### Template System
+
+Templates control the default frontmatter and output directory for new content.
+
+**Template Discovery:**
+
+1. **Built-in templates** - `post`, `page`, `docs` are always available
+2. **Config templates** - Defined in `markata-go.toml` under `[content_templates]`
+3. **File templates** - Markdown files in `content-templates/` directory
+
+**Configuration Example:**
+
+```toml
+[content_templates]
+directory = "content-templates"
+
+[content_templates.placement]
+post = "blog"       # Override: posts go to blog/
+page = "pages"
+docs = "documentation"
+
+[[content_templates.templates]]
+name = "tutorial"
+directory = "tutorials"
+body = "## Prerequisites\n\n## Steps\n\n## Summary"
+
+[content_templates.templates.frontmatter]
+templateKey = "tutorial"
+series = ""
+```
+
+**File Template Example:**
+
+Create `content-templates/recipe.md`:
+
+```markdown
+---
+templateKey: recipe
+_directory: recipes
+prep_time: ""
+cook_time: ""
+servings: 4
+---
+
+## Ingredients
+
+- 
+
+## Instructions
+
+1. 
+```
+
+The `_directory` field in frontmatter sets the output directory (removed from generated content).
 
 #### Interactive Mode
 
@@ -303,7 +378,9 @@ When called without a title argument, the command enters interactive mode:
 ```
 $ markata-go new
 
-Post title: My New Post
+Title: My New Post
+Available templates: docs, page, post
+Template [post]: post
 Directory [posts]: blog
 Tags (comma-separated): go, tutorial
 Create as draft? (Y/n): y
@@ -313,16 +390,19 @@ Created: blog/my-new-post.md
 
 #### Generated File
 
-The command creates a markdown file with this template:
+The command creates a markdown file with template-specific frontmatter:
 
 ```markdown
 ---
-title: "My First Post"
-slug: "my-first-post"
-date: 2024-01-15
-draft: true
+title: My First Post
+slug: my-first-post
+date: "2024-01-15"
 published: false
-tags: ["go", "tutorial"]
+draft: true
+templateKey: post
+tags:
+  - go
+  - tutorial
 description: ""
 ---
 

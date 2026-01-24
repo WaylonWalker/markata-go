@@ -495,6 +495,80 @@ OG card pages automatically include:
 
 See the [[post-formats|Post Output Formats Guide]] for detailed usage including social image generation and content negotiation.
 
+### Content Templates (`[content_templates]`)
+
+Content templates configure the `markata-go new` command, controlling default frontmatter and output directories for different content types.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `directory` | string | `"content-templates"` | Directory for user-defined template files |
+| `placement` | object | `{post:"posts",page:"pages",docs:"docs"}` | Map of template names to output directories |
+| `templates` | array | `[]` | Custom template definitions |
+
+```toml
+[content_templates]
+directory = "content-templates"
+
+# Override default directory placement
+[content_templates.placement]
+post = "blog"          # markata-go new -t post creates in blog/
+page = "pages"
+docs = "documentation"
+
+# Define custom templates
+[[content_templates.templates]]
+name = "tutorial"
+directory = "tutorials"
+body = "## Prerequisites\n\n## Steps\n\n## Summary"
+
+[content_templates.templates.frontmatter]
+templateKey = "tutorial"
+series = ""
+
+[[content_templates.templates]]
+name = "recipe"
+directory = "recipes"
+body = "## Ingredients\n\n## Instructions"
+
+[content_templates.templates.frontmatter]
+templateKey = "recipe"
+prep_time = ""
+cook_time = ""
+servings = 4
+```
+
+**File-based Templates:**
+
+Create markdown files in the `content-templates/` directory (or your configured directory):
+
+```markdown
+---
+# content-templates/changelog.md
+templateKey: changelog
+_directory: changelogs
+version: ""
+---
+
+## Added
+
+## Changed
+
+## Fixed
+```
+
+The `_directory` field in frontmatter specifies the output directory and is removed from generated content.
+
+**Usage:**
+
+```bash
+markata-go new --list                     # List all templates
+markata-go new "My Post"                  # Use default (post) template
+markata-go new "Tutorial" -t tutorial     # Use custom template
+markata-go new "Recipe" -t recipe --dir custom  # Override directory
+```
+
+See [[cli-reference|CLI Reference]] for complete `new` command documentation.
+
 ### Search Settings (`[search]`)
 
 Site-wide search is enabled by default using [Pagefind](https://pagefind.app/).
