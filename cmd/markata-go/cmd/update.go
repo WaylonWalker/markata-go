@@ -515,7 +515,7 @@ func replaceBinaryWindows(newBinaryPath, targetPath string) error {
 	}
 
 	// Copy new binary
-	if err := copyFile(newBinaryPath, targetPath); err != nil {
+	if err := copyBinaryFile(newBinaryPath, targetPath); err != nil {
 		// Try to restore old binary
 		if restoreErr := os.Rename(oldPath, targetPath); restoreErr != nil {
 			return fmt.Errorf("failed to copy new binary: %w (restore also failed: %w)", err, restoreErr)
@@ -539,7 +539,7 @@ func replaceBinaryUnix(newBinaryPath, targetPath string, mode os.FileMode) error
 	tmpFile.Close()
 
 	// Copy new binary to temp file
-	if err := copyFile(newBinaryPath, tmpPath); err != nil {
+	if err := copyBinaryFile(newBinaryPath, tmpPath); err != nil {
 		os.Remove(tmpPath)
 		return err
 	}
@@ -559,7 +559,7 @@ func replaceBinaryUnix(newBinaryPath, targetPath string, mode os.FileMode) error
 	return nil
 }
 
-func copyFile(src, dst string) error {
+func copyBinaryFile(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return err

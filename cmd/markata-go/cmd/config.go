@@ -22,6 +22,8 @@ const (
 	formatJSON = "json"
 	formatTOML = "toml"
 	formatYAML = "yaml"
+	extYAML    = ".yaml"
+	extYML     = ".yml"
 )
 
 // configCmd represents the config command group.
@@ -398,7 +400,7 @@ func runConfigInitCommand(_ *cobra.Command, args []string) error {
 	// Determine format from filename
 	var content string
 	switch {
-	case strings.HasSuffix(filename, ".yaml") || strings.HasSuffix(filename, ".yml"):
+	case strings.HasSuffix(filename, extYAML) || strings.HasSuffix(filename, extYML):
 		content = defaultConfigYAML
 	case strings.HasSuffix(filename, ".json"):
 		content = defaultConfigJSON
@@ -493,7 +495,7 @@ func formatFromPath(path string) string {
 	switch ext {
 	case ".toml":
 		return formatTOML
-	case ".yaml", ".yml":
+	case extYAML, extYML:
 		return formatYAML
 	case ".json":
 		return formatJSON
