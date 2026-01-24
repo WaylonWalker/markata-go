@@ -265,6 +265,9 @@ func createBenchmarkManager(cfgPath, workDir string) (*lifecycle.Manager, error)
 		"custom_css": cfg.Theme.CustomCSS,
 	}
 
+	// Pass layout configuration for automatic layout selection
+	lcConfig.Extra["layout"] = &cfg.Layout
+
 	m.SetConfig(lcConfig)
 
 	if cfg.Concurrency > 0 {
