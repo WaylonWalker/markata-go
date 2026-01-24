@@ -221,13 +221,14 @@ func toModelsConfig(config *lifecycle.Config) *models.Config {
 	}
 
 	// Copy SEO config if available
-	if seo, ok := config.Extra["seo"].(models.SEOConfig); ok {
-		modelsConfig.SEO = seo
-	} else if seoMap, ok := config.Extra["seo"].(map[string]interface{}); ok {
+	switch seoVal := config.Extra["seo"].(type) {
+	case models.SEOConfig:
+		modelsConfig.SEO = seoVal
+	case map[string]interface{}:
 		modelsConfig.SEO = models.SEOConfig{
-			TwitterHandle: getStringFromMap(seoMap, "twitter_handle"),
-			DefaultImage:  getStringFromMap(seoMap, "default_image"),
-			LogoURL:       getStringFromMap(seoMap, "logo_url"),
+			TwitterHandle: getStringFromMap(seoVal, "twitter_handle"),
+			DefaultImage:  getStringFromMap(seoVal, "default_image"),
+			LogoURL:       getStringFromMap(seoVal, "logo_url"),
 		}
 	}
 
