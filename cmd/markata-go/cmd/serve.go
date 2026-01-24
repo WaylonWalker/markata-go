@@ -31,7 +31,10 @@ var (
 	// serveHost is the host to serve on.
 	serveHost string
 
-	// serveNoWatch disables file watching.
+	// serveWatch enables file watching (default true).
+	serveWatch bool
+
+	// serveNoWatch disables file watching (legacy flag for backward compatibility).
 	serveNoWatch bool
 
 	// serveOutputPath is the output directory path for filtering watch events.
@@ -55,9 +58,11 @@ Features:
   - Live reload support (injects reload script into HTML)
 
 Example usage:
-  markata-go serve              # Serve on localhost:8000
+  markata-go serve              # Serve on localhost:8000 with file watching
   markata-go serve -p 3000      # Serve on localhost:3000
-  markata-go serve --no-watch   # Serve without file watching
+  markata-go serve --watch      # Explicitly enable file watching (default)
+  markata-go serve --watch=false # Disable file watching
+  markata-go serve --no-watch   # Serve without file watching (legacy flag)
   markata-go serve -v           # Serve with verbose output`,
 	RunE: runServeCommand,
 }
@@ -67,7 +72,8 @@ func init() {
 
 	serveCmd.Flags().IntVarP(&servePort, "port", "p", 8000, "port to serve on")
 	serveCmd.Flags().StringVar(&serveHost, "host", "localhost", "host to serve on")
-	serveCmd.Flags().BoolVar(&serveNoWatch, "no-watch", false, "disable file watching")
+	serveCmd.Flags().BoolVar(&serveWatch, "watch", true, "enable file watching")
+	serveCmd.Flags().BoolVar(&serveNoWatch, "no-watch", false, "disable file watching (legacy, overrides --watch)")
 }
 
 func runServeCommand(_ *cobra.Command, _ []string) error {
@@ -111,11 +117,14 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 	serveOutputPath = absOutputPath
 
 	// Start file watcher if enabled
+	// Watch is enabled if: --watch is true (default) AND --no-watch is false
+	// --no-watch takes precedence for backward compatibility
+	shouldWatch := serveWatch && !serveNoWatch
 	var watcher *fsnotify.Watcher
 	var rebuildCh chan struct{}
 	var wg sync.WaitGroup
 
-	if !serveNoWatch {
+	if shouldWatch {
 		watcher, err = fsnotify.NewWatcher()
 		if err != nil {
 			return fmt.Errorf("failed to create file watcher: %w", err)

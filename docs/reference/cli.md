@@ -133,7 +133,8 @@ markata-go serve [flags]
 |------|-------|-------------|---------|
 | `--port` | `-p` | Port to listen on | `8000` |
 | `--host` | | Host address to bind to | `localhost` |
-| `--no-watch` | | Disable file watching and auto-rebuild | `false` |
+| `--watch` | | Enable file watching and auto-rebuild | `true` |
+| `--no-watch` | | Disable file watching (legacy, overrides --watch) | `false` |
 | `--verbose` | `-v` | Enable verbose logging | `false` |
 
 #### Examples
@@ -149,7 +150,11 @@ markata-go serve --port 3000
 # Bind to all network interfaces (accessible from other devices)
 markata-go serve --host 0.0.0.0
 
+# Explicitly enable file watching (default behavior)
+markata-go serve --watch
+
 # Serve without file watching
+markata-go serve --watch=false
 markata-go serve --no-watch
 
 # Serve with verbose logging
