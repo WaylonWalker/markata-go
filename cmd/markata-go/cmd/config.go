@@ -3,8 +3,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/WaylonWalker/markata-go/pkg/config"
@@ -29,6 +33,7 @@ var configCmd = &cobra.Command{
 Subcommands:
   show     - Display the resolved configuration
   get      - Get a specific configuration value
+  set      - Set a configuration value
   validate - Validate the configuration file
   init     - Create a new configuration file`,
 }
@@ -98,12 +103,42 @@ Example usage:
 	RunE: runConfigInitCommand,
 }
 
+// configSetCmd sets a configuration value.
+var configSetCmd = &cobra.Command{
+	Use:   "set <key> <value>",
+	Short: "Set configuration value",
+	Long: `Set a configuration value in the config file.
+
+Supports dot notation for nested values. Values are automatically
+type-detected (string, int, bool, array/object via JSON).
+
+Example usage:
+  markata-go config set output_dir "dist"
+  markata-go config set url "https://example.com"
+  markata-go config set concurrency 4
+  markata-go config set glob.use_gitignore true
+  markata-go config set glob.patterns '["posts/**/*.md", "pages/*.md"]'
+  markata-go config set feed_defaults.items_per_page 15
+
+Flags:
+  --dry-run   Show what would be changed without writing
+  --backup    Create a backup before modifying the config file`,
+	Args: cobra.ExactArgs(2),
+	RunE: runConfigSetCommand,
+}
+
 var (
 	// configFormat specifies the output format for config show.
 	configFormat string
 
 	// configInitForce overwrites existing config file.
 	configInitForce bool
+
+	// configSetDryRun shows what would be changed without writing.
+	configSetDryRun bool
+
+	// configSetBackup creates a backup before modifying.
+	configSetBackup bool
 )
 
 func init() {
@@ -111,6 +146,7 @@ func init() {
 
 	configCmd.AddCommand(configShowCmd)
 	configCmd.AddCommand(configGetCmd)
+	configCmd.AddCommand(configSetCmd)
 	configCmd.AddCommand(configValidateCmd)
 	configCmd.AddCommand(configInitCmd)
 
@@ -119,6 +155,9 @@ func init() {
 	configShowCmd.Flags().Bool("toml", false, "output as TOML (shorthand for --format=toml)")
 
 	configInitCmd.Flags().BoolVar(&configInitForce, "force", false, "overwrite existing file")
+
+	configSetCmd.Flags().BoolVar(&configSetDryRun, "dry-run", false, "show what would be changed without writing")
+	configSetCmd.Flags().BoolVar(&configSetBackup, "backup", false, "create backup before modifying")
 }
 
 func runConfigShowCommand(cmd *cobra.Command, _ []string) error {
@@ -374,6 +413,288 @@ func runConfigInitCommand(_ *cobra.Command, args []string) error {
 
 	fmt.Printf("Created: %s\n", filename)
 	return nil
+}
+
+func runConfigSetCommand(_ *cobra.Command, args []string) error {
+	key := args[0]
+	value := args[1]
+
+	// Discover config file
+	configPath := cfgFile
+	if configPath == "" {
+		var err error
+		configPath, err = config.Discover()
+		if err != nil {
+			return fmt.Errorf("no config file found (use -c to specify one or run 'config init' first): %w", err)
+		}
+	}
+
+	// Read existing config file
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read config file %s: %w", configPath, err)
+	}
+
+	// Determine format from extension
+	format := formatFromPath(configPath)
+
+	// Parse to generic map for modification
+	configMap, err := parseConfigToMap(data, format)
+	if err != nil {
+		return fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	// Parse the value with automatic type detection
+	parsedValue := parseValue(value)
+
+	// Get the old value for display
+	oldValue := getMapValue(configMap, key)
+
+	// Set the value in the map
+	if err := setMapValue(configMap, key, parsedValue); err != nil {
+		return fmt.Errorf("failed to set value: %w", err)
+	}
+
+	// If dry-run, just show what would change
+	if configSetDryRun {
+		fmt.Printf("Would update %s in %s:\n", key, configPath)
+		fmt.Printf("  Old: %v\n", formatValueForDisplay(oldValue))
+		fmt.Printf("  New: %v\n", formatValueForDisplay(parsedValue))
+		return nil
+	}
+
+	// Create backup if requested
+	if configSetBackup {
+		backupPath := configPath + ".backup." + time.Now().Format("20060102-150405")
+		if err := copyFile(configPath, backupPath); err != nil {
+			return fmt.Errorf("failed to create backup: %w", err)
+		}
+		fmt.Printf("Created backup: %s\n", backupPath)
+	}
+
+	// Marshal back to the original format
+	newData, err := marshalConfigMap(configMap, format)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	// Write the updated config
+	if err := os.WriteFile(configPath, newData, 0o644); err != nil { //nolint:gosec // config files should be readable
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	fmt.Printf("Updated %s in %s\n", key, configPath)
+	return nil
+}
+
+// formatFromPath determines the config format from a file path.
+func formatFromPath(path string) string {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".toml":
+		return formatTOML
+	case ".yaml", ".yml":
+		return formatYAML
+	case ".json":
+		return formatJSON
+	default:
+		return formatTOML
+	}
+}
+
+// parseConfigToMap parses config data into a generic map[string]interface{}.
+// The config is wrapped in a "markata-go" key.
+func parseConfigToMap(data []byte, format string) (map[string]interface{}, error) {
+	var wrapper map[string]interface{}
+
+	switch format {
+	case formatTOML:
+		if err := toml.Unmarshal(data, &wrapper); err != nil {
+			return nil, err
+		}
+	case formatYAML:
+		if err := yaml.Unmarshal(data, &wrapper); err != nil {
+			return nil, err
+		}
+	case formatJSON:
+		if err := json.Unmarshal(data, &wrapper); err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("unsupported format: %s", format)
+	}
+
+	// If the config doesn't have the markata-go wrapper, add it
+	if _, ok := wrapper["markata-go"]; !ok {
+		wrapper = map[string]interface{}{"markata-go": wrapper}
+	}
+
+	return wrapper, nil
+}
+
+// marshalConfigMap marshals a config map back to the specified format.
+func marshalConfigMap(configMap map[string]interface{}, format string) ([]byte, error) {
+	switch format {
+	case formatTOML:
+		var buf strings.Builder
+		encoder := toml.NewEncoder(&buf)
+		if err := encoder.Encode(configMap); err != nil {
+			return nil, err
+		}
+		return []byte(buf.String()), nil
+	case formatYAML:
+		return yaml.Marshal(configMap)
+	case formatJSON:
+		return json.MarshalIndent(configMap, "", "  ")
+	default:
+		return nil, fmt.Errorf("unsupported format: %s", format)
+	}
+}
+
+// parseValue parses a string value with automatic type detection.
+func parseValue(value string) interface{} {
+	// Check for boolean
+	lower := strings.ToLower(value)
+	if lower == "true" {
+		return true
+	}
+	if lower == "false" {
+		return false
+	}
+
+	// Check for integer
+	if intVal, err := strconv.Atoi(value); err == nil {
+		return intVal
+	}
+
+	// Check for float
+	if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
+		// Only treat as float if it has a decimal point
+		if strings.Contains(value, ".") {
+			return floatVal
+		}
+	}
+
+	// Check for JSON array or object
+	if strings.HasPrefix(value, "[") || strings.HasPrefix(value, "{") {
+		var jsonVal interface{}
+		if err := json.Unmarshal([]byte(value), &jsonVal); err == nil {
+			return jsonVal
+		}
+	}
+
+	// Default to string
+	return value
+}
+
+// getMapValue retrieves a value from a nested map using dot notation.
+func getMapValue(m map[string]interface{}, key string) interface{} {
+	// First, look inside markata-go wrapper
+	inner, ok := m["markata-go"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	parts := strings.Split(key, ".")
+	current := inner
+
+	for i, part := range parts {
+		val, ok := current[part]
+		if !ok {
+			return nil
+		}
+
+		if i == len(parts)-1 {
+			return val
+		}
+
+		current, ok = val.(map[string]interface{})
+		if !ok {
+			return nil
+		}
+	}
+
+	return nil
+}
+
+// setMapValue sets a value in a nested map using dot notation.
+func setMapValue(m map[string]interface{}, key string, value interface{}) error {
+	// Get or create the markata-go wrapper
+	inner, ok := m["markata-go"].(map[string]interface{})
+	if !ok {
+		inner = make(map[string]interface{})
+		m["markata-go"] = inner
+	}
+
+	parts := strings.Split(key, ".")
+	current := inner
+
+	for i, part := range parts {
+		if i == len(parts)-1 {
+			// Last part - set the value
+			current[part] = value
+			return nil
+		}
+
+		// Navigate or create intermediate maps
+		next, ok := current[part]
+		if !ok {
+			// Create the intermediate map
+			newMap := make(map[string]interface{})
+			current[part] = newMap
+			current = newMap
+		} else {
+			current, ok = next.(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("cannot set nested key %s: %s is not a map", key, part)
+			}
+		}
+	}
+
+	return nil
+}
+
+// formatValueForDisplay formats a value for human-readable display.
+func formatValueForDisplay(v interface{}) string {
+	if v == nil {
+		return "<not set>"
+	}
+	switch val := v.(type) {
+	case string:
+		return fmt.Sprintf("%q", val)
+	case []interface{}:
+		data, err := json.Marshal(val)
+		if err != nil {
+			return fmt.Sprintf("%v", val)
+		}
+		return string(data)
+	case map[string]interface{}:
+		data, err := json.Marshal(val)
+		if err != nil {
+			return fmt.Sprintf("%v", val)
+		}
+		return string(data)
+	default:
+		return fmt.Sprintf("%v", val)
+	}
+}
+
+// copyFile copies a file from src to dst.
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	return err
 }
 
 // Default configuration templates
