@@ -1,0 +1,39 @@
+# Development Docker Compose for markata-go
+# Provides hot reload and local preview server
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up
+#   # Site available at http://localhost:8000
+
+services:
+  markata:
+    image: golang:1.22-alpine
+    working_dir: /site
+    volumes:
+      # Mount your site content
+      - ${SITE_DIR:-./../..}:/site:ro
+      # Mount output directory (writable)
+      - ${OUTPUT_DIR:-./output}:/site/public
+      # Cache Go modules for faster rebuilds
+      - go-mod-cache:/go/pkg/mod
+    environment:
+      - MARKATA_GO_URL=${SITE_URL:-http://localhost:8000}
+      - CGO_ENABLED=0
+    command: >
+      sh -c "
+        go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest &&
+        markata-go build --clean &&
+        markata-go serve --port 8000 --host 0.0.0.0 --watch
+      "
+    ports:
+      - "${PORT:-8000}:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  go-mod-cache:

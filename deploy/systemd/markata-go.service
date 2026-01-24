@@ -1,0 +1,60 @@
+# systemd service for markata-go (build-on-demand)
+# Builds the site once when started
+#
+# Installation:
+#   sudo cp markata-go.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable markata-go
+#   sudo systemctl start markata-go
+#
+# Usage:
+#   sudo systemctl status markata-go   # Check status
+#   sudo systemctl restart markata-go  # Rebuild site
+
+[Unit]
+Description=markata-go Static Site Generator
+Documentation=https://github.com/WaylonWalker/markata-go
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Run as non-root user (create with: sudo useradd -r -s /bin/false markata)
+User=markata
+Group=markata
+
+# Working directory (your site content)
+WorkingDirectory=/var/www/mysite
+
+# Environment
+Environment=HOME=/var/www/mysite
+Environment=GOPATH=/var/www/mysite/.go
+Environment=PATH=/var/www/mysite/.go/bin:/usr/local/go/bin:/usr/bin:/bin
+Environment=MARKATA_GO_URL=https://example.com
+
+# Build command
+ExecStart=/var/www/mysite/.go/bin/markata-go build --clean -o /var/www/mysite/public
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=markata-go
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+
+# Allow writing to output directory
+ReadWritePaths=/var/www/mysite/public /var/www/mysite/.go
+
+[Install]
+WantedBy=multi-user.target

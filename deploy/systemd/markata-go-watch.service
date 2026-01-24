@@ -1,0 +1,67 @@
+# systemd service for markata-go watch mode (continuous)
+# Watches for file changes and rebuilds automatically
+#
+# Installation:
+#   sudo cp markata-go-watch.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable markata-go-watch
+#   sudo systemctl start markata-go-watch
+#
+# Usage:
+#   sudo systemctl status markata-go-watch   # Check status
+#   sudo journalctl -u markata-go-watch -f   # View logs
+
+[Unit]
+Description=markata-go Watch Mode (Auto-rebuild on changes)
+Documentation=https://github.com/WaylonWalker/markata-go
+After=network.target
+
+[Service]
+Type=simple
+
+# Run as non-root user
+User=markata
+Group=markata
+
+# Working directory (your site content)
+WorkingDirectory=/var/www/mysite
+
+# Environment
+Environment=HOME=/var/www/mysite
+Environment=GOPATH=/var/www/mysite/.go
+Environment=PATH=/var/www/mysite/.go/bin:/usr/local/go/bin:/usr/bin:/bin
+Environment=MARKATA_GO_URL=https://example.com
+
+# Watch command (rebuild on file changes)
+ExecStart=/var/www/mysite/.go/bin/markata-go serve --watch --port 8000 --host 127.0.0.1
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=markata-go-watch
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+
+# Allow writing to output directory
+ReadWritePaths=/var/www/mysite/public /var/www/mysite/.go
+
+# Resource limits
+MemoryMax=512M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target
