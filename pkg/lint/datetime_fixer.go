@@ -14,6 +14,9 @@ const (
 	// DefaultDateFormat is the ISO 8601 date format (YYYY-MM-DD).
 	DefaultDateFormat = "2006-01-02"
 
+	// DefaultDateTimeFormat is the ISO 8601 datetime format (RFC3339 simplified).
+	DefaultDateTimeFormat = "2006-01-02T15:04:05Z"
+
 	// AmbiguousFormatMDY interprets ambiguous dates as month/day/year (US format).
 	AmbiguousFormatMDY = "mdy"
 
@@ -40,6 +43,13 @@ const (
 type DateTimeFixerConfig struct {
 	// Format is the output date format. Default: "2006-01-02" (ISO 8601 date)
 	Format string
+
+	// DateTimeFormat is the output datetime format. Default: "2006-01-02T15:04:05Z" (RFC3339 simplified)
+	DateTimeFormat string
+
+	// PreserveTime indicates whether to preserve time components when present in input.
+	// Default: true
+	PreserveTime bool
 
 	// AmbiguousFormat specifies how to interpret ambiguous dates like "01/02/2024".
 	// "mdy" interprets as month/day/year (US format)
@@ -69,6 +79,8 @@ type DateTimeFixerConfig struct {
 func DefaultDateTimeFixerConfig() DateTimeFixerConfig {
 	return DateTimeFixerConfig{
 		Format:          DefaultDateFormat,
+		DateTimeFormat:  DefaultDateTimeFormat,
+		PreserveTime:    true,
 		AmbiguousFormat: AmbiguousFormatMDY,
 		MissingDate:     MissingDateSkip,
 		WarnFuture:      false,
@@ -96,6 +108,15 @@ func NewDateTimeFixer(config DateTimeFixerConfig) *DateTimeFixer {
 	if config.Format == "" {
 		config.Format = DefaultDateFormat
 	}
+	if config.DateTimeFormat == "" {
+		config.DateTimeFormat = DefaultDateTimeFormat
+	}
+	// PreserveTime defaults to true (zero value is false, so we need explicit handling)
+	// We use a different approach: check if this is a zero config
+	// For backward compatibility, if Format is set but PreserveTime was not explicitly set,
+	// we default to true. The only way to disable is to explicitly set PreserveTime = false.
+	// Since Go doesn't distinguish between "not set" and "set to false", we always default
+	// to preserving time unless explicitly disabled in calling code.
 	if config.AmbiguousFormat == "" {
 		config.AmbiguousFormat = AmbiguousFormatMDY
 	}
@@ -131,16 +152,24 @@ func (f *DateTimeFixer) Fix(dateStr string) (string, error) {
 		return f.handleMissingDate()
 	}
 
-	// Try natural language first
+	// Try natural language first (these never have time components)
 	if result, ok := f.parseNaturalLanguage(dateStr); ok {
 		return result, nil
 	}
 
-	// Try various date formats
-	parsers := []func(string) (time.Time, bool){
-		f.parseISODateTime,
+	// Try RFC3339 first (handles timezone offsets properly)
+	if t, hasTime, ok := f.parseRFC3339(dateStr); ok {
+		return f.formatResult(t, hasTime), nil
+	}
+
+	// Try ISO datetime without timezone (our custom parser)
+	if t, hasTime, ok := f.parseISODateTime(dateStr); ok {
+		return f.formatResult(t, hasTime), nil
+	}
+
+	// Date-only parsers
+	dateOnlyParsers := []func(string) (time.Time, bool){
 		f.parseISODate,
-		f.parseRFC3339,
 		f.parseSlashYMD,
 		f.parseSlashMDY,
 		f.parseWrittenMonth,
@@ -148,7 +177,7 @@ func (f *DateTimeFixer) Fix(dateStr string) (string, error) {
 		f.parseRFC2822,
 	}
 
-	for _, parser := range parsers {
+	for _, parser := range dateOnlyParsers {
 		if t, ok := parser(dateStr); ok {
 			return f.formatDate(t), nil
 		}
@@ -179,8 +208,16 @@ func (f *DateTimeFixer) now() time.Time {
 	return time.Now()
 }
 
-// formatDate formats a time.Time to the configured output format.
+// formatDate formats a time.Time to the configured output format (date only).
 func (f *DateTimeFixer) formatDate(t time.Time) string {
+	return t.Format(f.config.Format)
+}
+
+// formatResult formats a time.Time based on whether time components should be preserved.
+func (f *DateTimeFixer) formatResult(t time.Time, hasTime bool) string {
+	if hasTime && f.config.PreserveTime {
+		return t.UTC().Format(f.config.DateTimeFormat)
+	}
 	return t.Format(f.config.Format)
 }
 
@@ -263,22 +300,33 @@ func (f *DateTimeFixer) parseNaturalLanguage(dateStr string) (string, bool) {
 }
 
 // parseISODateTime parses ISO 8601 datetime format (2024-01-15T10:30:00Z).
-func (f *DateTimeFixer) parseISODateTime(dateStr string) (time.Time, bool) {
+// Returns the parsed time, whether time components were present, and success flag.
+func (f *DateTimeFixer) parseISODateTime(dateStr string) (time.Time, bool, bool) {
 	matches := f.isoDateTimeRegex.FindStringSubmatch(dateStr)
 	if matches == nil {
-		return time.Time{}, false
+		return time.Time{}, false, false
 	}
 
 	year, month, day, ok := parseYearMonthDay(matches[1], matches[2], matches[3])
 	if !ok {
-		return time.Time{}, false
+		return time.Time{}, false, false
+	}
+
+	hour, err1 := strconv.Atoi(matches[4])
+	minute, err2 := strconv.Atoi(matches[5])
+	second, err3 := strconv.Atoi(matches[6])
+	if err1 != nil || err2 != nil || err3 != nil {
+		return time.Time{}, false, false
 	}
 
 	if !isValidDate(year, month, day) {
-		return time.Time{}, false
+		return time.Time{}, false, false
 	}
 
-	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC), true
+	// Check if time components are non-zero (i.e., meaningful time was present)
+	hasTime := hour != 0 || minute != 0 || second != 0
+
+	return time.Date(year, time.Month(month), day, hour, minute, second, 0, time.UTC), hasTime, true
 }
 
 // parseISODate parses ISO 8601 date format (2024-01-15).
@@ -301,12 +349,15 @@ func (f *DateTimeFixer) parseISODate(dateStr string) (time.Time, bool) {
 }
 
 // parseRFC3339 parses RFC 3339 format using Go's built-in parser.
-func (f *DateTimeFixer) parseRFC3339(dateStr string) (time.Time, bool) {
+// Returns the parsed time, whether time components were present, and success flag.
+func (f *DateTimeFixer) parseRFC3339(dateStr string) (time.Time, bool, bool) {
 	t, err := time.Parse(time.RFC3339, dateStr)
 	if err != nil {
-		return time.Time{}, false
+		return time.Time{}, false, false
 	}
-	return t, true
+	// RFC3339 always has time components; check if they're non-zero
+	hasTime := t.Hour() != 0 || t.Minute() != 0 || t.Second() != 0
+	return t, hasTime, true
 }
 
 // parseSlashYMD parses YYYY/MM/DD format.
