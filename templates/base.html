@@ -182,9 +182,10 @@
             if (typeof PagefindUI !== 'undefined') {
                 new PagefindUI({
                     element: "#pagefind-search",
-                    showImages: {{ config.search.show_images | default:true | yesno:"true,false" }},
-                    excerptLength: {{ config.search.excerpt_length | default:120 }},
-                    showSubResults: true,
+                    showImages: {{ config.search.show_images | default:false | yesno:"true,false" }},
+                    excerptLength: {{ config.search.excerpt_length | default:15 }},
+                    showSubResults: {{ config.search.show_sub_results | default:false | yesno:"true,false" }},
+                    resetStyles: false,
                     translations: {
                         placeholder: "{{ config.search.placeholder | default:'Search...' }}"
                     }
