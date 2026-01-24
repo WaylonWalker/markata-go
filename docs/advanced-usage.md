@@ -851,11 +851,14 @@ For faster development, markata-go can skip unchanged files:
 # Standard build (processes all files)
 markata-go build
 
-# Watch mode (only rebuilds changed files)
-markata-go serve --watch
+# Serve with watch mode (enabled by default)
+markata-go serve
+
+# Serve without file watching
+markata-go serve --no-watch
 ```
 
-The watch mode tracks file modifications and only reprocesses changed posts, dramatically speeding up iterative development.
+The serve command has file watching enabled by default, tracking file modifications and only reprocessing changed posts for faster iterative development.
 
 ### Caching Strategies
 

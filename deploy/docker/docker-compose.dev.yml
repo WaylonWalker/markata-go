@@ -19,11 +19,12 @@ services:
     environment:
       - MARKATA_GO_URL=${SITE_URL:-http://localhost:8000}
       - CGO_ENABLED=0
+    # Note: serve has watch enabled by default, use --no-watch to disable
     command: >
       sh -c "
         go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest &&
         markata-go build --clean &&
-        markata-go serve --port 8000 --host 0.0.0.0 --watch
+        markata-go serve --port 8000 --host 0.0.0.0
       "
     ports:
       - "${PORT:-8000}:8000"
