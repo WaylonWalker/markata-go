@@ -11,6 +11,7 @@ type keyMapType struct {
 	Help    key.Binding
 	Posts   key.Binding
 	Tags    key.Binding
+	Feeds   key.Binding
 	Enter   key.Binding
 	Escape  key.Binding
 	Edit    key.Binding
@@ -49,6 +50,10 @@ var keyMap = keyMapType{
 	Tags: key.NewBinding(
 		key.WithKeys("t"),
 		key.WithHelp("t", "tags"),
+	),
+	Feeds: key.NewBinding(
+		key.WithKeys("f"),
+		key.WithHelp("f", "feeds"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
