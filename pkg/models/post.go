@@ -84,7 +84,7 @@ func NewPost(path string) *Post {
 		Draft:     false,
 		Skip:      false,
 		Tags:      []string{},
-		Template:  "post.html",
+		Template:  "", // Empty - let templates plugin resolve from layout config
 		Extra:     make(map[string]interface{}),
 	}
 }

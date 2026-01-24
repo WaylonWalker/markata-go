@@ -3,7 +3,7 @@ title: "Markdown Features"
 description: "Guide to supported Markdown syntax including GFM, admonitions, wikilinks, and table of contents"
 date: 2024-01-15
 published: true
-template: doc.html
+slug: /docs/guides/markdown/
 css_class: shadow bordered
 tags:
   - documentation

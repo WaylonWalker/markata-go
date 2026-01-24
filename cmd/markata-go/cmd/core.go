@@ -73,6 +73,11 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	// Pass layout configuration for automatic layout selection
 	lcConfig.Extra["layout"] = &cfg.Layout
 
+	// Pass sidebar, toc, and header configurations
+	lcConfig.Extra["sidebar"] = cfg.Sidebar
+	lcConfig.Extra["toc"] = cfg.Toc
+	lcConfig.Extra["header"] = cfg.Header
+
 	m.SetConfig(lcConfig)
 
 	// Set concurrency if specified

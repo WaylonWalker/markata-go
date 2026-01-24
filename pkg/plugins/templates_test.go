@@ -247,7 +247,7 @@ func TestTemplatesPlugin_ResolveTemplate(t *testing.T) {
 			post: &models.Post{
 				Href: "/docs/getting-started/",
 			},
-			want: "docs.html",
+			want: "layouts/docs.html",
 		},
 		{
 			name: "path-based layout with longest prefix wins",
@@ -261,7 +261,7 @@ func TestTemplatesPlugin_ResolveTemplate(t *testing.T) {
 			post: &models.Post{
 				Href: "/docs/api/endpoint/",
 			},
-			want: "bare.html",
+			want: "layouts/bare.html",
 		},
 		{
 			name: "feed-based layout selection",
@@ -273,7 +273,7 @@ func TestTemplatesPlugin_ResolveTemplate(t *testing.T) {
 				Href:         "/some/path/",
 				PrevNextFeed: "documentation",
 			},
-			want: "docs.html",
+			want: "layouts/docs.html",
 		},
 		{
 			name: "path takes priority over feed",
@@ -297,7 +297,7 @@ func TestTemplatesPlugin_ResolveTemplate(t *testing.T) {
 			post: &models.Post{
 				Href: "/unmatched/path/",
 			},
-			want: "docs.html",
+			want: "layouts/docs.html",
 		},
 		{
 			name: "landing layout",
@@ -308,7 +308,7 @@ func TestTemplatesPlugin_ResolveTemplate(t *testing.T) {
 			post: &models.Post{
 				Href: "/",
 			},
-			want: "landing.html",
+			want: "layouts/landing.html",
 		},
 		{
 			name: "feed from Extra field",
@@ -320,7 +320,7 @@ func TestTemplatesPlugin_ResolveTemplate(t *testing.T) {
 				Href:  "/guides/intro/",
 				Extra: map[string]interface{}{"feed": "guides"},
 			},
-			want: "docs.html",
+			want: "layouts/docs.html",
 		},
 		{
 			name:         "nil layout config falls back to post.html",
@@ -409,10 +409,10 @@ func TestLayoutToTemplate(t *testing.T) {
 		layout string
 		want   string
 	}{
-		{"docs", "docs.html"},
+		{"docs", "layouts/docs.html"},
 		{"blog", "post.html"},
-		{"landing", "landing.html"},
-		{"bare", "bare.html"},
+		{"landing", "layouts/landing.html"},
+		{"bare", "layouts/bare.html"},
 		{"", "post.html"},
 		{"custom", "custom.html"},
 		{"already.html", "already.html"},
