@@ -201,6 +201,8 @@ func toModelsConfig(config *lifecycle.Config) *models.Config {
 	// Copy layout config if available
 	if layout, ok := config.Extra["layout"].(*models.LayoutConfig); ok {
 		modelsConfig.Layout = *layout
+	} else if layoutVal, ok := config.Extra["layout"].(models.LayoutConfig); ok {
+		modelsConfig.Layout = layoutVal
 	}
 
 	// Copy sidebar config if available
@@ -218,6 +220,37 @@ func toModelsConfig(config *lifecycle.Config) *models.Config {
 		modelsConfig.Header = header
 	}
 
+	// Copy SEO config if available
+	if seo, ok := config.Extra["seo"].(models.SEOConfig); ok {
+		modelsConfig.SEO = seo
+	} else if seoMap, ok := config.Extra["seo"].(map[string]interface{}); ok {
+		modelsConfig.SEO = models.SEOConfig{
+			TwitterHandle: getStringFromMap(seoMap, "twitter_handle"),
+			DefaultImage:  getStringFromMap(seoMap, "default_image"),
+			LogoURL:       getStringFromMap(seoMap, "logo_url"),
+		}
+	}
+
+	// Copy Search config if available
+	if search, ok := config.Extra["search"].(models.SearchConfig); ok {
+		modelsConfig.Search = search
+	}
+
+	// Copy Components config if available
+	if components, ok := config.Extra["components"].(models.ComponentsConfig); ok {
+		modelsConfig.Components = components
+	}
+
+	// Copy PostFormats config if available
+	if postFormats, ok := config.Extra["post_formats"].(models.PostFormatsConfig); ok {
+		modelsConfig.PostFormats = postFormats
+	}
+
+	// Copy Head config if available
+	if head, ok := config.Extra["head"].(models.HeadConfig); ok {
+		modelsConfig.Head = head
+	}
+
 	return modelsConfig
 }
 
@@ -227,6 +260,17 @@ func getStringFromExtra(extra map[string]interface{}, key string) string {
 		return ""
 	}
 	if v, ok := extra[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
+// getStringFromMap safely gets a string value from a map.
+func getStringFromMap(m map[string]interface{}, key string) string {
+	if m == nil {
+		return ""
+	}
+	if v, ok := m[key].(string); ok {
 		return v
 	}
 	return ""

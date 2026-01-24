@@ -61,6 +61,13 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["nav"] = cfg.Nav
 	lcConfig.Extra["footer"] = cfg.Footer
 	lcConfig.Extra["post_formats"] = cfg.PostFormats
+	lcConfig.Extra["seo"] = cfg.SEO
+	lcConfig.Extra["search"] = cfg.Search
+	lcConfig.Extra["components"] = cfg.Components
+	lcConfig.Extra["header"] = cfg.Header
+	lcConfig.Extra["head"] = cfg.Head
+	lcConfig.Extra["toc"] = cfg.Toc
+	lcConfig.Extra["sidebar"] = cfg.Sidebar
 
 	// Pass theme configuration to plugins
 	lcConfig.Extra["theme"] = map[string]interface{}{
