@@ -987,3 +987,126 @@ kbd {
     transform: translateY(0);
   }
 }
+
+/* ==========================================================================
+   Breadcrumbs Navigation Component
+   ========================================================================== */
+
+.breadcrumbs {
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background-color: var(--color-surface);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  font-size: 0.875rem;
+}
+
+.breadcrumb-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.breadcrumb-link {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  padding: 0.125rem 0.25rem;
+  border-radius: 4px;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.breadcrumb-link:hover {
+  color: var(--color-primary);
+  background-color: var(--color-background);
+}
+
+.breadcrumb-link:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.breadcrumb-current {
+  color: var(--color-text);
+  font-weight: 500;
+  padding: 0.125rem 0.25rem;
+}
+
+.breadcrumb-separator {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  user-select: none;
+  padding: 0 0.125rem;
+}
+
+.breadcrumb-item--active {
+  /* Active item styling */
+}
+
+/* Compact variant (no background) */
+.breadcrumbs--compact {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 1rem;
+}
+
+/* Centered variant */
+.breadcrumbs--centered .breadcrumb-list {
+  justify-content: center;
+}
+
+/* Responsive: Ellipsis for long breadcrumbs on mobile */
+@media (max-width: 640px) {
+  .breadcrumb-list {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+  
+  .breadcrumb-list::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+  }
+  
+  .breadcrumb-item {
+    white-space: nowrap;
+  }
+  
+  /* Truncate long labels */
+  .breadcrumb-link,
+  .breadcrumb-current {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Print styles */
+@media print {
+  .breadcrumbs {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-bottom: 0.5rem;
+  }
+  
+  .breadcrumb-link {
+    color: var(--color-text);
+    text-decoration: underline;
+  }
+  
+  .breadcrumb-separator::after {
+    content: " > ";
+  }
+}
