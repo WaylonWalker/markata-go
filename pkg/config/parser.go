@@ -723,6 +723,7 @@ type tomlBlogrollTemplates struct {
 	Reader   string `toml:"reader"`
 }
 
+//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	config := models.BlogrollConfig{
 		Enabled:            b.Enabled,
@@ -756,7 +757,6 @@ func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	return config
 }
 
-//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 	config := models.ComponentsConfig{
 		Nav: models.NavComponentConfig{
@@ -1458,6 +1458,7 @@ type yamlBlogrollTemplates struct {
 	Reader   string `yaml:"reader"`
 }
 
+//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *yamlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	config := models.BlogrollConfig{
 		Enabled:            b.Enabled,
@@ -1491,7 +1492,6 @@ func (b *yamlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	return config
 }
 
-//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (c *yamlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 	config := models.ComponentsConfig{
 		Nav: models.NavComponentConfig{
@@ -2178,6 +2178,7 @@ type jsonBlogrollTemplates struct {
 	Reader   string `json:"reader"`
 }
 
+//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *jsonBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	config := models.BlogrollConfig{
 		Enabled:            b.Enabled,
@@ -2211,7 +2212,6 @@ func (b *jsonBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	return config
 }
 
-//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (c *jsonComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 	config := models.ComponentsConfig{
 		Nav: models.NavComponentConfig{
