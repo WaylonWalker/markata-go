@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	dps "github.com/markusmobius/go-dateparser"
 )
 
 // Date format and configuration constants.
@@ -100,6 +102,9 @@ type DateTimeFixer struct {
 	writtenMonthRegex *regexp.Regexp
 	writtenDayRegex   *regexp.Regexp
 	rfc2822Regex      *regexp.Regexp
+
+	// go-dateparser for comprehensive multi-locale parsing
+	dateParser *dps.Parser
 }
 
 // NewDateTimeFixer creates a new DateTimeFixer with the given configuration.
@@ -124,8 +129,20 @@ func NewDateTimeFixer(config DateTimeFixerConfig) *DateTimeFixer {
 		config.MissingDate = MissingDateSkip
 	}
 
+	// Configure go-dateparser with appropriate parser types
+	dateParser := &dps.Parser{
+		ParserTypes: []dps.ParserType{
+			dps.AbsoluteTime,
+			dps.NoSpacesTime,
+			dps.Timestamp,
+			dps.RelativeTime,
+			dps.CustomFormat,
+		},
+	}
+
 	return &DateTimeFixer{
-		config: config,
+		config:     config,
+		dateParser: dateParser,
 		// ISO 8601 with time: 2024-01-15T10:30:00Z or 2024-01-15T10:30:00+05:00
 		isoDateTimeRegex: regexp.MustCompile(`^(\d{4})-(\d{1,2})-(\d{1,2})T(\d{2}):(\d{2}):(\d{2})(.*)$`),
 		// ISO 8601 date only: 2024-01-15
@@ -167,7 +184,7 @@ func (f *DateTimeFixer) Fix(dateStr string) (string, error) {
 		return f.formatResult(t, hasTime), nil
 	}
 
-	// Date-only parsers
+	// Date-only parsers (fast parsers for common formats)
 	dateOnlyParsers := []func(string) (time.Time, bool){
 		f.parseISODate,
 		f.parseSlashYMD,
@@ -181,6 +198,11 @@ func (f *DateTimeFixer) Fix(dateStr string) (string, error) {
 		if t, ok := parser(dateStr); ok {
 			return f.formatDate(t), nil
 		}
+	}
+
+	// Fallback to go-dateparser for complex/multi-locale date formats
+	if t, ok := f.parseWithDateParser(dateStr); ok {
+		return f.formatDate(t), nil
 	}
 
 	return "", fmt.Errorf("unable to parse date: %q", dateStr)
@@ -297,6 +319,71 @@ func (f *DateTimeFixer) parseNaturalLanguage(dateStr string) (string, bool) {
 	}
 
 	return "", false
+}
+
+// parseWithDateParser uses go-dateparser as a fallback for complex/multi-locale date parsing.
+// This provides support for 200+ locales and comprehensive natural language date formats
+// that aren't covered by our fast built-in parsers.
+func (f *DateTimeFixer) parseWithDateParser(dateStr string) (time.Time, bool) {
+	// Skip dates that look like they might be ISO format with invalid values
+	// These should fail rather than be "fixed" by go-dateparser's lenient parsing
+	if f.looksLikeInvalidISODate(dateStr) {
+		return time.Time{}, false
+	}
+
+	// Configure go-dateparser with date order based on ambiguous format setting
+	dateOrder := dps.MDY
+	if f.config.AmbiguousFormat == AmbiguousFormatDMY {
+		dateOrder = dps.DMY
+	}
+
+	// Build configuration for this parse
+	cfg := &dps.Configuration{
+		DateOrder:           dateOrder,
+		PreferredDayOfMonth: dps.First,
+		StrictParsing:       false,
+		Languages:           []string{"en", "fr", "es", "de", "it", "pt", "nl", "ru", "zh", "ja"},
+	}
+
+	// Set reference time for relative date calculations
+	if f.config.ReferenceTime != nil {
+		cfg.CurrentTime = *f.config.ReferenceTime
+	}
+
+	result, err := f.dateParser.Parse(cfg, dateStr)
+	if err != nil {
+		return time.Time{}, false
+	}
+
+	return result.Time, true
+}
+
+// looksLikeInvalidISODate checks if a string looks like an ISO date format but
+// contains invalid date values or is incomplete. This prevents go-dateparser from
+// "fixing" dates like 2024-02-30 to 2024-03-02 or completing partial dates.
+func (f *DateTimeFixer) looksLikeInvalidISODate(dateStr string) bool {
+	// Check for partial ISO date pattern (YYYY-MM without day)
+	partialISOPattern := regexp.MustCompile(`^(\d{4})-(\d{1,2})$`)
+	if partialISOPattern.MatchString(dateStr) {
+		return true
+	}
+
+	// Check for YYYY-MM-DD pattern
+	isoPattern := regexp.MustCompile(`^(\d{4})-(\d{1,2})-(\d{1,2})`)
+	matches := isoPattern.FindStringSubmatch(dateStr)
+	if matches == nil {
+		return false
+	}
+
+	year, err1 := strconv.Atoi(matches[1])
+	month, err2 := strconv.Atoi(matches[2])
+	day, err3 := strconv.Atoi(matches[3])
+	if err1 != nil || err2 != nil || err3 != nil {
+		return false
+	}
+
+	// If it looks like ISO format but has invalid values, reject it
+	return !isValidDate(year, month, day)
 }
 
 // parseISODateTime parses ISO 8601 datetime format (2024-01-15T10:30:00Z).

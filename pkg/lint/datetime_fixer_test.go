@@ -894,3 +894,214 @@ func TestDateTimeFixer_Fix_PreserveTime(t *testing.T) {
 		})
 	}
 }
+
+// TestDateTimeFixer_Fix_MultiLanguage tests parsing dates in various languages
+// using the go-dateparser fallback. This demonstrates the enhanced multi-locale
+// support provided by the go-dateparser integration.
+func TestDateTimeFixer_Fix_MultiLanguage(t *testing.T) {
+	fixer := NewDateTimeFixer(DefaultDateTimeFixerConfig())
+
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		// French dates
+		{
+			name:    "French full date",
+			input:   "15 janvier 2024",
+			want:    "2024-01-15",
+			wantErr: false,
+		},
+		{
+			name:    "French date with month name",
+			input:   "3 mars 2024",
+			want:    "2024-03-03",
+			wantErr: false,
+		},
+		// Spanish dates
+		{
+			name:    "Spanish full date",
+			input:   "15 de enero de 2024",
+			want:    "2024-01-15",
+			wantErr: false,
+		},
+		{
+			name:    "Spanish date simple",
+			input:   "20 febrero 2024",
+			want:    "2024-02-20",
+			wantErr: false,
+		},
+		// German dates
+		{
+			name:    "German full date",
+			input:   "15. Januar 2024",
+			want:    "2024-01-15",
+			wantErr: false,
+		},
+		{
+			name:    "German abbreviated",
+			input:   "15 Dez 2024",
+			want:    "2024-12-15",
+			wantErr: false,
+		},
+		// Italian dates
+		{
+			name:    "Italian full date",
+			input:   "15 gennaio 2024",
+			want:    "2024-01-15",
+			wantErr: false,
+		},
+		// Portuguese dates
+		{
+			name:    "Portuguese full date",
+			input:   "15 de janeiro de 2024",
+			want:    "2024-01-15",
+			wantErr: false,
+		},
+		// Dutch dates
+		{
+			name:    "Dutch full date",
+			input:   "15 januari 2024",
+			want:    "2024-01-15",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := fixer.Fix(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Fix() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && got != tt.want {
+				t.Errorf("Fix() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestDateTimeFixer_Fix_EnhancedNaturalLanguage tests extended natural language
+// date parsing supported by go-dateparser that goes beyond our built-in parsers.
+func TestDateTimeFixer_Fix_EnhancedNaturalLanguage(t *testing.T) {
+	// Use a fixed reference time for reproducible tests
+	refTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC) // Saturday
+
+	fixer := NewDateTimeFixer(DateTimeFixerConfig{
+		ReferenceTime: &refTime,
+	})
+
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		// Relative expressions with "in X time"
+		{
+			name:    "in 3 days",
+			input:   "in 3 days",
+			want:    "2024-06-18",
+			wantErr: false,
+		},
+		{
+			name:    "in 2 weeks",
+			input:   "in 2 weeks",
+			want:    "2024-06-29",
+			wantErr: false,
+		},
+		{
+			name:    "in 1 month",
+			input:   "in 1 month",
+			want:    "2024-07-15",
+			wantErr: false,
+		},
+		// Additional variations
+		{
+			name:    "a week ago",
+			input:   "a week ago",
+			want:    "2024-06-08",
+			wantErr: false,
+		},
+		{
+			name:    "one month ago",
+			input:   "one month ago",
+			want:    "2024-05-15",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := fixer.Fix(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Fix() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && got != tt.want {
+				t.Errorf("Fix() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestDateTimeFixer_Fix_AlternativeFormats tests various date formats that
+// go-dateparser can handle beyond standard ISO/RFC formats.
+func TestDateTimeFixer_Fix_AlternativeFormats(t *testing.T) {
+	fixer := NewDateTimeFixer(DefaultDateTimeFixerConfig())
+
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		// Dot-separated dates (common in Europe)
+		{
+			name:    "dot separated DMY",
+			input:   "15.01.2024",
+			want:    "2024-01-15",
+			wantErr: false,
+		},
+		// Written dates with ordinals
+		{
+			name:    "date with ordinal suffix",
+			input:   "January 15th, 2024",
+			want:    "2024-01-15",
+			wantErr: false,
+		},
+		{
+			name:    "date with 1st ordinal",
+			input:   "March 1st, 2024",
+			want:    "2024-03-01",
+			wantErr: false,
+		},
+		{
+			name:    "date with 2nd ordinal",
+			input:   "April 2nd, 2024",
+			want:    "2024-04-02",
+			wantErr: false,
+		},
+		{
+			name:    "date with 3rd ordinal",
+			input:   "May 3rd, 2024",
+			want:    "2024-05-03",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := fixer.Fix(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Fix() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && got != tt.want {
+				t.Errorf("Fix() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
