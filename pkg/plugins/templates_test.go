@@ -221,3 +221,209 @@ func containsHelper(s, substr string) bool {
 	}
 	return false
 }
+
+func TestTemplatesPlugin_ResolveTemplate(t *testing.T) {
+	tests := []struct {
+		name         string
+		layoutConfig *models.LayoutConfig
+		post         *models.Post
+		want         string
+	}{
+		{
+			name:         "explicit template in frontmatter takes priority",
+			layoutConfig: &models.LayoutConfig{Name: "docs"},
+			post: &models.Post{
+				Template: "custom.html",
+				Href:     "/docs/getting-started/",
+			},
+			want: "custom.html",
+		},
+		{
+			name: "path-based layout selection",
+			layoutConfig: &models.LayoutConfig{
+				Name:  "blog",
+				Paths: map[string]string{"/docs/": "docs"},
+			},
+			post: &models.Post{
+				Href: "/docs/getting-started/",
+			},
+			want: "docs.html",
+		},
+		{
+			name: "path-based layout with longest prefix wins",
+			layoutConfig: &models.LayoutConfig{
+				Name: "blog",
+				Paths: map[string]string{
+					"/docs/":     "docs",
+					"/docs/api/": "bare",
+				},
+			},
+			post: &models.Post{
+				Href: "/docs/api/endpoint/",
+			},
+			want: "bare.html",
+		},
+		{
+			name: "feed-based layout selection",
+			layoutConfig: &models.LayoutConfig{
+				Name:  "blog",
+				Feeds: map[string]string{"documentation": "docs"},
+			},
+			post: &models.Post{
+				Href:         "/some/path/",
+				PrevNextFeed: "documentation",
+			},
+			want: "docs.html",
+		},
+		{
+			name: "path takes priority over feed",
+			layoutConfig: &models.LayoutConfig{
+				Name:  "blog",
+				Paths: map[string]string{"/blog/": "blog"},
+				Feeds: map[string]string{"posts": "docs"},
+			},
+			post: &models.Post{
+				Href:         "/blog/my-post/",
+				PrevNextFeed: "posts",
+			},
+			want: "post.html", // blog layout -> post.html
+		},
+		{
+			name: "global default layout",
+			layoutConfig: &models.LayoutConfig{
+				Name:  "docs",
+				Paths: map[string]string{"/blog/": "blog"},
+			},
+			post: &models.Post{
+				Href: "/unmatched/path/",
+			},
+			want: "docs.html",
+		},
+		{
+			name: "landing layout",
+			layoutConfig: &models.LayoutConfig{
+				Name:  "blog",
+				Paths: map[string]string{"/": "landing"},
+			},
+			post: &models.Post{
+				Href: "/",
+			},
+			want: "landing.html",
+		},
+		{
+			name: "feed from Extra field",
+			layoutConfig: &models.LayoutConfig{
+				Name:  "blog",
+				Feeds: map[string]string{"guides": "docs"},
+			},
+			post: &models.Post{
+				Href:  "/guides/intro/",
+				Extra: map[string]interface{}{"feed": "guides"},
+			},
+			want: "docs.html",
+		},
+		{
+			name:         "nil layout config falls back to post.html",
+			layoutConfig: nil,
+			post: &models.Post{
+				Href: "/any/path/",
+			},
+			want: "post.html",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &TemplatesPlugin{
+				layoutConfig: tt.layoutConfig,
+			}
+			got := p.resolveTemplate(tt.post)
+			if got != tt.want {
+				t.Errorf("resolveTemplate() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLayoutConfig_ResolveLayout(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *models.LayoutConfig
+		postPath string
+		feedSlug string
+		want     string
+	}{
+		{
+			name: "path match",
+			config: &models.LayoutConfig{
+				Name:  "blog",
+				Paths: map[string]string{"/docs/": "docs"},
+			},
+			postPath: "/docs/intro/",
+			feedSlug: "",
+			want:     "docs",
+		},
+		{
+			name: "feed match",
+			config: &models.LayoutConfig{
+				Name:  "blog",
+				Feeds: map[string]string{"tutorials": "docs"},
+			},
+			postPath: "/random/path/",
+			feedSlug: "tutorials",
+			want:     "docs",
+		},
+		{
+			name: "default fallback",
+			config: &models.LayoutConfig{
+				Name:  "landing",
+				Paths: map[string]string{"/docs/": "docs"},
+			},
+			postPath: "/about/",
+			feedSlug: "",
+			want:     "landing",
+		},
+		{
+			name: "empty config returns default",
+			config: &models.LayoutConfig{
+				Name: "bare",
+			},
+			postPath: "/any/",
+			feedSlug: "",
+			want:     "bare",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.config.ResolveLayout(tt.postPath, tt.feedSlug)
+			if got != tt.want {
+				t.Errorf("ResolveLayout(%q, %q) = %q, want %q", tt.postPath, tt.feedSlug, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLayoutToTemplate(t *testing.T) {
+	tests := []struct {
+		layout string
+		want   string
+	}{
+		{"docs", "docs.html"},
+		{"blog", "post.html"},
+		{"landing", "landing.html"},
+		{"bare", "bare.html"},
+		{"", "post.html"},
+		{"custom", "custom.html"},
+		{"already.html", "already.html"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.layout, func(t *testing.T) {
+			got := models.LayoutToTemplate(tt.layout)
+			if got != tt.want {
+				t.Errorf("LayoutToTemplate(%q) = %q, want %q", tt.layout, got, tt.want)
+			}
+		})
+	}
+}
