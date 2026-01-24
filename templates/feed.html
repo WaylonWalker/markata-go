@@ -9,11 +9,16 @@
 {% endblock %}
 
 {% block content %}
-<div class="feed">
+<div class="feed{% if feed.type == 'guide' %} feed--guide{% elif feed.type == 'series' %} feed--series{% endif %}">
   <header class="feed-header">
     <h1>{{ feed.title | default:"Posts" }}</h1>
     {% if feed.description %}
     <p>{{ feed.description }}</p>
+    {% endif %}
+    {% if feed.type == "guide" or feed.type == "series" %}
+    <div class="feed-meta">
+      <span class="feed-count">{{ feed.posts | length }} parts</span>
+    </div>
     {% endif %}
   </header>
 
@@ -21,12 +26,20 @@
     {% if page.pagination_type == "js" %}
     {# For JS pagination, render ALL posts - JavaScript will handle showing/hiding #}
     {% for post in feed.posts %}
+    {% if feed.type == "guide" %}
+    {% include "partials/guide-card.html" %}
+    {% else %}
     {% include "partials/card.html" %}
+    {% endif %}
     {% endfor %}
     {% else %}
     {# For manual/htmx pagination, render only current page posts #}
     {% for post in page.posts %}
+    {% if feed.type == "guide" %}
+    {% include "partials/guide-card.html" %}
+    {% else %}
     {% include "partials/card.html" %}
+    {% endif %}
     {% endfor %}
     {% endif %}
   </div>
