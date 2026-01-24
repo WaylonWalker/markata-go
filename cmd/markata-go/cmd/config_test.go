@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/WaylonWalker/markata-go/pkg/config"
 )
 
 func TestParseValue(t *testing.T) {
@@ -310,5 +312,197 @@ func TestFormatValueForDisplay(t *testing.T) {
 				t.Errorf("formatValueForDisplay(%v) = %q, want %q", tt.value, got, tt.expect)
 			}
 		})
+	}
+}
+
+func TestConfigToMap(t *testing.T) {
+	cfg := config.DefaultConfig()
+	m, err := configToMap(cfg)
+	if err != nil {
+		t.Fatalf("configToMap() error = %v", err)
+	}
+
+	// Check some expected keys exist
+	if _, ok := m["output_dir"]; !ok {
+		t.Error("configToMap() missing output_dir key")
+	}
+	if _, ok := m["glob"]; !ok {
+		t.Error("configToMap() missing glob key")
+	}
+}
+
+func TestIsKeyInMap(t *testing.T) {
+	tests := []struct {
+		name   string
+		m      map[string]interface{}
+		key    string
+		expect bool
+	}{
+		{
+			name:   "nil map",
+			m:      nil,
+			key:    "foo",
+			expect: false,
+		},
+		{
+			name:   "key exists",
+			m:      map[string]interface{}{"title": "Test"},
+			key:    "title",
+			expect: true,
+		},
+		{
+			name:   "key does not exist",
+			m:      map[string]interface{}{"title": "Test"},
+			key:    "description",
+			expect: false,
+		},
+		{
+			name:   "empty map",
+			m:      map[string]interface{}{},
+			key:    "title",
+			expect: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isKeyInMap(tt.m, tt.key)
+			if got != tt.expect {
+				t.Errorf("isKeyInMap() = %v, want %v", got, tt.expect)
+			}
+		})
+	}
+}
+
+func TestShowDiffConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		userMap        map[string]interface{}
+		userConfigFile string
+		expectContains []string
+	}{
+		{
+			name:           "nil user map",
+			userMap:        nil,
+			userConfigFile: "",
+			expectContains: []string{"No user configuration found", "All values are defaults"},
+		},
+		{
+			name:           "empty user map",
+			userMap:        map[string]interface{}{},
+			userConfigFile: "",
+			expectContains: []string{"No user configuration found"},
+		},
+		{
+			name:           "user config with values",
+			userMap:        map[string]interface{}{"title": "My Site", "url": "https://example.com"},
+			userConfigFile: "/path/to/markata-go.toml",
+			expectContains: []string{"User configuration from:", "title: My Site"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Capture stdout
+			oldStdout := os.Stdout
+			r, w, err := os.Pipe()
+			if err != nil {
+				t.Fatalf("Failed to create pipe: %v", err)
+			}
+			os.Stdout = w
+
+			err = showDiffConfig(tt.userMap, tt.userConfigFile)
+
+			w.Close()
+			os.Stdout = oldStdout
+
+			if err != nil {
+				t.Fatalf("showDiffConfig() error = %v", err)
+			}
+
+			buf := make([]byte, 4096)
+			n, err := r.Read(buf)
+			if err != nil && n == 0 {
+				t.Fatalf("Failed to read output: %v", err)
+			}
+			output := string(buf[:n])
+
+			for _, expect := range tt.expectContains {
+				if !strings.Contains(output, expect) {
+					t.Errorf("showDiffConfig() output does not contain %q\nOutput:\n%s", expect, output)
+				}
+			}
+		})
+	}
+}
+
+func TestConfigShowAnnotateIntegration(t *testing.T) {
+	// Create a temporary directory with a config file
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "markata-go.toml")
+
+	// Write a test config with some user values
+	configContent := `[markata-go]
+title = "My Test Site"
+url = "https://example.com"
+output_dir = "dist"
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
+		t.Fatalf("Failed to write test config: %v", err)
+	}
+
+	// Change to tmp dir so config discovery works
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("Failed to change to temp dir: %v", err)
+	}
+	defer func() {
+		if err := os.Chdir(oldWd); err != nil {
+			t.Logf("Warning: failed to restore working directory: %v", err)
+		}
+	}()
+
+	// Test that runConfigShowWithSources works without errors
+	// We'll test in --diff mode since it's easier to verify
+	configShowDiff = true
+	configShowAnnotate = false
+	defer func() {
+		configShowDiff = false
+		configShowAnnotate = false
+	}()
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("Failed to create pipe: %v", err)
+	}
+	os.Stdout = w
+
+	err = runConfigShowWithSources("")
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	if err != nil {
+		t.Fatalf("runConfigShowWithSources() error = %v", err)
+	}
+
+	buf := make([]byte, 8192)
+	n, err := r.Read(buf)
+	if err != nil && n == 0 {
+		t.Fatalf("Failed to read output: %v", err)
+	}
+	output := string(buf[:n])
+
+	// Should contain user values
+	if !strings.Contains(output, "title") {
+		t.Errorf("Output should contain 'title', got:\n%s", output)
+	}
+	if !strings.Contains(output, "My Test Site") {
+		t.Errorf("Output should contain 'My Test Site', got:\n%s", output)
 	}
 }

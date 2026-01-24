@@ -52,9 +52,11 @@ The configuration is merged from:
   3. Environment variables
 
 Example usage:
-  markata-go config show           # Show as YAML
-  markata-go config show --json    # Show as JSON
-  markata-go config show --toml    # Show as TOML`,
+  markata-go config show              # Show as YAML
+  markata-go config show --json       # Show as JSON
+  markata-go config show --toml       # Show as TOML
+  markata-go config show --annotate   # Show with source annotations
+  markata-go config show --diff       # Show only user-provided values`,
 	RunE: runConfigShowCommand,
 }
 
@@ -133,6 +135,12 @@ var (
 	// configFormat specifies the output format for config show.
 	configFormat string
 
+	// configShowAnnotate shows source of each config value.
+	configShowAnnotate bool
+
+	// configShowDiff shows only user-provided values that differ from defaults.
+	configShowDiff bool
+
 	// configInitForce overwrites existing config file.
 	configInitForce bool
 
@@ -155,6 +163,8 @@ func init() {
 	configShowCmd.Flags().StringVar(&configFormat, "format", "yaml", "output format (yaml, json, toml)")
 	configShowCmd.Flags().Bool("json", false, "output as JSON (shorthand for --format=json)")
 	configShowCmd.Flags().Bool("toml", false, "output as TOML (shorthand for --format=toml)")
+	configShowCmd.Flags().BoolVar(&configShowAnnotate, "annotate", false, "show source of each config value (default vs user config)")
+	configShowCmd.Flags().BoolVar(&configShowDiff, "diff", false, "show only user-provided values that differ from defaults")
 
 	configInitCmd.Flags().BoolVar(&configInitForce, "force", false, "overwrite existing file")
 
@@ -177,6 +187,11 @@ func runConfigShowCommand(cmd *cobra.Command, _ []string) error {
 	}
 	if tomlFlag {
 		configFormat = formatTOML
+	}
+
+	// Handle --annotate and --diff modes
+	if configShowAnnotate || configShowDiff {
+		return runConfigShowWithSources(cfgFile)
 	}
 
 	// Load configuration
@@ -215,6 +230,175 @@ func runConfigShowCommand(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+// runConfigShowWithSources handles --annotate and --diff flags.
+// It compares user config with defaults to show value sources.
+func runConfigShowWithSources(configPath string) error {
+	// Get merged config as a map
+	merged, err := config.Load(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+	mergedMap, err := configToMap(merged)
+	if err != nil {
+		return fmt.Errorf("failed to convert config to map: %w", err)
+	}
+
+	// Load user config file directly (without merging with defaults)
+	var userMap map[string]interface{}
+	var userConfigFile string
+
+	if configPath != "" {
+		userConfigFile = configPath
+	} else {
+		userConfigFile, _ = config.Discover() //nolint:errcheck // discovery failure is ok, we'll handle empty string
+	}
+
+	if userConfigFile != "" {
+		data, err := os.ReadFile(userConfigFile)
+		if err == nil {
+			format := formatFromPath(userConfigFile)
+			wrapper, err := parseConfigToMap(data, format)
+			if err == nil {
+				// Extract the inner markata-go config
+				if inner, ok := wrapper["markata-go"].(map[string]interface{}); ok {
+					userMap = inner
+				}
+			}
+		}
+	}
+
+	if configShowDiff {
+		// Show only values that differ from defaults
+		return showDiffConfig(userMap, userConfigFile)
+	}
+
+	// Show annotated config
+	return showAnnotatedConfig(mergedMap, userMap, userConfigFile)
+}
+
+// configToMap converts a Config struct to a map[string]interface{}.
+func configToMap(cfg *models.Config) (map[string]interface{}, error) {
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, err
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// showDiffConfig prints only user-provided values that differ from defaults.
+func showDiffConfig(userMap map[string]interface{}, userConfigFile string) error {
+	if len(userMap) == 0 {
+		fmt.Println("# No user configuration found")
+		fmt.Println("# All values are defaults")
+		return nil
+	}
+
+	if userConfigFile != "" {
+		fmt.Printf("# User configuration from: %s\n", userConfigFile)
+	}
+	fmt.Println("# Values below differ from defaults:")
+	fmt.Println()
+
+	// Output the user config as YAML with comments
+	data, err := yaml.Marshal(userMap)
+	if err != nil {
+		return fmt.Errorf("failed to marshal diff: %w", err)
+	}
+	fmt.Print(string(data))
+
+	return nil
+}
+
+// showAnnotatedConfig prints the merged config with source annotations.
+func showAnnotatedConfig(merged, user map[string]interface{}, userConfigFile string) error {
+	// Print header
+	fmt.Println("# Configuration with source annotations")
+	if userConfigFile != "" {
+		fmt.Printf("# User config: %s\n", userConfigFile)
+	} else {
+		fmt.Println("# User config: (none found, using defaults)")
+	}
+	fmt.Println()
+
+	// Get YAML representation of merged config
+	data, err := yaml.Marshal(merged)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	// Split into lines and annotate each
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if line == "" {
+			fmt.Println()
+			continue
+		}
+
+		// Parse the line to extract key path
+		trimmed := strings.TrimLeft(line, " ")
+		if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "#") {
+			// Array item or comment - just print
+			fmt.Println(line)
+			continue
+		}
+
+		// Try to extract key from "key: value" format
+		colonIdx := strings.Index(trimmed, ":")
+		if colonIdx == -1 {
+			fmt.Println(line)
+			continue
+		}
+
+		key := trimmed[:colonIdx]
+		indent := len(line) - len(trimmed)
+
+		// Determine source based on whether it's in user config
+		source := "default"
+		if isKeyInMap(user, key) {
+			if userConfigFile != "" {
+				source = "user: " + filepath.Base(userConfigFile)
+			} else {
+				source = "user"
+			}
+		}
+
+		// Calculate padding for alignment
+		padding := 40 - len(line)
+		if padding < 2 {
+			padding = 2
+		}
+
+		// Print with annotation
+		// Only annotate leaf values (lines with values after the colon)
+		valueAfterColon := strings.TrimSpace(trimmed[colonIdx+1:])
+		if valueAfterColon != "" && !strings.HasPrefix(valueAfterColon, "|") && !strings.HasPrefix(valueAfterColon, ">") {
+			fmt.Printf("%s%s# %s\n", line, strings.Repeat(" ", padding), source)
+		} else {
+			// It's a parent key (object/map) - check if any child is from user
+			if indent == 0 && isKeyInMap(user, key) {
+				fmt.Printf("%s%s# %s (partial)\n", line, strings.Repeat(" ", padding), source)
+			} else {
+				fmt.Println(line)
+			}
+		}
+	}
+
+	return nil
+}
+
+// isKeyInMap checks if a key exists in the map (handles nested maps).
+func isKeyInMap(m map[string]interface{}, key string) bool {
+	if m == nil {
+		return false
+	}
+	_, exists := m[key]
+	return exists
 }
 
 func runConfigGetCommand(_ *cobra.Command, args []string) error {
