@@ -109,7 +109,7 @@ Example usage:
 
 // palettePreviewCmd generates HTML preview.
 var palettePreviewCmd = &cobra.Command{
-	Use:   "preview <name>",
+	Use:   "preview [name]",
 	Short: "Generate palette preview",
 	Long: `Generate an HTML preview page for a palette.
 
@@ -118,8 +118,9 @@ Creates a visual preview showing all colors with their names and hex values.
 Example usage:
   markata-go palette preview catppuccin-mocha
   markata-go palette preview catppuccin-mocha --open  # Open in browser
-  markata-go palette preview catppuccin-mocha -o preview.html`,
-	Args: cobra.ExactArgs(1),
+  markata-go palette preview catppuccin-mocha -o preview.html
+  markata-go palette preview --all                    # Preview all palettes`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: runPalettePreviewCommand,
 }
 
@@ -166,6 +167,9 @@ var (
 
 	// paletteOpen opens preview in browser.
 	paletteOpen bool
+
+	// palettePreviewAll shows all palettes in preview.
+	palettePreviewAll bool
 )
 
 func init() {
@@ -195,6 +199,7 @@ func init() {
 	paletteCmd.AddCommand(palettePreviewCmd)
 	palettePreviewCmd.Flags().StringVarP(&paletteOutput, "output", "o", "", "Output file (default: palette-preview.html)")
 	palettePreviewCmd.Flags().BoolVar(&paletteOpen, "open", false, "Open preview in browser")
+	palettePreviewCmd.Flags().BoolVar(&palettePreviewAll, "all", false, "Preview all available palettes")
 
 	// New subcommand
 	paletteCmd.AddCommand(paletteNewCmd)
@@ -449,19 +454,56 @@ func runPaletteExportCommand(_ *cobra.Command, args []string) error {
 
 // runPalettePreviewCommand generates HTML preview.
 func runPalettePreviewCommand(_ *cobra.Command, args []string) error {
-	name := args[0]
-
 	loader := palettes.NewLoader()
-	p, err := loader.Load(name)
-	if err != nil {
-		return fmt.Errorf("failed to load palette: %w", err)
+
+	var palettesToPreview []*palettes.Palette
+
+	if palettePreviewAll {
+		// Load all discovered palettes
+		infos, err := loader.Discover()
+		if err != nil {
+			return fmt.Errorf("failed to discover palettes: %w", err)
+		}
+		if len(infos) == 0 {
+			return fmt.Errorf("no palettes found")
+		}
+		for _, info := range infos {
+			p, err := loader.Load(info.Name)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to load %s: %v\n", info.Name, err)
+				continue
+			}
+			palettesToPreview = append(palettesToPreview, p)
+		}
+		if len(palettesToPreview) == 0 {
+			return fmt.Errorf("failed to load any palettes")
+		}
+	} else {
+		if len(args) == 0 {
+			return fmt.Errorf("palette name required (or use --all)")
+		}
+		name := args[0]
+		p, err := loader.Load(name)
+		if err != nil {
+			return fmt.Errorf("failed to load palette: %w", err)
+		}
+		palettesToPreview = append(palettesToPreview, p)
 	}
 
-	html := generatePreviewHTML(p)
+	var html string
+	if len(palettesToPreview) == 1 {
+		html = generatePreviewHTML(palettesToPreview[0])
+	} else {
+		html = generateAllPalettesPreviewHTML(palettesToPreview)
+	}
 
 	outputFile := paletteOutput
 	if outputFile == "" {
-		outputFile = "palette-preview.html"
+		if palettePreviewAll {
+			outputFile = "all-palettes-preview.html"
+		} else {
+			outputFile = "palette-preview.html"
+		}
 	}
 
 	if err := os.WriteFile(outputFile, []byte(html), 0o644); err != nil { //nolint:gosec // preview files should be readable
@@ -645,6 +687,155 @@ func generatePreviewHTML(p *palettes.Palette) string {
 	}
 	sb.WriteString(`  </div>
 `)
+
+	sb.WriteString(`</body>
+</html>
+`)
+
+	return sb.String()
+}
+
+// generateAllPalettesPreviewHTML generates an HTML preview page for multiple palettes.
+func generateAllPalettesPreviewHTML(paletteList []*palettes.Palette) string {
+	var sb strings.Builder
+
+	sb.WriteString(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>All Palettes Preview</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    h1 { margin-bottom: 10px; }
+    .summary { color: #666; margin-bottom: 20px; }
+    .nav { position: sticky; top: 0; background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .nav h2 { margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; color: #666; }
+    .nav-links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .nav-links a { color: #0066cc; text-decoration: none; padding: 4px 8px; background: #f0f0f0; border-radius: 4px; font-size: 13px; }
+    .nav-links a:hover { background: #e0e0e0; }
+    .palette-card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .palette-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .palette-header h2 { margin: 0; }
+    .palette-meta { color: #666; font-size: 14px; }
+    .variant-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+    .variant-dark { background: #333; color: #fff; }
+    .variant-light { background: #f0f0f0; color: #333; }
+    .colors { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
+    .color-swatch { 
+      width: 60px; 
+      height: 60px; 
+      border-radius: 8px; 
+      border: 1px solid rgba(0,0,0,0.1);
+      position: relative;
+      cursor: pointer;
+    }
+    .color-swatch:hover::after {
+      content: attr(data-name) "\A" attr(data-hex);
+      white-space: pre;
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: monospace;
+      z-index: 10;
+      margin-bottom: 4px;
+    }
+    .contrast-preview {
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    .contrast-preview h4 { margin: 0 0 8px 0; }
+    .contrast-preview p { margin: 4px 0; }
+    .contrast-preview a { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>All Palettes Preview</h1>
+`)
+
+	sb.WriteString(fmt.Sprintf(`  <p class="summary">Showing %d palettes</p>
+`, len(paletteList)))
+
+	// Navigation
+	sb.WriteString(`  <nav class="nav">
+    <h2>Jump to Palette</h2>
+    <div class="nav-links">
+`)
+	for _, p := range paletteList {
+		sb.WriteString(fmt.Sprintf(`      <a href="#%s">%s</a>
+`, normalizeFileName(p.Name), p.Name))
+	}
+	sb.WriteString(`    </div>
+  </nav>
+
+`)
+
+	// Palette cards
+	for _, p := range paletteList {
+		variantClass := "variant-dark"
+		if p.Variant == palettes.VariantLight {
+			variantClass = "variant-light"
+		}
+
+		sb.WriteString(fmt.Sprintf(`  <div class="palette-card" id="%s">
+    <div class="palette-header">
+      <h2>%s</h2>
+      <span class="variant-badge %s">%s</span>
+    </div>
+`, normalizeFileName(p.Name), p.Name, variantClass, p.Variant))
+
+		if p.Author != "" || p.Description != "" {
+			sb.WriteString(`    <p class="palette-meta">`)
+			if p.Author != "" {
+				sb.WriteString(fmt.Sprintf(`by %s`, p.Author))
+			}
+			if p.Author != "" && p.Description != "" {
+				sb.WriteString(` &middot; `)
+			}
+			if p.Description != "" {
+				sb.WriteString(p.Description)
+			}
+			sb.WriteString(`</p>
+`)
+		}
+
+		// Color swatches
+		sb.WriteString(`    <div class="colors">
+`)
+		for name, hex := range p.Colors {
+			sb.WriteString(fmt.Sprintf(`      <div class="color-swatch" style="background-color: %s;" data-name="%s" data-hex="%s"></div>
+`, hex, name, hex))
+		}
+		sb.WriteString(`    </div>
+`)
+
+		// Contrast preview
+		textPrimary := p.Resolve("text-primary")
+		bgPrimary := p.Resolve("bg-primary")
+		if textPrimary != "" && bgPrimary != "" {
+			linkColor := p.Resolve("link")
+			if linkColor == "" {
+				linkColor = textPrimary
+			}
+			sb.WriteString(fmt.Sprintf(`    <div class="contrast-preview" style="background-color: %s; color: %s;">
+      <h4>Contrast Preview</h4>
+      <p>Sample text on this background.</p>
+      <p><a href="#" style="color: %s;">Sample link</a></p>
+    </div>
+`, bgPrimary, textPrimary, linkColor))
+		}
+
+		sb.WriteString(`  </div>
+
+`)
+	}
 
 	sb.WriteString(`</body>
 </html>
