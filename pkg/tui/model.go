@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -18,10 +19,11 @@ import (
 type View string
 
 const (
-	ViewPosts View = "posts"
-	ViewTags  View = "tags"
-	ViewFeeds View = "feeds"
-	ViewHelp  View = "help"
+	ViewPosts      View = "posts"
+	ViewTags       View = "tags"
+	ViewFeeds      View = "feeds"
+	ViewHelp       View = "help"
+	ViewPostDetail View = "post_detail"
 )
 
 // Mode represents the input mode
@@ -35,18 +37,20 @@ const (
 
 // Model is the main Bubble Tea model
 type Model struct {
-	app         *services.App
-	posts       []*models.Post
-	tags        []services.TagInfo
-	cursor      int
-	view        View
-	mode        Mode
-	filter      string
-	filterInput textinput.Model
-	cmdInput    textinput.Model
-	width       int
-	height      int
-	err         error
+	app          *services.App
+	posts        []*models.Post
+	tags         []services.TagInfo
+	cursor       int
+	view         View
+	previousView View // Track previous view for returning from detail
+	mode         Mode
+	filter       string
+	filterInput  textinput.Model
+	cmdInput     textinput.Model
+	width        int
+	height       int
+	err          error
+	selectedPost *models.Post // The post being viewed in detail
 }
 
 // Messages
@@ -126,6 +130,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Fall through to normal mode handling below
 	}
 
+	// Handle detail view keys separately
+	if m.view == ViewPostDetail {
+		return m.handleDetailViewKey(msg)
+	}
+
 	// Normal mode key handling
 	switch {
 	case key.Matches(msg, keyMap.Quit):
@@ -167,6 +176,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.view = ViewTags
 		m.cursor = 0
 		return m, m.loadTags()
+
+	case key.Matches(msg, keyMap.Enter):
+		return m.handleEnter()
+
+	case key.Matches(msg, keyMap.Escape):
+		return m.handleEscape()
 	}
 
 	return m, nil
@@ -236,6 +251,64 @@ func (m Model) executeCommand(cmd string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) handleEnter() (tea.Model, tea.Cmd) {
+	switch m.view {
+	case ViewPosts:
+		if len(m.posts) > 0 && m.cursor < len(m.posts) {
+			m.selectedPost = m.posts[m.cursor]
+			m.previousView = m.view
+			m.view = ViewPostDetail
+		}
+	case ViewPostDetail:
+		// Already in detail view, Enter does nothing
+	case ViewHelp:
+		// Return to previous view
+		m.view = ViewPosts
+	case ViewTags, ViewFeeds:
+		// TODO: implement detail views for tags and feeds
+	}
+	return m, nil
+}
+
+func (m Model) handleEscape() (tea.Model, tea.Cmd) {
+	switch m.view {
+	case ViewPostDetail:
+		m.view = m.previousView
+		if m.view == "" {
+			m.view = ViewPosts
+		}
+		m.selectedPost = nil
+	case ViewHelp:
+		m.view = ViewPosts
+	case ViewPosts, ViewTags, ViewFeeds:
+		// Escape does nothing in list views
+	}
+	return m, nil
+}
+
+func (m Model) handleDetailViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, keyMap.Quit):
+		return m, tea.Quit
+
+	case key.Matches(msg, keyMap.Escape):
+		m.view = m.previousView
+		if m.view == "" {
+			m.view = ViewPosts
+		}
+		m.selectedPost = nil
+		return m, nil
+
+	case key.Matches(msg, keyMap.Edit):
+		// Edit functionality - show coming soon message for now
+		// This will be implemented in issue #221
+		m.err = fmt.Errorf("edit feature coming soon (see issue #221)")
+		return m, nil
+	}
+
+	return m, nil
+}
+
 // Commands
 func (m Model) loadPosts() tea.Cmd {
 	return func() tea.Msg {
@@ -277,6 +350,8 @@ func (m Model) View() string {
 		content = "Feeds view (coming soon)"
 	case ViewHelp:
 		content = m.renderHelp()
+	case ViewPostDetail:
+		return m.renderPostDetail()
 	}
 
 	return m.renderLayout(content)
@@ -396,9 +471,190 @@ Commands:
 Press Esc to return.`
 }
 
+func (m Model) renderPostDetail() string {
+	if m.selectedPost == nil {
+		return "No post selected."
+	}
+
+	p := m.selectedPost
+
+	// Calculate available width
+	width := m.width
+	if width < 40 {
+		width = 80 // Default minimum
+	}
+	if width > 100 {
+		width = 100 // Max width for readability
+	}
+	contentWidth := width - 4 // Account for border padding
+
+	// Build the metadata section
+	var metadata strings.Builder
+
+	// Title
+	title := "(untitled)"
+	if p.Title != nil && *p.Title != "" {
+		title = *p.Title
+	}
+	metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Title:"), title))
+
+	// Path
+	metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Path:"), p.Path))
+
+	// Date
+	dateStr := "(not set)"
+	if p.Date != nil {
+		dateStr = p.Date.Format("2006-01-02")
+	}
+	metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Date:"), dateStr))
+
+	// Published
+	publishedStr := "false"
+	if p.Published {
+		publishedStr = "true"
+	}
+	metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Published:"), publishedStr))
+
+	// Tags
+	tagsStr := "(none)"
+	if len(p.Tags) > 0 {
+		tagsStr = strings.Join(p.Tags, ", ")
+	}
+	metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Tags:"), tagsStr))
+
+	// Word count
+	wordCount := countWords(p.Content)
+	metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Words:"), formatNumber(wordCount)))
+
+	// Description
+	if p.Description != nil && *p.Description != "" {
+		desc := *p.Description
+		if len(desc) > contentWidth-15 {
+			desc = desc[:contentWidth-18] + "..."
+		}
+		metadata.WriteString(fmt.Sprintf("  %s  %s\n", detailLabelStyle.Render("Description:"), desc))
+	}
+
+	// Separator
+	separator := strings.Repeat("─", contentWidth)
+
+	// Content preview
+	var preview strings.Builder
+	preview.WriteString("\n  " + detailLabelStyle.Render("Content Preview:") + "\n")
+
+	// Get content preview (first ~500 chars or 15 lines)
+	previewContent := getContentPreview(p.Content, 500, 12, contentWidth-4)
+	for _, line := range strings.Split(previewContent, "\n") {
+		preview.WriteString("  " + line + "\n")
+	}
+
+	// Build the full content
+	content := metadata.String() + "\n  " + separator + "\n" + preview.String()
+
+	// Create the detail box
+	detailBox := detailBoxStyle.
+		Width(width).
+		Render(content)
+
+	// Status bar
+	statusBar := detailStatusStyle.
+		Width(width).
+		Render("  [e]dit  [Esc] back  [q]uit")
+
+	// Header
+	header := headerStyle.Render("markata-go")
+	header += " " + subtleStyle.Render("[post_detail]")
+
+	return header + "\n\n" + detailBox + "\n" + statusBar
+}
+
+// countWords counts the number of words in a string
+func countWords(s string) int {
+	if s == "" {
+		return 0
+	}
+	return len(strings.Fields(s))
+}
+
+// formatNumber formats a number with comma separators
+func formatNumber(n int) string {
+	if n < 1000 {
+		return fmt.Sprintf("%d", n)
+	}
+
+	// Format with commas
+	s := fmt.Sprintf("%d", n)
+	var result strings.Builder
+	length := len(s)
+
+	for i, c := range s {
+		if i > 0 && (length-i)%3 == 0 {
+			result.WriteRune(',')
+		}
+		result.WriteRune(c)
+	}
+
+	return result.String()
+}
+
+// getContentPreview returns a truncated preview of the content
+func getContentPreview(content string, maxChars, maxLines, maxWidth int) string {
+	if content == "" {
+		return "(empty)"
+	}
+
+	// Split into lines
+	lines := strings.Split(content, "\n")
+
+	var result strings.Builder
+	charCount := 0
+	lineCount := 0
+
+	for _, line := range lines {
+		if lineCount >= maxLines || charCount >= maxChars {
+			break
+		}
+
+		// Truncate long lines
+		if utf8.RuneCountInString(line) > maxWidth {
+			line = string([]rune(line)[:maxWidth-3]) + "..."
+		}
+
+		result.WriteString(line)
+		result.WriteString("\n")
+
+		charCount += len(line)
+		lineCount++
+	}
+
+	output := strings.TrimRight(result.String(), "\n")
+
+	// Add ellipsis if content was truncated
+	if charCount >= maxChars || lineCount >= maxLines {
+		output += "\n..."
+	}
+
+	return output
+}
+
 // Styles
 var (
 	headerStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
 	subtleStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
 	selectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212"))
+
+	// Detail view styles
+	detailLabelStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("99")).
+				Width(12)
+
+	detailBoxStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("99")).
+			Padding(1, 0)
+
+	detailStatusStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("241")).
+				Padding(0, 1)
 )
