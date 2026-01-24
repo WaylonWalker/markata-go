@@ -3,7 +3,6 @@ title: "Advanced Usage"
 description: "Power user guide covering complex configurations, optimization techniques, and advanced patterns"
 date: 2024-01-15
 published: true
-template: doc.html
 tags:
   - documentation
   - advanced

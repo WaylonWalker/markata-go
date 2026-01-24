@@ -3,7 +3,6 @@ title: "Syndication Feeds"
 description: "Guide to generating Sitemap, RSS, Atom, and JSON Feed outputs for your site"
 date: 2024-01-15
 published: true
-template: doc.html
 tags:
   - documentation
   - feeds

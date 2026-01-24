@@ -3,7 +3,6 @@ title: "Self-Hosting Guide"
 description: "Deploy markata-go sites on your own servers using Docker, systemd, or manual setups"
 date: 2024-01-23
 published: true
-template: doc.html
 tags:
   - documentation
   - deployment
