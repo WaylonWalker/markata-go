@@ -307,7 +307,7 @@ fetch('/search-index/feed.json')
       threshold: 0.3,
       includeScore: true
     });
-    
+
     // Search function
     window.search = (query) => {
       const results = fuse.search(query);
@@ -662,13 +662,13 @@ func NewShortcodePlugin() *ShortcodePlugin {
     p := &ShortcodePlugin{
         shortcodes: make(map[string]ShortcodeFunc),
     }
-    
+
     // Register built-in shortcodes
     p.Register("youtube", youtubeShortcode)
     p.Register("gist", gistShortcode)
     p.Register("tweet", tweetShortcode)
     p.Register("figure", figureShortcode)
-    
+
     return p
 }
 
@@ -705,13 +705,13 @@ func (p *ShortcodePlugin) processShortcodes(content string) string {
         if len(submatches) < 2 {
             return match
         }
-        
+
         name := submatches[1]
         paramsStr := ""
         if len(submatches) >= 3 {
             paramsStr = submatches[2]
         }
-        
+
         // Parse parameters
         params := make(map[string]string)
         paramMatches := paramPattern.FindAllStringSubmatch(paramsStr, -1)
@@ -720,12 +720,12 @@ func (p *ShortcodePlugin) processShortcodes(content string) string {
                 params[pm[1]] = pm[2]
             }
         }
-        
+
         // Execute shortcode
         if fn, ok := p.shortcodes[name]; ok {
             return fn(params)
         }
-        
+
         return match // Unknown shortcode, leave as-is
     })
 }
@@ -738,8 +738,8 @@ func youtubeShortcode(params map[string]string) string {
         return "<!-- youtube: missing id -->"
     }
     return fmt.Sprintf(`<div class="video-container">
-<iframe src="https://www.youtube.com/embed/%s" 
-        frameborder="0" 
+<iframe src="https://www.youtube.com/embed/%s"
+        frameborder="0"
         allowfullscreen
         loading="lazy"></iframe>
 </div>`, id)
@@ -769,22 +769,22 @@ func figureShortcode(params map[string]string) string {
     src := params["src"]
     alt := params["alt"]
     caption := params["caption"]
-    
+
     if src == "" {
         return "<!-- figure: missing src -->"
     }
-    
+
     html := fmt.Sprintf(`<figure>
 <img src="%s" alt="%s" loading="lazy">`, src, alt)
-    
+
     if caption != "" {
         html += fmt.Sprintf(`
 <figcaption>%s</figcaption>`, caption)
     }
-    
+
     html += `
 </figure>`
-    
+
     return html
 }
 
@@ -867,25 +867,25 @@ For expensive operations, implement caching in your plugins:
 ```go
 func (p *MyPlugin) Transform(m *lifecycle.Manager) error {
     cache := m.Cache()
-    
+
     for _, post := range m.Posts() {
         // Generate cache key from content hash
         key := fmt.Sprintf("processed:%s", post.ContentHash())
-        
+
         // Check cache
         if cached, ok := cache.Get(key); ok {
             post.Set("processed_data", cached)
             continue
         }
-        
+
         // Expensive operation
         result := p.expensiveOperation(post)
-        
+
         // Store in cache
         cache.Set(key, result)
         post.Set("processed_data", result)
     }
-    
+
     return nil
 }
 ```
@@ -994,7 +994,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -1084,25 +1084,25 @@ Create a flexible base template with multiple extension points:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+
     {# SEO block - can be fully overridden #}
     {% block seo %}
     <title>{% block title %}{{ config.Title }}{% endblock %}</title>
     <meta name="description" content="{% block description %}{{ config.Description }}{% endblock %}">
     {% endblock %}
-    
+
     {# Open Graph - extendable #}
     {% block opengraph %}
     <meta property="og:title" content="{% block og_title %}{{ config.Title }}{% endblock %}">
     <meta property="og:type" content="{% block og_type %}website{% endblock %}">
     <meta property="og:url" content="{{ config.URL }}{% block og_url %}/{% endblock %}">
     {% endblock %}
-    
+
     {# Styles - extendable #}
     {% block styles %}
     <link rel="stylesheet" href="/css/main.css">
     {% endblock %}
-    
+
     {# Extra head content #}
     {% block head %}{% endblock %}
 </head>
@@ -1110,21 +1110,21 @@ Create a flexible base template with multiple extension points:
     {% block skip_link %}
     <a href="#main" class="skip-link">Skip to content</a>
     {% endblock %}
-    
+
     {% block header %}
     {% include "partials/header.html" %}
     {% endblock %}
-    
+
     {% block main %}
     <main id="main">
         {% block content %}{% endblock %}
     </main>
     {% endblock %}
-    
+
     {% block footer %}
     {% include "partials/footer.html" %}
     {% endblock %}
-    
+
     {% block scripts %}
     <script src="/js/main.js"></script>
     {% endblock %}
@@ -1141,14 +1141,14 @@ Use different layouts based on post metadata:
 {% extends "base.html" %}
 
 {% block body_class %}
-post 
+post
 {% if post.Extra.featured %}featured{% endif %}
 {% if post.Extra.wide %}wide-layout{% endif %}
 {% endblock %}
 
 {% block content %}
 <article class="{% if post.Extra.layout %}{{ post.Extra.layout }}{% else %}standard{% endif %}">
-    
+
     {# Hero section for featured posts #}
     {% if post.Extra.hero_image %}
     <div class="hero" style="background-image: url('{{ post.Extra.hero_image }}')">
@@ -1159,7 +1159,7 @@ post
         <h1>{{ post.Title }}</h1>
     </header>
     {% endif %}
-    
+
     {# Sidebar for posts with TOC #}
     {% if post.Extra.toc %}
     <div class="with-sidebar">
@@ -1175,12 +1175,12 @@ post
         {{ body|safe }}
     </div>
     {% endif %}
-    
+
     {# Series navigation #}
     {% if post.Extra.series %}
     {% include "partials/series-nav.html" %}
     {% endif %}
-    
+
 </article>
 {% endblock %}
 ```
@@ -1191,40 +1191,40 @@ Create composable partial templates:
 
 ```html
 {# templates/partials/card.html #}
-{# 
+{#
   Expects: post object
   Optional: show_image, show_tags, show_excerpt
 #}
 <article class="card {% if post.Extra.featured %}card--featured{% endif %}">
     {% if show_image|default_if_none:true and post.Extra.cover_image %}
     <a href="{{ post.Href }}" class="card__image">
-        <img src="{{ post.Extra.cover_image }}" 
+        <img src="{{ post.Extra.cover_image }}"
              alt="{{ post.Title }}"
              loading="lazy">
     </a>
     {% endif %}
-    
+
     <div class="card__body">
         <h3 class="card__title">
             <a href="{{ post.Href }}">{{ post.Title }}</a>
         </h3>
-        
+
         {% if show_excerpt|default_if_none:true and post.Description %}
         <p class="card__excerpt">{{ post.Description|truncate:120 }}</p>
         {% endif %}
-        
+
         <footer class="card__meta">
             {% if post.Date %}
             <time datetime="{{ post.Date|atom_date }}">
                 {{ post.Date|date_format:"Jan 2, 2006" }}
             </time>
             {% endif %}
-            
+
             {% if post.Extra.reading_time %}
             <span class="reading-time">{{ post.Extra.reading_time }}</span>
             {% endif %}
         </footer>
-        
+
         {% if show_tags|default_if_none:false and post.Tags %}
         <ul class="card__tags">
             {% for tag in post.Tags|slice:":3" %}
@@ -1416,13 +1416,13 @@ Include the TOC in your post template:
     <header>
         <h1>{{ post.Title }}</h1>
     </header>
-    
+
     {% if post.Extra.toc_html %}
     <aside class="toc-sidebar">
         {{ post.Extra.toc_html|safe }}
     </aside>
     {% endif %}
-    
+
     <div class="post-content">
         {{ body|safe }}
     </div>

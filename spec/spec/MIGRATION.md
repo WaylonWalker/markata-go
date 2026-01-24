@@ -271,7 +271,7 @@ SUMMARY
 --------------------------------------------------------------------------------
 
   Status: Ready to migrate (with warnings)
-  
+
   Changes required:    12
   Warnings:            3
   Incompatibilities:   1
@@ -343,22 +343,22 @@ NEXT STEPS
 type MigrationResult struct {
     // InputFile is the source config file path
     InputFile string
-    
+
     // OutputFile is the target config file path
     OutputFile string
-    
+
     // Changes is the list of configuration changes made
     Changes []ConfigChange
-    
+
     // FilterMigrations is the list of filter expression migrations
     FilterMigrations []FilterMigration
-    
+
     // Warnings is the list of non-blocking issues
     Warnings []Warning
-    
+
     // Errors is the list of blocking issues
     Errors []MigrationError
-    
+
     // TemplateIssues is the list of template compatibility issues
     TemplateIssues []TemplateIssue
 }
@@ -370,16 +370,16 @@ type MigrationResult struct {
 type ConfigChange struct {
     // Type is the change type: "namespace", "rename", "transform", "remove"
     Type string
-    
+
     // Path is the config path (e.g., "markata.nav")
     Path string
-    
+
     // OldValue is the original value
     OldValue interface{}
-    
+
     // NewValue is the migrated value
     NewValue interface{}
-    
+
     // Description explains the change
     Description string
 }
@@ -391,19 +391,19 @@ type ConfigChange struct {
 type FilterMigration struct {
     // Feed is the feed name this filter belongs to
     Feed string
-    
+
     // Original is the original filter expression
     Original string
-    
+
     // Migrated is the migrated filter expression
     Migrated string
-    
+
     // Changes lists specific transformations applied
     Changes []string
-    
+
     // Valid indicates if the migrated filter is valid
     Valid bool
-    
+
     // Error contains any migration error
     Error string
 }
@@ -415,13 +415,13 @@ type FilterMigration struct {
 type Warning struct {
     // Category groups related warnings
     Category string // "config", "filter", "template", "plugin"
-    
+
     // Message describes the warning
     Message string
-    
+
     // Path is the config path or file path
     Path string
-    
+
     // Suggestion provides actionable guidance
     Suggestion string
 }
@@ -433,13 +433,13 @@ type Warning struct {
 type MigrationError struct {
     // Category groups related errors
     Category string
-    
+
     // Message describes the error
     Message string
-    
+
     // Path is the config path or file path
     Path string
-    
+
     // Fatal indicates if migration cannot continue
     Fatal bool
 }
@@ -451,16 +451,16 @@ type MigrationError struct {
 type TemplateIssue struct {
     // File is the template file path
     File string
-    
+
     // Line is the line number
     Line int
-    
+
     // Issue describes the compatibility issue
     Issue string
-    
+
     // Severity is "error", "warning", or "info"
     Severity string
-    
+
     // Suggestion provides fix guidance
     Suggestion string
 }

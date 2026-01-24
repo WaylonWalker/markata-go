@@ -1,10 +1,10 @@
 {# Breadcrumbs Navigation Component #}
-{# 
+{#
    Usage: {% include "components/breadcrumbs.html" %}
-   
+
    Requires post.breadcrumbs to be set by the breadcrumbs plugin.
    Generates semantic HTML with ARIA labels for accessibility.
-   
+
    Available variables:
    - post.breadcrumbs: Array of breadcrumb items
    - post.breadcrumb_separator: Separator character (default: "/")
@@ -14,7 +14,7 @@
 <nav class="breadcrumbs" aria-label="Breadcrumb navigation" data-pagefind-ignore>
   <ol class="breadcrumb-list" itemscope itemtype="https://schema.org/BreadcrumbList">
     {% for crumb in post.breadcrumbs %}
-    <li class="breadcrumb-item{% if crumb.is_current %} breadcrumb-item--active{% endif %}" 
+    <li class="breadcrumb-item{% if crumb.is_current %} breadcrumb-item--active{% endif %}"
         itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
       {% if crumb.url and not crumb.is_current %}
       <a href="{{ crumb.url }}" class="breadcrumb-link" itemprop="item">

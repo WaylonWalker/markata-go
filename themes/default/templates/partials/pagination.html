@@ -5,8 +5,8 @@
 <nav class="pagination pagination-htmx" aria-label="Pagination" hx-boost="true">
   {# Previous button #}
   {% if page.has_prev %}
-  <a href="{{ page.prev_url }}" 
-     class="pagination-prev" 
+  <a href="{{ page.prev_url }}"
+     class="pagination-prev"
      rel="prev"
      hx-get="{{ page.prev_url }}"
      hx-target=".posts-list"
@@ -16,14 +16,14 @@
   {% else %}
   <span class="pagination-prev disabled">&laquo; Newer</span>
   {% endif %}
-  
+
   {# Page numbers #}
   <div class="pagination-pages">
     {% for url in page.page_urls %}
     {% if forloop.Counter == page.number %}
     <span class="pagination-page current" aria-current="page">{{ forloop.Counter }}</span>
     {% else %}
-    <a href="{{ url }}" 
+    <a href="{{ url }}"
        class="pagination-page"
        hx-get="{{ url }}"
        hx-target=".posts-list"
@@ -33,11 +33,11 @@
     {% endif %}
     {% endfor %}
   </div>
-  
+
   {# Next button #}
   {% if page.has_next %}
-  <a href="{{ page.next_url }}" 
-     class="pagination-next" 
+  <a href="{{ page.next_url }}"
+     class="pagination-next"
      rel="next"
      hx-get="{{ page.next_url }}"
      hx-target=".posts-list"
@@ -57,7 +57,7 @@
   {% else %}
   <span class="pagination-prev disabled">&laquo; Newer</span>
   {% endif %}
-  
+
   {# Page numbers #}
   <div class="pagination-pages">
     {% for url in page.page_urls %}
@@ -68,7 +68,7 @@
     {% endif %}
     {% endfor %}
   </div>
-  
+
   {# Next button #}
   {% if page.has_next %}
   <a href="{{ page.next_url }}" class="pagination-next" rel="next">Older &raquo;</a>

@@ -155,8 +155,8 @@ line_numbers = false
 [markata-go.glob]
 patterns = [
 "posts/**/*.md",
-"pages/*.md", 
-"docs/**/*.md", 
+"pages/*.md",
+"docs/**/*.md",
 ]
 use_gitignore = true
 

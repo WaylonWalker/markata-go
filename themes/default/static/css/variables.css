@@ -4,25 +4,25 @@
   --color-primary: #3b82f6;
   --color-primary-light: #60a5fa;
   --color-primary-dark: #2563eb;
-  
+
   /* Semantic colors */
   --color-text: #1f2937;
   --color-text-muted: #6b7280;
   --color-background: #ffffff;
   --color-surface: #f9fafb;
   --color-border: #e5e7eb;
-  
+
   /* Status colors */
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
   --color-info: #3b82f6;
-  
+
   /* Font families */
   --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-heading: var(--font-body);
   --font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
-  
+
   /* Font sizes (modular scale) */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -32,12 +32,12 @@
   --text-2xl: 1.5rem;
   --text-3xl: 1.875rem;
   --text-4xl: 2.25rem;
-  
+
   /* Line heights */
   --leading-tight: 1.25;
   --leading-normal: 1.5;
   --leading-relaxed: 1.75;
-  
+
   /* Spacing scale */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -47,7 +47,7 @@
   --space-8: 2rem;
   --space-12: 3rem;
   --space-16: 4rem;
-  
+
   /* Layout */
   --content-width: 65ch;
   --page-width: 1200px;

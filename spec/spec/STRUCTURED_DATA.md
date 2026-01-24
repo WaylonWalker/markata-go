@@ -72,10 +72,10 @@ social_image: "/images/og-custom.jpg"  # Override OG image specifically
 type StructuredDataConfig struct {
     // Enabled controls generation (default: true)
     Enabled *bool `toml:"enabled"`
-    
+
     // Publisher is the site publisher info
     Publisher *EntityConfig `toml:"publisher"`
-    
+
     // DefaultAuthor is used when posts don't specify author
     DefaultAuthor *EntityConfig `toml:"default_author"`
 }
@@ -83,13 +83,13 @@ type StructuredDataConfig struct {
 type EntityConfig struct {
     // Type is "Person" or "Organization"
     Type string `toml:"type"`
-    
+
     // Name is the entity name
     Name string `toml:"name"`
-    
+
     // URL is the entity's web page
     URL string `toml:"url"`
-    
+
     // Logo is the logo URL (Organizations only)
     Logo string `toml:"logo"`
 }

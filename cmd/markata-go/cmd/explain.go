@@ -15,7 +15,7 @@ var explainCmd = &cobra.Command{
 	Use:   "explain [topic]",
 	Short: "Show detailed information about markata-go for AI agents",
 	Long: `Outputs comprehensive context about markata-go commands and concepts.
-	
+
 This command is designed to provide AI coding agents with the context they need
 to work effectively with markata-go projects.
 

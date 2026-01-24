@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "golang.go",
+    "tamasfe.even-better-toml",
+    "redhat.vscode-yaml",
+    "skellock.just",
+    "EditorConfig.EditorConfig",
+    "streetsidesoftware.code-spell-checker",
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+    "yzhang.markdown-all-in-one",
+    "DavidAnson.vscode-markdownlint"
+  ]
+}

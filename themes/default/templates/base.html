@@ -3,24 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
+
   {% block meta %}
   <title>{% block title %}{{ config.title | default:'My Site' }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ config.description | default:'' }}{% endblock %}">
   {% endblock %}
-  
+
   {% block head %}
   <!-- Theme CSS -->
   <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
   <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
   <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
   <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
-  
+
   <!-- CSS variable overrides from theme config -->
   {% if config.theme.variables %}
   <style>:root { {% for k, v in config.theme.variables.items() %}{{ k }}: {{ v }}; {% endfor %} }</style>
   {% endif %}
-  
+
   <!-- Style config overrides (per HEAD_STYLE.md spec) -->
   {% if config.style %}
   <style>
@@ -41,12 +41,12 @@
     }
   </style>
   {% endif %}
-  
+
   <!-- Custom CSS file -->
   {% if config.theme.custom_css %}
   <link rel="stylesheet" href="{{ config.theme.custom_css | asset_url }}">
   {% endif %}
-  
+
   <!-- RSS/Atom/JSON Feeds -->
   {% if config.head.alternate_feeds %}
   {% for feed in config.head.alternate_feeds %}
@@ -57,12 +57,12 @@
   <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
   <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
   {% endif %}
-  
+
   <!-- Global head config (per HEAD_STYLE.md spec) -->
   {% if config.head %}
     <!-- Raw text/HTML -->
     {% if config.head.text %}{{ config.head.text | safe }}{% endif %}
-    
+
     <!-- Meta tags -->
     {% for meta in config.head.meta %}
       {% if meta.name %}
@@ -71,12 +71,12 @@
       <meta property="{{ meta.property }}" content="{{ meta.content }}">
       {% endif %}
     {% endfor %}
-    
+
     <!-- Link tags -->
     {% for link in config.head.link %}
     <link rel="{{ link.rel }}" href="{{ link.href }}"{% if link.crossorigin %} crossorigin{% endif %}>
     {% endfor %}
-    
+
     <!-- Script tags -->
     {% for script in config.head.script %}
     <script src="{{ script.src }}"></script>
@@ -88,15 +88,15 @@
   {% block header %}
   {% include "partials/header.html" %}
   {% endblock %}
-  
+
   <main>
     {% block content %}{% endblock %}
   </main>
-  
+
   {% block footer %}
   {% include "partials/footer.html" %}
   {% endblock %}
-  
+
   {% block scripts %}{% endblock %}
 </body>
 </html>

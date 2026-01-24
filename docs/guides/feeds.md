@@ -284,7 +284,7 @@ partial_template = "feed_partial.html"
     Previous
   </a>
   {% endif %}
-  
+
   {% if pagination.has_next %}
   <a href="{{ feed.slug }}/page/{{ pagination.next_page }}/"
      hx-get="{{ feed.slug }}/page/{{ pagination.next_page }}/partial/"
@@ -376,7 +376,7 @@ rss = true
     <description>Latest blog posts</description>
     <lastBuildDate>Mon, 15 Jan 2024 12:00:00 +0000</lastBuildDate>
     <atom:link href="https://example.com/blog/rss.xml" rel="self" type="application/rss+xml"/>
-    
+
     <item>
       <title>My Post</title>
       <link>https://example.com/my-post/</link>
@@ -407,7 +407,7 @@ atom = true
   <link href="https://example.com/blog/atom.xml" rel="self"/>
   <id>https://example.com/blog/</id>
   <updated>2024-01-15T12:00:00Z</updated>
-  
+
   <entry>
     <title>My Post</title>
     <link href="https://example.com/my-post/" rel="alternate"/>
@@ -890,7 +890,7 @@ Each post in `feed.posts` or `page.posts` has:
   {% if feed.description %}
   <p class="description">{{ feed.description }}</p>
   {% endif %}
-  
+
   <ul class="posts">
   {% for post in page.posts %}
     <li class="post">
@@ -906,14 +906,14 @@ Each post in `feed.posts` or `page.posts` has:
     </li>
   {% endfor %}
   </ul>
-  
+
   <nav class="pagination">
     {% if page.has_prev %}
     <a href="{{ page.prev_url }}" rel="prev">Previous</a>
     {% endif %}
-    
+
     <span>Page {{ pagination.current_page }} of {{ pagination.total_pages }}</span>
-    
+
     {% if page.has_next %}
     <a href="{{ page.next_url }}" rel="next">Next</a>
     {% endif %}
@@ -941,18 +941,18 @@ Add `<link>` tags in your base template for feed autodiscovery:
 ```html
 <head>
   <!-- RSS Feed -->
-  <link rel="alternate" type="application/rss+xml" 
-        title="{{ feed.title }} (RSS)" 
+  <link rel="alternate" type="application/rss+xml"
+        title="{{ feed.title }} (RSS)"
         href="{{ feed.href }}rss.xml">
-  
+
   <!-- Atom Feed -->
-  <link rel="alternate" type="application/atom+xml" 
-        title="{{ feed.title }} (Atom)" 
+  <link rel="alternate" type="application/atom+xml"
+        title="{{ feed.title }} (Atom)"
         href="{{ feed.href }}atom.xml">
-  
+
   <!-- JSON Feed -->
-  <link rel="alternate" type="application/feed+json" 
-        title="{{ feed.title }} (JSON)" 
+  <link rel="alternate" type="application/feed+json"
+        title="{{ feed.title }} (JSON)"
         href="{{ feed.href }}feed.json">
 </head>
 ```

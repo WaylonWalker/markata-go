@@ -21,7 +21,7 @@ pre {
   overflow-x: auto;
   margin: var(--space-4) 0;
   border: 1px solid var(--color-border);
-  
+
   /* Scrollbar styling */
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
@@ -204,7 +204,7 @@ pre.line-numbers .line-numbers-rows > span::before {
   code {
     color: #e6edf3;
   }
-  
+
   /* Comments */
   .highlight .c,
   .highlight .c1,

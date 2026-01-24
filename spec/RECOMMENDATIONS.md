@@ -443,7 +443,7 @@ edge_cases:
       content_words: 10000
     output:
       renders_successfully: true
-      
+
   - name: "unicode filename"
     input:
       path: "posts/日本語の記事.md"

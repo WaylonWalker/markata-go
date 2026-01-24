@@ -229,7 +229,7 @@ Access in your plugin:
 def render(core):
     if not core.config.word_count.enabled:
         return
-    
+
     wpm = core.config.word_count.words_per_minute
     # ...
 ```
@@ -261,7 +261,7 @@ Now every post has these fields with defaults. Populate them:
 @hook_impl
 def pre_render(core):
     wpm = core.config.word_count.words_per_minute
-    
+
     for post in core.filter("not skip"):
         words = len(post.content.split())
         post.word_count = words
@@ -316,12 +316,12 @@ posts = core.map("post", filter="True")
 def render(core):
     for post in core.filter("not skip"):
         cache_key = f"expensive_op:{post.path}:{hash(post.content)}"
-        
+
         cached = core.cache.get(cache_key)
         if cached is not None:
             post.expensive_result = cached
             continue
-        
+
         result = expensive_operation(post)
         core.cache.set(cache_key, result)
         post.expensive_result = result
@@ -346,13 +346,13 @@ def cli(app):
     def word_stats():
         """Show word count statistics for all posts."""
         from your_ssg import Core
-        
+
         core = Core()
         core.run("pre_render")  # Run up to pre_render stage
-        
+
         total_words = sum(p.word_count for p in core.posts)
         avg_words = total_words // len(core.posts) if core.posts else 0
-        
+
         print(f"Total posts: {len(core.posts)}")
         print(f"Total words: {total_words:,}")
         print(f"Average words: {avg_words:,}")
@@ -434,15 +434,15 @@ def post_model(core: "Core") -> None:
 def pre_render(core: "Core") -> None:
     """Calculate reading time for each post."""
     config = core.config.reading_time
-    
+
     if not config.enabled:
         return
-    
+
     for post in core.filter("not skip"):
         # Count words
         words = len(post.content.split())
         post.word_count = words
-        
+
         # Calculate reading time
         minutes = max(1, words // config.words_per_minute)
         post.reading_time = config.format.format(minutes=minutes)
@@ -455,17 +455,17 @@ def cli(app) -> None:
     def reading_stats():
         """Show reading time statistics."""
         from your_ssg import Core
-        
+
         core = Core()
         core.run("pre_render")
-        
+
         if not core.posts:
             print("No posts found")
             return
-        
-        times = [p.word_count // core.config.reading_time.words_per_minute 
+
+        times = [p.word_count // core.config.reading_time.words_per_minute
                  for p in core.posts]
-        
+
         print(f"Posts: {len(core.posts)}")
         print(f"Shortest: {min(times)} min")
         print(f"Longest: {max(times)} min")
@@ -534,11 +534,11 @@ logger = logging.getLogger(__name__)
 @hook_impl
 def render(core):
     logger.debug(f"Processing {len(core.posts)} posts")
-    
+
     for post in core.filter("not skip"):
         logger.debug(f"Processing: {post.path}")
         # ...
-    
+
     logger.info(f"Processed {len(core.posts)} posts")
 ```
 
@@ -563,7 +563,7 @@ def test_reading_time_calculation():
     """Test that reading time is calculated correctly."""
     core = Core()
     core.config.reading_time.words_per_minute = 200
-    
+
     # Create a mock post with 400 words
     post = core.Post(
         path="test.md",
@@ -571,10 +571,10 @@ def test_reading_time_calculation():
         slug="test"
     )
     core.articles = [post]
-    
+
     # Run the pre_render stage (which calculates reading time)
     core.run("pre_render")
-    
+
     assert post.word_count == 400
     assert post.reading_time == "2 min read"
 
@@ -583,12 +583,12 @@ def test_reading_time_disabled():
     """Test that plugin respects enabled flag."""
     core = Core()
     core.config.reading_time.enabled = False
-    
+
     post = core.Post(path="test.md", content="words", slug="test")
     core.articles = [post]
-    
+
     core.run("pre_render")
-    
+
     assert post.reading_time is None
 ```
 
@@ -606,7 +606,7 @@ published: true
 
 This is test content with enough words to calculate reading time.
 """ + " word" * 200)
-    
+
     # Create config
     (tmp_path / "config.toml").write_text("""
 [your-ssg]
@@ -615,12 +615,12 @@ output_dir = "output"
 [your-ssg.glob]
 glob_patterns = ["posts/*.md"]
 """)
-    
+
     # Run build
     from your_ssg import Core
     core = Core(root=tmp_path)
     core.run()
-    
+
     # Verify output
     output = (tmp_path / "output" / "test-post" / "index.html").read_text()
     assert "1 min read" in output

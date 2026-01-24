@@ -1,0 +1,101 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug: build",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/markata-go",
+      "args": ["build"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: build (verbose)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/markata-go",
+      "args": ["build", "--verbose"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: serve",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/markata-go",
+      "args": ["serve"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: serve (no watch)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/markata-go",
+      "args": ["serve", "--no-watch"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: new post",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/markata-go",
+      "args": ["new", "Test Post"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: lint",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/markata-go",
+      "args": ["lint"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: config",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/markata-go",
+      "args": ["config"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: Current Test File",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: Current Package Tests",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${fileDirname}",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: All Tests",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "./...",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug: Custom Command",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/markata-go",
+      "args": ["--help"],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

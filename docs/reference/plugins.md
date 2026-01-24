@@ -377,7 +377,7 @@ breadcrumbs:
   enabled: true
   show_home: false
   home_label: "Docs"
-  
+
   # Manual breadcrumb trail (overrides auto-generation)
   items:
     - label: "Products"
@@ -1435,7 +1435,7 @@ screenshot_service = ""  # Optional: "https://screenshot.example.com/capture?url
 
 **After:**
 ```html
-<a href="/my-post/" class="wikilink" 
+<a href="/my-post/" class="wikilink"
    data-preview="This is a description of the post..."
    data-preview-image="/images/featured.jpg">My Post</a>
 ```
@@ -1703,7 +1703,7 @@ type PrevNextContext struct {
         <span class="nav-title">{{ post.Prev.Title }}</span>
     </a>
     {% endif %}
-    
+
     {% if post.Next %}
     <a href="{{ post.Next.Href }}" class="nav-next">
         <span class="nav-label">Next</span>
@@ -2510,7 +2510,7 @@ aliases:
   - "Application Programming Interface"
 ---
 
-An **API** (Application Programming Interface) is a set of protocols, 
+An **API** (Application Programming Interface) is a set of protocols,
 routines, and tools for building software applications...
 ```
 
@@ -2739,11 +2739,11 @@ The default post template includes `data-pagefind-*` attributes for indexing:
 <article data-pagefind-body>
     <h1 data-pagefind-meta="title">{{ post.title }}</h1>
     <p data-pagefind-meta="excerpt">{{ post.description }}</p>
-    
+
     {% for tag in post.tags %}
     <span data-pagefind-filter="tag" style="display:none">{{ tag }}</span>
     {% endfor %}
-    
+
     <div class="content">{{ body | safe }}</div>
 </article>
 ```

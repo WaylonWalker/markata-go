@@ -239,7 +239,7 @@ func generateThemeSampleHTML(p *palettes.Palette) string {
   <link rel="stylesheet" href="variables.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { 
+    body {
       font-family: system-ui, -apple-system, sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
@@ -745,16 +745,16 @@ func generateGalleryHTML(entries []ThemeGalleryEntry) string {
     function filterThemes(filter) {
       document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
       event.target.classList.add('active');
-      
+
       document.querySelectorAll('.theme-card').forEach(card => {
         const variant = card.dataset.variant;
         const passing = card.dataset.passing === 'true';
-        
+
         let show = true;
         if (filter === 'dark') show = variant === 'dark';
         else if (filter === 'light') show = variant === 'light';
         else if (filter === 'passing') show = passing;
-        
+
         card.style.display = show ? 'block' : 'none';
       });
     }

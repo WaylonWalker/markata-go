@@ -59,17 +59,17 @@
                 </div>
                 {% endif %}
             </header>
-            
+
             {% if post.cover_image %}
             <figure class="post-cover">
                 <img src="{{ post.cover_image }}" alt="{{ post.title }}">
             </figure>
             {% endif %}
-            
+
             <div class="post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
                 {{ body | safe }}
             </div>
-            
+
             {% if config.layout.blog.show_prev_next %}
             <nav class="post-nav" aria-label="Post navigation">
                 {% if post.prev %}
@@ -88,10 +88,10 @@
             {% endif %}
         </article>
     </main>
-    
+
     {% if config.layout.blog.show_toc and post.toc %}
-    <aside class="layout-toc layout-toc--{{ config.layout.blog.toc_position | default:'right' }}" 
-           role="complementary" 
+    <aside class="layout-toc layout-toc--{{ config.layout.blog.toc_position | default:'right' }}"
+           role="complementary"
            aria-label="Table of Contents"
            style="--toc-width: {{ config.layout.blog.toc_width | default:'200px' }}">
         <div class="toc-content">
