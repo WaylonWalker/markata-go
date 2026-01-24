@@ -1,0 +1,606 @@
+// Package plugins provides lifecycle plugins for markata-go.
+package plugins
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"html"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
+)
+
+// EmbedsPlugin processes embed syntax in markdown content.
+// It supports two types of embeds:
+// - Internal embeds: ![[slug]] or ![[slug|display text]] - embed another post from the same site
+// - External embeds: ![embed](https://example.com/article) - embed external content with OG metadata
+//
+// The plugin runs in the Transform stage, before markdown rendering.
+type EmbedsPlugin struct {
+	config     models.EmbedsConfig
+	httpClient *http.Client
+}
+
+// NewEmbedsPlugin creates a new EmbedsPlugin with default settings.
+func NewEmbedsPlugin() *EmbedsPlugin {
+	config := models.NewEmbedsConfig()
+	return &EmbedsPlugin{
+		config: config,
+		httpClient: &http.Client{
+			Timeout: time.Duration(config.Timeout) * time.Second,
+		},
+	}
+}
+
+// Name returns the unique name of the plugin.
+func (p *EmbedsPlugin) Name() string {
+	return "embeds"
+}
+
+// Priority returns the plugin's priority for a given stage.
+// This plugin runs early in the transform stage, before wikilinks.
+func (p *EmbedsPlugin) Priority(stage lifecycle.Stage) int {
+	if stage == lifecycle.StageTransform {
+		return lifecycle.PriorityEarly // Run before wikilinks and other transforms
+	}
+	return lifecycle.PriorityDefault
+}
+
+// Configure reads configuration options for the plugin from config.Extra.
+// Configuration is expected under the "embeds" key.
+func (p *EmbedsPlugin) Configure(m *lifecycle.Manager) error {
+	config := m.Config()
+	if config.Extra == nil {
+		return nil
+	}
+
+	pluginConfig, ok := config.Extra["embeds"]
+	if !ok {
+		return nil
+	}
+
+	if cfgMap, ok := pluginConfig.(map[string]interface{}); ok {
+		if enabled, ok := cfgMap["enabled"].(bool); ok {
+			p.config.Enabled = enabled
+		}
+		if internalCardClass, ok := cfgMap["internal_card_class"].(string); ok && internalCardClass != "" {
+			p.config.InternalCardClass = internalCardClass
+		}
+		if externalCardClass, ok := cfgMap["external_card_class"].(string); ok && externalCardClass != "" {
+			p.config.ExternalCardClass = externalCardClass
+		}
+		if fetchExternal, ok := cfgMap["fetch_external"].(bool); ok {
+			p.config.FetchExternal = fetchExternal
+		}
+		if cacheDir, ok := cfgMap["cache_dir"].(string); ok && cacheDir != "" {
+			p.config.CacheDir = cacheDir
+		}
+		if timeout, ok := cfgMap["timeout"].(int); ok && timeout > 0 {
+			p.config.Timeout = timeout
+			p.httpClient.Timeout = time.Duration(timeout) * time.Second
+		}
+		if fallbackTitle, ok := cfgMap["fallback_title"].(string); ok && fallbackTitle != "" {
+			p.config.FallbackTitle = fallbackTitle
+		}
+		if showImage, ok := cfgMap["show_image"].(bool); ok {
+			p.config.ShowImage = showImage
+		}
+	}
+
+	return nil
+}
+
+// Transform processes embed syntax in all post content.
+func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
+	if !p.config.Enabled {
+		return nil
+	}
+
+	posts := m.Posts()
+
+	// Build a map of slug -> post for internal embed lookup
+	postMap := make(map[string]*models.Post)
+	for _, post := range posts {
+		if post.Slug != "" {
+			postMap[post.Slug] = post
+			// Also index by lowercase for case-insensitive matching
+			postMap[strings.ToLower(post.Slug)] = post
+		}
+	}
+
+	// Process each post
+	return m.ProcessPostsConcurrently(func(post *models.Post) error {
+		if post.Skip || post.Content == "" {
+			return nil
+		}
+
+		content := p.processInternalEmbeds(post.Content, postMap, post)
+		content = p.processExternalEmbeds(content, post)
+		post.Content = content
+
+		return nil
+	})
+}
+
+// internalEmbedRegex matches ![[slug]] and ![[slug|display text]] patterns.
+// This is similar to wikilink syntax but with a leading !
+var internalEmbedRegex = regexp.MustCompile(`!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
+
+// externalEmbedRegex matches ![embed](url) pattern.
+// The alt text must be exactly "embed" to trigger embedding.
+var externalEmbedRegex = regexp.MustCompile(`!\[embed\]\(([^)]+)\)`)
+
+// processInternalEmbeds replaces ![[slug]] syntax with embed cards.
+func (p *EmbedsPlugin) processInternalEmbeds(content string, postMap map[string]*models.Post, currentPost *models.Post) string {
+	// Split content by fenced code blocks to avoid transforming embeds inside them
+	codeBlockRegex := regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
+	codeBlocks := codeBlockRegex.FindAllStringIndex(content, -1)
+
+	if len(codeBlocks) == 0 {
+		return p.processInternalEmbedsInText(content, postMap, currentPost)
+	}
+
+	var result strings.Builder
+	lastEnd := 0
+
+	for _, block := range codeBlocks {
+		start, end := block[0], block[1]
+
+		if start > lastEnd {
+			processed := p.processInternalEmbedsInText(content[lastEnd:start], postMap, currentPost)
+			result.WriteString(processed)
+		}
+
+		result.WriteString(content[start:end])
+		lastEnd = end
+	}
+
+	if lastEnd < len(content) {
+		processed := p.processInternalEmbedsInText(content[lastEnd:], postMap, currentPost)
+		result.WriteString(processed)
+	}
+
+	return result.String()
+}
+
+// processInternalEmbedsInText processes internal embeds in a text segment.
+func (p *EmbedsPlugin) processInternalEmbedsInText(text string, postMap map[string]*models.Post, currentPost *models.Post) string {
+	return internalEmbedRegex.ReplaceAllStringFunc(text, func(match string) string {
+		groups := internalEmbedRegex.FindStringSubmatch(match)
+		if len(groups) < 2 {
+			return match
+		}
+
+		slug := strings.TrimSpace(groups[1])
+		displayText := ""
+		if len(groups) >= 3 && groups[2] != "" {
+			displayText = strings.TrimSpace(groups[2])
+		}
+
+		// Normalize slug for lookup
+		normalizedSlug := strings.ToLower(slug)
+		normalizedSlug = strings.ReplaceAll(normalizedSlug, " ", "-")
+
+		// Look up the target post
+		targetPost, found := postMap[normalizedSlug]
+		if !found {
+			// Try exact match
+			targetPost, found = postMap[slug]
+		}
+
+		if !found {
+			// Return a warning comment and keep original
+			return fmt.Sprintf("<!-- embed not found: %s -->\n%s", slug, match)
+		}
+
+		// Don't embed self
+		if targetPost.Path == currentPost.Path {
+			return fmt.Sprintf("<!-- cannot embed self -->\n%s", match)
+		}
+
+		return p.buildInternalEmbedCard(targetPost, displayText)
+	})
+}
+
+// buildInternalEmbedCard creates HTML for an internal embed card.
+func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText string) string {
+	var sb strings.Builder
+
+	href := post.Href
+	if href == "" {
+		href = "/" + post.Slug + "/"
+	}
+
+	title := displayText
+	if title == "" {
+		if post.Title != nil && *post.Title != "" {
+			title = *post.Title
+		} else {
+			title = post.Slug
+		}
+	}
+
+	description := ""
+	if post.Description != nil {
+		description = *post.Description
+		// Truncate to reasonable length
+		if len(description) > 200 {
+			description = description[:197] + "..."
+		}
+	}
+
+	sb.WriteString(`<div class="`)
+	sb.WriteString(html.EscapeString(p.config.InternalCardClass))
+	sb.WriteString(`">`)
+	sb.WriteString("\n")
+
+	sb.WriteString(`  <a href="`)
+	sb.WriteString(html.EscapeString(href))
+	sb.WriteString(`" class="embed-card-link">`)
+	sb.WriteString("\n")
+
+	sb.WriteString(`    <div class="embed-card-content">`)
+	sb.WriteString("\n")
+
+	sb.WriteString(`      <div class="embed-card-title">`)
+	sb.WriteString(html.EscapeString(title))
+	sb.WriteString(`</div>`)
+	sb.WriteString("\n")
+
+	if description != "" {
+		sb.WriteString(`      <div class="embed-card-description">`)
+		sb.WriteString(html.EscapeString(description))
+		sb.WriteString(`</div>`)
+		sb.WriteString("\n")
+	}
+
+	if post.Date != nil {
+		sb.WriteString(`      <div class="embed-card-meta">`)
+		sb.WriteString(post.Date.Format("Jan 2, 2006"))
+		sb.WriteString(`</div>`)
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString(`    </div>`)
+	sb.WriteString("\n")
+	sb.WriteString(`  </a>`)
+	sb.WriteString("\n")
+	sb.WriteString(`</div>`)
+	sb.WriteString("\n")
+
+	return sb.String()
+}
+
+// processExternalEmbeds replaces ![embed](url) syntax with embed cards.
+func (p *EmbedsPlugin) processExternalEmbeds(content string, currentPost *models.Post) string {
+	// Split content by fenced code blocks
+	codeBlockRegex := regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
+	codeBlocks := codeBlockRegex.FindAllStringIndex(content, -1)
+
+	if len(codeBlocks) == 0 {
+		return p.processExternalEmbedsInText(content, currentPost)
+	}
+
+	var result strings.Builder
+	lastEnd := 0
+
+	for _, block := range codeBlocks {
+		start, end := block[0], block[1]
+
+		if start > lastEnd {
+			processed := p.processExternalEmbedsInText(content[lastEnd:start], currentPost)
+			result.WriteString(processed)
+		}
+
+		result.WriteString(content[start:end])
+		lastEnd = end
+	}
+
+	if lastEnd < len(content) {
+		processed := p.processExternalEmbedsInText(content[lastEnd:], currentPost)
+		result.WriteString(processed)
+	}
+
+	return result.String()
+}
+
+// processExternalEmbedsInText processes external embeds in a text segment.
+func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) string {
+	return externalEmbedRegex.ReplaceAllStringFunc(text, func(match string) string {
+		groups := externalEmbedRegex.FindStringSubmatch(match)
+		if len(groups) < 2 {
+			return match
+		}
+
+		rawURL := strings.TrimSpace(groups[1])
+
+		// Validate URL
+		parsedURL, err := url.Parse(rawURL)
+		if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+			return match
+		}
+
+		// Fetch OG metadata
+		metadata := p.fetchOGMetadata(rawURL)
+
+		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata)
+	})
+}
+
+// OGMetadata holds Open Graph metadata for external embeds.
+type OGMetadata struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Image       string `json:"image"`
+	SiteName    string `json:"site_name"`
+	Type        string `json:"type"`
+	FetchedAt   int64  `json:"fetched_at"`
+}
+
+// fetchOGMetadata fetches Open Graph metadata from a URL.
+func (p *EmbedsPlugin) fetchOGMetadata(rawURL string) *OGMetadata {
+	if !p.config.FetchExternal {
+		return &OGMetadata{Title: p.config.FallbackTitle}
+	}
+
+	// Check cache first
+	if cached := p.loadCachedMetadata(rawURL); cached != nil {
+		return cached
+	}
+
+	// Fetch from URL
+	metadata := p.fetchMetadataFromURL(rawURL)
+
+	// Cache the result
+	p.cacheMetadata(rawURL, metadata)
+
+	return metadata
+}
+
+// loadCachedMetadata loads metadata from cache if available and not expired.
+func (p *EmbedsPlugin) loadCachedMetadata(rawURL string) *OGMetadata {
+	cacheFile := p.getCacheFilePath(rawURL)
+
+	data, err := os.ReadFile(cacheFile)
+	if err != nil {
+		return nil
+	}
+
+	var metadata OGMetadata
+	if err := json.Unmarshal(data, &metadata); err != nil {
+		return nil
+	}
+
+	// Check if cache is expired (7 days)
+	if time.Now().Unix()-metadata.FetchedAt > 7*24*60*60 {
+		return nil
+	}
+
+	return &metadata
+}
+
+// cacheMetadata saves metadata to cache.
+func (p *EmbedsPlugin) cacheMetadata(rawURL string, metadata *OGMetadata) {
+	if p.config.CacheDir == "" {
+		return
+	}
+
+	metadata.FetchedAt = time.Now().Unix()
+
+	cacheFile := p.getCacheFilePath(rawURL)
+	cacheDir := filepath.Dir(cacheFile)
+
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return
+	}
+
+	data, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		return
+	}
+
+	_ = os.WriteFile(cacheFile, data, 0o600) //nolint:errcheck // Best effort cache write
+}
+
+// getCacheFilePath returns the cache file path for a URL.
+func (p *EmbedsPlugin) getCacheFilePath(rawURL string) string {
+	hash := sha256.Sum256([]byte(rawURL))
+	hashStr := hex.EncodeToString(hash[:8])
+	return filepath.Join(p.config.CacheDir, hashStr+".json")
+}
+
+// fetchMetadataFromURL fetches OG metadata from a URL.
+func (p *EmbedsPlugin) fetchMetadataFromURL(rawURL string) *OGMetadata {
+	metadata := &OGMetadata{
+		Title: p.config.FallbackTitle,
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), "GET", rawURL, http.NoBody)
+	if err != nil {
+		return metadata
+	}
+
+	// Set a reasonable user agent
+	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return metadata
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return metadata
+	}
+
+	// Read limited body to avoid memory issues
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1024*1024)) // 1MB limit
+	if err != nil {
+		return metadata
+	}
+
+	htmlContent := string(body)
+
+	// Extract OG metadata using simple regex
+	metadata.Title = p.extractMetaContent(htmlContent, "og:title")
+	if metadata.Title == "" {
+		metadata.Title = p.extractHTMLTitle(htmlContent)
+	}
+	if metadata.Title == "" {
+		metadata.Title = p.config.FallbackTitle
+	}
+
+	metadata.Description = p.extractMetaContent(htmlContent, "og:description")
+	if metadata.Description == "" {
+		metadata.Description = p.extractMetaContent(htmlContent, "description")
+	}
+
+	metadata.Image = p.extractMetaContent(htmlContent, "og:image")
+	metadata.SiteName = p.extractMetaContent(htmlContent, "og:site_name")
+	metadata.Type = p.extractMetaContent(htmlContent, "og:type")
+
+	return metadata
+}
+
+// extractMetaContent extracts content from a meta tag.
+func (p *EmbedsPlugin) extractMetaContent(htmlContent, property string) string {
+	// Try property attribute first (og:*)
+	propertyPattern := regexp.MustCompile(
+		`<meta[^>]*property=["']` + regexp.QuoteMeta(property) + `["'][^>]*content=["']([^"']+)["']`,
+	)
+	if match := propertyPattern.FindStringSubmatch(htmlContent); len(match) > 1 {
+		return html.UnescapeString(match[1])
+	}
+
+	// Try content before property
+	propertyPattern2 := regexp.MustCompile(
+		`<meta[^>]*content=["']([^"']+)["'][^>]*property=["']` + regexp.QuoteMeta(property) + `["']`,
+	)
+	if match := propertyPattern2.FindStringSubmatch(htmlContent); len(match) > 1 {
+		return html.UnescapeString(match[1])
+	}
+
+	// Try name attribute (description)
+	namePattern := regexp.MustCompile(
+		`<meta[^>]*name=["']` + regexp.QuoteMeta(property) + `["'][^>]*content=["']([^"']+)["']`,
+	)
+	if match := namePattern.FindStringSubmatch(htmlContent); len(match) > 1 {
+		return html.UnescapeString(match[1])
+	}
+
+	// Try content before name
+	namePattern2 := regexp.MustCompile(
+		`<meta[^>]*content=["']([^"']+)["'][^>]*name=["']` + regexp.QuoteMeta(property) + `["']`,
+	)
+	if match := namePattern2.FindStringSubmatch(htmlContent); len(match) > 1 {
+		return html.UnescapeString(match[1])
+	}
+
+	return ""
+}
+
+// extractHTMLTitle extracts the title from HTML.
+func (p *EmbedsPlugin) extractHTMLTitle(htmlContent string) string {
+	titlePattern := regexp.MustCompile(`<title[^>]*>([^<]+)</title>`)
+	if match := titlePattern.FindStringSubmatch(htmlContent); len(match) > 1 {
+		return html.UnescapeString(strings.TrimSpace(match[1]))
+	}
+	return ""
+}
+
+// buildExternalEmbedCard creates HTML for an external embed card.
+func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL, metadata *OGMetadata) string {
+	var sb strings.Builder
+
+	domain := parsedURL.Host
+	domain = strings.TrimPrefix(domain, "www.")
+
+	sb.WriteString(`<div class="`)
+	sb.WriteString(html.EscapeString(p.config.ExternalCardClass))
+	sb.WriteString(`">`)
+	sb.WriteString("\n")
+
+	sb.WriteString(`  <a href="`)
+	sb.WriteString(html.EscapeString(rawURL))
+	sb.WriteString(`" class="embed-card-link" target="_blank" rel="noopener noreferrer">`)
+	sb.WriteString("\n")
+
+	// Show image if available and enabled
+	if p.config.ShowImage && metadata.Image != "" {
+		sb.WriteString(`    <div class="embed-card-image">`)
+		sb.WriteString("\n")
+		sb.WriteString(`      <img src="`)
+		sb.WriteString(html.EscapeString(metadata.Image))
+		sb.WriteString(`" alt="" loading="lazy">`)
+		sb.WriteString("\n")
+		sb.WriteString(`    </div>`)
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString(`    <div class="embed-card-content">`)
+	sb.WriteString("\n")
+
+	sb.WriteString(`      <div class="embed-card-title">`)
+	sb.WriteString(html.EscapeString(metadata.Title))
+	sb.WriteString(`</div>`)
+	sb.WriteString("\n")
+
+	if metadata.Description != "" {
+		description := metadata.Description
+		if len(description) > 200 {
+			description = description[:197] + "..."
+		}
+		sb.WriteString(`      <div class="embed-card-description">`)
+		sb.WriteString(html.EscapeString(description))
+		sb.WriteString(`</div>`)
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString(`      <div class="embed-card-meta">`)
+	if metadata.SiteName != "" {
+		sb.WriteString(html.EscapeString(metadata.SiteName))
+		sb.WriteString(` &middot; `)
+	}
+	sb.WriteString(html.EscapeString(domain))
+	sb.WriteString(`</div>`)
+	sb.WriteString("\n")
+
+	sb.WriteString(`    </div>`)
+	sb.WriteString("\n")
+	sb.WriteString(`  </a>`)
+	sb.WriteString("\n")
+	sb.WriteString(`</div>`)
+	sb.WriteString("\n")
+
+	return sb.String()
+}
+
+// SetConfig sets the plugin configuration directly.
+func (p *EmbedsPlugin) SetConfig(config models.EmbedsConfig) {
+	p.config = config
+	p.httpClient.Timeout = time.Duration(config.Timeout) * time.Second
+}
+
+// Config returns the current plugin configuration.
+func (p *EmbedsPlugin) Config() models.EmbedsConfig {
+	return p.config
+}
+
+// Ensure EmbedsPlugin implements the required interfaces.
+var (
+	_ lifecycle.Plugin          = (*EmbedsPlugin)(nil)
+	_ lifecycle.ConfigurePlugin = (*EmbedsPlugin)(nil)
+	_ lifecycle.TransformPlugin = (*EmbedsPlugin)(nil)
+	_ lifecycle.PriorityPlugin  = (*EmbedsPlugin)(nil)
+)
