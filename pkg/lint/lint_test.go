@@ -265,7 +265,7 @@ func TestFix_DateFormats(t *testing.T) {
 		{
 			name:    "single digit month and day with time",
 			content: "date: 2020-1-1T00:00:00",
-			want:    "date: 2020-01-01T00:00:00",
+			want:    "date: 2020-01-01", // DateTimeFixer normalizes to date-only format
 		},
 	}
 

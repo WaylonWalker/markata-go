@@ -374,35 +374,11 @@ func fixDuplicateKeys(content string) string {
 	return "---\n" + strings.Join(fixedLines, "\n") + "\n---" + body
 }
 
-// fixDateFormats normalizes date formats to ISO 8601.
+// fixDateFormats normalizes date formats to ISO 8601 using DateTimeFixer.
 func fixDateFormats(content string) string {
-	// Fix single-digit month/day: 2020-1-1 -> 2020-01-01
-	singleDigitDate := regexp.MustCompile(`(\d{4})-(\d{1,2})-(\d{1,2})(T\d{2}:\d{2}:\d{2})?`)
-
-	return singleDigitDate.ReplaceAllStringFunc(content, func(match string) string {
-		parts := singleDigitDate.FindStringSubmatch(match)
-		if len(parts) < 4 {
-			return match
-		}
-
-		year := parts[1]
-		month := parts[2]
-		day := parts[3]
-		timePart := ""
-		if len(parts) > 4 {
-			timePart = parts[4]
-		}
-
-		// Pad month and day
-		if len(month) == 1 {
-			month = "0" + month
-		}
-		if len(day) == 1 {
-			day = "0" + day
-		}
-
-		return fmt.Sprintf("%s-%s-%s%s", year, month, day, timePart)
-	})
+	fixer := NewDateTimeFixer(DefaultDateTimeFixerConfig())
+	fixed, _ := fixer.FixDateInContent(content)
+	return fixed
 }
 
 // fixImageLinks adds placeholder alt text to images without it.
