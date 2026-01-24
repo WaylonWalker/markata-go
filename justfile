@@ -173,12 +173,27 @@ setup:
     @echo "Setting up development environment..."
     go mod download
     go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+    go install golang.org/x/tools/cmd/goimports@latest
     go install github.com/goreleaser/goreleaser/v2@latest
     @echo ""
     @echo "Setup complete! You can now run:"
     @echo "  just build    - Build the binary"
     @echo "  just test     - Run tests"
     @echo "  just ci       - Run full CI checks"
+    @echo "  just hooks    - Install pre-commit hooks"
+
+# Set up the full development environment with pre-commit hooks
+setup-full:
+    ./scripts/setup-dev.sh
+
+# Install pre-commit hooks
+hooks:
+    pre-commit install
+    pre-commit install --hook-type commit-msg
+
+# Run pre-commit on all files
+pre-commit:
+    pre-commit run --all-files
 
 # Run what CI runs (lint + test + build)
 ci: tidy vet lint test build

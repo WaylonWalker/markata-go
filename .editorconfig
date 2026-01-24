@@ -1,0 +1,75 @@
+# EditorConfig for markata-go
+# https://editorconfig.org/
+
+root = true
+
+# Default settings for all files
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Go files: tabs (gofmt standard)
+[*.go]
+indent_style = tab
+indent_size = 4
+
+# YAML files: 2 spaces
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# JSON files: 2 spaces
+[*.json]
+indent_style = space
+indent_size = 2
+
+# TOML files: 2 spaces
+[*.toml]
+indent_style = space
+indent_size = 2
+
+# Markdown files: preserve trailing whitespace for line breaks
+[*.md]
+trim_trailing_whitespace = false
+indent_style = space
+indent_size = 2
+
+# HTML templates: 2 spaces
+[*.html]
+indent_style = space
+indent_size = 2
+
+# CSS files: 2 spaces
+[*.css]
+indent_style = space
+indent_size = 2
+
+# JavaScript files: 2 spaces
+[*.js]
+indent_style = space
+indent_size = 2
+
+# Shell scripts: 2 spaces
+[*.sh]
+indent_style = space
+indent_size = 2
+
+# Makefile: tabs (required)
+[Makefile]
+indent_style = tab
+
+# justfile: 4 spaces (just convention)
+[justfile]
+indent_style = space
+indent_size = 4
+
+# Git config files
+[.git*]
+indent_style = tab
+
+# Dockerfile
+[Dockerfile*]
+indent_style = space
+indent_size = 4

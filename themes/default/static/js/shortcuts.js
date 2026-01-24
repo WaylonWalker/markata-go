@@ -1,11 +1,11 @@
 /**
  * Keyboard Shortcuts System for markata-go
- * 
+ *
  * Provides keyboard navigation shortcuts for the generated site:
  * - `/` or `Cmd/Ctrl+K` - Focus search input
  * - `Escape` - Close search/modals
  * - `?` - Show shortcuts help modal
- * 
+ *
  * Accessibility: Shortcuts can be disabled via localStorage
  * WCAG 2.1.4 compliant - shortcuts are ignored when typing in inputs
  */
@@ -76,11 +76,11 @@
     var isMac = isMacPlatform();
     var macKeys = document.querySelectorAll('.kbd-mac');
     var winKeys = document.querySelectorAll('.kbd-win');
-    
+
     macKeys.forEach(function(el) {
       el.style.display = isMac ? 'inline-block' : 'none';
     });
-    
+
     winKeys.forEach(function(el) {
       el.style.display = isMac ? 'none' : 'inline-block';
     });
@@ -96,14 +96,14 @@
       pagefindInput.focus();
       return true;
     }
-    
+
     // Fallback to any search input
     var searchInput = document.querySelector('#pagefind-search input, #search input, [type="search"]');
     if (searchInput) {
       searchInput.focus();
       return true;
     }
-    
+
     return false;
   }
 
@@ -144,19 +144,19 @@
    */
   function closeModals() {
     var closed = false;
-    
+
     // Close shortcuts modal
     if (hideShortcutsModal()) {
       closed = true;
     }
-    
+
     // Blur search input if focused
     var activeElement = document.activeElement;
     if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
       activeElement.blur();
       closed = true;
     }
-    
+
     // Clear Pagefind results if present
     var pagefindResults = document.querySelector('.pagefind-ui__results-area');
     if (pagefindResults && pagefindResults.children.length > 0) {
@@ -167,38 +167,38 @@
         closed = true;
       }
     }
-    
+
     return closed;
   }
 
   /**
    * Check if the current element is an input field where typing should be allowed
-   * @param {Element} element 
+   * @param {Element} element
    * @returns {boolean}
    */
   function isInputElement(element) {
     if (!element) return false;
-    
+
     var tagName = element.tagName;
     if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
       return true;
     }
-    
+
     // Check for contenteditable
     if (element.isContentEditable) {
       return true;
     }
-    
+
     return false;
   }
 
   /**
    * Main keyboard event handler
-   * @param {KeyboardEvent} e 
+   * @param {KeyboardEvent} e
    */
   function handleKeyDown(e) {
     var target = e.target;
-    
+
     // Always allow Escape to work, even in inputs
     if (e.key === 'Escape') {
       if (closeModals()) {
@@ -206,39 +206,39 @@
       }
       return;
     }
-    
+
     // Skip other shortcuts when typing in input fields
     if (isInputElement(target)) {
       return;
     }
-    
+
     // Check if shortcuts are disabled (except for Escape which always works)
     if (areShortcutsDisabled()) {
       return;
     }
-    
+
     // Detect platform for modifier key
     var modifier = isMacPlatform() ? e.metaKey : e.ctrlKey;
-    
+
     // Cmd/Ctrl+K - Focus search
     if (modifier && e.key === 'k') {
       e.preventDefault();
       focusSearch();
       return;
     }
-    
+
     // Don't process other shortcuts if modifier keys are held (except the ones we handle)
     if (e.ctrlKey || e.metaKey || e.altKey) {
       return;
     }
-    
+
     // Handle single-key shortcuts
     switch (e.key) {
       case '/':
         e.preventDefault();
         focusSearch();
         break;
-        
+
       case '?':
         e.preventDefault();
         showShortcutsModal();
@@ -248,7 +248,7 @@
 
   /**
    * Handle click outside modal to close it
-   * @param {MouseEvent} e 
+   * @param {MouseEvent} e
    */
   function handleModalBackdropClick(e) {
     var modal = document.getElementById('shortcuts-modal');
@@ -263,23 +263,23 @@
   function init() {
     // Update modifier key display for the current platform
     updateModifierKeyDisplay();
-    
+
     // Add keyboard event listener
     document.addEventListener('keydown', handleKeyDown);
-    
+
     // Setup modal close button
     var closeBtn = document.querySelector('.shortcuts-modal-close');
     if (closeBtn) {
       closeBtn.addEventListener('click', hideShortcutsModal);
     }
-    
+
     // Setup toggle button
     var toggleBtn = document.getElementById('shortcuts-toggle');
     if (toggleBtn) {
       toggleBtn.addEventListener('click', toggleShortcuts);
       updateToggleButton();
     }
-    
+
     // Close modal on backdrop click
     var modal = document.getElementById('shortcuts-modal');
     if (modal) {

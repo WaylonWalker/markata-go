@@ -544,11 +544,11 @@ jinja: true
   {% set _ = series_posts.append(p) %}
   {% endif %}
   {% endfor %}
-  
+
   {% if post.Extra.series_order > 1 %}
   [Previous: Part {{ post.Extra.series_order - 1 }}](#)
   {% endif %}
-  
+
   {% if post.Extra.series_order < series_posts|length %}
   [Next: Part {{ post.Extra.series_order + 1 }}](#)
   {% endif %}

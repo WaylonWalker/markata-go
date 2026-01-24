@@ -108,7 +108,7 @@ jobs:
     name: Build (PR)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -136,7 +136,7 @@ jobs:
           # Test basic functionality
           docker run --rm markata-go:pr-${{ github.event.number }} version
           docker run --rm markata-go:pr-${{ github.event.number }} --help
-          
+
           # Verify image size (should be under 25MB)
           SIZE=$(docker image inspect markata-go:pr-${{ github.event.number }} --format='{{.Size}}')
           SIZE_MB=$((SIZE / 1024 / 1024))

@@ -227,40 +227,165 @@ example.com {
 }
 ```
 
-## Automated Rebuilds
+## Live Update Patterns
+
+There are several approaches to keeping your self-hosted site up-to-date with content changes.
+
+### Development Mode (Watch)
+
+For development, use the serve command which watches for file changes by default:
+
+```bash
+# Watch is enabled by default
+markata-go serve --port 8000 --host 0.0.0.0
+
+# Explicitly disable watch for static serving
+markata-go serve --no-watch
+```
+
+**Note:** The `serve` command has file watching enabled by default. Use `--no-watch` to disable it.
 
 ### Git Webhooks
 
-Rebuild on push using a webhook endpoint:
+For production, trigger rebuilds via webhooks when content is pushed to your repository.
+
+**1. Create a webhook handler script:**
 
 ```bash
 #!/bin/bash
-# /usr/local/bin/rebuild-site.sh
-cd /var/www/mysite
-git pull origin main
-sudo systemctl restart markata-go
+# /usr/local/bin/webhook-rebuild.sh
+
+set -e
+
+SITE_DIR="/var/www/mysite"
+LOG_FILE="/var/log/markata-rebuild.log"
+LOCK_FILE="/tmp/markata-rebuild.lock"
+
+# Prevent concurrent rebuilds
+if [ -f "$LOCK_FILE" ]; then
+    echo "$(date): Rebuild already in progress, skipping" >> "$LOG_FILE"
+    exit 0
+fi
+
+trap "rm -f $LOCK_FILE" EXIT
+touch "$LOCK_FILE"
+
+echo "$(date): Starting rebuild" >> "$LOG_FILE"
+
+cd "$SITE_DIR"
+git fetch origin main
+git reset --hard origin/main
+
+# Rebuild the site
+/var/www/mysite/.go/bin/markata-go build --clean >> "$LOG_FILE" 2>&1
+
+echo "$(date): Rebuild complete" >> "$LOG_FILE"
 ```
+
+**2. Set up a lightweight webhook server:**
+
+Create `/etc/systemd/system/webhook.service`:
+
+```ini
+[Unit]
+Description=Webhook server for site rebuilds
+After=network.target
+
+[Service]
+Type=simple
+User=markata
+ExecStart=/usr/bin/webhook -hooks /etc/webhook/hooks.json -port 9000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**3. Configure the webhook:**
+
+Create `/etc/webhook/hooks.json`:
+
+```json
+[
+  {
+    "id": "rebuild-site",
+    "execute-command": "/usr/local/bin/webhook-rebuild.sh",
+    "command-working-directory": "/var/www/mysite",
+    "pass-arguments-to-command": [],
+    "trigger-rule": {
+      "match": {
+        "type": "payload-hmac-sha256",
+        "secret": "your-webhook-secret",
+        "parameter": {
+          "source": "header",
+          "name": "X-Hub-Signature-256"
+        }
+      }
+    }
+  }
+]
+```
+
+**4. Configure your Git host:**
+
+- GitHub: Settings > Webhooks > Add webhook
+- URL: `https://your-domain.com/hooks/rebuild-site`
+- Secret: Same as in hooks.json
+- Events: Push events
 
 ### Scheduled Rebuilds
 
-Using systemd timer:
+For sites that pull data from external sources, use scheduled rebuilds.
+
+**1. Create the rebuild service:**
 
 ```ini
-# /etc/systemd/system/markata-go.timer
+# /etc/systemd/system/markata-go-rebuild.service
 [Unit]
-Description=Rebuild site hourly
+Description=Rebuild markata-go site
+After=network.target
+
+[Service]
+Type=oneshot
+User=markata
+WorkingDirectory=/var/www/mysite
+Environment=HOME=/var/www/mysite
+Environment=GOPATH=/var/www/mysite/.go
+Environment=PATH=/var/www/mysite/.go/bin:/usr/local/go/bin:/usr/bin:/bin
+ExecStart=/var/www/mysite/.go/bin/markata-go build --clean
+StandardOutput=journal
+StandardError=journal
+```
+
+**2. Create the timer:**
+
+```ini
+# /etc/systemd/system/markata-go-rebuild.timer
+[Unit]
+Description=Rebuild site on schedule
 
 [Timer]
+# Rebuild hourly
 OnCalendar=hourly
+# Or use specific times: OnCalendar=*-*-* 06,12,18:00:00
+# Catch up on missed runs
 Persistent=true
+# Add randomized delay to avoid thundering herd
+RandomizedDelaySec=300
 
 [Install]
 WantedBy=timers.target
 ```
 
+**3. Enable the timer:**
+
 ```bash
-sudo systemctl enable markata-go.timer
-sudo systemctl start markata-go.timer
+sudo systemctl daemon-reload
+sudo systemctl enable markata-go-rebuild.timer
+sudo systemctl start markata-go-rebuild.timer
+
+# Check timer status
+sudo systemctl list-timers markata-go-rebuild.timer
 ```
 
 ### CI/CD Integration
@@ -269,15 +394,181 @@ Build in CI and deploy via rsync:
 
 ```yaml
 # .github/workflows/deploy.yml
-deploy:
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v4
-    - run: |
-        go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
-        markata-go build --clean
-    - run: |
-        rsync -avz --delete public/ user@server:/var/www/mysite/public/
+name: Deploy Site
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Rebuild daily at 6am UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      
+      - name: Build site
+        run: |
+          go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
+          markata-go build --clean
+        env:
+          MARKATA_GO_URL: https://example.com
+      
+      - name: Deploy via rsync
+        run: |
+          rsync -avz --delete public/ user@server:/var/www/mysite/public/
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+```
+
+## Health Checks
+
+Health checks help ensure your site is running correctly and enable automated recovery.
+
+### HTTP Health Checks
+
+**Basic curl check:**
+
+```bash
+#!/bin/bash
+# /usr/local/bin/health-check.sh
+if curl -sf http://localhost:8000/ > /dev/null; then
+    echo "Site is healthy"
+    exit 0
+else
+    echo "Site is unhealthy"
+    exit 1
+fi
+```
+
+**systemd health monitoring:**
+
+Add to your service file:
+
+```ini
+[Service]
+# ... existing config ...
+
+# Health check with automatic restart
+ExecStartPost=/bin/sleep 5
+ExecStartPost=/usr/bin/curl -sf http://localhost:8000/ || exit 1
+
+# Watchdog (systemd will restart if no response)
+WatchdogSec=60
+NotifyAccess=main
+```
+
+### Docker Health Checks
+
+**docker-compose.yml health check:**
+
+```yaml
+services:
+  markata:
+    # ... other config ...
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+```
+
+**Multi-endpoint health check:**
+
+```yaml
+healthcheck:
+  test: |
+    wget --spider -q http://localhost:8000/ &&
+    wget --spider -q http://localhost:8000/blog/ &&
+    wget --spider -q http://localhost:8000/blog/rss.xml
+  interval: 60s
+  timeout: 15s
+  retries: 3
+```
+
+### External Monitoring
+
+Use external services to monitor your site from outside your infrastructure:
+
+| Service | Free Tier | Features |
+|---------|-----------|----------|
+| [Uptime Robot](https://uptimerobot.com/) | 50 monitors | HTTP, keyword, ping |
+| [Healthchecks.io](https://healthchecks.io/) | 20 checks | Cron monitoring, alerts |
+| [Better Stack](https://betterstack.com/) | 10 monitors | Status pages, incidents |
+
+**Healthchecks.io integration for scheduled rebuilds:**
+
+```bash
+#!/bin/bash
+# /usr/local/bin/webhook-rebuild.sh
+
+HEALTHCHECK_URL="https://hc-ping.com/your-uuid"
+
+# Ping start
+curl -fsS -m 10 --retry 5 "${HEALTHCHECK_URL}/start" > /dev/null
+
+# Do the rebuild
+cd /var/www/mysite
+git pull origin main
+/var/www/mysite/.go/bin/markata-go build --clean
+
+# Ping success or failure
+if [ $? -eq 0 ]; then
+    curl -fsS -m 10 --retry 5 "${HEALTHCHECK_URL}" > /dev/null
+else
+    curl -fsS -m 10 --retry 5 "${HEALTHCHECK_URL}/fail" > /dev/null
+fi
+```
+
+### Container Orchestration Health
+
+**Kubernetes readiness probe:**
+
+```yaml
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: markata
+      readinessProbe:
+        httpGet:
+          path: /
+          port: 8000
+        initialDelaySeconds: 10
+        periodSeconds: 5
+      livenessProbe:
+        httpGet:
+          path: /
+          port: 8000
+        initialDelaySeconds: 30
+        periodSeconds: 10
+```
+
+**Docker Swarm health check:**
+
+```yaml
+services:
+  markata:
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 ```
 
 ## Security Checklist

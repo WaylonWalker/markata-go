@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% if post %}{{ post.title }} - {% endif %}{{ config.title | default:"My Site" }}{% endblock %}</title>
     {% if post.description %}<meta name="description" content="{{ post.description }}">{% elif config.description %}<meta name="description" content="{{ config.description }}">{% endif %}
-    
+
     <!-- Structured Data: OpenGraph -->
     {% if post.structured_data.opengraph %}
     {% for meta in post.structured_data.opengraph %}
@@ -27,7 +27,7 @@
     {% if config.seo.default_image %}<meta property="og:image" content="{{ config.url }}{{ config.seo.default_image }}">{% endif %}
     <meta property="og:site_name" content="{{ config.title }}">
     {% endif %}
-    
+
     <!-- Structured Data: Twitter Card -->
     {% if post.structured_data.twitter %}
     {% for meta in post.structured_data.twitter %}
@@ -47,19 +47,19 @@
     {% if config.seo.default_image %}<meta name="twitter:image" content="{{ config.url }}{{ config.seo.default_image }}">{% endif %}
     {% endif %}
     {% endif %}
-    
+
     <!-- Pagefind default image fallback for search results -->
     {% if config.seo.default_image %}
     <meta data-pagefind-default-meta="image" content="{{ config.seo.default_image }}">
     {% endif %}
-    
+
     <!-- Canonical URL -->
     {% if post %}
     <link rel="canonical" href="{{ config.url }}{{ post.href }}">
     {% else %}
     <link rel="canonical" href="{{ config.url }}/">
     {% endif %}
-    
+
     <!-- Alternate Post Formats -->
     {% if post %}
     {% if config.post_formats.markdown %}
@@ -69,13 +69,13 @@
     <link rel="alternate" type="text/html" title="Social Card" href="{{ post.href }}og/">
     {% endif %}
     {% endif %}
-    
+
     {% block head %}
     <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
     {% if config.search.enabled %}
     <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
     {% endif %}
-    
+
     <!-- Theme CSS -->
     <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
     <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
@@ -84,7 +84,7 @@
     <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
     <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
     <link rel="stylesheet" href="/css/chroma.css">
-    
+
     <!-- RSS/Atom/JSON Feeds -->
     {% if config.head.alternate_feeds %}
     {% for feed in config.head.alternate_feeds %}
@@ -98,12 +98,12 @@
     <link rel="alternate" type="application/json" title="JSON Feed" href="/feed.json">
     {% endif %}
     {% endif %}
-    
+
     {% if config.webmention.enabled %}
     {% if config.webmention.endpoint %}<link rel="webmention" href="{{ config.webmention.endpoint }}">{% endif %}
     {% endif %}
     {% endblock %}
-    
+
     <!-- Structured Data: JSON-LD -->
     {% if post.structured_data.jsonld %}
     <script type="application/ld+json">
@@ -166,23 +166,23 @@
         </div>
     </header>
     {% endblock %}
-    
+
     <main data-pagefind-body>
         {% block content %}{% endblock %}
     </main>
-    
+
     {% block footer %}
     {% include "components/footer.html" %}
     {% endblock %}
-    
+
     {# Keyboard Shortcuts Modal #}
     {% include "partials/shortcuts-modal.html" %}
-    
+
     {% block htmx %}{% endblock %}
     {% block scripts %}{% endblock %}
     <script src="{{ 'js/tooltips.js' | theme_asset }}" defer></script>
     <script src="{{ 'js/shortcuts.js' | theme_asset }}" defer></script>
-    
+
     <!-- Pagefind Search JS -->
     {% if config.search.enabled %}
     <script src="/_pagefind/pagefind-ui.js" defer></script>

@@ -161,7 +161,7 @@ The default redirect template provides:
 <body>
   <h1>Page Moved</h1>
   <p>
-    <code>{{ original }}</code> has moved to 
+    <code>{{ original }}</code> has moved to
     <a href="{{ new }}">{{ new }}</a>
   </p>
 </body>
@@ -223,17 +223,17 @@ Example: `/old/nested/path` → creates `output/old/nested/path/index.html`
 def save(core):
     config = core.config.redirects
     redirects_file = Path(config.redirects_file)
-    
+
     if not redirects_file.exists():
         return
-    
+
     raw_redirects = redirects_file.read_text().split("\n")
-    
+
     # Cache check
     key = core.make_hash("redirects", raw_redirects)
     if core.cache.get(key) == "done":
         return
-    
+
     # Parse redirects
     redirects = []
     for line in raw_redirects:
@@ -243,13 +243,13 @@ def save(core):
         parts = line.split()
         if len(parts) >= 2:
             redirects.append(Redirect(original=parts[0], new=parts[1]))
-    
+
     # Load template
     if config.redirect_template:
         template = load_template(config.redirect_template)
     else:
         template = load_default_redirect_template()
-    
+
     # Generate redirect pages
     for redirect in redirects:
         output_path = core.config.output_dir / redirect.original.strip("/") / "index.html"
@@ -259,7 +259,7 @@ def save(core):
             new=redirect.new,
             config=core.config
         ))
-    
+
     core.cache.set(key, "done")
 ```
 

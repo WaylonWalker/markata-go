@@ -303,11 +303,11 @@
   .page-wrapper {
     flex-direction: column;
   }
-  
+
   .content-wrapper--with-sidebar {
     display: block;
   }
-  
+
   .doc-sidebar,
   .feed-sidebar {
     display: none;
@@ -354,7 +354,7 @@
 
 /* ==========================================================================
    Pagefind Search UI Customizations
-   
+
    Accessibility: All text meets WCAG AA contrast requirements (4.5:1 minimum)
    - Primary text on white: #374151 (7.5:1 ratio)
    - Secondary text on white: #4b5563 (6.1:1 ratio)
@@ -591,23 +591,23 @@
   .search--navbar {
     display: none;
   }
-  
+
   /* Show search in header menu on mobile */
   .site-header .search--navbar {
     display: block;
     width: 100%;
     margin: 1rem 0;
   }
-  
+
   .search--navbar .pagefind-ui__search-input {
     width: 100%;
     font-size: 16px; /* Prevent iOS zoom on focus */
   }
-  
+
   .search--navbar .pagefind-ui__search-input:focus {
     width: 100%;
   }
-  
+
   .search--navbar .pagefind-ui__results-area {
     position: fixed;
     top: auto;
@@ -622,17 +622,17 @@
     border-right: none;
     padding: 1rem;
   }
-  
+
   /* Mobile-optimized result cards */
   .pagefind-ui__result {
     padding: 0.875rem;
     margin-bottom: 0.75rem;
   }
-  
+
   .pagefind-ui__result-link {
     font-size: 0.9375rem;
   }
-  
+
   .pagefind-ui__result-excerpt {
     font-size: 0.8125rem;
     line-height: 1.4;
@@ -741,11 +741,11 @@
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .format-links-label {
     margin-bottom: 0.25rem;
   }
-  
+
   .format-link {
     width: 100%;
     justify-content: center;
@@ -954,7 +954,7 @@ kbd {
     max-width: 100%;
     margin: 0 0.5rem;
   }
-  
+
   .footer-bottom {
     flex-direction: column;
     align-items: flex-start;
@@ -966,7 +966,7 @@ kbd {
   .shortcuts-modal {
     animation: fadeIn 0.15s ease-out;
   }
-  
+
   .shortcuts-modal-content {
     animation: slideUp 0.15s ease-out;
   }
@@ -978,11 +978,11 @@ kbd {
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(10px);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0);
   }
@@ -1073,15 +1073,15 @@ kbd {
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE/Edge */
   }
-  
+
   .breadcrumb-list::-webkit-scrollbar {
     display: none; /* Chrome/Safari/Opera */
   }
-  
+
   .breadcrumb-item {
     white-space: nowrap;
   }
-  
+
   /* Truncate long labels */
   .breadcrumb-link,
   .breadcrumb-current {
@@ -1100,13 +1100,178 @@ kbd {
     padding: 0;
     margin-bottom: 0.5rem;
   }
-  
+
   .breadcrumb-link {
     color: var(--color-text);
     text-decoration: underline;
   }
-  
+
   .breadcrumb-separator::after {
     content: " > ";
+  }
+}
+
+/* ==========================================================================
+   Embed Card Component
+   
+   Used by the embeds plugin for internal (![[slug]]) and external
+   (![embed](url)) content embedding.
+   ========================================================================== */
+
+.embed-card {
+  margin: 1.5rem 0;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.embed-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.embed-card-link {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+}
+
+.embed-card-link:hover {
+  text-decoration: none;
+}
+
+/* External embed with image - horizontal layout */
+.embed-card-external .embed-card-link {
+  flex-direction: row;
+}
+
+.embed-card-image {
+  flex-shrink: 0;
+  width: 200px;
+  max-height: 150px;
+  overflow: hidden;
+  background-color: var(--color-background);
+}
+
+.embed-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.embed-card:hover .embed-card-image img {
+  transform: scale(1.02);
+}
+
+.embed-card-content {
+  flex: 1;
+  padding: 1rem 1.25rem;
+  min-width: 0; /* Allow text truncation */
+}
+
+.embed-card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+  
+  /* Truncate long titles */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.embed-card:hover .embed-card-title {
+  color: var(--color-primary);
+}
+
+.embed-card-description {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  margin-bottom: 0.75rem;
+  
+  /* Truncate long descriptions */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.embed-card-meta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Internal embed card (no image) - compact layout */
+.embed-card:not(.embed-card-external) {
+  border-left: 4px solid var(--color-primary);
+}
+
+.embed-card:not(.embed-card-external) .embed-card-content {
+  padding: 1rem 1.25rem 1rem 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .embed-card-external .embed-card-link {
+    flex-direction: column;
+  }
+  
+  .embed-card-image {
+    width: 100%;
+    max-height: 180px;
+  }
+  
+  .embed-card-content {
+    padding: 1rem;
+  }
+  
+  .embed-card-title {
+    font-size: 1rem;
+    -webkit-line-clamp: 2;
+  }
+  
+  .embed-card-description {
+    -webkit-line-clamp: 2;
+  }
+}
+
+/* Focus states for accessibility */
+.embed-card-link:focus {
+  outline: none;
+}
+
+.embed-card-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+/* Print styles */
+@media print {
+  .embed-card {
+    page-break-inside: avoid;
+    border: 1px solid #ccc;
+    box-shadow: none;
+  }
+  
+  .embed-card-image {
+    display: none;
+  }
+  
+  .embed-card-link::after {
+    content: " (" attr(href) ")";
+    font-size: 0.75rem;
+    color: #666;
   }
 }
