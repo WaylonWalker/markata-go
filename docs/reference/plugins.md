@@ -1,6 +1,6 @@
 ---
 title: "Built-in Plugins"
-description: "Reference documentation for all 30 built-in markata-go plugins organized by lifecycle stage"
+description: "Reference documentation for all 31 built-in markata-go plugins organized by lifecycle stage"
 date: 2024-01-15
 published: true
 slug: /docs/reference/plugins/
@@ -30,7 +30,7 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 | Configure | Initialize plugin settings | templates |
 | Glob | Discover content files | glob |
 | Load | Parse files into posts | load, frontmatter |
-| Transform | Pre-render modifications | description, reading_time, stats, jinja_md, wikilinks, toc |
+| Transform | Pre-render modifications | description, reading_time, stats, breadcrumbs, jinja_md, wikilinks, toc |
 | Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube |
 | Collect | Build collections/feeds | feeds, auto_feeds, prevnext |
 | Write | Output files to disk | publish_html, publish_feeds, sitemap, rss, atom, jsonfeed, static_assets, redirects |
@@ -340,6 +340,143 @@ Same fields as feed statistics, aggregated across all posts.
 - Aggregate stats for feed index pages ("25 tutorials, ~8 hours")
 - Track content creation metrics
 - Display code-heavy post indicators
+
+---
+
+### breadcrumbs
+
+**Name:** `breadcrumbs`  
+**Stage:** Transform  
+**Purpose:** Generates breadcrumb navigation trails for posts based on URL path structure with JSON-LD structured data for SEO.
+
+**Configuration (TOML):**
+```toml
+[markata.breadcrumbs]
+enabled = true           # Enable/disable breadcrumbs globally
+show_home = true         # Include "Home" as first breadcrumb
+home_label = "Home"      # Label for home breadcrumb
+separator = "/"          # Visual separator between breadcrumbs
+max_depth = 0            # Maximum depth (0 = unlimited)
+structured_data = true   # Generate JSON-LD for SEO
+
+# Alternative: under components section
+[markata.components.breadcrumbs]
+enabled = true
+show_home = true
+```
+
+**Frontmatter options:**
+```yaml
+---
+title: "My Page"
+# Disable breadcrumbs for this page
+breadcrumbs: false
+
+# Or customize per-page
+breadcrumbs:
+  enabled: true
+  show_home: false
+  home_label: "Docs"
+  
+  # Manual breadcrumb trail (overrides auto-generation)
+  items:
+    - label: "Products"
+      url: "/products/"
+    - label: "Widgets"
+      url: "/products/widgets/"
+---
+```
+
+**Post fields set:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `post.breadcrumbs` | `[]Breadcrumb` | Array of breadcrumb items |
+| `post.breadcrumb_separator` | `string` | Configured separator character |
+| `post.breadcrumbs_jsonld` | `string` | JSON-LD structured data |
+
+**Breadcrumb item structure:**
+```go
+type Breadcrumb struct {
+    Label     string // Display text
+    URL       string // Link href
+    IsCurrent bool   // True for last item
+    Position  int    // 1-indexed position
+}
+```
+
+**Auto-generation behavior:**
+1. Parses post's `href` path (e.g., `/docs/guides/getting-started/`)
+2. Creates breadcrumb for each path segment
+3. Humanizes segment names (e.g., `getting-started` → "Getting Started")
+4. Uses post title for final segment if available
+5. Optionally prepends "Home" breadcrumb
+
+**Template usage:**
+```html
+{# Include the breadcrumbs component #}
+{% include "components/breadcrumbs.html" %}
+
+{# Or manual rendering #}
+{% if post.breadcrumbs %}
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <ol>
+    {% for crumb in post.breadcrumbs %}
+    <li>
+      {% if crumb.is_current %}
+      <span aria-current="page">{{ crumb.label }}</span>
+      {% else %}
+      <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+      {% endif %}
+    </li>
+    {% if not loop.last %}
+    <span class="separator">{{ post.breadcrumb_separator }}</span>
+    {% endif %}
+    {% endfor %}
+  </ol>
+</nav>
+{% endif %}
+
+{# Add JSON-LD to head for SEO #}
+{% if post.breadcrumbs_jsonld %}
+<script type="application/ld+json">
+{{ post.breadcrumbs_jsonld | safe }}
+</script>
+{% endif %}
+```
+
+**Generated JSON-LD example:**
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://example.com/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Docs",
+      "item": "https://example.com/docs/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Getting Started"
+    }
+  ]
+}
+```
+
+**Use cases:**
+- Documentation sites with deep hierarchies
+- Multi-section websites (products, services, about)
+- Blog categories and subcategories
+- SEO improvement via structured data
+- Improved user navigation and orientation
 
 ---
 
