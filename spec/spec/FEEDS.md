@@ -36,7 +36,7 @@ Feeds are the core differentiator of this static site generator. A feed is a **f
 ### Basic Feed
 
 ```toml
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "blog"
 title = "Blog"
 filter = "published == True"
@@ -47,7 +47,7 @@ reverse = true
 ### Full Configuration
 
 ```toml
-[[name.feeds]]
+[[markata-go.feeds]]
 # Identity
 slug = "blog"                      # URL path: /blog/
 title = "All Posts"                # Display title
@@ -63,7 +63,7 @@ items_per_page = 10                # 0 = no pagination (all on one page)
 orphan_threshold = 3               # If last page has ≤3 items, merge with previous
 
 # Output Formats (all optional, defaults shown)
-[name.feeds.formats]
+[markata-go.feeds.formats]
 html = true                        # /blog/index.html, /blog/page/2/index.html
 rss = true                         # /blog/rss.xml
 atom = true                        # /blog/atom.xml
@@ -73,7 +73,7 @@ text = false                       # /blog/index.txt
 sitemap = false                    # /blog/sitemap.xml
 
 # Templates (can override per-format)
-[name.feeds.templates]
+[markata-go.feeds.templates]
 html = "feed.html"                 # Template for HTML pages
 card = "partials/card.html"        # Template for post cards in list
 rss = "rss.xml"                    # Template for RSS (usually default)
@@ -126,7 +126,7 @@ Feeds support multiple pagination strategies for different use cases and user ex
 ### Configuration
 
 ```toml
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "blog"
 title = "Blog"
 filter = "published == True"
@@ -170,7 +170,7 @@ HTMX pagination provides a seamless user experience by loading new pages without
 htmx_version = "2.0.8"             # HTMX version to use
 skip_htmx_integrity_check = false  # Skip SHA-256 verification (not recommended)
 
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "blog"
 enabled = true
 pagination_type = "htmx"
@@ -320,7 +320,7 @@ Traditional pagination with full page reloads. Best for SEO and accessibility.
 ### Configuration
 
 ```toml
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "blog"
 enabled = true
 pagination_type = "manual"
@@ -357,7 +357,7 @@ For custom pagination behavior, a JavaScript configuration file is generated.
 ### Configuration
 
 ```toml
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "blog"
 enabled = true
 pagination_type = "js"
@@ -612,7 +612,7 @@ XML sitemap for search engines (follows sitemaps.org protocol).
 
 **Configuration options:**
 ```toml
-[name.feeds.sitemap]
+[markata-go.feeds.sitemap]
 include_feeds = true              # Include feed index pages in sitemap
 default_changefreq = "weekly"     # daily, weekly, monthly, yearly, never
 default_priority = 0.5            # 0.0 to 1.0
@@ -632,7 +632,7 @@ priority: 0.8
 To generate a site-wide sitemap with all posts (not just feed posts), create a feed with no filter:
 
 ```toml
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "sitemap"
 title = "Sitemap"
 filter = "published == True"      # All published posts
@@ -644,7 +644,7 @@ formats = { sitemap = true }      # Only sitemap output
 This generates `/sitemap.xml` at the root when `slug = ""`:
 
 ```toml
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = ""                         # Root sitemap
 title = "Sitemap"
 filter = "published == True"
@@ -660,7 +660,7 @@ formats = { html = false, sitemap = true }
 The root index is just a feed with `slug = ""`:
 
 ```toml
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = ""                          # Outputs to /index.html
 title = "Home"
 filter = "published == True"
@@ -673,7 +673,7 @@ formats = { html = true, rss = false }
 ### Archive (All Posts)
 
 ```toml
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "archive"
 title = "Archive"
 filter = "published == True"
@@ -688,7 +688,7 @@ formats = { html = true }
 Generate a feed per tag dynamically:
 
 ```toml
-[name.feeds.auto_tags]
+[markata-go.feeds.auto_tags]
 enabled = true
 slug_prefix = "tags"               # /tags/python/, /tags/rust/
 title_template = "Posts tagged '{{ tag }}'"
@@ -701,7 +701,7 @@ This auto-generates feeds for each unique tag found in posts.
 ### Category Pages
 
 ```toml
-[name.feeds.auto_categories]
+[markata-go.feeds.auto_categories]
 enabled = true
 slug_prefix = "category"
 source_field = "category"          # Frontmatter field to use
@@ -712,7 +712,7 @@ filter_template = "published == True and category == '{{ category }}'"
 ### Year/Month Archives
 
 ```toml
-[name.feeds.auto_date]
+[markata-go.feeds.auto_date]
 enabled = true
 slug_template = "{{ date.year }}/{{ date.month }}"
 title_template = "Posts from {{ date | date('%B %Y') }}"
@@ -725,7 +725,7 @@ formats = { html = true }
 JSON-only feed for JavaScript consumption:
 
 ```toml
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "api/posts"
 title = "Posts API"
 filter = "published == True"
@@ -740,7 +740,7 @@ formats = { json = true }          # Only JSON output
 Generate a JSON index for client-side search:
 
 ```toml
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "search"
 title = "Search Index"
 filter = "published == True"
@@ -851,8 +851,8 @@ Feed configuration follows a **defaults → override** pattern. Global defaults 
 │                    CONFIGURATION RESOLUTION                          │
 ├─────────────────────────────────────────────────────────────────────┤
 │  1. Start with built-in defaults                                     │
-│  2. Apply [name.feeds.defaults.*] settings                          │
-│  3. Apply [[name.feeds]] individual feed settings                   │
+│  2. Apply [markata-go.feeds.defaults.*] settings                          │
+│  3. Apply [[markata-go.feeds]] individual feed settings                   │
 │  4. Individual feed values WIN over defaults                         │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -882,11 +882,11 @@ Feed configuration follows a **defaults → override** pattern. Global defaults 
 # =============================================================================
 # GLOBAL FEED DEFAULTS
 # =============================================================================
-[name.feeds.defaults]
+[markata-go.feeds.defaults]
 items_per_page = 10
 orphan_threshold = 3
 
-[name.feeds.defaults.formats]
+[markata-go.feeds.defaults.formats]
 html = true
 rss = true
 atom = false                       # Atom OFF by default
@@ -895,12 +895,12 @@ markdown = false
 text = false
 sitemap = false                    # Sitemap OFF by default
 
-[name.feeds.defaults.templates]
+[markata-go.feeds.defaults.templates]
 html = "feed.html"
 card = "partials/card.html"
 rss = "rss.xml"
 
-[name.feeds.syndication]
+[markata-go.feeds.syndication]
 max_items = 20
 include_content = false
 
@@ -909,7 +909,7 @@ include_content = false
 # =============================================================================
 
 # Home page - uses most defaults, but fewer items and no RSS
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = ""
 title = "Home"
 filter = "published == True"
@@ -919,7 +919,7 @@ items_per_page = 5                 # Override: fewer items on home
 formats = { rss = false }          # Override: no RSS for home page
 
 # Blog - uses all defaults
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "blog"
 title = "Blog"
 filter = "published == True"
@@ -929,7 +929,7 @@ reverse = true
 # formats: inherits html=true, rss=true from defaults
 
 # API endpoint - completely different format set
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "api/posts"
 title = "Posts API"
 filter = "published == True"
@@ -939,7 +939,7 @@ items_per_page = 0                 # Override: no pagination
 formats = { html = false, rss = false, json = true }  # Override: JSON only
 
 # Archive - different pagination
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "archive"
 title = "All Posts"
 filter = "published == True"
@@ -949,7 +949,7 @@ items_per_page = 0                 # Override: all posts on one page
 formats = { rss = false }          # Override: no RSS for archive
 
 # Tutorials - wants Atom too
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "tutorials"
 title = "Tutorials"
 filter = "published == True and 'tutorial' in tags"
@@ -988,12 +988,12 @@ Templates follow the same pattern:
 
 ```toml
 # Global default
-[name.feeds.defaults.templates]
+[markata-go.feeds.defaults.templates]
 html = "feed.html"
 card = "partials/card.html"
 
 # Individual feed override
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "featured"
 templates = { html = "featured-feed.html" }
 # Result: html="featured-feed.html", card="partials/card.html" (inherited)
@@ -1006,13 +1006,13 @@ templates = { html = "featured-feed.html" }
 ### Global Feed Defaults
 
 ```toml
-[name.feeds.defaults]
+[markata-go.feeds.defaults]
 # Pagination
 items_per_page = 10
 orphan_threshold = 3
 
 # Formats enabled by default
-[name.feeds.defaults.formats]
+[markata-go.feeds.defaults.formats]
 html = true
 rss = true
 atom = false
@@ -1022,7 +1022,7 @@ text = false
 sitemap = false
 
 # Templates used by default
-[name.feeds.defaults.templates]
+[markata-go.feeds.defaults.templates]
 html = "feed.html"
 card = "partials/card.html"
 rss = "rss.xml"
@@ -1033,14 +1033,14 @@ text = "feed.txt"
 sitemap = "sitemap.xml"
 
 # Syndication settings (RSS/Atom/JSON)
-[name.feeds.syndication]
+[markata-go.feeds.syndication]
 max_items = 20                     # Max items in RSS/Atom feeds
 include_content = false            # Include full content or just summary
 ```
 
 ### Built-in Defaults
 
-If no `[name.feeds.defaults]` is specified, these built-in values apply:
+If no `[markata-go.feeds.defaults]` is specified, these built-in values apply:
 
 | Setting | Built-in Default |
 |---------|------------------|
@@ -1082,21 +1082,21 @@ author = "Jane Doe"
 # =============================================================================
 # GLOBAL FEED DEFAULTS
 # =============================================================================
-[name.feeds.defaults]
+[markata-go.feeds.defaults]
 items_per_page = 10
 orphan_threshold = 3
 
-[name.feeds.defaults.formats]
+[markata-go.feeds.defaults.formats]
 html = true
 rss = true
 atom = true
 json = true
 
-[name.feeds.defaults.templates]
+[markata-go.feeds.defaults.templates]
 html = "feed.html"
 card = "partials/card.html"
 
-[name.feeds.syndication]
+[markata-go.feeds.syndication]
 max_items = 20
 include_content = false
 
@@ -1105,7 +1105,7 @@ include_content = false
 # =============================================================================
 
 # Home page - fewer items, no syndication feeds
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = ""
 title = "Recent Posts"
 filter = "published == True"
@@ -1115,7 +1115,7 @@ items_per_page = 5                 # Override default
 formats = { rss = false, atom = false, json = false }  # Override: HTML only
 
 # Main blog feed - uses all defaults
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "blog"
 title = "Blog"
 description = "All blog posts"
@@ -1125,7 +1125,7 @@ reverse = true
 # Inherits: items_per_page=10, all formats enabled
 
 # Tutorials section - uses defaults
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "tutorials"
 title = "Tutorials"
 filter = "published == True and 'tutorial' in tags"
@@ -1133,7 +1133,7 @@ sort = "date"
 reverse = true
 
 # Archive - all posts, no pagination, HTML only
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "archive"
 title = "Archive"
 filter = "published == True"
@@ -1143,7 +1143,7 @@ items_per_page = 0                 # Override: no pagination
 formats = { rss = false, atom = false, json = false }  # Override: HTML only
 
 # API endpoint - JSON only, no pagination
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "api/posts"
 filter = "published == True"
 sort = "date"
@@ -1156,7 +1156,7 @@ formats = { html = false, rss = false, atom = false, json = true }
 # =============================================================================
 
 # Tag pages - inherit some defaults, override formats
-[name.feeds.auto_tags]
+[markata-go.feeds.auto_tags]
 enabled = true
 slug_prefix = "tags"
 formats = { atom = false, json = false }  # Override: HTML + RSS only

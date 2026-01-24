@@ -360,10 +360,10 @@ def slugify(text: str) -> str:
 **Configuration:**
 
 ```toml
-[name.markdown]
+[markata-go.markdown]
 extensions = ["tables", "admonitions", "footnotes"]
 
-[name.markdown.highlight]
+[markata-go.markdown.highlight]
 enabled = true
 theme = "github-dark"
 ```
@@ -475,7 +475,7 @@ def write(core):
 **Feed Configuration:**
 
 ```toml
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "blog"
 title = "Blog"
 filter = "published == True"
@@ -484,7 +484,7 @@ reverse = true
 items_per_page = 10
 template = "feed.html"
 
-[name.feeds.blog.formats]
+[markata-go.feeds.blog.formats]
 html = true
 rss = true
 atom = false

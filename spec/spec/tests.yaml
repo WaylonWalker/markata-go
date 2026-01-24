@@ -1211,7 +1211,7 @@ feed_config_inheritance:
         card: "card.html"
 
   - name: "built-in defaults when no config"
-    description: "Use built-in defaults when no [name.feeds.defaults] specified"
+    description: "Use built-in defaults when no [markata-go.feeds.defaults] specified"
     input:
       config: {}
       feed_config:

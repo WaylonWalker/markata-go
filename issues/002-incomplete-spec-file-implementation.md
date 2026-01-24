@@ -50,9 +50,9 @@ All spec files listed in the README should be fully implemented:
 - [ ] Theme inheritance (`[theme.extends]`)
 
 ### Configuration
-- [ ] `[name.theme]` config section
-- [ ] `[name.theme.options]` for theme-specific options
-- [ ] `[name.theme.variables]` CSS variable overrides
+- [ ] `[markata-go.theme]` config section
+- [ ] `[markata-go.theme.options]` for theme-specific options
+- [ ] `[markata-go.theme.variables]` CSS variable overrides
 - [ ] `custom_css` option
 
 ### Built-in Themes

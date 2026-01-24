@@ -5,7 +5,7 @@
 ## Your Choices
 
 ```
-Name:     [name]
+Name:     [markata-go]
 Language: [language]
 ```
 
@@ -109,17 +109,17 @@ jinja: true
 {% endfor %}
 ```
 
-**Configuration** (`[name].toml`):
+**Configuration** (`[markata-go].toml`):
 ```toml
-[name]
+[markata-go]
 output_dir = "public"
 url = "https://example.com"
 
-[name.glob]
+[markata-go.glob]
 glob_patterns = ["posts/**/*.md"]
 
 # Feeds - the core feature
-[[name.feeds]]
+[[markata-go.feeds]]
 slug = "blog"
 title = "Blog"
 filter = "published == True"
@@ -127,14 +127,14 @@ sort = "date"
 reverse = true
 items_per_page = 10
 
-[name.feeds.formats]
+[markata-go.feeds.formats]
 html = true
 rss = true
 atom = true
 json = true
 
 # Auto-generate tag pages
-[name.feeds.auto_tags]
+[markata-go.feeds.auto_tags]
 enabled = true
 slug_prefix = "tags"
 ```
@@ -192,16 +192,16 @@ The implementation is complete when `tests.yaml` test cases pass.
 
 ```bash
 # Install
-pip install ./[name]  # or npm install, go install, cargo install
+pip install ./[markata-go]  # or npm install, go install, cargo install
 
 # Create a post
-[name] new "Hello World"
+[markata-go] new "Hello World"
 
 # Build
-[name] build
+[markata-go] build
 
 # Serve locally
-[name] serve
+[markata-go] serve
 ```
 
 ---

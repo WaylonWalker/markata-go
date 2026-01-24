@@ -62,16 +62,16 @@ content_dir = "."
 assets_dir = "static"
 templates_dir = "templates"
 
-[name.glob]
+[markata-go.glob]
 glob_patterns = ["**/*.md"]
 use_gitignore = true
 exclude_patterns = ["node_modules/**", ".git/**", "output/**"]
 
-[name.feeds]
+[markata-go.feeds]
 default_items_per_page = 10
 default_orphan_threshold = 3
 
-[name.feeds.default_formats]
+[markata-go.feeds.default_formats]
 html = true
 rss = true
 atom = false
@@ -93,7 +93,7 @@ sitemap = false
 
 **Configuration:**
 ```toml
-[name.glob]
+[markata-go.glob]
 glob_patterns = ["posts/**/*.md", "pages/*.md"]
 use_gitignore = true
 exclude_patterns = ["**/draft-*", "**/wip-*"]
@@ -175,7 +175,7 @@ for path in core.files:
 
 **Configuration:**
 ```toml
-[name.auto_description]
+[markata-go.auto_description]
 enabled = true
 max_length = 160               # Characters
 strip_html = true              # Remove HTML tags
@@ -212,7 +212,7 @@ for post in core.filter("description == None or description == ''"):
 
 **Configuration:**
 ```toml
-[name.jinja_md]
+[markata-go.jinja_md]
 enabled = true
 default_enabled = false        # Require explicit jinja: true in frontmatter
 ```
@@ -275,7 +275,7 @@ for post in core.filter(filter_expr):
 
 **Configuration:**
 ```toml
-[name.overwrite_check]
+[markata-go.overwrite_check]
 enabled = true
 warn_only = false              # If true, warn instead of fail
 ```
@@ -359,7 +359,7 @@ The plugin MUST implement:
 
 **Configuration:**
 ```toml
-[name.prevnext]
+[markata-go.prevnext]
 enabled = true
 strategy = "first_feed"        # Resolution strategy (see below)
 default_feed = "blog"          # Feed to use when strategy = "explicit_feed"
@@ -492,18 +492,18 @@ for post in manager.posts():
 
 ```toml
 # Strategy 1: Use first feed (default)
-[name.prevnext]
+[markata-go.prevnext]
 enabled = true
 strategy = "first_feed"
 
 # Strategy 2: Always use specific feed
-[name.prevnext]
+[markata-go.prevnext]
 enabled = true
 strategy = "explicit_feed"
 default_feed = "all-posts"
 
 # Strategy 3: Series-based navigation (uses series frontmatter to find feed)
-[name.prevnext]
+[markata-go.prevnext]
 enabled = true
 strategy = "series"
 ```
@@ -536,10 +536,10 @@ prevnext_feed: announcements
 
 **Configuration:**
 ```toml
-[name.markdown]
+[markata-go.markdown]
 backend = "auto"               # "markdown-it", "commonmark", etc.
 
-[name.markdown.extensions]
+[markata-go.markdown.extensions]
 tables = true
 admonitions = true
 footnotes = true
@@ -547,7 +547,7 @@ strikethrough = true
 task_lists = true
 heading_ids = true
 
-[name.markdown.highlight]
+[markata-go.markdown.highlight]
 enabled = true
 theme = "github-dark"
 line_numbers = false
@@ -584,7 +584,7 @@ for post in core.filter("not skip"):
 
 **Configuration:**
 ```toml
-[name.wikilinks]
+[markata-go.wikilinks]
 enabled = true
 warn_broken = true             # Warn about broken links
 broken_class = "broken-link"   # CSS class for broken links
@@ -633,7 +633,7 @@ for post in core.filter("not skip"):
 
 **Configuration:**
 ```toml
-[name.heading_anchors]
+[markata-go.heading_anchors]
 enabled = true
 min_level = 2                  # Start at h2
 max_level = 4                  # End at h4
@@ -677,7 +677,7 @@ for post in core.filter("not skip"):
 
 **Configuration:**
 ```toml
-[name.md_video]
+[markata-go.md_video]
 enabled = true
 video_extensions = [".mp4", ".webm", ".ogg", ".ogv", ".mov", ".m4v"]
 video_class = "md-video"
@@ -753,7 +753,7 @@ The plugin MUST implement:
 
 **Configuration:**
 ```toml
-[name.toc]
+[markata-go.toc]
 enabled = true
 min_level = 2
 max_level = 4
@@ -809,7 +809,7 @@ min_headings = 3               # Only generate if >= 3 headings
 
 **Configuration:**
 ```toml
-[name.link_collector]
+[markata-go.link_collector]
 enabled = true
 include_feeds = false          # Exclude feed pages from inlinks by default
 include_index = false          # Exclude index page from inlinks by default
@@ -1151,13 +1151,13 @@ for post in core.filter("not skip"):
 
 **Configuration:**
 ```toml
-[name.assets]
+[markata-go.assets]
 dir = "static"
 output_subdir = ""             # "" = root, "assets" = /assets/
 exclude = ["*.psd", "*.ai"]
 fingerprint = false
 
-[name.assets.fingerprint]
+[markata-go.assets.fingerprint]
 enabled = false
 algorithm = "sha256"
 length = 8
@@ -1205,7 +1205,7 @@ for src in assets_dir.recursive_glob("*"):
 
 **Configuration:**
 ```toml
-[name.redirects]
+[markata-go.redirects]
 redirects_file = "static/_redirects"    # Path to redirects file (default)
 redirect_template = ""                   # Optional custom template path
 ```
@@ -1298,15 +1298,15 @@ for redirect in parse_redirects(content):
 
 ```toml
 # Basic usage (default settings)
-[name.redirects]
+[markata-go.redirects]
 # Uses static/_redirects by default
 
 # Custom redirects file location
-[name.redirects]
+[markata-go.redirects]
 redirects_file = "_redirects"
 
 # With custom template
-[name.redirects]
+[markata-go.redirects]
 redirects_file = "config/_redirects"
 redirect_template = "templates/redirect.html"
 ```
