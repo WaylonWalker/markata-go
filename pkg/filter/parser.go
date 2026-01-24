@@ -208,7 +208,7 @@ func (p *Parser) parseNot() (Expr, error) {
 	return p.parseComparison()
 }
 
-// parseComparison parses comparison and 'in' expressions
+// parseComparison parses comparison and 'in'/'contains' expressions
 func (p *Parser) parseComparison() (Expr, error) {
 	left, err := p.parseAccess()
 	if err != nil {
@@ -225,6 +225,19 @@ func (p *Parser) parseComparison() (Expr, error) {
 			return nil, err
 		}
 		return &InExpr{Value: left, Collection: right}, nil
+	}
+
+	// Handle 'contains' expressions (legacy syntax: "field contains value" → "value in field")
+	if p.current.Type == TokenContains {
+		if err := p.advance(); err != nil {
+			return nil, err
+		}
+		right, err := p.parseAccess()
+		if err != nil {
+			return nil, err
+		}
+		// Swap: "field contains value" becomes "value in field"
+		return &InExpr{Value: right, Collection: left}, nil
 	}
 
 	// Handle comparison operators
@@ -255,7 +268,8 @@ func (p *Parser) parseAccess() (Expr, error) {
 			return nil, err
 		}
 
-		if p.current.Type != TokenIdentifier {
+		// Accept identifier or 'contains' keyword as method name (for backward compatibility)
+		if p.current.Type != TokenIdentifier && p.current.Type != TokenContains {
 			return nil, fmt.Errorf("expected identifier after '.', got %s", p.current)
 		}
 
