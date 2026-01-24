@@ -21,6 +21,27 @@ pre {
   overflow-x: auto;
   margin: var(--space-4) 0;
   border: 1px solid var(--color-border);
+  
+  /* Scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+pre::-webkit-scrollbar {
+  height: 6px;
+}
+
+pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+pre::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 3px;
+}
+
+pre::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-muted);
 }
 
 pre code {
