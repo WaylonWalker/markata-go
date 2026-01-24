@@ -410,6 +410,9 @@ func createBenchmarkManager(cfgPath, workDir string) (*lifecycle.Manager, error)
 	// Pass layout configuration for automatic layout selection
 	lcConfig.Extra["layout"] = &cfg.Layout
 
+	// Pass blogroll configuration
+	lcConfig.Extra["blogroll"] = cfg.Blogroll
+
 	m.SetConfig(lcConfig)
 
 	if cfg.Concurrency > 0 {
