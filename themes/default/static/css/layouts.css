@@ -12,7 +12,9 @@
   /* Layout dimensions */
   --layout-sidebar-width: 280px;
   --layout-toc-width: 220px;
-  --layout-content-max-width: 800px;
+  --layout-content-max-width: 860px;
+  --layout-content-padding: var(--space-6);
+  --layout-gap: var(--space-8);
   --layout-header-height: 64px;
   
   /* Z-index layers */
@@ -50,8 +52,8 @@
 .layout--docs .layout-container {
   grid-template-columns: var(--sidebar-width, var(--layout-sidebar-width)) minmax(0, 1fr) var(--toc-width, var(--layout-toc-width));
   grid-template-areas: "sidebar content toc";
-  gap: var(--space-6);
-  max-width: calc(var(--layout-sidebar-width) + var(--layout-content-max-width) + var(--layout-toc-width) + var(--space-12));
+  gap: var(--layout-gap);
+  max-width: calc(var(--layout-sidebar-width) + var(--layout-content-max-width) + var(--layout-toc-width) + var(--layout-gap) * 2 + var(--layout-content-padding) * 2);
 }
 
 /* Sidebar on right variant */
@@ -79,8 +81,8 @@
 .layout--blog.layout-container--with-toc {
   grid-template-columns: minmax(0, 1fr) var(--toc-width, 200px);
   grid-template-areas: "content toc";
-  gap: var(--space-6);
-  max-width: calc(var(--layout-content-max-width) + 200px + var(--space-6));
+  gap: var(--layout-gap);
+  max-width: calc(var(--layout-content-max-width) + 200px + var(--layout-gap));
 }
 
 /* ==========================================================================
@@ -120,7 +122,7 @@
 .layout-content {
   grid-area: content;
   min-width: 0; /* Prevent overflow */
-  padding: var(--space-8) 0;
+  padding: var(--space-8) var(--layout-content-padding);
 }
 
 .layout-content--blog {
