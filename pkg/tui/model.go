@@ -58,6 +58,12 @@ type Model struct {
 	height       int
 	err          error
 	selectedPost *models.Post // The post being viewed in detail
+
+	// Sort state
+	sortBy       string             // "date", "title", "words", "path"
+	sortOrder    services.SortOrder // SortAsc or SortDesc
+	showSortMenu bool
+	sortMenuIdx  int
 }
 
 // Messages
@@ -81,6 +87,20 @@ type editorFinishedMsg struct {
 	err error
 }
 
+// sortOption represents a sort field option
+type sortOption struct {
+	label string
+	value string
+}
+
+// sortOptions available for sorting posts
+var sortOptions = []sortOption{
+	{"Date", "date"},
+	{"Title", "title"},
+	{"Word Count", "words"},
+	{"Path", "path"},
+}
+
 // NewModel creates a new TUI model
 func NewModel(app *services.App) Model {
 	filterInput := textinput.New()
@@ -101,6 +121,8 @@ func NewModel(app *services.App) Model {
 		filterInput: filterInput,
 		cmdInput:    cmdInput,
 		postsTable:  postsTable,
+		sortBy:      "date",
+		sortOrder:   services.SortDesc,
 	}
 
 	return m
@@ -244,6 +266,11 @@ func postToRow(p *models.Post) table.Row {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Handle sort menu keys when visible
+	if m.showSortMenu {
+		return m.handleSortMenuKey(msg)
+	}
+
 	// Handle mode-specific input
 	switch m.mode {
 	case ModeFilter:
@@ -306,8 +333,25 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.view == ViewPosts {
 			return m, m.openInEditor()
 		}
+
+	case key.Matches(msg, keyMap.Sort):
+		return m.handleSortKey()
 	}
 
+	return m, nil
+}
+
+func (m Model) handleSortKey() (tea.Model, tea.Cmd) {
+	if m.view == ViewPosts {
+		m.showSortMenu = true
+		// Set sortMenuIdx to current sort field
+		for i, opt := range sortOptions {
+			if opt.value == m.sortBy {
+				m.sortMenuIdx = i
+				break
+			}
+		}
+	}
 	return m, nil
 }
 
@@ -475,12 +519,38 @@ func (m Model) handleDetailViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) handleSortMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "j", "down":
+		if m.sortMenuIdx < len(sortOptions)-1 {
+			m.sortMenuIdx++
+		}
+	case "k", "up":
+		if m.sortMenuIdx > 0 {
+			m.sortMenuIdx--
+		}
+	case "a":
+		m.sortOrder = services.SortAsc
+	case "d":
+		m.sortOrder = services.SortDesc
+	case "enter":
+		m.sortBy = sortOptions[m.sortMenuIdx].value
+		m.showSortMenu = false
+		m.cursor = 0
+		m.postsTable.SetCursor(0)
+		return m, m.loadPosts()
+	case "esc", "q":
+		m.showSortMenu = false
+	}
+	return m, nil
+}
+
 // Commands
 func (m Model) loadPosts() tea.Cmd {
 	return func() tea.Msg {
 		opts := services.ListOptions{
-			SortBy:    "date",
-			SortOrder: services.SortDesc,
+			SortBy:    m.sortBy,
+			SortOrder: m.sortOrder,
 			Filter:    m.filter,
 		}
 		posts, err := m.app.Posts.List(context.Background(), opts)
@@ -571,7 +641,14 @@ func (m Model) View() string {
 		return m.renderPostDetail()
 	}
 
-	return m.renderLayout(content)
+	rendered := m.renderLayout(content)
+
+	// Overlay sort menu if visible
+	if m.showSortMenu {
+		rendered = m.renderWithSortMenu(rendered)
+	}
+
+	return rendered
 }
 
 func (m Model) renderLayout(content string) string {
@@ -587,7 +664,13 @@ func (m Model) renderLayout(content string) string {
 	case ModeCommand:
 		statusBar = ":" + m.cmdInput.View()
 	default:
-		statusBar = subtleStyle.Render("j/k:move  e:edit  f:feeds  /:filter  ::cmd  ?:help  q:quit")
+		// Build sort indicator
+		sortArrow := "↓"
+		if m.sortOrder == services.SortAsc {
+			sortArrow = "↑"
+		}
+		sortIndicator := fmt.Sprintf("[%s%s]", sortArrow, m.sortBy)
+		statusBar = subtleStyle.Render(fmt.Sprintf("%s  j/k:move  s:sort  e:edit  f:feeds  /:filter  ::cmd  ?:help  q:quit", sortIndicator))
 	}
 
 	return fmt.Sprintf("%s\n\n%s\n\n%s", header, content, statusBar)
@@ -752,10 +835,18 @@ Views:
 
 Actions:
   e          Edit selected post in $EDITOR
+  s          Sort menu (Date, Title, Word Count, Path)
 
 Modes:
   /          Filter mode
   :          Command mode
+
+Sort Menu:
+  j/k/↑/↓    Navigate sort options
+  a          Set ascending order
+  d          Set descending order
+  Enter      Apply sort
+  Esc        Cancel
 
 Commands:
   :posts     Show posts
@@ -932,6 +1023,91 @@ func getContentPreview(content string, maxChars, maxLines, maxWidth int) string 
 	return output
 }
 
+// renderWithSortMenu overlays the sort menu on top of the existing content
+func (m Model) renderWithSortMenu(content string) string {
+	menu := m.renderSortMenu()
+
+	// Split content into lines
+	contentLines := strings.Split(content, "\n")
+	menuLines := strings.Split(menu, "\n")
+
+	// Calculate position to center the menu
+	menuWidth := 23 // Width of the menu box
+	menuHeight := len(menuLines)
+
+	startX := (m.width - menuWidth) / 2
+	if startX < 0 {
+		startX = 0
+	}
+	startY := (m.height - menuHeight) / 2
+	if startY < 2 {
+		startY = 2
+	}
+
+	// Overlay menu on content
+	for i, menuLine := range menuLines {
+		contentY := startY + i
+		if contentY < len(contentLines) {
+			line := contentLines[contentY]
+			// Ensure line is long enough
+			for len(line) < startX {
+				line += " "
+			}
+			// Insert menu line
+			runes := []rune(line)
+			menuRunes := []rune(menuLine)
+			if startX < len(runes) {
+				newLine := string(runes[:startX]) + string(menuRunes)
+				if startX+len(menuRunes) < len(runes) {
+					newLine += string(runes[startX+len(menuRunes):])
+				}
+				contentLines[contentY] = newLine
+			} else {
+				contentLines[contentY] = line + menuLine
+			}
+		}
+	}
+
+	return strings.Join(contentLines, "\n")
+}
+
+// renderSortMenu renders the sort menu box
+func (m Model) renderSortMenu() string {
+	var sb strings.Builder
+
+	// Build menu content
+	sb.WriteString("┌─ Sort By ─────────┐\n")
+
+	for i, opt := range sortOptions {
+		prefix := "  "
+		if i == m.sortMenuIdx {
+			prefix = "> "
+		}
+		// Pad label to fixed width
+		label := opt.label
+		for len(label) < 16 {
+			label += " "
+		}
+		sb.WriteString(fmt.Sprintf("│ %s%s │\n", prefix, label))
+	}
+
+	sb.WriteString("├───────────────────┤\n")
+
+	// Show current order with highlight
+	ascStyle := ""
+	descStyle := ""
+	if m.sortOrder == services.SortAsc {
+		ascStyle = "*"
+	} else {
+		descStyle = "*"
+	}
+	sb.WriteString(fmt.Sprintf("│ [a]sc%s  [d]esc%s   │\n", ascStyle, descStyle))
+	sb.WriteString("│ [Enter] apply     │\n")
+	sb.WriteString("└───────────────────┘")
+
+	return sortMenuStyle.Render(sb.String())
+}
+
 // Styles
 var (
 	headerStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
@@ -952,4 +1128,9 @@ var (
 	detailStatusStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("241")).
 				Padding(0, 1)
+
+	// Sort menu style
+	sortMenuStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("252")).
+			Background(lipgloss.Color("236"))
 )
