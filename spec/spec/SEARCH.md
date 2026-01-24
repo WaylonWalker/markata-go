@@ -99,89 +99,48 @@ search_boost: 2.0          # Boost this page in results
 
 ### SearchConfig
 
-```go
-// SearchConfig configures site-wide search functionality.
-type SearchConfig struct {
-    // Enabled controls whether search is active (default: true)
-    Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | optional boolean | `true` | Controls whether search is active |
+| `position` | string | `"navbar"` | Where search UI appears: "navbar", "sidebar", "footer", "custom" |
+| `placeholder` | string | `"Search..."` | Search input placeholder text |
+| `show_images` | optional boolean | `true` | Show thumbnails in search results |
+| `excerpt_length` | integer | `200` | Character limit for result excerpts |
+| `pagefind` | PagefindConfig | (see below) | Pagefind CLI configuration |
+| `feeds` | list of SearchFeedConfig | `[]` | Feed-specific search instances |
 
-    // Position controls where search UI appears: "navbar", "sidebar", "footer", "custom"
-    Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
+### PagefindConfig
 
-    // Placeholder is the search input placeholder text
-    Placeholder string `json:"placeholder,omitempty" yaml:"placeholder,omitempty" toml:"placeholder,omitempty"`
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `bundle_dir` | string | `"_pagefind"` | Output directory for search index |
+| `exclude_selectors` | list of strings | `[]` | CSS selectors for elements to exclude from indexing |
+| `root_selector` | string | `""` | CSS selector for the searchable content container |
+| `auto_install` | optional boolean | `true` | Enable automatic Pagefind binary installation |
+| `version` | string | `"latest"` | Pagefind version to install: "latest" or specific (e.g., "v1.4.0") |
+| `cache_dir` | string | `""` | Directory for caching Pagefind binaries (default: XDG cache) |
 
-    // ShowImages shows thumbnails in search results
-    ShowImages *bool `json:"show_images,omitempty" yaml:"show_images,omitempty" toml:"show_images,omitempty"`
+### SearchFeedConfig
 
-    // ExcerptLength is the character limit for result excerpts
-    ExcerptLength int `json:"excerpt_length,omitempty" yaml:"excerpt_length,omitempty" toml:"excerpt_length,omitempty"`
-
-    // Pagefind configures the Pagefind CLI options
-    Pagefind PagefindConfig `json:"pagefind,omitempty" yaml:"pagefind,omitempty" toml:"pagefind,omitempty"`
-
-    // Feeds configures feed-specific search instances
-    Feeds []SearchFeedConfig `json:"feeds,omitempty" yaml:"feeds,omitempty" toml:"feeds,omitempty"`
-}
-
-// PagefindConfig configures Pagefind CLI behavior.
-type PagefindConfig struct {
-    // BundleDir is the output directory for search index (default: "_pagefind")
-    BundleDir string `json:"bundle_dir,omitempty" yaml:"bundle_dir,omitempty" toml:"bundle_dir,omitempty"`
-
-    // ExcludeSelectors are CSS selectors for elements to exclude from indexing
-    ExcludeSelectors []string `json:"exclude_selectors,omitempty" yaml:"exclude_selectors,omitempty" toml:"exclude_selectors,omitempty"`
-
-    // RootSelector is the CSS selector for the searchable content container
-    RootSelector string `json:"root_selector,omitempty" yaml:"root_selector,omitempty" toml:"root_selector,omitempty"`
-
-    // AutoInstall enables automatic Pagefind binary installation (default: true)
-    AutoInstall *bool `json:"auto_install,omitempty" yaml:"auto_install,omitempty" toml:"auto_install,omitempty"`
-
-    // Version is the Pagefind version to install: "latest" or specific (default: "latest")
-    Version string `json:"version,omitempty" yaml:"version,omitempty" toml:"version,omitempty"`
-
-    // CacheDir is the directory for caching Pagefind binaries (default: XDG cache)
-    CacheDir string `json:"cache_dir,omitempty" yaml:"cache_dir,omitempty" toml:"cache_dir,omitempty"`
-}
-
-// SearchFeedConfig configures a feed-specific search instance.
-type SearchFeedConfig struct {
-    // Name is the search instance identifier
-    Name string `json:"name" yaml:"name" toml:"name"`
-
-    // Filter is the filter expression for posts in this search
-    Filter string `json:"filter" yaml:"filter" toml:"filter"`
-
-    // Position controls where this search UI appears
-    Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
-
-    // Placeholder is the search input placeholder text
-    Placeholder string `json:"placeholder,omitempty" yaml:"placeholder,omitempty" toml:"placeholder,omitempty"`
-}
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Search instance identifier |
+| `filter` | string | Filter expression for posts in this search |
+| `position` | string | Where this search UI appears |
+| `placeholder` | string | Search input placeholder text |
 
 ### Default Values
 
-```go
-func NewSearchConfig() SearchConfig {
-    enabled := true
-    showImages := true
-    return SearchConfig{
-        Enabled:       &enabled,
-        Position:      "navbar",
-        Placeholder:   "Search...",
-        ShowImages:    &showImages,
-        ExcerptLength: 200,
-        Pagefind: PagefindConfig{
-            BundleDir:        "_pagefind",
-            ExcludeSelectors: []string{},
-            RootSelector:     "",
-        },
-        Feeds: []SearchFeedConfig{},
-    }
-}
-```
+When creating a new SearchConfig, these defaults apply:
+- `enabled`: true
+- `position`: "navbar"
+- `placeholder`: "Search..."
+- `show_images`: true
+- `excerpt_length`: 200
+- `pagefind.bundle_dir`: "_pagefind"
+- `pagefind.exclude_selectors`: []
+- `pagefind.root_selector`: ""
+- `feeds`: []
 
 ## Template Integration
 
@@ -272,67 +231,31 @@ The search component is included via template:
 
 ### PagefindPlugin
 
-The plugin runs in the **Cleanup stage** (after Write) to ensure all HTML files exist:
+The plugin runs in the **Cleanup stage** (after Write) to ensure all HTML files exist.
 
-```go
-type PagefindPlugin struct{}
+**Behavior:**
 
-func (p *PagefindPlugin) Name() string {
-    return "pagefind"
-}
+1. Check if search is enabled in configuration
+2. If Pagefind binary is not available:
+   - If auto-install is enabled, download and cache the binary
+   - Otherwise, log a warning with installation instructions
+3. Execute Pagefind CLI with configured options to generate search index
 
-func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
-    config := getSearchConfig(m.Config())
+**Plugin interfaces:**
 
-    if !config.IsEnabled() {
-        return nil
-    }
+The plugin MUST implement:
+- `Plugin` - Basic plugin interface with `Name()` method returning "pagefind"
+- `CleanupPlugin` - To run after all files are written
+- `PriorityPlugin` - To run with last priority in the cleanup stage
 
-    // Check if pagefind is installed
-    if _, err := exec.LookPath("pagefind"); err != nil {
-        // Log warning but don't fail - search will just not work
-        return nil
-    }
+**Pagefind CLI arguments:**
 
-    return p.runPagefind(m.Config())
-}
-
-func (p *PagefindPlugin) runPagefind(config *lifecycle.Config) error {
-    searchConfig := getSearchConfig(config)
-
-    args := []string{
-        "--site", config.OutputDir,
-        "--output-subdir", searchConfig.Pagefind.BundleDir,
-    }
-
-    if searchConfig.Pagefind.RootSelector != "" {
-        args = append(args, "--root-selector", searchConfig.Pagefind.RootSelector)
-    }
-
-    for _, selector := range searchConfig.Pagefind.ExcludeSelectors {
-        args = append(args, "--exclude-selectors", selector)
-    }
-
-    cmd := exec.Command("pagefind", args...)
-    cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
-
-    return cmd.Run()
-}
-```
-
-### Priority
-
-The plugin runs with `PriorityLast` in the Cleanup stage to ensure all files are written first:
-
-```go
-func (p *PagefindPlugin) Priority(stage lifecycle.Stage) int {
-    if stage == lifecycle.StageCleanup {
-        return lifecycle.PriorityLast
-    }
-    return lifecycle.PriorityDefault
-}
-```
+| Argument | Source |
+|----------|--------|
+| `--site` | config.output_dir |
+| `--output-subdir` | search_config.pagefind.bundle_dir |
+| `--root-selector` | search_config.pagefind.root_selector (if set) |
+| `--exclude-selectors` | search_config.pagefind.exclude_selectors (for each) |
 
 ## CSS Styling
 

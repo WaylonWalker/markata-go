@@ -138,18 +138,14 @@ The plugin protects the following HTML elements from term linking:
 }
 ```
 
-**Go Interface:**
+**Interface requirements:**
 
-```go
-// GlossaryPlugin implements these lifecycle interfaces:
-var (
-    _ lifecycle.Plugin          = (*GlossaryPlugin)(nil)
-    _ lifecycle.ConfigurePlugin = (*GlossaryPlugin)(nil)
-    _ lifecycle.RenderPlugin    = (*GlossaryPlugin)(nil)  // Term linking
-    _ lifecycle.WritePlugin     = (*GlossaryPlugin)(nil)  // JSON export
-    _ lifecycle.PriorityPlugin  = (*GlossaryPlugin)(nil)
-)
-```
+The plugin MUST implement:
+- `Plugin` - Basic plugin interface with `Name()` method
+- `ConfigurePlugin` - To read configuration
+- `RenderPlugin` - For term linking during the render stage
+- `WritePlugin` - For JSON export during the write stage
+- `PriorityPlugin` - To ensure late execution after markdown rendering
 
 ---
 
@@ -226,17 +222,13 @@ graph TD
 | `mindmap` | Mind maps |
 | `timeline` | Timelines |
 
-**Go Interface:**
+**Interface requirements:**
 
-```go
-// MermaidPlugin implements these lifecycle interfaces:
-var (
-    _ lifecycle.Plugin          = (*MermaidPlugin)(nil)
-    _ lifecycle.ConfigurePlugin = (*MermaidPlugin)(nil)
-    _ lifecycle.RenderPlugin    = (*MermaidPlugin)(nil)
-    _ lifecycle.PriorityPlugin  = (*MermaidPlugin)(nil)
-)
-```
+The plugin MUST implement:
+- `Plugin` - Basic plugin interface with `Name()` method
+- `ConfigurePlugin` - To read configuration
+- `RenderPlugin` - To process posts during the render stage
+- `PriorityPlugin` - To ensure late execution after markdown rendering
 
 ---
 
@@ -402,17 +394,13 @@ Per-block options can override global configuration:
 ```
 ````
 
-**Go Interface:**
+**Interface requirements:**
 
-```go
-// CSVFencePlugin implements these lifecycle interfaces:
-var (
-    _ lifecycle.Plugin          = (*CSVFencePlugin)(nil)
-    _ lifecycle.ConfigurePlugin = (*CSVFencePlugin)(nil)
-    _ lifecycle.RenderPlugin    = (*CSVFencePlugin)(nil)
-    _ lifecycle.PriorityPlugin  = (*CSVFencePlugin)(nil)
-)
-```
+The plugin MUST implement:
+- `Plugin` - Basic plugin interface with `Name()` method
+- `ConfigurePlugin` - To read configuration
+- `RenderPlugin` - To process posts during the render stage
+- `PriorityPlugin` - To ensure late execution after markdown rendering
 
 ---
 
@@ -692,74 +680,55 @@ Follow the pattern established by these plugins:
 4. **Concurrent Processing**: Use `m.ProcessPostsConcurrently()` for post processing
 5. **Error Handling**: Return errors, don't panic
 
-Example skeleton:
+Example plugin structure:
 
-```go
-package plugins
+1. **Configuration**: Define config with sensible defaults
+2. **Enabled Check**: Always check `config.enabled` first
+3. **Priority**: Use late priority to run after markdown rendering
+4. **Concurrent Processing**: Process posts concurrently when possible
+5. **Error Handling**: Return errors, don't panic
 
-import (
-    "github.com/example/markata-go/pkg/lifecycle"
-    "github.com/example/markata-go/pkg/models"
-)
+**Plugin skeleton (pseudocode):**
 
-// MyPluginConfig holds configuration for the plugin.
-type MyPluginConfig struct {
-    Enabled bool   `json:"enabled" yaml:"enabled" toml:"enabled"`
-    Option  string `json:"option" yaml:"option" toml:"option"`
-}
-
-// NewMyPluginConfig creates a config with default values.
-func NewMyPluginConfig() *MyPluginConfig {
-    return &MyPluginConfig{
-        Enabled: true,
-        Option:  "default",
-    }
-}
-
-// MyPlugin does something useful.
-type MyPlugin struct {
-    config *MyPluginConfig
-}
-
-func NewMyPlugin() *MyPlugin {
-    return &MyPlugin{config: NewMyPluginConfig()}
-}
-
-func (p *MyPlugin) Name() string { return "my_plugin" }
-
-func (p *MyPlugin) Priority(stage lifecycle.Stage) int {
-    if stage == lifecycle.StageRender {
-        return lifecycle.PriorityLate
-    }
-    return lifecycle.PriorityDefault
-}
-
-func (p *MyPlugin) Configure(m *lifecycle.Manager) error {
-    // Read config from m.Config().Extra["my_plugin"]
-    return nil
-}
-
-func (p *MyPlugin) Render(m *lifecycle.Manager) error {
-    if !p.config.Enabled {
-        return nil
-    }
-    return m.ProcessPostsConcurrently(func(post *models.Post) error {
-        if post.Skip || post.ArticleHTML == "" {
-            return nil
-        }
-        // Process post.ArticleHTML
-        return nil
-    })
-}
-
-// Ensure interface compliance
-var (
-    _ lifecycle.Plugin          = (*MyPlugin)(nil)
-    _ lifecycle.ConfigurePlugin = (*MyPlugin)(nil)
-    _ lifecycle.RenderPlugin    = (*MyPlugin)(nil)
-    _ lifecycle.PriorityPlugin  = (*MyPlugin)(nil)
-)
 ```
+class MyPluginConfig:
+    enabled: bool = true
+    option: string = "default"
+
+class MyPlugin:
+    config: MyPluginConfig
+
+    function name() -> string:
+        return "my_plugin"
+
+    function priority(stage) -> int:
+        if stage == STAGE_RENDER:
+            return PRIORITY_LATE
+        return PRIORITY_DEFAULT
+
+    function configure(manager) -> error:
+        # Read config from manager.config.extra["my_plugin"]
+        return null
+
+    function render(manager) -> error:
+        if not config.enabled:
+            return null
+
+        return manager.process_posts_concurrently(post =>
+            if post.skip or post.article_html == "":
+                return null
+            # Process post.article_html
+            return null
+        )
+```
+
+**Interface requirements:**
+
+The plugin MUST implement:
+- `Plugin` - Basic plugin interface with `Name()` method
+- `ConfigurePlugin` - To read configuration
+- `RenderPlugin` - To process posts during the render stage
+- `PriorityPlugin` - To control execution order
 
 ---
 
