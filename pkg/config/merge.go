@@ -93,6 +93,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Header - merge
 	result.Header = mergeHeaderLayoutConfig(base.Header, override.Header)
 
+	// Blogroll - merge
+	result.Blogroll = mergeBlogrollConfig(base.Blogroll, override.Blogroll)
+
 	return result
 }
 
@@ -610,6 +613,50 @@ func mergeHeaderLayoutConfig(base, override models.HeaderLayoutConfig) models.He
 	}
 	if override.ShowThemeToggle != nil {
 		result.ShowThemeToggle = override.ShowThemeToggle
+	}
+
+	return result
+}
+
+// mergeBlogrollConfig merges BlogrollConfig values.
+func mergeBlogrollConfig(base, override models.BlogrollConfig) models.BlogrollConfig {
+	result := base
+
+	// Enabled - use override if true (since default is false)
+	if override.Enabled {
+		result.Enabled = true
+	}
+
+	// String fields - override if non-empty
+	if override.CacheDir != "" {
+		result.CacheDir = override.CacheDir
+	}
+	if override.CacheDuration != "" {
+		result.CacheDuration = override.CacheDuration
+	}
+
+	// Int fields - override if non-zero
+	if override.Timeout != 0 {
+		result.Timeout = override.Timeout
+	}
+	if override.ConcurrentRequests != 0 {
+		result.ConcurrentRequests = override.ConcurrentRequests
+	}
+	if override.MaxEntriesPerFeed != 0 {
+		result.MaxEntriesPerFeed = override.MaxEntriesPerFeed
+	}
+
+	// Feeds - replace if non-empty
+	if len(override.Feeds) > 0 {
+		result.Feeds = override.Feeds
+	}
+
+	// Templates - merge
+	if override.Templates.Blogroll != "" {
+		result.Templates.Blogroll = override.Templates.Blogroll
+	}
+	if override.Templates.Reader != "" {
+		result.Templates.Reader = override.Templates.Reader
 	}
 
 	return result
