@@ -187,6 +187,38 @@ func runDryBuild(m *lifecycle.Manager) error {
 func printBuildResult(result *BuildResult) {
 	fmt.Println("\nBuild completed successfully!")
 	fmt.Printf("  Posts processed: %d\n", result.PostsProcessed)
-	fmt.Printf("  Feeds generated: %d\n", result.FeedsGenerated)
+
+	// Only show feeds if any were generated
+	if result.FeedsGenerated > 0 {
+		fmt.Printf("  Feeds generated: %d\n", result.FeedsGenerated)
+	}
+
+	// Show blogroll status if configured
+	printBlogrollStatus(result.BlogrollStatus)
+
 	fmt.Printf("  Duration: %.2fs\n", result.Duration)
+}
+
+// printBlogrollStatus prints the blogroll feature status.
+func printBlogrollStatus(status BlogrollStatus) {
+	if !status.Configured {
+		return
+	}
+
+	if status.Enabled {
+		// Active blogroll - show pages and feed count
+		fmt.Printf("  Blogroll: /blogroll, /reader (%d %s)\n",
+			status.FeedsFetched, pluralize(status.FeedsFetched, "feed", "feeds"))
+	} else if status.FeedsConfigured > 0 {
+		// Configured but disabled - show warning
+		fmt.Printf("  \u26a0 Blogroll: feeds configured but enabled=false\n")
+	}
+}
+
+// pluralize returns singular or plural form based on count.
+func pluralize(count int, singular, plural string) string {
+	if count == 1 {
+		return singular
+	}
+	return plural
 }
