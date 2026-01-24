@@ -12,6 +12,9 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+// statsZeroMin is the default text for zero duration.
+const statsZeroMin = "0 min"
+
 // StatsPlugin calculates comprehensive content statistics for posts and feeds.
 // It provides word count, reading time, character count, and code block metrics
 // for individual posts, and aggregates these statistics at the feed level.
@@ -62,6 +65,12 @@ type FeedStats struct {
 	TotalCodeLines int `json:"total_code_lines"`
 	// TotalCodeBlocks is the sum of code blocks across all posts
 	TotalCodeBlocks int `json:"total_code_blocks"`
+	// PostsByYear maps year to post count for this feed
+	PostsByYear map[int]int `json:"posts_by_year"`
+	// WordsByYear maps year to total word count for this feed
+	WordsByYear map[int]int `json:"words_by_year"`
+	// PostsByTag maps tag name to post count for this feed
+	PostsByTag map[string]int `json:"posts_by_tag"`
 }
 
 // SiteStats contains global statistics across all posts.
@@ -86,6 +95,12 @@ type SiteStats struct {
 	TotalCodeLines int `json:"total_code_lines"`
 	// TotalCodeBlocks is the total number of code blocks
 	TotalCodeBlocks int `json:"total_code_blocks"`
+	// PostsByYear maps year to post count
+	PostsByYear map[int]int `json:"posts_by_year"`
+	// WordsByYear maps year to total word count
+	WordsByYear map[int]int `json:"words_by_year"`
+	// PostsByTag maps tag name to post count
+	PostsByTag map[string]int `json:"posts_by_tag"`
 }
 
 // NewStatsPlugin creates a new StatsPlugin with default settings.
@@ -157,7 +172,11 @@ func (p *StatsPlugin) Transform(m *lifecycle.Manager) error {
 // Collect aggregates statistics at the feed level.
 func (p *StatsPlugin) Collect(m *lifecycle.Manager) error {
 	feeds := m.Feeds()
-	siteStats := &SiteStats{}
+	siteStats := &SiteStats{
+		PostsByYear: make(map[int]int),
+		WordsByYear: make(map[int]int),
+		PostsByTag:  make(map[string]int),
+	}
 
 	// Track posts already counted for site stats to avoid double-counting
 	countedPaths := make(map[string]bool)
@@ -183,6 +202,18 @@ func (p *StatsPlugin) Collect(m *lifecycle.Manager) error {
 			siteStats.TotalReadingTime += stats.ReadingTime
 			siteStats.TotalCodeLines += stats.CodeLines
 			siteStats.TotalCodeBlocks += stats.CodeBlocks
+
+			// Aggregate by year
+			if post.Date != nil {
+				year := post.Date.Year()
+				siteStats.PostsByYear[year]++
+				siteStats.WordsByYear[year] += stats.WordCount
+			}
+
+			// Aggregate by tag
+			for _, tag := range post.Tags {
+				siteStats.PostsByTag[tag]++
+			}
 		}
 	}
 
@@ -203,6 +234,11 @@ func (p *StatsPlugin) Collect(m *lifecycle.Manager) error {
 		config.Extra = make(map[string]interface{})
 	}
 	config.Extra["site_stats"] = siteStats
+
+	// Store stats helper object for template function access
+	statsHelper := NewStatsHelper(m)
+	m.Cache().Set("stats_helper", statsHelper)
+	config.Extra["stats"] = statsHelper
 
 	return nil
 }
@@ -303,45 +339,42 @@ func (p *StatsPlugin) calculatePostStats(content string) *PostStats {
 
 // calculateFeedStats aggregates stats for a feed's posts (models.FeedConfig).
 func (p *StatsPlugin) calculateFeedStats(feed *models.FeedConfig) *FeedStats {
-	stats := &FeedStats{
-		PostCount: len(feed.Posts),
-	}
-
-	for _, post := range feed.Posts {
-		postStats := p.getPostStats(post)
-		stats.TotalWords += postStats.WordCount
-		stats.TotalChars += postStats.CharCount
-		stats.TotalReadingTime += postStats.ReadingTime
-		stats.TotalCodeLines += postStats.CodeLines
-		stats.TotalCodeBlocks += postStats.CodeBlocks
-	}
-
-	// Calculate averages
-	if stats.PostCount > 0 {
-		stats.AverageWords = stats.TotalWords / stats.PostCount
-		stats.AverageReadingTime = stats.TotalReadingTime / stats.PostCount
-	}
-
-	// Format text values
-	stats.TotalReadingTimeText = p.formatDuration(stats.TotalReadingTime)
-	stats.AverageReadingTimeText = p.formatReadingTime(stats.AverageReadingTime)
-
-	return stats
+	return p.aggregateFeedStats(feed.Posts)
 }
 
 // calculateFeedStatsFromLifecycle aggregates stats for a lifecycle.Feed.
 func (p *StatsPlugin) calculateFeedStatsFromLifecycle(feed *lifecycle.Feed) *FeedStats {
+	return p.aggregateFeedStats(feed.Posts)
+}
+
+// aggregateFeedStats calculates feed statistics from a slice of posts.
+func (p *StatsPlugin) aggregateFeedStats(posts []*models.Post) *FeedStats {
 	stats := &FeedStats{
-		PostCount: len(feed.Posts),
+		PostCount:   len(posts),
+		PostsByYear: make(map[int]int),
+		WordsByYear: make(map[int]int),
+		PostsByTag:  make(map[string]int),
 	}
 
-	for _, post := range feed.Posts {
+	for _, post := range posts {
 		postStats := p.getPostStats(post)
 		stats.TotalWords += postStats.WordCount
 		stats.TotalChars += postStats.CharCount
 		stats.TotalReadingTime += postStats.ReadingTime
 		stats.TotalCodeLines += postStats.CodeLines
 		stats.TotalCodeBlocks += postStats.CodeBlocks
+
+		// Aggregate by year
+		if post.Date != nil {
+			year := post.Date.Year()
+			stats.PostsByYear[year]++
+			stats.WordsByYear[year] += postStats.WordCount
+		}
+
+		// Aggregate by tag
+		for _, tag := range post.Tags {
+			stats.PostsByTag[tag]++
+		}
 	}
 
 	// Calculate averages
@@ -412,7 +445,7 @@ func (p *StatsPlugin) formatReadingTime(minutes int) string {
 // formatDuration formats a duration in minutes as hours and minutes.
 func (p *StatsPlugin) formatDuration(minutes int) string {
 	if minutes == 0 {
-		return "0 min"
+		return statsZeroMin
 	}
 	if minutes < 60 {
 		return fmt.Sprintf("%d min", minutes)
@@ -477,3 +510,283 @@ var (
 	_ lifecycle.CollectPlugin   = (*StatsPlugin)(nil)
 	_ lifecycle.PriorityPlugin  = (*StatsPlugin)(nil)
 )
+
+// StatsHelper provides template-friendly access to site statistics.
+// It exposes methods and properties that can be used in Jinja2-style templates
+// for building analytics dashboards and "year in review" style posts.
+//
+// Template usage examples:
+//   - {{ stats.total_posts }} - Total number of posts
+//   - {{ stats.total_words }} - Total word count
+//   - {{ stats.posts_by_year }} - Map of year to post count
+//   - {{ stats.kpi("total_posts") }} - Get a specific KPI value
+//   - {{ stats.for_feed("blog").total_posts }} - Feed-specific stats
+type StatsHelper struct {
+	manager   *lifecycle.Manager
+	siteStats *SiteStats
+}
+
+// NewStatsHelper creates a new stats helper for template access.
+func NewStatsHelper(m *lifecycle.Manager) *StatsHelper {
+	return &StatsHelper{
+		manager:   m,
+		siteStats: GetSiteStats(m),
+	}
+}
+
+// TotalPosts returns the total number of posts.
+func (h *StatsHelper) TotalPosts() int {
+	if h.siteStats == nil {
+		return 0
+	}
+	return h.siteStats.TotalPosts
+}
+
+// TotalWords returns the total word count.
+func (h *StatsHelper) TotalWords() int {
+	if h.siteStats == nil {
+		return 0
+	}
+	return h.siteStats.TotalWords
+}
+
+// TotalReadingTime returns the total reading time in minutes.
+func (h *StatsHelper) TotalReadingTime() int {
+	if h.siteStats == nil {
+		return 0
+	}
+	return h.siteStats.TotalReadingTime
+}
+
+// TotalReadingTimeText returns the formatted total reading time.
+func (h *StatsHelper) TotalReadingTimeText() string {
+	if h.siteStats == nil {
+		return statsZeroMin
+	}
+	return h.siteStats.TotalReadingTimeText
+}
+
+// AverageWords returns the average word count per post.
+func (h *StatsHelper) AverageWords() int {
+	if h.siteStats == nil {
+		return 0
+	}
+	return h.siteStats.AverageWords
+}
+
+// AverageReadingTime returns the average reading time per post.
+func (h *StatsHelper) AverageReadingTime() int {
+	if h.siteStats == nil {
+		return 0
+	}
+	return h.siteStats.AverageReadingTime
+}
+
+// TotalCodeLines returns the total lines of code.
+func (h *StatsHelper) TotalCodeLines() int {
+	if h.siteStats == nil {
+		return 0
+	}
+	return h.siteStats.TotalCodeLines
+}
+
+// TotalCodeBlocks returns the total number of code blocks.
+func (h *StatsHelper) TotalCodeBlocks() int {
+	if h.siteStats == nil {
+		return 0
+	}
+	return h.siteStats.TotalCodeBlocks
+}
+
+// PostsByYear returns a map of year to post count.
+func (h *StatsHelper) PostsByYear() map[int]int {
+	if h.siteStats == nil {
+		return make(map[int]int)
+	}
+	return h.siteStats.PostsByYear
+}
+
+// WordsByYear returns a map of year to total word count.
+func (h *StatsHelper) WordsByYear() map[int]int {
+	if h.siteStats == nil {
+		return make(map[int]int)
+	}
+	return h.siteStats.WordsByYear
+}
+
+// PostsByTag returns a map of tag name to post count.
+func (h *StatsHelper) PostsByTag() map[string]int {
+	if h.siteStats == nil {
+		return make(map[string]int)
+	}
+	return h.siteStats.PostsByTag
+}
+
+// Kpi returns a specific KPI value by name.
+// Supported KPIs: total_posts, total_words, total_reading_time, average_words,
+// average_reading_time, total_code_lines, total_code_blocks
+func (h *StatsHelper) Kpi(name string) interface{} {
+	if h.siteStats == nil {
+		return 0
+	}
+	switch name {
+	case "total_posts":
+		return h.siteStats.TotalPosts
+	case "total_words":
+		return h.siteStats.TotalWords
+	case "total_reading_time":
+		return h.siteStats.TotalReadingTime
+	case "total_reading_time_text":
+		return h.siteStats.TotalReadingTimeText
+	case "average_words":
+		return h.siteStats.AverageWords
+	case "average_reading_time":
+		return h.siteStats.AverageReadingTime
+	case "average_reading_time_text":
+		return h.siteStats.AverageReadingTimeText
+	case "total_code_lines":
+		return h.siteStats.TotalCodeLines
+	case "total_code_blocks":
+		return h.siteStats.TotalCodeBlocks
+	default:
+		return nil
+	}
+}
+
+// ForFeed returns a FeedStatsHelper for feed-specific statistics.
+func (h *StatsHelper) ForFeed(feedName string) *FeedStatsHelper {
+	feedStats := GetFeedStats(h.manager, feedName)
+	return &FeedStatsHelper{feedStats: feedStats}
+}
+
+// FeedStatsHelper provides template-friendly access to feed-specific statistics.
+type FeedStatsHelper struct {
+	feedStats *FeedStats
+}
+
+// PostCount returns the number of posts in the feed.
+func (h *FeedStatsHelper) PostCount() int {
+	if h.feedStats == nil {
+		return 0
+	}
+	return h.feedStats.PostCount
+}
+
+// TotalWords returns the total word count for the feed.
+func (h *FeedStatsHelper) TotalWords() int {
+	if h.feedStats == nil {
+		return 0
+	}
+	return h.feedStats.TotalWords
+}
+
+// TotalReadingTime returns the total reading time for the feed.
+func (h *FeedStatsHelper) TotalReadingTime() int {
+	if h.feedStats == nil {
+		return 0
+	}
+	return h.feedStats.TotalReadingTime
+}
+
+// TotalReadingTimeText returns the formatted total reading time.
+func (h *FeedStatsHelper) TotalReadingTimeText() string {
+	if h.feedStats == nil {
+		return statsZeroMin
+	}
+	return h.feedStats.TotalReadingTimeText
+}
+
+// AverageWords returns the average word count per post.
+func (h *FeedStatsHelper) AverageWords() int {
+	if h.feedStats == nil {
+		return 0
+	}
+	return h.feedStats.AverageWords
+}
+
+// AverageReadingTime returns the average reading time per post.
+func (h *FeedStatsHelper) AverageReadingTime() int {
+	if h.feedStats == nil {
+		return 0
+	}
+	return h.feedStats.AverageReadingTime
+}
+
+// TotalCodeLines returns the total lines of code in the feed.
+func (h *FeedStatsHelper) TotalCodeLines() int {
+	if h.feedStats == nil {
+		return 0
+	}
+	return h.feedStats.TotalCodeLines
+}
+
+// TotalCodeBlocks returns the total number of code blocks in the feed.
+func (h *FeedStatsHelper) TotalCodeBlocks() int {
+	if h.feedStats == nil {
+		return 0
+	}
+	return h.feedStats.TotalCodeBlocks
+}
+
+// PostsByYear returns a map of year to post count for this feed.
+func (h *FeedStatsHelper) PostsByYear() map[int]int {
+	if h.feedStats == nil {
+		return make(map[int]int)
+	}
+	return h.feedStats.PostsByYear
+}
+
+// WordsByYear returns a map of year to word count for this feed.
+func (h *FeedStatsHelper) WordsByYear() map[int]int {
+	if h.feedStats == nil {
+		return make(map[int]int)
+	}
+	return h.feedStats.WordsByYear
+}
+
+// PostsByTag returns a map of tag to post count for this feed.
+func (h *FeedStatsHelper) PostsByTag() map[string]int {
+	if h.feedStats == nil {
+		return make(map[string]int)
+	}
+	return h.feedStats.PostsByTag
+}
+
+// Kpi returns a specific KPI value by name for this feed.
+func (h *FeedStatsHelper) Kpi(name string) interface{} {
+	if h.feedStats == nil {
+		return 0
+	}
+	switch name {
+	case "post_count", "total_posts":
+		return h.feedStats.PostCount
+	case "total_words":
+		return h.feedStats.TotalWords
+	case "total_reading_time":
+		return h.feedStats.TotalReadingTime
+	case "total_reading_time_text":
+		return h.feedStats.TotalReadingTimeText
+	case "average_words":
+		return h.feedStats.AverageWords
+	case "average_reading_time":
+		return h.feedStats.AverageReadingTime
+	case "average_reading_time_text":
+		return h.feedStats.AverageReadingTimeText
+	case "total_code_lines":
+		return h.feedStats.TotalCodeLines
+	case "total_code_blocks":
+		return h.feedStats.TotalCodeBlocks
+	default:
+		return nil
+	}
+}
+
+// GetStatsHelper retrieves the stats helper from the cache.
+func GetStatsHelper(m *lifecycle.Manager) *StatsHelper {
+	if helper, ok := m.Cache().Get("stats_helper"); ok {
+		if statsHelper, ok := helper.(*StatsHelper); ok {
+			return statsHelper
+		}
+	}
+	return nil
+}
