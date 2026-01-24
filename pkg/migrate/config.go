@@ -8,7 +8,16 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"gopkg.in/yaml.v3"
+)
+
+// Format constants for configuration file types.
+const (
+	formatTOML = "toml"
+	formatYAML = "yaml"
+	formatJSON = "json"
 )
 
 // MigrationResult contains the results of a migration operation.
@@ -154,9 +163,9 @@ func (r *MigrationResult) ExitCode() int {
 	return 0
 }
 
-// MigrateConfig migrates a Python markata config file to markata-go format.
+// Config migrates a Python markata config file to markata-go format.
 // If outputPath is empty, it returns the result without writing.
-func MigrateConfig(inputPath, outputPath string) (*MigrationResult, error) {
+func Config(inputPath, outputPath string) (*MigrationResult, error) {
 	result := &MigrationResult{
 		InputFile:  inputPath,
 		OutputFile: outputPath,
@@ -175,11 +184,11 @@ func MigrateConfig(inputPath, outputPath string) (*MigrationResult, error) {
 	// Parse config
 	var rawConfig map[string]interface{}
 	switch format {
-	case "toml":
+	case formatTOML:
 		if _, err := toml.Decode(string(data), &rawConfig); err != nil {
 			return nil, fmt.Errorf("failed to parse TOML: %w", err)
 		}
-	case "yaml":
+	case formatYAML:
 		if err := yaml.Unmarshal(data, &rawConfig); err != nil {
 			return nil, fmt.Errorf("failed to parse YAML: %w", err)
 		}
@@ -202,8 +211,8 @@ func MigrateConfig(inputPath, outputPath string) (*MigrationResult, error) {
 	return result, nil
 }
 
-// MigrateConfigFromMap migrates a config map directly (useful for testing).
-func MigrateConfigFromMap(rawConfig map[string]interface{}) (*MigrationResult, error) {
+// ConfigFromMap migrates a config map directly (useful for testing).
+func ConfigFromMap(rawConfig map[string]interface{}) (*MigrationResult, error) {
 	result := &MigrationResult{
 		Timestamp: time.Now(),
 	}
@@ -354,11 +363,12 @@ func renameKey(key string) (string, bool) {
 
 // migrateNavMap converts a Python markata nav map to markata-go nav array.
 func migrateNavMap(navMap map[string]interface{}) []map[string]interface{} {
-	var navArray []map[string]interface{}
+	navArray := make([]map[string]interface{}, 0, len(navMap))
+	caser := cases.Title(language.English)
 
 	for label, url := range navMap {
 		navItem := map[string]interface{}{
-			"label": strings.Title(label),
+			"label": caser.String(label),
 			"url":   url,
 		}
 		navArray = append(navArray, navItem)
@@ -412,7 +422,7 @@ func migrateFeedConfig(feed map[string]interface{}, result *MigrationResult) map
 					feedName = name
 				}
 
-				migratedFilter, changes := MigrateFilter(filterStr)
+				migratedFilter, changes := Filter(filterStr)
 				migrated[key] = migratedFilter
 
 				filterMigration := FilterMigration{
@@ -471,13 +481,13 @@ func detectFormat(path string) string {
 	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {
 	case ".toml":
-		return "toml"
+		return formatTOML
 	case ".yaml", ".yml":
-		return "yaml"
+		return formatYAML
 	case ".json":
-		return "json"
+		return formatJSON
 	default:
-		return "toml"
+		return formatTOML
 	}
 }
 
@@ -487,7 +497,7 @@ func writeConfig(config map[string]interface{}, path, format string) error {
 	var err error
 
 	switch format {
-	case "toml":
+	case formatTOML:
 		var buf strings.Builder
 		enc := toml.NewEncoder(&buf)
 		enc.Indent = ""
@@ -495,7 +505,7 @@ func writeConfig(config map[string]interface{}, path, format string) error {
 			return fmt.Errorf("failed to encode TOML: %w", err)
 		}
 		data = []byte(buf.String())
-	case "yaml":
+	case formatYAML:
 		data, err = yaml.Marshal(config)
 		if err != nil {
 			return fmt.Errorf("failed to encode YAML: %w", err)
@@ -512,5 +522,5 @@ func writeConfig(config map[string]interface{}, path, format string) error {
 		}
 	}
 
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(path, data, 0o600)
 }
