@@ -395,6 +395,51 @@ func TestFilterStripTags(t *testing.T) {
 			input:    "Plain text",
 			expected: "Plain text",
 		},
+		{
+			name:     "html entities nbsp",
+			input:    "Hello&nbsp;World",
+			expected: "Hello World",
+		},
+		{
+			name:     "html entities amp - re-escaped for html safety",
+			input:    "Tom &amp; Jerry",
+			expected: "Tom &amp; Jerry", // pongo2 re-escapes & for HTML safety
+		},
+		{
+			name:     "html entities lt gt - re-escaped for html safety",
+			input:    "&lt;code&gt;",
+			expected: "&lt;code&gt;", // pongo2 re-escapes < > for HTML safety
+		},
+		{
+			name:     "html entities quot - re-escaped for html safety",
+			input:    "He said &quot;hello&quot;",
+			expected: "He said &quot;hello&quot;", // pongo2 re-escapes quotes
+		},
+		{
+			name:     "html entities apos",
+			input:    "It&#39;s a test",
+			expected: "It&#39;s a test", // pongo2 re-escapes apostrophes
+		},
+		{
+			name:     "multiple whitespace collapse",
+			input:    "Hello    World",
+			expected: "Hello World",
+		},
+		{
+			name:     "whitespace with newlines",
+			input:    "Hello\n\n  World",
+			expected: "Hello World",
+		},
+		{
+			name:     "leading trailing whitespace",
+			input:    "  Hello World  ",
+			expected: "Hello World",
+		},
+		{
+			name:     "combined scenario - tags removed, nbsp decoded, whitespace collapsed",
+			input:    "<p>Hello&nbsp;&nbsp;World</p>  <br/>  <span>Test</span>",
+			expected: "Hello World Test",
+		},
 	}
 
 	for _, tt := range tests {

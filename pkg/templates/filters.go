@@ -45,7 +45,7 @@ func registerFilters() {
 		pongo2.RegisterFilter("sort", filterSort)
 
 		// HTML/text filters
-		pongo2.RegisterFilter("striptags", filterStripTags)
+		pongo2.ReplaceFilter("striptags", filterStripTags)
 		pongo2.RegisterFilter("linebreaks", filterLinebreaks)
 		pongo2.RegisterFilter("linebreaksbr", filterLinebreaksBR)
 
@@ -290,12 +290,31 @@ func filterSort(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	return pongo2.AsValue(result), nil
 }
 
-// filterStripTags removes HTML tags from a string.
+// filterStripTags removes HTML tags from a string and cleans up entities.
 func filterStripTags(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s := in.String()
-	// Simple regex to remove HTML tags
+
+	// Remove HTML tags
 	re := regexp.MustCompile(`<[^>]*>`)
-	return pongo2.AsValue(re.ReplaceAllString(s, "")), nil
+	s = re.ReplaceAllString(s, "")
+
+	// Decode common HTML entities
+	s = strings.ReplaceAll(s, "&nbsp;", " ")
+	s = strings.ReplaceAll(s, "&amp;", "&")
+	s = strings.ReplaceAll(s, "&lt;", "<")
+	s = strings.ReplaceAll(s, "&gt;", ">")
+	s = strings.ReplaceAll(s, "&quot;", "\"")
+	s = strings.ReplaceAll(s, "&#39;", "'")
+	s = strings.ReplaceAll(s, "&apos;", "'")
+
+	// Collapse multiple whitespace into single space
+	wsRe := regexp.MustCompile(`\s+`)
+	s = wsRe.ReplaceAllString(s, " ")
+
+	// Trim leading/trailing whitespace
+	s = strings.TrimSpace(s)
+
+	return pongo2.AsValue(s), nil
 }
 
 // filterLinebreaks converts newlines to <p> and <br> tags.
