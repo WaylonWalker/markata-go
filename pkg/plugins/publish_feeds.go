@@ -92,6 +92,12 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 		if err := p.publishJSON(fc, config, feedDir); err != nil {
 			return fmt.Errorf("publishing JSON: %w", err)
 		}
+		// Write redirect from /slug.json to /slug/feed.json (only for non-root feeds)
+		if fc.Slug != "" {
+			if err := p.writeFeedFormatRedirect(fc.Slug, "json", "feed.json", outputDir); err != nil {
+				return fmt.Errorf("writing JSON redirect: %w", err)
+			}
+		}
 	}
 
 	// Publish Markdown
@@ -99,12 +105,24 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 		if err := p.publishMarkdown(fc, feedDir); err != nil {
 			return fmt.Errorf("publishing Markdown: %w", err)
 		}
+		// Write redirect from /slug.md to /slug/index.md (only for non-root feeds)
+		if fc.Slug != "" {
+			if err := p.writeFeedFormatRedirect(fc.Slug, "md", "index.md", outputDir); err != nil {
+				return fmt.Errorf("writing Markdown redirect: %w", err)
+			}
+		}
 	}
 
 	// Publish Text
 	if fc.Formats.Text {
 		if err := p.publishText(fc, feedDir); err != nil {
 			return fmt.Errorf("publishing Text: %w", err)
+		}
+		// Write redirect from /slug.txt to /slug/index.txt (only for non-root feeds)
+		if fc.Slug != "" {
+			if err := p.writeFeedFormatRedirect(fc.Slug, "txt", "index.txt", outputDir); err != nil {
+				return fmt.Errorf("writing Text redirect: %w", err)
+			}
 		}
 	}
 
@@ -405,6 +423,49 @@ func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, feedDir string) 
 	txtPath := filepath.Join(feedDir, "index.txt")
 	//nolint:gosec // G306: Feed files need 0644 for web serving
 	return os.WriteFile(txtPath, []byte(sb.String()), 0o644)
+}
+
+// writeFeedFormatRedirect writes a redirect from /slug.ext to /slug/targetFile.
+// This creates a file at slug.ext/index.html, which allows the URL /slug.ext
+// (without trailing slash) to serve the HTML redirect on most static hosts.
+//
+// For example, requesting /archive.md will serve the redirect HTML that
+// points to /archive/index.md where the actual markdown content lives.
+// Similarly, /archive.json redirects to /archive/feed.json.
+//
+// Note: Web servers serve slug.ext/index.html when /slug.ext is requested,
+// without adding a trailing slash redirect (unlike directory-only approaches).
+func (p *PublishFeedsPlugin) writeFeedFormatRedirect(slug, ext, targetFile, outputDir string) error {
+	// Create redirect HTML that points to the actual file
+	targetURL := fmt.Sprintf("/%s/%s", slug, targetFile)
+	redirectHTML := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="0; url=%s">
+<link rel="canonical" href="%s">
+<title>Redirecting...</title>
+</head>
+<body>
+<p>Redirecting to <a href="%s">%s</a>...</p>
+</body>
+</html>`, targetURL, targetURL, targetURL, targetURL)
+
+	// Create directory at /slug.ext/ (e.g., /archive.md/)
+	redirectDir := filepath.Join(outputDir, slug+"."+ext)
+	if err := os.MkdirAll(redirectDir, 0o755); err != nil {
+		return fmt.Errorf("creating redirect directory %s: %w", redirectDir, err)
+	}
+
+	// Write index.html inside the directory
+	// This allows /slug.ext to be served without trailing slash on most static hosts
+	outputPath := filepath.Join(redirectDir, "index.html")
+	//nolint:gosec // G306: Output files need 0644 for web serving
+	if err := os.WriteFile(outputPath, []byte(redirectHTML), 0o644); err != nil {
+		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
+	}
+
+	return nil
 }
 
 // Ensure PublishFeedsPlugin implements the required interfaces.
