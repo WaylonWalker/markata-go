@@ -48,6 +48,11 @@
     {% endif %}
     {% endif %}
     
+    <!-- Pagefind default image fallback for search results -->
+    {% if config.seo.default_image %}
+    <meta data-pagefind-default-meta="image" content="{{ config.seo.default_image }}">
+    {% endif %}
+    
     <!-- Canonical URL -->
     {% if post %}
     <link rel="canonical" href="{{ config.url }}{{ post.href }}">
