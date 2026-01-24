@@ -991,8 +991,27 @@ reverse = true
 
 ---
 
+---
+
+## Next Steps
+
+Now that you understand frontmatter, here are recommended next steps based on what you want to do:
+
+**Organize your content with feeds:**
+- [Feeds Guide](/docs/guides/feeds/) - Learn how to create filtered, sorted collections using your frontmatter fields
+
+**Customize how your content looks:**
+- [Templates Guide](/docs/guides/templates/) - Use frontmatter values in your templates
+- [Themes Guide](/docs/guides/themes/) - Style your site with color palettes and custom CSS
+
+**Learn about Markdown features:**
+- [Markdown Guide](/docs/guides/markdown/) - Advanced Markdown syntax and extensions
+
+---
+
 ## See Also
 
-- [[feeds-guide|Feeds Guide]] - Complete guide to feed filtering and configuration
-- [[templates-guide|Templates Guide]] - Using frontmatter in templates
-- [[configuration-guide|Configuration Guide]] - Site-wide defaults and settings
+- [Feeds Guide](/docs/guides/feeds/) - Complete guide to feed filtering and configuration
+- [Templates Guide](/docs/guides/templates/) - Using frontmatter in templates
+- [Configuration Guide](/docs/guides/configuration/) - Site-wide defaults and settings
+- [Quick Reference](/docs/guides/quick-reference/) - Frontmatter snippets and cheat sheets
