@@ -696,6 +696,8 @@ func (h *tomlHeaderLayoutConfig) toHeaderLayoutConfig() models.HeaderLayoutConfi
 
 type tomlBlogrollConfig struct {
 	Enabled            bool                     `toml:"enabled"`
+	BlogrollSlug       string                   `toml:"blogroll_slug"`
+	ReaderSlug         string                   `toml:"reader_slug"`
 	CacheDir           string                   `toml:"cache_dir"`
 	CacheDuration      string                   `toml:"cache_duration"`
 	Timeout            int                      `toml:"timeout"`
@@ -724,6 +726,8 @@ type tomlBlogrollTemplates struct {
 func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	config := models.BlogrollConfig{
 		Enabled:            b.Enabled,
+		BlogrollSlug:       b.BlogrollSlug,
+		ReaderSlug:         b.ReaderSlug,
 		CacheDir:           b.CacheDir,
 		CacheDuration:      b.CacheDuration,
 		Timeout:            b.Timeout,
@@ -1427,6 +1431,8 @@ func (h *yamlHeaderLayoutConfig) toHeaderLayoutConfig() models.HeaderLayoutConfi
 
 type yamlBlogrollConfig struct {
 	Enabled            bool                     `yaml:"enabled"`
+	BlogrollSlug       string                   `yaml:"blogroll_slug"`
+	ReaderSlug         string                   `yaml:"reader_slug"`
 	CacheDir           string                   `yaml:"cache_dir"`
 	CacheDuration      string                   `yaml:"cache_duration"`
 	Timeout            int                      `yaml:"timeout"`
@@ -1455,6 +1461,8 @@ type yamlBlogrollTemplates struct {
 func (b *yamlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	config := models.BlogrollConfig{
 		Enabled:            b.Enabled,
+		BlogrollSlug:       b.BlogrollSlug,
+		ReaderSlug:         b.ReaderSlug,
 		CacheDir:           b.CacheDir,
 		CacheDuration:      b.CacheDuration,
 		Timeout:            b.Timeout,
@@ -2143,6 +2151,8 @@ func (h *jsonHeaderLayoutConfig) toHeaderLayoutConfig() models.HeaderLayoutConfi
 
 type jsonBlogrollConfig struct {
 	Enabled            bool                     `json:"enabled"`
+	BlogrollSlug       string                   `json:"blogroll_slug"`
+	ReaderSlug         string                   `json:"reader_slug"`
 	CacheDir           string                   `json:"cache_dir"`
 	CacheDuration      string                   `json:"cache_duration"`
 	Timeout            int                      `json:"timeout"`
@@ -2171,6 +2181,8 @@ type jsonBlogrollTemplates struct {
 func (b *jsonBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	config := models.BlogrollConfig{
 		Enabled:            b.Enabled,
+		BlogrollSlug:       b.BlogrollSlug,
+		ReaderSlug:         b.ReaderSlug,
 		CacheDir:           b.CacheDir,
 		CacheDuration:      b.CacheDuration,
 		Timeout:            b.Timeout,

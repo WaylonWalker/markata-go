@@ -7,6 +7,14 @@ type BlogrollConfig struct {
 	// Enabled controls whether blogroll functionality is active (default: false)
 	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
 
+	// BlogrollSlug is the URL path for the blogroll page (default: "blogroll")
+	// This generates the page at /{blogroll_slug}/index.html
+	BlogrollSlug string `json:"blogroll_slug" yaml:"blogroll_slug" toml:"blogroll_slug"`
+
+	// ReaderSlug is the URL path for the reader page (default: "reader")
+	// This generates the page at /{reader_slug}/index.html
+	ReaderSlug string `json:"reader_slug" yaml:"reader_slug" toml:"reader_slug"`
+
 	// CacheDir is the directory for caching fetched feeds (default: "cache/blogroll")
 	CacheDir string `json:"cache_dir" yaml:"cache_dir" toml:"cache_dir"`
 
@@ -33,6 +41,8 @@ type BlogrollConfig struct {
 func NewBlogrollConfig() BlogrollConfig {
 	return BlogrollConfig{
 		Enabled:            false,
+		BlogrollSlug:       "blogroll",
+		ReaderSlug:         "reader",
 		CacheDir:           "cache/blogroll",
 		CacheDuration:      "1h",
 		Timeout:            30,
