@@ -259,6 +259,9 @@ type Config struct {
 
 	// ContentTemplates configures the content template system for the new command
 	ContentTemplates ContentTemplatesConfig `json:"content_templates" yaml:"content_templates" toml:"content_templates"`
+
+	// Blogroll configures the blogroll and RSS reader functionality
+	Blogroll BlogrollConfig `json:"blogroll" yaml:"blogroll" toml:"blogroll"`
 }
 
 // HeadConfig configures elements added to the HTML <head> section.
@@ -1034,6 +1037,7 @@ func NewConfig() *Config {
 		Header:           NewHeaderLayoutConfig(),
 		FooterLayout:     NewFooterLayoutConfig(),
 		ContentTemplates: NewContentTemplatesConfig(),
+		Blogroll:         NewBlogrollConfig(),
 	}
 }
 

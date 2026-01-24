@@ -68,6 +68,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["stats"] = func() lifecycle.Plugin { return NewStatsPlugin() }
 	pluginRegistry.constructors["breadcrumbs"] = func() lifecycle.Plugin { return NewBreadcrumbsPlugin() }
 	pluginRegistry.constructors["embeds"] = func() lifecycle.Plugin { return NewEmbedsPlugin() }
+	pluginRegistry.constructors["blogroll"] = func() lifecycle.Plugin { return NewBlogrollPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.

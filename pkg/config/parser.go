@@ -82,6 +82,7 @@ type tomlConfig struct {
 	Sidebar       tomlSidebarConfig      `toml:"sidebar"`
 	Toc           tomlTocConfig          `toml:"toc"`
 	Header        tomlHeaderLayoutConfig `toml:"header"`
+	Blogroll      tomlBlogrollConfig     `toml:"blogroll"`
 	UnknownFields map[string]any         `toml:"-"`
 }
 
@@ -518,6 +519,66 @@ func (h *tomlHeaderLayoutConfig) toHeaderLayoutConfig() models.HeaderLayoutConfi
 	}
 }
 
+// Blogroll-related TOML structs
+
+type tomlBlogrollConfig struct {
+	Enabled            bool                     `toml:"enabled"`
+	CacheDir           string                   `toml:"cache_dir"`
+	CacheDuration      string                   `toml:"cache_duration"`
+	Timeout            int                      `toml:"timeout"`
+	ConcurrentRequests int                      `toml:"concurrent_requests"`
+	MaxEntriesPerFeed  int                      `toml:"max_entries_per_feed"`
+	Feeds              []tomlExternalFeedConfig `toml:"feeds"`
+	Templates          tomlBlogrollTemplates    `toml:"templates"`
+}
+
+type tomlExternalFeedConfig struct {
+	URL         string   `toml:"url"`
+	Title       string   `toml:"title"`
+	Description string   `toml:"description"`
+	Category    string   `toml:"category"`
+	Tags        []string `toml:"tags"`
+	Active      *bool    `toml:"active"`
+	SiteURL     string   `toml:"site_url"`
+	ImageURL    string   `toml:"image_url"`
+}
+
+type tomlBlogrollTemplates struct {
+	Blogroll string `toml:"blogroll"`
+	Reader   string `toml:"reader"`
+}
+
+func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
+	config := models.BlogrollConfig{
+		Enabled:            b.Enabled,
+		CacheDir:           b.CacheDir,
+		CacheDuration:      b.CacheDuration,
+		Timeout:            b.Timeout,
+		ConcurrentRequests: b.ConcurrentRequests,
+		MaxEntriesPerFeed:  b.MaxEntriesPerFeed,
+		Templates: models.BlogrollTemplates{
+			Blogroll: b.Templates.Blogroll,
+			Reader:   b.Templates.Reader,
+		},
+	}
+
+	for i := range b.Feeds {
+		fc := &b.Feeds[i]
+		config.Feeds = append(config.Feeds, models.ExternalFeedConfig{
+			URL:         fc.URL,
+			Title:       fc.Title,
+			Description: fc.Description,
+			Category:    fc.Category,
+			Tags:        fc.Tags,
+			Active:      fc.Active,
+			SiteURL:     fc.SiteURL,
+			ImageURL:    fc.ImageURL,
+		})
+	}
+
+	return config
+}
+
 //nolint:dupl // Intentional duplication - each format has its own conversion method
 func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 	config := models.ComponentsConfig{
@@ -638,6 +699,9 @@ func (c *tomlConfig) toConfig() *models.Config {
 	// Convert Header config
 	config.Header = c.Header.toHeaderLayoutConfig()
 
+	// Convert Blogroll config
+	config.Blogroll = c.Blogroll.toBlogrollConfig()
+
 	return config
 }
 
@@ -751,6 +815,7 @@ type yamlConfig struct {
 	Sidebar       yamlSidebarConfig      `yaml:"sidebar"`
 	Toc           yamlTocConfig          `yaml:"toc"`
 	Header        yamlHeaderLayoutConfig `yaml:"header"`
+	Blogroll      yamlBlogrollConfig     `yaml:"blogroll"`
 }
 
 type yamlNavItem struct {
@@ -1179,6 +1244,66 @@ func (h *yamlHeaderLayoutConfig) toHeaderLayoutConfig() models.HeaderLayoutConfi
 	}
 }
 
+// Blogroll-related YAML structs
+
+type yamlBlogrollConfig struct {
+	Enabled            bool                     `yaml:"enabled"`
+	CacheDir           string                   `yaml:"cache_dir"`
+	CacheDuration      string                   `yaml:"cache_duration"`
+	Timeout            int                      `yaml:"timeout"`
+	ConcurrentRequests int                      `yaml:"concurrent_requests"`
+	MaxEntriesPerFeed  int                      `yaml:"max_entries_per_feed"`
+	Feeds              []yamlExternalFeedConfig `yaml:"feeds"`
+	Templates          yamlBlogrollTemplates    `yaml:"templates"`
+}
+
+type yamlExternalFeedConfig struct {
+	URL         string   `yaml:"url"`
+	Title       string   `yaml:"title"`
+	Description string   `yaml:"description"`
+	Category    string   `yaml:"category"`
+	Tags        []string `yaml:"tags"`
+	Active      *bool    `yaml:"active"`
+	SiteURL     string   `yaml:"site_url"`
+	ImageURL    string   `yaml:"image_url"`
+}
+
+type yamlBlogrollTemplates struct {
+	Blogroll string `yaml:"blogroll"`
+	Reader   string `yaml:"reader"`
+}
+
+func (b *yamlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
+	config := models.BlogrollConfig{
+		Enabled:            b.Enabled,
+		CacheDir:           b.CacheDir,
+		CacheDuration:      b.CacheDuration,
+		Timeout:            b.Timeout,
+		ConcurrentRequests: b.ConcurrentRequests,
+		MaxEntriesPerFeed:  b.MaxEntriesPerFeed,
+		Templates: models.BlogrollTemplates{
+			Blogroll: b.Templates.Blogroll,
+			Reader:   b.Templates.Reader,
+		},
+	}
+
+	for i := range b.Feeds {
+		fc := &b.Feeds[i]
+		config.Feeds = append(config.Feeds, models.ExternalFeedConfig{
+			URL:         fc.URL,
+			Title:       fc.Title,
+			Description: fc.Description,
+			Category:    fc.Category,
+			Tags:        fc.Tags,
+			Active:      fc.Active,
+			SiteURL:     fc.SiteURL,
+			ImageURL:    fc.ImageURL,
+		})
+	}
+
+	return config
+}
+
 //nolint:dupl // Intentional duplication - each format has its own conversion method
 func (c *yamlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 	config := models.ComponentsConfig{
@@ -1299,6 +1424,9 @@ func (c *yamlConfig) toConfig() *models.Config {
 	// Convert Header config
 	config.Header = c.Header.toHeaderLayoutConfig()
 
+	// Convert Blogroll config
+	config.Blogroll = c.Blogroll.toBlogrollConfig()
+
 	return config
 }
 
@@ -1399,6 +1527,7 @@ type jsonConfig struct {
 	Sidebar       jsonSidebarConfig      `json:"sidebar"`
 	Toc           jsonTocConfig          `json:"toc"`
 	Header        jsonHeaderLayoutConfig `json:"header"`
+	Blogroll      jsonBlogrollConfig     `json:"blogroll"`
 }
 
 type jsonNavItem struct {
@@ -1827,6 +1956,66 @@ func (h *jsonHeaderLayoutConfig) toHeaderLayoutConfig() models.HeaderLayoutConfi
 	}
 }
 
+// Blogroll-related JSON structs
+
+type jsonBlogrollConfig struct {
+	Enabled            bool                     `json:"enabled"`
+	CacheDir           string                   `json:"cache_dir"`
+	CacheDuration      string                   `json:"cache_duration"`
+	Timeout            int                      `json:"timeout"`
+	ConcurrentRequests int                      `json:"concurrent_requests"`
+	MaxEntriesPerFeed  int                      `json:"max_entries_per_feed"`
+	Feeds              []jsonExternalFeedConfig `json:"feeds"`
+	Templates          jsonBlogrollTemplates    `json:"templates"`
+}
+
+type jsonExternalFeedConfig struct {
+	URL         string   `json:"url"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Category    string   `json:"category"`
+	Tags        []string `json:"tags"`
+	Active      *bool    `json:"active"`
+	SiteURL     string   `json:"site_url"`
+	ImageURL    string   `json:"image_url"`
+}
+
+type jsonBlogrollTemplates struct {
+	Blogroll string `json:"blogroll"`
+	Reader   string `json:"reader"`
+}
+
+func (b *jsonBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
+	config := models.BlogrollConfig{
+		Enabled:            b.Enabled,
+		CacheDir:           b.CacheDir,
+		CacheDuration:      b.CacheDuration,
+		Timeout:            b.Timeout,
+		ConcurrentRequests: b.ConcurrentRequests,
+		MaxEntriesPerFeed:  b.MaxEntriesPerFeed,
+		Templates: models.BlogrollTemplates{
+			Blogroll: b.Templates.Blogroll,
+			Reader:   b.Templates.Reader,
+		},
+	}
+
+	for i := range b.Feeds {
+		fc := &b.Feeds[i]
+		config.Feeds = append(config.Feeds, models.ExternalFeedConfig{
+			URL:         fc.URL,
+			Title:       fc.Title,
+			Description: fc.Description,
+			Category:    fc.Category,
+			Tags:        fc.Tags,
+			Active:      fc.Active,
+			SiteURL:     fc.SiteURL,
+			ImageURL:    fc.ImageURL,
+		})
+	}
+
+	return config
+}
+
 //nolint:dupl // Intentional duplication - each format has its own conversion method
 func (c *jsonComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 	config := models.ComponentsConfig{
@@ -1946,6 +2135,9 @@ func (c *jsonConfig) toConfig() *models.Config {
 
 	// Convert Header config
 	config.Header = c.Header.toHeaderLayoutConfig()
+
+	// Convert Blogroll config
+	config.Blogroll = c.Blogroll.toBlogrollConfig()
 
 	return config
 }
