@@ -1,12 +1,12 @@
 ---
-title: "Configuration Guide"
-description: "Complete reference for markata-go configuration options, file formats, and environment variables"
-date: 2024-01-15
+title: "Configuration Reference"
+description: "Complete reference for all markata-go configuration options"
+date: 2026-01-24
 published: true
 slug: /docs/guides/configuration/
 tags:
-  - documentation
   - configuration
+  - reference
 ---
 
 # Configuration
@@ -150,6 +150,79 @@ hooks = ["default"]
 disabled_hooks = ["sitemap"]
 concurrency = 4
 ```
+
+### Navigation Links (`[[markata-go.nav]]`)
+
+Navigation links appear in the site header and define your site's main navigation.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `label` | string | Required | Display text for the link |
+| `url` | string | Required | Link destination (relative or absolute) |
+| `external` | bool | `false` | Opens link in new tab with noopener |
+
+```toml
+[[markata-go.nav]]
+label = "Home"
+url = "/"
+
+[[markata-go.nav]]
+label = "Blog"
+url = "/blog/"
+
+[[markata-go.nav]]
+label = "Docs"
+url = "/docs/"
+
+[[markata-go.nav]]
+label = "GitHub"
+url = "https://github.com/WaylonWalker/markata-go"
+external = true
+```
+
+### SEO Configuration (`[markata-go.seo]`)
+
+Configure SEO metadata and structured data generation for better search engine visibility.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `twitter_handle` | string | `""` | Twitter/X username (without @) for twitter:site |
+| `default_image` | string | `""` | Default Open Graph image URL |
+| `logo_url` | string | `""` | Site logo URL for Schema.org |
+
+```toml
+[markata-go.seo]
+twitter_handle = "waylonwalker"
+default_image = "/static/og-default.png"
+logo_url = "/static/logo.png"
+
+[markata-go.seo.structured_data]
+enabled = true
+
+[markata-go.seo.structured_data.publisher]
+type = "Organization"
+name = "My Company"
+url = "https://example.com"
+logo = "/static/logo.png"
+
+[markata-go.seo.structured_data.default_author]
+type = "Person"
+name = "Jane Doe"
+url = "https://example.com/about/"
+```
+
+#### Structured Data Configuration
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Enable JSON-LD Schema.org generation |
+| `publisher` | object | `nil` | Publisher information |
+| `default_author` | object | `nil` | Default author for posts |
+
+When enabled, markata-go generates JSON-LD structured data for:
+- `WebSite` schema on the home page
+- `Article` or `BlogPosting` schema on posts
+- Breadcrumb navigation schema
 
 ### Theme Settings (`[markata-go.theme]`)
 
@@ -462,6 +535,352 @@ Available extensions:
 [markata-go.markdown]
 extensions = ["tables", "strikethrough", "autolinks", "tasklist"]
 ```
+
+#### Syntax Highlighting (`[markata-go.markdown.highlight]`)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Enable syntax highlighting |
+| `theme` | string | `""` | Chroma theme (empty = auto from palette) |
+| `line_numbers` | bool | `false` | Show line numbers in code blocks |
+
+```toml
+[markata-go.markdown.highlight]
+enabled = true
+theme = "github-dark"    # Or leave empty for auto-detection
+line_numbers = false
+```
+
+### Layout System (`[markata-go.layout]`)
+
+The layout system controls page structure including sidebars, table of contents, headers, and footers. Different layouts can be assigned to different content types.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | string | `"blog"` | Default layout: `"docs"`, `"blog"`, `"landing"`, `"bare"` |
+| `paths` | map | `{}` | Map URL prefixes to layouts |
+| `feeds` | map | `{}` | Map feed slugs to layouts |
+
+```toml
+[markata-go.layout]
+name = "docs"  # Default layout for all pages
+
+# Path-based layout selection
+[markata-go.layout.paths]
+"/docs/" = "docs"
+"/blog/" = "blog"
+"/about/" = "landing"
+
+# Feed-based layout selection
+[markata-go.layout.feeds]
+"docs" = "docs"
+"blog" = "blog"
+```
+
+#### Documentation Layout (`[markata-go.layout.docs]`)
+
+Three-panel layout with sidebar navigation, content, and table of contents.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `sidebar_position` | string | `"left"` | Sidebar position: `"left"` or `"right"` |
+| `sidebar_width` | string | `"280px"` | Sidebar width |
+| `sidebar_collapsible` | bool | `true` | Allow sidebar collapse |
+| `sidebar_default_open` | bool | `true` | Sidebar open by default |
+| `toc_position` | string | `"right"` | TOC position: `"left"` or `"right"` |
+| `toc_width` | string | `"220px"` | TOC width |
+| `toc_collapsible` | bool | `true` | Allow TOC collapse |
+| `toc_default_open` | bool | `true` | TOC open by default |
+| `content_max_width` | string | `"800px"` | Maximum content width |
+| `header_style` | string | `"minimal"` | Header: `"full"`, `"minimal"`, `"transparent"`, `"none"` |
+| `footer_style` | string | `"minimal"` | Footer: `"full"`, `"minimal"`, `"none"` |
+
+```toml
+[markata-go.layout.docs]
+sidebar_position = "left"
+sidebar_width = "280px"
+toc_position = "right"
+toc_width = "220px"
+content_max_width = "800px"
+header_style = "minimal"
+footer_style = "minimal"
+```
+
+#### Blog Layout (`[markata-go.layout.blog]`)
+
+Single-column layout optimized for reading long-form content.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `content_max_width` | string | `"720px"` | Maximum content width |
+| `show_toc` | bool | `false` | Show table of contents |
+| `toc_position` | string | `"right"` | TOC position if enabled |
+| `toc_width` | string | `"200px"` | TOC width |
+| `header_style` | string | `"full"` | Header style |
+| `footer_style` | string | `"full"` | Footer style |
+| `show_author` | bool | `true` | Display post author |
+| `show_date` | bool | `true` | Display post date |
+| `show_tags` | bool | `true` | Display post tags |
+| `show_reading_time` | bool | `true` | Display estimated reading time |
+| `show_prev_next` | bool | `true` | Display prev/next navigation |
+
+```toml
+[markata-go.layout.blog]
+content_max_width = "720px"
+show_toc = true
+show_author = true
+show_date = true
+show_tags = true
+show_reading_time = true
+show_prev_next = true
+```
+
+#### Landing Layout (`[markata-go.layout.landing]`)
+
+Full-width layout for marketing pages and home pages.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `content_max_width` | string | `"100%"` | Maximum content width |
+| `header_style` | string | `"transparent"` | Header style |
+| `header_sticky` | bool | `true` | Sticky header |
+| `footer_style` | string | `"full"` | Footer style |
+| `hero_enabled` | bool | `true` | Enable hero section |
+
+```toml
+[markata-go.layout.landing]
+content_max_width = "100%"
+header_style = "transparent"
+header_sticky = true
+hero_enabled = true
+```
+
+### Sidebar Configuration (`[markata-go.sidebar]`)
+
+Configure the sidebar navigation component for documentation and guides.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Show sidebar |
+| `position` | string | `"left"` | Position: `"left"` or `"right"` |
+| `width` | string | `"280px"` | Sidebar width |
+| `collapsible` | bool | `true` | Allow collapse |
+| `default_open` | bool | `true` | Open by default |
+| `title` | string | `""` | Sidebar title/header |
+| `multi_feed` | bool | `false` | Multi-feed mode with sections |
+| `feeds` | string[] | `[]` | Feed slugs for multi-feed mode |
+
+```toml
+[markata-go.sidebar]
+enabled = true
+position = "left"
+width = "280px"
+title = "Documentation"
+
+# Manual navigation structure
+[[markata-go.sidebar.nav]]
+title = "Getting Started"
+href = "/docs/"
+
+[[markata-go.sidebar.nav]]
+title = "Guides"
+children = [
+    { title = "Configuration", href = "/docs/guides/configuration/" },
+    { title = "Templates", href = "/docs/guides/templates/" },
+    { title = "Themes", href = "/docs/guides/themes/" },
+    { title = "Feeds", href = "/docs/guides/feeds/" },
+]
+
+[[markata-go.sidebar.nav]]
+title = "Reference"
+children = [
+    { title = "CLI", href = "/docs/reference/cli/" },
+    { title = "Plugins", href = "/docs/reference/plugins/" },
+]
+```
+
+#### Path-Specific Sidebars (`[markata-go.sidebar.paths]`)
+
+Configure different sidebar content for different URL paths.
+
+```toml
+[markata-go.sidebar.paths."/docs/"]
+title = "Documentation"
+feed = "docs"  # Auto-generate from this feed
+
+[markata-go.sidebar.paths."/guides/"]
+title = "Guides"
+[markata-go.sidebar.paths."/guides/".auto_generate]
+directory = "guides"
+order_by = "nav_order"
+```
+
+#### Multi-Feed Sidebars
+
+Show posts from multiple feeds in collapsible sections.
+
+```toml
+[markata-go.sidebar]
+multi_feed = true
+feeds = ["docs", "guides", "tutorials"]
+
+[[markata-go.sidebar.feed_sections]]
+feed = "docs"
+title = "Documentation"
+collapsed = false
+
+[[markata-go.sidebar.feed_sections]]
+feed = "guides"
+title = "Guides"
+collapsed = true
+max_items = 10
+```
+
+### Table of Contents (`[markata-go.toc]`)
+
+Configure the table of contents component for document navigation.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Show TOC |
+| `position` | string | `"right"` | Position: `"left"` or `"right"` |
+| `width` | string | `"220px"` | TOC width |
+| `min_depth` | int | `2` | Minimum heading level (h2 = 2) |
+| `max_depth` | int | `4` | Maximum heading level (h4 = 4) |
+| `title` | string | `"On this page"` | TOC section title |
+| `collapsible` | bool | `true` | Allow collapse |
+| `default_open` | bool | `true` | Open by default |
+| `scroll_spy` | bool | `true` | Highlight current section |
+
+```toml
+[markata-go.toc]
+enabled = true
+position = "right"
+width = "220px"
+title = "On this page"
+min_depth = 2
+max_depth = 4
+scroll_spy = true
+```
+
+### Header Configuration (`[markata-go.header]`)
+
+Configure the header component for layouts.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `style` | string | `"full"` | Style: `"full"`, `"minimal"`, `"transparent"`, `"none"` |
+| `sticky` | bool | `true` | Stick to top when scrolling |
+| `show_logo` | bool | `true` | Display site logo |
+| `show_title` | bool | `true` | Display site title |
+| `show_nav` | bool | `true` | Display navigation links |
+| `show_search` | bool | `true` | Display search box |
+| `show_theme_toggle` | bool | `true` | Display theme toggle button |
+
+```toml
+[markata-go.header]
+style = "full"
+sticky = true
+show_logo = true
+show_title = true
+show_nav = true
+show_search = true
+show_theme_toggle = true
+```
+
+### Footer Configuration (`[markata-go.footer_layout]`)
+
+Configure the footer component for layouts.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `style` | string | `"full"` | Style: `"full"`, `"minimal"`, `"none"` |
+| `sticky` | bool | `false` | Stick to bottom |
+| `show_copyright` | bool | `true` | Display copyright notice |
+| `copyright_text` | string | `""` | Custom copyright text |
+| `show_social_links` | bool | `true` | Display social media links |
+| `show_nav_links` | bool | `true` | Display navigation links |
+
+```toml
+[markata-go.footer_layout]
+style = "full"
+sticky = false
+show_copyright = true
+copyright_text = "© 2024 My Site. All rights reserved."
+show_social_links = true
+show_nav_links = true
+```
+
+### Blogroll Configuration (`[markata-go.blogroll]`)
+
+Configure the blogroll and RSS reader functionality to display feeds from blogs you follow.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Enable blogroll plugin |
+| `cache_dir` | string | `"cache/blogroll"` | Cache directory |
+| `cache_duration` | string | `"1h"` | Cache TTL (Go duration format) |
+| `timeout` | int | `30` | HTTP timeout in seconds |
+| `concurrent_requests` | int | `5` | Max parallel feed fetches |
+| `max_entries_per_feed` | int | `50` | Max entries per feed |
+
+```toml
+[markata-go.blogroll]
+enabled = true
+cache_dir = "cache/blogroll"
+cache_duration = "1h"
+timeout = 30
+concurrent_requests = 5
+max_entries_per_feed = 50
+
+# Custom templates
+[markata-go.blogroll.templates]
+blogroll = "blogroll.html"
+reader = "reader.html"
+```
+
+#### Adding Feeds (`[[markata-go.blogroll.feeds]]`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `url` | string | Yes | RSS or Atom feed URL |
+| `title` | string | No | Display name (auto-fetched if not set) |
+| `description` | string | No | Short description |
+| `category` | string | No | Group feeds together |
+| `tags` | string[] | No | Additional labels |
+| `site_url` | string | No | Main website URL |
+| `image_url` | string | No | Logo or icon URL |
+| `active` | bool | No | Set `false` to disable |
+
+```toml
+# Technology blogs
+[[markata-go.blogroll.feeds]]
+url = "https://simonwillison.net/atom/everything/"
+title = "Simon Willison"
+description = "Creator of Datasette, Django co-creator"
+category = "Technology"
+tags = ["python", "ai", "llm"]
+
+[[markata-go.blogroll.feeds]]
+url = "https://jvns.ca/atom.xml"
+title = "Julia Evans"
+description = "Making hard things easy to understand"
+category = "Technology"
+tags = ["linux", "networking"]
+
+# Design blogs
+[[markata-go.blogroll.feeds]]
+url = "https://css-tricks.com/feed/"
+title = "CSS-Tricks"
+category = "Design"
+tags = ["css", "frontend"]
+```
+
+**Generated pages:**
+- `/blogroll/` - Directory of all feeds grouped by category
+- `/reader/` - River-of-news style page with latest posts from all feeds
+
+See the [Blogroll Guide](/docs/guides/blogroll/) for detailed configuration and customization.
 
 ### Post Output Formats (`[markata-go.post_formats]`)
 
@@ -1151,9 +1570,12 @@ markata-go config validate
 
 ## See Also
 
-- [[getting-started|Getting Started]] - Quick start guide
-- [[themes-and-styling|Themes Guide]] - Theme and palette customization
-- [[post-formats|Post Output Formats]] - Multiple output formats and social cards
-- [[feeds-guide|Feed System]] - Detailed feed configuration
-- [[built-in-plugins|Plugins]] - Plugin configuration and development
-- [[templates-guide|Templates]] - Template configuration and usage
+- [Getting Started](/docs/getting-started/) - Quick start guide
+- [Themes Guide](/docs/guides/themes/) - Theme and palette customization
+- [Feeds Guide](/docs/guides/feeds/) - Detailed feed configuration
+- [Blogroll Guide](/docs/guides/blogroll/) - RSS reader and blogroll setup
+- [Templates Guide](/docs/guides/templates/) - Template configuration and usage
+- [Sidebars Guide](/docs/guides/sidebars/) - Sidebar navigation setup
+- [Frontmatter Guide](/docs/guides/frontmatter/) - Post metadata reference
+- [CLI Reference](/docs/reference/cli/) - Command-line interface reference
+- [Plugin Reference](/docs/reference/plugins/) - Plugin configuration and development
