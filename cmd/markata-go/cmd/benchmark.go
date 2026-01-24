@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -15,75 +17,189 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Benchmark scenario names.
+const (
+	ScenarioSmall  = "small"
+	ScenarioMedium = "medium"
+	ScenarioLarge  = "large"
+)
+
+// Benchmark scenario post counts.
+const (
+	SmallPostCount  = 50
+	MediumPostCount = 200
+	LargePostCount  = 500
+)
+
+// Report format constants.
+const (
+	reportFormatJSON = "json"
+)
+
 var (
-	// benchmarkSizes is the list of post counts to benchmark.
-	benchmarkSizes []int
+	// benchmarkScenario specifies a single scenario to run.
+	benchmarkScenario string
+
+	// benchmarkReport specifies the output report format.
+	benchmarkReport string
 
 	// benchmarkKeep keeps the generated test files after benchmark.
 	benchmarkKeep bool
 )
 
+// BenchmarkScenario defines a benchmark test scenario.
+type BenchmarkScenario struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	PostCount   int    `json:"post_count"`
+	FeedCount   int    `json:"feed_count"`
+}
+
 // BenchmarkResult holds the metrics for a single benchmark run.
 type BenchmarkResult struct {
-	PostCount    int
-	TotalTime    time.Duration
-	PostsPerSec  float64
-	MemoryMB     float64
-	StageTimes   map[string]time.Duration
-	Success      bool
-	ErrorMessage string
+	Scenario     string                   `json:"scenario"`
+	PostCount    int                      `json:"post_count"`
+	FeedCount    int                      `json:"feed_count"`
+	TotalTime    time.Duration            `json:"total_time_ns"`
+	TotalTimeSec float64                  `json:"total_time_sec"`
+	PostsPerSec  float64                  `json:"posts_per_sec"`
+	MemoryStats  BenchmarkMemoryStats     `json:"memory_stats"`
+	StageTimes   map[string]time.Duration `json:"stage_times_ns"`
+	StageTimeSec map[string]float64       `json:"stage_times_sec"`
+	PluginCount  int                      `json:"plugin_count"`
+	Success      bool                     `json:"success"`
+	ErrorMessage string                   `json:"error_message,omitempty"`
+}
+
+// BenchmarkMemoryStats holds memory usage statistics.
+type BenchmarkMemoryStats struct {
+	PeakHeapMB   float64 `json:"peak_heap_mb"`
+	AllocMB      float64 `json:"alloc_mb"`
+	TotalAllocMB float64 `json:"total_alloc_mb"`
+	GCCycles     uint32  `json:"gc_cycles"`
+}
+
+// BenchmarkReport holds the complete benchmark results.
+type BenchmarkReport struct {
+	Version    string             `json:"version"`
+	Timestamp  time.Time          `json:"timestamp"`
+	SystemInfo BenchmarkSystem    `json:"system_info"`
+	Results    []*BenchmarkResult `json:"results"`
+}
+
+// BenchmarkSystem holds system information.
+type BenchmarkSystem struct {
+	OS         string `json:"os"`
+	Arch       string `json:"arch"`
+	NumCPU     int    `json:"num_cpu"`
+	GoVersion  string `json:"go_version"`
+	Gomaxprocs int    `json:"gomaxprocs"`
+}
+
+// predefinedScenarios defines the available benchmark scenarios.
+var predefinedScenarios = map[string]BenchmarkScenario{
+	ScenarioSmall: {
+		Name:        ScenarioSmall,
+		Description: "Small site (50 posts, 3 feeds)",
+		PostCount:   SmallPostCount,
+		FeedCount:   3,
+	},
+	ScenarioMedium: {
+		Name:        ScenarioMedium,
+		Description: "Medium site (200 posts, 5 feeds)",
+		PostCount:   MediumPostCount,
+		FeedCount:   5,
+	},
+	ScenarioLarge: {
+		Name:        ScenarioLarge,
+		Description: "Large site (500 posts, 8 feeds)",
+		PostCount:   LargePostCount,
+		FeedCount:   8,
+	},
 }
 
 // benchmarkCmd represents the benchmark command.
 var benchmarkCmd = &cobra.Command{
 	Use:   "benchmark",
 	Short: "Run performance benchmarks",
-	Long: `Run performance benchmarks to measure build performance at various site sizes.
+	Long: `Run comprehensive performance benchmarks with realistic content.
 
-The benchmark generates test sites with configurable post counts,
-measures build time, memory usage, and throughput.
+The benchmark generates test sites with rich content including:
+- Comprehensive frontmatter (tags, categories, dates, custom fields)
+- Complex markdown (code blocks, tables, lists, blockquotes)
+- Multiple feeds with filtering and pagination
+
+Available scenarios:
+  small   - 50 posts, 3 feeds (personal blog)
+  medium  - 200 posts, 5 feeds (professional blog)  
+  large   - 500 posts, 8 feeds (documentation site)
 
 Example usage:
-  markata-go benchmark                      # Run with default sizes (10, 100, 1000)
-  markata-go benchmark --sizes 10,50,100    # Custom sizes
-  markata-go benchmark --sizes 10 --keep    # Keep test files after benchmark
-  markata-go benchmark -v                   # Verbose output with stage timings`,
+  markata-go benchmark                     # Run all scenarios
+  markata-go benchmark --scenario small    # Run specific scenario
+  markata-go benchmark --report json       # Generate JSON report
+  markata-go benchmark --keep              # Keep generated test files
+  markata-go benchmark -v                  # Verbose output with stage timings`,
 	RunE: runBenchmarkCommand,
 }
 
 func init() {
 	rootCmd.AddCommand(benchmarkCmd)
 
-	benchmarkCmd.Flags().IntSliceVar(&benchmarkSizes, "sizes", []int{10, 100, 1000}, "comma-separated list of post counts to benchmark")
+	benchmarkCmd.Flags().StringVar(&benchmarkScenario, "scenario", "", "run specific scenario (small, medium, large)")
+	benchmarkCmd.Flags().StringVar(&benchmarkReport, "report", "", "output report format (json)")
 	benchmarkCmd.Flags().BoolVar(&benchmarkKeep, "keep", false, "keep generated test files after benchmark")
 }
 
 func runBenchmarkCommand(_ *cobra.Command, _ []string) error {
-	fmt.Println("Markata-go Performance Benchmark")
-	fmt.Println("=================================")
-	fmt.Println()
+	// Determine which scenarios to run
+	scenarios := getScenarios()
 
-	results := make([]*BenchmarkResult, 0, len(benchmarkSizes))
+	if len(scenarios) == 0 {
+		return fmt.Errorf("no valid scenarios to run")
+	}
 
-	for _, size := range benchmarkSizes {
-		if verbose {
-			fmt.Printf("\n--- Benchmarking %d posts ---\n", size)
-		} else {
-			fmt.Printf("Benchmarking %d posts... ", size)
+	// Print header unless JSON output
+	if benchmarkReport != reportFormatJSON {
+		fmt.Println("Markata-go Performance Benchmark")
+		fmt.Println("=================================")
+		fmt.Printf("Version: %s\n", Version)
+		fmt.Printf("Date: %s\n", time.Now().Format(time.RFC3339))
+		fmt.Printf("System: %s/%s, %d CPUs\n", runtime.GOOS, runtime.GOARCH, runtime.NumCPU())
+		fmt.Println()
+	}
+
+	results := make([]*BenchmarkResult, 0, len(scenarios))
+
+	for _, scenario := range scenarios {
+		if benchmarkReport != reportFormatJSON {
+			if verbose {
+				fmt.Printf("\n--- Running %s benchmark (%s) ---\n", scenario.Name, scenario.Description)
+			} else {
+				fmt.Printf("Running %s benchmark (%d posts)... ", scenario.Name, scenario.PostCount)
+			}
 		}
 
-		result := runSingleBenchmark(size)
+		result := runScenarioBenchmark(scenario)
 		results = append(results, result)
 
-		if result.Success {
-			if verbose {
-				fmt.Printf("Completed in %.2fs (%.1f posts/sec)\n", result.TotalTime.Seconds(), result.PostsPerSec)
+		if benchmarkReport != reportFormatJSON {
+			if result.Success {
+				if verbose {
+					fmt.Printf("Completed in %.2fs (%.1f posts/sec, %.1fMB peak memory)\n",
+						result.TotalTimeSec, result.PostsPerSec, result.MemoryStats.PeakHeapMB)
+				} else {
+					fmt.Printf("%.2fs (%.1f posts/sec)\n", result.TotalTimeSec, result.PostsPerSec)
+				}
 			} else {
-				fmt.Printf("%.2fs (%.1f posts/sec)\n", result.TotalTime.Seconds(), result.PostsPerSec)
+				fmt.Printf("FAILED: %s\n", result.ErrorMessage)
 			}
-		} else {
-			fmt.Printf("FAILED: %s\n", result.ErrorMessage)
 		}
+	}
+
+	// Generate output
+	if benchmarkReport == reportFormatJSON {
+		return outputJSONReport(results)
 	}
 
 	// Print summary table
@@ -93,15 +209,35 @@ func runBenchmarkCommand(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-// runSingleBenchmark runs a benchmark for a specific post count.
-func runSingleBenchmark(postCount int) *BenchmarkResult {
+// getScenarios returns the scenarios to run based on flags.
+func getScenarios() []BenchmarkScenario {
+	if benchmarkScenario != "" {
+		if s, ok := predefinedScenarios[benchmarkScenario]; ok {
+			return []BenchmarkScenario{s}
+		}
+		fmt.Printf("Warning: unknown scenario %q, running all scenarios\n", benchmarkScenario)
+	}
+
+	// Return scenarios in order: small, medium, large
+	return []BenchmarkScenario{
+		predefinedScenarios[ScenarioSmall],
+		predefinedScenarios[ScenarioMedium],
+		predefinedScenarios[ScenarioLarge],
+	}
+}
+
+// runScenarioBenchmark runs a benchmark for a specific scenario.
+func runScenarioBenchmark(scenario BenchmarkScenario) *BenchmarkResult {
 	result := &BenchmarkResult{
-		PostCount:  postCount,
-		StageTimes: make(map[string]time.Duration),
+		Scenario:     scenario.Name,
+		PostCount:    scenario.PostCount,
+		FeedCount:    scenario.FeedCount,
+		StageTimes:   make(map[string]time.Duration),
+		StageTimeSec: make(map[string]float64),
 	}
 
 	// Create temp directory for test site
-	tempDir, err := os.MkdirTemp("", "markata-benchmark-*")
+	tempDir, err := os.MkdirTemp("", fmt.Sprintf("markata-benchmark-%s-*", scenario.Name))
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("failed to create temp dir: %v", err)
 		return result
@@ -113,9 +249,9 @@ func runSingleBenchmark(postCount int) *BenchmarkResult {
 		fmt.Printf("Test site directory: %s\n", tempDir)
 	}
 
-	// Generate test posts
+	// Generate test content
 	if verbose {
-		fmt.Printf("Generating %d test posts...\n", postCount)
+		fmt.Printf("Generating %d test posts with rich content...\n", scenario.PostCount)
 	}
 
 	postsDir := filepath.Join(tempDir, "posts")
@@ -125,38 +261,31 @@ func runSingleBenchmark(postCount int) *BenchmarkResult {
 	}
 
 	genStart := time.Now()
-	if err := generateTestPosts(postsDir, postCount); err != nil {
+	if err := generateRichTestPosts(postsDir, scenario.PostCount); err != nil {
 		result.ErrorMessage = fmt.Sprintf("failed to generate posts: %v", err)
 		return result
 	}
 
 	if verbose {
-		fmt.Printf("Generated %d posts in %.2fs\n", postCount, time.Since(genStart).Seconds())
+		fmt.Printf("Generated %d posts in %.2fs\n", scenario.PostCount, time.Since(genStart).Seconds())
 	}
 
-	// Create minimal config
+	// Create comprehensive config with multiple feeds
 	configPath := filepath.Join(tempDir, "markata-go.toml")
-	configContent := fmt.Sprintf(`
-url = "https://benchmark.example.com"
-title = "Benchmark Site"
-output_dir = "%s/output"
-
-[glob]
-patterns = ["posts/**/*.md"]
-`, tempDir)
+	configContent := generateBenchmarkConfig(tempDir, scenario)
 
 	if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
 		result.ErrorMessage = fmt.Sprintf("failed to write config: %v", err)
 		return result
 	}
 
-	// Force garbage collection before benchmark and record baseline
+	// Force garbage collection before benchmark
 	runtime.GC()
 	var memBefore runtime.MemStats
 	runtime.ReadMemStats(&memBefore)
+	gcCountBefore := memBefore.NumGC
 
-	// Track peak memory during build
-	peakAlloc := memBefore.Alloc
+	peakAlloc := memBefore.HeapAlloc
 
 	// Run build
 	buildStart := time.Now()
@@ -166,6 +295,8 @@ patterns = ["posts/**/*.md"]
 		result.ErrorMessage = fmt.Sprintf("failed to create manager: %v", err)
 		return result
 	}
+
+	result.PluginCount = len(m.Plugins())
 
 	// Run each stage and time it
 	stages := []lifecycle.Stage{
@@ -186,28 +317,39 @@ patterns = ["posts/**/*.md"]
 			result.ErrorMessage = fmt.Sprintf("stage %s failed: %v", stage, err)
 			return result
 		}
-		result.StageTimes[string(stage)] = time.Since(stageStart)
+		stageDuration := time.Since(stageStart)
+		result.StageTimes[string(stage)] = stageDuration
+		result.StageTimeSec[string(stage)] = stageDuration.Seconds()
 
 		// Check peak memory after each stage
 		var memStage runtime.MemStats
 		runtime.ReadMemStats(&memStage)
-		if memStage.Alloc > peakAlloc {
-			peakAlloc = memStage.Alloc
+		if memStage.HeapAlloc > peakAlloc {
+			peakAlloc = memStage.HeapAlloc
 		}
 
 		if verbose {
-			fmt.Printf("  [%s] %.3fs\n", stage, result.StageTimes[string(stage)].Seconds())
+			fmt.Printf("  [%s] %.3fs\n", stage, stageDuration.Seconds())
 		}
 	}
 
 	result.TotalTime = time.Since(buildStart)
+	result.TotalTimeSec = result.TotalTime.Seconds()
 
-	// Use peak allocation relative to baseline for memory measurement
-	result.MemoryMB = float64(peakAlloc) / (1024 * 1024)
+	// Collect final memory stats
+	var memAfter runtime.MemStats
+	runtime.ReadMemStats(&memAfter)
+
+	result.MemoryStats = BenchmarkMemoryStats{
+		PeakHeapMB:   float64(peakAlloc) / (1024 * 1024),
+		AllocMB:      float64(memAfter.Alloc) / (1024 * 1024),
+		TotalAllocMB: float64(memAfter.TotalAlloc-memBefore.TotalAlloc) / (1024 * 1024),
+		GCCycles:     memAfter.NumGC - gcCountBefore,
+	}
 
 	// Calculate throughput
-	if result.TotalTime.Seconds() > 0 {
-		result.PostsPerSec = float64(postCount) / result.TotalTime.Seconds()
+	if result.TotalTimeSec > 0 {
+		result.PostsPerSec = float64(scenario.PostCount) / result.TotalTimeSec
 	}
 
 	result.Success = true
@@ -280,17 +422,88 @@ func createBenchmarkManager(cfgPath, workDir string) (*lifecycle.Manager, error)
 	return m, nil
 }
 
-// generateTestPosts creates test markdown files with realistic content.
-func generateTestPosts(dir string, count int) error {
+// generateBenchmarkConfig creates a comprehensive configuration for benchmarking.
+func generateBenchmarkConfig(tempDir string, scenario BenchmarkScenario) string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf(`url = "https://benchmark.example.com"
+title = "Benchmark Site - %s"
+description = "A comprehensive benchmark site for markata-go performance testing"
+author = "Benchmark Generator"
+output_dir = "%s/output"
+
+[glob]
+patterns = ["posts/**/*.md"]
+
+[feed_defaults]
+items_per_page = 20
+orphan_threshold = 5
+
+[feed_defaults.formats]
+html = true
+rss = true
+atom = false
+json = false
+
+`, scenario.Name, tempDir))
+
+	// Generate feed configurations based on scenario
+	feeds := generateFeedConfigs(scenario.FeedCount)
+	for _, feed := range feeds {
+		sb.WriteString(feed)
+	}
+
+	return sb.String()
+}
+
+// generateFeedConfigs creates feed configuration entries.
+func generateFeedConfigs(count int) []string {
+	feedConfigs := []struct {
+		slug        string
+		title       string
+		description string
+		filter      string
+		sort        string
+		reverse     bool
+	}{
+		{"blog", "All Posts", "All published blog posts", "published == true", "date", true},
+		{"tutorials", "Tutorials", "Tutorial posts", "published == true and tags contains tutorial", "date", true},
+		{"guides", "Guides", "Guide posts", "published == true and tags contains guide", "date", true},
+		{"programming", "Programming", "Programming posts", "published == true and category == programming", "date", true},
+		{"devops", "DevOps", "DevOps related posts", "published == true and tags contains devops", "date", true},
+		{"featured", "Featured", "Featured content", "published == true and featured == true", "weight", false},
+		{"recent", "Recent Posts", "Recently updated posts", "published == true", "updated", true},
+		{"archive", "Archive", "Full archive", "published == true", "date", true},
+	}
+
+	result := make([]string, 0, count)
+	for i := 0; i < count && i < len(feedConfigs); i++ {
+		fc := feedConfigs[i]
+		result = append(result, fmt.Sprintf(`
+[[feeds]]
+slug = %q
+title = %q
+description = %q
+filter = %q
+sort = %q
+reverse = %v
+`, fc.slug, fc.title, fc.description, fc.filter, fc.sort, fc.reverse))
+	}
+
+	return result
+}
+
+// generateRichTestPosts creates test markdown files with comprehensive content.
+func generateRichTestPosts(dir string, count int) error {
 	//nolint:gosec // Using math/rand is fine for benchmark content generation
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for i := 0; i < count; i++ {
-		title := generateTitle(rng, i)
-		slug := generateSlug(title)
+		title := generateRichTitle(rng, i)
+		slug := benchmarkSlug(title)
 		filename := filepath.Join(dir, fmt.Sprintf("%s.md", slug))
 
-		content := generatePostMarkdown(rng, title, i)
+		content := generateRichPostMarkdown(rng, title, i, count)
 
 		if err := os.WriteFile(filename, []byte(content), 0o600); err != nil {
 			return fmt.Errorf("writing post %d: %w", i, err)
@@ -300,17 +513,22 @@ func generateTestPosts(dir string, count int) error {
 	return nil
 }
 
-// generateTitle creates a realistic post title.
-func generateTitle(rng *rand.Rand, index int) string {
+// generateRichTitle creates a realistic post title.
+func generateRichTitle(rng *rand.Rand, index int) string {
 	adjectives := []string{
-		"Amazing", "Ultimate", "Complete", "Essential", "Practical",
-		"Modern", "Advanced", "Simple", "Quick", "Deep",
+		"Comprehensive", "Ultimate", "Complete", "Essential", "Practical",
+		"Modern", "Advanced", "Beginner's", "Expert", "In-Depth",
+		"Definitive", "Professional", "Step-by-Step", "Quick", "Deep Dive",
 	}
 	topics := []string{
-		"Guide to Go", "Tutorial on Testing", "Introduction to APIs",
-		"Overview of Databases", "Walkthrough of Docker", "Exploration of Kubernetes",
-		"Analysis of Performance", "Review of Best Practices", "Comparison of Frameworks",
-		"Journey into Microservices",
+		"Guide to Go Programming", "Tutorial on Testing Strategies",
+		"Introduction to REST APIs", "Overview of Database Design",
+		"Walkthrough of Docker Containers", "Exploration of Kubernetes",
+		"Analysis of Performance Optimization", "Review of Best Practices",
+		"Comparison of Web Frameworks", "Journey into Microservices",
+		"Mastering Concurrency Patterns", "Understanding Error Handling",
+		"Building CLI Applications", "Implementing Authentication",
+		"Working with JSON and YAML", "Creating Custom Middleware",
 	}
 
 	adj := adjectives[rng.Intn(len(adjectives))]
@@ -319,127 +537,198 @@ func generateTitle(rng *rand.Rand, index int) string {
 	return fmt.Sprintf("%s %s Part %d", adj, topic, index+1)
 }
 
-// generatePostMarkdown creates a complete post with frontmatter and body.
-func generatePostMarkdown(rng *rand.Rand, title string, index int) string {
-	tags := generateTags(rng)
-	date := generateDate(rng, index)
-	body := generateBody(rng)
+// generateRichPostMarkdown creates a complete post with comprehensive frontmatter and rich content.
+func generateRichPostMarkdown(rng *rand.Rand, title string, index, totalPosts int) string {
+	tags := generateRichTags(rng)
+	category := generateCategory(rng)
+	date := generateRichDate(rng, index, totalPosts)
+	updated := date.Add(time.Duration(rng.Intn(30*24)) * time.Hour)
 
 	var sb strings.Builder
+
+	// Comprehensive frontmatter
 	sb.WriteString("---\n")
 	sb.WriteString(fmt.Sprintf("title: %q\n", title))
-	sb.WriteString(fmt.Sprintf("date: %s\n", date.Format("2006-01-02")))
+	sb.WriteString(fmt.Sprintf("slug: %q\n", benchmarkSlug(title)))
+	sb.WriteString(fmt.Sprintf("date: %s\n", date.Format(time.RFC3339)))
+	sb.WriteString(fmt.Sprintf("updated: %s\n", updated.Format(time.RFC3339)))
 	sb.WriteString("published: true\n")
 	sb.WriteString("draft: false\n")
-	sb.WriteString(fmt.Sprintf("tags: [%s]\n", formatTags(tags)))
-	sb.WriteString(fmt.Sprintf("description: \"A benchmark test post about %s\"\n", title))
+	sb.WriteString("tags:\n")
+	for _, tag := range tags {
+		sb.WriteString(fmt.Sprintf("  - %s\n", tag))
+	}
+	sb.WriteString(fmt.Sprintf("category: %s\n", category))
+	sb.WriteString(fmt.Sprintf("author: \"Author %d\"\n", (index%5)+1))
+	sb.WriteString(fmt.Sprintf("description: \"A comprehensive benchmark test post covering %s\"\n", title))
+
+	// Additional rich frontmatter fields
+	if rng.Float32() < 0.3 {
+		sb.WriteString("featured: true\n")
+	}
+	sb.WriteString(fmt.Sprintf("weight: %d\n", rng.Intn(100)))
+	sb.WriteString(fmt.Sprintf("reading_time: %d\n", 5+rng.Intn(15)))
+
+	// Custom metadata
+	sb.WriteString("custom:\n")
+	sb.WriteString(fmt.Sprintf("  difficulty: %s\n", []string{"beginner", "intermediate", "advanced"}[rng.Intn(3)]))
+	sb.WriteString(fmt.Sprintf("  estimated_time: \"%d minutes\"\n", 10+rng.Intn(50)))
+	sb.WriteString(fmt.Sprintf("  version: \"1.%d.%d\"\n", rng.Intn(10), rng.Intn(10)))
+
 	sb.WriteString("---\n\n")
-	sb.WriteString(body)
+
+	// Rich body content
+	sb.WriteString(generateRichBody(rng))
 
 	return sb.String()
 }
 
-// generateTags creates a random set of tags.
-func generateTags(rng *rand.Rand) []string {
+// generateRichTags creates a diverse set of tags.
+func generateRichTags(rng *rand.Rand) []string {
 	allTags := []string{
 		"go", "golang", "programming", "tutorial", "guide",
 		"testing", "api", "web", "backend", "devops",
 		"docker", "kubernetes", "cloud", "performance", "best-practices",
+		"security", "database", "microservices", "cli", "tools",
+		"architecture", "patterns", "debugging", "deployment", "automation",
 	}
 
-	numTags := 2 + rng.Intn(4) // 2-5 tags
-	tags := make([]string, numTags)
+	numTags := 3 + rng.Intn(5) // 3-7 tags
+	tags := make([]string, 0, numTags)
 	used := make(map[int]bool)
 
-	for i := 0; i < numTags; i++ {
-		for {
-			idx := rng.Intn(len(allTags))
-			if !used[idx] {
-				used[idx] = true
-				tags[i] = allTags[idx]
-				break
-			}
+	for len(tags) < numTags {
+		idx := rng.Intn(len(allTags))
+		if !used[idx] {
+			used[idx] = true
+			tags = append(tags, allTags[idx])
 		}
 	}
 
 	return tags
 }
 
-func formatTags(tags []string) string {
-	quoted := make([]string, len(tags))
-	for i, tag := range tags {
-		quoted[i] = fmt.Sprintf("%q", tag)
+// generateCategory returns a category name.
+func generateCategory(rng *rand.Rand) string {
+	categories := []string{
+		"programming", "devops", "architecture", "tutorials", "guides", "tools",
 	}
-	return strings.Join(quoted, ", ")
+	return categories[rng.Intn(len(categories))]
 }
 
-// generateDate creates a random date within the past year.
-func generateDate(rng *rand.Rand, index int) time.Time {
+// generateRichDate creates a date spread across the past year.
+func generateRichDate(rng *rand.Rand, index, totalPosts int) time.Time {
 	now := time.Now()
-	daysAgo := index + rng.Intn(30) // Spread posts across time
+	// Spread posts evenly across the past year
+	daysRange := 365
+	daysPerPost := float64(daysRange) / float64(totalPosts)
+	baseDays := int(float64(index) * daysPerPost)
+	jitter := rng.Intn(int(daysPerPost) + 1)
+	daysAgo := baseDays + jitter
 	return now.AddDate(0, 0, -daysAgo)
 }
 
-// generateBody creates realistic markdown content (~500 words).
-func generateBody(rng *rand.Rand) string {
+// generateRichBody creates comprehensive markdown content with various elements.
+func generateRichBody(rng *rand.Rand) string {
 	var sb strings.Builder
 
-	// Introduction
+	// Introduction with emphasis
 	sb.WriteString("## Introduction\n\n")
-	sb.WriteString(generateParagraph(rng))
+	sb.WriteString(generateRichParagraph(rng))
 	sb.WriteString("\n\n")
 
-	// Main content with subheadings
-	sections := []string{"Getting Started", "Core Concepts", "Implementation", "Best Practices"}
-	for _, section := range sections {
+	// Add a blockquote
+	sb.WriteString("> ")
+	sb.WriteString(generateQuote(rng))
+	sb.WriteString("\n\n")
+
+	// Prerequisites section with task list
+	sb.WriteString("## Prerequisites\n\n")
+	sb.WriteString("Before starting, ensure you have:\n\n")
+	sb.WriteString(generateTaskList(rng))
+	sb.WriteString("\n")
+
+	// Main sections with varied content
+	sections := []string{"Getting Started", "Core Concepts", "Implementation Details", "Advanced Topics", "Best Practices"}
+	for i, section := range sections {
 		sb.WriteString(fmt.Sprintf("## %s\n\n", section))
-		sb.WriteString(generateParagraph(rng))
+		sb.WriteString(generateRichParagraph(rng))
 		sb.WriteString("\n\n")
 
-		// Sometimes add a code block
-		if rng.Float32() < 0.5 {
-			sb.WriteString("```go\n")
-			sb.WriteString(generateCodeBlock(rng))
+		// Add code block with language variety
+		if rng.Float32() < 0.7 {
+			lang := []string{"go", "bash", "yaml", "json", "python"}[rng.Intn(5)]
+			sb.WriteString(fmt.Sprintf("```%s\n", lang))
+			sb.WriteString(generateRichCodeBlock(rng, lang))
 			sb.WriteString("```\n\n")
 		}
 
-		// Sometimes add a list
-		if rng.Float32() < 0.5 {
-			sb.WriteString(generateList(rng))
+		// Add a table for some sections
+		if i == 2 && rng.Float32() < 0.8 {
+			sb.WriteString(generateTable(rng))
 			sb.WriteString("\n")
+		}
+
+		// Add a list
+		if rng.Float32() < 0.6 {
+			if rng.Float32() < 0.5 {
+				sb.WriteString(generateOrderedList(rng))
+			} else {
+				sb.WriteString(generateUnorderedList(rng))
+			}
+			sb.WriteString("\n")
+		}
+
+		// Add subsection
+		if rng.Float32() < 0.4 {
+			sb.WriteString(fmt.Sprintf("### %s Details\n\n", section))
+			sb.WriteString(generateRichParagraph(rng))
+			sb.WriteString("\n\n")
 		}
 	}
 
+	// Summary section
+	sb.WriteString("## Summary\n\n")
+	sb.WriteString(generateRichParagraph(rng))
+	sb.WriteString("\n\n")
+
+	// Key takeaways
+	sb.WriteString("### Key Takeaways\n\n")
+	sb.WriteString(generateUnorderedList(rng))
+	sb.WriteString("\n")
+
 	// Conclusion
 	sb.WriteString("## Conclusion\n\n")
-	sb.WriteString(generateParagraph(rng))
+	sb.WriteString(generateRichParagraph(rng))
 	sb.WriteString("\n")
 
 	return sb.String()
 }
 
-// generateParagraph creates a paragraph of lorem ipsum text.
-func generateParagraph(rng *rand.Rand) string {
+// generateRichParagraph creates a paragraph with inline formatting.
+func generateRichParagraph(rng *rand.Rand) string {
 	sentences := []string{
-		"This is an important aspect of modern software development.",
-		"Understanding these concepts is essential for building scalable applications.",
-		"Many developers struggle with this topic initially.",
-		"With practice and dedication, mastery is achievable.",
-		"The key is to start with fundamentals and build from there.",
-		"Best practices have evolved significantly over the years.",
-		"Performance considerations should not be overlooked.",
-		"Testing is crucial for maintaining code quality.",
-		"Documentation helps teams collaborate effectively.",
-		"Continuous improvement leads to better outcomes.",
-		"The ecosystem provides many tools to help with this.",
-		"Community support is invaluable when learning new technologies.",
-		"Real-world experience often differs from tutorials.",
-		"Edge cases require careful consideration and handling.",
-		"Security should be a primary concern from the start.",
+		"This is a **critical aspect** of modern software development.",
+		"Understanding these concepts is _essential_ for building scalable applications.",
+		"Many developers struggle with this topic initially, but **practice makes perfect**.",
+		"With dedication and _continuous learning_, mastery is achievable.",
+		"The key is to start with **fundamentals** and build from there.",
+		"Best practices have _evolved significantly_ over the years.",
+		"Performance considerations should **never** be overlooked.",
+		"Testing is _crucial_ for maintaining high code quality.",
+		"Documentation helps teams collaborate **effectively**.",
+		"Continuous improvement leads to _better outcomes_ over time.",
+		"The ecosystem provides many **powerful tools** to help with this.",
+		"Community support is _invaluable_ when learning new technologies.",
+		"Real-world experience often **differs** from tutorials.",
+		"Edge cases require _careful consideration_ and proper handling.",
+		"Security should be a **primary concern** from the start.",
+		"This approach enables `clean code` that is easy to maintain.",
+		"Using the right **patterns** can significantly improve your architecture.",
 	}
 
 	numSentences := 4 + rng.Intn(4) // 4-7 sentences
-	var result []string
+	result := make([]string, 0, numSentences)
 	for i := 0; i < numSentences; i++ {
 		result = append(result, sentences[rng.Intn(len(sentences))])
 	}
@@ -447,140 +736,502 @@ func generateParagraph(rng *rand.Rand) string {
 	return strings.Join(result, " ")
 }
 
-// generateCodeBlock creates a simple Go code snippet.
-func generateCodeBlock(rng *rand.Rand) string {
-	snippets := []string{
-		`func main() {
-    fmt.Println("Hello, World!")
+// generateQuote returns an inspirational/technical quote.
+func generateQuote(rng *rand.Rand) string {
+	quotes := []string{
+		"Simplicity is the ultimate sophistication. — Leonardo da Vinci",
+		"First, solve the problem. Then, write the code. — John Johnson",
+		"Code is like humor. When you have to explain it, it's bad. — Cory House",
+		"The best error message is the one that never shows up. — Thomas Fuchs",
+		"Make it work, make it right, make it fast. — Kent Beck",
+	}
+	return quotes[rng.Intn(len(quotes))]
 }
-`,
-		`type Config struct {
-    Name    string
-    Value   int
-    Enabled bool
-}
-`,
-		`for i := 0; i < 10; i++ {
-    process(items[i])
-}
-`,
-		`if err != nil {
-    return fmt.Errorf("operation failed: %w", err)
-}
-`,
-		`results := make([]Result, 0, len(items))
-for _, item := range items {
-    results = append(results, process(item))
-}
-`,
+
+// generateTaskList creates a markdown task list.
+func generateTaskList(rng *rand.Rand) string {
+	items := []struct {
+		done bool
+		text string
+	}{
+		{true, "Go 1.21 or later installed"},
+		{true, "Basic understanding of Go syntax"},
+		{true, "Familiarity with the command line"},
+		{rng.Float32() < 0.7, "Docker installed (optional)"},
+		{rng.Float32() < 0.5, "IDE or text editor configured"},
+		{false, "Database setup (covered in this guide)"},
 	}
 
-	return snippets[rng.Intn(len(snippets))]
-}
-
-// generateList creates a markdown list.
-func generateList(rng *rand.Rand) string {
-	items := []string{
-		"First, set up your development environment",
-		"Install the required dependencies",
-		"Configure the application settings",
-		"Run the test suite to verify everything works",
-		"Deploy to a staging environment",
-		"Monitor for any issues or errors",
-		"Document your changes thoroughly",
-		"Review and refactor as needed",
-	}
-
-	numItems := 3 + rng.Intn(3) // 3-5 items
 	var sb strings.Builder
-
-	for i := 0; i < numItems; i++ {
-		sb.WriteString(fmt.Sprintf("- %s\n", items[rng.Intn(len(items))]))
+	numItems := 4 + rng.Intn(3)
+	for i := 0; i < numItems && i < len(items); i++ {
+		check := " "
+		if items[i].done {
+			check = "x"
+		}
+		sb.WriteString(fmt.Sprintf("- [%s] %s\n", check, items[i].text))
 	}
-
 	return sb.String()
 }
 
-// printBenchmarkSummary outputs the results in a markdown table format.
-func printBenchmarkSummary(results []*BenchmarkResult) {
-	fmt.Println("## Benchmark Results")
-	fmt.Println()
-	fmt.Println("| Posts | Build Time | Posts/sec | Memory |")
-	fmt.Println("|-------|------------|-----------|--------|")
+// generateRichCodeBlock creates code snippets in various languages.
+func generateRichCodeBlock(rng *rand.Rand, lang string) string {
+	snippets := map[string][]string{
+		"go": {
+			`package main
 
-	for _, r := range results {
-		if r.Success {
-			memStr := formatMemory(r.MemoryMB)
-			fmt.Printf("| %d | %.2fs | %.1f | %s |\n",
-				r.PostCount,
-				r.TotalTime.Seconds(),
-				r.PostsPerSec,
-				memStr,
-			)
-		} else {
-			fmt.Printf("| %d | FAILED | - | - |\n", r.PostCount)
+import (
+    "fmt"
+    "log"
+)
+
+func main() {
+    result, err := processData("input")
+    if err != nil {
+        log.Fatalf("Error: %v", err)
+    }
+    fmt.Printf("Result: %s\n", result)
+}
+
+func processData(input string) (string, error) {
+    // Process the input data
+    return fmt.Sprintf("Processed: %s", input), nil
+}
+`,
+			`type Config struct {
+    Name        string            ` + "`json:\"name\" yaml:\"name\"`" + `
+    Port        int               ` + "`json:\"port\" yaml:\"port\"`" + `
+    Debug       bool              ` + "`json:\"debug\" yaml:\"debug\"`" + `
+    Features    []string          ` + "`json:\"features\" yaml:\"features\"`" + `
+    Settings    map[string]string ` + "`json:\"settings\" yaml:\"settings\"`" + `
+}
+
+func NewConfig() *Config {
+    return &Config{
+        Name:  "default",
+        Port:  8080,
+        Debug: false,
+    }
+}
+`,
+			`func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    
+    // Parse request body
+    var req RequestBody
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "Invalid request", http.StatusBadRequest)
+        return
+    }
+    
+    // Process the request
+    result, err := s.service.Process(ctx, req)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    
+    // Send response
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(result)
+}
+`,
+		},
+		"bash": {
+			`#!/bin/bash
+set -euo pipefail
+
+# Build the application
+echo "Building application..."
+go build -o bin/app ./cmd/app
+
+# Run tests
+echo "Running tests..."
+go test -v -race ./...
+
+# Build Docker image
+echo "Building Docker image..."
+docker build -t myapp:latest .
+
+echo "Done!"
+`,
+			`# Set environment variables
+export APP_ENV=production
+export LOG_LEVEL=info
+
+# Start the application
+./bin/app serve \
+    --port 8080 \
+    --config /etc/app/config.yaml \
+    --workers 4
+`,
+		},
+		"yaml": {
+			`name: myapp
+version: "1.0.0"
+
+server:
+  host: localhost
+  port: 8080
+  timeout: 30s
+
+database:
+  driver: postgres
+  host: localhost
+  port: 5432
+  name: myapp_db
+  
+logging:
+  level: info
+  format: json
+  output: stdout
+`,
+		},
+		"json": {
+			`{
+  "name": "benchmark-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.0",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "jest"
+  }
+}
+`,
+		},
+		"python": {
+			`from typing import List, Optional
+import asyncio
+
+class DataProcessor:
+    def __init__(self, config: dict):
+        self.config = config
+        self.results: List[str] = []
+    
+    async def process(self, items: List[str]) -> List[str]:
+        """Process items concurrently."""
+        tasks = [self._process_item(item) for item in items]
+        return await asyncio.gather(*tasks)
+    
+    async def _process_item(self, item: str) -> str:
+        await asyncio.sleep(0.1)  # Simulate work
+        return f"Processed: {item}"
+`,
+		},
+	}
+
+	langSnippets, ok := snippets[lang]
+	if !ok {
+		langSnippets = snippets["go"]
+	}
+	return langSnippets[rng.Intn(len(langSnippets))]
+}
+
+// generateTable creates a markdown table.
+func generateTable(rng *rand.Rand) string {
+	tables := []string{
+		`| Feature | Status | Notes |
+|---------|--------|-------|
+| Authentication | Implemented | OAuth2 + JWT |
+| Authorization | Implemented | Role-based |
+| Rate Limiting | In Progress | Redis-backed |
+| Caching | Planned | Multi-tier |
+| Monitoring | Implemented | Prometheus |
+`,
+		`| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/users | List all users |
+| POST | /api/users | Create new user |
+| GET | /api/users/:id | Get user by ID |
+| PUT | /api/users/:id | Update user |
+| DELETE | /api/users/:id | Delete user |
+`,
+		`| Metric | Value | Target |
+|--------|-------|--------|
+| Response Time | 45ms | <100ms |
+| Throughput | 1000 req/s | >500 req/s |
+| Error Rate | 0.1% | <1% |
+| Availability | 99.9% | >99.5% |
+`,
+	}
+	return tables[rng.Intn(len(tables))]
+}
+
+// generateOrderedList creates an ordered markdown list.
+func generateOrderedList(rng *rand.Rand) string {
+	items := []string{
+		"Initialize the project with `go mod init`",
+		"Define the data models and interfaces",
+		"Implement the core business logic",
+		"Add comprehensive error handling",
+		"Write unit tests for all components",
+		"Configure logging and monitoring",
+		"Set up CI/CD pipeline",
+		"Deploy to staging environment",
+		"Run integration tests",
+		"Deploy to production",
+	}
+
+	numItems := 4 + rng.Intn(4)
+	var sb strings.Builder
+	for i := 0; i < numItems && i < len(items); i++ {
+		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, items[i]))
+	}
+	return sb.String()
+}
+
+// generateUnorderedList creates an unordered markdown list.
+func generateUnorderedList(rng *rand.Rand) string {
+	items := []string{
+		"Keep functions small and focused",
+		"Use meaningful variable names",
+		"Write tests before implementation",
+		"Document public APIs thoroughly",
+		"Handle errors explicitly",
+		"Use interfaces for abstraction",
+		"Prefer composition over inheritance",
+		"Keep dependencies minimal",
+		"Follow consistent formatting",
+		"Review code before merging",
+	}
+
+	numItems := 3 + rng.Intn(4)
+	var sb strings.Builder
+	for i := 0; i < numItems; i++ {
+		sb.WriteString(fmt.Sprintf("- %s\n", items[rng.Intn(len(items))]))
+	}
+	return sb.String()
+}
+
+// benchmarkSlug creates a URL-safe slug from a title for benchmark content.
+func benchmarkSlug(title string) string {
+	slug := strings.ToLower(title)
+	slug = strings.ReplaceAll(slug, " ", "-")
+	slug = strings.ReplaceAll(slug, "'", "")
+	slug = strings.ReplaceAll(slug, "\"", "")
+
+	// Remove any non-alphanumeric characters except hyphens
+	var result strings.Builder
+	for _, r := range slug {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			result.WriteRune(r)
 		}
 	}
 
+	// Clean up multiple hyphens
+	cleaned := result.String()
+	for strings.Contains(cleaned, "--") {
+		cleaned = strings.ReplaceAll(cleaned, "--", "-")
+	}
+	cleaned = strings.Trim(cleaned, "-")
+
+	return cleaned
+}
+
+// outputJSONReport outputs the results as JSON.
+func outputJSONReport(results []*BenchmarkResult) error {
+	report := BenchmarkReport{
+		Version:   Version,
+		Timestamp: time.Now(),
+		SystemInfo: BenchmarkSystem{
+			OS:         runtime.GOOS,
+			Arch:       runtime.GOARCH,
+			NumCPU:     runtime.NumCPU(),
+			GoVersion:  runtime.Version(),
+			Gomaxprocs: runtime.GOMAXPROCS(0),
+		},
+		Results: results,
+	}
+
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(report)
+}
+
+// printBenchmarkSummary outputs the results in a formatted table.
+func printBenchmarkSummary(results []*BenchmarkResult) {
+	printResultsTable(results)
 	fmt.Println()
 
 	// Print stage breakdown if verbose
 	if verbose {
-		fmt.Println("### Stage Breakdown")
-		fmt.Println()
-		fmt.Println("| Stage | " + stageHeaders(results) + " |")
-		fmt.Println("|-------|" + stageDividers(results) + "|")
+		printStageBreakdown(results)
+		printMemoryUsage(results)
+	}
 
-		stages := []string{"configure", "validate", "glob", "load", "transform", "render", "collect", "write", "cleanup"}
-		for _, stage := range stages {
-			fmt.Printf("| %s |", stage)
-			for _, r := range results {
-				if r.Success {
-					if t, ok := r.StageTimes[stage]; ok {
-						fmt.Printf(" %.3fs |", t.Seconds())
-					} else {
-						fmt.Printf(" - |")
-					}
+	// Performance insights
+	printPerformanceAnalysis(results)
+
+	// Notes
+	printBenchmarkNotes()
+}
+
+// printResultsTable prints the main results table.
+func printResultsTable(results []*BenchmarkResult) {
+	fmt.Println("## Benchmark Results")
+	fmt.Println()
+	fmt.Println("| Scenario | Posts | Feeds | Build Time | Posts/sec | Peak Memory |")
+	fmt.Println("|----------|-------|-------|------------|-----------|-------------|")
+
+	for _, r := range results {
+		if r.Success {
+			fmt.Printf("| %s | %d | %d | %.2fs | %.1f | %.1fMB |\n",
+				r.Scenario,
+				r.PostCount,
+				r.FeedCount,
+				r.TotalTimeSec,
+				r.PostsPerSec,
+				r.MemoryStats.PeakHeapMB,
+			)
+		} else {
+			fmt.Printf("| %s | %d | %d | FAILED | - | - |\n",
+				r.Scenario, r.PostCount, r.FeedCount)
+		}
+	}
+}
+
+// printStageBreakdown prints the stage timing breakdown table.
+func printStageBreakdown(results []*BenchmarkResult) {
+	fmt.Println("### Stage Breakdown (seconds)")
+	fmt.Println()
+
+	stageOrder := []string{"configure", "validate", "glob", "load", "transform", "render", "collect", "write", "cleanup"}
+
+	// Print header
+	fmt.Print("| Stage |")
+	for _, r := range results {
+		fmt.Printf(" %s |", r.Scenario)
+	}
+	fmt.Println()
+
+	// Print divider
+	fmt.Print("|-------|")
+	for range results {
+		fmt.Print("--------|")
+	}
+	fmt.Println()
+
+	// Print stage times
+	for _, stage := range stageOrder {
+		fmt.Printf("| %s |", stage)
+		for _, r := range results {
+			if r.Success {
+				if t, ok := r.StageTimeSec[stage]; ok {
+					fmt.Printf(" %.3f |", t)
 				} else {
 					fmt.Printf(" - |")
 				}
+			} else {
+				fmt.Printf(" - |")
 			}
-			fmt.Println()
 		}
 		fmt.Println()
 	}
+	fmt.Println()
+}
 
-	// Notes
+// printMemoryUsage prints the memory usage table.
+func printMemoryUsage(results []*BenchmarkResult) {
+	fmt.Println("### Memory Usage")
+	fmt.Println()
+	fmt.Println("| Scenario | Peak Heap | Total Alloc | GC Cycles |")
+	fmt.Println("|----------|-----------|-------------|-----------|")
+	for _, r := range results {
+		if r.Success {
+			fmt.Printf("| %s | %.1fMB | %.1fMB | %d |\n",
+				r.Scenario,
+				r.MemoryStats.PeakHeapMB,
+				r.MemoryStats.TotalAllocMB,
+				r.MemoryStats.GCCycles,
+			)
+		}
+	}
+	fmt.Println()
+}
+
+// printPerformanceAnalysis prints performance insights.
+func printPerformanceAnalysis(results []*BenchmarkResult) {
+	fmt.Println("### Performance Analysis")
+	fmt.Println()
+
+	printSlowestStages(results)
+	printScalingAnalysis(results)
+}
+
+// printSlowestStages prints the slowest stages across scenarios.
+func printSlowestStages(results []*BenchmarkResult) {
+	stageAvgTimes := make(map[string]float64)
+	stageCount := make(map[string]int)
+	for _, r := range results {
+		if r.Success {
+			for stage, t := range r.StageTimeSec {
+				stageAvgTimes[stage] += t
+				stageCount[stage]++
+			}
+		}
+	}
+
+	type stageStat struct {
+		name    string
+		avgTime float64
+	}
+	var stats []stageStat
+	for stage, total := range stageAvgTimes {
+		if count := stageCount[stage]; count > 0 {
+			stats = append(stats, stageStat{stage, total / float64(count)})
+		}
+	}
+	sort.Slice(stats, func(i, j int) bool {
+		return stats[i].avgTime > stats[j].avgTime
+	})
+
+	if len(stats) > 0 {
+		fmt.Println("**Slowest stages (avg across scenarios):**")
+		for i := 0; i < 3 && i < len(stats); i++ {
+			fmt.Printf("- %s: %.3fs\n", stats[i].name, stats[i].avgTime)
+		}
+		fmt.Println()
+	}
+}
+
+// printScalingAnalysis prints scaling analysis for multiple scenarios.
+func printScalingAnalysis(results []*BenchmarkResult) {
+	if len(results) < 2 {
+		return
+	}
+
+	var successResults []*BenchmarkResult
+	for _, r := range results {
+		if r.Success {
+			successResults = append(successResults, r)
+		}
+	}
+
+	if len(successResults) < 2 {
+		return
+	}
+
+	first := successResults[0]
+	last := successResults[len(successResults)-1]
+	postScale := float64(last.PostCount) / float64(first.PostCount)
+	timeScale := last.TotalTimeSec / first.TotalTimeSec
+
+	fmt.Printf("**Scaling:** %.1fx posts resulted in %.1fx build time (%.2f scaling factor)\n",
+		postScale, timeScale, timeScale/postScale)
+	fmt.Println()
+}
+
+// printBenchmarkNotes prints benchmark notes.
+func printBenchmarkNotes() {
 	fmt.Println("**Notes:**")
-	fmt.Println("- Memory shows peak heap allocation during build")
+	fmt.Println("- Peak memory shows maximum heap allocation during build")
 	fmt.Println("- Results may vary based on system load and hardware")
+	fmt.Println("- Rich content includes comprehensive frontmatter, code blocks, tables, and lists")
 	if benchmarkKeep {
 		fmt.Println("- Test files were kept in temp directories")
 	}
-}
-
-func stageHeaders(results []*BenchmarkResult) string {
-	headers := make([]string, 0, len(results))
-	for _, r := range results {
-		headers = append(headers, fmt.Sprintf(" %d posts", r.PostCount))
-	}
-	return strings.Join(headers, " |")
-}
-
-func stageDividers(results []*BenchmarkResult) string {
-	dividers := make([]string, len(results))
-	for i := range dividers {
-		dividers[i] = "--------"
-	}
-	return strings.Join(dividers, "|")
-}
-
-func formatMemory(mb float64) string {
-	if mb < 0 {
-		return "N/A"
-	}
-	if mb >= 1024 {
-		return fmt.Sprintf("%.1fGB", mb/1024)
-	}
-	return fmt.Sprintf("%.1fMB", mb)
 }
