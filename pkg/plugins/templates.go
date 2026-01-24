@@ -199,9 +199,10 @@ func toModelsConfig(config *lifecycle.Config) *models.Config {
 	}
 
 	// Copy layout config if available
-	if layout, ok := config.Extra["layout"].(*models.LayoutConfig); ok {
-		modelsConfig.Layout = *layout
-	} else if layoutVal, ok := config.Extra["layout"].(models.LayoutConfig); ok {
+	switch layoutVal := config.Extra["layout"].(type) {
+	case *models.LayoutConfig:
+		modelsConfig.Layout = *layoutVal
+	case models.LayoutConfig:
 		modelsConfig.Layout = layoutVal
 	}
 
