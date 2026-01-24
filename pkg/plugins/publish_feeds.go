@@ -53,58 +53,64 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	return nil
 }
 
+// feedFormatPublisher defines how to publish a specific feed format.
+type feedFormatPublisher struct {
+	name       string // Format name for error messages
+	enabled    bool   // Whether this format is enabled
+	publish    func() error
+	ext        string // File extension for redirect (empty if no redirect needed)
+	targetFile string // Target file name for redirect
+}
+
 // publishFeed publishes a single feed in all configured formats.
 func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycle.Config, outputDir string) error {
-	// Determine feed directory
-	feedDir := filepath.Join(outputDir, fc.Slug)
-	if fc.Slug == "" {
-		feedDir = outputDir
-	}
+	feedDir := p.determineFeedDir(outputDir, fc.Slug)
 
-	// Create feed directory
 	if err := os.MkdirAll(feedDir, 0o755); err != nil {
 		return fmt.Errorf("creating feed directory: %w", err)
 	}
 
-	// Publish HTML pages
-	if fc.Formats.HTML {
-		if err := p.publishHTMLPages(fc, config, feedDir); err != nil {
-			return fmt.Errorf("publishing HTML: %w", err)
+	// Define all format publishers with their configurations
+	publishers := []feedFormatPublisher{
+		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(fc, config, feedDir) }},
+		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(fc, config, feedDir) }},
+		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(fc, config, feedDir) }},
+		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(fc, config, feedDir) }, ext: "json", targetFile: "feed.json"},
+		{name: "Markdown", enabled: fc.Formats.Markdown, publish: func() error { return p.publishMarkdown(fc, feedDir) }, ext: "md", targetFile: "index.md"},
+		{name: "Text", enabled: fc.Formats.Text, publish: func() error { return p.publishText(fc, feedDir) }, ext: "txt", targetFile: "index.txt"},
+	}
+
+	for _, pub := range publishers {
+		if err := p.publishFormat(pub, fc.Slug, outputDir); err != nil {
+			return err
 		}
 	}
 
-	// Publish RSS
-	if fc.Formats.RSS {
-		if err := p.publishRSS(fc, config, feedDir); err != nil {
-			return fmt.Errorf("publishing RSS: %w", err)
-		}
+	return nil
+}
+
+// determineFeedDir returns the output directory for a feed based on its slug.
+func (p *PublishFeedsPlugin) determineFeedDir(outputDir, slug string) string {
+	if slug == "" {
+		return outputDir
+	}
+	return filepath.Join(outputDir, slug)
+}
+
+// publishFormat publishes a single format if enabled and handles redirects.
+func (p *PublishFeedsPlugin) publishFormat(pub feedFormatPublisher, slug, outputDir string) error {
+	if !pub.enabled {
+		return nil
 	}
 
-	// Publish Atom
-	if fc.Formats.Atom {
-		if err := p.publishAtom(fc, config, feedDir); err != nil {
-			return fmt.Errorf("publishing Atom: %w", err)
-		}
+	if err := pub.publish(); err != nil {
+		return fmt.Errorf("publishing %s: %w", pub.name, err)
 	}
 
-	// Publish JSON
-	if fc.Formats.JSON {
-		if err := p.publishJSON(fc, config, feedDir); err != nil {
-			return fmt.Errorf("publishing JSON: %w", err)
-		}
-	}
-
-	// Publish Markdown
-	if fc.Formats.Markdown {
-		if err := p.publishMarkdown(fc, feedDir); err != nil {
-			return fmt.Errorf("publishing Markdown: %w", err)
-		}
-	}
-
-	// Publish Text
-	if fc.Formats.Text {
-		if err := p.publishText(fc, feedDir); err != nil {
-			return fmt.Errorf("publishing Text: %w", err)
+	// Write redirect for non-root feeds with redirect configuration
+	if slug != "" && pub.ext != "" {
+		if err := p.writeFeedFormatRedirect(slug, pub.ext, pub.targetFile, outputDir); err != nil {
+			return fmt.Errorf("writing %s redirect: %w", pub.name, err)
 		}
 	}
 
@@ -405,6 +411,49 @@ func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, feedDir string) 
 	txtPath := filepath.Join(feedDir, "index.txt")
 	//nolint:gosec // G306: Feed files need 0644 for web serving
 	return os.WriteFile(txtPath, []byte(sb.String()), 0o644)
+}
+
+// writeFeedFormatRedirect writes a redirect from /slug.ext to /slug/targetFile.
+// This creates a file at slug.ext/index.html, which allows the URL /slug.ext
+// (without trailing slash) to serve the HTML redirect on most static hosts.
+//
+// For example, requesting /archive.md will serve the redirect HTML that
+// points to /archive/index.md where the actual markdown content lives.
+// Similarly, /archive.json redirects to /archive/feed.json.
+//
+// Note: Web servers serve slug.ext/index.html when /slug.ext is requested,
+// without adding a trailing slash redirect (unlike directory-only approaches).
+func (p *PublishFeedsPlugin) writeFeedFormatRedirect(slug, ext, targetFile, outputDir string) error {
+	// Create redirect HTML that points to the actual file
+	targetURL := fmt.Sprintf("/%s/%s", slug, targetFile)
+	redirectHTML := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="0; url=%s">
+<link rel="canonical" href="%s">
+<title>Redirecting...</title>
+</head>
+<body>
+<p>Redirecting to <a href="%s">%s</a>...</p>
+</body>
+</html>`, targetURL, targetURL, targetURL, targetURL)
+
+	// Create directory at /slug.ext/ (e.g., /archive.md/)
+	redirectDir := filepath.Join(outputDir, slug+"."+ext)
+	if err := os.MkdirAll(redirectDir, 0o755); err != nil {
+		return fmt.Errorf("creating redirect directory %s: %w", redirectDir, err)
+	}
+
+	// Write index.html inside the directory
+	// This allows /slug.ext to be served without trailing slash on most static hosts
+	outputPath := filepath.Join(redirectDir, "index.html")
+	//nolint:gosec // G306: Output files need 0644 for web serving
+	if err := os.WriteFile(outputPath, []byte(redirectHTML), 0o644); err != nil {
+		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
+	}
+
+	return nil
 }
 
 // Ensure PublishFeedsPlugin implements the required interfaces.
