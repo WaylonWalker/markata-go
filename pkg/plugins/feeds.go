@@ -50,18 +50,30 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 			return fmt.Errorf("feed %q: %w", fc.Slug, err)
 		}
 
-		// Sort posts
+		// Determine sort field and direction based on feed type
 		sortField := fc.Sort
-		if sortField == "" {
-			sortField = "date"
-		}
 		reverse := fc.Reverse
-		// Default to reverse=true for date sorting
-		if fc.Sort == "" {
-			reverse = true
+
+		// For guide-type feeds, default to sorting by guide_order (ascending)
+		if fc.Type == models.FeedTypeGuide {
+			if sortField == "" {
+				sortField = "guide_order"
+				reverse = false // Guides should be in ascending order by default
+			}
+		} else {
+			// Default to date sorting for non-guide feeds
+			if sortField == "" {
+				sortField = "date"
+				reverse = true // Newest first by default
+			}
 		}
 
 		sortPosts(filteredPosts, sortField, reverse)
+
+		// For guide-type feeds, set up prev/next navigation on each post
+		if fc.Type == models.FeedTypeGuide || fc.Type == models.FeedTypeSeries {
+			setGuideNavigation(filteredPosts, fc.Slug)
+		}
 
 		// Store posts in feed config
 		fc.Posts = filteredPosts
@@ -219,8 +231,63 @@ func compareFieldValues(a, b interface{}) int {
 		}
 	}
 
+	// Compare integers (for guide_order)
+	if ia, ok := toInt(a); ok {
+		if ib, ok := toInt(b); ok {
+			if ia < ib {
+				return -1
+			}
+			if ia > ib {
+				return 1
+			}
+			return 0
+		}
+	}
+
 	// Compare as formatted strings
 	return strings.Compare(fmt.Sprintf("%v", a), fmt.Sprintf("%v", b))
+}
+
+// toInt attempts to convert an interface{} to an int.
+// It handles int, int64, float64, and other common numeric types.
+func toInt(v interface{}) (int, bool) {
+	switch n := v.(type) {
+	case int:
+		return n, true
+	case int64:
+		return int(n), true
+	case int32:
+		return int(n), true
+	case float64:
+		return int(n), true
+	case float32:
+		return int(n), true
+	default:
+		return 0, false
+	}
+}
+
+// setGuideNavigation sets up Prev/Next navigation for posts in a guide series.
+// Posts should already be sorted in the desired order before calling this function.
+func setGuideNavigation(posts []*models.Post, feedSlug string) {
+	for i, post := range posts {
+		// Set feed reference for navigation context
+		post.PrevNextFeed = feedSlug
+
+		// Set Prev pointer
+		if i > 0 {
+			post.Prev = posts[i-1]
+		} else {
+			post.Prev = nil
+		}
+
+		// Set Next pointer
+		if i < len(posts)-1 {
+			post.Next = posts[i+1]
+		} else {
+			post.Next = nil
+		}
+	}
 }
 
 // Ensure FeedsPlugin implements the required interfaces.

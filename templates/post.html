@@ -28,10 +28,24 @@
                 {% endfor %}
             </div>
             {% endif %}
+            {% if post.Extra.guide_order and post.PrevNextFeed %}
+            <div class="guide-info">
+                <span class="guide-part">Part {{ post.Extra.guide_order }}</span>
+                {% if post.Extra.difficulty %}
+                <span class="guide-difficulty guide-difficulty--{{ post.Extra.difficulty }}">{{ post.Extra.difficulty }}</span>
+                {% endif %}
+                {% if post.Extra.estimated_time %}
+                <span class="guide-time">{{ post.Extra.estimated_time }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
         </header>
         <div class="post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
             {{ body | safe }}
         </div>
+
+        {# Guide series navigation #}
+        {% include "partials/guide-navigation.html" %}
     </article>
 
     {% include "components/doc_sidebar.html" %}

@@ -918,6 +918,12 @@ func TestCompareFieldValues(t *testing.T) {
 		{"dates equal", date1, date1, 0},
 		{"dates a < b", date2, date1, -1},
 		{"dates a > b", date1, date2, 1},
+		{"integers equal", 5, 5, 0},
+		{"integers a < b", 1, 10, -1},
+		{"integers a > b", 10, 1, 1},
+		{"int64 comparison", int64(5), int64(10), -1},
+		{"float64 as int", float64(3), float64(7), -1},
+		{"mixed int types", int(5), int64(10), -1},
 	}
 
 	for _, tt := range tests {
@@ -943,6 +949,327 @@ func TestCompareFieldValues(t *testing.T) {
 func TestFeedsPlugin_ImplementsInterfaces(_ *testing.T) {
 	var _ lifecycle.Plugin = (*FeedsPlugin)(nil)
 	var _ lifecycle.CollectPlugin = (*FeedsPlugin)(nil)
+}
+
+// =============================================================================
+// Guide Series Tests
+// =============================================================================
+
+func TestFeedsPlugin_GuideTypeFeed(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	// Create posts with guide_order in Extra
+	m.SetPosts([]*models.Post{
+		{
+			Path:  "guide3.md",
+			Slug:  "guide3",
+			Title: strPtr("Guide Part 3"),
+			Date:  &date,
+			Extra: map[string]interface{}{"guide_order": 3},
+		},
+		{
+			Path:  "guide1.md",
+			Slug:  "guide1",
+			Title: strPtr("Guide Part 1"),
+			Date:  &date,
+			Extra: map[string]interface{}{"guide_order": 1},
+		},
+		{
+			Path:  "guide2.md",
+			Slug:  "guide2",
+			Title: strPtr("Guide Part 2"),
+			Date:  &date,
+			Extra: map[string]interface{}{"guide_order": 2},
+		},
+	})
+
+	// Configure a guide-type feed
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feeds": []models.FeedConfig{
+			{
+				Slug:  "getting-started",
+				Title: "Getting Started Guide",
+				Type:  models.FeedTypeGuide,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+	if len(feeds) != 1 {
+		t.Fatalf("expected 1 feed, got %d", len(feeds))
+	}
+
+	// Verify posts are sorted by guide_order (ascending)
+	posts := feeds[0].Posts
+	if len(posts) != 3 {
+		t.Fatalf("expected 3 posts, got %d", len(posts))
+	}
+
+	if posts[0].Slug != "guide1" {
+		t.Errorf("first post should be guide1 (order 1), got %q", posts[0].Slug)
+	}
+	if posts[1].Slug != "guide2" {
+		t.Errorf("second post should be guide2 (order 2), got %q", posts[1].Slug)
+	}
+	if posts[2].Slug != "guide3" {
+		t.Errorf("third post should be guide3 (order 3), got %q", posts[2].Slug)
+	}
+}
+
+func TestFeedsPlugin_GuideNavigation(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	// Create posts with guide_order
+	m.SetPosts([]*models.Post{
+		{
+			Path:  "guide1.md",
+			Slug:  "guide1",
+			Title: strPtr("Guide Part 1"),
+			Date:  &date,
+			Extra: map[string]interface{}{"guide_order": 1},
+		},
+		{
+			Path:  "guide2.md",
+			Slug:  "guide2",
+			Title: strPtr("Guide Part 2"),
+			Date:  &date,
+			Extra: map[string]interface{}{"guide_order": 2},
+		},
+		{
+			Path:  "guide3.md",
+			Slug:  "guide3",
+			Title: strPtr("Guide Part 3"),
+			Date:  &date,
+			Extra: map[string]interface{}{"guide_order": 3},
+		},
+	})
+
+	// Configure a guide-type feed
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feeds": []models.FeedConfig{
+			{
+				Slug:  "tutorial",
+				Title: "Tutorial Series",
+				Type:  models.FeedTypeGuide,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+	posts := feeds[0].Posts
+
+	// First post: no prev, has next
+	if posts[0].Prev != nil {
+		t.Error("first post should have no Prev")
+	}
+	if posts[0].Next == nil || posts[0].Next.Slug != "guide2" {
+		t.Errorf("first post.Next should be guide2, got %v", posts[0].Next)
+	}
+	if posts[0].PrevNextFeed != "tutorial" {
+		t.Errorf("first post.PrevNextFeed should be 'tutorial', got %q", posts[0].PrevNextFeed)
+	}
+
+	// Middle post: has prev and next
+	if posts[1].Prev == nil || posts[1].Prev.Slug != "guide1" {
+		t.Errorf("middle post.Prev should be guide1, got %v", posts[1].Prev)
+	}
+	if posts[1].Next == nil || posts[1].Next.Slug != "guide3" {
+		t.Errorf("middle post.Next should be guide3, got %v", posts[1].Next)
+	}
+
+	// Last post: has prev, no next
+	if posts[2].Prev == nil || posts[2].Prev.Slug != "guide2" {
+		t.Errorf("last post.Prev should be guide2, got %v", posts[2].Prev)
+	}
+	if posts[2].Next != nil {
+		t.Error("last post should have no Next")
+	}
+}
+
+func TestFeedsPlugin_SeriesTypeFeed(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{
+			Path:  "part1.md",
+			Slug:  "part1",
+			Title: strPtr("Series Part 1"),
+			Date:  &date,
+		},
+		{
+			Path:  "part2.md",
+			Slug:  "part2",
+			Title: strPtr("Series Part 2"),
+			Date:  &date,
+		},
+	})
+
+	// Configure a series-type feed
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feeds": []models.FeedConfig{
+			{
+				Slug:  "my-series",
+				Title: "My Series",
+				Type:  models.FeedTypeSeries,
+				Sort:  "title",
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+	posts := feeds[0].Posts
+
+	// Verify navigation is set up for series type too
+	if posts[0].Next == nil || posts[0].Next.Slug != "part2" {
+		t.Error("series posts should have prev/next navigation")
+	}
+	if posts[0].PrevNextFeed != "my-series" {
+		t.Errorf("PrevNextFeed should be 'my-series', got %q", posts[0].PrevNextFeed)
+	}
+}
+
+func TestFeedsPlugin_BlogTypeDefaultBehavior(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date1 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	date2 := time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{
+			Path:  "post1.md",
+			Slug:  "post1",
+			Title: strPtr("Older Post"),
+			Date:  &date2,
+		},
+		{
+			Path:  "post2.md",
+			Slug:  "post2",
+			Title: strPtr("Newer Post"),
+			Date:  &date1,
+		},
+	})
+
+	// Configure a blog-type feed (should sort by date descending by default)
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feeds": []models.FeedConfig{
+			{
+				Slug:  "blog",
+				Title: "Blog",
+				Type:  models.FeedTypeBlog,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+	posts := feeds[0].Posts
+
+	// Blog type should NOT set up guide navigation
+	// Newer post should be first (reverse date sort)
+	if posts[0].Slug != "post2" {
+		t.Errorf("blog feed should sort by date descending, expected post2 first, got %q", posts[0].Slug)
+	}
+}
+
+func TestFeedsPlugin_GuideWithExplicitSort(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{
+			Path:  "guide-c.md",
+			Slug:  "guide-c",
+			Title: strPtr("Guide C"),
+			Date:  &date,
+			Extra: map[string]interface{}{"guide_order": 3},
+		},
+		{
+			Path:  "guide-a.md",
+			Slug:  "guide-a",
+			Title: strPtr("Guide A"),
+			Date:  &date,
+			Extra: map[string]interface{}{"guide_order": 1},
+		},
+		{
+			Path:  "guide-b.md",
+			Slug:  "guide-b",
+			Title: strPtr("Guide B"),
+			Date:  &date,
+			Extra: map[string]interface{}{"guide_order": 2},
+		},
+	})
+
+	// Configure guide feed with explicit sort override to title
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feeds": []models.FeedConfig{
+			{
+				Slug:  "guides",
+				Title: "Guides",
+				Type:  models.FeedTypeGuide,
+				Sort:  "title", // Override default guide_order sorting
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+	posts := feeds[0].Posts
+
+	// Should be sorted by title (ascending) since we explicitly set Sort
+	if posts[0].Slug != "guide-a" {
+		t.Errorf("expected guide-a first (by title), got %q", posts[0].Slug)
+	}
+	if posts[1].Slug != "guide-b" {
+		t.Errorf("expected guide-b second (by title), got %q", posts[1].Slug)
+	}
+	if posts[2].Slug != "guide-c" {
+		t.Errorf("expected guide-c third (by title), got %q", posts[2].Slug)
+	}
 }
 
 // =============================================================================

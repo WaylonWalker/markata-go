@@ -1,0 +1,39 @@
+{# Guide card - displays a single guide post in a series #}
+<article class="card guide-card">
+    <div class="guide-card-header">
+        {% if post.Extra.guide_order %}
+        <span class="guide-order">Part {{ post.Extra.guide_order }}</span>
+        {% endif %}
+        <h2><a href="{{ post.href }}">{{ post.title }}</a></h2>
+    </div>
+
+    {% if post.description %}
+    <p class="guide-description">{{ post.description | truncate:200 }}</p>
+    {% endif %}
+
+    <div class="guide-card-meta">
+        {% if post.Extra.estimated_time %}
+        <span class="guide-time">{{ post.Extra.estimated_time }}</span>
+        {% endif %}
+        {% if post.Extra.difficulty %}
+        <span class="guide-difficulty guide-difficulty--{{ post.Extra.difficulty }}">{{ post.Extra.difficulty }}</span>
+        {% endif %}
+    </div>
+
+    {% if post.Extra.prerequisites %}
+    <div class="guide-prerequisites">
+        <strong>Prerequisites:</strong>
+        {% for prereq in post.Extra.prerequisites %}
+        <a href="/{{ prereq }}/" class="prerequisite-link">{{ prereq }}</a>{% if not forloop.Last %}, {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if post.tags %}
+    <div class="tags">
+        {% for tag in post.tags %}
+        <a href="/tags/{{ tag | slugify }}/" class="tag">{{ tag }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</article>
