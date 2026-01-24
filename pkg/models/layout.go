@@ -2,12 +2,25 @@ package models
 
 import "strings"
 
+// Layout name constants
+const (
+	layoutBlog = "blog"
+)
+
 // LayoutConfig configures the site layout system.
 // Layouts control the overall page structure including sidebars, TOC, header, and footer.
 type LayoutConfig struct {
 	// Name is the default layout preset name (default: "blog")
 	// Options: "docs", "blog", "landing", "bare"
 	Name string `json:"name,omitempty" yaml:"name,omitempty" toml:"name,omitempty"`
+
+	// Paths maps URL path prefixes to layout names for automatic layout selection.
+	// Example: {"/docs/": "docs", "/blog/": "blog", "/about/": "landing"}
+	Paths map[string]string `json:"paths,omitempty" yaml:"paths,omitempty" toml:"paths,omitempty"`
+
+	// Feeds maps feed slugs to layout names for automatic layout selection.
+	// Example: {"docs": "docs", "blog": "blog"}
+	Feeds map[string]string `json:"feeds,omitempty" yaml:"feeds,omitempty" toml:"feeds,omitempty"`
 
 	// Docs configures the documentation layout
 	Docs DocsLayoutConfig `json:"docs,omitempty" yaml:"docs,omitempty" toml:"docs,omitempty"`
@@ -23,6 +36,66 @@ type LayoutConfig struct {
 
 	// Defaults provides global layout defaults
 	Defaults LayoutDefaults `json:"defaults,omitempty" yaml:"defaults,omitempty" toml:"defaults,omitempty"`
+}
+
+// ResolveLayout determines the appropriate layout for a post based on its path and feed.
+// Priority: path-based > feed-based > global default
+// Returns the layout name (e.g., "docs", "blog", "landing", "bare") or empty string if no match.
+func (l *LayoutConfig) ResolveLayout(postPath, feedSlug string) string {
+	// 1. Check path-based layout (longest prefix wins)
+	if len(l.Paths) > 0 {
+		var bestMatch string
+		var bestLayout string
+
+		for pathPrefix, layout := range l.Paths {
+			if strings.HasPrefix(postPath, pathPrefix) {
+				if len(pathPrefix) > len(bestMatch) {
+					bestMatch = pathPrefix
+					bestLayout = layout
+				}
+			}
+		}
+
+		if bestLayout != "" {
+			return bestLayout
+		}
+	}
+
+	// 2. Check feed-based layout
+	if feedSlug != "" && len(l.Feeds) > 0 {
+		if layout, ok := l.Feeds[feedSlug]; ok {
+			return layout
+		}
+	}
+
+	// 3. Fall back to global default
+	return l.Name
+}
+
+// LayoutToTemplate converts a layout name to a template file path.
+// Layout names map to templates as follows:
+//   - "docs" -> "docs.html"
+//   - "blog" -> "post.html"
+//   - "landing" -> "landing.html"
+//   - "bare" -> "bare.html"
+//   - "" (empty) -> "post.html" (default)
+func LayoutToTemplate(layout string) string {
+	switch layout {
+	case "docs":
+		return "docs.html"
+	case layoutBlog, "":
+		return "post.html"
+	case "landing":
+		return "landing.html"
+	case "bare":
+		return "bare.html"
+	default:
+		// For custom layouts, assume the layout name is the template name
+		if strings.HasSuffix(layout, ".html") {
+			return layout
+		}
+		return layout + ".html"
+	}
 }
 
 // LayoutDefaults provides global layout defaults.
@@ -668,7 +741,9 @@ func NewLayoutConfig() LayoutConfig {
 	showPrevNext := true
 
 	return LayoutConfig{
-		Name: "blog",
+		Name:  layoutBlog,
+		Paths: make(map[string]string),
+		Feeds: make(map[string]string),
 		Docs: DocsLayoutConfig{
 			SidebarPosition:    "left",
 			SidebarWidth:       "280px",
