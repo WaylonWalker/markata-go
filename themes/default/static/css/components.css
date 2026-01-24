@@ -376,6 +376,18 @@
   --pagefind-ui-font: var(--font-body);
 }
 
+/* Full-width search container */
+#search,
+#pagefind-search {
+  width: 100%;
+  max-width: none;
+}
+
+/* Ensure pagefind form uses full width */
+.pagefind-ui__form {
+  width: 100%;
+}
+
 /* Compact mode for navbar */
 .search--navbar .pagefind-ui__search-input {
   width: 200px;
@@ -391,7 +403,8 @@
   position: absolute;
   top: 100%;
   right: 0;
-  width: 420px;
+  width: 500px;
+  max-width: calc(100vw - 2rem);
   max-height: 80vh;
   overflow-y: auto;
   background: var(--pagefind-ui-background);
@@ -399,7 +412,7 @@
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
   z-index: 1000;
-  padding: 0.5rem;
+  padding: 0.75rem;
 }
 
 /* Full-width search for sidebar/footer */
@@ -434,12 +447,16 @@
 
 /* Result card styling - Visual separation between results */
 .pagefind-ui__result {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 1rem;
-  margin: 0.5rem 0;
+  margin-bottom: 1rem;
   background: var(--color-surface);
   border: 1px solid var(--pagefind-ui-border);
   border-radius: 8px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
 }
 
 .pagefind-ui__result:hover {
@@ -448,11 +465,11 @@
 }
 
 .pagefind-ui__result:first-child {
-  margin-top: 0.25rem;
+  margin-top: 0;
 }
 
 .pagefind-ui__result:last-child {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0;
 }
 
 /* Result title/link - WCAG AA compliant contrast */
@@ -478,17 +495,14 @@
   border-radius: 2px;
 }
 
-/* Result excerpt - Improved contrast and truncation */
+/* Result excerpt - Improved contrast and readability */
 .pagefind-ui__result-excerpt {
   color: var(--pagefind-ui-text);
   font-size: 0.875rem;
-  line-height: 1.6;
+  line-height: 1.5;
   margin-top: 0.25rem;
-  /* Limit to 3 lines for easy scanning */
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 /* Highlighted search terms in results */
@@ -565,6 +579,7 @@
   
   .search--navbar .pagefind-ui__search-input {
     width: 100%;
+    font-size: 16px; /* Prevent iOS zoom on focus */
   }
   
   .search--navbar .pagefind-ui__search-input:focus {
@@ -574,25 +589,31 @@
   .search--navbar .pagefind-ui__results-area {
     position: fixed;
     top: auto;
+    bottom: 0;
     left: 0;
     right: 0;
     width: 100%;
+    max-width: 100%;
     max-height: 60vh;
     border-radius: 12px 12px 0 0;
     border-left: none;
     border-right: none;
-    padding: 0.75rem;
+    padding: 1rem;
   }
   
-  /* Smaller result cards on mobile */
+  /* Mobile-optimized result cards */
   .pagefind-ui__result {
-    padding: 0.75rem;
-    margin: 0.375rem 0;
+    padding: 0.875rem;
+    margin-bottom: 0.75rem;
   }
   
-  /* Two-line limit on mobile for excerpts */
+  .pagefind-ui__result-link {
+    font-size: 0.9375rem;
+  }
+  
   .pagefind-ui__result-excerpt {
-    -webkit-line-clamp: 2;
+    font-size: 0.8125rem;
+    line-height: 1.4;
   }
 }
 
