@@ -1698,13 +1698,13 @@ type jsonMultiFeedSection struct {
 	MaxItems  int    `json:"max_items"`
 }
 
-func convertJsonSidebarNavItems(items []jsonSidebarNavItem) []models.SidebarNavItem {
+func convertJSONSidebarNavItems(items []jsonSidebarNavItem) []models.SidebarNavItem {
 	result := make([]models.SidebarNavItem, len(items))
 	for i, item := range items {
 		result[i] = models.SidebarNavItem{
 			Title:    item.Title,
 			Href:     item.Href,
-			Children: convertJsonSidebarNavItems(item.Children),
+			Children: convertJSONSidebarNavItems(item.Children),
 		}
 	}
 	return result
@@ -1717,7 +1717,7 @@ func (s *jsonSidebarConfig) toSidebarConfig() models.SidebarConfig {
 		Width:       s.Width,
 		Collapsible: s.Collapsible,
 		DefaultOpen: s.DefaultOpen,
-		Nav:         convertJsonSidebarNavItems(s.Nav),
+		Nav:         convertJSONSidebarNavItems(s.Nav),
 		Title:       s.Title,
 		MultiFeed:   s.MultiFeed,
 		Feeds:       s.Feeds,
@@ -1740,7 +1740,7 @@ func (s *jsonSidebarConfig) toSidebarConfig() models.SidebarConfig {
 			config.Paths[path] = &models.PathSidebarConfig{
 				Title:        pathConfig.Title,
 				AutoGenerate: autoGen,
-				Items:        convertJsonSidebarNavItems(pathConfig.Items),
+				Items:        convertJSONSidebarNavItems(pathConfig.Items),
 				Feed:         pathConfig.Feed,
 				Position:     pathConfig.Position,
 				Collapsible:  pathConfig.Collapsible,
