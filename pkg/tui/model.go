@@ -349,16 +349,14 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Normal mode key handling
+	return m.handleNormalModeKey(msg)
+}
+
+// handleNormalModeKey handles key input in normal mode
+func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keyMap.Quit):
-		// If there's an active filter in posts view, clear it first instead of quitting
-		if m.view == ViewPosts && m.activeFilter != nil {
-			m.activeFilter = nil
-			m.cursor = 0
-			m.postsTable.SetCursor(0)
-			return m, m.loadPosts()
-		}
-		return m, tea.Quit
+		return m.handleQuitKey()
 
 	case key.Matches(msg, keyMap.Up), key.Matches(msg, keyMap.Down):
 		return m.handleNavigation(msg)
@@ -377,11 +375,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.view = ViewHelp
 
 	case key.Matches(msg, keyMap.Posts):
-		m.view = ViewPosts
-		m.cursor = 0
-		m.postsTable.SetCursor(0)
-		m.activeFilter = nil // Clear any active filter when explicitly navigating to posts
-		return m, m.loadPosts()
+		return m.handlePostsKey()
 
 	case key.Matches(msg, keyMap.Tags):
 		m.view = ViewTags
@@ -400,14 +394,41 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleEscape()
 
 	case key.Matches(msg, keyMap.Edit):
-		if m.view == ViewPosts {
-			return m, m.openInEditor()
-		}
+		return m.handleEditKey()
 
 	case key.Matches(msg, keyMap.Sort):
 		return m.handleSortKey()
 	}
 
+	return m, nil
+}
+
+// handleQuitKey handles the quit key, clearing active filter first if present
+func (m Model) handleQuitKey() (tea.Model, tea.Cmd) {
+	// If there's an active filter in posts view, clear it first instead of quitting
+	if m.view == ViewPosts && m.activeFilter != nil {
+		m.activeFilter = nil
+		m.cursor = 0
+		m.postsTable.SetCursor(0)
+		return m, m.loadPosts()
+	}
+	return m, tea.Quit
+}
+
+// handlePostsKey handles navigation to posts view
+func (m Model) handlePostsKey() (tea.Model, tea.Cmd) {
+	m.view = ViewPosts
+	m.cursor = 0
+	m.postsTable.SetCursor(0)
+	m.activeFilter = nil // Clear any active filter when explicitly navigating to posts
+	return m, m.loadPosts()
+}
+
+// handleEditKey handles the edit key for editing posts
+func (m Model) handleEditKey() (tea.Model, tea.Cmd) {
+	if m.view == ViewPosts {
+		return m, m.openInEditor()
+	}
 	return m, nil
 }
 
