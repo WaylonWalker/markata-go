@@ -1,15 +1,15 @@
 {# Document sidebar (Table of Contents) component template #}
 {# Usage: {% include "components/doc_sidebar.html" %} #}
 {# Requires: config.components.doc_sidebar (DocSidebarConfig) #}
-{# Requires: post.Extra.toc ([]TocEntry) from toc plugin #}
+{# Requires: post.toc ([]TocEntry) from toc plugin #}
 
 {% with sidebar = config.components.doc_sidebar %}
-{% if sidebar.enabled and post.Extra.toc %}
+{% if sidebar.enabled and post.toc %}
 <aside class="doc-sidebar doc-sidebar--{{ sidebar.position | default:'right' }}" style="width: {{ sidebar.width | default:'250px' }}" data-pagefind-ignore>
     <nav class="toc" aria-label="Table of Contents">
         <h2 class="toc-title">On this page</h2>
         <ul class="toc-list">
-            {% for entry in post.Extra.toc %}
+            {% for entry in post.toc %}
             {% if entry.Level >= sidebar.min_depth and entry.Level <= sidebar.max_depth %}
             <li class="toc-item toc-item--level-{{ entry.Level }}">
                 <a href="#{{ entry.ID }}" class="toc-link">{{ entry.Text }}</a>

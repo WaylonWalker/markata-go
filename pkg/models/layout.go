@@ -74,21 +74,21 @@ func (l *LayoutConfig) ResolveLayout(postPath, feedSlug string) string {
 
 // LayoutToTemplate converts a layout name to a template file path.
 // Layout names map to templates as follows:
-//   - "docs" -> "docs.html"
+//   - "docs" -> "layouts/docs.html"
 //   - "blog" -> "post.html"
-//   - "landing" -> "landing.html"
-//   - "bare" -> "bare.html"
+//   - "landing" -> "layouts/landing.html"
+//   - "bare" -> "layouts/bare.html"
 //   - "" (empty) -> "post.html" (default)
 func LayoutToTemplate(layout string) string {
 	switch layout {
 	case "docs":
-		return "docs.html"
+		return "layouts/docs.html"
 	case layoutBlog, "":
 		return "post.html"
 	case "landing":
-		return "landing.html"
+		return "layouts/landing.html"
 	case "bare":
-		return "bare.html"
+		return "layouts/bare.html"
 	default:
 		// For custom layouts, assume the layout name is the template name
 		if strings.HasSuffix(layout, ".html") {

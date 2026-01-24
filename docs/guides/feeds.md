@@ -3,7 +3,7 @@ title: "Feeds Guide"
 description: "Deep dive into markata-go's powerful feed system for creating filtered, sorted, paginated collections"
 date: 2024-01-15
 published: true
-template: doc.html
+slug: /docs/guides/feeds/
 tags:
   - documentation
   - feeds

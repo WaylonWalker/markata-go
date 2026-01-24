@@ -3,7 +3,7 @@ title: "Templates Guide"
 description: "Complete guide to creating and customizing templates with pongo2/Jinja2 syntax"
 date: 2024-01-15
 published: true
-template: doc.html
+slug: /docs/guides/templates/
 tags:
   - documentation
   - templates

@@ -3,7 +3,7 @@ title: "Frontmatter Guide"
 description: "Complete guide to post metadata, built-in fields, and custom frontmatter in markata-go"
 date: 2024-01-15
 published: true
-template: doc.html
+slug: /docs/guides/frontmatter/
 tags:
   - documentation
   - frontmatter

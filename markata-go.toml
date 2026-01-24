@@ -94,6 +94,58 @@ palette = "matte-black"
 # palette = "tokyo-night-day"
 # palette = "tokyo-night-storm"
 
+# Layout configuration
+[markata-go.layout]
+name = "docs"  # Default layout: "docs", "blog", "landing", "bare"
+
+[markata-go.layout.docs]
+sidebar_position = "left"
+sidebar_width = "280px"
+toc_position = "right"
+toc_width = "220px"
+content_max_width = "800px"
+header_style = "minimal"
+footer_style = "minimal"
+
+# Sidebar configuration
+[markata-go.sidebar]
+enabled = true
+position = "left"
+title = "Documentation"
+
+[[markata-go.sidebar.nav]]
+title = "Getting Started"
+href = "/docs/"
+
+[[markata-go.sidebar.nav]]
+title = "Guides"
+children = [
+    { title = "Configuration", href = "/docs/guides/configuration/" },
+    { title = "Templates", href = "/docs/guides/templates/" },
+    { title = "Themes", href = "/docs/guides/themes/" },
+    { title = "Feeds", href = "/docs/guides/feeds/" },
+    { title = "Sidebars", href = "/docs/guides/sidebars/" },
+    { title = "Markdown", href = "/docs/guides/markdown/" },
+    { title = "Frontmatter", href = "/docs/guides/frontmatter/" },
+    { title = "Search", href = "/docs/guides/search/" },
+]
+
+[[markata-go.sidebar.nav]]
+title = "Reference"
+children = [
+    { title = "CLI", href = "/docs/reference/cli/" },
+    { title = "Plugins", href = "/docs/reference/plugins/" },
+]
+
+# Table of Contents configuration
+[markata-go.toc]
+enabled = true
+position = "right"
+title = "On this page"
+min_depth = 2
+max_depth = 4
+scroll_spy = true
+
 [markata-go.markdown.highlight]
 enabled = true
 theme = "github-dark"    # Highlight theme

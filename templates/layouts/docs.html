@@ -68,7 +68,7 @@
         </article>
     </main>
     
-    {% if config.toc.enabled and post.Extra.toc %}
+    {% if config.toc.enabled and post.toc %}
     <aside class="layout-toc layout-toc--{{ config.layout.docs.toc_position | default:'right' }}" 
            role="complementary" 
            aria-label="Table of Contents"

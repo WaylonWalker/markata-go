@@ -3,7 +3,7 @@ title: "Configuration Guide"
 description: "Complete reference for markata-go configuration options, file formats, and environment variables"
 date: 2024-01-15
 published: true
-template: doc.html
+slug: /docs/guides/configuration/
 tags:
   - documentation
   - configuration

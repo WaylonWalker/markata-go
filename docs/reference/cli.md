@@ -3,7 +3,7 @@ title: "CLI Reference"
 description: "Complete reference for all markata-go commands, flags, and options"
 date: 2024-01-15
 published: true
-template: doc.html
+slug: /docs/reference/cli/
 tags:
   - documentation
   - reference

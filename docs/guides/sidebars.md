@@ -3,7 +3,7 @@ title: "Sidebar Navigation"
 description: "Complete guide to configuring sidebar navigation with path-based, feed-linked, and multi-feed sidebars"
 date: 2024-01-23
 published: true
-template: doc.html
+slug: /docs/guides/sidebars/
 tags:
   - documentation
   - layout

@@ -3,6 +3,7 @@ title: "Themes and Styling"
 description: "Complete guide to customizing your site's appearance with themes, color palettes, and CSS"
 date: 2024-01-15
 published: true
+slug: /docs/guides/themes/
 tags:
   - documentation
   - themes

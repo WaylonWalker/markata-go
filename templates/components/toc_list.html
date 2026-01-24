@@ -1,8 +1,8 @@
 {# TOC List Component - Table of contents list from post headings #}
-{% if post.Extra.toc %}
+{% if post.toc %}
 <nav class="toc-nav" aria-label="Table of contents">
     <ul class="toc-list">
-        {% for heading in post.Extra.toc %}
+        {% for heading in post.toc %}
         <li class="toc-item toc-item--h{{ heading.level }}" data-level="{{ heading.level }}">
             <a href="#{{ heading.id }}" class="toc-link">{{ heading.text }}</a>
             {% if heading.children %}

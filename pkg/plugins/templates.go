@@ -198,6 +198,26 @@ func toModelsConfig(config *lifecycle.Config) *models.Config {
 		modelsConfig.Footer = footer
 	}
 
+	// Copy layout config if available
+	if layout, ok := config.Extra["layout"].(*models.LayoutConfig); ok {
+		modelsConfig.Layout = *layout
+	}
+
+	// Copy sidebar config if available
+	if sidebar, ok := config.Extra["sidebar"].(models.SidebarConfig); ok {
+		modelsConfig.Sidebar = sidebar
+	}
+
+	// Copy toc config if available
+	if toc, ok := config.Extra["toc"].(models.TocConfig); ok {
+		modelsConfig.Toc = toc
+	}
+
+	// Copy header config if available
+	if header, ok := config.Extra["header"].(models.HeaderLayoutConfig); ok {
+		modelsConfig.Header = header
+	}
+
 	return modelsConfig
 }
 

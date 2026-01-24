@@ -3,6 +3,7 @@ title: "Site Search"
 description: "Add full-text search to your markata-go site using Pagefind"
 date: 2024-01-15
 published: true
+slug: /docs/guides/search/
 tags:
   - documentation
   - search

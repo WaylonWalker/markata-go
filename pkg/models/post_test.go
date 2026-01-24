@@ -322,8 +322,8 @@ func TestPost_NewPost(t *testing.T) {
 	if p.Skip != false {
 		t.Error("Skip should default to false")
 	}
-	if p.Template != "post.html" {
-		t.Errorf("Template: got %q, want 'post.html'", p.Template)
+	if p.Template != "" {
+		t.Errorf("Template: got %q, want empty string (templates plugin resolves default)", p.Template)
 	}
 	if p.Tags == nil {
 		t.Error("Tags should be initialized")
