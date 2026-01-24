@@ -452,3 +452,150 @@ func TestAnalyzeFilter(t *testing.T) {
 func containsString(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || s != "" && (s[0:len(substr)] == substr || containsString(s[1:], substr)))
 }
+
+func TestConfigFromMap_UnsupportedHooks(t *testing.T) {
+	input := map[string]interface{}{
+		"markata": map[string]interface{}{
+			"hooks": []interface{}{
+				"glob",
+				"load",
+				"covers",         // unsupported
+				"service_worker", // unsupported
+				"pyinstrument",   // unsupported
+			},
+		},
+	}
+
+	result, err := ConfigFromMap(input)
+	if err != nil {
+		t.Fatalf("ConfigFromMap() error = %v", err)
+	}
+
+	// Should have warnings for unsupported hooks
+	unsupportedCount := 0
+	for _, w := range result.Warnings {
+		if w.Category == "plugin" {
+			unsupportedCount++
+		}
+	}
+
+	if unsupportedCount != 3 {
+		t.Errorf("expected 3 unsupported hook warnings, got %d", unsupportedCount)
+	}
+}
+
+func TestConfigFromMap_AdditionalKeyRenames(t *testing.T) {
+	tests := []struct {
+		name   string
+		oldKey string
+		newKey string
+		value  interface{}
+	}{
+		{"author_name to author", "author_name", "author", "John Doe"},
+		{"site_description to description", "site_description", "description", "My site"},
+		{"twitter_creator to twitter_handle", "twitter_creator", "twitter_handle", "@user"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := map[string]interface{}{
+				"markata": map[string]interface{}{
+					tt.oldKey: tt.value,
+				},
+			}
+
+			result, err := ConfigFromMap(input)
+			if err != nil {
+				t.Fatalf("ConfigFromMap() error = %v", err)
+			}
+
+			mg, ok := result.MigratedConfig["markata-go"].(map[string]interface{})
+			if !ok {
+				t.Fatal("markata-go section not found")
+			}
+
+			if mg[tt.newKey] != tt.value {
+				t.Errorf("%s = %v, want %v", tt.newKey, mg[tt.newKey], tt.value)
+			}
+
+			// Old key should not exist
+			if _, exists := mg[tt.oldKey]; exists && tt.oldKey != tt.newKey {
+				t.Errorf("old key %s should not exist in migrated config", tt.oldKey)
+			}
+		})
+	}
+}
+
+func TestMigrationResult_JSONReport(t *testing.T) {
+	result := &MigrationResult{
+		InputFile: "markata.toml",
+		Changes: []ConfigChange{
+			{Type: "namespace", Path: "markata", Description: "Namespace change"},
+		},
+	}
+
+	report := result.JSONReport()
+
+	// Check required fields
+	if report["input_file"] != "markata.toml" {
+		t.Errorf("input_file = %v, want markata.toml", report["input_file"])
+	}
+	if report["changes_count"] != 1 {
+		t.Errorf("changes_count = %v, want 1", report["changes_count"])
+	}
+	if report["exit_code"] != 0 {
+		t.Errorf("exit_code = %v, want 0", report["exit_code"])
+	}
+}
+
+func TestGetVariableMigrations(t *testing.T) {
+	migrations := GetVariableMigrations()
+	if len(migrations) == 0 {
+		t.Error("expected at least one variable migration")
+	}
+
+	// Check for expected migrations
+	expectedOld := []string{
+		"post.markata.config",
+		"post.article_html",
+	}
+
+	for _, expected := range expectedOld {
+		found := false
+		for _, m := range migrations {
+			if m.Old == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected migration for %s", expected)
+		}
+	}
+}
+
+func TestGetFilterMigrations(t *testing.T) {
+	migrations := GetFilterMigrations()
+	if len(migrations) == 0 {
+		t.Error("expected at least one filter migration")
+	}
+
+	// Check for expected migrations
+	expectedOld := []string{
+		".lower()",
+		".upper()",
+	}
+
+	for _, expected := range expectedOld {
+		found := false
+		for _, m := range migrations {
+			if m.Old == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected migration for %s", expected)
+		}
+	}
+}

@@ -347,12 +347,27 @@ func migrateSection(section map[string]interface{}, path string, result *Migrati
 // renameKey returns the new key name and whether it was renamed.
 func renameKey(key string) (string, bool) {
 	renames := map[string]string{
-		"glob_patterns":    "patterns",
-		"author_name":      "author",
-		"site_name":        "title",
-		"site_description": "description",
-		"output":           "output_dir",
-		"color_theme":      "palette",
+		"glob_patterns":     "patterns",
+		"author_name":       "author",
+		"site_name":         "title",
+		"site_description":  "description",
+		"output":            "output_dir",
+		"color_theme":       "palette",
+		"twitter_creator":   "twitter_handle", // moved under seo
+		"card_template":     "card_template",  // in feeds
+		"head":              "max_items",      // feed limit renamed
+		"copy_assets":       "static_assets",  // plugin renamed
+		"auto_description":  "description",    // plugin renamed
+		"heading_link":      "heading_anchors",
+		"md_it_wikilinks":   "wikilinks",
+		"tippy_wikilink":    "wikilink_hover",
+		"markata.nav":       "nav",
+		"markata.feeds":     "feeds",
+		"markata.hooks":     "hooks",
+		"markata.output":    "output_dir",
+		"markata.title":     "title",
+		"markata.url":       "url",
+		"markata.templates": "templates_dir",
 	}
 
 	if newKey, ok := renames[key]; ok {
@@ -451,10 +466,19 @@ func migrateFeedConfig(feed map[string]interface{}, result *MigrationResult) map
 
 // checkUnsupportedHooks checks for hooks that aren't supported in markata-go.
 func checkUnsupportedHooks(hooks []interface{}, result *MigrationResult) {
-	unsupported := []string{
-		"rich_output",
-		"console",
-		"custom_python",
+	unsupported := map[string]string{
+		"rich_output":          "No direct equivalent - use Go's standard logging",
+		"console":              "No direct equivalent",
+		"custom_python":        "Python code is not supported - use Go plugins instead",
+		"covers":               "Not implemented - manual cover images or external tool required",
+		"icon_resize":          "Not implemented - manual favicon creation required",
+		"service_worker":       "Not implemented - manual service worker required",
+		"tag_aggregator":       "Use auto_feeds for tag pages instead",
+		"pyinstrument":         "Use Go's pprof for profiling",
+		"tui":                  "Not implemented",
+		"partial_template":     "Not supported",
+		"site_version":         "Not supported",
+		"default_cache_expire": "Not supported - caching handled differently",
 	}
 
 	for _, hook := range hooks {
@@ -463,15 +487,13 @@ func checkUnsupportedHooks(hooks []interface{}, result *MigrationResult) {
 			continue
 		}
 
-		for _, u := range unsupported {
-			if hookName == u {
-				result.Warnings = append(result.Warnings, Warning{
-					Category:   "plugin",
-					Message:    fmt.Sprintf("Hook '%s' is not supported in markata-go", hookName),
-					Path:       "hooks",
-					Suggestion: "Remove this hook or find an alternative",
-				})
-			}
+		if suggestion, unsup := unsupported[hookName]; unsup {
+			result.Warnings = append(result.Warnings, Warning{
+				Category:   "plugin",
+				Message:    fmt.Sprintf("Hook '%s' is not supported in markata-go", hookName),
+				Path:       "hooks",
+				Suggestion: suggestion,
+			})
 		}
 	}
 }

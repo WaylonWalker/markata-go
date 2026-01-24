@@ -5,6 +5,14 @@ import (
 	"strings"
 )
 
+// Status symbols for report output.
+const (
+	symbolSuccess = "[OK]"
+	symbolWarning = "[WARN]"
+	symbolError   = "[ERROR]"
+	symbolMigrate = "[MIGRATE]"
+)
+
 // Report generates a human-readable migration report.
 func (r *MigrationResult) Report() string {
 	var sb strings.Builder
@@ -72,8 +80,7 @@ func (r *MigrationResult) writeConfigChanges(sb *strings.Builder) {
 	sb.WriteString(strings.Repeat("-", 80) + "\n\n")
 
 	for _, change := range r.Changes {
-		icon := "[MIGRATE]"
-		fmt.Fprintf(sb, "  %s %s\n", icon, change.Description)
+		fmt.Fprintf(sb, "  %s %s\n", symbolMigrate, change.Description)
 	}
 	sb.WriteString("\n")
 }
@@ -96,9 +103,9 @@ func (r *MigrationResult) writeFilterMigrations(sb *strings.Builder) {
 		fmt.Fprintf(sb, "  Feed: %s\n", feedName)
 
 		if len(fm.Changes) == 0 {
-			fmt.Fprintf(sb, "    [OK] %s (no changes needed)\n", fm.Original)
+			fmt.Fprintf(sb, "    %s %s (no changes needed)\n", symbolSuccess, fm.Original)
 		} else {
-			fmt.Fprintf(sb, "    [MIGRATE] %s\n", fm.Original)
+			fmt.Fprintf(sb, "    %s %s\n", symbolMigrate, fm.Original)
 			fmt.Fprintf(sb, "           -> %s\n", fm.Migrated)
 			for _, c := range fm.Changes {
 				fmt.Fprintf(sb, "           (%s)\n", c)
@@ -106,7 +113,7 @@ func (r *MigrationResult) writeFilterMigrations(sb *strings.Builder) {
 		}
 
 		if !fm.Valid {
-			fmt.Fprintf(sb, "    [ERROR] Invalid: %s\n", fm.Error)
+			fmt.Fprintf(sb, "    %s Invalid: %s\n", symbolError, fm.Error)
 		}
 		sb.WriteString("\n")
 	}
@@ -123,7 +130,7 @@ func (r *MigrationResult) writeWarnings(sb *strings.Builder) {
 	sb.WriteString(strings.Repeat("-", 80) + "\n\n")
 
 	for _, w := range r.Warnings {
-		fmt.Fprintf(sb, "  [WARN] %s\n", w.Message)
+		fmt.Fprintf(sb, "  %s %s\n", symbolWarning, w.Message)
 		if w.Path != "" {
 			fmt.Fprintf(sb, "         Path: %s\n", w.Path)
 		}
