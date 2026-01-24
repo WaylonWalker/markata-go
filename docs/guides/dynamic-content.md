@@ -3,7 +3,6 @@ title: "Dynamic Content"
 description: "Using Jinja2 template syntax in Markdown files for dynamic content generation"
 date: 2024-01-15
 published: true
-template: doc.html
 tags:
   - documentation
   - jinja

@@ -3,7 +3,6 @@ title: "Plugin Development"
 description: "Guide to creating custom plugins for markata-go using the 9-stage lifecycle"
 date: 2024-01-15
 published: true
-template: doc.html
 tags:
   - documentation
   - plugins
