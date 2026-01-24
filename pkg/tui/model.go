@@ -281,24 +281,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case key.Matches(msg, keyMap.Up), key.Matches(msg, keyMap.Down):
-		// Let the table handle navigation when in posts view
-		if m.view == ViewPosts {
-			var cmd tea.Cmd
-			m.postsTable, cmd = m.postsTable.Update(msg)
-			m.cursor = m.postsTable.Cursor()
-			return m, cmd
-		}
-		// For other views, use manual cursor movement
-		if key.Matches(msg, keyMap.Up) {
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		} else {
-			maxIdx := len(m.tags) - 1
-			if m.cursor < maxIdx {
-				m.cursor++
-			}
-		}
+		return m.handleNavigation(msg)
 
 	case key.Matches(msg, keyMap.Filter):
 		m.mode = ModeFilter
@@ -336,19 +319,45 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case key.Matches(msg, keyMap.Sort):
-		if m.view == ViewPosts {
-			m.showSortMenu = true
-			// Set sortMenuIdx to current sort field
-			for i, opt := range sortOptions {
-				if opt.value == m.sortBy {
-					m.sortMenuIdx = i
-					break
-				}
-			}
-			return m, nil
-		}
+		return m.handleSortKey()
 	}
 
+	return m, nil
+}
+
+func (m Model) handleSortKey() (tea.Model, tea.Cmd) {
+	if m.view == ViewPosts {
+		m.showSortMenu = true
+		// Set sortMenuIdx to current sort field
+		for i, opt := range sortOptions {
+			if opt.value == m.sortBy {
+				m.sortMenuIdx = i
+				break
+			}
+		}
+	}
+	return m, nil
+}
+
+func (m Model) handleNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Let the table handle navigation when in posts view
+	if m.view == ViewPosts {
+		var cmd tea.Cmd
+		m.postsTable, cmd = m.postsTable.Update(msg)
+		m.cursor = m.postsTable.Cursor()
+		return m, cmd
+	}
+	// For other views, use manual cursor movement
+	if key.Matches(msg, keyMap.Up) {
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	} else {
+		maxIdx := len(m.tags) - 1
+		if m.cursor < maxIdx {
+			m.cursor++
+		}
+	}
 	return m, nil
 }
 
