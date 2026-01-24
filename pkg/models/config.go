@@ -256,6 +256,9 @@ type Config struct {
 
 	// FooterLayout configures the footer component for layouts
 	FooterLayout FooterLayoutConfig `json:"footer_layout" yaml:"footer_layout" toml:"footer_layout"`
+
+	// ContentTemplates configures the content template system for the new command
+	ContentTemplates ContentTemplatesConfig `json:"content_templates" yaml:"content_templates" toml:"content_templates"`
 }
 
 // HeadConfig configures elements added to the HTML <head> section.
@@ -892,6 +895,55 @@ func NewYouTubeConfig() YouTubeConfig {
 	}
 }
 
+// ContentTemplateConfig defines a single content template.
+type ContentTemplateConfig struct {
+	// Name is the template identifier (e.g., "post", "page", "docs")
+	Name string `json:"name" yaml:"name" toml:"name"`
+
+	// Directory is the output directory for this content type
+	Directory string `json:"directory" yaml:"directory" toml:"directory"`
+
+	// Frontmatter contains default frontmatter fields for this template
+	Frontmatter map[string]interface{} `json:"frontmatter,omitempty" yaml:"frontmatter,omitempty" toml:"frontmatter,omitempty"`
+
+	// Body is the default body content (markdown) for this template
+	Body string `json:"body,omitempty" yaml:"body,omitempty" toml:"body,omitempty"`
+}
+
+// ContentTemplatesConfig configures the content template system for the new command.
+type ContentTemplatesConfig struct {
+	// Directory is where user-defined templates are stored (default: "content-templates")
+	Directory string `json:"directory" yaml:"directory" toml:"directory"`
+
+	// Placement maps template names to output directories
+	Placement map[string]string `json:"placement" yaml:"placement" toml:"placement"`
+
+	// Templates is a list of custom template configurations
+	Templates []ContentTemplateConfig `json:"templates,omitempty" yaml:"templates,omitempty" toml:"templates,omitempty"`
+}
+
+// NewContentTemplatesConfig creates a new ContentTemplatesConfig with default values.
+func NewContentTemplatesConfig() ContentTemplatesConfig {
+	return ContentTemplatesConfig{
+		Directory: "content-templates",
+		Placement: map[string]string{
+			"post": "posts",
+			"page": "pages",
+			"docs": "docs",
+		},
+		Templates: []ContentTemplateConfig{},
+	}
+}
+
+// GetPlacement returns the output directory for a template name.
+// Returns the template name itself if no explicit placement is configured.
+func (c *ContentTemplatesConfig) GetPlacement(templateName string) string {
+	if dir, ok := c.Placement[templateName]; ok {
+		return dir
+	}
+	return templateName
+}
+
 // NewConfig creates a new Config with default values.
 func NewConfig() *Config {
 	return &Config{
@@ -916,17 +968,18 @@ func NewConfig() *Config {
 			Palette:   "default-light",
 			Variables: make(map[string]string),
 		},
-		PostFormats:  NewPostFormatsConfig(),
-		SEO:          NewSEOConfig(),
-		IndieAuth:    NewIndieAuthConfig(),
-		Webmention:   NewWebmentionConfig(),
-		Components:   NewComponentsConfig(),
-		Search:       NewSearchConfig(),
-		Layout:       NewLayoutConfig(),
-		Sidebar:      NewSidebarConfig(),
-		Toc:          NewTocConfig(),
-		Header:       NewHeaderLayoutConfig(),
-		FooterLayout: NewFooterLayoutConfig(),
+		PostFormats:      NewPostFormatsConfig(),
+		SEO:              NewSEOConfig(),
+		IndieAuth:        NewIndieAuthConfig(),
+		Webmention:       NewWebmentionConfig(),
+		Components:       NewComponentsConfig(),
+		Search:           NewSearchConfig(),
+		Layout:           NewLayoutConfig(),
+		Sidebar:          NewSidebarConfig(),
+		Toc:              NewTocConfig(),
+		Header:           NewHeaderLayoutConfig(),
+		FooterLayout:     NewFooterLayoutConfig(),
+		ContentTemplates: NewContentTemplatesConfig(),
 	}
 }
 
