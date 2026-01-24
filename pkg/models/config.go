@@ -818,6 +818,40 @@ func NewWebmentionConfig() WebmentionConfig {
 	}
 }
 
+// WebMentionsConfig configures the webmentions plugin for sending outgoing mentions.
+// This is separate from WebmentionConfig which handles receiving mentions.
+type WebMentionsConfig struct {
+	// Enabled controls whether the webmentions plugin is active (default: false)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// Outgoing enables sending webmentions for external links (default: true when enabled)
+	Outgoing bool `json:"outgoing" yaml:"outgoing" toml:"outgoing"`
+
+	// UserAgent is the User-Agent string for HTTP requests
+	UserAgent string `json:"user_agent" yaml:"user_agent" toml:"user_agent"`
+
+	// Timeout is the HTTP request timeout (e.g., "30s")
+	Timeout string `json:"timeout" yaml:"timeout" toml:"timeout"`
+
+	// CacheDir is the directory for caching sent webmentions (default: ".cache/webmentions")
+	CacheDir string `json:"cache_dir" yaml:"cache_dir" toml:"cache_dir"`
+
+	// ConcurrentRequests is the max number of concurrent webmention requests (default: 5)
+	ConcurrentRequests int `json:"concurrent_requests" yaml:"concurrent_requests" toml:"concurrent_requests"`
+}
+
+// NewWebMentionsConfig creates a new WebMentionsConfig with default values.
+func NewWebMentionsConfig() WebMentionsConfig {
+	return WebMentionsConfig{
+		Enabled:            false,
+		Outgoing:           true,
+		UserAgent:          "markata-go/1.0 (WebMention Sender; +https://github.com/WaylonWalker/markata-go)",
+		Timeout:            "30s",
+		CacheDir:           ".cache/webmentions",
+		ConcurrentRequests: 5,
+	}
+}
+
 // PostFormatsConfig configures the output formats for individual posts.
 // This controls what file formats are generated for each post.
 type PostFormatsConfig struct {
