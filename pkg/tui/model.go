@@ -3,6 +3,8 @@ package tui
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -62,6 +64,10 @@ type errMsg struct {
 	err error
 }
 
+type editorFinishedMsg struct {
+	err error
+}
+
 // NewModel creates a new TUI model
 func NewModel(app *services.App) Model {
 	filterInput := textinput.New()
@@ -110,6 +116,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		m.err = msg.err
 		return m, nil
+
+	case editorFinishedMsg:
+		// Reload posts in case content changed
+		if msg.err != nil {
+			m.err = msg.err
+		}
+		return m, m.loadPosts()
 	}
 
 	return m, nil
@@ -167,6 +180,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.view = ViewTags
 		m.cursor = 0
 		return m, m.loadTags()
+
+	case key.Matches(msg, keyMap.Edit):
+		if m.view == ViewPosts {
+			return m, m.openInEditor()
+		}
 	}
 
 	return m, nil
@@ -261,6 +279,46 @@ func (m Model) loadTags() tea.Cmd {
 	}
 }
 
+// getSelectedPost returns the currently selected post, or nil if none selected
+func (m Model) getSelectedPost() *models.Post {
+	if m.view != ViewPosts || len(m.posts) == 0 {
+		return nil
+	}
+	if m.cursor < 0 || m.cursor >= len(m.posts) {
+		return nil
+	}
+	return m.posts[m.cursor]
+}
+
+// getEditor returns the editor command to use based on environment variables
+func getEditor() string {
+	if editor := os.Getenv("EDITOR"); editor != "" {
+		return editor
+	}
+	if editor := os.Getenv("VISUAL"); editor != "" {
+		return editor
+	}
+	// Check if vim exists
+	if _, err := exec.LookPath("vim"); err == nil {
+		return "vim"
+	}
+	return "nano"
+}
+
+// openInEditor opens the selected post in the user's editor
+func (m Model) openInEditor() tea.Cmd {
+	post := m.getSelectedPost()
+	if post == nil {
+		return nil
+	}
+
+	editor := getEditor()
+	c := exec.Command(editor, post.Path)
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		return editorFinishedMsg{err}
+	})
+}
+
 // View renders the UI
 func (m Model) View() string {
 	if m.err != nil {
@@ -295,7 +353,7 @@ func (m Model) renderLayout(content string) string {
 	case ModeCommand:
 		statusBar = ":" + m.cmdInput.View()
 	default:
-		statusBar = subtleStyle.Render("j/k:move  /:filter  ::cmd  ?:help  q:quit")
+		statusBar = subtleStyle.Render("j/k:move  e:edit  /:filter  ::cmd  ?:help  q:quit")
 	}
 
 	return fmt.Sprintf("%s\n\n%s\n\n%s", header, content, statusBar)
@@ -383,6 +441,9 @@ Navigation:
   k / ↑      Move up
   Enter      Select / view details
   Esc        Cancel / go back
+
+Actions:
+  e          Edit selected post in $EDITOR
 
 Modes:
   /          Filter mode
