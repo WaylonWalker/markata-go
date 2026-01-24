@@ -200,6 +200,7 @@ func TestRenderPostDetail_WithPost(t *testing.T) {
 		},
 		width:  80,
 		height: 24,
+		theme:  DefaultTheme(),
 	}
 
 	result := m.renderPostDetail()

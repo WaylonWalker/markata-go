@@ -50,8 +50,13 @@ func runTUI(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to load posts: %w", err)
 	}
 
-	// Create and run TUI
-	model := tui.NewModel(app)
+	// Load theme from configuration
+	paletteName := tui.GetPaletteNameFromConfig(manager.Config().Extra)
+	colors := tui.LoadColors(paletteName)
+	theme := tui.NewTheme(colors)
+
+	// Create and run TUI with theme
+	model := tui.NewModelWithTheme(app, theme)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
