@@ -450,13 +450,14 @@ func (p *BlogrollPlugin) writeBlogrollPage(m *lifecycle.Manager, outputDir strin
 	// Group feeds by category
 	categories := p.groupByCategory(feeds)
 
-	// Build template context
+	// Build template context with config for theme inheritance
 	ctx := map[string]interface{}{
 		"title":       "Blogroll",
 		"description": "Blogs and feeds I follow",
-		"feeds":       feeds,
-		"categories":  categories,
+		"feeds":       p.feedsToMaps(feeds),
+		"categories":  p.categoriesToMaps(categories),
 		"feed_count":  len(feeds),
+		"config":      p.configToMap(m.Config()),
 	}
 
 	// Try to render with template engine
@@ -479,12 +480,19 @@ func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string,
 		return err
 	}
 
-	// Build template context
+	// Limit entries to 50 for the page
+	displayEntries := entries
+	if len(displayEntries) > 50 {
+		displayEntries = displayEntries[:50]
+	}
+
+	// Build template context with config for theme inheritance
 	ctx := map[string]interface{}{
 		"title":       "Reader",
 		"description": "Latest posts from blogs I follow",
-		"entries":     entries,
+		"entries":     p.entriesToMaps(displayEntries),
 		"entry_count": len(entries),
+		"config":      p.configToMap(m.Config()),
 	}
 
 	// Try to render with template engine
@@ -517,7 +525,120 @@ func (p *BlogrollPlugin) renderTemplate(m *lifecycle.Manager, templateName strin
 	return "", fmt.Errorf("template engine does not support RenderToString")
 }
 
-// renderBlogrollFallback generates a basic blogroll page.
+// feedsToMaps converts feeds to template-friendly maps.
+func (p *BlogrollPlugin) feedsToMaps(feeds []*models.ExternalFeed) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(feeds))
+	for i, feed := range feeds {
+		result[i] = map[string]interface{}{
+			"title":        feed.Title,
+			"description":  feed.Description,
+			"site_url":     feed.SiteURL,
+			"feed_url":     feed.FeedURL,
+			"image_url":    feed.ImageURL,
+			"category":     feed.Category,
+			"tags":         feed.Tags,
+			"entry_count":  feed.EntryCount,
+			"last_fetched": feed.LastFetched,
+			"last_updated": feed.LastUpdated,
+			"error":        feed.Error,
+		}
+	}
+	return result
+}
+
+// entriesToMaps converts entries to template-friendly maps.
+func (p *BlogrollPlugin) entriesToMaps(entries []*models.ExternalEntry) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(entries))
+	for i, entry := range entries {
+		result[i] = map[string]interface{}{
+			"feed_url":     entry.FeedURL,
+			"feed_title":   entry.FeedTitle,
+			"id":           entry.ID,
+			"url":          entry.URL,
+			"title":        entry.Title,
+			"description":  entry.Description,
+			"content":      entry.Content,
+			"author":       entry.Author,
+			"published":    entry.Published,
+			"updated":      entry.Updated,
+			"categories":   entry.Categories,
+			"image_url":    entry.ImageURL,
+			"reading_time": entry.ReadingTime,
+		}
+	}
+	return result
+}
+
+// categoriesToMaps converts categories to template-friendly maps.
+func (p *BlogrollPlugin) categoriesToMaps(categories []*models.BlogrollCategory) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(categories))
+	for i, cat := range categories {
+		result[i] = map[string]interface{}{
+			"name":  cat.Name,
+			"slug":  cat.Slug,
+			"feeds": p.feedsToMaps(cat.Feeds),
+		}
+	}
+	return result
+}
+
+// configToMap converts config to a template-friendly map with essential fields.
+func (p *BlogrollPlugin) configToMap(config *lifecycle.Config) map[string]interface{} {
+	if config == nil {
+		return nil
+	}
+
+	result := map[string]interface{}{
+		"output_dir": config.OutputDir,
+		"lang":       "en", // Default language
+	}
+
+	// Extract common fields from Extra
+	if config.Extra != nil {
+		if title, ok := config.Extra["title"].(string); ok {
+			result["title"] = title
+		}
+		if description, ok := config.Extra["description"].(string); ok {
+			result["description"] = description
+		}
+		if url, ok := config.Extra["url"].(string); ok {
+			result["url"] = url
+		}
+		if author, ok := config.Extra["author"].(string); ok {
+			result["author"] = author
+		}
+
+		// Convert nav items if available
+		if navItems, ok := config.Extra["nav"].([]models.NavItem); ok {
+			navMaps := make([]map[string]interface{}, len(navItems))
+			for i, nav := range navItems {
+				navMaps[i] = map[string]interface{}{
+					"label":    nav.Label,
+					"url":      nav.URL,
+					"external": nav.External,
+				}
+			}
+			result["nav"] = navMaps
+		}
+
+		// Convert search config if available
+		if search, ok := config.Extra["search"].(models.SearchConfig); ok {
+			searchEnabled := true
+			if search.Enabled != nil {
+				searchEnabled = *search.Enabled
+			}
+			result["search"] = map[string]interface{}{
+				"enabled":     searchEnabled,
+				"position":    search.Position,
+				"placeholder": search.Placeholder,
+			}
+		}
+	}
+
+	return result
+}
+
+// renderBlogrollFallback generates a basic blogroll page that uses theme CSS if available.
 func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, categories []*models.BlogrollCategory) string {
 	var sb strings.Builder
 
@@ -527,96 +648,56 @@ func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, ca
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Blogroll</title>
+  <!-- Theme CSS - uses site's configured palette if available -->
+  <link rel="stylesheet" href="/css/variables.css">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/components.css">
   <style>
+    /* Fallback styles if theme CSS is not available */
     :root {
-      --bg: #ffffff;
-      --text: #1a1a1a;
-      --muted: #666666;
-      --border: #e0e0e0;
-      --card-bg: #f8f9fa;
+      --color-background: #ffffff;
+      --color-text: #1a1a1a;
+      --color-text-muted: #666666;
+      --color-border: #e0e0e0;
+      --color-surface: #f8f9fa;
+      --color-primary: #3b82f6;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #1a1a1a;
-        --text: #f0f0f0;
-        --muted: #999999;
-        --border: #333333;
-        --card-bg: #2a2a2a;
+        --color-background: #1a1a1a;
+        --color-text: #f0f0f0;
+        --color-text-muted: #999999;
+        --color-border: #333333;
+        --color-surface: #2a2a2a;
+        --color-primary: #60a5fa;
       }
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 2rem;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-    }
-    h1 { margin-bottom: 0.5rem; }
-    .subtitle { color: var(--muted); margin-bottom: 2rem; }
-    .category { margin-bottom: 2rem; }
-    .category h2 { border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
-    .feed-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1rem;
-    }
-    .feed-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1rem;
-    }
-    .feed-card h3 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1rem;
-    }
-    .feed-card h3 a {
-      color: var(--text);
-      text-decoration: none;
-    }
-    .feed-card h3 a:hover { text-decoration: underline; }
-    .feed-card p {
-      margin: 0;
-      font-size: 0.875rem;
-      color: var(--muted);
-    }
-    .feed-meta {
-      margin-top: 0.5rem;
-      font-size: 0.75rem;
-      color: var(--muted);
-    }
-    .nav-links {
-      margin-bottom: 1rem;
-    }
-    .nav-links a {
-      color: var(--text);
-      margin-right: 1rem;
     }
   </style>
 </head>
 <body>
-  <nav class="nav-links">
+  <nav class="blogroll-nav" style="justify-content: flex-start; padding: 1rem 0;">
     <a href="/">Home</a>
     <a href="/blogroll/">Blogroll</a>
     <a href="/reader/">Reader</a>
   </nav>
-  <h1>Blogroll</h1>
-  <p class="subtitle">`)
+  <div class="blogroll-page">
+    <header class="blogroll-header" style="text-align: left;">
+      <h1>Blogroll</h1>
+      <p class="blogroll-subtitle">`)
 	sb.WriteString(fmt.Sprintf("%d blogs and feeds I follow", len(feeds)))
 	sb.WriteString(`</p>
+    </header>
 `)
 
 	for _, cat := range categories {
-		sb.WriteString(fmt.Sprintf(`  <section class="category">
-    <h2>%s</h2>
-    <div class="feed-grid">
+		sb.WriteString(fmt.Sprintf(`    <section class="blogroll-category">
+      <h2>%s</h2>
+      <div class="blogroll-grid">
 `, html.EscapeString(cat.Name)))
 
 		for _, feed := range cat.Feeds {
-			sb.WriteString(`      <div class="feed-card">
-        <h3>`)
+			sb.WriteString(`        <article class="blogroll-card">
+          <h3 class="blogroll-card-title">`)
 			if feed.SiteURL != "" {
 				sb.WriteString(fmt.Sprintf(`<a href=%q target="_blank" rel="noopener">%s</a>`,
 					feed.SiteURL,
@@ -627,26 +708,29 @@ func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, ca
 			sb.WriteString(`</h3>
 `)
 			if feed.Description != "" {
-				sb.WriteString(fmt.Sprintf(`        <p>%s</p>
+				sb.WriteString(fmt.Sprintf(`          <p class="blogroll-card-description">%s</p>
 `, html.EscapeString(blogrollTruncateString(feed.Description, 150))))
 			}
-			sb.WriteString(fmt.Sprintf(`        <div class="feed-meta">%d posts</div>
-      </div>
+			sb.WriteString(fmt.Sprintf(`          <footer class="blogroll-card-meta">
+            <span class="blogroll-card-count">%d posts</span>
+          </footer>
+        </article>
 `, feed.EntryCount))
 		}
 
-		sb.WriteString(`    </div>
-  </section>
+		sb.WriteString(`      </div>
+    </section>
 `)
 	}
 
-	sb.WriteString(`</body>
+	sb.WriteString(`  </div>
+</body>
 </html>`)
 
 	return sb.String()
 }
 
-// renderReaderFallback generates a basic reader page.
+// renderReaderFallback generates a basic reader page that uses theme CSS if available.
 func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry) string {
 	var sb strings.Builder
 
@@ -656,79 +740,44 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry) s
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reader</title>
+  <!-- Theme CSS - uses site's configured palette if available -->
+  <link rel="stylesheet" href="/css/variables.css">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/components.css">
   <style>
+    /* Fallback styles if theme CSS is not available */
     :root {
-      --bg: #ffffff;
-      --text: #1a1a1a;
-      --muted: #666666;
-      --border: #e0e0e0;
-      --card-bg: #f8f9fa;
-      --link: #0066cc;
+      --color-background: #ffffff;
+      --color-text: #1a1a1a;
+      --color-text-muted: #666666;
+      --color-border: #e0e0e0;
+      --color-surface: #f8f9fa;
+      --color-primary: #3b82f6;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #1a1a1a;
-        --text: #f0f0f0;
-        --muted: #999999;
-        --border: #333333;
-        --card-bg: #2a2a2a;
-        --link: #66b3ff;
+        --color-background: #1a1a1a;
+        --color-text: #f0f0f0;
+        --color-text-muted: #999999;
+        --color-border: #333333;
+        --color-surface: #2a2a2a;
+        --color-primary: #60a5fa;
       }
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 2rem;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-    }
-    h1 { margin-bottom: 0.5rem; }
-    .subtitle { color: var(--muted); margin-bottom: 2rem; }
-    .entry-list { list-style: none; padding: 0; margin: 0; }
-    .entry {
-      border-bottom: 1px solid var(--border);
-      padding: 1.5rem 0;
-    }
-    .entry:last-child { border-bottom: none; }
-    .entry h2 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.25rem;
-    }
-    .entry h2 a {
-      color: var(--text);
-      text-decoration: none;
-    }
-    .entry h2 a:hover { text-decoration: underline; }
-    .entry-meta {
-      font-size: 0.875rem;
-      color: var(--muted);
-      margin-bottom: 0.5rem;
-    }
-    .entry-meta a { color: var(--link); }
-    .entry-description {
-      color: var(--text);
-      font-size: 0.9375rem;
-    }
-    .nav-links {
-      margin-bottom: 1rem;
-    }
-    .nav-links a {
-      color: var(--text);
-      margin-right: 1rem;
     }
   </style>
 </head>
 <body>
-  <nav class="nav-links">
+  <nav class="reader-nav" style="justify-content: flex-start; padding: 1rem 0;">
     <a href="/">Home</a>
     <a href="/blogroll/">Blogroll</a>
     <a href="/reader/">Reader</a>
   </nav>
-  <h1>Reader</h1>
-  <p class="subtitle">Latest posts from blogs I follow</p>
-  <ul class="entry-list">
+  <div class="reader-page">
+    <header class="reader-header" style="text-align: left;">
+      <h1>Reader</h1>
+      <p class="reader-subtitle">Latest posts from blogs I follow</p>
+    </header>
+    <ul class="reader-entries">
 `)
 
 	// Limit to 50 entries for the page
@@ -738,37 +787,40 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry) s
 	}
 
 	for _, entry := range displayEntries {
-		sb.WriteString(`    <li class="entry">
-      <h2><a href="`)
+		sb.WriteString(`      <li class="reader-entry">
+        <article>
+          <h2 class="reader-entry-title"><a href="`)
 		sb.WriteString(html.EscapeString(entry.URL))
 		sb.WriteString(`" target="_blank" rel="noopener">`)
 		sb.WriteString(html.EscapeString(entry.Title))
 		sb.WriteString(`</a></h2>
-      <div class="entry-meta">
-        <span class="source">`)
+          <div class="reader-entry-meta">
+            <span class="reader-entry-source">`)
 		sb.WriteString(html.EscapeString(entry.FeedTitle))
 		sb.WriteString(`</span>`)
 
 		if entry.Published != nil {
-			sb.WriteString(` &middot; <time>`)
+			sb.WriteString(`<time>`)
 			sb.WriteString(entry.Published.Format("Jan 2, 2006"))
 			sb.WriteString(`</time>`)
 		}
 
 		sb.WriteString(`
-      </div>
+          </div>
 `)
 		if entry.Description != "" {
-			sb.WriteString(`      <p class="entry-description">`)
+			sb.WriteString(`          <p class="reader-entry-description">`)
 			sb.WriteString(html.EscapeString(blogrollTruncateString(blogrollStripHTML(entry.Description), 200)))
 			sb.WriteString(`</p>
 `)
 		}
-		sb.WriteString(`    </li>
+		sb.WriteString(`        </article>
+      </li>
 `)
 	}
 
-	sb.WriteString(`  </ul>
+	sb.WriteString(`    </ul>
+  </div>
 </body>
 </html>`)
 
