@@ -296,12 +296,12 @@ func TestBuildAssetURL(t *testing.T) {
 		{
 			"v1.4.0",
 			"x86_64-apple-darwin",
-			"https://github.com/CloudCannon/pagefind/releases/download/v1.4.0/pagefind-v1.4.0-x86_64-apple-darwin.tar.gz",
+			"https://github.com/Pagefind/pagefind/releases/download/v1.4.0/pagefind-v1.4.0-x86_64-apple-darwin.tar.gz",
 		},
 		{
 			"v1.3.0",
 			"x86_64-unknown-linux-musl",
-			"https://github.com/CloudCannon/pagefind/releases/download/v1.3.0/pagefind-v1.3.0-x86_64-unknown-linux-musl.tar.gz",
+			"https://github.com/Pagefind/pagefind/releases/download/v1.3.0/pagefind-v1.3.0-x86_64-unknown-linux-musl.tar.gz",
 		},
 	}
 
@@ -324,7 +324,7 @@ func TestBuildChecksumURL(t *testing.T) {
 		{
 			"v1.4.0",
 			"x86_64-apple-darwin",
-			"https://github.com/CloudCannon/pagefind/releases/download/v1.4.0/pagefind-v1.4.0-x86_64-apple-darwin.tar.gz.sha256",
+			"https://github.com/Pagefind/pagefind/releases/download/v1.4.0/pagefind-v1.4.0-x86_64-apple-darwin.tar.gz.sha256",
 		},
 	}
 

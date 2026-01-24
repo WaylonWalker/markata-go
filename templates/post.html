@@ -2,9 +2,22 @@
 
 {% block content %}
 <div class="content-wrapper{% if config.components.doc_sidebar.enabled and post.toc %} content-wrapper--with-sidebar content-wrapper--sidebar-{{ config.components.doc_sidebar.position | default:'right' }}{% endif %}">
-    <article>
+    <article data-pagefind-body>
         <header>
-            <h1>{{ post.title }}</h1>
+            <h1 data-pagefind-meta="title">{{ post.title }}</h1>
+            {% if post.description %}
+            <p class="visually-hidden" data-pagefind-meta="excerpt">{{ post.description }}</p>
+            {% endif %}
+            {# Pagefind image metadata for search thumbnails #}
+            {% if post.cover_image %}
+            <meta data-pagefind-meta="image[content]" content="{{ post.cover_image }}">
+            {% elif post.Extra.image %}
+            <meta data-pagefind-meta="image[content]" content="{{ post.Extra.image }}">
+            {% elif post.Extra.thumbnail %}
+            <meta data-pagefind-meta="image[content]" content="{{ post.Extra.thumbnail }}">
+            {% elif config.seo.default_image %}
+            <meta data-pagefind-meta="image[content]" content="{{ config.seo.default_image }}">
+            {% endif %}
             {% if post.date %}
             <time datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
             {% endif %}
