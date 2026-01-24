@@ -158,6 +158,15 @@ Common issues and solutions:
 - Integration debugging
 - Migration from other tools
 
+### [Editor Integration](editor-integration/)
+
+Use lint output with your editor's quickfix features:
+
+- Vim/Neovim quickfix integration
+- VS Code problem matchers
+- Emacs compile-mode
+- Sublime Text build systems
+
 ---
 
 ## Recommended Tool Stack
