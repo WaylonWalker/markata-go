@@ -599,3 +599,162 @@ func TestGetFilterMigrations(t *testing.T) {
 		}
 	}
 }
+
+func TestConfigFromMap_NestedDescriptionTable(t *testing.T) {
+	// Test case for issue #203: nested description tables should not be migrated
+	// as nested TOML tables, since markata-go expects description to be a string
+	input := map[string]interface{}{
+		"markata": map[string]interface{}{
+			"title": "Test Site",
+			"description": map[string]interface{}{
+				"description": map[string]interface{}{
+					"len": 160,
+				},
+				"long_description": map[string]interface{}{
+					"len": 250,
+				},
+			},
+		},
+	}
+
+	result, err := ConfigFromMap(input)
+	if err != nil {
+		t.Fatalf("ConfigFromMap() error = %v", err)
+	}
+
+	mg, ok := result.MigratedConfig["markata-go"].(map[string]interface{})
+	if !ok {
+		t.Fatal("markata-go section not found")
+	}
+
+	// description should NOT be present in the migrated config as a nested table
+	if desc, exists := mg["description"]; exists {
+		// If it exists, it should not be a map
+		if _, isMap := desc.(map[string]interface{}); isMap {
+			t.Error("description should not be a nested table in migrated config")
+		}
+	}
+
+	// Should have a warning about the nested table
+	foundWarning := false
+	for _, w := range result.Warnings {
+		if w.Path == "description" && w.Category == "config" {
+			foundWarning = true
+			break
+		}
+	}
+	if !foundWarning {
+		t.Error("expected warning about nested description table")
+	}
+
+	// Should have a change record for the removal
+	foundChange := false
+	for _, c := range result.Changes {
+		if c.Path == "description" && c.Type == "remove" {
+			foundChange = true
+			break
+		}
+	}
+	if !foundChange {
+		t.Error("expected change record for removed nested table")
+	}
+}
+
+func TestConfigFromMap_StringFieldsNotNested(t *testing.T) {
+	// Test that all string-only fields are handled correctly when given nested tables
+	tests := []struct {
+		name  string
+		field string
+	}{
+		{"description", "description"},
+		{"title", "title"},
+		{"author", "author"},
+		{"url", "url"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := map[string]interface{}{
+				"markata": map[string]interface{}{
+					tt.field: map[string]interface{}{
+						"nested_key": "nested_value",
+					},
+				},
+			}
+
+			result, err := ConfigFromMap(input)
+			if err != nil {
+				t.Fatalf("ConfigFromMap() error = %v", err)
+			}
+
+			mg, ok := result.MigratedConfig["markata-go"].(map[string]interface{})
+			if !ok {
+				t.Fatal("markata-go section not found")
+			}
+
+			// Field should NOT be present as a nested table
+			if val, exists := mg[tt.field]; exists {
+				if _, isMap := val.(map[string]interface{}); isMap {
+					t.Errorf("%s should not be a nested table in migrated config", tt.field)
+				}
+			}
+
+			// Should have a warning
+			foundWarning := false
+			for _, w := range result.Warnings {
+				if w.Path == tt.field {
+					foundWarning = true
+					break
+				}
+			}
+			if !foundWarning {
+				t.Errorf("expected warning about nested %s table", tt.field)
+			}
+		})
+	}
+}
+
+func TestConfigFromMap_StringFieldsAsStrings(t *testing.T) {
+	// Test that string fields work correctly when given string values
+	input := map[string]interface{}{
+		"markata": map[string]interface{}{
+			"title":       "My Site",
+			"description": "A great site",
+			"author":      "John Doe",
+			"url":         "https://example.com",
+		},
+	}
+
+	result, err := ConfigFromMap(input)
+	if err != nil {
+		t.Fatalf("ConfigFromMap() error = %v", err)
+	}
+
+	mg, ok := result.MigratedConfig["markata-go"].(map[string]interface{})
+	if !ok {
+		t.Fatal("markata-go section not found")
+	}
+
+	// All fields should be strings
+	expectedFields := map[string]string{
+		"title":       "My Site",
+		"description": "A great site",
+		"author":      "John Doe",
+		"url":         "https://example.com",
+	}
+
+	for field, expected := range expectedFields {
+		if mg[field] != expected {
+			t.Errorf("%s = %v, want %v", field, mg[field], expected)
+		}
+	}
+
+	// Should not have warnings about these fields
+	for _, w := range result.Warnings {
+		for field := range expectedFields {
+			if w.Path == field {
+				t.Errorf("unexpected warning for %s: %s", field, w.Message)
+			}
+		}
+	}
+}
