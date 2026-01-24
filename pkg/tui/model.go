@@ -104,7 +104,7 @@ var sortOptions = []sortOption{
 // NewModel creates a new TUI model
 func NewModel(app *services.App) Model {
 	filterInput := textinput.New()
-	filterInput.Placeholder = "Filter posts..."
+	filterInput.Placeholder = "e.g., published == True, 'python' in tags"
 	filterInput.CharLimit = 100
 
 	cmdInput := textinput.New()
@@ -838,8 +838,25 @@ Actions:
   s          Sort menu (Date, Title, Word Count, Path)
 
 Modes:
-  /          Filter mode
+  /          Filter mode (filter posts with expressions)
   :          Command mode
+
+Filter Syntax:
+  Press / to enter filter mode. Filter expressions support:
+
+  Comparison:    published == True, date >= '2024-01-01'
+  Membership:    'python' in tags, 'draft' not in tags
+  Boolean:       published == True and featured == True
+                 published == False or 'wip' in tags
+  Strings:       title == 'My Post', slug != 'about'
+
+  Fields: title, slug, date, published, tags, description
+
+  Examples:
+    published == True
+    'python' in tags
+    date >= '2024-01-01' and published == True
+    'tutorial' in tags and published == True
 
 Sort Menu:
   j/k/↑/↓    Navigate sort options
