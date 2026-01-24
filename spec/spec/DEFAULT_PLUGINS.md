@@ -106,14 +106,13 @@ exclude_patterns = ["**/draft-*", "**/wip-*"]
 4. Deduplicate (same file from multiple patterns)
 5. Store in `core.files`
 
-**Hook signature:**
-```python
-@hook_impl
-def glob(core):
-    for pattern in core.config.glob.glob_patterns:
-        for path in Path().glob(pattern):
-            if should_include(path, core.config.glob):
-                core.files.append(path)
+**Hook behavior:**
+
+```
+for pattern in config.glob.glob_patterns:
+    for path in glob(pattern):
+        if should_include(path, config.glob):
+            core.files.append(path)
 ```
 
 ---
@@ -146,22 +145,22 @@ def glob(core):
 | Invalid YAML | Skip file, log error with path + line |
 | Invalid encoding | Try fallback encodings, then skip |
 
-**Hook signature:**
-```python
-@hook_impl
-def load(core):
-    for path in core.files:
-        try:
-            raw = path.read_text(encoding='utf-8')
-            frontmatter, content = parse_frontmatter(raw)
-            post = core.Post(
-                path=path,
-                content=content,
-                **frontmatter
-            )
-            core.posts.append(post)
-        except Exception as e:
-            logger.warning(f"Failed to load {path}: {e}")
+**Hook behavior:**
+
+```
+for path in core.files:
+    try:
+        raw = read_text(path, encoding='utf-8')
+        frontmatter, content = parse_frontmatter(raw)
+        post = Post(
+            path=path,
+            content=content,
+            **frontmatter
+        )
+        core.posts.append(post)
+    except Exception as e:
+        log_warning("Failed to load {path}: {e}")
+```
 ```
 
 ---
@@ -192,16 +191,15 @@ fallback = ""                  # If content too short
 5. Add ellipsis if truncated
 6. Set `post.description`
 
-**Hook signature:**
-```python
-@hook_impl
-def pre_render(core):
-    config = core.config.auto_description
-    if not config.enabled:
-        return
+**Hook behavior:**
 
-    for post in core.filter("description == None or description == ''"):
-        post.description = generate_description(post.content, config)
+```
+config = core.config.auto_description
+if not config.enabled:
+    return
+
+for post in core.filter("description == None or description == ''"):
+    post.description = generate_description(post.content, config)
 ```
 
 ---
@@ -245,25 +243,24 @@ jinja: true
 {% endfor %}
 ```
 
-**Hook signature:**
-```python
-@hook_impl
-def pre_render(core):
-    config = core.config.jinja_md
-    if not config.enabled:
-        return
+**Hook behavior:**
 
-    filter_expr = "jinja == True" if not config.default_enabled else "jinja != False"
+```
+config = core.config.jinja_md
+if not config.enabled:
+    return
 
-    for post in core.filter(filter_expr):
-        template = core.jinja_env.from_string(post.content)
-        post.content = template.render(
-            post=post,
-            core=core,
-            config=core.config,
-            today=date.today(),
-            now=datetime.now()
-        )
+filter_expr = "jinja == True" if not config.default_enabled else "jinja != False"
+
+for post in core.filter(filter_expr):
+    template = template_engine.from_string(post.content)
+    post.content = template.render(
+        post=post,
+        core=core,
+        config=core.config,
+        today=today(),
+        now=now()
+    )
 ```
 
 ---
@@ -304,12 +301,11 @@ warn_only = false              # If true, warn instead of fail
 | Homepage | `{output_dir}/index.html` |
 
 **PathConflict structure:**
-```go
-type PathConflict struct {
-    OutputPath string   // The conflicting output path
-    Sources    []string // Content sources (e.g., "post:path/to/file.md", "feed:blog")
-}
-```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `output_path` | string | The conflicting output path |
+| `sources` | list of strings | Content sources (e.g., "post:path/to/file.md", "feed:blog") |
 
 **Error message format:**
 ```
@@ -326,55 +322,32 @@ detected 2 output path conflict(s):
 | Duplicate post slugs | Two posts with same `slug` frontmatter | Use unique slugs |
 | Empty slug conflicts | Homepage feed and post with `slug: ""` | Only one can be the homepage |
 
-**Hook signature (Go):**
-```go
-func (p *OverwriteCheckPlugin) Collect(m *lifecycle.Manager) error {
-    pathSources := make(map[string][]string)
+**Hook behavior:**
 
-    // Check post output paths
-    for _, post := range m.Posts() {
-        if post.Skip || post.Draft {
-            continue
-        }
-        outputPath := filepath.Join(outputDir, post.Slug, "index.html")
-        pathSources[outputPath] = append(pathSources[outputPath],
-            fmt.Sprintf("post:%s", post.Path))
-    }
+```
+for post in posts where not (skip or draft):
+    output_path = join(output_dir, post.slug, "index.html")
+    add to path_sources[output_path]: "post:{post.path}"
 
-    // Check feed output paths
-    for _, fc := range feedConfigs {
-        for _, path := range getFeedOutputPaths(outputDir, fc) {
-            pathSources[path] = append(pathSources[path],
-                fmt.Sprintf("feed:%s", fc.Slug))
-        }
-    }
+for feed_config in feed_configs:
+    for path in get_feed_output_paths(output_dir, feed_config):
+        add to path_sources[path]: "feed:{feed_config.slug}"
 
-    // Detect conflicts
-    var conflicts []PathConflict
-    for path, sources := range pathSources {
-        if len(sources) > 1 {
-            conflicts = append(conflicts, PathConflict{
-                OutputPath: path,
-                Sources:    sources,
-            })
-        }
-    }
+conflicts = []
+for path, sources in path_sources:
+    if length(sources) > 1:
+        add to conflicts: PathConflict(output_path=path, sources=sources)
 
-    if len(conflicts) > 0 && !p.warnOnly {
-        return fmt.Errorf("detected %d output path conflict(s)...", len(conflicts))
-    }
-    return nil
-}
+if length(conflicts) > 0 and not warn_only:
+    return error "detected N output path conflict(s)..."
 ```
 
-**Interface compliance:**
-```go
-var (
-    _ lifecycle.Plugin         = (*OverwriteCheckPlugin)(nil)
-    _ lifecycle.CollectPlugin  = (*OverwriteCheckPlugin)(nil)
-    _ lifecycle.PriorityPlugin = (*OverwriteCheckPlugin)(nil)
-)
-```
+**Interface requirements:**
+
+The plugin MUST implement:
+- `Plugin` - Basic plugin interface with `Name()` method
+- `CollectPlugin` - To run during the collect stage
+- `PriorityPlugin` - To ensure early execution before other collect plugins
 
 ---
 
@@ -413,22 +386,21 @@ prevnext_feed: blog           # Explicit feed for this post's navigation (with s
 **Post fields added:**
 | Field | Type | Description |
 |-------|------|-------------|
-| `Prev` | *Post | Previous post in sequence (nil if first) |
-| `Next` | *Post | Next post in sequence (nil if last) |
+| `Prev` | optional Post | Previous post in sequence (null if first) |
+| `Next` | optional Post | Next post in sequence (null if last) |
 | `PrevNextFeed` | string | Feed slug used for navigation |
-| `PrevNextContext` | *PrevNextContext | Full navigation context |
+| `PrevNextContext` | optional PrevNextContext | Full navigation context |
 
 **PrevNextContext structure:**
-```go
-type PrevNextContext struct {
-    FeedSlug  string  // Feed slug
-    FeedTitle string  // Feed title
-    Position  int     // Position in sequence (1-indexed)
-    Total     int     // Total posts in sequence
-    Prev      *Post   // Previous post (nil if first)
-    Next      *Post   // Next post (nil if last)
-}
-```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `feed_slug` | string | Feed slug |
+| `feed_title` | string | Feed title |
+| `position` | integer | Position in sequence (1-indexed) |
+| `total` | integer | Total posts in sequence |
+| `prev` | optional Post | Previous post (null if first) |
+| `next` | optional Post | Next post (null if last) |
 
 **Behavior:**
 
@@ -441,47 +413,38 @@ type PrevNextContext struct {
 3. **Find post's position in the feed's posts list**
 4. **Set Prev/Next based on position**
 
-**Hook signature (Go):**
-```go
-func (p *PrevNextPlugin) Collect(m *lifecycle.Manager) error {
-    config := getPrevNextConfig(m.Config())
-    if !config.Enabled {
-        return nil
-    }
+**Hook behavior:**
 
-    feeds := m.Feeds()
-    postToFeeds := buildPostToFeedsMap(feeds)
+```
+config = get_prevnext_config(manager.config)
+if not config.enabled:
+    return
 
-    for _, post := range m.Posts() {
-        feed := p.resolveFeed(post, config, feeds, postToFeeds)
-        if feed == nil {
-            continue
-        }
+feeds = manager.feeds()
+post_to_feeds = build_post_to_feeds_map(feeds)
 
-        // Find position and set prev/next
-        for i, feedPost := range feed.Posts {
-            if feedPost.Slug == post.Slug {
-                if i > 0 {
-                    post.Prev = feed.Posts[i-1]
-                }
-                if i < len(feed.Posts)-1 {
-                    post.Next = feed.Posts[i+1]
-                }
-                post.PrevNextFeed = feed.Name
-                post.PrevNextContext = &models.PrevNextContext{
-                    FeedSlug:  feed.Name,
-                    FeedTitle: feed.Title,
-                    Position:  i + 1,
-                    Total:     len(feed.Posts),
-                    Prev:      post.Prev,
-                    Next:      post.Next,
-                }
-                break
-            }
-        }
-    }
-    return nil
-}
+for post in manager.posts():
+    feed = resolve_feed(post, config, feeds, post_to_feeds)
+    if feed is null:
+        continue
+
+    # Find position and set prev/next
+    for i, feed_post in enumerate(feed.posts):
+        if feed_post.slug == post.slug:
+            if i > 0:
+                post.prev = feed.posts[i-1]
+            if i < length(feed.posts) - 1:
+                post.next = feed.posts[i+1]
+            post.prev_next_feed = feed.name
+            post.prev_next_context = PrevNextContext(
+                feed_slug=feed.name,
+                feed_title=feed.title,
+                position=i + 1,
+                total=length(feed.posts),
+                prev=post.prev,
+                next=post.next
+            )
+            break
 ```
 
 **Template usage:**
@@ -604,12 +567,11 @@ guess_language = true
 **Output:**
 Sets `post.article_html` to rendered HTML (content only, no template wrapper).
 
-**Hook signature:**
-```python
-@hook_impl
-def render(core):
-    for post in core.filter("not skip"):
-        post.article_html = core.markdown_parser.render(post.content)
+**Hook behavior:**
+
+```
+for post in core.filter("not skip"):
+    post.article_html = markdown_parser.render(post.content)
 ```
 
 ---
@@ -639,23 +601,24 @@ With custom text: [[other-post-slug|Click here]]
 2. If found: `<a href="{post.href}">{text or post.title}</a>`
 3. If not found: Leave as `[[link]]` or wrap with broken-link class
 
-**Hook signature:**
-```python
-@hook_impl(trylast=True)  # Run after render_markdown
-def render(core):
-    config = core.config.wikilinks
-    if not config.enabled:
-        return
+**Hook behavior:**
 
-    # Build slug -> post lookup
-    slug_map = {p.slug: p for p in core.posts}
+This plugin runs after `render_markdown` due to late priority.
 
-    for post in core.filter("not skip"):
-        post.article_html = resolve_wikilinks(
-            post.article_html,
-            slug_map,
-            config
-        )
+```
+config = core.config.wikilinks
+if not config.enabled:
+    return
+
+# Build slug -> post lookup
+slug_map = {p.slug: p for p in core.posts}
+
+for post in core.filter("not skip"):
+    post.article_html = resolve_wikilinks(
+        post.article_html,
+        slug_map,
+        config
+    )
 ```
 
 ---
@@ -693,16 +656,15 @@ class = "heading-anchor"       # CSS class
 </h2>
 ```
 
-**Hook signature:**
-```python
-@hook_impl
-def post_render(core):
-    config = core.config.heading_anchors
-    if not config.enabled:
-        return
+**Hook behavior:**
 
-    for post in core.filter("not skip"):
-        post.article_html = add_heading_anchors(post.article_html, config)
+```
+config = core.config.heading_anchors
+if not config.enabled:
+    return
+
+for post in core.filter("not skip"):
+    post.article_html = add_heading_anchors(post.article_html, config)
 ```
 
 ---
@@ -773,15 +735,13 @@ preload = "metadata"
 | `.mov` | `video/quicktime` |
 | `.m4v` | `video/x-m4v` |
 
-**Interface compliance:**
-```go
-var (
-    _ lifecycle.Plugin          = (*MDVideoPlugin)(nil)
-    _ lifecycle.ConfigurePlugin = (*MDVideoPlugin)(nil)
-    _ lifecycle.RenderPlugin    = (*MDVideoPlugin)(nil)
-    _ lifecycle.PriorityPlugin  = (*MDVideoPlugin)(nil)
-)
-```
+**Interface requirements:**
+
+The plugin MUST implement:
+- `Plugin` - Basic plugin interface with `Name()` method
+- `ConfigurePlugin` - To read configuration
+- `RenderPlugin` - To process posts during the render stage
+- `PriorityPlugin` - To ensure late execution after markdown rendering
 
 ---
 
@@ -804,16 +764,16 @@ min_headings = 3               # Only generate if >= 3 headings
 | Field | Type | Description |
 |-------|------|-------------|
 | `toc` | string | HTML table of contents |
-| `toc_items` | List[TocItem] | Structured TOC data |
+| `toc_items` | list of TocItem | Structured TOC data |
 
 **TocItem structure:**
-```python
-class TocItem:
-    level: int      # Heading level (2-6)
-    id: str         # Heading ID
-    text: str       # Heading text
-    children: List[TocItem]
-```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `level` | integer | Heading level (2-6) |
+| `id` | string | Heading ID |
+| `text` | string | Heading text |
+| `children` | list of TocItem | Nested headings |
 
 **Example output:**
 ```html
@@ -858,24 +818,24 @@ include_index = false          # Exclude index page from inlinks by default
 **Post fields added:**
 | Field | Type | Description |
 |-------|------|-------------|
-| `hrefs` | List[str] | Raw href values from all links in post |
-| `inlinks` | List[Link] | Links pointing TO this post from other posts |
-| `outlinks` | List[Link] | Links FROM this post to other pages |
+| `hrefs` | list of strings | Raw href values from all links in post |
+| `inlinks` | list of Link | Links pointing TO this post from other posts |
+| `outlinks` | list of Link | Links FROM this post to other pages |
 
 **Link structure:**
-```python
-class Link:
-    source_url: str            # Absolute URL of the source post
-    source_post: Post          # Reference to source post object
-    target_post: Post | None   # Reference to target post (None if external)
-    raw_target: str            # Original href value
-    target_url: str            # Resolved absolute URL
-    target_domain: str | None  # Domain extracted from target_url
-    is_internal: bool          # True if link points to same site
-    is_self: bool              # True if link points to same post
-    source_text: str           # Cleaned link text from source
-    target_text: str           # Cleaned link text from target
-```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `source_url` | string | Absolute URL of the source post |
+| `source_post` | Post | Reference to source post object |
+| `target_post` | optional Post | Reference to target post (null if external) |
+| `raw_target` | string | Original href value |
+| `target_url` | string | Resolved absolute URL |
+| `target_domain` | optional string | Domain extracted from target_url |
+| `is_internal` | boolean | True if link points to same site |
+| `is_self` | boolean | True if link points to same post |
+| `source_text` | string | Cleaned link text from source |
+| `target_text` | string | Cleaned link text from target |
 
 **Behavior:**
 1. Parse `article_html` for all `<a href="...">` elements
@@ -897,61 +857,59 @@ Results are cached per-post based on hash of:
 - Post title  
 - Post content
 
-**Hook signature:**
-```python
-@hook_impl
-@register_attr("links")
-def render(core):
-    links = []
-    site_domain = urlparse(str(core.config.url)).netloc
+**Hook behavior:**
 
-    # Build slug -> post lookup
-    post_by_slug = {p.slug: p for p in core.posts}
+```
+links = []
+site_domain = parse_url(config.url).host
 
-    for post in core.posts:
-        base_url = urljoin(str(core.config.url), post.slug)
-        soup = BeautifulSoup(post.article_html, "html.parser")
+# Build slug -> post lookup
+post_by_slug = {p.slug: p for p in posts}
 
-        # Optionally limit to post-body section
-        post_body = soup.find(id="post-body")
-        if post_body:
-            soup = post_body
+for post in posts:
+    base_url = url_join(config.url, post.slug)
+    soup = parse_html(post.article_html)
 
-        post.hrefs = [a["href"] for a in soup.find_all("a", href=True)]
+    # Optionally limit to post-body section
+    post_body = soup.find_by_id("post-body")
+    if post_body:
+        soup = post_body
 
-        for href in post.hrefs:
-            target_url = urljoin(base_url, href)
-            domain = urlparse(target_url).netloc
-            is_internal = domain == site_domain
+    post.hrefs = [a.href for a in soup.find_all("a", has_href=true)]
 
-            target_post = None
-            if is_internal:
-                target_slug = urlparse(target_url).path.strip("/")
-                target_post = post_by_slug.get(target_slug)
+    for href in post.hrefs:
+        target_url = url_join(base_url, href)
+        domain = parse_url(target_url).host
+        is_internal = (domain == site_domain)
 
-            links.append(Link(
-                source_url=base_url,
-                source_post=post,
-                target_post=target_post,
-                raw_target=href,
-                target_url=target_url,
-                target_domain=domain,
-                is_internal=is_internal,
-                is_self=target_post and post.slug == target_post.slug
-            ))
+        target_post = null
+        if is_internal:
+            target_slug = parse_url(target_url).path.strip("/")
+            target_post = post_by_slug.get(target_slug)
 
-    core.links = links
+        links.append(Link(
+            source_url=base_url,
+            source_post=post,
+            target_post=target_post,
+            raw_target=href,
+            target_url=target_url,
+            target_domain=domain,
+            is_internal=is_internal,
+            is_self=(target_post and post.slug == target_post.slug)
+        ))
 
-    # Assign inlinks/outlinks to each post
-    for post in core.posts:
-        post.inlinks = [
-            link for link in links
-            if link.target_post == post and not link.is_self
-        ]
-        post.outlinks = [
-            link for link in links
-            if link.source_post == post and not link.is_self
-        ]
+core.links = links
+
+# Assign inlinks/outlinks to each post
+for post in posts:
+    post.inlinks = [
+        link for link in links
+        if link.target_post == post and not link.is_self
+    ]
+    post.outlinks = [
+        link for link in links
+        if link.source_post == post and not link.is_self
+    ]
 ```
 
 **Template usage - Basic inlinks/outlinks:**
@@ -1046,25 +1004,13 @@ graph LR
 ```
 
 **Utility functions:**
-```python
-from collections import Counter
 
-def count_links(links: List[Link]) -> Counter:
-    """Count target_url frequency across all links."""
-    return Counter(link.target_url for link in links)
-
-def count_domains(links: List[Link]) -> Counter:
-    """Count target_domain frequency across all links."""
-    return Counter(link.target_domain for link in links if link.target_domain)
-
-def get_external_links(links: List[Link]) -> List[Link]:
-    """Filter to only external links."""
-    return [link for link in links if not link.is_internal]
-
-def get_broken_links(links: List[Link]) -> List[Link]:
-    """Find internal links that don't resolve to a post."""
-    return [link for link in links if link.is_internal and link.target_post is None]
-```
+| Function | Description |
+|----------|-------------|
+| `count_links(links)` | Count target_url frequency across all links |
+| `count_domains(links)` | Count target_domain frequency across all links |
+| `get_external_links(links)` | Filter to only external links |
+| `get_broken_links(links)` | Find internal links that don't resolve to a post |
 
 ---
 
@@ -1087,22 +1033,21 @@ See [FEEDS.md](./FEEDS.md) for complete specification.
    - Paginate if configured
    - Store in `core.feeds`
 
-**Hook signature:**
-```python
-@hook_impl
-def post_render(core):
-    core.feeds = []
+**Hook behavior:**
 
-    # Process explicit feeds
-    for feed_config in core.config.feeds:
-        feed = create_feed(feed_config, core)
+```
+core.feeds = []
+
+# Process explicit feeds
+for feed_config in core.config.feeds:
+    feed = create_feed(feed_config, core)
+    core.feeds.append(feed)
+
+# Process auto-feeds
+if core.config.feeds.auto_tags.enabled:
+    for tag in get_all_tags(core.posts):
+        feed = create_tag_feed(tag, core)
         core.feeds.append(feed)
-
-    # Process auto-feeds
-    if core.config.feeds.auto_tags.enabled:
-        for tag in get_all_tags(core.posts):
-            feed = create_tag_feed(tag, core)
-            core.feeds.append(feed)
 ```
 
 ---
@@ -1130,30 +1075,29 @@ For each feed, for each enabled format:
 | Text | `/{slug}/index.txt` |
 | Sitemap | `/{slug}/sitemap.xml` |
 
-**Hook signature:**
-```python
-@hook_impl
-def save(core):
-    for feed in core.feeds:
-        for format_name, enabled in feed.formats.items():
-            if not enabled:
-                continue
+**Hook behavior:**
 
-            template = get_feed_template(format_name, feed, core)
+```
+for feed in core.feeds:
+    for format_name, enabled in feed.formats.items():
+        if not enabled:
+            continue
 
-            if format_name == 'html':
-                # Paginated output
-                for page_num, page_posts in enumerate(feed.pages, 1):
-                    output = template.render(
-                        feed=feed,
-                        page_posts=page_posts,
-                        pagination=get_pagination(feed, page_num)
-                    )
-                    write_page(feed, page_num, output, core)
-            else:
-                # Single file output
-                output = template.render(feed=feed)
-                write_feed_file(feed, format_name, output, core)
+        template = get_feed_template(format_name, feed, core)
+
+        if format_name == 'html':
+            # Paginated output
+            for page_num, page_posts in enumerate(feed.pages, start=1):
+                output = template.render(
+                    feed=feed,
+                    page_posts=page_posts,
+                    pagination=get_pagination(feed, page_num)
+                )
+                write_page(feed, page_num, output, core)
+        else:
+            # Single file output
+            output = template.render(feed=feed)
+            write_feed_file(feed, format_name, output, core)
 ```
 
 ---
@@ -1178,24 +1122,23 @@ def save(core):
 | `config` | Config | Site configuration |
 | `core` | Core | Core instance |
 
-**Hook signature:**
-```python
-@hook_impl
-def save(core):
-    for post in core.filter("not skip"):
-        template_name = post.template or "post.html"
-        template = core.jinja_env.get_template(template_name)
+**Hook behavior:**
 
-        html = template.render(
-            post=post,
-            body=post.article_html,
-            config=core.config,
-            core=core
-        )
+```
+for post in core.filter("not skip"):
+    template_name = post.template or "post.html"
+    template = template_engine.get_template(template_name)
 
-        output_path = core.config.output_dir / post.slug / "index.html"
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(html)
+    html = template.render(
+        post=post,
+        body=post.article_html,
+        config=core.config,
+        core=core
+    )
+
+    output_path = join(core.config.output_dir, post.slug, "index.html")
+    create_parent_dirs(output_path)
+    write_text(output_path, html)
 ```
 
 ---
@@ -1231,26 +1174,25 @@ exclude = ["robots.txt", "favicon.ico"]
 4. Copy to output directory
 5. Preserve directory structure
 
-**Hook signature:**
-```python
-@hook_impl
-def save(core):
-    config = core.config.assets
-    assets_dir = Path(config.dir)
+**Hook behavior:**
 
-    if not assets_dir.exists():
-        return
+```
+config = core.config.assets
+assets_dir = Path(config.dir)
 
-    for src in assets_dir.rglob("*"):
-        if src.is_file() and not is_excluded(src, config.exclude):
-            rel_path = src.relative_to(assets_dir)
+if not assets_dir.exists():
+    return
 
-            if should_fingerprint(src, config):
-                rel_path = fingerprint_path(src, rel_path, config)
+for src in assets_dir.recursive_glob("*"):
+    if src.is_file() and not is_excluded(src, config.exclude):
+        rel_path = src.relative_to(assets_dir)
 
-            dst = core.config.output_dir / config.output_subdir / rel_path
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
+        if should_fingerprint(src, config):
+            rel_path = fingerprint_path(src, rel_path, config)
+
+        dst = join(core.config.output_dir, config.output_subdir, rel_path)
+        create_parent_dirs(dst)
+        copy_file(src, dst)
 ```
 
 ---
@@ -1339,21 +1281,17 @@ If `redirect_template` is set, the plugin loads a custom Go template with these 
 </html>
 ```
 
-**Hook signature:**
-```go
-func (p *RedirectsPlugin) Write(m *lifecycle.Manager) error {
-    // Read _redirects file
-    content, err := os.ReadFile(p.config.RedirectsFile)
-    if os.IsNotExist(err) {
-        return nil // Skip silently
-    }
+**Hook behavior:**
 
-    // Parse and generate redirect pages
-    for _, redirect := range parseRedirects(content) {
-        outputPath := filepath.Join(outputDir, redirect.Original, "index.html")
-        // Render template and write file
-    }
-}
+```
+content = read_file(config.redirects_file)
+if file_not_found:
+    return  # Skip silently
+
+# Parse and generate redirect pages
+for redirect in parse_redirects(content):
+    output_path = join(output_dir, redirect.original, "index.html")
+    # Render template and write file
 ```
 
 **Example configuration:**
