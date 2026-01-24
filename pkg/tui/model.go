@@ -142,12 +142,6 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 	return m
 }
 
-// createPostsTable creates and configures the posts table with the given width.
-// Uses default theme colors.
-func createPostsTable(width int) table.Model {
-	return createPostsTableWithTheme(width, DefaultTheme())
-}
-
 // createPostsTableWithTheme creates and configures the posts table with theme colors.
 func createPostsTableWithTheme(width int, theme *Theme) table.Model {
 	// Column widths: TITLE(40) + DATE(12) + WORDS(8) + TAGS(20) + PATH(remaining)
@@ -1127,31 +1121,3 @@ func (m Model) renderSortMenu() string {
 
 	return m.theme.SortMenuStyle.Render(sb.String())
 }
-
-// Styles - kept for backward compatibility, but theme styles are preferred.
-// These are used as fallback defaults when theme is nil.
-var (
-	headerStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("99"))
-	subtleStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
-	selectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212"))
-
-	// Detail view styles
-	detailLabelStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("99")).
-				Width(12)
-
-	detailBoxStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("99")).
-			Padding(1, 0)
-
-	detailStatusStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("241")).
-				Padding(0, 1)
-
-	// Sort menu style
-	sortMenuStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("252")).
-			Background(lipgloss.Color("236"))
-)
