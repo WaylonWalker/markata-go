@@ -180,6 +180,8 @@ func sortPosts(posts []*models.Post, field string, order SortOrder) {
 			cmp = compareTitles(posts[i].Title, posts[j].Title)
 		case "path":
 			cmp = strings.Compare(posts[i].Path, posts[j].Path)
+		case "words":
+			cmp = compareWordCounts(posts[i], posts[j])
 		default:
 			return false
 		}
@@ -218,6 +220,28 @@ func compareTitles(a, b *string) int {
 		bs = *b
 	}
 	return strings.Compare(strings.ToLower(as), strings.ToLower(bs))
+}
+
+func compareWordCounts(a, b *models.Post) int {
+	wcA := getWordCount(a)
+	wcB := getWordCount(b)
+	if wcA < wcB {
+		return -1
+	}
+	if wcA > wcB {
+		return 1
+	}
+	return 0
+}
+
+func getWordCount(p *models.Post) int {
+	if p.Extra == nil {
+		return 0
+	}
+	if wc, ok := p.Extra["word_count"].(int); ok {
+		return wc
+	}
+	return 0
 }
 
 func matchesSearch(p *models.Post, query string, _ SearchOptions) bool {

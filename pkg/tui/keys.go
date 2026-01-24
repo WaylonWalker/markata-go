@@ -13,6 +13,7 @@ type keyMapType struct {
 	Tags    key.Binding
 	Enter   key.Binding
 	Escape  key.Binding
+	Sort    key.Binding
 }
 
 var keyMap = keyMapType{
@@ -55,5 +56,9 @@ var keyMap = keyMapType{
 	Escape: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "cancel"),
+	),
+	Sort: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "sort"),
 	),
 }

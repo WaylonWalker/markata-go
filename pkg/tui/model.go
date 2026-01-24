@@ -47,6 +47,11 @@ type Model struct {
 	width       int
 	height      int
 	err         error
+	// Sort state
+	sortBy       string             // "date", "title", "words", "path"
+	sortOrder    services.SortOrder // SortAsc or SortDesc
+	showSortMenu bool               // overlay visible
+	sortMenuIdx  int                // selected option in menu
 }
 
 // Messages
@@ -60,6 +65,20 @@ type tagsLoadedMsg struct {
 
 type errMsg struct {
 	err error
+}
+
+// sortOption defines a sort field option
+type sortOption struct {
+	label string
+	value string
+}
+
+// sortOptions are the available sort fields
+var sortOptions = []sortOption{
+	{"Date", "date"},
+	{"Title", "title"},
+	{"Word Count", "words"},
+	{"Path", "path"},
 }
 
 // NewModel creates a new TUI model
@@ -78,6 +97,8 @@ func NewModel(app *services.App) Model {
 		mode:        ModeNormal,
 		filterInput: filterInput,
 		cmdInput:    cmdInput,
+		sortBy:      "date",
+		sortOrder:   services.SortDesc,
 	}
 
 	return m
@@ -116,6 +137,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Handle sort menu if visible
+	if m.showSortMenu {
+		return m.handleSortMenuKey(msg)
+	}
+
 	// Handle mode-specific input
 	switch m.mode {
 	case ModeFilter:
@@ -167,6 +193,60 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.view = ViewTags
 		m.cursor = 0
 		return m, m.loadTags()
+
+	case key.Matches(msg, keyMap.Sort):
+		if m.view == ViewPosts {
+			m.showSortMenu = true
+			// Set sortMenuIdx to current sortBy
+			for i, opt := range sortOptions {
+				if opt.value == m.sortBy {
+					m.sortMenuIdx = i
+					break
+				}
+			}
+		}
+	}
+
+	return m, nil
+}
+
+func (m Model) handleSortMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		// Cancel without applying
+		m.showSortMenu = false
+		return m, nil
+
+	case "enter":
+		// Apply sort and close menu
+		m.sortBy = sortOptions[m.sortMenuIdx].value
+		m.showSortMenu = false
+		m.cursor = 0
+		return m, m.loadPosts()
+
+	case "j", "down":
+		// Move selection down
+		if m.sortMenuIdx < len(sortOptions)-1 {
+			m.sortMenuIdx++
+		}
+		return m, nil
+
+	case "k", "up":
+		// Move selection up
+		if m.sortMenuIdx > 0 {
+			m.sortMenuIdx--
+		}
+		return m, nil
+
+	case "a":
+		// Set ascending order
+		m.sortOrder = services.SortAsc
+		return m, nil
+
+	case "d":
+		// Set descending order
+		m.sortOrder = services.SortDesc
+		return m, nil
 	}
 
 	return m, nil
@@ -240,8 +320,9 @@ func (m Model) executeCommand(cmd string) (tea.Model, tea.Cmd) {
 func (m Model) loadPosts() tea.Cmd {
 	return func() tea.Msg {
 		opts := services.ListOptions{
-			SortBy:    "date",
-			SortOrder: services.SortDesc,
+			SortBy:    m.sortBy,
+			SortOrder: m.sortOrder,
+			Filter:    m.filter,
 		}
 		posts, err := m.app.Posts.List(context.Background(), opts)
 		if err != nil {
@@ -279,13 +360,29 @@ func (m Model) View() string {
 		content = m.renderHelp()
 	}
 
-	return m.renderLayout(content)
+	layout := m.renderLayout(content)
+
+	// Overlay sort menu if visible
+	if m.showSortMenu {
+		layout = m.overlayContent(layout, m.renderSortMenu())
+	}
+
+	return layout
 }
 
 func (m Model) renderLayout(content string) string {
 	// Header
 	header := headerStyle.Render("markata-go")
 	header += " " + subtleStyle.Render(fmt.Sprintf("[%s]", m.view))
+
+	// Sort indicator for posts view
+	if m.view == ViewPosts {
+		arrow := "↓"
+		if m.sortOrder == services.SortAsc {
+			arrow = "↑"
+		}
+		header += " " + subtleStyle.Render(fmt.Sprintf("[%s%s]", arrow, m.sortBy))
+	}
 
 	// Status bar
 	var statusBar string
@@ -295,7 +392,7 @@ func (m Model) renderLayout(content string) string {
 	case ModeCommand:
 		statusBar = ":" + m.cmdInput.View()
 	default:
-		statusBar = subtleStyle.Render("j/k:move  /:filter  ::cmd  ?:help  q:quit")
+		statusBar = subtleStyle.Render("j/k:move  /:filter  s:sort  ::cmd  ?:help  q:quit")
 	}
 
 	return fmt.Sprintf("%s\n\n%s\n\n%s", header, content, statusBar)
@@ -386,7 +483,15 @@ Navigation:
 
 Modes:
   /          Filter mode
+  s          Sort menu (posts view)
   :          Command mode
+
+Sort Menu:
+  j/k        Navigate options
+  a          Sort ascending
+  d          Sort descending
+  Enter      Apply sort
+  Esc        Cancel
 
 Commands:
   :posts     Show posts
@@ -394,6 +499,87 @@ Commands:
   :quit      Exit
 
 Press Esc to return.`
+}
+
+func (m Model) renderSortMenu() string {
+	var sb strings.Builder
+
+	// Menu title
+	sb.WriteString("┌─ Sort By ─────────┐\n")
+
+	// Sort options
+	for i, opt := range sortOptions {
+		prefix := "  "
+		if i == m.sortMenuIdx {
+			prefix = "> "
+		}
+		// Pad label to 16 chars for alignment
+		label := fmt.Sprintf("%-16s", opt.label)
+		sb.WriteString(fmt.Sprintf("│ %s%s│\n", prefix, label))
+	}
+
+	// Divider
+	sb.WriteString("├───────────────────┤\n")
+
+	// Order indicator
+	ascMark := " "
+	descMark := " "
+	if m.sortOrder == services.SortAsc {
+		ascMark = "●"
+	} else {
+		descMark = "●"
+	}
+	sb.WriteString(fmt.Sprintf("│ [a]sc %s [d]esc %s │\n", ascMark, descMark))
+
+	// Footer
+	sb.WriteString("│ [Enter] apply     │\n")
+	sb.WriteString("└───────────────────┘")
+
+	return sb.String()
+}
+
+func (m Model) overlayContent(base, overlay string) string {
+	// Split both into lines
+	baseLines := strings.Split(base, "\n")
+	overlayLines := strings.Split(overlay, "\n")
+
+	// Position the overlay (center it vertically, offset from left)
+	startRow := 3 // Start a few rows down
+	startCol := 2 // Left padding
+
+	// Make a copy of base lines
+	result := make([]string, len(baseLines))
+	copy(result, baseLines)
+
+	// Overlay each line
+	for i, overlayLine := range overlayLines {
+		row := startRow + i
+		if row >= len(result) {
+			break
+		}
+
+		// Ensure the base line is long enough
+		baseLine := result[row]
+		// Convert to runes for proper Unicode handling
+		baseRunes := []rune(baseLine)
+		overlayRunes := []rune(overlayLine)
+
+		// Pad base line if needed
+		for len(baseRunes) < startCol+len(overlayRunes) {
+			baseRunes = append(baseRunes, ' ')
+		}
+
+		// Insert overlay
+		for j, r := range overlayRunes {
+			if startCol+j < len(baseRunes) {
+				baseRunes[startCol+j] = r
+			}
+		}
+
+		result[row] = string(baseRunes)
+	}
+
+	return strings.Join(result, "\n")
 }
 
 // Styles
