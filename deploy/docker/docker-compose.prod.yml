@@ -1,0 +1,73 @@
+# Production Docker Compose for markata-go
+# Uses Caddy as reverse proxy with automatic HTTPS
+#
+# Usage:
+#   1. Copy .env.example to .env and configure
+#   2. docker compose -f docker-compose.prod.yml up -d
+#
+# Prerequisites:
+#   - Domain pointed to your server's IP
+#   - Ports 80 and 443 open
+
+services:
+  # Build the static site
+  builder:
+    image: golang:1.22-alpine
+    working_dir: /site
+    volumes:
+      - ${SITE_DIR:-./../..}:/site:ro
+      - site-output:/output
+      - go-mod-cache:/go/pkg/mod
+    environment:
+      - MARKATA_GO_URL=${SITE_URL:-https://example.com}
+      - CGO_ENABLED=0
+    command: >
+      sh -c "
+        go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest &&
+        markata-go build --clean -o /output
+      "
+    # Only run once, then exit
+    restart: "no"
+
+  # Serve the static site with Caddy
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - site-output:/srv:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      - SITE_DOMAIN=${SITE_DOMAIN:-example.com}
+    depends_on:
+      builder:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Watchtower for automatic container updates
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=86400  # Check daily
+    restart: unless-stopped
+    profiles:
+      - auto-update
+
+volumes:
+  site-output:
+  caddy-data:
+  caddy-config:
+  go-mod-cache:
