@@ -908,6 +908,47 @@ func NewYouTubeConfig() YouTubeConfig {
 	}
 }
 
+// EmbedsConfig configures the embeds plugin for embedding internal and external content.
+type EmbedsConfig struct {
+	// Enabled controls whether embed processing is active (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// InternalCardClass is the CSS class for internal embed cards (default: "embed-card")
+	InternalCardClass string `json:"internal_card_class" yaml:"internal_card_class" toml:"internal_card_class"`
+
+	// ExternalCardClass is the CSS class for external embed cards (default: "embed-card embed-card-external")
+	ExternalCardClass string `json:"external_card_class" yaml:"external_card_class" toml:"external_card_class"`
+
+	// FetchExternal enables fetching OG metadata for external embeds (default: true)
+	FetchExternal bool `json:"fetch_external" yaml:"fetch_external" toml:"fetch_external"`
+
+	// CacheDir is the directory for caching external embed metadata (default: ".cache/embeds")
+	CacheDir string `json:"cache_dir" yaml:"cache_dir" toml:"cache_dir"`
+
+	// Timeout is the HTTP request timeout in seconds for external fetches (default: 10)
+	Timeout int `json:"timeout" yaml:"timeout" toml:"timeout"`
+
+	// FallbackTitle is used when OG title cannot be fetched (default: "External Link")
+	FallbackTitle string `json:"fallback_title" yaml:"fallback_title" toml:"fallback_title"`
+
+	// ShowImage controls whether to display OG images in external embeds (default: true)
+	ShowImage bool `json:"show_image" yaml:"show_image" toml:"show_image"`
+}
+
+// NewEmbedsConfig creates a new EmbedsConfig with default values.
+func NewEmbedsConfig() EmbedsConfig {
+	return EmbedsConfig{
+		Enabled:           true,
+		InternalCardClass: "embed-card",
+		ExternalCardClass: "embed-card embed-card-external",
+		FetchExternal:     true,
+		CacheDir:          ".cache/embeds",
+		Timeout:           10,
+		FallbackTitle:     "External Link",
+		ShowImage:         true,
+	}
+}
+
 // ContentTemplateConfig defines a single content template.
 type ContentTemplateConfig struct {
 	// Name is the template identifier (e.g., "post", "page", "docs")

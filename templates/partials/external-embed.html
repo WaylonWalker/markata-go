@@ -1,0 +1,21 @@
+{# External embed card partial for embedding external URLs #}
+{# Used by the embeds plugin when processing ![embed](url) syntax #}
+
+<div class="{{ card_class|default:'embed-card embed-card-external' }}">
+  <a href="{{ url }}" class="embed-card-link" target="_blank" rel="noopener noreferrer">
+    {% if show_image and og_image %}
+    <div class="embed-card-image">
+      <img src="{{ og_image }}" alt="" loading="lazy">
+    </div>
+    {% endif %}
+    <div class="embed-card-content">
+      <div class="embed-card-title">{{ og_title|default:fallback_title }}</div>
+      {% if og_description %}
+      <div class="embed-card-description">{{ og_description|truncate:200 }}</div>
+      {% endif %}
+      <div class="embed-card-meta">
+        {% if og_site_name %}{{ og_site_name }} &middot; {% endif %}{{ domain }}
+      </div>
+    </div>
+  </a>
+</div>

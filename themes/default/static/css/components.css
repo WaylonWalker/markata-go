@@ -1110,3 +1110,168 @@ kbd {
     content: " > ";
   }
 }
+
+/* ==========================================================================
+   Embed Card Component
+   
+   Used by the embeds plugin for internal (![[slug]]) and external
+   (![embed](url)) content embedding.
+   ========================================================================== */
+
+.embed-card {
+  margin: 1.5rem 0;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.embed-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.embed-card-link {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+}
+
+.embed-card-link:hover {
+  text-decoration: none;
+}
+
+/* External embed with image - horizontal layout */
+.embed-card-external .embed-card-link {
+  flex-direction: row;
+}
+
+.embed-card-image {
+  flex-shrink: 0;
+  width: 200px;
+  max-height: 150px;
+  overflow: hidden;
+  background-color: var(--color-background);
+}
+
+.embed-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.embed-card:hover .embed-card-image img {
+  transform: scale(1.02);
+}
+
+.embed-card-content {
+  flex: 1;
+  padding: 1rem 1.25rem;
+  min-width: 0; /* Allow text truncation */
+}
+
+.embed-card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+  
+  /* Truncate long titles */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.embed-card:hover .embed-card-title {
+  color: var(--color-primary);
+}
+
+.embed-card-description {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+  margin-bottom: 0.75rem;
+  
+  /* Truncate long descriptions */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.embed-card-meta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Internal embed card (no image) - compact layout */
+.embed-card:not(.embed-card-external) {
+  border-left: 4px solid var(--color-primary);
+}
+
+.embed-card:not(.embed-card-external) .embed-card-content {
+  padding: 1rem 1.25rem 1rem 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .embed-card-external .embed-card-link {
+    flex-direction: column;
+  }
+  
+  .embed-card-image {
+    width: 100%;
+    max-height: 180px;
+  }
+  
+  .embed-card-content {
+    padding: 1rem;
+  }
+  
+  .embed-card-title {
+    font-size: 1rem;
+    -webkit-line-clamp: 2;
+  }
+  
+  .embed-card-description {
+    -webkit-line-clamp: 2;
+  }
+}
+
+/* Focus states for accessibility */
+.embed-card-link:focus {
+  outline: none;
+}
+
+.embed-card-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+/* Print styles */
+@media print {
+  .embed-card {
+    page-break-inside: avoid;
+    border: 1px solid #ccc;
+    box-shadow: none;
+  }
+  
+  .embed-card-image {
+    display: none;
+  }
+  
+  .embed-card-link::after {
+    content: " (" attr(href) ")";
+    font-size: 0.75rem;
+    color: #666;
+  }
+}
