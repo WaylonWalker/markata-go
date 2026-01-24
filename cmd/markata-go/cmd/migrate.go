@@ -31,6 +31,18 @@ var (
 
 	// migrateReport is the path to write a migration report file.
 	migrateReport string
+
+	// compareOldDir is the old site directory for comparison.
+	compareOldDir string
+
+	// compareNewDir is the new site directory for comparison.
+	compareNewDir string
+
+	// compareExtensions are file extensions to compare.
+	compareExtensions []string
+
+	// compareIgnore are patterns to ignore.
+	compareIgnore []string
 )
 
 // migrateCmd represents the migrate command.
@@ -101,6 +113,29 @@ Example:
 	RunE: runMigrateTemplatesCommand,
 }
 
+// migrateCompareCmd compares two site output directories.
+var migrateCompareCmd = &cobra.Command{
+	Use:   "compare",
+	Short: "Compare old and new site output directories",
+	Long: `Compare two directories to verify migration completeness.
+
+This command compares the file structure between your old site output
+and the new markata-go output to identify:
+  - Files missing in the new site
+  - New files not present in the old site
+  - Common files present in both
+
+Example usage:
+  markata-go migrate compare --old markout --new public
+  markata-go migrate compare --old _site --new public --ext .html,.xml
+  markata-go migrate compare --old dist --new public --ignore "assets/**"
+
+Exit codes:
+  0 = directories match (no missing files)
+  1 = differences found`,
+	RunE: runMigrateCompareCommand,
+}
+
 func init() {
 	rootCmd.AddCommand(migrateCmd)
 
@@ -108,6 +143,7 @@ func init() {
 	migrateCmd.AddCommand(migrateConfigCmd)
 	migrateCmd.AddCommand(migrateFilterCmd)
 	migrateCmd.AddCommand(migrateTemplatesCmd)
+	migrateCmd.AddCommand(migrateCompareCmd)
 
 	// Flags for migrate command
 	migrateCmd.Flags().StringVarP(&migrateInput, "input", "i", "", "input config file (default: auto-detect)")
@@ -130,6 +166,19 @@ func init() {
 
 	// Flags for templates subcommand
 	migrateTemplatesCmd.Flags().BoolVar(&migrateJSON, "json", false, "output results as JSON")
+
+	// Flags for compare subcommand
+	migrateCompareCmd.Flags().StringVar(&compareOldDir, "old", "", "old site output directory (required)")
+	migrateCompareCmd.Flags().StringVar(&compareNewDir, "new", "", "new site output directory (required)")
+	migrateCompareCmd.Flags().StringSliceVar(&compareExtensions, "ext", []string{".html"}, "file extensions to compare (comma-separated)")
+	migrateCompareCmd.Flags().StringSliceVar(&compareIgnore, "ignore", []string{}, "glob patterns to ignore (comma-separated)")
+	migrateCompareCmd.Flags().BoolVar(&migrateJSON, "json", false, "output results as JSON")
+
+	// Mark required flags for compare (errors ignored as they only occur if flag doesn't exist)
+	//nolint:errcheck // errors only occur if flag doesn't exist, which we know it does
+	migrateCompareCmd.MarkFlagRequired("old")
+	//nolint:errcheck // errors only occur if flag doesn't exist, which we know it does
+	migrateCompareCmd.MarkFlagRequired("new")
 }
 
 // runMigrateCommand runs the full migration analysis.
@@ -404,6 +453,40 @@ func runMigrateTemplatesCommand(_ *cobra.Command, args []string) error {
 	fmt.Println("\nFilter Migration Reference:")
 	for _, v := range migrate.GetFilterMigrations() {
 		fmt.Printf("  %s -> %s\n", v.Old, v.New)
+	}
+
+	return nil
+}
+
+// runMigrateCompareCommand compares two site output directories.
+func runMigrateCompareCommand(_ *cobra.Command, _ []string) error {
+	// Build compare options
+	opts := migrate.CompareOptions{
+		Extensions:     compareExtensions,
+		IgnorePatterns: compareIgnore,
+	}
+
+	// If no extensions specified, use default
+	if len(opts.Extensions) == 0 {
+		opts.Extensions = []string{".html"}
+	}
+
+	// Run comparison
+	result, err := migrate.Compare(compareOldDir, compareNewDir, opts)
+	if err != nil {
+		return fmt.Errorf("comparison failed: %w", err)
+	}
+
+	// Output results
+	if migrateJSON {
+		return outputJSON(result.JSONReport())
+	}
+
+	fmt.Print(result.Report())
+
+	// Exit with appropriate code for scripting
+	if result.HasDifferences() {
+		os.Exit(result.ExitCode())
 	}
 
 	return nil
