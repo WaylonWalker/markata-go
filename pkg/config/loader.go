@@ -182,6 +182,83 @@ func LoadAndValidate(configPath string) (*models.Config, []error, error) {
 	return config, validationErrs, nil
 }
 
+// LoadAndValidateWithPositions loads configuration and validates it with
+// position tracking for enhanced error messages.
+// Returns the config, detailed errors with file positions, and any loading error.
+func LoadAndValidateWithPositions(configPath string) (*models.Config, *ConfigErrors, error) {
+	var actualPath string
+	var err error
+
+	if configPath == "" {
+		// Try to discover a config file
+		actualPath, err = Discover()
+		if err != nil {
+			if errors.Is(err, ErrConfigNotFound) {
+				// No config file found, use defaults with env overrides
+				config, loadErr := LoadWithDefaults()
+				if loadErr != nil {
+					return nil, nil, loadErr
+				}
+				// Validate without position tracking since there's no file
+				configErrors := ValidateConfigWithPositions(config, nil)
+				return config, configErrors, nil
+			}
+			return nil, nil, err
+		}
+	} else {
+		actualPath = configPath
+	}
+
+	// Read the file for both parsing and position tracking
+	data, err := os.ReadFile(actualPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read config file %s: %w", actualPath, err)
+	}
+
+	// Create position tracker for the config file
+	tracker := NewPositionTracker(data, actualPath)
+
+	// Determine format and parse
+	format := formatFromPath(actualPath)
+	var config *models.Config
+
+	switch format {
+	case FormatTOML:
+		config, err = ParseTOML(data)
+	case FormatYAML:
+		config, err = ParseYAML(data)
+	case FormatJSON:
+		config, err = ParseJSON(data)
+	default:
+		return nil, nil, fmt.Errorf("unsupported config format: %s", format)
+	}
+
+	if err != nil {
+		// Create a config error for parse failures
+		configErrors := &ConfigErrors{}
+		configErrors.Add(&ConfigError{
+			File:    actualPath,
+			Message: fmt.Sprintf("failed to parse configuration: %v", err),
+			Field:   "syntax",
+		})
+		return nil, configErrors, fmt.Errorf("failed to parse config file %s: %w", actualPath, err)
+	}
+
+	// Merge with defaults
+	defaults := DefaultConfig()
+	config = MergeConfigs(defaults, config)
+
+	// Apply environment variable overrides
+	if err := ApplyEnvOverrides(config); err != nil {
+		return nil, nil, fmt.Errorf("failed to apply environment overrides: %w", err)
+	}
+
+	// Validate with position tracking
+	configErrors := ValidateConfigWithPositions(config, tracker)
+
+	return config, configErrors, nil
+}
+
 // formatFromPath determines the config format from a file path.
 func formatFromPath(path string) Format {
 	ext := strings.ToLower(filepath.Ext(path))
