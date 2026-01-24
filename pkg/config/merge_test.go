@@ -526,3 +526,103 @@ func TestMergeConfigs_PostFormats(t *testing.T) {
 		t.Error("PostFormats.OG should be true (from override)")
 	}
 }
+
+func TestMergeBlogrollConfig_Enabled(t *testing.T) {
+	base := models.BlogrollConfig{
+		Enabled:  false,
+		CacheDir: "cache/blogroll",
+	}
+	override := models.BlogrollConfig{
+		Enabled: true,
+	}
+
+	result := mergeBlogrollConfig(base, override)
+
+	if !result.Enabled {
+		t.Error("Enabled should be true (from override)")
+	}
+	if result.CacheDir != "cache/blogroll" {
+		t.Errorf("CacheDir = %q, want %q (from base)", result.CacheDir, "cache/blogroll")
+	}
+}
+
+func TestMergeBlogrollConfig_Feeds(t *testing.T) {
+	base := models.BlogrollConfig{
+		Enabled: true,
+		Feeds: []models.ExternalFeedConfig{
+			{URL: "https://base.com/feed.xml", Title: "Base Feed"},
+		},
+	}
+	override := models.BlogrollConfig{
+		Feeds: []models.ExternalFeedConfig{
+			{URL: "https://override.com/feed.xml", Title: "Override Feed"},
+		},
+	}
+
+	result := mergeBlogrollConfig(base, override)
+
+	if len(result.Feeds) != 1 {
+		t.Fatalf("Feeds length = %d, want 1", len(result.Feeds))
+	}
+	if result.Feeds[0].URL != "https://override.com/feed.xml" {
+		t.Errorf("Feeds[0].URL = %q, want override URL", result.Feeds[0].URL)
+	}
+}
+
+func TestMergeBlogrollConfig_Templates(t *testing.T) {
+	base := models.BlogrollConfig{
+		Templates: models.BlogrollTemplates{
+			Blogroll: "blogroll.html",
+			Reader:   "reader.html",
+		},
+	}
+	override := models.BlogrollConfig{
+		Templates: models.BlogrollTemplates{
+			Blogroll: "custom-blogroll.html",
+			// Reader not set, should keep base
+		},
+	}
+
+	result := mergeBlogrollConfig(base, override)
+
+	if result.Templates.Blogroll != "custom-blogroll.html" {
+		t.Errorf("Templates.Blogroll = %q, want custom-blogroll.html", result.Templates.Blogroll)
+	}
+	if result.Templates.Reader != "reader.html" {
+		t.Errorf("Templates.Reader = %q, want reader.html (from base)", result.Templates.Reader)
+	}
+}
+
+func TestMergeConfigs_Blogroll(t *testing.T) {
+	base := &models.Config{
+		Blogroll: models.BlogrollConfig{
+			Enabled:           false,
+			CacheDir:          "cache/blogroll",
+			CacheDuration:     "1h",
+			MaxEntriesPerFeed: 50,
+		},
+	}
+	override := &models.Config{
+		Blogroll: models.BlogrollConfig{
+			Enabled: true,
+			Feeds: []models.ExternalFeedConfig{
+				{URL: "https://example.com/feed.xml", Title: "Example"},
+			},
+		},
+	}
+
+	result := MergeConfigs(base, override)
+
+	if !result.Blogroll.Enabled {
+		t.Error("Blogroll.Enabled should be true")
+	}
+	if result.Blogroll.CacheDir != "cache/blogroll" {
+		t.Errorf("Blogroll.CacheDir = %q, want cache/blogroll", result.Blogroll.CacheDir)
+	}
+	if len(result.Blogroll.Feeds) != 1 {
+		t.Fatalf("Blogroll.Feeds length = %d, want 1", len(result.Blogroll.Feeds))
+	}
+	if result.Blogroll.Feeds[0].Title != "Example" {
+		t.Errorf("Blogroll.Feeds[0].Title = %q, want Example", result.Blogroll.Feeds[0].Title)
+	}
+}

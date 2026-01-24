@@ -142,6 +142,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		// Collect stage plugins
 		NewFeedsPlugin(),
 		NewAutoFeedsPlugin(),
+		NewBlogrollPlugin(),       // Fetch external feeds for blogroll
 		NewStatsPlugin(),          // Aggregate stats after feeds are built (runs Collect)
 		NewPrevNextPlugin(),       // Calculate prev/next after feeds are built
 		NewOverwriteCheckPlugin(), // Detect conflicting output paths

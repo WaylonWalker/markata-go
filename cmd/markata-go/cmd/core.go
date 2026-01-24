@@ -80,6 +80,9 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	// Pass layout configuration for automatic layout selection
 	lcConfig.Extra["layout"] = &cfg.Layout
 
+	// Pass blogroll configuration
+	lcConfig.Extra["blogroll"] = cfg.Blogroll
+
 	// Pass sidebar, toc, and header configurations
 	lcConfig.Extra["sidebar"] = cfg.Sidebar
 	lcConfig.Extra["toc"] = cfg.Toc
