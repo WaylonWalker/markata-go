@@ -18,9 +18,12 @@
         </nav>
         {% endif %}
         
-        {% if footer.show_copyright %}
-        <p class="footer-copyright">&copy; {{ "now" | date:"2006" }} {{ config.author | default:"" }}. Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
-        {% endif %}
+        <div class="footer-bottom">
+            {% if footer.show_copyright %}
+            <p class="footer-copyright">&copy; {{ "now" | date:"2006" }} {{ config.author | default:"" }}. Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+            {% endif %}
+            <p class="footer-shortcuts-hint">Press <kbd>?</kbd> for keyboard shortcuts</p>
+        </div>
     </div>
 </footer>
 {% endif %}
