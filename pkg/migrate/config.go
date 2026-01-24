@@ -276,6 +276,17 @@ func migrateConfigMap(rawConfig map[string]interface{}, result *MigrationResult)
 	return migrated
 }
 
+// stringOnlyFields lists config keys that must be simple strings, not nested tables.
+// These correspond to fields in models.Config that are typed as string.
+var stringOnlyFields = map[string]bool{
+	"description": true,
+	"title":       true,
+	"author":      true,
+	"url":         true,
+	"output_dir":  true,
+	"assets_dir":  true,
+}
+
 // migrateSection migrates a configuration section.
 func migrateSection(section map[string]interface{}, path string, result *MigrationResult) map[string]interface{} {
 	migrated := make(map[string]interface{})
@@ -333,8 +344,28 @@ func migrateSection(section map[string]interface{}, path string, result *Migrati
 			}
 		}
 
-		// Handle nested sections
+		// Check if this key expects a string but got a nested table
+		// This handles Python markata's nested plugin configs like [markata.description.description]
 		if nested, ok := value.(map[string]interface{}); ok {
+			if stringOnlyFields[newKey] && path == "" {
+				// This is a top-level field that should be a string, not a nested table
+				// Skip the nested table and add a warning
+				result.Warnings = append(result.Warnings, Warning{
+					Category:   "config",
+					Message:    fmt.Sprintf("Field '%s' expects a string value but found nested table (Python markata plugin config)", newKey),
+					Path:       fullPath,
+					Suggestion: fmt.Sprintf("Set '%s' to a string value in your markata-go.toml, e.g.: %s = \"Your %s here\"", newKey, newKey, newKey),
+				})
+				result.Changes = append(result.Changes, ConfigChange{
+					Type:        "remove",
+					Path:        fullPath,
+					OldValue:    nested,
+					NewValue:    nil,
+					Description: fmt.Sprintf("Removed nested table '%s' - markata-go expects a string value", newKey),
+				})
+				continue
+			}
+			// Regular nested section - recurse
 			migrated[newKey] = migrateSection(nested, fullPath, result)
 		} else {
 			migrated[newKey] = value
