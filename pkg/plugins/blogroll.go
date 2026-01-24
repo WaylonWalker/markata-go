@@ -25,6 +25,12 @@ import (
 // categoryUncategorized is the default category name for feeds without a category.
 const categoryUncategorized = "Uncategorized"
 
+// Default slug constants for blogroll pages.
+const (
+	defaultBlogrollSlug = "blogroll"
+	defaultReaderSlug   = "reader"
+)
+
 // BlogrollPlugin fetches and processes external RSS/Atom feeds.
 // It runs in the Collect stage to gather external feed entries
 // and in the Write stage to generate blogroll and reader pages.
@@ -439,10 +445,16 @@ func (p *BlogrollPlugin) groupByCategory(feeds []*models.ExternalFeed) []*models
 	return categories
 }
 
-// writeBlogrollPage generates the /blogroll page.
+// writeBlogrollPage generates the blogroll page at the configured slug path.
 func (p *BlogrollPlugin) writeBlogrollPage(m *lifecycle.Manager, outputDir string, feeds []*models.ExternalFeed, config models.BlogrollConfig) error {
+	// Use configured slug or default to "blogroll"
+	slug := config.BlogrollSlug
+	if slug == "" {
+		slug = defaultBlogrollSlug
+	}
+
 	// Create output directory
-	blogrollDir := filepath.Join(outputDir, "blogroll")
+	blogrollDir := filepath.Join(outputDir, slug)
 	if err := os.MkdirAll(blogrollDir, 0o755); err != nil {
 		return err
 	}
@@ -450,21 +462,29 @@ func (p *BlogrollPlugin) writeBlogrollPage(m *lifecycle.Manager, outputDir strin
 	// Group feeds by category
 	categories := p.groupByCategory(feeds)
 
+	// Get reader slug for cross-linking
+	readerSlug := config.ReaderSlug
+	if readerSlug == "" {
+		readerSlug = defaultReaderSlug
+	}
+
 	// Build template context with config for theme inheritance
 	ctx := map[string]interface{}{
-		"title":       "Blogroll",
-		"description": "Blogs and feeds I follow",
-		"feeds":       p.feedsToMaps(feeds),
-		"categories":  p.categoriesToMaps(categories),
-		"feed_count":  len(feeds),
-		"config":      p.configToMap(m.Config()),
+		"title":        "Blogroll",
+		"description":  "Blogs and feeds I follow",
+		"feeds":        p.feedsToMaps(feeds),
+		"categories":   p.categoriesToMaps(categories),
+		"feed_count":   len(feeds),
+		"config":       p.configToMap(m.Config()),
+		"blogroll_url": "/" + slug + "/",
+		"reader_url":   "/" + readerSlug + "/",
 	}
 
 	// Try to render with template engine
 	content, err := p.renderTemplate(m, config.Templates.Blogroll, ctx)
 	if err != nil {
 		// Fall back to built-in template
-		content = p.renderBlogrollFallback(feeds, categories)
+		content = p.renderBlogrollFallback(feeds, categories, config)
 	}
 
 	// Write the file
@@ -472,10 +492,16 @@ func (p *BlogrollPlugin) writeBlogrollPage(m *lifecycle.Manager, outputDir strin
 	return os.WriteFile(outputFile, []byte(content), 0o600)
 }
 
-// writeReaderPage generates the /reader page.
+// writeReaderPage generates the reader page at the configured slug path.
 func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string, entries []*models.ExternalEntry, config models.BlogrollConfig) error {
+	// Use configured slug or default to "reader"
+	slug := config.ReaderSlug
+	if slug == "" {
+		slug = defaultReaderSlug
+	}
+
 	// Create output directory
-	readerDir := filepath.Join(outputDir, "reader")
+	readerDir := filepath.Join(outputDir, slug)
 	if err := os.MkdirAll(readerDir, 0o755); err != nil {
 		return err
 	}
@@ -486,20 +512,28 @@ func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string,
 		displayEntries = displayEntries[:50]
 	}
 
+	// Get slugs for cross-linking
+	blogrollSlug := config.BlogrollSlug
+	if blogrollSlug == "" {
+		blogrollSlug = defaultBlogrollSlug
+	}
+
 	// Build template context with config for theme inheritance
 	ctx := map[string]interface{}{
-		"title":       "Reader",
-		"description": "Latest posts from blogs I follow",
-		"entries":     p.entriesToMaps(displayEntries),
-		"entry_count": len(entries),
-		"config":      p.configToMap(m.Config()),
+		"title":        "Reader",
+		"description":  "Latest posts from blogs I follow",
+		"entries":      p.entriesToMaps(displayEntries),
+		"entry_count":  len(entries),
+		"config":       p.configToMap(m.Config()),
+		"blogroll_url": "/" + blogrollSlug + "/",
+		"reader_url":   "/" + slug + "/",
 	}
 
 	// Try to render with template engine
 	content, err := p.renderTemplate(m, config.Templates.Reader, ctx)
 	if err != nil {
 		// Fall back to built-in template
-		content = p.renderReaderFallback(entries)
+		content = p.renderReaderFallback(entries, config)
 	}
 
 	// Write the file
@@ -639,8 +673,18 @@ func (p *BlogrollPlugin) configToMap(config *lifecycle.Config) map[string]interf
 }
 
 // renderBlogrollFallback generates a basic blogroll page that uses theme CSS if available.
-func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, categories []*models.BlogrollCategory) string {
+func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, categories []*models.BlogrollCategory, config models.BlogrollConfig) string {
 	var sb strings.Builder
+
+	// Get configured slugs with defaults
+	blogrollSlug := config.BlogrollSlug
+	if blogrollSlug == "" {
+		blogrollSlug = defaultBlogrollSlug
+	}
+	readerSlug := config.ReaderSlug
+	if readerSlug == "" {
+		readerSlug = defaultReaderSlug
+	}
 
 	sb.WriteString(`<!DOCTYPE html>
 <html lang="en">
@@ -677,8 +721,8 @@ func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, ca
 <body>
   <nav class="blogroll-nav" style="justify-content: flex-start; padding: 1rem 0;">
     <a href="/">Home</a>
-    <a href="/blogroll/">Blogroll</a>
-    <a href="/reader/">Reader</a>
+    <a href="/` + blogrollSlug + `/">Blogroll</a>
+    <a href="/` + readerSlug + `/">Reader</a>
   </nav>
   <div class="blogroll-page">
     <header class="blogroll-header" style="text-align: left;">
@@ -731,8 +775,18 @@ func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, ca
 }
 
 // renderReaderFallback generates a basic reader page that uses theme CSS if available.
-func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry) string {
+func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, config models.BlogrollConfig) string {
 	var sb strings.Builder
+
+	// Get configured slugs with defaults
+	blogrollSlug := config.BlogrollSlug
+	if blogrollSlug == "" {
+		blogrollSlug = defaultBlogrollSlug
+	}
+	readerSlug := config.ReaderSlug
+	if readerSlug == "" {
+		readerSlug = defaultReaderSlug
+	}
 
 	sb.WriteString(`<!DOCTYPE html>
 <html lang="en">
@@ -769,8 +823,8 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry) s
 <body>
   <nav class="reader-nav" style="justify-content: flex-start; padding: 1rem 0;">
     <a href="/">Home</a>
-    <a href="/blogroll/">Blogroll</a>
-    <a href="/reader/">Reader</a>
+    <a href="/` + blogrollSlug + `/">Blogroll</a>
+    <a href="/` + readerSlug + `/">Reader</a>
   </nav>
   <div class="reader-page">
     <header class="reader-header" style="text-align: left;">

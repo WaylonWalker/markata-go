@@ -628,6 +628,12 @@ func mergeBlogrollConfig(base, override models.BlogrollConfig) models.BlogrollCo
 	}
 
 	// String fields - override if non-empty
+	if override.BlogrollSlug != "" {
+		result.BlogrollSlug = override.BlogrollSlug
+	}
+	if override.ReaderSlug != "" {
+		result.ReaderSlug = override.ReaderSlug
+	}
 	if override.CacheDir != "" {
 		result.CacheDir = override.CacheDir
 	}
