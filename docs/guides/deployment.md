@@ -13,6 +13,11 @@ tags:
 
 This guide covers deploying markata-go sites to various hosting platforms, from managed services like GitHub Pages and Netlify to self-hosted solutions using nginx or Docker.
 
+> **Prerequisites:** Before deploying, ensure you have:
+> - A working markata-go site that builds successfully (`markata-go build`)
+> - [Configuration](/docs/guides/configuration/) set up with your site URL
+> - [Feeds](/docs/guides/feeds/) configured for RSS/Atom if you want syndication
+
 ## Building for Production
 
 ### Build Command
@@ -1048,3 +1053,28 @@ Validate before deploying:
 ```bash
 markata-go config validate
 ```
+
+---
+
+## Next Steps
+
+Congratulations on deploying your site! Here are ways to enhance it further:
+
+**Share your content:**
+- [Syndication Guide](/docs/guides/syndication/) - Automatically share posts to Mastodon, Twitter, and other platforms
+
+**Add interactivity:**
+- [Search Guide](/docs/guides/search/) - Add client-side search to your site
+- [Dynamic Content Guide](/docs/guides/dynamic-content/) - Integrate with JavaScript frameworks
+
+**Extend functionality:**
+- [Plugin Development Guide](/docs/guides/plugin-development/) - Create custom plugins for advanced features
+
+---
+
+## See Also
+
+- [Configuration Guide](/docs/guides/configuration/) - Full configuration reference
+- [Feeds Guide](/docs/guides/feeds/) - RSS, Atom, and JSON feed configuration
+- [Troubleshooting](/docs/troubleshooting/) - Common issues and solutions
+- [Quick Reference](/docs/guides/quick-reference/) - CLI commands and config snippets

@@ -13,6 +13,10 @@ tags:
 
 Feeds are the core differentiator of markata-go. A feed is a **filtered, sorted, paginated collection of posts** that can output to **multiple formats** simultaneously from a single definition.
 
+> **Prerequisites:** Before diving into feeds, you should understand:
+> - [Frontmatter Guide](/docs/guides/frontmatter/) - How post metadata works (feeds filter based on frontmatter)
+> - [Configuration Guide](/docs/guides/configuration/) - Basic config file structure
+
 ## Why Feeds Matter
 
 Feeds solve a common problem in static site generation: you need the same collection of posts in different formats for different consumers.
@@ -1152,7 +1156,26 @@ public/
       rss.xml
 ```
 
+---
+
+## Next Steps
+
+Now that you understand feeds, here are recommended next steps:
+
+**Customize feed appearance:**
+- [Templates Guide](/docs/guides/templates/) - Customize how feeds and cards are rendered
+
+**Add syndication and discovery:**
+- [Syndication Guide](/docs/guides/syndication/) - Share your feeds on Mastodon, Twitter, and other platforms
+
+**Deploy your site:**
+- [Deployment Guide](/docs/guides/deployment/) - Deploy to production with CI/CD
+
+---
+
 ## See Also
 
-- [[configuration-guide|Configuration Guide]] - Full configuration reference
-- [[templates-guide|Templates Guide]] - Template system documentation
+- [Configuration Guide](/docs/guides/configuration/) - Full configuration reference
+- [Templates Guide](/docs/guides/templates/) - Template system documentation
+- [Frontmatter Guide](/docs/guides/frontmatter/) - Post metadata for filtering
+- [Quick Reference](/docs/guides/quick-reference/) - Filter expression cheat sheet

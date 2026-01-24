@@ -15,6 +15,8 @@ tags:
 
 markata-go makes it easy to customize your site's appearance. You can go from zero configuration to a beautiful site, then progressively customize as needed.
 
+> **Prerequisites:** This guide assumes you've completed the [Getting Started](/docs/getting-started/) guide and have a working markata-go site.
+
 ## Quick Start
 
 The fastest way to change your site's look is to pick a color palette:
@@ -642,8 +644,26 @@ Use `markata-go palette check` to verify your color choices meet WCAG guidelines
 
 ---
 
+---
+
+## Next Steps
+
+Now that you've styled your site, here are recommended next steps:
+
+**Customize your templates:**
+- [Templates Guide](/docs/guides/templates/) - Modify HTML structure, add custom partials, and use template inheritance
+
+**Organize your content:**
+- [Feeds Guide](/docs/guides/feeds/) - Create filtered collections, archives, and tag pages
+
+**Deploy your site:**
+- [Deployment Guide](/docs/guides/deployment/) - Deploy to GitHub Pages, Netlify, Vercel, or self-host
+
+---
+
 ## See Also
 
-- [[configuration-guide|Configuration Guide]] - All configuration options
-- [[templates-guide|Templates Guide]] - Template syntax and customization
-- [[frontmatter-guide|Frontmatter Guide]] - Post-level configuration
+- [Configuration Guide](/docs/guides/configuration/) - All configuration options
+- [Templates Guide](/docs/guides/templates/) - Template syntax and customization
+- [Frontmatter Guide](/docs/guides/frontmatter/) - Post-level configuration
+- [Quick Reference](/docs/guides/quick-reference/) - Theme snippets and CLI commands
