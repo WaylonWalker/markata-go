@@ -750,7 +750,7 @@ Use `!!!` followed by the type and optional title:
 !!! note "Optional Title"
     Admonition content here.
     Can span multiple lines.
-    
+
     Supports **Markdown** formatting.
 
 !!! warning
@@ -763,7 +763,7 @@ Use `!!!` followed by the type and optional title:
 
     Admonition content here.
     Can span multiple lines.
-    
+
     Supports **Markdown** formatting.
 
 !!! warning
@@ -992,20 +992,20 @@ Admonitions can contain any Markdown content:
 ```markdown
 !!! example "Complete Example"
     Here's a full working example:
-    
+
     ```python
     def greet(name):
         return f"Hello, {name}!"
-    
+
     print(greet("World"))
     ```
-    
+
     **Output:**
-    
+
     ```
     Hello, World!
     ```
-    
+
     - Works with Python 3.6+
     - Requires no dependencies
 ```
@@ -1015,20 +1015,20 @@ Admonitions can contain any Markdown content:
 !!! example "Complete Example"
 
     Here's a full working example:
-    
+
     ```python
     def greet(name):
         return f"Hello, {name}!"
-    
+
     print(greet("World"))
     ```
-    
+
     **Output:**
-    
+
     ```
     Hello, World!
     ```
-    
+
     - Works with Python 3.6+
     - Requires no dependencies
 
@@ -1423,7 +1423,7 @@ Another sentence with a named footnote.[^note]
 
 [^note]: This is a named footnote. It can be referenced
     multiple times and span multiple lines.
-    
+
     It can even contain multiple paragraphs.
 ```
 
@@ -1437,7 +1437,7 @@ Another sentence with a named footnote.[^example-note]
 
 [^example-note]: This is a named footnote. It can be referenced
     multiple times and span multiple lines.
-    
+
     It can even contain multiple paragraphs.
 
 **Output:**
@@ -1487,9 +1487,9 @@ Here's an inline footnote.^[This is the footnote content inline.]
 3. **Multi-paragraph footnotes**: Indent continuation lines with 4 spaces:
    ```markdown
    [^long-note]: First paragraph of the footnote.
-   
+
        Second paragraph must be indented.
-       
+
        Third paragraph too.
    ```
 

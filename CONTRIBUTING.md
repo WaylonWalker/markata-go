@@ -56,6 +56,81 @@ The [spec](spec/) directory contains a complete specification for building a sta
 
 Use these specs to build your own implementation in any language. The spec includes recommended libraries for Python, TypeScript, Go, and Rust.
 
+## Development Setup (For Maintainers)
+
+If you're working on this project as a maintainer, follow these steps:
+
+### Prerequisites
+
+- Go 1.22+
+- Git
+- [pre-commit](https://pre-commit.com/) (for git hooks)
+- [just](https://just.systems/) (optional, for task running)
+
+### Quick Setup
+
+Run the setup script to install all development tools and git hooks:
+
+```bash
+./scripts/setup-dev.sh
+```
+
+This will:
+- Download Go dependencies
+- Install golangci-lint and other tools
+- Set up pre-commit hooks
+
+### Pre-commit Hooks
+
+Pre-commit hooks run automatically on `git commit` to ensure code quality:
+
+- **Go formatting** (gofmt, goimports)
+- **Go vetting** (go vet)
+- **Linting** (golangci-lint with fast mode)
+- **Tests** (short tests)
+- **File hygiene** (trailing whitespace, end-of-file newlines)
+- **Data validation** (YAML, JSON, TOML)
+- **Secret detection** (detect-secrets)
+
+To run hooks manually:
+
+```bash
+pre-commit run              # Run on staged files
+pre-commit run --all-files  # Run on all files
+pre-commit autoupdate       # Update hook versions
+```
+
+### VS Code Setup
+
+The repository includes VS Code configuration:
+
+- `.vscode/settings.json` - Go formatting, linting settings
+- `.vscode/tasks.json` - Build, test, lint tasks
+- `.vscode/launch.json` - Debug configurations
+- `.vscode/extensions.json` - Recommended extensions
+
+Install recommended extensions for the best experience.
+
+### Common Commands
+
+Using `just` (recommended):
+
+```bash
+just build     # Build the binary
+just test      # Run tests
+just lint      # Run linter
+just check     # Run all quality checks
+just ci        # Run full CI checks
+```
+
+Or using Go directly:
+
+```bash
+go build ./cmd/markata-go
+go test ./...
+golangci-lint run
+```
+
 ## Code of Conduct
 
 Be respectful in issues and discussions. Harassment, spam, and bad-faith arguments will result in being blocked.

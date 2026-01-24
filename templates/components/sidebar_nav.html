@@ -15,7 +15,7 @@
             </a>
             {% else %}
             {# Collapsible section header (for multi-feed mode) #}
-            <button class="sidebar-nav-toggle" 
+            <button class="sidebar-nav-toggle"
                     aria-expanded="true"
                     aria-controls="sidebar-section-{{ loop.index }}">
                 <span class="sidebar-nav-label">{{ item.title }}</span>
@@ -24,7 +24,7 @@
                 </svg>
             </button>
             {% endif %}
-            
+
             {% if item.has_children %}
             <ul class="sidebar-nav-children" id="sidebar-section-{{ loop.index }}">
                 {% for child in item.children %}
@@ -36,7 +36,7 @@
                     {% else %}
                     <span class="sidebar-nav-label">{{ child.title }}</span>
                     {% endif %}
-                    
+
                     {% if child.has_children %}
                     <ul class="sidebar-nav-children">
                         {% for grandchild in child.children %}
@@ -67,7 +67,7 @@
             {% else %}
             <span class="sidebar-nav-label">{{ item.title }}</span>
             {% endif %}
-            
+
             {% if item.children %}
             <ul class="sidebar-nav-children">
                 {% for child in item.children %}
@@ -79,7 +79,7 @@
                     {% else %}
                     <span class="sidebar-nav-label">{{ child.title }}</span>
                     {% endif %}
-                    
+
                     {% if child.children %}
                     <ul class="sidebar-nav-children">
                         {% for grandchild in child.children %}

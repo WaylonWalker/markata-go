@@ -607,10 +607,10 @@ func generatePreviewHTML(p *palettes.Palette) string {
     .section { margin-bottom: 30px; }
     .section h2 { border-bottom: 1px solid #ddd; padding-bottom: 5px; }
     .colors { display: flex; flex-wrap: wrap; gap: 10px; }
-    .color-card { 
-      width: 150px; 
-      border: 1px solid #ddd; 
-      border-radius: 8px; 
+    .color-card {
+      width: 150px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
       overflow: hidden;
     }
     .color-swatch { height: 80px; }
@@ -722,10 +722,10 @@ func generateAllPalettesPreviewHTML(paletteList []*palettes.Palette) string {
     .variant-dark { background: #333; color: #fff; }
     .variant-light { background: #f0f0f0; color: #333; }
     .colors { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
-    .color-swatch { 
-      width: 60px; 
-      height: 60px; 
-      border-radius: 8px; 
+    .color-swatch {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
       border: 1px solid rgba(0,0,0,0.1);
       position: relative;
       cursor: pointer;

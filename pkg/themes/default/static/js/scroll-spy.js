@@ -56,9 +56,9 @@
     tocLinks.forEach(link => {
       const href = link.getAttribute('href');
       const isActive = currentHeading && href === `#${currentHeading.id}`;
-      
+
       link.classList.toggle(ACTIVE_CLASS, isActive);
-      
+
       // Also highlight parent items if nested
       const parentItem = link.closest('.toc-item');
       if (parentItem) {

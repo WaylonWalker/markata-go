@@ -145,7 +145,7 @@ video,
 
 /* ==========================================================================
    Post Content Media Styling
-   
+
    Following best practices from Tailwind Typography, Astro, and other SSGs:
    - Minimal default styling (no borders by default)
    - Proper spacing with margin
@@ -159,12 +159,12 @@ video,
   /* Prevent overflow */
   max-width: 100%;
   height: auto;
-  
+
   /* Block display with spacing (like Tailwind Typography) */
   display: block;
   margin-top: var(--space-6);
   margin-bottom: var(--space-6);
-  
+
   /* Subtle rounding */
   border-radius: var(--radius-lg);
 }
@@ -209,7 +209,7 @@ video,
 
 /* ==========================================================================
    Optional Media Decorations
-   
+
    Apply these via frontmatter css_class or directly on elements.
    These are opt-in, not default.
    ========================================================================== */
@@ -227,7 +227,7 @@ video,
 .post-content.shadow video,
 .post-content img.shadow,
 .post-content video.shadow {
-  box-shadow: 
+  box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
@@ -240,7 +240,7 @@ video,
   border: 1px solid var(--color-border);
   padding: var(--space-2);
   background: var(--color-surface);
-  box-shadow: 
+  box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
@@ -251,7 +251,7 @@ video,
   .post-content.framed video,
   .post-content img.framed,
   .post-content video.framed {
-    box-shadow: 
+    box-shadow:
       0 4px 6px -1px rgba(0, 0, 0, 0.3),
       0 2px 4px -1px rgba(0, 0, 0, 0.2);
   }
@@ -259,7 +259,7 @@ video,
 
 /* ==========================================================================
    Gradient Borders (Opt-in decorative style)
-   
+
    Use padding + background technique for gradient borders.
    Apply via css_class in frontmatter.
    ========================================================================== */
@@ -333,7 +333,7 @@ video,
 /* Glow effect for media */
 .post-content.glow img,
 .post-content.glow video {
-  box-shadow: 
+  box-shadow:
     0 0 20px rgba(102, 126, 234, 0.3),
     0 0 40px rgba(118, 75, 162, 0.2),
     0 0 60px rgba(240, 147, 251, 0.1);
@@ -343,7 +343,7 @@ video,
 @media (prefers-color-scheme: dark) {
   .post-content.glow img,
   .post-content.glow video {
-    box-shadow: 
+    box-shadow:
       0 0 30px rgba(102, 126, 234, 0.4),
       0 0 60px rgba(118, 75, 162, 0.3),
       0 0 90px rgba(240, 147, 251, 0.2);
@@ -891,16 +891,16 @@ a.wikilink.wikilink-missing {
   html {
     font-size: 15px;
   }
-  
+
   .site-header .container {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .post-nav {
     flex-direction: column;
   }
-  
+
   .post-nav a {
     max-width: 100%;
   }

@@ -104,22 +104,22 @@ search_boost: 2.0          # Boost this page in results
 type SearchConfig struct {
     // Enabled controls whether search is active (default: true)
     Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
-    
+
     // Position controls where search UI appears: "navbar", "sidebar", "footer", "custom"
     Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
-    
+
     // Placeholder is the search input placeholder text
     Placeholder string `json:"placeholder,omitempty" yaml:"placeholder,omitempty" toml:"placeholder,omitempty"`
-    
+
     // ShowImages shows thumbnails in search results
     ShowImages *bool `json:"show_images,omitempty" yaml:"show_images,omitempty" toml:"show_images,omitempty"`
-    
+
     // ExcerptLength is the character limit for result excerpts
     ExcerptLength int `json:"excerpt_length,omitempty" yaml:"excerpt_length,omitempty" toml:"excerpt_length,omitempty"`
-    
+
     // Pagefind configures the Pagefind CLI options
     Pagefind PagefindConfig `json:"pagefind,omitempty" yaml:"pagefind,omitempty" toml:"pagefind,omitempty"`
-    
+
     // Feeds configures feed-specific search instances
     Feeds []SearchFeedConfig `json:"feeds,omitempty" yaml:"feeds,omitempty" toml:"feeds,omitempty"`
 }
@@ -128,19 +128,19 @@ type SearchConfig struct {
 type PagefindConfig struct {
     // BundleDir is the output directory for search index (default: "_pagefind")
     BundleDir string `json:"bundle_dir,omitempty" yaml:"bundle_dir,omitempty" toml:"bundle_dir,omitempty"`
-    
+
     // ExcludeSelectors are CSS selectors for elements to exclude from indexing
     ExcludeSelectors []string `json:"exclude_selectors,omitempty" yaml:"exclude_selectors,omitempty" toml:"exclude_selectors,omitempty"`
-    
+
     // RootSelector is the CSS selector for the searchable content container
     RootSelector string `json:"root_selector,omitempty" yaml:"root_selector,omitempty" toml:"root_selector,omitempty"`
-    
+
     // AutoInstall enables automatic Pagefind binary installation (default: true)
     AutoInstall *bool `json:"auto_install,omitempty" yaml:"auto_install,omitempty" toml:"auto_install,omitempty"`
-    
+
     // Version is the Pagefind version to install: "latest" or specific (default: "latest")
     Version string `json:"version,omitempty" yaml:"version,omitempty" toml:"version,omitempty"`
-    
+
     // CacheDir is the directory for caching Pagefind binaries (default: XDG cache)
     CacheDir string `json:"cache_dir,omitempty" yaml:"cache_dir,omitempty" toml:"cache_dir,omitempty"`
 }
@@ -149,13 +149,13 @@ type PagefindConfig struct {
 type SearchFeedConfig struct {
     // Name is the search instance identifier
     Name string `json:"name" yaml:"name" toml:"name"`
-    
+
     // Filter is the filter expression for posts in this search
     Filter string `json:"filter" yaml:"filter" toml:"filter"`
-    
+
     // Position controls where this search UI appears
     Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
-    
+
     // Placeholder is the search input placeholder text
     Placeholder string `json:"placeholder,omitempty" yaml:"placeholder,omitempty" toml:"placeholder,omitempty"`
 }
@@ -197,17 +197,17 @@ Templates add Pagefind data attributes to enable indexing:
         <div data-pagefind-meta="excerpt" class="description">
             {{ post.description }}
         </div>
-        
+
         <!-- Filter by feed membership -->
         {% for feed in post.feeds %}
         <span data-pagefind-filter="feed" style="display:none">{{ feed }}</span>
         {% endfor %}
-        
+
         <!-- Filter by tags -->
         {% for tag in post.tags %}
         <span data-pagefind-filter="tag" style="display:none">{{ tag }}</span>
         {% endfor %}
-        
+
         <div class="content">
             {{ post.article_html | safe }}
         </div>
@@ -283,40 +283,40 @@ func (p *PagefindPlugin) Name() string {
 
 func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
     config := getSearchConfig(m.Config())
-    
+
     if !config.IsEnabled() {
         return nil
     }
-    
+
     // Check if pagefind is installed
     if _, err := exec.LookPath("pagefind"); err != nil {
         // Log warning but don't fail - search will just not work
         return nil
     }
-    
+
     return p.runPagefind(m.Config())
 }
 
 func (p *PagefindPlugin) runPagefind(config *lifecycle.Config) error {
     searchConfig := getSearchConfig(config)
-    
+
     args := []string{
         "--site", config.OutputDir,
         "--output-subdir", searchConfig.Pagefind.BundleDir,
     }
-    
+
     if searchConfig.Pagefind.RootSelector != "" {
         args = append(args, "--root-selector", searchConfig.Pagefind.RootSelector)
     }
-    
+
     for _, selector := range searchConfig.Pagefind.ExcludeSelectors {
         args = append(args, "--exclude-selectors", selector)
     }
-    
+
     cmd := exec.Command("pagefind", args...)
     cmd.Stdout = os.Stdout
     cmd.Stderr = os.Stderr
-    
+
     return cmd.Run()
 }
 ```

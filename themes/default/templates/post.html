@@ -26,11 +26,11 @@
     </div>
     {% endif %}
   </header>
-  
+
   <div class="post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
     {{ body | safe }}
   </div>
-  
+
   {% if post.tags %}
   <footer class="post-footer">
     <div class="tags">

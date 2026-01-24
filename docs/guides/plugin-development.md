@@ -452,7 +452,7 @@ Read custom configuration from the `Extra` map:
 ```go
 func (p *MyPlugin) Configure(m *lifecycle.Manager) error {
     config := m.Config()
-    
+
     // Read configuration with defaults
     if config.Extra != nil {
         if enabled, ok := config.Extra["my_plugin_enabled"].(bool); ok {
@@ -462,7 +462,7 @@ func (p *MyPlugin) Configure(m *lifecycle.Manager) error {
             p.threshold = threshold
         }
     }
-    
+
     return nil
 }
 ```
@@ -918,18 +918,18 @@ for _, warning := range m.Warnings() {
 ```go
 func (p *MyPlugin) Configure(m *lifecycle.Manager) error {
     config := m.Config()
-    
+
     // Provide sensible defaults
     p.enabled = true
     p.threshold = 100
-    
+
     // Override with config values if present
     if config.Extra != nil {
         if enabled, ok := config.Extra["my_plugin_enabled"].(bool); ok {
             p.enabled = enabled
         }
     }
-    
+
     return nil
 }
 ```

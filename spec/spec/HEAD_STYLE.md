@@ -230,27 +230,27 @@ title: Special Post
 config_overrides:
   # Override ANY config key using dot notation or nested structure
   output_dir: "special-output"           # Override top-level config
-  
+
   markdown:
     extensions:
       tables: false                      # Override nested config
-  
+
   feeds:
     defaults:
       items_per_page: 5                  # Override feed defaults
-  
+
   head:
     meta:
       - name: robots
         content: noindex
-  
+
   style:
     color_bg: "#000000"
-  
+
   theme:
     options:
       show_toc: false                    # Override theme option
-  
+
   # Custom plugin configuration
   my_plugin:
     enabled: false
@@ -405,10 +405,10 @@ Templates access head configuration through `config.head`:
 <head>
   <meta charset="UTF-8">
   <title>{{ post.title }} - {{ config.title }}</title>
-  
+
   {# Render raw text first #}
   {{ config.head.text | safe }}
-  
+
   {# Render meta tags #}
   {% for meta in config.head.meta %}
     {% if meta.name %}
@@ -417,12 +417,12 @@ Templates access head configuration through `config.head`:
     <meta property="{{ meta.property }}" content="{{ meta.content }}" />
     {% endif %}
   {% endfor %}
-  
+
   {# Render link tags #}
   {% for link in config.head.link %}
     <link rel="{{ link.rel }}" href="{{ link.href }}" />
   {% endfor %}
-  
+
   {# Render script tags #}
   {% for script in config.head.script %}
     <script src="{{ script.src }}"></script>
@@ -443,7 +443,7 @@ Access style configuration in templates:
     --color-accent: {{ config.style.color_accent }};
     --body-width: {{ config.style.body_width }};
   }
-  
+
   @media (prefers-color-scheme: light) {
     :root {
       --color-bg: {{ config.style.color_bg_light }};
@@ -452,14 +452,14 @@ Access style configuration in templates:
       --color-accent: {{ config.style.color_accent_light }};
     }
   }
-  
+
   body {
     background: var(--color-bg);
     color: var(--color-text);
     max-width: var(--body-width);
     margin: 0 auto;
   }
-  
+
   a {
     color: var(--color-link);
     text-decoration-color: var(--color-accent);
@@ -500,13 +500,13 @@ class Meta(pydantic.BaseModel):
     name: Optional[str] = None
     property: Optional[str] = None
     content: str
-    
+
     @validator('name')
     def check_og(cls, v):
         if v and v.startswith('og:'):
             raise ValueError("Use 'property' for og: tags, not 'name'")
         return v
-    
+
     @root_validator
     def check_name_or_property(cls, values):
         if not values.get('name') and not values.get('property'):
@@ -532,13 +532,13 @@ class HeadConfig(pydantic.BaseModel):
     link: List[Link] = []
     script: List[Script] = []
     text: Union[List[Text], str] = ""
-    
+
     @validator('text', pre=True)
     def normalize_text(cls, v):
         if isinstance(v, list):
             return "\n".join(item['value'] for item in v)
         return v
-    
+
     @property
     def html(self) -> str:
         """Render all head content as HTML string."""
@@ -566,7 +566,7 @@ class Style(pydantic.BaseModel):
     color_link: str = "#fb30c4"
     color_accent: str = "#e1bd00c9"
     overlay_brightness: str = ".85"
-    
+
     # Light mode
     color_bg_light: str = "#eefbfe"
     color_bg_code_light: str = "#eefbfe"
@@ -574,7 +574,7 @@ class Style(pydantic.BaseModel):
     color_link_light: str = "#fb30c4"
     color_accent_light: str = "#ffeb00"
     overlay_brightness_light: str = ".95"
-    
+
     # Layout
     body_width: str = "800px"
 ```
@@ -623,7 +623,7 @@ def pre_render(core):
     for post in core.posts:
         if 'config_overrides' not in post:
             continue
-        
+
         # Normalize text list to string
         raw_text = post.config_overrides.get('head', {}).get('text', '')
         if isinstance(raw_text, list):
@@ -642,20 +642,20 @@ When rendering, the template receives a merged configuration:
 def get_merged_config(core, post):
     """Merge global config with post overrides."""
     config = core.config.copy()
-    
+
     if post.config_overrides:
         # Merge head
         config.head.meta.extend(post.config_overrides.head.meta)
         config.head.link.extend(post.config_overrides.head.link)
         config.head.script.extend(post.config_overrides.head.script)
         config.head.text += "\n" + post.config_overrides.head.text
-        
+
         # Merge style (override individual values)
         for field in post.config_overrides.style.__fields__:
             value = getattr(post.config_overrides.style, field)
             if value is not None:
                 setattr(config.style, field, value)
-    
+
     return config
 ```
 

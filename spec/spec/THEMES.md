@@ -237,7 +237,7 @@ themes/default/
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <xsl:output method="html" encoding="UTF-8" />
-  
+
   <xsl:template match="/">
     <html>
       <head>
@@ -266,7 +266,7 @@ themes/default/
           <p class="subtitle">This is an RSS feed. Subscribe by copying the URL into your feed reader.</p>
           <p class="feed-url"><xsl:value-of select="/rss/channel/link" /></p>
         </header>
-        
+
         <section class="about-feeds">
           <h2>What is an RSS feed?</h2>
           <p>RSS feeds allow you to subscribe to websites and receive updates automatically in a feed reader app.</p>
@@ -279,7 +279,7 @@ themes/default/
             </ul>
           </details>
         </section>
-        
+
         <section class="recent-posts">
           <h2>Recent Posts</h2>
           <xsl:for-each select="/rss/channel/item">
@@ -886,7 +886,7 @@ Palettes are compiled to CSS custom properties:
   --palette-flamingo: #f2cdcd;
   --palette-pink: #f5c2e7;
   /* ... all 26 Catppuccin colors */
-  
+
   /* Semantic colors */
   --color-text-primary: var(--palette-text);
   --color-text-secondary: var(--palette-subtext1);
@@ -901,7 +901,7 @@ Palettes are compiled to CSS custom properties:
   --color-error: var(--palette-red);
   --color-info: var(--palette-blue);
   --color-border: var(--palette-surface1);
-  
+
   /* Component colors */
   --code-bg: var(--palette-surface0);
   --code-text: var(--palette-text);
@@ -959,12 +959,12 @@ Implementations MUST use the WCAG 2.1 relative luminance formula for contrast ca
 func ContrastRatio(fg, bg color.Color) float64 {
     l1 := RelativeLuminance(fg)
     l2 := RelativeLuminance(bg)
-    
+
     // Ensure l1 is the lighter color
     if l1 < l2 {
         l1, l2 = l2, l1
     }
-    
+
     return (l1 + 0.05) / (l2 + 0.05)
 }
 
@@ -972,12 +972,12 @@ func ContrastRatio(fg, bg color.Color) float64 {
 // Based on WCAG 2.1 definition using sRGB color space.
 func RelativeLuminance(c color.Color) float64 {
     r, g, b, _ := c.RGBA()
-    
+
     // Convert to 0-1 range
     rLinear := linearize(float64(r) / 65535.0)
     gLinear := linearize(float64(g) / 65535.0)
     bLinear := linearize(float64(b) / 65535.0)
-    
+
     // ITU-R BT.709 coefficients
     return 0.2126*rLinear + 0.7152*gLinear + 0.0722*bLinear
 }
@@ -1020,26 +1020,26 @@ var RequiredChecks = []ContrastCheck{
     {"text-primary", "bg-primary", 4.5, "AA"},
     {"text-primary", "bg-surface", 4.5, "AA"},
     {"text-primary", "bg-elevated", 4.5, "AA"},
-    
+
     // Secondary text
     {"text-secondary", "bg-primary", 4.5, "AA"},
     {"text-muted", "bg-primary", 3.0, "AA Large"},
-    
+
     // Interactive elements
     {"link", "bg-primary", 4.5, "AA"},
     {"accent", "bg-primary", 3.0, "AA Large"},
-    
+
     // Status colors (used for UI, so 3:1 minimum)
     {"success", "bg-primary", 3.0, "UI"},
     {"warning", "bg-primary", 3.0, "UI"},
     {"error", "bg-primary", 3.0, "UI"},
     {"info", "bg-primary", 3.0, "UI"},
-    
+
     // Code blocks
     {"code-text", "code-bg", 4.5, "AA"},
     {"code-comment", "code-bg", 3.0, "AA Large"},
     {"code-keyword", "code-bg", 4.5, "AA"},
-    
+
     // Buttons
     {"button-primary-text", "button-primary-bg", 4.5, "AA"},
     {"button-secondary-text", "button-secondary-bg", 4.5, "AA"},
@@ -1060,7 +1060,7 @@ markata-go palette check <palette-name> [--strict]
 func TestPaletteContrast(t *testing.T) {
     palette, err := palettes.Load("catppuccin-mocha")
     require.NoError(t, err)
-    
+
     // Check all required combinations
     results := palette.CheckContrast()
     for _, r := range results {
@@ -1098,7 +1098,7 @@ Text Readability:
 Interactive Elements:
   ✓ Links are distinguishable:        6.4:1 (AA compliant)
   ✓ Focus indicators visible:         5.2:1 (AA compliant)
-  
+
 Color Blindness Simulation:
   ✓ Protanopia:   Status colors distinguishable
   ✓ Deuteranopia: Status colors distinguishable  
@@ -1178,14 +1178,14 @@ Built-in themes SHOULD use CSS custom properties for consistency:
   --color-primary: #3b82f6;
   --color-primary-light: #60a5fa;
   --color-primary-dark: #2563eb;
-  
+
   /* Semantic colors */
   --color-text: #1f2937;
   --color-text-muted: #6b7280;
   --color-background: #ffffff;
   --color-surface: #f9fafb;
   --color-border: #e5e7eb;
-  
+
   /* Status colors */
   --color-success: #10b981;
   --color-warning: #f59e0b;
@@ -1213,7 +1213,7 @@ Built-in themes SHOULD use CSS custom properties for consistency:
   --font-body: system-ui, -apple-system, sans-serif;
   --font-heading: var(--font-body);
   --font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
-  
+
   /* Font sizes (modular scale) */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -1223,7 +1223,7 @@ Built-in themes SHOULD use CSS custom properties for consistency:
   --text-2xl: 1.5rem;
   --text-3xl: 1.875rem;
   --text-4xl: 2.25rem;
-  
+
   /* Line heights */
   --leading-tight: 1.25;
   --leading-normal: 1.5;
@@ -1244,7 +1244,7 @@ Built-in themes SHOULD use CSS custom properties for consistency:
   --space-8: 2rem;
   --space-12: 3rem;
   --space-16: 4rem;
-  
+
   /* Layout */
   --content-width: 65ch;
   --page-width: 1200px;
@@ -1365,7 +1365,7 @@ Themes SHOULD provide configurable media borders via CSS custom properties:
   --media-border-style: solid;
   --media-border-color: var(--color-border);
   --media-border-radius: var(--radius-lg);
-  
+
   /* Generic gradient presets */
   --gradient-accent: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   --gradient-vibrant: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
@@ -1373,7 +1373,7 @@ Themes SHOULD provide configurable media borders via CSS custom properties:
   --gradient-cool: linear-gradient(135deg, #4facfe, #00f2fe);
   --gradient-sunset: linear-gradient(135deg, #fa709a, #fee140);
   --gradient-ocean: linear-gradient(135deg, #2193b0, #6dd5ed);
-  
+
   /* Palette-specific gradients - use colors from popular palettes */
   --gradient-catppuccin: linear-gradient(135deg, #cba6f7, #f5c2e7, #f38ba8);
   --gradient-nord: linear-gradient(135deg, #88c0d0, #81a1c1, #5e81ac);
@@ -1478,7 +1478,7 @@ For dramatic media presentation:
 ```css
 .post-content.glow img,
 .post-content.glow video {
-  box-shadow: 
+  box-shadow:
     0 0 20px rgba(102, 126, 234, 0.3),
     0 0 40px rgba(118, 75, 162, 0.2),
     0 0 60px rgba(240, 147, 251, 0.1);
@@ -1488,7 +1488,7 @@ For dramatic media presentation:
 @media (prefers-color-scheme: dark) {
   .post-content.glow img,
   .post-content.glow video {
-    box-shadow: 
+    box-shadow:
       0 0 30px rgba(102, 126, 234, 0.4),
       0 0 60px rgba(118, 75, 162, 0.3),
       0 0 90px rgba(240, 147, 251, 0.2);
@@ -1865,12 +1865,12 @@ aside.admonition.aside .admonition-title::before {
   .chat-container {
     background: var(--color-surface);
   }
-  
+
   .chat-left .chat-bubble {
     background: #374151;
     color: #f9fafb;
   }
-  
+
   .chat-left .chat-author {
     color: #9ca3af;
   }
@@ -1881,7 +1881,7 @@ aside.admonition.aside .admonition-title::before {
   .chat-message {
     max-width: 95%;
   }
-  
+
   .chat-avatar {
     width: 28px;
     height: 28px;
@@ -2246,21 +2246,21 @@ Every theme MUST provide a base template with these blocks:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
+
   {% block meta %}
   <title>{% block title %}{{ config.title }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ config.description }}{% endblock %}">
   {% endblock %}
-  
+
   {% block head %}
   {# Theme CSS #}
   <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
-  
+
   {# CSS variable overrides from config #}
   {% if config.theme.variables %}
   <style>:root { {% for k, v in config.theme.variables.items() %}{{ k }}: {{ v }}; {% endfor %} }</style>
   {% endif %}
-  
+
   {# Custom CSS #}
   {% if config.theme.custom_css %}
   <link rel="stylesheet" href="{{ config.theme.custom_css | asset_url }}">
@@ -2271,15 +2271,15 @@ Every theme MUST provide a base template with these blocks:
   {% block header %}
   {% include "partials/header.html" %}
   {% endblock %}
-  
+
   <main>
     {% block content %}{% endblock %}
   </main>
-  
+
   {% block footer %}
   {% include "partials/footer.html" %}
   {% endblock %}
-  
+
   {% block scripts %}{% endblock %}
 </body>
 </html>
@@ -2314,11 +2314,11 @@ Every theme MUST provide a base template with these blocks:
     </div>
     {% endif %}
   </header>
-  
+
   <div class="post-content">
     {{ body | safe }}
   </div>
-  
+
   {% if post.tags %}
   <footer class="post-footer">
     <div class="tags">
@@ -2354,13 +2354,13 @@ Every theme MUST provide a base template with these blocks:
     {% if feed.description %}<p>{{ feed.description }}</p>{% endif %}
   </header>
   {% endif %}
-  
+
   <div class="posts">
     {% for post in feed.posts %}
     {% include "card.html" %}
     {% endfor %}
   </div>
-  
+
   {% if feed.pagination.total_pages > 1 %}
   {% include "partials/pagination.html" %}
   {% endif %}
@@ -2498,7 +2498,7 @@ Installed themes:
   default     Clean, minimal theme with dark mode (built-in)
   minimal     Bare-bones HTML for maximum customization (built-in)
   blog        Feature-rich blog theme (~/.config/markata-go/themes/blog)
-  
+
 Current theme: default
 ```
 
@@ -2952,32 +2952,32 @@ The generated HTML includes:
     <h1>Catppuccin Mocha</h1>
     <p>Dark variant by Catppuccin Team</p>
   </header>
-  
+
   <section id="colors">
     <h2>Raw Colors</h2>
     <!-- Color swatches grid -->
   </section>
-  
+
   <section id="typography">
     <h2>Typography</h2>
     <!-- Heading samples, body text, links -->
   </section>
-  
+
   <section id="code">
     <h2>Code Blocks</h2>
     <!-- Sample code with syntax highlighting -->
   </section>
-  
+
   <section id="admonitions">
     <h2>Admonitions</h2>
     <!-- All admonition types -->
   </section>
-  
+
   <section id="components">
     <h2>Components</h2>
     <!-- Buttons, cards, forms -->
   </section>
-  
+
   <section id="contrast">
     <h2>Contrast Ratios</h2>
     <!-- Visual contrast check results -->
@@ -3197,14 +3197,14 @@ $ markata-go palette export catppuccin-mocha --format css
   --palette-pink: #f5c2e7;
   --palette-mauve: #cba6f7;
   /* ... */
-  
+
   /* Semantic colors */
   --color-text-primary: var(--palette-text);
   --color-text-secondary: var(--palette-subtext1);
   --color-bg-primary: var(--palette-base);
   --color-accent: var(--palette-mauve);
   /* ... */
-  
+
   /* Component colors */
   --code-bg: var(--palette-surface0);
   --code-text: var(--palette-text);

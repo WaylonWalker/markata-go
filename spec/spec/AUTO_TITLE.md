@@ -117,7 +117,7 @@ disabled_hooks = ["auto_title"]
 def pre_render(core):
     """
     Generate titles for posts that don't have one.
-    
+
     Processes posts where title is empty or None, deriving
     a human-readable title from the filename.
     """

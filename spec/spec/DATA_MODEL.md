@@ -74,7 +74,7 @@ Controls whether content appears in feeds, sitemaps, and RSS. **All non-draft, n
 title: "Draft Post - For Review"
 published: false  # Renders to /draft-post/, but not in feeds
 ---
-This content is accessible at /draft-post/ but won't appear in 
+This content is accessible at /draft-post/ but won't appear in
 the blog feed or sitemap.
 ```
 
@@ -102,19 +102,19 @@ config_overrides:
   markdown:
     highlight:
       theme: monokai
-  
+
   head:
     meta:
       - name: robots
         content: noindex
-  
+
   style:
     color_bg: "#000000"
-  
+
   theme:
     options:
       show_toc: false
-  
+
   # Disable plugins for this post
   toc:
     enabled: false
@@ -443,7 +443,7 @@ from pydantic import field_validator
 
 class Post(BaseModel):
     date: Optional[date] = None
-    
+
     @field_validator("date", mode="before")
     @classmethod
     def parse_date(cls, v):
@@ -462,7 +462,7 @@ from pydantic import computed_field
 class Post(BaseModel):
     title: Optional[str] = None
     path: Path
-    
+
     @computed_field
     @property
     def slug(self) -> str:

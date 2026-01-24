@@ -367,11 +367,11 @@ servings: 4
 
 ## Ingredients
 
-- 
+-
 
 ## Instructions
 
-1. 
+1.
 ```
 
 The `_directory` field in frontmatter sets the output directory (removed from generated content).

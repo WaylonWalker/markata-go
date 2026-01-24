@@ -77,7 +77,7 @@ Post {
   content: string         // Raw content (after frontmatter)
   slug: string            // URL-safe identifier
   href: string            // Relative URL (/{slug}/)
-  
+
   // Standard Optional
   title: string?
   date: date?
@@ -87,7 +87,7 @@ Post {
   tags: string[] = []
   description: string?
   template: string = "post.html"
-  
+
   // Set during rendering
   article_html: string?   // Rendered markdown
   html: string?           // Final HTML with template
@@ -105,7 +105,7 @@ Config {
   hooks: string[] = ["default"]
   disabled_hooks: string[] = []
   concurrency: int = 0    // 0 = auto
-  
+
   // Plugin sections (added dynamically)
   glob: GlobConfig
   markdown: MarkdownConfig
@@ -124,18 +124,18 @@ Core {
   files: Path[]
   feeds: Feed[]
   cache: Cache
-  
+
   // Query methods
   filter(expr: string) -> Post[]
   map(field: string, filter?: string, sort?: string) -> any[]
   first(filter?: string, sort?: string) -> Post?
   one(expr: string) -> Post  // Error if 0 or >1
-  
+
   // Plugin communication
   set(key: string, value: any)
   get(key: string) -> any
   has(key: string) -> bool
-  
+
   // Lifecycle
   run(until_stage?: string)
   register(plugin: Plugin)
@@ -157,29 +157,29 @@ Core {
 # Pseudocode
 def load_config():
     config = {}
-    
+
     # 1. Plugin defaults
     for plugin in registered_plugins:
         merge(config, plugin.defaults)
-    
+
     # 2. Global config
     if exists("~/.config/[name]/config.toml"):
         merge(config, parse_toml(read("~/.config/[name]/config.toml")))
-    
+
     # 3. Local config
     for path in ["[name].toml", "pyproject.toml"]:
         if exists(path):
             merge(config, parse_toml(read(path)))
             break
-    
+
     # 4. Environment variables
     for key, value in environ:
         if key.startswith("[NAME]_"):
             set_nested(config, parse_env_key(key), value)
-    
+
     # 5. CLI arguments
     merge(config, cli_args)
-    
+
     return validate(config)
 ```
 
@@ -190,7 +190,7 @@ def load_config():
 ```
 Plugin {
   name: string
-  
+
   // Hooks (all optional)
   configure?(core: Core)
   validate?(core: Core)
@@ -210,13 +210,13 @@ Plugin {
 def resolve_plugin(name: str) -> Plugin:
     if name == "default":
         return DEFAULT_PLUGINS
-    
+
     if name in BUILTIN_PLUGINS:
         return BUILTIN_PLUGINS[name]
-    
+
     if name.startswith("./"):
         return load_local_plugin(name)
-    
+
     # Module path (language-specific)
     return import_plugin(name)
 ```
@@ -231,19 +231,19 @@ class LifecycleManager:
     ]
     current_stage = None
     completed_stages = set()
-    
+
     def run(self, until_stage=None):
         for stage in self.stages:
             if stage in self.completed_stages:
                 continue
-            
+
             self.current_stage = stage
             self.run_stage(stage)
             self.completed_stages.add(stage)
-            
+
             if stage == until_stage:
                 break
-    
+
     def run_stage(self, stage):
         # Get all hooks for this stage
         hooks = []
@@ -251,10 +251,10 @@ class LifecycleManager:
             if hasattr(plugin, stage):
                 hook = getattr(plugin, stage)
                 hooks.append((plugin, hook))
-        
+
         # Sort by priority (tryfirst, normal, trylast)
         hooks.sort(key=lambda h: get_hook_priority(h))
-        
+
         # Execute hooks
         for plugin, hook in hooks:
             try:
@@ -278,14 +278,14 @@ def glob(core):
     patterns = core.config.glob.glob_patterns  # default: ["**/*.md"]
     exclude = core.config.glob.exclude_patterns
     use_gitignore = core.config.glob.use_gitignore
-    
+
     files = []
     for pattern in patterns:
         for path in glob_files(pattern):
             if not matches_any(path, exclude):
                 if not use_gitignore or not is_gitignored(path):
                     files.append(path)
-    
+
     core.files = deduplicate(files)
 ```
 
@@ -304,15 +304,15 @@ def glob(core):
 def parse_frontmatter(content: str) -> (dict, str):
     if not content.startswith("---"):
         return ({}, content)
-    
+
     # Find closing delimiter
     end = content.find("---", 3)
     if end == -1:
         return ({}, content)
-    
+
     yaml_str = content[3:end]
     body = content[end+3:].lstrip("\n")
-    
+
     frontmatter = yaml.safe_load(yaml_str) or {}
     return (frontmatter, body)
 ```
@@ -325,12 +325,12 @@ def load(core):
         try:
             raw = read_file(path, encoding="utf-8")
             frontmatter, content = parse_frontmatter(raw)
-            
+
             # Generate slug
             slug = frontmatter.get("slug") or \
                    slugify(frontmatter.get("title")) or \
                    path.stem
-            
+
             post = Post(
                 path=path,
                 content=content,
@@ -339,7 +339,7 @@ def load(core):
                 **frontmatter
             )
             core.posts.append(post)
-        
+
         except Exception as e:
             log.warning(f"Failed to load {path}: {e}")
 ```
@@ -373,7 +373,7 @@ theme = "github-dark"
 ```python
 def render(core):
     md = create_markdown_parser(core.config.markdown)
-    
+
     for post in core.filter("not skip"):
         post.article_html = md.render(post.content)
 ```
@@ -406,7 +406,7 @@ context = {
 def render_post(post, core):
     template_name = post.template or "post.html"
     template = core.template_env.get_template(template_name)
-    
+
     post.html = template.render(
         post=post,
         body=post.article_html,
@@ -438,7 +438,7 @@ def render_post(post, core):
             </time>
             {% endif %}
         </header>
-        
+
         <div class="content">
             {{ body | safe }}
         </div>
@@ -458,12 +458,12 @@ def render_post(post, core):
 ```python
 def write(core):
     output_dir = core.config.output_dir
-    
+
     for post in core.filter("not skip"):
         # Render with template if not already done
         if not post.html:
             post.html = render_post(post, core)
-        
+
         # Write to output
         output_path = output_dir / post.slug / "index.html"
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -504,7 +504,7 @@ Feed {
   items_per_page: int
   template: string
   formats: {html, rss, atom, json, sitemap}
-  
+
   // Computed
   posts: Post[]           // Filtered + sorted posts
   pages: Post[][]         // Paginated posts
@@ -517,22 +517,22 @@ Feed {
 ```python
 def collect(core):
     core.feeds = []
-    
+
     for feed_config in core.config.feeds:
         # Filter posts
         posts = core.filter(feed_config.filter)
-        
+
         # Sort
         posts = sorted(
             posts,
             key=lambda p: getattr(p, feed_config.sort, ""),
             reverse=feed_config.reverse
         )
-        
+
         # Paginate
         per_page = feed_config.items_per_page
         pages = [posts[i:i+per_page] for i in range(0, len(posts), per_page)]
-        
+
         feed = Feed(
             slug=feed_config.slug,
             title=feed_config.title,
@@ -554,19 +554,19 @@ def write_feeds(core):
         if feed.formats.html:
             for page_num, page_posts in enumerate(feed.pages, 1):
                 html = render_feed_page(feed, page_posts, page_num, core)
-                
+
                 if page_num == 1:
                     path = f"{feed.slug}/index.html"
                 else:
                     path = f"{feed.slug}/page/{page_num}/index.html"
-                
+
                 write_output(core.config.output_dir / path, html)
-        
+
         # RSS
         if feed.formats.rss:
             rss = render_rss(feed, core)
             write_output(core.config.output_dir / f"{feed.slug}/rss.xml", rss)
-        
+
         # Atom
         if feed.formats.atom:
             atom = render_atom(feed, core)
@@ -579,10 +579,10 @@ def write_feeds(core):
 def copy_assets(core):
     assets_dir = Path(core.config.assets.dir)
     output_dir = core.config.output_dir
-    
+
     if not assets_dir.exists():
         return
-    
+
     for src in assets_dir.rglob("*"):
         if src.is_file():
             rel_path = src.relative_to(assets_dir)
@@ -611,15 +611,15 @@ class DevServer:
         self.core = core
         self.port = port
         self.watcher = FileWatcher()
-    
+
     def start(self):
         # Initial build
         self.core.run()
-        
+
         # Start HTTP server
         self.server = HTTPServer(self.core.config.output_dir, self.port)
         self.server.start()
-        
+
         # Start file watcher
         self.watcher.watch(
             patterns=[
@@ -629,7 +629,7 @@ class DevServer:
             ],
             callback=self.on_change
         )
-    
+
     def on_change(self, path):
         # Determine what changed
         if path.endswith(".toml"):
@@ -642,7 +642,7 @@ class DevServer:
         elif "templates" in path:
             # Template change: re-render affected posts
             self.core.run(from_stage="render")
-        
+
         # Trigger live reload
         self.notify_clients()
 ```
@@ -706,7 +706,7 @@ class FileCache:
     def __init__(self, cache_dir=".name.cache"):
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
-    
+
     def get(self, key):
         path = self.cache_dir / hash_key(key)
         if path.exists():
@@ -714,7 +714,7 @@ class FileCache:
             if not data.get("expires") or data["expires"] > time.time():
                 return data["value"]
         return None
-    
+
     def set(self, key, value, ttl=None):
         path = self.cache_dir / hash_key(key)
         data = {
@@ -866,16 +866,16 @@ Detect cycles during template loading:
 def get_template(name, seen=None):
     if seen is None:
         seen = set()
-    
+
     if name in seen:
         raise CircularTemplateError(f"Cycle detected: {' -> '.join(seen)} -> {name}")
-    
+
     seen.add(name)
     template = load_template(name)
-    
+
     if template.extends:
         get_template(template.extends, seen)
-    
+
     return template
 ```
 
@@ -934,7 +934,7 @@ class Post:
     template: str = "post.html"
     article_html: str = ""
     html: str = ""
-    
+
     @property
     def href(self):
         return f"/{self.slug}/"
@@ -953,13 +953,13 @@ class Core:
         self.files = []
         self.jinja = Environment(loader=FileSystemLoader("templates"))
         self.md = markdown.Markdown(extensions=["tables", "fenced_code"])
-    
+
     def _load_config(self, path):
         if Path(path).exists():
             data = tomli.loads(Path(path).read_text())
             return Config(**data.get("ssg", {}))
         return Config()
-    
+
     def filter(self, expr):
         # Simple filter implementation
         result = []
@@ -968,24 +968,24 @@ class Core:
             if eval(expr, {"__builtins__": {}}, ctx):
                 result.append(post)
         return result
-    
+
     def run(self):
         self._glob()
         self._load()
         self._render()
         self._write()
-    
+
     def _glob(self):
         for pattern in self.config.glob_patterns:
             self.files.extend(Path(".").glob(pattern))
-    
+
     def _load(self):
         for path in self.files:
             raw = path.read_text()
             fm, content = self._parse_frontmatter(raw)
             slug = fm.get("slug") or self._slugify(fm.get("title", path.stem))
             self.posts.append(Post(path=path, content=content, slug=slug, **fm))
-    
+
     def _parse_frontmatter(self, content):
         if not content.startswith("---"):
             return {}, content
@@ -995,21 +995,21 @@ class Core:
         fm = yaml.safe_load(content[3:end]) or {}
         body = content[end+3:].lstrip("\n")
         return fm, body
-    
+
     def _slugify(self, text):
         text = text.lower()
         text = re.sub(r"[^\w\s-]", "", text)
         text = re.sub(r"[-\s]+", "-", text)
         return text.strip("-")
-    
+
     def _render(self):
         for post in self.posts:
             post.article_html = self.md.convert(post.content)
             self.md.reset()
-            
+
             template = self.jinja.get_template(post.template)
             post.html = template.render(post=post, config=self.config)
-    
+
     def _write(self):
         output = Path(self.config.output_dir)
         for post in self.posts:

@@ -97,7 +97,7 @@ example.com {
     basicauth /admin/* {
         admin $2a$14$... # Use: caddy hash-password
     }
-    
+
     root * /srv
     file_server
     # ...

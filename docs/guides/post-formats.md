@@ -193,14 +193,14 @@ server {
     location @negotiate {
         # Map Accept header to file extension
         set $ext "html";
-        
+
         if ($http_accept ~* "text/plain") {
             set $ext "txt";
         }
         if ($http_accept ~* "text/markdown") {
             set $ext "md";
         }
-        
+
         # Try the negotiated format
         try_files $uri/index.$ext $uri/index.html =404;
     }
@@ -213,20 +213,20 @@ server {
 example.com {
     root * /var/www/html
     file_server
-    
+
     @wantsText {
         header Accept *text/plain*
     }
     @wantsMarkdown {
         header Accept *text/markdown*
     }
-    
+
     # Rewrite to plain text when requested
     rewrite @wantsText {path}/index.txt
-    
+
     # Rewrite to markdown when requested
     rewrite @wantsMarkdown {path}/index.md
-    
+
     # Default to HTML
     try_files {path} {path}/index.html {path}.html
 }
@@ -238,15 +238,15 @@ example.com {
 <VirtualHost *:80>
     ServerName example.com
     DocumentRoot /var/www/html
-    
+
     # Enable content negotiation
     Options +MultiViews
-    
+
     # Define type mappings
     AddType text/html .html
     AddType text/markdown .md
     AddType text/plain .txt
-    
+
     # Prefer HTML by default
     DirectoryIndex index.html index.md index.txt
 </VirtualHost>

@@ -1,0 +1,160 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build",
+      "type": "shell",
+      "command": "just build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$go"],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Build (race detector)",
+      "type": "shell",
+      "command": "just build-race",
+      "group": "build",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Clean",
+      "type": "shell",
+      "command": "just clean",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test",
+      "type": "shell",
+      "command": "just test",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": ["$go"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Test (race detector)",
+      "type": "shell",
+      "command": "just test-race",
+      "group": "test",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Test (coverage)",
+      "type": "shell",
+      "command": "just test-coverage",
+      "group": "test",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Test (coverage HTML)",
+      "type": "shell",
+      "command": "just coverage-html",
+      "group": "test",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Test Current Package",
+      "type": "shell",
+      "command": "go test -v ./${relativeFileDirname}/...",
+      "group": "test",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Lint",
+      "type": "shell",
+      "command": "just lint",
+      "problemMatcher": ["$go"],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "Format",
+      "type": "shell",
+      "command": "just fmt",
+      "problemMatcher": []
+    },
+    {
+      "label": "Vet",
+      "type": "shell",
+      "command": "just vet",
+      "problemMatcher": ["$go"]
+    },
+    {
+      "label": "Check All",
+      "type": "shell",
+      "command": "just check",
+      "problemMatcher": ["$go"],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "Pre-commit: Run All",
+      "type": "shell",
+      "command": "pre-commit run --all-files",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Pre-commit: Run Staged",
+      "type": "shell",
+      "command": "pre-commit run",
+      "problemMatcher": []
+    },
+    {
+      "label": "Pre-commit: Update Hooks",
+      "type": "shell",
+      "command": "pre-commit autoupdate",
+      "problemMatcher": []
+    },
+    {
+      "label": "Site: Build",
+      "type": "shell",
+      "command": "just site-build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Site: Serve",
+      "type": "shell",
+      "command": "just site-serve",
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "CI: Full Check",
+      "type": "shell",
+      "command": "just ci",
+      "problemMatcher": ["$go"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Tidy Dependencies",
+      "type": "shell",
+      "command": "just tidy",
+      "problemMatcher": []
+    }
+  ]
+}

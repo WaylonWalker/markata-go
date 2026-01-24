@@ -65,7 +65,7 @@ command_exists() {
 detect_os() {
     local os
     os="$(uname -s)"
-    
+
     case "${os}" in
         Linux*)
             # Check for Android (Termux)
@@ -95,7 +95,7 @@ detect_os() {
 detect_arch() {
     local arch
     arch="$(uname -m)"
-    
+
     case "${arch}" in
         x86_64|amd64)
             echo "x86_64"
@@ -116,7 +116,7 @@ detect_arch() {
 # Get the latest version from GitHub API
 get_latest_version() {
     local version
-    
+
     if command_exists curl; then
         version=$(curl -sS "${GITHUB_API}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
     elif command_exists wget; then
@@ -125,12 +125,12 @@ get_latest_version() {
         log_error "Neither curl nor wget found. Please install one of them."
         exit 1
     fi
-    
+
     if [ -z "${version}" ]; then
         log_error "Failed to fetch latest version from GitHub API"
         exit 1
     fi
-    
+
     echo "${version}"
 }
 
@@ -141,7 +141,7 @@ get_install_dir() {
         echo "${MARKATA_GO_INSTALL_DIR}"
         return
     fi
-    
+
     # Check if running as root
     if [ "$(id -u)" -eq 0 ]; then
         echo "/usr/local/bin"
@@ -159,12 +159,12 @@ get_install_dir() {
 # Ensure the install directory exists
 ensure_install_dir() {
     local dir="$1"
-    
+
     if [ ! -d "${dir}" ]; then
         log_info "Creating install directory: ${dir}"
         mkdir -p "${dir}"
     fi
-    
+
     if [ ! -w "${dir}" ]; then
         log_error "Install directory is not writable: ${dir}"
         log_error "Try running with sudo or set MARKATA_GO_INSTALL_DIR to a writable path"
@@ -178,30 +178,30 @@ download_and_install() {
     local arch="$2"
     local version="$3"
     local install_dir="$4"
-    
+
     # Strip 'v' prefix for archive naming
     local version_num="${version#v}"
-    
+
     # Determine archive extension
     local ext="tar.gz"
     if [ "${os}" = "windows" ]; then
         ext="zip"
     fi
-    
+
     # Build download URL
     local archive_name="${BINARY_NAME}_${version_num}_${os}_${arch}.${ext}"
     local download_url="${GITHUB_RELEASES}/download/${version}/${archive_name}"
-    
+
     log_info "Downloading ${BINARY_NAME} ${version} for ${os}/${arch}..."
     log_info "URL: ${download_url}"
-    
+
     # Create temporary directory
     local tmp_dir
     tmp_dir=$(mktemp -d)
     trap "rm -rf ${tmp_dir}" EXIT
-    
+
     local archive_path="${tmp_dir}/${archive_name}"
-    
+
     # Download the archive
     if command_exists curl; then
         if ! curl -fsSL "${download_url}" -o "${archive_path}"; then
@@ -218,12 +218,12 @@ download_and_install() {
             exit 1
         fi
     fi
-    
+
     log_success "Downloaded ${archive_name}"
-    
+
     # Extract the archive
     log_info "Extracting..."
-    
+
     if [ "${ext}" = "tar.gz" ]; then
         tar -xzf "${archive_path}" -C "${tmp_dir}"
     elif [ "${ext}" = "zip" ]; then
@@ -234,57 +234,57 @@ download_and_install() {
             exit 1
         fi
     fi
-    
+
     # Find and install the binary
     local binary_path="${tmp_dir}/${BINARY_NAME}"
     if [ "${os}" = "windows" ]; then
         binary_path="${tmp_dir}/${BINARY_NAME}.exe"
     fi
-    
+
     if [ ! -f "${binary_path}" ]; then
         log_error "Binary not found in archive"
         exit 1
     fi
-    
+
     # Install the binary
     log_info "Installing to ${install_dir}..."
-    
+
     local dest="${install_dir}/${BINARY_NAME}"
     if [ "${os}" = "windows" ]; then
         dest="${install_dir}/${BINARY_NAME}.exe"
     fi
-    
+
     mv "${binary_path}" "${dest}"
     chmod +x "${dest}"
-    
+
     log_success "Installed ${BINARY_NAME} to ${dest}"
 }
 
 # Check if install dir is in PATH
 check_path() {
     local install_dir="$1"
-    
+
     case ":${PATH}:" in
         *":${install_dir}:"*)
             return 0
             ;;
     esac
-    
+
     return 1
 }
 
 # Suggest PATH setup
 suggest_path_setup() {
     local install_dir="$1"
-    
+
     log_warn "${install_dir} is not in your PATH"
     echo ""
     echo "Add it to your PATH by adding this line to your shell config:"
     echo ""
-    
+
     local shell_name
     shell_name=$(basename "${SHELL}")
-    
+
     case "${shell_name}" in
         bash)
             echo "  echo 'export PATH=\"${install_dir}:\$PATH\"' >> ~/.bashrc"
@@ -312,12 +312,12 @@ suggest_path_setup() {
 verify_installation() {
     local install_dir="$1"
     local binary_path="${install_dir}/${BINARY_NAME}"
-    
+
     if [ ! -x "${binary_path}" ]; then
         log_error "Installation verification failed: binary not found or not executable"
         exit 1
     fi
-    
+
     # Try to run the binary
     local version_output
     if version_output=$("${binary_path}" version --short 2>&1); then
@@ -333,20 +333,20 @@ main() {
     echo "markata-go installer"
     echo "===================="
     echo ""
-    
+
     # Detect platform
     local os arch
     os=$(detect_os)
     arch=$(detect_arch)
-    
+
     log_info "Detected platform: ${os}/${arch}"
-    
+
     # Check for Android-specific limitations
     if [ "${os}" = "android" ] && [ "${arch}" != "arm64" ]; then
         log_error "Only arm64 architecture is supported on Android"
         exit 1
     fi
-    
+
     # Get version to install
     local version
     if [ -n "${MARKATA_GO_VERSION}" ]; then
@@ -361,26 +361,26 @@ main() {
         version=$(get_latest_version)
         log_info "Latest version: ${version}"
     fi
-    
+
     # Determine install directory
     local install_dir
     install_dir=$(get_install_dir)
     log_info "Install directory: ${install_dir}"
-    
+
     # Ensure install directory exists and is writable
     ensure_install_dir "${install_dir}"
-    
+
     # Download and install
     download_and_install "${os}" "${arch}" "${version}" "${install_dir}"
-    
+
     # Check PATH
     if ! check_path "${install_dir}"; then
         suggest_path_setup "${install_dir}"
     fi
-    
+
     # Verify installation
     verify_installation "${install_dir}"
-    
+
     echo ""
     log_success "Installation complete!"
     echo ""

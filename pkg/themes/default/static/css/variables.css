@@ -4,20 +4,20 @@
   --color-primary: #3b82f6;
   --color-primary-light: #60a5fa;
   --color-primary-dark: #2563eb;
-  
+
   /* Semantic colors */
   --color-text: #1f2937;
   --color-text-muted: #6b7280;
   --color-background: #ffffff;
   --color-surface: #f9fafb;
   --color-border: #e5e7eb;
-  
+
   /* Status colors */
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
   --color-info: #3b82f6;
-  
+
   /* Accent gradient - used for media borders and highlights */
   --gradient-accent: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   --gradient-vibrant: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
@@ -25,7 +25,7 @@
   --gradient-cool: linear-gradient(135deg, #4facfe, #00f2fe);
   --gradient-sunset: linear-gradient(135deg, #fa709a, #fee140);
   --gradient-ocean: linear-gradient(135deg, #2193b0, #6dd5ed);
-  
+
   /* Palette-specific gradients */
   --gradient-catppuccin: linear-gradient(135deg, #cba6f7, #f5c2e7, #f38ba8);
   --gradient-nord: linear-gradient(135deg, #88c0d0, #81a1c1, #5e81ac);
@@ -34,19 +34,19 @@
   --gradient-rose-pine: linear-gradient(135deg, #c4a7e7, #ebbcba, #f6c177);
   --gradient-solarized: linear-gradient(135deg, #268bd2, #2aa198, #859900);
   --gradient-tokyo-night: linear-gradient(135deg, #7aa2f7, #bb9af7, #f7768e);
-  
+
   /* Media border settings */
   --media-border-width: 3px;
   --media-border-style: solid;
   --media-border-color: var(--color-border);
   --media-border-gradient: none;  /* Set to a gradient to enable gradient borders */
   --media-border-radius: var(--radius-lg);
-  
+
   /* Font families */
   --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-heading: var(--font-body);
   --font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
-  
+
   /* Font sizes (modular scale) */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -56,12 +56,12 @@
   --text-2xl: 1.5rem;
   --text-3xl: 1.875rem;
   --text-4xl: 2.25rem;
-  
+
   /* Line heights */
   --leading-tight: 1.25;
   --leading-normal: 1.5;
   --leading-relaxed: 1.75;
-  
+
   /* Spacing scale */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -71,7 +71,7 @@
   --space-8: 2rem;
   --space-12: 3rem;
   --space-16: 4rem;
-  
+
   /* Layout */
   --content-width: 65ch;
   --page-width: 1200px;

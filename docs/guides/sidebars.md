@@ -346,19 +346,19 @@ Sidebar data is available in templates via the context:
     {% if sidebar_title %}
     <h2>{{ sidebar_title }}</h2>
     {% endif %}
-    
+
     <ul>
     {% for item in sidebar_items %}
         <li>
             {% if item.href %}
-            <a href="{{ item.href }}" 
+            <a href="{{ item.href }}"
                {% if item.href == post.href %}class="active"{% endif %}>
                 {{ item.title }}
             </a>
             {% else %}
             <span>{{ item.title }}</span>
             {% endif %}
-            
+
             {% if item.children %}
             <ul>
                 {% for child in item.children %}

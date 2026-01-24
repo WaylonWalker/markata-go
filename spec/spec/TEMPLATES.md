@@ -56,15 +56,15 @@ The foundation template that others extend:
     {% block header %}
     {% include "partials/header.html" %}
     {% endblock %}
-    
+
     <main>
         {% block content %}{% endblock %}
     </main>
-    
+
     {% block footer %}
     {% include "partials/footer.html" %}
     {% endblock %}
-    
+
     {% block scripts %}{% endblock %}
 </body>
 </html>
@@ -108,11 +108,11 @@ Template for individual posts:
         </ul>
         {% endif %}
     </header>
-    
+
     <div class="content">
         {{ body | safe }}
     </div>
-    
+
     {% if post.prev or post.next %}
     <nav class="post-nav">
         {% if post.prev %}
@@ -142,7 +142,7 @@ Template for index/listing pages:
 {% block content %}
 <section class="feed">
     <h1>{{ feed.title }}</h1>
-    
+
     <ul class="post-list">
         {% for post in feed.posts %}
         <li>
@@ -150,15 +150,15 @@ Template for index/listing pages:
         </li>
         {% endfor %}
     </ul>
-    
+
     {% if feed.pagination.total_pages > 1 %}
     <nav class="pagination">
         {% if feed.pagination.has_prev %}
         <a href="{{ feed.pagination.prev_url }}">← Previous</a>
         {% endif %}
-        
+
         <span>Page {{ feed.pagination.current_page }} of {{ feed.pagination.total_pages }}</span>
-        
+
         {% if feed.pagination.has_next %}
         <a href="{{ feed.pagination.next_url }}">Next →</a>
         {% endif %}

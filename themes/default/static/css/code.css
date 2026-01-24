@@ -21,7 +21,7 @@ pre {
   overflow-x: auto;
   margin: var(--space-4) 0;
   border: 1px solid var(--color-border);
-  
+
   /* Scrollbar styling */
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
@@ -97,9 +97,9 @@ pre.line-numbers .line-numbers-rows > span::before {
   content: counter(line);
 }
 
-/* 
+/*
  * Syntax Highlighting Colors
- * 
+ *
  * Syntax highlighting colors are provided by chroma.css, which is
  * dynamically generated based on the selected palette's Chroma theme.
  * See pkg/plugins/chroma_css.go and pkg/palettes/chroma.go for details.

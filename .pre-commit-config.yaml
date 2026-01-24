@@ -1,0 +1,110 @@
+# Pre-commit hooks for markata-go
+# https://pre-commit.com/
+#
+# Install: pre-commit install
+# Run all: pre-commit run --all-files
+# Update:  pre-commit autoupdate
+
+# Default settings
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+
+repos:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # General hooks
+  # ─────────────────────────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      # File hygiene
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+      # File checks
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-symlinks
+
+      # Data file validation
+      - id: check-json
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-toml
+
+      # Security
+      - id: detect-private-key
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Secret detection
+  # ─────────────────────────────────────────────────────────────────────────────
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: |
+          (?x)^(
+            go\.sum|
+            .*_test\.go|
+            testdata/.*|
+            templates/.*\.html|
+            pkg/themes/.*/templates/.*\.html|
+            themes/.*/templates/.*\.html
+          )$
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Go hooks
+  # ─────────────────────────────────────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: go-fmt
+        name: go fmt
+        entry: gofmt -l -w
+        language: system
+        types: [go]
+
+      - id: go-vet
+        name: go vet
+        entry: go vet ./...
+        language: system
+        types: [go]
+        pass_filenames: false
+
+      - id: go-mod-tidy
+        name: go mod tidy
+        entry: go mod tidy
+        language: system
+        files: go\.(mod|sum)$
+        pass_filenames: false
+
+  # golangci-lint (fast mode for pre-commit)
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.61.0
+    hooks:
+      - id: golangci-lint
+        args: [--fast, --timeout=3m]
+
+  # Go tests (only run on staged go files)
+  - repo: local
+    hooks:
+      - id: go-test
+        name: go test
+        entry: go test -short ./...
+        language: system
+        types: [go]
+        pass_filenames: false
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Commit message
+  # ─────────────────────────────────────────────────────────────────────────────
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert]

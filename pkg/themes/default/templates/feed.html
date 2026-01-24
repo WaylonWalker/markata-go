@@ -19,7 +19,7 @@
     {% include "components/format-links.html" %}
   </header>
   {% endif %}
-  
+
   <div class="posts posts-list" id="posts-list">
     {% if page.pagination_type == "js" %}
     {# For JS pagination, render ALL posts - JavaScript will handle showing/hiding #}
@@ -33,7 +33,7 @@
     {% endfor %}
     {% endif %}
   </div>
-  
+
   {% if page.total_pages > 1 %}
   {% include "partials/pagination.html" %}
   {% endif %}

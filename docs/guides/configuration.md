@@ -61,13 +61,13 @@ markata-go:
   description: A site built with markata-go
   url: https://example.com
   output_dir: public
-  
+
   glob:
     patterns:
       - "posts/**/*.md"
       - "pages/*.md"
     use_gitignore: true
-  
+
   markdown:
     extensions:
       - tables

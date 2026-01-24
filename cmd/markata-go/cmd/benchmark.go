@@ -131,7 +131,7 @@ The benchmark generates test sites with rich content including:
 
 Available scenarios:
   small   - 50 posts, 3 feeds (personal blog)
-  medium  - 200 posts, 5 feeds (professional blog)  
+  medium  - 200 posts, 5 feeds (professional blog)
   large   - 500 posts, 8 feeds (documentation site)
 
 Example usage:
@@ -816,21 +816,21 @@ func NewConfig() *Config {
 `,
 			`func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
     ctx := r.Context()
-    
+
     // Parse request body
     var req RequestBody
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         http.Error(w, "Invalid request", http.StatusBadRequest)
         return
     }
-    
+
     // Process the request
     result, err := s.service.Process(ctx, req)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
-    
+
     // Send response
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(result)
@@ -880,7 +880,7 @@ database:
   host: localhost
   port: 5432
   name: myapp_db
-  
+
 logging:
   level: info
   format: json
@@ -911,12 +911,12 @@ class DataProcessor:
     def __init__(self, config: dict):
         self.config = config
         self.results: List[str] = []
-    
+
     async def process(self, items: List[str]) -> List[str]:
         """Process items concurrently."""
         tasks = [self._process_item(item) for item in items]
         return await asyncio.gather(*tasks)
-    
+
     async def _process_item(self, item: str) -> str:
         await asyncio.sleep(0.1)  # Simulate work
         return f"Processed: {item}"

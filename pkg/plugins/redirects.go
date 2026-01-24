@@ -291,7 +291,7 @@ const defaultRedirectTemplate = `<!DOCTYPE html>
 <body>
   <h1>Page Moved</h1>
   <p>
-    <code>{{ .Original }}</code> has moved to 
+    <code>{{ .Original }}</code> has moved to
     <a href="{{ .New }}">{{ .New }}</a>
   </p>
 </body>

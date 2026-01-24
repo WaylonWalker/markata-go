@@ -81,14 +81,14 @@ incomplete
 		{
 			name: "only comments and whitespace",
 			content: `# Comment 1
-  
+
 # Comment 2
    `,
 			want: nil,
 		},
 		{
 			name: "extra whitespace handling",
-			content: `   /old    /new   
+			content: `   /old    /new
 	/tabbed	/path	`,
 			want: []Redirect{
 				{Original: "/old", New: "/new"},

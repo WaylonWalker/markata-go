@@ -372,10 +372,10 @@ The `chat` component renders conversation-style message bubbles, similar to mess
 !!! chat
     !!! chat-left "Alice"
         Hi! How are you?
-    
+
     !!! chat-right "Bob"
         I'm doing great, thanks for asking!
-    
+
     !!! chat-left "Alice"
         Want to grab coffee later?
 ```
@@ -386,7 +386,7 @@ The `chat` component renders conversation-style message bubbles, similar to mess
 !!! chat
     !!! chat-left "Alice" "10:30 AM"
         Hi! How are you?
-    
+
     !!! chat-right "Bob" "10:32 AM"
         I'm doing great, thanks for asking!
 ```
@@ -422,7 +422,7 @@ For system notifications within a conversation:
 !!! chat
     !!! chat-system
         Alice has joined the chat
-    
+
     !!! chat-left "Alice"
         Hello everyone!
 ```
@@ -439,7 +439,7 @@ For system notifications within a conversation:
       <div class="chat-timestamp">10:30 AM</div>
     </div>
   </div>
-  
+
   <div class="chat-message chat-right">
     <div class="chat-bubble">
       <div class="chat-author">Bob</div>
@@ -448,7 +448,7 @@ For system notifications within a conversation:
     </div>
     <div class="chat-avatar" style="background-image: url('/images/bob.jpg')"></div>
   </div>
-  
+
   <div class="chat-message chat-system">
     <div class="chat-content">Alice has joined the chat</div>
   </div>

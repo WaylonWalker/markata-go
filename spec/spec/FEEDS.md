@@ -211,11 +211,11 @@ The feeds plugin automatically handles HTMX library delivery:
 </head>
 <body>
   <h1>{{ feed.config.title }}</h1>
-  
+
   <div id="feed-content" hx-swap-oob="true">
     {% include "feed_partial.html" %}
   </div>
-  
+
   {% include "pagination_controls.html" %}
 </body>
 </html>
@@ -247,11 +247,11 @@ The feeds plugin automatically handles HTMX library delivery:
     Previous
   </a>
   {% endif %}
-  
+
   <span class="pagination-info">
     Page {{ pagination.current_page }} of {{ pagination.total_pages }}
   </span>
-  
+
   {% if pagination.has_next %}
   <a href="{{ feed.config.slug }}/page/{{ pagination.next_page }}/"
      hx-get="{{ feed.config.slug }}/page/{{ pagination.next_page }}/partial/"
@@ -334,14 +334,14 @@ items_per_page = 10
   {% if pagination.has_prev %}
   <a href="{{ feed.config.slug }}/page/{{ pagination.prev_page }}/">Previous</a>
   {% endif %}
-  
+
   {% for page_num in range(1, pagination.total_pages + 1) %}
   <a href="{{ feed.config.slug }}/page/{{ page_num }}/"
      {% if page_num == pagination.current_page %}class="active"{% endif %}>
     {{ page_num }}
   </a>
   {% endfor %}
-  
+
   {% if pagination.has_next %}
   <a href="{{ feed.config.slug }}/page/{{ pagination.next_page }}/">Next</a>
   {% endif %}
@@ -392,9 +392,9 @@ window.paginationData = {
 // pagination.js (custom implementation)
 document.addEventListener('DOMContentLoaded', () => {
   const data = window.paginationData;
-  
+
   if (!data || !data.enabled) return;
-  
+
   // Implement infinite scroll, load more button, etc.
   if (data.hasNext) {
     loadMoreButton.addEventListener('click', () => {
@@ -454,7 +454,7 @@ RSS feed for feed readers.
     <language>{{ config.lang | default('en') }}</language>
     <lastBuildDate>{{ now | rss_date }}</lastBuildDate>
     <atom:link href="{{ config.url }}{{ feed.href }}rss.xml" rel="self" type="application/rss+xml"/>
-    
+
     {% for post in feed.posts[:20] %}
     <item>
       <title>{{ post.title | xml_escape }}</title>
@@ -487,7 +487,7 @@ Atom feed (RFC 4287).
   <link href="{{ config.url }}{{ feed.href }}atom.xml" rel="self"/>
   <id>{{ config.url }}{{ feed.href }}</id>
   <updated>{{ now | atom_date }}</updated>
-  
+
   {% for post in feed.posts[:20] %}
   <entry>
     <title>{{ post.title | xml_escape }}</title>
@@ -821,18 +821,18 @@ Help feed readers find feeds with `<link>` tags:
 <!-- In base.html <head> -->
 {% for feed in core.feeds %}
   {% if feed.formats.rss %}
-  <link rel="alternate" type="application/rss+xml" 
-        title="{{ feed.title }} (RSS)" 
+  <link rel="alternate" type="application/rss+xml"
+        title="{{ feed.title }} (RSS)"
         href="{{ feed.href }}rss.xml">
   {% endif %}
   {% if feed.formats.atom %}
-  <link rel="alternate" type="application/atom+xml" 
-        title="{{ feed.title }} (Atom)" 
+  <link rel="alternate" type="application/atom+xml"
+        title="{{ feed.title }} (Atom)"
         href="{{ feed.href }}atom.xml">
   {% endif %}
   {% if feed.formats.json %}
-  <link rel="alternate" type="application/feed+json" 
-        title="{{ feed.title }} (JSON)" 
+  <link rel="alternate" type="application/feed+json"
+        title="{{ feed.title }} (JSON)"
         href="{{ feed.href }}feed.json">
   {% endif %}
 {% endfor %}

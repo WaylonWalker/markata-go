@@ -10,13 +10,13 @@
     {% if feed.description %}<p>{{ feed.description }}</p>{% endif %}
   </header>
   {% endif %}
-  
+
   <div class="posts">
     {% for post in page.posts %}
     {% include "partials/card.html" %}
     {% endfor %}
   </div>
-  
+
   {% if page.total_pages > 1 %}
   {% include "partials/pagination.html" %}
   {% endif %}

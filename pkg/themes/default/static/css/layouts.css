@@ -1,6 +1,6 @@
 /* ==========================================================================
    Layout System Styles
-   
+
    CSS Grid-based layout system for docs, blog, landing, and bare layouts.
    ========================================================================== */
 
@@ -14,13 +14,13 @@
   --layout-toc-width: 220px;
   --layout-content-max-width: 800px;
   --layout-header-height: 64px;
-  
+
   /* Z-index layers */
   --z-header: 100;
   --z-sidebar: 90;
   --z-overlay: 80;
   --z-toc: 70;
-  
+
   /* Transitions */
   --layout-transition: 0.2s ease;
 }
@@ -147,7 +147,7 @@
   max-height: calc(100vh - var(--layout-header-height) - var(--space-8));
   overflow-y: auto;
   padding: var(--space-4) 0;
-  
+
   /* Scrollbar styling */
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
@@ -249,7 +249,7 @@
   max-height: calc(100vh - var(--layout-header-height) - var(--space-8));
   overflow-y: auto;
   padding: var(--space-4) 0;
-  
+
   /* Scrollbar styling */
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
@@ -635,7 +635,7 @@
 
 /* ==========================================================================
    Responsive Breakpoints
-   
+
    xl: 1280px - Full 3-panel layout
    lg: 1024px - Hide TOC, 2-panel
    md: 768px  - Collapsible sidebar
@@ -648,7 +648,7 @@
     grid-template-columns: var(--sidebar-width, var(--layout-sidebar-width)) minmax(0, 1fr);
     grid-template-areas: "sidebar content";
   }
-  
+
   .layout-toc {
     display: none;
   }
@@ -659,13 +659,13 @@
   .mobile-menu-toggle {
     display: flex;
   }
-  
+
   .layout--docs .layout-container,
   .layout--blog .layout-container {
     grid-template-columns: 1fr;
     grid-template-areas: "content";
   }
-  
+
   .layout-sidebar {
     position: fixed;
     top: var(--layout-header-height);
@@ -680,12 +680,12 @@
     max-height: none;
     overflow-y: auto;
   }
-  
+
   .layout-sidebar[data-open="true"],
   .sidebar-open .layout-sidebar {
     transform: translateX(0);
   }
-  
+
   .sidebar-content {
     padding: var(--space-4);
   }
@@ -696,38 +696,38 @@
   :root {
     --layout-header-height: 56px;
   }
-  
+
   .layout-container {
     padding: 0 var(--space-3);
   }
-  
+
   .layout-content {
     padding: var(--space-6) 0;
   }
-  
+
   .hero {
     grid-template-columns: 1fr;
     padding: var(--space-8) var(--space-4);
     text-align: center;
   }
-  
+
   .hero-title {
     font-size: var(--text-3xl);
   }
-  
+
   .hero-actions {
     justify-content: center;
     flex-wrap: wrap;
   }
-  
+
   .hero-image {
     order: -1;
   }
-  
+
   .post-nav {
     grid-template-columns: 1fr;
   }
-  
+
   .post-nav-link--next {
     grid-column: 1;
     text-align: left;
@@ -739,11 +739,11 @@
   .layout-sidebar {
     width: 100%;
   }
-  
+
   .btn {
     width: 100%;
   }
-  
+
   .hero-actions {
     flex-direction: column;
   }
@@ -763,11 +763,11 @@
   .theme-toggle {
     display: none !important;
   }
-  
+
   .layout-container {
     display: block;
   }
-  
+
   .layout-content {
     max-width: 100%;
     padding: 0;

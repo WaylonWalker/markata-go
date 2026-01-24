@@ -111,7 +111,7 @@ After running `go install` successfully.
    ```bash
    # Add to ~/.bashrc, ~/.zshrc, or ~/.profile
    export PATH=$PATH:$(go env GOPATH)/bin
-   
+
    # Reload the shell
    source ~/.bashrc  # or ~/.zshrc
    ```
@@ -234,7 +234,7 @@ Error: yaml: line 10: did not find expected key
    ```toml
    title = My Site: The Best!
    ```
-   
+
    **Correct:**
    ```toml
    title = "My Site: The Best!"
@@ -244,7 +244,7 @@ Error: yaml: line 10: did not find expected key
    ```toml
    title: "My Site"
    ```
-   
+
    **Correct:**
    ```toml
    title = "My Site"
@@ -257,7 +257,7 @@ Error: yaml: line 10: did not find expected key
    markata-go:
    title: "My Site"
    ```
-   
+
    **Correct:**
    ```yaml
    markata-go:
@@ -269,7 +269,7 @@ Error: yaml: line 10: did not find expected key
    markata-go:
    	title: "My Site"  # Tab character
    ```
-   
+
    **Correct:**
    ```yaml
    markata-go:
@@ -383,16 +383,16 @@ Error: failed to parse frontmatter in posts/my-post.md: yaml: line 5: could not 
    ```markdown
    ---
    title: "My Post"
-   
+
    Content starts here...
    ```
-   
+
    **Correct:**
    ```markdown
    ---
    title: "My Post"
    ---
-   
+
    Content starts here...
    ```
 
@@ -402,7 +402,7 @@ Error: failed to parse frontmatter in posts/my-post.md: yaml: line 5: could not 
    date: January 15, 2024
    ---
    ```
-   
+
    **Correct:**
    ```markdown
    ---
@@ -416,7 +416,7 @@ Error: failed to parse frontmatter in posts/my-post.md: yaml: line 5: could not 
    title: My Post: A Guide
    ---
    ```
-   
+
    **Correct:**
    ```markdown
    ---
@@ -689,14 +689,14 @@ Error: template error: variable "post.title" not found
 **Solution:**
 
 1. **Check template syntax:**
-   
+
    **Wrong - mismatched tags:**
    ```html
    {% if post.Tags %}
    <ul>...</ul>
    {% end %}  <!-- Wrong -->
    ```
-   
+
    **Correct:**
    ```html
    {% if post.Tags %}
@@ -705,12 +705,12 @@ Error: template error: variable "post.title" not found
    ```
 
 2. **Check variable names are correct (case-sensitive):**
-   
+
    **Wrong:**
    ```html
    {{ post.title }}  <!-- Wrong case -->
    ```
-   
+
    **Correct:**
    ```html
    {{ post.Title }}  <!-- Correct -->
@@ -761,7 +761,7 @@ Error: template error: variable "post.title" not found
    [markata-go.glob]
    # Instead of:
    # patterns = ["**/*.md"]
-   
+
    # Be more specific:
    patterns = ["posts/*.md", "pages/*.md"]
    ```
@@ -800,7 +800,7 @@ Error: template error: variable "post.title" not found
    slug = "blog"
    title = "Blog"
    filter = "published == True"
-   
+
    [markata-go.feeds.formats]
    html = true
    rss = true
@@ -921,7 +921,7 @@ See the [[feeds-guide|Feeds Guide]] for detailed feed configuration.
    ```bash
    # RSS
    xmllint --noout public/blog/rss.xml
-   
+
    # Atom  
    xmllint --noout public/blog/atom.xml
    ```
@@ -962,7 +962,7 @@ Error: listen tcp :8000: bind: address already in use
    ```bash
    # Linux/macOS
    lsof -i :8000
-   
+
    # Windows
    netstat -ano | findstr :8000
    ```
@@ -971,7 +971,7 @@ Error: listen tcp :8000: bind: address already in use
    ```bash
    # Linux/macOS
    kill $(lsof -t -i :8000)
-   
+
    # Or force kill
    kill -9 $(lsof -t -i :8000)
    ```
@@ -989,7 +989,7 @@ Error: listen tcp :8000: bind: address already in use
 1. **Ensure file watching is enabled (default):**
    ```bash
    markata-go serve  # Watching is on by default
-   
+
    # NOT this:
    markata-go serve --no-watch  # This disables watching
    ```
@@ -998,7 +998,7 @@ Error: listen tcp :8000: bind: address already in use
    ```bash
    # Check current limit
    cat /proc/sys/fs/inotify/max_user_watches
-   
+
    # Increase if needed
    echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
    sudo sysctl -p
@@ -1106,7 +1106,7 @@ Error: listen tcp :8000: bind: address already in use
    ```bash
    # Install linkinator
    npm install -g linkinator
-   
+
    # Check for broken links
    linkinator public --recurse
    ```
@@ -1125,12 +1125,12 @@ Error: listen tcp :8000: bind: address already in use
    ```
 
 4. **Add redirects for moved content:**
-   
+
    **Netlify (_redirects or netlify.toml):**
    ```
    /old-post  /new-post  301
    ```
-   
+
    **Vercel (vercel.json):**
    ```json
    {
@@ -1173,7 +1173,7 @@ Error: listen tcp :8000: bind: address already in use
    ```html
    <!-- Absolute path (recommended) -->
    <link rel="stylesheet" href="/css/style.css">
-   
+
    <!-- NOT relative -->
    <link rel="stylesheet" href="css/style.css">  <!-- May break on subpages -->
    ```
@@ -1224,7 +1224,7 @@ Error: listen tcp :8000: bind: address already in use
    ```toml
    [context.production.environment]
    MARKATA_GO_URL = "https://example.com"
-   
+
    [context.deploy-preview.environment]
    MARKATA_GO_URL = ""  # Use relative URLs for previews
    ```

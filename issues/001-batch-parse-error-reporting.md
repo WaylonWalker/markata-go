@@ -62,7 +62,7 @@ Modify `LoadPlugin.Load()` to:
 func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
     files := m.Files()
     var parseErrors []ParseError
-    
+
     for _, file := range files {
         post, err := p.loadFile(file)
         if err != nil {
@@ -74,13 +74,13 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
         }
         m.AddPost(post)
     }
-    
+
     if len(parseErrors) > 0 {
         // Print detailed error report
         printParseErrors(parseErrors)
         return fmt.Errorf("%d files failed to parse", len(parseErrors))
     }
-    
+
     return nil
 }
 ```

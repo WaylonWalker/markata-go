@@ -115,10 +115,10 @@ sudo systemctl restart markata-go
 server {
     listen 80;
     server_name example.com;
-    
+
     root /var/www/mysite/public;
     index index.html;
-    
+
     location / {
         try_files $uri $uri/ =404;
     }

@@ -199,7 +199,7 @@ def pre_render(core):
     config = core.config.auto_description
     if not config.enabled:
         return
-    
+
     for post in core.filter("description == None or description == ''"):
         post.description = generate_description(post.content, config)
 ```
@@ -252,9 +252,9 @@ def pre_render(core):
     config = core.config.jinja_md
     if not config.enabled:
         return
-    
+
     filter_expr = "jinja == True" if not config.default_enabled else "jinja != False"
-    
+
     for post in core.filter(filter_expr):
         template = core.jinja_env.from_string(post.content)
         post.content = template.render(
@@ -330,25 +330,25 @@ detected 2 output path conflict(s):
 ```go
 func (p *OverwriteCheckPlugin) Collect(m *lifecycle.Manager) error {
     pathSources := make(map[string][]string)
-    
+
     // Check post output paths
     for _, post := range m.Posts() {
         if post.Skip || post.Draft {
             continue
         }
         outputPath := filepath.Join(outputDir, post.Slug, "index.html")
-        pathSources[outputPath] = append(pathSources[outputPath], 
+        pathSources[outputPath] = append(pathSources[outputPath],
             fmt.Sprintf("post:%s", post.Path))
     }
-    
+
     // Check feed output paths
     for _, fc := range feedConfigs {
         for _, path := range getFeedOutputPaths(outputDir, fc) {
-            pathSources[path] = append(pathSources[path], 
+            pathSources[path] = append(pathSources[path],
                 fmt.Sprintf("feed:%s", fc.Slug))
         }
     }
-    
+
     // Detect conflicts
     var conflicts []PathConflict
     for path, sources := range pathSources {
@@ -359,7 +359,7 @@ func (p *OverwriteCheckPlugin) Collect(m *lifecycle.Manager) error {
             })
         }
     }
-    
+
     if len(conflicts) > 0 && !p.warnOnly {
         return fmt.Errorf("detected %d output path conflict(s)...", len(conflicts))
     }
@@ -448,16 +448,16 @@ func (p *PrevNextPlugin) Collect(m *lifecycle.Manager) error {
     if !config.Enabled {
         return nil
     }
-    
+
     feeds := m.Feeds()
     postToFeeds := buildPostToFeedsMap(feeds)
-    
+
     for _, post := range m.Posts() {
         feed := p.resolveFeed(post, config, feeds, postToFeeds)
         if feed == nil {
             continue
         }
-        
+
         // Find position and set prev/next
         for i, feedPost := range feed.Posts {
             if feedPost.Slug == post.Slug {
@@ -494,7 +494,7 @@ func (p *PrevNextPlugin) Collect(m *lifecycle.Manager) error {
     <span class="nav-title">{{ post.Prev.Title }}</span>
   </a>
   {% endif %}
-  
+
   {% if post.Next %}
   <a href="{{ post.Next.Href }}" class="nav-next">
     <span class="nav-label">Next</span>
@@ -512,7 +512,7 @@ func (p *PrevNextPlugin) Collect(m *lifecycle.Manager) error {
       Part {{ post.PrevNextContext.Position }} of {{ post.PrevNextContext.Total }}
     </span>
   </div>
-  
+
   <div class="series-links">
     {% if post.PrevNextContext.Prev %}
     <a href="{{ post.PrevNextContext.Prev.Href }}">← {{ post.PrevNextContext.Prev.Title }}</a>
@@ -646,10 +646,10 @@ def render(core):
     config = core.config.wikilinks
     if not config.enabled:
         return
-    
+
     # Build slug -> post lookup
     slug_map = {p.slug: p for p in core.posts}
-    
+
     for post in core.filter("not skip"):
         post.article_html = resolve_wikilinks(
             post.article_html,
@@ -700,7 +700,7 @@ def post_render(core):
     config = core.config.heading_anchors
     if not config.enabled:
         return
-    
+
     for post in core.filter("not skip"):
         post.article_html = add_heading_anchors(post.article_html, config)
 ```
@@ -904,31 +904,31 @@ Results are cached per-post based on hash of:
 def render(core):
     links = []
     site_domain = urlparse(str(core.config.url)).netloc
-    
+
     # Build slug -> post lookup
     post_by_slug = {p.slug: p for p in core.posts}
-    
+
     for post in core.posts:
         base_url = urljoin(str(core.config.url), post.slug)
         soup = BeautifulSoup(post.article_html, "html.parser")
-        
+
         # Optionally limit to post-body section
         post_body = soup.find(id="post-body")
         if post_body:
             soup = post_body
-        
+
         post.hrefs = [a["href"] for a in soup.find_all("a", href=True)]
-        
+
         for href in post.hrefs:
             target_url = urljoin(base_url, href)
             domain = urlparse(target_url).netloc
             is_internal = domain == site_domain
-            
+
             target_post = None
             if is_internal:
                 target_slug = urlparse(target_url).path.strip("/")
                 target_post = post_by_slug.get(target_slug)
-            
+
             links.append(Link(
                 source_url=base_url,
                 source_post=post,
@@ -939,13 +939,13 @@ def render(core):
                 is_internal=is_internal,
                 is_self=target_post and post.slug == target_post.slug
             ))
-    
+
     core.links = links
-    
+
     # Assign inlinks/outlinks to each post
     for post in core.posts:
         post.inlinks = [
-            link for link in links 
+            link for link in links
             if link.target_post == post and not link.is_self
         ]
         post.outlinks = [
@@ -1092,12 +1092,12 @@ See [FEEDS.md](./FEEDS.md) for complete specification.
 @hook_impl
 def post_render(core):
     core.feeds = []
-    
+
     # Process explicit feeds
     for feed_config in core.config.feeds:
         feed = create_feed(feed_config, core)
         core.feeds.append(feed)
-    
+
     # Process auto-feeds
     if core.config.feeds.auto_tags.enabled:
         for tag in get_all_tags(core.posts):
@@ -1138,9 +1138,9 @@ def save(core):
         for format_name, enabled in feed.formats.items():
             if not enabled:
                 continue
-            
+
             template = get_feed_template(format_name, feed, core)
-            
+
             if format_name == 'html':
                 # Paginated output
                 for page_num, page_posts in enumerate(feed.pages, 1):
@@ -1185,14 +1185,14 @@ def save(core):
     for post in core.filter("not skip"):
         template_name = post.template or "post.html"
         template = core.jinja_env.get_template(template_name)
-        
+
         html = template.render(
             post=post,
             body=post.article_html,
             config=core.config,
             core=core
         )
-        
+
         output_path = core.config.output_dir / post.slug / "index.html"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(html)
@@ -1237,17 +1237,17 @@ exclude = ["robots.txt", "favicon.ico"]
 def save(core):
     config = core.config.assets
     assets_dir = Path(config.dir)
-    
+
     if not assets_dir.exists():
         return
-    
+
     for src in assets_dir.rglob("*"):
         if src.is_file() and not is_excluded(src, config.exclude):
             rel_path = src.relative_to(assets_dir)
-            
+
             if should_fingerprint(src, config):
                 rel_path = fingerprint_path(src, rel_path, config)
-            
+
             dst = core.config.output_dir / config.output_subdir / rel_path
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dst)
@@ -1347,7 +1347,7 @@ func (p *RedirectsPlugin) Write(m *lifecycle.Manager) error {
     if os.IsNotExist(err) {
         return nil // Skip silently
     }
-    
+
     // Parse and generate redirect pages
     for _, redirect := range parseRedirects(content) {
         outputPath := filepath.Join(outputDir, redirect.Original, "index.html")
@@ -1437,7 +1437,7 @@ Or load specific plugins only:
 [name]
 hooks = [
     "glob",
-    "load", 
+    "load",
     "render_markdown",
     "publish_html",
 ]
