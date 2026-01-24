@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestMigrateFilter(t *testing.T) {
+func TestFilter(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
@@ -95,12 +95,12 @@ func TestMigrateFilter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, changes := MigrateFilter(tt.input)
+			result, changes := Filter(tt.input)
 			if result != tt.expected {
-				t.Errorf("MigrateFilter(%q) = %q, want %q", tt.input, result, tt.expected)
+				t.Errorf("Filter(%q) = %q, want %q", tt.input, result, tt.expected)
 			}
 			if len(changes) != tt.changes {
-				t.Errorf("MigrateFilter(%q) made %d changes, want %d", tt.input, len(changes), tt.changes)
+				t.Errorf("Filter(%q) made %d changes, want %d", tt.input, len(changes), tt.changes)
 			}
 		})
 	}
@@ -144,7 +144,7 @@ func TestValidateFilter(t *testing.T) {
 	}
 }
 
-func TestMigrateConfigFromMap(t *testing.T) {
+func TestConfigFromMap(t *testing.T) {
 	tests := []struct {
 		name            string
 		input           map[string]interface{}
@@ -274,9 +274,9 @@ func TestMigrateConfigFromMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := MigrateConfigFromMap(tt.input)
+			result, err := ConfigFromMap(tt.input)
 			if err != nil {
-				t.Fatalf("MigrateConfigFromMap() error = %v", err)
+				t.Fatalf("ConfigFromMap() error = %v", err)
 			}
 			if len(result.Changes) < tt.expectedChanges {
 				t.Errorf("got %d changes, want at least %d", len(result.Changes), tt.expectedChanges)
@@ -379,7 +379,7 @@ func TestCheckTemplates(t *testing.T) {
 {{ [x for x in items] }}`
 
 	templatePath := filepath.Join(tempDir, "test.html")
-	if err := os.WriteFile(templatePath, []byte(templateContent), 0o644); err != nil {
+	if err := os.WriteFile(templatePath, []byte(templateContent), 0o600); err != nil {
 		t.Fatalf("failed to create test template: %v", err)
 	}
 
@@ -450,5 +450,5 @@ func TestAnalyzeFilter(t *testing.T) {
 
 // Helper function
 func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && (s[0:len(substr)] == substr || containsString(s[1:], substr)))
+	return len(s) >= len(substr) && (s == substr || s != "" && (s[0:len(substr)] == substr || containsString(s[1:], substr)))
 }

@@ -10,6 +10,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// defaultTemplatesDir is the default directory name for templates.
+const defaultTemplatesDir = "templates"
+
 var (
 	// migrateInput is the input config file path.
 	migrateInput string
@@ -151,13 +154,13 @@ func runMigrateCommand(_ *cobra.Command, _ []string) error {
 	}
 
 	// Run migration
-	result, err := migrate.MigrateConfig(inputPath, outputPath)
+	result, err := migrate.Config(inputPath, outputPath)
 	if err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}
 
 	// Check templates if directory exists
-	templatesDir := "templates"
+	templatesDir := defaultTemplatesDir
 	if info, err := os.Stat(templatesDir); err == nil && info.IsDir() {
 		templateIssues, err := migrate.CheckTemplates(templatesDir)
 		if err != nil {
@@ -200,7 +203,7 @@ func runMigrateConfigCommand(_ *cobra.Command, _ []string) error {
 	}
 
 	// Run migration
-	result, err := migrate.MigrateConfig(inputPath, outputPath)
+	result, err := migrate.Config(inputPath, outputPath)
 	if err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}
@@ -219,7 +222,7 @@ func runMigrateFilterCommand(_ *cobra.Command, args []string) error {
 	// If expression provided, migrate it directly
 	if len(args) > 0 {
 		expr := args[0]
-		migrated, changes := migrate.MigrateFilter(expr)
+		migrated, changes := migrate.Filter(expr)
 
 		if migrateJSON {
 			return outputJSON(map[string]interface{}{
@@ -257,7 +260,7 @@ func runMigrateFilterCommand(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	result, err := migrate.MigrateConfig(inputPath, "")
+	result, err := migrate.Config(inputPath, "")
 	if err != nil {
 		return fmt.Errorf("failed to analyze config: %w", err)
 	}
@@ -304,7 +307,7 @@ func runMigrateFilterCommand(_ *cobra.Command, args []string) error {
 
 // runMigrateTemplatesCommand checks template compatibility.
 func runMigrateTemplatesCommand(_ *cobra.Command, args []string) error {
-	templatesDir := "templates"
+	templatesDir := defaultTemplatesDir
 	if len(args) > 0 {
 		templatesDir = args[0]
 	}
