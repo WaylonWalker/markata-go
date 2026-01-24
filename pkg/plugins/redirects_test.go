@@ -74,6 +74,17 @@ incomplete
 			},
 		},
 		{
+			name: "external URL redirects",
+			content: `/go/github    https://github.com/myorg
+/go/docs      http://docs.example.com
+/internal     /local-path`,
+			want: []Redirect{
+				{Original: "/go/github", New: "https://github.com/myorg"},
+				{Original: "/go/docs", New: "http://docs.example.com"},
+				{Original: "/internal", New: "/local-path"},
+			},
+		},
+		{
 			name:    "empty content",
 			content: "",
 			want:    nil,
@@ -542,5 +553,181 @@ func TestHashContent(t *testing.T) {
 	h4 := hashContent([]byte(""))
 	if h4 == 0 {
 		t.Errorf("empty content produced zero hash")
+	}
+}
+
+// TestRedirectsPlugin_Write_ExternalURLs tests external URL redirects.
+func TestRedirectsPlugin_Write_ExternalURLs(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputDir := filepath.Join(tmpDir, "output")
+	_ = os.MkdirAll(outputDir, 0o755) //nolint:errcheck // test setup
+
+	// Create redirects file with external URLs
+	redirectsContent := `/go/github    https://github.com/myorg
+/go/docs      http://docs.example.com/guide
+`
+	redirectsFile := filepath.Join(tmpDir, "_redirects")
+	//nolint:gosec // test file
+	if err := os.WriteFile(redirectsFile, []byte(redirectsContent), 0o644); err != nil {
+		t.Fatalf("failed to create redirects file: %v", err)
+	}
+
+	m := lifecycle.NewManager()
+	cfg := m.Config()
+	cfg.OutputDir = outputDir
+
+	p := NewRedirectsPlugin()
+	p.SetConfig(RedirectsConfig{
+		RedirectsFile: redirectsFile,
+	})
+
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	// Verify external URL redirects were created
+	expectedFiles := []struct {
+		path     string
+		contains []string
+	}{
+		{
+			path: filepath.Join(outputDir, "go", "github", "index.html"),
+			contains: []string{
+				`url='https://github.com/myorg'`,
+				`href="https://github.com/myorg"`,
+			},
+		},
+		{
+			path: filepath.Join(outputDir, "go", "docs", "index.html"),
+			contains: []string{
+				`url='http://docs.example.com/guide'`,
+				`href="http://docs.example.com/guide"`,
+			},
+		},
+	}
+
+	for _, ef := range expectedFiles {
+		content, err := os.ReadFile(ef.path)
+		if err != nil {
+			t.Errorf("expected file %s not found: %v", ef.path, err)
+			continue
+		}
+
+		contentStr := string(content)
+		for _, substr := range ef.contains {
+			if !strings.Contains(contentStr, substr) {
+				t.Errorf("file %s missing expected content %q", ef.path, substr)
+			}
+		}
+	}
+}
+
+// TestRedirectsPlugin_Write_PathTraversal tests that path traversal is blocked.
+func TestRedirectsPlugin_Write_PathTraversal(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputDir := filepath.Join(tmpDir, "output")
+	_ = os.MkdirAll(outputDir, 0o755) //nolint:errcheck // test setup
+
+	// Create redirects file with path traversal attempt
+	redirectsContent := `/../../etc/passwd    /hacked
+/valid/path    /destination
+`
+	redirectsFile := filepath.Join(tmpDir, "_redirects")
+	//nolint:gosec // test file
+	if err := os.WriteFile(redirectsFile, []byte(redirectsContent), 0o644); err != nil {
+		t.Fatalf("failed to create redirects file: %v", err)
+	}
+
+	m := lifecycle.NewManager()
+	cfg := m.Config()
+	cfg.OutputDir = outputDir
+
+	p := NewRedirectsPlugin()
+	p.SetConfig(RedirectsConfig{
+		RedirectsFile: redirectsFile,
+	})
+
+	// Write should not error (it logs warnings for path traversal)
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	// Valid path should be created
+	validPath := filepath.Join(outputDir, "valid", "path", "index.html")
+	if _, err := os.Stat(validPath); err != nil {
+		t.Errorf("expected valid path %s to be created", validPath)
+	}
+
+	// Path traversal should NOT create a file outside output dir
+	// Check that nothing was created at parent directories
+	badPath := filepath.Join(outputDir, "..", "etc", "passwd", "index.html")
+	if _, err := os.Stat(badPath); err == nil {
+		t.Errorf("path traversal should have been blocked, but %s exists", badPath)
+	}
+}
+
+// TestRedirectsPlugin_Write_TemplateChangeInvalidatesCache tests that template changes invalidate cache.
+func TestRedirectsPlugin_Write_TemplateChangeInvalidatesCache(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputDir := filepath.Join(tmpDir, "output")
+	_ = os.MkdirAll(outputDir, 0o755) //nolint:errcheck // test setup
+
+	// Create redirects file
+	redirectsFile := filepath.Join(tmpDir, "_redirects")
+	//nolint:gosec // test file
+	if err := os.WriteFile(redirectsFile, []byte("/old /new"), 0o644); err != nil {
+		t.Fatalf("failed to create redirects file: %v", err)
+	}
+
+	// Create custom template v1
+	templateV1 := `<!DOCTYPE html><html><body>TEMPLATE_V1</body></html>`
+	templateFile := filepath.Join(tmpDir, "redirect.html")
+	//nolint:gosec // test file
+	if err := os.WriteFile(templateFile, []byte(templateV1), 0o644); err != nil {
+		t.Fatalf("failed to create template file: %v", err)
+	}
+
+	m := lifecycle.NewManager()
+	cfg := m.Config()
+	cfg.OutputDir = outputDir
+
+	p := NewRedirectsPlugin()
+	p.SetConfig(RedirectsConfig{
+		RedirectsFile:    redirectsFile,
+		RedirectTemplate: templateFile,
+	})
+
+	// First write with template v1
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	outputPath := filepath.Join(outputDir, "old", "index.html")
+	content1, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("failed to read output file: %v", err)
+	}
+	if !strings.Contains(string(content1), "TEMPLATE_V1") {
+		t.Errorf("first write should use template v1")
+	}
+
+	// Update template to v2
+	templateV2 := `<!DOCTYPE html><html><body>TEMPLATE_V2</body></html>`
+	//nolint:gosec // test file
+	if err := os.WriteFile(templateFile, []byte(templateV2), 0o644); err != nil {
+		t.Fatalf("failed to update template file: %v", err)
+	}
+
+	// Second write - cache should be invalidated due to template change
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write() error on second call = %v", err)
+	}
+
+	content2, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("failed to read output file after second write: %v", err)
+	}
+	if !strings.Contains(string(content2), "TEMPLATE_V2") {
+		t.Errorf("second write should use template v2 (cache should be invalidated), got: %s", string(content2))
 	}
 }

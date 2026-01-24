@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -108,7 +109,13 @@ func (p *RedirectsPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	// Check cache to avoid regeneration
+	// Include custom template hash in cache key if configured
 	cacheKey := fmt.Sprintf("redirects:%x", hashContent(redirectsContent))
+	if p.config.RedirectTemplate != "" {
+		if templateContent, err := os.ReadFile(p.config.RedirectTemplate); err == nil {
+			cacheKey = fmt.Sprintf("redirects:%x:%x", hashContent(redirectsContent), hashContent(templateContent))
+		}
+	}
 	if cached, ok := m.Cache().Get(cacheKey); ok {
 		if cached == "done" {
 			return nil
@@ -174,8 +181,15 @@ func (p *RedirectsPlugin) parseRedirects(content string) []Redirect {
 		original := parts[0]
 		newPath := parts[1]
 
-		// Validate paths start with /
-		if !strings.HasPrefix(original, "/") || !strings.HasPrefix(newPath, "/") {
+		// Validate source path starts with /
+		if !strings.HasPrefix(original, "/") {
+			continue
+		}
+
+		// Validate destination: must be absolute path or external URL
+		if !strings.HasPrefix(newPath, "/") &&
+			!strings.HasPrefix(newPath, "http://") &&
+			!strings.HasPrefix(newPath, "https://") {
 			continue
 		}
 
@@ -194,10 +208,15 @@ func (p *RedirectsPlugin) loadTemplate() (*template.Template, error) {
 		// Load custom template
 		content, err := os.ReadFile(p.config.RedirectTemplate)
 		if err != nil {
-			// Fall back to default template on error
+			log.Printf("warning: failed to read custom redirect template %s: %v, using default", p.config.RedirectTemplate, err)
 			return template.New("redirect").Parse(defaultRedirectTemplate)
 		}
-		return template.New("redirect").Parse(string(content))
+		tmpl, err := template.New("redirect").Parse(string(content))
+		if err != nil {
+			log.Printf("warning: failed to parse custom redirect template %s: %v, using default", p.config.RedirectTemplate, err)
+			return template.New("redirect").Parse(defaultRedirectTemplate)
+		}
+		return tmpl, nil
 	}
 
 	return template.New("redirect").Parse(defaultRedirectTemplate)
@@ -213,7 +232,13 @@ func (p *RedirectsPlugin) writeRedirect(redirect Redirect, tmpl *template.Templa
 		return nil
 	}
 
-	postDir := filepath.Join(outputDir, relativePath)
+	// Clean the path and validate no path traversal
+	cleanPath := filepath.Clean(relativePath)
+	if strings.Contains(cleanPath, "..") {
+		return fmt.Errorf("path traversal detected in redirect source: %s", redirect.Original)
+	}
+
+	postDir := filepath.Join(outputDir, cleanPath)
 
 	// Create directory
 	if err := os.MkdirAll(postDir, 0o755); err != nil {
