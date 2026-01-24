@@ -170,9 +170,13 @@
     {% include "components/footer.html" %}
     {% endblock %}
     
+    {# Keyboard Shortcuts Modal #}
+    {% include "partials/shortcuts-modal.html" %}
+    
     {% block htmx %}{% endblock %}
     {% block scripts %}{% endblock %}
     <script src="{{ 'js/tooltips.js' | theme_asset }}" defer></script>
+    <script src="{{ 'js/shortcuts.js' | theme_asset }}" defer></script>
     
     <!-- Pagefind Search JS -->
     {% if config.search.enabled %}
@@ -187,7 +191,7 @@
                     showSubResults: {{ config.search.show_sub_results | default:false | yesno:"true,false" }},
                     resetStyles: false,
                     translations: {
-                        placeholder: "{{ config.search.placeholder | default:'Search...' }}"
+                        placeholder: "{{ config.search.placeholder | default:'Search (Press / or \u2318K)' }}"
                     }
                 });
             }
