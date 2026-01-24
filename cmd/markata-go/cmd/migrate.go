@@ -28,6 +28,9 @@ var (
 
 	// migrateJSON outputs results as JSON.
 	migrateJSON bool
+
+	// migrateReport is the path to write a migration report file.
+	migrateReport string
 )
 
 // migrateCmd represents the migrate command.
@@ -112,6 +115,7 @@ func init() {
 	migrateCmd.Flags().BoolVarP(&migrateDryRun, "dry-run", "n", false, "show changes without writing")
 	migrateCmd.Flags().StringVarP(&migrateFormat, "format", "f", "toml", "output format (toml, yaml)")
 	migrateCmd.Flags().BoolVar(&migrateJSON, "json", false, "output results as JSON")
+	migrateCmd.Flags().StringVar(&migrateReport, "report", "", "write migration report to file")
 
 	// Flags for config subcommand
 	migrateConfigCmd.Flags().StringVarP(&migrateInput, "input", "i", "", "input config file (default: auto-detect)")
@@ -178,7 +182,16 @@ func runMigrateCommand(_ *cobra.Command, _ []string) error {
 		return outputJSON(result.JSONReport())
 	}
 
-	fmt.Print(result.Report())
+	report := result.Report()
+	fmt.Print(report)
+
+	// Write report to file if requested
+	if migrateReport != "" {
+		if err := os.WriteFile(migrateReport, []byte(report), 0o600); err != nil {
+			return fmt.Errorf("failed to write report: %w", err)
+		}
+		fmt.Printf("\nReport written to: %s\n", migrateReport)
+	}
 
 	// Exit with appropriate code
 	if result.HasErrors() {
