@@ -67,6 +67,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["pagefind"] = func() lifecycle.Plugin { return NewPagefindPlugin() }
 	pluginRegistry.constructors["stats"] = func() lifecycle.Plugin { return NewStatsPlugin() }
 	pluginRegistry.constructors["breadcrumbs"] = func() lifecycle.Plugin { return NewBreadcrumbsPlugin() }
+	pluginRegistry.constructors["embeds"] = func() lifecycle.Plugin { return NewEmbedsPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -124,6 +125,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewReadingTimePlugin(),    // Calculate reading time
 		NewStatsPlugin(),          // Calculate comprehensive content stats
 		NewBreadcrumbsPlugin(),    // Generate breadcrumb navigation
+		NewEmbedsPlugin(),         // Process embed syntax (before wikilinks)
 		NewWikilinksPlugin(),      // Process wikilinks before rendering
 		NewTocPlugin(),            // Extract TOC before rendering
 		NewJinjaMdPlugin(),        // Process Jinja templates in markdown
@@ -178,6 +180,7 @@ func TransformPlugins() []lifecycle.Plugin {
 		NewReadingTimePlugin(),
 		NewStatsPlugin(),
 		NewBreadcrumbsPlugin(),
+		NewEmbedsPlugin(),
 		NewWikilinksPlugin(),
 		NewTocPlugin(),
 		NewJinjaMdPlugin(),

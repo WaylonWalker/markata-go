@@ -1,0 +1,16 @@
+{# Embed card partial for internal post embeds #}
+{# Used by the embeds plugin when processing ![[slug]] syntax #}
+
+<div class="{{ card_class|default:'embed-card' }}">
+  <a href="{{ post.href }}" class="embed-card-link">
+    <div class="embed-card-content">
+      <div class="embed-card-title">{{ title|default:post.title }}</div>
+      {% if post.description %}
+      <div class="embed-card-description">{{ post.description|truncate:200 }}</div>
+      {% endif %}
+      {% if post.date %}
+      <div class="embed-card-meta">{{ post.date | date:"Jan 2, 2006" }}</div>
+      {% endif %}
+    </div>
+  </a>
+</div>
