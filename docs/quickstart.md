@@ -3,7 +3,6 @@ title: "Quickstart"
 description: "Get a markata-go site running in under 5 minutes"
 date: 2024-01-15
 published: true
-template: doc.html
 tags:
   - documentation
   - getting-started

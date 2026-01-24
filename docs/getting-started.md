@@ -3,7 +3,6 @@ title: "Getting Started"
 description: "Complete guide to installing markata-go, creating your first site, and building for production"
 date: 2024-01-15
 published: true
-template: doc.html
 tags:
   - documentation
   - getting-started

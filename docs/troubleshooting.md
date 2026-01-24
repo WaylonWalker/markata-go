@@ -3,7 +3,6 @@ title: "Troubleshooting"
 description: "Solutions for common issues when working with markata-go"
 date: 2024-01-15
 published: true
-template: doc.html
 tags:
   - documentation
   - troubleshooting

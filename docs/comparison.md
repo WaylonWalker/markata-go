@@ -3,7 +3,6 @@ title: "Framework Comparison"
 description: "Comprehensive comparison of markata-go against Hugo, Jekyll, Eleventy, Astro, Zola, and Pelican"
 date: 2024-01-15
 published: true
-template: doc.html
 tags:
   - documentation
   - comparison

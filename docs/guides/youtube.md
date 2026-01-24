@@ -3,7 +3,6 @@ title: "Embedding YouTube Videos"
 description: "How to embed YouTube videos in your posts with a simple one-line URL"
 date: 2024-01-15
 published: true
-template: doc.html
 tags:
   - documentation
   - guides
