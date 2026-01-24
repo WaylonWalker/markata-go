@@ -1321,6 +1321,178 @@ Include Chart.js in your base template:
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 ```
 
+### Examples
+
+#### Bar Chart - Monthly Sales Data
+
+A simple bar chart showing monthly sales performance:
+
+```chartjs
+{
+  "type": "bar",
+  "data": {
+    "labels": ["January", "February", "March", "April", "May", "June"],
+    "datasets": [{
+      "label": "Monthly Sales ($)",
+      "data": [12500, 19200, 15800, 22400, 18900, 25600],
+      "backgroundColor": [
+        "rgba(54, 162, 235, 0.7)",
+        "rgba(54, 162, 235, 0.7)",
+        "rgba(54, 162, 235, 0.7)",
+        "rgba(54, 162, 235, 0.7)",
+        "rgba(54, 162, 235, 0.7)",
+        "rgba(54, 162, 235, 0.7)"
+      ],
+      "borderColor": "rgba(54, 162, 235, 1)",
+      "borderWidth": 1
+    }]
+  },
+  "options": {
+    "responsive": true,
+    "plugins": {
+      "title": {
+        "display": true,
+        "text": "2024 Sales Performance"
+      }
+    },
+    "scales": {
+      "y": {
+        "beginAtZero": true,
+        "ticks": {
+          "callback": "$"
+        }
+      }
+    }
+  }
+}
+```
+
+#### Line Chart - Website Traffic Over Time
+
+Track trends with a line chart showing page views and unique visitors:
+
+```chartjs
+{
+  "type": "line",
+  "data": {
+    "labels": ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"],
+    "datasets": [
+      {
+        "label": "Page Views",
+        "data": [2400, 3100, 2800, 4200, 3900, 5100],
+        "borderColor": "rgba(75, 192, 192, 1)",
+        "backgroundColor": "rgba(75, 192, 192, 0.2)",
+        "fill": true,
+        "tension": 0.3
+      },
+      {
+        "label": "Unique Visitors",
+        "data": [1200, 1500, 1400, 2100, 1950, 2600],
+        "borderColor": "rgba(255, 99, 132, 1)",
+        "backgroundColor": "rgba(255, 99, 132, 0.2)",
+        "fill": true,
+        "tension": 0.3
+      }
+    ]
+  },
+  "options": {
+    "responsive": true,
+    "plugins": {
+      "title": {
+        "display": true,
+        "text": "Website Traffic - Q1 2024"
+      },
+      "legend": {
+        "position": "bottom"
+      }
+    },
+    "scales": {
+      "y": {
+        "beginAtZero": true
+      }
+    }
+  }
+}
+```
+
+#### Pie Chart - Content Distribution
+
+Visualize proportions with a pie chart showing content by category:
+
+```chartjs
+{
+  "type": "pie",
+  "data": {
+    "labels": ["Tutorials", "How-To Guides", "Reference Docs", "Blog Posts", "Case Studies"],
+    "datasets": [{
+      "data": [35, 25, 20, 15, 5],
+      "backgroundColor": [
+        "rgba(255, 99, 132, 0.8)",
+        "rgba(54, 162, 235, 0.8)",
+        "rgba(255, 206, 86, 0.8)",
+        "rgba(75, 192, 192, 0.8)",
+        "rgba(153, 102, 255, 0.8)"
+      ],
+      "borderColor": [
+        "rgba(255, 99, 132, 1)",
+        "rgba(54, 162, 235, 1)",
+        "rgba(255, 206, 86, 1)",
+        "rgba(75, 192, 192, 1)",
+        "rgba(153, 102, 255, 1)"
+      ],
+      "borderWidth": 2
+    }]
+  },
+  "options": {
+    "responsive": true,
+    "plugins": {
+      "title": {
+        "display": true,
+        "text": "Content Distribution by Type"
+      },
+      "legend": {
+        "position": "right"
+      }
+    }
+  }
+}
+```
+
+#### Doughnut Chart with Center Text
+
+A doughnut chart is useful for showing a primary metric with breakdown:
+
+```chartjs
+{
+  "type": "doughnut",
+  "data": {
+    "labels": ["Completed", "In Progress", "Not Started"],
+    "datasets": [{
+      "data": [68, 22, 10],
+      "backgroundColor": [
+        "rgba(76, 175, 80, 0.8)",
+        "rgba(255, 193, 7, 0.8)",
+        "rgba(158, 158, 158, 0.8)"
+      ],
+      "borderWidth": 0
+    }]
+  },
+  "options": {
+    "responsive": true,
+    "cutout": "60%",
+    "plugins": {
+      "title": {
+        "display": true,
+        "text": "Project Completion Status"
+      },
+      "legend": {
+        "position": "bottom"
+      }
+    }
+  }
+}
+```
+
 ---
 
 ### one_line_link
@@ -1458,6 +1630,140 @@ The plugin checks these Extra fields for images:
 3. `cover_image`
 4. `og_image`
 5. `thumbnail`
+
+### Examples
+
+#### Basic Wikilink with Hover Preview
+
+When you link to another post using wikilink syntax, the hover plugin automatically adds preview data:
+
+**Markdown input:**
+```markdown
+Learn more about [[getting-started|getting started with markata-go]].
+
+For advanced users, check out [[plugin-development]].
+```
+
+**Rendered HTML (with hover data):**
+```html
+<a href="/getting-started/" class="wikilink"
+   data-preview="A comprehensive guide to installing and configuring markata-go for your first static site project."
+   data-preview-image="/images/getting-started-hero.jpg">getting started with markata-go</a>
+
+<a href="/plugin-development/" class="wikilink"
+   data-preview="Learn how to extend markata-go with custom plugins that hook into the build lifecycle.">Plugin Development</a>
+```
+
+#### Implementing Hover Previews with JavaScript
+
+Add this JavaScript to enable hover preview tooltips:
+
+```javascript
+// Simple tooltip implementation for wikilink hover previews
+document.addEventListener('DOMContentLoaded', () => {
+  const tooltip = document.createElement('div');
+  tooltip.className = 'wikilink-tooltip';
+  tooltip.style.cssText = `
+    position: absolute;
+    max-width: 300px;
+    padding: 12px;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-border, #ddd);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-size: 0.875rem;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  `;
+  document.body.appendChild(tooltip);
+
+  document.querySelectorAll('.wikilink[data-preview]').forEach(link => {
+    link.addEventListener('mouseenter', (e) => {
+      const preview = e.target.dataset.preview;
+      const image = e.target.dataset.previewImage;
+
+      let content = '';
+      if (image) {
+        content += `<img src="${image}" style="width:100%;border-radius:4px;margin-bottom:8px;">`;
+      }
+      content += `<p style="margin:0">${preview}</p>`;
+
+      tooltip.innerHTML = content;
+      tooltip.style.opacity = '1';
+
+      const rect = e.target.getBoundingClientRect();
+      tooltip.style.left = `${rect.left + window.scrollX}px`;
+      tooltip.style.top = `${rect.bottom + window.scrollY + 8}px`;
+    });
+
+    link.addEventListener('mouseleave', () => {
+      tooltip.style.opacity = '0';
+    });
+  });
+});
+```
+
+#### CSS Styling for Wikilinks
+
+Style your wikilinks to indicate they have preview functionality:
+
+```css
+/* Base wikilink styling */
+.wikilink {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* Indicate preview availability */
+.wikilink[data-preview] {
+  text-decoration-style: dashed;
+}
+
+.wikilink[data-preview]:hover {
+  text-decoration-style: solid;
+  background: var(--color-primary-light, rgba(0, 120, 212, 0.1));
+  border-radius: 2px;
+}
+
+/* Tooltip styling */
+.wikilink-tooltip {
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.wikilink-tooltip img {
+  display: block;
+  max-height: 150px;
+  object-fit: cover;
+}
+```
+
+#### Using Screenshot Service for External Previews
+
+Configure a screenshot service for richer previews:
+
+```toml
+[markata.wikilink_hover]
+enabled = true
+preview_length = 200
+include_image = true
+screenshot_service = "https://api.microlink.io/?screenshot=true&url="
+```
+
+This adds a `data-preview-screenshot` attribute for external screenshot generation:
+
+```html
+<a href="/complex-diagrams/" class="wikilink"
+   data-preview="Learn to create complex diagrams with Mermaid.js"
+   data-preview-screenshot="https://api.microlink.io/?screenshot=true&url=https://mysite.com/complex-diagrams/">
+   Complex Diagrams
+</a>
+```
 
 ---
 
@@ -2473,6 +2779,228 @@ pluginList, _ := plugins.PluginsByNames([]string{
     // ... default plugins ...
     "mermaid",
 })
+```
+
+### Examples
+
+#### Flowchart - Build Process
+
+Visualize processes and decision trees with flowcharts:
+
+```mermaid
+flowchart TD
+    A[Start Build] --> B{Config Found?}
+    B -->|Yes| C[Load Configuration]
+    B -->|No| D[Use Defaults]
+    C --> E[Discover Content]
+    D --> E
+    E --> F[Parse Frontmatter]
+    F --> G[Transform Content]
+    G --> H[Render Markdown]
+    H --> I[Apply Templates]
+    I --> J[Write Output]
+    J --> K[Generate Feeds]
+    K --> L{Search Enabled?}
+    L -->|Yes| M[Build Search Index]
+    L -->|No| N[Complete]
+    M --> N
+```
+
+#### Sequence Diagram - API Request Flow
+
+Show interactions between components over time:
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant Server
+    participant Cache
+    participant Database
+
+    Browser->>Server: GET /api/posts
+    Server->>Cache: Check cache
+    alt Cache hit
+        Cache-->>Server: Return cached data
+    else Cache miss
+        Server->>Database: Query posts
+        Database-->>Server: Return posts
+        Server->>Cache: Store in cache
+    end
+    Server-->>Browser: JSON response
+
+    Note over Browser,Server: Response includes ETag header
+
+    Browser->>Server: GET /api/posts (with If-None-Match)
+    Server-->>Browser: 304 Not Modified
+```
+
+#### Class Diagram - Plugin Architecture
+
+Document code structure and relationships:
+
+```mermaid
+classDiagram
+    class Plugin {
+        <<interface>>
+        +Name() string
+    }
+
+    class ConfigurePlugin {
+        <<interface>>
+        +Configure(m *Manager) error
+    }
+
+    class TransformPlugin {
+        <<interface>>
+        +Transform(m *Manager) error
+    }
+
+    class RenderPlugin {
+        <<interface>>
+        +Render(m *Manager) error
+    }
+
+    class Manager {
+        -config *Config
+        -posts []*Post
+        -plugins []Plugin
+        +RunStage(stage Stage) error
+        +Posts() []*Post
+        +ProcessPostsConcurrently(fn func) error
+    }
+
+    class Post {
+        +Path string
+        +Title *string
+        +Content string
+        +ArticleHTML string
+        +Slug string
+        +Tags []string
+    }
+
+    Plugin <|-- ConfigurePlugin
+    Plugin <|-- TransformPlugin
+    Plugin <|-- RenderPlugin
+    Manager --> Plugin : uses
+    Manager --> Post : manages
+```
+
+#### State Diagram - Post Lifecycle
+
+Show state transitions for content:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft: Create post
+
+    Draft --> Review: Submit for review
+    Draft --> Draft: Edit
+
+    Review --> Draft: Request changes
+    Review --> Scheduled: Approve
+
+    Scheduled --> Published: Publish date reached
+    Scheduled --> Draft: Cancel
+
+    Published --> Archived: Archive
+    Published --> Published: Update
+
+    Archived --> Published: Restore
+    Archived --> [*]: Delete
+```
+
+#### Entity Relationship Diagram - Content Model
+
+Document data relationships:
+
+```mermaid
+erDiagram
+    POST ||--o{ TAG : has
+    POST ||--o| AUTHOR : written_by
+    POST ||--o{ FEED : belongs_to
+    POST ||--o{ LINK : contains
+    FEED ||--o{ POST : contains
+    AUTHOR ||--o{ POST : writes
+
+    POST {
+        string slug PK
+        string title
+        string content
+        datetime date
+        boolean published
+    }
+
+    TAG {
+        string name PK
+        string slug
+    }
+
+    AUTHOR {
+        string id PK
+        string name
+        string email
+    }
+
+    FEED {
+        string slug PK
+        string title
+        string filter
+    }
+
+    LINK {
+        string source FK
+        string target
+        boolean internal
+    }
+```
+
+#### Gantt Chart - Project Timeline
+
+Plan and visualize project schedules:
+
+```mermaid
+gantt
+    title Site Redesign Project
+    dateFormat YYYY-MM-DD
+    section Planning
+        Requirements gathering    :a1, 2024-01-01, 7d
+        Design mockups           :a2, after a1, 10d
+        Technical planning       :a3, after a1, 5d
+    section Development
+        Theme development        :b1, after a2, 14d
+        Plugin customization     :b2, after a3, 10d
+        Content migration        :b3, after b1, 7d
+    section Testing
+        QA testing              :c1, after b3, 5d
+        Performance testing     :c2, after c1, 3d
+    section Launch
+        Soft launch             :milestone, after c2, 0d
+        Full launch             :d1, after c2, 2d
+```
+
+#### Git Graph - Branch History
+
+Visualize git workflows:
+
+```mermaid
+gitGraph
+    commit id: "Initial commit"
+    commit id: "Add base theme"
+    branch feature/blog
+    checkout feature/blog
+    commit id: "Add blog layout"
+    commit id: "Add post template"
+    checkout main
+    branch feature/search
+    checkout feature/search
+    commit id: "Add Pagefind"
+    checkout main
+    merge feature/blog id: "Merge blog feature"
+    checkout feature/search
+    commit id: "Style search UI"
+    checkout main
+    merge feature/search id: "Merge search"
+    commit id: "v1.0.0 release" tag: "v1.0.0"
 ```
 
 ---
