@@ -3,10 +3,13 @@ package tui
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -40,6 +43,7 @@ type Model struct {
 	app          *services.App
 	posts        []*models.Post
 	tags         []services.TagInfo
+	postsTable   table.Model
 	cursor       int
 	view         View
 	previousView View // Track previous view for returning from detail
@@ -66,6 +70,10 @@ type errMsg struct {
 	err error
 }
 
+type editorFinishedMsg struct {
+	err error
+}
+
 // NewModel creates a new TUI model
 func NewModel(app *services.App) Model {
 	filterInput := textinput.New()
@@ -76,15 +84,61 @@ func NewModel(app *services.App) Model {
 	cmdInput.Placeholder = "Command..."
 	cmdInput.CharLimit = 100
 
+	// Initialize posts table with columns
+	postsTable := createPostsTable(80) // Default width, will be updated on resize
+
 	m := Model{
 		app:         app,
 		view:        ViewPosts,
 		mode:        ModeNormal,
 		filterInput: filterInput,
 		cmdInput:    cmdInput,
+		postsTable:  postsTable,
 	}
 
 	return m
+}
+
+// createPostsTable creates and configures the posts table with the given width
+func createPostsTable(width int) table.Model {
+	// Column widths: TITLE(40) + DATE(12) + WORDS(8) + TAGS(20) + PATH(remaining)
+	// Account for padding/borders (approximately 10 chars)
+	pathWidth := width - 40 - 12 - 8 - 20 - 10
+	if pathWidth < 10 {
+		pathWidth = 10
+	}
+
+	columns := []table.Column{
+		{Title: "TITLE", Width: 40},
+		{Title: "DATE", Width: 12},
+		{Title: "WORDS", Width: 8},
+		{Title: "TAGS", Width: 20},
+		{Title: "PATH", Width: pathWidth},
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithFocused(true),
+		table.WithHeight(10), // Will be updated on resize
+	)
+
+	// Apply k9s-inspired styles
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(true).
+		Foreground(lipgloss.Color("99"))
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(true)
+	s.Cell = s.Cell.
+		Foreground(lipgloss.Color("252"))
+	t.SetStyles(s)
+
+	return t
 }
 
 // Init initializes the model
@@ -98,6 +152,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		// Update table dimensions
+		m.postsTable = createPostsTable(msg.Width)
+		m.postsTable.SetHeight(msg.Height - 10) // Leave room for header/footer
+		// Repopulate table if we have posts
+		if len(m.posts) > 0 {
+			m.postsTable.SetRows(m.postsToRows())
+		}
 		return m, nil
 
 	case tea.KeyMsg:
@@ -105,6 +166,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case postsLoadedMsg:
 		m.posts = msg.posts
+		m.postsTable.SetRows(m.postsToRows())
 		return m, nil
 
 	case tagsLoadedMsg:
@@ -114,9 +176,60 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		m.err = msg.err
 		return m, nil
+
+	case editorFinishedMsg:
+		// Reload posts in case content changed
+		if msg.err != nil {
+			m.err = msg.err
+		}
+		return m, m.loadPosts()
 	}
 
 	return m, nil
+}
+
+// postsToRows converts posts to table rows
+func (m Model) postsToRows() []table.Row {
+	rows := make([]table.Row, len(m.posts))
+	for i, p := range m.posts {
+		rows[i] = postToRow(p)
+	}
+	return rows
+}
+
+// postToRow converts a single post to a table row
+func postToRow(p *models.Post) table.Row {
+	// Title (truncate to 38 chars to leave room for selection indicator)
+	title := "(untitled)"
+	if p.Title != nil && *p.Title != "" {
+		title = *p.Title
+	}
+	if len(title) > 38 {
+		title = title[:35] + "..."
+	}
+
+	// Date (YYYY-MM-DD format)
+	date := ""
+	if p.Date != nil {
+		date = p.Date.Format("2006-01-02")
+	}
+
+	// Word count (from Extra field)
+	words := ""
+	if wc, ok := p.Extra["word_count"].(int); ok {
+		words = fmt.Sprintf("%d", wc)
+	}
+
+	// Tags (truncate to 18 chars)
+	tags := strings.Join(p.Tags, ", ")
+	if len(tags) > 18 {
+		tags = tags[:15] + "..."
+	}
+
+	// Path (will be truncated by table column width)
+	path := p.Path
+
+	return table.Row{title, date, words, tags, path}
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -140,18 +253,24 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.Quit):
 		return m, tea.Quit
 
-	case key.Matches(msg, keyMap.Up):
-		if m.cursor > 0 {
-			m.cursor--
+	case key.Matches(msg, keyMap.Up), key.Matches(msg, keyMap.Down):
+		// Let the table handle navigation when in posts view
+		if m.view == ViewPosts {
+			var cmd tea.Cmd
+			m.postsTable, cmd = m.postsTable.Update(msg)
+			m.cursor = m.postsTable.Cursor()
+			return m, cmd
 		}
-
-	case key.Matches(msg, keyMap.Down):
-		maxIdx := len(m.posts) - 1
-		if m.view == ViewTags {
-			maxIdx = len(m.tags) - 1
-		}
-		if m.cursor < maxIdx {
-			m.cursor++
+		// For other views, use manual cursor movement
+		if key.Matches(msg, keyMap.Up) {
+			if m.cursor > 0 {
+				m.cursor--
+			}
+		} else {
+			maxIdx := len(m.tags) - 1
+			if m.cursor < maxIdx {
+				m.cursor++
+			}
 		}
 
 	case key.Matches(msg, keyMap.Filter):
@@ -170,6 +289,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.Posts):
 		m.view = ViewPosts
 		m.cursor = 0
+		m.postsTable.SetCursor(0)
 		return m, m.loadPosts()
 
 	case key.Matches(msg, keyMap.Tags):
@@ -182,6 +302,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Escape):
 		return m.handleEscape()
+
+	case key.Matches(msg, keyMap.Edit):
+		if m.view == ViewPosts {
+			return m, m.openInEditor()
+		}
 	}
 
 	return m, nil
@@ -199,6 +324,7 @@ func (m Model) handleFilterMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.mode = ModeNormal
 		m.filterInput.Blur()
 		m.cursor = 0
+		m.postsTable.SetCursor(0)
 		return m, m.loadPosts()
 
 	default:
@@ -240,6 +366,7 @@ func (m Model) executeCommand(cmd string) (tea.Model, tea.Cmd) {
 	case "posts", "p":
 		m.view = ViewPosts
 		m.cursor = 0
+		m.postsTable.SetCursor(0)
 		return m, m.loadPosts()
 	case "tags", "t":
 		m.view = ViewTags
@@ -315,6 +442,7 @@ func (m Model) loadPosts() tea.Cmd {
 		opts := services.ListOptions{
 			SortBy:    "date",
 			SortOrder: services.SortDesc,
+			Filter:    m.filter,
 		}
 		posts, err := m.app.Posts.List(context.Background(), opts)
 		if err != nil {
@@ -332,6 +460,46 @@ func (m Model) loadTags() tea.Cmd {
 		}
 		return tagsLoadedMsg{tags}
 	}
+}
+
+// getSelectedPost returns the currently selected post, or nil if none selected
+func (m Model) getSelectedPost() *models.Post {
+	if m.view != ViewPosts || len(m.posts) == 0 {
+		return nil
+	}
+	if m.cursor < 0 || m.cursor >= len(m.posts) {
+		return nil
+	}
+	return m.posts[m.cursor]
+}
+
+// getEditor returns the editor command to use based on environment variables
+func getEditor() string {
+	if editor := os.Getenv("EDITOR"); editor != "" {
+		return editor
+	}
+	if editor := os.Getenv("VISUAL"); editor != "" {
+		return editor
+	}
+	// Check if vim exists
+	if _, err := exec.LookPath("vim"); err == nil {
+		return "vim"
+	}
+	return "nano"
+}
+
+// openInEditor opens the selected post in the user's editor
+func (m Model) openInEditor() tea.Cmd {
+	post := m.getSelectedPost()
+	if post == nil {
+		return nil
+	}
+
+	editor := getEditor()
+	c := exec.Command(editor, post.Path)
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		return editorFinishedMsg{err}
+	})
 }
 
 // View renders the UI
@@ -370,7 +538,7 @@ func (m Model) renderLayout(content string) string {
 	case ModeCommand:
 		statusBar = ":" + m.cmdInput.View()
 	default:
-		statusBar = subtleStyle.Render("j/k:move  /:filter  ::cmd  ?:help  q:quit")
+		statusBar = subtleStyle.Render("j/k:move  e:edit  /:filter  ::cmd  ?:help  q:quit")
 	}
 
 	return fmt.Sprintf("%s\n\n%s\n\n%s", header, content, statusBar)
@@ -382,36 +550,12 @@ func (m Model) renderPosts() string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Posts (%d)\n\n", len(m.posts)))
 
-	// Calculate visible range
-	visibleLines := m.height - 8
-	if visibleLines < 5 {
-		visibleLines = 5
-	}
-
-	start := 0
-	if m.cursor >= visibleLines {
-		start = m.cursor - visibleLines + 1
-	}
-	end := start + visibleLines
-	if end > len(m.posts) {
-		end = len(m.posts)
-	}
-
-	for i := start; i < end; i++ {
-		p := m.posts[i]
-		title := "(untitled)"
-		if p.Title != nil {
-			title = *p.Title
-		}
-
-		line := fmt.Sprintf("  %s", title)
-		if i == m.cursor {
-			line = selectedStyle.Render("> " + title)
-		}
-		sb.WriteString(line + "\n")
-	}
+	// Render the table with header showing count
+	header := fmt.Sprintf("Posts (%d)", len(m.posts))
+	sb.WriteString(headerStyle.Render(header))
+	sb.WriteString("\n\n")
+	sb.WriteString(m.postsTable.View())
 
 	return sb.String()
 }
@@ -458,6 +602,9 @@ Navigation:
   k / ↑      Move up
   Enter      Select / view details
   Esc        Cancel / go back
+
+Actions:
+  e          Edit selected post in $EDITOR
 
 Modes:
   /          Filter mode

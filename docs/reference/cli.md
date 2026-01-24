@@ -186,6 +186,121 @@ markata-go serve -v
 
 ---
 
+### tui
+
+Interactive terminal UI for browsing and managing your markata site. Inspired by [k9s](https://k9scli.io/).
+
+#### Usage
+
+```bash
+markata-go tui [flags]
+```
+
+#### Description
+
+The TUI provides a keyboard-driven interface for exploring your site's posts, tags, and feeds. It features a k9s-style table layout with filtering, sorting, and quick actions.
+
+#### Views
+
+The TUI has three main views, accessible via number keys:
+
+| Key | View | Description |
+|-----|------|-------------|
+| `1` | Posts | Browse all posts in a table |
+| `2` | Tags | View and filter by tags |
+| `3` | Feeds | View configured feeds |
+
+#### Global Keybindings
+
+These keys work in all views:
+
+| Key | Action |
+|-----|--------|
+| `1`, `2`, `3` | Switch between views |
+| `/` | Enter filter mode |
+| `Esc` | Clear filter / exit current mode |
+| `?` | Show help |
+| `q`, `Ctrl+C` | Quit |
+
+#### Posts View
+
+The posts view displays all posts in a table with columns for title, date, word count, tags, and path.
+
+##### Posts Keybindings
+
+| Key | Action |
+|-----|--------|
+| `↑`/`↓`, `j`/`k` | Navigate up/down |
+| `Enter` | View post details |
+| `e` | Edit post in $EDITOR |
+| `s` | Open sort menu |
+| `/` | Filter posts |
+
+##### Post Detail View
+
+Press `Enter` on any post to see its full details including:
+- Title, path, and date
+- Published status and tags
+- Word count and description
+- Content preview
+
+Press `Esc` to return to the post list, or `e` to edit the post.
+
+#### Sorting
+
+Press `s` in the posts view to open the sort menu:
+
+| Sort Option | Description |
+|-------------|-------------|
+| Date | Sort by post date (default) |
+| Title | Sort alphabetically by title |
+| Word Count | Sort by word count |
+| Path | Sort by file path |
+
+Use `a` for ascending order, `d` for descending order.
+
+#### Filtering
+
+Press `/` to enter filter mode. Type a filter expression and press `Enter` to apply.
+
+##### Filter Expression Examples
+
+```
+published==true           # Only published posts
+tags contains "go"        # Posts tagged with "go"  
+date > "2024-01-01"       # Posts after a specific date
+title startswith "How"    # Titles starting with "How"
+```
+
+See [Filter Expressions](/docs/guides/filters) for the complete filter syntax.
+
+#### Feeds View
+
+The feeds view displays all configured feeds with:
+- Feed name
+- Number of posts in the feed
+- Filter expression used
+- Output path
+
+#### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `EDITOR` | Primary editor for `e` key (falls back to `vim`) |
+| `VISUAL` | Secondary editor if `EDITOR` is not set |
+
+#### Examples
+
+```bash
+# Launch the TUI
+markata-go tui
+
+# The TUI will display your posts in a table format
+# Use j/k to navigate, Enter to view details, e to edit
+```
+
+---
+
 ### init
 
 Initialize a new markata-go project with interactive setup.
