@@ -2,7 +2,9 @@
 package plugins
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,8 +47,10 @@ func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	verbose := searchConfig.Pagefind.IsVerbose()
+
 	// Try to find or install Pagefind
-	pagefindPath, err := p.findOrInstallPagefind(searchConfig)
+	pagefindPath, err := p.findOrInstallPagefind(searchConfig, verbose)
 	if err != nil {
 		// Log warning but don't fail the build
 		fmt.Printf("[pagefind] WARNING: %v\n", err)
@@ -59,12 +63,12 @@ func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	return p.runPagefind(pagefindPath, config, searchConfig)
+	return p.runPagefind(pagefindPath, config, searchConfig, verbose)
 }
 
 // findOrInstallPagefind locates or automatically installs the Pagefind binary.
 // It first checks the system PATH, then attempts auto-install if enabled.
-func (p *PagefindPlugin) findOrInstallPagefind(searchConfig models.SearchConfig) (string, error) {
+func (p *PagefindPlugin) findOrInstallPagefind(searchConfig models.SearchConfig, verbose bool) (string, error) {
 	// First, check if pagefind is in PATH
 	pagefindPath, err := exec.LookPath("pagefind")
 	if err == nil {
@@ -84,9 +88,12 @@ func (p *PagefindPlugin) findOrInstallPagefind(searchConfig models.SearchConfig)
 		Version:  searchConfig.Pagefind.Version,
 		CacheDir: searchConfig.Pagefind.CacheDir,
 	})
+	installer.Verbose = verbose
 
 	// Attempt to install
-	fmt.Printf("[pagefind] Pagefind not found in PATH, attempting auto-install...\n")
+	if verbose {
+		fmt.Printf("[pagefind] Pagefind not found in PATH, attempting auto-install...\n")
+	}
 	installedPath, err := installer.Install()
 	if err != nil {
 		return "", fmt.Errorf("auto-install failed: %w", err)
@@ -96,7 +103,7 @@ func (p *PagefindPlugin) findOrInstallPagefind(searchConfig models.SearchConfig)
 }
 
 // runPagefind executes the Pagefind CLI to generate the search index.
-func (p *PagefindPlugin) runPagefind(pagefindPath string, config *lifecycle.Config, searchConfig models.SearchConfig) error {
+func (p *PagefindPlugin) runPagefind(pagefindPath string, config *lifecycle.Config, searchConfig models.SearchConfig, verbose bool) error {
 	outputDir := config.OutputDir
 
 	// Verify output directory exists
@@ -128,11 +135,38 @@ func (p *PagefindPlugin) runPagefind(pagefindPath string, config *lifecycle.Conf
 	}
 
 	// Run pagefind
-	fmt.Printf("[pagefind] Generating search index in %s/%s\n", outputDir, bundleDir)
+	if verbose {
+		fmt.Printf("[pagefind] Generating search index in %s/%s\n", outputDir, bundleDir)
+	}
 	cmd := exec.Command(pagefindPath, args...)
 	cmd.Dir = "." // Run from project root
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+
+	// Capture output - show all in verbose mode, only errors when quiet
+	if verbose {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+	} else {
+		// Capture stderr to show errors only
+		var stderrBuf bytes.Buffer
+		cmd.Stdout = io.Discard
+		cmd.Stderr = &stderrBuf
+
+		if err := cmd.Run(); err != nil {
+			// Show captured stderr on error
+			if stderrBuf.Len() > 0 {
+				fmt.Fprintf(os.Stderr, "%s", stderrBuf.String())
+			}
+			return fmt.Errorf("pagefind indexing failed: %w", err)
+		}
+
+		// Verify the index was created
+		indexPath := filepath.Join(outputDir, bundleDir, "pagefind.js")
+		if _, err := os.Stat(indexPath); os.IsNotExist(err) {
+			return fmt.Errorf("pagefind did not create expected index file: %s", indexPath)
+		}
+
+		return nil
+	}
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("pagefind indexing failed: %w", err)

@@ -249,7 +249,7 @@ func TestVerifyChecksum(t *testing.T) {
 		hasher.Write(content)
 		expectedChecksum := hex.EncodeToString(hasher.Sum(nil))
 
-		err := verifyChecksum(filePath, expectedChecksum)
+		err := verifyChecksum(filePath, expectedChecksum, false)
 		if err != nil {
 			t.Errorf("verifyChecksum() unexpected error: %v", err)
 		}
@@ -266,7 +266,7 @@ func TestVerifyChecksum(t *testing.T) {
 		// Use wrong checksum
 		wrongChecksum := "0000000000000000000000000000000000000000000000000000000000000000"
 
-		err := verifyChecksum(filePath, wrongChecksum)
+		err := verifyChecksum(filePath, wrongChecksum, false)
 		if err == nil {
 			t.Error("verifyChecksum() should fail with wrong checksum")
 		}
@@ -280,7 +280,7 @@ func TestVerifyChecksum(t *testing.T) {
 	})
 
 	t.Run("file_not_found", func(t *testing.T) {
-		err := verifyChecksum(filepath.Join(tmpDir, "nonexistent.bin"), "somechecksum")
+		err := verifyChecksum(filepath.Join(tmpDir, "nonexistent.bin"), "somechecksum", false)
 		if err == nil {
 			t.Error("verifyChecksum() should fail for non-existent file")
 		}
