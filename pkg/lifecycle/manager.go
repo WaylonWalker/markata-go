@@ -533,38 +533,55 @@ func compareValues(a, b interface{}) int {
 	return strings.Compare(fmt.Sprintf("%v", a), fmt.Sprintf("%v", b))
 }
 
-// ProcessPostsConcurrently processes posts concurrently using the given function.
-// This is useful for plugins that need to process multiple posts in parallel.
+// ProcessPostsConcurrently processes posts concurrently using a bounded worker pool.
+// The worker pool is sized to Concurrency(), ensuring that regardless of post count,
+// only a fixed number of goroutines are spawned. This eliminates scheduler overhead
+// and memory churn for large builds.
+//
+// Error handling: If any post fails to process, the function continues processing
+// remaining posts and returns an aggregated error containing the count of failures
+// and the first error encountered.
 func (m *Manager) ProcessPostsConcurrently(fn func(*models.Post) error) error {
 	posts := m.Posts()
 	if len(posts) == 0 {
 		return nil
 	}
 
-	concurrency := m.Concurrency()
+	numWorkers := m.Concurrency()
+	if numWorkers > len(posts) {
+		numWorkers = len(posts)
+	}
+
+	jobs := make(chan *models.Post, len(posts))
 	errCh := make(chan error, len(posts))
-	semaphore := make(chan struct{}, concurrency)
 
 	var wg sync.WaitGroup
 
-	for _, post := range posts {
+	// Start fixed number of workers
+	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go func(p *models.Post) {
+		go func() {
 			defer wg.Done()
-			semaphore <- struct{}{}
-			defer func() { <-semaphore }()
-
-			if err := fn(p); err != nil {
-				errCh <- fmt.Errorf("processing %s: %w", p.Path, err)
+			for post := range jobs {
+				if err := fn(post); err != nil {
+					errCh <- fmt.Errorf("processing %s: %w", post.Path, err)
+				}
 			}
-		}(post)
+		}()
 	}
 
+	// Send all posts to the jobs channel
+	for _, post := range posts {
+		jobs <- post
+	}
+	close(jobs)
+
+	// Wait for all workers to complete
 	wg.Wait()
 	close(errCh)
 
 	// Collect errors
-	errs := make([]error, 0, len(m.posts))
+	errs := make([]error, 0)
 	for err := range errCh {
 		errs = append(errs, err)
 	}

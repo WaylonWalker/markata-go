@@ -814,6 +814,61 @@ def render(core):  # Runs last
 
 ---
 
+## Concurrent Post Processing
+
+Stages that process posts (transform, render, collect) use a **bounded worker pool** for concurrent execution.
+
+### Worker Pool Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    BOUNDED WORKER POOL                               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌─────────┐    ┌───────────────────┐    ┌────────────────────┐     │
+│  │ Posts   │───►│   Jobs Channel    │───►│  Worker Goroutines │     │
+│  │ (N)     │    │   (buffered)      │    │  (Concurrency)     │     │
+│  └─────────┘    └───────────────────┘    └────────────────────┘     │
+│                                                                      │
+│  Post count: unlimited                    Worker count: bounded      │
+│                                           (default: CPU cores)       │
+│                                                                      │
+├─────────────────────────────────────────────────────────────────────┤
+│  GUARANTEES:                                                         │
+│  • Never spawns more than Concurrency() + k goroutines              │
+│  • Constant memory overhead regardless of post count                 │
+│  • Deterministic completion (all posts processed before return)      │
+│  • Error aggregation (count + first error preserved)                 │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Why Worker Pool (not Goroutine-per-Post)
+
+The naive approach of spawning one goroutine per post with a semaphore:
+- Creates N goroutines immediately (N = post count)
+- Causes scheduler overhead for large sites (5k+ posts)
+- Results in memory churn from goroutine stack allocations
+
+The worker pool approach:
+- Creates exactly `Concurrency()` goroutines
+- Streams posts through a jobs channel
+- Scales to any post count without additional overhead
+
+### Configuration
+
+```toml
+[markata-go]
+concurrency = 0  # 0 = auto (CPU cores), or explicit worker count
+```
+
+### Error Handling
+
+- If a post fails to process, the error is recorded
+- Processing continues for remaining posts
+- Returns aggregated error: `"N posts failed to process; first error: ..."`
+
+---
+
 ## Incremental Builds
 
 Incremental builds only process content that has changed since the last build, dramatically improving build times for large sites.

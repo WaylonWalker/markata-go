@@ -148,6 +148,43 @@ func BenchmarkProcessPostsConcurrently(b *testing.B) {
 	}
 }
 
+// BenchmarkProcessPostsConcurrentlyLargeScale measures worker pool scaling with large post counts.
+// This benchmark validates that the worker pool approach scales efficiently to thousands of posts.
+func BenchmarkProcessPostsConcurrentlyLargeScale(b *testing.B) {
+	postCounts := []int{1000, 5000, 10000}
+
+	for _, count := range postCounts {
+		// Pre-allocate posts outside the benchmark loop
+		posts := make([]*models.Post, count)
+		for i := 0; i < count; i++ {
+			title := fmt.Sprintf("Test Post %d", i)
+			posts[i] = &models.Post{
+				Path:    fmt.Sprintf("post-%d.md", i),
+				Slug:    fmt.Sprintf("post-%d", i),
+				Title:   &title,
+				Content: generateBenchmarkContent(i % 100), // Reuse content patterns
+			}
+		}
+
+		b.Run(fmt.Sprintf("posts-%d", count), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				m := NewManager()
+				m.SetConcurrency(8) // Fixed concurrency for scaling comparison
+				m.SetPosts(posts)
+
+				err := m.ProcessPostsConcurrently(func(p *models.Post) error {
+					// Simulate some work
+					_ = len(p.Content)
+					return nil
+				})
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 // BenchmarkFilter measures filter expression evaluation.
 func BenchmarkFilter(b *testing.B) {
 	// Create test posts with various attributes
