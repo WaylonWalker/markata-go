@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"errors"
 	"runtime"
+	"sync/atomic"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -589,11 +590,15 @@ func TestManagerConcurrentProcessingErrorHandling(t *testing.T) {
 	}
 	m.SetPosts(posts)
 
-	// Every 3rd post fails
-	callCount := 0
+	// Track processed posts with atomic counter for thread safety
+	var callCount int64
+	// Track error count atomically
+	var errCount int64
 	err := m.ProcessPostsConcurrently(func(_ *models.Post) error {
-		callCount++
-		if callCount%3 == 0 {
+		count := atomic.AddInt64(&callCount, 1)
+		// Every 3rd call fails
+		if count%3 == 0 {
+			atomic.AddInt64(&errCount, 1)
 			return errors.New("simulated error")
 		}
 		return nil
@@ -604,8 +609,9 @@ func TestManagerConcurrentProcessingErrorHandling(t *testing.T) {
 	}
 
 	// All 10 posts should be processed (error doesn't stop processing)
-	if callCount != 10 {
-		t.Errorf("Expected 10 posts processed, got %d", callCount)
+	finalCount := atomic.LoadInt64(&callCount)
+	if finalCount != 10 {
+		t.Errorf("Expected 10 posts processed, got %d", finalCount)
 	}
 }
 
