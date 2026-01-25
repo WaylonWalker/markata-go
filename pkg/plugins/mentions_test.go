@@ -116,6 +116,47 @@ func TestMentionsPlugin_ProcessMentions(t *testing.T) {
 			},
 			want: `Check <a href="https://test.com/path?a=1&amp;b=2" class="mention">@test</a>`,
 		},
+		{
+			name:    "domain-style handle",
+			content: "I was reading @simonwillison.net's post",
+			handleMap: map[string]*mentionEntry{
+				"simonwillison.net": {Handle: "simonwillison.net", SiteURL: "https://simonwillison.net", Title: "Simon Willison"},
+			},
+			want: `I was reading <a href="https://simonwillison.net" class="mention">@simonwillison.net</a>'s post`,
+		},
+		{
+			name:    "domain-style handle at start",
+			content: "@simonwillison.net wrote about LLMs",
+			handleMap: map[string]*mentionEntry{
+				"simonwillison.net": {Handle: "simonwillison.net", SiteURL: "https://simonwillison.net", Title: "Simon Willison"},
+			},
+			want: `<a href="https://simonwillison.net" class="mention">@simonwillison.net</a> wrote about LLMs`,
+		},
+		{
+			name:    "domain-style handle at end",
+			content: "Great article by @simonwillison.net",
+			handleMap: map[string]*mentionEntry{
+				"simonwillison.net": {Handle: "simonwillison.net", SiteURL: "https://simonwillison.net", Title: "Simon Willison"},
+			},
+			want: `Great article by <a href="https://simonwillison.net" class="mention">@simonwillison.net</a>`,
+		},
+		{
+			name:    "handle with multiple dots",
+			content: "Follow @blog.example.co.uk",
+			handleMap: map[string]*mentionEntry{
+				"blog.example.co.uk": {Handle: "blog.example.co.uk", SiteURL: "https://blog.example.co.uk", Title: "Example Blog"},
+			},
+			want: `Follow <a href="https://blog.example.co.uk" class="mention">@blog.example.co.uk</a>`,
+		},
+		{
+			name:    "mixed handles simple and domain-style",
+			content: "Both @daverupert and @simonwillison.net are great",
+			handleMap: map[string]*mentionEntry{
+				"daverupert":        {Handle: "daverupert", SiteURL: "https://daverupert.com", Title: "Dave Rupert"},
+				"simonwillison.net": {Handle: "simonwillison.net", SiteURL: "https://simonwillison.net", Title: "Simon Willison"},
+			},
+			want: `Both <a href="https://daverupert.com" class="mention">@daverupert</a> and <a href="https://simonwillison.net" class="mention">@simonwillison.net</a> are great`,
+		},
 	}
 
 	p := NewMentionsPlugin()
