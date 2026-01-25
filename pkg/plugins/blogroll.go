@@ -793,6 +793,8 @@ func (p *BlogrollPlugin) categoriesToMaps(categories []*models.BlogrollCategory)
 }
 
 // configToMap converts config to a template-friendly map with essential fields.
+// This mirrors the logic from templates.go:toModelsConfig() to ensure all
+// template-accessible config fields are available in blogroll/reader pages.
 func (p *BlogrollPlugin) configToMap(config *lifecycle.Config) map[string]interface{} {
 	if config == nil {
 		return nil
@@ -816,6 +818,9 @@ func (p *BlogrollPlugin) configToMap(config *lifecycle.Config) map[string]interf
 		}
 		if author, ok := config.Extra["author"].(string); ok {
 			result["author"] = author
+		}
+		if templatesDir, ok := config.Extra["templates_dir"].(string); ok {
+			result["templates_dir"] = templatesDir
 		}
 
 		// Convert nav items if available
@@ -843,9 +848,85 @@ func (p *BlogrollPlugin) configToMap(config *lifecycle.Config) map[string]interf
 				"placeholder": search.Placeholder,
 			}
 		}
+
+		// Convert components config if available (fixes #316)
+		if components, ok := config.Extra["components"].(models.ComponentsConfig); ok {
+			result["components"] = components
+		}
+
+		// Convert footer config if available
+		if footer, ok := config.Extra["footer"].(models.FooterConfig); ok {
+			result["footer"] = footer
+		}
+
+		// Convert layout config if available
+		switch layoutVal := config.Extra["layout"].(type) {
+		case *models.LayoutConfig:
+			result["layout"] = *layoutVal
+		case models.LayoutConfig:
+			result["layout"] = layoutVal
+		}
+
+		// Convert sidebar config if available
+		if sidebar, ok := config.Extra["sidebar"].(models.SidebarConfig); ok {
+			result["sidebar"] = sidebar
+		}
+
+		// Convert toc config if available
+		if toc, ok := config.Extra["toc"].(models.TocConfig); ok {
+			result["toc"] = toc
+		}
+
+		// Convert header config if available
+		if header, ok := config.Extra["header"].(models.HeaderLayoutConfig); ok {
+			result["header"] = header
+		}
+
+		// Convert SEO config if available
+		switch seoVal := config.Extra["seo"].(type) {
+		case models.SEOConfig:
+			result["seo"] = seoVal
+		case map[string]interface{}:
+			result["seo"] = models.SEOConfig{
+				TwitterHandle: p.getStringFromMap(seoVal, "twitter_handle"),
+				DefaultImage:  p.getStringFromMap(seoVal, "default_image"),
+				LogoURL:       p.getStringFromMap(seoVal, "logo_url"),
+			}
+		}
+
+		// Convert post_formats config if available
+		if postFormats, ok := config.Extra["post_formats"].(models.PostFormatsConfig); ok {
+			result["post_formats"] = postFormats
+		}
+
+		// Convert head config if available
+		if head, ok := config.Extra["head"].(models.HeadConfig); ok {
+			result["head"] = head
+		}
+
+		// Convert webmention config if available
+		if webmention, ok := config.Extra["webmention"]; ok {
+			result["webmention"] = webmention
+		}
+
+		// Convert feeds config if available
+		if feeds, ok := config.Extra["feeds"]; ok {
+			result["feeds"] = feeds
+		}
 	}
 
 	return result
+}
+
+// getStringFromMap safely gets a string value from a map.
+func (p *BlogrollPlugin) getStringFromMap(m map[string]interface{}, key string) string {
+	if m == nil {
+		return ""
+	}
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
 }
 
 // renderBlogrollFallback generates a basic blogroll page that uses theme CSS if available.
