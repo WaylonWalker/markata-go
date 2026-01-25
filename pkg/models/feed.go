@@ -113,11 +113,14 @@ type FeedFormats struct {
 
 	// Text generates a plain text file
 	Text bool `json:"text" yaml:"text" toml:"text"`
+
+	// Sitemap generates a sitemap XML file
+	Sitemap bool `json:"sitemap" yaml:"sitemap" toml:"sitemap"`
 }
 
 // HasAnyEnabled returns true if any output format is enabled.
 func (f FeedFormats) HasAnyEnabled() bool {
-	return f.HTML || f.RSS || f.Atom || f.JSON || f.Markdown || f.Text
+	return f.HTML || f.RSS || f.Atom || f.JSON || f.Markdown || f.Text || f.Sitemap
 }
 
 // FeedTemplates specifies custom templates for feed formats.
@@ -136,6 +139,9 @@ type FeedTemplates struct {
 
 	// Card is the template for individual post cards
 	Card string `json:"card" yaml:"card" toml:"card"`
+
+	// Sitemap is the template for sitemap output
+	Sitemap string `json:"sitemap" yaml:"sitemap" toml:"sitemap"`
 }
 
 // FeedPage represents a single page of paginated feed results.
@@ -211,17 +217,19 @@ func NewFeedDefaults() FeedDefaults {
 		OrphanThreshold: 3,
 		PaginationType:  PaginationManual,
 		Formats: FeedFormats{
-			HTML: true,
-			RSS:  true,
-			Atom: false,
-			JSON: false,
+			HTML:    true,
+			RSS:     true,
+			Atom:    false,
+			JSON:    false,
+			Sitemap: false,
 		},
 		Templates: FeedTemplates{
-			HTML: "feed.html",
-			RSS:  "feed.xml",
-			Atom: "atom.xml",
-			JSON: "feed.json",
-			Card: "card.html",
+			HTML:    "feed.html",
+			RSS:     "feed.xml",
+			Atom:    "atom.xml",
+			JSON:    "feed.json",
+			Card:    "card.html",
+			Sitemap: "sitemap.xml",
 		},
 		Syndication: SyndicationConfig{
 			MaxItems:       20,
@@ -276,6 +284,9 @@ func (f *FeedConfig) ApplyDefaults(defaults FeedDefaults) {
 	}
 	if f.Templates.Card == "" {
 		f.Templates.Card = defaults.Templates.Card
+	}
+	if f.Templates.Sitemap == "" {
+		f.Templates.Sitemap = defaults.Templates.Sitemap
 	}
 }
 
