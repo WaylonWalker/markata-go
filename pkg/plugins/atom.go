@@ -61,7 +61,7 @@ func GenerateAtom(feed *lifecycle.Feed, config *lifecycle.Config) (string, error
 	author := getSiteAuthor(config)
 	feedPath := feed.Path
 	if feedPath == "" {
-		feedPath = "feed"
+		feedPath = DefaultFeedPath
 	}
 	feedURL := siteURL + "/" + feedPath + "/atom.xml"
 

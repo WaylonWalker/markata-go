@@ -27,4 +27,7 @@ const (
 
 	// DefaultSiteURL is the default site URL used when none is configured.
 	DefaultSiteURL = "https://example.com"
+
+	// DefaultFeedPath is the default path used for feed files when not specified.
+	DefaultFeedPath = "feed"
 )
