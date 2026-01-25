@@ -97,107 +97,128 @@ func (p *MentionsPlugin) buildHandleMap(m *lifecycle.Manager) map[string]*mentio
 		return handleMap
 	}
 
+	// Register handles from blogroll feed configs
 	for i := range blogrollConfig.Feeds {
 		feedConfig := &blogrollConfig.Feeds[i]
-		if !feedConfig.IsActive() {
-			continue
-		}
-
-		// Determine the site URL
-		siteURL := feedConfig.SiteURL
-		if siteURL == "" {
-			// Try to extract site URL from feed URL
-			siteURL = extractSiteURL(feedConfig.URL)
-		}
-
-		if siteURL == "" {
-			// Can't resolve without a site URL
-			continue
-		}
-
-		// Determine the handle
-		handle := feedConfig.Handle
-		if handle == "" {
-			// Auto-generate handle from domain
-			handle = extractHandleFromURL(siteURL)
-		}
-
-		if handle == "" {
-			continue
-		}
-
-		// Normalize handle to lowercase
-		handle = strings.ToLower(handle)
-
-		// Create the mention entry
-		entry := &mentionEntry{
-			Handle:  handle,
-			SiteURL: siteURL,
-			Title:   feedConfig.Title,
-		}
-
-		// Store in map (first entry wins for duplicates)
-		if _, exists := handleMap[handle]; !exists {
-			handleMap[handle] = entry
-		}
-
-		// Auto-register domain-style alias from site_url
-		domain := extractDomainFromURL(siteURL)
-		if domain != "" && domain != handle {
-			if _, exists := handleMap[domain]; !exists {
-				handleMap[domain] = entry
-			}
-		}
-
-		// Register aliases for this handle
-		for _, alias := range feedConfig.Aliases {
-			normalizedAlias := strings.ToLower(alias)
-			if normalizedAlias == "" {
-				continue
-			}
-			if _, exists := handleMap[normalizedAlias]; exists {
-				// Log warning for duplicate alias (first entry wins)
-				log.Printf("warning: duplicate alias %q (first entry wins)", normalizedAlias)
-				continue
-			}
-			// Alias points to the same entry with the canonical handle
-			handleMap[normalizedAlias] = entry
-		}
+		p.registerFeedConfigEntry(feedConfig, handleMap)
 	}
 
 	// Also check for cached feeds that might have site URLs populated from fetching
-	if cachedFeeds, ok := m.Cache().Get("blogroll_feeds"); ok {
-		if feeds, ok := cachedFeeds.([]*models.ExternalFeed); ok {
-			for _, feed := range feeds {
-				if feed.SiteURL == "" {
-					continue
-				}
-
-				// Determine handle
-				handle := feed.Config.Handle
-				if handle == "" {
-					handle = extractHandleFromURL(feed.SiteURL)
-				}
-
-				if handle == "" {
-					continue
-				}
-
-				handle = strings.ToLower(handle)
-
-				// Add to map if not already present
-				if _, exists := handleMap[handle]; !exists {
-					handleMap[handle] = &mentionEntry{
-						Handle:  handle,
-						SiteURL: feed.SiteURL,
-						Title:   feed.Title,
-					}
-				}
-			}
-		}
-	}
+	p.registerCachedFeeds(m, handleMap)
 
 	return handleMap
+}
+
+// registerFeedConfigEntry registers a single feed config entry into the handle map.
+func (p *MentionsPlugin) registerFeedConfigEntry(feedConfig *models.ExternalFeedConfig, handleMap map[string]*mentionEntry) {
+	if !feedConfig.IsActive() {
+		return
+	}
+
+	// Determine the site URL
+	siteURL := feedConfig.SiteURL
+	if siteURL == "" {
+		siteURL = extractSiteURL(feedConfig.URL)
+	}
+	if siteURL == "" {
+		return
+	}
+
+	// Determine the handle
+	handle := feedConfig.Handle
+	if handle == "" {
+		handle = extractHandleFromURL(siteURL)
+	}
+	if handle == "" {
+		return
+	}
+
+	handle = strings.ToLower(handle)
+
+	// Create the mention entry
+	entry := &mentionEntry{
+		Handle:  handle,
+		SiteURL: siteURL,
+		Title:   feedConfig.Title,
+	}
+
+	// Store in map (first entry wins for duplicates)
+	if _, exists := handleMap[handle]; !exists {
+		handleMap[handle] = entry
+	}
+
+	// Auto-register domain-style alias from site_url
+	p.registerDomainAlias(siteURL, handle, entry, handleMap)
+
+	// Register explicit aliases for this handle
+	p.registerExplicitAliases(feedConfig.Aliases, entry, handleMap)
+}
+
+// registerDomainAlias auto-registers the domain from siteURL as an alias if different from handle.
+func (p *MentionsPlugin) registerDomainAlias(siteURL, handle string, entry *mentionEntry, handleMap map[string]*mentionEntry) {
+	domain := extractDomainFromURL(siteURL)
+	if domain != "" && domain != handle {
+		if _, exists := handleMap[domain]; !exists {
+			handleMap[domain] = entry
+		}
+	}
+}
+
+// registerExplicitAliases registers explicit aliases from config into the handle map.
+func (p *MentionsPlugin) registerExplicitAliases(aliases []string, entry *mentionEntry, handleMap map[string]*mentionEntry) {
+	for _, alias := range aliases {
+		normalizedAlias := strings.ToLower(alias)
+		if normalizedAlias == "" {
+			continue
+		}
+		if _, exists := handleMap[normalizedAlias]; exists {
+			log.Printf("warning: duplicate alias %q (first entry wins)", normalizedAlias)
+			continue
+		}
+		handleMap[normalizedAlias] = entry
+	}
+}
+
+// registerCachedFeeds registers handles from cached external feeds.
+func (p *MentionsPlugin) registerCachedFeeds(m *lifecycle.Manager, handleMap map[string]*mentionEntry) {
+	cachedFeeds, ok := m.Cache().Get("blogroll_feeds")
+	if !ok {
+		return
+	}
+
+	feeds, ok := cachedFeeds.([]*models.ExternalFeed)
+	if !ok {
+		return
+	}
+
+	for _, feed := range feeds {
+		p.registerCachedFeedEntry(feed, handleMap)
+	}
+}
+
+// registerCachedFeedEntry registers a single cached feed entry into the handle map.
+func (p *MentionsPlugin) registerCachedFeedEntry(feed *models.ExternalFeed, handleMap map[string]*mentionEntry) {
+	if feed.SiteURL == "" {
+		return
+	}
+
+	handle := feed.Config.Handle
+	if handle == "" {
+		handle = extractHandleFromURL(feed.SiteURL)
+	}
+	if handle == "" {
+		return
+	}
+
+	handle = strings.ToLower(handle)
+
+	if _, exists := handleMap[handle]; !exists {
+		handleMap[handle] = &mentionEntry{
+			Handle:  handle,
+			SiteURL: feed.SiteURL,
+			Title:   feed.Title,
+		}
+	}
 }
 
 // mentionRegex matches @handle patterns.
