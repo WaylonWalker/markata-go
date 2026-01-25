@@ -882,6 +882,82 @@ func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, ca
         --color-primary: #60a5fa;
       }
     }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      background: var(--color-background);
+      color: var(--color-text);
+      line-height: 1.6;
+    }
+    h1 { margin-bottom: 0.5rem; }
+    .subtitle { color: var(--color-text-muted); margin-bottom: 2rem; }
+    .category { margin-bottom: 2rem; }
+    .category h2 { border-bottom: 1px solid var(--color-border); padding-bottom: 0.5rem; }
+    .feed-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    .feed-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      gap: 0.75rem;
+    }
+    .feed-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--color-border);
+    }
+    .feed-avatar-placeholder {
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      flex-shrink: 0;
+      background: var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      color: var(--color-text-muted);
+    }
+    .feed-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .feed-card h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1rem;
+    }
+    .feed-card h3 a {
+      color: var(--color-text);
+      text-decoration: none;
+    }
+    .feed-card h3 a:hover { text-decoration: underline; }
+    .feed-card p {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+    }
+    .feed-meta {
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+    .nav-links {
+      margin-bottom: 1rem;
+    }
+    .nav-links a {
+      color: var(--color-text);
+      margin-right: 1rem;
+    }
   </style>
 </head>
 <body>
@@ -906,8 +982,23 @@ func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, ca
 `, html.EscapeString(cat.Name)))
 
 		for _, feed := range cat.Feeds {
-			sb.WriteString(`        <article class="blogroll-card">
-          <h3 class="blogroll-card-title">`)
+			sb.WriteString(`        <article class="blogroll-card feed-card">
+`)
+			// Feed avatar
+			if feed.ImageURL != "" {
+				sb.WriteString(fmt.Sprintf(`          <img src=%q alt="" class="feed-avatar" loading="lazy">
+`, feed.ImageURL))
+			} else {
+				// Placeholder with first letter
+				initial := "?"
+				if feed.Title != "" {
+					initial = strings.ToUpper(string([]rune(feed.Title)[0:1]))
+				}
+				sb.WriteString(fmt.Sprintf(`          <div class="feed-avatar-placeholder">%s</div>
+`, initial))
+			}
+			sb.WriteString(`          <div class="feed-content">
+            <h3 class="blogroll-card-title">`)
 			if feed.SiteURL != "" {
 				sb.WriteString(fmt.Sprintf(`<a href=%q target="_blank" rel="noopener">%s</a>`,
 					feed.SiteURL,
@@ -918,12 +1009,13 @@ func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, ca
 			sb.WriteString(`</h3>
 `)
 			if feed.Description != "" {
-				sb.WriteString(fmt.Sprintf(`          <p class="blogroll-card-description">%s</p>
+				sb.WriteString(fmt.Sprintf(`            <p class="blogroll-card-description">%s</p>
 `, html.EscapeString(blogrollTruncateString(feed.Description, 150))))
 			}
-			sb.WriteString(fmt.Sprintf(`          <footer class="blogroll-card-meta">
-            <span class="blogroll-card-count">%d posts</span>
-          </footer>
+			sb.WriteString(fmt.Sprintf(`            <footer class="blogroll-card-meta feed-meta">
+              <span class="blogroll-card-count">%d posts</span>
+            </footer>
+          </div>
         </article>
 `, feed.EntryCount))
 		}
@@ -1010,6 +1102,72 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, p
       opacity: 0.5;
       cursor: not-allowed;
     }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+      background: var(--color-background);
+      color: var(--color-text);
+      line-height: 1.6;
+    }
+    h1 { margin-bottom: 0.5rem; }
+    .subtitle { color: var(--color-text-muted); margin-bottom: 2rem; }
+    .entry-list { list-style: none; padding: 0; margin: 0; }
+    .entry {
+      border-bottom: 1px solid var(--color-border);
+      padding: 1.5rem 0;
+      display: flex;
+      gap: 1rem;
+    }
+    .entry:last-child { border-bottom: none; }
+    .entry-image {
+      width: 120px;
+      height: 80px;
+      border-radius: 6px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--color-border);
+    }
+    .entry-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .entry h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.25rem;
+    }
+    .entry h2 a {
+      color: var(--color-text);
+      text-decoration: none;
+    }
+    .entry h2 a:hover { text-decoration: underline; }
+    .entry-meta {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      margin-bottom: 0.5rem;
+    }
+    .entry-meta a { color: var(--color-primary); }
+    .entry-description {
+      color: var(--color-text);
+      font-size: 0.9375rem;
+    }
+    .nav-links {
+      margin-bottom: 1rem;
+    }
+    .nav-links a {
+      color: var(--color-text);
+      margin-right: 1rem;
+    }
+    @media (max-width: 600px) {
+      .entry {
+        flex-direction: column;
+      }
+      .entry-image {
+        width: 100%;
+        height: 160px;
+      }
+    }
   </style>
 `)
 	// Add HTMX if using that pagination type
@@ -1041,14 +1199,20 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, p
 `)
 
 	for _, entry := range entries {
-		sb.WriteString(`      <li class="reader-entry">
-        <article>
+		sb.WriteString(`      <li class="reader-entry entry">
+`)
+		// Entry image
+		if entry.ImageURL != "" {
+			sb.WriteString(fmt.Sprintf(`        <img src=%q alt="" class="entry-image" loading="lazy">
+`, html.EscapeString(entry.ImageURL)))
+		}
+		sb.WriteString(`        <div class="entry-content">
           <h2 class="reader-entry-title"><a href="`)
 		sb.WriteString(html.EscapeString(entry.URL))
 		sb.WriteString(`" target="_blank" rel="noopener">`)
 		sb.WriteString(html.EscapeString(entry.Title))
 		sb.WriteString(`</a></h2>
-          <div class="reader-entry-meta">
+          <div class="reader-entry-meta entry-meta">
             <span class="reader-entry-source">`)
 		sb.WriteString(html.EscapeString(entry.FeedTitle))
 		sb.WriteString(`</span>`)
@@ -1063,12 +1227,12 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, p
           </div>
 `)
 		if entry.Description != "" {
-			sb.WriteString(`          <p class="reader-entry-description">`)
+			sb.WriteString(`          <p class="reader-entry-description entry-description">`)
 			sb.WriteString(html.EscapeString(blogrollTruncateString(blogrollStripHTML(entry.Description), 200)))
 			sb.WriteString(`</p>
 `)
 		}
-		sb.WriteString(`        </article>
+		sb.WriteString(`        </div>
       </li>
 `)
 	}
