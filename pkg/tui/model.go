@@ -64,8 +64,8 @@ type Model struct {
 	feeds        []*lifecycle.Feed
 	postsTable   table.Model
 	tagsTable    table.Model
+	feedsTable   table.Model
 	cursor       int
-	feedCursor   int
 	view         View
 	previousView View // Track previous view for returning from detail
 	mode         Mode
@@ -160,6 +160,9 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 	// Initialize tags table with columns and theme
 	tagsTable := createTagsTableWithTheme(80, theme) // Default width, will be updated on resize
 
+	// Initialize feeds table with columns and theme
+	feedsTable := createFeedsTableWithTheme(80, theme) // Default width, will be updated on resize
+
 	m := Model{
 		app:         app,
 		view:        ViewPosts,
@@ -168,6 +171,7 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 		cmdInput:    cmdInput,
 		postsTable:  postsTable,
 		tagsTable:   tagsTable,
+		feedsTable:  feedsTable,
 		sortBy:      "date",
 		sortOrder:   services.SortDesc,
 		theme:       theme,
@@ -176,21 +180,8 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 	return m
 }
 
-// createTagsTableWithTheme creates and configures the tags table with theme colors.
-func createTagsTableWithTheme(width int, theme *Theme) table.Model {
-	// Column widths: TAG(30) + COUNT(10) + SLUG(remaining)
-	// Account for padding/borders (approximately 8 chars)
-	slugWidth := width - 30 - 10 - 8
-	if slugWidth < 15 {
-		slugWidth = 15
-	}
-
-	columns := []table.Column{
-		{Title: "TAG", Width: 30},
-		{Title: "COUNT", Width: 10},
-		{Title: "SLUG", Width: slugWidth},
-	}
-
+// createTableWithTheme creates and configures a table with theme colors and the given columns.
+func createTableWithTheme(columns []table.Column, theme *Theme) table.Model {
 	t := table.New(
 		table.WithColumns(columns),
 		table.WithFocused(true),
@@ -214,6 +205,47 @@ func createTagsTableWithTheme(width int, theme *Theme) table.Model {
 	t.SetStyles(s)
 
 	return t
+}
+
+// createTagsTableWithTheme creates and configures the tags table with theme colors.
+func createTagsTableWithTheme(width int, theme *Theme) table.Model {
+	// Column widths: TAG(30) + COUNT(10) + WORDS(10) + READ(10) + SLUG(remaining)
+	// Account for padding/borders (approximately 10 chars)
+	slugWidth := width - 30 - 10 - 10 - 10 - 10
+	if slugWidth < 15 {
+		slugWidth = 15
+	}
+
+	columns := []table.Column{
+		{Title: "TAG", Width: 30},
+		{Title: "COUNT", Width: 10},
+		{Title: "WORDS", Width: 10},
+		{Title: "READ", Width: 10},
+		{Title: "SLUG", Width: slugWidth},
+	}
+
+	return createTableWithTheme(columns, theme)
+}
+
+// createFeedsTableWithTheme creates and configures the feeds table with theme colors.
+func createFeedsTableWithTheme(width int, theme *Theme) table.Model {
+	// Column widths: NAME(20) + POSTS(8) + WORDS(10) + TOT TIME(10) + AVG TIME(10) + OUTPUT(remaining)
+	// Account for padding/borders (approximately 12 chars)
+	outputWidth := width - 20 - 8 - 10 - 10 - 10 - 12
+	if outputWidth < 15 {
+		outputWidth = 15
+	}
+
+	columns := []table.Column{
+		{Title: "NAME", Width: 20},
+		{Title: "POSTS", Width: 8},
+		{Title: "WORDS", Width: 10},
+		{Title: "TOT TIME", Width: 10},
+		{Title: "AVG TIME", Width: 10},
+		{Title: "OUTPUT", Width: outputWidth},
+	}
+
+	return createTableWithTheme(columns, theme)
 }
 
 // createPostsTableWithTheme creates and configures the posts table with theme colors.
@@ -234,29 +266,7 @@ func createPostsTableWithTheme(width int, theme *Theme) table.Model {
 		{Title: "PATH", Width: pathWidth},
 	}
 
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithFocused(true),
-		table.WithHeight(10), // Will be updated on resize
-	)
-
-	// Apply theme-aware styles
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(theme.Colors.Border).
-		BorderBottom(true).
-		Bold(true).
-		Foreground(theme.Colors.TableHeader)
-	s.Selected = s.Selected.
-		Foreground(theme.Colors.SelectedText).
-		Background(theme.Colors.SelectedBg).
-		Bold(true)
-	s.Cell = s.Cell.
-		Foreground(theme.Colors.TableCell)
-	t.SetStyles(s)
-
-	return t
+	return createTableWithTheme(columns, theme)
 }
 
 // Init initializes the model
@@ -274,6 +284,8 @@ func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	m.postsTable.SetHeight(msg.Height - 10) // Leave room for header/footer
 	m.tagsTable = createTagsTableWithTheme(msg.Width, m.theme)
 	m.tagsTable.SetHeight(msg.Height - 10)
+	m.feedsTable = createFeedsTableWithTheme(msg.Width, m.theme)
+	m.feedsTable.SetHeight(msg.Height - 10)
 
 	// Repopulate table if we have posts
 	if len(m.posts) > 0 {
@@ -282,6 +294,10 @@ func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
 	// Repopulate tags table if we have tags
 	if len(m.tags) > 0 {
 		m.tagsTable.SetRows(m.tagsToRows())
+	}
+	// Repopulate feeds table if we have feeds
+	if len(m.feeds) > 0 {
+		m.feedsTable.SetRows(m.feedsToRows())
 	}
 
 	// Update viewport dimensions based on current view
@@ -338,6 +354,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case feedsLoadedMsg:
 		m.feeds = msg.feeds
+		m.feedsTable.SetRows(m.feedsToRows())
 		return m, nil
 
 	case errMsg:
@@ -368,13 +385,22 @@ func (m Model) postsToRows() []table.Row {
 func (m Model) tagsToRows() []table.Row {
 	rows := make([]table.Row, len(m.tags))
 	for i, t := range m.tags {
-		rows[i] = tagToRow(t)
+		rows[i] = m.tagToRow(t)
 	}
 	return rows
 }
 
-// tagToRow converts a single tag to a table row
-func tagToRow(t services.TagInfo) table.Row {
+// feedsToRows converts feeds to table rows
+func (m Model) feedsToRows() []table.Row {
+	rows := make([]table.Row, len(m.feeds))
+	for i, f := range m.feeds {
+		rows[i] = feedToRow(f)
+	}
+	return rows
+}
+
+// tagToRow converts a single tag to a table row with statistics
+func (m Model) tagToRow(t services.TagInfo) table.Row {
 	// Tag name (truncate to 28 chars to leave room for selection indicator)
 	name := t.Name
 	if len(name) > 28 {
@@ -384,13 +410,69 @@ func tagToRow(t services.TagInfo) table.Row {
 	// Count
 	count := fmt.Sprintf("%d", t.Count)
 
+	// Calculate statistics for this tag
+	totalWords := 0
+	totalReadingTime := 0
+
+	// Get posts for this tag to calculate stats
+	for _, post := range m.posts {
+		hasTag := false
+		for _, tag := range post.Tags {
+			if tag == t.Name {
+				hasTag = true
+				break
+			}
+		}
+		if hasTag {
+			if wc, ok := post.Extra["word_count"].(int); ok {
+				totalWords += wc
+			}
+			if rt, ok := post.Extra["reading_time"].(int); ok {
+				totalReadingTime += rt
+			}
+		}
+	}
+
+	// Format statistics
+	wordsStr := formatWordCount(totalWords)
+	readTimeStr := formatReadingTime(totalReadingTime)
+
 	// Slug
 	slug := t.Slug
 	if slug == "" {
 		slug = t.Name
 	}
 
-	return table.Row{name, count, slug}
+	return table.Row{name, count, wordsStr, readTimeStr, slug}
+}
+
+// feedToRow converts a single feed to a table row
+func feedToRow(f *lifecycle.Feed) table.Row {
+	// Name (truncate to 18 chars to leave room for selection indicator)
+	name := f.Name
+	if len(name) > 18 {
+		name = name[:15] + "..."
+	}
+
+	// Posts count
+	postsCount := fmt.Sprintf("%d", len(f.Posts))
+
+	// Calculate feed statistics from posts
+	totalWords, totalReadingTime := calculateFeedStats(f.Posts)
+	avgReadingTime := 0
+	if len(f.Posts) > 0 {
+		avgReadingTime = totalReadingTime / len(f.Posts)
+	}
+
+	// Format statistics
+	wordsStr := formatWordCount(totalWords)
+	totTimeStr := formatReadingTime(totalReadingTime)
+	avgTimeStr := formatReadingTime(avgReadingTime)
+
+	// Output path
+	output := f.Path
+
+	return table.Row{name, postsCount, wordsStr, totTimeStr, avgTimeStr, output}
 }
 
 // postToRow converts a single post to a table row
@@ -595,19 +677,12 @@ func (m Model) handleMouseNavigation(up bool) (tea.Model, tea.Cmd) {
 		m.cursor = m.tagsTable.Cursor()
 		return m, cmd
 	}
-	// For feeds view, use feedCursor
+	// Let the table handle navigation when in feeds view
 	if m.view == ViewFeeds {
-		if up {
-			if m.feedCursor > 0 {
-				m.feedCursor--
-			}
-		} else {
-			maxIdx := len(m.feeds) - 1
-			if m.feedCursor < maxIdx {
-				m.feedCursor++
-			}
-		}
-		return m, nil
+		var cmd tea.Cmd
+		m.feedsTable, cmd = m.feedsTable.Update(keyMsg)
+		m.cursor = m.feedsTable.Cursor()
+		return m, cmd
 	}
 	return m, nil
 }
@@ -646,7 +721,8 @@ func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Feeds):
 		m.view = ViewFeeds
-		m.feedCursor = 0
+		m.cursor = 0
+		m.feedsTable.SetCursor(0)
 		return m, m.loadFeeds()
 
 	case key.Matches(msg, keyMap.Enter):
@@ -763,19 +839,12 @@ func (m Model) handleNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.cursor = m.tagsTable.Cursor()
 		return m, cmd
 	}
-	// For feeds view, use feedCursor
+	// Let the table handle navigation when in feeds view
 	if m.view == ViewFeeds {
-		if key.Matches(msg, keyMap.Up) {
-			if m.feedCursor > 0 {
-				m.feedCursor--
-			}
-		} else {
-			maxIdx := len(m.feeds) - 1
-			if m.feedCursor < maxIdx {
-				m.feedCursor++
-			}
-		}
-		return m, nil
+		var cmd tea.Cmd
+		m.feedsTable, cmd = m.feedsTable.Update(msg)
+		m.cursor = m.feedsTable.Cursor()
+		return m, cmd
 	}
 	return m, nil
 }
@@ -844,7 +913,8 @@ func (m Model) executeCommand(cmd string) (tea.Model, tea.Cmd) {
 		return m, m.loadTags()
 	case "feeds", "f":
 		m.view = ViewFeeds
-		m.feedCursor = 0
+		m.cursor = 0
+		m.feedsTable.SetCursor(0)
 		return m, m.loadFeeds()
 	case "q", "quit":
 		return m, tea.Quit
@@ -903,11 +973,11 @@ func (m Model) handleEnterTagsList() (tea.Model, tea.Cmd) {
 
 // handleEnterFeedsList handles the Enter key when viewing the feeds list.
 func (m Model) handleEnterFeedsList() (tea.Model, tea.Cmd) {
-	if len(m.feeds) == 0 || m.feedCursor >= len(m.feeds) {
+	if len(m.feeds) == 0 || m.cursor >= len(m.feeds) {
 		return m, nil
 	}
 
-	selectedFeed := m.feeds[m.feedCursor]
+	selectedFeed := m.feeds[m.cursor]
 	m.activeFilter = &FilterContext{
 		Type: "feed",
 		Name: selectedFeed.Name,
@@ -1561,97 +1631,12 @@ func (m Model) renderFeeds() string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Feeds (%d)\n\n", len(m.feeds)))
 
-	// Calculate column widths based on terminal width
-	// NAME(18) + POSTS(7) + WORDS(9) + TOT TIME(10) + AVG TIME(10) + OUTPUT(remaining)
-	nameWidth := 18
-	postsWidth := 7
-	wordsWidth := 9
-	totTimeWidth := 10
-	avgTimeWidth := 10
-	outputWidth := m.width - nameWidth - postsWidth - wordsWidth - totTimeWidth - avgTimeWidth - 14
-	if outputWidth < 15 {
-		outputWidth = 15
-	}
-
-	// Header
-	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s",
-		nameWidth, "NAME",
-		postsWidth, "POSTS",
-		wordsWidth, "WORDS",
-		totTimeWidth, "TOT TIME",
-		avgTimeWidth, "AVG TIME",
-		outputWidth, "OUTPUT")
-	sb.WriteString(m.theme.SubtleStyle.Render(header))
-	sb.WriteString("\n")
-
-	// Calculate visible rows
-	visibleLines := m.height - 10
-	if visibleLines < 5 {
-		visibleLines = 5
-	}
-
-	start := 0
-	if m.feedCursor >= visibleLines {
-		start = m.feedCursor - visibleLines + 1
-	}
-	end := start + visibleLines
-	if end > len(m.feeds) {
-		end = len(m.feeds)
-	}
-
-	for i := start; i < end; i++ {
-		f := m.feeds[i]
-
-		// Name (truncate if needed)
-		name := f.Name
-		if len(name) > nameWidth {
-			name = name[:nameWidth-3] + "..."
-		}
-
-		// Posts count
-		postsCount := fmt.Sprintf("%d", len(f.Posts))
-
-		// Calculate feed statistics from posts
-		totalWords, totalReadingTime := calculateFeedStats(f.Posts)
-		avgReadingTime := 0
-		if len(f.Posts) > 0 {
-			avgReadingTime = totalReadingTime / len(f.Posts)
-		}
-
-		// Format statistics
-		wordsStr := formatWordCount(totalWords)
-		totTimeStr := formatReadingTime(totalReadingTime)
-		avgTimeStr := formatReadingTime(avgReadingTime)
-
-		// Output path
-		output := f.Path
-		if len(output) > outputWidth {
-			output = output[:outputWidth-3] + "..."
-		}
-
-		// Format the row
-		prefix := "  "
-		if i == m.feedCursor {
-			prefix = "> "
-		}
-
-		line := fmt.Sprintf("%s%-*s  %-*s  %-*s  %-*s  %-*s  %-*s",
-			prefix,
-			nameWidth, name,
-			postsWidth, postsCount,
-			wordsWidth, wordsStr,
-			totTimeWidth, totTimeStr,
-			avgTimeWidth, avgTimeStr,
-			outputWidth, output)
-
-		if i == m.feedCursor {
-			line = m.theme.SelectedStyle.Render(line)
-		}
-
-		sb.WriteString(line + "\n")
-	}
+	// Render the table with header showing count
+	header := fmt.Sprintf("Feeds (%d)", len(m.feeds))
+	sb.WriteString(m.theme.HeaderStyle.Render(header))
+	sb.WriteString("\n\n")
+	sb.WriteString(m.feedsTable.View())
 
 	return sb.String()
 }
