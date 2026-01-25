@@ -28,6 +28,49 @@ func (p *PublishFeedsPlugin) Name() string {
 	return "publish_feeds"
 }
 
+// Collect registers synthetic posts for feed pages so they can be resolved by wikilinks.
+// These posts are marked with Skip: true so they don't interfere with normal rendering.
+func (p *PublishFeedsPlugin) Collect(m *lifecycle.Manager) error {
+	// Get feed configs from cache (set by FeedsPlugin)
+	var feedConfigs []models.FeedConfig
+	if cached, ok := m.Cache().Get("feed_configs"); ok {
+		if fcs, ok := cached.([]models.FeedConfig); ok {
+			feedConfigs = fcs
+		}
+	}
+
+	if len(feedConfigs) == 0 {
+		return nil
+	}
+
+	// Helper to create string pointer
+	strPtr := func(s string) *string { return &s }
+
+	// Register synthetic post for each feed
+	for i := range feedConfigs {
+		fc := &feedConfigs[i]
+
+		// Determine title
+		title := fc.Title
+		if title == "" {
+			title = fc.Slug
+		}
+
+		// Create synthetic post
+		feedPost := &models.Post{
+			Slug:        fc.Slug,
+			Title:       strPtr(title),
+			Description: strPtr(fc.Description),
+			Href:        "/" + fc.Slug + "/",
+			Published:   true,
+			Skip:        true,
+		}
+		m.AddPost(feedPost)
+	}
+
+	return nil
+}
+
 // Write generates and writes feed files in all configured formats.
 func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
@@ -528,6 +571,7 @@ func (p *PublishFeedsPlugin) writeFeedFormatRedirect(slug, ext, targetFile, outp
 
 // Ensure PublishFeedsPlugin implements the required interfaces.
 var (
-	_ lifecycle.Plugin      = (*PublishFeedsPlugin)(nil)
-	_ lifecycle.WritePlugin = (*PublishFeedsPlugin)(nil)
+	_ lifecycle.Plugin        = (*PublishFeedsPlugin)(nil)
+	_ lifecycle.CollectPlugin = (*PublishFeedsPlugin)(nil)
+	_ lifecycle.WritePlugin   = (*PublishFeedsPlugin)(nil)
 )

@@ -93,7 +93,50 @@ func (p *BlogrollPlugin) Collect(m *lifecycle.Manager) error {
 	m.Cache().Set("blogroll_entries", entries)
 	m.Cache().Set("blogroll_categories", p.groupByCategory(feeds))
 
+	// Register synthetic posts for wikilink resolution
+	p.registerSyntheticPosts(m, blogrollConfig)
+
 	return nil
+}
+
+// registerSyntheticPosts creates synthetic Post objects for blogroll and reader pages
+// so they can be resolved by wikilinks. These posts are marked with Skip: true
+// so they don't interfere with normal rendering.
+func (p *BlogrollPlugin) registerSyntheticPosts(m *lifecycle.Manager, config models.BlogrollConfig) {
+	// Get configured slugs with defaults
+	blogrollSlug := config.BlogrollSlug
+	if blogrollSlug == "" {
+		blogrollSlug = defaultBlogrollSlug
+	}
+	readerSlug := config.ReaderSlug
+	if readerSlug == "" {
+		readerSlug = defaultReaderSlug
+	}
+
+	// Helper to create string pointer
+	strPtr := func(s string) *string { return &s }
+
+	// Register blogroll page
+	blogrollPost := &models.Post{
+		Slug:        blogrollSlug,
+		Title:       strPtr("Blogroll"),
+		Description: strPtr("Blogs and feeds I follow"),
+		Href:        "/" + blogrollSlug + "/",
+		Published:   true,
+		Skip:        true,
+	}
+	m.AddPost(blogrollPost)
+
+	// Register reader page
+	readerPost := &models.Post{
+		Slug:        readerSlug,
+		Title:       strPtr("Reader"),
+		Description: strPtr("Latest posts from blogs I follow"),
+		Href:        "/" + readerSlug + "/",
+		Published:   true,
+		Skip:        true,
+	}
+	m.AddPost(readerPost)
 }
 
 // Write generates the blogroll and reader pages.
