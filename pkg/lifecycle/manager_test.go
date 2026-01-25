@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"errors"
+	"runtime"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -576,6 +577,109 @@ func TestManagerConcurrentProcessing(t *testing.T) {
 	if count != 10 {
 		t.Errorf("Expected 10 posts processed, got %d", count)
 	}
+}
+
+func TestManagerConcurrentProcessingErrorHandling(t *testing.T) {
+	m := NewManager()
+	m.SetConcurrency(4)
+
+	posts := make([]*models.Post, 10)
+	for i := 0; i < 10; i++ {
+		posts[i] = &models.Post{Path: "test.md"}
+	}
+	m.SetPosts(posts)
+
+	// Every 3rd post fails
+	callCount := 0
+	err := m.ProcessPostsConcurrently(func(_ *models.Post) error {
+		callCount++
+		if callCount%3 == 0 {
+			return errors.New("simulated error")
+		}
+		return nil
+	})
+
+	if err == nil {
+		t.Error("Expected error from ProcessPostsConcurrently, got nil")
+	}
+
+	// All 10 posts should be processed (error doesn't stop processing)
+	if callCount != 10 {
+		t.Errorf("Expected 10 posts processed, got %d", callCount)
+	}
+}
+
+// TestProcessPostsConcurrentlyGoroutineBound verifies that ProcessPostsConcurrently
+// uses a bounded worker pool and does not spawn a goroutine per post.
+// This is critical for large builds (5k+ posts) to avoid scheduler overhead.
+func TestProcessPostsConcurrentlyGoroutineBound(t *testing.T) {
+	const postCount = 1000
+	const concurrency = 4
+	// Allow some overhead for test infrastructure, GC goroutines, etc.
+	const maxOverhead = 50
+
+	m := NewManager()
+	m.SetConcurrency(concurrency)
+
+	posts := make([]*models.Post, postCount)
+	for i := 0; i < postCount; i++ {
+		posts[i] = &models.Post{Path: "test.md"}
+	}
+	m.SetPosts(posts)
+
+	// Capture baseline goroutine count
+	baselineGoroutines := runtime.NumGoroutine()
+
+	// Channel to block workers so we can measure goroutine count during processing
+	block := make(chan struct{})
+	started := make(chan struct{}, postCount)
+
+	// Start processing in a separate goroutine
+	done := make(chan error)
+	go func() {
+		done <- m.ProcessPostsConcurrently(func(_ *models.Post) error {
+			started <- struct{}{}
+			<-block // Wait for signal to continue
+			return nil
+		})
+	}()
+
+	// Wait for workers to start processing
+	// We expect exactly `concurrency` workers to be active
+	for i := 0; i < concurrency; i++ {
+		<-started
+	}
+
+	// Measure goroutine count while workers are blocked
+	peakGoroutines := runtime.NumGoroutine()
+
+	// Unblock all workers
+	close(block)
+
+	// Wait for completion
+	if err := <-done; err != nil {
+		t.Fatalf("ProcessPostsConcurrently failed: %v", err)
+	}
+
+	// Calculate goroutine increase
+	goroutineIncrease := peakGoroutines - baselineGoroutines
+
+	// The increase should be bounded by concurrency + overhead (main goroutine, test goroutine, etc.)
+	// It should NOT be close to postCount (which would indicate goroutine-per-post)
+	maxExpected := concurrency + maxOverhead
+	if goroutineIncrease > maxExpected {
+		t.Errorf("Goroutine count increased by %d (peak=%d, baseline=%d), expected <= %d (concurrency=%d + overhead=%d)",
+			goroutineIncrease, peakGoroutines, baselineGoroutines, maxExpected, concurrency, maxOverhead)
+	}
+
+	// Sanity check: should be significantly less than post count
+	if goroutineIncrease > postCount/10 {
+		t.Errorf("Goroutine increase %d is too close to post count %d - possible goroutine-per-post leak",
+			goroutineIncrease, postCount)
+	}
+
+	t.Logf("Goroutine count: baseline=%d, peak=%d, increase=%d (expected <= %d)",
+		baselineGoroutines, peakGoroutines, goroutineIncrease, maxExpected)
 }
 
 func TestInvalidStage(t *testing.T) {
