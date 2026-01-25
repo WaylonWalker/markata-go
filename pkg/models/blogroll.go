@@ -30,6 +30,15 @@ type BlogrollConfig struct {
 	// MaxEntriesPerFeed limits entries fetched per feed (default: 50)
 	MaxEntriesPerFeed int `json:"max_entries_per_feed" yaml:"max_entries_per_feed" toml:"max_entries_per_feed"`
 
+	// ItemsPerPage is the number of entries per page on the reader page (default: 50)
+	ItemsPerPage int `json:"items_per_page" yaml:"items_per_page" toml:"items_per_page"`
+
+	// OrphanThreshold is the minimum entries for a separate page (default: 3)
+	OrphanThreshold int `json:"orphan_threshold" yaml:"orphan_threshold" toml:"orphan_threshold"`
+
+	// PaginationType specifies the pagination strategy (manual, htmx, js)
+	PaginationType PaginationType `json:"pagination_type" yaml:"pagination_type" toml:"pagination_type"`
+
 	// Feeds is the list of RSS/Atom feeds to fetch
 	Feeds []ExternalFeedConfig `json:"feeds" yaml:"feeds" toml:"feeds"`
 
@@ -48,6 +57,9 @@ func NewBlogrollConfig() BlogrollConfig {
 		Timeout:            30,
 		ConcurrentRequests: 5,
 		MaxEntriesPerFeed:  50,
+		ItemsPerPage:       50,
+		OrphanThreshold:    3,
+		PaginationType:     PaginationManual,
 		Feeds:              []ExternalFeedConfig{},
 		Templates: BlogrollTemplates{
 			Blogroll: "blogroll.html",
@@ -94,6 +106,9 @@ type ExternalFeedConfig struct {
 	// Handle is an optional explicit handle for @mentions (e.g., "daverupert")
 	// If not set, a handle is auto-generated from the domain
 	Handle string `json:"handle" yaml:"handle" toml:"handle"`
+
+	// MaxEntries overrides the global max_entries_per_feed for this feed
+	MaxEntries *int `json:"max_entries,omitempty" yaml:"max_entries,omitempty" toml:"max_entries,omitempty"`
 }
 
 // IsActive returns whether the feed is active (defaults to true).
@@ -102,6 +117,14 @@ func (f *ExternalFeedConfig) IsActive() bool {
 		return true
 	}
 	return *f.Active
+}
+
+// GetMaxEntries returns the per-feed max_entries if set, otherwise the global default.
+func (f *ExternalFeedConfig) GetMaxEntries(globalDefault int) int {
+	if f.MaxEntries != nil {
+		return *f.MaxEntries
+	}
+	return globalDefault
 }
 
 // ExternalFeed represents a fetched and parsed external RSS/Atom feed.
@@ -198,4 +221,40 @@ type BlogrollCategory struct {
 
 	// Feeds are the feeds in this category
 	Feeds []*ExternalFeed `json:"feeds"`
+}
+
+// ReaderPage represents a single page of paginated reader entries.
+type ReaderPage struct {
+	// Number is the page number (1-indexed)
+	Number int `json:"number" yaml:"number" toml:"number"`
+
+	// Entries is the list of entries on this page
+	Entries []*ExternalEntry `json:"entries" yaml:"entries" toml:"entries"`
+
+	// HasPrev indicates if there is a previous page
+	HasPrev bool `json:"has_prev" yaml:"has_prev" toml:"has_prev"`
+
+	// HasNext indicates if there is a next page
+	HasNext bool `json:"has_next" yaml:"has_next" toml:"has_next"`
+
+	// PrevURL is the URL of the previous page
+	PrevURL string `json:"prev_url" yaml:"prev_url" toml:"prev_url"`
+
+	// NextURL is the URL of the next page
+	NextURL string `json:"next_url" yaml:"next_url" toml:"next_url"`
+
+	// TotalPages is the total number of pages
+	TotalPages int `json:"total_pages" yaml:"total_pages" toml:"total_pages"`
+
+	// TotalItems is the total number of entries
+	TotalItems int `json:"total_items" yaml:"total_items" toml:"total_items"`
+
+	// ItemsPerPage is the number of entries per page
+	ItemsPerPage int `json:"items_per_page" yaml:"items_per_page" toml:"items_per_page"`
+
+	// PageURLs contains URLs for all pages (for numbered pagination)
+	PageURLs []string `json:"page_urls" yaml:"page_urls" toml:"page_urls"`
+
+	// PaginationType is the pagination strategy used
+	PaginationType PaginationType `json:"pagination_type" yaml:"pagination_type" toml:"pagination_type"`
 }

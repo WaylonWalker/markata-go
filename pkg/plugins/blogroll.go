@@ -168,9 +168,9 @@ func (p *BlogrollPlugin) fetchFeeds(config models.BlogrollConfig) ([]*models.Ext
 		timeout = 30
 	}
 
-	maxEntries := config.MaxEntriesPerFeed
-	if maxEntries <= 0 {
-		maxEntries = 50
+	globalMaxEntries := config.MaxEntriesPerFeed
+	if globalMaxEntries <= 0 {
+		globalMaxEntries = 50
 	}
 
 	semaphore := make(chan struct{}, concurrency)
@@ -184,6 +184,8 @@ func (p *BlogrollPlugin) fetchFeeds(config models.BlogrollConfig) ([]*models.Ext
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 
+			// Use per-feed max_entries if set, otherwise global default
+			maxEntries := feedConfig.GetMaxEntries(globalMaxEntries)
 			feed := p.fetchFeed(feedConfig, config.CacheDir, cacheDuration, timeout, maxEntries)
 			resultsCh <- feed
 		}(activeFeeds[i])
@@ -492,7 +494,7 @@ func (p *BlogrollPlugin) writeBlogrollPage(m *lifecycle.Manager, outputDir strin
 	return os.WriteFile(outputFile, []byte(content), 0o600)
 }
 
-// writeReaderPage generates the reader page at the configured slug path.
+// writeReaderPage generates the paginated /reader pages.
 func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string, entries []*models.ExternalEntry, config models.BlogrollConfig) error {
 	// Use configured slug or default to "reader"
 	slug := config.ReaderSlug
@@ -506,39 +508,203 @@ func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string,
 		return err
 	}
 
-	// Limit entries to 50 for the page
-	displayEntries := entries
-	if len(displayEntries) > 50 {
-		displayEntries = displayEntries[:50]
+	// Paginate entries
+	pages := p.paginateEntries(entries, config, "/reader")
+
+	// If no pages (no entries), generate empty page
+	if len(pages) == 0 {
+		return p.writeReaderPageFile(m, readerDir, config, models.ReaderPage{
+			Number:         1,
+			Entries:        []*models.ExternalEntry{},
+			TotalPages:     1,
+			TotalItems:     0,
+			ItemsPerPage:   config.ItemsPerPage,
+			PaginationType: config.PaginationType,
+			PageURLs:       []string{"/reader/"},
+		}, true)
 	}
 
+	// Generate each page
+	for i := range pages {
+		isFirstPage := i == 0
+		if err := p.writeReaderPageFile(m, readerDir, config, pages[i], isFirstPage); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// writeReaderPageFile writes a single reader page (full and partial for HTMX).
+func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir string, config models.BlogrollConfig, page models.ReaderPage, isFirstPage bool) error {
 	// Get slugs for cross-linking
 	blogrollSlug := config.BlogrollSlug
 	if blogrollSlug == "" {
 		blogrollSlug = defaultBlogrollSlug
 	}
+	readerSlug := config.ReaderSlug
+	if readerSlug == "" {
+		readerSlug = defaultReaderSlug
+	}
 
 	// Build template context with config for theme inheritance
 	ctx := map[string]interface{}{
-		"title":        "Reader",
-		"description":  "Latest posts from blogs I follow",
-		"entries":      p.entriesToMaps(displayEntries),
-		"entry_count":  len(entries),
-		"config":       p.configToMap(m.Config()),
-		"blogroll_url": "/" + blogrollSlug + "/",
-		"reader_url":   "/" + slug + "/",
+		"title":           "Reader",
+		"description":     "Latest posts from blogs I follow",
+		"entries":         p.entriesToMaps(page.Entries),
+		"entry_count":     page.TotalItems,
+		"config":          p.configToMap(m.Config()),
+		"page":            p.readerPageToMap(page),
+		"pagination_type": string(page.PaginationType),
+		"blogroll_url":    "/" + blogrollSlug + "/",
+		"reader_url":      "/" + readerSlug + "/",
+	}
+
+	// Determine output path
+	var outputFile string
+	var partialDir string
+	if isFirstPage {
+		outputFile = filepath.Join(readerDir, "index.html")
+		partialDir = filepath.Join(readerDir, "partial")
+	} else {
+		pageDir := filepath.Join(readerDir, "page", fmt.Sprintf("%d", page.Number))
+		if err := os.MkdirAll(pageDir, 0o755); err != nil {
+			return err
+		}
+		outputFile = filepath.Join(pageDir, "index.html")
+		partialDir = filepath.Join(pageDir, "partial")
 	}
 
 	// Try to render with template engine
 	content, err := p.renderTemplate(m, config.Templates.Reader, ctx)
 	if err != nil {
 		// Fall back to built-in template
-		content = p.renderReaderFallback(entries, config)
+		content = p.renderReaderFallback(page.Entries, page, config)
 	}
 
-	// Write the file
-	outputFile := filepath.Join(readerDir, "index.html")
-	return os.WriteFile(outputFile, []byte(content), 0o600)
+	// Write the full page
+	if err := os.WriteFile(outputFile, []byte(content), 0o600); err != nil {
+		return err
+	}
+
+	// For HTMX pagination, also generate partial pages
+	if page.PaginationType == models.PaginationHTMX {
+		if err := os.MkdirAll(partialDir, 0o755); err != nil {
+			return err
+		}
+
+		partialContent := p.renderReaderPartial(page.Entries, page)
+		partialFile := filepath.Join(partialDir, "index.html")
+		if err := os.WriteFile(partialFile, []byte(partialContent), 0o600); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// paginateEntries divides entries into pages based on ItemsPerPage and OrphanThreshold.
+func (p *BlogrollPlugin) paginateEntries(entries []*models.ExternalEntry, config models.BlogrollConfig, baseURL string) []models.ReaderPage {
+	if len(entries) == 0 {
+		return []models.ReaderPage{}
+	}
+
+	itemsPerPage := config.ItemsPerPage
+	if itemsPerPage <= 0 {
+		itemsPerPage = 50
+	}
+
+	orphanThreshold := config.OrphanThreshold
+	if orphanThreshold <= 0 {
+		orphanThreshold = 3
+	}
+
+	paginationType := config.PaginationType
+	if paginationType == "" {
+		paginationType = models.PaginationManual
+	}
+
+	totalEntries := len(entries)
+	var pages []models.ReaderPage
+
+	for i := 0; i < totalEntries; i += itemsPerPage {
+		end := i + itemsPerPage
+		if end > totalEntries {
+			end = totalEntries
+		}
+
+		// Check orphan threshold: if remaining items are below threshold,
+		// add them to the current page instead of creating a new page
+		remaining := totalEntries - end
+		if remaining > 0 && remaining < orphanThreshold {
+			end = totalEntries
+		}
+
+		pageNum := len(pages) + 1
+		page := models.ReaderPage{
+			Number:  pageNum,
+			Entries: entries[i:end],
+			HasPrev: pageNum > 1,
+		}
+
+		pages = append(pages, page)
+
+		if end >= totalEntries {
+			break
+		}
+	}
+
+	totalPages := len(pages)
+
+	// Generate page URLs for numbered navigation
+	pageURLs := make([]string, totalPages)
+	for i := 0; i < totalPages; i++ {
+		if i == 0 {
+			pageURLs[i] = baseURL + "/"
+		} else {
+			pageURLs[i] = baseURL + "/page/" + fmt.Sprintf("%d", i+1) + "/"
+		}
+	}
+
+	// Set HasNext, URLs, and metadata for each page
+	for i := range pages {
+		pages[i].HasNext = i < totalPages-1
+		pages[i].TotalPages = totalPages
+		pages[i].TotalItems = totalEntries
+		pages[i].ItemsPerPage = itemsPerPage
+		pages[i].PageURLs = pageURLs
+		pages[i].PaginationType = paginationType
+
+		if pages[i].HasPrev {
+			if i == 1 {
+				pages[i].PrevURL = baseURL + "/"
+			} else {
+				pages[i].PrevURL = baseURL + "/page/" + fmt.Sprintf("%d", i) + "/"
+			}
+		}
+
+		if pages[i].HasNext {
+			pages[i].NextURL = baseURL + "/page/" + fmt.Sprintf("%d", i+2) + "/"
+		}
+	}
+
+	return pages
+}
+
+// readerPageToMap converts a ReaderPage to a template-friendly map.
+func (p *BlogrollPlugin) readerPageToMap(page models.ReaderPage) map[string]interface{} {
+	return map[string]interface{}{
+		"number":          page.Number,
+		"has_prev":        page.HasPrev,
+		"has_next":        page.HasNext,
+		"prev_url":        page.PrevURL,
+		"next_url":        page.NextURL,
+		"total_pages":     page.TotalPages,
+		"total_items":     page.TotalItems,
+		"items_per_page":  page.ItemsPerPage,
+		"page_urls":       page.PageURLs,
+		"pagination_type": string(page.PaginationType),
+	}
 }
 
 // renderTemplate attempts to render using the template engine.
@@ -775,7 +941,7 @@ func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, ca
 }
 
 // renderReaderFallback generates a basic reader page that uses theme CSS if available.
-func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, config models.BlogrollConfig) string {
+func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, page models.ReaderPage, config models.BlogrollConfig) string {
 	var sb strings.Builder
 
 	// Get configured slugs with defaults
@@ -818,8 +984,40 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, c
         --color-primary: #60a5fa;
       }
     }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin: 2rem 0;
+      padding: 1rem 0;
+    }
+    .pagination a, .pagination span {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      text-decoration: none;
+      color: var(--color-text);
+    }
+    .pagination a:hover {
+      background: var(--color-surface);
+    }
+    .pagination .current {
+      background: var(--color-primary);
+      color: white;
+      border-color: var(--color-primary);
+    }
+    .pagination .disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   </style>
-</head>
+`)
+	// Add HTMX if using that pagination type
+	if page.PaginationType == models.PaginationHTMX {
+		sb.WriteString(`  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+`)
+	}
+	sb.WriteString(`</head>
 <body>
   <nav class="reader-nav" style="justify-content: flex-start; padding: 1rem 0;">
     <a href="/">Home</a>
@@ -831,16 +1029,18 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, c
       <h1>Reader</h1>
       <p class="reader-subtitle">Latest posts from blogs I follow</p>
     </header>
-    <ul class="reader-entries">
 `)
 
-	// Limit to 50 entries for the page
-	displayEntries := entries
-	if len(displayEntries) > 50 {
-		displayEntries = displayEntries[:50]
+	// Add content container for HTMX
+	if page.PaginationType == models.PaginationHTMX {
+		sb.WriteString(`    <div id="reader-content">
+`)
 	}
 
-	for _, entry := range displayEntries {
+	sb.WriteString(`    <ul class="reader-entries">
+`)
+
+	for _, entry := range entries {
 		sb.WriteString(`      <li class="reader-entry">
         <article>
           <h2 class="reader-entry-title"><a href="`)
@@ -874,9 +1074,129 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, c
 	}
 
 	sb.WriteString(`    </ul>
-  </div>
+`)
+
+	// Render pagination
+	sb.WriteString(p.renderPagination(page))
+
+	if page.PaginationType == models.PaginationHTMX {
+		sb.WriteString(`    </div>
+`)
+	}
+
+	sb.WriteString(`  </div>
 </body>
 </html>`)
+
+	return sb.String()
+}
+
+// renderReaderPartial generates just the content portion for HTMX updates.
+func (p *BlogrollPlugin) renderReaderPartial(entries []*models.ExternalEntry, page models.ReaderPage) string {
+	var sb strings.Builder
+
+	sb.WriteString(`<ul class="reader-entries">
+`)
+
+	for _, entry := range entries {
+		sb.WriteString(`  <li class="reader-entry">
+    <article>
+      <h2 class="reader-entry-title"><a href="`)
+		sb.WriteString(html.EscapeString(entry.URL))
+		sb.WriteString(`" target="_blank" rel="noopener">`)
+		sb.WriteString(html.EscapeString(entry.Title))
+		sb.WriteString(`</a></h2>
+      <div class="reader-entry-meta">
+        <span class="reader-entry-source">`)
+		sb.WriteString(html.EscapeString(entry.FeedTitle))
+		sb.WriteString(`</span>`)
+
+		if entry.Published != nil {
+			sb.WriteString(`<time>`)
+			sb.WriteString(entry.Published.Format("Jan 2, 2006"))
+			sb.WriteString(`</time>`)
+		}
+
+		sb.WriteString(`
+      </div>
+`)
+		if entry.Description != "" {
+			sb.WriteString(`      <p class="reader-entry-description">`)
+			sb.WriteString(html.EscapeString(blogrollTruncateString(blogrollStripHTML(entry.Description), 200)))
+			sb.WriteString(`</p>
+`)
+		}
+		sb.WriteString(`    </article>
+  </li>
+`)
+	}
+
+	sb.WriteString(`</ul>
+`)
+
+	// Render pagination
+	sb.WriteString(p.renderPagination(page))
+
+	return sb.String()
+}
+
+// renderPagination generates pagination navigation HTML.
+func (p *BlogrollPlugin) renderPagination(page models.ReaderPage) string {
+	if page.TotalPages <= 1 {
+		return ""
+	}
+
+	var sb strings.Builder
+	sb.WriteString(`    <nav class="pagination" aria-label="Page navigation">
+`)
+
+	// Previous link
+	if page.HasPrev {
+		if page.PaginationType == models.PaginationHTMX {
+			sb.WriteString(fmt.Sprintf(`      <a href="%s" hx-get="%spartial/" hx-target="#reader-content" hx-swap="innerHTML">&laquo; Previous</a>
+`, page.PrevURL, page.PrevURL))
+		} else {
+			sb.WriteString(fmt.Sprintf(`      <a href="%s">&laquo; Previous</a>
+`, page.PrevURL))
+		}
+	} else {
+		sb.WriteString(`      <span class="disabled">&laquo; Previous</span>
+`)
+	}
+
+	// Page numbers
+	for i, url := range page.PageURLs {
+		pageNum := i + 1
+		if pageNum == page.Number {
+			sb.WriteString(fmt.Sprintf(`      <span class="current">%d</span>
+`, pageNum))
+		} else {
+			if page.PaginationType == models.PaginationHTMX {
+				sb.WriteString(fmt.Sprintf(`      <a href="%s" hx-get="%spartial/" hx-target="#reader-content" hx-swap="innerHTML">%d</a>
+`, url, url, pageNum))
+			} else {
+				sb.WriteString(fmt.Sprintf(`      <a href="%s">%d</a>
+`, url, pageNum))
+			}
+		}
+	}
+
+	// Next link
+	if page.HasNext {
+		if page.PaginationType == models.PaginationHTMX {
+			sb.WriteString(fmt.Sprintf(`      <a href="%s" hx-get="%spartial/" hx-target="#reader-content" hx-swap="innerHTML">Next &raquo;</a>
+`, page.NextURL, page.NextURL))
+		} else {
+			sb.WriteString(fmt.Sprintf(`      <a href="%s">Next &raquo;</a>
+`, page.NextURL))
+		}
+	} else {
+		sb.WriteString(`      <span class="disabled">Next &raquo;</span>
+`)
+	}
+
+	sb.WriteString(`    </nav>
+`)
 
 	return sb.String()
 }
@@ -953,3 +1273,5 @@ var (
 	_ lifecycle.WritePlugin    = (*BlogrollPlugin)(nil)
 	_ lifecycle.PriorityPlugin = (*BlogrollPlugin)(nil)
 )
+
+// CI trigger
