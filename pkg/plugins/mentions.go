@@ -141,6 +141,14 @@ func (p *MentionsPlugin) buildHandleMap(m *lifecycle.Manager) map[string]*mentio
 			handleMap[handle] = entry
 		}
 
+		// Auto-register domain-style alias from site_url
+		domain := extractDomainFromURL(siteURL)
+		if domain != "" && domain != handle {
+			if _, exists := handleMap[domain]; !exists {
+				handleMap[domain] = entry
+			}
+		}
+
 		// Register aliases for this handle
 		for _, alias := range feedConfig.Aliases {
 			normalizedAlias := strings.ToLower(alias)
@@ -332,6 +340,28 @@ func extractHandleFromURL(siteURL string) string {
 	}
 
 	return strings.ToLower(cleanHandle.String())
+}
+
+// extractDomainFromURL extracts the full domain from a URL.
+// For example:
+// - "https://simonwillison.net" -> "simonwillison.net"
+// - "https://www.example.com" -> "example.com" (strips www.)
+// - "https://blog.jane.dev" -> "blog.jane.dev"
+func extractDomainFromURL(siteURL string) string {
+	parsed, err := url.Parse(siteURL)
+	if err != nil {
+		return ""
+	}
+
+	host := parsed.Hostname()
+	if host == "" {
+		return ""
+	}
+
+	// Remove www. prefix for consistency
+	host = strings.TrimPrefix(host, "www.")
+
+	return host
 }
 
 // Ensure MentionsPlugin implements the required interfaces.
