@@ -71,6 +71,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["blogroll"] = func() lifecycle.Plugin { return NewBlogrollPlugin() }
 	pluginRegistry.constructors["mentions"] = func() lifecycle.Plugin { return NewMentionsPlugin() }
 	pluginRegistry.constructors["webmentions"] = func() lifecycle.Plugin { return NewWebMentionsPlugin() }
+	pluginRegistry.constructors["background"] = func() lifecycle.Plugin { return NewBackgroundPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -117,6 +118,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 	return []lifecycle.Plugin{
 		// Configure/Glob stage plugins
 		NewGlobPlugin(),
+		NewBackgroundPlugin(), // Configure background decorations early
 
 		// Load stage plugins
 		NewLoadPlugin(),
