@@ -31,6 +31,7 @@ const (
 	ViewFeeds      View = "feeds"
 	ViewHelp       View = "help"
 	ViewPostDetail View = "post_detail"
+	ViewConfig     View = "config"
 )
 
 // Mode represents the input mode
@@ -46,6 +47,16 @@ const (
 type FilterContext struct {
 	Type string // "tag" or "feed"
 	Name string // The tag name or feed name
+}
+
+// sortHotkeyMap maps capital letter keys to sort fields (k9s-inspired)
+var sortHotkeyMap = map[string]string{
+	"T": "title",
+	"D": "date",
+	"W": "words",
+	"P": "path",
+	"R": "reading_time",
+	"G": "tags",
 }
 
 // footerButton represents a clickable button in the footer
@@ -108,6 +119,13 @@ type Model struct {
 	// Refresh state
 	lastRefresh time.Time // Track last refresh time
 	refreshing  bool      // Indicate refresh in progress
+
+	// Config view state
+	configSections []configSection // Expanded config data
+	configCursor   int             // Current cursor position in config view
+	configFilter   string          // Search filter for config keys
+	configExpanded map[string]bool // Track which sections are expanded
+	configViewport viewport.Model  // Viewport for scrolling config content
 }
 
 // Messages
@@ -153,6 +171,21 @@ var sortOptions = []sortOption{
 	{"Path", "path"},
 	{"Reading Time", "reading_time"},
 	{"Tags", "tags"},
+}
+
+// configSection represents a section in the config view
+type configSection struct {
+	name     string       // Section name (e.g., "Site Metadata")
+	key      string       // Key identifier for expansion tracking
+	items    []configItem // Items in this section
+	expanded bool         // Whether section is expanded
+}
+
+// configItem represents a single config key-value pair
+type configItem struct {
+	key   string // Config key name
+	value string // Formatted value
+	level int    // Indentation level (0 = top-level)
 }
 
 // NewModel creates a new TUI model with default theme.
@@ -201,6 +234,7 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 		sortBy:          "date",
 		sortOrder:       services.SortDesc,
 		theme:           theme,
+		configExpanded:  make(map[string]bool),
 	}
 
 	return m
@@ -353,6 +387,10 @@ func (m *Model) updateViewportDimensions(w, h int) {
 	if m.view == ViewHelp {
 		m.helpViewport.Width = width - 4
 		m.helpViewport.Height = viewportHeight
+	}
+	if m.view == ViewConfig {
+		m.configViewport.Width = width - 4
+		m.configViewport.Height = viewportHeight
 	}
 }
 
@@ -615,6 +653,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleHelpViewKey(msg)
 	}
 
+	// Handle config view keys separately (for navigation and scrolling)
+	if m.view == ViewConfig {
+		return m.handleConfigViewKey(msg)
+	}
+
 	// Normal mode key handling
 	return m.handleNormalModeKey(msg)
 }
@@ -767,6 +810,9 @@ func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.feedsTable.SetCursor(0)
 		return m, m.loadFeeds()
 
+	case key.Matches(msg, keyMap.Config):
+		return m.handleConfigKey()
+
 	case key.Matches(msg, keyMap.Enter):
 		return m.handleEnter()
 
@@ -779,22 +825,14 @@ func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.Sort):
 		return m.handleSortKey()
 
-	// Capital letter hotkeys for sorting (k9s-inspired)
-	case msg.String() == "T":
-		return m.handleSortHotkey("title")
-	case msg.String() == "D":
-		return m.handleSortHotkey("date")
-	case msg.String() == "W":
-		return m.handleSortHotkey("words")
-	case msg.String() == "P":
-		return m.handleSortHotkey("path")
-	case msg.String() == "R":
-		return m.handleSortHotkey("reading_time")
-	case msg.String() == "G":
-		return m.handleSortHotkey("tags")
-
 	case key.Matches(msg, keyMap.Refresh):
 		return m.handleRefreshKey()
+
+	default:
+		// Handle capital letter hotkeys for sorting (k9s-inspired)
+		if field, ok := sortHotkeyMap[msg.String()]; ok {
+			return m.handleSortHotkey(field)
+		}
 	}
 
 	return m, nil
@@ -826,6 +864,16 @@ func (m Model) handleEditKey() (tea.Model, tea.Cmd) {
 	if m.view == ViewPosts {
 		return m, m.openInEditor()
 	}
+	return m, nil
+}
+
+// handleConfigKey handles navigation to config view
+func (m Model) handleConfigKey() (tea.Model, tea.Cmd) {
+	m.view = ViewConfig
+	m.configCursor = 0
+	m.configFilter = ""
+	m.buildConfigSections()
+	m.initializeConfigViewport()
 	return m, nil
 }
 
@@ -969,6 +1017,8 @@ func (m Model) executeCommand(cmd string) (tea.Model, tea.Cmd) {
 		m.cursor = 0
 		m.feedsTable.SetCursor(0)
 		return m, m.loadFeeds()
+	case "config", "c":
+		return m.handleConfigKey()
 	case "q", "quit":
 		return m, tea.Quit
 	}
@@ -988,6 +1038,9 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 		return m.handleEnterTagsList()
 	case ViewFeeds:
 		return m.handleEnterFeedsList()
+	case ViewConfig:
+		// Toggle section expansion (handled in handleConfigViewKey)
+		return m.toggleConfigSection()
 	}
 	return m, nil
 }
@@ -1195,6 +1248,9 @@ func (m Model) handleEscape() (tea.Model, tea.Cmd) {
 		}
 	case ViewTags, ViewFeeds:
 		// Escape does nothing in tag/feed list views
+	case ViewConfig:
+		// Return to posts view
+		m.view = ViewPosts
 	}
 	return m, nil
 }
@@ -1738,6 +1794,8 @@ func (m Model) View() string {
 		return m.renderHelp()
 	case ViewPostDetail:
 		return m.renderPostDetail()
+	case ViewConfig:
+		return m.renderConfig()
 	}
 
 	rendered := m.renderLayout(content)
@@ -2227,6 +2285,318 @@ func (m Model) renderSortMenu() string {
 	sb.WriteString("└───────────────────┘")
 
 	return m.theme.SortMenuStyle.Render(sb.String())
+}
+
+// handleConfigViewKey handles key events in the config view.
+func (m Model) handleConfigViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch {
+	case key.Matches(msg, keyMap.Quit):
+		return m, tea.Quit
+
+	case key.Matches(msg, keyMap.Escape):
+		m.view = ViewPosts
+		return m, nil
+
+	case key.Matches(msg, keyMap.Up), key.Matches(msg, keyMap.Down):
+		// Handle viewport scrolling
+		m.configViewport, cmd = m.configViewport.Update(msg)
+		return m, cmd
+
+	case key.Matches(msg, keyMap.Enter):
+		// Toggle section expansion
+		return m.toggleConfigSection()
+
+	case key.Matches(msg, keyMap.Filter):
+		// TODO: Implement filter mode for config in future phase
+		return m, nil
+	}
+
+	// Also handle page up/down, mouse wheel, etc through viewport
+	m.configViewport, cmd = m.configViewport.Update(msg)
+	return m, cmd
+}
+
+// toggleConfigSection toggles expansion of the current section
+func (m Model) toggleConfigSection() (tea.Model, tea.Cmd) {
+	// Count total items to find which section we're in
+	currentLine := 0
+	scrollPos := m.configViewport.YOffset
+
+	for i := range m.configSections {
+		section := &m.configSections[i]
+		if scrollPos >= currentLine && scrollPos < currentLine+1 {
+			// Toggle this section
+			section.expanded = !section.expanded
+			m.configExpanded[section.key] = section.expanded
+			// Rebuild and refresh viewport
+			m.buildConfigSections()
+			m.refreshConfigViewport()
+			return m, nil
+		}
+		currentLine++ // Section header
+		if section.expanded {
+			currentLine += len(section.items)
+		}
+	}
+	return m, nil
+}
+
+// buildConfigSections builds the config sections from the current configuration
+func (m *Model) buildConfigSections() {
+	cfg := m.app.Manager.Config()
+	extra := cfg.Extra
+
+	m.configSections = []configSection{}
+
+	// Site Metadata section
+	siteItems := []configItem{
+		{key: "url", value: getStringFromExtra(extra, "url"), level: 0},
+		{key: "title", value: getStringFromExtra(extra, "title"), level: 0},
+		{key: "description", value: getStringFromExtra(extra, "description"), level: 0},
+		{key: "author", value: getStringFromExtra(extra, "author"), level: 0},
+	}
+	m.configSections = append(m.configSections, configSection{
+		name:     "Site Metadata",
+		key:      "site",
+		items:    siteItems,
+		expanded: m.configExpanded["site"],
+	})
+
+	// Directories section
+	dirItems := []configItem{
+		{key: "output_dir", value: cfg.OutputDir, level: 0},
+		{key: "content_dir", value: cfg.ContentDir, level: 0},
+		{key: "assets_dir", value: getStringFromExtra(extra, "assets_dir"), level: 0},
+		{key: "templates_dir", value: getStringFromExtra(extra, "templates_dir"), level: 0},
+	}
+	m.configSections = append(m.configSections, configSection{
+		name:     "Directories",
+		key:      "dirs",
+		items:    dirItems,
+		expanded: m.configExpanded["dirs"],
+	})
+
+	// Theme section
+	themeItems := []configItem{}
+	if themeMap, ok := extra["theme"].(map[string]interface{}); ok {
+		themeItems = append(themeItems,
+			configItem{key: "name", value: getStringFromMap(themeMap, "name"), level: 0},
+			configItem{key: "palette", value: getStringFromMap(themeMap, "palette"), level: 0},
+			configItem{key: "palette_light", value: getStringFromMap(themeMap, "palette_light"), level: 0},
+			configItem{key: "palette_dark", value: getStringFromMap(themeMap, "palette_dark"), level: 0},
+		)
+	} else {
+		themeItems = append(themeItems,
+			configItem{key: "name", value: "default", level: 0},
+			configItem{key: "palette", value: "default-light", level: 0},
+		)
+	}
+	m.configSections = append(m.configSections, configSection{
+		name:     "Theme",
+		key:      "theme",
+		items:    themeItems,
+		expanded: m.configExpanded["theme"],
+	})
+
+	// Build Options section
+	buildItems := []configItem{
+		{key: "concurrency", value: fmt.Sprintf("%d", getIntFromExtra(extra, "concurrency")), level: 0},
+		{key: "glob_patterns", value: strings.Join(cfg.GlobPatterns, ", "), level: 0},
+	}
+	m.configSections = append(m.configSections, configSection{
+		name:     "Build Options",
+		key:      "build",
+		items:    buildItems,
+		expanded: m.configExpanded["build"],
+	})
+
+	// Feeds section
+	feedItems := []configItem{}
+	if feedsRaw, ok := extra["feeds"].([]interface{}); ok {
+		feedItems = append(feedItems, configItem{key: "count", value: fmt.Sprintf("%d feeds configured", len(feedsRaw)), level: 0})
+		for i, feedRaw := range feedsRaw {
+			if i >= 5 {
+				feedItems = append(feedItems, configItem{key: "...", value: fmt.Sprintf("and %d more", len(feedsRaw)-5), level: 1})
+				break
+			}
+			if feedMap, ok := feedRaw.(map[string]interface{}); ok {
+				name := getStringFromMap(feedMap, "name")
+				if name == "" {
+					name = fmt.Sprintf("feed_%d", i+1)
+				}
+				filter := getStringFromMap(feedMap, "filter")
+				if filter == "" {
+					filter = "(no filter)"
+				}
+				feedItems = append(feedItems, configItem{key: name, value: filter, level: 1})
+			}
+		}
+	} else {
+		feedItems = append(feedItems, configItem{key: "count", value: "0 feeds configured", level: 0})
+	}
+	m.configSections = append(m.configSections, configSection{
+		name:     "Feeds",
+		key:      "feeds",
+		items:    feedItems,
+		expanded: m.configExpanded["feeds"],
+	})
+
+	// Layout section
+	layoutItems := []configItem{}
+	if layoutMap, ok := extra["layout"].(map[string]interface{}); ok {
+		layoutItems = append(layoutItems,
+			configItem{key: "type", value: getStringFromMap(layoutMap, "type"), level: 0},
+			configItem{key: "max_width", value: getStringFromMap(layoutMap, "max_width"), level: 0},
+		)
+	} else {
+		layoutItems = append(layoutItems, configItem{key: "type", value: "default", level: 0})
+	}
+	m.configSections = append(m.configSections, configSection{
+		name:     "Layout",
+		key:      "layout",
+		items:    layoutItems,
+		expanded: m.configExpanded["layout"],
+	})
+
+	// Blogroll section
+	blogrollItems := []configItem{}
+	if blogrollMap, ok := extra["blogroll"].(map[string]interface{}); ok {
+		if enabled, ok := blogrollMap["enabled"].(bool); ok {
+			blogrollItems = append(blogrollItems, configItem{key: "enabled", value: fmt.Sprintf("%v", enabled), level: 0})
+		}
+		if feeds, ok := blogrollMap["feeds"].([]interface{}); ok {
+			blogrollItems = append(blogrollItems, configItem{key: "feeds_count", value: fmt.Sprintf("%d feeds", len(feeds)), level: 0})
+		}
+	} else {
+		blogrollItems = append(blogrollItems, configItem{key: "enabled", value: "false", level: 0})
+	}
+	m.configSections = append(m.configSections, configSection{
+		name:     "Blogroll",
+		key:      "blogroll",
+		items:    blogrollItems,
+		expanded: m.configExpanded["blogroll"],
+	})
+}
+
+// initializeConfigViewport sets up the viewport for the config view
+func (m *Model) initializeConfigViewport() {
+	width := m.calculateViewportWidth()
+	viewportHeight := m.calculateViewportHeight()
+
+	content := m.buildConfigContent()
+
+	m.configViewport = viewport.New(width-4, viewportHeight)
+	m.configViewport.SetContent(content)
+	m.configViewport.YPosition = 0
+}
+
+// refreshConfigViewport updates the viewport content after changes
+func (m *Model) refreshConfigViewport() {
+	content := m.buildConfigContent()
+	m.configViewport.SetContent(content)
+}
+
+// buildConfigContent builds the content string for the config viewport
+func (m Model) buildConfigContent() string {
+	var sb strings.Builder
+	theme := m.getTheme()
+
+	for _, section := range m.configSections {
+		// Section header
+		expandIcon := "▶"
+		if section.expanded {
+			expandIcon = "▼"
+		}
+		header := fmt.Sprintf("%s %s", expandIcon, section.name)
+		sb.WriteString(theme.HeaderStyle.Render(header))
+		sb.WriteString("\n")
+
+		// Section items (if expanded)
+		if section.expanded {
+			for _, item := range section.items {
+				indent := strings.Repeat("  ", item.level+1)
+				value := item.value
+				if value == "" {
+					value = "(not set)"
+				}
+				line := fmt.Sprintf("%s%s: %s", indent, theme.DetailLabelStyle.Render(item.key), value)
+				sb.WriteString(line)
+				sb.WriteString("\n")
+			}
+		}
+		sb.WriteString("\n")
+	}
+
+	return sb.String()
+}
+
+// renderConfig renders the config view
+func (m Model) renderConfig() string {
+	theme := m.getTheme()
+
+	// Calculate available width
+	width := m.width
+	if width < 40 {
+		width = 80
+	}
+	if width > 100 {
+		width = 100
+	}
+
+	// Status bar with scroll percentage
+	statusBar := theme.DetailStatusStyle.
+		Width(width).
+		Render(fmt.Sprintf("  [↑/↓] scroll  [Enter] expand/collapse  [Esc] back  [q]uit  %.0f%%", m.configViewport.ScrollPercent()*100))
+
+	// Header
+	header := theme.HeaderStyle.Render("markata-go")
+	header += " " + theme.SubtleStyle.Render("[config]")
+
+	// Create config box with viewport content
+	configBox := theme.DetailBoxStyle.
+		Width(width).
+		Render(m.configViewport.View())
+
+	return header + "\n\n" + configBox + "\n" + statusBar
+}
+
+// Helper functions for extracting config values
+
+func getStringFromExtra(extra map[string]interface{}, name string) string {
+	if extra == nil {
+		return ""
+	}
+	if v, ok := extra[name].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func getStringFromMap(data map[string]interface{}, name string) string {
+	if data == nil {
+		return ""
+	}
+	if v, ok := data[name].(string); ok {
+		return v
+	}
+	return ""
+}
+
+func getIntFromExtra(extra map[string]interface{}, name string) int {
+	if extra == nil {
+		return 0
+	}
+	switch v := extra[name].(type) {
+	case int:
+		return v
+	case int64:
+		return int(v)
+	case float64:
+		return int(v)
+	}
+	return 0
 }
 
 // Styles
