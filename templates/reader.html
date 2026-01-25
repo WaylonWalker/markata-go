@@ -28,6 +28,9 @@
     {% for entry in entries %}
     <li class="reader-entry">
       <article>
+        {% if entry.image_url %}
+        <img src="{{ entry.image_url }}" alt="" class="entry-image" loading="lazy">
+        {% endif %}
         <h2 class="reader-entry-title">
           <a href="{{ entry.url }}" target="_blank" rel="noopener">{{ entry.title }}</a>
         </h2>
