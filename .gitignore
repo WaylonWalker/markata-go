@@ -968,3 +968,10 @@ FodyWeavers.xsd
 # Core dumps
 core
 core.*
+
+# Benchmark outputs
+bench.txt
+bench-*.txt
+cpu.prof
+mem.prof
+*.prof

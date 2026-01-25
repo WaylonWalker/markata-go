@@ -201,3 +201,48 @@ ci: tidy vet lint test build
 
 # Install development tools (alias for setup)
 tools: setup
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Performance Benchmarks
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Run end-to-end build benchmarks (5 iterations for stable results)
+perf:
+    @echo "Running end-to-end build benchmarks..."
+    @echo ""
+    go test -bench=BenchmarkBuild -run='^$$' -benchmem -count=5 ./benchmarks/... | tee bench.txt
+    @echo ""
+    @echo "Benchmark results saved to bench.txt"
+    @echo "For profiling, run: just perf-profile"
+
+# Run benchmarks with CPU and memory profiling
+perf-profile:
+    @echo "Running benchmarks with profiling..."
+    go test -bench=BenchmarkBuild_EndToEnd -run='^$$' -cpuprofile=cpu.prof -memprofile=mem.prof ./benchmarks/...
+    @echo ""
+    @echo "Profiles generated:"
+    @echo "  CPU profile: cpu.prof"
+    @echo "  Memory profile: mem.prof"
+    @echo ""
+    @echo "View with: go tool pprof cpu.prof"
+    @echo "Or web UI: go tool pprof -http=:8080 cpu.prof"
+
+# Run all stage-specific benchmarks
+perf-stages:
+    @echo "Running stage-specific benchmarks..."
+    go test -bench='BenchmarkStage' -run='^$$' -benchmem -count=3 ./benchmarks/...
+
+# Run concurrency benchmarks
+perf-concurrency:
+    @echo "Running concurrency benchmarks..."
+    go test -bench='BenchmarkBuild_Concurrency' -run='^$$' -benchmem -count=3 ./benchmarks/...
+
+# Compare benchmarks (requires benchstat: go install golang.org/x/perf/cmd/benchstat@latest)
+perf-compare old new:
+    benchstat {{old}} {{new}}
+
+# Generate benchmark fixture (100 posts)
+perf-generate:
+    @echo "Generating benchmark fixture..."
+    go run benchmarks/generate_posts.go
+    @echo "Generated benchmark posts in benchmarks/site/posts/"
