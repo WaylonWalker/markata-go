@@ -45,8 +45,9 @@ func runTUI(cmd *cobra.Command, _ []string) error {
 	// Create services app
 	app := services.NewApp(manager)
 
-	// Load posts (run through Load stage)
-	if err := app.Build.LoadOnly(cmd.Context()); err != nil {
+	// Load posts through Collect stage for full TUI functionality
+	// This runs Transform (for stats, auto-titles) and Collect (for feeds)
+	if err := app.Build.LoadForTUI(cmd.Context()); err != nil {
 		return fmt.Errorf("failed to load posts: %w", err)
 	}
 

@@ -72,6 +72,12 @@ func (s *buildService) LoadOnly(_ context.Context) error {
 	return s.manager.RunTo(lifecycle.StageLoad)
 }
 
+// LoadForTUI runs through Collect stage for TUI browsing.
+// This includes Transform (for stats, auto-titles) and Collect (for feeds).
+func (s *buildService) LoadForTUI(_ context.Context) error {
+	return s.manager.RunTo(lifecycle.StageCollect)
+}
+
 // Subscribe returns a channel for build progress events.
 func (s *buildService) Subscribe() <-chan BuildEvent {
 	s.mu.Lock()

@@ -53,6 +53,10 @@ type BuildService interface {
 	// LoadOnly runs only the load stage (for TUI browsing without full build).
 	LoadOnly(ctx context.Context) error
 
+	// LoadForTUI runs through Collect stage for TUI browsing.
+	// This includes Transform (for stats, titles) and Collect (for feeds).
+	LoadForTUI(ctx context.Context) error
+
 	// Subscribe returns a channel for build progress events.
 	Subscribe() <-chan BuildEvent
 }
