@@ -5,9 +5,11 @@
 
 {% block body_class %}page-reader{% endblock %}
 
-{% block head_extra %}
-{% if pagination_type == "htmx" %}
+{% block htmx %}
+{% if page.pagination_type == "htmx" %}
 <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+{% elif page.pagination_type == "js" %}
+<script src="{{ 'js/pagination.js' | theme_asset }}" defer></script>
 {% endif %}
 {% endblock %}
 
@@ -22,11 +24,7 @@
     <a href="/blogroll/">View Blogroll</a>
   </nav>
 
-  {% if pagination_type == "htmx" %}
-  <div id="reader-content">
-  {% endif %}
-
-  <ul class="reader-entries">
+  <ul class="reader-entries posts-list">
     {% for entry in entries %}
     <li class="reader-entry">
       <article>
@@ -47,46 +45,6 @@
     {% endfor %}
   </ul>
 
-  {# Pagination Navigation #}
-  {% if page.total_pages > 1 %}
-  <nav class="pagination" aria-label="Page navigation">
-    {% if page.has_prev %}
-      {% if pagination_type == "htmx" %}
-      <a href="{{ page.prev_url }}" hx-get="{{ page.prev_url }}partial/" hx-target="#reader-content" hx-swap="innerHTML">&laquo; Previous</a>
-      {% else %}
-      <a href="{{ page.prev_url }}">&laquo; Previous</a>
-      {% endif %}
-    {% else %}
-    <span class="pagination-disabled">&laquo; Previous</span>
-    {% endif %}
-
-    {% for url in page.page_urls %}
-    {% set page_num = forloop.Counter %}
-    {% if page_num == page.number %}
-    <span class="pagination-current">{{ page_num }}</span>
-    {% else %}
-      {% if pagination_type == "htmx" %}
-      <a href="{{ url }}" hx-get="{{ url }}partial/" hx-target="#reader-content" hx-swap="innerHTML">{{ page_num }}</a>
-      {% else %}
-      <a href="{{ url }}">{{ page_num }}</a>
-      {% endif %}
-    {% endif %}
-    {% endfor %}
-
-    {% if page.has_next %}
-      {% if pagination_type == "htmx" %}
-      <a href="{{ page.next_url }}" hx-get="{{ page.next_url }}partial/" hx-target="#reader-content" hx-swap="innerHTML">Next &raquo;</a>
-      {% else %}
-      <a href="{{ page.next_url }}">Next &raquo;</a>
-      {% endif %}
-    {% else %}
-    <span class="pagination-disabled">Next &raquo;</span>
-    {% endif %}
-  </nav>
-  {% endif %}
-
-  {% if pagination_type == "htmx" %}
-  </div>
-  {% endif %}
+  {% include "partials/pagination.html" %}
 </div>
 {% endblock %}
