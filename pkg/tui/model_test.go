@@ -439,6 +439,7 @@ func TestRenderLayout_WithActiveFilter(t *testing.T) {
 		},
 		sortBy:    "date",
 		sortOrder: services.SortDesc,
+		theme:     DefaultTheme(),
 	}
 
 	result := m.renderLayout("test content")
@@ -461,6 +462,7 @@ func TestRenderLayout_WithoutActiveFilter(t *testing.T) {
 		activeFilter: nil,
 		sortBy:       "date",
 		sortOrder:    services.SortDesc,
+		theme:        DefaultTheme(),
 	}
 
 	result := m.renderLayout("test content")
