@@ -1,0 +1,197 @@
+<!-- templates/thought.html - Template for individual thought posts -->
+<article class="thought">
+  <header class="thought-header">
+    <div class="thought-meta">
+      <time datetime="{{ post.date|dateformat('2006-01-02T15:04:05Z07:00') }}" class="thought-date">
+        {{ post.date|dateformat }}
+      </time>
+      
+      {% if post.thought_source %}
+      <span class="thought-source">
+        from 
+        {% if post.original_url %}
+          <a href="{{ post.original_url }}" class="source-link" target="_blank" rel="noopener">
+            {% if post.source_handle %}@{{ post.source_handle }}{% else %}{{ post.thought_source }}{% endif %}
+          </a>
+        {% else %}
+          {% if post.source_handle %}@{{ post.source_handle }}{% else %}{{ post.thought_source }}{% endif %}
+        {% endif %}
+      </span>
+      {% endif %}
+    </div>
+
+    {% if post.title and post.title != post.content|truncate(50) %}
+    <h2 class="thought-title">{{ post.title }}</h2>
+    {% endif %}
+  </header>
+
+  <div class="thought-content">
+    {{ post.article_html|safe }}
+  </div>
+
+  {% if post.image_url %}
+  <div class="thought-image">
+    <img src="{{ post.image_url }}" alt="{{ post.title }}" loading="lazy">
+  </div>
+  {% endif %}
+
+  <footer class="thought-footer">
+    <div class="thought-actions">
+      {% if post.original_url %}
+      <a href="{{ post.original_url }}" class="thought-link" target="_blank" rel="noopener">
+        View Original
+      </a>
+      {% endif %}
+      
+      <a href="{{ post.href }}" class="permalink">
+        {{ post.date|dateformat('%b %d, %Y') }}
+      </a>
+    </div>
+
+    {% if post.tags %}
+    <div class="thought-tags">
+      {% for tag in post.tags %}
+      <span class="tag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </footer>
+</article>
+
+<style>
+.thought {
+  border: 1px solid var(--border-color, #e1e5e9);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  background: var(--background-color, #fff);
+}
+
+.thought-header {
+  margin-bottom: 1rem;
+}
+
+.thought-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 0.5rem;
+}
+
+.thought-date {
+  font-weight: 500;
+}
+
+.thought-source {
+  font-style: italic;
+}
+
+.source-link {
+  color: var(--primary-color, #2563eb);
+  text-decoration: none;
+}
+
+.source-link:hover {
+  text-decoration: underline;
+}
+
+.thought-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.thought-content {
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.thought-image {
+  margin: 1rem 0;
+}
+
+.thought-image img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.thought-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color, #e1e5e9);
+}
+
+.thought-actions {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+.thought-link,
+.permalink {
+  color: var(--primary-color, #2563eb);
+  text-decoration: none;
+}
+
+.thought-link:hover,
+.permalink:hover {
+  text-decoration: underline;
+}
+
+.thought-tags {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: var(--tag-background, #f3f4f6);
+  color: var(--tag-color, #374151);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .thought {
+    background: var(--background-color-dark, #1f2937);
+    border-color: var(--border-color-dark, #374151);
+  }
+  
+  .thought-meta {
+    color: var(--text-muted-dark, #9ca3af);
+  }
+  
+  .tag {
+    background: var(--tag-background-dark, #374151);
+    color: var(--tag-color-dark, #e5e7eb);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .thought {
+    padding: 1rem;
+  }
+  
+  .thought-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .thought-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+</style>
