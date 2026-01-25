@@ -59,6 +59,9 @@ func registerFilters() {
 
 		// ISO date format filter (per THEMES.md spec)
 		pongo2.RegisterFilter("isoformat", filterISOFormat)
+
+		// Font configuration filter
+		pongo2.RegisterFilter("google_fonts_url", filterGoogleFontsURL)
 	})
 }
 
@@ -417,6 +420,55 @@ func filterISOFormat(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		return pongo2.AsValue(""), nil
 	}
 	return pongo2.AsValue(t.Format(time.RFC3339)), nil
+}
+
+// filterGoogleFontsURL generates a Google Fonts CSS URL from a FontConfig.
+// Usage: {{ config.theme.font | google_fonts_url }}
+// Returns: https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600;700&display=swap
+func filterGoogleFontsURL(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	if in.IsNil() {
+		return pongo2.AsValue(""), nil
+	}
+
+	// Try to get google_fonts from the FontConfig struct
+	var googleFonts []string
+
+	// Check if it has a GoogleFonts field (FontConfig struct)
+	iface := in.Interface()
+	if fc, ok := iface.(interface{ GetGoogleFontsURL() string }); ok {
+		return pongo2.AsValue(fc.GetGoogleFontsURL()), nil
+	}
+
+	// Try map access for template contexts where struct is converted to map
+	if m, ok := iface.(map[string]interface{}); ok {
+		if gf, exists := m["google_fonts"]; exists {
+			switch fonts := gf.(type) {
+			case []string:
+				googleFonts = fonts
+			case []interface{}:
+				googleFonts = make([]string, 0, len(fonts))
+				for _, f := range fonts {
+					if s, ok := f.(string); ok {
+						googleFonts = append(googleFonts, s)
+					}
+				}
+			}
+		}
+	}
+
+	if len(googleFonts) == 0 {
+		return pongo2.AsValue(""), nil
+	}
+
+	// Build Google Fonts URL
+	families := make([]string, 0, len(googleFonts))
+	for _, font := range googleFonts {
+		encoded := strings.ReplaceAll(font, " ", "+")
+		families = append(families, "family="+encoded+":wght@400;500;600;700")
+	}
+
+	url := "https://fonts.googleapis.com/css2?" + strings.Join(families, "&") + "&display=swap"
+	return pongo2.AsValue(url), nil
 }
 
 // toTime attempts to convert a pongo2 value to a time.Time.

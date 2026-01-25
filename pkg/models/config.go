@@ -451,6 +451,87 @@ func NewSearchConfig() SearchConfig {
 	}
 }
 
+// FontConfig configures typography settings for the site.
+type FontConfig struct {
+	// Family is the primary font family for body text (default: "system-ui, -apple-system, sans-serif")
+	Family string `json:"family,omitempty" yaml:"family,omitempty" toml:"family,omitempty"`
+
+	// HeadingFamily is the font family for headings (default: inherits from Family)
+	HeadingFamily string `json:"heading_family,omitempty" yaml:"heading_family,omitempty" toml:"heading_family,omitempty"`
+
+	// CodeFamily is the font family for code blocks and inline code (default: "ui-monospace, monospace")
+	CodeFamily string `json:"code_family,omitempty" yaml:"code_family,omitempty" toml:"code_family,omitempty"`
+
+	// Size is the base font size (default: "16px")
+	Size string `json:"size,omitempty" yaml:"size,omitempty" toml:"size,omitempty"`
+
+	// LineHeight is the base line height (default: "1.6")
+	LineHeight string `json:"line_height,omitempty" yaml:"line_height,omitempty" toml:"line_height,omitempty"`
+
+	// GoogleFonts is a list of Google Fonts to load (e.g., ["Inter", "Fira Code"])
+	GoogleFonts []string `json:"google_fonts,omitempty" yaml:"google_fonts,omitempty" toml:"google_fonts,omitempty"`
+
+	// CustomURLs is a list of custom font CSS URLs to load
+	CustomURLs []string `json:"custom_urls,omitempty" yaml:"custom_urls,omitempty" toml:"custom_urls,omitempty"`
+}
+
+// NewFontConfig creates a new FontConfig with default values.
+func NewFontConfig() FontConfig {
+	return FontConfig{
+		Family:        "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+		HeadingFamily: "",
+		CodeFamily:    "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace",
+		Size:          "16px",
+		LineHeight:    "1.6",
+		GoogleFonts:   []string{},
+		CustomURLs:    []string{},
+	}
+}
+
+// GetHeadingFamily returns the heading font family, falling back to Family if not set.
+func (f *FontConfig) GetHeadingFamily() string {
+	if f.HeadingFamily != "" {
+		return f.HeadingFamily
+	}
+	return f.Family
+}
+
+// GetGoogleFontsURL returns the Google Fonts CSS URL for the configured fonts.
+// Returns empty string if no Google Fonts are configured.
+func (f *FontConfig) GetGoogleFontsURL() string {
+	if len(f.GoogleFonts) == 0 {
+		return ""
+	}
+	// Build Google Fonts URL with all fonts
+	// Format: https://fonts.googleapis.com/css2?family=Font+Name:wght@400;700&family=Other+Font
+	families := make([]string, len(f.GoogleFonts))
+	for i, font := range f.GoogleFonts {
+		// Replace spaces with + for URL encoding
+		encoded := ""
+		for _, c := range font {
+			if c == ' ' {
+				encoded += "+"
+			} else {
+				encoded += string(c)
+			}
+		}
+		families[i] = "family=" + encoded + ":wght@400;500;600;700"
+	}
+	return "https://fonts.googleapis.com/css2?" + joinStrings(families, "&") + "&display=swap"
+}
+
+// joinStrings joins strings with a separator (helper to avoid importing strings package).
+func joinStrings(strs []string, sep string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	result := strs[0]
+	for i := 1; i < len(strs); i++ {
+		result += sep + strs[i]
+	}
+	return result
+}
+
 // ThemeConfig configures the site theme.
 type ThemeConfig struct {
 	// Name is the theme name (default: "default")
@@ -477,6 +558,9 @@ type ThemeConfig struct {
 
 	// Background configures multi-layered background decorations
 	Background BackgroundConfig `json:"background,omitempty" yaml:"background,omitempty" toml:"background,omitempty"`
+
+	// Font configures typography settings
+	Font FontConfig `json:"font,omitempty" yaml:"font,omitempty" toml:"font,omitempty"`
 }
 
 // BackgroundConfig configures multi-layered background decorations for pages.
@@ -1175,6 +1259,7 @@ func NewConfig() *Config {
 			Name:      "default",
 			Palette:   "default-light",
 			Variables: make(map[string]string),
+			Font:      NewFontConfig(),
 		},
 		PostFormats:      NewPostFormatsConfig(),
 		SEO:              NewSEOConfig(),
@@ -1198,6 +1283,7 @@ func NewThemeConfig() ThemeConfig {
 		Name:      "default",
 		Palette:   "default-light",
 		Variables: make(map[string]string),
+		Font:      NewFontConfig(),
 	}
 }
 
