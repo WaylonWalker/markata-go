@@ -285,10 +285,21 @@ func (p *StatsPlugin) calculatePostStats(content string) *PostStats {
 	if !p.includeCodeInCount {
 		// Remove code blocks from word counting
 		text = statsCodeBlockPattern.ReplaceAllString(text, " ")
+		// Remove inline code
+		text = statsInlineCodePattern.ReplaceAllString(text, " ")
+	} else {
+		// When including code in count, preserve code content but remove fence markers
+		// Replace fenced code blocks with just their content (no fence markers)
+		text = statsCodeBlockPattern.ReplaceAllStringFunc(text, func(block string) string {
+			// Remove opening fence line and closing fence line
+			lines := strings.Split(block, "\n")
+			if len(lines) <= 2 {
+				return " "
+			}
+			// Join all lines except first (opening fence) and last (closing fence)
+			return strings.Join(lines[1:len(lines)-1], " ")
+		})
 	}
-
-	// Remove inline code
-	text = statsInlineCodePattern.ReplaceAllString(text, " ")
 
 	// Remove images
 	text = statsImagePattern.ReplaceAllString(text, " ")
