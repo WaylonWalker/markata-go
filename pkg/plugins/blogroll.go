@@ -793,6 +793,8 @@ func (p *BlogrollPlugin) categoriesToMaps(categories []*models.BlogrollCategory)
 }
 
 // configToMap converts config to a template-friendly map with essential fields.
+// This mirrors the logic from templates.go:toModelsConfig() to ensure all
+// template-accessible config fields are available in blogroll/reader pages.
 func (p *BlogrollPlugin) configToMap(config *lifecycle.Config) map[string]interface{} {
 	if config == nil {
 		return nil
@@ -803,49 +805,132 @@ func (p *BlogrollPlugin) configToMap(config *lifecycle.Config) map[string]interf
 		"lang":       "en", // Default language
 	}
 
-	// Extract common fields from Extra
 	if config.Extra != nil {
-		if title, ok := config.Extra["title"].(string); ok {
-			result["title"] = title
-		}
-		if description, ok := config.Extra["description"].(string); ok {
-			result["description"] = description
-		}
-		if url, ok := config.Extra["url"].(string); ok {
-			result["url"] = url
-		}
-		if author, ok := config.Extra["author"].(string); ok {
-			result["author"] = author
-		}
-
-		// Convert nav items if available
-		if navItems, ok := config.Extra["nav"].([]models.NavItem); ok {
-			navMaps := make([]map[string]interface{}, len(navItems))
-			for i, nav := range navItems {
-				navMaps[i] = map[string]interface{}{
-					"label":    nav.Label,
-					"url":      nav.URL,
-					"external": nav.External,
-				}
-			}
-			result["nav"] = navMaps
-		}
-
-		// Convert search config if available
-		if search, ok := config.Extra["search"].(models.SearchConfig); ok {
-			searchEnabled := true
-			if search.Enabled != nil {
-				searchEnabled = *search.Enabled
-			}
-			result["search"] = map[string]interface{}{
-				"enabled":     searchEnabled,
-				"position":    search.Position,
-				"placeholder": search.Placeholder,
-			}
-		}
+		p.extractStringFields(config.Extra, result)
+		p.extractNavItems(config.Extra, result)
+		p.extractSearchConfig(config.Extra, result)
+		p.extractStructConfigs(config.Extra, result)
+		p.extractLayoutConfig(config.Extra, result)
+		p.extractSEOConfig(config.Extra, result)
+		p.extractMiscConfigs(config.Extra, result)
 	}
 
 	return result
+}
+
+// extractStringFields extracts common string fields from config.Extra.
+func (p *BlogrollPlugin) extractStringFields(extra, result map[string]interface{}) {
+	stringFields := []string{"title", "description", "url", "author", "templates_dir"}
+	for _, field := range stringFields {
+		if value, ok := extra[field].(string); ok {
+			result[field] = value
+		}
+	}
+}
+
+// extractNavItems converts nav items from config.Extra.
+func (p *BlogrollPlugin) extractNavItems(extra, result map[string]interface{}) {
+	navItems, ok := extra["nav"].([]models.NavItem)
+	if !ok {
+		return
+	}
+	navMaps := make([]map[string]interface{}, len(navItems))
+	for i, nav := range navItems {
+		navMaps[i] = map[string]interface{}{
+			"label":    nav.Label,
+			"url":      nav.URL,
+			"external": nav.External,
+		}
+	}
+	result["nav"] = navMaps
+}
+
+// extractSearchConfig converts search config from config.Extra.
+func (p *BlogrollPlugin) extractSearchConfig(extra, result map[string]interface{}) {
+	search, ok := extra["search"].(models.SearchConfig)
+	if !ok {
+		return
+	}
+	searchEnabled := true
+	if search.Enabled != nil {
+		searchEnabled = *search.Enabled
+	}
+	result["search"] = map[string]interface{}{
+		"enabled":     searchEnabled,
+		"position":    search.Position,
+		"placeholder": search.Placeholder,
+	}
+}
+
+// extractStructConfigs extracts simple struct configs from config.Extra.
+func (p *BlogrollPlugin) extractStructConfigs(extra, result map[string]interface{}) {
+	// Convert components config if available (fixes #316)
+	if components, ok := extra["components"].(models.ComponentsConfig); ok {
+		result["components"] = components
+	}
+	if footer, ok := extra["footer"].(models.FooterConfig); ok {
+		result["footer"] = footer
+	}
+	if sidebar, ok := extra["sidebar"].(models.SidebarConfig); ok {
+		result["sidebar"] = sidebar
+	}
+	if toc, ok := extra["toc"].(models.TocConfig); ok {
+		result["toc"] = toc
+	}
+	if header, ok := extra["header"].(models.HeaderLayoutConfig); ok {
+		result["header"] = header
+	}
+	if postFormats, ok := extra["post_formats"].(models.PostFormatsConfig); ok {
+		result["post_formats"] = postFormats
+	}
+	if head, ok := extra["head"].(models.HeadConfig); ok {
+		result["head"] = head
+	}
+}
+
+// extractLayoutConfig converts layout config from config.Extra, handling both pointer and value types.
+func (p *BlogrollPlugin) extractLayoutConfig(extra, result map[string]interface{}) {
+	switch layoutVal := extra["layout"].(type) {
+	case *models.LayoutConfig:
+		result["layout"] = *layoutVal
+	case models.LayoutConfig:
+		result["layout"] = layoutVal
+	}
+}
+
+// extractSEOConfig converts SEO config from config.Extra, handling both struct and map types.
+func (p *BlogrollPlugin) extractSEOConfig(extra, result map[string]interface{}) {
+	switch seoVal := extra["seo"].(type) {
+	case models.SEOConfig:
+		result["seo"] = seoVal
+	case map[string]interface{}:
+		result["seo"] = models.SEOConfig{
+			TwitterHandle: p.getStringFromMap(seoVal, "twitter_handle"),
+			DefaultImage:  p.getStringFromMap(seoVal, "default_image"),
+			LogoURL:       p.getStringFromMap(seoVal, "logo_url"),
+		}
+	}
+}
+
+// extractMiscConfigs extracts miscellaneous configs that don't need type conversion.
+func (p *BlogrollPlugin) extractMiscConfigs(extra, result map[string]interface{}) {
+	if webmention, ok := extra["webmention"]; ok {
+		result["webmention"] = webmention
+	}
+	if feeds, ok := extra["feeds"]; ok {
+		result["feeds"] = feeds
+	}
+}
+
+// getStringFromMap safely gets a string value from a map.
+func (p *BlogrollPlugin) getStringFromMap(m map[string]interface{}, key string) string {
+	if m == nil {
+		return ""
+	}
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
 }
 
 // renderBlogrollFallback generates a basic blogroll page that uses theme CSS if available.
