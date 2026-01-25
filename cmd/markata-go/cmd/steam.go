@@ -146,10 +146,10 @@ func getSteamConfig() (*models.SteamConfig, error) {
 
 	// Validate required fields
 	if config.APIKey == "" {
-		return nil, fmt.Errorf("Steam API key is required (use --api-key or STEAM_API_KEY)")
+		return nil, fmt.Errorf("steam API key is required (use --api-key or STEAM_API_KEY)")
 	}
 	if config.SteamID == "" {
-		return nil, fmt.Errorf("Steam ID is required (use --steam-id or STEAM_ID)")
+		return nil, fmt.Errorf("steam ID is required (use --steam-id or STEAM_ID)")
 	}
 
 	return &config, nil
@@ -185,7 +185,7 @@ func runSteamAchievements(_ *cobra.Command, _ []string) error {
 	}
 
 	// Create posts directory
-	if err := os.MkdirAll(config.PostsDir, 0755); err != nil {
+	if err := os.MkdirAll(config.PostsDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create posts directory: %w", err)
 	}
 
@@ -272,7 +272,7 @@ func runSteamGames(_ *cobra.Command, _ []string) error {
 	}
 
 	// Create posts directory
-	if err := os.MkdirAll(config.PostsDir, 0755); err != nil {
+	if err := os.MkdirAll(config.PostsDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create posts directory: %w", err)
 	}
 

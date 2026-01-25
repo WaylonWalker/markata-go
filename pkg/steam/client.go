@@ -1,6 +1,7 @@
 package steam
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,7 +26,7 @@ type Client struct {
 }
 
 // NewClient creates a new Steam API client.
-func NewClient(apiKey, steamID string, cacheDir string, cacheExpiry time.Duration) *Client {
+func NewClient(apiKey, steamID, cacheDir string, cacheExpiry time.Duration) *Client {
 	if cacheExpiry == 0 {
 		cacheExpiry = time.Hour // Default 1 hour
 	}
@@ -100,7 +101,7 @@ func (c *Client) saveToCache(key string, v interface{}) error {
 		return nil // No caching configured
 	}
 
-	if err := os.MkdirAll(c.cacheDir, 0755); err != nil {
+	if err := os.MkdirAll(c.cacheDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
@@ -110,7 +111,7 @@ func (c *Client) saveToCache(key string, v interface{}) error {
 	}
 
 	path := c.cachePath(key)
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("failed to write cache file: %w", err)
 	}
 
@@ -140,8 +141,8 @@ func (c *Client) buildURL(endpoint string, params map[string]string) string {
 // makeRequest makes an HTTP request to the Steam API.
 func (c *Client) makeRequest(endpoint string, params map[string]string, v interface{}) error {
 	cacheKey := endpoint
-	for k, v := range params {
-		cacheKey += "_" + k + "_" + v
+	for k, val := range params {
+		cacheKey += "_" + k + "_" + val
 	}
 
 	// Try to load from cache first
@@ -149,16 +150,27 @@ func (c *Client) makeRequest(endpoint string, params map[string]string, v interf
 		return nil
 	}
 
-	url := c.buildURL(endpoint, params)
+	requestURL := c.buildURL(endpoint, params)
 
-	resp, err := c.httpClient.Get(url)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to make request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return fmt.Errorf("API request failed with status %d (unable to read body: %w)", resp.StatusCode, readErr)
+		}
 		return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
@@ -181,7 +193,7 @@ func (c *Client) makeRequest(endpoint string, params map[string]string, v interf
 }
 
 // GetOwnedGames retrieves the user's owned games.
-func (c *Client) GetOwnedGames(includeAppInfo, includePlayedFreeGames bool) ([]SteamGameResponse, error) {
+func (c *Client) GetOwnedGames(includeAppInfo, includePlayedFreeGames bool) ([]GameResponse, error) {
 	params := map[string]string{
 		"format":                    "json",
 		"include_appinfo":           strconv.FormatBool(includeAppInfo),
@@ -228,7 +240,7 @@ func (c *Client) GetPlayerAchievements(appID int) (*PlayerAchievementsResponse, 
 }
 
 // GetGameWithAchievements retrieves a game with all achievement data.
-func (c *Client) GetGameWithAchievements(game SteamGameResponse) (*models.SteamGame, error) {
+func (c *Client) GetGameWithAchievements(game GameResponse) (*models.SteamGame, error) {
 	// Get game schema
 	schema, err := c.GetGameSchema(game.AppID)
 	if err != nil {
@@ -252,7 +264,7 @@ func (c *Client) GetGameWithAchievements(game SteamGameResponse) (*models.SteamG
 	}
 
 	// Build achievements list
-	var achievements []models.SteamAchievement
+	achievements := make([]models.SteamAchievement, 0, len(playerAchievements.PlayerStats.Achievements))
 	var unlockedCount int
 
 	for _, playerAchievement := range playerAchievements.PlayerStats.Achievements {
@@ -294,12 +306,12 @@ func (c *Client) GetGameWithAchievements(game SteamGameResponse) (*models.SteamG
 		description = &gameInfo.About.ShortDescription
 	}
 
-	var developers []string
+	developers := make([]string, 0, len(gameInfo.Developers))
 	for _, dev := range gameInfo.Developers {
 		developers = append(developers, dev.Name)
 	}
 
-	var publishers []string
+	publishers := make([]string, 0, len(gameInfo.Publishers))
 	for _, pub := range gameInfo.Publishers {
 		publishers = append(publishers, pub.Name)
 	}
@@ -335,12 +347,12 @@ func (c *Client) GetGameWithAchievements(game SteamGameResponse) (*models.SteamG
 
 type OwnedGamesResponse struct {
 	Response struct {
-		GameCount int                 `json:"game_count"`
-		Games     []SteamGameResponse `json:"games"`
+		GameCount int            `json:"game_count"`
+		Games     []GameResponse `json:"games"`
 	} `json:"response"`
 }
 
-type SteamGameResponse struct {
+type GameResponse struct {
 	AppID                    int    `json:"appid"`
 	Name                     string `json:"name"`
 	PlaytimeForever          int    `json:"playtime_forever"`
