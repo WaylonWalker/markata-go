@@ -95,6 +95,14 @@ type Model struct {
 	footerButtons []footerButton
 	mouseX        int // Current mouse X position
 	mouseY        int // Current mouse Y position
+
+	// Help search state
+	helpSearchInput  textinput.Model // Search input for help view
+	helpSearchMode   bool            // Whether search is active in help view
+	helpSearchQuery  string          // Current search query
+	helpContentLines []string        // All help content lines
+	helpMatchedLines []int           // Indices of lines that match search
+	helpCurrentMatch int             // Current match index for n/N navigation
 }
 
 // Messages
@@ -154,6 +162,10 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 	cmdInput.Placeholder = "Command..."
 	cmdInput.CharLimit = 100
 
+	helpSearchInput := textinput.New()
+	helpSearchInput.Placeholder = "Search help..."
+	helpSearchInput.CharLimit = 100
+
 	// Initialize posts table with columns and theme
 	postsTable := createPostsTableWithTheme(80, theme) // Default width, will be updated on resize
 
@@ -164,17 +176,18 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 	feedsTable := createFeedsTableWithTheme(80, theme) // Default width, will be updated on resize
 
 	m := Model{
-		app:         app,
-		view:        ViewPosts,
-		mode:        ModeNormal,
-		filterInput: filterInput,
-		cmdInput:    cmdInput,
-		postsTable:  postsTable,
-		tagsTable:   tagsTable,
-		feedsTable:  feedsTable,
-		sortBy:      "date",
-		sortOrder:   services.SortDesc,
-		theme:       theme,
+		app:             app,
+		view:            ViewPosts,
+		mode:            ModeNormal,
+		filterInput:     filterInput,
+		cmdInput:        cmdInput,
+		helpSearchInput: helpSearchInput,
+		postsTable:      postsTable,
+		tagsTable:       tagsTable,
+		feedsTable:      feedsTable,
+		sortBy:          "date",
+		sortOrder:       services.SortDesc,
+		theme:           theme,
 	}
 
 	return m
@@ -569,7 +582,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDetailViewKey(msg)
 	}
 
-	// Handle help view keys separately (for scrolling)
+	// Handle help view keys separately (for scrolling and search)
 	if m.view == ViewHelp {
 		return m.handleHelpViewKey(msg)
 	}
@@ -709,6 +722,7 @@ func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.Help):
 		m.view = ViewHelp
 		m.initializeHelpViewport()
+		return m, nil
 
 	case key.Matches(msg, keyMap.Posts):
 		return m.handlePostsKey()
@@ -1008,86 +1022,6 @@ func (m *Model) initializePostViewport() {
 	m.postViewport.YPosition = 0
 }
 
-// initializeHelpViewport sets up the viewport for viewing help content.
-func (m *Model) initializeHelpViewport() {
-	// Calculate available width and height for viewport
-	width := m.calculateViewportWidth()
-	viewportHeight := m.calculateViewportHeight()
-
-	// Build help content
-	helpContent := m.buildHelpContent()
-
-	// Initialize viewport
-	m.helpViewport = viewport.New(width-4, viewportHeight)
-	m.helpViewport.SetContent(helpContent)
-	m.helpViewport.YPosition = 0
-}
-
-// buildHelpContent constructs the help text content.
-func (m Model) buildHelpContent() string {
-	return `Navigation:
-  j / ↓      Move down
-  k / ↑      Move up
-  Enter      Select / view details
-  Esc        Cancel / go back / clear filter
-
-Views:
-  p          Posts view
-  t          Tags view
-  f          Feeds view
-
-Drill-Down Navigation:
-  Enter      In tags view: show posts with selected tag
-             In feeds view: show posts in selected feed
-  Esc        Clear active filter, return to all posts
-
-Actions:
-  e          Edit selected post in $EDITOR
-  s          Sort menu (Date, Title, Word Count, Path, Reading Time, Tags)
-
-Quick Sort (k9s-inspired - Posts view only):
-  T          Sort by Title (toggle asc/desc)
-  D          Sort by Date (toggle asc/desc)
-  W          Sort by Word count (toggle asc/desc)
-  P          Sort by Path (toggle asc/desc)
-  R          Sort by Reading time (toggle asc/desc)
-  G          Sort by taGs (toggle asc/desc)
-
-Modes:
-  /          Filter mode (filter posts with expressions)
-  :          Command mode
-
-Filter Syntax:
-  Press / to enter filter mode. Filter expressions support:
-
-  Comparison:    published == True, date >= '2024-01-01'
-  Membership:    'python' in tags, 'draft' not in tags
-  Boolean:       published == True and featured == True
-                 published == False or 'wip' in tags
-  Strings:       title == 'My Post', slug != 'about'
-
-  Fields: title, slug, date, published, tags, description
-
-  Examples:
-    published == True
-    'python' in tags
-    date >= '2024-01-01' and published == True
-    'tutorial' in tags and published == True
-
-Sort Menu:
-  j/k/↑/↓    Navigate sort options
-  a          Set ascending order
-  d          Set descending order
-  Enter      Apply sort
-  Esc        Cancel
-
-Commands:
-  :posts     Show posts
-  :tags      Show tags
-  :feeds     Show feeds
-  :quit      Exit`
-}
-
 // calculateViewportWidth returns the appropriate width for the viewport.
 func (m Model) calculateViewportWidth() int {
 	width := m.width
@@ -1258,16 +1192,87 @@ func (m Model) handleDetailViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// handleHelpViewKey handles key events in the help view.
+// handleHelpViewKey handles key input when viewing the help screen
 func (m Model) handleHelpViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
+	// Handle search mode keys
+	if m.helpSearchMode {
+		switch msg.Type {
+		case tea.KeyEscape:
+			// Clear search and exit search mode
+			m.helpSearchMode = false
+			m.helpSearchQuery = ""
+			m.helpSearchInput.SetValue("")
+			m.helpSearchInput.Blur()
+			m.helpMatchedLines = nil
+			m.helpCurrentMatch = 0
+			m.updateHelpViewportContent()
+			return m, nil
+
+		case tea.KeyEnter:
+			// Just exit search mode, keep the filter active
+			m.helpSearchMode = false
+			m.helpSearchInput.Blur()
+			return m, nil
+
+		default:
+			// Update search input
+			m.helpSearchInput, cmd = m.helpSearchInput.Update(msg)
+			newQuery := m.helpSearchInput.Value()
+			if newQuery != m.helpSearchQuery {
+				m.helpSearchQuery = newQuery
+				m.filterHelpContent()
+				m.updateHelpViewportContent()
+			}
+			return m, cmd
+		}
+	}
+
+	// Normal mode in help view
 	switch {
 	case key.Matches(msg, keyMap.Quit):
 		return m, tea.Quit
 
-	case key.Matches(msg, keyMap.Escape), key.Matches(msg, keyMap.Enter):
+	case key.Matches(msg, keyMap.Escape):
+		// Clear search if active, otherwise go back
+		if m.helpSearchQuery != "" {
+			m.helpSearchQuery = ""
+			m.helpSearchInput.SetValue("")
+			m.helpMatchedLines = nil
+			m.helpCurrentMatch = 0
+			m.updateHelpViewportContent()
+			return m, nil
+		}
 		m.view = ViewPosts
+		return m, nil
+
+	case msg.String() == "/":
+		// Activate search mode
+		m.helpSearchMode = true
+		m.helpSearchInput.Focus()
+		return m, textinput.Blink
+
+	case msg.String() == "n":
+		// Go to next match
+		if len(m.helpMatchedLines) > 0 {
+			m.helpCurrentMatch++
+			if m.helpCurrentMatch >= len(m.helpMatchedLines) {
+				m.helpCurrentMatch = 0
+			}
+			m.scrollToHelpMatch()
+		}
+		return m, nil
+
+	case msg.String() == "N":
+		// Go to previous match
+		if len(m.helpMatchedLines) > 0 {
+			m.helpCurrentMatch--
+			if m.helpCurrentMatch < 0 {
+				m.helpCurrentMatch = len(m.helpMatchedLines) - 1
+			}
+			m.scrollToHelpMatch()
+		}
 		return m, nil
 
 	case key.Matches(msg, keyMap.Up), key.Matches(msg, keyMap.Down):
@@ -1276,9 +1281,209 @@ func (m Model) handleHelpViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	// Also handle page up/down, mouse wheel, etc through viewport
+	// Handle other viewport controls
 	m.helpViewport, cmd = m.helpViewport.Update(msg)
 	return m, cmd
+}
+
+// initializeHelpViewport sets up the viewport for viewing help content
+func (m *Model) initializeHelpViewport() {
+	// Calculate available width and height for viewport
+	width := m.width
+	if width > 120 {
+		width = 120
+	}
+	if width < 40 {
+		width = 80
+	}
+	viewportHeight := m.height - 8
+	if viewportHeight < 10 {
+		viewportHeight = 10
+	}
+
+	// Build help content
+	m.populateHelpContentLines()
+
+	// Initialize viewport
+	m.helpViewport = viewport.New(width-4, viewportHeight)
+	m.updateHelpViewportContent()
+	m.helpViewport.YPosition = 0
+}
+
+// populateHelpContentLines creates the help content lines
+func (m *Model) populateHelpContentLines() {
+	helpText := `Help
+
+Navigation:
+  j / ↓      Move down
+  k / ↑      Move up
+  Enter      Select / view details
+  Esc        Cancel / go back / clear filter
+
+Views:
+  p          Posts view
+  t          Tags view
+  f          Feeds view
+
+Drill-Down Navigation:
+  Enter      In tags view: show posts with selected tag
+             In feeds view: show posts in selected feed
+  Esc        Clear active filter, return to all posts
+
+Actions:
+  e          Edit selected post in $EDITOR
+  s          Sort menu (Date, Title, Word Count, Path)
+
+Modes:
+  /          Filter mode (filter posts with expressions)
+  :          Command mode
+
+Filter Syntax:
+  Press / to enter filter mode. Filter expressions support:
+
+  Comparison:    published == True, date >= '2024-01-01'
+  Membership:    'python' in tags, 'draft' not in tags
+  Boolean:       published == True and featured == True
+                 published == False or 'wip' in tags
+  Strings:       title == 'My Post', slug != 'about'
+
+  Fields: title, slug, date, published, tags, description
+
+  Examples:
+    published == True
+    'python' in tags
+    date >= '2024-01-01' and published == True
+    'tutorial' in tags and published == True
+
+Sort Menu:
+  j/k/↑/↓    Navigate sort options
+  a          Set ascending order
+  d          Set descending order
+  Enter      Apply sort
+  Esc        Cancel
+
+Commands:
+  :posts     Show posts
+  :tags      Show tags
+  :feeds     Show feeds
+  :quit      Exit
+
+Help Search:
+  /          Activate search mode
+  Esc        Clear search / return
+  n          Next match
+  N          Previous match
+
+Press Esc to return.`
+
+	m.helpContentLines = strings.Split(helpText, "\n")
+}
+
+// filterHelpContent filters help content based on search query
+func (m *Model) filterHelpContent() {
+	m.helpMatchedLines = nil
+	m.helpCurrentMatch = 0
+
+	if m.helpSearchQuery == "" {
+		return
+	}
+
+	query := strings.ToLower(m.helpSearchQuery)
+	for i, line := range m.helpContentLines {
+		if strings.Contains(strings.ToLower(line), query) {
+			m.helpMatchedLines = append(m.helpMatchedLines, i)
+		}
+	}
+}
+
+// updateHelpViewportContent updates the viewport content with current filtering/highlighting
+func (m *Model) updateHelpViewportContent() {
+	var content strings.Builder
+
+	if m.helpSearchQuery == "" {
+		// No search, show all content
+		content.WriteString(strings.Join(m.helpContentLines, "\n"))
+	} else {
+		// Highlight matches
+		query := strings.ToLower(m.helpSearchQuery)
+		for i, line := range m.helpContentLines {
+			if strings.Contains(strings.ToLower(line), query) {
+				// Highlight this line
+				highlighted := m.highlightSearchMatch(line, query)
+				content.WriteString(highlighted)
+			} else {
+				// Show dimmed
+				content.WriteString(m.theme.SubtleStyle.Render(line))
+			}
+			if i < len(m.helpContentLines)-1 {
+				content.WriteString("\n")
+			}
+		}
+	}
+
+	m.helpViewport.SetContent(content.String())
+}
+
+// highlightSearchMatch highlights the search query in a line
+func (m Model) highlightSearchMatch(line, query string) string {
+	lowerLine := strings.ToLower(line)
+	lowerQuery := strings.ToLower(query)
+
+	// Find all occurrences
+	var result strings.Builder
+	lastIndex := 0
+
+	for {
+		index := strings.Index(lowerLine[lastIndex:], lowerQuery)
+		if index == -1 {
+			// No more matches
+			result.WriteString(line[lastIndex:])
+			break
+		}
+
+		actualIndex := lastIndex + index
+
+		// Add text before match
+		result.WriteString(line[lastIndex:actualIndex])
+
+		// Add highlighted match
+		matchText := line[actualIndex : actualIndex+len(query)]
+		highlightStyle := lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("0")).
+			Background(lipgloss.Color("11"))
+		result.WriteString(highlightStyle.Render(matchText))
+
+		lastIndex = actualIndex + len(query)
+	}
+
+	return result.String()
+}
+
+// scrollToHelpMatch scrolls the viewport to show the current match
+func (m *Model) scrollToHelpMatch() {
+	if len(m.helpMatchedLines) == 0 {
+		return
+	}
+
+	lineNumber := m.helpMatchedLines[m.helpCurrentMatch]
+
+	// Calculate the target Y offset
+	// We want to position the matched line in the middle of the viewport
+	targetY := lineNumber - (m.helpViewport.Height / 2)
+	if targetY < 0 {
+		targetY = 0
+	}
+
+	maxY := len(m.helpContentLines) - m.helpViewport.Height
+	if maxY < 0 {
+		maxY = 0
+	}
+	if targetY > maxY {
+		targetY = maxY
+	}
+
+	m.helpViewport.YOffset = targetY
 }
 
 func (m Model) handleSortMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -1569,7 +1774,8 @@ func (m *Model) renderFooter(sortIndicator string) string {
 
 		addButton("feeds", "f", func(model *Model) (tea.Model, tea.Cmd) {
 			model.view = ViewFeeds
-			model.feedCursor = 0
+			model.cursor = 0
+			model.feedsTable.SetCursor(0)
 			return *model, model.loadFeeds()
 		})
 
@@ -1666,21 +1872,53 @@ func (m Model) renderHelp() string {
 		width = 100 // Max width for readability
 	}
 
-	// Status bar with scroll percentage
-	statusBar := theme.DetailStatusStyle.
-		Width(width).
-		Render(fmt.Sprintf("  [↑/↓] scroll  [Esc] back  [q]uit  %.0f%%", m.helpViewport.ScrollPercent()*100))
+	var sb strings.Builder
 
 	// Header
 	header := theme.HeaderStyle.Render("markata-go")
 	header += " " + theme.SubtleStyle.Render("[help]")
+	sb.WriteString(header)
+	sb.WriteString("\n\n")
+
+	// Search input area
+	if m.helpSearchMode {
+		searchPrompt := "Search: " + m.helpSearchInput.View()
+		sb.WriteString(searchPrompt)
+		sb.WriteString("\n\n")
+	} else if m.helpSearchQuery != "" {
+		// Show search status
+		matchCount := len(m.helpMatchedLines)
+		matchInfo := ""
+		if matchCount > 0 {
+			matchInfo = fmt.Sprintf("Search: %q - %d matches (match %d/%d) [n/N: next/prev, Esc: clear]",
+				m.helpSearchQuery, matchCount, m.helpCurrentMatch+1, matchCount)
+		} else {
+			matchInfo = fmt.Sprintf("Search: %q - no matches [Esc: clear]", m.helpSearchQuery)
+		}
+		sb.WriteString(theme.SubtleStyle.Render(matchInfo))
+		sb.WriteString("\n\n")
+	}
 
 	// Create help box with viewport content
 	helpBox := theme.DetailBoxStyle.
 		Width(width).
 		Render(m.helpViewport.View())
+	sb.WriteString(helpBox)
+	sb.WriteString("\n")
 
-	return header + "\n\n" + helpBox + "\n" + statusBar
+	// Footer with controls
+	var footer string
+	switch {
+	case m.helpSearchMode:
+		footer = theme.SubtleStyle.Render("Esc: cancel search  Enter: apply filter")
+	case m.helpSearchQuery != "":
+		footer = theme.SubtleStyle.Render(fmt.Sprintf("n/N: next/prev match  Esc: clear search  q: quit  %.0f%%", m.helpViewport.ScrollPercent()*100))
+	default:
+		footer = theme.SubtleStyle.Render(fmt.Sprintf("/: search  ↑/↓: scroll  Esc: return  q: quit  %.0f%%", m.helpViewport.ScrollPercent()*100))
+	}
+	sb.WriteString(footer)
+
+	return sb.String()
 }
 
 func (m Model) renderPostDetail() string {
