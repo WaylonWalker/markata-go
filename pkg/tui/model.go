@@ -47,6 +47,15 @@ type FilterContext struct {
 	Name string // The tag name or feed name
 }
 
+// footerButton represents a clickable button in the footer
+type footerButton struct {
+	label  string
+	key    string
+	startX int
+	endX   int
+	action func(*Model) (tea.Model, tea.Cmd)
+}
+
 // Model is the main Bubble Tea model
 type Model struct {
 	app          *services.App
@@ -81,6 +90,11 @@ type Model struct {
 
 	// Drill-down filter state
 	activeFilter *FilterContext // Active tag/feed filter for drill-down navigation
+
+	// Footer button tracking for mouse clicks
+	footerButtons []footerButton
+	mouseX        int // Current mouse X position
+	mouseY        int // Current mouse Y position
 }
 
 // Messages
@@ -482,6 +496,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleMouse handles mouse events
 func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	// Track mouse position for hover effects
+	m.mouseX = msg.X
+	m.mouseY = msg.Y
+
 	// Only handle mouse in normal mode
 	if m.mode != ModeNormal {
 		return m, nil
@@ -504,6 +522,11 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			return m.handleMouseNavigation(false)
 
 		case tea.MouseButtonLeft:
+			// Check if click is on footer button
+			if cmd := m.handleFooterClick(msg.X, msg.Y); cmd != nil {
+				return m, cmd
+			}
+
 			// Click to select (same as Enter key)
 			if m.view == ViewPostDetail {
 				// In detail view, clicking does nothing (could implement back navigation)
@@ -518,6 +541,32 @@ func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// handleFooterClick checks if a click occurred on a footer button and triggers the action
+func (m *Model) handleFooterClick(x, y int) tea.Cmd {
+	// Calculate footer row (it's at the bottom of the screen)
+	// Footer is the last line: height - 1 (0-indexed)
+	footerY := m.height - 1
+
+	// Check if click is on footer row
+	if y != footerY {
+		return nil
+	}
+
+	// Check each button to see if click is within its bounds
+	for _, btn := range m.footerButtons {
+		if x >= btn.startX && x <= btn.endX {
+			// Click is on this button, trigger its action
+			newModel, cmd := btn.action(m)
+			if model, ok := newModel.(Model); ok {
+				*m = model
+			}
+			return cmd
+		}
+	}
+
+	return nil
 }
 
 // handleMouseNavigation handles mouse wheel scrolling
@@ -1293,7 +1342,7 @@ func (m Model) renderLayout(content string) string {
 		header += " " + activeFilterStyle.Render(filterLabel)
 	}
 
-	// Status bar
+	// Status bar with clickable buttons
 	var statusBar string
 	switch m.mode {
 	case ModeFilter:
@@ -1307,15 +1356,121 @@ func (m Model) renderLayout(content string) string {
 			sortArrow = "↑"
 		}
 		sortIndicator := fmt.Sprintf("[%s%s]", sortArrow, m.sortBy)
-		// Show Esc hint when filter is active
-		if m.activeFilter != nil && m.view == ViewPosts {
-			statusBar = m.theme.SubtleStyle.Render(fmt.Sprintf("%s  j/k:move  s:sort  e:edit  Esc:clear filter  ?:help  q:quit", sortIndicator))
-		} else {
-			statusBar = m.theme.SubtleStyle.Render(fmt.Sprintf("%s  j/k:move  s:sort  e:edit  f:feeds  /:filter  ::cmd  ?:help  q:quit", sortIndicator))
-		}
+		statusBar = m.renderFooter(sortIndicator)
 	}
 
 	return fmt.Sprintf("%s\n\n%s\n\n%s", header, content, statusBar)
+}
+
+// renderFooter builds the footer with clickable buttons and tracks their positions
+func (m *Model) renderFooter(sortIndicator string) string {
+	// Reset footer buttons
+	m.footerButtons = []footerButton{}
+
+	// Track current position in footer
+	currentX := 0
+	var footerParts []string
+
+	// Helper function to add a clickable button
+	addButton := func(label, key string, action func(*Model) (tea.Model, tea.Cmd)) {
+		buttonText := key + ":" + label
+		startX := currentX
+		endX := currentX + len(buttonText) - 1
+
+		// Create hover style - underline and brighten when mouse is over
+		isHover := m.mouseY == m.height-1 && m.mouseX >= startX && m.mouseX <= endX
+		var styledText string
+		if isHover {
+			styledText = lipgloss.NewStyle().
+				Foreground(m.theme.Colors.Header).
+				Underline(true).
+				Render(buttonText)
+		} else {
+			styledText = m.theme.SubtleStyle.Render(buttonText)
+		}
+
+		footerParts = append(footerParts, styledText)
+		m.footerButtons = append(m.footerButtons, footerButton{
+			label:  label,
+			key:    key,
+			startX: startX,
+			endX:   endX,
+			action: action,
+		})
+
+		// Update position (add length + 2 spaces for separator)
+		currentX = endX + 3
+	}
+
+	// Add sort indicator (non-clickable)
+	footerParts = append(footerParts, m.theme.SubtleStyle.Render(sortIndicator))
+	currentX += len(sortIndicator) + 2
+
+	// Determine which buttons to show based on context
+	if m.activeFilter != nil && m.view == ViewPosts {
+		// When filter is active, show different set of buttons
+		addButton("help", "?", func(model *Model) (tea.Model, tea.Cmd) {
+			model.view = ViewHelp
+			return *model, nil
+		})
+
+		addButton("sort", "s", func(model *Model) (tea.Model, tea.Cmd) {
+			return model.handleSortKey()
+		})
+
+		addButton("edit", "e", func(model *Model) (tea.Model, tea.Cmd) {
+			return model.handleEditKey()
+		})
+
+		addButton("clear filter", "Esc", func(model *Model) (tea.Model, tea.Cmd) {
+			model.activeFilter = nil
+			model.cursor = 0
+			model.postsTable.SetCursor(0)
+			return *model, model.loadPosts()
+		})
+
+		addButton("quit", "q", func(model *Model) (tea.Model, tea.Cmd) {
+			return model.handleQuitKey()
+		})
+	} else {
+		// Normal footer buttons
+		addButton("help", "?", func(model *Model) (tea.Model, tea.Cmd) {
+			model.view = ViewHelp
+			return *model, nil
+		})
+
+		addButton("sort", "s", func(model *Model) (tea.Model, tea.Cmd) {
+			return model.handleSortKey()
+		})
+
+		addButton("edit", "e", func(model *Model) (tea.Model, tea.Cmd) {
+			return model.handleEditKey()
+		})
+
+		addButton("feeds", "f", func(model *Model) (tea.Model, tea.Cmd) {
+			model.view = ViewFeeds
+			model.feedCursor = 0
+			return *model, model.loadFeeds()
+		})
+
+		addButton("filter", "/", func(model *Model) (tea.Model, tea.Cmd) {
+			model.mode = ModeFilter
+			model.filterInput.Focus()
+			return *model, textinput.Blink
+		})
+
+		addButton("cmd", ":", func(model *Model) (tea.Model, tea.Cmd) {
+			model.mode = ModeCommand
+			model.cmdInput.Focus()
+			return *model, textinput.Blink
+		})
+
+		addButton("quit", "q", func(model *Model) (tea.Model, tea.Cmd) {
+			return model.handleQuitKey()
+		})
+	}
+
+	return strings.Join(footerParts, "  ")
 }
 
 func (m Model) renderPosts() string {
