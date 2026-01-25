@@ -114,6 +114,11 @@ type ExternalFeedConfig struct {
 	// If not set, a handle is auto-generated from the domain
 	Handle string `json:"handle" yaml:"handle" toml:"handle"`
 
+	// Aliases are alternative names that resolve to the canonical Handle.
+	// For example, aliases = ["dave", "david"] allows @dave or @david to
+	// resolve to the same person as @daverupert. Case-insensitive.
+	Aliases []string `json:"aliases,omitempty" yaml:"aliases,omitempty" toml:"aliases,omitempty"`
+
 	// MaxEntries overrides the global max_entries_per_feed for this feed
 	MaxEntries *int `json:"max_entries,omitempty" yaml:"max_entries,omitempty" toml:"max_entries,omitempty"`
 }
