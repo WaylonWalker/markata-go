@@ -557,6 +557,127 @@ When a feed fails to fetch, the plugin:
 {% endfor %}
 ```
 
+## Screenshot Service Integration
+
+Many RSS feed entries don't include featured images. The `fallback_image_service` option lets you automatically generate preview images using screenshot services.
+
+### Configuration
+
+Set a URL template with `{url}` as a placeholder for the entry URL:
+
+```toml
+[blogroll]
+enabled = true
+fallback_image_service = "https://shots.so/s/{url}"
+```
+
+When an entry doesn't have an `image_url`, markata-go will:
+1. URL-encode the entry's URL
+2. Replace `{url}` in the template with the encoded URL
+3. Use the resulting URL as the fallback image
+
+### Popular Screenshot Services
+
+#### shots.so (Free)
+
+[shots.so](https://shots.so/) provides free website screenshots with no API key required:
+
+```toml
+fallback_image_service = "https://shots.so/s/{url}"
+```
+
+Features:
+- No registration or API key needed
+- Automatic caching of screenshots
+- Customizable viewport and device type
+
+For custom parameters:
+
+```toml
+fallback_image_service = "https://shots.so/s/{url}?width=1200&height=630"
+```
+
+#### API Flash
+
+[API Flash](https://apiflash.com/) offers high-quality screenshots with customization:
+
+```toml
+fallback_image_service = "https://api.apiflash.com/v1/urltoimage?access_key=YOUR_ACCESS_KEY&url={url}&width=1200&height=630"
+```
+
+Features:
+- Requires API key (free tier available)
+- Extensive customization options
+- Reliable caching and CDN delivery
+
+Get your access key from [apiflash.com](https://apiflash.com/).
+
+#### ScreenshotOne
+
+[ScreenshotOne](https://screenshotone.com/) provides API-based screenshot generation:
+
+```toml
+fallback_image_service = "https://api.screenshotone.com/take?access_key=YOUR_ACCESS_KEY&url={url}&viewport_width=1200&viewport_height=630&image_quality=80"
+```
+
+Features:
+- API key required (free tier available)
+- Advanced rendering options
+- GDPR compliant
+
+Get your access key from [screenshotone.com](https://screenshotone.com/).
+
+### URL Encoding
+
+The `{url}` placeholder is automatically URL-encoded, so you don't need to manually encode it. For example:
+
+```
+Entry URL: https://example.com/blog/post?id=123&ref=home
+Encoded:   https%3A%2F%2Fexample.com%2Fblog%2Fpost%3Fid%3D123%26ref%3Dhome
+Result:    https://shots.so/s/https%3A%2F%2Fexample.com%2Fblog%2Fpost%3Fid%3D123%26ref%3Dhome
+```
+
+### Rate Limits and Caching
+
+**Important considerations:**
+
+1. **Rate Limits** - Most screenshot services have rate limits on their free tiers. If you have many feeds with many entries, you may hit these limits during builds.
+
+2. **Build Time** - Screenshot services generate images on-demand, which can slow down your first build. Subsequent builds are faster as services cache screenshots.
+
+3. **Service Caching** - Screenshots are typically cached by the service, so the same URL will return quickly on subsequent requests.
+
+4. **Local Caching** - Consider the blogroll plugin's `cache_duration` setting to reduce build frequency and screenshot service requests:
+
+```toml
+[blogroll]
+cache_duration = "6h"    # Reduces rebuild frequency
+fallback_image_service = "https://shots.so/s/{url}"
+```
+
+5. **Cost Considerations** - For high-traffic sites or large blogrolls, consider:
+   - Using services with generous free tiers (like shots.so)
+   - Limiting `max_entries_per_feed` to reduce screenshot requests
+   - Increasing `cache_duration` to minimize rebuilds
+   - Upgrading to paid tiers for higher rate limits
+
+### Example Configuration
+
+```toml
+[blogroll]
+enabled = true
+cache_duration = "6h"              # Cache for 6 hours to reduce rebuilds
+max_entries_per_feed = 20          # Limit entries to reduce screenshot requests
+fallback_image_service = "https://shots.so/s/{url}?width=1200&height=630"
+
+[[blogroll.feeds]]
+url = "https://simonwillison.net/atom/everything/"
+title = "Simon Willison"
+category = "Technology"
+```
+
+With this configuration, entries without featured images will automatically get preview screenshots from shots.so.
+
 ## Performance Tips
 
 ### Optimize Build Times
@@ -601,6 +722,9 @@ items_per_page = 50
 orphan_threshold = 3
 pagination_type = "manual"    # "manual", "htmx", or "js"
 
+# Screenshot service for fallback images
+fallback_image_service = ""   # Optional URL template for entries without images
+
 # Custom templates
 [blogroll.templates]
 blogroll = "blogroll.html"
@@ -632,6 +756,7 @@ max_entries = 50              # Override global max_entries_per_feed
 | `items_per_page` | int | `50` | Entries per reader page |
 | `orphan_threshold` | int | `3` | Min entries for separate page |
 | `pagination_type` | string | `"manual"` | Pagination style |
+| `fallback_image_service` | string | `""` | URL template for fallback images |
 | `feeds` | []Feed | `[]` | List of feeds |
 | `templates.blogroll` | string | `"blogroll.html"` | Blogroll template |
 | `templates.reader` | string | `"reader.html"` | Reader template |
