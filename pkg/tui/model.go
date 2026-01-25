@@ -116,6 +116,8 @@ var sortOptions = []sortOption{
 	{"Title", "title"},
 	{"Word Count", "words"},
 	{"Path", "path"},
+	{"Reading Time", "reading_time"},
+	{"Tags", "tags"},
 }
 
 // NewModel creates a new TUI model with default theme.
@@ -609,6 +611,20 @@ func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Sort):
 		return m.handleSortKey()
+
+	// Capital letter hotkeys for sorting (k9s-inspired)
+	case msg.String() == "T":
+		return m.handleSortHotkey("title")
+	case msg.String() == "D":
+		return m.handleSortHotkey("date")
+	case msg.String() == "W":
+		return m.handleSortHotkey("words")
+	case msg.String() == "P":
+		return m.handleSortHotkey("path")
+	case msg.String() == "R":
+		return m.handleSortHotkey("reading_time")
+	case msg.String() == "G":
+		return m.handleSortHotkey("tags")
 	}
 
 	return m, nil
@@ -655,6 +671,32 @@ func (m Model) handleSortKey() (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+// handleSortHotkey handles capital letter hotkeys for direct column sorting (k9s-inspired)
+func (m Model) handleSortHotkey(field string) (tea.Model, tea.Cmd) {
+	// Only allow sorting in posts view in normal mode
+	if m.view != ViewPosts || m.mode != ModeNormal {
+		return m, nil
+	}
+
+	// If already sorting by this field, toggle the order
+	if m.sortBy == field {
+		if m.sortOrder == services.SortAsc {
+			m.sortOrder = services.SortDesc
+		} else {
+			m.sortOrder = services.SortAsc
+		}
+	} else {
+		// New field: set to descending by default
+		m.sortBy = field
+		m.sortOrder = services.SortDesc
+	}
+
+	// Reset cursor and reload posts
+	m.cursor = 0
+	m.postsTable.SetCursor(0)
+	return m, m.loadPosts()
 }
 
 func (m Model) handleNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -882,7 +924,15 @@ Drill-Down Navigation:
 
 Actions:
   e          Edit selected post in $EDITOR
-  s          Sort menu (Date, Title, Word Count, Path)
+  s          Sort menu (Date, Title, Word Count, Path, Reading Time, Tags)
+
+Quick Sort (k9s-inspired - Posts view only):
+  T          Sort by Title (toggle asc/desc)
+  D          Sort by Date (toggle asc/desc)
+  W          Sort by Word count (toggle asc/desc)
+  P          Sort by Path (toggle asc/desc)
+  R          Sort by Reading time (toggle asc/desc)
+  G          Sort by taGs (toggle asc/desc)
 
 Modes:
   /          Filter mode (filter posts with expressions)
