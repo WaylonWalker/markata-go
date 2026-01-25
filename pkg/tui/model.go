@@ -11,7 +11,9 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -64,7 +66,8 @@ type Model struct {
 	width        int
 	height       int
 	err          error
-	selectedPost *models.Post // The post being viewed in detail
+	selectedPost *models.Post   // The post being viewed in detail
+	postViewport viewport.Model // Viewport for scrolling post detail content
 
 	// Sort state
 	sortBy       string             // "date", "title", "words", "path"
@@ -262,6 +265,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Repopulate tags table if we have tags
 		if len(m.tags) > 0 {
 			m.tagsTable.SetRows(m.tagsToRows())
+		}
+		// Update viewport dimensions if in post detail view
+		if m.view == ViewPostDetail && m.selectedPost != nil {
+			width := msg.Width
+			if width < 40 {
+				width = 80
+			}
+			if width > 100 {
+				width = 100
+			}
+			viewportHeight := msg.Height - 8
+			if viewportHeight < 10 {
+				viewportHeight = 10
+			}
+			m.postViewport.Width = width - 4
+			m.postViewport.Height = viewportHeight
 		}
 		return m, nil
 
@@ -723,6 +742,108 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 			m.selectedPost = m.posts[m.cursor]
 			m.previousView = m.view
 			m.view = ViewPostDetail
+
+			// Initialize viewport for post detail
+			p := m.selectedPost
+
+			// Calculate available width and height for viewport
+			width := m.width
+			if width < 40 {
+				width = 80
+			}
+			if width > 100 {
+				width = 100
+			}
+
+			// Height for viewport (leave room for header and status bar)
+			viewportHeight := m.height - 8
+			if viewportHeight < 10 {
+				viewportHeight = 10
+			}
+
+			// Build viewport content (same as in renderPostDetail)
+			var metadata strings.Builder
+			theme := m.getTheme()
+			title := "(untitled)"
+			if p.Title != nil && *p.Title != "" {
+				title = *p.Title
+			}
+			metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Title:"), title))
+			metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Path:"), p.Path))
+
+			dateStr := "(not set)"
+			if p.Date != nil {
+				dateStr = p.Date.Format("2006-01-02")
+			}
+			metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Date:"), dateStr))
+
+			publishedStr := "false"
+			if p.Published {
+				publishedStr = "true"
+			}
+			metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Published:"), publishedStr))
+
+			tagsStr := "(none)"
+			if len(p.Tags) > 0 {
+				tagsStr = strings.Join(p.Tags, ", ")
+			}
+			metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Tags:"), tagsStr))
+
+			wordCount := 0
+			if wc, ok := p.Extra["word_count"].(int); ok {
+				wordCount = wc
+			} else {
+				wordCount = countWords(p.Content)
+			}
+			metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Words:"), formatNumber(wordCount)))
+
+			if rt, ok := p.Extra["reading_time"].(int); ok {
+				metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Read Time:"), formatReadingTime(rt)))
+			}
+
+			if cc, ok := p.Extra["char_count"].(int); ok {
+				metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Chars:"), formatNumber(cc)))
+			}
+
+			if p.Description != nil && *p.Description != "" {
+				desc := *p.Description
+				contentWidth := width - 4
+				if len(desc) > contentWidth-15 {
+					desc = desc[:contentWidth-18] + "..."
+				}
+				metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Description:"), desc))
+			}
+
+			contentWidth := width - 4
+			separator := strings.Repeat("─", contentWidth)
+
+			// Render markdown content
+			var renderedContent string
+			if p.Content == "" {
+				renderedContent = "  (empty)"
+			} else {
+				renderer, err := glamour.NewTermRenderer(
+					glamour.WithAutoStyle(),
+					glamour.WithWordWrap(contentWidth-4),
+				)
+				if err != nil {
+					renderedContent = "  " + strings.ReplaceAll(p.Content, "\n", "\n  ")
+				} else {
+					rendered, err := renderer.Render(p.Content)
+					if err != nil {
+						renderedContent = "  " + strings.ReplaceAll(p.Content, "\n", "\n  ")
+					} else {
+						renderedContent = "  " + strings.ReplaceAll(strings.TrimRight(rendered, "\n"), "\n", "\n  ")
+					}
+				}
+			}
+
+			viewportContent := metadata.String() + "\n  " + separator + "\n\n  " + theme.DetailLabelStyle.Render("Content:") + "\n\n" + renderedContent
+
+			// Initialize viewport
+			m.postViewport = viewport.New(width-4, viewportHeight)
+			m.postViewport.SetContent(viewportContent)
+			m.postViewport.YPosition = 0
 		}
 	case ViewPostDetail:
 		// Already in detail view, Enter does nothing
@@ -784,6 +905,8 @@ func (m Model) handleEscape() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleDetailViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
 	switch {
 	case key.Matches(msg, keyMap.Quit):
 		return m, tea.Quit
@@ -801,9 +924,16 @@ func (m Model) handleDetailViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// This will be implemented in issue #221
 		m.err = fmt.Errorf("edit feature coming soon (see issue #221)")
 		return m, nil
+
+	case key.Matches(msg, keyMap.Up), key.Matches(msg, keyMap.Down):
+		// Handle viewport scrolling
+		m.postViewport, cmd = m.postViewport.Update(msg)
+		return m, cmd
 	}
 
-	return m, nil
+	// Also handle page up/down, mouse wheel, etc through viewport
+	m.postViewport, cmd = m.postViewport.Update(msg)
+	return m, cmd
 }
 
 func (m Model) handleSortMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -936,6 +1066,14 @@ func (m Model) openInEditor() tea.Cmd {
 	return tea.ExecProcess(c, func(err error) tea.Msg {
 		return editorFinishedMsg{err}
 	})
+}
+
+// getTheme returns the model's theme, or a default theme if nil.
+func (m Model) getTheme() *Theme {
+	if m.theme == nil {
+		return DefaultTheme()
+	}
+	return m.theme
 }
 
 // View renders the UI
@@ -1215,7 +1353,7 @@ func (m Model) renderPostDetail() string {
 		return "No post selected."
 	}
 
-	p := m.selectedPost
+	theme := m.getTheme()
 
 	// Calculate available width
 	width := m.width
@@ -1225,99 +1363,20 @@ func (m Model) renderPostDetail() string {
 	if width > 100 {
 		width = 100 // Max width for readability
 	}
-	contentWidth := width - 4 // Account for border padding
 
-	// Build the metadata section
-	var metadata strings.Builder
-
-	// Title
-	title := "(untitled)"
-	if p.Title != nil && *p.Title != "" {
-		title = *p.Title
-	}
-	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Title:"), title))
-
-	// Path
-	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Path:"), p.Path))
-
-	// Date
-	dateStr := "(not set)"
-	if p.Date != nil {
-		dateStr = p.Date.Format("2006-01-02")
-	}
-	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Date:"), dateStr))
-
-	// Published
-	publishedStr := "false"
-	if p.Published {
-		publishedStr = "true"
-	}
-	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Published:"), publishedStr))
-
-	// Tags
-	tagsStr := "(none)"
-	if len(p.Tags) > 0 {
-		tagsStr = strings.Join(p.Tags, ", ")
-	}
-	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Tags:"), tagsStr))
-
-	// Word count (from stats plugin or fallback to counting)
-	wordCount := 0
-	if wc, ok := p.Extra["word_count"].(int); ok {
-		wordCount = wc
-	} else {
-		wordCount = countWords(p.Content)
-	}
-	metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Words:"), formatNumber(wordCount)))
-
-	// Reading time (from stats plugin)
-	if rt, ok := p.Extra["reading_time"].(int); ok {
-		metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Read Time:"), formatReadingTime(rt)))
-	}
-
-	// Character count (from stats plugin)
-	if cc, ok := p.Extra["char_count"].(int); ok {
-		metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Chars:"), formatNumber(cc)))
-	}
-
-	// Description
-	if p.Description != nil && *p.Description != "" {
-		desc := *p.Description
-		if len(desc) > contentWidth-15 {
-			desc = desc[:contentWidth-18] + "..."
-		}
-		metadata.WriteString(fmt.Sprintf("  %s  %s\n", m.theme.DetailLabelStyle.Render("Description:"), desc))
-	}
-
-	// Separator
-	separator := strings.Repeat("─", contentWidth)
-
-	// Content preview
-	var preview strings.Builder
-	preview.WriteString("\n  " + m.theme.DetailLabelStyle.Render("Content Preview:") + "\n")
-
-	// Get content preview (first ~500 chars or 15 lines)
-	previewContent := getContentPreview(p.Content, 500, 12, contentWidth-4)
-	for _, line := range strings.Split(previewContent, "\n") {
-		preview.WriteString("  " + line + "\n")
-	}
-
-	// Build the full content
-	content := metadata.String() + "\n  " + separator + "\n" + preview.String()
-
-	// Create the detail box
-	detailBox := m.theme.DetailBoxStyle.
+	// Status bar with scroll percentage
+	statusBar := theme.DetailStatusStyle.
 		Width(width).
-		Render(content)
-
-	// Status bar
-	statusBar := m.theme.DetailStatusStyle.
-		Width(width).
-		Render("  [e]dit  [Esc] back  [q]uit")
+		Render(fmt.Sprintf("  [↑/↓] scroll  [e]dit  [Esc] back  [q]uit  %.0f%%", m.postViewport.ScrollPercent()*100))
 
 	// Header
-	header := m.theme.HeaderStyle.Render("markata-go")
-	header += " " + m.theme.SubtleStyle.Render("[post_detail]")
+	header := theme.HeaderStyle.Render("markata-go")
+	header += " " + theme.SubtleStyle.Render("[post_detail]")
+
+	// Create detail box with viewport content
+	detailBox := theme.DetailBoxStyle.
+		Width(width).
+		Render(m.postViewport.View())
 
 	return header + "\n\n" + detailBox + "\n" + statusBar
 }
