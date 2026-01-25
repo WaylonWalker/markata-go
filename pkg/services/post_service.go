@@ -182,6 +182,10 @@ func sortPosts(posts []*models.Post, field string, order SortOrder) {
 			cmp = strings.Compare(posts[i].Path, posts[j].Path)
 		case "words":
 			cmp = compareWordCounts(posts[i], posts[j])
+		case "reading_time":
+			cmp = compareReadingTimes(posts[i], posts[j])
+		case "tags":
+			cmp = compareTags(posts[i], posts[j])
 		default:
 			return false
 		}
@@ -246,6 +250,41 @@ func getWordCount(p *models.Post) int {
 		return len(strings.Fields(p.Content))
 	}
 	return 0
+}
+
+func compareReadingTimes(a, b *models.Post) int {
+	rtA := getReadingTime(a)
+	rtB := getReadingTime(b)
+	if rtA < rtB {
+		return -1
+	}
+	if rtA > rtB {
+		return 1
+	}
+	return 0
+}
+
+func getReadingTime(p *models.Post) int {
+	if p == nil || p.Extra == nil {
+		return 0
+	}
+	if rt, ok := p.Extra["reading_time"].(int); ok {
+		return rt
+	}
+	return 0
+}
+
+func compareTags(a, b *models.Post) int {
+	// Compare by first tag alphabetically, then by number of tags
+	tagsA := ""
+	if len(a.Tags) > 0 {
+		tagsA = strings.Join(a.Tags, ", ")
+	}
+	tagsB := ""
+	if len(b.Tags) > 0 {
+		tagsB = strings.Join(b.Tags, ", ")
+	}
+	return strings.Compare(strings.ToLower(tagsA), strings.ToLower(tagsB))
 }
 
 func matchesSearch(p *models.Post, query string, _ SearchOptions) bool {
