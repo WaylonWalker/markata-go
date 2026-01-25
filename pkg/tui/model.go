@@ -68,6 +68,7 @@ type Model struct {
 	err          error
 	selectedPost *models.Post   // The post being viewed in detail
 	postViewport viewport.Model // Viewport for scrolling post detail content
+	helpViewport viewport.Model // Viewport for scrolling help content
 
 	// Sort state
 	sortBy       string             // "date", "title", "words", "path"
@@ -247,42 +248,61 @@ func (m Model) Init() tea.Cmd {
 	return m.loadPosts()
 }
 
+// handleWindowResize handles terminal window resize events.
+func (m Model) handleWindowResize(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
+	m.width = msg.Width
+	m.height = msg.Height
+
+	// Update table dimensions with theme
+	m.postsTable = createPostsTableWithTheme(msg.Width, m.theme)
+	m.postsTable.SetHeight(msg.Height - 10) // Leave room for header/footer
+	m.tagsTable = createTagsTableWithTheme(msg.Width, m.theme)
+	m.tagsTable.SetHeight(msg.Height - 10)
+
+	// Repopulate table if we have posts
+	if len(m.posts) > 0 {
+		m.postsTable.SetRows(m.postsToRows())
+	}
+	// Repopulate tags table if we have tags
+	if len(m.tags) > 0 {
+		m.tagsTable.SetRows(m.tagsToRows())
+	}
+
+	// Update viewport dimensions based on current view
+	m.updateViewportDimensions(msg.Width, msg.Height)
+
+	return m, nil
+}
+
+// updateViewportDimensions updates the dimensions of the active viewport.
+func (m *Model) updateViewportDimensions(w, h int) {
+	width := w
+	if width < 40 {
+		width = 80
+	}
+	if width > 100 {
+		width = 100
+	}
+	viewportHeight := h - 8
+	if viewportHeight < 10 {
+		viewportHeight = 10
+	}
+
+	if m.view == ViewPostDetail && m.selectedPost != nil {
+		m.postViewport.Width = width - 4
+		m.postViewport.Height = viewportHeight
+	}
+	if m.view == ViewHelp {
+		m.helpViewport.Width = width - 4
+		m.helpViewport.Height = viewportHeight
+	}
+}
+
 // Update handles messages
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		// Update table dimensions with theme
-		m.postsTable = createPostsTableWithTheme(msg.Width, m.theme)
-		m.postsTable.SetHeight(msg.Height - 10) // Leave room for header/footer
-		m.tagsTable = createTagsTableWithTheme(msg.Width, m.theme)
-		m.tagsTable.SetHeight(msg.Height - 10)
-		// Repopulate table if we have posts
-		if len(m.posts) > 0 {
-			m.postsTable.SetRows(m.postsToRows())
-		}
-		// Repopulate tags table if we have tags
-		if len(m.tags) > 0 {
-			m.tagsTable.SetRows(m.tagsToRows())
-		}
-		// Update viewport dimensions if in post detail view
-		if m.view == ViewPostDetail && m.selectedPost != nil {
-			width := msg.Width
-			if width < 40 {
-				width = 80
-			}
-			if width > 100 {
-				width = 100
-			}
-			viewportHeight := msg.Height - 8
-			if viewportHeight < 10 {
-				viewportHeight = 10
-			}
-			m.postViewport.Width = width - 4
-			m.postViewport.Height = viewportHeight
-		}
-		return m, nil
+		return m.handleWindowResize(msg)
 
 	case tea.KeyMsg:
 		return m.handleKey(msg)
@@ -451,6 +471,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDetailViewKey(msg)
 	}
 
+	// Handle help view keys separately (for scrolling)
+	if m.view == ViewHelp {
+		return m.handleHelpViewKey(msg)
+	}
+
 	// Normal mode key handling
 	return m.handleNormalModeKey(msg)
 }
@@ -557,6 +582,7 @@ func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keyMap.Help):
 		m.view = ViewHelp
+		m.initializeHelpViewport()
 
 	case key.Matches(msg, keyMap.Posts):
 		return m.handlePostsKey()
@@ -821,6 +847,78 @@ func (m *Model) initializePostViewport() {
 	m.postViewport.YPosition = 0
 }
 
+// initializeHelpViewport sets up the viewport for viewing help content.
+func (m *Model) initializeHelpViewport() {
+	// Calculate available width and height for viewport
+	width := m.calculateViewportWidth()
+	viewportHeight := m.calculateViewportHeight()
+
+	// Build help content
+	helpContent := m.buildHelpContent()
+
+	// Initialize viewport
+	m.helpViewport = viewport.New(width-4, viewportHeight)
+	m.helpViewport.SetContent(helpContent)
+	m.helpViewport.YPosition = 0
+}
+
+// buildHelpContent constructs the help text content.
+func (m Model) buildHelpContent() string {
+	return `Navigation:
+  j / ↓      Move down
+  k / ↑      Move up
+  Enter      Select / view details
+  Esc        Cancel / go back / clear filter
+
+Views:
+  p          Posts view
+  t          Tags view
+  f          Feeds view
+
+Drill-Down Navigation:
+  Enter      In tags view: show posts with selected tag
+             In feeds view: show posts in selected feed
+  Esc        Clear active filter, return to all posts
+
+Actions:
+  e          Edit selected post in $EDITOR
+  s          Sort menu (Date, Title, Word Count, Path)
+
+Modes:
+  /          Filter mode (filter posts with expressions)
+  :          Command mode
+
+Filter Syntax:
+  Press / to enter filter mode. Filter expressions support:
+
+  Comparison:    published == True, date >= '2024-01-01'
+  Membership:    'python' in tags, 'draft' not in tags
+  Boolean:       published == True and featured == True
+                 published == False or 'wip' in tags
+  Strings:       title == 'My Post', slug != 'about'
+
+  Fields: title, slug, date, published, tags, description
+
+  Examples:
+    published == True
+    'python' in tags
+    date >= '2024-01-01' and published == True
+    'tutorial' in tags and published == True
+
+Sort Menu:
+  j/k/↑/↓    Navigate sort options
+  a          Set ascending order
+  d          Set descending order
+  Enter      Apply sort
+  Esc        Cancel
+
+Commands:
+  :posts     Show posts
+  :tags      Show tags
+  :feeds     Show feeds
+  :quit      Exit`
+}
+
 // calculateViewportWidth returns the appropriate width for the viewport.
 func (m Model) calculateViewportWidth() int {
 	width := m.width
@@ -991,6 +1089,29 @@ func (m Model) handleDetailViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// handleHelpViewKey handles key events in the help view.
+func (m Model) handleHelpViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch {
+	case key.Matches(msg, keyMap.Quit):
+		return m, tea.Quit
+
+	case key.Matches(msg, keyMap.Escape), key.Matches(msg, keyMap.Enter):
+		m.view = ViewPosts
+		return m, nil
+
+	case key.Matches(msg, keyMap.Up), key.Matches(msg, keyMap.Down):
+		// Handle viewport scrolling
+		m.helpViewport, cmd = m.helpViewport.Update(msg)
+		return m, cmd
+	}
+
+	// Also handle page up/down, mouse wheel, etc through viewport
+	m.helpViewport, cmd = m.helpViewport.Update(msg)
+	return m, cmd
+}
+
 func (m Model) handleSortMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "j", "down":
@@ -1146,7 +1267,7 @@ func (m Model) View() string {
 	case ViewFeeds:
 		content = m.renderFeeds()
 	case ViewHelp:
-		content = m.renderHelp()
+		return m.renderHelp()
 	case ViewPostDetail:
 		return m.renderPostDetail()
 	}
@@ -1344,63 +1465,32 @@ func calculateFeedStats(posts []*models.Post) (totalWords, totalReadingTime int)
 }
 
 func (m Model) renderHelp() string {
-	return `Help
+	theme := m.getTheme()
 
-Navigation:
-  j / ↓      Move down
-  k / ↑      Move up
-  Enter      Select / view details
-  Esc        Cancel / go back / clear filter
+	// Calculate available width
+	width := m.width
+	if width < 40 {
+		width = 80 // Default minimum
+	}
+	if width > 100 {
+		width = 100 // Max width for readability
+	}
 
-Views:
-  p          Posts view
-  t          Tags view
-  f          Feeds view
+	// Status bar with scroll percentage
+	statusBar := theme.DetailStatusStyle.
+		Width(width).
+		Render(fmt.Sprintf("  [↑/↓] scroll  [Esc] back  [q]uit  %.0f%%", m.helpViewport.ScrollPercent()*100))
 
-Drill-Down Navigation:
-  Enter      In tags view: show posts with selected tag
-             In feeds view: show posts in selected feed
-  Esc        Clear active filter, return to all posts
+	// Header
+	header := theme.HeaderStyle.Render("markata-go")
+	header += " " + theme.SubtleStyle.Render("[help]")
 
-Actions:
-  e          Edit selected post in $EDITOR
-  s          Sort menu (Date, Title, Word Count, Path)
+	// Create help box with viewport content
+	helpBox := theme.DetailBoxStyle.
+		Width(width).
+		Render(m.helpViewport.View())
 
-Modes:
-  /          Filter mode (filter posts with expressions)
-  :          Command mode
-
-Filter Syntax:
-  Press / to enter filter mode. Filter expressions support:
-
-  Comparison:    published == True, date >= '2024-01-01'
-  Membership:    'python' in tags, 'draft' not in tags
-  Boolean:       published == True and featured == True
-                 published == False or 'wip' in tags
-  Strings:       title == 'My Post', slug != 'about'
-
-  Fields: title, slug, date, published, tags, description
-
-  Examples:
-    published == True
-    'python' in tags
-    date >= '2024-01-01' and published == True
-    'tutorial' in tags and published == True
-
-Sort Menu:
-  j/k/↑/↓    Navigate sort options
-  a          Set ascending order
-  d          Set descending order
-  Enter      Apply sort
-  Esc        Cancel
-
-Commands:
-  :posts     Show posts
-  :tags      Show tags
-  :feeds     Show feeds
-  :quit      Exit
-
-Press Esc to return.`
+	return header + "\n\n" + helpBox + "\n" + statusBar
 }
 
 func (m Model) renderPostDetail() string {
