@@ -49,6 +49,16 @@ type FilterContext struct {
 	Name string // The tag name or feed name
 }
 
+// sortHotkeyMap maps capital letter keys to sort fields (k9s-inspired)
+var sortHotkeyMap = map[string]string{
+	"T": "title",
+	"D": "date",
+	"W": "words",
+	"P": "path",
+	"R": "reading_time",
+	"G": "tags",
+}
+
 // footerButton represents a clickable button in the footer
 type footerButton struct {
 	label  string
@@ -815,22 +825,14 @@ func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.Sort):
 		return m.handleSortKey()
 
-	// Capital letter hotkeys for sorting (k9s-inspired)
-	case msg.String() == "T":
-		return m.handleSortHotkey("title")
-	case msg.String() == "D":
-		return m.handleSortHotkey("date")
-	case msg.String() == "W":
-		return m.handleSortHotkey("words")
-	case msg.String() == "P":
-		return m.handleSortHotkey("path")
-	case msg.String() == "R":
-		return m.handleSortHotkey("reading_time")
-	case msg.String() == "G":
-		return m.handleSortHotkey("tags")
-
 	case key.Matches(msg, keyMap.Refresh):
 		return m.handleRefreshKey()
+
+	default:
+		// Handle capital letter hotkeys for sorting (k9s-inspired)
+		if field, ok := sortHotkeyMap[msg.String()]; ok {
+			return m.handleSortHotkey(field)
+		}
 	}
 
 	return m, nil
