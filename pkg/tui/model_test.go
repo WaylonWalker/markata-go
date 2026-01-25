@@ -210,8 +210,13 @@ func TestRenderPostDetail_WithPost(t *testing.T) {
 	}
 
 	// First, handle Enter to initialize the viewport and switch to detail view
-	newModel, _ := m.handleEnter()
-	m = newModel.(Model)
+	newModel, cmd := m.handleEnter()
+	var ok bool
+	m, ok = newModel.(Model)
+	if !ok {
+		t.Fatal("handleEnter returned unexpected type")
+	}
+	_ = cmd // Command not needed in this test
 
 	result := m.renderPostDetail()
 

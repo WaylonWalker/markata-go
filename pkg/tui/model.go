@@ -738,146 +738,201 @@ func (m Model) executeCommand(cmd string) (tea.Model, tea.Cmd) {
 func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 	switch m.view {
 	case ViewPosts:
-		if len(m.posts) > 0 && m.cursor < len(m.posts) {
-			m.selectedPost = m.posts[m.cursor]
-			m.previousView = m.view
-			m.view = ViewPostDetail
-
-			// Initialize viewport for post detail
-			p := m.selectedPost
-
-			// Calculate available width and height for viewport
-			width := m.width
-			if width < 40 {
-				width = 80
-			}
-			if width > 100 {
-				width = 100
-			}
-
-			// Height for viewport (leave room for header and status bar)
-			viewportHeight := m.height - 8
-			if viewportHeight < 10 {
-				viewportHeight = 10
-			}
-
-			// Build viewport content (same as in renderPostDetail)
-			var metadata strings.Builder
-			theme := m.getTheme()
-			title := "(untitled)"
-			if p.Title != nil && *p.Title != "" {
-				title = *p.Title
-			}
-			metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Title:"), title))
-			metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Path:"), p.Path))
-
-			dateStr := "(not set)"
-			if p.Date != nil {
-				dateStr = p.Date.Format("2006-01-02")
-			}
-			metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Date:"), dateStr))
-
-			publishedStr := "false"
-			if p.Published {
-				publishedStr = "true"
-			}
-			metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Published:"), publishedStr))
-
-			tagsStr := "(none)"
-			if len(p.Tags) > 0 {
-				tagsStr = strings.Join(p.Tags, ", ")
-			}
-			metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Tags:"), tagsStr))
-
-			wordCount := 0
-			if wc, ok := p.Extra["word_count"].(int); ok {
-				wordCount = wc
-			} else {
-				wordCount = countWords(p.Content)
-			}
-			metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Words:"), formatNumber(wordCount)))
-
-			if rt, ok := p.Extra["reading_time"].(int); ok {
-				metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Read Time:"), formatReadingTime(rt)))
-			}
-
-			if cc, ok := p.Extra["char_count"].(int); ok {
-				metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Chars:"), formatNumber(cc)))
-			}
-
-			if p.Description != nil && *p.Description != "" {
-				desc := *p.Description
-				contentWidth := width - 4
-				if len(desc) > contentWidth-15 {
-					desc = desc[:contentWidth-18] + "..."
-				}
-				metadata.WriteString(fmt.Sprintf("  %s  %s\n", theme.DetailLabelStyle.Render("Description:"), desc))
-			}
-
-			contentWidth := width - 4
-			separator := strings.Repeat("─", contentWidth)
-
-			// Render markdown content
-			var renderedContent string
-			if p.Content == "" {
-				renderedContent = "  (empty)"
-			} else {
-				renderer, err := glamour.NewTermRenderer(
-					glamour.WithAutoStyle(),
-					glamour.WithWordWrap(contentWidth-4),
-				)
-				if err != nil {
-					renderedContent = "  " + strings.ReplaceAll(p.Content, "\n", "\n  ")
-				} else {
-					rendered, err := renderer.Render(p.Content)
-					if err != nil {
-						renderedContent = "  " + strings.ReplaceAll(p.Content, "\n", "\n  ")
-					} else {
-						renderedContent = "  " + strings.ReplaceAll(strings.TrimRight(rendered, "\n"), "\n", "\n  ")
-					}
-				}
-			}
-
-			viewportContent := metadata.String() + "\n  " + separator + "\n\n  " + theme.DetailLabelStyle.Render("Content:") + "\n\n" + renderedContent
-
-			// Initialize viewport
-			m.postViewport = viewport.New(width-4, viewportHeight)
-			m.postViewport.SetContent(viewportContent)
-			m.postViewport.YPosition = 0
-		}
+		return m.handleEnterPostsList()
 	case ViewPostDetail:
 		// Already in detail view, Enter does nothing
 	case ViewHelp:
 		// Return to previous view
 		m.view = ViewPosts
 	case ViewTags:
-		// Drill down into selected tag - show posts with this tag
-		if len(m.tags) > 0 && m.cursor < len(m.tags) {
-			selectedTag := m.tags[m.cursor]
-			m.activeFilter = &FilterContext{
-				Type: "tag",
-				Name: selectedTag.Name,
-			}
-			m.view = ViewPosts
-			m.cursor = 0
-			m.postsTable.SetCursor(0)
-			return m, m.loadPostsForTag(selectedTag.Name)
-		}
+		return m.handleEnterTagsList()
 	case ViewFeeds:
-		// Drill down into selected feed - show posts in this feed
-		if len(m.feeds) > 0 && m.feedCursor < len(m.feeds) {
-			selectedFeed := m.feeds[m.feedCursor]
-			m.activeFilter = &FilterContext{
-				Type: "feed",
-				Name: selectedFeed.Name,
-			}
-			m.view = ViewPosts
-			m.cursor = 0
-			m.postsTable.SetCursor(0)
-			return m, m.loadPostsForFeed(selectedFeed.Name)
-		}
+		return m.handleEnterFeedsList()
 	}
 	return m, nil
+}
+
+// handleEnterPostsList handles the Enter key when viewing the posts list.
+func (m Model) handleEnterPostsList() (tea.Model, tea.Cmd) {
+	if len(m.posts) == 0 || m.cursor >= len(m.posts) {
+		return m, nil
+	}
+
+	m.selectedPost = m.posts[m.cursor]
+	m.previousView = m.view
+	m.view = ViewPostDetail
+
+	// Initialize viewport with post detail content
+	m.initializePostViewport()
+	return m, nil
+}
+
+// handleEnterTagsList handles the Enter key when viewing the tags list.
+func (m Model) handleEnterTagsList() (tea.Model, tea.Cmd) {
+	if len(m.tags) == 0 || m.cursor >= len(m.tags) {
+		return m, nil
+	}
+
+	selectedTag := m.tags[m.cursor]
+	m.activeFilter = &FilterContext{
+		Type: "tag",
+		Name: selectedTag.Name,
+	}
+	m.view = ViewPosts
+	m.cursor = 0
+	m.postsTable.SetCursor(0)
+	return m, m.loadPostsForTag(selectedTag.Name)
+}
+
+// handleEnterFeedsList handles the Enter key when viewing the feeds list.
+func (m Model) handleEnterFeedsList() (tea.Model, tea.Cmd) {
+	if len(m.feeds) == 0 || m.feedCursor >= len(m.feeds) {
+		return m, nil
+	}
+
+	selectedFeed := m.feeds[m.feedCursor]
+	m.activeFilter = &FilterContext{
+		Type: "feed",
+		Name: selectedFeed.Name,
+	}
+	m.view = ViewPosts
+	m.cursor = 0
+	m.postsTable.SetCursor(0)
+	return m, m.loadPostsForFeed(selectedFeed.Name)
+}
+
+// initializePostViewport sets up the viewport for viewing post details.
+func (m *Model) initializePostViewport() {
+	p := m.selectedPost
+	if p == nil {
+		return
+	}
+
+	// Calculate available width and height for viewport
+	width := m.calculateViewportWidth()
+	viewportHeight := m.calculateViewportHeight()
+
+	// Build viewport content
+	viewportContent := m.buildPostViewportContent(p, width)
+
+	// Initialize viewport
+	m.postViewport = viewport.New(width-4, viewportHeight)
+	m.postViewport.SetContent(viewportContent)
+	m.postViewport.YPosition = 0
+}
+
+// calculateViewportWidth returns the appropriate width for the viewport.
+func (m Model) calculateViewportWidth() int {
+	width := m.width
+	if width < 40 {
+		width = 80
+	}
+	if width > 100 {
+		width = 100
+	}
+	return width
+}
+
+// calculateViewportHeight returns the appropriate height for the viewport.
+func (m Model) calculateViewportHeight() int {
+	viewportHeight := m.height - 8
+	if viewportHeight < 10 {
+		viewportHeight = 10
+	}
+	return viewportHeight
+}
+
+// buildPostViewportContent constructs the content string for the post detail viewport.
+func (m Model) buildPostViewportContent(p *models.Post, width int) string {
+	var metadata strings.Builder
+	theme := m.getTheme()
+
+	// Build metadata section
+	m.appendPostMetadata(&metadata, p, theme, width)
+
+	// Add separator
+	contentWidth := width - 4
+	separator := strings.Repeat("─", contentWidth)
+
+	// Render markdown content
+	renderedContent := m.renderPostContent(p, contentWidth)
+
+	return metadata.String() + "\n  " + separator + "\n\n  " + theme.DetailLabelStyle.Render("Content:") + "\n\n" + renderedContent
+}
+
+// appendPostMetadata appends post metadata to the provided string builder.
+func (m Model) appendPostMetadata(metadata *strings.Builder, p *models.Post, theme *Theme, width int) {
+	title := "(untitled)"
+	if p.Title != nil && *p.Title != "" {
+		title = *p.Title
+	}
+	fmt.Fprintf(metadata, "  %s  %s\n", theme.DetailLabelStyle.Render("Title:"), title)
+	fmt.Fprintf(metadata, "  %s  %s\n", theme.DetailLabelStyle.Render("Path:"), p.Path)
+
+	dateStr := "(not set)"
+	if p.Date != nil {
+		dateStr = p.Date.Format("2006-01-02")
+	}
+	fmt.Fprintf(metadata, "  %s  %s\n", theme.DetailLabelStyle.Render("Date:"), dateStr)
+
+	publishedStr := "false"
+	if p.Published {
+		publishedStr = "true"
+	}
+	fmt.Fprintf(metadata, "  %s  %s\n", theme.DetailLabelStyle.Render("Published:"), publishedStr)
+
+	tagsStr := "(none)"
+	if len(p.Tags) > 0 {
+		tagsStr = strings.Join(p.Tags, ", ")
+	}
+	fmt.Fprintf(metadata, "  %s  %s\n", theme.DetailLabelStyle.Render("Tags:"), tagsStr)
+
+	wordCount := 0
+	if wc, ok := p.Extra["word_count"].(int); ok {
+		wordCount = wc
+	} else {
+		wordCount = countWords(p.Content)
+	}
+	fmt.Fprintf(metadata, "  %s  %s\n", theme.DetailLabelStyle.Render("Words:"), formatNumber(wordCount))
+
+	if rt, ok := p.Extra["reading_time"].(int); ok {
+		fmt.Fprintf(metadata, "  %s  %s\n", theme.DetailLabelStyle.Render("Read Time:"), formatReadingTime(rt))
+	}
+
+	if cc, ok := p.Extra["char_count"].(int); ok {
+		fmt.Fprintf(metadata, "  %s  %s\n", theme.DetailLabelStyle.Render("Chars:"), formatNumber(cc))
+	}
+
+	if p.Description != nil && *p.Description != "" {
+		desc := *p.Description
+		contentWidth := width - 4
+		if len(desc) > contentWidth-15 {
+			desc = desc[:contentWidth-18] + "..."
+		}
+		fmt.Fprintf(metadata, "  %s  %s\n", theme.DetailLabelStyle.Render("Description:"), desc)
+	}
+}
+
+// renderPostContent renders the post's markdown content using glamour.
+func (m Model) renderPostContent(p *models.Post, contentWidth int) string {
+	if p.Content == "" {
+		return "  (empty)"
+	}
+
+	renderer, err := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(contentWidth-4),
+	)
+	if err != nil {
+		return "  " + strings.ReplaceAll(p.Content, "\n", "\n  ")
+	}
+
+	rendered, err := renderer.Render(p.Content)
+	if err != nil {
+		return "  " + strings.ReplaceAll(p.Content, "\n", "\n  ")
+	}
+
+	return "  " + strings.ReplaceAll(strings.TrimRight(rendered, "\n"), "\n", "\n  ")
 }
 
 func (m Model) handleEscape() (tea.Model, tea.Cmd) {
