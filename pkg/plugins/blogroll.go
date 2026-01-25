@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -222,6 +223,15 @@ func (p *BlogrollPlugin) fetchFeeds(config models.BlogrollConfig) ([]*models.Ext
 		}
 		return ti.After(*tj)
 	})
+
+	// Apply fallback image service for entries without images
+	if config.FallbackImageService != "" {
+		for _, entry := range allEntries {
+			if entry.ImageURL == "" && entry.URL != "" {
+				entry.ImageURL = generateFallbackImageURL(config.FallbackImageService, entry.URL)
+			}
+		}
+	}
 
 	return feeds, allEntries, nil
 }
@@ -1428,6 +1438,13 @@ func blogrollStripHTML(s string) string {
 	s = strings.Join(strings.Fields(s), " ")
 
 	return s
+}
+
+// generateFallbackImageURL generates a fallback image URL from a template.
+// The template should contain {url} as a placeholder for the URL-encoded entry URL.
+func generateFallbackImageURL(template, entryURL string) string {
+	encodedURL := neturl.QueryEscape(entryURL)
+	return strings.ReplaceAll(template, "{url}", encodedURL)
 }
 
 // Ensure BlogrollPlugin implements the required interfaces.

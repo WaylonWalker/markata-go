@@ -39,6 +39,12 @@ type BlogrollConfig struct {
 	// PaginationType specifies the pagination strategy (manual, htmx, js)
 	PaginationType PaginationType `json:"pagination_type" yaml:"pagination_type" toml:"pagination_type"`
 
+	// FallbackImageService is an optional URL template for generating fallback images
+	// for entries without images. Use {url} as placeholder for the entry URL.
+	// Example: "https://shots.example.com/shot/?url={url}&width=1200"
+	// If empty, no fallback images are generated (default: "")
+	FallbackImageService string `json:"fallback_image_service" yaml:"fallback_image_service" toml:"fallback_image_service"`
+
 	// Feeds is the list of RSS/Atom feeds to fetch
 	Feeds []ExternalFeedConfig `json:"feeds" yaml:"feeds" toml:"feeds"`
 
@@ -49,18 +55,19 @@ type BlogrollConfig struct {
 // NewBlogrollConfig creates a new BlogrollConfig with default values.
 func NewBlogrollConfig() BlogrollConfig {
 	return BlogrollConfig{
-		Enabled:            false,
-		BlogrollSlug:       "blogroll",
-		ReaderSlug:         "reader",
-		CacheDir:           "cache/blogroll",
-		CacheDuration:      "1h",
-		Timeout:            30,
-		ConcurrentRequests: 5,
-		MaxEntriesPerFeed:  50,
-		ItemsPerPage:       50,
-		OrphanThreshold:    3,
-		PaginationType:     PaginationManual,
-		Feeds:              []ExternalFeedConfig{},
+		Enabled:              false,
+		BlogrollSlug:         "blogroll",
+		ReaderSlug:           "reader",
+		CacheDir:             "cache/blogroll",
+		CacheDuration:        "1h",
+		Timeout:              30,
+		ConcurrentRequests:   5,
+		MaxEntriesPerFeed:    50,
+		ItemsPerPage:         50,
+		OrphanThreshold:      3,
+		PaginationType:       PaginationManual,
+		FallbackImageService: "",
+		Feeds:                []ExternalFeedConfig{},
 		Templates: BlogrollTemplates{
 			Blogroll: "blogroll.html",
 			Reader:   "reader.html",
