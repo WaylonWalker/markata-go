@@ -640,6 +640,12 @@ func mergeBlogrollConfig(base, override models.BlogrollConfig) models.BlogrollCo
 	if override.CacheDuration != "" {
 		result.CacheDuration = override.CacheDuration
 	}
+	if override.FallbackImageService != "" {
+		result.FallbackImageService = override.FallbackImageService
+	}
+	if override.PaginationType != "" {
+		result.PaginationType = override.PaginationType
+	}
 
 	// Int fields - override if non-zero
 	if override.Timeout != 0 {
@@ -650,6 +656,12 @@ func mergeBlogrollConfig(base, override models.BlogrollConfig) models.BlogrollCo
 	}
 	if override.MaxEntriesPerFeed != 0 {
 		result.MaxEntriesPerFeed = override.MaxEntriesPerFeed
+	}
+	if override.ItemsPerPage != 0 {
+		result.ItemsPerPage = override.ItemsPerPage
+	}
+	if override.OrphanThreshold != 0 {
+		result.OrphanThreshold = override.OrphanThreshold
 	}
 
 	// Feeds - replace if non-empty
