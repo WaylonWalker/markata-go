@@ -3,6 +3,7 @@ package plugins
 import (
 	"encoding/xml"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"regexp"
@@ -471,7 +472,9 @@ var imgSrcPattern = regexp.MustCompile(`<img[^>]+src=["']([^"']+)["']`)
 
 // extractFirstImageFromHTML extracts the first image URL from HTML content.
 func extractFirstImageFromHTML(htmlContent string) string {
-	matches := imgSrcPattern.FindStringSubmatch(htmlContent)
+	// Unescape HTML entities (Atom feeds encode content as &lt;img&gt;)
+	unescaped := html.UnescapeString(htmlContent)
+	matches := imgSrcPattern.FindStringSubmatch(unescaped)
 	if len(matches) >= 2 {
 		return matches[1]
 	}
