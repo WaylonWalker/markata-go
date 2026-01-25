@@ -306,14 +306,22 @@ func TestHandleEnter_TagsView_DrillDown(t *testing.T) {
 
 func TestHandleEnter_FeedsView_DrillDown(t *testing.T) {
 	// Create a model with feeds
+	theme := DefaultTheme()
+	feedsTable := createFeedsTableWithTheme(80, theme)
+	feedsTable.SetCursor(1) // Select the second feed
+
+	feeds := []*lifecycle.Feed{
+		{Name: "main", Path: "feed/main.xml"},
+		{Name: "blog", Path: "feed/blog.xml"},
+	}
+
 	m := Model{
 		view:       ViewFeeds,
-		feedCursor: 1,
-		feeds: []*lifecycle.Feed{
-			{Name: "main", Path: "feed/main.xml"},
-			{Name: "blog", Path: "feed/blog.xml"},
-		},
+		cursor:     1,
+		feedsTable: feedsTable,
+		feeds:      feeds,
 	}
+	m.feedsTable.SetRows(m.feedsToRows())
 
 	// Simulate pressing Enter on the second feed
 	newModel, cmd := m.handleEnter()
@@ -519,9 +527,13 @@ func TestHandleEnter_EmptyTags(t *testing.T) {
 
 func TestHandleEnter_EmptyFeeds(t *testing.T) {
 	// Create a model with no feeds
+	theme := DefaultTheme()
+	feedsTable := createFeedsTableWithTheme(80, theme)
+
 	m := Model{
 		view:       ViewFeeds,
-		feedCursor: 0,
+		cursor:     0,
+		feedsTable: feedsTable,
 		feeds:      []*lifecycle.Feed{},
 	}
 
