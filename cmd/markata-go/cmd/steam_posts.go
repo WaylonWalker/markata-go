@@ -39,10 +39,10 @@ func createAchievementPost(game *models.SteamGame, achievement *models.SteamAchi
 
 	dateStr := unlockDate.Format("2006-01-02")
 	filename := fmt.Sprintf("%s-%s-%s.md", dateStr, gameName, achievementName)
-	filepath := filepath.Join(config.PostsDir, filename)
+	postPath := filepath.Join(config.PostsDir, filename)
 
 	// Check if file already exists
-	if _, err := os.Stat(filepath); err == nil {
+	if _, err := os.Stat(postPath); err == nil {
 		if steamVerbose {
 			fmt.Fprintf(os.Stderr, "⏭️  Achievement post already exists: %s\n", filename)
 		}
@@ -114,7 +114,7 @@ Unlocked in **[%s](%s)** on %s.
 	}
 
 	// Write file (0644 is appropriate for user-editable content files)
-	if err := os.WriteFile(filepath, []byte(content), 0o644); err != nil { //nolint:gosec // G306
+	if err := os.WriteFile(postPath, []byte(content), 0o644); err != nil { //nolint:gosec // G306
 		if steamVerbose {
 			fmt.Fprintf(os.Stderr, "❌ Failed to write achievement post %s: %v\n", filename, err)
 		}
@@ -132,10 +132,10 @@ func createGamePost(game *models.SteamGame, config *models.SteamConfig) bool {
 	// Create safe filename
 	gameName := sanitizeForFilename(game.Name)
 	filename := fmt.Sprintf("%s.md", gameName)
-	filepath := filepath.Join(config.PostsDir, filename)
+	postPath := filepath.Join(config.PostsDir, filename)
 
 	// Check if file already exists
-	if _, err := os.Stat(filepath); err == nil {
+	if _, err := os.Stat(postPath); err == nil {
 		if steamVerbose {
 			fmt.Fprintf(os.Stderr, "⏭️  Game post already exists: %s\n", filename)
 		}
@@ -464,7 +464,7 @@ slug: "steam/%s"
 	}
 
 	// Write file (0644 is appropriate for user-editable content files)
-	if err := os.WriteFile(filepath, []byte(content), 0o644); err != nil { //nolint:gosec // G306
+	if err := os.WriteFile(postPath, []byte(content), 0o644); err != nil { //nolint:gosec // G306
 		if steamVerbose {
 			fmt.Fprintf(os.Stderr, "❌ Failed to write game post %s: %v\n", filename, err)
 		}
