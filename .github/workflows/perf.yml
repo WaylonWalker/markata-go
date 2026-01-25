@@ -1,0 +1,199 @@
+# Performance benchmark workflow for markata-go
+# Runs end-to-end build benchmarks on schedule and manual trigger
+# Produces benchstat output and pprof profiles as artifacts
+
+name: Performance Benchmarks
+
+on:
+  # Weekly schedule (Sunday at 2 AM UTC)
+  schedule:
+    - cron: "0 2 * * 0"
+
+  # Manual trigger with optional inputs
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: "Number of benchmark iterations"
+        required: false
+        default: "5"
+        type: string
+      compare_branch:
+        description: "Branch to compare against (optional)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: "1.22"
+
+jobs:
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@latest
+
+      - name: Generate benchmark fixture
+        run: go run benchmarks/generate_posts.go
+
+      - name: Verify fixture
+        run: |
+          echo "Benchmark fixture:"
+          find benchmarks/site/posts -name "*.md" | wc -l
+          echo "posts generated"
+
+      - name: Run end-to-end benchmarks
+        id: bench
+        run: |
+          ITERATIONS=${{ inputs.iterations || '5' }}
+          echo "Running benchmarks with $ITERATIONS iterations..."
+
+          # Run benchmarks and capture output
+          go test -bench=BenchmarkBuild -run='^$' -benchmem -count=$ITERATIONS ./benchmarks/... | tee bench-current.txt
+
+          # Create summary
+          echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          benchstat bench-current.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Run benchmarks with profiling
+        run: |
+          # Generate profiles from a single run
+          go test -bench=BenchmarkBuild_EndToEnd -run='^$' \
+            -cpuprofile=cpu.prof \
+            -memprofile=mem.prof \
+            ./benchmarks/...
+
+      - name: Generate profile reports
+        run: |
+          # Generate text reports from profiles
+          go tool pprof -text cpu.prof > cpu-profile.txt 2>/dev/null || true
+          go tool pprof -text mem.prof > mem-profile.txt 2>/dev/null || true
+
+          # Add to summary
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## CPU Profile (Top Functions)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          head -30 cpu-profile.txt >> $GITHUB_STEP_SUMMARY || echo "No CPU profile available"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Memory Profile (Top Allocations)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          head -30 mem-profile.txt >> $GITHUB_STEP_SUMMARY || echo "No memory profile available"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Run stage-specific benchmarks
+        run: |
+          go test -bench='BenchmarkStage' -run='^$' -benchmem -count=3 ./benchmarks/... | tee bench-stages.txt
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Stage-Specific Benchmarks" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          benchstat bench-stages.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Run concurrency benchmarks
+        run: |
+          go test -bench='BenchmarkBuild_Concurrency' -run='^$' -benchmem -count=3 ./benchmarks/... | tee bench-concurrency.txt
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Concurrency Benchmarks" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          benchstat bench-concurrency.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v6
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: |
+            bench-current.txt
+            bench-stages.txt
+            bench-concurrency.txt
+          retention-days: 90
+
+      - name: Upload profiles
+        uses: actions/upload-artifact@v6
+        with:
+          name: profiles-${{ github.sha }}
+          path: |
+            cpu.prof
+            mem.prof
+            cpu-profile.txt
+            mem-profile.txt
+          retention-days: 30
+
+  # Optional: Compare with another branch
+  compare:
+    name: Compare Benchmarks
+    runs-on: ubuntu-latest
+    needs: benchmark
+    if: ${{ inputs.compare_branch != '' }}
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v6
+        with:
+          path: current
+
+      - name: Checkout comparison branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.compare_branch }}
+          path: compare
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install benchstat
+        run: go install golang.org/x/perf/cmd/benchstat@latest
+
+      - name: Generate fixtures
+        run: |
+          cd current && go run benchmarks/generate_posts.go
+          cd ../compare && go run benchmarks/generate_posts.go || true
+
+      - name: Run benchmarks on comparison branch
+        working-directory: compare
+        run: |
+          go test -bench=BenchmarkBuild_EndToEnd -run='^$' -benchmem -count=5 ./benchmarks/... | tee ../bench-compare.txt || true
+
+      - name: Download current benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results-${{ github.sha }}
+
+      - name: Compare results
+        run: |
+          echo "## Benchmark Comparison: ${{ inputs.compare_branch }} vs current" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f bench-compare.txt ] && [ -s bench-compare.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            benchstat bench-compare.txt bench-current.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Comparison branch does not have benchmarks or they failed to run." >> $GITHUB_STEP_SUMMARY
+          fi

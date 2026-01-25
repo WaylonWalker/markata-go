@@ -1,335 +1,320 @@
 ---
-title: "Performance and Profiling"
-description: "Guide to benchmarking and profiling markata-go build performance"
-date: 2026-01-24
+title: "Performance Benchmarking"
+description: "How to run, interpret, and optimize markata-go build performance"
+date: 2024-01-15
 published: true
 tags:
   - performance
   - benchmarking
   - profiling
-  - advanced
+  - optimization
 ---
 
-# Performance and Profiling
+# Performance Benchmarking
 
-This guide covers benchmarking and profiling tools for analyzing and optimizing markata-go build performance.
+markata-go includes a comprehensive benchmarking suite for measuring and optimizing build performance. This guide covers how to run benchmarks locally, interpret results, and use profiling tools to identify bottlenecks.
 
-## Running Benchmarks
+## Quick Start
 
-markata-go includes comprehensive benchmarks for key build stages. Use Go's built-in benchmarking tools to measure performance.
-
-### Quick Start
+Run the end-to-end build benchmark:
 
 ```bash
-# Run all benchmarks
-go test -bench=. ./...
-
-# Run benchmarks with memory statistics
-go test -bench=. -benchmem ./...
-
-# Run specific package benchmarks
-go test -bench=. ./pkg/lifecycle/
-go test -bench=. ./pkg/plugins/
-go test -bench=. ./pkg/config/
+just perf
 ```
 
-### Benchmark Output
+This runs the benchmark 5 times and outputs results to `bench.txt`.
 
-Benchmark results show operations per second and time per operation:
+## Running Benchmarks Locally
+
+### Prerequisites
+
+Install `benchstat` for analyzing benchmark results:
+
+```bash
+go install golang.org/x/perf/cmd/benchstat@latest
+```
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `just perf` | Run end-to-end benchmarks (5 iterations) |
+| `just perf-profile` | Generate CPU and memory profiles |
+| `just perf-stages` | Benchmark individual lifecycle stages |
+| `just perf-concurrency` | Test performance at different concurrency levels |
+| `just perf-compare old.txt new.txt` | Compare two benchmark runs |
+| `just perf-generate` | Regenerate the benchmark fixture |
+
+### Running Specific Benchmarks
+
+```bash
+# All benchmarks
+go test -bench=. -run='^$' -benchmem ./benchmarks/...
+
+# Only end-to-end
+go test -bench=BenchmarkBuild_EndToEnd -run='^$' -benchmem ./benchmarks/...
+
+# Only stage-specific
+go test -bench='BenchmarkStage' -run='^$' -benchmem ./benchmarks/...
+
+# With more iterations for stability
+go test -bench=BenchmarkBuild -run='^$' -benchmem -count=10 ./benchmarks/...
+```
+
+## Understanding Benchmark Output
+
+### Raw Output
 
 ```
-BenchmarkRenderMarkdown_ColdStart-8    	     100	  12345678 ns/op	  1234567 B/op	   12345 allocs/op
+BenchmarkBuild_EndToEnd-8    	       5	 234567890 ns/op	123456789 B/op	 1234567 allocs/op
+```
+
+| Field | Meaning |
+|-------|---------|
+| `BenchmarkBuild_EndToEnd-8` | Test name with GOMAXPROCS |
+| `5` | Number of iterations |
+| `234567890 ns/op` | Nanoseconds per operation |
+| `123456789 B/op` | Bytes allocated per operation |
+| `1234567 allocs/op` | Number of allocations per operation |
+
+### Using benchstat
+
+`benchstat` provides statistical analysis of benchmark results:
+
+```bash
+# Single run analysis
+benchstat bench.txt
+
+# Compare two runs
+benchstat old.txt new.txt
+```
+
+Example output:
+
+```
+name                 time/op
+Build_EndToEnd-8     235ms ± 2%
+
+name                 alloc/op
+Build_EndToEnd-8     124MB ± 0%
+
+name                 allocs/op
+Build_EndToEnd-8     1.23M ± 0%
+```
+
+The `±` value shows the variation between runs. Lower is better for reproducibility.
+
+### Comparing Runs
+
+When comparing two benchmark files:
+
+```
+name              old time/op    new time/op    delta
+Build_EndToEnd-8    250ms ± 3%     235ms ± 2%   -6.00%  (p=0.008 n=5+5)
 ```
 
 | Column | Meaning |
 |--------|---------|
-| `-8` | Number of CPU cores used |
-| `100` | Number of iterations |
-| `12345678 ns/op` | Time per operation in nanoseconds |
-| `1234567 B/op` | Bytes allocated per operation |
-| `12345 allocs/op` | Memory allocations per operation |
+| `old time/op` | Time from first file |
+| `new time/op` | Time from second file |
+| `delta` | Percentage change (negative = faster) |
+| `p=0.008` | Statistical significance (p < 0.05 is significant) |
+| `n=5+5` | Number of samples in each file |
 
-### Comparing Benchmarks
+## Profiling
 
-To compare performance between versions or changes:
+### Generating Profiles
 
 ```bash
-# Install benchstat
-go install golang.org/x/perf/cmd/benchstat@latest
-
-# Run benchmarks and save results
-go test -bench=. -count=10 ./pkg/lifecycle/ > old.txt
-
-# Make changes, then run again
-go test -bench=. -count=10 ./pkg/lifecycle/ > new.txt
-
-# Compare results
-benchstat old.txt new.txt
+just perf-profile
 ```
 
-## Available Benchmarks
+This creates:
+- `cpu.prof` - CPU profile
+- `mem.prof` - Memory allocation profile
 
-### Lifecycle Benchmarks (`pkg/lifecycle/`)
+### Analyzing CPU Profiles
 
-| Benchmark | Description |
-|-----------|-------------|
-| `BenchmarkManager_ColdStart` | Full build with no cache |
-| `BenchmarkManager_HotCache` | Build with warm cache |
-| `BenchmarkManager_GlobStage` | File discovery phase |
-| `BenchmarkManager_LoadStage` | File loading and parsing |
-| `BenchmarkProcessPostsConcurrently` | Concurrent processing at various levels |
-| `BenchmarkFilter` | Filter expression evaluation |
-| `BenchmarkMemoryCache` | Cache operations (set/get) |
-| `BenchmarkPluginSorting` | Plugin priority sorting |
-
-### Plugin Benchmarks (`pkg/plugins/`)
-
-| Benchmark | Description |
-|-----------|-------------|
-| `BenchmarkRenderMarkdown_ColdStart` | Fresh markdown renderer |
-| `BenchmarkRenderMarkdown_HotCache` | Reused markdown renderer |
-| `BenchmarkRenderMarkdown_ContentSizes` | Different content sizes |
-| `BenchmarkRenderMarkdown_SyntaxHighlighting` | Code block rendering |
-| `BenchmarkParseFrontmatter` | Frontmatter parsing |
-| `BenchmarkGlob` | File globbing |
-| `BenchmarkGlob_WithGitignore` | Globbing with .gitignore |
-| `BenchmarkLoad` | File loading |
-| `BenchmarkLoad_Concurrency` | Loading at various concurrency levels |
-| `BenchmarkTemplateEngine` | Template rendering |
-| `BenchmarkPublishHTML_Write` | HTML file writing |
-
-### Config Benchmarks (`pkg/config/`)
-
-| Benchmark | Description |
-|-----------|-------------|
-| `BenchmarkLoad_TOML` | TOML config loading |
-| `BenchmarkLoad_YAML` | YAML config loading |
-| `BenchmarkLoad_JSON` | JSON config loading |
-| `BenchmarkLoadAndValidate` | Load with validation |
-| `BenchmarkParseTOML` | Raw TOML parsing |
-| `BenchmarkParseYAML` | Raw YAML parsing |
-| `BenchmarkParseJSON` | Raw JSON parsing |
-| `BenchmarkMergeConfigs` | Config merging |
-| `BenchmarkValidateConfig` | Config validation |
-
-## CPU Profiling
-
-Generate CPU profiles to identify performance bottlenecks.
-
-### Generate Profile
+#### Interactive CLI
 
 ```bash
-# Profile all benchmarks
-go test -bench=. -cpuprofile=cpu.prof ./pkg/lifecycle/
-
-# Profile specific benchmark
-go test -bench=BenchmarkManager_ColdStart -cpuprofile=cpu.prof ./pkg/lifecycle/
-```
-
-### Analyze Profile
-
-```bash
-# Interactive CLI
 go tool pprof cpu.prof
+```
 
-# Common commands in pprof:
-# top10        - Show top 10 functions by CPU time
-# top20 -cum   - Top 20 by cumulative time
-# list funcName - Show source for a function
-# web          - Open flame graph in browser (requires graphviz)
+Common commands:
+- `top` - Show top functions by CPU time
+- `top -cum` - Show by cumulative time
+- `list FunctionName` - Show annotated source
+- `web` - Open in browser (requires graphviz)
 
-# Direct web interface
+#### Web Interface
+
+```bash
 go tool pprof -http=:8080 cpu.prof
 ```
 
-### Example Session
+This opens an interactive web UI with:
+- Flame graphs
+- Call graphs
+- Source code annotation
+- Top functions
+
+### Analyzing Memory Profiles
 
 ```bash
-$ go tool pprof cpu.prof
-(pprof) top10
-Showing nodes accounting for 1.5s, 75% of 2s total
-      flat  flat%   sum%        cum   cum%
-     0.5s   25%    25%       0.8s    40%  goldmark/renderer.(*Renderer).Render
-     0.3s   15%    40%       0.3s    15%  yaml.unmarshal
-     0.2s   10%    50%       0.4s    20%  regexp.(*Regexp).FindAllStringIndex
-     ...
+go tool pprof mem.prof
 ```
 
-## Memory Profiling
+Useful options:
+- `go tool pprof -alloc_space mem.prof` - Total allocations
+- `go tool pprof -alloc_objects mem.prof` - Number of allocations
+- `go tool pprof -inuse_space mem.prof` - Live memory
 
-Track memory allocations and identify potential memory leaks.
+### Profile Types
 
-### Generate Profile
+| Profile | What it Measures | When to Use |
+|---------|-----------------|-------------|
+| CPU | Time spent in functions | Slow builds |
+| Memory | Allocations | High memory usage |
+| Block | Blocking on sync primitives | Deadlocks/contention |
+| Mutex | Mutex contention | Lock performance |
+
+## Benchmark Fixture
+
+The benchmark suite uses a deterministic fixture at `benchmarks/site/`:
+
+```
+benchmarks/
+├── site/
+│   ├── markata-go.toml      # Benchmark config
+│   └── posts/
+│       ├── blog/2024/01/    # 60 blog posts
+│       └── docs/guides/     # 40 documentation guides
+└── benchmark_test.go        # Benchmark tests
+```
+
+### Fixture Characteristics
+
+- **100 posts total** - Representative of a medium-sized site
+- **Code-heavy content** - Syntax highlighting stress test
+- **Nested paths** - Tests path handling
+- **Multiple languages** - Go, Python, JavaScript, Rust, SQL
+- **Deterministic** - Same content every generation for reproducible results
+
+### Regenerating the Fixture
 
 ```bash
-# Memory profile
-go test -bench=. -memprofile=mem.prof ./pkg/lifecycle/
-
-# With allocation count
-go test -bench=. -memprofile=mem.prof -memprofilerate=1 ./pkg/lifecycle/
+just perf-generate
 ```
 
-### Analyze Profile
+Or directly:
 
 ```bash
-# View allocations
-go tool pprof -alloc_space mem.prof
-
-# View allocation count
-go tool pprof -alloc_objects mem.prof
-
-# In-use memory (useful for finding leaks)
-go tool pprof -inuse_space mem.prof
+go run benchmarks/generate_posts.go
 ```
 
-## Trace Profiling
+## CI Performance Tracking
 
-Generate execution traces for detailed timing analysis.
+Performance benchmarks run automatically:
+- **Weekly** - Sunday at 2 AM UTC
+- **Manual** - Via workflow dispatch
 
-```bash
-# Generate trace
-go test -bench=BenchmarkManager_ColdStart -trace=trace.out ./pkg/lifecycle/
+### Viewing Results
 
-# View trace (opens in browser)
-go tool trace trace.out
-```
+1. Go to Actions tab in GitHub
+2. Select "Performance Benchmarks" workflow
+3. View the job summary for benchstat output
+4. Download artifacts for profiles
 
-The trace viewer shows:
-- Goroutine scheduling
-- GC events
-- Network/system calls
-- Blocking operations
+### Comparing Branches
 
-## Performance Tips
+Trigger a manual workflow with a comparison branch:
 
-### 1. Concurrency Settings
+1. Go to Actions > Performance Benchmarks
+2. Click "Run workflow"
+3. Enter the branch name to compare against
+4. View the comparison in the job summary
 
-Adjust `concurrency` in your config for optimal performance:
-
-```toml
-[markata-go]
-concurrency = 8  # Tune based on your CPU cores and I/O
-```
-
-**Benchmark different values:**
-```bash
-go test -bench=BenchmarkLoad_Concurrency ./pkg/plugins/
-```
-
-### 2. Reduce File I/O
-
-- Use `.gitignore` patterns to skip unnecessary files
-- Limit glob patterns to only necessary directories
-
-```toml
-[markata-go.glob]
-patterns = ["posts/**/*.md"]  # Be specific
-use_gitignore = true
-```
-
-### 3. Template Caching
-
-Templates are automatically cached after first use. For best results:
-- Minimize template complexity
-- Use template inheritance efficiently
-- Avoid heavy computations in templates
-
-### 4. Markdown Rendering
-
-Markdown rendering is typically the slowest stage. Optimize by:
-- Keeping posts reasonably sized
-- Using syntax highlighting only when needed
-- Avoiding deeply nested structures
-
-### 5. Build Caching
-
-The manager caches data between stages. For incremental builds:
-- Cache is cleared on each build by default
-- Hot cache significantly improves rebuild times
-
-## Continuous Performance Monitoring
-
-### GitHub Actions Benchmark
-
-Add benchmark comparison to your CI:
-
-```yaml
-name: Benchmarks
-on: [push, pull_request]
-
-jobs:
-  benchmark:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-
-      - name: Run benchmarks
-        run: go test -bench=. -benchmem ./... | tee bench.txt
-
-      - name: Upload results
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-results
-          path: bench.txt
-```
-
-### Local Performance Script
-
-Create a script for regular performance checks:
-
-```bash
-#!/bin/bash
-# scripts/benchmark.sh
-
-echo "Running markata-go benchmarks..."
-
-# Run benchmarks
-go test -bench=. -benchmem -count=5 ./pkg/lifecycle/ | tee lifecycle.txt
-go test -bench=. -benchmem -count=5 ./pkg/plugins/ | tee plugins.txt
-go test -bench=. -benchmem -count=5 ./pkg/config/ | tee config.txt
-
-echo ""
-echo "Results saved to:"
-echo "  - lifecycle.txt"
-echo "  - plugins.txt"
-echo "  - config.txt"
-```
-
-## Interpreting Results
-
-### What's "Fast Enough"?
-
-Typical performance targets:
-
-| Stage | Target | Notes |
-|-------|--------|-------|
-| Config loading | < 10ms | One-time cost |
-| Globbing (100 files) | < 50ms | Scales with file count |
-| Loading (100 files) | < 200ms | I/O bound |
-| Markdown render (100 posts) | < 500ms | CPU bound |
-| Template render (100 posts) | < 200ms | Cached templates |
-| Write (100 files) | < 100ms | I/O bound |
+## Optimization Tips
 
 ### Common Bottlenecks
 
-1. **Markdown rendering** - Usually the slowest stage
-2. **Syntax highlighting** - Expensive for code-heavy content
-3. **File I/O** - Disk speed matters for large sites
-4. **Memory allocations** - High allocation count slows GC
+1. **Markdown rendering** - goldmark processing
+2. **Template execution** - Pongo2 templates
+3. **File I/O** - Reading/writing files
+4. **Syntax highlighting** - Chroma processing
+5. **Memory allocations** - String operations
 
-### Red Flags
+### Improving Performance
 
-- `B/op` > 10MB per operation for small content
-- `allocs/op` > 10000 for simple operations
-- Linear time growth that should be constant
-- Memory not being released (check with `-inuse_space`)
+#### Concurrency
 
-## Further Reading
+Adjust the concurrency level in `markata-go.toml`:
 
-- [Go Testing and Benchmarking](https://pkg.go.dev/testing)
-- [pprof Documentation](https://github.com/google/pprof)
-- [Go Execution Tracer](https://pkg.go.dev/runtime/trace)
-- [benchstat Tool](https://pkg.go.dev/golang.org/x/perf/cmd/benchstat)
+```toml
+[markata-go]
+concurrency = 8  # 0 = auto (NumCPU)
+```
+
+#### Profile-Guided Optimization
+
+1. Run profiling: `just perf-profile`
+2. Analyze: `go tool pprof -http=:8080 cpu.prof`
+3. Identify hot paths
+4. Optimize targeted functions
+5. Re-benchmark to verify improvement
+
+#### Memory Optimization
+
+If memory is the bottleneck:
+
+```bash
+go tool pprof -alloc_space mem.prof
+```
+
+Look for:
+- Large allocations (`alloc_space`)
+- Many small allocations (`alloc_objects`)
+- Functions with high cumulative allocations
+
+### Writing Efficient Plugins
+
+1. **Reuse allocations** - Use `sync.Pool` for buffers
+2. **Minimize copies** - Use pointers where appropriate
+3. **Batch operations** - Group file writes
+4. **Cache results** - Use the lifecycle cache
+
+## Troubleshooting
+
+### Benchmarks Skip
+
+```
+--- SKIP: BenchmarkBuild_EndToEnd
+    benchmark_test.go:35: Benchmark fixture not found
+```
+
+Fix: Run `just perf-generate` to create the fixture.
+
+### High Variance
+
+If `±` values are high (>10%), try:
+- More iterations: `-count=10`
+- Close other applications
+- Use a consistent environment
+
+### Profile is Empty
+
+Ensure the benchmark runs long enough:
+
+```bash
+go test -bench=BenchmarkBuild_EndToEnd -run='^$' \
+  -benchtime=30s \
+  -cpuprofile=cpu.prof \
+  ./benchmarks/...
+```
+
+## See Also
+
+- [Configuration Guide](/docs/guides/configuration/) - Concurrency settings
+- [Plugin Development](/docs/guides/plugin-development/) - Writing efficient plugins
+- [Go Profiling](https://go.dev/blog/pprof) - Official pprof documentation
