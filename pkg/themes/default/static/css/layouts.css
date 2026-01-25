@@ -586,7 +586,7 @@
 
 .skip-link {
   position: absolute;
-  top: -40px;
+  top: -60px;
   left: var(--space-4);
   padding: var(--space-2) var(--space-4);
   background: var(--color-primary);
