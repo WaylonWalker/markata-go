@@ -76,6 +76,15 @@
     <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
     {% endif %}
 
+    <!-- GLightbox CSS for image zoom -->
+    {% if config.Extra.glightbox_enabled %}
+    {% if config.Extra.glightbox_cdn %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css">
+    {% else %}
+    <link rel="stylesheet" href="/css/glightbox.min.css">
+    {% endif %}
+    {% endif %}
+
     <!-- Theme CSS -->
     <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
     <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
@@ -228,6 +237,28 @@
     {% for script in config.theme.background.scripts %}
     <script src="{{ script }}"></script>
     {% endfor %}
+    {% endif %}
+
+    <!-- GLightbox JS for image zoom -->
+    {% if config.Extra.glightbox_enabled %}
+    {% if config.Extra.glightbox_cdn %}
+    <script src="https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js"></script>
+    {% else %}
+    <script src="/js/glightbox.min.js"></script>
+    {% endif %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const lightbox = GLightbox({
+                selector: '{{ config.Extra.glightbox_options.selector | default:".glightbox" }}',
+                openEffect: '{{ config.Extra.glightbox_options.openEffect | default:"zoom" }}',
+                closeEffect: '{{ config.Extra.glightbox_options.closeEffect | default:"zoom" }}',
+                slideEffect: '{{ config.Extra.glightbox_options.slideEffect | default:"slide" }}',
+                touchNavigation: {{ config.Extra.glightbox_options.touchNavigation | default:true | yesno:"true,false" }},
+                loop: {{ config.Extra.glightbox_options.loop | default:false | yesno:"true,false" }},
+                draggable: {{ config.Extra.glightbox_options.draggable | default:true | yesno:"true,false" }}
+            });
+        });
+    </script>
     {% endif %}
 </body>
 </html>

@@ -1062,6 +1062,63 @@ func NewYouTubeConfig() YouTubeConfig {
 	}
 }
 
+// ImageZoomConfig configures the image_zoom plugin for lightbox functionality.
+type ImageZoomConfig struct {
+	// Enabled controls whether image zoom is active (default: false)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// Library is the lightbox library to use (default: "glightbox")
+	// Supported: "glightbox"
+	Library string `json:"library" yaml:"library" toml:"library"`
+
+	// Selector is the CSS selector for images to make zoomable (default: ".glightbox")
+	Selector string `json:"selector" yaml:"selector" toml:"selector"`
+
+	// CDN uses CDN for library files instead of local (default: true)
+	CDN bool `json:"cdn" yaml:"cdn" toml:"cdn"`
+
+	// AutoAllImages enables zoom on all images without explicit marking (default: false)
+	AutoAllImages bool `json:"auto_all_images" yaml:"auto_all_images" toml:"auto_all_images"`
+
+	// OpenEffect is the effect when opening the lightbox (default: "zoom")
+	// Options: "zoom", "fade", "none"
+	OpenEffect string `json:"open_effect" yaml:"open_effect" toml:"open_effect"`
+
+	// CloseEffect is the effect when closing the lightbox (default: "zoom")
+	// Options: "zoom", "fade", "none"
+	CloseEffect string `json:"close_effect" yaml:"close_effect" toml:"close_effect"`
+
+	// SlideEffect is the effect when sliding between images (default: "slide")
+	// Options: "slide", "fade", "zoom", "none"
+	SlideEffect string `json:"slide_effect" yaml:"slide_effect" toml:"slide_effect"`
+
+	// TouchNavigation enables touch/swipe navigation (default: true)
+	TouchNavigation bool `json:"touch_navigation" yaml:"touch_navigation" toml:"touch_navigation"`
+
+	// Loop enables looping through images in a gallery (default: false)
+	Loop bool `json:"loop" yaml:"loop" toml:"loop"`
+
+	// Draggable enables dragging images to navigate (default: true)
+	Draggable bool `json:"draggable" yaml:"draggable" toml:"draggable"`
+}
+
+// NewImageZoomConfig creates a new ImageZoomConfig with default values.
+func NewImageZoomConfig() ImageZoomConfig {
+	return ImageZoomConfig{
+		Enabled:         false, // Disabled by default
+		Library:         "glightbox",
+		Selector:        ".glightbox",
+		CDN:             true,
+		AutoAllImages:   false,
+		OpenEffect:      "zoom",
+		CloseEffect:     "zoom",
+		SlideEffect:     "slide",
+		TouchNavigation: true,
+		Loop:            false,
+		Draggable:       true,
+	}
+}
+
 // EmbedsConfig configures the embeds plugin for embedding internal and external content.
 type EmbedsConfig struct {
 	// Enabled controls whether embed processing is active (default: true)

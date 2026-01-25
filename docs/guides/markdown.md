@@ -1502,3 +1502,151 @@ Here's an inline footnote.^[This is the footnote content inline.]
 - [[dynamic-content|Dynamic Content]] - Using Jinja in Markdown
 - [[frontmatter-guide|Frontmatter]] - Frontmatter fields and metadata
 - [[configuration-guide|Configuration]] - Markdown configuration options
+
+---
+
+## Image Zoom / Lightbox
+
+markata-go supports optional image zoom functionality using GLightbox. When enabled, users can click/tap images to view them in a full-screen lightbox with support for mobile gestures, keyboard navigation, and gallery mode.
+
+### Enabling Image Zoom
+
+Image zoom is disabled by default. Enable it in your `markata-go.toml`:
+
+```toml
+[markata-go.image_zoom]
+enabled = true
+```
+
+### Marking Individual Images
+
+Use the `{data-zoomable}` attribute marker to make specific images zoomable:
+
+**Input:**
+
+```markdown
+![Beautiful sunset {data-zoomable}](/images/sunset.jpg)
+
+![Regular image without zoom](/images/icon.png)
+```
+
+**Output:**
+
+```html
+<a href="/images/sunset.jpg" class="glightbox-link">
+  <img src="/images/sunset.jpg" alt="Beautiful sunset" class="glightbox" data-glightbox="description: Beautiful sunset">
+</a>
+
+<img src="/images/icon.png" alt="Regular image without zoom">
+```
+
+The first image will open in a lightbox when clicked. The second remains a regular image.
+
+### Alternative: Class Marker
+
+You can also use the `{.zoomable}` class marker:
+
+```markdown
+![Photo {.zoomable}](/images/photo.jpg)
+```
+
+### Enable for All Images in a Post
+
+Add `image_zoom: true` to your frontmatter to enable zoom for all images in that post:
+
+```yaml
+---
+title: "Photo Gallery"
+image_zoom: true
+---
+
+![First photo](/images/photo1.jpg)
+![Second photo](/images/photo2.jpg)
+![Third photo](/images/photo3.jpg)
+```
+
+All three images will be zoomable without needing individual markers.
+
+### Enable for All Images Site-Wide
+
+To make all images zoomable by default across your entire site:
+
+```toml
+[markata-go.image_zoom]
+enabled = true
+auto_all_images = true
+```
+
+### Configuration Options
+
+```toml
+[markata-go.image_zoom]
+enabled = false           # Enable the plugin (default: false)
+library = "glightbox"     # Lightbox library (currently only glightbox supported)
+selector = ".glightbox"   # CSS selector for zoomable images
+cdn = true                # Use CDN for library files (default: true)
+auto_all_images = false   # Make all images zoomable (default: false)
+
+# GLightbox-specific options
+open_effect = "zoom"      # Effect when opening: "zoom", "fade", "none"
+close_effect = "zoom"     # Effect when closing: "zoom", "fade", "none"
+slide_effect = "slide"    # Effect when sliding: "slide", "fade", "zoom", "none"
+touch_navigation = true   # Enable touch/swipe gestures
+loop = false              # Loop through images in gallery
+draggable = true          # Enable dragging images to navigate
+```
+
+### Keyboard Navigation
+
+When the lightbox is open:
+
+| Key | Action |
+|-----|--------|
+| `Escape` | Close the lightbox |
+| `→` / `Right Arrow` | Next image (in gallery) |
+| `←` / `Left Arrow` | Previous image (in gallery) |
+
+### Mobile Gestures
+
+On touch devices:
+
+| Gesture | Action |
+|---------|--------|
+| Swipe left/right | Navigate between images |
+| Pinch | Zoom in/out |
+| Drag | Pan zoomed image |
+| Tap outside | Close lightbox |
+
+### Image Galleries
+
+Images marked as zoomable within the same post automatically form a gallery. Users can navigate between them using arrow keys or swipe gestures.
+
+### CSS Customization
+
+Style the lightbox links with CSS:
+
+```css
+/* Style the zoomable image wrapper */
+.glightbox-link {
+  display: inline-block;
+  cursor: zoom-in;
+}
+
+/* Add hover effect */
+.glightbox-link:hover img {
+  opacity: 0.9;
+  transform: scale(1.02);
+  transition: all 0.2s ease;
+}
+
+/* Style for zoomable images */
+img.glightbox {
+  cursor: zoom-in;
+}
+```
+
+### Performance Notes
+
+- JavaScript and CSS for GLightbox are only loaded on pages that have zoomable images
+- When using CDN (default), files are loaded from jsDelivr
+- The library is ~11KB gzipped, loaded asynchronously

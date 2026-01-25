@@ -1182,6 +1182,144 @@ privacy_enhanced = false
 
 ---
 
+### image_zoom
+
+**Name:** `image_zoom`  
+**Stage:** Render (post_render), Write  
+**Purpose:** Adds optional image zoom/lightbox functionality using GLightbox. Users can click/tap images to view them in a full-screen modal with support for touch gestures, keyboard navigation, and gallery mode.
+
+**Configuration (TOML):**
+```toml
+[markata-go.image_zoom]
+enabled = false           # Enable the plugin (default: false)
+library = "glightbox"     # Lightbox library to use (default: "glightbox")
+selector = ".glightbox"   # CSS selector for zoomable images (default: ".glightbox")
+cdn = true                # Use CDN for library files (default: true)
+auto_all_images = false   # Make all images zoomable by default (default: false)
+
+# GLightbox-specific options
+open_effect = "zoom"      # Effect when opening: "zoom", "fade", "none" (default: "zoom")
+close_effect = "zoom"     # Effect when closing: "zoom", "fade", "none" (default: "zoom")
+slide_effect = "slide"    # Effect when sliding: "slide", "fade", "zoom", "none" (default: "slide")
+touch_navigation = true   # Enable touch/swipe gestures (default: true)
+loop = false              # Loop through images in gallery (default: false)
+draggable = true          # Enable dragging images to navigate (default: true)
+```
+
+**Markdown syntax:**
+
+Mark individual images as zoomable using attribute markers:
+
+```markdown
+![Photo with zoom {data-zoomable}](/images/photo.jpg)
+
+![Alternative syntax {.zoomable}](/images/sunset.jpg)
+
+![Regular image without zoom](/images/icon.png)
+```
+
+**Frontmatter option:**
+
+Enable zoom for all images in a specific post:
+
+```yaml
+---
+title: "Photo Gallery"
+image_zoom: true
+---
+```
+
+**Behavior:**
+1. Runs after `render_markdown` to process `ArticleHTML`
+2. Finds images with `{data-zoomable}` or `{.zoomable}` markers
+3. Removes the markers from alt text
+4. Wraps images in anchor tags with GLightbox classes
+5. Adds `data-glightbox` attribute for the lightbox
+6. Tracks which posts need the lightbox library
+7. In Write stage, stores configuration for templates to inject JS/CSS
+
+**HTML output:**
+
+Input:
+```markdown
+![Beautiful sunset {data-zoomable}](/images/sunset.jpg)
+```
+
+Output:
+```html
+<a href="/images/sunset.jpg" class="glightbox-link">
+  <img src="/images/sunset.jpg" alt="Beautiful sunset"
+       class="glightbox" data-glightbox="description: Beautiful sunset">
+</a>
+```
+
+**Post fields set (in `Extra`):**
+| Field | Type | Description |
+|-------|------|-------------|
+| `needs_image_zoom` | bool | True if post has zoomable images |
+
+**Config fields set (in `Extra`):**
+| Field | Type | Description |
+|-------|------|-------------|
+| `glightbox_enabled` | bool | True if any posts need GLightbox |
+| `glightbox_cdn` | bool | Whether to use CDN |
+| `glightbox_options` | map | GLightbox initialization options |
+
+**Template usage:**
+
+The base template automatically includes GLightbox when needed:
+
+```html
+{% if config.Extra.glightbox_enabled %}
+<!-- CSS in head -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css">
+
+<!-- JS before closing body -->
+<script src="https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    GLightbox({ selector: '.glightbox' });
+  });
+</script>
+{% endif %}
+```
+
+**Keyboard shortcuts:**
+| Key | Action |
+|-----|--------|
+| `Escape` | Close lightbox |
+| `→` / `ArrowRight` | Next image |
+| `←` / `ArrowLeft` | Previous image |
+
+**Touch gestures:**
+| Gesture | Action |
+|---------|--------|
+| Swipe left/right | Navigate images |
+| Pinch | Zoom in/out |
+| Drag | Pan zoomed image |
+| Tap outside | Close lightbox |
+
+**CSS customization:**
+```css
+.glightbox-link {
+  display: inline-block;
+  cursor: zoom-in;
+}
+
+.glightbox-link:hover img {
+  opacity: 0.9;
+  transform: scale(1.02);
+  transition: all 0.2s ease;
+}
+```
+
+**Performance notes:**
+- GLightbox JS/CSS only loaded on pages with zoomable images
+- Library is ~11KB gzipped when using CDN
+- Files loaded asynchronously to avoid blocking page render
+
+---
+
 ### link_collector
 
 **Name:** `link_collector`  

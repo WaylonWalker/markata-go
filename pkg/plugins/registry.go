@@ -72,6 +72,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["mentions"] = func() lifecycle.Plugin { return NewMentionsPlugin() }
 	pluginRegistry.constructors["webmentions"] = func() lifecycle.Plugin { return NewWebMentionsPlugin() }
 	pluginRegistry.constructors["background"] = func() lifecycle.Plugin { return NewBackgroundPlugin() }
+	pluginRegistry.constructors["image_zoom"] = func() lifecycle.Plugin { return NewImageZoomPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -139,6 +140,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		// Render stage plugins
 		NewRenderMarkdownPlugin(),
 		NewHeadingAnchorsPlugin(), // Add anchors after markdown rendering
+		NewImageZoomPlugin(),      // Process image zoom attributes
 		NewMDVideoPlugin(),        // Convert video images to video tags
 		NewYouTubePlugin(),        // Convert YouTube URLs to embeds
 		NewLinkCollectorPlugin(),  // Collect links after markdown rendering
