@@ -57,6 +57,35 @@
 }
 
 /* ==========================================================================
+   Navigation - Mobile Responsive
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .site-nav--header,
+  .site-nav--horizontal {
+    /* Allow horizontal scrolling within nav only, not whole page */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Prevent nav from causing page overflow */
+    max-width: 100%;
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+
+  .site-nav--header::-webkit-scrollbar,
+  .site-nav--horizontal::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+  }
+
+  .nav-link {
+    /* Prevent text wrapping in nav items */
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
+
+/* ==========================================================================
    Footer Component
    ========================================================================== */
 

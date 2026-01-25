@@ -897,6 +897,16 @@ a.wikilink.wikilink-missing {
     align-items: flex-start;
   }
 
+  /* Prevent header from causing horizontal page overflow */
+  .site-header {
+    overflow-x: hidden;
+  }
+
+  .site-header .container {
+    max-width: 100%;
+    overflow: hidden;
+  }
+
   .post-nav {
     flex-direction: column;
   }
