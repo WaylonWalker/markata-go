@@ -1273,3 +1273,5 @@ var (
 	_ lifecycle.WritePlugin    = (*BlogrollPlugin)(nil)
 	_ lifecycle.PriorityPlugin = (*BlogrollPlugin)(nil)
 )
+
+// CI trigger
