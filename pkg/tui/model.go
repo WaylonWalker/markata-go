@@ -268,6 +268,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 
+	case tea.MouseMsg:
+		return m.handleMouse(msg)
+
 	case postsLoadedMsg:
 		m.posts = msg.posts
 		m.postsTable.SetRows(m.postsToRows())
@@ -431,6 +434,87 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Normal mode key handling
 	return m.handleNormalModeKey(msg)
+}
+
+// handleMouse handles mouse events
+func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	// Only handle mouse in normal mode
+	if m.mode != ModeNormal {
+		return m, nil
+	}
+
+	// Don't handle mouse in sort menu, filter, or command mode
+	if m.showSortMenu {
+		return m, nil
+	}
+
+	// Handle wheel scrolling
+	if msg.Action == tea.MouseActionPress {
+		switch msg.Button {
+		case tea.MouseButtonWheelUp:
+			// Navigate up (same as 'k' key)
+			return m.handleMouseNavigation(true)
+
+		case tea.MouseButtonWheelDown:
+			// Navigate down (same as 'j' key)
+			return m.handleMouseNavigation(false)
+
+		case tea.MouseButtonLeft:
+			// Click to select (same as Enter key)
+			if m.view == ViewPostDetail {
+				// In detail view, clicking does nothing (could implement back navigation)
+				return m, nil
+			}
+			return m.handleEnter()
+
+		default:
+			// Ignore other mouse buttons
+			return m, nil
+		}
+	}
+
+	return m, nil
+}
+
+// handleMouseNavigation handles mouse wheel scrolling
+func (m Model) handleMouseNavigation(up bool) (tea.Model, tea.Cmd) {
+	// Create a simulated key message for up/down
+	var keyMsg tea.KeyMsg
+	if up {
+		keyMsg = tea.KeyMsg{Type: tea.KeyUp}
+	} else {
+		keyMsg = tea.KeyMsg{Type: tea.KeyDown}
+	}
+
+	// Let the table handle navigation when in posts view
+	if m.view == ViewPosts {
+		var cmd tea.Cmd
+		m.postsTable, cmd = m.postsTable.Update(keyMsg)
+		m.cursor = m.postsTable.Cursor()
+		return m, cmd
+	}
+	// Let the table handle navigation when in tags view
+	if m.view == ViewTags {
+		var cmd tea.Cmd
+		m.tagsTable, cmd = m.tagsTable.Update(keyMsg)
+		m.cursor = m.tagsTable.Cursor()
+		return m, cmd
+	}
+	// For feeds view, use feedCursor
+	if m.view == ViewFeeds {
+		if up {
+			if m.feedCursor > 0 {
+				m.feedCursor--
+			}
+		} else {
+			maxIdx := len(m.feeds) - 1
+			if m.feedCursor < maxIdx {
+				m.feedCursor++
+			}
+		}
+		return m, nil
+	}
+	return m, nil
 }
 
 // handleNormalModeKey handles key input in normal mode
