@@ -58,7 +58,10 @@ func runTUI(cmd *cobra.Command, _ []string) error {
 
 	// Create and run TUI with theme
 	model := tui.NewModelWithTheme(app, theme)
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	p := tea.NewProgram(model,
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+	)
 
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("TUI error: %w", err)
