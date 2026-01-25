@@ -189,21 +189,34 @@ func TestRenderPostDetail_WithPost(t *testing.T) {
 	title := "Test Title"
 	desc := "Test description"
 	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
 	m := Model{
-		view: ViewPostDetail,
-		selectedPost: &models.Post{
-			Title:       &title,
-			Path:        "posts/test.md",
-			Date:        &date,
-			Published:   true,
-			Tags:        []string{"go", "test"},
-			Description: &desc,
-			Content:     "# Test\n\nThis is test content.",
+		view:   ViewPosts,
+		cursor: 0,
+		posts: []*models.Post{
+			{
+				Title:       &title,
+				Path:        "posts/test.md",
+				Date:        &date,
+				Published:   true,
+				Tags:        []string{"go", "test"},
+				Description: &desc,
+				Content:     "# Test\n\nThis is test content.",
+			},
 		},
 		width:  80,
 		height: 24,
 		theme:  DefaultTheme(),
 	}
+
+	// First, handle Enter to initialize the viewport and switch to detail view
+	newModel, cmd := m.handleEnter()
+	var ok bool
+	m, ok = newModel.(Model)
+	if !ok {
+		t.Fatal("handleEnter returned unexpected type")
+	}
+	_ = cmd // Command not needed in this test
 
 	result := m.renderPostDetail()
 
