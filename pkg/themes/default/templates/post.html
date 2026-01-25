@@ -78,15 +78,7 @@
       <a href="/tags/{{ tag | slugify }}/" class="tag" data-pagefind-filter="tag">{{ tag }}</a>
       {% endfor %}
     </div>
-    {% include "components/format-links.html" %}
   </footer>
-  {% else %}
-  {# Show format links even without tags #}
-  {% if config.post_formats.markdown or config.post_formats.og or config.post_formats.text %}
-  <footer class="post-footer">
-    {% include "components/format-links.html" %}
-  </footer>
-  {% endif %}
   {% endif %}
 
   {# Hidden filters for Pagefind #}
