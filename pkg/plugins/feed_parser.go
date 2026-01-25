@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -57,22 +58,39 @@ type rssImage struct {
 
 // rssItem represents an RSS item.
 type rssItem struct {
-	Title       string   `xml:"title"`
-	Link        string   `xml:"link"`
-	Description string   `xml:"description"`
-	Content     string   `xml:"encoded"` // content:encoded
-	PubDate     string   `xml:"pubDate"`
-	GUID        string   `xml:"guid"`
-	Author      string   `xml:"author"`
-	Creator     string   `xml:"creator"` // dc:creator
-	Categories  []string `xml:"category"`
-	Enclosure   *rssEnclosure
+	Title          string          `xml:"title"`
+	Link           string          `xml:"link"`
+	Description    string          `xml:"description"`
+	Content        string          `xml:"encoded"` // content:encoded
+	PubDate        string          `xml:"pubDate"`
+	GUID           string          `xml:"guid"`
+	Author         string          `xml:"author"`
+	Creator        string          `xml:"creator"` // dc:creator
+	Categories     []string        `xml:"category"`
+	Enclosure      *rssEnclosure   `xml:"enclosure"`
+	MediaContent   *mediaContent   `xml:"http://search.yahoo.com/mrss/ content"`
+	MediaThumbnail *mediaThumbnail `xml:"http://search.yahoo.com/mrss/ thumbnail"`
 }
 
 // rssEnclosure represents an RSS enclosure (media).
 type rssEnclosure struct {
-	URL  string `xml:"url,attr"`
-	Type string `xml:"type,attr"`
+	URL    string `xml:"url,attr"`
+	Type   string `xml:"type,attr"`
+	Length string `xml:"length,attr"`
+}
+
+// mediaContent represents media:content element from Media RSS.
+type mediaContent struct {
+	URL    string `xml:"url,attr"`
+	Medium string `xml:"medium,attr"`
+	Type   string `xml:"type,attr"`
+}
+
+// mediaThumbnail represents media:thumbnail element from Media RSS.
+type mediaThumbnail struct {
+	URL    string `xml:"url,attr"`
+	Width  string `xml:"width,attr"`
+	Height string `xml:"height,attr"`
 }
 
 // rssWrapper wraps the RSS document.
@@ -149,6 +167,9 @@ func parseRSSFeed(data []byte) (*parsedFeed, []*models.ExternalEntry, error) {
 		}
 		entry.ReadingTime = estimateReadingTime(content)
 
+		// Extract entry image
+		entry.ImageURL = extractRSSEntryImage(item)
+
 		entries = append(entries, entry)
 	}
 
@@ -186,6 +207,9 @@ type atomEntry struct {
 	Content   atomContent    `xml:"content"`
 	Author    *atomAuthor    `xml:"author"`
 	Category  []atomCategory `xml:"category"`
+	// Media RSS support for Atom
+	MediaContent   *mediaContent   `xml:"http://search.yahoo.com/mrss/ content"`
+	MediaThumbnail *mediaThumbnail `xml:"http://search.yahoo.com/mrss/ thumbnail"`
 }
 
 // atomContent represents Atom content.
@@ -287,6 +311,9 @@ func parseAtomFeed(data []byte) (*parsedFeed, []*models.ExternalEntry, error) {
 		// Estimate reading time
 		entry.ReadingTime = estimateReadingTimeForAtomEntry(item)
 
+		// Extract entry image
+		entry.ImageURL = extractAtomEntryImage(item)
+
 		entries = append(entries, entry)
 	}
 
@@ -353,4 +380,100 @@ func estimateReadingTime(content string) int {
 		minutes = 1
 	}
 	return minutes
+}
+
+// extractRSSEntryImage extracts an image URL from an RSS item.
+// It checks (in order): media:content, media:thumbnail, enclosure (if image type),
+// and falls back to the first <img> in content/description HTML.
+func extractRSSEntryImage(item *rssItem) string {
+	// 1. Check media:content
+	if item.MediaContent != nil && item.MediaContent.URL != "" {
+		if isImageMedium(item.MediaContent.Medium, item.MediaContent.Type) {
+			return item.MediaContent.URL
+		}
+	}
+
+	// 2. Check media:thumbnail
+	if item.MediaThumbnail != nil && item.MediaThumbnail.URL != "" {
+		return item.MediaThumbnail.URL
+	}
+
+	// 3. Check enclosure (if image type)
+	if item.Enclosure != nil && item.Enclosure.URL != "" {
+		if isImageType(item.Enclosure.Type) {
+			return item.Enclosure.URL
+		}
+	}
+
+	// 4. Extract from content HTML
+	content := item.Content
+	if content == "" {
+		content = item.Description
+	}
+	if imgURL := extractFirstImageFromHTML(content); imgURL != "" {
+		return imgURL
+	}
+
+	return ""
+}
+
+// extractAtomEntryImage extracts an image URL from an Atom entry.
+// It checks (in order): media:content, media:thumbnail, enclosure link,
+// and falls back to the first <img> in content/summary HTML.
+func extractAtomEntryImage(item *atomEntry) string {
+	// 1. Check media:content
+	if item.MediaContent != nil && item.MediaContent.URL != "" {
+		if isImageMedium(item.MediaContent.Medium, item.MediaContent.Type) {
+			return item.MediaContent.URL
+		}
+	}
+
+	// 2. Check media:thumbnail
+	if item.MediaThumbnail != nil && item.MediaThumbnail.URL != "" {
+		return item.MediaThumbnail.URL
+	}
+
+	// 3. Check for enclosure link (rel="enclosure" with image type)
+	for _, link := range item.Links {
+		if link.Rel == "enclosure" && isImageType(link.Type) {
+			return link.Href
+		}
+	}
+
+	// 4. Extract from content HTML
+	content := item.Content.Value
+	if content == "" {
+		content = item.Summary
+	}
+	if imgURL := extractFirstImageFromHTML(content); imgURL != "" {
+		return imgURL
+	}
+
+	return ""
+}
+
+// isImageMedium checks if the media content represents an image.
+func isImageMedium(medium, mimeType string) bool {
+	if medium == "image" {
+		return true
+	}
+	return isImageType(mimeType)
+}
+
+// isImageType checks if the MIME type is an image type.
+func isImageType(mimeType string) bool {
+	mimeType = strings.ToLower(mimeType)
+	return strings.HasPrefix(mimeType, "image/")
+}
+
+// imgSrcPattern matches src attribute in <img> tags.
+var imgSrcPattern = regexp.MustCompile(`<img[^>]+src=["']([^"']+)["']`)
+
+// extractFirstImageFromHTML extracts the first image URL from HTML content.
+func extractFirstImageFromHTML(htmlContent string) string {
+	matches := imgSrcPattern.FindStringSubmatch(htmlContent)
+	if len(matches) >= 2 {
+		return matches[1]
+	}
+	return ""
 }
