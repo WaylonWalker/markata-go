@@ -377,3 +377,4 @@ If you want to build your own static site generator, feel free to fork this proj
 MIT License - see [LICENSE](LICENSE) for details.
 
 Copyright (c) 2024 Waylon Walker
+test

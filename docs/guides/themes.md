@@ -713,6 +713,126 @@ css = '''
 
 ---
 
+## Font Configuration
+
+markata-go provides flexible font configuration to customize your site's typography without writing CSS.
+
+### Quick Start
+
+Add custom fonts via Google Fonts:
+
+```toml
+[markata-go.theme.font]
+google_fonts = ["Inter", "Fira Code"]
+family = "'Inter', sans-serif"
+code_family = "'Fira Code', monospace"
+```
+
+### Font Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `family` | Body text font | System fonts |
+| `heading_family` | Heading font (inherits from `family` if not set) | Same as `family` |
+| `code_family` | Code/monospace font | System monospace |
+| `size` | Base font size | `16px` |
+| `line_height` | Base line height | `1.6` |
+| `google_fonts` | Array of Google Fonts to load | `[]` |
+| `custom_urls` | Array of custom font CSS URLs | `[]` |
+
+### Using Google Fonts
+
+Specify fonts to load from Google Fonts:
+
+```toml
+[markata-go.theme.font]
+# Load these fonts from Google Fonts
+google_fonts = ["Inter", "Playfair Display", "JetBrains Mono"]
+
+# Use them in your font families
+family = "'Inter', sans-serif"
+heading_family = "'Playfair Display', serif"
+code_family = "'JetBrains Mono', monospace"
+```
+
+The `google_fonts` array automatically generates the Google Fonts CSS URL with weights 400, 500, 600, and 700.
+
+### Using Custom Fonts
+
+Load fonts from any URL:
+
+```toml
+[markata-go.theme.font]
+custom_urls = [
+  "https://fonts.example.com/my-font.css",
+  "/fonts/local-font.css"
+]
+family = "'My Custom Font', sans-serif"
+```
+
+### Typography Variables
+
+Font configuration generates CSS custom properties that you can use in your custom CSS:
+
+| Variable | Description |
+|----------|-------------|
+| `--font-family` | Body text font stack |
+| `--font-heading` | Heading font stack |
+| `--font-code` | Code/monospace font stack |
+| `--font-size` | Base font size |
+| `--line-height` | Base line height |
+
+### Complete Example
+
+```toml
+[markata-go.theme]
+palette = "catppuccin-mocha"
+
+[markata-go.theme.font]
+# Google Fonts to load
+google_fonts = ["Source Sans Pro", "Source Serif Pro", "Source Code Pro"]
+
+# Font assignments
+family = "'Source Sans Pro', sans-serif"
+heading_family = "'Source Serif Pro', serif"
+code_family = "'Source Code Pro', monospace"
+
+# Typography settings
+size = "18px"
+line_height = "1.7"
+```
+
+### Using Self-Hosted Fonts
+
+For better performance and privacy, you can self-host fonts:
+
+1. Download font files to `static/fonts/`
+2. Create a CSS file defining `@font-face` rules
+3. Reference it in `custom_urls`
+
+```css
+/* static/fonts/fonts.css */
+@font-face {
+  font-family: 'MyFont';
+  src: url('/fonts/MyFont-Regular.woff2') format('woff2');
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'MyFont';
+  src: url('/fonts/MyFont-Bold.woff2') format('woff2');
+  font-weight: 700;
+}
+```
+
+```toml
+[markata-go.theme.font]
+custom_urls = ["/fonts/fonts.css"]
+family = "'MyFont', sans-serif"
+```
+
+---
+
 ## Best Practices
 
 ### 1. Start with a Palette

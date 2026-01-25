@@ -71,6 +71,25 @@
     {% endif %}
 
     {% block head %}
+    <!-- Font Configuration -->
+    {% if config.theme.font.google_fonts %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="{{ config.theme.font | google_fonts_url }}" rel="stylesheet">
+    {% endif %}
+    {% for url in config.theme.font.custom_urls %}
+    <link href="{{ url }}" rel="stylesheet">
+    {% endfor %}
+    <style>
+    :root {
+        --font-family: {{ config.theme.font.family | default:"system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }};
+        --font-heading: {{ config.theme.font.heading_family | default:config.theme.font.family | default:"system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }};
+        --font-code: {{ config.theme.font.code_family | default:"ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" }};
+        --font-size: {{ config.theme.font.size | default:"16px" }};
+        --line-height: {{ config.theme.font.line_height | default:"1.6" }};
+    }
+    </style>
+
     <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
     {% if config.search.enabled %}
     <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
