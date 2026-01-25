@@ -122,6 +122,7 @@ For developers who want full control and customization.
 ### Advanced
 - [Plugin Development](/docs/guides/plugin-development/) - Creating custom plugins
 - [Migration](/docs/guides/migration/) - Migrating from other static site generators
+- [Performance and Profiling](/docs/guides/performance/) - Benchmarking and profiling builds
 
 ---
 
