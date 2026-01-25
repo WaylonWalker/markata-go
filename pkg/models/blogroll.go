@@ -121,6 +121,15 @@ type ExternalFeedConfig struct {
 
 	// MaxEntries overrides the global max_entries_per_feed for this feed
 	MaxEntries *int `json:"max_entries,omitempty" yaml:"max_entries,omitempty" toml:"max_entries,omitempty"`
+
+	// Primary marks this as the canonical/primary feed for a person (default: true for entries without PrimaryPerson)
+	// When a person has multiple feeds, mark the main one as primary=true
+	Primary *bool `json:"primary,omitempty" yaml:"primary,omitempty" toml:"primary,omitempty"`
+
+	// PrimaryPerson links this feed to a primary person's handle
+	// Use this to associate secondary feeds (e.g., social accounts) with a primary person
+	// Example: If "daverupert" is the primary handle, set primary_person="daverupert" on secondary feeds
+	PrimaryPerson string `json:"primary_person" yaml:"primary_person" toml:"primary_person"`
 }
 
 // IsActive returns whether the feed is active (defaults to true).
@@ -137,6 +146,20 @@ func (f *ExternalFeedConfig) GetMaxEntries(globalDefault int) int {
 		return *f.MaxEntries
 	}
 	return globalDefault
+}
+
+// IsPrimary returns whether this is a primary feed (defaults to true if PrimaryPerson is not set).
+func (f *ExternalFeedConfig) IsPrimary() bool {
+	// If explicit primary value is set, use it
+	if f.Primary != nil {
+		return *f.Primary
+	}
+	// If linked to a primary person, this is secondary (not primary)
+	if f.PrimaryPerson != "" {
+		return false
+	}
+	// Default to primary
+	return true
 }
 
 // ExternalFeed represents a fetched and parsed external RSS/Atom feed.
