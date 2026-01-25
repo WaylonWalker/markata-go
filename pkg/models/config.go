@@ -474,6 +474,57 @@ type ThemeConfig struct {
 
 	// CustomCSS is a path to a custom CSS file to include
 	CustomCSS string `json:"custom_css" yaml:"custom_css" toml:"custom_css"`
+
+	// Background configures multi-layered background decorations
+	Background BackgroundConfig `json:"background,omitempty" yaml:"background,omitempty" toml:"background,omitempty"`
+}
+
+// BackgroundConfig configures multi-layered background decorations for pages.
+// Background elements are rendered as fixed-position layers behind the main content.
+type BackgroundConfig struct {
+	// Enabled controls whether background decorations are active (default: false)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Backgrounds is the list of background elements to render
+	Backgrounds []BackgroundElement `json:"backgrounds,omitempty" yaml:"backgrounds,omitempty" toml:"backgrounds,omitempty"`
+
+	// Scripts is a list of script URLs to include for background functionality
+	// Example: ["/static/js/snow-fall.js"]
+	Scripts []string `json:"scripts,omitempty" yaml:"scripts,omitempty" toml:"scripts,omitempty"`
+
+	// CSS is custom CSS for styling background elements
+	CSS string `json:"css,omitempty" yaml:"css,omitempty" toml:"css,omitempty"`
+}
+
+// BackgroundElement represents a single background decoration layer.
+type BackgroundElement struct {
+	// HTML is the HTML content for this background layer
+	// Example: '<snow-fall count="200"></snow-fall>'
+	HTML string `json:"html" yaml:"html" toml:"html"`
+
+	// ZIndex controls the stacking order of this layer (default: -1)
+	// Negative values place the layer behind content, positive values in front
+	ZIndex int `json:"z_index,omitempty" yaml:"z_index,omitempty" toml:"z_index,omitempty"`
+}
+
+// NewBackgroundConfig creates a new BackgroundConfig with default values.
+func NewBackgroundConfig() BackgroundConfig {
+	enabled := false
+	return BackgroundConfig{
+		Enabled:     &enabled,
+		Backgrounds: []BackgroundElement{},
+		Scripts:     []string{},
+		CSS:         "",
+	}
+}
+
+// IsEnabled returns whether background decorations are enabled.
+// Defaults to false if not explicitly set.
+func (b *BackgroundConfig) IsEnabled() bool {
+	if b.Enabled == nil {
+		return false
+	}
+	return *b.Enabled
 }
 
 // GlobConfig configures file globbing behavior.

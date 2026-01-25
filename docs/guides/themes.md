@@ -598,6 +598,121 @@ Test your gradient choices in both light and dark mode.
 
 ---
 
+## Background Decorations
+
+Add multi-layered background decorations to your site for visual effects like snow, particles, stars, or animated elements.
+
+### Basic Configuration
+
+```toml
+[markata-go.theme.background]
+enabled = true
+
+backgrounds = [
+  { html = '<snow-fall count="200"></snow-fall>' },
+]
+
+scripts = ["/static/js/snow-fall.js"]
+```
+
+This adds a snow effect using a custom web component with its supporting JavaScript.
+
+### Multiple Layers
+
+Stack multiple background layers with different z-index values:
+
+```toml
+[markata-go.theme.background]
+enabled = true
+
+backgrounds = [
+  { html = '<div class="stars"></div>', z_index = -20 },
+  { html = '<div class="clouds"></div>', z_index = -10 },
+  { html = '<snow-fall count="100"></snow-fall>', z_index = -5 },
+]
+
+scripts = ["/static/js/background-effects.js"]
+
+css = '''
+.stars {
+  position: absolute;
+  inset: 0;
+  background: url("/images/stars.png") repeat;
+  opacity: 0.3;
+}
+
+.clouds {
+  position: absolute;
+  inset: 0;
+  background: url("/images/clouds.png") repeat-x;
+  animation: drift 60s linear infinite;
+}
+
+@keyframes drift {
+  from { background-position: 0 0; }
+  to { background-position: 100% 0; }
+}
+'''
+```
+
+### Configuration Reference
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `enabled` | boolean | Enable/disable background decorations (default: false) |
+| `backgrounds` | array | List of background elements |
+| `backgrounds[].html` | string | HTML content for this layer |
+| `backgrounds[].z_index` | integer | Stacking order (-1 is default, behind content) |
+| `scripts` | array | Script URLs to load for background functionality |
+| `css` | string | Custom CSS for styling background elements |
+
+### Tips for Background Decorations
+
+1. **Performance**: Complex animations can impact performance. Test on lower-powered devices.
+
+2. **Accessibility**: Ensure backgrounds don't interfere with content readability. Use `pointer-events: none` (applied automatically).
+
+3. **Z-Index**: Use negative values to place backgrounds behind content. Positive values overlay content.
+
+4. **Web Components**: Custom elements like `<snow-fall>` provide encapsulated, reusable effects.
+
+5. **Reduced Motion**: Consider respecting `prefers-reduced-motion` in your CSS:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .background-layer * {
+    animation: none !important;
+  }
+}
+```
+
+### Example: Particle Background
+
+Using [particles.js](https://vincentgarreau.com/particles.js/):
+
+```toml
+[markata-go.theme.background]
+enabled = true
+
+backgrounds = [
+  { html = '<div id="particles-js"></div>' },
+]
+
+scripts = [
+  "https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js",
+  "/static/js/particles-config.js",
+]
+
+css = '''
+#particles-js {
+  position: absolute;
+  inset: 0;
+}
+'''
+```
+
+---
+
 ## Best Practices
 
 ### 1. Start with a Palette
