@@ -626,3 +626,59 @@ func TestMergeConfigs_Blogroll(t *testing.T) {
 		t.Errorf("Blogroll.Feeds[0].Title = %q, want Example", result.Blogroll.Feeds[0].Title)
 	}
 }
+
+func TestMergeBlogrollConfig_FallbackImageService(t *testing.T) {
+	base := models.BlogrollConfig{
+		Enabled:              true,
+		FallbackImageService: "https://default.shots.com/{url}",
+	}
+	override := models.BlogrollConfig{
+		FallbackImageService: "https://custom.shots.com/{url}",
+	}
+
+	result := mergeBlogrollConfig(base, override)
+
+	if result.FallbackImageService != "https://custom.shots.com/{url}" {
+		t.Errorf("FallbackImageService = %q, want custom URL", result.FallbackImageService)
+	}
+}
+
+func TestMergeBlogrollConfig_FallbackImageServicePreservesBase(t *testing.T) {
+	base := models.BlogrollConfig{
+		Enabled:              true,
+		FallbackImageService: "https://base.shots.com/{url}",
+	}
+	override := models.BlogrollConfig{
+		// FallbackImageService not set
+	}
+
+	result := mergeBlogrollConfig(base, override)
+
+	if result.FallbackImageService != "https://base.shots.com/{url}" {
+		t.Errorf("FallbackImageService = %q, want base URL", result.FallbackImageService)
+	}
+}
+
+func TestMergeBlogrollConfig_PaginationFields(t *testing.T) {
+	base := models.BlogrollConfig{
+		ItemsPerPage:    50,
+		OrphanThreshold: 3,
+		PaginationType:  models.PaginationManual,
+	}
+	override := models.BlogrollConfig{
+		ItemsPerPage:   100,
+		PaginationType: models.PaginationHTMX,
+	}
+
+	result := mergeBlogrollConfig(base, override)
+
+	if result.ItemsPerPage != 100 {
+		t.Errorf("ItemsPerPage = %d, want 100", result.ItemsPerPage)
+	}
+	if result.OrphanThreshold != 3 {
+		t.Errorf("OrphanThreshold = %d, want 3 (from base)", result.OrphanThreshold)
+	}
+	if result.PaginationType != models.PaginationHTMX {
+		t.Errorf("PaginationType = %q, want htmx", result.PaginationType)
+	}
+}
