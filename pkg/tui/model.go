@@ -52,6 +52,7 @@ type Model struct {
 	tags         []services.TagInfo
 	feeds        []*lifecycle.Feed
 	postsTable   table.Model
+	tagsTable    table.Model
 	cursor       int
 	feedCursor   int
 	view         View
@@ -136,6 +137,9 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 	// Initialize posts table with columns and theme
 	postsTable := createPostsTableWithTheme(80, theme) // Default width, will be updated on resize
 
+	// Initialize tags table with columns and theme
+	tagsTable := createTagsTableWithTheme(80, theme) // Default width, will be updated on resize
+
 	m := Model{
 		app:         app,
 		view:        ViewPosts,
@@ -143,12 +147,53 @@ func NewModelWithTheme(app *services.App, theme *Theme) Model {
 		filterInput: filterInput,
 		cmdInput:    cmdInput,
 		postsTable:  postsTable,
+		tagsTable:   tagsTable,
 		sortBy:      "date",
 		sortOrder:   services.SortDesc,
 		theme:       theme,
 	}
 
 	return m
+}
+
+// createTagsTableWithTheme creates and configures the tags table with theme colors.
+func createTagsTableWithTheme(width int, theme *Theme) table.Model {
+	// Column widths: TAG(30) + COUNT(10) + SLUG(remaining)
+	// Account for padding/borders (approximately 8 chars)
+	slugWidth := width - 30 - 10 - 8
+	if slugWidth < 15 {
+		slugWidth = 15
+	}
+
+	columns := []table.Column{
+		{Title: "TAG", Width: 30},
+		{Title: "COUNT", Width: 10},
+		{Title: "SLUG", Width: slugWidth},
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithFocused(true),
+		table.WithHeight(10), // Will be updated on resize
+	)
+
+	// Apply theme-aware styles
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(theme.Colors.Border).
+		BorderBottom(true).
+		Bold(true).
+		Foreground(theme.Colors.TableHeader)
+	s.Selected = s.Selected.
+		Foreground(theme.Colors.SelectedText).
+		Background(theme.Colors.SelectedBg).
+		Bold(true)
+	s.Cell = s.Cell.
+		Foreground(theme.Colors.TableCell)
+	t.SetStyles(s)
+
+	return t
 }
 
 // createPostsTableWithTheme creates and configures the posts table with theme colors.
@@ -208,9 +253,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update table dimensions with theme
 		m.postsTable = createPostsTableWithTheme(msg.Width, m.theme)
 		m.postsTable.SetHeight(msg.Height - 10) // Leave room for header/footer
+		m.tagsTable = createTagsTableWithTheme(msg.Width, m.theme)
+		m.tagsTable.SetHeight(msg.Height - 10)
 		// Repopulate table if we have posts
 		if len(m.posts) > 0 {
 			m.postsTable.SetRows(m.postsToRows())
+		}
+		// Repopulate tags table if we have tags
+		if len(m.tags) > 0 {
+			m.tagsTable.SetRows(m.tagsToRows())
 		}
 		return m, nil
 
@@ -224,6 +275,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tagsLoadedMsg:
 		m.tags = msg.tags
+		m.tagsTable.SetRows(m.tagsToRows())
 		return m, nil
 
 	case feedsLoadedMsg:
@@ -252,6 +304,35 @@ func (m Model) postsToRows() []table.Row {
 		rows[i] = postToRow(p)
 	}
 	return rows
+}
+
+// tagsToRows converts tags to table rows
+func (m Model) tagsToRows() []table.Row {
+	rows := make([]table.Row, len(m.tags))
+	for i, t := range m.tags {
+		rows[i] = tagToRow(t)
+	}
+	return rows
+}
+
+// tagToRow converts a single tag to a table row
+func tagToRow(t services.TagInfo) table.Row {
+	// Tag name (truncate to 28 chars to leave room for selection indicator)
+	name := t.Name
+	if len(name) > 28 {
+		name = name[:25] + "..."
+	}
+
+	// Count
+	count := fmt.Sprintf("%d", t.Count)
+
+	// Slug
+	slug := t.Slug
+	if slug == "" {
+		slug = t.Name
+	}
+
+	return table.Row{name, count, slug}
 }
 
 // postToRow converts a single post to a table row
@@ -380,6 +461,7 @@ func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keyMap.Tags):
 		m.view = ViewTags
 		m.cursor = 0
+		m.tagsTable.SetCursor(0)
 		return m, m.loadTags()
 
 	case key.Matches(msg, keyMap.Feeds):
@@ -454,6 +536,13 @@ func (m Model) handleNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.cursor = m.postsTable.Cursor()
 		return m, cmd
 	}
+	// Let the table handle navigation when in tags view
+	if m.view == ViewTags {
+		var cmd tea.Cmd
+		m.tagsTable, cmd = m.tagsTable.Update(msg)
+		m.cursor = m.tagsTable.Cursor()
+		return m, cmd
+	}
 	// For feeds view, use feedCursor
 	if m.view == ViewFeeds {
 		if key.Matches(msg, keyMap.Up) {
@@ -467,17 +556,6 @@ func (m Model) handleNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
-	}
-	// For other views (tags), use cursor
-	if key.Matches(msg, keyMap.Up) {
-		if m.cursor > 0 {
-			m.cursor--
-		}
-	} else {
-		maxIdx := len(m.tags) - 1
-		if m.cursor < maxIdx {
-			m.cursor++
-		}
 	}
 	return m, nil
 }
@@ -542,6 +620,7 @@ func (m Model) executeCommand(cmd string) (tea.Model, tea.Cmd) {
 	case "tags", "t":
 		m.view = ViewTags
 		m.cursor = 0
+		m.tagsTable.SetCursor(0)
 		return m, m.loadTags()
 	case "feeds", "f":
 		m.view = ViewFeeds
@@ -863,30 +942,12 @@ func (m Model) renderTags() string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Tags (%d)\n\n", len(m.tags)))
 
-	visibleLines := m.height - 8
-	if visibleLines < 5 {
-		visibleLines = 5
-	}
-
-	start := 0
-	if m.cursor >= visibleLines {
-		start = m.cursor - visibleLines + 1
-	}
-	end := start + visibleLines
-	if end > len(m.tags) {
-		end = len(m.tags)
-	}
-
-	for i := start; i < end; i++ {
-		t := m.tags[i]
-		line := fmt.Sprintf("  %s (%d)", t.Name, t.Count)
-		if i == m.cursor {
-			line = m.theme.SelectedStyle.Render(fmt.Sprintf("> %s (%d)", t.Name, t.Count))
-		}
-		sb.WriteString(line + "\n")
-	}
+	// Render the table with header showing count
+	header := fmt.Sprintf("Tags (%d)", len(m.tags))
+	sb.WriteString(m.theme.HeaderStyle.Render(header))
+	sb.WriteString("\n\n")
+	sb.WriteString(m.tagsTable.View())
 
 	return sb.String()
 }
