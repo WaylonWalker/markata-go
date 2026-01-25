@@ -4,6 +4,7 @@ package plugins
 import (
 	"fmt"
 	"html"
+	"log"
 	"net/url"
 	"regexp"
 	"strings"
@@ -128,13 +129,31 @@ func (p *MentionsPlugin) buildHandleMap(m *lifecycle.Manager) map[string]*mentio
 		// Normalize handle to lowercase
 		handle = strings.ToLower(handle)
 
+		// Create the mention entry
+		entry := &mentionEntry{
+			Handle:  handle,
+			SiteURL: siteURL,
+			Title:   feedConfig.Title,
+		}
+
 		// Store in map (first entry wins for duplicates)
 		if _, exists := handleMap[handle]; !exists {
-			handleMap[handle] = &mentionEntry{
-				Handle:  handle,
-				SiteURL: siteURL,
-				Title:   feedConfig.Title,
+			handleMap[handle] = entry
+		}
+
+		// Register aliases for this handle
+		for _, alias := range feedConfig.Aliases {
+			normalizedAlias := strings.ToLower(alias)
+			if normalizedAlias == "" {
+				continue
 			}
+			if _, exists := handleMap[normalizedAlias]; exists {
+				// Log warning for duplicate alias (first entry wins)
+				log.Printf("warning: duplicate alias %q (first entry wins)", normalizedAlias)
+				continue
+			}
+			// Alias points to the same entry with the canonical handle
+			handleMap[normalizedAlias] = entry
 		}
 	}
 

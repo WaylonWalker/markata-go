@@ -334,3 +334,159 @@ func TestMentionsPlugin_Interfaces(_ *testing.T) {
 	var _ lifecycle.TransformPlugin = p
 	var _ lifecycle.PriorityPlugin = p
 }
+
+func TestMentionsPlugin_AliasResolution(t *testing.T) {
+	tests := []struct {
+		name      string
+		content   string
+		handleMap map[string]*mentionEntry
+		want      string
+	}{
+		{
+			name:    "alias resolves to canonical handle",
+			content: "I was reading @dave's post",
+			handleMap: map[string]*mentionEntry{
+				"daverupert": {Handle: "daverupert", SiteURL: "https://daverupert.com", Title: "Dave Rupert"},
+				"dave":       {Handle: "daverupert", SiteURL: "https://daverupert.com", Title: "Dave Rupert"},
+			},
+			want: `I was reading <a href="https://daverupert.com" class="mention">@daverupert</a>'s post`,
+		},
+		{
+			name:    "multiple aliases for same person",
+			content: "@dave and @david are the same as @daverupert",
+			handleMap: map[string]*mentionEntry{
+				"daverupert": {Handle: "daverupert", SiteURL: "https://daverupert.com", Title: "Dave Rupert"},
+				"dave":       {Handle: "daverupert", SiteURL: "https://daverupert.com", Title: "Dave Rupert"},
+				"david":      {Handle: "daverupert", SiteURL: "https://daverupert.com", Title: "Dave Rupert"},
+			},
+			want: `<a href="https://daverupert.com" class="mention">@daverupert</a> and <a href="https://daverupert.com" class="mention">@daverupert</a> are the same as <a href="https://daverupert.com" class="mention">@daverupert</a>`,
+		},
+		{
+			name:    "alias case insensitive",
+			content: "Follow @DAVE",
+			handleMap: map[string]*mentionEntry{
+				"daverupert": {Handle: "daverupert", SiteURL: "https://daverupert.com", Title: "Dave Rupert"},
+				"dave":       {Handle: "daverupert", SiteURL: "https://daverupert.com", Title: "Dave Rupert"},
+			},
+			want: `Follow <a href="https://daverupert.com" class="mention">@daverupert</a>`,
+		},
+		{
+			name:    "canonical handle still works",
+			content: "Check out @daverupert",
+			handleMap: map[string]*mentionEntry{
+				"daverupert": {Handle: "daverupert", SiteURL: "https://daverupert.com", Title: "Dave Rupert"},
+				"dave":       {Handle: "daverupert", SiteURL: "https://daverupert.com", Title: "Dave Rupert"},
+			},
+			want: `Check out <a href="https://daverupert.com" class="mention">@daverupert</a>`,
+		},
+	}
+
+	p := NewMentionsPlugin()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := p.processMentions(tt.content, tt.handleMap)
+			if got != tt.want {
+				t.Errorf("processMentions() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMentionsPlugin_BuildHandleMapWithAliases(t *testing.T) {
+	p := NewMentionsPlugin()
+	m := lifecycle.NewManager()
+
+	// Set up blogroll config with aliases
+	boolTrue := true
+	config := m.Config()
+	config.Extra = map[string]interface{}{
+		"blogroll": models.BlogrollConfig{
+			Enabled: true,
+			Feeds: []models.ExternalFeedConfig{
+				{
+					URL:     "https://daverupert.com/feed.xml",
+					Title:   "Dave Rupert",
+					Handle:  "daverupert",
+					SiteURL: "https://daverupert.com",
+					Active:  &boolTrue,
+					Aliases: []string{"dave", "david", "rupert"},
+				},
+				{
+					URL:     "https://example.com/rss",
+					Title:   "Example Blog",
+					Handle:  "example",
+					SiteURL: "https://example.com",
+					Active:  &boolTrue,
+					Aliases: []string{"ex"},
+				},
+			},
+		},
+	}
+
+	handleMap := p.buildHandleMap(m)
+
+	// Check canonical handle
+	if entry, ok := handleMap["daverupert"]; !ok {
+		t.Error("expected 'daverupert' in handleMap")
+	} else if entry.Handle != "daverupert" {
+		t.Errorf("daverupert.Handle = %q, want %q", entry.Handle, "daverupert")
+	}
+
+	// Check aliases resolve to canonical handle
+	for _, alias := range []string{"dave", "david", "rupert"} {
+		if entry, ok := handleMap[alias]; !ok {
+			t.Errorf("expected alias %q in handleMap", alias)
+		} else if entry.Handle != "daverupert" {
+			t.Errorf("alias %q resolves to Handle = %q, want %q", alias, entry.Handle, "daverupert")
+		}
+	}
+
+	// Check second feed's alias
+	if entry, ok := handleMap["ex"]; !ok {
+		t.Error("expected alias 'ex' in handleMap")
+	} else if entry.Handle != "example" {
+		t.Errorf("alias 'ex' resolves to Handle = %q, want %q", entry.Handle, "example")
+	}
+}
+
+func TestMentionsPlugin_DuplicateAliasFirstWins(t *testing.T) {
+	p := NewMentionsPlugin()
+	m := lifecycle.NewManager()
+
+	// Set up blogroll config where two feeds have the same alias
+	boolTrue := true
+	config := m.Config()
+	config.Extra = map[string]interface{}{
+		"blogroll": models.BlogrollConfig{
+			Enabled: true,
+			Feeds: []models.ExternalFeedConfig{
+				{
+					URL:     "https://alice.com/feed.xml",
+					Title:   "Alice",
+					Handle:  "alice",
+					SiteURL: "https://alice.com",
+					Active:  &boolTrue,
+					Aliases: []string{"al"}, // First feed with alias "al"
+				},
+				{
+					URL:     "https://albert.com/rss",
+					Title:   "Albert",
+					Handle:  "albert",
+					SiteURL: "https://albert.com",
+					Active:  &boolTrue,
+					Aliases: []string{"al"}, // Duplicate alias - should be ignored
+				},
+			},
+		},
+	}
+
+	handleMap := p.buildHandleMap(m)
+
+	// The alias "al" should resolve to alice (first entry wins)
+	if entry, ok := handleMap["al"]; !ok {
+		t.Error("expected alias 'al' in handleMap")
+	} else if entry.Handle != "alice" {
+		t.Errorf("alias 'al' resolves to Handle = %q, want %q (first entry wins)", entry.Handle, "alice")
+	}
+}
