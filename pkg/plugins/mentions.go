@@ -174,9 +174,11 @@ func (p *MentionsPlugin) buildHandleMap(m *lifecycle.Manager) map[string]*mentio
 }
 
 // mentionRegex matches @handle patterns.
-// Handles can contain alphanumeric characters, underscores, and hyphens.
-// Must start with alphanumeric and not be followed by another word character.
-var mentionRegex = regexp.MustCompile(`(?:^|[^@\w])@([a-zA-Z][a-zA-Z0-9_-]*)(?:\b|$)`)
+// Handles can contain alphanumeric characters, underscores, hyphens, and dots.
+// This supports both simple handles like @daverupert and domain-style handles
+// like @simonwillison.net. Must start with a letter and not be preceded by
+// another @ or word character.
+var mentionRegex = regexp.MustCompile(`((?:^|[^@\w])@([a-zA-Z][a-zA-Z0-9_.-]*))([^a-zA-Z0-9_.-]|$)`)
 
 // processMentions replaces @handle syntax with HTML anchor tags.
 func (p *MentionsPlugin) processMentions(content string, handleMap map[string]*mentionEntry) string {
@@ -220,12 +222,14 @@ func (p *MentionsPlugin) processMentions(content string, handleMap map[string]*m
 func (p *MentionsPlugin) processMentionsInText(text string, handleMap map[string]*mentionEntry) string {
 	return mentionRegex.ReplaceAllStringFunc(text, func(match string) string {
 		// Extract the handle from the match
+		// Groups: [0]=full match, [1]=prefix+@handle, [2]=handle, [3]=suffix
 		groups := mentionRegex.FindStringSubmatch(match)
-		if len(groups) < 2 {
+		if len(groups) < 4 {
 			return match
 		}
 
-		handle := strings.ToLower(groups[1])
+		handle := strings.ToLower(groups[2])
+		suffix := groups[3]
 
 		// Look up the handle
 		entry, found := handleMap[handle]
@@ -247,7 +251,7 @@ func (p *MentionsPlugin) processMentionsInText(text string, handleMap map[string
 			html.EscapeString(p.cssClass),
 			html.EscapeString(entry.Handle))
 
-		return prefix + link
+		return prefix + link + suffix
 	})
 }
 
