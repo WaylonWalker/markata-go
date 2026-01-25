@@ -23,12 +23,12 @@
     {% if page.pagination_type == "js" %}
     {# For JS pagination, render ALL posts - JavaScript will handle showing/hiding #}
     {% for post in feed.posts %}
-    {% include "partials/card.html" %}
+    {% include "card.html" %}
     {% endfor %}
     {% else %}
     {# For manual/htmx pagination, render only current page posts #}
     {% for post in page.posts %}
-    {% include "partials/card.html" %}
+    {% include "card.html" %}
     {% endfor %}
     {% endif %}
   </div>
