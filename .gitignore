@@ -968,6 +968,7 @@ FodyWeavers.xsd
 # Core dumps
 core
 core.*
+<<<<<<< Updated upstream
 
 # Benchmark outputs
 bench.txt
@@ -975,3 +976,8 @@ bench-*.txt
 cpu.prof
 mem.prof
 *.prof
+=======
+cache
+output
+>>>>>>> Stashed changes
+.markata
