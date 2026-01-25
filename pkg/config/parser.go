@@ -708,14 +708,19 @@ type tomlBlogrollConfig struct {
 }
 
 type tomlExternalFeedConfig struct {
-	URL         string   `toml:"url"`
-	Title       string   `toml:"title"`
-	Description string   `toml:"description"`
-	Category    string   `toml:"category"`
-	Tags        []string `toml:"tags"`
-	Active      *bool    `toml:"active"`
-	SiteURL     string   `toml:"site_url"`
-	ImageURL    string   `toml:"image_url"`
+	URL           string   `toml:"url"`
+	Title         string   `toml:"title"`
+	Description   string   `toml:"description"`
+	Category      string   `toml:"category"`
+	Tags          []string `toml:"tags"`
+	Active        *bool    `toml:"active"`
+	SiteURL       string   `toml:"site_url"`
+	ImageURL      string   `toml:"image_url"`
+	Handle        string   `toml:"handle"`
+	Aliases       []string `toml:"aliases,omitempty"`
+	MaxEntries    *int     `toml:"max_entries,omitempty"`
+	Primary       *bool    `toml:"primary,omitempty"`
+	PrimaryPerson string   `toml:"primary_person"`
 }
 
 type tomlBlogrollTemplates struct {
@@ -743,14 +748,19 @@ func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	for i := range b.Feeds {
 		fc := &b.Feeds[i]
 		config.Feeds = append(config.Feeds, models.ExternalFeedConfig{
-			URL:         fc.URL,
-			Title:       fc.Title,
-			Description: fc.Description,
-			Category:    fc.Category,
-			Tags:        fc.Tags,
-			Active:      fc.Active,
-			SiteURL:     fc.SiteURL,
-			ImageURL:    fc.ImageURL,
+			URL:           fc.URL,
+			Title:         fc.Title,
+			Description:   fc.Description,
+			Category:      fc.Category,
+			Tags:          fc.Tags,
+			Active:        fc.Active,
+			SiteURL:       fc.SiteURL,
+			ImageURL:      fc.ImageURL,
+			Handle:        fc.Handle,
+			Aliases:       fc.Aliases,
+			MaxEntries:    fc.MaxEntries,
+			Primary:       fc.Primary,
+			PrimaryPerson: fc.PrimaryPerson,
 		})
 	}
 
@@ -1443,14 +1453,19 @@ type yamlBlogrollConfig struct {
 }
 
 type yamlExternalFeedConfig struct {
-	URL         string   `yaml:"url"`
-	Title       string   `yaml:"title"`
-	Description string   `yaml:"description"`
-	Category    string   `yaml:"category"`
-	Tags        []string `yaml:"tags"`
-	Active      *bool    `yaml:"active"`
-	SiteURL     string   `yaml:"site_url"`
-	ImageURL    string   `yaml:"image_url"`
+	URL           string   `yaml:"url"`
+	Title         string   `yaml:"title"`
+	Description   string   `yaml:"description"`
+	Category      string   `yaml:"category"`
+	Tags          []string `yaml:"tags"`
+	Active        *bool    `yaml:"active"`
+	SiteURL       string   `yaml:"site_url"`
+	ImageURL      string   `yaml:"image_url"`
+	Handle        string   `yaml:"handle"`
+	Aliases       []string `yaml:"aliases,omitempty"`
+	MaxEntries    *int     `yaml:"max_entries,omitempty"`
+	Primary       *bool    `yaml:"primary,omitempty"`
+	PrimaryPerson string   `yaml:"primary_person"`
 }
 
 type yamlBlogrollTemplates struct {
@@ -1478,14 +1493,19 @@ func (b *yamlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	for i := range b.Feeds {
 		fc := &b.Feeds[i]
 		config.Feeds = append(config.Feeds, models.ExternalFeedConfig{
-			URL:         fc.URL,
-			Title:       fc.Title,
-			Description: fc.Description,
-			Category:    fc.Category,
-			Tags:        fc.Tags,
-			Active:      fc.Active,
-			SiteURL:     fc.SiteURL,
-			ImageURL:    fc.ImageURL,
+			URL:           fc.URL,
+			Title:         fc.Title,
+			Description:   fc.Description,
+			Category:      fc.Category,
+			Tags:          fc.Tags,
+			Active:        fc.Active,
+			SiteURL:       fc.SiteURL,
+			ImageURL:      fc.ImageURL,
+			Handle:        fc.Handle,
+			Aliases:       fc.Aliases,
+			MaxEntries:    fc.MaxEntries,
+			Primary:       fc.Primary,
+			PrimaryPerson: fc.PrimaryPerson,
 		})
 	}
 
@@ -2163,14 +2183,19 @@ type jsonBlogrollConfig struct {
 }
 
 type jsonExternalFeedConfig struct {
-	URL         string   `json:"url"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	Category    string   `json:"category"`
-	Tags        []string `json:"tags"`
-	Active      *bool    `json:"active"`
-	SiteURL     string   `json:"site_url"`
-	ImageURL    string   `json:"image_url"`
+	URL           string   `json:"url"`
+	Title         string   `json:"title"`
+	Description   string   `json:"description"`
+	Category      string   `json:"category"`
+	Tags          []string `json:"tags"`
+	Active        *bool    `json:"active"`
+	SiteURL       string   `json:"site_url"`
+	ImageURL      string   `json:"image_url"`
+	Handle        string   `json:"handle"`
+	Aliases       []string `json:"aliases,omitempty"`
+	MaxEntries    *int     `json:"max_entries,omitempty"`
+	Primary       *bool    `json:"primary,omitempty"`
+	PrimaryPerson string   `json:"primary_person"`
 }
 
 type jsonBlogrollTemplates struct {
@@ -2198,14 +2223,19 @@ func (b *jsonBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	for i := range b.Feeds {
 		fc := &b.Feeds[i]
 		config.Feeds = append(config.Feeds, models.ExternalFeedConfig{
-			URL:         fc.URL,
-			Title:       fc.Title,
-			Description: fc.Description,
-			Category:    fc.Category,
-			Tags:        fc.Tags,
-			Active:      fc.Active,
-			SiteURL:     fc.SiteURL,
-			ImageURL:    fc.ImageURL,
+			URL:           fc.URL,
+			Title:         fc.Title,
+			Description:   fc.Description,
+			Category:      fc.Category,
+			Tags:          fc.Tags,
+			Active:        fc.Active,
+			SiteURL:       fc.SiteURL,
+			ImageURL:      fc.ImageURL,
+			Handle:        fc.Handle,
+			Aliases:       fc.Aliases,
+			MaxEntries:    fc.MaxEntries,
+			Primary:       fc.Primary,
+			PrimaryPerson: fc.PrimaryPerson,
 		})
 	}
 

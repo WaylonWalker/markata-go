@@ -518,3 +518,172 @@ items_per_page = 15
 		}
 	}
 }
+
+func TestParseTOML_BlogrollExternalFeedFields(t *testing.T) {
+	maxEntries := 5
+	primary := true
+
+	data := []byte(`
+[markata-go]
+
+[markata-go.blogroll]
+enabled = true
+
+[[markata-go.blogroll.feeds]]
+url = "https://example.com/feed.xml"
+title = "Example Blog"
+handle = "exampleblog"
+aliases = ["example", "ex"]
+max_entries = 5
+primary = true
+primary_person = "mainauthor"
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if len(config.Blogroll.Feeds) != 1 {
+		t.Fatalf("len(Blogroll.Feeds) = %d, want 1", len(config.Blogroll.Feeds))
+	}
+
+	feed := config.Blogroll.Feeds[0]
+
+	// Verify all external feed fields are parsed correctly
+	tests := []struct {
+		field string
+		got   interface{}
+		want  interface{}
+	}{
+		{"URL", feed.URL, "https://example.com/feed.xml"},
+		{"Title", feed.Title, "Example Blog"},
+		{"Handle", feed.Handle, "exampleblog"},
+		{"PrimaryPerson", feed.PrimaryPerson, "mainauthor"},
+	}
+
+	for _, tt := range tests {
+		if tt.got != tt.want {
+			t.Errorf("%s = %v, want %v", tt.field, tt.got, tt.want)
+		}
+	}
+
+	// Check slice fields
+	if len(feed.Aliases) != 2 {
+		t.Errorf("len(Aliases) = %d, want 2", len(feed.Aliases))
+	} else if feed.Aliases[0] != "example" || feed.Aliases[1] != "ex" {
+		t.Errorf("Aliases = %v, want [example ex]", feed.Aliases)
+	}
+
+	// Check pointer fields
+	if feed.MaxEntries == nil || *feed.MaxEntries != maxEntries {
+		t.Errorf("MaxEntries = %v, want %d", feed.MaxEntries, maxEntries)
+	}
+	if feed.Primary == nil || *feed.Primary != primary {
+		t.Errorf("Primary = %v, want %v", feed.Primary, primary)
+	}
+}
+
+func TestParseYAML_BlogrollExternalFeedFields(t *testing.T) {
+	maxEntries := 10
+	primary := false
+
+	data := []byte(`
+markata-go:
+  blogroll:
+    enabled: true
+    feeds:
+      - url: "https://blog.example.org/rss"
+        title: "Another Blog"
+        handle: "anotherblog"
+        aliases:
+          - another
+          - blog
+        max_entries: 10
+        primary: false
+        primary_person: "someauthor"
+`)
+
+	config, err := ParseYAML(data)
+	if err != nil {
+		t.Fatalf("ParseYAML() error = %v", err)
+	}
+
+	if len(config.Blogroll.Feeds) != 1 {
+		t.Fatalf("len(Blogroll.Feeds) = %d, want 1", len(config.Blogroll.Feeds))
+	}
+
+	feed := config.Blogroll.Feeds[0]
+
+	if feed.URL != "https://blog.example.org/rss" {
+		t.Errorf("URL = %q, want %q", feed.URL, "https://blog.example.org/rss")
+	}
+	if feed.Handle != "anotherblog" {
+		t.Errorf("Handle = %q, want %q", feed.Handle, "anotherblog")
+	}
+	if feed.PrimaryPerson != "someauthor" {
+		t.Errorf("PrimaryPerson = %q, want %q", feed.PrimaryPerson, "someauthor")
+	}
+	if len(feed.Aliases) != 2 {
+		t.Errorf("len(Aliases) = %d, want 2", len(feed.Aliases))
+	}
+	if feed.MaxEntries == nil || *feed.MaxEntries != maxEntries {
+		t.Errorf("MaxEntries = %v, want %d", feed.MaxEntries, maxEntries)
+	}
+	if feed.Primary == nil || *feed.Primary != primary {
+		t.Errorf("Primary = %v, want %v", feed.Primary, primary)
+	}
+}
+
+func TestParseJSON_BlogrollExternalFeedFields(t *testing.T) {
+	maxEntries := 3
+
+	data := []byte(`{
+  "markata-go": {
+    "blogroll": {
+      "enabled": true,
+      "feeds": [
+        {
+          "url": "https://json.example.com/feed",
+          "title": "JSON Blog",
+          "handle": "jsonblog",
+          "aliases": ["json", "jb"],
+          "max_entries": 3,
+          "primary": true,
+          "primary_person": "jsonauthor"
+        }
+      ]
+    }
+  }
+}`)
+
+	config, err := ParseJSON(data)
+	if err != nil {
+		t.Fatalf("ParseJSON() error = %v", err)
+	}
+
+	if len(config.Blogroll.Feeds) != 1 {
+		t.Fatalf("len(Blogroll.Feeds) = %d, want 1", len(config.Blogroll.Feeds))
+	}
+
+	feed := config.Blogroll.Feeds[0]
+
+	if feed.URL != "https://json.example.com/feed" {
+		t.Errorf("URL = %q, want %q", feed.URL, "https://json.example.com/feed")
+	}
+	if feed.Handle != "jsonblog" {
+		t.Errorf("Handle = %q, want %q", feed.Handle, "jsonblog")
+	}
+	if feed.PrimaryPerson != "jsonauthor" {
+		t.Errorf("PrimaryPerson = %q, want %q", feed.PrimaryPerson, "jsonauthor")
+	}
+	if len(feed.Aliases) != 2 || feed.Aliases[0] != "json" || feed.Aliases[1] != "jb" {
+		t.Errorf("Aliases = %v, want [json jb]", feed.Aliases)
+	}
+	if feed.MaxEntries == nil || *feed.MaxEntries != maxEntries {
+		t.Errorf("MaxEntries = %v, want %d", feed.MaxEntries, maxEntries)
+	}
+	if feed.Primary == nil || !*feed.Primary {
+		t.Errorf("Primary = %v, want true", feed.Primary)
+	}
+}
