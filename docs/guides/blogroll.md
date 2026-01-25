@@ -25,10 +25,10 @@ This is perfect for sharing your reading list, building community connections, o
 Add this to your `markata-go.toml`:
 
 ```toml
-[blogroll]
+[markata-go.blogroll]
 enabled = true
 
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://simonwillison.net/atom/everything/"
 title = "Simon Willison"
 category = "Technology"
@@ -43,7 +43,7 @@ Run `markata-go build` and you'll have:
 ### Basic Settings
 
 ```toml
-[blogroll]
+[markata-go.blogroll]
 enabled = true                    # Enable the blogroll plugin
 cache_dir = "cache/blogroll"      # Where to cache fetched feeds
 cache_duration = "1h"             # How long to cache (default: 1 hour)
@@ -57,7 +57,7 @@ max_entries_per_feed = 50         # Global default entries per feed
 The reader page supports pagination to handle large numbers of entries:
 
 ```toml
-[blogroll]
+[markata-go.blogroll]
 enabled = true
 items_per_page = 50               # Entries per page (default: 50)
 orphan_threshold = 3              # Min entries for separate page (default: 3)
@@ -82,10 +82,10 @@ The paginated reader generates:
 
 ### Adding Feeds
 
-Add feeds using the `[[blogroll.feeds]]` array:
+Add feeds using the `[[markata-go.blogroll.feeds]]` array:
 
 ```toml
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://example.com/feed.xml"    # Required: RSS/Atom feed URL
 title = "Example Blog"                   # Optional: display name (auto-fetched if not set)
 description = "A great blog about stuff" # Optional: short description
@@ -102,26 +102,26 @@ max_entries = 50                         # Optional: override global max_entries
 Override the global `max_entries_per_feed` for individual feeds:
 
 ```toml
-[blogroll]
+[markata-go.blogroll]
 enabled = true
 max_entries_per_feed = 50         # Global default
 
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://prolific-blogger.com/feed.xml"
 title = "Prolific Blogger"
 max_entries = 100                 # Override: this site posts frequently
 
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://micro.blog/user.xml"
 title = "Micro Blog"
 max_entries = 200                 # Override: many small posts
 
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://infrequent-poster.com/feed.xml"
 title = "Infrequent Poster"
 max_entries = 10                  # Override: rarely posts, save cache space
 
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://normal-blog.com/feed.xml"
 title = "Normal Blog"
 # Uses global default: 50 entries
@@ -146,7 +146,7 @@ title = "Normal Blog"
 Override the default templates:
 
 ```toml
-[blogroll.templates]
+[markata-go.blogroll.templates]
 blogroll = "blogroll.html"    # Template for /blogroll/ page
 reader = "reader.html"        # Template for /reader/ page
 ```
@@ -156,7 +156,7 @@ reader = "reader.html"        # Template for /reader/ page
 Here's a complete example with multiple feeds organized by category:
 
 ```toml
-[blogroll]
+[markata-go.blogroll]
 enabled = true
 cache_duration = "2h"
 max_entries_per_feed = 25
@@ -165,7 +165,7 @@ max_entries_per_feed = 25
 # TECHNOLOGY
 # =============================================================================
 
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://simonwillison.net/atom/everything/"
 title = "Simon Willison"
 description = "Creator of Datasette, Django co-creator, AI/LLM enthusiast"
@@ -173,7 +173,7 @@ category = "Technology"
 tags = ["python", "ai", "llm", "sqlite"]
 site_url = "https://simonwillison.net"
 
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://jvns.ca/atom.xml"
 title = "Julia Evans"
 description = "Making hard things easy to understand"
@@ -181,7 +181,7 @@ category = "Technology"
 tags = ["linux", "networking", "zines"]
 site_url = "https://jvns.ca"
 
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://danluu.com/atom.xml"
 title = "Dan Luu"
 description = "Deep dives into computer systems"
@@ -189,7 +189,7 @@ category = "Technology"
 tags = ["systems", "performance"]
 site_url = "https://danluu.com"
 
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://blog.codinghorror.com/rss/"
 title = "Coding Horror"
 description = "Jeff Atwood on programming and human factors"
@@ -201,7 +201,7 @@ site_url = "https://blog.codinghorror.com"
 # DESIGN
 # =============================================================================
 
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://alistapart.com/main/feed/"
 title = "A List Apart"
 description = "For people who make websites"
@@ -209,7 +209,7 @@ category = "Design"
 tags = ["web", "ux", "accessibility"]
 site_url = "https://alistapart.com"
 
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://css-tricks.com/feed/"
 title = "CSS-Tricks"
 description = "Tips, tricks, and techniques on using CSS"
@@ -221,7 +221,7 @@ site_url = "https://css-tricks.com"
 # PERSONAL
 # =============================================================================
 
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://austinkleon.com/feed/"
 title = "Austin Kleon"
 description = "Writer and artist"
@@ -241,7 +241,7 @@ https://simonwillison.net/atom/everything/
 Add him to your blogroll:
 
 ```toml
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://simonwillison.net/atom/everything/"
 title = "Simon Willison"
 description = "Creator of Datasette, Django co-creator, AI/LLM enthusiast"
@@ -506,7 +506,7 @@ The blogroll plugin caches fetched feeds to avoid hitting external servers on ev
 ### Cache Configuration
 
 ```toml
-[blogroll]
+[markata-go.blogroll]
 cache_dir = "cache/blogroll"    # Cache directory
 cache_duration = "1h"           # How long to cache feeds
 ```
@@ -569,7 +569,7 @@ When a feed fails to fetch, the plugin:
 ### Example Production Config
 
 ```toml
-[blogroll]
+[markata-go.blogroll]
 enabled = true
 cache_dir = "cache/blogroll"
 cache_duration = "6h"           # Cache for 6 hours
@@ -583,7 +583,7 @@ max_entries_per_feed = 20       # Only recent posts
 ### Full Configuration
 
 ```toml
-[blogroll]
+[markata-go.blogroll]
 # Enable/disable the entire feature
 enabled = true
 
@@ -607,7 +607,7 @@ blogroll = "blogroll.html"
 reader = "reader.html"
 
 # Feeds
-[[blogroll.feeds]]
+[[markata-go.blogroll.feeds]]
 url = "https://example.com/feed.xml"
 title = "Example"
 description = "Description"
