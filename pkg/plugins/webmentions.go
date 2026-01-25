@@ -479,5 +479,3 @@ var (
 	_ lifecycle.CollectPlugin   = (*WebMentionsPlugin)(nil)
 	_ lifecycle.PriorityPlugin  = (*WebMentionsPlugin)(nil)
 )
-
-// trigger CI

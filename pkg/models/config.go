@@ -838,6 +838,61 @@ type WebMentionsConfig struct {
 
 	// ConcurrentRequests is the max number of concurrent webmention requests (default: 5)
 	ConcurrentRequests int `json:"concurrent_requests" yaml:"concurrent_requests" toml:"concurrent_requests"`
+
+	// Bridges configures social media bridging for incoming webmentions
+	Bridges BridgesConfig `json:"bridges" yaml:"bridges" toml:"bridges"`
+
+	// WebmentionIOToken is the API token for webmention.io (for receiving mentions)
+	WebmentionIOToken string `json:"webmention_io_token" yaml:"webmention_io_token" toml:"webmention_io_token"`
+}
+
+// BridgesConfig configures social media bridging services.
+type BridgesConfig struct {
+	// Enabled controls whether bridging detection is active (default: false)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// BridgyFediverse enables Bridgy Fed integration (default: true when bridges enabled)
+	BridgyFediverse bool `json:"bridgy_fediverse" yaml:"bridgy_fediverse" toml:"bridgy_fediverse"`
+
+	// Platform-specific controls
+	Bluesky  bool `json:"bluesky" yaml:"bluesky" toml:"bluesky"`
+	Twitter  bool `json:"twitter" yaml:"twitter" toml:"twitter"`
+	Mastodon bool `json:"mastodon" yaml:"mastodon" toml:"mastodon"`
+	GitHub   bool `json:"github" yaml:"github" toml:"github"`
+	Flickr   bool `json:"flickr" yaml:"flickr" toml:"flickr"`
+
+	// Filters configures filtering of bridged mentions
+	Filters BridgeFiltersConfig `json:"filters" yaml:"filters" toml:"filters"`
+}
+
+// BridgeFiltersConfig configures filtering for bridged webmentions.
+type BridgeFiltersConfig struct {
+	// Platforms limits which platforms to accept (empty = all enabled)
+	Platforms []string `json:"platforms" yaml:"platforms" toml:"platforms"`
+
+	// InteractionTypes limits which interaction types to accept (empty = all)
+	// Valid values: "like", "repost", "reply", "bookmark", "mention"
+	InteractionTypes []string `json:"interaction_types" yaml:"interaction_types" toml:"interaction_types"`
+
+	// MinContentLength filters out mentions with content shorter than this
+	MinContentLength int `json:"min_content_length" yaml:"min_content_length" toml:"min_content_length"`
+
+	// BlockedDomains is a list of domains to reject mentions from
+	BlockedDomains []string `json:"blocked_domains" yaml:"blocked_domains" toml:"blocked_domains"`
+}
+
+// NewBridgesConfig creates a new BridgesConfig with default values.
+func NewBridgesConfig() BridgesConfig {
+	return BridgesConfig{
+		Enabled:         false,
+		BridgyFediverse: true,
+		Bluesky:         true,
+		Twitter:         true,
+		Mastodon:        true,
+		GitHub:          true,
+		Flickr:          false,
+		Filters:         BridgeFiltersConfig{},
+	}
 }
 
 // NewWebMentionsConfig creates a new WebMentionsConfig with default values.
@@ -849,6 +904,7 @@ func NewWebMentionsConfig() WebMentionsConfig {
 		Timeout:            "30s",
 		CacheDir:           ".cache/webmentions",
 		ConcurrentRequests: 5,
+		Bridges:            NewBridgesConfig(),
 	}
 }
 
