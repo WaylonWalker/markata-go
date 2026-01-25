@@ -307,14 +307,16 @@ type tomlFeedFormats struct {
 	JSON     *bool `toml:"json"`
 	Markdown *bool `toml:"markdown"`
 	Text     *bool `toml:"text"`
+	Sitemap  *bool `toml:"sitemap"`
 }
 
 type tomlFeedTemplates struct {
-	HTML string `toml:"html"`
-	RSS  string `toml:"rss"`
-	Atom string `toml:"atom"`
-	JSON string `toml:"json"`
-	Card string `toml:"card"`
+	HTML    string `toml:"html"`
+	RSS     string `toml:"rss"`
+	Atom    string `toml:"atom"`
+	JSON    string `toml:"json"`
+	Card    string `toml:"card"`
+	Sitemap string `toml:"sitemap"`
 }
 
 type tomlFeedDefaults struct {
@@ -929,16 +931,20 @@ func (f *tomlFeedFormats) toFeedFormats() models.FeedFormats {
 	if f.Text != nil {
 		formats.Text = *f.Text
 	}
+	if f.Sitemap != nil {
+		formats.Sitemap = *f.Sitemap
+	}
 	return formats
 }
 
 func (t *tomlFeedTemplates) toFeedTemplates() models.FeedTemplates {
 	return models.FeedTemplates{
-		HTML: t.HTML,
-		RSS:  t.RSS,
-		Atom: t.Atom,
-		JSON: t.JSON,
-		Card: t.Card,
+		HTML:    t.HTML,
+		RSS:     t.RSS,
+		Atom:    t.Atom,
+		JSON:    t.JSON,
+		Card:    t.Card,
+		Sitemap: t.Sitemap,
 	}
 }
 
@@ -1028,14 +1034,16 @@ type yamlFeedFormats struct {
 	JSON     *bool `yaml:"json"`
 	Markdown *bool `yaml:"markdown"`
 	Text     *bool `yaml:"text"`
+	Sitemap  *bool `yaml:"sitemap"`
 }
 
 type yamlFeedTemplates struct {
-	HTML string `yaml:"html"`
-	RSS  string `yaml:"rss"`
-	Atom string `yaml:"atom"`
-	JSON string `yaml:"json"`
-	Card string `yaml:"card"`
+	HTML    string `yaml:"html"`
+	RSS     string `yaml:"rss"`
+	Atom    string `yaml:"atom"`
+	JSON    string `yaml:"json"`
+	Card    string `yaml:"card"`
+	Sitemap string `yaml:"sitemap"`
 }
 
 type yamlFeedDefaults struct {
@@ -1659,16 +1667,20 @@ func (f *yamlFeedFormats) toFeedFormats() models.FeedFormats {
 	if f.Text != nil {
 		formats.Text = *f.Text
 	}
+	if f.Sitemap != nil {
+		formats.Sitemap = *f.Sitemap
+	}
 	return formats
 }
 
 func (t *yamlFeedTemplates) toFeedTemplates() models.FeedTemplates {
 	return models.FeedTemplates{
-		HTML: t.HTML,
-		RSS:  t.RSS,
-		Atom: t.Atom,
-		JSON: t.JSON,
-		Card: t.Card,
+		HTML:    t.HTML,
+		RSS:     t.RSS,
+		Atom:    t.Atom,
+		JSON:    t.JSON,
+		Card:    t.Card,
+		Sitemap: t.Sitemap,
 	}
 }
 
@@ -1758,14 +1770,16 @@ type jsonFeedFormats struct {
 	JSON     *bool `json:"json"`
 	Markdown *bool `json:"markdown"`
 	Text     *bool `json:"text"`
+	Sitemap  *bool `json:"sitemap"`
 }
 
 type jsonFeedTemplates struct {
-	HTML string `json:"html"`
-	RSS  string `json:"rss"`
-	Atom string `json:"atom"`
-	JSON string `json:"json"`
-	Card string `json:"card"`
+	HTML    string `json:"html"`
+	RSS     string `json:"rss"`
+	Atom    string `json:"atom"`
+	JSON    string `json:"json"`
+	Card    string `json:"card"`
+	Sitemap string `json:"sitemap"`
 }
 
 type jsonFeedDefaults struct {
@@ -2389,16 +2403,20 @@ func (f *jsonFeedFormats) toFeedFormats() models.FeedFormats {
 	if f.Text != nil {
 		formats.Text = *f.Text
 	}
+	if f.Sitemap != nil {
+		formats.Sitemap = *f.Sitemap
+	}
 	return formats
 }
 
 func (t *jsonFeedTemplates) toFeedTemplates() models.FeedTemplates {
 	return models.FeedTemplates{
-		HTML: t.HTML,
-		RSS:  t.RSS,
-		Atom: t.Atom,
-		JSON: t.JSON,
-		Card: t.Card,
+		HTML:    t.HTML,
+		RSS:     t.RSS,
+		Atom:    t.Atom,
+		JSON:    t.JSON,
+		Card:    t.Card,
+		Sitemap: t.Sitemap,
 	}
 }
 

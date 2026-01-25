@@ -3,6 +3,7 @@ package plugins
 
 import (
 	"bytes"
+	"encoding/xml"
 	"fmt"
 	"html/template"
 	"os"
@@ -78,6 +79,7 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(fc, config, feedDir) }, ext: "json", targetFile: "feed.json"},
 		{name: "Markdown", enabled: fc.Formats.Markdown, publish: func() error { return p.publishMarkdown(fc, feedDir) }, ext: "md", targetFile: "index.md"},
 		{name: "Text", enabled: fc.Formats.Text, publish: func() error { return p.publishText(fc, feedDir) }, ext: "txt", targetFile: "index.txt"},
+		{name: "Sitemap", enabled: fc.Formats.Sitemap, publish: func() error { return p.publishSitemap(fc, config, feedDir) }},
 	}
 
 	for _, pub := range publishers {
@@ -411,6 +413,74 @@ func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, feedDir string) 
 	txtPath := filepath.Join(feedDir, "index.txt")
 	//nolint:gosec // G306: Feed files need 0644 for web serving
 	return os.WriteFile(txtPath, []byte(sb.String()), 0o644)
+}
+
+// publishSitemap generates and writes a sitemap XML file for feed posts.
+func (p *PublishFeedsPlugin) publishSitemap(fc *models.FeedConfig, config *lifecycle.Config, feedDir string) error {
+	// Get site URL
+	siteURL := getSiteURL(config)
+	if siteURL == "" {
+		siteURL = DefaultSiteURL
+	}
+
+	// Build sitemap for this feed's posts
+	sitemap := &URLSet{
+		XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9",
+		URLs:  make([]SitemapURL, 0, len(fc.Posts)),
+	}
+
+	// Add all posts in this feed
+	for _, post := range fc.Posts {
+		if !post.Published || post.Draft || post.Skip {
+			continue
+		}
+
+		url := SitemapURL{
+			Loc: siteURL + post.Href,
+		}
+
+		// Use post.date for lastmod
+		if post.Date != nil {
+			url.LastMod = post.Date.Format("2006-01-02")
+		}
+
+		// Support frontmatter fields: changefreq and priority
+		// Default values from spec
+		changefreq := "weekly"
+		priority := "0.5"
+
+		if post.Extra != nil {
+			if cf, ok := post.Extra["changefreq"].(string); ok && cf != "" {
+				changefreq = cf
+			}
+			if p, ok := post.Extra["priority"].(string); ok && p != "" {
+				priority = p
+			}
+			// Also support float64 for priority from TOML/JSON parsing
+			if p, ok := post.Extra["priority"].(float64); ok {
+				priority = fmt.Sprintf("%.1f", p)
+			}
+		}
+
+		url.ChangeFreq = changefreq
+		url.Priority = priority
+
+		sitemap.URLs = append(sitemap.URLs, url)
+	}
+
+	// Marshal to XML
+	output, err := xml.MarshalIndent(sitemap, "", "    ")
+	if err != nil {
+		return fmt.Errorf("marshaling sitemap: %w", err)
+	}
+
+	// Add XML declaration
+	xmlContent := xml.Header + string(output)
+
+	// Write sitemap.xml
+	sitemapPath := filepath.Join(feedDir, "sitemap.xml")
+	//nolint:gosec // G306: Sitemap files need 0644 for web serving
+	return os.WriteFile(sitemapPath, []byte(xmlContent), 0o644)
 }
 
 // writeFeedFormatRedirect writes a redirect from /slug.ext to /slug/targetFile.

@@ -101,6 +101,8 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.FeedDefaults.Formats.Markdown = parseBool(value)
 	case "feed_defaults_formats_text", "feeds_defaults_formats_text":
 		config.FeedDefaults.Formats.Text = parseBool(value)
+	case "feed_defaults_formats_sitemap", "feeds_defaults_formats_sitemap":
+		config.FeedDefaults.Formats.Sitemap = parseBool(value)
 	case "feed_defaults_syndication_max_items", "feeds_defaults_syndication_max_items":
 		if v, err := strconv.Atoi(value); err == nil {
 			config.FeedDefaults.Syndication.MaxItems = v
