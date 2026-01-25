@@ -242,14 +242,25 @@ More text.
 	p2.includeCodeInCount = true
 	stats2 := p2.calculatePostStats(content)
 
-	// Code included should have more words (fmt, Println, Hello, world add 4+ words)
-	// Note: The code block regex replacement affects word counting
-	// When code is included, the fenced code block content is preserved
+	// Expected: "Some text here" (3) + "More text" (2) = 5 words without code
+	// Expected: "Some text here" (3) + "func main fmt Println Hello world" (6) + "More text" (2) = 11 words with code
 	t.Logf("Without code: %d words, With code: %d words", stats1.WordCount, stats2.WordCount)
 
-	// Just verify the plugin runs without error for both modes
 	if stats1.WordCount == 0 {
 		t.Error("Expected non-zero word count without code")
+	}
+
+	// Verify that including code results in MORE words, not fewer
+	if stats2.WordCount <= stats1.WordCount {
+		t.Errorf("includeCodeInCount=true should increase word count: got %d words (with code) vs %d words (without code)", stats2.WordCount, stats1.WordCount)
+	}
+
+	// Both should detect the same number of code blocks
+	if stats1.CodeBlocks != stats2.CodeBlocks {
+		t.Errorf("CodeBlocks mismatch: %d (without) vs %d (with code in count)", stats1.CodeBlocks, stats2.CodeBlocks)
+	}
+	if stats1.CodeBlocks != 1 {
+		t.Errorf("Expected 1 code block, got %d", stats1.CodeBlocks)
 	}
 }
 
