@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -103,6 +104,10 @@ type Model struct {
 	helpContentLines []string        // All help content lines
 	helpMatchedLines []int           // Indices of lines that match search
 	helpCurrentMatch int             // Current match index for n/N navigation
+
+	// Refresh state
+	lastRefresh time.Time // Track last refresh time
+	refreshing  bool      // Indicate refresh in progress
 }
 
 // Messages
@@ -124,6 +129,14 @@ type errMsg struct {
 
 type editorFinishedMsg struct {
 	err error
+}
+
+type refreshStartedMsg struct{}
+
+type refreshCompletedMsg struct {
+	posts []*models.Post
+	tags  []services.TagInfo
+	feeds []*lifecycle.Feed
 }
 
 // sortOption represents a sort field option
@@ -379,7 +392,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.err = msg.err
 		}
-		return m, m.loadPosts()
+		// Trigger refresh after editing
+		return m, m.refreshData()
+
+	case refreshStartedMsg:
+		m.refreshing = true
+		return m, nil
+
+	case refreshCompletedMsg:
+		m.refreshing = false
+		m.lastRefresh = time.Now()
+		m.posts = msg.posts
+		m.tags = msg.tags
+		m.feeds = msg.feeds
+		m.postsTable.SetRows(m.postsToRows())
+		m.tagsTable.SetRows(m.tagsToRows())
+		return m, nil
 	}
 
 	return m, nil
@@ -764,6 +792,9 @@ func (m Model) handleNormalModeKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleSortHotkey("reading_time")
 	case msg.String() == "G":
 		return m.handleSortHotkey("tags")
+
+	case key.Matches(msg, keyMap.Refresh):
+		return m.handleRefreshKey()
 	}
 
 	return m, nil
@@ -836,6 +867,14 @@ func (m Model) handleSortHotkey(field string) (tea.Model, tea.Cmd) {
 	m.cursor = 0
 	m.postsTable.SetCursor(0)
 	return m, m.loadPosts()
+}
+
+// handleRefreshKey handles the refresh key for manually refreshing data
+func (m Model) handleRefreshKey() (tea.Model, tea.Cmd) {
+	if m.refreshing {
+		return m, nil // Already refreshing
+	}
+	return m, m.refreshData()
 }
 
 func (m Model) handleNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -1548,6 +1587,61 @@ func (m Model) loadFeeds() tea.Cmd {
 	}
 }
 
+// refreshData reloads all data (posts, tags, and feeds)
+func (m Model) refreshData() tea.Cmd {
+	return tea.Sequence(
+		func() tea.Msg {
+			return refreshStartedMsg{}
+		},
+		func() tea.Msg {
+			// Load all data in parallel
+			opts := services.ListOptions{
+				SortBy:    m.sortBy,
+				SortOrder: m.sortOrder,
+			}
+
+			// If there's an active filter, load the appropriate data
+			var posts []*models.Post
+			var err error
+
+			if m.activeFilter != nil {
+				switch m.activeFilter.Type {
+				case "tag":
+					posts, err = m.app.Tags.GetPosts(context.Background(), m.activeFilter.Name, opts)
+				case "feed":
+					posts, err = m.app.Feeds.GetPosts(context.Background(), m.activeFilter.Name, opts)
+				default:
+					opts.Filter = m.filter
+					posts, err = m.app.Posts.List(context.Background(), opts)
+				}
+			} else {
+				opts.Filter = m.filter
+				posts, err = m.app.Posts.List(context.Background(), opts)
+			}
+
+			if err != nil {
+				return errMsg{err}
+			}
+
+			tags, err := m.app.Tags.List(context.Background())
+			if err != nil {
+				return errMsg{err}
+			}
+
+			feeds, err := m.app.Feeds.List(context.Background())
+			if err != nil {
+				return errMsg{err}
+			}
+
+			return refreshCompletedMsg{
+				posts: posts,
+				tags:  tags,
+				feeds: feeds,
+			}
+		},
+	)
+}
+
 // loadPostsForTag loads posts filtered by a specific tag
 func (m Model) loadPostsForTag(tag string) tea.Cmd {
 	return func() tea.Msg {
@@ -1739,6 +1833,10 @@ func (m *Model) renderFooter(sortIndicator string) string {
 			return *model, nil
 		})
 
+		addButton("refresh", "r", func(model *Model) (tea.Model, tea.Cmd) {
+			return model.handleRefreshKey()
+		})
+
 		addButton("sort", "s", func(model *Model) (tea.Model, tea.Cmd) {
 			return model.handleSortKey()
 		})
@@ -1762,6 +1860,10 @@ func (m *Model) renderFooter(sortIndicator string) string {
 		addButton("help", "?", func(model *Model) (tea.Model, tea.Cmd) {
 			model.view = ViewHelp
 			return *model, nil
+		})
+
+		addButton("refresh", "r", func(model *Model) (tea.Model, tea.Cmd) {
+			return model.handleRefreshKey()
 		})
 
 		addButton("sort", "s", func(model *Model) (tea.Model, tea.Cmd) {
@@ -1794,6 +1896,25 @@ func (m *Model) renderFooter(sortIndicator string) string {
 		addButton("quit", "q", func(model *Model) (tea.Model, tea.Cmd) {
 			return model.handleQuitKey()
 		})
+	}
+
+	// Add refresh status indicator
+	refreshStatus := ""
+	if m.refreshing {
+		refreshStatus = " [Refreshing...]"
+	} else if !m.lastRefresh.IsZero() {
+		elapsed := time.Since(m.lastRefresh)
+		switch {
+		case elapsed < time.Minute:
+			refreshStatus = fmt.Sprintf(" [%ds ago]", int(elapsed.Seconds()))
+		case elapsed < time.Hour:
+			refreshStatus = fmt.Sprintf(" [%dm ago]", int(elapsed.Minutes()))
+		default:
+			refreshStatus = fmt.Sprintf(" [%s]", m.lastRefresh.Format("15:04"))
+		}
+	}
+	if refreshStatus != "" {
+		footerParts = append(footerParts, m.theme.SubtleStyle.Render(refreshStatus))
 	}
 
 	return strings.Join(footerParts, "  ")
