@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,8 +55,9 @@ func createAchievementPost(game *models.SteamGame, achievement *models.SteamAchi
 	// Create content
 	content := fmt.Sprintf(`---
 title: %s
-description: "%s: %s"
+description: %s
 date: "%s"
+published: true
 templateKey: %s
 steam:
   game: %s
@@ -81,9 +83,8 @@ Unlocked in **[%s](%s)** on %s.
 ---
 
 *Achievement data automatically imported from Steam.*`,
-		coalesceStr(achievement.Name, fmt.Sprintf("Achievement in %s", game.Name)),
-		game.Name,
-		coalesceStr(achievement.Description, ""),
+		escapeYAML(coalesceStr(achievement.Name, fmt.Sprintf("Achievement in %s", game.Name))),
+		escapeYAML(fmt.Sprintf("%s: %s", game.Name, coalesceStr(achievement.Description, ""))),
 		unlockDate.Format("2006-01-02"),
 		config.Template,
 		escapeYAML(game.Name),
@@ -112,8 +113,8 @@ Unlocked in **[%s](%s)** on %s.
 		return false
 	}
 
-	// Write file
-	if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
+	// Write file (0644 is appropriate for user-editable content files)
+	if err := os.WriteFile(filepath, []byte(content), 0o644); err != nil { //nolint:gosec // G306
 		if steamVerbose {
 			fmt.Fprintf(os.Stderr, "❌ Failed to write achievement post %s: %v\n", filename, err)
 		}
@@ -151,13 +152,24 @@ func createGamePost(game *models.SteamGame, config *models.SteamConfig) bool {
 	}
 
 	// Create achievements JSON string for frontmatter
-	achievementsStr, _ := json.Marshal(game.Achievements)
+	achievementsStr, err := json.Marshal(game.Achievements)
+	if err != nil {
+		if steamVerbose {
+			fmt.Fprintf(os.Stderr, "⚠️  Failed to marshal achievements for %s: %v\n", game.Name, err)
+		}
+		achievementsStr = []byte("[]")
+	}
+
+	// Create description with proper escaping
+	description := fmt.Sprintf("Steam achievements and progress for %s - %.1f%% complete with %d/%d achievements unlocked.",
+		game.Name, game.CompletionPercentage, game.UnlockedAchievements, game.TotalAchievements)
 
 	// Create content
 	content := fmt.Sprintf(`---
 title: %s
-description: "Steam achievements and progress for %s - %.1f%% complete with %d/%d achievements unlocked."
+description: %s
 date: "%s"
+published: true
 templateKey: %s
 steam:
   game: %s
@@ -364,8 +376,8 @@ slug: "steam/%s"
 </style>
 
 <div class="game-header">
-  <img src="https://cdn.akamai.steamstatic.com/steam/apps/%d/library_600x900.jpg" 
-       alt="%s box art" loading="lazy" 
+  <img src="https://cdn.akamai.steamstatic.com/steam/apps/%d/library_600x900.jpg"
+       alt="%s box art" loading="lazy"
        onerror="this.src='https://cdn.akamai.steamstatic.com/steam/apps/%d/header.jpg'">
   <div class="game-info">
     <h1>%s</h1>
@@ -387,13 +399,13 @@ slug: "steam/%s"
     </div>
     <p>%d/%d Unlocked</p>
   </div>
-  
+
   <div class="stat-card">
     <h3>Playtime</h3>
     <div class="stat-value">%.1fh</div>
     <p>Total hours played</p>
   </div>
-  
+
   %s
 </div>
 </div>
@@ -406,10 +418,7 @@ slug: "steam/%s"
 
 *Game data automatically imported from Steam. Achievement links will be created as individual posts when achievements are unlocked.*`,
 		escapeYAML(game.Name),
-		game.Name,
-		game.CompletionPercentage,
-		game.UnlockedAchievements,
-		game.TotalAchievements,
+		escapeYAML(description),
 		lastPlayedStr,
 		config.Template,
 		escapeYAML(game.Name),
@@ -426,9 +435,9 @@ slug: "steam/%s"
 		escapeYAMLArray([]string{"steam-game", "steam", "game", gameName}),
 		gameName,
 		game.AppID,
-		game.Name,
+		html.EscapeString(game.Name),
 		game.AppID,
-		game.Name,
+		html.EscapeString(game.Name),
 		gameDescriptionHTML(game.Description),
 		gameDevelopersHTML(game.Developers),
 		game.CompletionPercentage,
@@ -454,8 +463,8 @@ slug: "steam/%s"
 		return false
 	}
 
-	// Write file
-	if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
+	// Write file (0644 is appropriate for user-editable content files)
+	if err := os.WriteFile(filepath, []byte(content), 0o644); err != nil { //nolint:gosec // G306
 		if steamVerbose {
 			fmt.Fprintf(os.Stderr, "❌ Failed to write game post %s: %v\n", filename, err)
 		}
@@ -524,17 +533,83 @@ func coalesceInt64(i *int64, def int64) int64 {
 	return def
 }
 
+// yamlSpecialChars contains characters that require quoting in YAML values
+var yamlSpecialChars = map[rune]bool{
+	':': true, '#': true, '[': true, ']': true, '{': true, '}': true,
+	'&': true, '*': true, '!': true, '|': true, '>': true, '\'': true,
+	'"': true, '%': true, '@': true, '`': true, ',': true, '?': true,
+	'\n': true, '\r': true, '\t': true,
+}
+
+// yamlStartChars contains characters that require quoting when at string start
+var yamlStartChars = map[byte]bool{
+	' ': true, '\t': true, '-': true, '?': true, ':': true, '[': true,
+	'{': true, '!': true, '&': true, '*': true, '#': true, '|': true,
+	'>': true, '\'': true, '"': true, '%': true, '@': true, '`': true,
+}
+
+// yamlReservedWords contains YAML boolean/null values that need quoting
+var yamlReservedWords = map[string]bool{
+	"true": true, "false": true, "null": true, "yes": true,
+	"no": true, "on": true, "off": true, "~": true,
+}
+
+// escapeYAML properly escapes a string for safe YAML output.
+// It handles all YAML special characters including colons, hashes, brackets,
+// quotes, and other reserved characters that could cause parsing failures.
 func escapeYAML(s string) string {
-	// Handle empty string - return quoted empty string to avoid invalid YAML like "description: "
 	if s == "" {
 		return `""`
 	}
 
-	// Simple YAML escaping for strings containing quotes or newlines
-	if strings.Contains(s, `"`) || strings.Contains(s, "\n") {
-		return fmt.Sprintf(`"%s"`, strings.ReplaceAll(s, `"`, `\"`))
+	needsQuoting := yamlNeedsQuoting(s)
+	if !needsQuoting {
+		return s
 	}
-	return s
+	return quoteYAMLString(s)
+}
+
+// yamlNeedsQuoting checks if a string needs to be quoted for YAML
+func yamlNeedsQuoting(s string) bool {
+	// Check for special characters in content
+	for _, r := range s {
+		if yamlSpecialChars[r] {
+			return true
+		}
+	}
+
+	// Check first/last character
+	if yamlStartChars[s[0]] || s[len(s)-1] == ' ' || s[len(s)-1] == '\t' {
+		return true
+	}
+
+	// Check for reserved words (case insensitive)
+	return yamlReservedWords[strings.ToLower(s)]
+}
+
+// quoteYAMLString wraps a string in double quotes and escapes special chars
+func quoteYAMLString(s string) string {
+	var sb strings.Builder
+	sb.Grow(len(s) + 10) // Pre-allocate with some extra space for escapes
+	sb.WriteByte('"')
+	for _, r := range s {
+		switch r {
+		case '"':
+			sb.WriteString(`\"`)
+		case '\\':
+			sb.WriteString(`\\`)
+		case '\n':
+			sb.WriteString(`\n`)
+		case '\r':
+			sb.WriteString(`\r`)
+		case '\t':
+			sb.WriteString(`\t`)
+		default:
+			sb.WriteRune(r)
+		}
+	}
+	sb.WriteByte('"')
+	return sb.String()
 }
 
 func escapeYAMLArray(arr []string) string {
@@ -555,7 +630,9 @@ func achievementIconHTML(icon *string, name string) string {
 	if iconURL == "" {
 		return ""
 	}
-	return fmt.Sprintf(`<img src="%s" alt="%s" style="width: 64px; height: 64px;">`, iconURL, name)
+	// Using string concat to avoid gocritic sprintfQuotedString lint warning
+	// We need literal HTML attribute quotes, not Go %q escaping
+	return `<img src="` + html.EscapeString(iconURL) + `" alt="` + html.EscapeString(name) + `" style="width: 64px; height: 64px;">`
 }
 
 func gameDescriptionHTML(desc *string) string {
@@ -563,7 +640,7 @@ func gameDescriptionHTML(desc *string) string {
 	if descStr == "" {
 		return ""
 	}
-	return fmt.Sprintf(`<p><em>%s</em></p>`, descStr)
+	return fmt.Sprintf(`<p><em>%s</em></p>`, html.EscapeString(descStr))
 }
 
 func gameDevelopersHTML(devs []string) string {
@@ -577,7 +654,12 @@ func gameDevelopersHTML(devs []string) string {
 		displayDevs = devs[:2]
 	}
 
-	devStr := strings.Join(displayDevs, ", ")
+	// Escape each developer name
+	escapedDevs := make([]string, len(displayDevs))
+	for i, dev := range displayDevs {
+		escapedDevs[i] = html.EscapeString(dev)
+	}
+	devStr := strings.Join(escapedDevs, ", ")
 	if len(devs) > 2 {
 		devStr += "..."
 	}
@@ -604,8 +686,8 @@ func unlockedAchievementsSection(game *models.SteamGame) string {
 		return ""
 	}
 
-	var html strings.Builder
-	html.WriteString(fmt.Sprintf(`
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf(`
 <div class="achievement-section">
 <h2>🏆 Unlocked Achievements (%d)</h2>
 
@@ -619,11 +701,11 @@ func unlockedAchievementsSection(game *models.SteamGame) string {
 			dateStr = unlockDate.Format("January 2, 2006")
 		}
 
-		badgeURL := coalesceStr(achievement.Icon, "")
-		achievementName := coalesceStr(achievement.Name, "Unknown Achievement")
-		description := coalesceStr(achievement.Description, "No description")
+		badgeURL := html.EscapeString(coalesceStr(achievement.Icon, ""))
+		achievementName := html.EscapeString(coalesceStr(achievement.Name, "Unknown Achievement"))
+		description := html.EscapeString(coalesceStr(achievement.Description, "No description"))
 
-		html.WriteString(fmt.Sprintf(`
+		sb.WriteString(fmt.Sprintf(`
 <div class="achievement-item unlocked">
   <span class="achievement-icon-wrapper">
     <img src="%s" alt="%s" class="achievement-icon">
@@ -636,11 +718,11 @@ func unlockedAchievementsSection(game *models.SteamGame) string {
 </div>`, badgeURL, achievementName, achievementName, description, dateStr))
 	}
 
-	html.WriteString(`
+	sb.WriteString(`
 </div>
 </div>
 `)
-	return html.String()
+	return sb.String()
 }
 
 func lockedAchievementsSection(game *models.SteamGame) string {
@@ -649,8 +731,8 @@ func lockedAchievementsSection(game *models.SteamGame) string {
 		return ""
 	}
 
-	var html strings.Builder
-	html.WriteString(fmt.Sprintf(`
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf(`
 <div class="achievement-section">
 <h2>🔒 Locked Achievements (%d)</h2>
 
@@ -658,11 +740,11 @@ func lockedAchievementsSection(game *models.SteamGame) string {
 `, len(locked)))
 
 	for _, achievement := range locked {
-		badgeURL := coalesceStr(achievement.IconGray, coalesceStr(achievement.Icon, ""))
-		achievementName := coalesceStr(achievement.Name, "Unknown Achievement")
-		description := coalesceStr(achievement.Description, "No description")
+		badgeURL := html.EscapeString(coalesceStr(achievement.IconGray, coalesceStr(achievement.Icon, "")))
+		achievementName := html.EscapeString(coalesceStr(achievement.Name, "Unknown Achievement"))
+		description := html.EscapeString(coalesceStr(achievement.Description, "No description"))
 
-		html.WriteString(fmt.Sprintf(`
+		sb.WriteString(fmt.Sprintf(`
 <div class="achievement-item locked">
   <span class="achievement-icon-wrapper">
     <img src="%s" alt="%s" class="achievement-icon">
@@ -674,9 +756,9 @@ func lockedAchievementsSection(game *models.SteamGame) string {
 </div>`, badgeURL, achievementName, achievementName, description))
 	}
 
-	html.WriteString(`
+	sb.WriteString(`
 </div>
 </div>
 `)
-	return html.String()
+	return sb.String()
 }
