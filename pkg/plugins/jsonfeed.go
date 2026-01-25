@@ -64,7 +64,7 @@ func GenerateJSONFeed(feed *lifecycle.Feed, config *lifecycle.Config) (string, e
 	author := getSiteAuthor(config)
 	feedPath := feed.Path
 	if feedPath == "" {
-		feedPath = "feed"
+		feedPath = DefaultFeedPath
 	}
 	feedURL := siteURL + "/" + feedPath + "/feed.json"
 
