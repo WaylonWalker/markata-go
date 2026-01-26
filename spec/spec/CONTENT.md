@@ -193,6 +193,28 @@ Every implementation MUST support:
 | Ordered lists | `1. item` |
 | Horizontal rules | `---` or `***` |
 
+### Heading Best Practices
+
+**Avoid H1 headings in content.** Templates automatically generate an H1 from the frontmatter `title` field. Using H1 (`# Heading`) in markdown content creates duplicate H1 tags, which:
+
+- Harms SEO (search engines expect a single H1 per page)
+- Reduces accessibility (screen readers use H1 for page identification)
+- Violates HTML document outline best practices
+
+**Start content with H2 (`##`) or deeper headings.** The linter will warn if H1 headings are detected in content.
+
+```markdown
+---
+title: My Page Title  # This becomes the H1
+---
+
+## First Section       # Start with H2, not H1
+
+Content here...
+
+### Subsection         # H3 for nested sections
+```
+
 ### Extended Features
 
 Implementations SHOULD support:

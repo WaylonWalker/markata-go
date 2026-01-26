@@ -8,8 +8,9 @@
 //   - Invalid date formats (non-ISO 8601)
 //   - Malformed image links (missing alt text)
 //   - Protocol-less URLs (//example.com instead of https://example.com)
+//   - H1 headings in content (templates add H1 from frontmatter title)
 //
-// All issues can be auto-fixed using the Fix function.
+// All issues can be auto-fixed using the Fix function (except H1 headings).
 package lint
 
 import (
@@ -107,6 +108,9 @@ func Lint(filePath, content string) *Result {
 
 	// Check for protocol-less URLs (in entire content)
 	result.Issues = append(result.Issues, checkProtocollessURLs(filePath, content)...)
+
+	// Check for H1 headings in body (templates already add H1 from title)
+	result.Issues = append(result.Issues, checkH1Headings(filePath, body, hasFrontmatter, frontmatter)...)
 
 	return result
 }
@@ -299,6 +303,64 @@ func checkProtocollessURLs(filePath, content string) []Issue {
 					Fixable:  true,
 				})
 			}
+		}
+	}
+
+	return issues
+}
+
+// checkH1Headings finds H1 headings in markdown content.
+// Templates already add an H1 from the frontmatter title, so H1 in content
+// creates duplicate H1 tags which harms SEO and accessibility.
+func checkH1Headings(filePath, body string, hasFrontmatter bool, frontmatter string) []Issue {
+	var issues []Issue
+
+	// Calculate line offset for body
+	// The body starts after the closing --- delimiter
+	// frontmatter includes the newline after opening ---, so count gives us the
+	// number of lines in frontmatter. Adding 1 for opening --- gives us the line
+	// number of the closing ---. Body content starts on the next line.
+	lineOffset := 0
+	if hasFrontmatter {
+		lineOffset = strings.Count(frontmatter, "\n") + 1 // +1 for opening --- line
+		// Skip the leading newline in body (it's the line terminator for closing ---)
+		body = strings.TrimPrefix(body, "\n")
+	}
+
+	// Track whether we're inside a code block
+	inCodeBlock := false
+
+	scanner := bufio.NewScanner(strings.NewReader(body))
+	lineNum := 0
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		lineNum++
+
+		// Check for code block boundaries (``` or ~~~)
+		trimmedLine := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmedLine, "```") || strings.HasPrefix(trimmedLine, "~~~") {
+			inCodeBlock = !inCodeBlock
+			continue
+		}
+
+		// Skip H1 detection inside code blocks
+		if inCodeBlock {
+			continue
+		}
+
+		// Match H1 heading: line starts with "# " (single # followed by space)
+		// Must not be "##" (H2 or deeper)
+		if strings.HasPrefix(line, "# ") || line == "#" {
+			issues = append(issues, Issue{
+				File:     filePath,
+				Line:     lineNum + lineOffset,
+				Column:   1,
+				Type:     "h1-in-content",
+				Severity: SeverityWarning,
+				Message:  "H1 heading found in content. Templates already add an H1 from frontmatter title. Use H2 (##) or deeper instead.",
+				Fixable:  false, // Auto-fixing could change document structure unexpectedly
+			})
 		}
 	}
 
