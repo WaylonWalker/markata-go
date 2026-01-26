@@ -269,12 +269,36 @@ type tomlFooterConfig struct {
 }
 
 type tomlThemeConfig struct {
-	Name         string            `toml:"name"`
-	Palette      string            `toml:"palette"`
-	PaletteLight string            `toml:"palette_light"`
-	PaletteDark  string            `toml:"palette_dark"`
-	Variables    map[string]string `toml:"variables"`
-	CustomCSS    string            `toml:"custom_css"`
+	Name         string               `toml:"name"`
+	Palette      string               `toml:"palette"`
+	PaletteLight string               `toml:"palette_light"`
+	PaletteDark  string               `toml:"palette_dark"`
+	Variables    map[string]string    `toml:"variables"`
+	CustomCSS    string               `toml:"custom_css"`
+	Background   tomlBackgroundConfig `toml:"background"`
+	Font         tomlFontConfig       `toml:"font"`
+}
+
+type tomlBackgroundConfig struct {
+	Enabled     *bool                   `toml:"enabled"`
+	Backgrounds []tomlBackgroundElement `toml:"backgrounds"`
+	Scripts     []string                `toml:"scripts"`
+	CSS         string                  `toml:"css"`
+}
+
+type tomlBackgroundElement struct {
+	HTML   string `toml:"html"`
+	ZIndex int    `toml:"z_index"`
+}
+
+type tomlFontConfig struct {
+	Family        string   `toml:"family"`
+	HeadingFamily string   `toml:"heading_family"`
+	CodeFamily    string   `toml:"code_family"`
+	Size          string   `toml:"size"`
+	LineHeight    string   `toml:"line_height"`
+	GoogleFonts   []string `toml:"google_fonts"`
+	CustomURLs    []string `toml:"custom_urls"`
 }
 
 type tomlGlobConfig struct {
@@ -894,6 +918,36 @@ func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
 		PaletteDark:  t.PaletteDark,
 		Variables:    variables,
 		CustomCSS:    t.CustomCSS,
+		Background:   t.Background.toBackgroundConfig(),
+		Font:         t.Font.toFontConfig(),
+	}
+}
+
+func (b *tomlBackgroundConfig) toBackgroundConfig() models.BackgroundConfig {
+	backgrounds := make([]models.BackgroundElement, len(b.Backgrounds))
+	for i, bg := range b.Backgrounds {
+		backgrounds[i] = models.BackgroundElement{
+			HTML:   bg.HTML,
+			ZIndex: bg.ZIndex,
+		}
+	}
+	return models.BackgroundConfig{
+		Enabled:     b.Enabled,
+		Backgrounds: backgrounds,
+		Scripts:     b.Scripts,
+		CSS:         b.CSS,
+	}
+}
+
+func (f *tomlFontConfig) toFontConfig() models.FontConfig {
+	return models.FontConfig{
+		Family:        f.Family,
+		HeadingFamily: f.HeadingFamily,
+		CodeFamily:    f.CodeFamily,
+		Size:          f.Size,
+		LineHeight:    f.LineHeight,
+		GoogleFonts:   f.GoogleFonts,
+		CustomURLs:    f.CustomURLs,
 	}
 }
 
@@ -1088,12 +1142,36 @@ type yamlWebmentionConfig struct {
 }
 
 type yamlThemeConfig struct {
-	Name         string            `yaml:"name"`
-	Palette      string            `yaml:"palette"`
-	PaletteLight string            `yaml:"palette_light"`
-	PaletteDark  string            `yaml:"palette_dark"`
-	Variables    map[string]string `yaml:"variables"`
-	CustomCSS    string            `yaml:"custom_css"`
+	Name         string               `yaml:"name"`
+	Palette      string               `yaml:"palette"`
+	PaletteLight string               `yaml:"palette_light"`
+	PaletteDark  string               `yaml:"palette_dark"`
+	Variables    map[string]string    `yaml:"variables"`
+	CustomCSS    string               `yaml:"custom_css"`
+	Background   yamlBackgroundConfig `yaml:"background"`
+	Font         yamlFontConfig       `yaml:"font"`
+}
+
+type yamlBackgroundConfig struct {
+	Enabled     *bool                   `yaml:"enabled"`
+	Backgrounds []yamlBackgroundElement `yaml:"backgrounds"`
+	Scripts     []string                `yaml:"scripts"`
+	CSS         string                  `yaml:"css"`
+}
+
+type yamlBackgroundElement struct {
+	HTML   string `yaml:"html"`
+	ZIndex int    `yaml:"z_index"`
+}
+
+type yamlFontConfig struct {
+	Family        string   `yaml:"family"`
+	HeadingFamily string   `yaml:"heading_family"`
+	CodeFamily    string   `yaml:"code_family"`
+	Size          string   `yaml:"size"`
+	LineHeight    string   `yaml:"line_height"`
+	GoogleFonts   []string `yaml:"google_fonts"`
+	CustomURLs    []string `yaml:"custom_urls"`
 }
 
 func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
@@ -1108,6 +1186,36 @@ func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
 		PaletteDark:  t.PaletteDark,
 		Variables:    variables,
 		CustomCSS:    t.CustomCSS,
+		Background:   t.Background.toBackgroundConfig(),
+		Font:         t.Font.toFontConfig(),
+	}
+}
+
+func (b *yamlBackgroundConfig) toBackgroundConfig() models.BackgroundConfig {
+	backgrounds := make([]models.BackgroundElement, len(b.Backgrounds))
+	for i, bg := range b.Backgrounds {
+		backgrounds[i] = models.BackgroundElement{
+			HTML:   bg.HTML,
+			ZIndex: bg.ZIndex,
+		}
+	}
+	return models.BackgroundConfig{
+		Enabled:     b.Enabled,
+		Backgrounds: backgrounds,
+		Scripts:     b.Scripts,
+		CSS:         b.CSS,
+	}
+}
+
+func (f *yamlFontConfig) toFontConfig() models.FontConfig {
+	return models.FontConfig{
+		Family:        f.Family,
+		HeadingFamily: f.HeadingFamily,
+		CodeFamily:    f.CodeFamily,
+		Size:          f.Size,
+		LineHeight:    f.LineHeight,
+		GoogleFonts:   f.GoogleFonts,
+		CustomURLs:    f.CustomURLs,
 	}
 }
 
@@ -1826,12 +1934,36 @@ type jsonWebmentionConfig struct {
 }
 
 type jsonThemeConfig struct {
-	Name         string            `json:"name"`
-	Palette      string            `json:"palette"`
-	PaletteLight string            `json:"palette_light"`
-	PaletteDark  string            `json:"palette_dark"`
-	Variables    map[string]string `json:"variables"`
-	CustomCSS    string            `json:"custom_css"`
+	Name         string               `json:"name"`
+	Palette      string               `json:"palette"`
+	PaletteLight string               `json:"palette_light"`
+	PaletteDark  string               `json:"palette_dark"`
+	Variables    map[string]string    `json:"variables"`
+	CustomCSS    string               `json:"custom_css"`
+	Background   jsonBackgroundConfig `json:"background"`
+	Font         jsonFontConfig       `json:"font"`
+}
+
+type jsonBackgroundConfig struct {
+	Enabled     *bool                   `json:"enabled"`
+	Backgrounds []jsonBackgroundElement `json:"backgrounds"`
+	Scripts     []string                `json:"scripts"`
+	CSS         string                  `json:"css"`
+}
+
+type jsonBackgroundElement struct {
+	HTML   string `json:"html"`
+	ZIndex int    `json:"z_index"`
+}
+
+type jsonFontConfig struct {
+	Family        string   `json:"family"`
+	HeadingFamily string   `json:"heading_family"`
+	CodeFamily    string   `json:"code_family"`
+	Size          string   `json:"size"`
+	LineHeight    string   `json:"line_height"`
+	GoogleFonts   []string `json:"google_fonts"`
+	CustomURLs    []string `json:"custom_urls"`
 }
 
 func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
@@ -1846,6 +1978,36 @@ func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
 		PaletteDark:  t.PaletteDark,
 		Variables:    variables,
 		CustomCSS:    t.CustomCSS,
+		Background:   t.Background.toBackgroundConfig(),
+		Font:         t.Font.toFontConfig(),
+	}
+}
+
+func (b *jsonBackgroundConfig) toBackgroundConfig() models.BackgroundConfig {
+	backgrounds := make([]models.BackgroundElement, len(b.Backgrounds))
+	for i, bg := range b.Backgrounds {
+		backgrounds[i] = models.BackgroundElement{
+			HTML:   bg.HTML,
+			ZIndex: bg.ZIndex,
+		}
+	}
+	return models.BackgroundConfig{
+		Enabled:     b.Enabled,
+		Backgrounds: backgrounds,
+		Scripts:     b.Scripts,
+		CSS:         b.CSS,
+	}
+}
+
+func (f *jsonFontConfig) toFontConfig() models.FontConfig {
+	return models.FontConfig{
+		Family:        f.Family,
+		HeadingFamily: f.HeadingFamily,
+		CodeFamily:    f.CodeFamily,
+		Size:          f.Size,
+		LineHeight:    f.LineHeight,
+		GoogleFonts:   f.GoogleFonts,
+		CustomURLs:    f.CustomURLs,
 	}
 }
 
