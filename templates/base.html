@@ -131,6 +131,7 @@
     {% if config.webmention.endpoint %}<link rel="webmention" href="{{ config.webmention.endpoint }}">{% endif %}
     {% endif %}
 
+    {% block background_css %}
     <!-- Background Decoration CSS -->
     {% if config.theme.background.enabled %}
     {% if config.theme.background.css %}
@@ -139,6 +140,7 @@
     </style>
     {% endif %}
     {% endif %}
+    {% endblock %}
     {% endblock %}
 
     <!-- Structured Data: JSON-LD -->
@@ -192,6 +194,7 @@
     {% endif %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
+    {% block background_decorations %}
     <!-- Background Decorations -->
     {% if config.theme.background.enabled %}
     {% for bg in config.theme.background.backgrounds %}
@@ -200,6 +203,7 @@
     </div>
     {% endfor %}
     {% endif %}
+    {% endblock %}
 
     {% block header %}
     <header class="site-header" data-pagefind-ignore>
@@ -251,12 +255,14 @@
     </script>
     {% endif %}
 
+    {% block background_scripts %}
     <!-- Background Decoration Scripts -->
     {% if config.theme.background.enabled %}
     {% for script in config.theme.background.scripts %}
     <script src="{{ script }}"></script>
     {% endfor %}
     {% endif %}
+    {% endblock %}
 
     <!-- GLightbox JS for image zoom -->
     {% if config.Extra.glightbox_enabled %}
