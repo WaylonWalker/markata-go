@@ -215,6 +215,7 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		"tags":        true,
 		"description": true,
 		"template":    true,
+		"templates":   true,
 		"slug":        true,
 	}
 
@@ -259,6 +260,11 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		post.Template = template
 	} else if template := GetString(metadata, "templateKey"); template != "" {
 		post.Template = template
+	}
+
+	// Templates - per-format template overrides
+	if templatesVal, ok := metadata["templates"]; ok {
+		post.Templates = parseTemplatesMap(templatesVal)
 	}
 
 	// Slug - support custom slugs including explicit empty string for homepage
@@ -396,4 +402,34 @@ func normalizeCustomSlug(slug string) string {
 	slug = strings.Trim(slug, "/")
 
 	return slug
+}
+
+// parseTemplatesMap parses the templates field from frontmatter.
+// It handles both map[string]interface{} and map[string]string formats.
+func parseTemplatesMap(val interface{}) map[string]string {
+	result := make(map[string]string)
+
+	switch v := val.(type) {
+	case map[string]interface{}:
+		for key, value := range v {
+			if str, ok := value.(string); ok {
+				result[key] = str
+			}
+		}
+	case map[string]string:
+		for key, value := range v {
+			result[key] = value
+		}
+	case map[interface{}]interface{}:
+		// Handle YAML's default map type
+		for key, value := range v {
+			if keyStr, ok := key.(string); ok {
+				if valStr, ok := value.(string); ok {
+					result[keyStr] = valStr
+				}
+			}
+		}
+	}
+
+	return result
 }

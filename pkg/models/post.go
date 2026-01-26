@@ -47,7 +47,13 @@ type Post struct {
 	Description *string `json:"description,omitempty" yaml:"description,omitempty" toml:"description,omitempty"`
 
 	// Template is the template file to use for rendering (default: "post.html")
+	// Can be a preset name ("blog", "docs") or explicit file ("post.html")
 	Template string `json:"template" yaml:"template" toml:"template"`
+
+	// Templates provides per-format template overrides
+	// Keys: "html", "txt", "markdown", "og"
+	// Values: template file names
+	Templates map[string]string `json:"templates,omitempty" yaml:"templates,omitempty" toml:"templates,omitempty"`
 
 	// HTML is the final rendered HTML including template wrapper
 	HTML string `json:"html" yaml:"html" toml:"html"`
