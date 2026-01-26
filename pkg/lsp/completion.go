@@ -107,6 +107,16 @@ func (s *Server) handleCompletion(_ context.Context, msg *Message) error {
 		col = len(line)
 	}
 
+	// Check if we're inside frontmatter
+	frontmatterCtx := getFrontmatterContext(doc.Content, params.Position.Line, col)
+	if frontmatterCtx.InFrontmatter && (frontmatterCtx.IsFieldName || frontmatterCtx.IsFieldValue) {
+		items := getFrontmatterCompletions(frontmatterCtx, params)
+		return s.sendResponse(msg.ID, &CompletionList{
+			IsIncomplete: false,
+			Items:        items,
+		})
+	}
+
 	// Check if we're in an admonition context (after !!!, ???, or ???+)
 	if adCtx, inAdmonition := getAdmonitionContext(line, col); inAdmonition {
 		items := getAdmonitionCompletions(adCtx, params)
