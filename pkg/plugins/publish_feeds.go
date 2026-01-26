@@ -90,8 +90,9 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	for i := range feedConfigs {
-		if err := p.publishFeed(&feedConfigs[i], config, outputDir); err != nil {
-			return fmt.Errorf("publishing feed %q: %w", feedConfigs[i].Slug, err)
+		fc := &feedConfigs[i]
+		if err := p.publishFeed(fc, config, outputDir); err != nil {
+			return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 		}
 	}
 
@@ -141,6 +142,22 @@ func (p *PublishFeedsPlugin) determineFeedDir(outputDir, slug string) string {
 		return outputDir
 	}
 	return filepath.Join(outputDir, slug)
+}
+
+// safeWriteFile writes content to a file, removing any existing directory at that path.
+// This handles the case where a previous build created a directory where a file should be.
+func (p *PublishFeedsPlugin) safeWriteFile(path string, content []byte) error {
+	// Check if path exists as a directory
+	info, err := os.Stat(path)
+	if err == nil && info.IsDir() {
+		// Remove the directory so we can write a file
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("removing directory at file path %s: %w", path, err)
+		}
+	}
+
+	//nolint:gosec // G306: Output files need 0644 for web serving
+	return os.WriteFile(path, content, 0o644)
 }
 
 // publishFormat publishes a single format if enabled and handles redirects.
@@ -236,6 +253,11 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 		// Copy footer config if available
 		if footer, ok := config.Extra["footer"].(models.FooterConfig); ok {
 			modelsConfig.Footer = footer
+		}
+
+		// Copy theme config for background-css partial
+		if theme, ok := config.Extra["theme"].(models.ThemeConfig); ok {
+			modelsConfig.Theme = theme
 		}
 
 		// Create feed context
@@ -357,8 +379,7 @@ func (p *PublishFeedsPlugin) publishRSS(fc *models.FeedConfig, config *lifecycle
 	}
 
 	rssPath := filepath.Join(feedDir, "rss.xml")
-	//nolint:gosec // G306: Feed files need 0644 for web serving
-	return os.WriteFile(rssPath, []byte(rss), 0o644)
+	return p.safeWriteFile(rssPath, []byte(rss))
 }
 
 // publishAtom generates and writes an Atom feed.
@@ -369,8 +390,7 @@ func (p *PublishFeedsPlugin) publishAtom(fc *models.FeedConfig, config *lifecycl
 	}
 
 	atomPath := filepath.Join(feedDir, "atom.xml")
-	//nolint:gosec // G306: Feed files need 0644 for web serving
-	return os.WriteFile(atomPath, []byte(atom), 0o644)
+	return p.safeWriteFile(atomPath, []byte(atom))
 }
 
 // publishJSON generates and writes a JSON feed.
@@ -381,8 +401,7 @@ func (p *PublishFeedsPlugin) publishJSON(fc *models.FeedConfig, config *lifecycl
 	}
 
 	jsonPath := filepath.Join(feedDir, "feed.json")
-	//nolint:gosec // G306: Feed files need 0644 for web serving
-	return os.WriteFile(jsonPath, []byte(jsonFeed), 0o644)
+	return p.safeWriteFile(jsonPath, []byte(jsonFeed))
 }
 
 // publishMarkdown generates and writes a Markdown feed listing.
@@ -418,8 +437,7 @@ func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, feedDir stri
 	}
 
 	mdPath := filepath.Join(feedDir, "index.md")
-	//nolint:gosec // G306: Feed files need 0644 for web serving
-	return os.WriteFile(mdPath, []byte(sb.String()), 0o644)
+	return p.safeWriteFile(mdPath, []byte(sb.String()))
 }
 
 // publishText generates and writes a plain text feed listing.
@@ -455,8 +473,7 @@ func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, feedDir string) 
 	}
 
 	txtPath := filepath.Join(feedDir, "index.txt")
-	//nolint:gosec // G306: Feed files need 0644 for web serving
-	return os.WriteFile(txtPath, []byte(sb.String()), 0o644)
+	return p.safeWriteFile(txtPath, []byte(sb.String()))
 }
 
 // publishSitemap generates and writes a sitemap XML file for feed posts.
@@ -523,8 +540,7 @@ func (p *PublishFeedsPlugin) publishSitemap(fc *models.FeedConfig, config *lifec
 
 	// Write sitemap.xml
 	sitemapPath := filepath.Join(feedDir, "sitemap.xml")
-	//nolint:gosec // G306: Sitemap files need 0644 for web serving
-	return os.WriteFile(sitemapPath, []byte(xmlContent), 0o644)
+	return p.safeWriteFile(sitemapPath, []byte(xmlContent))
 }
 
 // writeFeedFormatRedirect writes a redirect from /slug.ext to /slug/targetFile.

@@ -240,6 +240,13 @@ func (p *RedirectsPlugin) writeRedirect(redirect Redirect, tmpl *template.Templa
 
 	postDir := filepath.Join(outputDir, cleanPath)
 
+	// Check if a file already exists at this path (e.g., rss.xml is a file, not a directory)
+	// If so, skip the redirect as the content is already being served
+	if info, err := os.Stat(postDir); err == nil && !info.IsDir() {
+		// File exists at this path, skip redirect
+		return nil
+	}
+
 	// Create directory
 	if err := os.MkdirAll(postDir, 0o755); err != nil {
 		return fmt.Errorf("creating directory %s: %w", postDir, err)

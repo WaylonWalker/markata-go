@@ -578,6 +578,27 @@ type BackgroundConfig struct {
 
 	// CSS is custom CSS for styling background elements
 	CSS string `json:"css,omitempty" yaml:"css,omitempty" toml:"css,omitempty"`
+
+	// ArticleBg is the background color for article/content areas (default: uses --color-background)
+	// This helps ensure content is readable over decorative backgrounds.
+	// Example: "rgba(255, 255, 255, 0.95)" or "#ffffff"
+	ArticleBg string `json:"article_bg,omitempty" yaml:"article_bg,omitempty" toml:"article_bg,omitempty"`
+
+	// ArticleBlur is the backdrop blur amount for article areas (default: "0px")
+	// Example: "8px" or "12px" for a frosted glass effect
+	ArticleBlur string `json:"article_blur,omitempty" yaml:"article_blur,omitempty" toml:"article_blur,omitempty"`
+
+	// ArticleShadow is the box-shadow for article areas
+	// Example: "0 4px 20px rgba(0, 0, 0, 0.3)"
+	ArticleShadow string `json:"article_shadow,omitempty" yaml:"article_shadow,omitempty" toml:"article_shadow,omitempty"`
+
+	// ArticleBorder is the border style for article areas
+	// Example: "1px solid rgba(255, 255, 255, 0.1)"
+	ArticleBorder string `json:"article_border,omitempty" yaml:"article_border,omitempty" toml:"article_border,omitempty"`
+
+	// ArticleRadius is the border-radius for article areas (default: uses --radius-lg)
+	// Example: "12px" or "1rem"
+	ArticleRadius string `json:"article_radius,omitempty" yaml:"article_radius,omitempty" toml:"article_radius,omitempty"`
 }
 
 // BackgroundElement represents a single background decoration layer.
@@ -595,10 +616,15 @@ type BackgroundElement struct {
 func NewBackgroundConfig() BackgroundConfig {
 	enabled := false
 	return BackgroundConfig{
-		Enabled:     &enabled,
-		Backgrounds: []BackgroundElement{},
-		Scripts:     []string{},
-		CSS:         "",
+		Enabled:       &enabled,
+		Backgrounds:   []BackgroundElement{},
+		Scripts:       []string{},
+		CSS:           "",
+		ArticleBg:     "",
+		ArticleBlur:   "",
+		ArticleShadow: "",
+		ArticleBorder: "",
+		ArticleRadius: "",
 	}
 }
 

@@ -406,6 +406,14 @@ main {
   margin: 0 auto;
 }
 
+/* Content background utility - use when decorative backgrounds are enabled */
+main.content-bg {
+  background: var(--article-bg, var(--color-background));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--article-shadow);
+  backdrop-filter: blur(var(--article-blur, 0px));
+}
+
 /* Header */
 .site-header {
   background: var(--color-surface);
@@ -462,6 +470,27 @@ main {
 .post {
   max-width: var(--content-width);
   margin: 0 auto;
+}
+
+/* Article wrapper - provides readable background when decorative backgrounds are enabled */
+article.post {
+  background: var(--color-background);
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* When background decorations are present, ensure content stands out */
+body:has(.background-layer) article.post,
+body:has(.background-decoration) article.post {
+  background: var(--article-bg, var(--color-background));
+  backdrop-filter: blur(var(--article-blur, 0px));
+}
+
+@media (prefers-color-scheme: dark) {
+  article.post {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  }
 }
 
 .post-header {
@@ -552,6 +581,24 @@ main {
 .feed {
   max-width: var(--content-width);
   margin: 0 auto;
+}
+
+/* Feed wrapper - provides readable background when decorative backgrounds are enabled */
+section.feed,
+div.feed {
+  background: var(--color-background);
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--article-shadow);
+}
+
+/* When background decorations are present, ensure feed content stands out */
+body:has(.background-layer) section.feed,
+body:has(.background-layer) div.feed,
+body:has(.background-decoration) section.feed,
+body:has(.background-decoration) div.feed {
+  background: var(--article-bg, var(--color-background));
+  backdrop-filter: blur(var(--article-blur, 0px));
 }
 
 .feed-header {
@@ -892,6 +939,12 @@ a.wikilink.wikilink-missing {
     font-size: 15px;
   }
 
+  /* Prevent horizontal overflow - WCAG 2.1 SC 1.4.10 Reflow */
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
   .site-header .container {
     flex-direction: column;
     align-items: flex-start;
@@ -907,11 +960,51 @@ a.wikilink.wikilink-missing {
     overflow: hidden;
   }
 
+  /* Responsive feed container */
+  .feed {
+    max-width: 100%;
+    padding: 0 var(--space-3);
+  }
+
+  /* Scale down feed header */
+  .feed-header h1 {
+    font-size: var(--text-2xl);
+  }
+
+  /* Adapt card spacing */
+  .card {
+    padding: var(--space-4);
+  }
+
+  /* Ensure posts list doesn't overflow */
+  .posts,
+  .post-list {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   .post-nav {
     flex-direction: column;
   }
 
   .post-nav a {
     max-width: 100%;
+  }
+}
+
+/* Extra small devices (320px - 375px) */
+@media (max-width: 375px) {
+  /* Tighter spacing for small screens */
+  .feed {
+    padding: 0 var(--space-2);
+  }
+
+  .card {
+    padding: var(--space-3);
+  }
+
+  /* Smaller typography */
+  .feed-header h1 {
+    font-size: var(--text-xl);
   }
 }
