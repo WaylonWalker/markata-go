@@ -253,6 +253,11 @@ func toModelsConfig(config *lifecycle.Config) *models.Config {
 		modelsConfig.Head = head
 	}
 
+	// Copy Theme config if available
+	if theme, ok := config.Extra["theme"].(models.ThemeConfig); ok {
+		modelsConfig.Theme = theme
+	}
+
 	return modelsConfig
 }
 
