@@ -1,0 +1,6 @@
+    <!-- Background Decoration Scripts -->
+    {% if config.theme.background.enabled %}
+    {% for script in config.theme.background.scripts %}
+    <script src="{{ script }}"></script>
+    {% endfor %}
+    {% endif %}
