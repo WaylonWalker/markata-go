@@ -105,7 +105,7 @@ func TestPublishHTMLPlugin_ShadowPages(t *testing.T) {
 			}
 
 			// Write post
-			err := plugin.writePost(tt.post, config)
+			err := plugin.writePost(tt.post, config, nil)
 			if err != nil {
 				t.Fatalf("writePost() error = %v", err)
 			}
@@ -151,7 +151,7 @@ func TestPublishHTMLPlugin_OGCardCanonicalURL(t *testing.T) {
 	}
 
 	// Write post (which includes OG format)
-	if err := plugin.writePost(post, config); err != nil {
+	if err := plugin.writePost(post, config, nil); err != nil {
 		t.Fatalf("writePost() error = %v", err)
 	}
 
@@ -203,7 +203,7 @@ func TestPublishHTMLPlugin_ShadowPagesDocumentation(t *testing.T) {
 		ArticleHTML: "<p>Shadow content accessible via direct URL</p>",
 	}
 
-	if err := plugin.writePost(shadowPost, config); err != nil {
+	if err := plugin.writePost(shadowPost, config, nil); err != nil {
 		t.Fatalf("writePost() error = %v", err)
 	}
 
@@ -261,7 +261,7 @@ func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 	}
 
 	// Write post (which includes format redirects)
-	if err := plugin.writePost(post, config); err != nil {
+	if err := plugin.writePost(post, config, nil); err != nil {
 		t.Fatalf("writePost() error = %v", err)
 	}
 
@@ -386,7 +386,7 @@ func TestPublishHTMLPlugin_StandardWebTxtFiles(t *testing.T) {
 			ArticleHTML: "<p>Test</p>",
 		}
 
-		if err := plugin.writePost(post, config); err != nil {
+		if err := plugin.writePost(post, config, nil); err != nil {
 			t.Fatalf("writePost() error for %s: %v", sf.slug, err)
 		}
 	}
@@ -430,5 +430,128 @@ func TestPublishHTMLPlugin_PostFormatsDefaultEnabled(t *testing.T) {
 
 	if defaults.OG {
 		t.Error("OG should NOT be enabled by default")
+	}
+}
+
+// TestPublishHTMLPlugin_TxtTemplateRendering tests that txt output uses templates
+// when a template engine is available.
+// Fixes: https://github.com/WaylonWalker/markata-go/issues/397
+func TestPublishHTMLPlugin_TxtTemplateRendering(t *testing.T) {
+	tempDir := t.TempDir()
+	plugin := NewPublishHTMLPlugin()
+
+	// Create config with Text format enabled
+	htmlEnabled := true
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"post_formats": models.PostFormatsConfig{
+				HTML: &htmlEnabled,
+				Text: true,
+			},
+		},
+	}
+
+	// Create test post
+	title := "My Test Title"
+	description := "A test description"
+	post := &models.Post{
+		Path:        "test.md",
+		Slug:        "test-post",
+		Title:       &title,
+		Description: &description,
+		Content:     "This is the post content.",
+		HTML:        "<html><body>Test</body></html>",
+		Published:   true,
+		Draft:       false,
+		Skip:        false,
+		ArticleHTML: "<p>Test</p>",
+	}
+
+	// Write post without template engine (should use fallback)
+	if err := plugin.writePost(post, config, nil); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+
+	// Read txt content
+	txtPath := filepath.Join(tempDir, "test-post.txt")
+	content, err := os.ReadFile(txtPath)
+	if err != nil {
+		t.Fatalf("failed to read txt file: %v", err)
+	}
+
+	contentStr := string(content)
+
+	// Verify title is present with underline
+	if !strings.Contains(contentStr, "My Test Title") {
+		t.Error("txt file should contain the title")
+	}
+	if !strings.Contains(contentStr, "=============") {
+		t.Error("txt file should contain title underline")
+	}
+
+	// Verify description is present
+	if !strings.Contains(contentStr, "A test description") {
+		t.Error("txt file should contain the description")
+	}
+
+	// Verify content is present
+	if !strings.Contains(contentStr, "This is the post content.") {
+		t.Error("txt file should contain the post content")
+	}
+}
+
+// TestPublishHTMLPlugin_RawTxtForSpecialFiles tests that special files
+// (robots.txt, llms.txt, etc.) can use a raw.txt template for content-only output.
+// Fixes: https://github.com/WaylonWalker/markata-go/issues/397
+func TestPublishHTMLPlugin_RawTxtForSpecialFiles(t *testing.T) {
+	tempDir := t.TempDir()
+	plugin := NewPublishHTMLPlugin()
+
+	// Create config with Text format enabled
+	htmlEnabled := true
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"post_formats": models.PostFormatsConfig{
+				HTML: &htmlEnabled,
+				Text: true,
+			},
+		},
+	}
+
+	// Create robots post - should just output raw content
+	robotsContent := "User-agent: *\nAllow: /"
+	robotsPost := &models.Post{
+		Path:        "robots.md",
+		Slug:        "robots",
+		Content:     robotsContent,
+		HTML:        "<html><body>Test</body></html>",
+		Published:   true,
+		Draft:       false,
+		Skip:        false,
+		ArticleHTML: "<p>Test</p>",
+	}
+
+	// Write post without template engine (should use fallback)
+	if err := plugin.writePost(robotsPost, config, nil); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+
+	// Read robots.txt
+	robotsPath := filepath.Join(tempDir, "robots.txt")
+	content, err := os.ReadFile(robotsPath)
+	if err != nil {
+		t.Fatalf("failed to read robots.txt: %v", err)
+	}
+
+	contentStr := string(content)
+
+	// Verify content is present (without title/description header since no title set)
+	if !strings.Contains(contentStr, "User-agent: *") {
+		t.Error("robots.txt should contain the user-agent directive")
+	}
+	if !strings.Contains(contentStr, "Allow: /") {
+		t.Error("robots.txt should contain the allow directive")
 	}
 }
