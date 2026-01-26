@@ -382,3 +382,431 @@ func TestURIConversion(t *testing.T) {
 		})
 	}
 }
+
+func TestGetMentionContext(t *testing.T) {
+	tests := []struct {
+		name          string
+		line          string
+		col           int
+		wantPrefix    string
+		wantStart     int
+		wantInMention bool
+	}{
+		{
+			name:          "start of mention",
+			line:          "Hello @",
+			col:           7,
+			wantPrefix:    "",
+			wantStart:     0,
+			wantInMention: false, // @ alone without a letter isn't a valid mention start
+		},
+		{
+			name:          "partial handle",
+			line:          "Hello @dave",
+			col:           11,
+			wantPrefix:    "dave",
+			wantStart:     7,
+			wantInMention: true,
+		},
+		{
+			name:          "middle of handle",
+			line:          "Hello @daverupert!",
+			col:           12,
+			wantPrefix:    "daver",
+			wantStart:     7,
+			wantInMention: true,
+		},
+		{
+			name:          "handle with dots",
+			line:          "See @simon.willison.net",
+			col:           23,
+			wantPrefix:    "simon.willison.net",
+			wantStart:     5,
+			wantInMention: true,
+		},
+		{
+			name:          "not in mention - no @",
+			line:          "Hello world",
+			col:           5,
+			wantPrefix:    "",
+			wantStart:     0,
+			wantInMention: false,
+		},
+		{
+			name:          "email address - not a mention",
+			line:          "Email me at test@example.com",
+			col:           22,
+			wantPrefix:    "",
+			wantStart:     0,
+			wantInMention: false,
+		},
+		{
+			name:          "double @ - not a mention",
+			line:          "Something @@handle",
+			col:           15,
+			wantPrefix:    "",
+			wantStart:     0,
+			wantInMention: false,
+		},
+		{
+			name:          "start_of_line_mention",
+			line:          "@daverupert is cool",
+			col:           11,
+			wantPrefix:    "daverupert",
+			wantStart:     1,
+			wantInMention: true,
+		},
+		{
+			name:          "after space mention",
+			line:          "Thanks @jane",
+			col:           12,
+			wantPrefix:    "jane",
+			wantStart:     8,
+			wantInMention: true,
+		},
+		{
+			name:          "empty line",
+			line:          "",
+			col:           0,
+			wantPrefix:    "",
+			wantStart:     0,
+			wantInMention: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			prefix, startCol, inMention := getMentionContext(tt.line, tt.col)
+			if prefix != tt.wantPrefix {
+				t.Errorf("prefix = %q, want %q", prefix, tt.wantPrefix)
+			}
+			if startCol != tt.wantStart {
+				t.Errorf("startCol = %d, want %d", startCol, tt.wantStart)
+			}
+			if inMention != tt.wantInMention {
+				t.Errorf("inMention = %v, want %v", inMention, tt.wantInMention)
+			}
+		})
+	}
+}
+
+func TestIndexBlogrollMentions(t *testing.T) {
+	logger := log.New(os.Stderr, "[test] ", 0)
+	idx := NewIndex(logger)
+
+	// Create a temp directory with a config file
+	tmpDir := t.TempDir()
+	configContent := `
+[blogroll]
+enabled = true
+
+[[blogroll.feeds]]
+url = "https://daverupert.com/feed.xml"
+title = "Dave Rupert"
+handle = "daverupert"
+aliases = ["dave", "rupert"]
+
+[[blogroll.feeds]]
+url = "https://simonwillison.net/atom/everything/"
+title = "Simon Willison"
+site_url = "https://simonwillison.net"
+`
+	configPath := filepath.Join(tmpDir, "markata-go.toml")
+	if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+
+	// Build index which should load mentions
+	if err := idx.Build(tmpDir); err != nil {
+		t.Fatalf("Build failed: %v", err)
+	}
+
+	// Check that mentions were indexed
+	mentions := idx.AllMentions()
+	if len(mentions) != 2 {
+		t.Errorf("got %d mentions, want 2", len(mentions))
+	}
+
+	// Test searching
+	results := idx.SearchMentions("dave")
+	if len(results) != 1 {
+		t.Errorf("SearchMentions(dave) returned %d results, want 1", len(results))
+	}
+	if len(results) > 0 && results[0].Handle != "daverupert" {
+		t.Errorf("SearchMentions(dave) handle = %q, want %q", results[0].Handle, "daverupert")
+	}
+
+	// Test alias searching
+	results = idx.SearchMentions("rupert")
+	if len(results) != 1 {
+		t.Errorf("SearchMentions(rupert) returned %d results, want 1", len(results))
+	}
+
+	// Test auto-generated handle from site_url
+	results = idx.SearchMentions("simon")
+	if len(results) != 1 {
+		t.Errorf("SearchMentions(simon) returned %d results, want 1", len(results))
+	}
+}
+
+func TestGetMentionAtPosition(t *testing.T) {
+	tests := []struct {
+		name       string
+		line       string
+		col        int
+		lineNum    int
+		wantHandle string
+		wantNil    bool
+	}{
+		{
+			name:       "cursor on mention",
+			line:       "See @daverupert here",
+			col:        10,
+			lineNum:    5,
+			wantHandle: "daverupert",
+			wantNil:    false,
+		},
+		{
+			name:       "cursor at start of mention",
+			line:       "See @daverupert here",
+			col:        4,
+			lineNum:    0,
+			wantHandle: "daverupert",
+			wantNil:    false,
+		},
+		{
+			name:       "cursor at end of mention",
+			line:       "See @daverupert here",
+			col:        15,
+			lineNum:    0,
+			wantHandle: "daverupert",
+			wantNil:    false,
+		},
+		{
+			name:       "cursor not on mention",
+			line:       "See @daverupert here",
+			col:        18,
+			lineNum:    0,
+			wantHandle: "",
+			wantNil:    true,
+		},
+		{
+			name:       "mention with dots",
+			line:       "See @simon.willison.net here",
+			col:        15,
+			lineNum:    0,
+			wantHandle: "simon.willison.net",
+			wantNil:    false,
+		},
+		{
+			name:       "no mentions",
+			line:       "Just regular text",
+			col:        5,
+			lineNum:    0,
+			wantHandle: "",
+			wantNil:    true,
+		},
+		{
+			name:       "email not a mention",
+			line:       "Email test@example.com here",
+			col:        15,
+			lineNum:    0,
+			wantHandle: "",
+			wantNil:    true,
+		},
+		{
+			name:       "start of line mention",
+			line:       "@daverupert said something",
+			col:        5,
+			lineNum:    0,
+			wantHandle: "daverupert",
+			wantNil:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handle, rng := getMentionAtPosition(tt.line, tt.col, tt.lineNum)
+			if handle != tt.wantHandle {
+				t.Errorf("handle = %q, want %q", handle, tt.wantHandle)
+			}
+			if (rng == nil) != tt.wantNil {
+				t.Errorf("range nil = %v, want nil = %v", rng == nil, tt.wantNil)
+			}
+			if rng != nil && rng.Start.Line != tt.lineNum {
+				t.Errorf("range line = %d, want %d", rng.Start.Line, tt.lineNum)
+			}
+		})
+	}
+}
+
+func TestGetByHandle(t *testing.T) {
+	logger := log.New(os.Stderr, "[test] ", 0)
+	idx := NewIndex(logger)
+
+	// Create a temp directory with a config file
+	tmpDir := t.TempDir()
+	configContent := `
+[blogroll]
+enabled = true
+
+[[blogroll.feeds]]
+url = "https://daverupert.com/feed.xml"
+title = "Dave Rupert"
+site_url = "https://daverupert.com"
+handle = "daverupert"
+aliases = ["dave", "rupert"]
+`
+	configPath := filepath.Join(tmpDir, "markata-go.toml")
+	if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+
+	// Build index
+	if err := idx.Build(tmpDir); err != nil {
+		t.Fatalf("Build failed: %v", err)
+	}
+
+	// Test GetByHandle with primary handle
+	mention := idx.GetByHandle("daverupert")
+	if mention == nil {
+		t.Fatal("GetByHandle(daverupert) returned nil")
+	}
+	if mention.Title != "Dave Rupert" {
+		t.Errorf("Title = %q, want %q", mention.Title, "Dave Rupert")
+	}
+
+	// Test GetByHandle with alias
+	mention = idx.GetByHandle("dave")
+	if mention == nil {
+		t.Fatal("GetByHandle(dave) returned nil")
+	}
+	if mention.Handle != "daverupert" {
+		t.Errorf("Handle = %q, want %q", mention.Handle, "daverupert")
+	}
+
+	// Test GetByHandle with another alias
+	mention = idx.GetByHandle("rupert")
+	if mention == nil {
+		t.Fatal("GetByHandle(rupert) returned nil")
+	}
+
+	// Test GetByHandle case insensitivity
+	mention = idx.GetByHandle("DAVERUPERT")
+	if mention == nil {
+		t.Fatal("GetByHandle(DAVERUPERT) returned nil - should be case insensitive")
+	}
+
+	// Test GetByHandle with unknown handle
+	mention = idx.GetByHandle("unknown")
+	if mention != nil {
+		t.Errorf("GetByHandle(unknown) returned non-nil: %v", mention)
+	}
+
+	// Test GetByHandle with domain alias
+	mention = idx.GetByHandle("daverupert.com")
+	if mention == nil {
+		t.Fatal("GetByHandle(daverupert.com) returned nil - domain alias should work")
+	}
+}
+
+func TestMentionDiagnostics(t *testing.T) {
+	logger := log.New(os.Stderr, "[test] ", 0)
+	idx := NewIndex(logger)
+
+	// Create a temp directory with a config file
+	tmpDir := t.TempDir()
+	configContent := `
+[blogroll]
+enabled = true
+
+[[blogroll.feeds]]
+url = "https://daverupert.com/feed.xml"
+title = "Dave Rupert"
+handle = "daverupert"
+`
+	configPath := filepath.Join(tmpDir, "markata-go.toml")
+	if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+
+	// Build index
+	if err := idx.Build(tmpDir); err != nil {
+		t.Fatalf("Build failed: %v", err)
+	}
+
+	// Create a server with the index
+	server := &Server{
+		index:  idx,
+		logger: logger,
+	}
+
+	tests := []struct {
+		name         string
+		content      string
+		wantWarnings int
+		wantCodes    []string
+	}{
+		{
+			name:         "valid mention",
+			content:      "Hello @daverupert!",
+			wantWarnings: 0,
+			wantCodes:    nil,
+		},
+		{
+			name:         "unknown mention",
+			content:      "Hello @unknown!",
+			wantWarnings: 1,
+			wantCodes:    []string{"unknown-mention"},
+		},
+		{
+			name:         "multiple mentions mixed",
+			content:      "Hello @daverupert and @unknown!",
+			wantWarnings: 1,
+			wantCodes:    []string{"unknown-mention"},
+		},
+		{
+			name:         "mention in code block ignored",
+			content:      "```\n@unknown\n```",
+			wantWarnings: 0,
+			wantCodes:    nil,
+		},
+		{
+			name:         "email not flagged",
+			content:      "Email test@example.com for help",
+			wantWarnings: 0,
+			wantCodes:    nil,
+		},
+		{
+			name:         "broken wikilink",
+			content:      "See [[nonexistent]]",
+			wantWarnings: 1,
+			wantCodes:    []string{"broken-wikilink"},
+		},
+		{
+			name:         "both broken wikilink and unknown mention",
+			content:      "See [[nonexistent]] and @unknown",
+			wantWarnings: 2,
+			wantCodes:    []string{"broken-wikilink", "unknown-mention"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			diagnostics := server.computeDiagnostics("test.md", tt.content)
+			if len(diagnostics) != tt.wantWarnings {
+				t.Errorf("got %d diagnostics, want %d", len(diagnostics), tt.wantWarnings)
+				for i, d := range diagnostics {
+					t.Logf("  diagnostic %d: %s (%s)", i, d.Message, d.Code)
+				}
+			}
+
+			// Check diagnostic codes
+			for i, wantCode := range tt.wantCodes {
+				if i < len(diagnostics) && diagnostics[i].Code != wantCode {
+					t.Errorf("diagnostic %d: code = %q, want %q", i, diagnostics[i].Code, wantCode)
+				}
+			}
+		})
+	}
+}

@@ -76,8 +76,7 @@ func New(logger *log.Logger) *Server {
 // The server uses JSON-RPC 2.0 over the LSP protocol.
 func (s *Server) Run(ctx context.Context, reader io.Reader, writer io.Writer) error {
 	s.writer = writer
-	scanner := bufio.NewScanner(reader)
-	scanner.Buffer(make([]byte, 0, 1024*1024), 10*1024*1024) // 10MB max message
+	bufReader := bufio.NewReaderSize(reader, 1024*1024) // 1MB buffer
 
 	for {
 		select {
@@ -86,7 +85,7 @@ func (s *Server) Run(ctx context.Context, reader io.Reader, writer io.Writer) er
 		default:
 		}
 
-		msg, err := s.readMessage(scanner)
+		msg, err := s.readMessage(bufReader)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
@@ -174,44 +173,48 @@ func (s *Server) methodHandlers() map[string]methodHandler {
 	}
 }
 
-// readMessage reads a single LSP message from the scanner.
-func (s *Server) readMessage(scanner *bufio.Scanner) (*Message, error) {
-	// Read headers
+// readMessage reads a single LSP message from the reader.
+// LSP uses Content-Length based framing with \r\n line endings in headers.
+func (s *Server) readMessage(reader *bufio.Reader) (*Message, error) {
+	// Read headers until empty line
 	var contentLength int
-	for scanner.Scan() {
-		line := scanner.Text()
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil, io.EOF
+			}
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+
+		// Trim \r\n or \n
+		line = strings.TrimRight(line, "\r\n")
+
+		// Empty line signals end of headers
 		if line == "" {
 			break
 		}
+
+		// Parse Content-Length header
 		if strings.HasPrefix(line, "Content-Length: ") {
-			var err error
-			contentLength, err = strconv.Atoi(strings.TrimPrefix(line, "Content-Length: "))
-			if err != nil {
-				return nil, fmt.Errorf("invalid Content-Length: %w", err)
+			var parseErr error
+			contentLength, parseErr = strconv.Atoi(strings.TrimPrefix(line, "Content-Length: "))
+			if parseErr != nil {
+				return nil, fmt.Errorf("invalid Content-Length: %w", parseErr)
 			}
 		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
+		// Ignore other headers (like Content-Type)
 	}
 
 	if contentLength == 0 {
-		return nil, io.EOF
+		return nil, fmt.Errorf("missing or zero Content-Length header")
 	}
 
-	// Read content
-	if !scanner.Scan() {
-		if err := scanner.Err(); err != nil {
-			return nil, err
-		}
-		return nil, io.EOF
+	// Read exactly contentLength bytes for the body
+	content := make([]byte, contentLength)
+	if _, err := io.ReadFull(reader, content); err != nil {
+		return nil, fmt.Errorf("failed to read content: %w", err)
 	}
-
-	content := scanner.Bytes()
-	// Note: Content might be split across multiple reads for large messages.
-	// This simplified implementation assumes single-read messages.
-	_ = contentLength
 
 	var msg Message
 	if err := json.Unmarshal(content, &msg); err != nil {

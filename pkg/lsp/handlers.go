@@ -33,7 +33,7 @@ func (s *Server) handleInitialize(_ context.Context, msg *Message) error {
 				},
 			},
 			CompletionProvider: &CompletionOptions{
-				TriggerCharacters: []string{"["},
+				TriggerCharacters: []string{"[", "@"},
 				ResolveProvider:   false,
 			},
 			HoverProvider:      true,

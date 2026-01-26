@@ -31,6 +31,12 @@ func (s *Server) handleHover(_ context.Context, msg *Message) error {
 	line := lines[params.Position.Line]
 	col := params.Position.Character
 
+	// Check if the cursor is on a mention (@handle)
+	handle, mentionRange := getMentionAtPosition(line, col, params.Position.Line)
+	if handle != "" {
+		return s.handleMentionHover(msg, handle, mentionRange)
+	}
+
 	// Check if the cursor is on a wikilink
 	slug, wikilinkRange := getWikilinkAtPosition(line, col, params.Position.Line)
 	if slug == "" {
@@ -76,6 +82,63 @@ func (s *Server) handleHover(_ context.Context, msg *Message) error {
 			Value: sb.String(),
 		},
 		Range: wikilinkRange,
+	}
+
+	return s.sendResponse(msg.ID, hover)
+}
+
+// handleMentionHover handles hover for @mentions.
+func (s *Server) handleMentionHover(msg *Message, handle string, mentionRange *Range) error {
+	mention := s.index.GetByHandle(handle)
+	if mention == nil {
+		// Show error hover for unknown mentions
+		hover := &Hover{
+			Contents: MarkupContent{
+				Kind:  "markdown",
+				Value: "**Unknown mention**\n\n`@" + handle + "` not found in blogroll configuration.",
+			},
+			Range: mentionRange,
+		}
+		return s.sendResponse(msg.ID, hover)
+	}
+
+	// Format hover content
+	var sb strings.Builder
+	sb.WriteString("## @")
+	sb.WriteString(mention.Handle)
+	if mention.Title != "" {
+		sb.WriteString(" - ")
+		sb.WriteString(mention.Title)
+	}
+	sb.WriteString("\n\n")
+
+	if mention.Description != "" {
+		sb.WriteString(mention.Description)
+		sb.WriteString("\n\n")
+	}
+
+	sb.WriteString("---\n")
+	if mention.SiteURL != "" {
+		sb.WriteString("*Site:* ")
+		sb.WriteString(mention.SiteURL)
+		sb.WriteString("\n\n")
+	}
+	if mention.FeedURL != "" {
+		sb.WriteString("*Feed:* ")
+		sb.WriteString(mention.FeedURL)
+		sb.WriteString("\n\n")
+	}
+	if len(mention.Aliases) > 0 {
+		sb.WriteString("*Aliases:* @")
+		sb.WriteString(strings.Join(mention.Aliases, ", @"))
+	}
+
+	hover := &Hover{
+		Contents: MarkupContent{
+			Kind:  "markdown",
+			Value: sb.String(),
+		},
+		Range: mentionRange,
 	}
 
 	return s.sendResponse(msg.ID, hover)
