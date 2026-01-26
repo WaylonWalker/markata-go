@@ -18,29 +18,11 @@
   --color-error: #ef4444;
   --color-info: #3b82f6;
 
-  /* Accent gradient - used for media borders and highlights */
-  --gradient-accent: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-  --gradient-vibrant: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
-  --gradient-warm: linear-gradient(135deg, #f093fb, #f5576c, #f8b500);
-  --gradient-cool: linear-gradient(135deg, #4facfe, #00f2fe);
-  --gradient-sunset: linear-gradient(135deg, #fa709a, #fee140);
-  --gradient-ocean: linear-gradient(135deg, #2193b0, #6dd5ed);
-
-  /* Palette-specific gradients */
-  --gradient-catppuccin: linear-gradient(135deg, #cba6f7, #f5c2e7, #f38ba8);
-  --gradient-nord: linear-gradient(135deg, #88c0d0, #81a1c1, #5e81ac);
-  --gradient-dracula: linear-gradient(135deg, #bd93f9, #ff79c6, #8be9fd);
-  --gradient-gruvbox: linear-gradient(135deg, #fabd2f, #fe8019, #fb4934);
-  --gradient-rose-pine: linear-gradient(135deg, #c4a7e7, #ebbcba, #f6c177);
-  --gradient-solarized: linear-gradient(135deg, #268bd2, #2aa198, #859900);
-  --gradient-tokyo-night: linear-gradient(135deg, #7aa2f7, #bb9af7, #f7768e);
-
-  /* Media border settings */
-  --media-border-width: 3px;
-  --media-border-style: solid;
-  --media-border-color: var(--color-border);
-  --media-border-gradient: none;  /* Set to a gradient to enable gradient borders */
-  --media-border-radius: var(--radius-lg);
+  /* Article/Content background (for readability over decorative backgrounds) */
+  --article-bg: var(--color-background);
+  --article-bg-opacity: 0.95;
+  --article-blur: 0px;
+  --article-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 
   /* Font families */
   --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -87,5 +69,8 @@
     --color-background: #111827;
     --color-surface: #1f2937;
     --color-border: #374151;
+
+    /* Darker article shadow for dark mode */
+    --article-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   }
 }

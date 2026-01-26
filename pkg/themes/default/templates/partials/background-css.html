@@ -1,8 +1,30 @@
     <!-- Background Decoration CSS -->
     {% if config.theme.background.enabled %}
-    {% if config.theme.background.css %}
     <style>
+    /* Article background variables for content readability */
+    :root {
+      {% if config.theme.background.article_bg %}--article-bg: {{ config.theme.background.article_bg }};{% endif %}
+      {% if config.theme.background.article_blur %}--article-blur: {{ config.theme.background.article_blur }};{% endif %}
+      {% if config.theme.background.article_shadow %}--article-shadow: {{ config.theme.background.article_shadow }};{% endif %}
+      {% if config.theme.background.article_border %}--article-border: {{ config.theme.background.article_border }};{% endif %}
+      {% if config.theme.background.article_radius %}--article-radius: {{ config.theme.background.article_radius }};{% endif %}
+    }
+
+    /* Apply article background styling when background decorations are enabled */
+    article.post,
+    section.feed,
+    div.feed,
+    .blogroll-page,
+    .reader-page {
+      {% if config.theme.background.article_bg %}background: var(--article-bg);{% endif %}
+      {% if config.theme.background.article_blur %}backdrop-filter: blur(var(--article-blur));{% endif %}
+      {% if config.theme.background.article_shadow %}box-shadow: var(--article-shadow);{% endif %}
+      {% if config.theme.background.article_border %}border: var(--article-border);{% endif %}
+      {% if config.theme.background.article_radius %}border-radius: var(--article-radius);{% endif %}
+      {% if config.theme.background.article_bg or config.theme.background.article_shadow %}padding: var(--space-lg, 2rem);{% endif %}
+    }
+    {% if config.theme.background.css %}
 {{ config.theme.background.css }}
-    </style>
     {% endif %}
+    </style>
     {% endif %}
