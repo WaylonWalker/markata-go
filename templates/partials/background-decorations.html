@@ -1,0 +1,8 @@
+    <!-- Background Decorations -->
+    {% if config.theme.background.enabled %}
+    {% for bg in config.theme.background.backgrounds %}
+    <div class="background-layer" style="position: fixed; inset: 0; pointer-events: none; z-index: {% if bg.z_index %}{{ bg.z_index }}{% else %}-1{% endif %};">
+      {{ bg.html | safe }}
+    </div>
+    {% endfor %}
+    {% endif %}

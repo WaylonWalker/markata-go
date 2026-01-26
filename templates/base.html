@@ -131,14 +131,7 @@
     {% if config.webmention.endpoint %}<link rel="webmention" href="{{ config.webmention.endpoint }}">{% endif %}
     {% endif %}
 
-    <!-- Background Decoration CSS -->
-    {% if config.theme.background.enabled %}
-    {% if config.theme.background.css %}
-    <style>
-{{ config.theme.background.css }}
-    </style>
-    {% endif %}
-    {% endif %}
+    {% include "partials/background-css.html" %}
     {% endblock %}
 
     <!-- Structured Data: JSON-LD -->
@@ -192,14 +185,7 @@
     {% endif %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
-    <!-- Background Decorations -->
-    {% if config.theme.background.enabled %}
-    {% for bg in config.theme.background.backgrounds %}
-    <div class="background-layer" style="position: fixed; inset: 0; pointer-events: none; z-index: {% if bg.z_index %}{{ bg.z_index }}{% else %}-1{% endif %};">
-      {{ bg.html | safe }}
-    </div>
-    {% endfor %}
-    {% endif %}
+    {% include "partials/background-decorations.html" %}
 
     {% block header %}
     <header class="site-header" data-pagefind-ignore>
@@ -251,12 +237,7 @@
     </script>
     {% endif %}
 
-    <!-- Background Decoration Scripts -->
-    {% if config.theme.background.enabled %}
-    {% for script in config.theme.background.scripts %}
-    <script src="{{ script }}"></script>
-    {% endfor %}
-    {% endif %}
+    {% include "partials/background-scripts.html" %}
 
     <!-- GLightbox JS for image zoom -->
     {% if config.Extra.glightbox_enabled %}
