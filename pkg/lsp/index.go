@@ -8,7 +8,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/BurntSushi/toml"
 	"github.com/WaylonWalker/markata-go/pkg/plugins"
+	"gopkg.in/yaml.v3"
 )
 
 // Index maintains an index of all markdown posts in the workspace.
@@ -21,6 +23,10 @@ type Index struct {
 
 	// uriToSlug maps file URI to slug for reverse lookup
 	uriToSlug map[string]string
+
+	// mentions maps handle/alias to MentionInfo for quick lookup
+	mentions  map[string]*MentionInfo
+	mentionMu sync.RWMutex
 }
 
 // PostInfo contains indexed information about a post.
@@ -42,6 +48,27 @@ type PostInfo struct {
 
 	// Wikilinks contains all wikilinks found in the post
 	Wikilinks []WikilinkInfo
+}
+
+// MentionInfo contains indexed information about a blogroll mention.
+type MentionInfo struct {
+	// Handle is the primary handle (e.g., "daverupert")
+	Handle string
+
+	// Aliases are alternative handles that resolve to this mention
+	Aliases []string
+
+	// Title is the display name (e.g., "Dave Rupert")
+	Title string
+
+	// SiteURL is the website URL
+	SiteURL string
+
+	// FeedURL is the RSS/Atom feed URL
+	FeedURL string
+
+	// Description is a short description
+	Description string
 }
 
 // WikilinkInfo contains information about a wikilink in a post.
@@ -68,6 +95,7 @@ func NewIndex(logger *log.Logger) *Index {
 		logger:    logger,
 		posts:     make(map[string]*PostInfo),
 		uriToSlug: make(map[string]string),
+		mentions:  make(map[string]*MentionInfo),
 	}
 }
 
@@ -79,6 +107,9 @@ func (idx *Index) Build(rootPath string) error {
 	// Clear existing index
 	idx.posts = make(map[string]*PostInfo)
 	idx.uriToSlug = make(map[string]string)
+
+	// Index blogroll mentions from config
+	idx.indexBlogrollMentions(rootPath)
 
 	// Walk the directory tree
 	return filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
@@ -258,6 +289,267 @@ func (idx *Index) SearchPosts(prefix string) []*PostInfo {
 	}
 
 	return results
+}
+
+// AllMentions returns all indexed mentions (unique by handle).
+func (idx *Index) AllMentions() []*MentionInfo {
+	idx.mentionMu.RLock()
+	defer idx.mentionMu.RUnlock()
+
+	// Deduplicate by handle (aliases point to same MentionInfo)
+	seen := make(map[string]bool)
+	mentions := make([]*MentionInfo, 0)
+	for _, info := range idx.mentions {
+		if !seen[info.Handle] {
+			seen[info.Handle] = true
+			mentions = append(mentions, info)
+		}
+	}
+	return mentions
+}
+
+// SearchMentions returns mentions matching a prefix.
+func (idx *Index) SearchMentions(prefix string) []*MentionInfo {
+	idx.mentionMu.RLock()
+	defer idx.mentionMu.RUnlock()
+
+	prefix = strings.ToLower(prefix)
+
+	// Deduplicate results by handle
+	seen := make(map[string]bool)
+	var results []*MentionInfo
+
+	for key, info := range idx.mentions {
+		if seen[info.Handle] {
+			continue
+		}
+		// Match against handle, aliases, or title
+		if strings.HasPrefix(strings.ToLower(key), prefix) ||
+			strings.Contains(strings.ToLower(info.Title), prefix) {
+			seen[info.Handle] = true
+			results = append(results, info)
+		}
+	}
+
+	return results
+}
+
+// GetByHandle returns a mention by handle or alias (case-insensitive).
+func (idx *Index) GetByHandle(handle string) *MentionInfo {
+	idx.mentionMu.RLock()
+	defer idx.mentionMu.RUnlock()
+
+	handle = strings.ToLower(handle)
+	return idx.mentions[handle]
+}
+
+// indexBlogrollMentions reads the markata config and indexes blogroll feeds as mentions.
+func (idx *Index) indexBlogrollMentions(rootPath string) {
+	idx.mentionMu.Lock()
+	defer idx.mentionMu.Unlock()
+
+	idx.mentions = make(map[string]*MentionInfo)
+
+	// Try to find and parse config file
+	configPaths := []string{
+		filepath.Join(rootPath, "markata-go.toml"),
+		filepath.Join(rootPath, "markata.toml"),
+		filepath.Join(rootPath, "markata-go.yaml"),
+		filepath.Join(rootPath, "markata.yaml"),
+	}
+
+	for _, configPath := range configPaths {
+		content, err := os.ReadFile(configPath)
+		if err != nil {
+			continue
+		}
+
+		var feeds []blogrollFeedConfig
+		if strings.HasSuffix(configPath, ".toml") {
+			feeds = idx.parseBlogrollFromTOML(content)
+		} else {
+			feeds = idx.parseBlogrollFromYAML(content)
+		}
+
+		for _, feed := range feeds {
+			idx.indexFeedAsMention(&feed)
+		}
+
+		if len(feeds) > 0 {
+			idx.logger.Printf("Indexed %d blogroll mentions from %s", len(idx.mentions), configPath)
+		}
+		return // Only use first config found
+	}
+}
+
+// blogrollFeedConfig is a minimal struct for parsing feed configs.
+type blogrollFeedConfig struct {
+	URL         string   `toml:"url" yaml:"url"`
+	Title       string   `toml:"title" yaml:"title"`
+	Description string   `toml:"description" yaml:"description"`
+	SiteURL     string   `toml:"site_url" yaml:"site_url"`
+	Handle      string   `toml:"handle" yaml:"handle"`
+	Aliases     []string `toml:"aliases" yaml:"aliases"`
+	Active      *bool    `toml:"active" yaml:"active"`
+}
+
+// parseBlogrollFromTOML extracts feed configs from TOML content.
+func (idx *Index) parseBlogrollFromTOML(content []byte) []blogrollFeedConfig {
+	// Try markata-go.blogroll first (new format)
+	var configNew struct {
+		MarktaGo struct {
+			Blogroll struct {
+				Enabled bool                 `toml:"enabled"`
+				Feeds   []blogrollFeedConfig `toml:"feeds"`
+			} `toml:"blogroll"`
+		} `toml:"markata-go"`
+	}
+
+	if err := toml.Unmarshal(content, &configNew); err == nil {
+		if configNew.MarktaGo.Blogroll.Enabled && len(configNew.MarktaGo.Blogroll.Feeds) > 0 {
+			return configNew.MarktaGo.Blogroll.Feeds
+		}
+	}
+
+	// Fall back to blogroll (old format)
+	var configOld struct {
+		Blogroll struct {
+			Enabled bool                 `toml:"enabled"`
+			Feeds   []blogrollFeedConfig `toml:"feeds"`
+		} `toml:"blogroll"`
+	}
+
+	if err := toml.Unmarshal(content, &configOld); err != nil {
+		idx.logger.Printf("Failed to parse TOML config: %v", err)
+		return nil
+	}
+
+	if !configOld.Blogroll.Enabled {
+		return nil
+	}
+
+	return configOld.Blogroll.Feeds
+}
+
+// parseBlogrollFromYAML extracts feed configs from YAML content.
+func (idx *Index) parseBlogrollFromYAML(content []byte) []blogrollFeedConfig {
+	var config struct {
+		Blogroll struct {
+			Enabled bool                 `yaml:"enabled"`
+			Feeds   []blogrollFeedConfig `yaml:"feeds"`
+		} `yaml:"blogroll"`
+	}
+
+	if err := yaml.Unmarshal(content, &config); err != nil {
+		idx.logger.Printf("Failed to parse YAML config: %v", err)
+		return nil
+	}
+
+	if !config.Blogroll.Enabled {
+		return nil
+	}
+
+	return config.Blogroll.Feeds
+}
+
+// indexFeedAsMention creates a MentionInfo from a feed config.
+func (idx *Index) indexFeedAsMention(feed *blogrollFeedConfig) {
+	// Skip inactive feeds
+	if feed.Active != nil && !*feed.Active {
+		return
+	}
+
+	// Determine handle
+	handle := feed.Handle
+	if handle == "" {
+		handle = extractHandleFromFeedURL(feed.SiteURL)
+		if handle == "" {
+			handle = extractHandleFromFeedURL(feed.URL)
+		}
+	}
+	if handle == "" {
+		return
+	}
+
+	handle = strings.ToLower(handle)
+
+	// Create mention info
+	info := &MentionInfo{
+		Handle:      handle,
+		Aliases:     feed.Aliases,
+		Title:       feed.Title,
+		SiteURL:     feed.SiteURL,
+		FeedURL:     feed.URL,
+		Description: feed.Description,
+	}
+
+	// Index by handle
+	if _, exists := idx.mentions[handle]; !exists {
+		idx.mentions[handle] = info
+	}
+
+	// Index by aliases
+	for _, alias := range feed.Aliases {
+		alias = strings.ToLower(alias)
+		if alias != "" {
+			if _, exists := idx.mentions[alias]; !exists {
+				idx.mentions[alias] = info
+			}
+		}
+	}
+
+	// Auto-register domain alias
+	if feed.SiteURL != "" {
+		domain := extractDomainAlias(feed.SiteURL)
+		if domain != "" && domain != handle {
+			if _, exists := idx.mentions[domain]; !exists {
+				idx.mentions[domain] = info
+			}
+		}
+	}
+}
+
+// extractHandleFromFeedURL extracts a handle from a URL's domain.
+func extractHandleFromFeedURL(urlStr string) string {
+	if urlStr == "" {
+		return ""
+	}
+
+	// Simple extraction - find the domain part
+	urlStr = strings.TrimPrefix(urlStr, "https://")
+	urlStr = strings.TrimPrefix(urlStr, "http://")
+	urlStr = strings.TrimPrefix(urlStr, "www.")
+	urlStr = strings.TrimPrefix(urlStr, "blog.")
+
+	// Get first part before /
+	if idx := strings.Index(urlStr, "/"); idx > 0 {
+		urlStr = urlStr[:idx]
+	}
+
+	// Get first part before .
+	parts := strings.Split(urlStr, ".")
+	if len(parts) > 0 {
+		return strings.ToLower(parts[0])
+	}
+
+	return ""
+}
+
+// extractDomainAlias extracts the full domain as an alias.
+func extractDomainAlias(urlStr string) string {
+	if urlStr == "" {
+		return ""
+	}
+
+	urlStr = strings.TrimPrefix(urlStr, "https://")
+	urlStr = strings.TrimPrefix(urlStr, "http://")
+
+	// Get domain before /
+	if idx := strings.Index(urlStr, "/"); idx > 0 {
+		urlStr = urlStr[:idx]
+	}
+
+	return strings.ToLower(urlStr)
 }
 
 // generateSlug generates a slug from path and metadata.

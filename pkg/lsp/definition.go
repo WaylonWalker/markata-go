@@ -31,6 +31,25 @@ func (s *Server) handleDefinition(_ context.Context, msg *Message) error {
 	line := lines[params.Position.Line]
 	col := params.Position.Character
 
+	// Check if the cursor is on a mention (@handle)
+	handle, _ := getMentionAtPosition(line, col, params.Position.Line)
+	if handle != "" {
+		mention := s.index.GetByHandle(handle)
+		if mention != nil && mention.SiteURL != "" {
+			// Return a location with the site URL
+			// LSP clients may open this as an external link
+			location := Location{
+				URI: mention.SiteURL,
+				Range: Range{
+					Start: Position{Line: 0, Character: 0},
+					End:   Position{Line: 0, Character: 0},
+				},
+			}
+			return s.sendResponse(msg.ID, location)
+		}
+		return s.sendResponse(msg.ID, nil)
+	}
+
 	// Check if the cursor is on a wikilink
 	slug, _ := getWikilinkAtPosition(line, col, params.Position.Line)
 	if slug == "" {
