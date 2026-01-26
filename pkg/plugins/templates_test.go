@@ -427,3 +427,240 @@ func TestLayoutToTemplate(t *testing.T) {
 		})
 	}
 }
+
+func TestTemplatesPlugin_ResolveTemplateForFormat(t *testing.T) {
+	tests := []struct {
+		name   string
+		post   *models.Post
+		config *lifecycle.Config
+		format string
+		want   string
+	}{
+		{
+			name: "per-format override takes priority",
+			post: &models.Post{
+				Template: "blog.html",
+				Templates: map[string]string{
+					"txt": "raw.txt",
+				},
+			},
+			config: nil,
+			format: "txt",
+			want:   "raw.txt",
+		},
+		{
+			name: "per-format override for markdown",
+			post: &models.Post{
+				Template: "blog.html",
+				Templates: map[string]string{
+					"markdown": "custom.md",
+				},
+			},
+			config: nil,
+			format: "markdown",
+			want:   "custom.md",
+		},
+		{
+			name: "fallback to adapted template when no per-format override",
+			post: &models.Post{
+				Template: "blog.html",
+			},
+			config: nil,
+			format: "txt",
+			want:   "blog.txt",
+		},
+		{
+			name: "html format uses template directly",
+			post: &models.Post{
+				Template: "custom.html",
+			},
+			config: nil,
+			format: "html",
+			want:   "custom.html",
+		},
+		{
+			name: "og format adapts template",
+			post: &models.Post{
+				Template: "post.html",
+			},
+			config: nil,
+			format: "og",
+			want:   "post-og.html",
+		},
+		{
+			name:   "no template falls back to hardcoded default for html",
+			post:   &models.Post{},
+			config: nil,
+			format: "html",
+			want:   "post.html",
+		},
+		{
+			name:   "no template falls back to hardcoded default for txt",
+			post:   &models.Post{},
+			config: nil,
+			format: "txt",
+			want:   "default.txt",
+		},
+		{
+			name:   "no template falls back to hardcoded default for markdown",
+			post:   &models.Post{},
+			config: nil,
+			format: "markdown",
+			want:   "raw.txt",
+		},
+		{
+			name:   "no template falls back to hardcoded default for og",
+			post:   &models.Post{},
+			config: nil,
+			format: "og",
+			want:   "og-card.html",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &TemplatesPlugin{
+				config: tt.config,
+			}
+			got := p.resolveTemplateForFormat(tt.post, tt.format)
+			if got != tt.want {
+				t.Errorf("resolveTemplateForFormat(%v, %q) = %q, want %q", tt.post.Template, tt.format, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTemplatesPlugin_ResolveTemplateForFormat_WithPresets(t *testing.T) {
+	// Test with template presets in config
+	config := &lifecycle.Config{
+		Extra: map[string]interface{}{
+			"template_presets": map[string]models.TemplatePreset{
+				"blog": {
+					HTML:     "blog.html",
+					Text:     "blog.txt",
+					Markdown: "blog.md",
+					OG:       "blog-og.html",
+				},
+				"docs": {
+					HTML:     "docs.html",
+					Text:     "docs.txt",
+					Markdown: "docs.md",
+					OG:       "docs-og.html",
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name   string
+		post   *models.Post
+		format string
+		want   string
+	}{
+		{
+			name: "preset resolves html template",
+			post: &models.Post{
+				Template: "blog",
+			},
+			format: "html",
+			want:   "blog.html",
+		},
+		{
+			name: "preset resolves txt template",
+			post: &models.Post{
+				Template: "blog",
+			},
+			format: "txt",
+			want:   "blog.txt",
+		},
+		{
+			name: "preset resolves markdown template",
+			post: &models.Post{
+				Template: "docs",
+			},
+			format: "markdown",
+			want:   "docs.md",
+		},
+		{
+			name: "preset resolves og template",
+			post: &models.Post{
+				Template: "docs",
+			},
+			format: "og",
+			want:   "docs-og.html",
+		},
+		{
+			name: "per-format override takes priority over preset",
+			post: &models.Post{
+				Template: "blog",
+				Templates: map[string]string{
+					"txt": "custom.txt",
+				},
+			},
+			format: "txt",
+			want:   "custom.txt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &TemplatesPlugin{
+				config: config,
+			}
+			got := p.resolveTemplateForFormat(tt.post, tt.format)
+			if got != tt.want {
+				t.Errorf("resolveTemplateForFormat() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAdaptTemplateForFormat(t *testing.T) {
+	tests := []struct {
+		template string
+		format   string
+		want     string
+	}{
+		{"post.html", "html", "post.html"},
+		{"post.html", "txt", "post.txt"},
+		{"post.html", "text", "post.txt"},
+		{"post.html", "markdown", "post.md"},
+		{"post.html", "md", "post.md"},
+		{"post.html", "og", "post-og.html"},
+		{"blog.html", "txt", "blog.txt"},
+		{"layouts/docs.html", "txt", "layouts/docs.txt"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.template+"_"+tt.format, func(t *testing.T) {
+			got := adaptTemplateForFormat(tt.template, tt.format)
+			if got != tt.want {
+				t.Errorf("adaptTemplateForFormat(%q, %q) = %q, want %q", tt.template, tt.format, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetHardcodedDefault(t *testing.T) {
+	tests := []struct {
+		format string
+		want   string
+	}{
+		{"html", "post.html"},
+		{"txt", "default.txt"},
+		{"text", "default.txt"},
+		{"markdown", "raw.txt"},
+		{"md", "raw.txt"},
+		{"og", "og-card.html"},
+		{"unknown", "post.html"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.format, func(t *testing.T) {
+			got := getHardcodedDefault(tt.format)
+			if got != tt.want {
+				t.Errorf("getHardcodedDefault(%q) = %q, want %q", tt.format, got, tt.want)
+			}
+		})
+	}
+}
