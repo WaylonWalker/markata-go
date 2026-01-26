@@ -83,9 +83,12 @@
     <script src="{{ script.src }}"></script>
     {% endfor %}
   {% endif %}
+
+  {% include "partials/background-css.html" %}
   {% endblock %}
 </head>
 <body>
+  {% include "partials/background-decorations.html" %}
   {% block header %}
   {% include "partials/header.html" %}
   {% endblock %}
@@ -99,5 +102,7 @@
   {% endblock %}
 
   {% block scripts %}{% endblock %}
+
+  {% include "partials/background-scripts.html" %}
 </body>
 </html>
