@@ -2299,10 +2299,20 @@ func (m Model) handleConfigViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.view = ViewPosts
 		return m, nil
 
-	case key.Matches(msg, keyMap.Up), key.Matches(msg, keyMap.Down):
-		// Handle viewport scrolling
-		m.configViewport, cmd = m.configViewport.Update(msg)
-		return m, cmd
+	case key.Matches(msg, keyMap.Up):
+		if m.configCursor > 0 {
+			m.configCursor--
+		}
+		m.syncConfigViewportToCursor()
+		return m, nil
+
+	case key.Matches(msg, keyMap.Down):
+		maxCursor := m.getMaxConfigCursor()
+		if m.configCursor < maxCursor {
+			m.configCursor++
+		}
+		m.syncConfigViewportToCursor()
+		return m, nil
 
 	case key.Matches(msg, keyMap.Enter):
 		// Toggle section expansion
@@ -2322,11 +2332,11 @@ func (m Model) handleConfigViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) toggleConfigSection() (tea.Model, tea.Cmd) {
 	// Count total items to find which section we're in
 	currentLine := 0
-	scrollPos := m.configViewport.YOffset
+	cursorPos := m.configCursor
 
 	for i := range m.configSections {
 		section := &m.configSections[i]
-		if scrollPos >= currentLine && scrollPos < currentLine+1 {
+		if cursorPos >= currentLine && cursorPos < currentLine+1 {
 			// Toggle this section
 			section.expanded = !section.expanded
 			m.configExpanded[section.key] = section.expanded
@@ -2341,6 +2351,28 @@ func (m Model) toggleConfigSection() (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+// getMaxConfigCursor returns the maximum valid cursor position in the config view
+func (m Model) getMaxConfigCursor() int {
+	total := 0
+	for _, section := range m.configSections {
+		total++ // Section header
+		if section.expanded {
+			total += len(section.items)
+		}
+	}
+	return total - 1
+}
+
+// syncConfigViewportToCursor adjusts viewport scroll to keep cursor visible
+func (m *Model) syncConfigViewportToCursor() {
+	viewportHeight := m.configViewport.Height
+	if m.configCursor < m.configViewport.YOffset {
+		m.configViewport.YOffset = m.configCursor
+	} else if m.configCursor >= m.configViewport.YOffset+viewportHeight {
+		m.configViewport.YOffset = m.configCursor - viewportHeight + 1
+	}
 }
 
 // buildConfigSections builds the config sections from the current configuration
@@ -2502,6 +2534,7 @@ func (m *Model) refreshConfigViewport() {
 func (m Model) buildConfigContent() string {
 	var sb strings.Builder
 	theme := m.getTheme()
+	currentLine := 0
 
 	for _, section := range m.configSections {
 		// Section header
@@ -2510,8 +2543,16 @@ func (m Model) buildConfigContent() string {
 			expandIcon = "▼"
 		}
 		header := fmt.Sprintf("%s %s", expandIcon, section.name)
-		sb.WriteString(theme.HeaderStyle.Render(header))
+
+		// Highlight if cursor is on this line
+		if currentLine == m.configCursor {
+			header = theme.SelectedStyle.Render(header)
+		} else {
+			header = theme.HeaderStyle.Render(header)
+		}
+		sb.WriteString(header)
 		sb.WriteString("\n")
+		currentLine++
 
 		// Section items (if expanded)
 		if section.expanded {
@@ -2522,8 +2563,14 @@ func (m Model) buildConfigContent() string {
 					value = "(not set)"
 				}
 				line := fmt.Sprintf("%s%s: %s", indent, theme.DetailLabelStyle.Render(item.key), value)
+
+				// Highlight if cursor is on this line
+				if currentLine == m.configCursor {
+					line = theme.SelectedStyle.Render(line)
+				}
 				sb.WriteString(line)
 				sb.WriteString("\n")
+				currentLine++
 			}
 		}
 		sb.WriteString("\n")
