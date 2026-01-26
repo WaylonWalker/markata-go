@@ -262,6 +262,9 @@ type Config struct {
 
 	// Blogroll configures the blogroll and RSS reader functionality
 	Blogroll BlogrollConfig `json:"blogroll" yaml:"blogroll" toml:"blogroll"`
+
+	// Mentions configures the @mentions resolution plugin
+	Mentions MentionsConfig `json:"mentions" yaml:"mentions" toml:"mentions"`
 }
 
 // HeadConfig configures elements added to the HTML <head> section.
@@ -1357,6 +1360,7 @@ func NewConfig() *Config {
 		FooterLayout:     NewFooterLayoutConfig(),
 		ContentTemplates: NewContentTemplatesConfig(),
 		Blogroll:         NewBlogrollConfig(),
+		Mentions:         NewMentionsConfig(),
 	}
 }
 

@@ -413,6 +413,9 @@ func createBenchmarkManager(cfgPath, workDir string) (*lifecycle.Manager, error)
 	// Pass blogroll configuration
 	lcConfig.Extra["blogroll"] = cfg.Blogroll
 
+	// Pass mentions configuration
+	lcConfig.Extra["mentions"] = cfg.Mentions
+
 	m.SetConfig(lcConfig)
 
 	if cfg.Concurrency > 0 {
