@@ -20,6 +20,7 @@ markata-go supports standard Markdown (CommonMark), GitHub Flavored Markdown (GF
 - [Basic Markdown](#basic-markdown)
 - [Extended Markdown (GFM)](#extended-markdown-gfm)
 - [Code Blocks](#code-blocks)
+- [Attribute Syntax](#attribute-syntax)
 - [Admonitions](#admonitions)
 - [Wikilinks](#wikilinks)
 - [Table of Contents](#table-of-contents)
@@ -755,6 +756,181 @@ Common aliases are supported:
 | `sh` | bash |
 | `yml` | yaml |
 | `md` | markdown |
+
+---
+
+## Attribute Syntax
+
+markata-go supports adding CSS classes, IDs, and other attributes to elements using the brace syntax `{...}`. This works for both block-level elements (like headings) and inline elements (like images and links).
+
+### Adding Classes to Images
+
+The most common use case is adding CSS classes to images for styling:
+
+**Input:**
+
+```markdown
+![Beautiful sunset](sunset.webp){.more-cinematic}
+
+![Product photo](product.jpg){.shadow .rounded}
+```
+
+**Live example:**
+
+![Beautiful sunset](sunset.webp){.more-cinematic}
+
+**Output:**
+
+```html
+<img src="sunset.webp" alt="Beautiful sunset" class="more-cinematic">
+<img src="product.jpg" alt="Product photo" class="shadow rounded">
+```
+
+### Adding IDs to Images
+
+You can also add IDs for JavaScript targeting or anchor links:
+
+**Input:**
+
+```markdown
+![Hero banner](hero.png){#hero-image}
+
+![Main product](product.webp){#featured-product .highlight}
+```
+
+**Output:**
+
+```html
+<img src="hero.png" alt="Hero banner" id="hero-image">
+<img src="product.webp" alt="Main product" id="featured-product" class="highlight">
+```
+
+### Styling Links
+
+Apply classes to links for custom styling:
+
+**Input:**
+
+```markdown
+[Read the documentation](https://example.com/docs){.button .primary}
+
+[External link](https://github.com){.external-link}
+```
+
+**Live example:**
+
+[Read the documentation](https://example.com/docs){.button .primary}
+
+[External link](https://github.com){.external-link}
+
+**Output:**
+
+```html
+<a href="https://example.com/docs" class="button primary">Read the documentation</a>
+<a href="https://github.com" class="external-link">External link</a>
+```
+
+### Styling Headings
+
+Add classes or custom IDs to headings:
+
+**Input:**
+
+```markdown
+## Featured Section {.highlighted}
+
+## Installation {#install}
+
+## Important Notice {#notice .warning-header}
+```
+
+**Live example:**
+
+## Example Heading {.example-class}
+
+**Output:**
+
+```html
+<h2 class="highlighted" id="featured-section">Featured Section</h2>
+<h2 id="install">Installation</h2>
+<h2 id="notice" class="warning-header">Important Notice</h2>
+```
+
+### Syntax Reference
+
+| Syntax | Description | Result |
+|--------|-------------|--------|
+| `{.classname}` | Single CSS class | `class="classname"` |
+| `{.class1 .class2}` | Multiple classes | `class="class1 class2"` |
+| `{#idname}` | ID attribute | `id="idname"` |
+| `{#id .class}` | ID and class | `id="id" class="class"` |
+| `{data-attr=value}` | Custom attribute | `data-attr="value"` |
+
+### Common Use Cases
+
+**Image galleries:**
+```markdown
+![Photo 1](photo1.jpg){.gallery-item .zoomable}
+![Photo 2](photo2.jpg){.gallery-item .zoomable}
+```
+
+**Call-to-action buttons:**
+```markdown
+[Get Started](signup){.cta-button .large}
+[Learn More](docs){.text-link .subtle}
+```
+
+**Responsive images:**
+```markdown
+![Hero image](hero.webp){.full-width .lazy-load}
+```
+
+**Navigation links:**
+```markdown
+[Home](/){.nav-link .active}
+[About](/about){.nav-link}
+```
+
+### CSS Examples
+
+Here are some CSS rules you might use with attribute-styled elements:
+
+```css
+/* Cinematic image style */
+.more-cinematic {
+  filter: contrast(1.1) saturate(1.2);
+  border-radius: 8px;
+}
+
+/* Shadow and border */
+.shadow {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.bordered {
+  border: 2px solid var(--border-color);
+}
+
+/* Button-style links */
+.button {
+  display: inline-block;
+  padding: 0.5em 1em;
+  background: var(--primary-color);
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+.button.primary {
+  background: var(--accent-color);
+}
+
+/* External link indicator */
+.external-link::after {
+  content: " ↗";
+  font-size: 0.8em;
+}
+```
 
 ---
 

@@ -226,6 +226,58 @@ Implementations SHOULD support:
 | Task lists | `- [ ] todo` | Checkbox |
 | Footnotes | `[^1]` | Footnote |
 | Heading IDs | `## Title {#custom-id}` | `<h2 id="custom-id">` |
+| Attributes | `{.class}`, `{#id}` | Element with class/id |
+
+### Attribute Syntax
+
+The attribute syntax `{...}` allows adding CSS classes, IDs, and other attributes to elements.
+
+#### Block Elements (Headings, Paragraphs)
+
+```markdown
+## My Section {.highlighted}
+
+## Installation {#install}
+
+## Features {#features .important}
+```
+
+Output:
+```html
+<h2 class="highlighted" id="my-section">My Section</h2>
+<h2 id="install">Installation</h2>
+<h2 id="features" class="important">Features</h2>
+```
+
+#### Inline Elements (Images, Links)
+
+```markdown
+![alt text](image.webp){.more-cinematic}
+
+![photo](photo.jpg){.shadow .bordered}
+
+![hero](hero.png){#hero-image}
+
+[Read more](url){.external-link}
+```
+
+Output:
+```html
+<img src="image.webp" alt="alt text" class="more-cinematic">
+<img src="photo.jpg" alt="photo" class="shadow bordered">
+<img src="hero.png" alt="hero" id="hero-image">
+<a href="url" class="external-link">Read more</a>
+```
+
+#### Supported Attribute Formats
+
+| Syntax | Description | Example |
+|--------|-------------|---------|
+| `{.classname}` | CSS class | `{.highlight}` → `class="highlight"` |
+| `{.class1 .class2}` | Multiple classes | `{.shadow .rounded}` → `class="shadow rounded"` |
+| `{#idname}` | ID attribute | `{#hero}` → `id="hero"` |
+| `{#id .class}` | Combined | `{#main .featured}` → `id="main" class="featured"` |
+| `{key=value}` | Custom attribute | `{data-size=large}` → `data-size="large"` |
 
 ### Tables
 

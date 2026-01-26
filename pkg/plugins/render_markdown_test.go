@@ -607,6 +607,93 @@ func TestRenderMarkdownPlugin_ResolveHighlightConfig(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdownPlugin_AttributeSyntax(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "image with class",
+			input:    "![alt text](image.webp){.more-cinematic}",
+			expected: `class="more-cinematic"`,
+		},
+		{
+			name:     "image with multiple classes",
+			input:    "![photo](photo.jpg){.shadow .bordered}",
+			expected: `class="shadow bordered"`,
+		},
+		{
+			name:     "image with id",
+			input:    "![hero](hero.png){#hero-image}",
+			expected: `id="hero-image"`,
+		},
+		{
+			name:     "image with class and id",
+			input:    "![banner](banner.jpg){#main-banner .full-width}",
+			expected: `id="main-banner"`,
+		},
+		{
+			name:     "heading with class",
+			input:    "## Section Title {.highlighted}",
+			expected: `class="highlighted"`,
+		},
+		{
+			name:     "heading with custom id",
+			input:    "## Installation {#install}",
+			expected: `id="install"`,
+		},
+		{
+			name:     "link with class",
+			input:    "[Click here](https://example.com){.external}",
+			expected: `class="external"`,
+		},
+		{
+			name:     "link with id",
+			input:    "[Main link](https://example.com){#main-link}",
+			expected: `id="main-link"`,
+		},
+	}
+
+	p := NewRenderMarkdownPlugin()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			post := &models.Post{Content: tt.input}
+			err := p.renderPost(post)
+			if err != nil {
+				t.Fatalf("renderPost error: %v", err)
+			}
+			if !strings.Contains(post.ArticleHTML, tt.expected) {
+				t.Errorf("expected %q in output, got %q", tt.expected, post.ArticleHTML)
+			}
+		})
+	}
+}
+
+func TestRenderMarkdownPlugin_AttributeSyntax_ImageClassInOutput(t *testing.T) {
+	// Specific test for the issue #404 use case
+	p := NewRenderMarkdownPlugin()
+	post := &models.Post{Content: "![alt text](image.webp){.more-cinematic}"}
+
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	// Verify the img tag has the class attribute
+	if !strings.Contains(post.ArticleHTML, `<img`) {
+		t.Errorf("expected <img> tag in output, got %q", post.ArticleHTML)
+	}
+	if !strings.Contains(post.ArticleHTML, `class="more-cinematic"`) {
+		t.Errorf("expected class=\"more-cinematic\" in output, got %q", post.ArticleHTML)
+	}
+	// Verify the attribute syntax {.more-cinematic} is NOT in the output
+	if strings.Contains(post.ArticleHTML, "{.more-cinematic}") {
+		t.Errorf("attribute syntax should be removed from output, got %q", post.ArticleHTML)
+	}
+}
+
 func TestRenderMarkdownPlugin_GetPaletteVariant(t *testing.T) {
 	p := NewRenderMarkdownPlugin()
 

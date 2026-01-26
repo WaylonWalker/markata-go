@@ -15,6 +15,7 @@ import (
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/util"
 )
 
 // RenderMarkdownPlugin converts markdown content to HTML using goldmark.
@@ -72,6 +73,12 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool) goldmark.Markd
 		),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
+			// Enable attribute syntax for {.class}, {#id}, {key=value} on block elements
+			parser.WithAttribute(),
+			// Enable inline attribute syntax for images and links
+			parser.WithASTTransformers(
+				util.Prioritized(&InlineAttributeTransformer{}, 100),
+			),
 		),
 		goldmark.WithRendererOptions(
 			// Allow raw HTML in markdown
