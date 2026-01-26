@@ -107,6 +107,11 @@ func (s *Server) handleCompletion(_ context.Context, msg *Message) error {
 		col = len(line)
 	}
 
+	// Check if we're inside a mention (@handle)
+	if prefix, startCol, inMention := getMentionContext(line, col); inMention {
+		return s.handleMentionCompletion(msg, params, prefix, startCol, col)
+	}
+
 	// Check if we're inside a wikilink
 	prefix, startCol, inWikilink := getWikilinkContext(line, col)
 	if !inWikilink {
@@ -166,6 +171,106 @@ func (s *Server) handleCompletion(_ context.Context, msg *Message) error {
 	return s.sendResponse(msg.ID, result)
 }
 
+// handleMentionCompletion handles completion for @mentions.
+func (s *Server) handleMentionCompletion(msg *Message, params CompletionParams, prefix string, startCol, col int) error {
+	// Get matching mentions
+	var mentions []*MentionInfo
+	if prefix == "" {
+		mentions = s.index.AllMentions()
+	} else {
+		mentions = s.index.SearchMentions(prefix)
+	}
+
+	// Sort by handle for consistent ordering
+	sort.Slice(mentions, func(i, j int) bool {
+		return mentions[i].Handle < mentions[j].Handle
+	})
+
+	// Build completion items
+	items := make([]CompletionItem, 0, len(mentions))
+	for i, mention := range mentions {
+		// Create completion item
+		item := CompletionItem{
+			Label:  "@" + mention.Handle,
+			Kind:   CompletionItemKindReference,
+			Detail: mention.Title,
+			Documentation: &MarkupContent{
+				Kind:  "markdown",
+				Value: formatMentionDocumentation(mention),
+			},
+			InsertText:       mention.Handle,
+			InsertTextFormat: InsertTextFormatPlainText,
+			FilterText:       mention.Handle + " " + mention.Title + " " + strings.Join(mention.Aliases, " "),
+			SortText:         fmt.Sprintf("%05d", i), // Preserve sort order
+		}
+
+		// Use TextEdit to replace the prefix (everything after @)
+		item.TextEdit = &TextEdit{
+			Range: Range{
+				Start: Position{Line: params.Position.Line, Character: startCol},
+				End:   Position{Line: params.Position.Line, Character: col},
+			},
+			NewText: mention.Handle,
+		}
+
+		items = append(items, item)
+	}
+
+	result := &CompletionList{
+		IsIncomplete: false,
+		Items:        items,
+	}
+
+	return s.sendResponse(msg.ID, result)
+}
+
+// mentionHandleRegex matches the handle part after @.
+var mentionHandleRegex = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9_.-]*$`)
+
+// getMentionContext checks if the cursor is inside a mention and returns the prefix.
+// Returns (prefix, startColumn, isInMention).
+func getMentionContext(line string, col int) (prefix string, startCol int, inMention bool) {
+	if col > len(line) {
+		col = len(line)
+	}
+
+	textBeforeCursor := line[:col]
+
+	// Find the last @ that could start a mention
+	atIdx := strings.LastIndex(textBeforeCursor, "@")
+	if atIdx == -1 {
+		return "", 0, false
+	}
+
+	// Check that @ is preceded by a valid boundary (start of line, space, or non-word char)
+	// and not by another @ or word character
+	if atIdx > 0 {
+		prevChar := textBeforeCursor[atIdx-1]
+		// If preceded by @ or word character, not a valid mention
+		if prevChar == '@' || (prevChar >= 'a' && prevChar <= 'z') ||
+			(prevChar >= 'A' && prevChar <= 'Z') || (prevChar >= '0' && prevChar <= '9') || prevChar == '_' {
+			return "", 0, false
+		}
+	}
+
+	// Get the text after @
+	afterAt := textBeforeCursor[atIdx+1:]
+
+	// Check if there's a valid handle pattern after @
+	// Handle must start with a letter
+	match := mentionHandleRegex.FindStringIndex(afterAt)
+	if len(match) < 2 || match[0] != 0 {
+		// No valid handle starting right after @
+		return "", 0, false
+	}
+
+	// Return the handle prefix
+	prefix = afterAt[match[0]:match[1]]
+	startCol = atIdx + 1 // Position right after @
+
+	return prefix, startCol, true
+}
+
 // wikilinkStartRegex matches [[ at the beginning of a wikilink.
 var wikilinkStartRegex = regexp.MustCompile(`\[\[([^\]|]*)$`)
 
@@ -216,4 +321,82 @@ func formatPostDocumentation(post *PostInfo) string {
 	sb.WriteString("*")
 
 	return sb.String()
+}
+
+// formatMentionDocumentation formats mention info for display in completion documentation.
+func formatMentionDocumentation(mention *MentionInfo) string {
+	var sb strings.Builder
+
+	sb.WriteString("**@")
+	sb.WriteString(mention.Handle)
+	sb.WriteString("**")
+
+	if mention.Title != "" {
+		sb.WriteString(" - ")
+		sb.WriteString(mention.Title)
+	}
+	sb.WriteString("\n\n")
+
+	if mention.Description != "" {
+		sb.WriteString(mention.Description)
+		sb.WriteString("\n\n")
+	}
+
+	if mention.SiteURL != "" {
+		sb.WriteString("*Site: ")
+		sb.WriteString(mention.SiteURL)
+		sb.WriteString("*\n")
+	}
+
+	if len(mention.Aliases) > 0 {
+		sb.WriteString("*Aliases: @")
+		sb.WriteString(strings.Join(mention.Aliases, ", @"))
+		sb.WriteString("*")
+	}
+
+	return sb.String()
+}
+
+// mentionAtPositionRegex matches @handle patterns for position detection.
+var mentionAtPositionRegex = regexp.MustCompile(`@([a-zA-Z][a-zA-Z0-9_.-]*)`)
+
+// getMentionAtPosition returns the mention handle at the given cursor position.
+// Returns (handle without @, range, found).
+func getMentionAtPosition(line string, col, lineNum int) (string, *Range) {
+	// Find all mentions on this line
+	matches := mentionAtPositionRegex.FindAllStringSubmatchIndex(line, -1)
+
+	for _, match := range matches {
+		if len(match) < 4 {
+			continue
+		}
+
+		// match[0:2] is the full match position (including @)
+		// match[2:4] is the handle group position (without @)
+		start := match[0]
+		end := match[1]
+
+		// Check if cursor is within this mention
+		if col >= start && col <= end {
+			// Validate that @ is at a valid boundary
+			if start > 0 {
+				prevChar := line[start-1]
+				// If preceded by word character, not a valid mention
+				if (prevChar >= 'a' && prevChar <= 'z') ||
+					(prevChar >= 'A' && prevChar <= 'Z') ||
+					(prevChar >= '0' && prevChar <= '9') || prevChar == '_' || prevChar == '@' {
+					continue
+				}
+			}
+
+			handle := line[match[2]:match[3]]
+			mentionRange := &Range{
+				Start: Position{Line: lineNum, Character: start},
+				End:   Position{Line: lineNum, Character: end},
+			}
+			return handle, mentionRange
+		}
+	}
+
+	return "", nil
 }

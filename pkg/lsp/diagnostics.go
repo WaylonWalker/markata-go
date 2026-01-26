@@ -28,6 +28,9 @@ func (s *Server) computeDiagnostics(_, content string) []Diagnostic {
 	inCodeBlock := false
 	codeBlockPattern := regexp.MustCompile("^```|^~~~")
 
+	// Regex for mentions - matches @handle where handle starts with letter
+	mentionDiagRegex := regexp.MustCompile(`@([a-zA-Z][a-zA-Z0-9_.-]*)`)
+
 	for lineNum, line := range lines {
 		// Track code block state
 		if codeBlockPattern.MatchString(strings.TrimSpace(line)) {
@@ -62,6 +65,45 @@ func (s *Server) computeDiagnostics(_, content string) []Diagnostic {
 					Source:   "markata-go",
 					Message:  "Broken wikilink: target post \"" + slug + "\" not found",
 					Code:     "broken-wikilink",
+				}
+				diagnostics = append(diagnostics, diag)
+			}
+		}
+
+		// Find mentions on this line
+		mentionMatches := mentionDiagRegex.FindAllStringSubmatchIndex(line, -1)
+		for _, match := range mentionMatches {
+			if len(match) < 4 {
+				continue
+			}
+
+			// Validate that @ is at a valid boundary (not preceded by word char)
+			start := match[0]
+			if start > 0 {
+				prevChar := line[start-1]
+				if (prevChar >= 'a' && prevChar <= 'z') ||
+					(prevChar >= 'A' && prevChar <= 'Z') ||
+					(prevChar >= '0' && prevChar <= '9') || prevChar == '_' || prevChar == '@' {
+					continue // Skip email addresses and @@mentions
+				}
+			}
+
+			// Extract the handle from group 1
+			handleStart := match[2]
+			handleEnd := match[3]
+			handle := strings.ToLower(line[handleStart:handleEnd])
+
+			// Check if the mention exists in the blogroll
+			if s.index.GetByHandle(handle) == nil {
+				diag := Diagnostic{
+					Range: Range{
+						Start: Position{Line: lineNum, Character: match[0]},
+						End:   Position{Line: lineNum, Character: match[1]},
+					},
+					Severity: DiagnosticSeverityWarning,
+					Source:   "markata-go",
+					Message:  "Unknown mention: @" + handle + " not found in blogroll",
+					Code:     "unknown-mention",
 				}
 				diagnostics = append(diagnostics, diag)
 			}
