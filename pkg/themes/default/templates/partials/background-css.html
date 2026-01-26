@@ -1,0 +1,8 @@
+    <!-- Background Decoration CSS -->
+    {% if config.theme.background.enabled %}
+    {% if config.theme.background.css %}
+    <style>
+{{ config.theme.background.css }}
+    </style>
+    {% endif %}
+    {% endif %}
