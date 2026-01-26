@@ -46,10 +46,26 @@ func (p *WikilinksPlugin) Transform(m *lifecycle.Manager) error {
 	posts := m.Posts()
 
 	// Build a map of slug -> post for quick lookup
+	// Slugs are registered first, then aliases (slugs take precedence)
 	postMap := make(map[string]*models.Post)
 	for _, post := range posts {
 		if post.Slug != "" {
-			postMap[post.Slug] = post
+			postMap[strings.ToLower(post.Slug)] = post
+		}
+	}
+
+	// Add alias support - aliases are registered after slugs so slugs take precedence
+	for _, post := range posts {
+		if aliases, ok := post.Extra["aliases"].([]interface{}); ok {
+			for _, alias := range aliases {
+				if aliasStr, ok := alias.(string); ok {
+					normalizedAlias := strings.ToLower(aliasStr)
+					// Only add if not already registered (slug takes precedence)
+					if _, exists := postMap[normalizedAlias]; !exists {
+						postMap[normalizedAlias] = post
+					}
+				}
+			}
 		}
 	}
 

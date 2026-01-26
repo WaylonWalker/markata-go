@@ -529,6 +529,286 @@ func TestWikilinksPlugin_Interfaces(_ *testing.T) {
 	var _ lifecycle.TransformPlugin = p
 }
 
+// =============================================================================
+// Alias Resolution Tests (Issue #415)
+// =============================================================================
+
+func TestWikilinksPlugin_AliasResolution(t *testing.T) {
+	// Test that wikilinks can resolve via aliases defined in frontmatter
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	targetTitle := "ECMAScript Language Specification"
+	targetPost := &models.Post{
+		Slug:  "ecmascript",
+		Title: &targetTitle,
+		Href:  "/ecmascript/",
+		Extra: map[string]interface{}{
+			"aliases": []interface{}{"js", "javascript", "JavaScript"},
+		},
+	}
+	sourcePost := &models.Post{
+		Content: "Check out [[js]] for more details.",
+		Slug:    "source-post",
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// Check that alias resolved to the target post
+	if !strings.Contains(source.Content, `<a href="/ecmascript/" class="wikilink"`) {
+		t.Errorf("expected wikilink via alias to resolve to /ecmascript/, got %q", source.Content)
+	}
+	if !strings.Contains(source.Content, ">ECMAScript Language Specification</a>") {
+		t.Errorf("expected post title as link text, got %q", source.Content)
+	}
+}
+
+func TestWikilinksPlugin_SlugTakesPrecedenceOverAlias(t *testing.T) {
+	// Test that slug takes precedence over alias when both match
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	// Post 1 has slug "javascript"
+	post1Title := "JavaScript Guide"
+	post1 := &models.Post{
+		Slug:  "javascript",
+		Title: &post1Title,
+		Href:  "/javascript/",
+	}
+
+	// Post 2 has "javascript" as an alias
+	post2Title := "ECMAScript Spec"
+	post2 := &models.Post{
+		Slug:  "ecmascript",
+		Title: &post2Title,
+		Href:  "/ecmascript/",
+		Extra: map[string]interface{}{
+			"aliases": []interface{}{"javascript", "js"},
+		},
+	}
+
+	sourcePost := &models.Post{
+		Content: "See [[javascript]] for details.",
+		Slug:    "source-post",
+	}
+
+	m.SetPosts([]*models.Post{post1, post2, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// Should link to post1 (slug) not post2 (alias)
+	if !strings.Contains(source.Content, `<a href="/javascript/" class="wikilink"`) {
+		t.Errorf("expected slug to take precedence over alias, got %q", source.Content)
+	}
+	if !strings.Contains(source.Content, ">JavaScript Guide</a>") {
+		t.Errorf("expected 'JavaScript Guide' as link text (from slug match), got %q", source.Content)
+	}
+}
+
+func TestWikilinksPlugin_AliasCaseInsensitive(t *testing.T) {
+	// Test that alias matching is case-insensitive
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	targetTitle := "ECMAScript Specification"
+	targetPost := &models.Post{
+		Slug:  "ecmascript",
+		Title: &targetTitle,
+		Href:  "/ecmascript/",
+		Extra: map[string]interface{}{
+			"aliases": []interface{}{"JavaScript", "JS"},
+		},
+	}
+
+	sourcePost := &models.Post{
+		Content: "See [[JAVASCRIPT]] and [[js]] for info.",
+		Slug:    "source-post",
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// Both wikilinks should resolve (case-insensitive)
+	linkCount := strings.Count(source.Content, `<a href="/ecmascript/" class="wikilink"`)
+	if linkCount != 2 {
+		t.Errorf("expected 2 resolved wikilinks, got %d in %q", linkCount, source.Content)
+	}
+}
+
+func TestWikilinksPlugin_MultipleAliasesSamePost(t *testing.T) {
+	// Test that multiple aliases can point to the same post
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	targetTitle := "TypeScript Handbook"
+	targetPost := &models.Post{
+		Slug:  "typescript",
+		Title: &targetTitle,
+		Href:  "/typescript/",
+		Extra: map[string]interface{}{
+			"aliases": []interface{}{"ts", "TS", "TypeScript"},
+		},
+	}
+
+	sourcePost := &models.Post{
+		Content: "Learn [[ts]], [[typescript]], and [[TypeScript]].",
+		Slug:    "source-post",
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// All three wikilinks should resolve to the same post
+	linkCount := strings.Count(source.Content, `<a href="/typescript/" class="wikilink"`)
+	if linkCount != 3 {
+		t.Errorf("expected 3 resolved wikilinks, got %d in %q", linkCount, source.Content)
+	}
+}
+
+func TestWikilinksPlugin_AliasWithCustomText(t *testing.T) {
+	// Test that alias resolution works with custom display text
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	targetTitle := "ECMAScript Specification"
+	targetPost := &models.Post{
+		Slug:  "ecmascript",
+		Title: &targetTitle,
+		Href:  "/ecmascript/",
+		Extra: map[string]interface{}{
+			"aliases": []interface{}{"js", "javascript"},
+		},
+	}
+
+	sourcePost := &models.Post{
+		Content: "Learn about [[js|the JavaScript language]] here.",
+		Slug:    "source-post",
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// Should resolve via alias and use custom display text
+	if !strings.Contains(source.Content, `<a href="/ecmascript/" class="wikilink"`) {
+		t.Errorf("expected alias to resolve to /ecmascript/, got %q", source.Content)
+	}
+	if !strings.Contains(source.Content, ">the JavaScript language</a>") {
+		t.Errorf("expected custom display text, got %q", source.Content)
+	}
+}
+
+func TestWikilinksPlugin_AliasNoMatchStillWarns(t *testing.T) {
+	// Test that non-matching aliases still produce warnings for broken links
+	p := NewWikilinksPlugin()
+	m := lifecycle.NewManager()
+
+	targetPost := &models.Post{
+		Slug: "ecmascript",
+		Href: "/ecmascript/",
+		Extra: map[string]interface{}{
+			"aliases": []interface{}{"js", "javascript"},
+		},
+	}
+
+	sourcePost := &models.Post{
+		Content: "See [[python]] for details.",
+		Slug:    "source-post",
+		Extra:   make(map[string]interface{}),
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform error: %v", err)
+	}
+
+	posts := m.Posts()
+	var source *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			source = post
+			break
+		}
+	}
+
+	// Content should be unchanged - wikilink left as is
+	if !strings.Contains(source.Content, "[[python]]") {
+		t.Errorf("expected [[python]] to remain in content, got %q", source.Content)
+	}
+
+	// Check for warning
+	warnings, ok := source.Extra["wikilink_warnings"].([]string)
+	if !ok || len(warnings) == 0 {
+		t.Error("expected wikilink warning for missing post")
+	}
+}
+
 // TestWikilinksPlugin_PreservesCodeBlocks tests that wikilinks inside code blocks are not transformed.
 func TestWikilinksPlugin_PreservesCodeBlocks(t *testing.T) {
 	p := NewWikilinksPlugin()
