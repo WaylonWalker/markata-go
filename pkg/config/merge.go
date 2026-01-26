@@ -122,6 +122,68 @@ func mergeThemeConfig(base, override models.ThemeConfig) models.ThemeConfig {
 		}
 	}
 
+	// Merge background config
+	result.Background = mergeBackgroundConfig(base.Background, override.Background)
+
+	// Merge font config
+	result.Font = mergeFontConfig(base.Font, override.Font)
+
+	return result
+}
+
+// mergeBackgroundConfig merges BackgroundConfig, preferring override values.
+func mergeBackgroundConfig(base, override models.BackgroundConfig) models.BackgroundConfig {
+	result := base
+
+	// Override enabled if explicitly set
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+
+	// Replace backgrounds array if non-empty
+	if len(override.Backgrounds) > 0 {
+		result.Backgrounds = override.Backgrounds
+	}
+
+	// Replace scripts array if non-empty
+	if len(override.Scripts) > 0 {
+		result.Scripts = override.Scripts
+	}
+
+	// Override CSS if non-empty
+	if override.CSS != "" {
+		result.CSS = override.CSS
+	}
+
+	return result
+}
+
+// mergeFontConfig merges FontConfig, preferring override values.
+func mergeFontConfig(base, override models.FontConfig) models.FontConfig {
+	result := base
+
+	if override.Family != "" {
+		result.Family = override.Family
+	}
+	if override.HeadingFamily != "" {
+		result.HeadingFamily = override.HeadingFamily
+	}
+	if override.CodeFamily != "" {
+		result.CodeFamily = override.CodeFamily
+	}
+	if override.Size != "" {
+		result.Size = override.Size
+	}
+	if override.LineHeight != "" {
+		result.LineHeight = override.LineHeight
+	}
+	if len(override.GoogleFonts) > 0 {
+		result.GoogleFonts = override.GoogleFonts
+	}
+	if len(override.CustomURLs) > 0 {
+		result.CustomURLs = override.CustomURLs
+	}
+
 	return result
 }
 
