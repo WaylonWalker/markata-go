@@ -79,6 +79,9 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	// Pass blogroll configuration
 	lcConfig.Extra["blogroll"] = cfg.Blogroll
 
+	// Pass mentions configuration
+	lcConfig.Extra["mentions"] = cfg.Mentions
+
 	// Pass sidebar, toc, and header configurations
 	lcConfig.Extra["sidebar"] = cfg.Sidebar
 	lcConfig.Extra["toc"] = cfg.Toc
