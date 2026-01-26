@@ -233,6 +233,9 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert header to map
 	headerMap := headerToMap(&c.Header)
 
+	// Convert theme to map
+	themeMap := themeToMap(&c.Theme)
+
 	return map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
@@ -254,6 +257,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"sidebar":       sidebarMap,
 		"toc":           tocMap,
 		"header":        headerMap,
+		"theme":         themeMap,
 	}
 }
 
@@ -684,6 +688,73 @@ func headerToMap(h *models.HeaderLayoutConfig) map[string]interface{} {
 	}
 
 	return result
+}
+
+// themeToMap converts a ThemeConfig to a map for template access.
+func themeToMap(t *models.ThemeConfig) map[string]interface{} {
+	if t == nil {
+		return nil
+	}
+
+	backgroundMap := backgroundToMap(&t.Background)
+	fontMap := fontToMap(&t.Font)
+
+	return map[string]interface{}{
+		"name":          t.Name,
+		"palette":       t.Palette,
+		"palette_light": t.PaletteLight,
+		"palette_dark":  t.PaletteDark,
+		"variables":     t.Variables,
+		"custom_css":    t.CustomCSS,
+		"background":    backgroundMap,
+		"font":          fontMap,
+	}
+}
+
+// backgroundToMap converts a BackgroundConfig to a map for template access.
+func backgroundToMap(b *models.BackgroundConfig) map[string]interface{} {
+	if b == nil {
+		return nil
+	}
+
+	backgroundElements := make([]map[string]interface{}, len(b.Backgrounds))
+	for i, bg := range b.Backgrounds {
+		backgroundElements[i] = map[string]interface{}{
+			"html":    bg.HTML,
+			"z_index": bg.ZIndex,
+		}
+	}
+
+	result := map[string]interface{}{
+		"backgrounds": backgroundElements,
+		"scripts":     b.Scripts,
+		"css":         b.CSS,
+	}
+
+	if b.Enabled != nil {
+		result["enabled"] = *b.Enabled
+	} else {
+		result["enabled"] = false
+	}
+
+	return result
+}
+
+// fontToMap converts a FontConfig to a map for template access.
+func fontToMap(f *models.FontConfig) map[string]interface{} {
+	if f == nil {
+		return nil
+	}
+
+	return map[string]interface{}{
+		"family":         f.Family,
+		"heading_family": f.HeadingFamily,
+		"code_family":    f.CodeFamily,
+		"size":           f.Size,
+		"line_height":    f.LineHeight,
+		"google_fonts":   f.GoogleFonts,
+		"custom_urls":    f.CustomURLs,
+	}
 }
 
 // tocEntriesToMaps converts TOC entries (from the toc plugin) to template-friendly maps.
