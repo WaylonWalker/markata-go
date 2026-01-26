@@ -11,10 +11,14 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // defaultTemplate is the default template name for posts.
 const defaultTemplate = "post.html"
+
+// defaultTxtTemplate is the default template name for txt output.
+const defaultTxtTemplate = "default.txt"
 
 // PublishHTMLPlugin writes individual post HTML files during the write stage.
 // It supports multiple output formats: HTML, Markdown source, and OG card HTML.
@@ -40,16 +44,24 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 		return fmt.Errorf("creating output directory: %w", err)
 	}
 
+	// Get template engine from cache (may be nil if templates plugin not used)
+	var engine *templates.Engine
+	if cached, ok := m.Cache().Get("templates.engine"); ok && cached != nil {
+		if e, ok := cached.(*templates.Engine); ok {
+			engine = e
+		}
+	}
+
 	// Process posts concurrently
 	return m.ProcessPostsConcurrently(func(post *models.Post) error {
-		return p.writePost(post, config)
+		return p.writePost(post, config, engine)
 	})
 }
 
 // writePost writes a single post to its output location in all enabled formats.
 // Shadow pages: Unpublished posts are still rendered but not included in feeds.
 // This allows sharing draft content via direct URL while keeping it out of public listings.
-func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Config) error {
+func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Config, engine *templates.Engine) error {
 	// Skip posts marked as skip
 	if post.Skip {
 		return nil
@@ -100,7 +112,7 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	// Write Text format (plain text)
 	// Uses reversed redirect: content at /slug.txt, redirect at /slug/index.txt
 	if postFormats.Text {
-		txtContent := p.buildTextContent(post)
+		txtContent := p.renderTextContent(post, config, engine)
 		if err := p.writeReversedFormatOutput(post.Slug, "txt", txtContent, config.OutputDir); err != nil {
 			return err
 		}
@@ -178,9 +190,96 @@ func (p *PublishHTMLPlugin) buildMarkdownContent(post *models.Post) string {
 	return buf.String()
 }
 
-// buildTextContent builds the plain text content for a post.
+// renderTextContent renders plain text content for a post using templates.
+// Template resolution order:
+// 1. Frontmatter: template field ending in .txt, or templates.txt field
+// 2. Config layout settings (if configured)
+// 3. Default: "default.txt"
+//
+// Falls back to hardcoded format if no template engine is available.
+func (p *PublishHTMLPlugin) renderTextContent(post *models.Post, config *lifecycle.Config, engine *templates.Engine) string {
+	// If no template engine available, use fallback
+	if engine == nil {
+		return p.buildTextContentFallback(post)
+	}
+
+	// Resolve template name for txt format
+	templateName := p.resolveTextTemplate(post, engine)
+
+	// Build template context
+	ctx := templates.NewContext(post, post.Content, toModelsConfig(config))
+
+	// Render the template
+	result, err := engine.Render(templateName, ctx)
+	if err != nil {
+		// If template rendering fails, fall back to hardcoded format
+		return p.buildTextContentFallback(post)
+	}
+
+	return result
+}
+
+// resolveTextTemplate determines which template to use for txt output.
+// Resolution order:
+// 1. Check post frontmatter for template ending in .txt
+// 2. Check post.Extra["templates"]["txt"] for format-specific template
+// 3. Check if "raw.txt" should be used for special files (robots.txt, etc.)
+// 4. Fall back to "default.txt"
+func (p *PublishHTMLPlugin) resolveTextTemplate(post *models.Post, engine *templates.Engine) string {
+	// 1. Check if post has explicit txt template in frontmatter
+	if post.Template != "" && strings.HasSuffix(post.Template, ".txt") {
+		if engine.TemplateExists(post.Template) {
+			return post.Template
+		}
+	}
+
+	// 2. Check for templates.txt in Extra (format-specific template)
+	if post.Extra != nil {
+		if templatesMap, ok := post.Extra["templates"].(map[string]interface{}); ok {
+			if txtTemplate, ok := templatesMap["txt"].(string); ok && txtTemplate != "" {
+				if engine.TemplateExists(txtTemplate) {
+					return txtTemplate
+				}
+			}
+		}
+		// Also check for txt_template shorthand
+		if txtTemplate, ok := post.Extra["txt_template"].(string); ok && txtTemplate != "" {
+			if engine.TemplateExists(txtTemplate) {
+				return txtTemplate
+			}
+		}
+	}
+
+	// 3. Check for special files that should use raw.txt template
+	// Files like robots.txt, llms.txt, humans.txt typically just need raw content
+	specialFiles := []string{"robots", "llms", "humans", "security", "ads"}
+	for _, special := range specialFiles {
+		if post.Slug == special {
+			if engine.TemplateExists("raw.txt") {
+				return "raw.txt"
+			}
+			break
+		}
+	}
+
+	// 4. Fall back to default.txt
+	if engine.TemplateExists(defaultTxtTemplate) {
+		return defaultTxtTemplate
+	}
+
+	// If default.txt doesn't exist, try raw.txt
+	if engine.TemplateExists("raw.txt") {
+		return "raw.txt"
+	}
+
+	// Last resort: return default.txt and let it fail gracefully
+	return defaultTxtTemplate
+}
+
+// buildTextContentFallback builds plain text content without templates.
+// This is the fallback when no template engine is available.
 // Returns plain text with title, description, date, and content.
-func (p *PublishHTMLPlugin) buildTextContent(post *models.Post) string {
+func (p *PublishHTMLPlugin) buildTextContentFallback(post *models.Post) string {
 	var buf strings.Builder
 
 	// Write title as heading

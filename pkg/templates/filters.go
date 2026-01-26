@@ -62,6 +62,9 @@ func registerFilters() {
 
 		// Font configuration filter
 		pongo2.RegisterFilter("google_fonts_url", filterGoogleFontsURL)
+
+		// String repeat filter for text output
+		pongo2.RegisterFilter("repeat", filterRepeat)
 	})
 }
 
@@ -469,6 +472,20 @@ func filterGoogleFontsURL(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 
 	url := "https://fonts.googleapis.com/css2?" + strings.Join(families, "&") + "&display=swap"
 	return pongo2.AsValue(url), nil
+}
+
+// filterRepeat repeats a string N times.
+// The input is the count (length), and the parameter is the string to repeat.
+// Usage: {{ post.title|length|repeat:"=" }}
+func filterRepeat(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	count := in.Integer()
+	char := param.String()
+
+	if count <= 0 || char == "" {
+		return pongo2.AsValue(""), nil
+	}
+
+	return pongo2.AsValue(strings.Repeat(char, count)), nil
 }
 
 // toTime attempts to convert a pongo2 value to a time.Time.
