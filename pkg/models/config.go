@@ -265,6 +265,15 @@ type Config struct {
 
 	// Mentions configures the @mentions resolution plugin
 	Mentions MentionsConfig `json:"mentions" yaml:"mentions" toml:"mentions"`
+
+	// TemplatePresets defines named template preset configurations
+	// Each preset specifies templates for all output formats
+	TemplatePresets map[string]TemplatePreset `json:"template_presets,omitempty" yaml:"template_presets,omitempty" toml:"template_presets,omitempty"`
+
+	// DefaultTemplates specifies default templates per output format
+	// Keys: "html", "txt", "markdown", "og"
+	// Values: template file names
+	DefaultTemplates map[string]string `json:"default_templates,omitempty" yaml:"default_templates,omitempty" toml:"default_templates,omitempty"`
 }
 
 // HeadConfig configures elements added to the HTML <head> section.
@@ -1090,6 +1099,39 @@ type PostFormatsConfig struct {
 	// OG enables OpenGraph card HTML output for social image generation (default: false)
 	// Generates: /slug/og/index.html (1200x630 optimized for screenshots)
 	OG bool `json:"og" yaml:"og" toml:"og"`
+}
+
+// TemplatePreset defines templates for all output formats.
+// This allows setting all format templates at once with a single preset name.
+type TemplatePreset struct {
+	// HTML template file for HTML output
+	HTML string `json:"html" yaml:"html" toml:"html"`
+
+	// Text template file for txt output
+	Text string `json:"txt" yaml:"txt" toml:"txt"`
+
+	// Markdown template file for markdown output
+	Markdown string `json:"markdown" yaml:"markdown" toml:"markdown"`
+
+	// OG template file for OpenGraph card output
+	OG string `json:"og" yaml:"og" toml:"og"`
+}
+
+// TemplateForFormat returns the template for a specific format.
+// Returns empty string if the format is not recognized.
+func (p *TemplatePreset) TemplateForFormat(format string) string {
+	switch format {
+	case "html":
+		return p.HTML
+	case "txt", "text":
+		return p.Text
+	case "markdown", "md":
+		return p.Markdown
+	case "og":
+		return p.OG
+	default:
+		return ""
+	}
 }
 
 // NewPostFormatsConfig creates a new PostFormatsConfig with default values.
