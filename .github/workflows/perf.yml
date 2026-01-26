@@ -181,7 +181,7 @@ jobs:
           go test -bench=BenchmarkBuild_EndToEnd -run='^$' -benchmem -count=5 ./benchmarks/... | tee ../bench-compare.txt || true
 
       - name: Download current benchmark results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: benchmark-results-${{ github.sha }}
 
