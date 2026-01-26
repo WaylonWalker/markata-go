@@ -726,9 +726,14 @@ func backgroundToMap(b *models.BackgroundConfig) map[string]interface{} {
 	}
 
 	result := map[string]interface{}{
-		"backgrounds": backgroundElements,
-		"scripts":     b.Scripts,
-		"css":         b.CSS,
+		"backgrounds":    backgroundElements,
+		"scripts":        b.Scripts,
+		"css":            b.CSS,
+		"article_bg":     b.ArticleBg,
+		"article_blur":   b.ArticleBlur,
+		"article_shadow": b.ArticleShadow,
+		"article_border": b.ArticleBorder,
+		"article_radius": b.ArticleRadius,
 	}
 
 	if b.Enabled != nil {

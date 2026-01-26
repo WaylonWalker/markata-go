@@ -780,7 +780,8 @@ func (p *BlogrollPlugin) readerPageToMap(page models.ReaderPage) map[string]inte
 // renderTemplate attempts to render using the template engine.
 func (p *BlogrollPlugin) renderTemplate(m *lifecycle.Manager, templateName string, ctx map[string]interface{}) (string, error) {
 	// Check if template engine is available
-	engine, ok := m.Cache().Get("template_engine")
+	// The templates plugin stores it as "templates.engine"
+	engine, ok := m.Cache().Get("templates.engine")
 	if !ok {
 		return "", fmt.Errorf("template engine not available")
 	}
@@ -980,6 +981,48 @@ func (p *BlogrollPlugin) extractMiscConfigs(extra, result map[string]interface{}
 	if feeds, ok := extra["feeds"]; ok {
 		result["feeds"] = feeds
 	}
+	// Extract theme config for background-css partial and other theme features
+	if theme, ok := extra["theme"].(models.ThemeConfig); ok {
+		result["theme"] = p.themeToMap(theme)
+	}
+}
+
+// themeToMap converts ThemeConfig to a template-friendly map.
+func (p *BlogrollPlugin) themeToMap(theme models.ThemeConfig) map[string]interface{} {
+	result := map[string]interface{}{
+		"name":          theme.Name,
+		"palette":       theme.Palette,
+		"palette_light": theme.PaletteLight,
+		"palette_dark":  theme.PaletteDark,
+		"custom_css":    theme.CustomCSS,
+	}
+
+	// Convert background config
+	bg := theme.Background
+	bgEnabled := false
+	if bg.Enabled != nil {
+		bgEnabled = *bg.Enabled
+	}
+	result["background"] = map[string]interface{}{
+		"enabled":        bgEnabled,
+		"css":            bg.CSS,
+		"article_bg":     bg.ArticleBg,
+		"article_blur":   bg.ArticleBlur,
+		"article_shadow": bg.ArticleShadow,
+		"article_border": bg.ArticleBorder,
+		"article_radius": bg.ArticleRadius,
+	}
+
+	// Convert font config
+	result["font"] = map[string]interface{}{
+		"family":         theme.Font.Family,
+		"heading_family": theme.Font.HeadingFamily,
+		"code_family":    theme.Font.CodeFamily,
+		"size":           theme.Font.Size,
+		"line_height":    theme.Font.LineHeight,
+	}
+
+	return result
 }
 
 // getStringFromMap safely gets a string value from a map.

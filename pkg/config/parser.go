@@ -280,10 +280,15 @@ type tomlThemeConfig struct {
 }
 
 type tomlBackgroundConfig struct {
-	Enabled     *bool                   `toml:"enabled"`
-	Backgrounds []tomlBackgroundElement `toml:"backgrounds"`
-	Scripts     []string                `toml:"scripts"`
-	CSS         string                  `toml:"css"`
+	Enabled       *bool                   `toml:"enabled"`
+	Backgrounds   []tomlBackgroundElement `toml:"backgrounds"`
+	Scripts       []string                `toml:"scripts"`
+	CSS           string                  `toml:"css"`
+	ArticleBg     string                  `toml:"article_bg"`
+	ArticleBlur   string                  `toml:"article_blur"`
+	ArticleShadow string                  `toml:"article_shadow"`
+	ArticleBorder string                  `toml:"article_border"`
+	ArticleRadius string                  `toml:"article_radius"`
 }
 
 type tomlBackgroundElement struct {
@@ -757,6 +762,19 @@ type tomlBlogrollTemplates struct {
 
 //nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
+	// Get default values
+	defaults := models.NewBlogrollConfig()
+
+	// Apply defaults for template names if not specified
+	blogrollTemplate := b.Templates.Blogroll
+	if blogrollTemplate == "" {
+		blogrollTemplate = defaults.Templates.Blogroll
+	}
+	readerTemplate := b.Templates.Reader
+	if readerTemplate == "" {
+		readerTemplate = defaults.Templates.Reader
+	}
+
 	config := models.BlogrollConfig{
 		Enabled:              b.Enabled,
 		BlogrollSlug:         b.BlogrollSlug,
@@ -768,8 +786,8 @@ func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 		MaxEntriesPerFeed:    b.MaxEntriesPerFeed,
 		FallbackImageService: b.FallbackImageService,
 		Templates: models.BlogrollTemplates{
-			Blogroll: b.Templates.Blogroll,
-			Reader:   b.Templates.Reader,
+			Blogroll: blogrollTemplate,
+			Reader:   readerTemplate,
 		},
 	}
 
@@ -932,10 +950,15 @@ func (b *tomlBackgroundConfig) toBackgroundConfig() models.BackgroundConfig {
 		}
 	}
 	return models.BackgroundConfig{
-		Enabled:     b.Enabled,
-		Backgrounds: backgrounds,
-		Scripts:     b.Scripts,
-		CSS:         b.CSS,
+		Enabled:       b.Enabled,
+		Backgrounds:   backgrounds,
+		Scripts:       b.Scripts,
+		CSS:           b.CSS,
+		ArticleBg:     b.ArticleBg,
+		ArticleBlur:   b.ArticleBlur,
+		ArticleShadow: b.ArticleShadow,
+		ArticleBorder: b.ArticleBorder,
+		ArticleRadius: b.ArticleRadius,
 	}
 }
 
@@ -1153,10 +1176,15 @@ type yamlThemeConfig struct {
 }
 
 type yamlBackgroundConfig struct {
-	Enabled     *bool                   `yaml:"enabled"`
-	Backgrounds []yamlBackgroundElement `yaml:"backgrounds"`
-	Scripts     []string                `yaml:"scripts"`
-	CSS         string                  `yaml:"css"`
+	Enabled       *bool                   `yaml:"enabled"`
+	Backgrounds   []yamlBackgroundElement `yaml:"backgrounds"`
+	Scripts       []string                `yaml:"scripts"`
+	CSS           string                  `yaml:"css"`
+	ArticleBg     string                  `yaml:"article_bg"`
+	ArticleBlur   string                  `yaml:"article_blur"`
+	ArticleShadow string                  `yaml:"article_shadow"`
+	ArticleBorder string                  `yaml:"article_border"`
+	ArticleRadius string                  `yaml:"article_radius"`
 }
 
 type yamlBackgroundElement struct {
@@ -1200,10 +1228,15 @@ func (b *yamlBackgroundConfig) toBackgroundConfig() models.BackgroundConfig {
 		}
 	}
 	return models.BackgroundConfig{
-		Enabled:     b.Enabled,
-		Backgrounds: backgrounds,
-		Scripts:     b.Scripts,
-		CSS:         b.CSS,
+		Enabled:       b.Enabled,
+		Backgrounds:   backgrounds,
+		Scripts:       b.Scripts,
+		CSS:           b.CSS,
+		ArticleBg:     b.ArticleBg,
+		ArticleBlur:   b.ArticleBlur,
+		ArticleShadow: b.ArticleShadow,
+		ArticleBorder: b.ArticleBorder,
+		ArticleRadius: b.ArticleRadius,
 	}
 }
 
@@ -1594,6 +1627,19 @@ type yamlBlogrollTemplates struct {
 
 //nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *yamlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
+	// Get default values
+	defaults := models.NewBlogrollConfig()
+
+	// Apply defaults for template names if not specified
+	blogrollTemplate := b.Templates.Blogroll
+	if blogrollTemplate == "" {
+		blogrollTemplate = defaults.Templates.Blogroll
+	}
+	readerTemplate := b.Templates.Reader
+	if readerTemplate == "" {
+		readerTemplate = defaults.Templates.Reader
+	}
+
 	config := models.BlogrollConfig{
 		Enabled:              b.Enabled,
 		BlogrollSlug:         b.BlogrollSlug,
@@ -1605,8 +1651,8 @@ func (b *yamlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 		MaxEntriesPerFeed:    b.MaxEntriesPerFeed,
 		FallbackImageService: b.FallbackImageService,
 		Templates: models.BlogrollTemplates{
-			Blogroll: b.Templates.Blogroll,
-			Reader:   b.Templates.Reader,
+			Blogroll: blogrollTemplate,
+			Reader:   readerTemplate,
 		},
 	}
 
@@ -1945,10 +1991,15 @@ type jsonThemeConfig struct {
 }
 
 type jsonBackgroundConfig struct {
-	Enabled     *bool                   `json:"enabled"`
-	Backgrounds []jsonBackgroundElement `json:"backgrounds"`
-	Scripts     []string                `json:"scripts"`
-	CSS         string                  `json:"css"`
+	Enabled       *bool                   `json:"enabled"`
+	Backgrounds   []jsonBackgroundElement `json:"backgrounds"`
+	Scripts       []string                `json:"scripts"`
+	CSS           string                  `json:"css"`
+	ArticleBg     string                  `json:"article_bg"`
+	ArticleBlur   string                  `json:"article_blur"`
+	ArticleShadow string                  `json:"article_shadow"`
+	ArticleBorder string                  `json:"article_border"`
+	ArticleRadius string                  `json:"article_radius"`
 }
 
 type jsonBackgroundElement struct {
@@ -1992,10 +2043,15 @@ func (b *jsonBackgroundConfig) toBackgroundConfig() models.BackgroundConfig {
 		}
 	}
 	return models.BackgroundConfig{
-		Enabled:     b.Enabled,
-		Backgrounds: backgrounds,
-		Scripts:     b.Scripts,
-		CSS:         b.CSS,
+		Enabled:       b.Enabled,
+		Backgrounds:   backgrounds,
+		Scripts:       b.Scripts,
+		CSS:           b.CSS,
+		ArticleBg:     b.ArticleBg,
+		ArticleBlur:   b.ArticleBlur,
+		ArticleShadow: b.ArticleShadow,
+		ArticleBorder: b.ArticleBorder,
+		ArticleRadius: b.ArticleRadius,
 	}
 }
 
@@ -2386,6 +2442,19 @@ type jsonBlogrollTemplates struct {
 
 //nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *jsonBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
+	// Get default values
+	defaults := models.NewBlogrollConfig()
+
+	// Apply defaults for template names if not specified
+	blogrollTemplate := b.Templates.Blogroll
+	if blogrollTemplate == "" {
+		blogrollTemplate = defaults.Templates.Blogroll
+	}
+	readerTemplate := b.Templates.Reader
+	if readerTemplate == "" {
+		readerTemplate = defaults.Templates.Reader
+	}
+
 	config := models.BlogrollConfig{
 		Enabled:              b.Enabled,
 		BlogrollSlug:         b.BlogrollSlug,
@@ -2397,8 +2466,8 @@ func (b *jsonBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 		MaxEntriesPerFeed:    b.MaxEntriesPerFeed,
 		FallbackImageService: b.FallbackImageService,
 		Templates: models.BlogrollTemplates{
-			Blogroll: b.Templates.Blogroll,
-			Reader:   b.Templates.Reader,
+			Blogroll: blogrollTemplate,
+			Reader:   readerTemplate,
 		},
 	}
 

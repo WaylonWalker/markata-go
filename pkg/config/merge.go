@@ -155,6 +155,23 @@ func mergeBackgroundConfig(base, override models.BackgroundConfig) models.Backgr
 		result.CSS = override.CSS
 	}
 
+	// Article styling fields - override if non-empty
+	if override.ArticleBg != "" {
+		result.ArticleBg = override.ArticleBg
+	}
+	if override.ArticleBlur != "" {
+		result.ArticleBlur = override.ArticleBlur
+	}
+	if override.ArticleShadow != "" {
+		result.ArticleShadow = override.ArticleShadow
+	}
+	if override.ArticleBorder != "" {
+		result.ArticleBorder = override.ArticleBorder
+	}
+	if override.ArticleRadius != "" {
+		result.ArticleRadius = override.ArticleRadius
+	}
+
 	return result
 }
 
