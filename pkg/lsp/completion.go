@@ -107,6 +107,12 @@ func (s *Server) handleCompletion(_ context.Context, msg *Message) error {
 		col = len(line)
 	}
 
+	// Check if we're in an admonition context (after !!!, ???, or ???+)
+	if adCtx, inAdmonition := getAdmonitionContext(line, col); inAdmonition {
+		items := getAdmonitionCompletions(adCtx, params)
+		return s.sendResponse(msg.ID, &CompletionList{Items: items})
+	}
+
 	// Check if we're inside a mention (@handle)
 	if prefix, startCol, inMention := getMentionContext(line, col); inMention {
 		return s.handleMentionCompletion(msg, params, prefix, startCol, col)
