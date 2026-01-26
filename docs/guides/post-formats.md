@@ -21,10 +21,12 @@ Configure output formats in your `markata-go.toml`:
 ```toml
 [markata-go.post_formats]
 html = true       # Standard HTML (default: true)
-markdown = false  # Raw markdown source
-text = false      # Plain text output
-og = false        # OpenGraph card HTML
+markdown = true   # Raw markdown source (default: true)
+text = true       # Plain text output (default: true)
+og = false        # OpenGraph card HTML (default: false)
 ```
+
+By default, HTML, Markdown, and Text formats are enabled. This allows standard web txt files like `robots.txt`, `llms.txt`, and `humans.txt` to work out of the box.
 
 ## Available Formats
 
@@ -46,11 +48,11 @@ Outputs the raw markdown source with reconstructed frontmatter. Useful for:
 - API consumers who want raw content
 - Copy-paste workflows
 
-**Output:** `/your-post/index.md` (with redirect from `/your-post.md`)
+**Output:** `/your-post.md` (canonical) with redirect from `/your-post/index.md`
 
 ```toml
 [markata-go.post_formats]
-markdown = true
+markdown = true  # Enabled by default
 ```
 
 The markdown output includes the original frontmatter:
@@ -71,16 +73,17 @@ Your original markdown content...
 ### Plain Text
 
 Outputs a plain text version of the content, perfect for:
+- Standard web txt files (robots.txt, llms.txt, humans.txt)
 - Screen readers and accessibility tools
 - Command-line readers (curl, wget)
 - Low-bandwidth situations
 - Text-based browsers
 
-**Output:** `/your-post/index.txt` (with redirect from `/your-post.txt`)
+**Output:** `/your-post.txt` (canonical) with redirect from `/your-post/index.txt`
 
 ```toml
 [markata-go.post_formats]
-text = true
+text = true  # Enabled by default
 ```
 
 The text output includes:
@@ -134,21 +137,92 @@ The default OG card template includes:
 
 You can customize the OG card appearance by providing your own `og.html` template.
 
-## Clean URL Redirects
+## Standard Web Txt Files
 
-For convenience, markata-go generates redirect files that allow cleaner URLs for alternate formats:
+markata-go supports generating standard web txt files at their expected canonical URLs:
 
-| User requests | Redirects to |
-|---------------|--------------|
+| File | Purpose |
+|------|---------|
+| `/robots.txt` | Robot exclusion standard for web crawlers |
+| `/llms.txt` | AI/LLM guidance file for language models |
+| `/humans.txt` | Human-readable site credits |
+
+To create these, simply add markdown files with the appropriate slugs:
+
+```markdown
+<!-- robots.md -->
+---
+title: "Robots"
+slug: robots
+published: true
+---
+
+User-agent: *
+Allow: /
+Disallow: /private/
+```
+
+```markdown
+<!-- llms.md -->
+---
+title: "LLMs"
+slug: llms
+published: true
+---
+
+# LLMs.txt
+
+This site welcomes AI training on its content.
+
+## Guidelines
+- Attribution appreciated
+- Commercial use allowed
+```
+
+With text format enabled (default), these generate:
+- `/robots.txt` - The canonical robots.txt file
+- `/robots/index.txt` - Redirect for backwards compatibility
+- `/llms.txt` - The canonical llms.txt file
+- `/llms/index.txt` - Redirect for backwards compatibility
+
+## Reversed Redirects
+
+For `.txt` and `.md` formats, markata-go uses **reversed redirects** to ensure content is at the canonical URL:
+
+| Canonical Location | Redirect From |
+|-------------------|---------------|
 | `/my-post.md` | `/my-post/index.md` |
 | `/my-post.txt` | `/my-post/index.txt` |
 
-This means users can type `example.com/my-post.md` directly in their browser or use it with command-line tools:
+This is the opposite of HTML, which uses directory-based URLs:
+
+| Canonical Location | Redirect From |
+|-------------------|---------------|
+| `/my-post/index.html` | `/my-post.html` |
+
+The reversed approach ensures standard web files like `robots.txt` work correctly while maintaining backwards compatibility with directory-based URLs.
+
+## Clean URLs
+
+markata-go generates both canonical files and redirects for maximum compatibility:
+
+| User requests | Canonical file | Notes |
+|---------------|----------------|-------|
+| `/my-post.md` | `/my-post.md` | Direct access to canonical |
+| `/my-post/index.md` | Redirects to `/my-post.md` | Backwards compatibility |
+| `/my-post.txt` | `/my-post.txt` | Direct access to canonical |
+| `/my-post/index.txt` | Redirects to `/my-post.txt` | Backwards compatibility |
+
+This means users can use either URL style:
 
 ```bash
-# Both of these work:
-curl https://example.com/my-post.md
-curl https://example.com/my-post/index.md
+# All of these work:
+curl https://example.com/my-post.md         # Canonical
+curl https://example.com/my-post/index.md   # Redirects to canonical
+
+# Standard web txt files work at expected URLs:
+curl https://example.com/robots.txt
+curl https://example.com/llms.txt
 ```
 
 The redirects use HTML meta refresh for maximum compatibility across browsers and HTTP clients.
