@@ -540,6 +540,12 @@ server {
     gzip_types text/plain text/css text/xml application/json application/javascript
                application/rss+xml application/atom+xml image/svg+xml;
 
+    # MIME types for txt/md files
+    location ~ \.(txt|md)$ {
+        default_type text/plain;
+        charset utf-8;
+    }
+
     # Static assets caching
     location /static/ {
         expires 1y;
@@ -558,9 +564,10 @@ server {
         add_header Cache-Control "public";
     }
 
-    # Clean URLs - try file, then directory, then 404
+    # Try exact file first (for /robots.txt), then index.html, then directory
+    # This supports reversed redirects where canonical files are at /slug.txt
     location / {
-        try_files $uri $uri/ =404;
+        try_files $uri $uri/index.html $uri/ =404;
     }
 
     # Custom error pages
@@ -569,6 +576,24 @@ server {
         internal;
     }
 }
+```
+
+**Testing the configuration:**
+
+```bash
+# Test nginx configuration
+sudo nginx -t
+
+# Reload nginx
+sudo systemctl reload nginx
+
+# Verify txt files are served with correct MIME type
+curl -I https://example.com/robots.txt
+# Should show: Content-Type: text/plain; charset=utf-8
+
+# Verify HTML pages work
+curl -I https://example.com/blog/
+# Should show: Content-Type: text/html
 ```
 
 ### Using Caddy
@@ -591,6 +616,10 @@ example.com {
         Strict-Transport-Security "max-age=63072000"
     }
 
+    # MIME types for txt/md files
+    @txtmd path *.txt *.md
+    header @txtmd Content-Type "text/plain; charset=utf-8"
+
     # Static assets caching
     @static path /static/*
     header @static Cache-Control "public, max-age=31536000, immutable"
@@ -599,8 +628,8 @@ example.com {
     @html path *.html
     header @html Cache-Control "no-cache, no-store, must-revalidate"
 
-    # Handle clean URLs
-    try_files {path} {path}/ {path}/index.html
+    # Try exact file first (for /robots.txt), then index.html, then directory
+    try_files {path} {path}/index.html {path}/
 
     # Custom 404
     handle_errors {
@@ -613,6 +642,20 @@ example.com {
 www.example.com {
     redir https://example.com{uri} permanent
 }
+```
+
+**Testing the configuration:**
+
+```bash
+# Validate Caddyfile
+caddy validate --config /etc/caddy/Caddyfile
+
+# Reload Caddy
+sudo systemctl reload caddy
+
+# Verify txt files are served correctly
+curl -I https://example.com/robots.txt
+# Should show: Content-Type: text/plain; charset=utf-8
 ```
 
 ### Docker Deployment
@@ -679,15 +722,21 @@ server {
     add_header X-Frame-Options "DENY" always;
     add_header X-Content-Type-Options "nosniff" always;
 
+    # MIME types for txt/md files
+    location ~ \.(txt|md)$ {
+        default_type text/plain;
+        charset utf-8;
+    }
+
     # Static caching
     location /static/ {
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
 
-    # Clean URLs
+    # Try exact file first (for /robots.txt), then index.html, then directory
     location / {
-        try_files $uri $uri/ =404;
+        try_files $uri $uri/index.html $uri/ =404;
     }
 
     error_page 404 /404.html;

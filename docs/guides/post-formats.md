@@ -259,9 +259,15 @@ server {
     server_name example.com;
     root /var/www/html;
 
+    # MIME types for txt/md files
+    location ~ \.(txt|md)$ {
+        default_type text/plain;
+        charset utf-8;
+    }
+
     location / {
-        # Try the requested URI, then index files based on Accept header
-        try_files $uri $uri/ @negotiate;
+        # Try exact file first (for /robots.txt), then negotiate by Accept header
+        try_files $uri $uri/index.html @negotiate;
     }
 
     location @negotiate {
@@ -275,11 +281,13 @@ server {
             set $ext "md";
         }
 
-        # Try the negotiated format
+        # Try the negotiated format, falling back to index.html
         try_files $uri/index.$ext $uri/index.html =404;
     }
 }
 ```
+
+**Note:** The `try_files` order is important. Files like `/robots.txt` are served directly because `$uri` matches the exact file before falling back to content negotiation.
 
 ### Caddy Configuration
 
@@ -287,6 +295,10 @@ server {
 example.com {
     root * /var/www/html
     file_server
+
+    # MIME types for txt/md files
+    @txtmd path *.txt *.md
+    header @txtmd Content-Type "text/plain; charset=utf-8"
 
     @wantsText {
         header Accept *text/plain*
@@ -301,10 +313,12 @@ example.com {
     # Rewrite to markdown when requested
     rewrite @wantsMarkdown {path}/index.md
 
-    # Default to HTML
+    # Try exact file first (for /robots.txt), then index.html
     try_files {path} {path}/index.html {path}.html
 }
 ```
+
+**Note:** Caddy's `file_server` naturally serves exact files first, so `/robots.txt` works correctly without additional configuration.
 
 ### Apache Configuration
 
@@ -321,10 +335,24 @@ example.com {
     AddType text/markdown .md
     AddType text/plain .txt
 
+    # Set charset for text files
+    AddDefaultCharset UTF-8
+
     # Prefer HTML by default
     DirectoryIndex index.html index.md index.txt
+
+    # Ensure exact files are served first (for /robots.txt)
+    <Directory /var/www/html>
+        RewriteEngine On
+        # If the exact file exists, serve it directly
+        RewriteCond %{REQUEST_FILENAME} -f
+        RewriteRule ^ - [L]
+        # Otherwise fall through to MultiViews negotiation
+    </Directory>
 </VirtualHost>
 ```
+
+**Note:** The `RewriteCond %{REQUEST_FILENAME} -f` rule ensures that canonical files like `/robots.txt` are served directly before MultiViews content negotiation kicks in.
 
 ### Testing Content Negotiation
 

@@ -70,9 +70,16 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
 
-    # Clean URLs - serve index.html for directories
+    # MIME types for txt/md files
+    location ~ \.(txt|md)$ {
+        default_type text/plain;
+        charset utf-8;
+    }
+
+    # Try exact file first (for /robots.txt), then index.html, then directory
+    # This supports reversed redirects where canonical files are at /slug.txt
     location / {
-        try_files $uri $uri/ $uri/index.html =404;
+        try_files $uri $uri/index.html $uri/ =404;
     }
 
     # Cache static assets
@@ -325,10 +332,15 @@ example.com {
     file_server
     encode gzip
 
+    # MIME types for txt/md files
+    @txtmd path *.txt *.md
+    header @txtmd Content-Type "text/plain; charset=utf-8"
+
     header /static/* Cache-Control "public, max-age=31536000, immutable"
     header *.html Cache-Control "no-cache, must-revalidate"
 
-    try_files {path} {path}/ {path}/index.html
+    # Try exact file first (for /robots.txt), then index.html, then directory
+    try_files {path} {path}/index.html {path}/
 }
 ```
 
@@ -506,12 +518,24 @@ Common issues:
 
 ### 404 Errors on Subpages
 
-Ensure nginx is configured for clean URLs:
+Ensure nginx is configured for the reversed redirect structure:
 ```nginx
+# MIME types for txt/md files
+location ~ \.(txt|md)$ {
+    default_type text/plain;
+    charset utf-8;
+}
+
+# Try exact file first, then index.html, then directory
 location / {
-    try_files $uri $uri/ $uri/index.html =404;
+    try_files $uri $uri/index.html $uri/ =404;
 }
 ```
+
+This order ensures:
+- `/robots.txt` serves the canonical file directly
+- `/my-post/` serves `/my-post/index.html`
+- Directory requests fall back correctly
 
 ### Large Image Size
 
