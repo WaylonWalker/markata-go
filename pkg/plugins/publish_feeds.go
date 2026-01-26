@@ -16,6 +16,7 @@ import (
 )
 
 // PublishFeedsPlugin writes feeds to multiple output formats during the write stage.
+// It also registers synthetic posts in the Configure stage so they can be resolved by wikilinks.
 type PublishFeedsPlugin struct{}
 
 // NewPublishFeedsPlugin creates a new PublishFeedsPlugin.
@@ -28,9 +29,9 @@ func (p *PublishFeedsPlugin) Name() string {
 	return "publish_feeds"
 }
 
-// Collect registers synthetic posts for feed pages so they can be resolved by wikilinks.
+// Configure registers synthetic posts for feed pages so they can be resolved by wikilinks.
 // These posts are marked with Skip: true so they don't interfere with normal rendering.
-func (p *PublishFeedsPlugin) Collect(m *lifecycle.Manager) error {
+func (p *PublishFeedsPlugin) Configure(m *lifecycle.Manager) error {
 	// Get feed configs from cache (set by FeedsPlugin)
 	var feedConfigs []models.FeedConfig
 	if cached, ok := m.Cache().Get("feed_configs"); ok {
@@ -571,7 +572,7 @@ func (p *PublishFeedsPlugin) writeFeedFormatRedirect(slug, ext, targetFile, outp
 
 // Ensure PublishFeedsPlugin implements the required interfaces.
 var (
-	_ lifecycle.Plugin        = (*PublishFeedsPlugin)(nil)
-	_ lifecycle.CollectPlugin = (*PublishFeedsPlugin)(nil)
-	_ lifecycle.WritePlugin   = (*PublishFeedsPlugin)(nil)
+	_ lifecycle.Plugin          = (*PublishFeedsPlugin)(nil)
+	_ lifecycle.ConfigurePlugin = (*PublishFeedsPlugin)(nil)
+	_ lifecycle.WritePlugin     = (*PublishFeedsPlugin)(nil)
 )
