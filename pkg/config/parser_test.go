@@ -687,3 +687,109 @@ func TestParseJSON_BlogrollExternalFeedFields(t *testing.T) {
 		t.Errorf("Primary = %v, want true", feed.Primary)
 	}
 }
+
+// TestParseTOML_BlogrollFallbackImageService tests parsing of fallback_image_service from TOML
+func TestParseTOML_BlogrollFallbackImageService(t *testing.T) {
+	data := []byte(`
+[markata-go]
+title = "Test Site"
+
+[markata-go.blogroll]
+enabled = true
+fallback_image_service = "https://shots.waylonwalker.com/shot/?url={url}&height=160&width=240"
+
+[[markata-go.blogroll.feeds]]
+url = "https://simonwillison.net/atom/everything/"
+title = "Simon Willison"
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if !config.Blogroll.Enabled {
+		t.Error("Blogroll.Enabled should be true")
+	}
+
+	expectedURL := "https://shots.waylonwalker.com/shot/?url={url}&height=160&width=240"
+	if config.Blogroll.FallbackImageService != expectedURL {
+		t.Errorf("Blogroll.FallbackImageService = %q, want %q",
+			config.Blogroll.FallbackImageService, expectedURL)
+	}
+
+	if len(config.Blogroll.Feeds) != 1 {
+		t.Errorf("len(Blogroll.Feeds) = %d, want 1", len(config.Blogroll.Feeds))
+	}
+}
+
+// TestParseYAML_BlogrollFallbackImageService tests parsing of fallback_image_service from YAML
+func TestParseYAML_BlogrollFallbackImageService(t *testing.T) {
+	data := []byte(`
+markata-go:
+  title: "Test Site"
+  blogroll:
+    enabled: true
+    fallback_image_service: "https://shots.waylonwalker.com/shot/?url={url}&height=160&width=240"
+    feeds:
+      - url: "https://simonwillison.net/atom/everything/"
+        title: "Simon Willison"
+`)
+
+	config, err := ParseYAML(data)
+	if err != nil {
+		t.Fatalf("ParseYAML() error = %v", err)
+	}
+
+	if !config.Blogroll.Enabled {
+		t.Error("Blogroll.Enabled should be true")
+	}
+
+	expectedURL := "https://shots.waylonwalker.com/shot/?url={url}&height=160&width=240"
+	if config.Blogroll.FallbackImageService != expectedURL {
+		t.Errorf("Blogroll.FallbackImageService = %q, want %q",
+			config.Blogroll.FallbackImageService, expectedURL)
+	}
+
+	if len(config.Blogroll.Feeds) != 1 {
+		t.Errorf("len(Blogroll.Feeds) = %d, want 1", len(config.Blogroll.Feeds))
+	}
+}
+
+// TestParseJSON_BlogrollFallbackImageService tests parsing of fallback_image_service from JSON
+func TestParseJSON_BlogrollFallbackImageService(t *testing.T) {
+	data := []byte(`{
+  "markata-go": {
+    "title": "Test Site",
+    "blogroll": {
+      "enabled": true,
+      "fallback_image_service": "https://shots.waylonwalker.com/shot/?url={url}&height=160&width=240",
+      "feeds": [
+        {
+          "url": "https://simonwillison.net/atom/everything/",
+          "title": "Simon Willison"
+        }
+      ]
+    }
+  }
+}`)
+
+	config, err := ParseJSON(data)
+	if err != nil {
+		t.Fatalf("ParseJSON() error = %v", err)
+	}
+
+	if !config.Blogroll.Enabled {
+		t.Error("Blogroll.Enabled should be true")
+	}
+
+	expectedURL := "https://shots.waylonwalker.com/shot/?url={url}&height=160&width=240"
+	if config.Blogroll.FallbackImageService != expectedURL {
+		t.Errorf("Blogroll.FallbackImageService = %q, want %q",
+			config.Blogroll.FallbackImageService, expectedURL)
+	}
+
+	if len(config.Blogroll.Feeds) != 1 {
+		t.Errorf("len(Blogroll.Feeds) = %d, want 1", len(config.Blogroll.Feeds))
+	}
+}

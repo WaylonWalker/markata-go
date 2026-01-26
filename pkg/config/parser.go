@@ -697,16 +697,17 @@ func (h *tomlHeaderLayoutConfig) toHeaderLayoutConfig() models.HeaderLayoutConfi
 // Blogroll-related TOML structs
 
 type tomlBlogrollConfig struct {
-	Enabled            bool                     `toml:"enabled"`
-	BlogrollSlug       string                   `toml:"blogroll_slug"`
-	ReaderSlug         string                   `toml:"reader_slug"`
-	CacheDir           string                   `toml:"cache_dir"`
-	CacheDuration      string                   `toml:"cache_duration"`
-	Timeout            int                      `toml:"timeout"`
-	ConcurrentRequests int                      `toml:"concurrent_requests"`
-	MaxEntriesPerFeed  int                      `toml:"max_entries_per_feed"`
-	Feeds              []tomlExternalFeedConfig `toml:"feeds"`
-	Templates          tomlBlogrollTemplates    `toml:"templates"`
+	Enabled              bool                     `toml:"enabled"`
+	BlogrollSlug         string                   `toml:"blogroll_slug"`
+	ReaderSlug           string                   `toml:"reader_slug"`
+	CacheDir             string                   `toml:"cache_dir"`
+	CacheDuration        string                   `toml:"cache_duration"`
+	Timeout              int                      `toml:"timeout"`
+	ConcurrentRequests   int                      `toml:"concurrent_requests"`
+	MaxEntriesPerFeed    int                      `toml:"max_entries_per_feed"`
+	FallbackImageService string                   `toml:"fallback_image_service"`
+	Feeds                []tomlExternalFeedConfig `toml:"feeds"`
+	Templates            tomlBlogrollTemplates    `toml:"templates"`
 }
 
 type tomlExternalFeedConfig struct {
@@ -733,14 +734,15 @@ type tomlBlogrollTemplates struct {
 //nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	config := models.BlogrollConfig{
-		Enabled:            b.Enabled,
-		BlogrollSlug:       b.BlogrollSlug,
-		ReaderSlug:         b.ReaderSlug,
-		CacheDir:           b.CacheDir,
-		CacheDuration:      b.CacheDuration,
-		Timeout:            b.Timeout,
-		ConcurrentRequests: b.ConcurrentRequests,
-		MaxEntriesPerFeed:  b.MaxEntriesPerFeed,
+		Enabled:              b.Enabled,
+		BlogrollSlug:         b.BlogrollSlug,
+		ReaderSlug:           b.ReaderSlug,
+		CacheDir:             b.CacheDir,
+		CacheDuration:        b.CacheDuration,
+		Timeout:              b.Timeout,
+		ConcurrentRequests:   b.ConcurrentRequests,
+		MaxEntriesPerFeed:    b.MaxEntriesPerFeed,
+		FallbackImageService: b.FallbackImageService,
 		Templates: models.BlogrollTemplates{
 			Blogroll: b.Templates.Blogroll,
 			Reader:   b.Templates.Reader,
@@ -1448,16 +1450,17 @@ func (h *yamlHeaderLayoutConfig) toHeaderLayoutConfig() models.HeaderLayoutConfi
 // Blogroll-related YAML structs
 
 type yamlBlogrollConfig struct {
-	Enabled            bool                     `yaml:"enabled"`
-	BlogrollSlug       string                   `yaml:"blogroll_slug"`
-	ReaderSlug         string                   `yaml:"reader_slug"`
-	CacheDir           string                   `yaml:"cache_dir"`
-	CacheDuration      string                   `yaml:"cache_duration"`
-	Timeout            int                      `yaml:"timeout"`
-	ConcurrentRequests int                      `yaml:"concurrent_requests"`
-	MaxEntriesPerFeed  int                      `yaml:"max_entries_per_feed"`
-	Feeds              []yamlExternalFeedConfig `yaml:"feeds"`
-	Templates          yamlBlogrollTemplates    `yaml:"templates"`
+	Enabled              bool                     `yaml:"enabled"`
+	BlogrollSlug         string                   `yaml:"blogroll_slug"`
+	ReaderSlug           string                   `yaml:"reader_slug"`
+	CacheDir             string                   `yaml:"cache_dir"`
+	CacheDuration        string                   `yaml:"cache_duration"`
+	Timeout              int                      `yaml:"timeout"`
+	ConcurrentRequests   int                      `yaml:"concurrent_requests"`
+	MaxEntriesPerFeed    int                      `yaml:"max_entries_per_feed"`
+	FallbackImageService string                   `yaml:"fallback_image_service"`
+	Feeds                []yamlExternalFeedConfig `yaml:"feeds"`
+	Templates            yamlBlogrollTemplates    `yaml:"templates"`
 }
 
 type yamlExternalFeedConfig struct {
@@ -1484,14 +1487,15 @@ type yamlBlogrollTemplates struct {
 //nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *yamlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	config := models.BlogrollConfig{
-		Enabled:            b.Enabled,
-		BlogrollSlug:       b.BlogrollSlug,
-		ReaderSlug:         b.ReaderSlug,
-		CacheDir:           b.CacheDir,
-		CacheDuration:      b.CacheDuration,
-		Timeout:            b.Timeout,
-		ConcurrentRequests: b.ConcurrentRequests,
-		MaxEntriesPerFeed:  b.MaxEntriesPerFeed,
+		Enabled:              b.Enabled,
+		BlogrollSlug:         b.BlogrollSlug,
+		ReaderSlug:           b.ReaderSlug,
+		CacheDir:             b.CacheDir,
+		CacheDuration:        b.CacheDuration,
+		Timeout:              b.Timeout,
+		ConcurrentRequests:   b.ConcurrentRequests,
+		MaxEntriesPerFeed:    b.MaxEntriesPerFeed,
+		FallbackImageService: b.FallbackImageService,
 		Templates: models.BlogrollTemplates{
 			Blogroll: b.Templates.Blogroll,
 			Reader:   b.Templates.Reader,
@@ -2184,16 +2188,17 @@ func (h *jsonHeaderLayoutConfig) toHeaderLayoutConfig() models.HeaderLayoutConfi
 // Blogroll-related JSON structs
 
 type jsonBlogrollConfig struct {
-	Enabled            bool                     `json:"enabled"`
-	BlogrollSlug       string                   `json:"blogroll_slug"`
-	ReaderSlug         string                   `json:"reader_slug"`
-	CacheDir           string                   `json:"cache_dir"`
-	CacheDuration      string                   `json:"cache_duration"`
-	Timeout            int                      `json:"timeout"`
-	ConcurrentRequests int                      `json:"concurrent_requests"`
-	MaxEntriesPerFeed  int                      `json:"max_entries_per_feed"`
-	Feeds              []jsonExternalFeedConfig `json:"feeds"`
-	Templates          jsonBlogrollTemplates    `json:"templates"`
+	Enabled              bool                     `json:"enabled"`
+	BlogrollSlug         string                   `json:"blogroll_slug"`
+	ReaderSlug           string                   `json:"reader_slug"`
+	CacheDir             string                   `json:"cache_dir"`
+	CacheDuration        string                   `json:"cache_duration"`
+	Timeout              int                      `json:"timeout"`
+	ConcurrentRequests   int                      `json:"concurrent_requests"`
+	MaxEntriesPerFeed    int                      `json:"max_entries_per_feed"`
+	FallbackImageService string                   `json:"fallback_image_service"`
+	Feeds                []jsonExternalFeedConfig `json:"feeds"`
+	Templates            jsonBlogrollTemplates    `json:"templates"`
 }
 
 type jsonExternalFeedConfig struct {
@@ -2220,14 +2225,15 @@ type jsonBlogrollTemplates struct {
 //nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *jsonBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	config := models.BlogrollConfig{
-		Enabled:            b.Enabled,
-		BlogrollSlug:       b.BlogrollSlug,
-		ReaderSlug:         b.ReaderSlug,
-		CacheDir:           b.CacheDir,
-		CacheDuration:      b.CacheDuration,
-		Timeout:            b.Timeout,
-		ConcurrentRequests: b.ConcurrentRequests,
-		MaxEntriesPerFeed:  b.MaxEntriesPerFeed,
+		Enabled:              b.Enabled,
+		BlogrollSlug:         b.BlogrollSlug,
+		ReaderSlug:           b.ReaderSlug,
+		CacheDir:             b.CacheDir,
+		CacheDuration:        b.CacheDuration,
+		Timeout:              b.Timeout,
+		ConcurrentRequests:   b.ConcurrentRequests,
+		MaxEntriesPerFeed:    b.MaxEntriesPerFeed,
+		FallbackImageService: b.FallbackImageService,
 		Templates: models.BlogrollTemplates{
 			Blogroll: b.Templates.Blogroll,
 			Reader:   b.Templates.Reader,
