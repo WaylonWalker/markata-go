@@ -492,7 +492,7 @@ func (p *PublishFeedsPlugin) publishSitemap(fc *models.FeedConfig, config *lifec
 
 	// Add all posts in this feed
 	for _, post := range fc.Posts {
-		if !post.Published || post.Draft || post.Skip {
+		if !post.Published || post.Draft || post.Skip || post.Private {
 			continue
 		}
 

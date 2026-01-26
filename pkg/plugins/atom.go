@@ -96,6 +96,10 @@ func GenerateAtom(feed *lifecycle.Feed, config *lifecycle.Config) (string, error
 
 	// Add entries
 	for _, post := range feed.Posts {
+		// Skip private posts from Atom feed
+		if post.Private {
+			continue
+		}
 		entry := postToAtomEntry(post, siteURL)
 		atomFeed.Entries = append(atomFeed.Entries, entry)
 	}

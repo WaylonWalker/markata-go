@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% if post.private %}<meta name="robots" content="noindex, nofollow">{% endif %}
     <title>{% block title %}{% if post %}{{ post.title }} - {% endif %}{{ config.title | default:"My Site" }}{% endblock %}</title>
     {% if post.description %}<meta name="description" content="{{ post.description }}">{% elif config.description %}<meta name="description" content="{{ config.description }}">{% endif %}
 
