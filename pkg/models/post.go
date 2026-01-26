@@ -125,11 +125,14 @@ func (p *Post) GenerateSlug() {
 		return
 	}
 
-	if p.Title != nil && *p.Title != "" {
+	// Priority: basename > title
+	// Use the filename without extension as the primary source
+	basename := strings.TrimSuffix(base, filepath.Ext(base))
+	if basename != "" {
+		source = basename
+	} else if p.Title != nil && *p.Title != "" {
+		// Fallback to title if basename is somehow empty
 		source = *p.Title
-	} else {
-		// Use the filename without extension
-		source = strings.TrimSuffix(base, filepath.Ext(base))
 	}
 
 	// Convert to lowercase

@@ -115,9 +115,9 @@ title: Auto Generated Slug
 published: true
 ---
 Content`,
-			wantSlug:    "auto-generated-slug",
-			wantHref:    "/auto-generated-slug/",
-			description: "Without slug in frontmatter, title is used",
+			wantSlug:    "test",
+			wantHref:    "/test/",
+			description: "Without slug in frontmatter, basename is used (not title)",
 		},
 	}
 
