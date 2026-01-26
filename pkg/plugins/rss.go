@@ -90,6 +90,10 @@ func GenerateRSS(feed *lifecycle.Feed, config *lifecycle.Config) (string, error)
 
 	// Add items
 	for _, post := range feed.Posts {
+		// Skip private posts from RSS feed
+		if post.Private {
+			continue
+		}
 		item := postToRSSItem(post, siteURL)
 		rss.Channel.Items = append(rss.Channel.Items, item)
 	}

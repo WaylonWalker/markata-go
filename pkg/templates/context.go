@@ -111,6 +111,7 @@ func postToMap(p *models.Post) map[string]interface{} {
 		"href":         p.Href,
 		"published":    p.Published,
 		"draft":        p.Draft,
+		"private":      p.Private,
 		"skip":         p.Skip,
 		"tags":         p.Tags,
 		"template":     p.Template,
@@ -949,6 +950,7 @@ func (c Context) ToPongo2() pongo2.Context {
 		ctx["href"] = postMap["href"]
 		ctx["published"] = postMap["published"]
 		ctx["draft"] = postMap["draft"]
+		ctx["private"] = postMap["private"]
 		ctx["description"] = postMap["description"]
 		ctx["article_html"] = postMap["article_html"]
 

@@ -210,6 +210,7 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		"date":        true,
 		"published":   true,
 		"draft":       true,
+		"private":     true,
 		"skip":        true,
 		"tags":        true,
 		"description": true,
@@ -236,6 +237,9 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 
 	// Draft
 	post.Draft = GetBool(metadata, "draft", false)
+
+	// Private
+	post.Private = GetBool(metadata, "private", false)
 
 	// Skip
 	post.Skip = GetBool(metadata, "skip", false)
