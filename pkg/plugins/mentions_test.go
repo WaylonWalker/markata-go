@@ -490,3 +490,274 @@ func TestMentionsPlugin_DuplicateAliasFirstWins(t *testing.T) {
 		t.Errorf("alias 'al' resolves to Handle = %q, want %q (first entry wins)", entry.Handle, "alice")
 	}
 }
+
+func TestMentionsPlugin_FromPosts(t *testing.T) {
+	p := NewMentionsPlugin()
+	m := lifecycle.NewManager()
+
+	// Configure mentions with from_posts source
+	config := m.Config()
+	config.Extra = map[string]interface{}{
+		"mentions": models.MentionsConfig{
+			FromPosts: []models.MentionPostSource{
+				{
+					Filter:       "'contact' in tags",
+					HandleField:  "handle",
+					AliasesField: "aliases",
+				},
+			},
+		},
+	}
+
+	// Add contact posts
+	aliceTitle := "Alice Smith"
+	post1 := &models.Post{
+		Path:  "pages/contact/alice-smith.md",
+		Slug:  "contact/alice-smith",
+		Href:  "/contact/alice-smith/",
+		Title: &aliceTitle,
+		Tags:  []string{"contact", "team"},
+		Extra: map[string]interface{}{
+			"handle":  "alice",
+			"aliases": []interface{}{"alices", "asmith"},
+		},
+	}
+
+	bobTitle := "Bob Jones"
+	post2 := &models.Post{
+		Path:  "pages/contact/bob-jones.md",
+		Slug:  "contact/bob-jones",
+		Href:  "/contact/bob-jones/",
+		Title: &bobTitle,
+		Tags:  []string{"contact"},
+		Extra: map[string]interface{}{
+			"handle": "bob",
+		},
+	}
+
+	// Add a non-contact post that shouldn't match
+	otherTitle := "Other Post"
+	post3 := &models.Post{
+		Path:  "posts/other.md",
+		Slug:  "other",
+		Href:  "/other/",
+		Title: &otherTitle,
+		Tags:  []string{"blog"},
+		Extra: map[string]interface{}{
+			"handle": "other",
+		},
+	}
+
+	m.AddPost(post1)
+	m.AddPost(post2)
+	m.AddPost(post3)
+
+	handleMap := p.buildHandleMap(m)
+
+	// Check alice's handle
+	if entry, ok := handleMap["alice"]; !ok {
+		t.Error("expected 'alice' in handleMap")
+	} else {
+		if entry.SiteURL != "/contact/alice-smith/" {
+			t.Errorf("alice.SiteURL = %q, want %q", entry.SiteURL, "/contact/alice-smith/")
+		}
+		if entry.Title != "Alice Smith" {
+			t.Errorf("alice.Title = %q, want %q", entry.Title, "Alice Smith")
+		}
+	}
+
+	// Check alice's aliases
+	if _, ok := handleMap["alices"]; !ok {
+		t.Error("expected alias 'alices' in handleMap")
+	}
+	if _, ok := handleMap["asmith"]; !ok {
+		t.Error("expected alias 'asmith' in handleMap")
+	}
+
+	// Check bob's handle
+	if entry, ok := handleMap["bob"]; !ok {
+		t.Error("expected 'bob' in handleMap")
+	} else if entry.SiteURL != "/contact/bob-jones/" {
+		t.Errorf("bob.SiteURL = %q, want %q", entry.SiteURL, "/contact/bob-jones/")
+	}
+
+	// Check that 'other' is NOT in the map (didn't match filter)
+	if _, ok := handleMap["other"]; ok {
+		t.Error("'other' should not be in handleMap (didn't match filter)")
+	}
+}
+
+func TestMentionsPlugin_FromPosts_FallbackToSlug(t *testing.T) {
+	p := NewMentionsPlugin()
+	m := lifecycle.NewManager()
+
+	// Configure mentions with from_posts but no handle_field
+	config := m.Config()
+	config.Extra = map[string]interface{}{
+		"mentions": models.MentionsConfig{
+			FromPosts: []models.MentionPostSource{
+				{
+					Filter: "'team' in tags",
+					// No HandleField - should fall back to slug
+				},
+			},
+		},
+	}
+
+	// Add a team post without explicit handle
+	charlieTitle := "Charlie Brown"
+	post := &models.Post{
+		Path:  "team/charlie.md",
+		Slug:  "charlie",
+		Href:  "/team/charlie/",
+		Title: &charlieTitle,
+		Tags:  []string{"team"},
+	}
+
+	m.AddPost(post)
+
+	handleMap := p.buildHandleMap(m)
+
+	// Check that slug is used as handle
+	entry, ok := handleMap["charlie"]
+	if !ok {
+		t.Error("expected 'charlie' (from slug) in handleMap")
+	} else if entry.SiteURL != "/team/charlie/" {
+		t.Errorf("charlie.SiteURL = %q, want %q", entry.SiteURL, "/team/charlie/")
+	}
+}
+
+func TestMentionsPlugin_Transform_FromPosts(t *testing.T) {
+	p := NewMentionsPlugin()
+	m := lifecycle.NewManager()
+
+	// Configure mentions with from_posts
+	config := m.Config()
+	config.Extra = map[string]interface{}{
+		"mentions": models.MentionsConfig{
+			CSSClass: "mention",
+			FromPosts: []models.MentionPostSource{
+				{
+					Filter:      "'contact' in tags",
+					HandleField: "handle",
+				},
+			},
+		},
+	}
+
+	// Add a contact post
+	aliceTitle := "Alice Smith"
+	contactPost := &models.Post{
+		Path:      "pages/contact/alice.md",
+		Slug:      "contact/alice",
+		Href:      "/contact/alice/",
+		Title:     &aliceTitle,
+		Tags:      []string{"contact"},
+		Published: true,
+		Extra: map[string]interface{}{
+			"handle": "alice",
+		},
+	}
+
+	// Add a blog post that mentions alice
+	blogTitle := "Working with Alice"
+	blogPost := &models.Post{
+		Path:      "posts/working-with-alice.md",
+		Slug:      "working-with-alice",
+		Href:      "/working-with-alice/",
+		Title:     &blogTitle,
+		Tags:      []string{"blog"},
+		Published: true,
+		Content:   "I recently collaborated with @alice on a project.",
+	}
+
+	m.AddPost(contactPost)
+	m.AddPost(blogPost)
+
+	// Run transform
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform() error = %v", err)
+	}
+
+	// Check the blog post content was transformed
+	posts := m.Posts()
+	var transformedPost *models.Post
+	for _, post := range posts {
+		if post.Slug == "working-with-alice" {
+			transformedPost = post
+			break
+		}
+	}
+
+	if transformedPost == nil {
+		t.Fatal("could not find transformed blog post")
+	}
+
+	want := `I recently collaborated with <a href="/contact/alice/" class="mention">@alice</a> on a project.`
+	if transformedPost.Content != want {
+		t.Errorf("Content = %q, want %q", transformedPost.Content, want)
+	}
+}
+
+func TestMentionsPlugin_CombinedSources(t *testing.T) {
+	p := NewMentionsPlugin()
+	m := lifecycle.NewManager()
+
+	// Configure both blogroll and from_posts
+	boolTrue := true
+	config := m.Config()
+	config.Extra = map[string]interface{}{
+		"blogroll": models.BlogrollConfig{
+			Enabled: true,
+			Feeds: []models.ExternalFeedConfig{
+				{
+					URL:     "https://external.example.com/feed.xml",
+					Title:   "External Blog",
+					Handle:  "external",
+					SiteURL: "https://external.example.com",
+					Active:  &boolTrue,
+				},
+			},
+		},
+		"mentions": models.MentionsConfig{
+			FromPosts: []models.MentionPostSource{
+				{
+					Filter:      "'contact' in tags",
+					HandleField: "handle",
+				},
+			},
+		},
+	}
+
+	// Add an internal contact post
+	aliceTitle := "Alice Smith"
+	contactPost := &models.Post{
+		Path:  "contact/alice.md",
+		Slug:  "contact/alice",
+		Href:  "/contact/alice/",
+		Title: &aliceTitle,
+		Tags:  []string{"contact"},
+		Extra: map[string]interface{}{
+			"handle": "alice",
+		},
+	}
+
+	m.AddPost(contactPost)
+
+	handleMap := p.buildHandleMap(m)
+
+	// Check external handle from blogroll
+	if entry, ok := handleMap["external"]; !ok {
+		t.Error("expected 'external' from blogroll in handleMap")
+	} else if entry.SiteURL != "https://external.example.com" {
+		t.Errorf("external.SiteURL = %q, want %q", entry.SiteURL, "https://external.example.com")
+	}
+
+	// Check internal handle from from_posts
+	if entry, ok := handleMap["alice"]; !ok {
+		t.Error("expected 'alice' from from_posts in handleMap")
+	} else if entry.SiteURL != "/contact/alice/" {
+		t.Errorf("alice.SiteURL = %q, want %q", entry.SiteURL, "/contact/alice/")
+	}
+}
