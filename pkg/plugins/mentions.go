@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/filter"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -35,6 +36,14 @@ func (p *MentionsPlugin) Name() string {
 // Configure reads configuration options for the plugin.
 func (p *MentionsPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
+
+	// First check the new Mentions config
+	mentionsConfig := getMentionsConfig(config)
+	if mentionsConfig.CSSClass != "" {
+		p.cssClass = mentionsConfig.CSSClass
+	}
+
+	// Fall back to legacy Extra config for backwards compatibility
 	if config.Extra != nil {
 		if cssClass, ok := config.Extra["mentions_css_class"].(string); ok && cssClass != "" {
 			p.cssClass = cssClass
@@ -175,33 +184,38 @@ func (p *MentionsPlugin) registerCachedFeed(feed *models.ExternalFeed, handleMap
 	}
 }
 
-// buildHandleMap builds a map of handles to their site URLs from blogroll config.
+// buildHandleMap builds a map of handles to their site URLs from blogroll config
+// and internal posts configured via from_posts.
 // Resolution order:
 // 1. Explicit handle from config
 // 2. Auto-generated handle from domain
+// 3. Internal posts matching from_posts filters
 func (p *MentionsPlugin) buildHandleMap(m *lifecycle.Manager) map[string]*mentionEntry {
 	handleMap := make(map[string]*mentionEntry)
 
 	config := m.Config()
 	blogrollConfig := getBlogrollConfig(config)
+	mentionsConfig := getMentionsConfig(config)
 
-	if !blogrollConfig.Enabled {
-		return handleMap
-	}
+	// Register from blogroll if enabled
+	if blogrollConfig.Enabled {
+		// Register feed configs
+		for i := range blogrollConfig.Feeds {
+			p.registerFeedConfig(&blogrollConfig.Feeds[i], handleMap)
+		}
 
-	// Register feed configs
-	for i := range blogrollConfig.Feeds {
-		p.registerFeedConfig(&blogrollConfig.Feeds[i], handleMap)
-	}
-
-	// Register cached feeds
-	if cachedFeeds, ok := m.Cache().Get("blogroll_feeds"); ok {
-		if feeds, ok := cachedFeeds.([]*models.ExternalFeed); ok {
-			for _, feed := range feeds {
-				p.registerCachedFeed(feed, handleMap)
+		// Register cached feeds
+		if cachedFeeds, ok := m.Cache().Get("blogroll_feeds"); ok {
+			if feeds, ok := cachedFeeds.([]*models.ExternalFeed); ok {
+				for _, feed := range feeds {
+					p.registerCachedFeed(feed, handleMap)
+				}
 			}
 		}
 	}
+
+	// Register from internal posts (from_posts sources)
+	p.registerFromPosts(m, mentionsConfig, handleMap)
 
 	return handleMap
 }
@@ -365,6 +379,143 @@ func extractDomainFromURL(siteURL string) string {
 	}
 
 	return strings.ToLower(host)
+}
+
+// registerFromPosts registers handles from internal posts matching from_posts sources.
+func (p *MentionsPlugin) registerFromPosts(m *lifecycle.Manager, config models.MentionsConfig, handleMap map[string]*mentionEntry) {
+	if len(config.FromPosts) == 0 {
+		return
+	}
+
+	posts := m.Posts()
+
+	for _, source := range config.FromPosts {
+		if source.Filter == "" {
+			continue
+		}
+
+		// Parse and apply the filter
+		f, err := filter.Parse(source.Filter)
+		if err != nil {
+			log.Printf("mentions: error parsing from_posts filter %q: %v", source.Filter, err)
+			continue
+		}
+
+		matchedPosts := f.MatchAll(posts)
+
+		for _, post := range matchedPosts {
+			p.registerPostAsHandle(post, source, handleMap)
+		}
+	}
+}
+
+// registerPostAsHandle registers a single post as a handle source.
+func (p *MentionsPlugin) registerPostAsHandle(post *models.Post, source models.MentionPostSource, handleMap map[string]*mentionEntry) {
+	// Get the handle from the specified field or fall back to slug
+	handle := p.getHandleFromPost(post, source.HandleField)
+	if handle == "" {
+		return
+	}
+
+	handle = strings.ToLower(handle)
+
+	// Get the title for the entry
+	title := ""
+	if post.Title != nil {
+		title = *post.Title
+	}
+
+	// Create the entry with the post's Href as the URL
+	entry := &mentionEntry{
+		Handle:  handle,
+		SiteURL: post.Href,
+		Title:   title,
+	}
+
+	// Register the handle (first entry wins)
+	if _, exists := handleMap[handle]; !exists {
+		handleMap[handle] = entry
+	}
+
+	// Register aliases if configured
+	if source.AliasesField != "" {
+		aliases := p.getAliasesFromPost(post, source.AliasesField)
+		for _, alias := range aliases {
+			p.registerAlias(alias, entry, handleMap)
+		}
+	}
+}
+
+// getHandleFromPost extracts a handle from a post's frontmatter field or falls back to slug.
+func (p *MentionsPlugin) getHandleFromPost(post *models.Post, fieldName string) string {
+	// If no field specified, use slug
+	if fieldName == "" {
+		return post.Slug
+	}
+
+	// Try to get the field from Extra
+	if post.Extra == nil {
+		return post.Slug
+	}
+
+	value, ok := post.Extra[fieldName]
+	if !ok {
+		return post.Slug
+	}
+
+	// Handle string value
+	if str, ok := value.(string); ok && str != "" {
+		return str
+	}
+
+	// Fall back to slug
+	return post.Slug
+}
+
+// getAliasesFromPost extracts aliases from a post's frontmatter field.
+func (p *MentionsPlugin) getAliasesFromPost(post *models.Post, fieldName string) []string {
+	if fieldName == "" || post.Extra == nil {
+		return nil
+	}
+
+	value, ok := post.Extra[fieldName]
+	if !ok {
+		return nil
+	}
+
+	// Handle []string
+	if aliases, ok := value.([]string); ok {
+		return aliases
+	}
+
+	// Handle []interface{} (common from YAML/JSON parsing)
+	if aliases, ok := value.([]interface{}); ok {
+		result := make([]string, 0, len(aliases))
+		for _, alias := range aliases {
+			if str, ok := alias.(string); ok && str != "" {
+				result = append(result, str)
+			}
+		}
+		return result
+	}
+
+	return nil
+}
+
+// getMentionsConfig retrieves mentions configuration from the manager config.
+func getMentionsConfig(config *lifecycle.Config) models.MentionsConfig {
+	if config.Extra == nil {
+		return models.NewMentionsConfig()
+	}
+
+	// First check for typed MentionsConfig in Extra
+	if mentions, ok := config.Extra["mentions"]; ok {
+		if mc, ok := mentions.(models.MentionsConfig); ok {
+			return mc
+		}
+	}
+
+	return models.NewMentionsConfig()
 }
 
 // Ensure MentionsPlugin implements the required interfaces.
