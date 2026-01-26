@@ -89,23 +89,19 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	}
 
 	// Write Markdown format (raw source)
+	// Uses reversed redirect: content at /slug.md, redirect at /slug/index.md
 	if postFormats.Markdown {
-		if err := p.writeMarkdownFormat(post, postDir); err != nil {
-			return err
-		}
-		// Write redirect from /slug.md to /slug/index.md
-		if err := p.writeFormatRedirect(post.Slug, "md", config.OutputDir); err != nil {
+		mdContent := p.buildMarkdownContent(post)
+		if err := p.writeReversedFormatOutput(post.Slug, "md", mdContent, config.OutputDir); err != nil {
 			return err
 		}
 	}
 
 	// Write Text format (plain text)
+	// Uses reversed redirect: content at /slug.txt, redirect at /slug/index.txt
 	if postFormats.Text {
-		if err := p.writeTextFormat(post, postDir); err != nil {
-			return err
-		}
-		// Write redirect from /slug.txt to /slug/index.txt
-		if err := p.writeFormatRedirect(post.Slug, "txt", config.OutputDir); err != nil {
+		txtContent := p.buildTextContent(post)
+		if err := p.writeReversedFormatOutput(post.Slug, "txt", txtContent, config.OutputDir); err != nil {
 			return err
 		}
 	}
@@ -146,8 +142,9 @@ func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle
 	return nil
 }
 
-// writeMarkdownFormat writes the raw markdown source with frontmatter.
-func (p *PublishHTMLPlugin) writeMarkdownFormat(post *models.Post, postDir string) error {
+// buildMarkdownContent builds the markdown content with frontmatter for a post.
+// Returns the full markdown string with YAML frontmatter.
+func (p *PublishHTMLPlugin) buildMarkdownContent(post *models.Post) string {
 	// Reconstruct frontmatter
 	var buf strings.Builder
 	buf.WriteString("---\n")
@@ -178,19 +175,12 @@ func (p *PublishHTMLPlugin) writeMarkdownFormat(post *models.Post, postDir strin
 	buf.WriteString("---\n\n")
 	buf.WriteString(post.Content)
 
-	// Write index.md
-	outputPath := filepath.Join(postDir, "index.md")
-	//nolint:gosec // G306: Output files need 0644 for web serving
-	if err := os.WriteFile(outputPath, []byte(buf.String()), 0o644); err != nil {
-		return fmt.Errorf("writing %s: %w", outputPath, err)
-	}
-
-	return nil
+	return buf.String()
 }
 
-// writeTextFormat writes the plain text version of a post.
-// This outputs just the content without frontmatter or formatting.
-func (p *PublishHTMLPlugin) writeTextFormat(post *models.Post, postDir string) error {
+// buildTextContent builds the plain text content for a post.
+// Returns plain text with title, description, date, and content.
+func (p *PublishHTMLPlugin) buildTextContent(post *models.Post) string {
 	var buf strings.Builder
 
 	// Write title as heading
@@ -217,28 +207,29 @@ func (p *PublishHTMLPlugin) writeTextFormat(post *models.Post, postDir string) e
 	// Write the raw content (without markdown processing)
 	buf.WriteString(post.Content)
 
-	// Write index.txt
-	outputPath := filepath.Join(postDir, "index.txt")
-	//nolint:gosec // G306: Output files need 0644 for web serving
-	if err := os.WriteFile(outputPath, []byte(buf.String()), 0o644); err != nil {
-		return fmt.Errorf("writing %s: %w", outputPath, err)
-	}
-
-	return nil
+	return buf.String()
 }
 
-// writeFormatRedirect writes a redirect from /slug.ext to /slug/index.ext.
-// This creates a file at slug.ext/index.html, which allows the URL /slug.ext
-// (without trailing slash) to serve the HTML redirect on most static hosts.
+// writeReversedFormatOutput writes the primary content at /slug.ext (canonical URL)
+// and creates a backwards-compatible redirect at /slug/index.ext.
 //
-// For example, requesting /my-post.md will serve the redirect HTML that
-// points to /my-post/index.md where the actual markdown content lives.
+// This is the REVERSED approach for txt/md files:
+// - Canonical content: /robots.txt, /llms.txt (standard web file locations)
+// - Redirect: /robots/index.txt → /robots.txt (backwards compatibility)
 //
-// Note: Web servers serve slug.ext/index.html when /slug.ext is requested,
-// without adding a trailing slash redirect (unlike directory-only approaches).
-func (p *PublishHTMLPlugin) writeFormatRedirect(slug, ext, outputDir string) error {
-	// Create redirect HTML that points to the actual file
-	targetURL := fmt.Sprintf("/%s/index.%s", slug, ext)
+// This allows standard web txt files (robots.txt, llms.txt, humans.txt) to be
+// served at their expected locations while maintaining the directory-based
+// URL structure for backward compatibility.
+func (p *PublishHTMLPlugin) writeReversedFormatOutput(slug, ext, content, outputDir string) error {
+	// Write primary content at /slug.ext (e.g., /robots.txt)
+	primaryPath := filepath.Join(outputDir, slug+"."+ext)
+	//nolint:gosec // G306: Output files need 0644 for web serving
+	if err := os.WriteFile(primaryPath, []byte(content), 0o644); err != nil {
+		return fmt.Errorf("writing %s: %w", primaryPath, err)
+	}
+
+	// Create redirect HTML that points from /slug/index.ext to /slug.ext
+	targetURL := fmt.Sprintf("/%s.%s", slug, ext)
 	redirectHTML := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
@@ -252,18 +243,18 @@ func (p *PublishHTMLPlugin) writeFormatRedirect(slug, ext, outputDir string) err
 </body>
 </html>`, targetURL, targetURL, targetURL, targetURL)
 
-	// Create directory at /slug.ext/ (e.g., /my-post.md/)
-	redirectDir := filepath.Join(outputDir, slug+"."+ext)
+	// Create directory at /slug/ for the redirect (e.g., /robots/)
+	redirectDir := filepath.Join(outputDir, slug)
 	if err := os.MkdirAll(redirectDir, 0o755); err != nil {
 		return fmt.Errorf("creating redirect directory %s: %w", redirectDir, err)
 	}
 
-	// Write index.html inside the directory
-	// This allows /slug.ext to be served without trailing slash on most static hosts
-	outputPath := filepath.Join(redirectDir, "index.html")
+	// Write index.ext redirect inside the directory (e.g., /robots/index.txt)
+	// This redirects to the canonical /slug.ext location
+	redirectPath := filepath.Join(redirectDir, "index."+ext)
 	//nolint:gosec // G306: Output files need 0644 for web serving
-	if err := os.WriteFile(outputPath, []byte(redirectHTML), 0o644); err != nil {
-		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
+	if err := os.WriteFile(redirectPath, []byte(redirectHTML), 0o644); err != nil {
+		return fmt.Errorf("writing redirect %s: %w", redirectPath, err)
 	}
 
 	return nil

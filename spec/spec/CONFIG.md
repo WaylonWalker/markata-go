@@ -670,7 +670,8 @@ See [THEMES.md](./THEMES.md) for complete theming documentation.
 ```toml
 [my-ssg.post_formats]
 html = true       # /slug/index.html (default: true)
-markdown = false  # /slug/index.md - raw source with frontmatter
+markdown = true   # /slug.md - raw source with frontmatter (default: true)
+text = true       # /slug.txt - plain text content (default: true)
 og = false        # /slug/og/index.html - social card for screenshots
 ```
 
@@ -679,18 +680,30 @@ This section controls what output formats are generated for each post:
 | Format | Default | Output Path | Description |
 |--------|---------|-------------|-------------|
 | `html` | `true` | `/slug/index.html` | Standard rendered HTML page |
-| `markdown` | `false` | `/slug/index.md` | Raw markdown with reconstructed frontmatter |
+| `markdown` | `true` | `/slug.md` | Raw markdown with reconstructed frontmatter |
+| `text` | `true` | `/slug.txt` | Plain text content |
 | `og` | `false` | `/slug/og/index.html` | OpenGraph card HTML (1200x630) for social screenshots |
+
+**Reversed Redirects for txt/md:**
+
+For `.txt` and `.md` formats, the content is placed at the canonical URL (`/slug.txt`, `/slug.md`) rather than in a subdirectory. A backwards-compatible redirect is created at `/slug/index.txt` pointing to `/slug.txt`.
+
+This enables standard web txt files to be served at their expected locations:
+- `/robots.txt` - Robot exclusion standard
+- `/llms.txt` - AI/LLM guidance file  
+- `/humans.txt` - Human-readable site info
 
 **Use cases:**
 - **markdown**: API consumers, "view source" links, copy-paste code
+- **text**: Standard web txt files, plain text readers, CLI tools
 - **og**: Automated social image generation with puppeteer/playwright
 
 **Example:**
 ```toml
 [markata-go.post_formats]
 html = true
-markdown = true  # Enable raw markdown output
+markdown = true  # Enable raw markdown output at /slug.md
+text = true      # Enable plain text output at /slug.txt
 og = true        # Enable social card HTML for screenshot tools
 ```
 
