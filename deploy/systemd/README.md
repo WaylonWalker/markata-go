@@ -119,10 +119,30 @@ server {
     root /var/www/mysite/public;
     index index.html;
 
+    # MIME types for txt/md files
+    location ~ \.(txt|md)$ {
+        default_type text/plain;
+        charset utf-8;
+    }
+
+    # Try exact file first (for /robots.txt), then index.html, then directory
     location / {
-        try_files $uri $uri/ =404;
+        try_files $uri $uri/index.html $uri/ =404;
     }
 }
+```
+
+**Testing nginx configuration:**
+
+```bash
+# Test syntax
+sudo nginx -t
+
+# Reload
+sudo systemctl reload nginx
+
+# Verify txt files work
+curl -I http://localhost/robots.txt
 ```
 
 ### Caddy
@@ -131,7 +151,13 @@ server {
 example.com {
     root * /var/www/mysite/public
     file_server
-    try_files {path} {path}/ {path}/index.html
+
+    # MIME types for txt/md files
+    @txtmd path *.txt *.md
+    header @txtmd Content-Type "text/plain; charset=utf-8"
+
+    # Try exact file first (for /robots.txt), then index.html
+    try_files {path} {path}/index.html {path}/
 }
 ```
 

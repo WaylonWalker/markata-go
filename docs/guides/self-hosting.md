@@ -193,16 +193,38 @@ server {
     add_header X-Frame-Options "DENY" always;
     add_header X-Content-Type-Options "nosniff" always;
 
+    # MIME types for txt/md files
+    location ~ \.(txt|md)$ {
+        default_type text/plain;
+        charset utf-8;
+    }
+
     # Caching
     location /static/ {
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
 
+    # Try exact file first, then index.html, then directory
+    # This supports reversed redirects where /robots.txt is canonical
     location / {
-        try_files $uri $uri/ =404;
+        try_files $uri $uri/index.html $uri/ =404;
     }
 }
+```
+
+**Testing nginx configuration:**
+
+```bash
+# Test configuration syntax
+sudo nginx -t
+
+# Reload configuration
+sudo systemctl reload nginx
+
+# Verify txt files are served correctly
+curl -I https://example.com/robots.txt
+# Should return: Content-Type: text/plain; charset=utf-8
 ```
 
 ### Using Caddy
@@ -220,11 +242,30 @@ example.com {
         X-Content-Type-Options "nosniff"
     }
 
+    # MIME types for txt/md files
+    @txtmd path *.txt *.md
+    header @txtmd Content-Type "text/plain; charset=utf-8"
+
     @static path /static/*
     header @static Cache-Control "public, max-age=31536000, immutable"
 
-    try_files {path} {path}/ {path}/index.html
+    # Try exact file first (for /robots.txt), then index.html, then directory
+    try_files {path} {path}/index.html {path}/
 }
+```
+
+**Testing Caddy configuration:**
+
+```bash
+# Validate Caddyfile syntax
+caddy validate --config /etc/caddy/Caddyfile
+
+# Reload configuration
+sudo systemctl reload caddy
+
+# Verify txt files are served correctly
+curl -I https://example.com/robots.txt
+# Should return: Content-Type: text/plain; charset=utf-8
 ```
 
 ## Live Update Patterns
@@ -315,7 +356,7 @@ Create `/etc/webhook/hooks.json`:
     "trigger-rule": {
       "match": {
         "type": "payload-hmac-sha256",
-        "secret": "your-webhook-secret",
+        "secret": "your-webhook-secret",  # pragma: allowlist secret
         "parameter": {
           "source": "header",
           "name": "X-Hub-Signature-256"
@@ -409,19 +450,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-      
+
       - name: Build site
         run: |
           go install github.com/WaylonWalker/markata-go/cmd/markata-go@latest
           markata-go build --clean
         env:
           MARKATA_GO_URL: https://example.com
-      
+
       - name: Deploy via rsync
         run: |
           rsync -avz --delete public/ user@server:/var/www/mysite/public/
