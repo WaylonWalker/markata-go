@@ -33,6 +33,10 @@ type Post struct {
 	// Draft indicates if the post is a draft
 	Draft bool `json:"draft" yaml:"draft" toml:"draft"`
 
+	// Private indicates if the post should be excluded from feeds and search
+	// Private posts are rendered but excluded from feeds, sitemaps, and add noindex meta tag
+	Private bool `json:"private" yaml:"private" toml:"private"`
+
 	// Skip indicates if the post should be skipped during processing
 	Skip bool `json:"skip" yaml:"skip" toml:"skip"`
 
@@ -82,6 +86,7 @@ func NewPost(path string) *Post {
 		Path:      path,
 		Published: false,
 		Draft:     false,
+		Private:   false,
 		Skip:      false,
 		Tags:      []string{},
 		Template:  "", // Empty - let templates plugin resolve from layout config

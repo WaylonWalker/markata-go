@@ -122,6 +122,9 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	// Get config for template context
 	config := m.Config()
 
+	// Collect private paths for robots.txt template variable
+	privatePaths := collectPrivatePaths(m.Posts())
+
 	// Process each post concurrently
 	return m.ProcessPostsConcurrently(func(post *models.Post) error {
 		// Skip posts marked to skip or without article HTML
@@ -148,6 +151,9 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		ctx := templates.NewContext(post, post.ArticleHTML, toModelsConfig(config))
 		ctx = ctx.WithCore(m)
 
+		// Add private_paths to context for robots.txt generation
+		ctx.Set("private_paths", privatePaths)
+
 		// Render the template
 		html, err := p.engine.Render(templateName, ctx)
 		if err != nil {
@@ -157,6 +163,18 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		post.HTML = html
 		return nil
 	})
+}
+
+// collectPrivatePaths returns a list of paths (hrefs) for all private posts.
+// These paths are used in robots.txt templates to add Disallow directives.
+func collectPrivatePaths(posts []*models.Post) []string {
+	var paths []string
+	for _, post := range posts {
+		if post.Private && !post.Draft && !post.Skip {
+			paths = append(paths, post.Href)
+		}
+	}
+	return paths
 }
 
 // Priority returns the plugin priority for the given stage.

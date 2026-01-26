@@ -93,6 +93,10 @@ func GenerateJSONFeed(feed *lifecycle.Feed, config *lifecycle.Config) (string, e
 
 	// Add items
 	for _, post := range feed.Posts {
+		// Skip private posts from JSON feed
+		if post.Private {
+			continue
+		}
 		item := postToJSONFeedItem(post, siteURL)
 		jsonFeed.Items = append(jsonFeed.Items, item)
 	}
