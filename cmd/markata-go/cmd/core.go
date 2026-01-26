@@ -71,12 +71,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["sidebar"] = cfg.Sidebar
 
 	// Pass theme configuration to plugins
-	lcConfig.Extra["theme"] = map[string]interface{}{
-		"name":       cfg.Theme.Name,
-		"palette":    cfg.Theme.Palette,
-		"variables":  cfg.Theme.Variables,
-		"custom_css": cfg.Theme.CustomCSS,
-	}
+	lcConfig.Extra["theme"] = cfg.Theme
 
 	// Pass layout configuration for automatic layout selection
 	lcConfig.Extra["layout"] = &cfg.Layout
