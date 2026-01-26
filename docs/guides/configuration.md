@@ -887,17 +887,19 @@ See the [Blogroll Guide](/docs/guides/blogroll/) for detailed configuration and 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `html` | bool | `true` | Generate standard HTML pages |
-| `markdown` | bool | `false` | Generate raw markdown source |
-| `text` | bool | `false` | Generate plain text output |
+| `markdown` | bool | `true` | Generate raw markdown source |
+| `text` | bool | `true` | Generate plain text output |
 | `og` | bool | `false` | Generate OpenGraph card HTML |
 
 ```toml
 [markata-go.post_formats]
 html = true       # /slug/index.html (default)
-markdown = true   # /slug/index.md (raw source)
-text = true       # /slug/index.txt (plain text)
-og = true         # /slug/og/index.html (social card)
+markdown = true   # /slug.md (canonical) - enabled by default
+text = true       # /slug.txt (canonical) - enabled by default
+og = false        # /slug/og/index.html (social card)
 ```
+
+**Reversed Redirects for txt/md**: For `.txt` and `.md` formats, content is placed at the canonical URL (`/slug.txt`, `/slug.md`) with a backwards-compatible redirect at `/slug/index.txt`. This supports standard web txt files like `robots.txt`, `llms.txt`, and `humans.txt`.
 
 **Canonical URLs and Alternate Links**: When post formats are enabled, markata-go automatically adds:
 

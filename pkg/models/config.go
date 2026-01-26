@@ -1090,13 +1090,13 @@ type PostFormatsConfig struct {
 }
 
 // NewPostFormatsConfig creates a new PostFormatsConfig with default values.
-// By default, only HTML output is enabled.
+// By default, HTML, Markdown, and Text output are enabled.
 func NewPostFormatsConfig() PostFormatsConfig {
 	enabled := true
 	return PostFormatsConfig{
 		HTML:     &enabled,
-		Markdown: false,
-		Text:     false,
+		Markdown: true,
+		Text:     true,
 		OG:       false,
 	}
 }
