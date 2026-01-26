@@ -67,6 +67,28 @@ Use `#` characters to create headings (levels 1-6):
 <h6>Heading 6</h6>
 ```
 
+!!! warning "Avoid H1 in Content"
+
+    **Don't use H1 (`#`) headings in your markdown content.** Templates automatically generate an H1 from your frontmatter `title`, so using H1 in content creates duplicate H1 tags.
+
+    This harms:
+    - **SEO** - Search engines expect one H1 per page
+    - **Accessibility** - Screen readers use H1 for page identification
+
+    **Start your content with H2 (`##`) or deeper:**
+
+    ```markdown
+    ---
+    title: My Page Title  # This becomes the H1
+    ---
+
+    ## First Section       # Start with H2
+
+    Content here...
+    ```
+
+    The linter will warn you if H1 headings are detected in content.
+
 ### Paragraphs
 
 Paragraphs are separated by blank lines:
