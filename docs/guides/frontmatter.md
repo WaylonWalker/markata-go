@@ -493,6 +493,34 @@ github_repo: "https://github.com/user/project"
 demo_url: "https://demo.example.com"
 ```
 
+#### Aliases (for Wikilinks)
+
+Define alternative names that can be used in wikilinks to link to this post:
+
+```yaml
+---
+title: "ECMAScript Language Specification"
+slug: "ecmascript"
+aliases:
+  - js
+  - javascript
+  - JavaScript
+---
+```
+
+With these aliases, any of the following wikilinks will resolve to this post:
+
+- `[[ecmascript]]` - matches the slug
+- `[[js]]` - matches an alias
+- `[[javascript]]` - matches an alias
+- `[[JavaScript]]` - case-insensitive alias match
+
+!!! note "Slug Precedence"
+
+    If another post has `slug: "javascript"`, then `[[javascript]]` will link to
+    that post (slug match) rather than the post with the alias. Slugs always take
+    precedence over aliases.
+
 ---
 
 ## Examples

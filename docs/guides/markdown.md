@@ -1140,9 +1140,45 @@ Check the [[templates-guide#available-variables|template variables section]].
 
 markata-go resolves wikilinks by:
 
-1. Finding a post where `slug == link_target`
-2. If found: renders as `<a href="{post.href}">{text}</a>`
-3. If not found: leaves as literal `[[link]]` and warns
+1. Finding a post where `slug == link_target` (case-insensitive)
+2. If no slug match, checking for posts with matching `aliases` in frontmatter
+3. If found: renders as `<a href="{post.href}">{text}</a>`
+4. If not found: leaves as literal `[[link]]` and warns
+
+### Using Aliases
+
+You can define aliases in your post's frontmatter to create alternative names for linking:
+
+**Target post (`ecmascript.md`):**
+
+```yaml
+---
+title: "ECMAScript Language Specification"
+slug: "ecmascript"
+aliases:
+  - js
+  - javascript
+  - JavaScript
+---
+```
+
+**Source post:**
+
+```markdown
+Learn about [[js]] and [[javascript]] - both link to the ECMAScript post!
+```
+
+**Output:**
+
+```html
+<p>Learn about <a href="/ecmascript/" class="wikilink">ECMAScript Language Specification</a> and <a href="/ecmascript/" class="wikilink">ECMAScript Language Specification</a> - both link to the ECMAScript post!</p>
+```
+
+!!! note "Slug Precedence"
+
+    If a slug and an alias have the same name, the slug always takes precedence.
+    For example, if post A has `slug: "javascript"` and post B has
+    `aliases: ["javascript"]`, then `[[javascript]]` will link to post A.
 
 ### Broken Link Handling
 
