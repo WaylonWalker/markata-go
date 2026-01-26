@@ -11,7 +11,7 @@ tags:
 
 # Plugin Development Guide
 
-This guide explains how to create plugins for markata-go, a fast, plugin-driven static site generator written in Go.
+This guide explains how to create plugins for markata-go, a comprehensive, extendable static site generator written in Go.
 
 ## Philosophy
 

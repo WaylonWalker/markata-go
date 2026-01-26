@@ -1,6 +1,6 @@
 ---
 title: "Documentation"
-description: "Complete documentation for markata-go, a fast, plugin-driven static site generator written in Go"
+description: "Complete documentation for markata-go, a comprehensive, extendable static site generator written in Go"
 date: 2024-01-15
 published: true
 slug: /docs/
@@ -10,7 +10,7 @@ tags:
 
 # markata-go Documentation
 
-A fast, plugin-driven static site generator written in Go.
+A comprehensive, extendable static site generator written in Go.
 
 ---
 
