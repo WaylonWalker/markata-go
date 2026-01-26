@@ -9,24 +9,31 @@ import (
 // =============================================================================
 
 func TestPost_GenerateSlug_BasicTitle(t *testing.T) {
-	// Test case: "basic title to slug"
-	// input: title: "Hello World"
-	// output: "hello-world"
+	// Test case: basename prioritized over title
+	// With the fix, basename is used first, title is fallback
 	tests := []struct {
 		name     string
+		path     string
 		title    string
 		expected string
 	}{
 		{
-			name:     "basic title to slug",
+			name:     "basename prioritized over title",
+			path:     "test.md",
 			title:    "Hello World",
-			expected: "hello-world",
+			expected: "test", // Uses basename, not title
+		},
+		{
+			name:     "title used as fallback when basename empty",
+			path:     ".md",
+			title:    "Hello World",
+			expected: "hello-world", // Uses title when basename is empty
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewPost("test.md")
+			p := NewPost(tt.path)
 			p.Title = &tt.title
 			p.GenerateSlug()
 			if p.Slug != tt.expected {
@@ -37,31 +44,34 @@ func TestPost_GenerateSlug_BasicTitle(t *testing.T) {
 }
 
 func TestPost_GenerateSlug_SpecialCharacters(t *testing.T) {
-	// Test case: "title with special characters"
-	// input: title: "What's New in Python 3.12?"
-	// output: "whats-new-in-python-312"
+	// Test case: basename prioritized, special characters handled in basename
 	tests := []struct {
 		name     string
+		path     string
 		title    string
 		expected string
 	}{
 		{
-			name:     "title with special characters",
+			name:     "basename with hyphens",
+			path:     "whats-new-in-python-312.md",
 			title:    "What's New in Python 3.12?",
 			expected: "whats-new-in-python-312",
 		},
 		{
-			name:     "title with ampersand",
+			name:     "basename simple",
+			path:     "cats-dogs.md",
 			title:    "Cats & Dogs",
 			expected: "cats-dogs",
 		},
 		{
-			name:     "title with parentheses",
+			name:     "basename with parens in path",
+			path:     "go-programming-language.md",
 			title:    "Go (Programming Language)",
 			expected: "go-programming-language",
 		},
 		{
-			name:     "title with quotes",
+			name:     "basename simple quotes",
+			path:     "hello-and-world.md",
 			title:    `"Hello" and 'World'`,
 			expected: "hello-and-world",
 		},
@@ -69,7 +79,7 @@ func TestPost_GenerateSlug_SpecialCharacters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewPost("test.md")
+			p := NewPost(tt.path)
 			p.Title = &tt.title
 			p.GenerateSlug()
 			if p.Slug != tt.expected {
@@ -80,26 +90,28 @@ func TestPost_GenerateSlug_SpecialCharacters(t *testing.T) {
 }
 
 func TestPost_GenerateSlug_Numbers(t *testing.T) {
-	// Test case: "title with numbers"
-	// input: title: "10 Tips for Better Code"
-	// output: "10-tips-for-better-code"
+	// Test case: basename prioritized, numbers handled in basename
 	tests := []struct {
 		name     string
+		path     string
 		title    string
 		expected string
 	}{
 		{
-			name:     "title with numbers",
+			name:     "basename with numbers",
+			path:     "10-tips-for-better-code.md",
 			title:    "10 Tips for Better Code",
 			expected: "10-tips-for-better-code",
 		},
 		{
-			name:     "title starting with number",
+			name:     "basename starting with number",
+			path:     "5-ways-to-learn.md",
 			title:    "5 Ways to Learn",
 			expected: "5-ways-to-learn",
 		},
 		{
-			name:     "title with decimal number",
+			name:     "basename with decimal in filename",
+			path:     "python-312-features.md",
 			title:    "Python 3.12 Features",
 			expected: "python-312-features",
 		},
@@ -107,7 +119,7 @@ func TestPost_GenerateSlug_Numbers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewPost("test.md")
+			p := NewPost(tt.path)
 			p.Title = &tt.title
 			p.GenerateSlug()
 			if p.Slug != tt.expected {
@@ -271,19 +283,22 @@ func TestPost_GenerateHref_Basic(t *testing.T) {
 
 func TestPost_GenerateHref_FromTitle(t *testing.T) {
 	// GenerateHref now requires the slug to be set first
-	// Callers should call GenerateSlug before GenerateHref if auto-generation is needed
+	// With basename priority, basename is used instead of title
 	tests := []struct {
 		name         string
+		path         string
 		title        string
 		expectedHref string
 	}{
 		{
-			name:         "href from title",
+			name:         "href from basename not title",
+			path:         "hello-world.md",
 			title:        "Hello World",
 			expectedHref: "/hello-world/",
 		},
 		{
-			name:         "href from title with special chars",
+			name:         "href from basename with title present",
+			path:         "whats-new.md",
 			title:        "What's New?",
 			expectedHref: "/whats-new/",
 		},
@@ -291,7 +306,7 @@ func TestPost_GenerateHref_FromTitle(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewPost("test.md")
+			p := NewPost(tt.path)
 			p.Title = &tt.title
 			p.GenerateSlug() // Must call GenerateSlug first
 			p.GenerateHref()
@@ -389,23 +404,28 @@ func TestPost_ExtraMapInitialization(t *testing.T) {
 
 func TestPost_SlugMultipleHyphens(t *testing.T) {
 	// Verify that multiple consecutive hyphens are collapsed
+	// Using basename priority now
 	tests := []struct {
 		name     string
+		path     string
 		title    string
 		expected string
 	}{
 		{
-			name:     "multiple spaces",
+			name:     "multiple spaces in basename",
+			path:     "hello-world.md",
 			title:    "Hello    World",
 			expected: "hello-world",
 		},
 		{
-			name:     "mixed separators",
+			name:     "mixed separators in basename",
+			path:     "hello-world.md",
 			title:    "Hello - - World",
 			expected: "hello-world",
 		},
 		{
-			name:     "leading/trailing hyphens",
+			name:     "leading/trailing hyphens in basename",
+			path:     "hello-world.md",
 			title:    "- Hello World -",
 			expected: "hello-world",
 		},
@@ -413,7 +433,7 @@ func TestPost_SlugMultipleHyphens(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewPost("test.md")
+			p := NewPost(tt.path)
 			p.Title = &tt.title
 			p.GenerateSlug()
 			if p.Slug != tt.expected {
@@ -425,13 +445,16 @@ func TestPost_SlugMultipleHyphens(t *testing.T) {
 
 func TestPost_SlugPreservesUnderscores(t *testing.T) {
 	// Underscores should be preserved in slugs
+	// Using basename priority now
 	tests := []struct {
 		name     string
+		path     string
 		title    string
 		expected string
 	}{
 		{
-			name:     "underscores preserved",
+			name:     "underscores preserved in basename",
+			path:     "hello_world_test.md",
 			title:    "hello_world_test",
 			expected: "hello_world_test",
 		},
@@ -439,7 +462,7 @@ func TestPost_SlugPreservesUnderscores(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewPost("test.md")
+			p := NewPost(tt.path)
 			p.Title = &tt.title
 			p.GenerateSlug()
 			if p.Slug != tt.expected {
