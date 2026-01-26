@@ -14,15 +14,20 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
-// defaultTemplate is the default template name for posts.
-const defaultTemplate = "post.html"
-
 // defaultTxtTemplate is the default template name for txt output.
 const defaultTxtTemplate = "default.txt"
 
+// rawTxtTemplate is the template name for raw txt output.
+const rawTxtTemplate = "raw.txt"
+
+// rawMdTemplate is the template name for raw markdown output.
+const rawMdTemplate = "raw.md"
+
 // PublishHTMLPlugin writes individual post HTML files during the write stage.
 // It supports multiple output formats: HTML, Markdown source, and OG card HTML.
-type PublishHTMLPlugin struct{}
+type PublishHTMLPlugin struct {
+	templatesPlugin *TemplatesPlugin
+}
 
 // NewPublishHTMLPlugin creates a new PublishHTMLPlugin.
 func NewPublishHTMLPlugin() *PublishHTMLPlugin {
@@ -52,16 +57,23 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
+	// Get templates plugin from cache for per-format template resolution
+	if cached, ok := m.Cache().Get("templates.plugin"); ok {
+		if tp, ok := cached.(*TemplatesPlugin); ok {
+			p.templatesPlugin = tp
+		}
+	}
+
 	// Process posts concurrently
 	return m.ProcessPostsConcurrently(func(post *models.Post) error {
-		return p.writePost(post, config, engine)
+		return p.writePost(post, config, engine, m)
 	})
 }
 
 // writePost writes a single post to its output location in all enabled formats.
 // Shadow pages: Unpublished posts are still rendered but not included in feeds.
 // This allows sharing draft content via direct URL while keeping it out of public listings.
-func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Config, engine *templates.Engine) error {
+func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Config, engine *templates.Engine, m *lifecycle.Manager) error {
 	// Skip posts marked as skip
 	if post.Skip {
 		return nil
@@ -103,7 +115,7 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	// Write Markdown format (raw source)
 	// Uses reversed redirect: content at /slug.md, redirect at /slug/index.md
 	if postFormats.Markdown {
-		mdContent := p.buildMarkdownContent(post)
+		mdContent := p.buildFormatContent(post, config, m, "markdown")
 		if err := p.writeReversedFormatOutput(post.Slug, "md", mdContent, config.OutputDir); err != nil {
 			return err
 		}
@@ -112,6 +124,7 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	// Write Text format (plain text)
 	// Uses reversed redirect: content at /slug.txt, redirect at /slug/index.txt
 	if postFormats.Text {
+		// Use renderTextContent for txt format to leverage main's sophisticated template resolution
 		txtContent := p.renderTextContent(post, config, engine)
 		if err := p.writeReversedFormatOutput(post.Slug, "txt", txtContent, config.OutputDir); err != nil {
 			return err
@@ -152,6 +165,70 @@ func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle
 	}
 
 	return nil
+}
+
+// buildFormatContent builds content for a specific output format.
+// It checks for per-format template override, and if found, renders using the template.
+// Otherwise, falls back to the default content builders for that format.
+func (p *PublishHTMLPlugin) buildFormatContent(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager, format string) string {
+	// Determine the template to use for this format
+	templateName := p.resolveTemplateForFormat(post, format)
+
+	// Check if it's a "raw" template (raw.txt means just output raw content)
+	if templateName == rawTxtTemplate || templateName == rawMdTemplate {
+		return post.Content
+	}
+
+	// Try to get the template engine from cache
+	var engine *templates.Engine
+	if cached, ok := m.Cache().Get("templates.engine"); ok {
+		if e, ok := cached.(*templates.Engine); ok {
+			engine = e
+		}
+	}
+
+	// If we have an engine and the template exists, render it
+	if engine != nil && templateName != "" && engine.TemplateExists(templateName) {
+		// Create template context
+		ctx := templates.NewContext(post, post.Content, toModelsConfig(config))
+		ctx = ctx.WithCore(m)
+
+		// Render the template
+		result, err := engine.Render(templateName, ctx)
+		if err == nil {
+			return result
+		}
+		// On error, fall through to default content builder
+	}
+
+	// Fall back to default content builders
+	switch format {
+	case formatTxt, formatText:
+		return p.buildTextContentFallback(post)
+	case formatMarkdown, formatMD:
+		return p.buildMarkdownContent(post)
+	default:
+		return post.Content
+	}
+}
+
+// resolveTemplateForFormat determines the template to use for a post and output format.
+// Uses the TemplatesPlugin if available, otherwise falls back to defaults.
+func (p *PublishHTMLPlugin) resolveTemplateForFormat(post *models.Post, format string) string {
+	// If we have the templates plugin, use its resolution logic
+	if p.templatesPlugin != nil {
+		return p.templatesPlugin.resolveTemplateForFormat(post, format)
+	}
+
+	// Fallback: check per-format override in frontmatter
+	if post.Templates != nil {
+		if tmpl, ok := post.Templates[format]; ok && tmpl != "" {
+			return tmpl
+		}
+	}
+
+	// Return empty to use default content builder
+	return ""
 }
 
 // buildMarkdownContent builds the markdown content with frontmatter for a post.
@@ -255,8 +332,8 @@ func (p *PublishHTMLPlugin) resolveTextTemplate(post *models.Post, engine *templ
 	specialFiles := []string{"robots", "llms", "humans", "security", "ads"}
 	for _, special := range specialFiles {
 		if post.Slug == special {
-			if engine.TemplateExists("raw.txt") {
-				return "raw.txt"
+			if engine.TemplateExists(rawTxtTemplate) {
+				return rawTxtTemplate
 			}
 			break
 		}
@@ -268,8 +345,8 @@ func (p *PublishHTMLPlugin) resolveTextTemplate(post *models.Post, engine *templ
 	}
 
 	// If default.txt doesn't exist, try raw.txt
-	if engine.TemplateExists("raw.txt") {
-		return "raw.txt"
+	if engine.TemplateExists(rawTxtTemplate) {
+		return rawTxtTemplate
 	}
 
 	// Last resort: return default.txt and let it fail gracefully

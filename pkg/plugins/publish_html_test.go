@@ -10,6 +10,15 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+// createTestManager creates a minimal lifecycle manager for testing.
+func createTestManager(t *testing.T, config *lifecycle.Config) *lifecycle.Manager {
+	t.Helper()
+	m := lifecycle.NewManager()
+	// Set the config in the manager
+	m.SetConfig(config)
+	return m
+}
+
 // TestPublishHTMLPlugin_ShadowPages tests that unpublished posts are rendered as shadow pages.
 func TestPublishHTMLPlugin_ShadowPages(t *testing.T) {
 	tests := []struct {
@@ -104,8 +113,11 @@ func TestPublishHTMLPlugin_ShadowPages(t *testing.T) {
 				Extra:     make(map[string]interface{}),
 			}
 
+			// Create manager for testing
+			m := createTestManager(t, config)
+
 			// Write post
-			err := plugin.writePost(tt.post, config, nil)
+			err := plugin.writePost(tt.post, config, nil, m)
 			if err != nil {
 				t.Fatalf("writePost() error = %v", err)
 			}
@@ -150,8 +162,11 @@ func TestPublishHTMLPlugin_OGCardCanonicalURL(t *testing.T) {
 		ArticleHTML: "<p>Test content</p>",
 	}
 
+	// Create manager for testing
+	m := createTestManager(t, config)
+
 	// Write post (which includes OG format)
-	if err := plugin.writePost(post, config, nil); err != nil {
+	if err := plugin.writePost(post, config, nil, m); err != nil {
 		t.Fatalf("writePost() error = %v", err)
 	}
 
@@ -203,7 +218,10 @@ func TestPublishHTMLPlugin_ShadowPagesDocumentation(t *testing.T) {
 		ArticleHTML: "<p>Shadow content accessible via direct URL</p>",
 	}
 
-	if err := plugin.writePost(shadowPost, config, nil); err != nil {
+	// Create manager for testing
+	m := createTestManager(t, config)
+
+	if err := plugin.writePost(shadowPost, config, nil, m); err != nil {
 		t.Fatalf("writePost() error = %v", err)
 	}
 
@@ -260,8 +278,11 @@ func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 		ArticleHTML: "<p>Test</p>",
 	}
 
+	// Create manager for testing
+	m := createTestManager(t, config)
+
 	// Write post (which includes format redirects)
-	if err := plugin.writePost(post, config, nil); err != nil {
+	if err := plugin.writePost(post, config, nil, m); err != nil {
 		t.Fatalf("writePost() error = %v", err)
 	}
 
@@ -361,6 +382,9 @@ func TestPublishHTMLPlugin_StandardWebTxtFiles(t *testing.T) {
 		},
 	}
 
+	// Create manager for testing
+	m := createTestManager(t, config)
+
 	// Standard web txt files that should be at root level
 	standardFiles := []struct {
 		slug    string
@@ -386,7 +410,7 @@ func TestPublishHTMLPlugin_StandardWebTxtFiles(t *testing.T) {
 			ArticleHTML: "<p>Test</p>",
 		}
 
-		if err := plugin.writePost(post, config, nil); err != nil {
+		if err := plugin.writePost(post, config, nil, m); err != nil {
 			t.Fatalf("writePost() error for %s: %v", sf.slug, err)
 		}
 	}
@@ -468,8 +492,11 @@ func TestPublishHTMLPlugin_TxtTemplateRendering(t *testing.T) {
 		ArticleHTML: "<p>Test</p>",
 	}
 
+	// Create manager for testing
+	m := createTestManager(t, config)
+
 	// Write post without template engine (should use fallback)
-	if err := plugin.writePost(post, config, nil); err != nil {
+	if err := plugin.writePost(post, config, nil, m); err != nil {
 		t.Fatalf("writePost() error = %v", err)
 	}
 
@@ -533,8 +560,11 @@ func TestPublishHTMLPlugin_RawTxtForSpecialFiles(t *testing.T) {
 		ArticleHTML: "<p>Test</p>",
 	}
 
+	// Create manager for testing
+	m := createTestManager(t, config)
+
 	// Write post without template engine (should use fallback)
-	if err := plugin.writePost(robotsPost, config, nil); err != nil {
+	if err := plugin.writePost(robotsPost, config, nil, m); err != nil {
 		t.Fatalf("writePost() error = %v", err)
 	}
 

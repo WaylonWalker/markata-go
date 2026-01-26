@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -9,11 +10,25 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
+// Output format constants.
+const (
+	formatHTML     = "html"
+	formatTxt      = "txt"
+	formatText     = "text"
+	formatMarkdown = "markdown"
+	formatMD       = "md"
+	formatOG       = "og"
+
+	// defaultTemplate is the default template name for posts.
+	defaultTemplate = "post.html"
+)
+
 // TemplatesPlugin wraps rendered markdown content in HTML templates.
 // It operates during the render stage, after markdown has been converted to HTML.
 type TemplatesPlugin struct {
 	engine       *templates.Engine
 	layoutConfig *models.LayoutConfig
+	config       *lifecycle.Config
 }
 
 // NewTemplatesPlugin creates a new templates plugin.
@@ -63,6 +78,9 @@ func (p *TemplatesPlugin) Configure(m *lifecycle.Manager) error {
 	// Store engine in cache for other plugins to use
 	m.Cache().Set("templates.engine", engine)
 
+	// Store this plugin in cache for other plugins to use per-format resolution
+	m.Cache().Set("templates.plugin", p)
+
 	// Get layout config if available
 	switch lc := config.Extra["layout"].(type) {
 	case *models.LayoutConfig:
@@ -71,21 +89,65 @@ func (p *TemplatesPlugin) Configure(m *lifecycle.Manager) error {
 		p.layoutConfig = &lc
 	}
 
+	// Store config reference for template preset resolution
+	p.config = config
+
 	return nil
 }
 
-// resolveTemplate determines the template to use for a post.
-// Priority: frontmatter template > path-based layout > feed-based layout > global default > "post.html"
+// resolveTemplate determines the template to use for a post (HTML format).
+// This is a convenience wrapper for resolveTemplateForFormat with "html" format.
+// Priority: frontmatter per-format -> preset -> simple template -> layout config -> global default
 func (p *TemplatesPlugin) resolveTemplate(post *models.Post) string {
-	// 1. Check for explicit template in frontmatter (highest priority)
-	if post.Template != "" {
-		return post.Template
+	return p.resolveTemplateForFormat(post, "html")
+}
+
+// resolveTemplateForFormat determines the template to use for a post and output format.
+// Resolution priority:
+// 1. Frontmatter per-format override (templates.html, templates.txt, etc.)
+// 2. Frontmatter template preset (template: blog → expand to preset)
+// 3. Frontmatter simple template (template: post.html → use for current format)
+// 4. Layout config (path/feed-based)
+// 5. Global default for format (default_templates.html, etc.)
+// 6. Hardcoded default (post.html, default.txt, etc.)
+func (p *TemplatesPlugin) resolveTemplateForFormat(post *models.Post, format string) string {
+	// 1. Check per-format override in frontmatter
+	if post.Templates != nil {
+		if tmpl, ok := post.Templates[format]; ok && tmpl != "" {
+			return tmpl
+		}
 	}
 
-	// 2. Use layout configuration to determine template
+	// 2. Check if template is a preset name
+	if post.Template != "" && p.config != nil {
+		presets := getTemplatePresets(p.config)
+		if preset, ok := presets[post.Template]; ok {
+			tmpl := preset.TemplateForFormat(format)
+			if tmpl != "" {
+				return tmpl
+			}
+		}
+	}
+
+	// 3. Use template as explicit file (if has extension) and adapt for format
+	if post.Template != "" && strings.Contains(post.Template, ".") {
+		return adaptTemplateForFormat(post.Template, format)
+	}
+
+	// 4. Use template as-is if it doesn't have an extension
+	// This might be a preset name that wasn't found, fall through to layout
+	if post.Template != "" {
+		// For HTML, use the template directly
+		if format == formatHTML {
+			return post.Template
+		}
+		// For other formats, try to adapt it
+		return adaptTemplateForFormat(post.Template+".html", format)
+	}
+
+	// 5. Use layout configuration to determine template
 	if p.layoutConfig != nil {
 		// Get feed slug for feed-based layout lookup
-		// Check PrevNextFeed first, then look in Extra for feed information
 		feedSlug := post.PrevNextFeed
 		if feedSlug == "" {
 			if feed, ok := post.Extra["feed"].(string); ok {
@@ -94,22 +156,87 @@ func (p *TemplatesPlugin) resolveTemplate(post *models.Post) string {
 		}
 
 		// Get post path for path-based layout lookup
-		// Use the Href which represents the URL structure (e.g., /docs/getting-started/)
 		postPath := post.Href
 		if postPath == "" {
-			// Fall back to Path if Href is not set
 			postPath = "/" + strings.TrimPrefix(post.Path, "/")
 		}
 
 		// Resolve layout based on path and feed
 		layout := p.layoutConfig.ResolveLayout(postPath, feedSlug)
 		if layout != "" {
-			return models.LayoutToTemplate(layout)
+			baseTemplate := models.LayoutToTemplate(layout)
+			return adaptTemplateForFormat(baseTemplate, format)
 		}
 	}
 
-	// 3. Fall back to default template
-	return "post.html"
+	// 6. Check global default templates from config
+	if p.config != nil {
+		defaultTemplates := getDefaultTemplates(p.config)
+		if tmpl, ok := defaultTemplates[format]; ok && tmpl != "" {
+			return tmpl
+		}
+	}
+
+	// 7. Fall back to hardcoded defaults per format
+	return getHardcodedDefault(format)
+}
+
+// adaptTemplateForFormat adapts a template name for a specific output format.
+// For example: post.html → post.txt, post.md, post-og.html
+func adaptTemplateForFormat(template, format string) string {
+	ext := filepath.Ext(template)
+	base := strings.TrimSuffix(template, ext)
+
+	switch format {
+	case formatHTML:
+		return template
+	case formatTxt, formatText:
+		return base + ".txt"
+	case formatMarkdown, formatMD:
+		return base + ".md"
+	case formatOG:
+		return base + "-og.html"
+	default:
+		return template
+	}
+}
+
+// getHardcodedDefault returns the hardcoded default template for a format.
+func getHardcodedDefault(format string) string {
+	switch format {
+	case formatHTML:
+		return defaultTemplate
+	case formatTxt, formatText:
+		return "default.txt"
+	case formatMarkdown, formatMD:
+		return "raw.txt"
+	case formatOG:
+		return "og-card.html"
+	default:
+		return defaultTemplate
+	}
+}
+
+// getTemplatePresets extracts TemplatePresets from lifecycle.Config.Extra.
+func getTemplatePresets(config *lifecycle.Config) map[string]models.TemplatePreset {
+	if config.Extra == nil {
+		return nil
+	}
+	if presets, ok := config.Extra["template_presets"].(map[string]models.TemplatePreset); ok {
+		return presets
+	}
+	return nil
+}
+
+// getDefaultTemplates extracts DefaultTemplates from lifecycle.Config.Extra.
+func getDefaultTemplates(config *lifecycle.Config) map[string]string {
+	if config.Extra == nil {
+		return nil
+	}
+	if defaults, ok := config.Extra["default_templates"].(map[string]string); ok {
+		return defaults
+	}
+	return nil
 }
 
 // Render wraps markdown content in templates.
