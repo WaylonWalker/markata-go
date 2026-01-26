@@ -8,7 +8,7 @@ import (
 )
 
 // TestBlogrollPlugin_RegistersSyntheticPosts verifies that the BlogrollPlugin
-// creates synthetic posts for blogroll and reader pages during Collect stage.
+// creates synthetic posts for blogroll and reader pages during Configure stage.
 func TestBlogrollPlugin_RegistersSyntheticPosts(t *testing.T) {
 	// Create manager
 	m := lifecycle.NewManager()
@@ -29,8 +29,8 @@ func TestBlogrollPlugin_RegistersSyntheticPosts(t *testing.T) {
 
 	// Create and run plugin
 	plugin := NewBlogrollPlugin()
-	if err := plugin.Collect(m); err != nil {
-		t.Fatalf("Collect() error = %v", err)
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
 	}
 
 	// Get posts
@@ -103,8 +103,8 @@ func TestBlogrollPlugin_CustomSlugs(t *testing.T) {
 
 	// Create and run plugin
 	plugin := NewBlogrollPlugin()
-	if err := plugin.Collect(m); err != nil {
-		t.Fatalf("Collect() error = %v", err)
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
 	}
 
 	// Get posts
@@ -137,7 +137,7 @@ func TestBlogrollPlugin_CustomSlugs(t *testing.T) {
 }
 
 // TestPublishFeedsPlugin_RegistersSyntheticPosts verifies that the PublishFeedsPlugin
-// creates synthetic posts for each feed during Collect stage.
+// creates synthetic posts for each feed during Configure stage.
 func TestPublishFeedsPlugin_RegistersSyntheticPosts(t *testing.T) {
 	// Create feed configs
 	feedConfigs := []models.FeedConfig{
@@ -163,8 +163,8 @@ func TestPublishFeedsPlugin_RegistersSyntheticPosts(t *testing.T) {
 
 	// Create and run plugin
 	plugin := NewPublishFeedsPlugin()
-	if err := plugin.Collect(m); err != nil {
-		t.Fatalf("Collect() error = %v", err)
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
 	}
 
 	// Get posts
@@ -223,8 +223,8 @@ func TestPublishFeedsPlugin_NoFeedConfigs(t *testing.T) {
 
 	// Create and run plugin
 	plugin := NewPublishFeedsPlugin()
-	if err := plugin.Collect(m); err != nil {
-		t.Fatalf("Collect() error = %v", err)
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("Configure() error = %v", err)
 	}
 
 	// Verify no posts were added

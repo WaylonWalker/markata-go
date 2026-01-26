@@ -33,7 +33,8 @@ const (
 )
 
 // BlogrollPlugin fetches and processes external RSS/Atom feeds.
-// It runs in the Collect stage to gather external feed entries
+// It runs in the Configure stage to register synthetic posts for wikilink resolution,
+// in the Collect stage to gather external feed entries,
 // and in the Write stage to generate blogroll and reader pages.
 type BlogrollPlugin struct {
 	feeds   []*models.ExternalFeed
@@ -57,6 +58,9 @@ func (p *BlogrollPlugin) Name() string {
 // Priority returns the plugin's priority for a given stage.
 func (p *BlogrollPlugin) Priority(stage lifecycle.Stage) int {
 	switch stage {
+	case lifecycle.StageConfigure:
+		// Run early to register synthetic posts before wikilinks are processed
+		return lifecycle.PriorityDefault
 	case lifecycle.StageCollect:
 		// Run after feeds plugin to not interfere
 		return lifecycle.PriorityLate + 10
@@ -66,6 +70,22 @@ func (p *BlogrollPlugin) Priority(stage lifecycle.Stage) int {
 	default:
 		return lifecycle.PriorityDefault
 	}
+}
+
+// Configure registers synthetic posts for blogroll and reader pages
+// so they can be resolved by wikilinks during the Transform stage.
+func (p *BlogrollPlugin) Configure(m *lifecycle.Manager) error {
+	config := m.Config()
+	blogrollConfig := getBlogrollConfig(config)
+
+	if !blogrollConfig.Enabled {
+		return nil
+	}
+
+	// Register synthetic posts for wikilink resolution
+	p.registerSyntheticPosts(m, blogrollConfig)
+
+	return nil
 }
 
 // Collect fetches and parses configured external feeds.
@@ -92,9 +112,6 @@ func (p *BlogrollPlugin) Collect(m *lifecycle.Manager) error {
 	m.Cache().Set("blogroll_feeds", feeds)
 	m.Cache().Set("blogroll_entries", entries)
 	m.Cache().Set("blogroll_categories", p.groupByCategory(feeds))
-
-	// Register synthetic posts for wikilink resolution
-	p.registerSyntheticPosts(m, blogrollConfig)
 
 	return nil
 }
@@ -1577,10 +1594,11 @@ func generateFallbackImageURL(template, entryURL string) string {
 
 // Ensure BlogrollPlugin implements the required interfaces.
 var (
-	_ lifecycle.Plugin         = (*BlogrollPlugin)(nil)
-	_ lifecycle.CollectPlugin  = (*BlogrollPlugin)(nil)
-	_ lifecycle.WritePlugin    = (*BlogrollPlugin)(nil)
-	_ lifecycle.PriorityPlugin = (*BlogrollPlugin)(nil)
+	_ lifecycle.Plugin          = (*BlogrollPlugin)(nil)
+	_ lifecycle.ConfigurePlugin = (*BlogrollPlugin)(nil)
+	_ lifecycle.CollectPlugin   = (*BlogrollPlugin)(nil)
+	_ lifecycle.WritePlugin     = (*BlogrollPlugin)(nil)
+	_ lifecycle.PriorityPlugin  = (*BlogrollPlugin)(nil)
 )
 
 // CI trigger
