@@ -788,7 +788,7 @@ func TestFilterPosts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := filterPosts(posts, tt.filter)
+			result, err := filterPosts(posts, tt.filter, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("error = %v, wantErr = %v", err, tt.wantErr)
 				return
@@ -803,7 +803,7 @@ func TestFilterPosts(t *testing.T) {
 	}
 }
 
-func TestFilterPosts_ExcludesPrivatePosts(t *testing.T) {
+func TestFilterPosts_IncludePrivate(t *testing.T) {
 	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 
 	posts := []*models.Post{
@@ -814,55 +814,151 @@ func TestFilterPosts_ExcludesPrivatePosts(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		filter    string
-		wantCount int
-		wantSlugs []string
+		name           string
+		filter         string
+		includePrivate bool
+		wantCount      int
+		wantSlugs      []string
 	}{
 		{
-			name:      "empty filter excludes private posts",
-			filter:    "",
-			wantCount: 2,
-			wantSlugs: []string{"public1", "public2"},
+			name:           "exclude private by default",
+			filter:         "",
+			includePrivate: false,
+			wantCount:      2,
+			wantSlugs:      []string{"public1", "public2"},
 		},
 		{
-			name:      "filter by tag excludes private posts",
-			filter:    `'python' in tags`,
-			wantCount: 1,
-			wantSlugs: []string{"public1"},
+			name:           "include private when flag is true",
+			filter:         "",
+			includePrivate: true,
+			wantCount:      4,
+			wantSlugs:      []string{"public1", "private1", "public2", "private2"},
+		},
+		{
+			name:           "exclude private with filter",
+			filter:         `'python' in tags`,
+			includePrivate: false,
+			wantCount:      1,
+			wantSlugs:      []string{"public1"},
+		},
+		{
+			name:           "include private with filter",
+			filter:         `'python' in tags`,
+			includePrivate: true,
+			wantCount:      2,
+			wantSlugs:      []string{"public1", "private1"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := filterPosts(posts, tt.filter)
+			result, err := filterPosts(posts, tt.filter, tt.includePrivate)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if len(result) != tt.wantCount {
 				t.Errorf("got %d posts, want %d", len(result), tt.wantCount)
 			}
-
-			// Verify no private posts in result
-			for _, post := range result {
-				if post.Private {
-					t.Errorf("private post %q should not be in result", post.Slug)
-				}
+			// Verify the slugs
+			resultSlugs := make([]string, len(result))
+			for i, p := range result {
+				resultSlugs[i] = p.Slug
 			}
-
-			// Verify expected slugs if specified
-			if len(tt.wantSlugs) > 0 {
-				slugs := make(map[string]bool)
-				for _, post := range result {
-					slugs[post.Slug] = true
-				}
-				for _, wantSlug := range tt.wantSlugs {
-					if !slugs[wantSlug] {
-						t.Errorf("expected slug %q not found in result", wantSlug)
+			for _, wantSlug := range tt.wantSlugs {
+				found := false
+				for _, gotSlug := range resultSlugs {
+					if gotSlug == wantSlug {
+						found = true
+						break
 					}
+				}
+				if !found {
+					t.Errorf("expected slug %q not found in result %v", wantSlug, resultSlugs)
 				}
 			}
 		})
+	}
+}
+
+func TestFeedsPlugin_IncludePrivate(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "public1.md", Slug: "public1", Title: strPtr("Public 1"), Date: &date, Private: false},
+		{Path: "private1.md", Slug: "private1", Title: strPtr("Private 1"), Date: &date, Private: true},
+		{Path: "public2.md", Slug: "public2", Title: strPtr("Public 2"), Date: &date, Private: false},
+	})
+
+	// Configure two feeds: one excluding private (default), one including
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feeds": []models.FeedConfig{
+			{
+				Slug:           "public-only",
+				Title:          "Public Only",
+				IncludePrivate: false, // default behavior
+			},
+			{
+				Slug:           "with-private",
+				Title:          "With Private",
+				IncludePrivate: true,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+	if len(feeds) != 2 {
+		t.Fatalf("expected 2 feeds, got %d", len(feeds))
+	}
+
+	// Build map for easier access
+	feedByName := make(map[string]*lifecycle.Feed)
+	for _, f := range feeds {
+		feedByName[f.Name] = f
+	}
+
+	// Public-only feed should have 2 posts
+	if publicFeed, ok := feedByName["public-only"]; ok {
+		if len(publicFeed.Posts) != 2 {
+			t.Errorf("'public-only' feed should have 2 posts, got %d", len(publicFeed.Posts))
+		}
+		// Verify no private posts
+		for _, post := range publicFeed.Posts {
+			if post.Private {
+				t.Errorf("'public-only' feed should not contain private post %q", post.Slug)
+			}
+		}
+	} else {
+		t.Error("'public-only' feed not found")
+	}
+
+	// With-private feed should have 3 posts
+	if privateFeed, ok := feedByName["with-private"]; ok {
+		if len(privateFeed.Posts) != 3 {
+			t.Errorf("'with-private' feed should have 3 posts, got %d", len(privateFeed.Posts))
+		}
+		// Verify private post is included
+		hasPrivate := false
+		for _, post := range privateFeed.Posts {
+			if post.Private {
+				hasPrivate = true
+				break
+			}
+		}
+		if !hasPrivate {
+			t.Error("'with-private' feed should contain at least one private post")
+		}
+	} else {
+		t.Error("'with-private' feed not found")
 	}
 }
 
