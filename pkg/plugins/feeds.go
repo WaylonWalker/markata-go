@@ -137,12 +137,18 @@ func getFeedDefaults(config *lifecycle.Config) models.FeedDefaults {
 }
 
 // filterPosts applies a filter expression to posts.
+// Private posts are automatically excluded before any filter is applied.
 func filterPosts(posts []*models.Post, filterExpr string) ([]*models.Post, error) {
+	// First filter out private posts automatically
+	var publicPosts []*models.Post
+	for _, post := range posts {
+		if !post.Private {
+			publicPosts = append(publicPosts, post)
+		}
+	}
+
 	if filterExpr == "" {
-		// Return a copy of all posts
-		result := make([]*models.Post, len(posts))
-		copy(result, posts)
-		return result, nil
+		return publicPosts, nil
 	}
 
 	f, err := filter.Parse(filterExpr)
@@ -150,7 +156,7 @@ func filterPosts(posts []*models.Post, filterExpr string) ([]*models.Post, error
 		return nil, fmt.Errorf("invalid filter expression: %w", err)
 	}
 
-	return f.MatchAll(posts), nil
+	return f.MatchAll(publicPosts), nil
 }
 
 // sortPosts sorts posts by the specified field.
