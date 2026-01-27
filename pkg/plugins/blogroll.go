@@ -1003,8 +1003,20 @@ func (p *BlogrollPlugin) themeToMap(theme models.ThemeConfig) map[string]interfa
 	if bg.Enabled != nil {
 		bgEnabled = *bg.Enabled
 	}
+
+	// Convert backgrounds array to template-friendly format
+	backgrounds := make([]map[string]interface{}, len(bg.Backgrounds))
+	for i, bgElem := range bg.Backgrounds {
+		backgrounds[i] = map[string]interface{}{
+			"html":    bgElem.HTML,
+			"z_index": bgElem.ZIndex,
+		}
+	}
+
 	result["background"] = map[string]interface{}{
 		"enabled":        bgEnabled,
+		"backgrounds":    backgrounds,
+		"scripts":        bg.Scripts,
 		"css":            bg.CSS,
 		"article_bg":     bg.ArticleBg,
 		"article_blur":   bg.ArticleBlur,
