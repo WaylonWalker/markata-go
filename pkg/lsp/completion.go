@@ -134,48 +134,26 @@ func (s *Server) handleCompletion(_ context.Context, msg *Message) error {
 		return s.sendResponse(msg.ID, &CompletionList{Items: []CompletionItem{}})
 	}
 
-	// Get matching posts
-	var posts []*PostInfo
-	if prefix == "" {
-		posts = s.index.AllPosts()
-	} else {
-		posts = s.index.SearchPosts(prefix)
-	}
+	return s.handleWikilinkCompletion(msg, params, prefix, startCol, col)
+}
 
-	// Sort by title for consistent ordering
-	sort.Slice(posts, func(i, j int) bool {
-		return posts[i].Title < posts[j].Title
+// handleWikilinkCompletion handles completion for [[wikilinks]].
+func (s *Server) handleWikilinkCompletion(msg *Message, params CompletionParams, prefix string, startCol, col int) error {
+	// Get all posts
+	posts := s.index.AllPosts()
+
+	// Build completion entries - include both slugs and aliases
+	entries := buildWikilinkCompletionEntries(posts, prefix)
+
+	// Sort: slugs first, then by title/alias name
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].sortKey < entries[j].sortKey
 	})
 
 	// Build completion items
-	items := make([]CompletionItem, 0, len(posts))
-	for i, post := range posts {
-		// Create completion item
-		item := CompletionItem{
-			Label:  post.Slug,
-			Kind:   CompletionItemKindReference,
-			Detail: post.Title,
-			Documentation: &MarkupContent{
-				Kind:  "markdown",
-				Value: formatPostDocumentation(post),
-			},
-			InsertText:       post.Slug,
-			InsertTextFormat: InsertTextFormatPlainText,
-			FilterText:       post.Slug + " " + post.Title,
-			SortText:         fmt.Sprintf("%05d", i), // Preserve sort order
-		}
-
-		// If we have a prefix, use TextEdit to replace it
-		if prefix != "" {
-			item.TextEdit = &TextEdit{
-				Range: Range{
-					Start: Position{Line: params.Position.Line, Character: startCol},
-					End:   Position{Line: params.Position.Line, Character: col},
-				},
-				NewText: post.Slug,
-			}
-		}
-
+	items := make([]CompletionItem, 0, len(entries))
+	for i, entry := range entries {
+		item := buildWikilinkCompletionItem(entry, i, params, prefix, startCol, col)
 		items = append(items, item)
 	}
 
@@ -185,6 +163,101 @@ func (s *Server) handleCompletion(_ context.Context, msg *Message) error {
 	}
 
 	return s.sendResponse(msg.ID, result)
+}
+
+// wikilinkCompletionEntry represents a potential wikilink completion.
+type wikilinkCompletionEntry struct {
+	label   string
+	post    *PostInfo
+	isAlias bool
+	sortKey string
+}
+
+// buildWikilinkCompletionEntries builds completion entries for all posts including aliases.
+func buildWikilinkCompletionEntries(posts []*PostInfo, prefix string) []wikilinkCompletionEntry {
+	// Pre-calculate capacity: one entry per post (for slug) plus aliases
+	totalAliases := 0
+	for _, post := range posts {
+		totalAliases += len(post.Aliases)
+	}
+	entries := make([]wikilinkCompletionEntry, 0, len(posts)+totalAliases)
+
+	for _, post := range posts {
+		// Add the slug as a completion entry
+		entries = append(entries, wikilinkCompletionEntry{
+			label:   post.Slug,
+			post:    post,
+			isAlias: false,
+			sortKey: "0" + strings.ToLower(post.Title), // Slugs sort first
+		})
+
+		// Add each alias as a separate completion entry
+		for _, alias := range post.Aliases {
+			entries = append(entries, wikilinkCompletionEntry{
+				label:   alias,
+				post:    post,
+				isAlias: true,
+				sortKey: "1" + strings.ToLower(alias), // Aliases sort after slugs
+			})
+		}
+	}
+
+	// Filter by prefix if provided
+	if prefix != "" {
+		prefixLower := strings.ToLower(prefix)
+		filtered := make([]wikilinkCompletionEntry, 0, len(entries))
+		for _, entry := range entries {
+			if strings.HasPrefix(strings.ToLower(entry.label), prefixLower) ||
+				strings.Contains(strings.ToLower(entry.post.Title), prefixLower) {
+				filtered = append(filtered, entry)
+			}
+		}
+		return filtered
+	}
+
+	return entries
+}
+
+// buildWikilinkCompletionItem creates a CompletionItem from an entry.
+func buildWikilinkCompletionItem(entry wikilinkCompletionEntry, index int, params CompletionParams, prefix string, startCol, col int) CompletionItem {
+	// Create completion item
+	detail := entry.post.Title
+	if entry.isAlias {
+		detail = fmt.Sprintf("(alias for: %s)", entry.post.Slug)
+	}
+
+	// Build filter text - include slug, title, and aliases for better matching
+	filterParts := []string{entry.label, entry.post.Title}
+	if !entry.isAlias {
+		filterParts = append(filterParts, entry.post.Aliases...)
+	}
+
+	item := CompletionItem{
+		Label:  entry.label,
+		Kind:   CompletionItemKindReference,
+		Detail: detail,
+		Documentation: &MarkupContent{
+			Kind:  "markdown",
+			Value: formatPostDocumentation(entry.post),
+		},
+		InsertText:       entry.label,
+		InsertTextFormat: InsertTextFormatPlainText,
+		FilterText:       strings.Join(filterParts, " "),
+		SortText:         fmt.Sprintf("%05d", index), // Preserve sort order
+	}
+
+	// If we have a prefix, use TextEdit to replace it
+	if prefix != "" {
+		item.TextEdit = &TextEdit{
+			Range: Range{
+				Start: Position{Line: params.Position.Line, Character: startCol},
+				End:   Position{Line: params.Position.Line, Character: col},
+			},
+			NewText: entry.label,
+		}
+	}
+
+	return item
 }
 
 // handleMentionCompletion handles completion for @mentions.

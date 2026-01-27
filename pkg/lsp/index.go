@@ -47,6 +47,9 @@ type PostInfo struct {
 	// Description is the post description/excerpt
 	Description string
 
+	// Aliases are alternative slugs that resolve to this post
+	Aliases []string
+
 	// Wikilinks contains all wikilinks found in the post
 	Wikilinks []WikilinkInfo
 }
@@ -184,6 +187,9 @@ func (idx *Index) indexContent(path, content string) error {
 	// Find wikilinks
 	wikilinks := findWikilinks(body)
 
+	// Extract aliases from frontmatter
+	aliases := extractAliases(metadata)
+
 	// Create post info
 	uri := pathToURI(path)
 	info := &PostInfo{
@@ -192,12 +198,21 @@ func (idx *Index) indexContent(path, content string) error {
 		Slug:        slug,
 		Title:       title,
 		Description: description,
+		Aliases:     aliases,
 		Wikilinks:   wikilinks,
 	}
 
-	// Store in index
+	// Store in index by slug
 	idx.posts[slug] = info
 	idx.uriToSlug[uri] = slug
+
+	// Store alias entries (only if not already taken by a slug)
+	for _, alias := range aliases {
+		normalizedAlias := strings.ToLower(alias)
+		if _, exists := idx.posts[normalizedAlias]; !exists {
+			idx.posts[normalizedAlias] = info
+		}
+	}
 
 	return nil
 }
@@ -209,8 +224,17 @@ func (idx *Index) Update(uri, content string) error {
 
 	path := uriToPath(uri)
 
-	// Remove old entry if exists
+	// Remove old entry if exists (including aliases)
 	if oldSlug, ok := idx.uriToSlug[uri]; ok {
+		if oldInfo, exists := idx.posts[oldSlug]; exists {
+			// Remove alias entries that point to this post
+			for _, alias := range oldInfo.Aliases {
+				normalizedAlias := strings.ToLower(alias)
+				if existingInfo, aliasExists := idx.posts[normalizedAlias]; aliasExists && existingInfo == oldInfo {
+					delete(idx.posts, normalizedAlias)
+				}
+			}
+		}
 		delete(idx.posts, oldSlug)
 		delete(idx.uriToSlug, uri)
 	}
@@ -224,6 +248,15 @@ func (idx *Index) Remove(uri string) {
 	defer idx.mu.Unlock()
 
 	if slug, ok := idx.uriToSlug[uri]; ok {
+		if info, exists := idx.posts[slug]; exists {
+			// Remove alias entries that point to this post
+			for _, alias := range info.Aliases {
+				normalizedAlias := strings.ToLower(alias)
+				if existingInfo, aliasExists := idx.posts[normalizedAlias]; aliasExists && existingInfo == info {
+					delete(idx.posts, normalizedAlias)
+				}
+			}
+		}
 		delete(idx.posts, slug)
 		delete(idx.uriToSlug, uri)
 	}
@@ -261,35 +294,114 @@ func (idx *Index) GetByURI(uri string) *PostInfo {
 	return nil
 }
 
-// AllPosts returns all indexed posts.
+// AllPosts returns all indexed posts (unique by slug, excluding alias entries).
 func (idx *Index) AllPosts() []*PostInfo {
 	idx.mu.RLock()
 	defer idx.mu.RUnlock()
 
+	// Use a map to deduplicate (aliases point to same PostInfo)
+	seen := make(map[*PostInfo]bool)
 	posts := make([]*PostInfo, 0, len(idx.posts))
 	for _, info := range idx.posts {
-		posts = append(posts, info)
+		if !seen[info] {
+			seen[info] = true
+			posts = append(posts, info)
+		}
 	}
 	return posts
 }
 
+// Match type constants for PostSearchResult.
+const (
+	MatchTypeSlug  = "slug"
+	MatchTypeAlias = "alias"
+	MatchTypeTitle = "title"
+)
+
+// PostSearchResult contains a post and how it was matched.
+type PostSearchResult struct {
+	Post       *PostInfo
+	MatchedBy  string // "slug", "alias", or "title"
+	MatchedKey string // The actual slug/alias that matched
+}
+
 // SearchPosts returns posts matching a prefix.
 func (idx *Index) SearchPosts(prefix string) []*PostInfo {
+	results := idx.SearchPostsWithMatch(prefix)
+	posts := make([]*PostInfo, 0, len(results))
+	for _, r := range results {
+		posts = append(posts, r.Post)
+	}
+	return posts
+}
+
+// SearchPostsWithMatch returns posts matching a prefix with match information.
+// Results are deduplicated - each post appears once with the best match type
+// (slug matches take precedence over alias matches, which take precedence over title matches).
+func (idx *Index) SearchPostsWithMatch(prefix string) []PostSearchResult {
 	idx.mu.RLock()
 	defer idx.mu.RUnlock()
 
 	prefix = strings.ToLower(prefix)
-	var results []*PostInfo
 
-	for slug, info := range idx.posts {
-		// Match against slug or title
-		if strings.HasPrefix(strings.ToLower(slug), prefix) ||
-			strings.Contains(strings.ToLower(info.Title), prefix) {
-			results = append(results, info)
+	// Track best match for each post
+	bestMatch := make(map[*PostInfo]*PostSearchResult)
+
+	for key, info := range idx.posts {
+		keyLower := strings.ToLower(key)
+
+		// Check if this key matches the prefix
+		if strings.HasPrefix(keyLower, prefix) {
+			// Determine match type
+			var matchType string
+			if key == info.Slug {
+				matchType = MatchTypeSlug
+			} else {
+				matchType = MatchTypeAlias
+			}
+
+			// Check if this is a better match than existing
+			existing := bestMatch[info]
+			if existing == nil || matchTypePriority(matchType) < matchTypePriority(existing.MatchedBy) {
+				bestMatch[info] = &PostSearchResult{
+					Post:       info,
+					MatchedBy:  matchType,
+					MatchedKey: key,
+				}
+			}
+		} else if strings.Contains(strings.ToLower(info.Title), prefix) {
+			// Title match - only add if no better match exists
+			if bestMatch[info] == nil {
+				bestMatch[info] = &PostSearchResult{
+					Post:       info,
+					MatchedBy:  MatchTypeTitle,
+					MatchedKey: info.Slug,
+				}
+			}
 		}
 	}
 
+	// Convert map to slice
+	results := make([]PostSearchResult, 0, len(bestMatch))
+	for _, r := range bestMatch {
+		results = append(results, *r)
+	}
+
 	return results
+}
+
+// matchTypePriority returns priority for match types (lower = better).
+func matchTypePriority(matchType string) int {
+	switch matchType {
+	case MatchTypeSlug:
+		return 0
+	case MatchTypeAlias:
+		return 1
+	case MatchTypeTitle:
+		return 2
+	default:
+		return 3
+	}
 }
 
 // AllMentions returns all indexed mentions (unique by handle).
@@ -579,6 +691,34 @@ func generateSlug(path string, metadata map[string]interface{}) string {
 	// Use filename without known extension (consistent with models.Post)
 	basename := models.StripKnownExtension(base)
 	return models.Slugify(basename)
+}
+
+// extractAliases extracts aliases from frontmatter metadata.
+// Aliases can be specified as a list of strings in the "aliases" field.
+func extractAliases(metadata map[string]interface{}) []string {
+	aliasesRaw, ok := metadata["aliases"]
+	if !ok {
+		return nil
+	}
+
+	var aliases []string
+
+	switch v := aliasesRaw.(type) {
+	case []interface{}:
+		for _, alias := range v {
+			if aliasStr, ok := alias.(string); ok && aliasStr != "" {
+				aliases = append(aliases, aliasStr)
+			}
+		}
+	case []string:
+		for _, alias := range v {
+			if alias != "" {
+				aliases = append(aliases, alias)
+			}
+		}
+	}
+
+	return aliases
 }
 
 // wikilinkRegex matches [[slug]] and [[slug|display text]] patterns.
