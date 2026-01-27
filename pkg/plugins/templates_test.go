@@ -664,3 +664,97 @@ func TestGetHardcodedDefault(t *testing.T) {
 		})
 	}
 }
+
+func TestCollectPrivatePaths(t *testing.T) {
+	tests := []struct {
+		name     string
+		posts    []*models.Post
+		expected []string
+	}{
+		{
+			name:     "empty posts",
+			posts:    []*models.Post{},
+			expected: nil,
+		},
+		{
+			name: "no private posts",
+			posts: []*models.Post{
+				{Slug: "public", Href: "/public/", Private: false},
+			},
+			expected: nil,
+		},
+		{
+			name: "private post includes all variants",
+			posts: []*models.Post{
+				{Slug: "secret", Href: "/secret/", Private: true},
+			},
+			expected: []string{
+				"/secret/",
+				"/secret/index.txt",
+				"/secret/index.md",
+				"/secret.og/",
+			},
+		},
+		{
+			name: "excludes robots post",
+			posts: []*models.Post{
+				{Slug: "robots", Href: "/robots/", Private: true},
+				{Slug: "secret", Href: "/secret/", Private: true},
+			},
+			expected: []string{
+				"/secret/",
+				"/secret/index.txt",
+				"/secret/index.md",
+				"/secret.og/",
+			},
+		},
+		{
+			name: "excludes drafts and skipped",
+			posts: []*models.Post{
+				{Slug: "draft-post", Href: "/draft-post/", Private: true, Draft: true},
+				{Slug: "skipped-post", Href: "/skipped-post/", Private: true, Skip: true},
+				{Slug: "real-private", Href: "/real-private/", Private: true},
+			},
+			expected: []string{
+				"/real-private/",
+				"/real-private/index.txt",
+				"/real-private/index.md",
+				"/real-private.og/",
+			},
+		},
+		{
+			name: "multiple private posts",
+			posts: []*models.Post{
+				{Slug: "private1", Href: "/private1/", Private: true},
+				{Slug: "public", Href: "/public/", Private: false},
+				{Slug: "private2", Href: "/private2/", Private: true},
+			},
+			expected: []string{
+				"/private1/",
+				"/private1/index.txt",
+				"/private1/index.md",
+				"/private1.og/",
+				"/private2/",
+				"/private2/index.txt",
+				"/private2/index.md",
+				"/private2.og/",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := collectPrivatePaths(tt.posts)
+			if len(got) != len(tt.expected) {
+				t.Errorf("collectPrivatePaths() returned %d paths, want %d\ngot: %v\nwant: %v",
+					len(got), len(tt.expected), got, tt.expected)
+				return
+			}
+			for i, path := range got {
+				if path != tt.expected[i] {
+					t.Errorf("collectPrivatePaths()[%d] = %q, want %q", i, path, tt.expected[i])
+				}
+			}
+		})
+	}
+}

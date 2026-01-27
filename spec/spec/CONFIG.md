@@ -680,18 +680,26 @@ This section controls what output formats are generated for each post:
 | Format | Default | Output Path | Description |
 |--------|---------|-------------|-------------|
 | `html` | `true` | `/slug/index.html` | Standard rendered HTML page |
-| `markdown` | `true` | `/slug.md` | Raw markdown with reconstructed frontmatter |
-| `text` | `true` | `/slug.txt` | Plain text content |
+| `markdown` | `true` | `/slug/index.md` | Raw markdown with reconstructed frontmatter |
+| `text` | `true` | `/slug/index.txt` | Plain text content |
 | `og` | `false` | `/slug/og/index.html` | OpenGraph card HTML (1200x630) for social screenshots |
 
-**Reversed Redirects for txt/md:**
+**Directory-based Redirects for txt/md:**
 
-For `.txt` and `.md` formats, the content is placed at the canonical URL (`/slug.txt`, `/slug.md`) rather than in a subdirectory. A backwards-compatible redirect is created at `/slug/index.txt` pointing to `/slug.txt`.
+For `.txt` and `.md` formats, content is placed in a subdirectory (`/slug/index.txt`) with an HTML redirect at `/slug.txt/index.html` pointing to the content. This enables clean URLs while maintaining compatibility with static hosting.
+
+**Special Files (robots, llms, humans, security, ads):**
+
+Special web files have an inverted structure to serve content at their expected root-level locations:
+- Content at `/slug.txt` (e.g., `/robots.txt`)
+- HTML redirect at `/slug/index.txt/index.html` pointing to `/slug.txt`
 
 This enables standard web txt files to be served at their expected locations:
 - `/robots.txt` - Robot exclusion standard
 - `/llms.txt` - AI/LLM guidance file  
 - `/humans.txt` - Human-readable site info
+- `/security.txt` - Security contact information
+- `/ads.txt` - Authorized digital sellers
 
 **Use cases:**
 - **markdown**: API consumers, "view source" links, copy-paste code
