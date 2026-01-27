@@ -1,10 +1,12 @@
 {# Footer component template #}
 {# Usage: {% include "components/footer.html" %} #}
+{# Optional: footer_style - "full", "minimal", or "none" (defaults to config or "full") #}
 {# Requires: config.components.footer (FooterComponentConfig) #}
 
 {% with footer = config.components.footer %}
+{% with style = footer_style|default:config.footer_style|default:"full" %}
 {% if footer.enabled %}
-<footer class="site-footer">
+<footer class="site-footer site-footer--{{ style }}" role="contentinfo">
     <div class="container">
         {% if footer.text %}
         <p class="footer-text">{{ footer.text }}</p>
@@ -27,4 +29,5 @@
     </div>
 </footer>
 {% endif %}
+{% endwith %}
 {% endwith %}

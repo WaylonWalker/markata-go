@@ -86,9 +86,9 @@
 
 {% block footer %}
 {% if config.layout.docs.footer_style != 'none' %}
-<footer class="site-footer site-footer--{{ config.layout.docs.footer_style | default:'minimal' }}" role="contentinfo">
-    {% include "components/footer.html" %}
-</footer>
+{% with footer_style=config.layout.docs.footer_style|default:"minimal" %}
+{% include "components/footer.html" %}
+{% endwith %}
 {% endif %}
 {% endblock %}
 
