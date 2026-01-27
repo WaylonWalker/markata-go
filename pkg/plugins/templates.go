@@ -294,11 +294,26 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 
 // collectPrivatePaths returns a list of paths (hrefs) for all private posts.
 // These paths are used in robots.txt templates to add Disallow directives.
+// Includes all format variants (.txt, .md, .og) and excludes the robots post itself.
 func collectPrivatePaths(posts []*models.Post) []string {
 	var paths []string
 	for _, post := range posts {
 		if post.Private && !post.Draft && !post.Skip {
+			// Skip the robots post itself to avoid self-reference
+			if post.Slug == "robots" {
+				continue
+			}
+			// Add base href (e.g., /slug/)
 			paths = append(paths, post.Href)
+			// Add format variants
+			// For regular posts: /slug/index.txt, /slug/index.md, /slug.og/
+			if post.Slug != "" {
+				paths = append(paths,
+					"/"+post.Slug+"/index.txt",
+					"/"+post.Slug+"/index.md",
+					"/"+post.Slug+".og/",
+				)
+			}
 		}
 	}
 	return paths

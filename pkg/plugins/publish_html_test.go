@@ -444,34 +444,34 @@ func TestPublishHTMLPlugin_StandardWebTxtFiles(t *testing.T) {
 	// Verify standard web files have content and redirects
 	for _, sf := range standardFiles {
 		t.Run(sf.slug+".txt structure", func(t *testing.T) {
-			// Check content at /slug/index.txt
-			contentPath := filepath.Join(tempDir, sf.slug, "index.txt")
+			// Check content at /slug.txt (root level for special files)
+			contentPath := filepath.Join(tempDir, sf.slug+".txt")
 			content, err := os.ReadFile(contentPath)
 			if err != nil {
-				t.Fatalf("content file %s/index.txt not found: %v", sf.slug, err)
+				t.Fatalf("content file %s.txt not found: %v", sf.slug, err)
 			}
 
 			// Should contain actual content, not redirect HTML
 			contentStr := string(content)
 			if strings.Contains(contentStr, "<!DOCTYPE html>") {
-				t.Errorf("%s/index.txt should be content, not HTML redirect", sf.slug)
+				t.Errorf("%s.txt should be content, not HTML redirect", sf.slug)
 			}
 
-			// Check redirect at /slug.txt/index.html
-			redirectPath := filepath.Join(tempDir, sf.slug+".txt", "index.html")
+			// Check HTML redirect at /slug/index.txt/index.html
+			redirectPath := filepath.Join(tempDir, sf.slug, "index.txt", "index.html")
 			redirectContent, err := os.ReadFile(redirectPath)
 			if err != nil {
-				t.Fatalf("redirect file %s.txt/index.html not found: %v", sf.slug, err)
+				t.Fatalf("redirect file %s/index.txt/index.html not found: %v", sf.slug, err)
 			}
 
-			// Should be a redirect pointing to the content
+			// Should be an HTML redirect pointing to the content
 			redirectStr := string(redirectContent)
 			if !strings.Contains(redirectStr, "http-equiv=\"refresh\"") {
-				t.Errorf("%s.txt/index.html should be a redirect", sf.slug)
+				t.Errorf("%s/index.txt/index.html should be an HTML redirect", sf.slug)
 			}
-			expectedTarget := fmt.Sprintf("/%s/index.txt", sf.slug)
+			expectedTarget := fmt.Sprintf("/%s.txt", sf.slug)
 			if !strings.Contains(redirectStr, expectedTarget) {
-				t.Errorf("%s.txt/index.html should redirect to %s", sf.slug, expectedTarget)
+				t.Errorf("%s/index.txt/index.html should redirect to %s, got: %s", sf.slug, expectedTarget, redirectStr)
 			}
 		})
 	}
@@ -725,31 +725,35 @@ func TestPublishHTMLPlugin_RawTxtForSpecialFiles(t *testing.T) {
 		t.Fatalf("writePost() error = %v", err)
 	}
 
-	// Read robots content from /robots/index.txt
-	robotsPath := filepath.Join(tempDir, "robots", "index.txt")
+	// Read robots content from /robots.txt (root level for special files)
+	robotsPath := filepath.Join(tempDir, "robots.txt")
 	content, err := os.ReadFile(robotsPath)
 	if err != nil {
-		t.Fatalf("failed to read robots/index.txt: %v", err)
+		t.Fatalf("failed to read robots.txt: %v", err)
 	}
 
 	contentStr := string(content)
 
 	// Verify content is present (without title/description header since no title set)
 	if !strings.Contains(contentStr, "User-agent: *") {
-		t.Error("robots/index.txt should contain the user-agent directive")
+		t.Error("robots.txt should contain the user-agent directive")
 	}
 	if !strings.Contains(contentStr, "Allow: /") {
-		t.Error("robots/index.txt should contain the allow directive")
+		t.Error("robots.txt should contain the allow directive")
 	}
 
-	// Verify redirect exists at /robots.txt/index.html
-	redirectPath := filepath.Join(tempDir, "robots.txt", "index.html")
+	// Verify HTML redirect exists at /robots/index.txt/index.html
+	redirectPath := filepath.Join(tempDir, "robots", "index.txt", "index.html")
 	redirectContent, err := os.ReadFile(redirectPath)
 	if err != nil {
-		t.Fatalf("failed to read robots.txt/index.html: %v", err)
+		t.Fatalf("failed to read robots/index.txt/index.html: %v", err)
 	}
 
+	expectedTarget := "/robots.txt"
+	if !strings.Contains(string(redirectContent), expectedTarget) {
+		t.Errorf("robots/index.txt/index.html should redirect to %s", expectedTarget)
+	}
 	if !strings.Contains(string(redirectContent), "http-equiv=\"refresh\"") {
-		t.Error("robots.txt/index.html should be a redirect")
+		t.Error("robots/index.txt/index.html should be an HTML redirect")
 	}
 }

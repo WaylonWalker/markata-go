@@ -55,7 +55,7 @@ func (p *JinjaMdPlugin) Configure(m *lifecycle.Manager) error {
 }
 
 // Transform processes jinja templates in markdown content.
-// Only posts with `jinja: true` in their frontmatter are processed.
+// Only posts with `jinja: true` or `jinja_md: true` in their frontmatter are processed.
 func (p *JinjaMdPlugin) Transform(m *lifecycle.Manager) error {
 	if p.engine == nil {
 		return fmt.Errorf("template engine not initialized")
@@ -66,6 +66,9 @@ func (p *JinjaMdPlugin) Transform(m *lifecycle.Manager) error {
 
 	// Get all posts for access in templates
 	allPosts := m.Posts()
+
+	// Collect private paths for robots.txt and similar templates
+	privatePaths := collectPrivatePathsForJinja(allPosts)
 
 	// Process each post
 	return m.ProcessPostsConcurrently(func(post *models.Post) error {
@@ -93,6 +96,9 @@ func (p *JinjaMdPlugin) Transform(m *lifecycle.Manager) error {
 		ctx.Set("filter", createFilterFunc(m))
 		ctx.Set("map", createMapFunc(m))
 
+		// Add private_paths for robots.txt generation
+		ctx.Set("private_paths", privatePaths)
+
 		// Render the content as a template
 		rendered, err := p.engine.RenderString(post.Content, ctx)
 		if err != nil {
@@ -105,6 +111,33 @@ func (p *JinjaMdPlugin) Transform(m *lifecycle.Manager) error {
 	})
 }
 
+// collectPrivatePathsForJinja returns a list of paths (hrefs) for all private posts.
+// These paths are used in robots.txt templates to add Disallow directives.
+// Includes all format variants (.txt, .md, .og) and excludes the robots post itself.
+func collectPrivatePathsForJinja(posts []*models.Post) []string {
+	var paths []string
+	for _, post := range posts {
+		if post.Private && !post.Draft && !post.Skip {
+			// Skip the robots post itself to avoid self-reference
+			if post.Slug == "robots" {
+				continue
+			}
+			// Add base href (e.g., /slug/)
+			paths = append(paths, post.Href)
+			// Add format variants
+			// For regular posts: /slug/index.txt, /slug/index.md, /slug.og/
+			if post.Slug != "" {
+				paths = append(paths,
+					"/"+post.Slug+"/index.txt",
+					"/"+post.Slug+"/index.md",
+					"/"+post.Slug+".og/",
+				)
+			}
+		}
+	}
+	return paths
+}
+
 // Priority returns the plugin priority for the given stage.
 // JinjaMd should run early in the transform stage, before other transforms.
 func (p *JinjaMdPlugin) Priority(stage lifecycle.Stage) int {
@@ -115,19 +148,25 @@ func (p *JinjaMdPlugin) Priority(stage lifecycle.Stage) int {
 }
 
 // isJinjaEnabled checks if jinja processing is enabled for a post.
-// Returns true if the post has `jinja: true` in frontmatter or Extra.
+// Returns true if the post has `jinja: true` or `jinja_md: true` in frontmatter or Extra.
 func isJinjaEnabled(post *models.Post) bool {
 	if post.Extra == nil {
 		return false
 	}
 
-	// Check for "jinja" key
-	if val, ok := post.Extra["jinja"]; ok {
-		switch v := val.(type) {
-		case bool:
-			return v
-		case string:
-			return v == "true" || v == "yes" || v == "1"
+	// Check for "jinja" or "jinja_md" key (both are valid)
+	for _, key := range []string{"jinja", "jinja_md"} {
+		if val, ok := post.Extra[key]; ok {
+			switch v := val.(type) {
+			case bool:
+				if v {
+					return true
+				}
+			case string:
+				if v == "true" || v == "yes" || v == "1" {
+					return true
+				}
+			}
 		}
 	}
 
