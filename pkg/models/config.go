@@ -600,6 +600,10 @@ type BackgroundConfig struct {
 	// Example: "rgba(255, 255, 255, 0.95)" or "#ffffff"
 	ArticleBg string `json:"article_bg,omitempty" yaml:"article_bg,omitempty" toml:"article_bg,omitempty"`
 
+	// ArticleBlurEnabled controls whether backdrop blur is applied to article areas (default: false)
+	// When false, the ArticleBlur value is ignored even if set.
+	ArticleBlurEnabled *bool `json:"article_blur_enabled,omitempty" yaml:"article_blur_enabled,omitempty" toml:"article_blur_enabled,omitempty"`
+
 	// ArticleBlur is the backdrop blur amount for article areas (default: "0px")
 	// Example: "8px" or "12px" for a frosted glass effect
 	ArticleBlur string `json:"article_blur,omitempty" yaml:"article_blur,omitempty" toml:"article_blur,omitempty"`
@@ -631,16 +635,18 @@ type BackgroundElement struct {
 // NewBackgroundConfig creates a new BackgroundConfig with default values.
 func NewBackgroundConfig() BackgroundConfig {
 	enabled := false
+	articleBlurEnabled := false
 	return BackgroundConfig{
-		Enabled:       &enabled,
-		Backgrounds:   []BackgroundElement{},
-		Scripts:       []string{},
-		CSS:           "",
-		ArticleBg:     "",
-		ArticleBlur:   "",
-		ArticleShadow: "",
-		ArticleBorder: "",
-		ArticleRadius: "",
+		Enabled:            &enabled,
+		Backgrounds:        []BackgroundElement{},
+		Scripts:            []string{},
+		CSS:                "",
+		ArticleBg:          "",
+		ArticleBlurEnabled: &articleBlurEnabled,
+		ArticleBlur:        "",
+		ArticleShadow:      "",
+		ArticleBorder:      "",
+		ArticleRadius:      "",
 	}
 }
 
@@ -651,6 +657,15 @@ func (b *BackgroundConfig) IsEnabled() bool {
 		return false
 	}
 	return *b.Enabled
+}
+
+// IsArticleBlurEnabled returns whether backdrop blur is enabled for article areas.
+// Defaults to false if not explicitly set.
+func (b *BackgroundConfig) IsArticleBlurEnabled() bool {
+	if b.ArticleBlurEnabled == nil {
+		return false
+	}
+	return *b.ArticleBlurEnabled
 }
 
 // GlobConfig configures file globbing behavior.

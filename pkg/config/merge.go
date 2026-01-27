@@ -162,6 +162,9 @@ func mergeBackgroundConfig(base, override models.BackgroundConfig) models.Backgr
 	if override.ArticleBg != "" {
 		result.ArticleBg = override.ArticleBg
 	}
+	if override.ArticleBlurEnabled != nil {
+		result.ArticleBlurEnabled = override.ArticleBlurEnabled
+	}
 	if override.ArticleBlur != "" {
 		result.ArticleBlur = override.ArticleBlur
 	}

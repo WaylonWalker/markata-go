@@ -472,12 +472,10 @@ main.content-bg {
   margin: 0 auto;
 }
 
-/* Article wrapper - provides readable background when decorative backgrounds are enabled */
+/* Article wrapper styling */
 article.post {
-  background: var(--color-background);
   padding: var(--space-6) var(--space-8);
   border-radius: var(--radius-lg);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 /* When background decorations are present, ensure content stands out */
@@ -485,12 +483,6 @@ body:has(.background-layer) article.post,
 body:has(.background-decoration) article.post {
   background: var(--article-bg, var(--color-background));
   backdrop-filter: blur(var(--article-blur, 0px));
-}
-
-@media (prefers-color-scheme: dark) {
-  article.post {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  }
 }
 
 .post-header {
@@ -583,13 +575,11 @@ body:has(.background-decoration) article.post {
   margin: 0 auto;
 }
 
-/* Feed wrapper - provides readable background when decorative backgrounds are enabled */
+/* Feed wrapper styling */
 section.feed,
 div.feed {
-  background: var(--color-background);
   padding: var(--space-6) var(--space-8);
   border-radius: var(--radius-lg);
-  box-shadow: var(--article-shadow);
 }
 
 /* When background decorations are present, ensure feed content stands out */

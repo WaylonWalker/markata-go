@@ -318,15 +318,16 @@ type tomlThemeConfig struct {
 }
 
 type tomlBackgroundConfig struct {
-	Enabled       *bool                   `toml:"enabled"`
-	Backgrounds   []tomlBackgroundElement `toml:"backgrounds"`
-	Scripts       []string                `toml:"scripts"`
-	CSS           string                  `toml:"css"`
-	ArticleBg     string                  `toml:"article_bg"`
-	ArticleBlur   string                  `toml:"article_blur"`
-	ArticleShadow string                  `toml:"article_shadow"`
-	ArticleBorder string                  `toml:"article_border"`
-	ArticleRadius string                  `toml:"article_radius"`
+	Enabled            *bool                   `toml:"enabled"`
+	Backgrounds        []tomlBackgroundElement `toml:"backgrounds"`
+	Scripts            []string                `toml:"scripts"`
+	CSS                string                  `toml:"css"`
+	ArticleBg          string                  `toml:"article_bg"`
+	ArticleBlurEnabled *bool                   `toml:"article_blur_enabled"`
+	ArticleBlur        string                  `toml:"article_blur"`
+	ArticleShadow      string                  `toml:"article_shadow"`
+	ArticleBorder      string                  `toml:"article_border"`
+	ArticleRadius      string                  `toml:"article_radius"`
 }
 
 type tomlBackgroundElement struct {
@@ -988,15 +989,16 @@ func (b *tomlBackgroundConfig) toBackgroundConfig() models.BackgroundConfig {
 		}
 	}
 	return models.BackgroundConfig{
-		Enabled:       b.Enabled,
-		Backgrounds:   backgrounds,
-		Scripts:       b.Scripts,
-		CSS:           b.CSS,
-		ArticleBg:     b.ArticleBg,
-		ArticleBlur:   b.ArticleBlur,
-		ArticleShadow: b.ArticleShadow,
-		ArticleBorder: b.ArticleBorder,
-		ArticleRadius: b.ArticleRadius,
+		Enabled:            b.Enabled,
+		Backgrounds:        backgrounds,
+		Scripts:            b.Scripts,
+		CSS:                b.CSS,
+		ArticleBg:          b.ArticleBg,
+		ArticleBlurEnabled: b.ArticleBlurEnabled,
+		ArticleBlur:        b.ArticleBlur,
+		ArticleShadow:      b.ArticleShadow,
+		ArticleBorder:      b.ArticleBorder,
+		ArticleRadius:      b.ArticleRadius,
 	}
 }
 
@@ -1214,15 +1216,16 @@ type yamlThemeConfig struct {
 }
 
 type yamlBackgroundConfig struct {
-	Enabled       *bool                   `yaml:"enabled"`
-	Backgrounds   []yamlBackgroundElement `yaml:"backgrounds"`
-	Scripts       []string                `yaml:"scripts"`
-	CSS           string                  `yaml:"css"`
-	ArticleBg     string                  `yaml:"article_bg"`
-	ArticleBlur   string                  `yaml:"article_blur"`
-	ArticleShadow string                  `yaml:"article_shadow"`
-	ArticleBorder string                  `yaml:"article_border"`
-	ArticleRadius string                  `yaml:"article_radius"`
+	Enabled            *bool                   `yaml:"enabled"`
+	Backgrounds        []yamlBackgroundElement `yaml:"backgrounds"`
+	Scripts            []string                `yaml:"scripts"`
+	CSS                string                  `yaml:"css"`
+	ArticleBg          string                  `yaml:"article_bg"`
+	ArticleBlurEnabled *bool                   `yaml:"article_blur_enabled"`
+	ArticleBlur        string                  `yaml:"article_blur"`
+	ArticleShadow      string                  `yaml:"article_shadow"`
+	ArticleBorder      string                  `yaml:"article_border"`
+	ArticleRadius      string                  `yaml:"article_radius"`
 }
 
 type yamlBackgroundElement struct {
@@ -1266,15 +1269,16 @@ func (b *yamlBackgroundConfig) toBackgroundConfig() models.BackgroundConfig {
 		}
 	}
 	return models.BackgroundConfig{
-		Enabled:       b.Enabled,
-		Backgrounds:   backgrounds,
-		Scripts:       b.Scripts,
-		CSS:           b.CSS,
-		ArticleBg:     b.ArticleBg,
-		ArticleBlur:   b.ArticleBlur,
-		ArticleShadow: b.ArticleShadow,
-		ArticleBorder: b.ArticleBorder,
-		ArticleRadius: b.ArticleRadius,
+		Enabled:            b.Enabled,
+		Backgrounds:        backgrounds,
+		Scripts:            b.Scripts,
+		CSS:                b.CSS,
+		ArticleBg:          b.ArticleBg,
+		ArticleBlurEnabled: b.ArticleBlurEnabled,
+		ArticleBlur:        b.ArticleBlur,
+		ArticleShadow:      b.ArticleShadow,
+		ArticleBorder:      b.ArticleBorder,
+		ArticleRadius:      b.ArticleRadius,
 	}
 }
 
@@ -2029,15 +2033,16 @@ type jsonThemeConfig struct {
 }
 
 type jsonBackgroundConfig struct {
-	Enabled       *bool                   `json:"enabled"`
-	Backgrounds   []jsonBackgroundElement `json:"backgrounds"`
-	Scripts       []string                `json:"scripts"`
-	CSS           string                  `json:"css"`
-	ArticleBg     string                  `json:"article_bg"`
-	ArticleBlur   string                  `json:"article_blur"`
-	ArticleShadow string                  `json:"article_shadow"`
-	ArticleBorder string                  `json:"article_border"`
-	ArticleRadius string                  `json:"article_radius"`
+	Enabled            *bool                   `json:"enabled"`
+	Backgrounds        []jsonBackgroundElement `json:"backgrounds"`
+	Scripts            []string                `json:"scripts"`
+	CSS                string                  `json:"css"`
+	ArticleBg          string                  `json:"article_bg"`
+	ArticleBlurEnabled *bool                   `json:"article_blur_enabled"`
+	ArticleBlur        string                  `json:"article_blur"`
+	ArticleShadow      string                  `json:"article_shadow"`
+	ArticleBorder      string                  `json:"article_border"`
+	ArticleRadius      string                  `json:"article_radius"`
 }
 
 type jsonBackgroundElement struct {
@@ -2081,15 +2086,16 @@ func (b *jsonBackgroundConfig) toBackgroundConfig() models.BackgroundConfig {
 		}
 	}
 	return models.BackgroundConfig{
-		Enabled:       b.Enabled,
-		Backgrounds:   backgrounds,
-		Scripts:       b.Scripts,
-		CSS:           b.CSS,
-		ArticleBg:     b.ArticleBg,
-		ArticleBlur:   b.ArticleBlur,
-		ArticleShadow: b.ArticleShadow,
-		ArticleBorder: b.ArticleBorder,
-		ArticleRadius: b.ArticleRadius,
+		Enabled:            b.Enabled,
+		Backgrounds:        backgrounds,
+		Scripts:            b.Scripts,
+		CSS:                b.CSS,
+		ArticleBg:          b.ArticleBg,
+		ArticleBlurEnabled: b.ArticleBlurEnabled,
+		ArticleBlur:        b.ArticleBlur,
+		ArticleShadow:      b.ArticleShadow,
+		ArticleBorder:      b.ArticleBorder,
+		ArticleRadius:      b.ArticleRadius,
 	}
 }
 
