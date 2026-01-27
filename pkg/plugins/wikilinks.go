@@ -213,12 +213,7 @@ func (p *WikilinksPlugin) processWikilinksInText(text string, postMap map[string
 // normalizeSlug normalizes a slug for lookup by converting to lowercase
 // and replacing spaces with hyphens.
 func normalizeSlug(slug string) string {
-	slug = strings.ToLower(slug)
-	slug = strings.ReplaceAll(slug, " ", "-")
-	slug = slugifyRegex.ReplaceAllString(slug, "")
-	slug = multiHyphenRegex.ReplaceAllString(slug, "-")
-	slug = strings.Trim(slug, "-")
-	return slug
+	return models.Slugify(slug)
 }
 
 // SetWarnOnBroken enables or disables warnings for broken links.

@@ -4,7 +4,6 @@ package plugins
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -362,13 +361,9 @@ func getAutoFeedsConfig(config *lifecycle.Config) AutoFeedsConfig {
 }
 
 // slugify converts a string to a URL-safe slug.
+// This is a convenience wrapper around models.Slugify for internal use.
 func slugify(s string) string {
-	s = strings.ToLower(s)
-	s = strings.ReplaceAll(s, " ", "-")
-	s = slugifyRegex.ReplaceAllString(s, "")
-	s = multiHyphenRegex.ReplaceAllString(s, "-")
-	s = strings.Trim(s, "-")
-	return s
+	return models.Slugify(s)
 }
 
 // Ensure AutoFeedsPlugin implements the required interfaces.

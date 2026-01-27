@@ -81,9 +81,6 @@ type TocEntry struct {
 // Captures: Group 1 = hash marks, Group 2 = heading text
 var headingRegex = regexp.MustCompile(`(?m)^(#{1,6})\s+(.+?)(?:\s*#*)?\s*$`)
 
-// idRegex matches characters that should be removed from heading IDs.
-var idRegex = regexp.MustCompile(`[^\w\s-]`)
-
 // extractTOC extracts headings from markdown content and builds a hierarchical TOC.
 func (p *TocPlugin) extractTOC(content string) []*TocEntry {
 	matches := headingRegex.FindAllStringSubmatch(content, -1)
@@ -126,20 +123,13 @@ func (p *TocPlugin) extractTOC(content string) []*TocEntry {
 // generateID creates a URL-safe ID from heading text.
 // Handles duplicate IDs by appending numbers.
 func (p *TocPlugin) generateID(text string, idCounts map[string]int) string {
-	// Convert to lowercase
-	id := strings.ToLower(text)
+	// Use the shared Slugify function for consistent slug generation
+	id := models.Slugify(text)
 
-	// Replace spaces with hyphens
-	id = strings.ReplaceAll(id, " ", "-")
-
-	// Remove special characters
-	id = idRegex.ReplaceAllString(id, "")
-
-	// Collapse multiple hyphens
-	id = multiHyphenRegex.ReplaceAllString(id, "-")
-
-	// Trim leading/trailing hyphens
-	id = strings.Trim(id, "-")
+	// Handle empty ID
+	if id == "" {
+		id = "heading"
+	}
 
 	// Handle duplicates
 	baseID := id

@@ -4,7 +4,6 @@ package plugins
 import (
 	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -191,20 +190,8 @@ func (p *HeadingAnchorsPlugin) generateID(content string, idCounts map[string]in
 	// Strip HTML tags from content
 	text := stripHTMLTags(content)
 
-	// Convert to lowercase
-	id := strings.ToLower(text)
-
-	// Replace spaces with hyphens
-	id = strings.ReplaceAll(id, " ", "-")
-
-	// Remove special characters (keep alphanumeric, hyphens, underscores)
-	id = slugifyRegex.ReplaceAllString(id, "")
-
-	// Collapse multiple hyphens
-	id = multiHyphenRegex.ReplaceAllString(id, "-")
-
-	// Trim leading/trailing hyphens
-	id = strings.Trim(id, "-")
+	// Use the shared Slugify function for consistent slug generation
+	id := models.Slugify(text)
 
 	// Handle empty ID
 	if id == "" {

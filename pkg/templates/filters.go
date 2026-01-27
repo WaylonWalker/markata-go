@@ -6,7 +6,8 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
+
+	"github.com/WaylonWalker/markata-go/pkg/models"
 
 	"github.com/flosch/pongo2/v6"
 )
@@ -122,34 +123,11 @@ func filterDateFormat(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 }
 
 // filterSlugify converts a string to a URL-safe slug.
-// Converts to lowercase, replaces spaces with hyphens, removes special characters.
+// Converts to lowercase, replaces non-alphanumeric chars with hyphens,
+// collapses multiple hyphens, and trims leading/trailing hyphens.
 func filterSlugify(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s := in.String()
-
-	// Convert to lowercase
-	s = strings.ToLower(s)
-
-	// Replace spaces with hyphens
-	s = strings.ReplaceAll(s, " ", "-")
-
-	// Remove non-alphanumeric characters except hyphens
-	var result strings.Builder
-	for _, r := range s {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' {
-			result.WriteRune(r)
-		}
-	}
-	s = result.String()
-
-	// Collapse multiple hyphens
-	for strings.Contains(s, "--") {
-		s = strings.ReplaceAll(s, "--", "-")
-	}
-
-	// Trim leading/trailing hyphens
-	s = strings.Trim(s, "-")
-
-	return pongo2.AsValue(s), nil
+	return pongo2.AsValue(models.Slugify(s)), nil
 }
 
 // filterTruncate truncates a string to a specified length with an ellipsis.
