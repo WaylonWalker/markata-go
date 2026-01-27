@@ -192,7 +192,45 @@ func ParseTOML(data []byte) (*models.Config, error) {
 		return nil, err
 	}
 
-	return wrapper.MarkataGo.toConfig(), nil
+	config := wrapper.MarkataGo.toConfig()
+
+	// Also parse into a raw map to capture unknown plugin sections
+	var rawWrapper map[string]any
+	if err := toml.Unmarshal(data, &rawWrapper); err != nil {
+		return config, nil // Non-fatal: continue with parsed config
+	}
+
+	// Extract the markata-go section as a map
+	if markataGoRaw, ok := rawWrapper["markata-go"].(map[string]any); ok {
+		// Initialize Extra if needed
+		if config.Extra == nil {
+			config.Extra = make(map[string]any)
+		}
+
+		// List of known top-level keys that are already parsed into struct fields
+		knownKeys := map[string]bool{
+			"output_dir": true, "url": true, "title": true, "description": true,
+			"author": true, "assets_dir": true, "templates_dir": true,
+			"nav": true, "footer": true, "hooks": true, "disabled_hooks": true,
+			"glob": true, "markdown": true, "feeds": true, "feed_defaults": true,
+			"concurrency": true, "theme": true, "post_formats": true,
+			"seo": true, "indieauth": true, "webmention": true, "components": true,
+			"layout": true, "sidebar": true, "toc": true, "header": true,
+			"blogroll": true, "mentions": true, "template_presets": true,
+			"default_templates": true, "auto_feeds": true, "head": true,
+			"content_templates": true, "footer_layout": true, "search": true,
+			"plugins": true, "thoughts": true, "wikilinks": true,
+		}
+
+		// Copy unknown sections to Extra
+		for key, value := range markataGoRaw {
+			if !knownKeys[key] {
+				config.Extra[key] = value
+			}
+		}
+	}
+
+	return config, nil
 }
 
 // ParseYAML parses YAML configuration data into a Config struct.
