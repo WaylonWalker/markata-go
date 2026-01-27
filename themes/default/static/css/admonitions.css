@@ -116,8 +116,8 @@
 /* Asides are positioned in the margin of the article, outside the main content flow */
 
 aside.admonition.aside {
-  --admonition-color: #6b7280;
-  --admonition-bg: #f9fafb;
+  --admonition-color: var(--admonition-aside-border, #6b7280);
+  --admonition-bg: var(--admonition-aside-bg, var(--color-surface, #f9fafb));
   position: relative;
   border-left: none;
   border: 1px solid var(--color-border);
@@ -126,7 +126,7 @@ aside.admonition.aside {
   line-height: var(--leading-relaxed);
   width: 250px;
   padding: var(--space-3);
-  margin: 0;
+  margin: var(--space-4) 0;
 }
 
 /* Right margin positioning (default, Tufte-style) */
@@ -187,7 +187,7 @@ aside.admonition.aside .admonition-title::before {
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   aside.admonition.aside {
-    --admonition-bg: #1f2937;
+    --admonition-bg: var(--admonition-aside-bg-dark, var(--color-surface-dark, #1f2937));
   }
 }
 
