@@ -105,8 +105,8 @@
 
 {% block footer %}
 {% if config.layout.blog.footer_style != 'none' %}
-<footer class="site-footer site-footer--{{ config.layout.blog.footer_style | default:'full' }}" role="contentinfo">
-    {% include "components/footer.html" %}
-</footer>
+{% with footer_style=config.layout.blog.footer_style|default:"full" %}
+{% include "components/footer.html" %}
+{% endwith %}
 {% endif %}
 {% endblock %}
