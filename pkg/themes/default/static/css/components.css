@@ -13,11 +13,13 @@
   max-width: var(--site-width, 1400px);
   margin: 0 auto;
   padding: 0 1rem;
+  width: 100%;
 }
 
 .main-content {
   flex: 1;
   min-width: 0; /* Prevent flex item overflow */
+  max-width: 100%;
 }
 
 /* ==========================================================================
@@ -340,6 +342,27 @@
   .doc-sidebar,
   .feed-sidebar {
     display: none;
+  }
+}
+
+/* Mobile: ensure page-wrapper doesn't overflow */
+@media (max-width: 768px) {
+  .page-wrapper {
+    padding: 0 var(--space-3, 0.75rem);
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-wrapper {
+    padding: 0 var(--space-2, 0.5rem);
+  }
+}
+
+@media (max-width: 375px) {
+  .page-wrapper {
+    padding: 0 var(--space-1, 0.25rem);
   }
 }
 
