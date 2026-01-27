@@ -581,12 +581,6 @@ func generateSlug(path string, metadata map[string]interface{}) string {
 	return models.Slugify(basename)
 }
 
-// slugifyRegex matches characters that are not alphanumeric, hyphens, or underscores
-var slugifyRegex = regexp.MustCompile(`[^a-z0-9\-_]+`)
-
-// multiHyphenRegex matches multiple consecutive hyphens
-var multiHyphenRegex = regexp.MustCompile(`-+`)
-
 // wikilinkRegex matches [[slug]] and [[slug|display text]] patterns.
 var wikilinkRegex = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 
