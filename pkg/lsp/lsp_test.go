@@ -363,6 +363,127 @@ This is the body with a [[wikilink]].
 	}
 }
 
+func TestIndexAliases(t *testing.T) {
+	logger := log.New(os.Stderr, "[test] ", 0)
+	idx := NewIndex(logger)
+
+	// Test indexing content with aliases
+	content := `---
+title: "What I'm Doing Now"
+slug: now
+aliases:
+  - doing
+  - upto
+---
+
+This is my now page.
+`
+
+	err := idx.indexContent("now.md", content)
+	if err != nil {
+		t.Fatalf("indexContent failed: %v", err)
+	}
+
+	// Test GetBySlug returns post for slug
+	post := idx.GetBySlug("now")
+	if post == nil {
+		t.Fatal("GetBySlug('now') returned nil")
+	}
+	if post.Title != "What I'm Doing Now" {
+		t.Errorf("Title = %q, want %q", post.Title, "What I'm Doing Now")
+	}
+
+	// Test Aliases field is populated
+	if len(post.Aliases) != 2 {
+		t.Errorf("got %d aliases, want 2", len(post.Aliases))
+	}
+
+	// Test GetBySlug returns post for alias
+	postByAlias := idx.GetBySlug("doing")
+	if postByAlias == nil {
+		t.Fatal("GetBySlug('doing') returned nil for alias")
+	}
+	if postByAlias != post {
+		t.Error("GetBySlug('doing') should return same post as GetBySlug('now')")
+	}
+
+	// Test SearchPostsWithMatch finds post by alias prefix
+	results := idx.SearchPostsWithMatch("do")
+	if len(results) != 1 {
+		t.Errorf("SearchPostsWithMatch('do') returned %d results, want 1", len(results))
+	}
+	if len(results) > 0 && results[0].MatchedBy != MatchTypeAlias {
+		t.Errorf("SearchPostsWithMatch('do').MatchedBy = %q, want %q", results[0].MatchedBy, MatchTypeAlias)
+	}
+
+	// Test SearchPostsWithMatch prefers slug over alias
+	resultsNow := idx.SearchPostsWithMatch("now")
+	if len(resultsNow) != 1 {
+		t.Errorf("SearchPostsWithMatch('now') returned %d results, want 1", len(resultsNow))
+	}
+	if len(resultsNow) > 0 && resultsNow[0].MatchedBy != MatchTypeSlug {
+		t.Errorf("SearchPostsWithMatch('now').MatchedBy = %q, want %q", resultsNow[0].MatchedBy, MatchTypeSlug)
+	}
+
+	// Test AllPosts deduplicates entries
+	allPosts := idx.AllPosts()
+	if len(allPosts) != 1 {
+		t.Errorf("AllPosts returned %d posts, want 1 (should deduplicate aliases)", len(allPosts))
+	}
+}
+
+func TestIndexAliasSlugPrecedence(t *testing.T) {
+	logger := log.New(os.Stderr, "[test] ", 0)
+	idx := NewIndex(logger)
+
+	// Index two posts where one has an alias that matches the other's slug
+	content1 := `---
+title: "Post About Doing Things"
+slug: doing
+---
+
+Main content.
+`
+	content2 := `---
+title: "What I'm Doing Now"
+slug: now
+aliases:
+  - doing
+  - upto
+---
+
+My now page.
+`
+
+	// Index the slug first
+	if err := idx.indexContent("doing.md", content1); err != nil {
+		t.Fatalf("indexContent for doing.md failed: %v", err)
+	}
+	// Index the post with alias second
+	if err := idx.indexContent("now.md", content2); err != nil {
+		t.Fatalf("indexContent for now.md failed: %v", err)
+	}
+
+	// Slug should take precedence
+	postDoing := idx.GetBySlug("doing")
+	if postDoing == nil {
+		t.Fatal("GetBySlug('doing') returned nil")
+	}
+	if postDoing.Title != "Post About Doing Things" {
+		t.Errorf("GetBySlug('doing').Title = %q, want %q (slug should take precedence over alias)",
+			postDoing.Title, "Post About Doing Things")
+	}
+
+	// Other alias should still work
+	postUpto := idx.GetBySlug("upto")
+	if postUpto == nil {
+		t.Fatal("GetBySlug('upto') returned nil")
+	}
+	if postUpto.Title != "What I'm Doing Now" {
+		t.Errorf("GetBySlug('upto').Title = %q, want %q", postUpto.Title, "What I'm Doing Now")
+	}
+}
+
 func TestURIConversion(t *testing.T) {
 	tests := []struct {
 		name string
