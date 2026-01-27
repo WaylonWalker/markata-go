@@ -7,6 +7,7 @@ package themes
 import (
 	"embed"
 	"io/fs"
+	"path"
 	"path/filepath"
 )
 
@@ -44,12 +45,12 @@ func DefaultTheme() fs.FS {
 
 // ReadTemplate reads a template file from the embedded default theme.
 func ReadTemplate(name string) ([]byte, error) {
-	return defaultTheme.ReadFile(filepath.Join("default", "templates", name))
+	return defaultTheme.ReadFile(path.Join("default", "templates", name))
 }
 
 // ReadStatic reads a static file from the embedded default theme.
 func ReadStatic(name string) ([]byte, error) {
-	return defaultTheme.ReadFile(filepath.Join("default", "static", name))
+	return defaultTheme.ReadFile(path.Join("default", "static", name))
 }
 
 // ListTemplates returns all template files in the default theme.
