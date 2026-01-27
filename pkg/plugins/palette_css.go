@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 )
 
@@ -343,7 +344,12 @@ func (p *PaletteCSSPlugin) getPaletteConfig(extra map[string]interface{}) (palet
 		return "", "", ""
 	}
 
-	// Check [markata-go.theme] section
+	// Check if theme is a models.ThemeConfig (from core.go)
+	if themeConfig, ok := extra["theme"].(models.ThemeConfig); ok {
+		return themeConfig.Palette, themeConfig.PaletteLight, themeConfig.PaletteDark
+	}
+
+	// Check if theme is a map[string]interface{} (from benchmark.go or raw TOML)
 	theme, ok := extra["theme"].(map[string]interface{})
 	if !ok {
 		return "", "", ""

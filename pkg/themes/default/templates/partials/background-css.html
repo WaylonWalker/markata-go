@@ -16,11 +16,11 @@
     div.feed,
     .blogroll-page,
     .reader-page {
-      /* {% if config.theme.background.article_bg %}background: var(--article-bg);{% endif %} /*
-      /* {% if config.theme.background.article_blur %}backdrop-filter: blur(var(--article-blur));{% endif %} */
-      /* {% if config.theme.background.article_shadow %}box-shadow: var(--article-shadow);{% endif %} */
+      {% if config.theme.background.article_bg %}background: var(--article-bg);{% endif %}
+      {% if config.theme.background.article_blur_enabled and config.theme.background.article_blur %}backdrop-filter: blur(var(--article-blur));{% endif %}
+      {% if config.theme.background.article_shadow %}box-shadow: var(--article-shadow);{% endif %}
       {% if config.theme.background.article_border %}border: var(--article-border);{% endif %}
-      /* {% if config.theme.background.article_radius %}border-radius: var(--article-radius);{% endif %} */
+      {% if config.theme.background.article_radius %}border-radius: var(--article-radius);{% endif %}
       {% if config.theme.background.article_bg or config.theme.background.article_shadow %}padding: var(--space-lg, 2rem);{% endif %}
     }
     {% if config.theme.background.css %}
