@@ -390,34 +390,40 @@ func (p *PublishHTMLPlugin) buildTextContentFallback(post *models.Post) string {
 	return buf.String()
 }
 
-// writeReversedFormatOutput writes the primary content at /slug.ext (canonical URL)
-// and optionally creates a backwards-compatible redirect at /slug/index.html.
+// writeReversedFormatOutput writes content for .txt and .md formats using a directory-based
+// structure that supports trailing-slash URLs.
 //
-// This is the REVERSED approach for txt/md files:
-// - Canonical content: /robots.txt, /llms.txt (standard web file locations)
-// - Redirect: /robots/index.html → /robots.txt (backwards compatibility)
+// Output structure:
+// - /slug/index.<ext> - actual content (e.g., /test/index.txt)
+// - /slug.<ext>/index.html - redirect to /slug/index.<ext> (e.g., /test.txt/index.html -> /test/index.txt)
+// - /slug/index.html - redirect to /slug.<ext> if HTML is disabled (backwards compatibility)
 //
-// This allows standard web txt files (robots.txt, llms.txt, humans.txt) to be
-// served at their expected locations while maintaining the directory-based
-// URL structure for backward compatibility.
+// This approach ensures:
+// 1. Visiting /test.txt serves the redirect at /test.txt/index.html -> /test/index.txt
+// 2. Visiting /test.txt/ also serves the redirect (same file)
+// 3. Visiting /test/ serves HTML content (if enabled) or redirect to text/md
+// 4. Content is accessible at /test/index.txt directly
 //
-// If skipRedirect is true, only the primary content is written (used when HTML
-// format is also enabled, since /slug/index.html already has the main content).
-func (p *PublishHTMLPlugin) writeReversedFormatOutput(slug, ext, content, outputDir string, skipRedirect bool) error {
-	// Write primary content at /slug.ext (e.g., /robots.txt)
-	primaryPath := filepath.Join(outputDir, slug+"."+ext)
+// If skipSlugRedirect is true, only the /slug/index.html redirect is skipped
+// (used when HTML format is also enabled, since /slug/index.html has the main HTML content).
+//
+// Fixes: https://github.com/WaylonWalker/markata-go/issues/465
+func (p *PublishHTMLPlugin) writeReversedFormatOutput(slug, ext, content, outputDir string, skipSlugRedirect bool) error {
+	// Ensure slug directory exists for content
+	slugDir := filepath.Join(outputDir, slug)
+	if err := os.MkdirAll(slugDir, 0o755); err != nil {
+		return fmt.Errorf("creating slug directory %s: %w", slugDir, err)
+	}
+
+	// Write actual content at /slug/index.<ext> (e.g., /test/index.txt)
+	contentPath := filepath.Join(slugDir, "index."+ext)
 	//nolint:gosec // G306: Output files need 0644 for web serving
-	if err := os.WriteFile(primaryPath, []byte(content), 0o644); err != nil {
-		return fmt.Errorf("writing %s: %w", primaryPath, err)
+	if err := os.WriteFile(contentPath, []byte(content), 0o644); err != nil {
+		return fmt.Errorf("writing %s: %w", contentPath, err)
 	}
 
-	// Skip redirect if HTML format is enabled (index.html already has main content)
-	if skipRedirect {
-		return nil
-	}
-
-	// Create redirect HTML that points from /slug/index.html to /slug.ext
-	targetURL := fmt.Sprintf("/%s.%s", slug, ext)
+	// Create redirect HTML that points to /slug/index.<ext>
+	targetURL := fmt.Sprintf("/%s/index.%s", slug, ext)
 	redirectHTML := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
@@ -431,19 +437,28 @@ func (p *PublishHTMLPlugin) writeReversedFormatOutput(slug, ext, content, output
 </body>
 </html>`, targetURL, targetURL, targetURL, targetURL)
 
-	// Create directory at /slug/ for the redirect (e.g., /robots/)
-	redirectDir := filepath.Join(outputDir, slug)
-	if err := os.MkdirAll(redirectDir, 0o755); err != nil {
-		return fmt.Errorf("creating redirect directory %s: %w", redirectDir, err)
+	// Create redirect at /slug.<ext>/index.html (e.g., /test.txt/index.html)
+	// This enables both /test.txt and /test.txt/ to redirect to /test/index.txt
+	// Fixes: https://github.com/WaylonWalker/markata-go/issues/465
+	extRedirectDir := filepath.Join(outputDir, slug+"."+ext)
+	if err := os.MkdirAll(extRedirectDir, 0o755); err != nil {
+		return fmt.Errorf("creating format redirect directory %s: %w", extRedirectDir, err)
 	}
 
-	// Write index.html redirect inside the directory (e.g., /robots/index.html)
-	// This redirects to the canonical /slug.ext location
-	// Note: Redirects must always be HTML for browsers to parse <meta http-equiv="refresh">
-	redirectPath := filepath.Join(redirectDir, "index.html")
+	extRedirectPath := filepath.Join(extRedirectDir, "index.html")
 	//nolint:gosec // G306: Output files need 0644 for web serving
-	if err := os.WriteFile(redirectPath, []byte(redirectHTML), 0o644); err != nil {
-		return fmt.Errorf("writing redirect %s: %w", redirectPath, err)
+	if err := os.WriteFile(extRedirectPath, []byte(redirectHTML), 0o644); err != nil {
+		return fmt.Errorf("writing format redirect %s: %w", extRedirectPath, err)
+	}
+
+	// Create redirect at /slug/index.html if HTML is not enabled
+	// (when HTML is enabled, /slug/index.html already has the main HTML content)
+	if !skipSlugRedirect {
+		redirectPath := filepath.Join(slugDir, "index.html")
+		//nolint:gosec // G306: Output files need 0644 for web serving
+		if err := os.WriteFile(redirectPath, []byte(redirectHTML), 0o644); err != nil {
+			return fmt.Errorf("writing redirect %s: %w", redirectPath, err)
+		}
 	}
 
 	return nil
