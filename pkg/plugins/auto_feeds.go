@@ -52,7 +52,16 @@ type AutoArchiveConfig struct {
 	Formats models.FeedFormats `json:"formats" yaml:"formats" toml:"formats"`
 }
 
+// Default slug prefix constants for auto-generated feeds.
+const (
+	defaultTagsPrefix       = "tags"
+	defaultCategoriesPrefix = "categories"
+	defaultArchivePrefix    = "archive"
+)
+
 // AutoFeedsPlugin automatically generates feeds for tags, categories, and date archives.
+// It implements ConfigurePlugin to pre-register synthetic posts for wikilink resolution,
+// and CollectPlugin to generate the actual feed content.
 type AutoFeedsPlugin struct{}
 
 // NewAutoFeedsPlugin creates a new AutoFeedsPlugin.
@@ -63,6 +72,162 @@ func NewAutoFeedsPlugin() *AutoFeedsPlugin {
 // Name returns the unique name of the plugin.
 func (p *AutoFeedsPlugin) Name() string {
 	return "auto_feeds"
+}
+
+// Priority returns the plugin's priority for a given stage.
+func (p *AutoFeedsPlugin) Priority(stage lifecycle.Stage) int {
+	switch stage {
+	case lifecycle.StageLoad:
+		// Run late in Load to ensure all posts are loaded
+		// This allows us to scan for tags/categories before Transform stage
+		return lifecycle.PriorityLate
+	case lifecycle.StageCollect:
+		// Run early in Collect to generate feeds before other plugins need them
+		return lifecycle.PriorityDefault
+	default:
+		return lifecycle.PriorityDefault
+	}
+}
+
+// Load pre-registers synthetic posts for auto-generated feeds
+// so they can be resolved by wikilinks during the Transform stage.
+// This runs after posts are loaded but before Transform stage.
+func (p *AutoFeedsPlugin) Load(m *lifecycle.Manager) error {
+	posts := m.Posts()
+	config := m.Config()
+
+	autoConfig := getAutoFeedsConfig(config)
+
+	// Helper to create string pointer
+	strPtr := func(s string) *string { return &s }
+
+	// Pre-register tag feed synthetic posts
+	if autoConfig.Tags.Enabled {
+		prefix := autoConfig.Tags.SlugPrefix
+		if prefix == "" {
+			prefix = defaultTagsPrefix
+		}
+
+		// Collect all unique tags
+		tags := make(map[string]bool)
+		for _, post := range posts {
+			for _, tag := range post.Tags {
+				tags[tag] = true
+			}
+		}
+
+		// Register synthetic post for each tag
+		for tag := range tags {
+			slug := prefix + "/" + slugify(tag)
+			syntheticPost := &models.Post{
+				Slug:        slug,
+				Title:       strPtr(fmt.Sprintf("Posts tagged: %s", tag)),
+				Description: strPtr(fmt.Sprintf("All posts with the tag %q", tag)),
+				Href:        "/" + slug + "/",
+				Published:   true,
+				Skip:        true,
+				// Add aliases so [[ python ]] resolves to tags/python
+				Extra: map[string]interface{}{
+					"aliases": []interface{}{tag, slugify(tag)},
+				},
+			}
+			m.AddPost(syntheticPost)
+		}
+	}
+
+	// Pre-register category feed synthetic posts
+	if autoConfig.Categories.Enabled {
+		prefix := autoConfig.Categories.SlugPrefix
+		if prefix == "" {
+			prefix = defaultCategoriesPrefix
+		}
+
+		// Collect all unique categories
+		categories := make(map[string]bool)
+		for _, post := range posts {
+			if cat, ok := post.Extra["category"].(string); ok && cat != "" {
+				categories[cat] = true
+			}
+		}
+
+		// Register synthetic post for each category
+		for cat := range categories {
+			slug := prefix + "/" + slugify(cat)
+			syntheticPost := &models.Post{
+				Slug:        slug,
+				Title:       strPtr(fmt.Sprintf("Category: %s", cat)),
+				Description: strPtr(fmt.Sprintf("All posts in the %q category", cat)),
+				Href:        "/" + slug + "/",
+				Published:   true,
+				Skip:        true,
+				// Add aliases so [[ Technology ]] resolves to categories/technology
+				Extra: map[string]interface{}{
+					"aliases": []interface{}{cat, slugify(cat)},
+				},
+			}
+			m.AddPost(syntheticPost)
+		}
+	}
+
+	// Pre-register archive feed synthetic posts
+	if autoConfig.Archives.Enabled {
+		prefix := autoConfig.Archives.SlugPrefix
+		if prefix == "" {
+			prefix = defaultArchivePrefix
+		}
+
+		// Collect all unique year/month combinations
+		years := make(map[int]bool)
+		yearMonths := make(map[string]bool)
+
+		for _, post := range posts {
+			if post.Date != nil {
+				year := post.Date.Year()
+				month := post.Date.Month()
+				years[year] = true
+				yearMonths[fmt.Sprintf("%04d/%02d", year, month)] = true
+			}
+		}
+
+		// Register synthetic posts for yearly archives
+		if autoConfig.Archives.YearlyFeeds {
+			for year := range years {
+				slug := fmt.Sprintf("%s/%04d", prefix, year)
+				syntheticPost := &models.Post{
+					Slug:        slug,
+					Title:       strPtr(fmt.Sprintf("Archive: %d", year)),
+					Description: strPtr(fmt.Sprintf("All posts from %d", year)),
+					Href:        "/" + slug + "/",
+					Published:   true,
+					Skip:        true,
+				}
+				m.AddPost(syntheticPost)
+			}
+		}
+
+		// Register synthetic posts for monthly archives
+		if autoConfig.Archives.MonthlyFeeds {
+			for ym := range yearMonths {
+				var year, month int
+				//nolint:errcheck // best-effort parsing
+				fmt.Sscanf(ym, "%d/%d", &year, &month)
+
+				slug := fmt.Sprintf("%s/%s", prefix, ym)
+				monthName := time.Month(month).String()
+				syntheticPost := &models.Post{
+					Slug:        slug,
+					Title:       strPtr(fmt.Sprintf("Archive: %s %d", monthName, year)),
+					Description: strPtr(fmt.Sprintf("All posts from %s %d", monthName, year)),
+					Href:        "/" + slug + "/",
+					Published:   true,
+					Skip:        true,
+				}
+				m.AddPost(syntheticPost)
+			}
+		}
+	}
+
+	return nil
 }
 
 // Collect generates automatic feeds for tags, categories, and date archives.
@@ -177,7 +342,7 @@ func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeed
 	feeds := make([]models.FeedConfig, 0, len(tags))
 	prefix := config.SlugPrefix
 	if prefix == "" {
-		prefix = "tags"
+		prefix = defaultTagsPrefix
 	}
 
 	for _, tag := range tags {
@@ -217,7 +382,7 @@ func (p *AutoFeedsPlugin) generateCategoryFeeds(posts []*models.Post, config Aut
 	feeds := make([]models.FeedConfig, 0, len(categories))
 	prefix := config.SlugPrefix
 	if prefix == "" {
-		prefix = "categories"
+		prefix = defaultCategoriesPrefix
 	}
 
 	for _, cat := range categories {
@@ -255,7 +420,7 @@ func (p *AutoFeedsPlugin) generateArchiveFeeds(posts []*models.Post, config Auto
 	var feeds []models.FeedConfig
 	prefix := config.SlugPrefix
 	if prefix == "" {
-		prefix = "archive"
+		prefix = defaultArchivePrefix
 	}
 
 	// Create yearly feeds
@@ -321,7 +486,7 @@ func getAutoFeedsConfig(config *lifecycle.Config) AutoFeedsConfig {
 	defaultConfig := AutoFeedsConfig{
 		Tags: AutoFeedTypeConfig{
 			Enabled:    true, // Tag feeds enabled by default
-			SlugPrefix: "tags",
+			SlugPrefix: defaultTagsPrefix,
 			Formats: models.FeedFormats{
 				HTML: true,
 				RSS:  true,
@@ -329,7 +494,7 @@ func getAutoFeedsConfig(config *lifecycle.Config) AutoFeedsConfig {
 		},
 		Categories: AutoFeedTypeConfig{
 			Enabled:    false,
-			SlugPrefix: "categories",
+			SlugPrefix: defaultCategoriesPrefix,
 			Formats: models.FeedFormats{
 				HTML: true,
 				RSS:  true,
@@ -337,7 +502,7 @@ func getAutoFeedsConfig(config *lifecycle.Config) AutoFeedsConfig {
 		},
 		Archives: AutoArchiveConfig{
 			Enabled:      false,
-			SlugPrefix:   "archive",
+			SlugPrefix:   defaultArchivePrefix,
 			YearlyFeeds:  true,
 			MonthlyFeeds: false,
 			Formats: models.FeedFormats{
@@ -368,6 +533,8 @@ func slugify(s string) string {
 
 // Ensure AutoFeedsPlugin implements the required interfaces.
 var (
-	_ lifecycle.Plugin        = (*AutoFeedsPlugin)(nil)
-	_ lifecycle.CollectPlugin = (*AutoFeedsPlugin)(nil)
+	_ lifecycle.Plugin         = (*AutoFeedsPlugin)(nil)
+	_ lifecycle.LoadPlugin     = (*AutoFeedsPlugin)(nil)
+	_ lifecycle.CollectPlugin  = (*AutoFeedsPlugin)(nil)
+	_ lifecycle.PriorityPlugin = (*AutoFeedsPlugin)(nil)
 )

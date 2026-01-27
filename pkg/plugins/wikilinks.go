@@ -153,18 +153,29 @@ func (p *WikilinksPlugin) processWikilinksInText(text string, postMap map[string
 			displayText = strings.TrimSpace(groups[2])
 		}
 
-		// Normalize slug for lookup
-		normalizedSlug := normalizeSlug(slug)
+		// Try multiple lookup strategies:
+		// 1. Exact match (lowercased) - for paths with slashes like "archive/2024"
+		// 2. Slugified match - for human-friendly names like "Python Tutorial" -> "python-tutorial"
+		var targetPost *models.Post
+		var found bool
 
-		// Look up the target post
-		targetPost, found := postMap[normalizedSlug]
+		// Strategy 1: Exact match (lowercased)
+		exactSlug := strings.ToLower(slug)
+		targetPost, found = postMap[exactSlug]
+
+		// Strategy 2: Slugified match
 		if !found {
-			// Try case-insensitive lookup
-			for postSlug, post := range postMap {
-				if strings.EqualFold(postSlug, normalizedSlug) {
-					targetPost = post
-					found = true
-					break
+			normalizedSlug := normalizeSlug(slug)
+			targetPost, found = postMap[normalizedSlug]
+
+			// Try case-insensitive lookup for slugified version
+			if !found {
+				for postSlug, post := range postMap {
+					if strings.EqualFold(postSlug, normalizedSlug) {
+						targetPost = post
+						found = true
+						break
+					}
 				}
 			}
 		}
