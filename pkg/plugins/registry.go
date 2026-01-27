@@ -73,6 +73,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["webmentions"] = func() lifecycle.Plugin { return NewWebMentionsPlugin() }
 	pluginRegistry.constructors["background"] = func() lifecycle.Plugin { return NewBackgroundPlugin() }
 	pluginRegistry.constructors["image_zoom"] = func() lifecycle.Plugin { return NewImageZoomPlugin() }
+	pluginRegistry.constructors["static_file_conflicts"] = func() lifecycle.Plugin { return NewStaticFileConflictsPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -149,10 +150,11 @@ func DefaultPlugins() []lifecycle.Plugin {
 		// Collect stage plugins
 		NewFeedsPlugin(),
 		NewAutoFeedsPlugin(),
-		NewBlogrollPlugin(),       // Fetch external feeds for blogroll
-		NewStatsPlugin(),          // Aggregate stats after feeds are built (runs Collect)
-		NewPrevNextPlugin(),       // Calculate prev/next after feeds are built
-		NewOverwriteCheckPlugin(), // Detect conflicting output paths
+		NewBlogrollPlugin(),            // Fetch external feeds for blogroll
+		NewStatsPlugin(),               // Aggregate stats after feeds are built (runs Collect)
+		NewPrevNextPlugin(),            // Calculate prev/next after feeds are built
+		NewOverwriteCheckPlugin(),      // Detect conflicting output paths
+		NewStaticFileConflictsPlugin(), // Detect static files that would clobber generated content
 
 		// Write stage plugins
 		NewStaticAssetsPlugin(), // Copy static assets first
