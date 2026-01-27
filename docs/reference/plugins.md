@@ -1,6 +1,6 @@
 ---
 title: "Built-in Plugins"
-description: "Reference documentation for all 31 built-in markata-go plugins organized by lifecycle stage"
+description: "Reference documentation for all 32 built-in markata-go plugins organized by lifecycle stage"
 date: 2024-01-15
 published: true
 slug: /docs/reference/plugins/
@@ -32,7 +32,7 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 | Load | Parse files into posts | load, frontmatter |
 | Transform | Pre-render modifications | description, reading_time, stats, breadcrumbs, jinja_md, wikilinks, toc |
 | Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube |
-| Collect | Build collections/feeds | feeds, auto_feeds, prevnext |
+| Collect | Build collections/feeds | feeds, auto_feeds, prevnext, overwrite_check, static_file_conflicts |
 | Write | Output files to disk | publish_html, publish_feeds, sitemap, rss, atom, jsonfeed, static_assets, redirects |
 | Cleanup | Post-build tasks | pagefind |
 
@@ -1971,6 +1971,95 @@ slug: "my-page"  # Conflict!
 | Feed RSS | `{output_dir}/{feed_slug}/rss.xml` |
 | Feed Atom | `{output_dir}/{feed_slug}/atom.xml` |
 | Feed JSON | `{output_dir}/{feed_slug}/index.json` |
+
+---
+
+### static_file_conflicts
+
+**Name:** `static_file_conflicts`  
+**Stage:** Collect (late priority)  
+**Purpose:** Detects when static files in the `static/` directory would silently clobber generated content, causing unexpected behavior like private posts not being added to robots.txt.
+
+**Configuration (TOML):**
+```toml
+[markata-go.static_file_conflicts]
+enabled = true        # Enable/disable the lint rule (default: true)
+static_dir = "static" # Static files directory (default: "static")
+```
+
+**Behavior:**
+1. Runs late in the Collect stage (after content is processed)
+2. Scans the `static/` directory for files
+3. Checks for posts that would generate root-level files (robots.md → robots.txt)
+4. Checks for feed output paths (rss.xml, atom.xml, sitemap.xml)
+5. Reports warnings when conflicts are detected
+6. Continues the build (non-blocking warning)
+
+**Warning Output Example:**
+```
+WARNING: 2 static file conflict(s) detected
+Static files will override generated content.
+
+  Conflicting /robots.txt:
+    Generated: pages/robots.md → /robots.txt
+    Static:    static/robots.txt → /robots.txt
+    The static file will override the generated one.
+
+  Conflicting /sitemap.xml:
+    Generated: sitemap → /sitemap.xml
+    Static:    static/sitemap.xml → /sitemap.xml
+    The static file will override the generated one.
+
+To fix:
+  - Remove the static file if you want the generated version
+  - Remove or rename the source file if you want the static version
+  - Disable the static_file_conflicts lint rule in config if intentional
+```
+
+**Common Conflict Scenarios:**
+
+1. **robots.txt conflict:**
+   ```
+   pages/robots.md     → generates /robots.txt (with private posts excluded)
+   static/robots.txt   → copied to /robots.txt (overwrites generated)
+   ```
+   **Impact:** Private posts may NOT be added to robots.txt Disallow rules.
+
+2. **sitemap.xml conflict:**
+   ```
+   Sitemap plugin      → generates /sitemap.xml
+   static/sitemap.xml  → overwrites with static version
+   ```
+   **Impact:** New posts won't appear in the sitemap for search engines.
+
+3. **Feed conflicts:**
+   ```
+   RSS plugin          → generates /rss.xml
+   static/rss.xml      → overwrites with static version
+   ```
+
+**Checked file patterns:**
+| Generated Source | Checks For Static File |
+|------------------|------------------------|
+| `robots.md` | `static/robots.txt` |
+| `sitemap.md` | `static/sitemap.xml` |
+| `humans.md` | `static/humans.txt` |
+| `security.md` | `static/security.txt` |
+| `manifest.md` | `static/manifest.json`, `static/manifest.webmanifest` |
+| RSS feed | `static/rss.xml`, `static/feed.xml` |
+| Atom feed | `static/atom.xml` |
+| JSON feed | `static/index.json`, `static/feed.json` |
+
+**Disabling the lint rule:**
+If the conflict is intentional (you specifically want the static file to override):
+```toml
+[markata-go.static_file_conflicts]
+enabled = false
+```
+
+**Related:**
+- [[#overwrite_check|overwrite_check]] - Detects conflicts between generated files
+- [[#static_assets|static_assets]] - Copies static files to output
 
 ---
 
