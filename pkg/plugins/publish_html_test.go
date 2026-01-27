@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -243,27 +244,27 @@ func TestPublishHTMLPlugin_ShadowPagesDocumentation(t *testing.T) {
 }
 
 // TestPublishHTMLPlugin_FormatRedirectsCreateDirectories tests that .md and .txt formats
-// use reversed redirects where content is at /slug.ext and redirect is at /slug/index.html.
-// This allows standard web txt files (robots.txt, llms.txt, humans.txt) to be served
-// at their canonical URLs.
-// Note: Redirects must always be HTML files for browsers to parse <meta http-equiv="refresh">.
+// use the directory-based structure with redirects at /slug.ext/index.html pointing
+// to content at /slug/index.ext.
+// This ensures web servers serve the redirect as HTML at /slug.ext (without trailing slash).
 // Fixes: https://github.com/WaylonWalker/markata-go/issues/395
 // Fixes: https://github.com/WaylonWalker/markata-go/issues/437
+// Fixes: https://github.com/WaylonWalker/markata-go/issues/465
 func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 	// Test each format independently to avoid redirect file overwrites
-	// (when both formats are enabled, they share the same index.html redirect)
+	// (when both formats are enabled, they share the same slug directory)
 	tests := []struct {
 		name          string
 		enabledFormat string
 		ext           string
 	}{
 		{
-			name:          "markdown uses reversed redirect",
+			name:          "markdown uses directory-based redirect",
 			enabledFormat: "markdown",
 			ext:           "md",
 		},
 		{
-			name:          "text uses reversed redirect",
+			name:          "text uses directory-based redirect",
 			enabledFormat: "text",
 			ext:           "txt",
 		},
@@ -276,7 +277,7 @@ func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 
 			// Create config with only one format enabled at a time
 			// HTML is DISABLED to test redirect behavior
-			// (when HTML is enabled, redirects are skipped since index.html has main content)
+			// (when HTML is enabled, /slug/index.html has main content instead of redirect)
 			htmlEnabled := false
 			postFormats := models.PostFormatsConfig{
 				HTML: &htmlEnabled,
@@ -316,10 +317,14 @@ func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 				t.Fatalf("writePost() error = %v", err)
 			}
 
-			contentPath := filepath.Join(tempDir, "test-post."+tt.ext)
-			redirectPath := filepath.Join(tempDir, "test-post", "index.html")
+			// Content should be at /slug/index.ext
+			contentPath := filepath.Join(tempDir, "test-post", "index."+tt.ext)
+			// Redirect should be at /slug.ext/index.html
+			redirectPath := filepath.Join(tempDir, "test-post."+tt.ext, "index.html")
+			// When HTML is disabled, /slug/index.html should also be a redirect
+			slugRedirectPath := filepath.Join(tempDir, "test-post", "index.html")
 
-			// Check that primary content file exists at /slug.ext
+			// Check that primary content file exists at /slug/index.ext
 			info, err := os.Stat(contentPath)
 			if err != nil {
 				t.Fatalf("primary content file %s not found: %v", contentPath, err)
@@ -341,7 +346,7 @@ func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 				t.Error("primary content file should contain post content")
 			}
 
-			// Check that redirect file exists at /slug/index.html (always HTML!)
+			// Check that redirect file exists at /slug.ext/index.html (always HTML!)
 			redirectInfo, err := os.Stat(redirectPath)
 			if err != nil {
 				t.Fatalf("redirect file %s not found: %v", redirectPath, err)
@@ -350,7 +355,7 @@ func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 				t.Errorf("expected %s to be a file, but it's a directory", redirectPath)
 			}
 
-			// Read redirect and verify it points to the canonical URL
+			// Read redirect and verify it points to the content URL
 			redirectContent, err := os.ReadFile(redirectPath)
 			if err != nil {
 				t.Fatalf("failed to read %s: %v", redirectPath, err)
@@ -362,19 +367,30 @@ func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 			if !strings.Contains(redirectStr, "meta http-equiv=\"refresh\"") {
 				t.Error("redirect file should contain meta refresh")
 			}
-			// Redirect should point TO the canonical /slug.ext location
-			expectedTarget := "/test-post." + tt.ext
+			// Redirect should point TO the content at /slug/index.ext
+			expectedTarget := "/test-post/index." + tt.ext
 			if !strings.Contains(redirectStr, expectedTarget) {
 				t.Errorf("redirect file should point to %s, got: %s", expectedTarget, redirectStr)
+			}
+
+			// When HTML is disabled, /slug/index.html should also be a redirect
+			slugRedirectContent, err := os.ReadFile(slugRedirectPath)
+			if err != nil {
+				t.Fatalf("slug redirect file %s not found: %v", slugRedirectPath, err)
+			}
+			slugRedirectStr := string(slugRedirectContent)
+			if !strings.Contains(slugRedirectStr, "meta http-equiv=\"refresh\"") {
+				t.Error("/slug/index.html should be a redirect when HTML is disabled")
 			}
 		})
 	}
 }
 
 // TestPublishHTMLPlugin_StandardWebTxtFiles tests that standard web txt files
-// (robots.txt, llms.txt, humans.txt) are generated at their expected canonical URLs.
-// This is the primary use case for the reversed redirect feature.
+// (robots.txt, llms.txt, humans.txt) are accessible via redirects from their expected URLs.
+// Content is at /slug/index.txt, redirect at /slug.txt/index.html points there.
 // Fixes: https://github.com/WaylonWalker/markata-go/issues/395
+// Fixes: https://github.com/WaylonWalker/markata-go/issues/465
 func TestPublishHTMLPlugin_StandardWebTxtFiles(t *testing.T) {
 	tempDir := t.TempDir()
 	plugin := NewPublishHTMLPlugin()
@@ -425,20 +441,37 @@ func TestPublishHTMLPlugin_StandardWebTxtFiles(t *testing.T) {
 		}
 	}
 
-	// Verify standard web files are at canonical URLs
+	// Verify standard web files have content and redirects
 	for _, sf := range standardFiles {
-		t.Run(sf.slug+".txt at root", func(t *testing.T) {
-			// Check /robots.txt, /llms.txt, /humans.txt exist at root
-			canonicalPath := filepath.Join(tempDir, sf.slug+".txt")
-			content, err := os.ReadFile(canonicalPath)
+		t.Run(sf.slug+".txt structure", func(t *testing.T) {
+			// Check content at /slug/index.txt
+			contentPath := filepath.Join(tempDir, sf.slug, "index.txt")
+			content, err := os.ReadFile(contentPath)
 			if err != nil {
-				t.Fatalf("standard web file %s.txt not found at root: %v", sf.slug, err)
+				t.Fatalf("content file %s/index.txt not found: %v", sf.slug, err)
 			}
 
 			// Should contain actual content, not redirect HTML
 			contentStr := string(content)
 			if strings.Contains(contentStr, "<!DOCTYPE html>") {
-				t.Errorf("%s.txt should be content, not HTML redirect", sf.slug)
+				t.Errorf("%s/index.txt should be content, not HTML redirect", sf.slug)
+			}
+
+			// Check redirect at /slug.txt/index.html
+			redirectPath := filepath.Join(tempDir, sf.slug+".txt", "index.html")
+			redirectContent, err := os.ReadFile(redirectPath)
+			if err != nil {
+				t.Fatalf("redirect file %s.txt/index.html not found: %v", sf.slug, err)
+			}
+
+			// Should be a redirect pointing to the content
+			redirectStr := string(redirectContent)
+			if !strings.Contains(redirectStr, "http-equiv=\"refresh\"") {
+				t.Errorf("%s.txt/index.html should be a redirect", sf.slug)
+			}
+			expectedTarget := fmt.Sprintf("/%s/index.txt", sf.slug)
+			if !strings.Contains(redirectStr, expectedTarget) {
+				t.Errorf("%s.txt/index.html should redirect to %s", sf.slug, expectedTarget)
 			}
 		})
 	}
@@ -510,8 +543,8 @@ func TestPublishHTMLPlugin_TxtTemplateRendering(t *testing.T) {
 		t.Fatalf("writePost() error = %v", err)
 	}
 
-	// Read txt content
-	txtPath := filepath.Join(tempDir, "test-post.txt")
+	// Read txt content from /slug/index.txt
+	txtPath := filepath.Join(tempDir, "test-post", "index.txt")
 	content, err := os.ReadFile(txtPath)
 	if err != nil {
 		t.Fatalf("failed to read txt file: %v", err)
@@ -535,6 +568,120 @@ func TestPublishHTMLPlugin_TxtTemplateRendering(t *testing.T) {
 	// Verify content is present
 	if !strings.Contains(contentStr, "This is the post content.") {
 		t.Error("txt file should contain the post content")
+	}
+}
+
+// TestPublishHTMLPlugin_FormatExtRedirectsWithHTMLEnabled tests that redirect pages
+// are created at /slug.ext/index.html (e.g., /test.txt/index.html) even when HTML
+// format is enabled. This allows users to navigate to /test.txt/ and be redirected
+// to /test/index.txt.
+// Fixes: https://github.com/WaylonWalker/markata-go/issues/465
+func TestPublishHTMLPlugin_FormatExtRedirectsWithHTMLEnabled(t *testing.T) {
+	tempDir := t.TempDir()
+	plugin := NewPublishHTMLPlugin()
+
+	// Create config with HTML AND other formats enabled
+	htmlEnabled := true
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"post_formats": models.PostFormatsConfig{
+				HTML:     &htmlEnabled,
+				Markdown: true,
+				Text:     true,
+			},
+		},
+	}
+
+	// Create test post
+	title := "Test Post"
+	post := &models.Post{
+		Path:        "test.md",
+		Slug:        "test",
+		Title:       &title,
+		Content:     "Test content",
+		HTML:        "<html><body>Test HTML content</body></html>",
+		Published:   true,
+		Draft:       false,
+		Skip:        false,
+		ArticleHTML: "<p>Test content</p>",
+	}
+
+	// Create manager for testing
+	m := createTestManager(t, config)
+
+	// Write post
+	if err := plugin.writePost(post, config, nil, m); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+
+	// Expected file structure:
+	// /test/index.txt     -> text content
+	// /test/index.md      -> markdown content
+	// /test/index.html    -> HTML content (NOT a redirect)
+	// /test.txt/index.html -> redirect to /test/index.txt
+	// /test.md/index.html  -> redirect to /test/index.md
+
+	// 1. Verify /test/index.html exists and contains HTML content (NOT a redirect)
+	htmlPath := filepath.Join(tempDir, "test", "index.html")
+	htmlContent, err := os.ReadFile(htmlPath)
+	if err != nil {
+		t.Fatalf("failed to read HTML file %s: %v", htmlPath, err)
+	}
+	htmlStr := string(htmlContent)
+	if strings.Contains(htmlStr, "http-equiv=\"refresh\"") {
+		t.Error("/test/index.html should contain HTML content, not a redirect")
+	}
+	if !strings.Contains(htmlStr, "Test HTML content") {
+		t.Error("/test/index.html should contain the post's HTML content")
+	}
+
+	// 2. Verify /test/index.txt exists with text content
+	txtContentPath := filepath.Join(tempDir, "test", "index.txt")
+	txtContent, err := os.ReadFile(txtContentPath)
+	if err != nil {
+		t.Fatalf("failed to read txt file %s: %v", txtContentPath, err)
+	}
+	if strings.Contains(string(txtContent), "<!DOCTYPE html>") {
+		t.Error("/test/index.txt should contain text content, not HTML")
+	}
+
+	// 3. Verify /test.txt/index.html exists and is a redirect to /test/index.txt
+	txtRedirectPath := filepath.Join(tempDir, "test.txt", "index.html")
+	txtRedirectContent, err := os.ReadFile(txtRedirectPath)
+	if err != nil {
+		t.Fatalf("failed to read txt redirect %s: %v", txtRedirectPath, err)
+	}
+	txtRedirectStr := string(txtRedirectContent)
+	if !strings.Contains(txtRedirectStr, "http-equiv=\"refresh\"") {
+		t.Error("/test.txt/index.html should be a redirect")
+	}
+	if !strings.Contains(txtRedirectStr, "/test/index.txt") {
+		t.Error("/test.txt/index.html should redirect to /test/index.txt")
+	}
+
+	// 4. Verify /test/index.md exists with markdown content
+	mdContentPath := filepath.Join(tempDir, "test", "index.md")
+	mdContent, err := os.ReadFile(mdContentPath)
+	if err != nil {
+		t.Fatalf("failed to read md file %s: %v", mdContentPath, err)
+	}
+	if strings.Contains(string(mdContent), "<!DOCTYPE html>") {
+		t.Error("/test/index.md should contain markdown content, not HTML")
+	}
+
+	// 5. Verify /test.md/index.html exists and is a redirect to /test/index.md
+	mdRedirectPath := filepath.Join(tempDir, "test.md", "index.html")
+	mdRedirectContent, err := os.ReadFile(mdRedirectPath)
+	if err != nil {
+		t.Fatalf("failed to read md redirect %s: %v", mdRedirectPath, err)
+	}
+	mdRedirectStr := string(mdRedirectContent)
+	if !strings.Contains(mdRedirectStr, "http-equiv=\"refresh\"") {
+		t.Error("/test.md/index.html should be a redirect")
+	}
+	if !strings.Contains(mdRedirectStr, "/test/index.md") {
+		t.Error("/test.md/index.html should redirect to /test/index.md")
 	}
 }
 
@@ -578,20 +725,31 @@ func TestPublishHTMLPlugin_RawTxtForSpecialFiles(t *testing.T) {
 		t.Fatalf("writePost() error = %v", err)
 	}
 
-	// Read robots.txt
-	robotsPath := filepath.Join(tempDir, "robots.txt")
+	// Read robots content from /robots/index.txt
+	robotsPath := filepath.Join(tempDir, "robots", "index.txt")
 	content, err := os.ReadFile(robotsPath)
 	if err != nil {
-		t.Fatalf("failed to read robots.txt: %v", err)
+		t.Fatalf("failed to read robots/index.txt: %v", err)
 	}
 
 	contentStr := string(content)
 
 	// Verify content is present (without title/description header since no title set)
 	if !strings.Contains(contentStr, "User-agent: *") {
-		t.Error("robots.txt should contain the user-agent directive")
+		t.Error("robots/index.txt should contain the user-agent directive")
 	}
 	if !strings.Contains(contentStr, "Allow: /") {
-		t.Error("robots.txt should contain the allow directive")
+		t.Error("robots/index.txt should contain the allow directive")
+	}
+
+	// Verify redirect exists at /robots.txt/index.html
+	redirectPath := filepath.Join(tempDir, "robots.txt", "index.html")
+	redirectContent, err := os.ReadFile(redirectPath)
+	if err != nil {
+		t.Fatalf("failed to read robots.txt/index.html: %v", err)
+	}
+
+	if !strings.Contains(string(redirectContent), "http-equiv=\"refresh\"") {
+		t.Error("robots.txt/index.html should be a redirect")
 	}
 }
