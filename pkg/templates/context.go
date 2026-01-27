@@ -237,7 +237,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert theme to map
 	themeMap := themeToMap(&c.Theme)
 
-	return map[string]interface{}{
+	result := map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
 		"title":         c.Title,
@@ -260,6 +260,13 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"header":        headerMap,
 		"theme":         themeMap,
 	}
+
+	// Add Extra map for plugin configs (e.g., glightbox_enabled, glightbox_options)
+	if c.Extra != nil {
+		result["Extra"] = c.Extra
+	}
+
+	return result
 }
 
 // componentsToMap converts a ComponentsConfig to a map for template access.

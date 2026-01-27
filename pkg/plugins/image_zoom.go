@@ -31,10 +31,12 @@ func (p *ImageZoomPlugin) Name() string {
 }
 
 // Priority returns the plugin's priority for a given stage.
-// This plugin runs after render_markdown (which has default priority 0).
+// This plugin runs after render_markdown (which has default priority 0) but
+// BEFORE templates (which uses PriorityLate=100) so that glightbox_enabled
+// is set in config.Extra before templates renders the HTML.
 func (p *ImageZoomPlugin) Priority(stage lifecycle.Stage) int {
 	if stage == lifecycle.StageRender {
-		return lifecycle.PriorityLate // Run after render_markdown
+		return 50 // After render_markdown (0), before templates (100)
 	}
 	return lifecycle.PriorityDefault
 }
@@ -100,7 +102,46 @@ func (p *ImageZoomPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	return m.ProcessPostsConcurrently(p.processPost)
+	// Process posts
+	if err := m.ProcessPostsConcurrently(p.processPost); err != nil {
+		return err
+	}
+
+	// After processing all posts, check if any need image zoom and set config
+	needsZoom := false
+	for _, post := range m.Posts() {
+		if post.Extra != nil {
+			if needs, ok := post.Extra["needs_image_zoom"].(bool); ok && needs {
+				needsZoom = true
+				break
+			}
+		}
+	}
+
+	if needsZoom {
+		// Set GLightbox config so templates can include the CSS/JS
+		config := m.Config()
+		if config.Extra == nil {
+			config.Extra = make(map[string]interface{})
+		}
+
+		// Build the GLightbox initialization options
+		glightboxOptions := map[string]interface{}{
+			"selector":        p.config.Selector,
+			"openEffect":      p.config.OpenEffect,
+			"closeEffect":     p.config.CloseEffect,
+			"slideEffect":     p.config.SlideEffect,
+			"touchNavigation": p.config.TouchNavigation,
+			"loop":            p.config.Loop,
+			"draggable":       p.config.Draggable,
+		}
+
+		config.Extra["glightbox_options"] = glightboxOptions
+		config.Extra["glightbox_enabled"] = true
+		config.Extra["glightbox_cdn"] = p.config.CDN
+	}
+
+	return nil
 }
 
 // imageZoomImgTagRegex matches <img> tags and captures their attributes.

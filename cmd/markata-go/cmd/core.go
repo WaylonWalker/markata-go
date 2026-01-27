@@ -96,6 +96,13 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	}
 	lcConfig.Extra["search"] = searchConfig
 
+	// Copy arbitrary plugin configs from cfg.Extra (e.g., image_zoom, wikilinks)
+	if cfg.Extra != nil {
+		for key, value := range cfg.Extra {
+			lcConfig.Extra[key] = value
+		}
+	}
+
 	m.SetConfig(lcConfig)
 
 	// Set concurrency if specified

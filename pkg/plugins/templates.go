@@ -403,6 +403,15 @@ func toModelsConfig(config *lifecycle.Config) *models.Config {
 		modelsConfig.Theme = theme
 	}
 
+	// Copy the entire Extra map so templates can access dynamic plugin config
+	// (e.g., glightbox_enabled, glightbox_options set by image_zoom plugin)
+	if config.Extra != nil {
+		modelsConfig.Extra = make(map[string]any)
+		for k, v := range config.Extra {
+			modelsConfig.Extra[k] = v
+		}
+	}
+
 	return modelsConfig
 }
 
