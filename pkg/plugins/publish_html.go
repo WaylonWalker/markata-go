@@ -113,20 +113,24 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	}
 
 	// Write Markdown format (raw source)
-	// Uses reversed redirect: content at /slug.md, redirect at /slug/index.md
+	// Uses reversed redirect: content at /slug.md, redirect at /slug/index.html
+	// Skip redirect if HTML is enabled (index.html already has main content)
 	if postFormats.Markdown {
 		mdContent := p.buildFormatContent(post, config, m, "markdown")
-		if err := p.writeReversedFormatOutput(post.Slug, "md", mdContent, config.OutputDir); err != nil {
+		skipRedirect := postFormats.IsHTMLEnabled()
+		if err := p.writeReversedFormatOutput(post.Slug, "md", mdContent, config.OutputDir, skipRedirect); err != nil {
 			return err
 		}
 	}
 
 	// Write Text format (plain text)
-	// Uses reversed redirect: content at /slug.txt, redirect at /slug/index.txt
+	// Uses reversed redirect: content at /slug.txt, redirect at /slug/index.html
+	// Skip redirect if HTML is enabled (index.html already has main content)
 	if postFormats.Text {
 		// Use renderTextContent for txt format to leverage main's sophisticated template resolution
 		txtContent := p.renderTextContent(post, config, engine)
-		if err := p.writeReversedFormatOutput(post.Slug, "txt", txtContent, config.OutputDir); err != nil {
+		skipRedirect := postFormats.IsHTMLEnabled()
+		if err := p.writeReversedFormatOutput(post.Slug, "txt", txtContent, config.OutputDir, skipRedirect); err != nil {
 			return err
 		}
 	}
@@ -387,16 +391,19 @@ func (p *PublishHTMLPlugin) buildTextContentFallback(post *models.Post) string {
 }
 
 // writeReversedFormatOutput writes the primary content at /slug.ext (canonical URL)
-// and creates a backwards-compatible redirect at /slug/index.ext.
+// and optionally creates a backwards-compatible redirect at /slug/index.html.
 //
 // This is the REVERSED approach for txt/md files:
 // - Canonical content: /robots.txt, /llms.txt (standard web file locations)
-// - Redirect: /robots/index.txt → /robots.txt (backwards compatibility)
+// - Redirect: /robots/index.html → /robots.txt (backwards compatibility)
 //
 // This allows standard web txt files (robots.txt, llms.txt, humans.txt) to be
 // served at their expected locations while maintaining the directory-based
 // URL structure for backward compatibility.
-func (p *PublishHTMLPlugin) writeReversedFormatOutput(slug, ext, content, outputDir string) error {
+//
+// If skipRedirect is true, only the primary content is written (used when HTML
+// format is also enabled, since /slug/index.html already has the main content).
+func (p *PublishHTMLPlugin) writeReversedFormatOutput(slug, ext, content, outputDir string, skipRedirect bool) error {
 	// Write primary content at /slug.ext (e.g., /robots.txt)
 	primaryPath := filepath.Join(outputDir, slug+"."+ext)
 	//nolint:gosec // G306: Output files need 0644 for web serving
@@ -404,7 +411,12 @@ func (p *PublishHTMLPlugin) writeReversedFormatOutput(slug, ext, content, output
 		return fmt.Errorf("writing %s: %w", primaryPath, err)
 	}
 
-	// Create redirect HTML that points from /slug/index.ext to /slug.ext
+	// Skip redirect if HTML format is enabled (index.html already has main content)
+	if skipRedirect {
+		return nil
+	}
+
+	// Create redirect HTML that points from /slug/index.html to /slug.ext
 	targetURL := fmt.Sprintf("/%s.%s", slug, ext)
 	redirectHTML := fmt.Sprintf(`<!DOCTYPE html>
 <html>
@@ -425,9 +437,10 @@ func (p *PublishHTMLPlugin) writeReversedFormatOutput(slug, ext, content, output
 		return fmt.Errorf("creating redirect directory %s: %w", redirectDir, err)
 	}
 
-	// Write index.ext redirect inside the directory (e.g., /robots/index.txt)
+	// Write index.html redirect inside the directory (e.g., /robots/index.html)
 	// This redirects to the canonical /slug.ext location
-	redirectPath := filepath.Join(redirectDir, "index."+ext)
+	// Note: Redirects must always be HTML for browsers to parse <meta http-equiv="refresh">
+	redirectPath := filepath.Join(redirectDir, "index.html")
 	//nolint:gosec // G306: Output files need 0644 for web serving
 	if err := os.WriteFile(redirectPath, []byte(redirectHTML), 0o644); err != nil {
 		return fmt.Errorf("writing redirect %s: %w", redirectPath, err)
