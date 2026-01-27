@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/BurntSushi/toml"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/plugins"
 	"gopkg.in/yaml.v3"
 )
@@ -575,22 +576,10 @@ func generateSlug(path string, metadata map[string]interface{}) string {
 		return slug
 	}
 
-	// Use filename without extension
-	slug := strings.TrimSuffix(base, filepath.Ext(base))
-	slug = strings.ToLower(slug)
-	slug = strings.ReplaceAll(slug, " ", "-")
-	slug = slugifyRegex.ReplaceAllString(slug, "")
-	slug = multiHyphenRegex.ReplaceAllString(slug, "-")
-	slug = strings.Trim(slug, "-")
-
-	return slug
+	// Use filename without known extension (consistent with models.Post)
+	basename := models.StripKnownExtension(base)
+	return models.Slugify(basename)
 }
-
-// slugifyRegex matches characters that are not alphanumeric, hyphens, or underscores
-var slugifyRegex = regexp.MustCompile(`[^a-z0-9\-_]+`)
-
-// multiHyphenRegex matches multiple consecutive hyphens
-var multiHyphenRegex = regexp.MustCompile(`-+`)
 
 // wikilinkRegex matches [[slug]] and [[slug|display text]] patterns.
 var wikilinkRegex = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
@@ -665,12 +654,7 @@ func extractExcerpt(content string, maxLen int) string {
 
 // normalizeSlug normalizes a slug for comparison.
 func normalizeSlug(slug string) string {
-	slug = strings.ToLower(slug)
-	slug = strings.ReplaceAll(slug, " ", "-")
-	slug = slugifyRegex.ReplaceAllString(slug, "")
-	slug = multiHyphenRegex.ReplaceAllString(slug, "-")
-	slug = strings.Trim(slug, "-")
-	return slug
+	return models.Slugify(slug)
 }
 
 // pathToURI converts a file system path to a file URI.

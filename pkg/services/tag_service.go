@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -82,11 +81,7 @@ func (s *tagService) GetPosts(_ context.Context, tag string, opts ListOptions) (
 }
 
 // slugify converts a string to a URL-safe slug.
-var slugifyRegex = regexp.MustCompile(`[^a-z0-9\-]+`)
-
+// This is a convenience wrapper around models.Slugify.
 func slugify(s string) string {
-	s = strings.ToLower(s)
-	s = strings.ReplaceAll(s, " ", "-")
-	s = slugifyRegex.ReplaceAllString(s, "")
-	return s
+	return models.Slugify(s)
 }

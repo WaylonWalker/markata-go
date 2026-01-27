@@ -106,6 +106,25 @@ var slugifyRegex = regexp.MustCompile(`[^a-z0-9\-_]+`)
 // multiHyphenRegex matches multiple consecutive hyphens
 var multiHyphenRegex = regexp.MustCompile(`-+`)
 
+// KnownExtensions contains file extensions that should be stripped from filenames.
+// Extensions not in this list are treated as part of the filename.
+var KnownExtensions = map[string]bool{
+	".md": true, ".markdown": true, ".mdown": true, ".mkd": true,
+	".html": true, ".htm": true,
+	".txt": true, ".text": true,
+	".rst": true, ".asciidoc": true, ".adoc": true,
+}
+
+// StripKnownExtension removes only recognized file extensions from filenames.
+// For example: "post.md" -> "post", but "v1.2.3" -> "v1.2.3"
+func StripKnownExtension(filename string) string {
+	ext := filepath.Ext(filename)
+	if ext != "" && KnownExtensions[strings.ToLower(ext)] {
+		return strings.TrimSuffix(filename, ext)
+	}
+	return filename
+}
+
 // GenerateSlug generates a URL-safe slug from the title or path.
 // If a title is set, it uses the title; otherwise, it derives the slug from the file path.
 //
@@ -137,8 +156,9 @@ func (p *Post) GenerateSlug() {
 	}
 
 	// Priority: basename > title
-	// Use the filename without extension as the primary source
-	basename := strings.TrimSuffix(base, filepath.Ext(base))
+	// Use the filename without known extension as the primary source
+	// Only strip recognized file extensions, keeping periods in version numbers etc.
+	basename := StripKnownExtension(base)
 	if basename != "" {
 		source = basename
 	} else if p.Title != nil && *p.Title != "" {
@@ -146,14 +166,21 @@ func (p *Post) GenerateSlug() {
 		source = *p.Title
 	}
 
-	// Convert to lowercase
-	slug := strings.ToLower(source)
+	p.Slug = Slugify(source)
+}
 
-	// Replace spaces with hyphens
+// Slugify converts a string to a URL-safe slug.
+// It converts to lowercase, replaces non-alphanumeric characters with hyphens,
+// collapses multiple hyphens, and trims leading/trailing hyphens.
+func Slugify(s string) string {
+	// Convert to lowercase
+	slug := strings.ToLower(s)
+
+	// Replace spaces with hyphens first (before the regex to preserve intent)
 	slug = strings.ReplaceAll(slug, " ", "-")
 
-	// Remove invalid characters
-	slug = slugifyRegex.ReplaceAllString(slug, "")
+	// Replace invalid characters with hyphens (not remove them)
+	slug = slugifyRegex.ReplaceAllString(slug, "-")
 
 	// Collapse multiple hyphens
 	slug = multiHyphenRegex.ReplaceAllString(slug, "-")
@@ -161,7 +188,7 @@ func (p *Post) GenerateSlug() {
 	// Trim leading/trailing hyphens
 	slug = strings.Trim(slug, "-")
 
-	p.Slug = slug
+	return slug
 }
 
 // GenerateHref generates the relative URL path from the slug.
