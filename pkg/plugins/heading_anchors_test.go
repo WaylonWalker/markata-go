@@ -275,12 +275,12 @@ func TestHeadingAnchorsPlugin_GenerateID(t *testing.T) {
 		{
 			name:   "with special characters",
 			input:  `<h2>What's New?</h2>`,
-			wantID: "whats-new",
+			wantID: "what-s-new",
 		},
 		{
 			name:   "with numbers",
 			input:  `<h2>Version 2.0</h2>`,
-			wantID: "version-20",
+			wantID: "version-2-0",
 		},
 		{
 			name:   "with nested HTML",

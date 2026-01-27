@@ -572,3 +572,162 @@ func TestPost_GenerateSlug_RegularMdNotAffected(t *testing.T) {
 		})
 	}
 }
+
+// =============================================================================
+// Slug Generation Issue #433 - Periods replaced with dashes
+// =============================================================================
+
+func TestPost_GenerateSlug_PeriodsReplacedWithDashes(t *testing.T) {
+	// Issue #433: Periods should be replaced with dashes, not removed
+	tests := []struct {
+		name     string
+		path     string
+		expected string
+	}{
+		{
+			name:     "python file extension kept",
+			path:     "my-post.py",
+			expected: "my-post-py",
+		},
+		{
+			name:     "version numbers with periods",
+			path:     "python.3.12.features",
+			expected: "python-3-12-features",
+		},
+		{
+			name:     "yaml-example suffix",
+			path:     "config.yaml-example",
+			expected: "config-yaml-example",
+		},
+		{
+			name:     "semver in filename",
+			path:     "v1.2.3-release",
+			expected: "v1-2-3-release",
+		},
+		{
+			name:     "multiple periods with js",
+			path:     "test.post.js",
+			expected: "test-post-js",
+		},
+		{
+			name:     "known extension still stripped",
+			path:     "hello-world.md",
+			expected: "hello-world",
+		},
+		{
+			name:     "known extension markdown stripped",
+			path:     "guide.markdown",
+			expected: "guide",
+		},
+		{
+			name:     "mixed known and unknown extensions",
+			path:     "v2.0.release-notes.md",
+			expected: "v2-0-release-notes",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewPost(tt.path)
+			p.GenerateSlug()
+			if p.Slug != tt.expected {
+				t.Errorf("got %q, want %q", p.Slug, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSlugify(t *testing.T) {
+	// Test the exported Slugify function directly
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "simple string",
+			input:    "Hello World",
+			expected: "hello-world",
+		},
+		{
+			name:     "periods replaced with dashes",
+			input:    "python.3.12",
+			expected: "python-3-12",
+		},
+		{
+			name:     "special characters replaced",
+			input:    "What's New in Go?",
+			expected: "what-s-new-in-go",
+		},
+		{
+			name:     "multiple spaces collapsed",
+			input:    "Hello    World",
+			expected: "hello-world",
+		},
+		{
+			name:     "leading trailing dashes trimmed",
+			input:    "  Hello World  ",
+			expected: "hello-world",
+		},
+		{
+			name:     "underscores preserved",
+			input:    "hello_world",
+			expected: "hello_world",
+		},
+		{
+			name:     "mixed special chars",
+			input:    "Test@Post#123!",
+			expected: "test-post-123",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "only special chars",
+			input:    "@#$%",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Slugify(tt.input)
+			if result != tt.expected {
+				t.Errorf("Slugify(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestStripKnownExtension(t *testing.T) {
+	// Test that only known extensions are stripped
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"md extension", "post.md", "post"},
+		{"markdown extension", "post.markdown", "post"},
+		{"html extension", "page.html", "page"},
+		{"htm extension", "page.htm", "page"},
+		{"txt extension", "notes.txt", "notes"},
+		{"rst extension", "doc.rst", "doc"},
+		{"unknown py extension", "script.py", "script.py"},
+		{"unknown js extension", "app.js", "app.js"},
+		{"version numbers", "v1.2.3", "v1.2.3"},
+		{"no extension", "readme", "readme"},
+		{"uppercase MD", "POST.MD", "POST"},
+		{"mixed case", "Post.Md", "Post"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := StripKnownExtension(tt.input)
+			if result != tt.expected {
+				t.Errorf("StripKnownExtension(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
