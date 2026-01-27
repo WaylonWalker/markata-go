@@ -96,6 +96,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Blogroll - merge
 	result.Blogroll = mergeBlogrollConfig(base.Blogroll, override.Blogroll)
 
+	// Extra (plugin configs) - merge
+	result.Extra = mergeExtra(base.Extra, override.Extra)
+
 	return result
 }
 
@@ -754,6 +757,27 @@ func mergeBlogrollConfig(base, override models.BlogrollConfig) models.BlogrollCo
 	}
 	if override.Templates.Reader != "" {
 		result.Templates.Reader = override.Templates.Reader
+	}
+
+	return result
+}
+
+// mergeExtra merges Extra map values (for plugin configs like image_zoom, wikilinks, etc.)
+func mergeExtra(base, override map[string]any) map[string]any {
+	if base == nil && override == nil {
+		return nil
+	}
+
+	result := make(map[string]any)
+
+	// Copy base values
+	for k, v := range base {
+		result[k] = v
+	}
+
+	// Override with values from override
+	for k, v := range override {
+		result[k] = v
 	}
 
 	return result

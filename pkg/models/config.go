@@ -274,6 +274,10 @@ type Config struct {
 	// Keys: "html", "txt", "markdown", "og"
 	// Values: template file names
 	DefaultTemplates map[string]string `json:"default_templates,omitempty" yaml:"default_templates,omitempty" toml:"default_templates,omitempty"`
+
+	// Extra holds arbitrary plugin configurations that aren't part of the core config.
+	// Plugin-specific configs like [markata-go.image_zoom] are stored here.
+	Extra map[string]any `json:"-" yaml:"-" toml:"-"`
 }
 
 // HeadConfig configures elements added to the HTML <head> section.
