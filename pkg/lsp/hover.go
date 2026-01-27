@@ -128,26 +128,40 @@ func (s *Server) handleMentionHover(msg *Message, handle string, mentionRange *R
 		sb.WriteString("\n\n")
 	}
 
-	sb.WriteString("---\n")
-	if mention.SiteURL != "" {
-		sb.WriteString("*Site:* ")
-		sb.WriteString(mention.SiteURL)
-		sb.WriteString("\n\n")
+	// Build metadata section - only add separator if we have content
+	hasMetadata := mention.SiteURL != "" || mention.FeedURL != "" || len(mention.Aliases) > 0
+	if hasMetadata {
+		sb.WriteString("---\n")
+		if mention.SiteURL != "" {
+			sb.WriteString("*Site:* ")
+			sb.WriteString(mention.SiteURL)
+			sb.WriteString("\n\n")
+		}
+		if mention.FeedURL != "" {
+			sb.WriteString("*Feed:* ")
+			sb.WriteString(mention.FeedURL)
+			sb.WriteString("\n\n")
+		}
+		if len(mention.Aliases) > 0 {
+			sb.WriteString("*Aliases:* @")
+			sb.WriteString(strings.Join(mention.Aliases, ", @"))
+			sb.WriteString("\n")
+		}
+	} else if mention.Description == "" {
+		// Show placeholder for mentions with no metadata at all
+		sb.WriteString("*No additional information available.*\n")
 	}
-	if mention.FeedURL != "" {
-		sb.WriteString("*Feed:* ")
-		sb.WriteString(mention.FeedURL)
-		sb.WriteString("\n\n")
-	}
-	if len(mention.Aliases) > 0 {
-		sb.WriteString("*Aliases:* @")
-		sb.WriteString(strings.Join(mention.Aliases, ", @"))
+
+	// Trim trailing whitespace to avoid width calculation issues in editors
+	content := strings.TrimRight(sb.String(), "\n ")
+	if content == "" {
+		content = "## @" + mention.Handle
 	}
 
 	hover := &Hover{
 		Contents: MarkupContent{
 			Kind:  "markdown",
-			Value: sb.String(),
+			Value: content,
 		},
 		Range: mentionRange,
 	}
