@@ -103,6 +103,26 @@
     {% else %}
     <link rel="stylesheet" href="/css/glightbox.min.css">
     {% endif %}
+    <!-- GLightbox theme overrides to match site palette -->
+    <style>
+    .glightbox-clean .gslide-description {
+        background: var(--color-background);
+        color: var(--color-text);
+    }
+    .glightbox-clean .goverlay {
+        background: color-mix(in srgb, var(--color-background) 90%, transparent);
+    }
+    .glightbox-clean .gclose,
+    .glightbox-clean .gnext,
+    .glightbox-clean .gprev {
+        color: var(--color-text);
+    }
+    .glightbox-clean .gclose:hover,
+    .glightbox-clean .gnext:hover,
+    .glightbox-clean .gprev:hover {
+        color: var(--color-accent);
+    }
+    </style>
     {% endif %}
 
     <!-- Theme CSS -->
