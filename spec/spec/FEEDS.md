@@ -57,6 +57,7 @@ description = "Latest blog posts"  # Meta description
 filter = "published == True and date <= today"
 sort = "date"
 reverse = true                     # Newest first
+include_private = false            # Include private posts (default: false)
 
 # Pagination
 items_per_page = 10                # 0 = no pagination (all on one page)
@@ -97,6 +98,7 @@ sitemap = "sitemap.xml"            # Template for sitemap
 | `filter` | string | Filter expression |
 | `sort` | string? | Sort field |
 | `reverse` | bool | Sort direction |
+| `include_private` | bool | Include private posts in feed (default: false) |
 | `posts` | List[Post] | All matching posts (pre-pagination) |
 | `page_posts` | List[Post] | Posts for current page |
 | `pagination` | Pagination | Pagination info |

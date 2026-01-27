@@ -45,7 +45,7 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 		fc.ApplyDefaults(feedDefaults)
 
 		// Filter posts
-		filteredPosts, err := filterPosts(posts, fc.Filter)
+		filteredPosts, err := filterPosts(posts, fc.Filter, fc.IncludePrivate)
 		if err != nil {
 			return fmt.Errorf("feed %q: %w", fc.Slug, err)
 		}
@@ -137,18 +137,25 @@ func getFeedDefaults(config *lifecycle.Config) models.FeedDefaults {
 }
 
 // filterPosts applies a filter expression to posts.
-// Private posts are automatically excluded before any filter is applied.
-func filterPosts(posts []*models.Post, filterExpr string) ([]*models.Post, error) {
-	// First filter out private posts automatically
-	var publicPosts []*models.Post
-	for _, post := range posts {
-		if !post.Private {
-			publicPosts = append(publicPosts, post)
+// If includePrivate is false, private posts are excluded before filtering.
+func filterPosts(posts []*models.Post, filterExpr string, includePrivate bool) ([]*models.Post, error) {
+	// First, filter out private posts if includePrivate is false
+	var candidatePosts []*models.Post
+	if includePrivate {
+		candidatePosts = posts
+	} else {
+		for _, post := range posts {
+			if !post.Private {
+				candidatePosts = append(candidatePosts, post)
+			}
 		}
 	}
 
 	if filterExpr == "" {
-		return publicPosts, nil
+		// Return a copy of all candidate posts
+		result := make([]*models.Post, len(candidatePosts))
+		copy(result, candidatePosts)
+		return result, nil
 	}
 
 	f, err := filter.Parse(filterExpr)
@@ -156,7 +163,7 @@ func filterPosts(posts []*models.Post, filterExpr string) ([]*models.Post, error
 		return nil, fmt.Errorf("invalid filter expression: %w", err)
 	}
 
-	return f.MatchAll(publicPosts), nil
+	return f.MatchAll(candidatePosts), nil
 }
 
 // sortPosts sorts posts by the specified field.
