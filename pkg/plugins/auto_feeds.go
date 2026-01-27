@@ -284,7 +284,7 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 		fc.ApplyDefaults(feedDefaults)
 
 		// Filter posts for this feed
-		filteredPosts, err := filterPosts(posts, fc.Filter)
+		filteredPosts, err := filterPosts(posts, fc.Filter, fc.IncludePrivate)
 		if err != nil {
 			return fmt.Errorf("auto feed %q: %w", fc.Slug, err)
 		}

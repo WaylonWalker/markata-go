@@ -78,6 +78,9 @@ type FeedConfig struct {
 	// SidebarGroupBy groups posts by a frontmatter field in the sidebar (e.g., "category")
 	SidebarGroupBy string `json:"sidebar_group_by" yaml:"sidebar_group_by" toml:"sidebar_group_by"`
 
+	// IncludePrivate allows including private posts in this feed (default: false)
+	IncludePrivate bool `json:"include_private,omitempty" yaml:"include_private,omitempty" toml:"include_private,omitempty"`
+
 	// Posts holds the filtered posts at runtime (not serialized)
 	Posts []*Post `json:"-" yaml:"-" toml:"-"`
 

@@ -83,6 +83,7 @@ description = "Latest blog posts"  # Meta description
 filter = "published == True and date <= today"
 sort = "date"
 reverse = true                     # Newest first
+include_private = false            # Include private posts (default: false)
 
 # Pagination
 items_per_page = 10                # 0 = no pagination (all on one page)
@@ -710,6 +711,24 @@ html = true
 rss = false
 ```
 
+### Private Archive (Including Private Posts)
+
+If you want a feed that includes private posts (useful for personal archives or admin pages):
+
+```toml
+[[markata-go.feeds]]
+slug = "private-archive"
+title = "Private Archive"
+filter = "published == True"
+sort = "date"
+reverse = true
+include_private = true             # Include private posts in this feed
+
+[markata-go.feeds.formats]
+html = true
+rss = false                        # Usually don't syndicate private posts
+```
+
 ### Tag Pages (Manual)
 
 If you don't want auto-generated tag feeds:
@@ -973,6 +992,7 @@ Add `<link>` tags in your base template for feed autodiscovery:
 | `filter` | string | `""` | Filter expression |
 | `sort` | string | `"date"` | Sort field |
 | `reverse` | bool | `true` | Sort direction (true=descending) |
+| `include_private` | bool | `false` | Include private posts in feed |
 | `items_per_page` | int | `10` | Posts per page (0=no pagination) |
 | `orphan_threshold` | int | `3` | Min items for separate page |
 | `pagination_type` | string | `"manual"` | `manual`, `htmx`, or `js` |
