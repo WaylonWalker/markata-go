@@ -243,85 +243,95 @@ func TestPublishHTMLPlugin_ShadowPagesDocumentation(t *testing.T) {
 }
 
 // TestPublishHTMLPlugin_FormatRedirectsCreateDirectories tests that .md and .txt formats
-// use reversed redirects where content is at /slug.ext and redirect is at /slug/index.ext.
+// use reversed redirects where content is at /slug.ext and redirect is at /slug/index.html.
 // This allows standard web txt files (robots.txt, llms.txt, humans.txt) to be served
 // at their canonical URLs.
+// Note: Redirects must always be HTML files for browsers to parse <meta http-equiv="refresh">.
 // Fixes: https://github.com/WaylonWalker/markata-go/issues/395
+// Fixes: https://github.com/WaylonWalker/markata-go/issues/437
 func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
-	tempDir := t.TempDir()
-	plugin := NewPublishHTMLPlugin()
-
-	// Create config with Markdown and Text formats enabled
-	htmlEnabled := true
-	config := &lifecycle.Config{
-		OutputDir: tempDir,
-		Extra: map[string]interface{}{
-			"post_formats": models.PostFormatsConfig{
-				HTML:     &htmlEnabled,
-				Markdown: true,
-				Text:     true,
-			},
-		},
-	}
-
-	// Create test post
-	title := "Test Post"
-	post := &models.Post{
-		Path:        "test.md",
-		Slug:        "test-post",
-		Title:       &title,
-		Content:     "Test content",
-		HTML:        "<html><body>Test</body></html>",
-		Published:   true,
-		Draft:       false,
-		Skip:        false,
-		ArticleHTML: "<p>Test</p>",
-	}
-
-	// Create manager for testing
-	m := createTestManager(t, config)
-
-	// Write post (which includes format redirects)
-	if err := plugin.writePost(post, config, nil, m); err != nil {
-		t.Fatalf("writePost() error = %v", err)
-	}
-
-	// Test cases for each format with REVERSED redirect structure
+	// Test each format independently to avoid redirect file overwrites
+	// (when both formats are enabled, they share the same index.html redirect)
 	tests := []struct {
-		name         string
-		ext          string
-		contentPath  string // Primary content file (canonical)
-		redirectPath string // Redirect file (backwards compat)
+		name          string
+		enabledFormat string
+		ext           string
 	}{
 		{
-			name:         "markdown uses reversed redirect",
-			ext:          "md",
-			contentPath:  filepath.Join(tempDir, "test-post.md"),
-			redirectPath: filepath.Join(tempDir, "test-post", "index.md"),
+			name:          "markdown uses reversed redirect",
+			enabledFormat: "markdown",
+			ext:           "md",
 		},
 		{
-			name:         "text uses reversed redirect",
-			ext:          "txt",
-			contentPath:  filepath.Join(tempDir, "test-post.txt"),
-			redirectPath: filepath.Join(tempDir, "test-post", "index.txt"),
+			name:          "text uses reversed redirect",
+			enabledFormat: "text",
+			ext:           "txt",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			plugin := NewPublishHTMLPlugin()
+
+			// Create config with only one format enabled at a time
+			// HTML is DISABLED to test redirect behavior
+			// (when HTML is enabled, redirects are skipped since index.html has main content)
+			htmlEnabled := false
+			postFormats := models.PostFormatsConfig{
+				HTML: &htmlEnabled,
+			}
+			if tt.enabledFormat == "markdown" {
+				postFormats.Markdown = true
+			} else if tt.enabledFormat == "text" {
+				postFormats.Text = true
+			}
+
+			config := &lifecycle.Config{
+				OutputDir: tempDir,
+				Extra: map[string]interface{}{
+					"post_formats": postFormats,
+				},
+			}
+
+			// Create test post
+			title := "Test Post"
+			post := &models.Post{
+				Path:        "test.md",
+				Slug:        "test-post",
+				Title:       &title,
+				Content:     "Test content",
+				HTML:        "<html><body>Test</body></html>",
+				Published:   true,
+				Draft:       false,
+				Skip:        false,
+				ArticleHTML: "<p>Test</p>",
+			}
+
+			// Create manager for testing
+			m := createTestManager(t, config)
+
+			// Write post (which includes format redirects)
+			if err := plugin.writePost(post, config, nil, m); err != nil {
+				t.Fatalf("writePost() error = %v", err)
+			}
+
+			contentPath := filepath.Join(tempDir, "test-post."+tt.ext)
+			redirectPath := filepath.Join(tempDir, "test-post", "index.html")
+
 			// Check that primary content file exists at /slug.ext
-			info, err := os.Stat(tt.contentPath)
+			info, err := os.Stat(contentPath)
 			if err != nil {
-				t.Fatalf("primary content file %s not found: %v", tt.contentPath, err)
+				t.Fatalf("primary content file %s not found: %v", contentPath, err)
 			}
 			if info.IsDir() {
-				t.Errorf("expected %s to be a file, but it's a directory", tt.contentPath)
+				t.Errorf("expected %s to be a file, but it's a directory", contentPath)
 			}
 
 			// Read content and verify it's actual content (not redirect HTML)
-			content, err := os.ReadFile(tt.contentPath)
+			content, err := os.ReadFile(contentPath)
 			if err != nil {
-				t.Fatalf("failed to read %s: %v", tt.contentPath, err)
+				t.Fatalf("failed to read %s: %v", contentPath, err)
 			}
 			contentStr := string(content)
 			if strings.Contains(contentStr, "<!DOCTYPE html>") {
@@ -331,19 +341,19 @@ func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 				t.Error("primary content file should contain post content")
 			}
 
-			// Check that redirect file exists at /slug/index.ext
-			redirectInfo, err := os.Stat(tt.redirectPath)
+			// Check that redirect file exists at /slug/index.html (always HTML!)
+			redirectInfo, err := os.Stat(redirectPath)
 			if err != nil {
-				t.Fatalf("redirect file %s not found: %v", tt.redirectPath, err)
+				t.Fatalf("redirect file %s not found: %v", redirectPath, err)
 			}
 			if redirectInfo.IsDir() {
-				t.Errorf("expected %s to be a file, but it's a directory", tt.redirectPath)
+				t.Errorf("expected %s to be a file, but it's a directory", redirectPath)
 			}
 
 			// Read redirect and verify it points to the canonical URL
-			redirectContent, err := os.ReadFile(tt.redirectPath)
+			redirectContent, err := os.ReadFile(redirectPath)
 			if err != nil {
-				t.Fatalf("failed to read %s: %v", tt.redirectPath, err)
+				t.Fatalf("failed to read %s: %v", redirectPath, err)
 			}
 			redirectStr := string(redirectContent)
 			if !strings.Contains(redirectStr, "<!DOCTYPE html>") {
