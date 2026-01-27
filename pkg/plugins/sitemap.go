@@ -105,7 +105,7 @@ func (p *SitemapPlugin) buildSitemap(m *lifecycle.Manager, siteURL string) *URLS
 
 	// Add all published posts
 	for _, post := range posts {
-		if !post.Published || post.Draft || post.Skip {
+		if !post.Published || post.Draft || post.Skip || post.Private {
 			continue
 		}
 

@@ -803,6 +803,69 @@ func TestFilterPosts(t *testing.T) {
 	}
 }
 
+func TestFilterPosts_ExcludesPrivatePosts(t *testing.T) {
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	posts := []*models.Post{
+		{Slug: "public1", Tags: []string{"python"}, Date: &date, Private: false},
+		{Slug: "private1", Tags: []string{"python"}, Date: &date, Private: true},
+		{Slug: "public2", Tags: []string{"go"}, Date: &date, Private: false},
+		{Slug: "private2", Tags: []string{"go"}, Date: &date, Private: true},
+	}
+
+	tests := []struct {
+		name      string
+		filter    string
+		wantCount int
+		wantSlugs []string
+	}{
+		{
+			name:      "empty filter excludes private posts",
+			filter:    "",
+			wantCount: 2,
+			wantSlugs: []string{"public1", "public2"},
+		},
+		{
+			name:      "filter by tag excludes private posts",
+			filter:    `'python' in tags`,
+			wantCount: 1,
+			wantSlugs: []string{"public1"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := filterPosts(posts, tt.filter)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(result) != tt.wantCount {
+				t.Errorf("got %d posts, want %d", len(result), tt.wantCount)
+			}
+
+			// Verify no private posts in result
+			for _, post := range result {
+				if post.Private {
+					t.Errorf("private post %q should not be in result", post.Slug)
+				}
+			}
+
+			// Verify expected slugs if specified
+			if len(tt.wantSlugs) > 0 {
+				slugs := make(map[string]bool)
+				for _, post := range result {
+					slugs[post.Slug] = true
+				}
+				for _, wantSlug := range tt.wantSlugs {
+					if !slugs[wantSlug] {
+						t.Errorf("expected slug %q not found in result", wantSlug)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestSortPosts(t *testing.T) {
 	date1 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
 	date2 := time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC)
