@@ -1,4 +1,5 @@
 {# Pagination partial - auto-selects template based on pagination_type #}
+{# Ellipsis pagination: shows 1, ..., current-2 to current+2, ..., last #}
 {% if page.total_pages > 1 %}
 {% if page.pagination_type == "htmx" %}
 {# HTMX Pagination - uses hx-* attributes for AJAX loading #}
@@ -17,20 +18,35 @@
   <span class="pagination-prev disabled">&laquo; Newer</span>
   {% endif %}
 
-  {# Page numbers #}
+  {# Page numbers with ellipsis #}
   <div class="pagination-pages">
     {% for url in page.page_urls %}
-    {% if forloop.Counter == page.number %}
-    <span class="pagination-page current" aria-current="page">{{ forloop.Counter }}</span>
-    {% else %}
-    <a href="{{ url }}"
-       class="pagination-page"
-       hx-get="{{ url }}"
-       hx-target=".posts-list"
-       hx-select=".posts-list"
-       hx-swap="outerHTML"
-       hx-push-url="true">{{ forloop.Counter }}</a>
+    {% with page_num=forloop.Counter %}
+    {# Show page if: first page, last page, or within 2 of current page #}
+    {% if page_num == 1 or page_num == page.total_pages or (page_num >= page.number|add:"-2" and page_num <= page.number|add:"2") %}
+      {# Show ellipsis before this page if there's a gap #}
+      {% if page_num == page.total_pages and page.number < page.total_pages|add:"-3" %}
+      <span class="pagination-ellipsis" aria-hidden="true">...</span>
+      {% elif page_num > 1 and page_num == page.number|add:"-2" and page.number > 4 %}
+      <span class="pagination-ellipsis" aria-hidden="true">...</span>
+      {% endif %}
+      {% if page_num == page.number %}
+      <span class="pagination-page current" aria-current="page">{{ page_num }}</span>
+      {% else %}
+      <a href="{{ url }}"
+         class="pagination-page"
+         hx-get="{{ url }}"
+         hx-target=".posts-list"
+         hx-select=".posts-list"
+         hx-swap="outerHTML"
+         hx-push-url="true">{{ page_num }}</a>
+      {% endif %}
+      {# Show ellipsis after page 1 if there's a gap #}
+      {% if page_num == 1 and page.number > 4 %}
+      <span class="pagination-ellipsis" aria-hidden="true">...</span>
+      {% endif %}
     {% endif %}
+    {% endwith %}
     {% endfor %}
   </div>
 
@@ -73,11 +89,23 @@
     {% endif %}
     <div class="pagination-pages">
       {% for url in page.page_urls %}
-      {% if forloop.Counter == page.number %}
-      <span class="pagination-page current" aria-current="page">{{ forloop.Counter }}</span>
-      {% else %}
-      <a href="{{ url }}" class="pagination-page">{{ forloop.Counter }}</a>
+      {% with page_num=forloop.Counter %}
+      {% if page_num == 1 or page_num == page.total_pages or (page_num >= page.number|add:"-2" and page_num <= page.number|add:"2") %}
+        {% if page_num == page.total_pages and page.number < page.total_pages|add:"-3" %}
+        <span class="pagination-ellipsis" aria-hidden="true">...</span>
+        {% elif page_num > 1 and page_num == page.number|add:"-2" and page.number > 4 %}
+        <span class="pagination-ellipsis" aria-hidden="true">...</span>
+        {% endif %}
+        {% if page_num == page.number %}
+        <span class="pagination-page current" aria-current="page">{{ page_num }}</span>
+        {% else %}
+        <a href="{{ url }}" class="pagination-page">{{ page_num }}</a>
+        {% endif %}
+        {% if page_num == 1 and page.number > 4 %}
+        <span class="pagination-ellipsis" aria-hidden="true">...</span>
+        {% endif %}
       {% endif %}
+      {% endwith %}
       {% endfor %}
     </div>
     {% if page.has_next %}
@@ -97,14 +125,29 @@
   <span class="pagination-prev disabled">&laquo; Newer</span>
   {% endif %}
 
-  {# Page numbers #}
+  {# Page numbers with ellipsis #}
   <div class="pagination-pages">
     {% for url in page.page_urls %}
-    {% if forloop.Counter == page.number %}
-    <span class="pagination-page current" aria-current="page">{{ forloop.Counter }}</span>
-    {% else %}
-    <a href="{{ url }}" class="pagination-page">{{ forloop.Counter }}</a>
+    {% with page_num=forloop.Counter %}
+    {# Show page if: first page, last page, or within 2 of current page #}
+    {% if page_num == 1 or page_num == page.total_pages or (page_num >= page.number|add:"-2" and page_num <= page.number|add:"2") %}
+      {# Show ellipsis before this page if there's a gap #}
+      {% if page_num == page.total_pages and page.number < page.total_pages|add:"-3" %}
+      <span class="pagination-ellipsis" aria-hidden="true">...</span>
+      {% elif page_num > 1 and page_num == page.number|add:"-2" and page.number > 4 %}
+      <span class="pagination-ellipsis" aria-hidden="true">...</span>
+      {% endif %}
+      {% if page_num == page.number %}
+      <span class="pagination-page current" aria-current="page">{{ page_num }}</span>
+      {% else %}
+      <a href="{{ url }}" class="pagination-page">{{ page_num }}</a>
+      {% endif %}
+      {# Show ellipsis after page 1 if there's a gap #}
+      {% if page_num == 1 and page.number > 4 %}
+      <span class="pagination-ellipsis" aria-hidden="true">...</span>
+      {% endif %}
     {% endif %}
+    {% endwith %}
     {% endfor %}
   </div>
 
