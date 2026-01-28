@@ -110,7 +110,9 @@ func GenerateAtom(feed *lifecycle.Feed, config *lifecycle.Config) (string, error
 		return "", fmt.Errorf("failed to marshal Atom feed: %w", err)
 	}
 
-	return xml.Header + string(output), nil
+	// Add XSL stylesheet processing instruction for human-readable display in browsers
+	xslPI := `<?xml-stylesheet href="/atom.xsl" type="text/xsl"?>` + "\n"
+	return xml.Header + xslPI + string(output), nil
 }
 
 // GenerateAtomFromFeedConfig generates an Atom feed from a FeedConfig.
