@@ -19,7 +19,7 @@ import (
 // - data-preview-screenshot: screenshot URL if service is configured
 type WikilinkHoverPlugin struct {
 	config  models.WikilinkHoverConfig
-	postMap map[string]*models.Post
+	postIdx *lifecycle.PostIndex
 }
 
 // NewWikilinkHoverPlugin creates a new WikilinkHoverPlugin with default settings.
@@ -82,19 +82,8 @@ func (p *WikilinkHoverPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	// Build post map for lookups by href
-	posts := m.Posts()
-	p.postMap = make(map[string]*models.Post)
-	for _, post := range posts {
-		if post.Href != "" {
-			p.postMap[post.Href] = post
-		}
-		// Also map by slug-based href
-		if post.Slug != "" {
-			slugHref := "/" + post.Slug + "/"
-			p.postMap[slugHref] = post
-		}
-	}
+	// Use the shared PostIndex from the lifecycle manager
+	p.postIdx = m.PostIndex()
 
 	return m.ProcessPostsConcurrently(p.processPost)
 }
@@ -139,15 +128,15 @@ func (p *WikilinkHoverPlugin) enhanceWikilink(match string) string {
 
 	href := hrefMatches[1]
 
-	// Look up the target post
-	targetPost := p.postMap[href]
+	// Look up the target post using the shared PostIndex
+	targetPost := p.postIdx.ByHref[href]
 	if targetPost == nil {
 		// Try without trailing slash
-		targetPost = p.postMap[strings.TrimSuffix(href, "/")]
+		targetPost = p.postIdx.ByHref[strings.TrimSuffix(href, "/")]
 	}
 	if targetPost == nil {
 		// Try with trailing slash
-		targetPost = p.postMap[href+"/"]
+		targetPost = p.postIdx.ByHref[href+"/"]
 	}
 	if targetPost == nil {
 		return match

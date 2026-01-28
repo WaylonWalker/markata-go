@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -78,6 +79,25 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
+	// Pre-pass: Identify all posts that changed (hash mismatch) and mark their slugs
+	// This enables dependency-based invalidation in a single build
+	cache := GetBuildCache(m)
+	if cache != nil {
+		posts := m.Posts()
+		changedCount := 0
+		for _, post := range posts {
+			if post.Skip || post.Draft || post.InputHash == "" {
+				continue
+			}
+			// Check if this post's hash changed
+			if cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
+				// Mark this slug as changed for dependency tracking
+				cache.MarkSlugChanged(post.Slug)
+				changedCount++
+			}
+		}
+	}
+
 	// Process posts concurrently
 	return m.ProcessPostsConcurrently(func(post *models.Post) error {
 		return p.writePost(post, config, engine, m)
@@ -119,9 +139,12 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	// Get post formats config from Extra
 	postFormats := getPostFormatsConfig(config)
 
+	// Get build cache for incremental builds
+	cache := GetBuildCache(m)
+
 	// Write HTML format (default)
 	if postFormats.IsHTMLEnabled() {
-		if err := p.writeHTMLFormat(post, config, postDir); err != nil {
+		if err := p.writeHTMLFormat(post, config, postDir, cache); err != nil {
 			return err
 		}
 	}
@@ -160,7 +183,8 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 }
 
 // writeHTMLFormat writes the standard HTML output for a post.
-func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle.Config, postDir string) error {
+// If incremental build caching is enabled, skips posts that haven't changed.
+func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle.Config, postDir string, cache *buildcache.Cache) error {
 	// Determine HTML content to write
 	var htmlContent string
 	switch {
@@ -177,9 +201,27 @@ func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle
 
 	// Write index.html
 	outputPath := filepath.Join(postDir, "index.html")
+
+	// Check if we can skip this post (incremental build)
+	if cache != nil && post.InputHash != "" {
+		if !cache.ShouldRebuildWithSlug(post.Path, post.Slug, post.InputHash, post.Template) {
+			// Check if output file exists
+			if _, err := os.Stat(outputPath); err == nil {
+				cache.MarkSkipped()
+				return nil
+			}
+			// Output file missing, need to rebuild
+		}
+	}
+
 	//nolint:gosec // G306: HTML output files need 0644 for web serving
 	if err := os.WriteFile(outputPath, []byte(htmlContent), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", outputPath, err)
+	}
+
+	// Mark as rebuilt in cache (also tracks that this slug changed)
+	if cache != nil && post.InputHash != "" {
+		cache.MarkRebuiltWithSlug(post.Path, post.Slug, post.InputHash, outputPath, post.Template)
 	}
 
 	return nil

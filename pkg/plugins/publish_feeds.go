@@ -3,14 +3,19 @@ package plugins
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/xml"
 	"fmt"
 	"html/template"
+	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -111,6 +116,7 @@ func (p *PublishFeedsPlugin) Configure(m *lifecycle.Manager) error {
 
 // Write generates and writes feed files in all configured formats.
 // Feed generation is parallelized for better performance with many feeds.
+// Uses incremental build cache to skip feeds with unchanged content.
 func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
@@ -127,6 +133,20 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	// Get build cache for incremental builds
+	buildCache := GetBuildCache(m)
+	var changedSlugs map[string]bool
+	if buildCache != nil {
+		changedSlugs = make(map[string]bool)
+		for _, slug := range buildCache.GetChangedSlugs() {
+			changedSlugs[slug] = true
+		}
+	}
+
+	// Track skipped feeds
+	var skippedCount int
+	var rebuiltCount int
+
 	// Process feeds concurrently with a worker pool
 	// Limit concurrency to avoid overwhelming the system
 	const maxConcurrency = 8
@@ -136,9 +156,15 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	if numFeeds <= 2 {
 		for i := range feedConfigs {
 			fc := &feedConfigs[i]
+			if p.shouldSkipFeed(fc, buildCache, changedSlugs, outputDir) {
+				skippedCount++
+				continue
+			}
 			if err := p.publishFeed(fc, config, outputDir); err != nil {
 				return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 			}
+			p.cacheFeedHash(fc, buildCache)
+			rebuiltCount++
 		}
 		return nil
 	}
@@ -147,9 +173,14 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	semaphore := make(chan struct{}, maxConcurrency)
 	errChan := make(chan error, numFeeds)
 	var wg sync.WaitGroup
+	var countMu sync.Mutex
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
+		if p.shouldSkipFeed(fc, buildCache, changedSlugs, outputDir) {
+			skippedCount++
+			continue
+		}
 		wg.Add(1)
 		go func(fc *models.FeedConfig) {
 			defer wg.Done()
@@ -158,13 +189,23 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 
 			if err := p.publishFeed(fc, config, outputDir); err != nil {
 				errChan <- fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
+				return
 			}
+			p.cacheFeedHash(fc, buildCache)
+			countMu.Lock()
+			rebuiltCount++
+			countMu.Unlock()
 		}(fc)
 	}
 
 	// Wait for all goroutines to complete
 	wg.Wait()
 	close(errChan)
+
+	// Log incremental stats if any feeds were skipped
+	if skippedCount > 0 {
+		log.Printf("[publish_feeds] Incremental: %d feeds skipped, %d rebuilt", skippedCount, rebuiltCount)
+	}
 
 	// Check for errors
 	for err := range errChan {
@@ -174,6 +215,78 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	return nil
+}
+
+// computeFeedHash computes a hash of the feed's content (post slugs and dates).
+func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
+	h := sha256.New()
+
+	// Hash the sorted post slugs to detect membership changes
+	slugs := make([]string, 0, len(fc.Posts))
+	for _, post := range fc.Posts {
+		slugs = append(slugs, post.Slug)
+	}
+	sort.Strings(slugs)
+	for _, slug := range slugs {
+		h.Write([]byte(slug))
+		h.Write([]byte{0}) // separator
+	}
+
+	// Also hash the feed config that affects output
+	h.Write([]byte(fc.Slug))
+	h.Write([]byte(fc.Title))
+	fmt.Fprintf(h, "%d", fc.ItemsPerPage)
+
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// shouldSkipFeed checks if a feed can be skipped (incremental build).
+func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interface{}, changedSlugs map[string]bool, outputDir string) bool {
+	if cache == nil {
+		return false
+	}
+
+	bc, ok := cache.(*buildcache.Cache)
+	if !ok || bc == nil {
+		return false
+	}
+
+	// Check if any post in this feed has changed
+	if len(changedSlugs) > 0 {
+		for _, post := range fc.Posts {
+			if changedSlugs[post.Slug] {
+				return false // Need to rebuild
+			}
+		}
+	}
+
+	// Check if feed hash changed (post list membership)
+	currentHash := p.computeFeedHash(fc)
+	cachedHash := bc.GetFeedHash(fc.Slug)
+	if cachedHash != currentHash {
+		return false // Need to rebuild
+	}
+
+	// Check if output files exist
+	feedDir := p.determineFeedDir(outputDir, fc.Slug)
+	indexPath := filepath.Join(feedDir, "index.html")
+	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
+		return false // Need to rebuild
+	}
+
+	return true // Can skip
+}
+
+// cacheFeedHash stores the feed hash in the build cache.
+func (p *PublishFeedsPlugin) cacheFeedHash(fc *models.FeedConfig, cache interface{}) {
+	if cache == nil {
+		return
+	}
+	bc, ok := cache.(*buildcache.Cache)
+	if !ok || bc == nil {
+		return
+	}
+	bc.SetFeedHash(fc.Slug, p.computeFeedHash(fc))
 }
 
 // feedFormatPublisher defines how to publish a specific feed format.

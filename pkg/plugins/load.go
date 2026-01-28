@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -42,6 +43,7 @@ func (p *LoadPlugin) Name() string {
 
 // Load reads and parses all discovered files into Post objects.
 // Files are loaded in parallel using a worker pool for improved I/O performance.
+// Uses ModTime-based caching to skip re-parsing unchanged files.
 func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 	files := m.Files()
 	config := m.Config()
@@ -49,6 +51,9 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 	if baseDir == "" {
 		baseDir = "."
 	}
+
+	// Get build cache for ModTime-based skipping
+	cache := GetBuildCache(m)
 
 	// Use manager's concurrency setting for worker pool size
 	numWorkers := m.Concurrency()
@@ -58,7 +63,7 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 
 	// For small file counts, don't bother with parallelism overhead
 	if len(files) <= numWorkers {
-		return p.loadSequential(m, files, baseDir)
+		return p.loadSequential(m, files, baseDir, cache)
 	}
 
 	// Channel for sending file paths to workers
@@ -79,26 +84,11 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 		go func() {
 			defer wg.Done()
 			for file := range jobs {
-				// Construct full path
-				fullPath := file
-				if !filepath.IsAbs(file) {
-					fullPath = filepath.Join(baseDir, file)
-				}
-
-				// Read file content
-				content, err := os.ReadFile(fullPath)
+				post, err := p.loadFile(file, baseDir, cache)
 				if err != nil {
-					results <- loadResult{err: fmt.Errorf("failed to read %s: %w", file, err), file: file}
+					results <- loadResult{err: err, file: file}
 					continue
 				}
-
-				// Parse the file
-				post, err := p.parseFile(file, string(content))
-				if err != nil {
-					results <- loadResult{err: fmt.Errorf("failed to parse %s: %w", file, err), file: file}
-					continue
-				}
-
 				results <- loadResult{post: post, file: file}
 			}
 		}()
@@ -146,27 +136,108 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 	return nil
 }
 
+// loadFile loads a single file, using cache if ModTime is unchanged.
+func (p *LoadPlugin) loadFile(file, baseDir string, cache *buildcache.Cache) (*models.Post, error) {
+	// Construct full path
+	fullPath := file
+	if !filepath.IsAbs(file) {
+		fullPath = filepath.Join(baseDir, file)
+	}
+
+	// Stat file for ModTime
+	stat, err := os.Stat(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat %s: %w", file, err)
+	}
+	modTime := stat.ModTime().UnixNano()
+
+	// Check cache for unchanged file
+	if cache != nil {
+		if cachedData := cache.GetCachedPostData(file, modTime); cachedData != nil {
+			// Restore Post from cached data
+			post := p.restorePostFromCache(cachedData)
+			return post, nil
+		}
+	}
+
+	// Read file content
+	content, err := os.ReadFile(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read %s: %w", file, err)
+	}
+
+	// Parse the file
+	post, err := p.parseFile(file, string(content))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", file, err)
+	}
+
+	// Cache the parsed post
+	if cache != nil {
+		postData := p.postToCachedData(post)
+		//nolint:errcheck // caching is best-effort
+		cache.CachePostData(file, modTime, postData)
+	}
+
+	return post, nil
+}
+
+// restorePostFromCache creates a Post from cached data.
+func (p *LoadPlugin) restorePostFromCache(data *buildcache.CachedPostData) *models.Post {
+	post := models.NewPost(data.Path)
+	post.Content = data.Content
+	post.Slug = data.Slug
+	post.Href = data.Href
+	post.Title = data.Title
+	post.Date = data.Date
+	post.Published = data.Published
+	post.Draft = data.Draft
+	post.Private = data.Private
+	post.Skip = data.Skip
+	post.Tags = data.Tags
+	post.Description = data.Description
+	post.Template = data.Template
+	post.Templates = data.Templates
+	post.RawFrontmatter = data.RawFrontmatter
+	post.InputHash = data.InputHash
+	if data.Extra != nil {
+		for k, v := range data.Extra {
+			post.Set(k, v)
+		}
+	}
+	return post
+}
+
+// postToCachedData converts a Post to cacheable data.
+func (p *LoadPlugin) postToCachedData(post *models.Post) *buildcache.CachedPostData {
+	return &buildcache.CachedPostData{
+		Path:           post.Path,
+		Content:        post.Content,
+		Slug:           post.Slug,
+		Href:           post.Href,
+		Title:          post.Title,
+		Date:           post.Date,
+		Published:      post.Published,
+		Draft:          post.Draft,
+		Private:        post.Private,
+		Skip:           post.Skip,
+		Tags:           post.Tags,
+		Description:    post.Description,
+		Template:       post.Template,
+		Templates:      post.Templates,
+		RawFrontmatter: post.RawFrontmatter,
+		InputHash:      post.InputHash,
+		Extra:          post.Extra,
+	}
+}
+
 // loadSequential loads files one at a time (used for small file counts).
-func (p *LoadPlugin) loadSequential(m *lifecycle.Manager, files []string, baseDir string) error {
+func (p *LoadPlugin) loadSequential(m *lifecycle.Manager, files []string, baseDir string, cache *buildcache.Cache) error {
 	for _, file := range files {
-		// Construct full path
-		fullPath := file
-		if !filepath.IsAbs(file) {
-			fullPath = filepath.Join(baseDir, file)
-		}
-
-		// Read file content
-		content, err := os.ReadFile(fullPath)
+		post, err := p.loadFile(file, baseDir, cache)
 		if err != nil {
-			return fmt.Errorf("failed to read %s: %w", file, err)
+			return err
 		}
-
-		// Parse the file
-		post, err := p.parseFile(file, string(content))
-		if err != nil {
-			return fmt.Errorf("failed to parse %s: %w", file, err)
-		}
-
 		m.AddPost(post)
 	}
 
@@ -175,8 +246,8 @@ func (p *LoadPlugin) loadSequential(m *lifecycle.Manager, files []string, baseDi
 
 // parseFile parses a markdown file's content into a Post object.
 func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
-	// Parse frontmatter
-	metadata, body, err := ParseFrontmatter(content)
+	// Parse frontmatter and get raw frontmatter for hashing
+	metadata, body, rawFrontmatter, err := ParseFrontmatterWithRaw(content)
 	if err != nil {
 		return nil, err
 	}
@@ -184,6 +255,7 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 	// Create post with defaults
 	post := models.NewPost(path)
 	post.Content = body
+	post.RawFrontmatter = rawFrontmatter
 
 	// Apply metadata to post
 	if err := p.applyMetadata(post, metadata); err != nil {
@@ -198,6 +270,10 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 
 	// Generate href from slug
 	post.GenerateHref()
+
+	// Compute input hash (content + frontmatter + template)
+	// Template may be resolved later, so we use what we have now
+	post.InputHash = buildcache.ComputePostInputHash(body, rawFrontmatter, post.Template)
 
 	return post, nil
 }

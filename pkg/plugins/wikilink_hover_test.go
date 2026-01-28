@@ -4,8 +4,27 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+// newTestPostIndex creates a PostIndex from a map of href -> post for testing.
+func newTestPostIndex(posts map[string]*models.Post) *lifecycle.PostIndex {
+	idx := &lifecycle.PostIndex{
+		BySlug:      make(map[string]*models.Post),
+		BySlugified: make(map[string]*models.Post),
+		ByHref:      make(map[string]*models.Post),
+		ByPath:      make(map[string]*models.Post),
+	}
+	for href, post := range posts {
+		idx.ByHref[href] = post
+		if post.Slug != "" {
+			idx.BySlug[strings.ToLower(post.Slug)] = post
+			idx.BySlugified[models.Slugify(post.Slug)] = post
+		}
+	}
+	return idx
+}
 
 func TestWikilinkHoverPlugin_Name(t *testing.T) {
 	p := NewWikilinkHoverPlugin()
@@ -16,7 +35,7 @@ func TestWikilinkHoverPlugin_Name(t *testing.T) {
 
 func TestWikilinkHoverPlugin_ProcessPost_NoWikilinks(t *testing.T) {
 	p := NewWikilinkHoverPlugin()
-	p.postMap = map[string]*models.Post{}
+	p.postIdx = newTestPostIndex(map[string]*models.Post{})
 
 	post := &models.Post{
 		ArticleHTML: "<p>Hello world with no wikilinks</p>",
@@ -44,9 +63,9 @@ func TestWikilinkHoverPlugin_ProcessPost_BasicWikilink(t *testing.T) {
 		Href:        "/my-article/",
 		Description: &description,
 	}
-	p.postMap = map[string]*models.Post{
+	p.postIdx = newTestPostIndex(map[string]*models.Post{
 		"/my-article/": targetPost,
-	}
+	})
 
 	post := &models.Post{
 		ArticleHTML: `<p>Check out <a href="/my-article/" class="wikilink">My Article</a> for more info.</p>`,
@@ -80,9 +99,9 @@ func TestWikilinkHoverPlugin_ProcessPost_WithImage(t *testing.T) {
 			"image": "/images/featured.jpg",
 		},
 	}
-	p.postMap = map[string]*models.Post{
+	p.postIdx = newTestPostIndex(map[string]*models.Post{
 		"/my-article/": targetPost,
-	}
+	})
 
 	post := &models.Post{
 		ArticleHTML: `<a href="/my-article/" class="wikilink">My Article</a>`,
@@ -110,9 +129,9 @@ func TestWikilinkHoverPlugin_ProcessPost_NoImage(t *testing.T) {
 		Href:        "/my-article/",
 		Description: &description,
 	}
-	p.postMap = map[string]*models.Post{
+	p.postIdx = newTestPostIndex(map[string]*models.Post{
 		"/my-article/": targetPost,
-	}
+	})
 
 	post := &models.Post{
 		ArticleHTML: `<a href="/my-article/" class="wikilink">My Article</a>`,
@@ -143,9 +162,9 @@ func TestWikilinkHoverPlugin_ProcessPost_ImageDisabled(t *testing.T) {
 			"image": "/images/featured.jpg",
 		},
 	}
-	p.postMap = map[string]*models.Post{
+	p.postIdx = newTestPostIndex(map[string]*models.Post{
 		"/my-article/": targetPost,
-	}
+	})
 
 	post := &models.Post{
 		ArticleHTML: `<a href="/my-article/" class="wikilink">My Article</a>`,
@@ -172,9 +191,9 @@ func TestWikilinkHoverPlugin_ProcessPost_ScreenshotService(t *testing.T) {
 		Href:        "/my-article/",
 		Description: &description,
 	}
-	p.postMap = map[string]*models.Post{
+	p.postIdx = newTestPostIndex(map[string]*models.Post{
 		"/my-article/": targetPost,
-	}
+	})
 
 	post := &models.Post{
 		ArticleHTML: `<a href="/my-article/" class="wikilink">My Article</a>`,
@@ -193,7 +212,7 @@ func TestWikilinkHoverPlugin_ProcessPost_ScreenshotService(t *testing.T) {
 
 func TestWikilinkHoverPlugin_ProcessPost_SkipPost(t *testing.T) {
 	p := NewWikilinkHoverPlugin()
-	p.postMap = map[string]*models.Post{}
+	p.postIdx = newTestPostIndex(map[string]*models.Post{})
 
 	post := &models.Post{
 		Skip:        true,
@@ -214,7 +233,7 @@ func TestWikilinkHoverPlugin_ProcessPost_SkipPost(t *testing.T) {
 
 func TestWikilinkHoverPlugin_ProcessPost_EmptyHTML(t *testing.T) {
 	p := NewWikilinkHoverPlugin()
-	p.postMap = map[string]*models.Post{}
+	p.postIdx = newTestPostIndex(map[string]*models.Post{})
 
 	post := &models.Post{
 		ArticleHTML: "",
@@ -235,10 +254,10 @@ func TestWikilinkHoverPlugin_ProcessPost_MultipleWikilinks(t *testing.T) {
 
 	desc1 := "First article description"
 	desc2 := "Second article description"
-	p.postMap = map[string]*models.Post{
+	p.postIdx = newTestPostIndex(map[string]*models.Post{
 		"/first/":  {Slug: "first", Href: "/first/", Description: &desc1},
 		"/second/": {Slug: "second", Href: "/second/", Description: &desc2},
-	}
+	})
 
 	post := &models.Post{
 		ArticleHTML: `<p>See <a href="/first/" class="wikilink">First</a> and <a href="/second/" class="wikilink">Second</a>.</p>`,
@@ -258,7 +277,7 @@ func TestWikilinkHoverPlugin_ProcessPost_MultipleWikilinks(t *testing.T) {
 
 func TestWikilinkHoverPlugin_ProcessPost_UnknownTarget(t *testing.T) {
 	p := NewWikilinkHoverPlugin()
-	p.postMap = map[string]*models.Post{}
+	p.postIdx = newTestPostIndex(map[string]*models.Post{})
 
 	post := &models.Post{
 		ArticleHTML: `<a href="/unknown/" class="wikilink">Unknown</a>`,
@@ -286,9 +305,9 @@ func TestWikilinkHoverPlugin_ProcessPost_TruncateLongDescription(t *testing.T) {
 		Href:        "/long/",
 		Description: &longDesc,
 	}
-	p.postMap = map[string]*models.Post{
+	p.postIdx = newTestPostIndex(map[string]*models.Post{
 		"/long/": targetPost,
-	}
+	})
 
 	post := &models.Post{
 		ArticleHTML: `<a href="/long/" class="wikilink">Long Post</a>`,
@@ -318,9 +337,9 @@ func TestWikilinkHoverPlugin_ProcessPost_FallbackToContent(t *testing.T) {
 		Href:    "/content-only/",
 		Content: "This is the raw markdown content of the post.",
 	}
-	p.postMap = map[string]*models.Post{
+	p.postIdx = newTestPostIndex(map[string]*models.Post{
 		"/content-only/": targetPost,
-	}
+	})
 
 	post := &models.Post{
 		ArticleHTML: `<a href="/content-only/" class="wikilink">Content Post</a>`,
@@ -341,9 +360,9 @@ func TestWikilinkHoverPlugin_ProcessPost_RegularLink(t *testing.T) {
 	p := NewWikilinkHoverPlugin()
 
 	desc := "Article description"
-	p.postMap = map[string]*models.Post{
+	p.postIdx = newTestPostIndex(map[string]*models.Post{
 		"/my-article/": {Slug: "my-article", Href: "/my-article/", Description: &desc},
-	}
+	})
 
 	// Regular link (not wikilink) should not be modified
 	post := &models.Post{
@@ -366,9 +385,9 @@ func TestWikilinkHoverPlugin_ProcessPost_PreservesExistingAttributes(t *testing.
 	p := NewWikilinkHoverPlugin()
 
 	desc := "Article description"
-	p.postMap = map[string]*models.Post{
+	p.postIdx = newTestPostIndex(map[string]*models.Post{
 		"/my-article/": {Slug: "my-article", Href: "/my-article/", Description: &desc},
-	}
+	})
 
 	// Wikilink with existing attributes
 	post := &models.Post{
@@ -419,9 +438,9 @@ func TestWikilinkHoverPlugin_ProcessPost_ImageFieldVariants(t *testing.T) {
 					tc.imageField: "/images/test.jpg",
 				},
 			}
-			p.postMap = map[string]*models.Post{
+			p.postIdx = newTestPostIndex(map[string]*models.Post{
 				"/test/": targetPost,
-			}
+			})
 
 			post := &models.Post{
 				ArticleHTML: `<a href="/test/" class="wikilink">Test</a>`,

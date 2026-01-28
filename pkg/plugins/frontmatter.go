@@ -126,6 +126,33 @@ func ParseFrontmatter(content string) (metadata map[string]interface{}, body str
 	return metadata, body, nil
 }
 
+// ParseFrontmatterWithRaw is like ParseFrontmatter but also returns the raw frontmatter string.
+// This is useful for computing input hashes for incremental builds.
+func ParseFrontmatterWithRaw(content string) (metadata map[string]interface{}, body, rawFrontmatter string, err error) {
+	rawFrontmatter, body, err = ExtractFrontmatter(content)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	// No frontmatter case
+	if rawFrontmatter == "" {
+		return make(map[string]interface{}), body, "", nil
+	}
+
+	// Parse the YAML
+	metadata = make(map[string]interface{})
+	if err = yaml.Unmarshal([]byte(rawFrontmatter), &metadata); err != nil {
+		return nil, "", "", fmt.Errorf("%w: %w", ErrInvalidFrontmatter, err)
+	}
+
+	// Handle nil result from empty YAML
+	if metadata == nil {
+		metadata = make(map[string]interface{})
+	}
+
+	return metadata, body, rawFrontmatter, nil
+}
+
 // GetString extracts a string value from metadata, returning empty string if not found or wrong type.
 func GetString(metadata map[string]interface{}, key string) string {
 	if v, ok := metadata[key]; ok {

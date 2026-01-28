@@ -1,0 +1,220 @@
+package buildcache
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestNew(t *testing.T) {
+	cache := New("")
+	if cache == nil {
+		t.Fatal("New returned nil")
+	}
+	if cache.Version != CacheVersion {
+		t.Errorf("Version = %d, want %d", cache.Version, CacheVersion)
+	}
+	if cache.Posts == nil {
+		t.Error("Posts map is nil")
+	}
+	if cache.Graph == nil {
+		t.Error("Graph is nil")
+	}
+	if cache.changedSlugs == nil {
+		t.Error("changedSlugs map is nil")
+	}
+}
+
+func TestCache_SetAndGetDependencies(t *testing.T) {
+	cache := New("")
+
+	// Set dependencies
+	cache.SetDependencies("pages/post-a.md", "post-a", []string{"post-b", "post-c"})
+
+	// Verify through graph
+	deps := cache.Graph.GetDependencies("pages/post-a.md")
+	if len(deps) != 2 {
+		t.Errorf("GetDependencies returned %d deps, want 2", len(deps))
+	}
+}
+
+func TestCache_GetAffectedPosts(t *testing.T) {
+	cache := New("")
+
+	// Set up dependencies: post-a -> post-b -> post-c
+	cache.SetDependencies("pages/post-a.md", "post-a", []string{"post-b"})
+	cache.SetDependencies("pages/post-b.md", "post-b", []string{"post-c"})
+
+	// When post-c changes, both post-a and post-b should be affected
+	affected := cache.GetAffectedPosts([]string{"post-c"})
+	if len(affected) != 2 {
+		t.Errorf("GetAffectedPosts returned %d posts, want 2: %v", len(affected), affected)
+	}
+}
+
+func TestCache_ShouldRebuildWithSlug_DependencyChanged(t *testing.T) {
+	cache := New("")
+
+	// Set up: post-a depends on post-b
+	cache.SetDependencies("pages/post-a.md", "post-a", []string{"post-b"})
+
+	// Mark post-a as previously built
+	cache.MarkRebuilt("pages/post-a.md", "hash123", "output/post-a/index.html", "post.html")
+
+	// Mark that post-b changed this build
+	cache.MarkSlugChanged("post-b")
+
+	// Even though post-a's hash matches, it should rebuild because post-b changed
+	shouldRebuild := cache.ShouldRebuildWithSlug("pages/post-a.md", "post-a", "hash123", "post.html")
+	if !shouldRebuild {
+		t.Error("ShouldRebuildWithSlug = false, want true (dependency changed)")
+	}
+}
+
+func TestCache_ShouldRebuildWithSlug_NoDependencyChange(t *testing.T) {
+	cache := New("")
+
+	// Set up: post-a depends on post-b
+	cache.SetDependencies("pages/post-a.md", "post-a", []string{"post-b"})
+
+	// Mark post-a as previously built
+	cache.MarkRebuilt("pages/post-a.md", "hash123", "output/post-a/index.html", "post.html")
+
+	// Don't mark post-b as changed
+
+	// post-a should NOT rebuild (hash matches, no dependency changed)
+	shouldRebuild := cache.ShouldRebuildWithSlug("pages/post-a.md", "post-a", "hash123", "post.html")
+	if shouldRebuild {
+		t.Error("ShouldRebuildWithSlug = true, want false (no dependency changed)")
+	}
+}
+
+func TestCache_GetChangedSlugs(t *testing.T) {
+	cache := New("")
+
+	// No changes initially
+	changed := cache.GetChangedSlugs()
+	if len(changed) != 0 {
+		t.Errorf("GetChangedSlugs = %v, want []", changed)
+	}
+
+	// Mark some slugs as changed
+	cache.MarkSlugChanged("post-a")
+	cache.MarkSlugChanged("post-b")
+
+	changed = cache.GetChangedSlugs()
+	if len(changed) != 2 {
+		t.Errorf("GetChangedSlugs returned %d slugs, want 2", len(changed))
+	}
+}
+
+func TestCache_ResetStats_ClearsChangedSlugs(t *testing.T) {
+	cache := New("")
+
+	cache.MarkSlugChanged("post-a")
+	cache.MarkSlugChanged("post-b")
+
+	cache.ResetStats()
+
+	changed := cache.GetChangedSlugs()
+	if len(changed) != 0 {
+		t.Errorf("GetChangedSlugs after ResetStats = %v, want []", changed)
+	}
+}
+
+func TestCache_MarkRebuiltWithSlug_TracksChange(t *testing.T) {
+	cache := New("")
+
+	cache.MarkRebuiltWithSlug("pages/post-a.md", "post-a", "hash123", "output/post-a/index.html", "post.html")
+
+	changed := cache.GetChangedSlugs()
+	if len(changed) != 1 || changed[0] != "post-a" {
+		t.Errorf("GetChangedSlugs = %v, want [post-a]", changed)
+	}
+}
+
+func TestCache_SaveLoad_PreservesGraph(t *testing.T) {
+	dir := t.TempDir()
+	cacheDir := filepath.Join(dir, ".markata")
+
+	// Create and populate cache
+	cache := New(cacheDir)
+	cache.SetDependencies("pages/post-a.md", "post-a", []string{"post-b", "post-c"})
+	cache.SetDependencies("pages/post-b.md", "post-b", []string{"post-c"})
+	cache.MarkRebuilt("pages/post-a.md", "hash-a", "output/post-a/index.html", "post.html")
+
+	// Save
+	if err := cache.Save(); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	// Load into new cache
+	loaded, err := Load(cacheDir)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	// Verify graph was preserved
+	deps := loaded.Graph.GetDependencies("pages/post-a.md")
+	if len(deps) != 2 {
+		t.Errorf("Loaded cache has %d deps for post-a, want 2", len(deps))
+	}
+
+	// Verify PathToSlug was preserved (needed for transitive lookups)
+	slug := loaded.Graph.PathToSlug["pages/post-a.md"]
+	if slug != "post-a" {
+		t.Errorf("PathToSlug[post-a.md] = %q, want %q", slug, "post-a")
+	}
+
+	// Verify Dependents was rebuilt
+	if !loaded.Graph.HasDependents("post-c") {
+		t.Error("post-c should have dependents after load")
+	}
+
+	// Verify affected posts calculation works after load
+	affected := loaded.GetAffectedPosts([]string{"post-c"})
+	if len(affected) != 2 {
+		t.Errorf("GetAffectedPosts after load returned %d posts, want 2: %v", len(affected), affected)
+	}
+}
+
+func TestCache_LoadMissingGraph(t *testing.T) {
+	dir := t.TempDir()
+	cacheDir := filepath.Join(dir, ".markata")
+
+	// Create cache file manually without graph field
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+	cacheFile := filepath.Join(cacheDir, CacheFileName)
+	data := `{"version":1,"config_hash":"abc","templates_hash":"def","posts":{}}`
+	//nolint:gosec // G306: Test file, 0644 is fine
+	if err := os.WriteFile(cacheFile, []byte(data), 0o644); err != nil {
+		t.Fatalf("WriteFile failed: %v", err)
+	}
+
+	// Load - should initialize graph
+	loaded, err := Load(cacheDir)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if loaded.Graph == nil {
+		t.Error("Graph should be initialized when missing from cache file")
+	}
+}
+
+func TestCache_GraphSize(t *testing.T) {
+	cache := New("")
+
+	if cache.GraphSize() != 0 {
+		t.Errorf("GraphSize = %d, want 0", cache.GraphSize())
+	}
+
+	cache.SetDependencies("pages/post-a.md", "post-a", []string{"post-b"})
+	cache.SetDependencies("pages/post-b.md", "post-b", []string{"post-c"})
+
+	if cache.GraphSize() != 2 {
+		t.Errorf("GraphSize = %d, want 2", cache.GraphSize())
+	}
+}
