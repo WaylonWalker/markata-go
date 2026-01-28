@@ -94,16 +94,18 @@ func (p *WikilinksPlugin) Transform(m *lifecycle.Manager) error {
 // - Group 2: Optional display text (after the pipe)
 var wikilinkRegex = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 
+// wikilinksCodeBlockRegex matches fenced code blocks to avoid transforming wikilinks inside them.
+var wikilinksCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
+
 // processWikilinks replaces wikilink syntax with HTML anchor tags.
 // Returns the processed content and any warnings about broken links.
 // Wikilinks inside fenced code blocks are preserved and not transformed.
 func (p *WikilinksPlugin) processWikilinks(content string, postMap map[string]*models.Post) (processed string, warnings []string) {
 	// Split content by fenced code blocks to avoid transforming wikilinks inside them
 	// Match ``` or ~~~ fenced code blocks (with optional language identifier)
-	codeBlockRegex := regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
 
 	// Find all code blocks and their positions
-	codeBlocks := codeBlockRegex.FindAllStringIndex(content, -1)
+	codeBlocks := wikilinksCodeBlockRegex.FindAllStringIndex(content, -1)
 
 	// If no code blocks, process the entire content
 	if len(codeBlocks) == 0 {

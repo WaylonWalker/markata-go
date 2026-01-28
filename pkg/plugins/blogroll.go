@@ -32,6 +32,9 @@ const (
 	defaultReaderSlug   = "reader"
 )
 
+// blogrollHTMLTagRegex matches HTML tags for stripping.
+var blogrollHTMLTagRegex = regexp.MustCompile(`<[^>]*>`)
+
 // BlogrollPlugin fetches and processes external RSS/Atom feeds.
 // It runs in the Configure stage to register synthetic posts for wikilink resolution,
 // in the Collect stage to gather external feed entries,
@@ -1627,9 +1630,8 @@ func blogrollTruncateString(s string, maxLen int) string {
 
 // blogrollStripHTML removes HTML tags from a string.
 func blogrollStripHTML(s string) string {
-	// Simple regex-based HTML stripping
-	re := regexp.MustCompile(`<[^>]*>`)
-	s = re.ReplaceAllString(s, "")
+	// Use pre-compiled regex for HTML stripping
+	s = blogrollHTMLTagRegex.ReplaceAllString(s, "")
 
 	// Decode common HTML entities
 	s = html.UnescapeString(s)
