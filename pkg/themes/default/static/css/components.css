@@ -1255,6 +1255,34 @@
   line-height: 1.6;
 }
 
+/* Reader entry with image layout */
+.reader-entry-article {
+  display: block;
+}
+
+.reader-entry-article.has-image {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.reader-entry-image-link {
+  flex-shrink: 0;
+}
+
+.reader-entry-image {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  background-color: var(--color-surface);
+}
+
+.reader-entry-content {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Responsive adjustments */
 @media (max-width: 640px) {
   .reader-page {
@@ -1275,6 +1303,15 @@
 
   .reader-entry-meta {
     font-size: 0.8125rem;
+  }
+
+  .reader-entry-article.has-image {
+    flex-direction: column;
+  }
+
+  .reader-entry-image {
+    width: 100%;
+    height: 160px;
   }
 }
 
