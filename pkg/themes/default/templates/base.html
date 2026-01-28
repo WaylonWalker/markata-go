@@ -23,6 +23,12 @@
   <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset }}">
   {% endif %}
 
+  <!-- Pagefind Search CSS (when enabled) -->
+  {% if config.search.enabled %}
+  <link rel="stylesheet" href="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.css">
+  <link rel="stylesheet" href="{{ 'css/search.css' | theme_asset }}">
+  {% endif %}
+
   <!-- Conditional CSS Loading -->
   <script>
     // GLightbox CSS - only load if glightbox elements will exist
@@ -114,6 +120,9 @@
     <div class="container">
       <a href="/" class="site-title">{{ config.title | default:'My Site' }}</a>
       {% include "components/nav.html" %}
+      {% if config.search.enabled and config.search.position == 'navbar' %}
+      {% include "components/search.html" %}
+      {% endif %}
     </div>
   </header>
   {% endblock %}
@@ -195,6 +204,30 @@
     }
     {% endif %}
   </script>
+
+  <!-- Pagefind Search JS (when enabled) -->
+  {% if config.search.enabled %}
+  <script src="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.js" onload="initPagefindSearch()"></script>
+  <script>
+    function initPagefindSearch() {
+      if (typeof PagefindUI !== 'undefined' && document.getElementById('pagefind-search')) {
+        new PagefindUI({
+          element: '#pagefind-search',
+          showSubResults: true,
+          showImages: {{ config.search.show_images | yesno:"true,false" }},
+          excerptLength: {{ config.search.excerpt_length | default:200 }},
+          translations: {
+            placeholder: '{{ config.search.placeholder | default:"Search..." }}'
+          }
+        });
+      }
+    }
+    // Fallback if script already loaded
+    if (typeof PagefindUI !== 'undefined') {
+      document.addEventListener('DOMContentLoaded', initPagefindSearch);
+    }
+  </script>
+  {% endif %}
 
   <!-- Palette Switcher JS (when enabled) -->
   {% if config.theme.switcher.enabled %}

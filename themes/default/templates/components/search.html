@@ -1,0 +1,9 @@
+{# Search component template #}
+{# Usage: {% include "components/search.html" %} #}
+{# Requires: config.search (SearchConfig) #}
+
+{% if config.search.enabled %}
+<div class="search-container search-container--{{ config.search.position | default:'navbar' }}" id="search-container">
+  <div id="pagefind-search"></div>
+</div>
+{% endif %}
