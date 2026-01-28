@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -46,8 +47,11 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	paletteName, paletteLight, paletteDark := p.getPaletteConfig(config.Extra)
 	if paletteName == "" {
 		// No palette configured, skip
+		log.Printf("[palette_css] No palette configured, skipping CSS generation")
 		return nil
 	}
+
+	log.Printf("[palette_css] Generating CSS for palette: %s (light: %s, dark: %s)", paletteName, paletteLight, paletteDark)
 
 	// Check if theme switcher is enabled
 	switcherEnabled := p.isSwitcherEnabled(config.Extra)
@@ -75,6 +79,8 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	if err := os.WriteFile(cssPath, []byte(css), 0o644); err != nil {
 		return fmt.Errorf("writing palette CSS: %w", err)
 	}
+
+	log.Printf("[palette_css] Wrote %d bytes to %s", len(css), cssPath)
 
 	return nil
 }
