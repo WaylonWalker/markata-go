@@ -241,6 +241,7 @@ func getDefaultTemplates(config *lifecycle.Config) map[string]string {
 
 // Render wraps markdown content in templates.
 // This runs after markdown rendering, using post.ArticleHTML as the body.
+// Skips posts that don't need rebuilding (incremental builds).
 func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	if p.engine == nil {
 		return fmt.Errorf("template engine not initialized")
@@ -248,6 +249,16 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 
 	// Get config for template context
 	config := m.Config()
+
+	// Get build cache to check if posts need rebuilding
+	cache := GetBuildCache(m)
+	var changedSlugs map[string]bool
+	if cache != nil {
+		changedSlugs = make(map[string]bool)
+		for _, slug := range cache.GetChangedSlugs() {
+			changedSlugs[slug] = true
+		}
+	}
 
 	// Collect private paths for robots.txt template variable
 	privatePaths := collectPrivatePaths(m.Posts())
@@ -257,6 +268,41 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		// Skip posts marked to skip or without article HTML
 		if post.Skip || post.ArticleHTML == "" {
 			return nil
+		}
+
+		// Skip posts that don't need rebuilding (incremental builds)
+		// Check if this post or any of its dependencies changed
+		if cache != nil && post.InputHash != "" {
+			needsRebuild := false
+
+			// Check if post itself changed
+			if cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
+				needsRebuild = true
+			}
+
+			// Check if any dependency changed
+			if !needsRebuild && len(changedSlugs) > 0 {
+				for _, dep := range post.Dependencies {
+					if changedSlugs[dep] {
+						needsRebuild = true
+						break
+					}
+				}
+			}
+
+			// Check if this post's slug is in changedSlugs (it was modified)
+			if !needsRebuild && changedSlugs[post.Slug] {
+				needsRebuild = true
+			}
+
+			// Try to load cached HTML if we don't need to rebuild
+			if !needsRebuild {
+				if cachedHTML := cache.GetCachedFullHTML(post.Path); cachedHTML != "" {
+					post.HTML = cachedHTML
+					return nil
+				}
+				// No cached HTML, need to render
+			}
 		}
 
 		// Determine which template to use
@@ -288,6 +334,13 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		}
 
 		post.HTML = html
+
+		// Cache the full HTML for future incremental builds
+		if cache != nil && post.InputHash != "" {
+			//nolint:errcheck // caching is best-effort, failures are non-fatal
+			cache.CacheFullHTML(post.Path, html)
+		}
+
 		return nil
 	})
 }

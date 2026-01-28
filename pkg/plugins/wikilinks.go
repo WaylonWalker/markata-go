@@ -43,31 +43,8 @@ func (p *WikilinksPlugin) Configure(m *lifecycle.Manager) error {
 
 // Transform processes wikilinks in all post content.
 func (p *WikilinksPlugin) Transform(m *lifecycle.Manager) error {
-	posts := m.Posts()
-
-	// Build a map of slug -> post for quick lookup
-	// Slugs are registered first, then aliases (slugs take precedence)
-	postMap := make(map[string]*models.Post)
-	for _, post := range posts {
-		if post.Slug != "" {
-			postMap[strings.ToLower(post.Slug)] = post
-		}
-	}
-
-	// Add alias support - aliases are registered after slugs so slugs take precedence
-	for _, post := range posts {
-		if aliases, ok := post.Extra["aliases"].([]interface{}); ok {
-			for _, alias := range aliases {
-				if aliasStr, ok := alias.(string); ok {
-					normalizedAlias := strings.ToLower(aliasStr)
-					// Only add if not already registered (slug takes precedence)
-					if _, exists := postMap[normalizedAlias]; !exists {
-						postMap[normalizedAlias] = post
-					}
-				}
-			}
-		}
-	}
+	// Use the shared post index instead of building our own maps
+	postIndex := m.PostIndex()
 
 	// Process each post
 	return m.ProcessPostsConcurrently(func(post *models.Post) error {
@@ -75,8 +52,13 @@ func (p *WikilinksPlugin) Transform(m *lifecycle.Manager) error {
 			return nil
 		}
 
-		content, warnings := p.processWikilinks(post.Content, postMap)
+		content, warnings, dependencies := p.processWikilinks(post.Content, postIndex)
 		post.Content = content
+
+		// Record dependencies for incremental build cache
+		for _, dep := range dependencies {
+			post.AddDependency(dep)
+		}
 
 		// Store warnings if any
 		if len(warnings) > 0 && p.warnOnBroken {
@@ -98,9 +80,9 @@ var wikilinkRegex = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 var wikilinksCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
 
 // processWikilinks replaces wikilink syntax with HTML anchor tags.
-// Returns the processed content and any warnings about broken links.
+// Returns the processed content, any warnings about broken links, and a list of resolved slugs (dependencies).
 // Wikilinks inside fenced code blocks are preserved and not transformed.
-func (p *WikilinksPlugin) processWikilinks(content string, postMap map[string]*models.Post) (processed string, warnings []string) {
+func (p *WikilinksPlugin) processWikilinks(content string, postIndex *lifecycle.PostIndex) (processed string, warnings, dependencies []string) {
 	// Split content by fenced code blocks to avoid transforming wikilinks inside them
 	// Match ``` or ~~~ fenced code blocks (with optional language identifier)
 
@@ -109,8 +91,8 @@ func (p *WikilinksPlugin) processWikilinks(content string, postMap map[string]*m
 
 	// If no code blocks, process the entire content
 	if len(codeBlocks) == 0 {
-		processed = p.processWikilinksInText(content, postMap, &warnings)
-		return processed, warnings
+		processed = p.processWikilinksInText(content, postIndex, &warnings, &dependencies)
+		return processed, warnings, dependencies
 	}
 
 	// Process content in segments, skipping code blocks
@@ -122,7 +104,7 @@ func (p *WikilinksPlugin) processWikilinks(content string, postMap map[string]*m
 
 		// Process text before this code block
 		if start > lastEnd {
-			processed := p.processWikilinksInText(content[lastEnd:start], postMap, &warnings)
+			processed := p.processWikilinksInText(content[lastEnd:start], postIndex, &warnings, &dependencies)
 			result.WriteString(processed)
 		}
 
@@ -133,15 +115,17 @@ func (p *WikilinksPlugin) processWikilinks(content string, postMap map[string]*m
 
 	// Process any remaining text after the last code block
 	if lastEnd < len(content) {
-		processed := p.processWikilinksInText(content[lastEnd:], postMap, &warnings)
+		processed := p.processWikilinksInText(content[lastEnd:], postIndex, &warnings, &dependencies)
 		result.WriteString(processed)
 	}
 
-	return result.String(), warnings
+	return result.String(), warnings, dependencies
 }
 
 // processWikilinksInText processes wikilinks in a text segment (not inside code blocks).
-func (p *WikilinksPlugin) processWikilinksInText(text string, postMap map[string]*models.Post, warnings *[]string) string {
+// Uses the shared PostIndex for O(1) lookups.
+// Records successfully resolved slugs in the dependencies slice.
+func (p *WikilinksPlugin) processWikilinksInText(text string, postIndex *lifecycle.PostIndex, warnings, dependencies *[]string) string {
 	return wikilinkRegex.ReplaceAllStringFunc(text, func(match string) string {
 		// Extract groups from the match
 		groups := wikilinkRegex.FindStringSubmatch(match)
@@ -155,38 +139,17 @@ func (p *WikilinksPlugin) processWikilinksInText(text string, postMap map[string
 			displayText = strings.TrimSpace(groups[2])
 		}
 
-		// Try multiple lookup strategies:
-		// 1. Exact match (lowercased) - for paths with slashes like "archive/2024"
-		// 2. Slugified match - for human-friendly names like "Python Tutorial" -> "python-tutorial"
-		var targetPost *models.Post
-		var found bool
+		// Use the shared PostIndex for lookup
+		targetPost := postIndex.LookupBySlug(slug)
 
-		// Strategy 1: Exact match (lowercased)
-		exactSlug := strings.ToLower(slug)
-		targetPost, found = postMap[exactSlug]
-
-		// Strategy 2: Slugified match
-		if !found {
-			normalizedSlug := normalizeSlug(slug)
-			targetPost, found = postMap[normalizedSlug]
-
-			// Try case-insensitive lookup for slugified version
-			if !found {
-				for postSlug, post := range postMap {
-					if strings.EqualFold(postSlug, normalizedSlug) {
-						targetPost = post
-						found = true
-						break
-					}
-				}
-			}
-		}
-
-		if !found {
+		if targetPost == nil {
 			// Target post not found - warn and keep original syntax
 			*warnings = append(*warnings, fmt.Sprintf("broken wikilink: [[%s]]", slug))
 			return match
 		}
+
+		// Record this as a dependency for incremental builds
+		*dependencies = append(*dependencies, targetPost.Slug)
 
 		// Determine the display text
 		if displayText == "" {
@@ -221,12 +184,6 @@ func (p *WikilinksPlugin) processWikilinksInText(text string, postMap map[string
 			dataAttrs,
 			html.EscapeString(displayText))
 	})
-}
-
-// normalizeSlug normalizes a slug for lookup by converting to lowercase
-// and replacing spaces with hyphens.
-func normalizeSlug(slug string) string {
-	return models.Slugify(slug)
 }
 
 // SetWarnOnBroken enables or disables warnings for broken links.

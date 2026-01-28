@@ -4,7 +4,6 @@ package plugins
 import (
 	"fmt"
 	"math"
-	"regexp"
 	"strings"
 	"unicode"
 
@@ -243,91 +242,84 @@ func (p *StatsPlugin) Collect(m *lifecycle.Manager) error {
 	return nil
 }
 
-// Regex patterns for stats calculation
-var (
-	// Match fenced code blocks (``` or ~~~)
-	statsCodeBlockPattern = regexp.MustCompile("(?s)```[^`]*```|~~~[^~]*~~~")
-	// Match inline code
-	statsInlineCodePattern = regexp.MustCompile("`[^`]+`")
-	// Match HTML tags
-	statsHTMLTagPattern = regexp.MustCompile(`<[^>]+>`)
-	// Match markdown link URLs
-	statsLinkURLPattern = regexp.MustCompile(`\]\([^)]+\)`)
-	// Match markdown images
-	statsImagePattern = regexp.MustCompile(`!\[[^\]]*\]\([^)]+\)`)
-	// Match URLs
-	statsURLPattern = regexp.MustCompile(`https?://\S+`)
+// statsMarkdownReplacer is a pre-allocated replacer for stripping markdown formatting.
+// Using a package-level replacer avoids allocation on each call.
+var statsMarkdownReplacer = strings.NewReplacer(
+	"#", " ",
+	"*", " ",
+	"_", " ",
+	"`", " ",
+	">", " ",
+	"-", " ",
+	"[", " ",
+	"]", " ",
+	"(", " ",
+	")", " ",
 )
 
 // calculatePostStats computes all statistics for a post's content.
+// This function is optimized for performance:
+// - Uses pre-compiled regex patterns for complex patterns only
+// - Uses fast string scanning for simpler patterns
+// - Uses a pre-allocated strings.Replacer
+// - Minimizes string allocations where possible
 func (p *StatsPlugin) calculatePostStats(content string) *PostStats {
 	stats := &PostStats{}
 
-	// Extract code blocks first
-	var codeContent string
-	codeBlocks := statsCodeBlockPattern.FindAllString(content, -1)
+	// Extract code blocks using fast string scanning instead of regex
+	codeBlocks, textWithoutCode := extractCodeBlocks(content)
 	stats.CodeBlocks = len(codeBlocks)
 
 	for _, block := range codeBlocks {
-		// Remove fence markers and count lines
-		lines := strings.Split(block, "\n")
+		// Count lines without creating intermediate slice
+		lines := strings.Count(block, "\n") + 1
 		// Subtract 2 for opening and closing fences
-		codeLineCount := len(lines) - 2
+		codeLineCount := lines - 2
 		if codeLineCount < 0 {
 			codeLineCount = 0
 		}
 		stats.CodeLines += codeLineCount
-		codeContent += block
 	}
 
 	// Prepare text for word counting
-	text := content
+	var text string
 	if !p.includeCodeInCount {
-		// Remove code blocks from word counting
-		text = statsCodeBlockPattern.ReplaceAllString(text, " ")
-		// Remove inline code
-		text = statsInlineCodePattern.ReplaceAllString(text, " ")
+		// Use pre-extracted text without code blocks
+		text = textWithoutCode
+		// Remove inline code using fast scanner
+		text = removeInlineCode(text)
 	} else {
-		// When including code in count, preserve code content but remove fence markers
-		// Replace fenced code blocks with just their content (no fence markers)
-		text = statsCodeBlockPattern.ReplaceAllStringFunc(text, func(block string) string {
-			// Remove opening fence line and closing fence line
+		// When including code in count, use original content
+		// but with fence markers removed
+		text = content
+		for _, block := range codeBlocks {
 			lines := strings.Split(block, "\n")
-			if len(lines) <= 2 {
-				return " "
+			if len(lines) > 2 {
+				replacement := strings.Join(lines[1:len(lines)-1], " ")
+				text = strings.Replace(text, block, replacement, 1)
+			} else {
+				text = strings.Replace(text, block, " ", 1)
 			}
-			// Join all lines except first (opening fence) and last (closing fence)
-			return strings.Join(lines[1:len(lines)-1], " ")
-		})
+		}
 	}
 
-	// Remove images
-	text = statsImagePattern.ReplaceAllString(text, " ")
+	// Remove images - use fast scanner
+	text = removeMarkdownImages(text)
 
-	// Remove link URLs but keep link text
-	text = statsLinkURLPattern.ReplaceAllString(text, "]")
+	// Remove link URLs but keep link text - use simple string replacement
+	// Look for ]( and remove everything until )
+	text = removeLinkURLs(text)
 
-	// Remove standalone URLs
-	text = statsURLPattern.ReplaceAllString(text, " ")
+	// Remove standalone URLs - fast scanner
+	text = removeURLs(text)
 
-	// Remove HTML tags
-	text = statsHTMLTagPattern.ReplaceAllString(text, " ")
+	// Remove HTML tags - fast scanner
+	text = removeHTMLTags(text)
 
-	// Remove markdown formatting characters
-	text = strings.NewReplacer(
-		"#", " ",
-		"*", " ",
-		"_", " ",
-		"`", " ",
-		">", " ",
-		"-", " ",
-		"[", " ",
-		"]", " ",
-		"(", " ",
-		")", " ",
-	).Replace(text)
+	// Remove markdown formatting characters using pre-allocated replacer
+	text = statsMarkdownReplacer.Replace(text)
 
-	// Count words and characters
+	// Count words and characters - single pass
 	inWord := false
 	for _, r := range text {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
@@ -346,6 +338,219 @@ func (p *StatsPlugin) calculatePostStats(content string) *PostStats {
 	stats.ReadingTimeText = p.formatReadingTime(stats.ReadingTime)
 
 	return stats
+}
+
+// extractCodeBlocks finds all fenced code blocks (``` or ~~~) and returns them
+// along with the text with code blocks removed. This is much faster than regex.
+//
+//nolint:gocyclo // Complexity is acceptable for this performance-critical string parsing
+func extractCodeBlocks(s string) (blocks []string, textWithoutCode string) {
+	var result strings.Builder
+	result.Grow(len(s))
+
+	blocks = make([]string, 0, 4) // Pre-allocate for typical number of code blocks
+
+	i := 0
+	for i < len(s) {
+		// Look for fence start (``` or ~~~)
+		if i+2 < len(s) && (s[i] == '`' && s[i+1] == '`' && s[i+2] == '`' ||
+			s[i] == '~' && s[i+1] == '~' && s[i+2] == '~') {
+			fenceChar := s[i]
+			fenceStart := i
+
+			// Find end of opening fence line
+			i += 3
+			for i < len(s) && s[i] != '\n' {
+				i++
+			}
+			if i < len(s) {
+				i++ // Skip the newline
+			}
+
+			// Find closing fence
+			blockStart := i
+			for i < len(s) {
+				// Look for closing fence at start of line
+				if (i == blockStart || s[i-1] == '\n') &&
+					i+2 < len(s) &&
+					s[i] == fenceChar && s[i+1] == fenceChar && s[i+2] == fenceChar {
+					// Found closing fence - capture up to end of fence (not trailing newline)
+					fenceEnd := i + 3
+					// Skip any additional fence chars or text on same line
+					for fenceEnd < len(s) && s[fenceEnd] != '\n' {
+						fenceEnd++
+					}
+					// Do NOT include the trailing newline in the block
+					// This matches the old regex behavior
+
+					blocks = append(blocks, s[fenceStart:fenceEnd])
+					result.WriteByte(' ') // Replace block with space
+
+					// Skip past the newline for next iteration
+					if fenceEnd < len(s) && s[fenceEnd] == '\n' {
+						fenceEnd++
+					}
+					i = fenceEnd
+					break
+				}
+				i++
+			}
+			if i >= len(s) {
+				// Unclosed fence - treat as regular text
+				result.WriteString(s[fenceStart:])
+				break
+			}
+		} else {
+			result.WriteByte(s[i])
+			i++
+		}
+	}
+
+	return blocks, result.String()
+}
+
+// removeInlineCode removes `inline code` from text.
+func removeInlineCode(s string) string {
+	var result strings.Builder
+	result.Grow(len(s))
+
+	i := 0
+	for i < len(s) {
+		if s[i] == '`' {
+			// Found backtick, find closing one
+			j := i + 1
+			for j < len(s) && s[j] != '`' && s[j] != '\n' {
+				j++
+			}
+			if j < len(s) && s[j] == '`' {
+				// Found closing backtick
+				result.WriteByte(' ')
+				i = j + 1
+			} else {
+				// No closing backtick, keep the character
+				result.WriteByte(s[i])
+				i++
+			}
+		} else {
+			result.WriteByte(s[i])
+			i++
+		}
+	}
+	return result.String()
+}
+
+// removeMarkdownImages removes ![alt](url) patterns from text.
+func removeMarkdownImages(s string) string {
+	var result strings.Builder
+	result.Grow(len(s))
+
+	i := 0
+	for i < len(s) {
+		if i+1 < len(s) && s[i] == '!' && s[i+1] == '[' {
+			// Found image start
+			j := i + 2
+			// Find closing ]
+			for j < len(s) && s[j] != ']' {
+				j++
+			}
+			if j < len(s) && j+1 < len(s) && s[j+1] == '(' {
+				// Find closing )
+				k := j + 2
+				for k < len(s) && s[k] != ')' {
+					k++
+				}
+				if k < len(s) {
+					// Complete image found, skip it
+					result.WriteByte(' ')
+					i = k + 1
+					continue
+				}
+			}
+		}
+		result.WriteByte(s[i])
+		i++
+	}
+	return result.String()
+}
+
+// removeURLs removes http:// and https:// URLs from text.
+func removeURLs(s string) string {
+	var result strings.Builder
+	result.Grow(len(s))
+
+	i := 0
+	for i < len(s) {
+		// Check for http:// or https://
+		if i+7 < len(s) && s[i:i+7] == "http://" ||
+			i+8 < len(s) && s[i:i+8] == "https://" {
+			// Skip until whitespace
+			for i < len(s) && !isWhitespace(s[i]) {
+				i++
+			}
+			result.WriteByte(' ')
+		} else {
+			result.WriteByte(s[i])
+			i++
+		}
+	}
+	return result.String()
+}
+
+// removeHTMLTags removes <...> tags from text.
+func removeHTMLTags(s string) string {
+	var result strings.Builder
+	result.Grow(len(s))
+
+	i := 0
+	for i < len(s) {
+		if s[i] == '<' {
+			// Skip until >
+			for i < len(s) && s[i] != '>' {
+				i++
+			}
+			if i < len(s) {
+				i++ // Skip the >
+			}
+			result.WriteByte(' ')
+		} else {
+			result.WriteByte(s[i])
+			i++
+		}
+	}
+	return result.String()
+}
+
+// isWhitespace checks if a byte is whitespace.
+func isWhitespace(b byte) bool {
+	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
+}
+
+// removeLinkURLs removes markdown link URLs while keeping the text.
+// This is faster than regex for this specific pattern.
+// Transforms "[text](url)" to "[text]"
+func removeLinkURLs(s string) string {
+	var result strings.Builder
+	result.Grow(len(s))
+
+	i := 0
+	for i < len(s) {
+		// Look for ](
+		if i+1 < len(s) && s[i] == ']' && s[i+1] == '(' {
+			result.WriteByte(']')
+			i += 2
+			// Skip until closing )
+			for i < len(s) && s[i] != ')' {
+				i++
+			}
+			if i < len(s) {
+				i++ // Skip the )
+			}
+		} else {
+			result.WriteByte(s[i])
+			i++
+		}
+	}
+	return result.String()
 }
 
 // calculateFeedStats aggregates stats for a feed's posts (models.FeedConfig).

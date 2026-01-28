@@ -38,6 +38,7 @@ func (p *PagefindPlugin) Name() string {
 
 // Cleanup runs Pagefind to index the generated site.
 // This runs after all HTML files have been written in the Write stage.
+// On incremental builds with few changes, Pagefind is skipped for speed.
 func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
 	config := m.Config()
 	searchConfig := getSearchConfig(config)
@@ -45,6 +46,27 @@ func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
 	// Skip if search is disabled
 	if !searchConfig.IsEnabled() {
 		return nil
+	}
+
+	// Check if this is an incremental build with few changes
+	// If so, skip Pagefind to save time (search index is still valid)
+	cache := GetBuildCache(m)
+	if cache != nil {
+		stats := cache.GetStats()
+		total := stats.Skipped + stats.Rebuilt
+		// Skip Pagefind if we rebuilt less than 5% of posts
+		// or fewer than 50 posts (whichever is smaller)
+		threshold := total / 20 // 5%
+		if threshold > 50 {
+			threshold = 50
+		}
+		if threshold < 1 {
+			threshold = 1
+		}
+		if stats.Rebuilt > 0 && stats.Rebuilt < threshold {
+			fmt.Printf("[pagefind] Skipping search index update (incremental build: %d/%d posts changed)\n", stats.Rebuilt, total)
+			return nil
+		}
 	}
 
 	verbose := searchConfig.Pagefind.IsVerbose()
