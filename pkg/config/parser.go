@@ -307,14 +307,23 @@ type tomlFooterConfig struct {
 }
 
 type tomlThemeConfig struct {
-	Name         string               `toml:"name"`
-	Palette      string               `toml:"palette"`
-	PaletteLight string               `toml:"palette_light"`
-	PaletteDark  string               `toml:"palette_dark"`
-	Variables    map[string]string    `toml:"variables"`
-	CustomCSS    string               `toml:"custom_css"`
-	Background   tomlBackgroundConfig `toml:"background"`
-	Font         tomlFontConfig       `toml:"font"`
+	Name         string                  `toml:"name"`
+	Palette      string                  `toml:"palette"`
+	PaletteLight string                  `toml:"palette_light"`
+	PaletteDark  string                  `toml:"palette_dark"`
+	Variables    map[string]string       `toml:"variables"`
+	CustomCSS    string                  `toml:"custom_css"`
+	Background   tomlBackgroundConfig    `toml:"background"`
+	Font         tomlFontConfig          `toml:"font"`
+	Switcher     tomlThemeSwitcherConfig `toml:"switcher"`
+}
+
+type tomlThemeSwitcherConfig struct {
+	Enabled    *bool    `toml:"enabled"`
+	IncludeAll *bool    `toml:"include_all"`
+	Include    []string `toml:"include"`
+	Exclude    []string `toml:"exclude"`
+	Position   string   `toml:"position"`
 }
 
 type tomlBackgroundConfig struct {
@@ -977,6 +986,17 @@ func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
 		CustomCSS:    t.CustomCSS,
 		Background:   t.Background.toBackgroundConfig(),
 		Font:         t.Font.toFontConfig(),
+		Switcher:     t.Switcher.toThemeSwitcherConfig(),
+	}
+}
+
+func (s *tomlThemeSwitcherConfig) toThemeSwitcherConfig() models.ThemeSwitcherConfig {
+	return models.ThemeSwitcherConfig{
+		Enabled:    s.Enabled,
+		IncludeAll: s.IncludeAll,
+		Include:    s.Include,
+		Exclude:    s.Exclude,
+		Position:   s.Position,
 	}
 }
 
@@ -1205,14 +1225,23 @@ type yamlWebmentionConfig struct {
 }
 
 type yamlThemeConfig struct {
-	Name         string               `yaml:"name"`
-	Palette      string               `yaml:"palette"`
-	PaletteLight string               `yaml:"palette_light"`
-	PaletteDark  string               `yaml:"palette_dark"`
-	Variables    map[string]string    `yaml:"variables"`
-	CustomCSS    string               `yaml:"custom_css"`
-	Background   yamlBackgroundConfig `yaml:"background"`
-	Font         yamlFontConfig       `yaml:"font"`
+	Name         string                  `yaml:"name"`
+	Palette      string                  `yaml:"palette"`
+	PaletteLight string                  `yaml:"palette_light"`
+	PaletteDark  string                  `yaml:"palette_dark"`
+	Variables    map[string]string       `yaml:"variables"`
+	CustomCSS    string                  `yaml:"custom_css"`
+	Background   yamlBackgroundConfig    `yaml:"background"`
+	Font         yamlFontConfig          `yaml:"font"`
+	Switcher     yamlThemeSwitcherConfig `yaml:"switcher"`
+}
+
+type yamlThemeSwitcherConfig struct {
+	Enabled    *bool    `yaml:"enabled"`
+	IncludeAll *bool    `yaml:"include_all"`
+	Include    []string `yaml:"include"`
+	Exclude    []string `yaml:"exclude"`
+	Position   string   `yaml:"position"`
 }
 
 type yamlBackgroundConfig struct {
@@ -1257,6 +1286,17 @@ func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
 		CustomCSS:    t.CustomCSS,
 		Background:   t.Background.toBackgroundConfig(),
 		Font:         t.Font.toFontConfig(),
+		Switcher:     t.Switcher.toThemeSwitcherConfig(),
+	}
+}
+
+func (s *yamlThemeSwitcherConfig) toThemeSwitcherConfig() models.ThemeSwitcherConfig {
+	return models.ThemeSwitcherConfig{
+		Enabled:    s.Enabled,
+		IncludeAll: s.IncludeAll,
+		Include:    s.Include,
+		Exclude:    s.Exclude,
+		Position:   s.Position,
 	}
 }
 
@@ -2022,14 +2062,23 @@ type jsonWebmentionConfig struct {
 }
 
 type jsonThemeConfig struct {
-	Name         string               `json:"name"`
-	Palette      string               `json:"palette"`
-	PaletteLight string               `json:"palette_light"`
-	PaletteDark  string               `json:"palette_dark"`
-	Variables    map[string]string    `json:"variables"`
-	CustomCSS    string               `json:"custom_css"`
-	Background   jsonBackgroundConfig `json:"background"`
-	Font         jsonFontConfig       `json:"font"`
+	Name         string                  `json:"name"`
+	Palette      string                  `json:"palette"`
+	PaletteLight string                  `json:"palette_light"`
+	PaletteDark  string                  `json:"palette_dark"`
+	Variables    map[string]string       `json:"variables"`
+	CustomCSS    string                  `json:"custom_css"`
+	Background   jsonBackgroundConfig    `json:"background"`
+	Font         jsonFontConfig          `json:"font"`
+	Switcher     jsonThemeSwitcherConfig `json:"switcher"`
+}
+
+type jsonThemeSwitcherConfig struct {
+	Enabled    *bool    `json:"enabled"`
+	IncludeAll *bool    `json:"include_all"`
+	Include    []string `json:"include"`
+	Exclude    []string `json:"exclude"`
+	Position   string   `json:"position"`
 }
 
 type jsonBackgroundConfig struct {
@@ -2074,6 +2123,17 @@ func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
 		CustomCSS:    t.CustomCSS,
 		Background:   t.Background.toBackgroundConfig(),
 		Font:         t.Font.toFontConfig(),
+		Switcher:     t.Switcher.toThemeSwitcherConfig(),
+	}
+}
+
+func (s *jsonThemeSwitcherConfig) toThemeSwitcherConfig() models.ThemeSwitcherConfig {
+	return models.ThemeSwitcherConfig{
+		Enabled:    s.Enabled,
+		IncludeAll: s.IncludeAll,
+		Include:    s.Include,
+		Exclude:    s.Exclude,
+		Position:   s.Position,
 	}
 }
 
