@@ -12,13 +12,14 @@
 }
 
 /* Override Pagefind UI variables to use theme colors */
+/* These inherit from the palette CSS which sets --color-* variables */
 .pagefind-ui {
   --pagefind-ui-scale: 0.9;
-  --pagefind-ui-primary: var(--color-primary, #6366f1);
-  --pagefind-ui-text: var(--color-text, #1f2937);
-  --pagefind-ui-background: var(--color-surface, #ffffff);
-  --pagefind-ui-border: var(--color-border, #e5e7eb);
-  --pagefind-ui-tag: var(--color-surface-alt, #f3f4f6);
+  --pagefind-ui-primary: var(--color-primary);
+  --pagefind-ui-text: var(--color-text);
+  --pagefind-ui-background: var(--color-background);
+  --pagefind-ui-border: var(--color-border);
+  --pagefind-ui-tag: var(--color-border);
   --pagefind-ui-border-width: 1px;
   --pagefind-ui-border-radius: 0.5rem;
   --pagefind-ui-image-border-radius: 0.375rem;
@@ -26,44 +27,32 @@
   --pagefind-ui-font: inherit;
 }
 
-/* Dark mode adjustments */
-@media (prefers-color-scheme: dark) {
-  .pagefind-ui {
-    --pagefind-ui-text: var(--color-text, #f3f4f6);
-    --pagefind-ui-background: var(--color-surface, #1f2937);
-    --pagefind-ui-border: var(--color-border, #374151);
-    --pagefind-ui-tag: var(--color-surface-alt, #374151);
-  }
-}
-
-/* Also support data-theme attribute for palette switcher */
-[data-theme="dark"] .pagefind-ui {
-  --pagefind-ui-text: var(--color-text, #f3f4f6);
-  --pagefind-ui-background: var(--color-surface, #1f2937);
-  --pagefind-ui-border: var(--color-border, #374151);
-  --pagefind-ui-tag: var(--color-surface-alt, #374151);
-}
-
 /* Search input styling */
 .pagefind-ui__search-input {
   font-size: 0.875rem;
   padding: 0.5rem 0.75rem;
+  background: var(--color-background) !important;
+  color: var(--color-text) !important;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pagefind-ui__search-input::placeholder {
+  color: var(--color-text-muted);
 }
 
 .pagefind-ui__search-input:focus {
   outline: none;
-  border-color: var(--color-primary, #6366f1);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 /* Search button */
 .pagefind-ui__search-clear {
-  color: var(--color-text-muted, #6b7280);
+  color: var(--color-text-muted);
 }
 
 .pagefind-ui__search-clear:hover {
-  color: var(--color-text, #1f2937);
+  color: var(--color-text);
 }
 
 /* Results dropdown */
@@ -78,19 +67,45 @@
   right: 0;
   width: 400px;
   max-width: 90vw;
-  background: var(--color-surface, #ffffff);
-  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
   z-index: 100;
   max-height: 70vh;
   overflow-y: auto;
+
+  /* Custom scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) var(--color-background);
+}
+
+/* Webkit scrollbar styling for search drawer */
+.search-container--navbar .pagefind-ui__drawer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.search-container--navbar .pagefind-ui__drawer::-webkit-scrollbar-track {
+  background: var(--color-background);
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.search-container--navbar .pagefind-ui__drawer::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+  border: 2px solid var(--color-background);
+}
+
+.search-container--navbar .pagefind-ui__drawer::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
 }
 
 /* Result items */
 .pagefind-ui__result {
   padding: 0.75rem;
-  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background);
+  transition: background-color 0.15s ease;
 }
 
 .pagefind-ui__result:last-child {
@@ -98,11 +113,12 @@
 }
 
 .pagefind-ui__result:hover {
-  background: var(--color-surface-hover, #f9fafb);
+  background: var(--color-surface);
 }
 
+/* Result link styling */
 .pagefind-ui__result-link {
-  color: var(--color-primary, #6366f1);
+  color: var(--color-primary);
   text-decoration: none;
   font-weight: 500;
 }
@@ -114,16 +130,17 @@
 .pagefind-ui__result-title {
   font-size: 1rem;
   margin-bottom: 0.25rem;
+  color: var(--color-text);
 }
 
 .pagefind-ui__result-excerpt {
   font-size: 0.875rem;
-  color: var(--color-text-muted, #6b7280);
+  color: var(--color-text-muted);
   line-height: 1.5;
 }
 
 .pagefind-ui__result-excerpt mark {
-  background: rgba(99, 102, 241, 0.2);
+  background: color-mix(in srgb, var(--color-primary) 25%, transparent);
   color: inherit;
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
@@ -140,22 +157,52 @@
   font-size: 0.75rem;
   padding: 0.125rem 0.5rem;
   border-radius: 9999px;
-  background: var(--color-surface-alt, #f3f4f6);
-  color: var(--color-text-muted, #6b7280);
+  background: var(--color-border);
+  color: var(--color-text-muted);
 }
 
 /* Loading state */
 .pagefind-ui__loading {
   padding: 1rem;
   text-align: center;
-  color: var(--color-text-muted, #6b7280);
+  color: var(--color-text-muted);
 }
 
 /* No results */
 .pagefind-ui__message {
   padding: 1rem;
   text-align: center;
-  color: var(--color-text-muted, #6b7280);
+  color: var(--color-text-muted);
+}
+
+/* Filter styles */
+.pagefind-ui__filter-panel {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+.pagefind-ui__filter-name {
+  color: var(--color-text);
+}
+
+.pagefind-ui__filter-value {
+  color: var(--color-text-muted);
+}
+
+.pagefind-ui__filter-value:hover {
+  color: var(--color-text);
+}
+
+/* Sub-results */
+.pagefind-ui__result-nested {
+  border-left: 2px solid var(--color-border);
+  margin-left: 0.5rem;
+  padding-left: 0.75rem;
+}
+
+.pagefind-ui__result-nested .pagefind-ui__result-title {
+  font-size: 0.875rem;
 }
 
 /* Keyboard shortcut hint */
@@ -167,10 +214,10 @@
   transform: translateY(-50%);
   font-size: 0.75rem;
   padding: 0.125rem 0.375rem;
-  background: var(--color-surface-alt, #f3f4f6);
-  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 0.25rem;
-  color: var(--color-text-muted, #6b7280);
+  color: var(--color-text-muted);
   pointer-events: none;
   opacity: 0.7;
 }
