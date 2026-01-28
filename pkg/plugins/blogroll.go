@@ -21,6 +21,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // categoryUncategorized is the default category name for feeds without a category.
@@ -1255,53 +1256,10 @@ func (p *BlogrollPlugin) extractMiscConfigs(extra, result map[string]interface{}
 }
 
 // themeToMap converts ThemeConfig to a template-friendly map.
+// This delegates to the shared templates.ThemeToMap to ensure consistency
+// across all pages that use base.html.
 func (p *BlogrollPlugin) themeToMap(theme models.ThemeConfig) map[string]interface{} {
-	result := map[string]interface{}{
-		"name":          theme.Name,
-		"palette":       theme.Palette,
-		"palette_light": theme.PaletteLight,
-		"palette_dark":  theme.PaletteDark,
-		"custom_css":    theme.CustomCSS,
-	}
-
-	// Convert background config
-	bg := theme.Background
-	bgEnabled := false
-	if bg.Enabled != nil {
-		bgEnabled = *bg.Enabled
-	}
-
-	// Convert backgrounds array to template-friendly format
-	backgrounds := make([]map[string]interface{}, len(bg.Backgrounds))
-	for i, bgElem := range bg.Backgrounds {
-		backgrounds[i] = map[string]interface{}{
-			"html":    bgElem.HTML,
-			"z_index": bgElem.ZIndex,
-		}
-	}
-
-	result["background"] = map[string]interface{}{
-		"enabled":        bgEnabled,
-		"backgrounds":    backgrounds,
-		"scripts":        bg.Scripts,
-		"css":            bg.CSS,
-		"article_bg":     bg.ArticleBg,
-		"article_blur":   bg.ArticleBlur,
-		"article_shadow": bg.ArticleShadow,
-		"article_border": bg.ArticleBorder,
-		"article_radius": bg.ArticleRadius,
-	}
-
-	// Convert font config
-	result["font"] = map[string]interface{}{
-		"family":         theme.Font.Family,
-		"heading_family": theme.Font.HeadingFamily,
-		"code_family":    theme.Font.CodeFamily,
-		"size":           theme.Font.Size,
-		"line_height":    theme.Font.LineHeight,
-	}
-
-	return result
+	return templates.ThemeToMap(&theme)
 }
 
 // getStringFromMap safely gets a string value from a map.
