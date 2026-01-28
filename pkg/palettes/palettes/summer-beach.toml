@@ -19,23 +19,23 @@ gutter         = "#8a9199"
 
 # Foreground colors
 foreground     = "#2c3e50"
-foreground-dim = "#7f8c8d"
+foreground-dim = "#556270"
 
 # Accent colors - Summer/Beach palette
 ocean          = "#006994"      # Deep ocean blue
 teal           = "#008080"      # Teal water
-sky            = "#87ceeb"      # Sky blue
-coral          = "#ff7f50"      # Coral reef
+sky            = "#006699"      # Sky blue (darkened for contrast)
+coral          = "#b33820"      # Coral reef (darkened more for code-keyword)
 sand           = "#c2b280"      # Sandy beach
-sunshine       = "#ffd700"      # Sunshine yellow
-seafoam        = "#98ff98"      # Seafoam green
-sunset         = "#ff6347"      # Sunset orange/red
+sunshine       = "#b8860b"      # Sunshine yellow (darkened for contrast)
+seafoam        = "#2e8b57"      # Seafoam green (darkened for contrast)
+sunset         = "#c23616"      # Sunset orange/red (darkened for contrast)
 white          = "#ffffff"      # White foam
 
 # Additional colors
 bg-darker      = "#f0ebe5"
 bg-lighter     = "#ffffff"
-comment        = "#95a5a6"
+comment        = "#5d6d7e"
 
 # Layer 2: Semantic Mapping
 [palette.semantic]

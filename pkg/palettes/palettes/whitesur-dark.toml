@@ -23,7 +23,7 @@ foreground     = "#f0f0f0"
 foreground-dim = "#909090"
 
 # Accent colors - macOS style
-blue           = "#0a84ff"      # Primary accent (macOS blue)
+blue           = "#4d9eff"      # Primary accent (brightened for link contrast on dark bg)
 purple         = "#bf5af2"      # Purple accent
 pink           = "#ff375f"      # Pink accent
 red            = "#fe6254"      # Window close button
@@ -90,7 +90,7 @@ admonition-error-bg    = "current-line"
 admonition-error-border = "red"
 
 button-primary-bg     = "blue"
-button-primary-text   = "foreground"
+button-primary-text   = "bg-darker"
 button-secondary-bg   = "bg-lighter"
 button-secondary-text = "foreground"
 

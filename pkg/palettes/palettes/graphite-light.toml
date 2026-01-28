@@ -30,7 +30,7 @@ green          = "#198038"      # Success green
 yellow         = "#b28600"      # Warning yellow (darker for light bg)
 orange         = "#eb6200"      # Orange accent
 red            = "#da1e28"      # Error red
-purple         = "#8a3ffc"      # Purple accent
+purple         = "#7928ca"      # Purple accent (darkened for contrast)
 pink           = "#d02670"      # Pink accent
 white          = "#ffffff"      # Pure white
 
