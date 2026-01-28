@@ -693,8 +693,22 @@ body:has(.background-decoration) div.feed {
 
 .pagination-pages {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
   align-items: center;
+  justify-content: center;
+  max-width: 100%;
+}
+
+.pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  user-select: none;
 }
 
 .pagination-page {
@@ -935,25 +949,50 @@ a.wikilink.wikilink-missing {
     max-width: 100vw;
   }
 
-  .site-header .container {
-    flex-direction: column;
-    align-items: flex-start;
+  /* Container - reduce padding on mobile */
+  .container {
+    padding: 0 var(--space-3);
+    max-width: 100%;
   }
 
-  /* Prevent header from causing horizontal page overflow */
+  /* Reduce main padding on mobile */
+  main {
+    padding: var(--space-4) var(--space-3);
+    max-width: 100%;
+  }
+
+  /* Header - full width, reduced padding */
   .site-header {
+    padding: var(--space-3);
     overflow-x: hidden;
   }
 
   .site-header .container {
+    flex-direction: column;
+    align-items: flex-start;
     max-width: 100%;
-    overflow: hidden;
+    padding: 0;
   }
 
-  /* Responsive feed container */
-  .feed {
+  /* Nav wrapping for small screens */
+  .site-nav {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  /* Footer - full width, reduced padding */
+  .site-footer {
+    padding: var(--space-4) var(--space-3);
     max-width: 100%;
-    padding: 0 var(--space-3);
+  }
+
+  /* Responsive feed container - match specificity of base rule */
+  .feed,
+  section.feed,
+  div.feed {
+    max-width: 100%;
+    padding: var(--space-4) var(--space-3);
+    border-radius: var(--radius);
   }
 
   /* Scale down feed header */
@@ -961,9 +1000,10 @@ a.wikilink.wikilink-missing {
     font-size: var(--text-2xl);
   }
 
-  /* Adapt card spacing */
+  /* Adapt card spacing and ensure no overflow */
   .card {
     padding: var(--space-4);
+    max-width: 100%;
   }
 
   /* Ensure posts list doesn't overflow */
@@ -971,6 +1011,11 @@ a.wikilink.wikilink-missing {
   .post-list {
     max-width: 100%;
     overflow-x: hidden;
+  }
+
+  /* Reduce article padding on mobile */
+  article.post {
+    padding: var(--space-4) var(--space-3);
   }
 
   .post-nav {
@@ -982,19 +1027,86 @@ a.wikilink.wikilink-missing {
   }
 }
 
-/* Extra small devices (320px - 375px) */
-@media (max-width: 375px) {
-  /* Tighter spacing for small screens */
-  .feed {
+/* Mid-sized mobile devices (375px - 480px, e.g., Moto G Power at 412px) */
+@media (max-width: 480px) {
+  /* Container - minimal padding */
+  .container {
     padding: 0 var(--space-2);
+  }
+
+  /* Even tighter main padding */
+  main {
+    padding: var(--space-3) var(--space-2);
+  }
+
+  /* Header/Footer - tighter padding */
+  .site-header {
+    padding: var(--space-2);
+  }
+
+  .site-footer {
+    padding: var(--space-3) var(--space-2);
+  }
+
+  /* Remove left/right padding, use full width */
+  .feed,
+  section.feed,
+  div.feed {
+    padding: var(--space-3) var(--space-2);
+    border-radius: 0;
   }
 
   .card {
     padding: var(--space-3);
+    border-radius: var(--radius);
+  }
+
+  .posts,
+  .post-list {
+    gap: var(--space-4);
+  }
+
+  article.post {
+    padding: var(--space-3) var(--space-2);
+  }
+}
+
+/* Extra small devices (320px - 375px) */
+@media (max-width: 375px) {
+  /* Container - minimal */
+  .container {
+    padding: 0 var(--space-1);
+  }
+
+  /* Minimal padding for very small screens */
+  main {
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .site-header {
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .site-footer {
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .feed,
+  section.feed,
+  div.feed {
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .card {
+    padding: var(--space-2);
   }
 
   /* Smaller typography */
   .feed-header h1 {
     font-size: var(--text-xl);
+  }
+
+  article.post {
+    padding: var(--space-2) var(--space-1);
   }
 }

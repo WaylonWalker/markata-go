@@ -1,0 +1,6 @@
+    <!-- Background Decorations -->
+    {% if config.theme.background.enabled %}
+    {% for bg in config.theme.background.backgrounds %}
+    {{ bg.html | safe }}
+    {% endfor %}
+    {% endif %}
