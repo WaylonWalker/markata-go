@@ -1,0 +1,101 @@
+# Valentine - Romantic rose and pink
+# A dark theme with romantic pink and red accents
+# License: MIT
+
+[palette]
+name = "Valentine"
+variant = "dark"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - deep romantic dark
+background     = "#1a0f14"
+current-line   = "#2a1a22"
+selection      = "#3a2530"
+gutter         = "#5a4050"
+
+# Foreground colors
+foreground     = "#f8f0f4"
+foreground-dim = "#b8a0b0"
+
+# Accent colors - Valentine palette
+rose-red       = "#c21e56"      # Rose red
+deep-pink      = "#ff1493"      # Deep pink
+blush          = "#ffb6c1"      # Light pink/blush
+burgundy       = "#800020"      # Burgundy/wine
+cream          = "#fffdd0"      # Cream
+white          = "#ffffff"      # Pure white
+gold           = "#ffd700"      # Gold accent
+mauve          = "#e0b0ff"      # Mauve/lavender
+
+# Additional colors
+bg-darker      = "#100a0e"
+bg-lighter     = "#3a252e"
+comment        = "#8a6878"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "rose-red"
+accent-hover = "deep-pink"
+link         = "blush"
+link-hover   = "deep-pink"
+link-visited = "mauve"
+
+# Status colors
+success = "blush"
+warning = "gold"
+error   = "burgundy"
+info    = "mauve"
+
+# Border colors
+border       = "current-line"
+border-focus = "rose-red"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "deep-pink"
+code-string   = "blush"
+code-number   = "gold"
+code-function = "rose-red"
+code-type     = "mauve"
+code-operator = "blush"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "mauve"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "blush"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "gold"
+admonition-error-bg    = "current-line"
+admonition-error-border = "burgundy"
+
+button-primary-bg     = "rose-red"
+button-primary-text   = "white"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "deep-pink"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"

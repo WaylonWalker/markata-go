@@ -1,0 +1,106 @@
+# Ash - Dark gray monochrome theme
+# A sophisticated dark gray theme with subtle warmth
+# Inspired by volcanic ash and charcoal
+# License: MIT
+
+[palette]
+name = "Ash"
+variant = "dark"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - warm dark grays
+background     = "#1e1e1e"
+current-line   = "#262626"
+selection      = "#333333"
+gutter         = "#4a4a4a"
+
+# Foreground colors
+foreground     = "#d4d4d4"
+foreground-dim = "#858585"
+
+# Accent colors - muted, sophisticated
+gray           = "#6e6e6e"
+light-gray     = "#a0a0a0"
+warm-gray      = "#8a8278"
+cool-gray      = "#78828a"
+charcoal       = "#3a3a3a"
+silver         = "#c0c0c0"
+# Subtle color accents
+blue           = "#6699cc"
+green          = "#88aa77"
+yellow         = "#ccaa66"
+red            = "#cc7766"
+purple         = "#9988aa"
+
+# Additional colors
+bg-darker      = "#141414"
+bg-lighter     = "#2d2d2d"
+comment        = "#5a5a5a"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "light-gray"
+text-muted     = "gray"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "silver"
+accent-hover = "foreground"
+link         = "blue"
+link-hover   = "foreground"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "blue"
+
+# Border colors
+border       = "charcoal"
+border-focus = "silver"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "purple"
+code-string   = "green"
+code-number   = "yellow"
+code-function = "blue"
+code-type     = "blue"
+code-operator = "light-gray"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "blue"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "silver"
+button-primary-text   = "bg-darker"
+button-secondary-bg   = "selection"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "silver"
+
+card-bg     = "current-line"
+card-border = "charcoal"
+card-shadow = "bg-darker"

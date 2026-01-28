@@ -1,0 +1,103 @@
+# Night Owl - A dark theme for the night owls out there
+# https://github.com/sdras/night-owl-vscode-theme
+# License: MIT
+# Designed with accessibility in mind for people with colorblindness
+
+[palette]
+name = "Night Owl"
+variant = "dark"
+author = "Sarah Drasner"
+license = "MIT"
+homepage = "https://github.com/sdras/night-owl-vscode-theme"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors
+background     = "#011627"
+current-line   = "#0b2942"
+selection      = "#1d3b53"
+gutter         = "#4b6479"
+
+# Foreground colors
+foreground     = "#d6deeb"
+foreground-dim = "#637777"
+
+# Accent colors - Night Owl's signature palette
+red        = "#ef5350"
+orange     = "#f78c6c"
+yellow     = "#ffeb95"
+green      = "#22da6e"
+cyan       = "#21c7a8"
+blue       = "#82aaff"
+purple     = "#c792ea"
+pink       = "#ff2c83"
+
+# Additional colors
+accent     = "#7fdbca"
+bg-darker  = "#010e1a"
+bg-lighter = "#122d42"
+comment    = "#637777"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "comment"
+text-muted     = "foreground-dim"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "accent"
+accent-hover = "cyan"
+link         = "blue"
+link-hover   = "cyan"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "cyan"
+
+# Border colors
+border       = "current-line"
+border-focus = "accent"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "background"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "purple"
+code-string   = "yellow"
+code-number   = "orange"
+code-function = "blue"
+code-type     = "cyan"
+code-operator = "pink"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "blue"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "accent"
+button-primary-text   = "background"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "accent"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"

@@ -1,0 +1,101 @@
+# St. Patrick's Day - Shamrock green and gold
+# A fresh theme celebrating Irish heritage
+# License: MIT
+
+[palette]
+name = "St. Patrick's Day"
+variant = "dark"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - deep Irish green
+background     = "#0a1a10"
+current-line   = "#152a1c"
+selection      = "#203a28"
+gutter         = "#305a3c"
+
+# Foreground colors
+foreground     = "#f0f8f2"
+foreground-dim = "#8ab090"
+
+# Accent colors - St. Patrick's palette
+shamrock       = "#009e60"      # Shamrock green
+irish-green    = "#009a44"      # Irish flag green
+forest         = "#228b22"      # Forest green
+lime           = "#32cd32"      # Lime green
+gold           = "#ffd700"      # Pot of gold
+orange         = "#ff8c00"      # Irish flag orange
+white          = "#ffffff"      # Irish flag white
+clover         = "#3eb489"      # Clover green
+
+# Additional colors
+bg-darker      = "#051008"
+bg-lighter     = "#1e3a24"
+comment        = "#5a8a68"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "shamrock"
+accent-hover = "lime"
+link         = "gold"
+link-hover   = "lime"
+link-visited = "clover"
+
+# Status colors
+success = "shamrock"
+warning = "gold"
+error   = "orange"
+info    = "clover"
+
+# Border colors
+border       = "current-line"
+border-focus = "shamrock"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "shamrock"
+code-string   = "lime"
+code-number   = "gold"
+code-function = "clover"
+code-type     = "irish-green"
+code-operator = "white"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "clover"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "shamrock"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "gold"
+admonition-error-bg    = "current-line"
+admonition-error-border = "orange"
+
+button-primary-bg     = "shamrock"
+button-primary-text   = "white"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "gold"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"

@@ -1,0 +1,102 @@
+# Diwali - Festival of Lights
+# A rich theme inspired by the colors of Diwali
+# License: MIT
+
+[palette]
+name = "Diwali"
+variant = "dark"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - deep, rich darkness lit by diyas
+background     = "#1a0f0a"
+current-line   = "#2a1a12"
+selection      = "#3a281c"
+gutter         = "#5a4030"
+
+# Foreground colors
+foreground     = "#fff8e8"
+foreground-dim = "#c0a880"
+
+# Accent colors - Diwali palette
+deep-red       = "#8b0000"      # Deep traditional red
+gold           = "#ffd700"      # Prosperity gold
+orange         = "#ff8c00"      # Diya flame orange
+saffron        = "#f4c430"      # Saffron yellow
+purple         = "#800080"      # Royal purple
+magenta        = "#ff00ff"      # Bright magenta (rangoli)
+pink           = "#ff69b4"      # Bright pink (rangoli)
+green          = "#228b22"      # Mango leaf green
+turquoise      = "#40e0d0"      # Turquoise (jewelry)
+
+# Additional colors
+bg-darker      = "#100805"
+bg-lighter     = "#3a2518"
+comment        = "#8a7050"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "gold"
+accent-hover = "orange"
+link         = "saffron"
+link-hover   = "gold"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "saffron"
+error   = "deep-red"
+info    = "turquoise"
+
+# Border colors
+border       = "current-line"
+border-focus = "gold"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "orange"
+code-string   = "green"
+code-number   = "gold"
+code-function = "saffron"
+code-type     = "turquoise"
+code-operator = "magenta"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "turquoise"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "saffron"
+admonition-error-bg    = "current-line"
+admonition-error-border = "deep-red"
+
+button-primary-bg     = "gold"
+button-primary-text   = "bg-darker"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "gold"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"

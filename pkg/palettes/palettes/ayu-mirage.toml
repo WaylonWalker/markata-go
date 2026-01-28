@@ -1,0 +1,102 @@
+# Ayu Mirage - A simple, bright and elegant theme (soft dark variant)
+# https://github.com/ayu-theme/ayu-colors
+# License: MIT
+
+[palette]
+name = "Ayu Mirage"
+variant = "dark"
+author = "Ike Ku"
+license = "MIT"
+homepage = "https://github.com/ayu-theme/ayu-colors"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors
+background     = "#1f2430"
+current-line   = "#242936"
+selection      = "#33415e"
+gutter         = "#8a9199"
+
+# Foreground colors
+foreground     = "#cbccc6"
+foreground-dim = "#707a8c"
+
+# Accent colors - Ayu Mirage's signature palette
+red        = "#f28779"
+orange     = "#ffad66"
+yellow     = "#ffd173"
+green      = "#bae67e"
+cyan       = "#95e6cb"
+blue       = "#5ccfe6"
+purple     = "#d4bfff"
+pink       = "#f28779"
+
+# Additional colors
+accent     = "#ffcc66"
+bg-darker  = "#171b24"
+bg-lighter = "#2d3441"
+comment    = "#5c6773"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "comment"
+text-muted     = "foreground-dim"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "accent"
+accent-hover = "orange"
+link         = "blue"
+link-hover   = "cyan"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "orange"
+error   = "red"
+info    = "cyan"
+
+# Border colors
+border       = "bg-lighter"
+border-focus = "accent"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "background"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "orange"
+code-string   = "green"
+code-number   = "purple"
+code-function = "yellow"
+code-type     = "blue"
+code-operator = "pink"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "blue"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "orange"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "accent"
+button-primary-text   = "background"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "accent"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"

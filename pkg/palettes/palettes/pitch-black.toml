@@ -1,0 +1,104 @@
+# Pitch Black - True OLED black theme
+# Designed for OLED screens and maximum contrast
+# Pure black background with minimal color accents
+# License: MIT
+
+[palette]
+name = "Pitch Black"
+variant = "dark"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - true black for OLED
+background     = "#000000"
+current-line   = "#0a0a0a"
+selection      = "#1a1a1a"
+gutter         = "#333333"
+
+# Foreground colors
+foreground     = "#ffffff"
+foreground-dim = "#808080"
+
+# Accent colors - minimal, high contrast
+white          = "#ffffff"
+gray           = "#808080"
+light-gray     = "#b0b0b0"
+dark-gray      = "#404040"
+blue           = "#0088ff"      # High contrast blue
+cyan           = "#00cccc"      # Cyan accent
+green          = "#00cc66"      # Success
+yellow         = "#cccc00"      # Warning
+red            = "#ff4444"      # Error
+purple         = "#aa66ff"      # Purple accent
+
+# Additional colors
+bg-darker      = "#000000"
+bg-lighter     = "#141414"
+comment        = "#505050"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "light-gray"
+text-muted     = "gray"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "background"
+bg-surface   = "current-line"
+bg-elevated  = "selection"
+
+# Accent colors
+accent       = "white"
+accent-hover = "blue"
+link         = "blue"
+link-hover   = "cyan"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "cyan"
+
+# Border colors
+border       = "dark-gray"
+border-focus = "white"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "background"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "blue"
+code-string   = "green"
+code-number   = "cyan"
+code-function = "white"
+code-type     = "blue"
+code-operator = "gray"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "blue"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "white"
+button-primary-text   = "background"
+button-secondary-bg   = "selection"
+button-secondary-text = "foreground"
+
+nav-bg     = "background"
+nav-text   = "foreground"
+nav-active = "blue"
+
+card-bg     = "current-line"
+card-border = "selection"
+card-shadow = "background"

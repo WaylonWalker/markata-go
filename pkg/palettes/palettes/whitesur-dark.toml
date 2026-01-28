@@ -1,0 +1,103 @@
+# WhiteSur Dark - macOS Big Sur inspired dark theme
+# https://github.com/vinceliuice/WhiteSur-gtk-theme
+# A clean, modern theme inspired by macOS
+# License: GPL-3.0
+
+[palette]
+name = "WhiteSur Dark"
+variant = "dark"
+author = "vinceliuice"
+license = "GPL-3.0"
+homepage = "https://github.com/vinceliuice/WhiteSur-gtk-theme"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - macOS-style dark
+background     = "#1f1f1f"
+current-line   = "#282828"
+selection      = "#404040"
+gutter         = "#606060"
+
+# Foreground colors
+foreground     = "#f0f0f0"
+foreground-dim = "#909090"
+
+# Accent colors - macOS style
+blue           = "#0a84ff"      # Primary accent (macOS blue)
+purple         = "#bf5af2"      # Purple accent
+pink           = "#ff375f"      # Pink accent
+red            = "#fe6254"      # Window close button
+yellow         = "#fdc92d"      # Window minimize button
+green          = "#28d33f"      # Window maximize button
+orange         = "#ff9f0a"      # Orange accent
+teal           = "#64d2ff"      # Teal accent
+gray           = "#8e8e93"      # System gray
+
+# Additional colors
+bg-darker      = "#141414"
+bg-lighter     = "#333333"
+comment        = "#707070"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "blue"
+accent-hover = "teal"
+link         = "blue"
+link-hover   = "teal"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "teal"
+
+# Border colors
+border       = "bg-lighter"
+border-focus = "blue"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "pink"
+code-string   = "green"
+code-number   = "orange"
+code-function = "blue"
+code-type     = "teal"
+code-operator = "purple"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "blue"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "blue"
+button-primary-text   = "foreground"
+button-secondary-bg   = "bg-lighter"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "blue"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"

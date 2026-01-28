@@ -1,0 +1,103 @@
+# Winter Frost - Icy blues and crisp whites
+# A cool theme inspired by winter and frost
+# License: MIT
+
+[palette]
+name = "Winter Frost"
+variant = "dark"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - dark winter night
+background     = "#1c2128"
+current-line   = "#252c35"
+selection      = "#2d3640"
+gutter         = "#4a5568"
+
+# Foreground colors
+foreground     = "#e8f0f8"
+foreground-dim = "#8899aa"
+
+# Accent colors - Winter/Frost palette
+ice-blue       = "#a5f2f3"      # Bright ice
+frost          = "#88c0d0"      # Frost blue
+snow           = "#eceff4"      # Snow white
+silver         = "#c0c0c0"      # Silver
+slate          = "#4c566a"      # Slate gray
+navy           = "#2e3440"      # Dark navy
+pine           = "#3b4252"      # Pine/evergreen dark
+aurora-green   = "#a3be8c"      # Aurora green
+aurora-purple  = "#b48ead"      # Aurora purple
+aurora-red     = "#bf616a"      # Aurora red
+
+# Additional colors
+bg-darker      = "#151a20"
+bg-lighter     = "#2e3640"
+comment        = "#6b7d8f"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "ice-blue"
+accent-hover = "frost"
+link         = "frost"
+link-hover   = "ice-blue"
+link-visited = "aurora-purple"
+
+# Status colors
+success = "aurora-green"
+warning = "ice-blue"
+error   = "aurora-red"
+info    = "frost"
+
+# Border colors
+border       = "slate"
+border-focus = "ice-blue"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "frost"
+code-string   = "aurora-green"
+code-number   = "aurora-purple"
+code-function = "ice-blue"
+code-type     = "frost"
+code-operator = "snow"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "frost"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "aurora-green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "ice-blue"
+admonition-error-bg    = "current-line"
+admonition-error-border = "aurora-red"
+
+button-primary-bg     = "frost"
+button-primary-text   = "navy"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "ice-blue"
+
+card-bg     = "current-line"
+card-border = "slate"
+card-shadow = "bg-darker"

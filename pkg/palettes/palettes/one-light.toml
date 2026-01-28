@@ -1,0 +1,102 @@
+# One Light - Atom's iconic light theme
+# https://github.com/atom/atom/tree/master/packages/one-light-syntax
+# License: MIT
+
+[palette]
+name = "One Light"
+variant = "light"
+author = "GitHub (Atom)"
+license = "MIT"
+homepage = "https://github.com/atom/atom"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors
+background     = "#fafafa"
+current-line   = "#f0f0f1"
+selection      = "#e5e5e6"
+gutter         = "#9d9d9f"
+
+# Foreground colors
+foreground     = "#383a42"
+foreground-dim = "#a0a1a7"
+
+# Accent colors - One Light's signature palette
+red        = "#e45649"
+red-dark   = "#ca1243"
+green      = "#50a14f"
+yellow     = "#c18401"
+yellow-dim = "#986801"
+blue       = "#4078f2"
+purple     = "#a626a4"
+cyan       = "#0184bc"
+white      = "#fafafa"
+
+# Additional UI colors
+bg-darker  = "#f0f0f1"
+bg-lighter = "#ffffff"
+border     = "#d3d3d4"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "foreground-dim"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-lighter"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "blue"
+accent-hover = "cyan"
+link         = "blue"
+link-hover   = "cyan"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "cyan"
+
+# Border colors
+border       = "border"
+border-focus = "blue"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "current-line"
+code-text     = "foreground"
+code-comment  = "foreground-dim"
+code-keyword  = "purple"
+code-string   = "green"
+code-number   = "yellow-dim"
+code-function = "blue"
+code-type     = "cyan"
+code-operator = "red"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "blue"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "blue"
+button-primary-text   = "white"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-lighter"
+nav-text   = "foreground"
+nav-active = "blue"
+
+card-bg     = "bg-lighter"
+card-border = "border"
+card-shadow = "selection"
