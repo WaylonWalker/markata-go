@@ -318,8 +318,8 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(fc, config, feedDir) }},
 		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(fc, config, feedDir) }},
 		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(fc, config, feedDir) }, ext: "json", targetFile: "feed.json"},
-		{name: "Markdown", enabled: fc.Formats.Markdown, publish: func() error { return p.publishMarkdown(fc, feedDir) }, ext: "md", targetFile: "index.md"},
-		{name: "Text", enabled: fc.Formats.Text, publish: func() error { return p.publishText(fc, feedDir) }, ext: "txt", targetFile: "index.txt"},
+		{name: "Markdown", enabled: fc.Formats.Markdown, publish: func() error { return p.publishMarkdown(fc, fc.Slug, outputDir) }, ext: "md", targetFile: ""},
+		{name: "Text", enabled: fc.Formats.Text, publish: func() error { return p.publishText(fc, fc.Slug, outputDir) }, ext: "txt", targetFile: ""},
 		{name: "Sitemap", enabled: fc.Formats.Sitemap, publish: func() error { return p.publishSitemap(fc, config, feedDir) }},
 	}
 
@@ -368,8 +368,16 @@ func (p *PublishFeedsPlugin) publishFormat(pub feedFormatPublisher, slug, output
 
 	// Write redirect for non-root feeds with redirect configuration
 	if slug != "" && pub.ext != "" {
-		if err := p.writeFeedFormatRedirect(slug, pub.ext, pub.targetFile, outputDir); err != nil {
-			return fmt.Errorf("writing %s redirect: %w", pub.name, err)
+		if pub.targetFile == "" {
+			// Reversed redirect: /slug/index.ext -> /slug.ext (for Markdown/Text)
+			if err := p.writeReversedFeedRedirect(slug, pub.ext, outputDir); err != nil {
+				return fmt.Errorf("writing %s redirect: %w", pub.name, err)
+			}
+		} else {
+			// Forward redirect: /slug.ext -> /slug/targetFile (for JSON)
+			if err := p.writeFeedFormatRedirect(slug, pub.ext, pub.targetFile, outputDir); err != nil {
+				return fmt.Errorf("writing %s redirect: %w", pub.name, err)
+			}
 		}
 	}
 
@@ -581,7 +589,9 @@ func (p *PublishFeedsPlugin) publishJSON(fc *models.FeedConfig, config *lifecycl
 }
 
 // publishMarkdown generates and writes a Markdown feed listing.
-func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, feedDir string) error {
+// For non-root feeds, content is written to /slug.md (canonical URL).
+// For root feeds (slug=""), content is written to /index.md.
+func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, slug, outputDir string) error {
 	var sb strings.Builder
 
 	// Title
@@ -612,12 +622,20 @@ func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, feedDir stri
 		sb.WriteString("\n")
 	}
 
-	mdPath := filepath.Join(feedDir, "index.md")
+	// Determine output path: /slug.md for non-root, /index.md for root
+	var mdPath string
+	if slug == "" {
+		mdPath = filepath.Join(outputDir, "index.md")
+	} else {
+		mdPath = filepath.Join(outputDir, slug+".md")
+	}
 	return p.safeWriteFile(mdPath, []byte(sb.String()))
 }
 
 // publishText generates and writes a plain text feed listing.
-func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, feedDir string) error {
+// For non-root feeds, content is written to /slug.txt (canonical URL).
+// For root feeds (slug=""), content is written to /index.txt.
+func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, slug, outputDir string) error {
 	var sb strings.Builder
 
 	// Title
@@ -648,7 +666,13 @@ func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, feedDir string) 
 		sb.WriteString("  " + post.Href + "\n\n")
 	}
 
-	txtPath := filepath.Join(feedDir, "index.txt")
+	// Determine output path: /slug.txt for non-root, /index.txt for root
+	var txtPath string
+	if slug == "" {
+		txtPath = filepath.Join(outputDir, "index.txt")
+	} else {
+		txtPath = filepath.Join(outputDir, slug+".txt")
+	}
 	return p.safeWriteFile(txtPath, []byte(sb.String()))
 }
 
@@ -753,6 +777,48 @@ func (p *PublishFeedsPlugin) writeFeedFormatRedirect(slug, ext, targetFile, outp
 
 	// Write index.html inside the directory
 	// This allows /slug.ext to be served without trailing slash on most static hosts
+	outputPath := filepath.Join(redirectDir, "index.html")
+	//nolint:gosec // G306: Output files need 0644 for web serving
+	if err := os.WriteFile(outputPath, []byte(redirectHTML), 0o644); err != nil {
+		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
+	}
+
+	return nil
+}
+
+// writeReversedFeedRedirect writes a redirect from /slug/index.ext to /slug.ext.
+// This is the "reversed" direction from writeFeedFormatRedirect - content is at the
+// short URL (/slug.ext) and the redirect points there from the long URL (/slug/index.ext).
+//
+// Creates a file at /slug/index.ext/index.html, which allows the URL /slug/index.ext
+// (without trailing slash) to serve the HTML redirect on most static hosts.
+//
+// For example, requesting /archive/index.md will serve the redirect HTML that
+// points to /archive.md where the actual markdown content lives.
+func (p *PublishFeedsPlugin) writeReversedFeedRedirect(slug, ext, outputDir string) error {
+	// Create redirect HTML that points to the canonical short URL
+	targetURL := fmt.Sprintf("/%s.%s", slug, ext)
+	redirectHTML := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="0; url=%s">
+<link rel="canonical" href="%s">
+<title>Redirecting...</title>
+</head>
+<body>
+<p>Redirecting to <a href="%s">%s</a>...</p>
+</body>
+</html>`, targetURL, targetURL, targetURL, targetURL)
+
+	// Create directory at /slug/index.ext/ (e.g., /archive/index.md/)
+	redirectDir := filepath.Join(outputDir, slug, "index."+ext)
+	if err := os.MkdirAll(redirectDir, 0o755); err != nil {
+		return fmt.Errorf("creating redirect directory %s: %w", redirectDir, err)
+	}
+
+	// Write index.html inside the directory
+	// This allows /slug/index.ext to be served without trailing slash on most static hosts
 	outputPath := filepath.Join(redirectDir, "index.html")
 	//nolint:gosec // G306: Output files need 0644 for web serving
 	if err := os.WriteFile(outputPath, []byte(redirectHTML), 0o644); err != nil {
