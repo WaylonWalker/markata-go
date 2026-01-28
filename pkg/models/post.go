@@ -90,6 +90,11 @@ type Post struct {
 	// Outlinks are links FROM this post to other pages
 	Outlinks []*Link `json:"outlinks,omitempty" yaml:"outlinks,omitempty" toml:"outlinks,omitempty"`
 
+	// Dependencies tracks slugs this post depends on (wikilinks, embeds).
+	// Used for incremental build cache invalidation.
+	// Not persisted to output files.
+	Dependencies []string `json:"-" yaml:"-" toml:"-"`
+
 	// Extra holds dynamic/unknown fields from frontmatter
 	Extra map[string]interface{} `json:"extra,omitempty" yaml:"extra,omitempty" toml:"extra,omitempty"`
 }
@@ -106,6 +111,13 @@ func NewPost(path string) *Post {
 		Template:  "", // Empty - let templates plugin resolve from layout config
 		Extra:     make(map[string]interface{}),
 	}
+}
+
+// AddDependency records that this post depends on the given slug.
+// Used for incremental build cache invalidation. Thread-safe.
+// Duplicates are allowed at collection time; deduplication happens when recording to cache.
+func (p *Post) AddDependency(slug string) {
+	p.Dependencies = append(p.Dependencies, slug)
 }
 
 // slugifyRegex matches characters that are not alphanumeric, hyphens, or underscores

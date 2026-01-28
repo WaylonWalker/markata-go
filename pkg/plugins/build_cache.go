@@ -30,10 +30,13 @@ func (p *BuildCachePlugin) Name() string {
 }
 
 // Priority returns high priority so it runs early in configure and late in cleanup.
+// For transform, it runs late to collect dependencies after other plugins have processed links.
 func (p *BuildCachePlugin) Priority(stage lifecycle.Stage) int {
 	switch stage {
 	case lifecycle.StageConfigure:
 		return lifecycle.PriorityEarly - 100 // Very early in configure
+	case lifecycle.StageTransform:
+		return lifecycle.PriorityLate + 100 // Very late in transform (after wikilinks/embeds)
 	case lifecycle.StageCleanup:
 		return lifecycle.PriorityLate + 100 // Very late in cleanup
 	default:
@@ -134,6 +137,39 @@ func (p *BuildCachePlugin) Cleanup(m *lifecycle.Manager) error {
 		m.Cache().Set("build_cache_rebuilt", rebuilt)
 	}
 
+	// Log dependency graph stats
+	graphSize := p.cache.GraphSize()
+	if graphSize > 0 {
+		log.Printf("[build_cache] Dependency graph: %d posts with dependencies tracked", graphSize)
+	}
+
+	return nil
+}
+
+// Transform collects dependencies from posts after wikilinks/embeds have processed them.
+// This runs late in the transform stage to ensure all dependencies have been collected.
+func (p *BuildCachePlugin) Transform(m *lifecycle.Manager) error {
+	if !p.enabled || p.cache == nil {
+		return nil
+	}
+
+	posts := m.Posts()
+	depsRecorded := 0
+
+	for _, post := range posts {
+		if post.Skip {
+			continue
+		}
+		if len(post.Dependencies) > 0 {
+			p.cache.SetDependencies(post.Path, post.Slug, post.Dependencies)
+			depsRecorded++
+		}
+	}
+
+	if depsRecorded > 0 {
+		log.Printf("[build_cache] Recorded dependencies for %d posts", depsRecorded)
+	}
+
 	return nil
 }
 
@@ -162,6 +198,7 @@ func GetBuildCache(m *lifecycle.Manager) *buildcache.Cache {
 var (
 	_ lifecycle.Plugin          = (*BuildCachePlugin)(nil)
 	_ lifecycle.ConfigurePlugin = (*BuildCachePlugin)(nil)
+	_ lifecycle.TransformPlugin = (*BuildCachePlugin)(nil)
 	_ lifecycle.CleanupPlugin   = (*BuildCachePlugin)(nil)
 	_ lifecycle.PriorityPlugin  = (*BuildCachePlugin)(nil)
 )

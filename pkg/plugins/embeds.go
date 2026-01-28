@@ -117,9 +117,14 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 			return nil
 		}
 
-		content := p.processInternalEmbeds(post.Content, idx, post)
+		content, dependencies := p.processInternalEmbeds(post.Content, idx, post)
 		content = p.processExternalEmbeds(content, post)
 		post.Content = content
+
+		// Record dependencies for incremental build cache
+		for _, dep := range dependencies {
+			post.AddDependency(dep)
+		}
 
 		return nil
 	})
@@ -172,12 +177,14 @@ func getMetaPatterns(property string) [4]*regexp.Regexp {
 }
 
 // processInternalEmbeds replaces ![[slug]] syntax with embed cards.
-func (p *EmbedsPlugin) processInternalEmbeds(content string, idx *lifecycle.PostIndex, currentPost *models.Post) string {
+// Returns the processed content and a list of resolved slugs (dependencies).
+func (p *EmbedsPlugin) processInternalEmbeds(content string, idx *lifecycle.PostIndex, currentPost *models.Post) (processed string, dependencies []string) {
 	// Split content by fenced code blocks to avoid transforming content inside them
 	codeBlocks := embedsCodeBlockRegex.FindAllStringIndex(content, -1)
 
 	if len(codeBlocks) == 0 {
-		return p.processInternalEmbedsInText(content, idx, currentPost)
+		result := p.processInternalEmbedsInText(content, idx, currentPost, &dependencies)
+		return result, dependencies
 	}
 
 	var result strings.Builder
@@ -187,7 +194,7 @@ func (p *EmbedsPlugin) processInternalEmbeds(content string, idx *lifecycle.Post
 		start, end := block[0], block[1]
 
 		if start > lastEnd {
-			processed := p.processInternalEmbedsInText(content[lastEnd:start], idx, currentPost)
+			processed := p.processInternalEmbedsInText(content[lastEnd:start], idx, currentPost, &dependencies)
 			result.WriteString(processed)
 		}
 
@@ -196,15 +203,16 @@ func (p *EmbedsPlugin) processInternalEmbeds(content string, idx *lifecycle.Post
 	}
 
 	if lastEnd < len(content) {
-		processed := p.processInternalEmbedsInText(content[lastEnd:], idx, currentPost)
+		processed := p.processInternalEmbedsInText(content[lastEnd:], idx, currentPost, &dependencies)
 		result.WriteString(processed)
 	}
 
-	return result.String()
+	return result.String(), dependencies
 }
 
 // processInternalEmbedsInText processes internal embeds in a text segment.
-func (p *EmbedsPlugin) processInternalEmbedsInText(text string, idx *lifecycle.PostIndex, currentPost *models.Post) string {
+// Records successfully resolved slugs in the dependencies slice.
+func (p *EmbedsPlugin) processInternalEmbedsInText(text string, idx *lifecycle.PostIndex, currentPost *models.Post, dependencies *[]string) string {
 	return internalEmbedRegex.ReplaceAllStringFunc(text, func(match string) string {
 		groups := internalEmbedRegex.FindStringSubmatch(match)
 		if len(groups) < 2 {
@@ -229,6 +237,9 @@ func (p *EmbedsPlugin) processInternalEmbedsInText(text string, idx *lifecycle.P
 		if targetPost.Path == currentPost.Path {
 			return fmt.Sprintf("<!-- cannot embed self -->\n%s", match)
 		}
+
+		// Record this as a dependency for incremental builds
+		*dependencies = append(*dependencies, targetPost.Slug)
 
 		return p.buildInternalEmbedCard(targetPost, displayText)
 	})

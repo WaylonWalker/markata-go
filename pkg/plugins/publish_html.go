@@ -185,7 +185,7 @@ func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle
 
 	// Check if we can skip this post (incremental build)
 	if cache != nil && post.InputHash != "" {
-		if !cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
+		if !cache.ShouldRebuildWithSlug(post.Path, post.Slug, post.InputHash, post.Template) {
 			// Check if output file exists
 			if _, err := os.Stat(outputPath); err == nil {
 				cache.MarkSkipped()
@@ -200,9 +200,9 @@ func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle
 		return fmt.Errorf("writing %s: %w", outputPath, err)
 	}
 
-	// Mark as rebuilt in cache
+	// Mark as rebuilt in cache (also tracks that this slug changed)
 	if cache != nil && post.InputHash != "" {
-		cache.MarkRebuilt(post.Path, post.InputHash, outputPath, post.Template)
+		cache.MarkRebuiltWithSlug(post.Path, post.Slug, post.InputHash, outputPath, post.Template)
 	}
 
 	return nil

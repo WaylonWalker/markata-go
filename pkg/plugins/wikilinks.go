@@ -52,8 +52,13 @@ func (p *WikilinksPlugin) Transform(m *lifecycle.Manager) error {
 			return nil
 		}
 
-		content, warnings := p.processWikilinks(post.Content, postIndex)
+		content, warnings, dependencies := p.processWikilinks(post.Content, postIndex)
 		post.Content = content
+
+		// Record dependencies for incremental build cache
+		for _, dep := range dependencies {
+			post.AddDependency(dep)
+		}
 
 		// Store warnings if any
 		if len(warnings) > 0 && p.warnOnBroken {
@@ -75,9 +80,9 @@ var wikilinkRegex = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 var wikilinksCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
 
 // processWikilinks replaces wikilink syntax with HTML anchor tags.
-// Returns the processed content and any warnings about broken links.
+// Returns the processed content, any warnings about broken links, and a list of resolved slugs (dependencies).
 // Wikilinks inside fenced code blocks are preserved and not transformed.
-func (p *WikilinksPlugin) processWikilinks(content string, postIndex *lifecycle.PostIndex) (processed string, warnings []string) {
+func (p *WikilinksPlugin) processWikilinks(content string, postIndex *lifecycle.PostIndex) (processed string, warnings, dependencies []string) {
 	// Split content by fenced code blocks to avoid transforming wikilinks inside them
 	// Match ``` or ~~~ fenced code blocks (with optional language identifier)
 
@@ -86,8 +91,8 @@ func (p *WikilinksPlugin) processWikilinks(content string, postIndex *lifecycle.
 
 	// If no code blocks, process the entire content
 	if len(codeBlocks) == 0 {
-		processed = p.processWikilinksInText(content, postIndex, &warnings)
-		return processed, warnings
+		processed = p.processWikilinksInText(content, postIndex, &warnings, &dependencies)
+		return processed, warnings, dependencies
 	}
 
 	// Process content in segments, skipping code blocks
@@ -99,7 +104,7 @@ func (p *WikilinksPlugin) processWikilinks(content string, postIndex *lifecycle.
 
 		// Process text before this code block
 		if start > lastEnd {
-			processed := p.processWikilinksInText(content[lastEnd:start], postIndex, &warnings)
+			processed := p.processWikilinksInText(content[lastEnd:start], postIndex, &warnings, &dependencies)
 			result.WriteString(processed)
 		}
 
@@ -110,16 +115,17 @@ func (p *WikilinksPlugin) processWikilinks(content string, postIndex *lifecycle.
 
 	// Process any remaining text after the last code block
 	if lastEnd < len(content) {
-		processed := p.processWikilinksInText(content[lastEnd:], postIndex, &warnings)
+		processed := p.processWikilinksInText(content[lastEnd:], postIndex, &warnings, &dependencies)
 		result.WriteString(processed)
 	}
 
-	return result.String(), warnings
+	return result.String(), warnings, dependencies
 }
 
 // processWikilinksInText processes wikilinks in a text segment (not inside code blocks).
 // Uses the shared PostIndex for O(1) lookups.
-func (p *WikilinksPlugin) processWikilinksInText(text string, postIndex *lifecycle.PostIndex, warnings *[]string) string {
+// Records successfully resolved slugs in the dependencies slice.
+func (p *WikilinksPlugin) processWikilinksInText(text string, postIndex *lifecycle.PostIndex, warnings, dependencies *[]string) string {
 	return wikilinkRegex.ReplaceAllStringFunc(text, func(match string) string {
 		// Extract groups from the match
 		groups := wikilinkRegex.FindStringSubmatch(match)
@@ -141,6 +147,9 @@ func (p *WikilinksPlugin) processWikilinksInText(text string, postIndex *lifecyc
 			*warnings = append(*warnings, fmt.Sprintf("broken wikilink: [[%s]]", slug))
 			return match
 		}
+
+		// Record this as a dependency for incremental builds
+		*dependencies = append(*dependencies, targetPost.Slug)
 
 		// Determine the display text
 		if displayText == "" {
