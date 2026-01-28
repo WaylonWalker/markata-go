@@ -63,6 +63,9 @@ type Cache struct {
 	// Posts maps source path to cached post metadata
 	Posts map[string]*PostCache `json:"posts"`
 
+	// Feeds maps feed slug to cached feed metadata
+	Feeds map[string]*FeedCache `json:"feeds,omitempty"`
+
 	// Graph tracks dependencies between posts for transitive invalidation
 	Graph *DependencyGraph `json:"graph,omitempty"`
 
@@ -95,6 +98,21 @@ type PostCache struct {
 
 	// OutputHash is the hash of the rendered output (optional, for verification)
 	OutputHash string `json:"output_hash,omitempty"`
+
+	// ContentHash is the hash of just the markdown content (for render caching)
+	ContentHash string `json:"content_hash,omitempty"`
+
+	// ArticleHTMLPath is the path to the cached rendered HTML file
+	ArticleHTMLPath string `json:"article_html_path,omitempty"`
+
+	// FullHTMLPath is the path to the cached full page HTML file
+	FullHTMLPath string `json:"full_html_path,omitempty"`
+}
+
+// FeedCache stores cached metadata for a single feed.
+type FeedCache struct {
+	// Hash is the hash of the feed's content (post slugs, config)
+	Hash string `json:"hash"`
 }
 
 // New creates a new empty cache.
@@ -105,6 +123,7 @@ func New(cacheDir string) *Cache {
 	return &Cache{
 		Version:      CacheVersion,
 		Posts:        make(map[string]*PostCache),
+		Feeds:        make(map[string]*FeedCache),
 		Graph:        NewDependencyGraph(),
 		path:         filepath.Join(cacheDir, CacheFileName),
 		changedSlugs: make(map[string]bool),
@@ -139,6 +158,11 @@ func Load(cacheDir string) (*Cache, error) {
 	} else {
 		// Rebuild the reverse index (Dependents) from persisted Dependencies
 		cache.Graph.RebuildReverse()
+	}
+
+	// Ensure Feeds is initialized
+	if cache.Feeds == nil {
+		cache.Feeds = make(map[string]*FeedCache)
 	}
 
 	// Ensure changedSlugs is initialized
@@ -306,6 +330,22 @@ func (c *Cache) Stats() (skipped, rebuilt int) {
 	return c.skippedCount, c.rebuiltCount
 }
 
+// CacheStats holds build statistics.
+type CacheStats struct {
+	Skipped int
+	Rebuilt int
+}
+
+// GetStats returns build statistics as a struct.
+func (c *Cache) GetStats() CacheStats {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return CacheStats{
+		Skipped: c.skippedCount,
+		Rebuilt: c.rebuiltCount,
+	}
+}
+
 // ResetStats resets the build statistics for a new build.
 func (c *Cache) ResetStats() {
 	c.mu.Lock()
@@ -460,4 +500,165 @@ func (c *Cache) GraphSize() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.Graph.Size()
+}
+
+// HTMLCacheDir is the subdirectory for cached rendered HTML files.
+const HTMLCacheDir = "html-cache"
+
+// GetCachedArticleHTML returns the cached rendered HTML for a post if available.
+// Returns empty string if not cached or cache is stale.
+func (c *Cache) GetCachedArticleHTML(sourcePath, contentHash string) string {
+	c.mu.RLock()
+	cached, ok := c.Posts[sourcePath]
+	c.mu.RUnlock()
+
+	if !ok || cached.ContentHash != contentHash || cached.ArticleHTMLPath == "" {
+		return ""
+	}
+
+	// Read cached HTML file
+	data, err := os.ReadFile(cached.ArticleHTMLPath)
+	if err != nil {
+		return ""
+	}
+
+	return string(data)
+}
+
+// CacheArticleHTML stores rendered HTML for a post.
+func (c *Cache) CacheArticleHTML(sourcePath, contentHash, articleHTML string) error {
+	// Get cache directory from path
+	cacheDir := filepath.Dir(c.path)
+	htmlCacheDir := filepath.Join(cacheDir, HTMLCacheDir)
+
+	// Ensure html-cache directory exists
+	if err := os.MkdirAll(htmlCacheDir, 0o755); err != nil {
+		return fmt.Errorf("creating html cache dir: %w", err)
+	}
+
+	// Use content hash as filename (first 16 chars for shorter paths)
+	hashPrefix := contentHash
+	if len(hashPrefix) > 16 {
+		hashPrefix = hashPrefix[:16]
+	}
+	htmlPath := filepath.Join(htmlCacheDir, hashPrefix+".html")
+
+	// Write HTML to cache file
+	//nolint:gosec // G306: cache files need 0644 for reading by other processes
+	if err := os.WriteFile(htmlPath, []byte(articleHTML), 0o644); err != nil {
+		return fmt.Errorf("writing html cache: %w", err)
+	}
+
+	// Update cache metadata
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.ContentHash = contentHash
+		cached.ArticleHTMLPath = htmlPath
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			ContentHash:     contentHash,
+			ArticleHTMLPath: htmlPath,
+		}
+	}
+	c.dirty = true
+
+	return nil
+}
+
+// ContentHash computes a hash of just the markdown content.
+func ContentHash(content string) string {
+	h := sha256.New()
+	h.Write([]byte(content))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// GetFeedHash returns the cached hash for a feed, or empty string if not cached.
+func (c *Cache) GetFeedHash(slug string) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if cached, ok := c.Feeds[slug]; ok {
+		return cached.Hash
+	}
+	return ""
+}
+
+// SetFeedHash stores the hash for a feed in the cache.
+func (c *Cache) SetFeedHash(slug, hash string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.Feeds[slug] = &FeedCache{Hash: hash}
+	c.dirty = true
+}
+
+// FullHTMLCacheDir is the subdirectory for cached full page HTML files.
+const FullHTMLCacheDir = "fullhtml-cache"
+
+// GetCachedFullHTML returns the cached full page HTML for a post if available.
+func (c *Cache) GetCachedFullHTML(sourcePath string) string {
+	c.mu.RLock()
+	cached, ok := c.Posts[sourcePath]
+	c.mu.RUnlock()
+
+	if !ok || cached.FullHTMLPath == "" {
+		return ""
+	}
+
+	data, err := os.ReadFile(cached.FullHTMLPath)
+	if err != nil {
+		return ""
+	}
+
+	return string(data)
+}
+
+// CacheFullHTML stores the full page HTML for a post.
+func (c *Cache) CacheFullHTML(sourcePath, fullHTML string) error {
+	cacheDir := filepath.Dir(c.path)
+	htmlCacheDir := filepath.Join(cacheDir, FullHTMLCacheDir)
+
+	if err := os.MkdirAll(htmlCacheDir, 0o755); err != nil {
+		return fmt.Errorf("creating fullhtml cache dir: %w", err)
+	}
+
+	// Use input hash as filename
+	c.mu.RLock()
+	cached, ok := c.Posts[sourcePath]
+	var hashPrefix string
+	if ok && cached.InputHash != "" {
+		hashPrefix = cached.InputHash
+		if len(hashPrefix) > 16 {
+			hashPrefix = hashPrefix[:16]
+		}
+	} else {
+		// Generate hash from path
+		h := sha256.New()
+		h.Write([]byte(sourcePath))
+		hashPrefix = hex.EncodeToString(h.Sum(nil))[:16]
+	}
+	c.mu.RUnlock()
+
+	htmlPath := filepath.Join(htmlCacheDir, hashPrefix+".html")
+
+	//nolint:gosec // G306: cache files need 0644 for reading by other processes
+	if err := os.WriteFile(htmlPath, []byte(fullHTML), 0o644); err != nil {
+		return fmt.Errorf("writing fullhtml cache: %w", err)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.FullHTMLPath = htmlPath
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			FullHTMLPath: htmlPath,
+		}
+	}
+	c.dirty = true
+
+	return nil
 }

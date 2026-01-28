@@ -8,6 +8,7 @@ import (
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
@@ -32,7 +33,8 @@ var markdownBufferPool = sync.Pool{
 
 // RenderMarkdownPlugin converts markdown content to HTML using goldmark.
 type RenderMarkdownPlugin struct {
-	md goldmark.Markdown
+	md    goldmark.Markdown
+	cache *buildcache.Cache // build cache for HTML caching
 }
 
 // NewRenderMarkdownPlugin creates a new RenderMarkdownPlugin with goldmark configured.
@@ -197,12 +199,17 @@ func (p *RenderMarkdownPlugin) getPaletteVariant(paletteName string) palettes.Va
 // Render converts markdown content to HTML for all posts.
 // Posts with Skip=true are skipped.
 // The rendered HTML is stored in post.ArticleHTML.
+// Uses build cache to skip re-rendering unchanged content.
 func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
+	// Get build cache for HTML caching
+	p.cache = GetBuildCache(m)
+
 	return m.ProcessPostsConcurrently(p.renderPost)
 }
 
 // renderPost renders a single post's markdown content to HTML.
 // Uses a buffer pool to reduce allocations and GC pressure.
+// Leverages build cache to skip re-rendering unchanged content.
 func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 	// Skip posts marked as skip
 	if post.Skip {
@@ -215,6 +222,38 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 		return nil
 	}
 
+	// Try to get cached HTML if content hasn't changed
+	if p.cache != nil {
+		contentHash := buildcache.ContentHash(post.Content)
+		if cachedHTML := p.cache.GetCachedArticleHTML(post.Path, contentHash); cachedHTML != "" {
+			post.ArticleHTML = cachedHTML
+			return nil
+		}
+
+		// Not cached or stale, render and cache
+		renderedHTML, err := p.doRender(post.Content)
+		if err != nil {
+			return err
+		}
+		post.ArticleHTML = renderedHTML
+
+		// Cache the result (ignore errors, caching is best-effort)
+		//nolint:errcheck // caching is best-effort, failures are non-fatal
+		p.cache.CacheArticleHTML(post.Path, contentHash, renderedHTML)
+		return nil
+	}
+
+	// No cache, just render
+	renderedHTML, err := p.doRender(post.Content)
+	if err != nil {
+		return err
+	}
+	post.ArticleHTML = renderedHTML
+	return nil
+}
+
+// doRender performs the actual markdown to HTML conversion.
+func (p *RenderMarkdownPlugin) doRender(content string) (string, error) {
 	// Get buffer from pool
 	buf, ok := markdownBufferPool.Get().(*bytes.Buffer)
 	if !ok {
@@ -224,13 +263,11 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 	defer markdownBufferPool.Put(buf)
 
 	// Convert markdown to HTML
-	if err := p.md.Convert([]byte(post.Content), buf); err != nil {
-		return err
+	if err := p.md.Convert([]byte(content), buf); err != nil {
+		return "", err
 	}
 
-	// Copy result since we're returning the buffer to the pool
-	post.ArticleHTML = buf.String()
-	return nil
+	return buf.String(), nil
 }
 
 // Ensure RenderMarkdownPlugin implements the required interfaces.
