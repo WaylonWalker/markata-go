@@ -927,28 +927,292 @@ func (p *BlogrollPlugin) extractSearchConfig(extra, result map[string]interface{
 }
 
 // extractStructConfigs extracts simple struct configs from config.Extra.
+// All structs must be converted to maps for pongo2 template access.
 func (p *BlogrollPlugin) extractStructConfigs(extra, result map[string]interface{}) {
 	// Convert components config if available (fixes #316)
+	// Must convert to map for pongo2 template dot-notation access
 	if components, ok := extra["components"].(models.ComponentsConfig); ok {
-		result["components"] = components
+		result["components"] = p.componentsToMap(&components)
 	}
 	if footer, ok := extra["footer"].(models.FooterConfig); ok {
-		result["footer"] = footer
+		result["footer"] = p.footerConfigToMap(&footer)
 	}
 	if sidebar, ok := extra["sidebar"].(models.SidebarConfig); ok {
-		result["sidebar"] = sidebar
+		result["sidebar"] = p.sidebarToMap(&sidebar)
 	}
 	if toc, ok := extra["toc"].(models.TocConfig); ok {
-		result["toc"] = toc
+		result["toc"] = p.tocToMap(&toc)
 	}
 	if header, ok := extra["header"].(models.HeaderLayoutConfig); ok {
-		result["header"] = header
+		result["header"] = p.headerToMap(&header)
 	}
 	if postFormats, ok := extra["post_formats"].(models.PostFormatsConfig); ok {
-		result["post_formats"] = postFormats
+		result["post_formats"] = p.postFormatsToMap(&postFormats)
 	}
 	if head, ok := extra["head"].(models.HeadConfig); ok {
-		result["head"] = head
+		result["head"] = p.headToMap(&head)
+	}
+}
+
+// componentsToMap converts ComponentsConfig to a template-friendly map.
+// This is required because pongo2 cannot access Go struct fields directly.
+func (p *BlogrollPlugin) componentsToMap(c *models.ComponentsConfig) map[string]interface{} {
+	if c == nil {
+		return nil
+	}
+
+	// Convert nav component
+	navEnabled := true
+	if c.Nav.Enabled != nil {
+		navEnabled = *c.Nav.Enabled
+	}
+	navItems := make([]map[string]interface{}, len(c.Nav.Items))
+	for i, item := range c.Nav.Items {
+		navItems[i] = map[string]interface{}{
+			"label":    item.Label,
+			"url":      item.URL,
+			"external": item.External,
+		}
+	}
+	navMap := map[string]interface{}{
+		"enabled":  navEnabled,
+		"position": c.Nav.Position,
+		"style":    c.Nav.Style,
+		"items":    navItems,
+	}
+
+	// Convert footer component
+	footerEnabled := true
+	if c.Footer.Enabled != nil {
+		footerEnabled = *c.Footer.Enabled
+	}
+	showCopyright := true
+	if c.Footer.ShowCopyright != nil {
+		showCopyright = *c.Footer.ShowCopyright
+	}
+	footerLinks := make([]map[string]interface{}, len(c.Footer.Links))
+	for i, link := range c.Footer.Links {
+		footerLinks[i] = map[string]interface{}{
+			"label":    link.Label,
+			"url":      link.URL,
+			"external": link.External,
+		}
+	}
+	footerMap := map[string]interface{}{
+		"enabled":        footerEnabled,
+		"text":           c.Footer.Text,
+		"show_copyright": showCopyright,
+		"links":          footerLinks,
+	}
+
+	// Convert doc_sidebar component
+	docSidebarEnabled := false
+	if c.DocSidebar.Enabled != nil {
+		docSidebarEnabled = *c.DocSidebar.Enabled
+	}
+	docSidebarMap := map[string]interface{}{
+		"enabled":   docSidebarEnabled,
+		"position":  c.DocSidebar.Position,
+		"width":     c.DocSidebar.Width,
+		"min_depth": c.DocSidebar.MinDepth,
+		"max_depth": c.DocSidebar.MaxDepth,
+	}
+
+	// Convert feed_sidebar component
+	feedSidebarEnabled := false
+	if c.FeedSidebar.Enabled != nil {
+		feedSidebarEnabled = *c.FeedSidebar.Enabled
+	}
+	feedSidebarMap := map[string]interface{}{
+		"enabled":  feedSidebarEnabled,
+		"position": c.FeedSidebar.Position,
+		"width":    c.FeedSidebar.Width,
+		"title":    c.FeedSidebar.Title,
+		"feeds":    c.FeedSidebar.Feeds,
+	}
+
+	return map[string]interface{}{
+		"nav":          navMap,
+		"footer":       footerMap,
+		"doc_sidebar":  docSidebarMap,
+		"feed_sidebar": feedSidebarMap,
+	}
+}
+
+// footerConfigToMap converts FooterConfig to a template-friendly map.
+func (p *BlogrollPlugin) footerConfigToMap(f *models.FooterConfig) map[string]interface{} {
+	if f == nil {
+		return nil
+	}
+	showCopyright := true
+	if f.ShowCopyright != nil {
+		showCopyright = *f.ShowCopyright
+	}
+	return map[string]interface{}{
+		"text":           f.Text,
+		"show_copyright": showCopyright,
+	}
+}
+
+// sidebarToMap converts SidebarConfig to a template-friendly map.
+func (p *BlogrollPlugin) sidebarToMap(s *models.SidebarConfig) map[string]interface{} {
+	if s == nil {
+		return nil
+	}
+	result := map[string]interface{}{
+		"position": s.Position,
+		"width":    s.Width,
+		"title":    s.Title,
+	}
+	if s.Enabled != nil {
+		result["enabled"] = *s.Enabled
+	} else {
+		result["enabled"] = true
+	}
+	if s.Collapsible != nil {
+		result["collapsible"] = *s.Collapsible
+	}
+	if s.DefaultOpen != nil {
+		result["default_open"] = *s.DefaultOpen
+	}
+	return result
+}
+
+// tocToMap converts TocConfig to a template-friendly map.
+func (p *BlogrollPlugin) tocToMap(t *models.TocConfig) map[string]interface{} {
+	if t == nil {
+		return nil
+	}
+	result := map[string]interface{}{
+		"position":  t.Position,
+		"width":     t.Width,
+		"min_depth": t.MinDepth,
+		"max_depth": t.MaxDepth,
+		"title":     t.Title,
+	}
+	if t.Enabled != nil {
+		result["enabled"] = *t.Enabled
+	} else {
+		result["enabled"] = true
+	}
+	if t.Collapsible != nil {
+		result["collapsible"] = *t.Collapsible
+	}
+	if t.DefaultOpen != nil {
+		result["default_open"] = *t.DefaultOpen
+	}
+	return result
+}
+
+// headerToMap converts HeaderLayoutConfig to a template-friendly map.
+func (p *BlogrollPlugin) headerToMap(h *models.HeaderLayoutConfig) map[string]interface{} {
+	if h == nil {
+		return nil
+	}
+	result := map[string]interface{}{
+		"style": h.Style,
+	}
+	if h.Sticky != nil {
+		result["sticky"] = *h.Sticky
+	} else {
+		result["sticky"] = true
+	}
+	if h.ShowLogo != nil {
+		result["show_logo"] = *h.ShowLogo
+	} else {
+		result["show_logo"] = true
+	}
+	if h.ShowTitle != nil {
+		result["show_title"] = *h.ShowTitle
+	} else {
+		result["show_title"] = true
+	}
+	if h.ShowNav != nil {
+		result["show_nav"] = *h.ShowNav
+	} else {
+		result["show_nav"] = true
+	}
+	if h.ShowSearch != nil {
+		result["show_search"] = *h.ShowSearch
+	} else {
+		result["show_search"] = true
+	}
+	if h.ShowThemeToggle != nil {
+		result["show_theme_toggle"] = *h.ShowThemeToggle
+	} else {
+		result["show_theme_toggle"] = true
+	}
+	return result
+}
+
+// postFormatsToMap converts PostFormatsConfig to a template-friendly map.
+func (p *BlogrollPlugin) postFormatsToMap(pf *models.PostFormatsConfig) map[string]interface{} {
+	if pf == nil {
+		return nil
+	}
+	htmlEnabled := true
+	if pf.HTML != nil {
+		htmlEnabled = *pf.HTML
+	}
+	return map[string]interface{}{
+		"html":     htmlEnabled,
+		"markdown": pf.Markdown,
+		"text":     pf.Text,
+		"og":       pf.OG,
+	}
+}
+
+// headToMap converts HeadConfig to a template-friendly map.
+func (p *BlogrollPlugin) headToMap(h *models.HeadConfig) map[string]interface{} {
+	if h == nil {
+		return nil
+	}
+
+	// Convert meta tags
+	metaTags := make([]map[string]interface{}, len(h.Meta))
+	for i, meta := range h.Meta {
+		metaTags[i] = map[string]interface{}{
+			"name":     meta.Name,
+			"property": meta.Property,
+			"content":  meta.Content,
+		}
+	}
+
+	// Convert link tags
+	linkTags := make([]map[string]interface{}, len(h.Link))
+	for i, link := range h.Link {
+		linkTags[i] = map[string]interface{}{
+			"rel":         link.Rel,
+			"href":        link.Href,
+			"crossorigin": link.Crossorigin,
+		}
+	}
+
+	// Convert script tags
+	scriptTags := make([]map[string]interface{}, len(h.Script))
+	for i, script := range h.Script {
+		scriptTags[i] = map[string]interface{}{
+			"src": script.Src,
+		}
+	}
+
+	// Convert alternate feeds
+	alternateFeeds := make([]map[string]interface{}, len(h.AlternateFeeds))
+	for i, feed := range h.AlternateFeeds {
+		alternateFeeds[i] = map[string]interface{}{
+			"type":      feed.Type,
+			"title":     feed.Title,
+			"href":      feed.Href,
+			"mime_type": feed.GetMIMEType(),
+		}
+	}
+
+	return map[string]interface{}{
+		"text":            h.Text,
+		"meta":            metaTags,
+		"link":            linkTags,
+		"script":          scriptTags,
+		"alternate_feeds": alternateFeeds,
 	}
 }
 
