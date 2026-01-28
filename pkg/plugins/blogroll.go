@@ -858,8 +858,8 @@ func (p *BlogrollPlugin) categoriesToMaps(categories []*models.BlogrollCategory)
 }
 
 // configToMap converts config to a template-friendly map with essential fields.
-// This mirrors the logic from templates.go:toModelsConfig() to ensure all
-// template-accessible config fields are available in blogroll/reader pages.
+// Note: This should eventually be refactored to use ToModelsConfig + configToMap
+// from templates package for full consistency.
 func (p *BlogrollPlugin) configToMap(config *lifecycle.Config) map[string]interface{} {
 	if config == nil {
 		return nil

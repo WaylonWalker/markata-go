@@ -343,7 +343,7 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	}
 
 	// Create template context
-	ctx := templates.NewContext(post, post.ArticleHTML, toModelsConfig(config))
+	ctx := templates.NewContext(post, post.ArticleHTML, ToModelsConfig(config))
 	ctx = ctx.WithCore(m)
 	ctx.Set("private_paths", privatePaths)
 
@@ -397,8 +397,10 @@ func (p *TemplatesPlugin) Engine() *templates.Engine {
 	return p.engine
 }
 
-// toModelsConfig converts lifecycle.Config to models.Config for template context.
-func toModelsConfig(config *lifecycle.Config) *models.Config {
+// ToModelsConfig converts lifecycle.Config to models.Config for template context.
+// This is exported for use by other plugins that need to build template contexts
+// with the full config (e.g., publish_feeds, blogroll).
+func ToModelsConfig(config *lifecycle.Config) *models.Config {
 	if config == nil {
 		return nil
 	}

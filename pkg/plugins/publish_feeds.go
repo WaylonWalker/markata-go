@@ -431,29 +431,9 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 	// Try to use pongo2 template engine with feed.html template (cached)
 	engine, err := p.getOrCreateEngine(templatesDir, themeName)
 	if err == nil && engine.TemplateExists("feed.html") {
-		// Build config for template context
-		modelsConfig := &models.Config{
-			OutputDir:   config.OutputDir,
-			Title:       getStringFromExtra(config.Extra, "title"),
-			URL:         getStringFromExtra(config.Extra, "url"),
-			Description: getStringFromExtra(config.Extra, "description"),
-			Author:      getStringFromExtra(config.Extra, "author"),
-		}
-
-		// Copy nav items if available
-		if navItems, ok := config.Extra["nav"].([]models.NavItem); ok {
-			modelsConfig.Nav = navItems
-		}
-
-		// Copy footer config if available
-		if footer, ok := config.Extra["footer"].(models.FooterConfig); ok {
-			modelsConfig.Footer = footer
-		}
-
-		// Copy theme config for background-css partial
-		if theme, ok := config.Extra["theme"].(models.ThemeConfig); ok {
-			modelsConfig.Theme = theme
-		}
+		// Use shared config conversion to ensure all fields are available
+		// (search, head, components, theme, etc. - required by base.html)
+		modelsConfig := ToModelsConfig(config)
 
 		// Create feed context
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
