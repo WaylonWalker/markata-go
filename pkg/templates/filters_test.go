@@ -216,10 +216,10 @@ func TestFilterDefaultIfNone(t *testing.T) {
 		t.Errorf("got %q, want %q", result, "Untitled")
 	}
 
-	// Test with value set
+	// Test with value set - use a new post to avoid cache issues
 	title := "My Title"
-	post.Title = &title
-	ctx = NewContext(post, "", nil)
+	post2 := &models.Post{Title: &title}
+	ctx = NewContext(post2, "", nil)
 
 	result, err = engine.RenderString("{{ post.title | default_if_none:\"Untitled\" }}", ctx)
 	if err != nil {
