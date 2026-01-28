@@ -3,6 +3,7 @@
 package tests
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -963,5 +964,298 @@ Content`)
 	// Home page feed should output to index.html directly
 	if !site.fileExists("index.html") {
 		t.Error("expected output/index.html to exist for home page feed")
+	}
+}
+
+// =============================================================================
+// Palette Serve Mode Tests (Issue #492)
+// =============================================================================
+
+// TestIntegration_PaletteChangeOnRebuild tests that changing the palette config
+// during serve mode correctly regenerates the CSS with the new palette.
+// This simulates the bug reported in issue #492 where palette changes
+// would revert to default during serve mode.
+func TestIntegration_PaletteChangeOnRebuild(t *testing.T) {
+	site := newTestSite(t)
+
+	// Add a simple post
+	site.addPost("test.md", `---
+title: Test Post
+slug: test
+published: true
+---
+Content`)
+
+	// Helper to run a full build with specific palette
+	runBuildWithPalette := func(paletteName string) {
+		t.Helper()
+
+		m := lifecycle.NewManager()
+
+		cfg := &lifecycle.Config{
+			ContentDir:   site.contentDir,
+			OutputDir:    site.outputDir,
+			GlobPatterns: []string{"**/*.md"},
+			Extra:        make(map[string]interface{}),
+		}
+		cfg.Extra["url"] = "https://example.com"
+		cfg.Extra["title"] = "Test Site"
+		// Set the theme config with palette
+		cfg.Extra["theme"] = models.ThemeConfig{
+			Name:    "default",
+			Palette: paletteName,
+		}
+		m.SetConfig(cfg)
+
+		// Register all default plugins including static_assets and palette_css
+		m.RegisterPlugins(plugins.DefaultPlugins()...)
+
+		if err := m.Run(); err != nil {
+			t.Fatalf("build failed with palette %s: %v", paletteName, err)
+		}
+	}
+
+	// First build with catppuccin-mocha
+	runBuildWithPalette("catppuccin-mocha")
+
+	// Read the CSS
+	cssPath := filepath.Join(site.outputDir, "css", "variables.css")
+	css1, err := os.ReadFile(cssPath)
+	if err != nil {
+		t.Fatalf("failed to read variables.css after first build: %v", err)
+	}
+
+	if !strings.Contains(string(css1), "catppuccin-mocha") {
+		t.Error("First build: expected catppuccin-mocha in CSS")
+	}
+
+	// Second build with different palette (simulating serve mode config change)
+	runBuildWithPalette("dracula")
+
+	css2, err := os.ReadFile(cssPath)
+	if err != nil {
+		t.Fatalf("failed to read variables.css after second build: %v", err)
+	}
+
+	if !strings.Contains(string(css2), "dracula") {
+		t.Errorf("Second build: expected dracula in CSS, got:\n%s", string(css2)[:min(500, len(css2))])
+	}
+
+	// Verify CSS actually changed
+	if bytes.Equal(css1, css2) {
+		t.Error("CSS should have changed between builds with different palettes")
+	}
+}
+
+// TestIntegration_PaletteChangeWithConfigFile tests palette changes using actual
+// config file loading, more closely simulating the serve mode scenario.
+func TestIntegration_PaletteChangeWithConfigFile(t *testing.T) {
+	site := newTestSite(t)
+
+	// Add a simple post
+	site.addPost("test.md", `---
+title: Test Post
+slug: test
+published: true
+---
+Content`)
+
+	// Helper to build with config file
+	buildWithConfig := func(configContent string) {
+		t.Helper()
+
+		// Write config file
+		configPath := filepath.Join(site.dir, "markata-go.toml")
+		if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
+			t.Fatalf("failed to write config: %v", err)
+		}
+
+		// Load config from file (like serve mode does)
+		cfg, err := config.Load(configPath)
+		if err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+
+		// Override output dir for test
+		cfg.OutputDir = site.outputDir
+
+		m := lifecycle.NewManager()
+
+		// Create lifecycle config (like createManager in core.go)
+		lcConfig := &lifecycle.Config{
+			ContentDir:   site.contentDir, // Content dir from test site
+			OutputDir:    cfg.OutputDir,
+			GlobPatterns: cfg.GlobConfig.Patterns,
+			Extra:        make(map[string]interface{}),
+		}
+		lcConfig.Extra["url"] = cfg.URL
+		lcConfig.Extra["title"] = cfg.Title
+		lcConfig.Extra["theme"] = cfg.Theme // This is models.ThemeConfig
+		m.SetConfig(lcConfig)
+
+		// Register all default plugins
+		m.RegisterPlugins(plugins.DefaultPlugins()...)
+
+		if err := m.Run(); err != nil {
+			t.Fatalf("build failed: %v", err)
+		}
+	}
+
+	// First build with catppuccin-mocha
+	config1 := `
+[markata-go]
+url = "https://example.com"
+title = "Test Site"
+output_dir = "output"
+
+[markata-go.glob]
+patterns = ["**/*.md"]
+
+[markata-go.theme]
+name = "default"
+palette = "catppuccin-mocha"
+`
+	buildWithConfig(config1)
+
+	cssPath := filepath.Join(site.outputDir, "css", "variables.css")
+	css1, err := os.ReadFile(cssPath)
+	if err != nil {
+		t.Fatalf("failed to read variables.css after first build: %v", err)
+	}
+
+	if !strings.Contains(string(css1), "catppuccin-mocha") {
+		t.Error("First build: expected catppuccin-mocha in CSS")
+	}
+
+	// Second build with dracula (simulating user editing config file)
+	config2 := `
+[markata-go]
+url = "https://example.com"
+title = "Test Site"
+output_dir = "output"
+
+[markata-go.glob]
+patterns = ["**/*.md"]
+
+[markata-go.theme]
+name = "default"
+palette = "dracula"
+`
+	buildWithConfig(config2)
+
+	css2, err := os.ReadFile(cssPath)
+	if err != nil {
+		t.Fatalf("failed to read variables.css after second build: %v", err)
+	}
+
+	if !strings.Contains(string(css2), "dracula") {
+		t.Errorf("Second build: expected dracula in CSS, got:\n%s", string(css2)[:min(500, len(css2))])
+	}
+
+	// Verify CSS actually changed
+	if bytes.Equal(css1, css2) {
+		t.Error("CSS should have changed between builds with different palettes")
+	}
+}
+
+// TestIntegration_PaletteChangeWithBuildCache tests that palette changes work correctly
+// when the build cache is involved. This more closely simulates the serve mode scenario.
+func TestIntegration_PaletteChangeWithBuildCache(t *testing.T) {
+	site := newTestSite(t)
+
+	// Create the .markata cache directory
+	cacheDir := filepath.Join(site.dir, ".markata")
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		t.Fatalf("failed to create cache dir: %v", err)
+	}
+
+	// Add a simple post
+	site.addPost("test.md", `---
+title: Test Post
+slug: test
+published: true
+---
+Content`)
+
+	// Helper to build with config file (simulating serve mode createManager)
+	buildWithPalette := func(paletteName string) {
+		t.Helper()
+
+		// Write config file
+		configContent := fmt.Sprintf(`
+[markata-go]
+url = "https://example.com"
+title = "Test Site"
+output_dir = "%s"
+
+[markata-go.glob]
+patterns = ["**/*.md"]
+
+[markata-go.theme]
+name = "default"
+palette = "%s"
+`, site.outputDir, paletteName)
+
+		configPath := filepath.Join(site.dir, "markata-go.toml")
+		if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
+			t.Fatalf("failed to write config: %v", err)
+		}
+
+		// Load config from file (like serve mode does)
+		cfg, err := config.Load(configPath)
+		if err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+
+		m := lifecycle.NewManager()
+
+		// Create lifecycle config (like createManager in core.go)
+		lcConfig := &lifecycle.Config{
+			ContentDir:   site.contentDir,
+			OutputDir:    cfg.OutputDir,
+			GlobPatterns: cfg.GlobConfig.Patterns,
+			Extra:        make(map[string]interface{}),
+		}
+		lcConfig.Extra["url"] = cfg.URL
+		lcConfig.Extra["title"] = cfg.Title
+		lcConfig.Extra["theme"] = cfg.Theme
+		m.SetConfig(lcConfig)
+
+		// Register all default plugins (including build_cache)
+		m.RegisterPlugins(plugins.DefaultPlugins()...)
+
+		if err := m.Run(); err != nil {
+			t.Fatalf("build failed with palette %s: %v", paletteName, err)
+		}
+	}
+
+	// First build with catppuccin-mocha
+	buildWithPalette("catppuccin-mocha")
+
+	cssPath := filepath.Join(site.outputDir, "css", "variables.css")
+	css1, err := os.ReadFile(cssPath)
+	if err != nil {
+		t.Fatalf("failed to read variables.css after first build: %v", err)
+	}
+
+	if !strings.Contains(string(css1), "catppuccin-mocha") {
+		t.Errorf("First build: expected catppuccin-mocha in CSS, got:\n%s", string(css1)[:min(500, len(css1))])
+	}
+
+	// Second build with different palette (simulating user editing config file)
+	buildWithPalette("dracula")
+
+	css2, err := os.ReadFile(cssPath)
+	if err != nil {
+		t.Fatalf("failed to read variables.css after second build: %v", err)
+	}
+
+	if !strings.Contains(string(css2), "dracula") {
+		t.Errorf("Second build: expected dracula in CSS, got:\n%s", string(css2)[:min(500, len(css2))])
+	}
+
+	// Verify CSS actually changed
+	if bytes.Equal(css1, css2) {
+		t.Error("CSS should have changed between builds with different palettes")
 	}
 }
