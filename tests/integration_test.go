@@ -1181,6 +1181,9 @@ Content`)
 	buildWithPalette := func(paletteName string) {
 		t.Helper()
 
+		// Convert to forward slashes for TOML compatibility on Windows
+		outputDirTOML := filepath.ToSlash(site.outputDir)
+
 		// Write config file
 		configContent := fmt.Sprintf(`
 [markata-go]
@@ -1194,7 +1197,7 @@ patterns = ["**/*.md"]
 [markata-go.theme]
 name = "default"
 palette = "%s"
-`, site.outputDir, paletteName)
+`, outputDirTOML, paletteName)
 
 		configPath := filepath.Join(site.dir, "markata-go.toml")
 		if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
