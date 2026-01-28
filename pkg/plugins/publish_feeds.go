@@ -19,6 +19,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
+	"github.com/WaylonWalker/markata-go/pkg/themes"
 )
 
 // PublishFeedsPlugin writes feeds to multiple output formats during the write stage.
@@ -762,7 +763,9 @@ func (p *PublishFeedsPlugin) writeFeedFormatRedirect(slug, ext, targetFile, outp
 }
 
 // copyXSLStylesheets copies XSL stylesheets to the output directory for styled RSS/Atom feeds.
-// It searches for XSL files in the templates directory and copies them to the output root.
+// It searches for XSL files in the following order:
+// 1. User's templates directory (if configured)
+// 2. Embedded default theme templates (fallback)
 func (p *PublishFeedsPlugin) copyXSLStylesheets(config *lifecycle.Config, outputDir string) error {
 	// Get templates directory from config
 	templatesDir := PluginNameTemplates
@@ -774,20 +777,26 @@ func (p *PublishFeedsPlugin) copyXSLStylesheets(config *lifecycle.Config, output
 	xslFiles := []string{"rss.xsl", "atom.xsl"}
 
 	for _, xslFile := range xslFiles {
+		var content []byte
+		var err error
+
+		// First, try to read from user's templates directory
 		srcPath := filepath.Join(templatesDir, xslFile)
-
-		// Check if the XSL file exists
-		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			// XSL file doesn't exist, skip it (not an error, just not configured)
-			continue
-		} else if err != nil {
-			return fmt.Errorf("checking XSL file %s: %w", srcPath, err)
-		}
-
-		// Read the XSL file
-		content, err := os.ReadFile(srcPath)
-		if err != nil {
-			return fmt.Errorf("reading XSL file %s: %w", srcPath, err)
+		if _, statErr := os.Stat(srcPath); statErr == nil {
+			// User has their own XSL file, use it
+			content, err = os.ReadFile(srcPath)
+			if err != nil {
+				return fmt.Errorf("reading XSL file %s: %w", srcPath, err)
+			}
+		} else if os.IsNotExist(statErr) {
+			// No user file, try embedded templates as fallback
+			content, err = themes.ReadTemplate(xslFile)
+			if err != nil {
+				// XSL file doesn't exist in embedded templates either, skip it
+				continue
+			}
+		} else {
+			return fmt.Errorf("checking XSL file %s: %w", srcPath, statErr)
 		}
 
 		// Write to output directory
