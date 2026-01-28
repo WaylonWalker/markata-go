@@ -50,15 +50,18 @@ func (p *DescriptionPlugin) Priority(stage lifecycle.Stage) int {
 	return lifecycle.PriorityDefault
 }
 
-// Transform generates descriptions for posts that don't have one.
+// Transform generates descriptions for posts that don't have one,
+// and strips wikilinks from all descriptions (including user-provided ones).
 func (p *DescriptionPlugin) Transform(m *lifecycle.Manager) error {
 	return m.ProcessPostsConcurrently(func(post *models.Post) error {
 		if post.Skip {
 			return nil
 		}
 
-		// Skip if description is already set
+		// If description is already set, strip any wikilinks from it
 		if post.Description != nil && *post.Description != "" {
+			cleaned := p.stripWikilinks(*post.Description)
+			post.Description = &cleaned
 			return nil
 		}
 
@@ -114,6 +117,10 @@ var (
 
 	// Match reference-style link definitions [ref]: url
 	linkDefRegex = regexp.MustCompile(`(?m)^\[[^\]]+\]:\s+.+$`)
+
+	// Match wikilinks with optional spaces: [[slug]], [[ slug ]], [[slug|text]], [[ slug | text ]]
+	// This is more flexible than wikilinkRegex in wikilinks.go to handle user-typed variations
+	flexibleWikilinkRegex = regexp.MustCompile(`\[\[\s*([^\]|]+?)\s*(?:\|\s*([^\]]+?)\s*)?\]\]`)
 
 	// Match multiple whitespace
 	multiSpaceRegex = regexp.MustCompile(`\s+`)
@@ -202,6 +209,19 @@ func (p *DescriptionPlugin) stripMarkdown(text string) string {
 	// Replace links with their text
 	text = markdownLinkRegex.ReplaceAllString(text, "$1$2")
 
+	// Replace wikilinks with their display text (or slug if no display text)
+	// Uses flexibleWikilinkRegex to handle both [[slug]] and [[ slug ]] formats
+	text = flexibleWikilinkRegex.ReplaceAllStringFunc(text, func(match string) string {
+		groups := flexibleWikilinkRegex.FindStringSubmatch(match)
+		if len(groups) >= 3 && groups[2] != "" {
+			return strings.TrimSpace(groups[2]) // Use display text
+		}
+		if len(groups) >= 2 {
+			return strings.TrimSpace(groups[1]) // Use slug
+		}
+		return ""
+	})
+
 	// Remove inline code
 	text = inlineCodeRegex.ReplaceAllString(text, "")
 
@@ -226,6 +246,21 @@ func (p *DescriptionPlugin) stripMarkdown(text string) string {
 	text = strings.TrimSpace(text)
 
 	return text
+}
+
+// stripWikilinks removes wikilink syntax from text, keeping the display text or slug.
+// This handles both [[slug]] and [[ slug ]] formats (with optional spaces).
+func (p *DescriptionPlugin) stripWikilinks(text string) string {
+	return flexibleWikilinkRegex.ReplaceAllStringFunc(text, func(match string) string {
+		groups := flexibleWikilinkRegex.FindStringSubmatch(match)
+		if len(groups) >= 3 && groups[2] != "" {
+			return strings.TrimSpace(groups[2]) // Use display text
+		}
+		if len(groups) >= 2 {
+			return strings.TrimSpace(groups[1]) // Use slug
+		}
+		return ""
+	})
 }
 
 // truncate shortens text to maxLength characters, breaking at word boundaries.
