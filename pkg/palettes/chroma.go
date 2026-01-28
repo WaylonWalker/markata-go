@@ -81,6 +81,26 @@ var paletteToChroma = map[string]string{
 
 	// Matte black - use monokai for its dark, contrasty appearance
 	"matte-black": "monokai",
+
+	// One Dark/Light - Atom's iconic themes
+	"one-dark":  "onedark",
+	"one-light": "onelight",
+
+	// Monokai - classic Sublime Text theme
+	"monokai": "monokai",
+
+	// Ayu - simple, bright and elegant
+	"ayu-dark":   "ayu-dark",
+	"ayu-light":  "ayu-light",
+	"ayu-mirage": "ayu-mirage",
+
+	// Night Owl - accessibility-focused theme by Sarah Drasner
+	"night-owl":       "nightowl",
+	"night-owl-light": "github", // Chroma doesn't have night owl light, use github
+
+	// Modus themes - WCAG AAA accessible themes
+	"modus-vivendi":  "modus-vivendi",
+	"modus-operandi": "modus-operandi",
 }
 
 // AvailableChromaThemes returns a list of all Chroma themes that are known to work.
@@ -88,6 +108,9 @@ var paletteToChroma = map[string]string{
 var AvailableChromaThemes = []string{
 	// Light themes
 	"github",
+	"onelight",
+	"ayu-light",
+	"ayu-mirage",
 	"gruvbox-light",
 	"solarized-light",
 	"catppuccin-latte",
@@ -109,6 +132,8 @@ var AvailableChromaThemes = []string{
 
 	// Dark themes
 	"github-dark",
+	"ayu-dark",
+	"nightowl",
 	"gruvbox",
 	"solarized-dark",
 	"catppuccin-frappe",

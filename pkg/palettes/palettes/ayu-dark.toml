@@ -1,0 +1,102 @@
+# Ayu Dark - A simple, bright and elegant theme
+# https://github.com/ayu-theme/ayu-colors
+# License: MIT
+
+[palette]
+name = "Ayu Dark"
+variant = "dark"
+author = "Ike Ku"
+license = "MIT"
+homepage = "https://github.com/ayu-theme/ayu-colors"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors
+background     = "#0d1017"
+current-line   = "#131721"
+selection      = "#273747"
+gutter         = "#6c7380"
+
+# Foreground colors
+foreground     = "#bfbdb6"
+foreground-dim = "#565b66"
+
+# Accent colors - Ayu's signature palette
+red        = "#d95757"
+orange     = "#ff8f40"
+yellow     = "#ffb454"
+green      = "#7fd962"
+cyan       = "#73b8ff"
+blue       = "#59c2ff"
+purple     = "#d2a6ff"
+pink       = "#f07178"
+
+# Additional colors
+accent     = "#e6b450"
+bg-darker  = "#0b0e14"
+bg-lighter = "#1c232f"
+comment    = "#636a72"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "comment"
+text-muted     = "foreground-dim"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "accent"
+accent-hover = "orange"
+link         = "blue"
+link-hover   = "cyan"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "orange"
+error   = "red"
+info    = "cyan"
+
+# Border colors
+border       = "bg-lighter"
+border-focus = "accent"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "background"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "orange"
+code-string   = "green"
+code-number   = "purple"
+code-function = "yellow"
+code-type     = "blue"
+code-operator = "pink"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "blue"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "orange"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "accent"
+button-primary-text   = "background"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "accent"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"

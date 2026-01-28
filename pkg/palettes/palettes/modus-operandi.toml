@@ -1,0 +1,103 @@
+# Modus Operandi - Accessible light theme
+# https://protesilaos.com/emacs/modus-themes
+# License: GPL-3.0
+# WCAG AAA conformant (contrast ratio >= 7:1)
+
+[palette]
+name = "Modus Operandi"
+variant = "light"
+author = "Protesilaos Stavrou"
+license = "GPL-3.0"
+homepage = "https://protesilaos.com/emacs/modus-themes"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - optimized for accessibility
+background     = "#ffffff"
+current-line   = "#f2eff3"
+selection      = "#c4c4c4"
+gutter         = "#9f9f9f"
+
+# Foreground colors - high contrast
+foreground     = "#000000"
+foreground-dim = "#595959"
+
+# Accent colors - all WCAG AAA compliant against background
+red        = "#a60000"
+orange     = "#813e00"
+yellow     = "#6f5500"
+green      = "#006800"
+cyan       = "#005e8b"
+blue       = "#0031a9"
+purple     = "#721045"
+magenta    = "#5317ac"
+
+# Additional colors
+accent     = "#0031a9"
+bg-darker  = "#f2eff3"
+bg-lighter = "#ffffff"
+comment    = "#505050"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "comment"
+text-muted     = "foreground-dim"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-lighter"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "accent"
+accent-hover = "cyan"
+link         = "blue"
+link-hover   = "cyan"
+link-visited = "magenta"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "cyan"
+
+# Border colors
+border       = "selection"
+border-focus = "accent"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "current-line"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "magenta"
+code-string   = "green"
+code-number   = "blue"
+code-function = "cyan"
+code-type     = "cyan"
+code-operator = "foreground"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "blue"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "accent"
+button-primary-text   = "bg-lighter"
+button-secondary-bg   = "selection"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-lighter"
+nav-text   = "foreground"
+nav-active = "accent"
+
+card-bg     = "bg-lighter"
+card-border = "selection"
+card-shadow = "current-line"
