@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -252,13 +253,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 
 	// Get build cache to check if posts need rebuilding
 	cache := GetBuildCache(m)
-	var changedSlugs map[string]bool
-	if cache != nil {
-		changedSlugs = make(map[string]bool)
-		for _, slug := range cache.GetChangedSlugs() {
-			changedSlugs[slug] = true
-		}
-	}
+	changedSlugs := getChangedSlugsMap(cache)
 
 	// Collect private paths for robots.txt template variable
 	privatePaths := collectPrivatePaths(m.Posts())
@@ -270,69 +265,17 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 			return nil
 		}
 
-		// Skip posts that don't need rebuilding (incremental builds)
-		// Check if this post or any of its dependencies changed
-		if cache != nil && post.InputHash != "" {
-			needsRebuild := false
-
-			// Check if post itself changed
-			if cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
-				needsRebuild = true
-			}
-
-			// Check if any dependency changed
-			if !needsRebuild && len(changedSlugs) > 0 {
-				for _, dep := range post.Dependencies {
-					if changedSlugs[dep] {
-						needsRebuild = true
-						break
-					}
-				}
-			}
-
-			// Check if this post's slug is in changedSlugs (it was modified)
-			if !needsRebuild && changedSlugs[post.Slug] {
-				needsRebuild = true
-			}
-
-			// Try to load cached HTML if we don't need to rebuild
-			if !needsRebuild {
-				if cachedHTML := cache.GetCachedFullHTML(post.Path); cachedHTML != "" {
-					post.HTML = cachedHTML
-					return nil
-				}
-				// No cached HTML, need to render
-			}
+		// Try to use cached HTML for unchanged posts
+		if cachedHTML := p.tryGetCachedHTML(post, cache, changedSlugs); cachedHTML != "" {
+			post.HTML = cachedHTML
+			return nil
 		}
-
-		// Determine which template to use
-		templateName := p.resolveTemplate(post)
-
-		// Check if template exists, fall back to post.html if not
-		if !p.engine.TemplateExists(templateName) {
-			// Template not found, fall back to default post.html
-			templateName = "post.html"
-
-			// If even post.html doesn't exist, use article HTML directly
-			if !p.engine.TemplateExists(templateName) {
-				post.HTML = post.ArticleHTML
-				return nil
-			}
-		}
-
-		// Create template context
-		ctx := templates.NewContext(post, post.ArticleHTML, toModelsConfig(config))
-		ctx = ctx.WithCore(m)
-
-		// Add private_paths to context for robots.txt generation
-		ctx.Set("private_paths", privatePaths)
 
 		// Render the template
-		html, err := p.engine.Render(templateName, ctx)
+		html, err := p.renderPost(post, config, m, privatePaths)
 		if err != nil {
-			return fmt.Errorf("failed to render template %q for post %q: %w", templateName, post.Path, err)
+			return err
 		}
-
 		post.HTML = html
 
 		// Cache the full HTML for future incremental builds
@@ -343,6 +286,74 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 
 		return nil
 	})
+}
+
+// getChangedSlugsMap returns a map of slugs that changed in this build.
+func getChangedSlugsMap(cache *buildcache.Cache) map[string]bool {
+	if cache == nil {
+		return nil
+	}
+	changedSlugs := make(map[string]bool)
+	for _, slug := range cache.GetChangedSlugs() {
+		changedSlugs[slug] = true
+	}
+	return changedSlugs
+}
+
+// tryGetCachedHTML checks if a post can use cached HTML.
+// Returns cached HTML if available and valid, empty string otherwise.
+func (p *TemplatesPlugin) tryGetCachedHTML(post *models.Post, cache *buildcache.Cache, changedSlugs map[string]bool) string {
+	if cache == nil || post.InputHash == "" {
+		return ""
+	}
+
+	// Check if post itself changed
+	if cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
+		return ""
+	}
+
+	// Check if any dependency changed
+	if len(changedSlugs) > 0 {
+		for _, dep := range post.Dependencies {
+			if changedSlugs[dep] {
+				return ""
+			}
+		}
+		// Check if this post's slug is in changedSlugs
+		if changedSlugs[post.Slug] {
+			return ""
+		}
+	}
+
+	// Try to load cached HTML
+	return cache.GetCachedFullHTML(post.Path)
+}
+
+// renderPost renders a single post using the appropriate template.
+func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager, privatePaths []string) (string, error) {
+	// Determine which template to use
+	templateName := p.resolveTemplate(post)
+
+	// Check if template exists, fall back to post.html if not
+	if !p.engine.TemplateExists(templateName) {
+		templateName = "post.html"
+		if !p.engine.TemplateExists(templateName) {
+			return post.ArticleHTML, nil
+		}
+	}
+
+	// Create template context
+	ctx := templates.NewContext(post, post.ArticleHTML, toModelsConfig(config))
+	ctx = ctx.WithCore(m)
+	ctx.Set("private_paths", privatePaths)
+
+	// Render the template
+	html, err := p.engine.Render(templateName, ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to render template %q for post %q: %w", templateName, post.Path, err)
+	}
+
+	return html, nil
 }
 
 // collectPrivatePaths returns a list of paths (hrefs) for all private posts.
