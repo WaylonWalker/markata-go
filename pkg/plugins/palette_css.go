@@ -2,9 +2,12 @@ package plugins
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -46,51 +49,20 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	// Get effective light and dark palette names
-	lightName, darkName := palettes.GetEffectivePalettes(paletteName, paletteLight, paletteDark)
+	// Check if theme switcher is enabled
+	switcherEnabled := p.isSwitcherEnabled(config.Extra)
 
 	// Load palettes
 	loader := palettes.NewLoader()
 
-	var lightPalette, darkPalette *palettes.Palette
-	var err error
-
-	// Load light palette
-	if lightName != "" {
-		lightPalette, err = loader.Load(lightName)
-		if err != nil {
-			// Fall back to base palette
-			lightPalette, err = loader.Load(paletteName)
-			if err != nil {
-				return fmt.Errorf("loading light palette %q: %w", lightName, err)
-			}
-		}
+	var css string
+	if switcherEnabled {
+		// Generate CSS for all palettes when switcher is enabled
+		css = p.generateMultiPaletteCSS(loader, config.Extra, paletteName, paletteLight, paletteDark)
+	} else {
+		// Generate CSS for just the configured light/dark pair
+		css = p.generateSinglePaletteCSS(loader, paletteName, paletteLight, paletteDark)
 	}
-
-	// Load dark palette
-	if darkName != "" {
-		darkPalette, err = loader.Load(darkName)
-		if err != nil {
-			// Fall back to base palette
-			darkPalette, err = loader.Load(paletteName)
-			if err != nil {
-				return fmt.Errorf("loading dark palette %q: %w", darkName, err)
-			}
-		}
-	}
-
-	// If we have no palettes loaded, try to load the base palette
-	if lightPalette == nil && darkPalette == nil {
-		palette, err := loader.Load(paletteName)
-		if err != nil {
-			return fmt.Errorf("loading palette %q: %w", paletteName, err)
-		}
-		lightPalette = palette
-		darkPalette = palette
-	}
-
-	// Generate theme-compatible CSS with both variants
-	css := p.generateThemeCSSWithVariants(lightPalette, darkPalette, lightName, darkName)
 
 	// Write to output directory
 	cssDir := filepath.Join(outputDir, "css")
@@ -105,6 +77,264 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	return nil
+}
+
+// isSwitcherEnabled checks if the theme switcher is enabled in config.
+func (p *PaletteCSSPlugin) isSwitcherEnabled(extra map[string]interface{}) bool {
+	if extra == nil {
+		return false
+	}
+	if themeConfig, ok := extra["theme"].(models.ThemeConfig); ok {
+		return themeConfig.Switcher.IsEnabled()
+	}
+	// Check if it's a map (raw TOML)
+	if theme, ok := extra["theme"].(map[string]interface{}); ok {
+		if switcher, ok := theme["switcher"].(map[string]interface{}); ok {
+			if enabled, ok := switcher["enabled"].(bool); ok {
+				return enabled
+			}
+		}
+	}
+	return false
+}
+
+// getSwitcherConfig gets the theme switcher configuration from Extra.
+func (p *PaletteCSSPlugin) getSwitcherConfig(extra map[string]interface{}) models.ThemeSwitcherConfig {
+	if extra == nil {
+		return models.NewThemeSwitcherConfig()
+	}
+	if themeConfig, ok := extra["theme"].(models.ThemeConfig); ok {
+		return themeConfig.Switcher
+	}
+	// Return default if not found
+	return models.NewThemeSwitcherConfig()
+}
+
+// generateSinglePaletteCSS generates CSS for a single light/dark palette pair.
+func (p *PaletteCSSPlugin) generateSinglePaletteCSS(loader *palettes.Loader, paletteName, paletteLight, paletteDark string) string {
+	// Get effective light and dark palette names
+	lightName, darkName := palettes.GetEffectivePalettes(paletteName, paletteLight, paletteDark)
+
+	var lightPalette, darkPalette *palettes.Palette
+	var err error
+
+	// Load light palette
+	if lightName != "" {
+		lightPalette, err = loader.Load(lightName)
+		if err != nil {
+			// Fall back to base palette, ignore error as we'll handle nil palette later
+			//nolint:errcheck // fallback load failure is handled by nil check below
+			lightPalette, _ = loader.Load(paletteName)
+		}
+	}
+
+	// Load dark palette
+	if darkName != "" {
+		darkPalette, err = loader.Load(darkName)
+		if err != nil {
+			// Fall back to base palette, ignore error as we'll handle nil palette later
+			//nolint:errcheck // fallback load failure is handled by nil check below
+			darkPalette, _ = loader.Load(paletteName)
+		}
+	}
+
+	// If we have no palettes loaded, try to load the base palette
+	if lightPalette == nil && darkPalette == nil {
+		palette, err := loader.Load(paletteName)
+		if err == nil {
+			lightPalette = palette
+			darkPalette = palette
+		}
+	}
+
+	// Generate theme-compatible CSS with both variants
+	return p.generateThemeCSSWithVariants(lightPalette, darkPalette, lightName, darkName)
+}
+
+// PaletteManifestEntry represents a palette entry in the manifest.
+type PaletteManifestEntry struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
+	Variant     string `json:"variant"`
+	BaseName    string `json:"baseName"`
+}
+
+// generateMultiPaletteCSS generates CSS for all available palettes when switcher is enabled.
+func (p *PaletteCSSPlugin) generateMultiPaletteCSS(loader *palettes.Loader, extra map[string]interface{}, paletteName, paletteLight, paletteDark string) string {
+	var buf bytes.Buffer
+
+	// Get all available palettes
+	allPalettes, err := loader.Discover()
+	if err != nil {
+		// Fall back to single palette CSS on error
+		return p.generateSinglePaletteCSS(loader, paletteName, paletteLight, paletteDark)
+	}
+
+	// Filter palettes based on switcher config
+	switcherConfig := p.getSwitcherConfig(extra)
+	filteredPalettes := p.filterPalettes(allPalettes, switcherConfig)
+
+	// Get effective light and dark palette names for the default
+	lightName, darkName := palettes.GetEffectivePalettes(paletteName, paletteLight, paletteDark)
+
+	// Header comment
+	buf.WriteString("/* CSS Custom Properties - Generated by markata-go */\n")
+	buf.WriteString("/* Multi-palette theme switcher enabled */\n")
+	buf.WriteString(fmt.Sprintf("/* Default: Light=%s, Dark=%s */\n\n", lightName, darkName))
+
+	// Generate palette manifest for JavaScript
+	manifest := p.generatePaletteManifest(filteredPalettes)
+	manifestJSON, err := json.Marshal(manifest)
+	if err != nil {
+		manifestJSON = []byte("[]")
+	}
+
+	// Write non-color variables and palette manifest in :root
+	buf.WriteString("/* Global configuration and non-color variables */\n")
+	buf.WriteString(":root {\n")
+	buf.WriteString(fmt.Sprintf("  --palette-light: %q;\n", lightName))
+	buf.WriteString(fmt.Sprintf("  --palette-dark: %q;\n", darkName))
+	buf.WriteString(fmt.Sprintf("  --palette-manifest: '%s';\n", string(manifestJSON)))
+	buf.WriteString("  --palette-switcher-enabled: 1;\n")
+	p.writeNonColorVariables(&buf, "  ")
+	buf.WriteString("}\n\n")
+
+	// Group palettes by base name for display purposes
+	palettesByBase := make(map[string][]palettes.PaletteInfo)
+	for _, info := range filteredPalettes {
+		baseName := getBaseName(info.Name)
+		palettesByBase[baseName] = append(palettesByBase[baseName], info)
+	}
+
+	// Generate CSS for each palette with data-palette attribute selector
+	for _, info := range filteredPalettes {
+		palette, err := loader.Load(info.Name)
+		if err != nil {
+			continue
+		}
+
+		// Normalize palette name for CSS selector (lowercase, hyphens)
+		selectorName := normalizePaletteName(info.Name)
+
+		buf.WriteString(fmt.Sprintf("/* Palette: %s (%s) */\n", info.Name, info.Variant))
+		buf.WriteString(fmt.Sprintf("[data-palette=%q] {\n", selectorName))
+		p.writePaletteVariablesIndented(&buf, palette, "  ")
+		buf.WriteString("}\n\n")
+	}
+
+	// Generate default light mode (using configured light palette)
+	if lightName != "" {
+		lightPalette, err := loader.Load(lightName)
+		if err == nil {
+			buf.WriteString(fmt.Sprintf("/* Default light mode - %s */\n", lightName))
+			buf.WriteString(":root,\n")
+			buf.WriteString("[data-theme=\"light\"] {\n")
+			p.writePaletteVariables(&buf, lightPalette)
+			buf.WriteString("}\n\n")
+		}
+	}
+
+	// Generate default dark mode (using configured dark palette)
+	if darkName != "" {
+		darkPalette, err := loader.Load(darkName)
+		if err == nil {
+			buf.WriteString(fmt.Sprintf("/* Default dark mode - %s */\n", darkName))
+			buf.WriteString("[data-theme=\"dark\"] {\n")
+			p.writePaletteVariables(&buf, darkPalette)
+			buf.WriteString("}\n\n")
+
+			// Also add prefers-color-scheme media query for auto mode
+			buf.WriteString("/* Auto dark mode based on system preference */\n")
+			buf.WriteString("@media (prefers-color-scheme: dark) {\n")
+			buf.WriteString("  :root:not([data-theme=\"light\"]):not([data-palette]) {\n")
+			p.writePaletteVariablesIndented(&buf, darkPalette, "    ")
+			buf.WriteString("  }\n")
+			buf.WriteString("}\n")
+		}
+	}
+
+	return buf.String()
+}
+
+// filterPalettes filters palettes based on switcher configuration.
+func (p *PaletteCSSPlugin) filterPalettes(allPalettes []palettes.PaletteInfo, switcherConfig models.ThemeSwitcherConfig) []palettes.PaletteInfo {
+	if switcherConfig.IsIncludeAll() {
+		// Include all, then exclude specified
+		excludeSet := make(map[string]bool)
+		for _, name := range switcherConfig.Exclude {
+			excludeSet[strings.ToLower(name)] = true
+			excludeSet[normalizePaletteName(name)] = true
+		}
+
+		var result []palettes.PaletteInfo
+		for _, info := range allPalettes {
+			lowerName := strings.ToLower(info.Name)
+			normalized := normalizePaletteName(info.Name)
+			if !excludeSet[lowerName] && !excludeSet[normalized] {
+				result = append(result, info)
+			}
+		}
+		return result
+	}
+
+	// Include only specified palettes
+	includeSet := make(map[string]bool)
+	for _, name := range switcherConfig.Include {
+		includeSet[strings.ToLower(name)] = true
+		includeSet[normalizePaletteName(name)] = true
+	}
+
+	var result []palettes.PaletteInfo
+	for _, info := range allPalettes {
+		lowerName := strings.ToLower(info.Name)
+		normalized := normalizePaletteName(info.Name)
+		if includeSet[lowerName] || includeSet[normalized] {
+			result = append(result, info)
+		}
+	}
+	return result
+}
+
+// generatePaletteManifest creates a manifest of available palettes for JavaScript.
+func (p *PaletteCSSPlugin) generatePaletteManifest(paletteInfos []palettes.PaletteInfo) []PaletteManifestEntry {
+	manifest := make([]PaletteManifestEntry, 0, len(paletteInfos))
+
+	for _, info := range paletteInfos {
+		entry := PaletteManifestEntry{
+			Name:        normalizePaletteName(info.Name),
+			DisplayName: info.Name,
+			Variant:     string(info.Variant),
+			BaseName:    getBaseName(info.Name),
+		}
+		manifest = append(manifest, entry)
+	}
+
+	// Sort by base name, then by variant (light first)
+	sort.Slice(manifest, func(i, j int) bool {
+		if manifest[i].BaseName != manifest[j].BaseName {
+			return manifest[i].BaseName < manifest[j].BaseName
+		}
+		// Light variants come before dark
+		return manifest[i].Variant < manifest[j].Variant
+	})
+
+	return manifest
+}
+
+// normalizePaletteName converts a palette name to a CSS-safe format.
+func normalizePaletteName(name string) string {
+	name = strings.ToLower(name)
+	name = strings.ReplaceAll(name, " ", "-")
+	name = strings.ReplaceAll(name, "_", "-")
+	return name
+}
+
+// getBaseName extracts the base name from a palette name (removes -light, -dark suffix).
+func getBaseName(name string) string {
+	lower := strings.ToLower(name)
+	lower = strings.TrimSuffix(lower, "-light")
+	lower = strings.TrimSuffix(lower, "-dark")
+	return lower
 }
 
 // generateThemeCSSWithVariants generates CSS with both light and dark palette variants.

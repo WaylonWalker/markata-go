@@ -577,6 +577,62 @@ type ThemeConfig struct {
 
 	// Font configures typography settings
 	Font FontConfig `json:"font,omitempty" yaml:"font,omitempty" toml:"font,omitempty"`
+
+	// Switcher configures the multi-palette theme switcher dropdown
+	Switcher ThemeSwitcherConfig `json:"switcher,omitempty" yaml:"switcher,omitempty" toml:"switcher,omitempty"`
+}
+
+// ThemeSwitcherConfig configures the multi-palette theme switcher dropdown.
+// When enabled, users can select any available palette at runtime in the browser.
+type ThemeSwitcherConfig struct {
+	// Enabled controls whether the palette switcher is shown (default: false)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// IncludeAll includes all discovered palettes in the switcher (default: true)
+	// When false, only palettes in the Include list are shown
+	IncludeAll *bool `json:"include_all,omitempty" yaml:"include_all,omitempty" toml:"include_all,omitempty"`
+
+	// Include is a list of palette names to include in the switcher
+	// Only used when IncludeAll is false
+	Include []string `json:"include,omitempty" yaml:"include,omitempty" toml:"include,omitempty"`
+
+	// Exclude is a list of palette names to exclude from the switcher
+	// Used when IncludeAll is true
+	Exclude []string `json:"exclude,omitempty" yaml:"exclude,omitempty" toml:"exclude,omitempty"`
+
+	// Position controls where the switcher appears: "header", "footer" (default: "header")
+	Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
+}
+
+// NewThemeSwitcherConfig creates a new ThemeSwitcherConfig with default values.
+func NewThemeSwitcherConfig() ThemeSwitcherConfig {
+	enabled := false
+	includeAll := true
+	return ThemeSwitcherConfig{
+		Enabled:    &enabled,
+		IncludeAll: &includeAll,
+		Include:    []string{},
+		Exclude:    []string{},
+		Position:   "header",
+	}
+}
+
+// IsEnabled returns whether the palette switcher is enabled.
+// Defaults to false if not explicitly set.
+func (s *ThemeSwitcherConfig) IsEnabled() bool {
+	if s.Enabled == nil {
+		return false
+	}
+	return *s.Enabled
+}
+
+// IsIncludeAll returns whether all palettes should be included.
+// Defaults to true if not explicitly set.
+func (s *ThemeSwitcherConfig) IsIncludeAll() bool {
+	if s.IncludeAll == nil {
+		return true
+	}
+	return *s.IncludeAll
 }
 
 // BackgroundConfig configures multi-layered background decorations for pages.
@@ -1407,6 +1463,7 @@ func NewConfig() *Config {
 			Palette:   "default-light",
 			Variables: make(map[string]string),
 			Font:      NewFontConfig(),
+			Switcher:  NewThemeSwitcherConfig(),
 		},
 		PostFormats:      NewPostFormatsConfig(),
 		SEO:              NewSEOConfig(),
@@ -1432,6 +1489,7 @@ func NewThemeConfig() ThemeConfig {
 		Palette:   "default-light",
 		Variables: make(map[string]string),
 		Font:      NewFontConfig(),
+		Switcher:  NewThemeSwitcherConfig(),
 	}
 }
 
