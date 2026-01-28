@@ -1,0 +1,87 @@
+# Oil 6 Palette - A soft artistic 6-color palette
+# https://lospec.com/palette-list/oil-6
+# License: CC0
+
+[palette]
+name = "Oil 6"
+variant = "light"
+author = "Lospec"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/oil-6"
+description = "A soft, artistic palette with muted purples and warm creams, perfect for elegant designs"
+
+# Layer 1: Raw Colors
+# The 6 Oil colors from light to dark
+[palette.colors]
+cream       = "#fbf5ef"
+sand        = "#f2d3ab"
+mauve       = "#c69fa5"
+purple      = "#8b6d9c"
+indigo      = "#494d7e"
+midnight    = "#272744"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "midnight"
+text-secondary = "indigo"
+text-muted     = "purple"
+
+# Background colors
+bg-primary   = "cream"
+bg-secondary = "sand"
+bg-surface   = "sand"
+bg-elevated  = "mauve"
+
+# Accent colors
+accent       = "purple"
+accent-hover = "indigo"
+link         = "indigo"
+link-hover   = "purple"
+link-visited = "mauve"
+
+# Status colors
+success = "indigo"
+warning = "purple"
+error   = "purple"
+info    = "indigo"
+
+# Border colors
+border       = "mauve"
+border-focus = "purple"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "sand"
+code-text     = "midnight"
+code-comment  = "indigo"
+code-keyword  = "indigo"
+code-string   = "purple"
+code-number   = "mauve"
+code-function = "indigo"
+code-type     = "purple"
+code-operator = "purple"
+
+admonition-note-bg     = "sand"
+admonition-note-border = "indigo"
+admonition-tip-bg      = "sand"
+admonition-tip-border  = "purple"
+admonition-warn-bg     = "sand"
+admonition-warn-border = "mauve"
+admonition-error-bg    = "sand"
+admonition-error-border = "mauve"
+admonition-info-bg     = "sand"
+admonition-info-border = "indigo"
+
+button-primary-bg     = "indigo"
+button-primary-text   = "cream"
+button-secondary-bg   = "sand"
+button-secondary-text = "midnight"
+
+nav-bg     = "sand"
+nav-text   = "midnight"
+nav-active = "purple"
+
+card-bg     = "cream"
+card-border = "mauve"
+card-shadow = "sand"

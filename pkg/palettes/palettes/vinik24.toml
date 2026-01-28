@@ -1,0 +1,118 @@
+# Vinik24 Palette - A soft pastel 24-color palette
+# https://lospec.com/palette-list/vinik24
+# License: CC0
+
+[palette]
+name = "Vinik24"
+variant = "dark"
+author = "Vinik"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/vinik24"
+description = "A soft pastel take on the standard supergameboy palette, expanded into connected ramps of four shades"
+
+# Layer 1: Raw Colors
+# The 24 Vinik24 colors organized by ramps
+[palette.colors]
+# Base tones (shared shadow/highlight)
+black      = "#000000"
+gray-dark  = "#6f6776"
+gray       = "#9a9a97"
+cream      = "#c5ccb8"
+
+# Purple ramp
+purple-dark   = "#433455"
+purple        = "#8b5580"
+purple-light  = "#a593a5"
+pink          = "#c38890"
+
+# Blue ramp
+blue-dark     = "#666092"
+blue          = "#416aa3"
+blue-light    = "#7ca1c0"
+
+# Red/Brown ramp
+red           = "#9a4f50"
+red-brown     = "#8d6268"
+tan           = "#c28d75"
+gold          = "#be955c"
+
+# Teal ramp
+teal-dark     = "#387080"
+teal          = "#68aca9"
+teal-gray     = "#7e9e99"
+
+# Green ramp
+green-dark    = "#557064"
+green         = "#6eaa78"
+green-light   = "#93a167"
+
+# Neutral ramp
+neutral-dark  = "#5d6872"
+neutral       = "#6e6962"
+neutral-light = "#9d9f7f"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "cream"
+text-secondary = "cream"
+text-muted     = "gray"
+
+# Background colors
+bg-primary   = "black"
+bg-secondary = "purple-dark"
+bg-surface   = "purple-dark"
+bg-elevated  = "purple-dark"
+
+# Accent colors
+accent       = "teal"
+accent-hover = "teal-gray"
+link         = "blue-light"
+link-hover   = "teal"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "gold"
+error   = "red"
+info    = "blue-light"
+
+# Border colors
+border       = "gray-dark"
+border-focus = "teal"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "purple-dark"
+code-text     = "cream"
+code-comment  = "gray"
+code-keyword  = "cream"
+code-string   = "green-light"
+code-number   = "gold"
+code-function = "blue-light"
+code-type     = "teal"
+code-operator = "gray"
+
+admonition-note-bg     = "purple-dark"
+admonition-note-border = "blue-light"
+admonition-tip-bg      = "purple-dark"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "purple-dark"
+admonition-warn-border = "gold"
+admonition-error-bg    = "purple-dark"
+admonition-error-border = "red"
+admonition-info-bg     = "purple-dark"
+admonition-info-border = "teal"
+
+button-primary-bg     = "teal"
+button-primary-text   = "black"
+button-secondary-bg   = "purple-dark"
+button-secondary-text = "cream"
+
+nav-bg     = "purple-dark"
+nav-text   = "cream"
+nav-active = "teal"
+
+card-bg     = "neutral-dark"
+card-border = "gray-dark"
+card-shadow = "black"

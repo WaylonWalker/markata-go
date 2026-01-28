@@ -1,0 +1,85 @@
+# Nintendo Gameboy (BGB) Palette - Classic 4-color green palette
+# https://lospec.com/palette-list/nintendo-gameboy-bgb
+# License: CC0
+
+[palette]
+name = "Nintendo Gameboy"
+variant = "dark"
+author = "Nintendo"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/nintendo-gameboy-bgb"
+description = "The classic 4-color green-tinted palette from the original Nintendo Gameboy"
+
+# Layer 1: Raw Colors
+# The 4 Gameboy colors from dark to light
+[palette.colors]
+darkest  = "#081820"
+dark     = "#346856"
+light    = "#88c070"
+lightest = "#e0f8d0"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "lightest"
+text-secondary = "light"
+text-muted     = "light"
+
+# Background colors
+bg-primary   = "darkest"
+bg-secondary = "dark"
+bg-surface   = "dark"
+bg-elevated  = "dark"
+
+# Accent colors
+accent       = "light"
+accent-hover = "lightest"
+link         = "light"
+link-hover   = "lightest"
+link-visited = "light"
+
+# Status colors
+success = "light"
+warning = "lightest"
+error   = "light"
+info    = "light"
+
+# Border colors
+border       = "dark"
+border-focus = "light"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "dark"
+code-text     = "lightest"
+code-comment  = "light"
+code-keyword  = "lightest"
+code-string   = "light"
+code-number   = "lightest"
+code-function = "light"
+code-type     = "lightest"
+code-operator = "light"
+
+admonition-note-bg     = "dark"
+admonition-note-border = "light"
+admonition-tip-bg      = "dark"
+admonition-tip-border  = "light"
+admonition-warn-bg     = "dark"
+admonition-warn-border = "lightest"
+admonition-error-bg    = "dark"
+admonition-error-border = "lightest"
+admonition-info-bg     = "dark"
+admonition-info-border = "light"
+
+button-primary-bg     = "light"
+button-primary-text   = "darkest"
+button-secondary-bg   = "dark"
+button-secondary-text = "lightest"
+
+nav-bg     = "dark"
+nav-text   = "lightest"
+nav-active = "light"
+
+card-bg     = "dark"
+card-border = "light"
+card-shadow = "darkest"

@@ -1,0 +1,89 @@
+# Pollen8 Palette - A warm floral 8-color palette
+# https://lospec.com/palette-list/pollen8
+# License: CC0
+
+[palette]
+name = "Pollen8"
+variant = "light"
+author = "Lospec"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/pollen8"
+description = "A warm floral palette with coral pinks, sunny yellows, and refreshing teals"
+
+# Layer 1: Raw Colors
+# The 8 Pollen8 colors
+[palette.colors]
+maroon      = "#73464c"
+rose        = "#ab5675"
+coral       = "#ee6a7c"
+peach       = "#ffa7a5"
+yellow      = "#ffe07e"
+cream       = "#ffe7d6"
+mint        = "#72dcbb"
+teal        = "#34acba"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "maroon"
+text-secondary = "maroon"
+text-muted     = "rose"
+
+# Background colors
+bg-primary   = "cream"
+bg-secondary = "cream"
+bg-surface   = "cream"
+bg-elevated  = "cream"
+
+# Accent colors
+accent       = "rose"
+accent-hover = "coral"
+link         = "maroon"
+link-hover   = "rose"
+link-visited = "rose"
+
+# Status colors
+success = "maroon"
+warning = "maroon"
+error   = "maroon"
+info    = "maroon"
+
+# Border colors
+border       = "peach"
+border-focus = "coral"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "cream"
+code-text     = "maroon"
+code-comment  = "rose"
+code-keyword  = "maroon"
+code-string   = "teal"
+code-number   = "rose"
+code-function = "teal"
+code-type     = "coral"
+code-operator = "rose"
+
+admonition-note-bg     = "yellow"
+admonition-note-border = "teal"
+admonition-tip-bg      = "yellow"
+admonition-tip-border  = "mint"
+admonition-warn-bg     = "yellow"
+admonition-warn-border = "coral"
+admonition-error-bg    = "yellow"
+admonition-error-border = "coral"
+admonition-info-bg     = "yellow"
+admonition-info-border = "teal"
+
+button-primary-bg     = "maroon"
+button-primary-text   = "cream"
+button-secondary-bg   = "cream"
+button-secondary-text = "maroon"
+
+nav-bg     = "peach"
+nav-text   = "maroon"
+nav-active = "coral"
+
+card-bg     = "cream"
+card-border = "peach"
+card-shadow = "yellow"
