@@ -19,7 +19,7 @@ gutter         = "#6c7380"
 
 # Foreground colors
 foreground     = "#bfbdb6"
-foreground-dim = "#565b66"
+foreground-dim = "#7a8290"      # Brightened for text contrast
 
 # Accent colors - Ayu's signature palette
 red        = "#d95757"
@@ -35,7 +35,7 @@ pink       = "#f07178"
 accent     = "#e6b450"
 bg-darker  = "#0b0e14"
 bg-lighter = "#1c232f"
-comment    = "#636a72"
+comment    = "#808890"          # Brightened for contrast
 
 # Layer 2: Semantic Mapping
 [palette.semantic]

@@ -22,7 +22,7 @@ foreground     = "#f8f0e8"
 foreground-dim = "#b8a090"
 
 # Accent colors - Lunar New Year palette
-lucky-red      = "#de2910"      # Traditional lucky red
+lucky-red      = "#ff5544"      # Traditional lucky red (brightened for button text contrast)
 crimson        = "#c41e3a"      # Deep crimson
 gold           = "#ffd700"      # Prosperity gold
 orange         = "#ff8c00"      # Mandarin orange
@@ -88,7 +88,7 @@ admonition-error-bg    = "current-line"
 admonition-error-border = "lucky-red"
 
 button-primary-bg     = "lucky-red"
-button-primary-text   = "gold"
+button-primary-text   = "bg-darker"
 button-secondary-bg   = "current-line"
 button-secondary-text = "foreground"
 

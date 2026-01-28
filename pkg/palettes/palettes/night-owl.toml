@@ -20,7 +20,7 @@ gutter         = "#4b6479"
 
 # Foreground colors
 foreground     = "#d6deeb"
-foreground-dim = "#637777"
+foreground-dim = "#7a9090"      # Brightened for text contrast
 
 # Accent colors - Night Owl's signature palette
 red        = "#ef5350"
@@ -36,7 +36,7 @@ pink       = "#ff2c83"
 accent     = "#7fdbca"
 bg-darker  = "#010e1a"
 bg-lighter = "#122d42"
-comment    = "#637777"
+comment    = "#7a9090"          # Brightened for contrast
 
 # Layer 2: Semantic Mapping
 [palette.semantic]

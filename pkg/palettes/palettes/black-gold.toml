@@ -37,7 +37,7 @@ red            = "#cd5c5c"      # Indian red
 # Additional colors
 bg-darker      = "#050505"
 bg-lighter     = "#1f1f1a"
-comment        = "#605848"
+comment        = "#7a6858"      # Brightened for contrast
 
 # Layer 2: Semantic Mapping
 [palette.semantic]

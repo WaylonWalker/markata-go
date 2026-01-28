@@ -23,14 +23,14 @@ foreground     = "#242424"
 foreground-dim = "#606060"
 
 # Accent colors - macOS style
-blue           = "#007aff"      # Primary accent (macOS blue)
+blue           = "#0066d6"      # Primary accent (darker for contrast)
 purple         = "#af52de"      # Purple accent
-pink           = "#ff2d55"      # Pink accent
+pink           = "#c41e3a"      # Pink accent (darkened for contrast)
 red            = "#e9524a"      # Window close button (light variant)
-yellow         = "#f1ae1b"      # Window minimize button (light variant)
-green          = "#59c837"      # Window maximize button (light variant)
+yellow         = "#9a7200"      # Window minimize button (darkened more for contrast)
+green          = "#2e8b2e"      # Window maximize button (darkened for contrast)
 orange         = "#ff9500"      # Orange accent
-teal           = "#5ac8fa"      # Teal accent
+teal           = "#0088a3"      # Teal accent (darkened for contrast)
 gray           = "#8e8e93"      # System gray
 white          = "#ffffff"      # Pure white
 

@@ -19,7 +19,7 @@ gutter         = "#4b5263"
 
 # Foreground colors
 foreground     = "#abb2bf"
-foreground-dim = "#5c6370"
+foreground-dim = "#8c939f"      # Brightened more for text contrast
 
 # Accent colors - One Dark's signature palette
 red        = "#e06c75"

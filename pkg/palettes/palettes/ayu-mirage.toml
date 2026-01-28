@@ -35,7 +35,7 @@ pink       = "#f28779"
 accent     = "#ffcc66"
 bg-darker  = "#171b24"
 bg-lighter = "#2d3441"
-comment    = "#5c6773"
+comment    = "#8090a0"          # Brightened for contrast
 
 # Layer 2: Semantic Mapping
 [palette.semantic]

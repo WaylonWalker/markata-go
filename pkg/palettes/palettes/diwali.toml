@@ -22,7 +22,7 @@ foreground     = "#fff8e8"
 foreground-dim = "#c0a880"
 
 # Accent colors - Diwali palette
-deep-red       = "#8b0000"      # Deep traditional red
+deep-red       = "#cc3333"      # Brightened traditional red for contrast
 gold           = "#ffd700"      # Prosperity gold
 orange         = "#ff8c00"      # Diya flame orange
 saffron        = "#f4c430"      # Saffron yellow

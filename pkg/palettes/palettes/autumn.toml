@@ -22,12 +22,12 @@ foreground     = "#e8dcc8"
 foreground-dim = "#a89880"
 
 # Accent colors - Autumn palette
-orange         = "#cc5500"      # Burnt orange
-rust           = "#b7410e"      # Rust/terracotta
+orange         = "#f07700"      # Burnt orange (brightened more for button text)
+rust           = "#d4602a"      # Rust/terracotta (brightened for code keyword)
 yellow         = "#ffdb58"      # Mustard yellow
 gold           = "#d4a017"      # Harvest gold
-red            = "#800020"      # Burgundy
-green          = "#556b2f"      # Olive/dark olive green
+red            = "#cc3355"      # Burgundy (brightened for contrast)
+green          = "#7fa02f"      # Olive green (brightened for contrast)
 brown          = "#5c4033"      # Dark brown
 tan            = "#d2b48c"      # Tan/wheat
 cream          = "#fffdd0"      # Cream
@@ -89,7 +89,7 @@ admonition-error-bg    = "current-line"
 admonition-error-border = "red"
 
 button-primary-bg     = "orange"
-button-primary-text   = "cream"
+button-primary-text   = "bg-darker"
 button-secondary-bg   = "current-line"
 button-secondary-text = "foreground"
 
