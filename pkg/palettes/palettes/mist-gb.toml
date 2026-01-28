@@ -1,0 +1,85 @@
+# Mist GB Palette - A misty 4-color Gameboy-style palette
+# https://lospec.com/palette-list/mist-gb
+# License: CC0
+
+[palette]
+name = "Mist GB"
+variant = "dark"
+author = "Lospec"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/mist-gb"
+description = "A cool, misty 4-color palette with teal tones reminiscent of fog over water"
+
+# Layer 1: Raw Colors
+# The 4 Mist GB colors from dark to light
+[palette.colors]
+brown       = "#2d1b00"
+teal-dark   = "#1e606e"
+teal        = "#5ab9a8"
+mint        = "#c4f0c2"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "mint"
+text-secondary = "teal"
+text-muted     = "teal"
+
+# Background colors
+bg-primary   = "brown"
+bg-secondary = "teal-dark"
+bg-surface   = "teal-dark"
+bg-elevated  = "teal-dark"
+
+# Accent colors
+accent       = "teal"
+accent-hover = "mint"
+link         = "teal"
+link-hover   = "mint"
+link-visited = "teal"
+
+# Status colors
+success = "teal"
+warning = "mint"
+error   = "teal"
+info    = "teal"
+
+# Border colors
+border       = "teal-dark"
+border-focus = "teal"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "teal-dark"
+code-text     = "mint"
+code-comment  = "teal"
+code-keyword  = "mint"
+code-string   = "teal"
+code-number   = "mint"
+code-function = "teal"
+code-type     = "mint"
+code-operator = "teal"
+
+admonition-note-bg     = "teal-dark"
+admonition-note-border = "teal"
+admonition-tip-bg      = "teal-dark"
+admonition-tip-border  = "teal"
+admonition-warn-bg     = "teal-dark"
+admonition-warn-border = "mint"
+admonition-error-bg    = "teal-dark"
+admonition-error-border = "mint"
+admonition-info-bg     = "teal-dark"
+admonition-info-border = "teal"
+
+button-primary-bg     = "teal"
+button-primary-text   = "brown"
+button-secondary-bg   = "teal-dark"
+button-secondary-text = "mint"
+
+nav-bg     = "teal-dark"
+nav-text   = "mint"
+nav-active = "teal"
+
+card-bg     = "teal-dark"
+card-border = "teal"
+card-shadow = "brown"

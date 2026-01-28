@@ -1,0 +1,88 @@
+# Midnight Ablaze Palette - A fiery 7-color palette
+# https://lospec.com/palette-list/midnight-ablaze
+# License: CC0
+
+[palette]
+name = "Midnight Ablaze"
+variant = "dark"
+author = "Lospec"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/midnight-ablaze"
+description = "A dramatic palette transitioning from bright coral through crimson to deep black"
+
+# Layer 1: Raw Colors
+# The 7 Midnight Ablaze colors from light to dark
+[palette.colors]
+coral      = "#ff8274"
+crimson    = "#d53c6a"
+magenta    = "#7c183c"
+wine       = "#460e2b"
+plum       = "#31051e"
+maroon     = "#1f0510"
+black      = "#130208"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "coral"
+text-secondary = "coral"
+text-muted     = "crimson"
+
+# Background colors
+bg-primary   = "black"
+bg-secondary = "maroon"
+bg-surface   = "maroon"
+bg-elevated  = "plum"
+
+# Accent colors
+accent       = "coral"
+accent-hover = "crimson"
+link         = "coral"
+link-hover   = "crimson"
+link-visited = "crimson"
+
+# Status colors
+success = "coral"
+warning = "coral"
+error   = "crimson"
+info    = "coral"
+
+# Border colors
+border       = "wine"
+border-focus = "coral"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "maroon"
+code-text     = "coral"
+code-comment  = "crimson"
+code-keyword  = "coral"
+code-string   = "coral"
+code-number   = "crimson"
+code-function = "coral"
+code-type     = "crimson"
+code-operator = "magenta"
+
+admonition-note-bg     = "maroon"
+admonition-note-border = "coral"
+admonition-tip-bg      = "maroon"
+admonition-tip-border  = "coral"
+admonition-warn-bg     = "maroon"
+admonition-warn-border = "crimson"
+admonition-error-bg    = "maroon"
+admonition-error-border = "magenta"
+admonition-info-bg     = "maroon"
+admonition-info-border = "coral"
+
+button-primary-bg     = "coral"
+button-primary-text   = "black"
+button-secondary-bg   = "wine"
+button-secondary-text = "coral"
+
+nav-bg     = "maroon"
+nav-text   = "coral"
+nav-active = "crimson"
+
+card-bg     = "plum"
+card-border = "wine"
+card-shadow = "black"

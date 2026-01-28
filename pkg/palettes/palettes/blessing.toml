@@ -1,0 +1,86 @@
+# Blessing Palette - A soft pastel 5-color palette
+# https://lospec.com/palette-list/blessing
+# License: CC0
+
+[palette]
+name = "Blessing"
+variant = "light"
+author = "Lospec"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/blessing"
+description = "A gentle pastel palette with soft purples, mint greens, and delicate pinks"
+
+# Layer 1: Raw Colors
+# The 5 Blessing colors
+[palette.colors]
+purple   = "#74569b"
+mint     = "#96fbc7"
+cream    = "#f7ffae"
+pink     = "#ffb3cb"
+thistle  = "#d8bfd8"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "purple"
+text-secondary = "purple"
+text-muted     = "purple"
+
+# Background colors
+bg-primary   = "cream"
+bg-secondary = "cream"
+bg-surface   = "cream"
+bg-elevated  = "cream"
+
+# Accent colors
+accent       = "purple"
+accent-hover = "pink"
+link         = "purple"
+link-hover   = "purple"
+link-visited = "purple"
+
+# Status colors
+success = "purple"
+warning = "purple"
+error   = "purple"
+info    = "purple"
+
+# Border colors
+border       = "thistle"
+border-focus = "purple"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "cream"
+code-text     = "purple"
+code-comment  = "purple"
+code-keyword  = "purple"
+code-string   = "pink"
+code-number   = "purple"
+code-function = "purple"
+code-type     = "pink"
+code-operator = "thistle"
+
+admonition-note-bg     = "mint"
+admonition-note-border = "purple"
+admonition-tip-bg      = "mint"
+admonition-tip-border  = "purple"
+admonition-warn-bg     = "mint"
+admonition-warn-border = "pink"
+admonition-error-bg    = "mint"
+admonition-error-border = "pink"
+admonition-info-bg     = "mint"
+admonition-info-border = "purple"
+
+button-primary-bg     = "purple"
+button-primary-text   = "cream"
+button-secondary-bg   = "cream"
+button-secondary-text = "purple"
+
+nav-bg     = "mint"
+nav-text   = "purple"
+nav-active = "pink"
+
+card-bg     = "cream"
+card-border = "thistle"
+card-shadow = "mint"

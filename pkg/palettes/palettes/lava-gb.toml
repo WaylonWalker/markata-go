@@ -1,0 +1,85 @@
+# Lava-GB Palette - A fiery 4-color Gameboy-style palette
+# https://lospec.com/palette-list/lava-gb
+# License: CC0
+
+[palette]
+name = "Lava-GB"
+variant = "dark"
+author = "Lospec"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/lava-gb"
+description = "A hot 4-color palette inspired by lava, with deep blues transitioning to fiery coral"
+
+# Layer 1: Raw Colors
+# The 4 Lava-GB colors from dark to light
+[palette.colors]
+navy     = "#051f39"
+purple   = "#4a2480"
+magenta  = "#c53a9d"
+coral    = "#ff8e80"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "coral"
+text-secondary = "coral"
+text-muted     = "coral"
+
+# Background colors
+bg-primary   = "navy"
+bg-secondary = "purple"
+bg-surface   = "purple"
+bg-elevated  = "purple"
+
+# Accent colors
+accent       = "magenta"
+accent-hover = "coral"
+link         = "coral"
+link-hover   = "coral"
+link-visited = "magenta"
+
+# Status colors
+success = "coral"
+warning = "coral"
+error   = "magenta"
+info    = "coral"
+
+# Border colors
+border       = "purple"
+border-focus = "magenta"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "purple"
+code-text     = "coral"
+code-comment  = "coral"
+code-keyword  = "coral"
+code-string   = "magenta"
+code-number   = "coral"
+code-function = "magenta"
+code-type     = "coral"
+code-operator = "magenta"
+
+admonition-note-bg     = "purple"
+admonition-note-border = "magenta"
+admonition-tip-bg      = "purple"
+admonition-tip-border  = "magenta"
+admonition-warn-bg     = "purple"
+admonition-warn-border = "coral"
+admonition-error-bg    = "purple"
+admonition-error-border = "coral"
+admonition-info-bg     = "purple"
+admonition-info-border = "magenta"
+
+button-primary-bg     = "coral"
+button-primary-text   = "navy"
+button-secondary-bg   = "purple"
+button-secondary-text = "coral"
+
+nav-bg     = "purple"
+nav-text   = "coral"
+nav-active = "magenta"
+
+card-bg     = "purple"
+card-border = "magenta"
+card-shadow = "navy"

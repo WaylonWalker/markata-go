@@ -1,0 +1,86 @@
+# Twilight 5 Palette - A sunset-inspired 5-color palette
+# https://lospec.com/palette-list/twilight-5
+# License: CC0
+
+[palette]
+name = "Twilight 5"
+variant = "dark"
+author = "Lospec"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/twilight-5"
+description = "A beautiful sunset-inspired palette with warm pinks transitioning to cool teals and deep purples"
+
+# Layer 1: Raw Colors
+# The 5 Twilight colors from light to dark
+[palette.colors]
+peach      = "#fbbbad"
+rose       = "#ee8695"
+teal       = "#4a7a96"
+slate      = "#333f58"
+charcoal   = "#292831"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "peach"
+text-secondary = "peach"
+text-muted     = "rose"
+
+# Background colors
+bg-primary   = "charcoal"
+bg-secondary = "slate"
+bg-surface   = "slate"
+bg-elevated  = "slate"
+
+# Accent colors
+accent       = "rose"
+accent-hover = "peach"
+link         = "peach"
+link-hover   = "rose"
+link-visited = "rose"
+
+# Status colors
+success = "peach"
+warning = "peach"
+error   = "rose"
+info    = "peach"
+
+# Border colors
+border       = "teal"
+border-focus = "rose"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "slate"
+code-text     = "peach"
+code-comment  = "rose"
+code-keyword  = "peach"
+code-string   = "peach"
+code-number   = "rose"
+code-function = "teal"
+code-type     = "peach"
+code-operator = "teal"
+
+admonition-note-bg     = "slate"
+admonition-note-border = "teal"
+admonition-tip-bg      = "slate"
+admonition-tip-border  = "teal"
+admonition-warn-bg     = "slate"
+admonition-warn-border = "peach"
+admonition-error-bg    = "slate"
+admonition-error-border = "rose"
+admonition-info-bg     = "slate"
+admonition-info-border = "teal"
+
+button-primary-bg     = "rose"
+button-primary-text   = "charcoal"
+button-secondary-bg   = "slate"
+button-secondary-text = "peach"
+
+nav-bg     = "slate"
+nav-text   = "peach"
+nav-active = "rose"
+
+card-bg     = "slate"
+card-border = "teal"
+card-shadow = "charcoal"

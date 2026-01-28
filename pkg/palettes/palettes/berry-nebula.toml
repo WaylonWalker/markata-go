@@ -1,0 +1,89 @@
+# Berry Nebula Palette - A cosmic 8-color palette
+# https://lospec.com/palette-list/berry-nebula
+# License: CC0
+
+[palette]
+name = "Berry Nebula"
+variant = "dark"
+author = "Lospec"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/berry-nebula"
+description = "A cosmic palette with vibrant cyans transitioning through purples to deep space black"
+
+# Layer 1: Raw Colors
+# The 8 Berry Nebula colors from light to dark
+[palette.colors]
+cyan-light  = "#6ceded"
+cyan        = "#6cb9c9"
+slate       = "#6d85a5"
+purple      = "#6e5181"
+magenta     = "#6f1d5c"
+wine        = "#4f1446"
+plum        = "#2e0a30"
+black       = "#0d001a"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "cyan-light"
+text-secondary = "cyan"
+text-muted     = "slate"
+
+# Background colors
+bg-primary   = "black"
+bg-secondary = "plum"
+bg-surface   = "wine"
+bg-elevated  = "magenta"
+
+# Accent colors
+accent       = "cyan"
+accent-hover = "cyan-light"
+link         = "cyan"
+link-hover   = "cyan-light"
+link-visited = "purple"
+
+# Status colors
+success = "cyan"
+warning = "cyan"
+error   = "purple"
+info    = "cyan-light"
+
+# Border colors
+border       = "wine"
+border-focus = "cyan"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "plum"
+code-text     = "cyan-light"
+code-comment  = "slate"
+code-keyword  = "cyan"
+code-string   = "cyan-light"
+code-number   = "purple"
+code-function = "cyan"
+code-type     = "slate"
+code-operator = "slate"
+
+admonition-note-bg     = "plum"
+admonition-note-border = "cyan"
+admonition-tip-bg      = "plum"
+admonition-tip-border  = "cyan-light"
+admonition-warn-bg     = "plum"
+admonition-warn-border = "slate"
+admonition-error-bg    = "plum"
+admonition-error-border = "magenta"
+admonition-info-bg     = "plum"
+admonition-info-border = "cyan"
+
+button-primary-bg     = "cyan"
+button-primary-text   = "black"
+button-secondary-bg   = "wine"
+button-secondary-text = "cyan-light"
+
+nav-bg     = "plum"
+nav-text   = "cyan-light"
+nav-active = "cyan"
+
+card-bg     = "wine"
+card-border = "purple"
+card-shadow = "black"
