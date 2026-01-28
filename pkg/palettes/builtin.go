@@ -2,7 +2,7 @@ package palettes
 
 import (
 	"embed"
-	"path/filepath"
+	"path"
 	"strings"
 	"sync"
 
@@ -38,7 +38,8 @@ func initBuiltinPalettes() {
 			continue
 		}
 
-		filePath := filepath.Join("palettes", entry.Name())
+		// Use path.Join (not filepath.Join) because embed.FS always uses forward slashes
+		filePath := path.Join("palettes", entry.Name())
 		data, err := builtinFS.ReadFile(filePath)
 		if err != nil {
 			continue
