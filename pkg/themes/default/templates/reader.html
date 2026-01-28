@@ -29,19 +29,26 @@
   <ul class="reader-entries">
     {% for entry in entries %}
     <li class="reader-entry">
-      <article>
-        <h2 class="reader-entry-title">
-          <a href="{{ entry.url }}" target="_blank" rel="noopener">{{ entry.title }}</a>
-        </h2>
-        <div class="reader-entry-meta">
-          <span class="reader-entry-source">{{ entry.feed_title }}</span>
-          {% if entry.published %}
-          <time datetime="{{ entry.published | atom_date }}">{{ entry.published | date:"Jan 2, 2006" }}</time>
+      <article class="reader-entry-article{% if entry.image_url %} has-image{% endif %}">
+        {% if entry.image_url %}
+        <a href="{{ entry.url }}" target="_blank" rel="noopener" class="reader-entry-image-link">
+          <img src="{{ entry.image_url }}" alt="" class="reader-entry-image" loading="lazy">
+        </a>
+        {% endif %}
+        <div class="reader-entry-content">
+          <h2 class="reader-entry-title">
+            <a href="{{ entry.url }}" target="_blank" rel="noopener">{{ entry.title }}</a>
+          </h2>
+          <div class="reader-entry-meta">
+            <span class="reader-entry-source">{{ entry.feed_title }}</span>
+            {% if entry.published %}
+            <time datetime="{{ entry.published | atom_date }}">{{ entry.published | date:"Jan 2, 2006" }}</time>
+            {% endif %}
+          </div>
+          {% if entry.description %}
+          <p class="reader-entry-description">{{ entry.description | striptags | truncatewords:40 }}</p>
           {% endif %}
         </div>
-        {% if entry.description %}
-        <p class="reader-entry-description">{{ entry.description | striptags | truncatewords:40 }}</p>
-        {% endif %}
       </article>
     </li>
     {% endfor %}
