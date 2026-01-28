@@ -207,7 +207,6 @@
 
   <!-- Pagefind Search JS (when enabled) -->
   {% if config.search.enabled %}
-  <script src="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.js" onload="initPagefindSearch()"></script>
   <script>
     function initPagefindSearch() {
       if (typeof PagefindUI !== 'undefined' && document.getElementById('pagefind-search')) {
@@ -222,11 +221,8 @@
         });
       }
     }
-    // Fallback if script already loaded
-    if (typeof PagefindUI !== 'undefined') {
-      document.addEventListener('DOMContentLoaded', initPagefindSearch);
-    }
   </script>
+  <script src="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.js" onload="initPagefindSearch()"></script>
   {% endif %}
 
   <!-- Palette Switcher JS (when enabled) -->
