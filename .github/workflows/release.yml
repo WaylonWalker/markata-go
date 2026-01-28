@@ -14,7 +14,7 @@ permissions:
   id-token: write  # For cosign signing
 
 env:
-  GO_VERSION: "1.22"
+  GO_VERSION: "1.23"
 
 jobs:
   # Run tests before releasing
