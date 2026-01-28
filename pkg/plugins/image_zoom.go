@@ -153,6 +153,15 @@ var dataZoomableRegex = regexp.MustCompile(`\{data-zoomable\}`)
 // zoomableClassRegex matches the {.zoomable} class marker in alt text or title.
 var zoomableClassRegex = regexp.MustCompile(`\{\.zoomable\}`)
 
+// imgSrcRegex extracts the src attribute from an img tag.
+var imgSrcRegex = regexp.MustCompile(`src="([^"]+)"`)
+
+// imgAltRegex extracts the alt attribute from an img tag.
+var imgAltRegex = regexp.MustCompile(`alt="([^"]*)"`)
+
+// imgClassRegex matches the class attribute in an img tag for replacement.
+var imgClassRegex = regexp.MustCompile(`class="([^"]*)"`)
+
 // processPost processes a single post's HTML for images that should be zoomable.
 func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 	// Skip posts marked as skip or with no HTML content
@@ -206,8 +215,8 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 		cleanedAttrs = strings.TrimSpace(cleanedAttrs)
 
 		// Extract src and alt for the glightbox data attribute
-		srcMatch := regexp.MustCompile(`src="([^"]+)"`).FindStringSubmatch(cleanedAttrs)
-		altMatch := regexp.MustCompile(`alt="([^"]*)"`).FindStringSubmatch(cleanedAttrs)
+		srcMatch := imgSrcRegex.FindStringSubmatch(cleanedAttrs)
+		altMatch := imgAltRegex.FindStringSubmatch(cleanedAttrs)
 
 		src := ""
 		alt := ""
@@ -224,7 +233,7 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 		// Add the gallery class and data attribute
 		if strings.Contains(cleanedAttrs, `class="`) {
 			// Append to existing class
-			cleanedAttrs = regexp.MustCompile(`class="([^"]*)"`).ReplaceAllString(
+			cleanedAttrs = imgClassRegex.ReplaceAllString(
 				cleanedAttrs,
 				`class="$1 glightbox"`,
 			)
