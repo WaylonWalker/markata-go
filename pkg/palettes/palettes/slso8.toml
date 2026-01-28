@@ -1,0 +1,89 @@
+# SLSO8 Palette - A popular 8-color palette from Lospec
+# https://lospec.com/palette-list/slso8
+# License: CC0
+
+[palette]
+name = "SLSO8"
+variant = "dark"
+author = "Luis Miguel Maldonado"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/slso8"
+description = "A warm 8-color palette popular with pixel artists, featuring earthy tones from deep blue to cream"
+
+# Layer 1: Raw Colors
+# The 8 SLSO8 colors arranged from dark to light
+[palette.colors]
+darkest    = "#0d2b45"
+dark       = "#203c56"
+mid-dark   = "#544e68"
+mid        = "#8d697a"
+mid-light  = "#d08159"
+light      = "#ffaa5e"
+lighter    = "#ffd4a3"
+lightest   = "#ffecd6"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "lightest"
+text-secondary = "lighter"
+text-muted     = "light"
+
+# Background colors
+bg-primary   = "darkest"
+bg-secondary = "dark"
+bg-surface   = "mid-dark"
+bg-elevated  = "mid-dark"
+
+# Accent colors
+accent       = "light"
+accent-hover = "mid-light"
+link         = "light"
+link-hover   = "lighter"
+link-visited = "mid"
+
+# Status colors
+success = "light"
+warning = "mid-light"
+error   = "mid"
+info    = "lighter"
+
+# Border colors
+border       = "mid-dark"
+border-focus = "light"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "dark"
+code-text     = "lightest"
+code-comment  = "light"
+code-keyword  = "lighter"
+code-string   = "lighter"
+code-number   = "mid-light"
+code-function = "light"
+code-type     = "lighter"
+code-operator = "mid"
+
+admonition-note-bg     = "dark"
+admonition-note-border = "light"
+admonition-tip-bg      = "dark"
+admonition-tip-border  = "lighter"
+admonition-warn-bg     = "dark"
+admonition-warn-border = "mid-light"
+admonition-error-bg    = "dark"
+admonition-error-border = "mid"
+admonition-info-bg     = "dark"
+admonition-info-border = "light"
+
+button-primary-bg     = "light"
+button-primary-text   = "darkest"
+button-secondary-bg   = "mid-dark"
+button-secondary-text = "lightest"
+
+nav-bg     = "dark"
+nav-text   = "lightest"
+nav-active = "light"
+
+card-bg     = "dark"
+card-border = "mid-dark"
+card-shadow = "darkest"

@@ -1,0 +1,97 @@
+# PICO-8 Palette - The iconic fantasy console 16-color palette
+# https://lospec.com/palette-list/pico-8
+# License: CC0
+
+[palette]
+name = "PICO-8"
+variant = "dark"
+author = "Lexaloffle"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/pico-8"
+description = "The iconic 16-color palette from the PICO-8 fantasy console, beloved by retro game developers"
+
+# Layer 1: Raw Colors
+# The 16 PICO-8 colors
+[palette.colors]
+black       = "#000000"
+dark-blue   = "#1d2b53"
+dark-purple = "#7e2553"
+dark-green  = "#008751"
+brown       = "#ab5236"
+dark-gray   = "#5f574f"
+light-gray  = "#c2c3c7"
+white       = "#fff1e8"
+red         = "#ff004d"
+orange      = "#ffa300"
+yellow      = "#ffec27"
+green       = "#00e436"
+blue        = "#29adff"
+lavender    = "#83769c"
+pink        = "#ff77a8"
+peach       = "#ffccaa"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "white"
+text-secondary = "light-gray"
+text-muted     = "lavender"
+
+# Background colors
+bg-primary   = "black"
+bg-secondary = "dark-blue"
+bg-surface   = "dark-gray"
+bg-elevated  = "dark-purple"
+
+# Accent colors
+accent       = "blue"
+accent-hover = "green"
+link         = "blue"
+link-hover   = "green"
+link-visited = "lavender"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "blue"
+
+# Border colors
+border       = "dark-gray"
+border-focus = "blue"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "dark-blue"
+code-text     = "white"
+code-comment  = "lavender"
+code-keyword  = "pink"
+code-string   = "green"
+code-number   = "orange"
+code-function = "blue"
+code-type     = "yellow"
+code-operator = "light-gray"
+
+admonition-note-bg     = "dark-blue"
+admonition-note-border = "blue"
+admonition-tip-bg      = "dark-blue"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "dark-blue"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "dark-blue"
+admonition-error-border = "red"
+admonition-info-bg     = "dark-blue"
+admonition-info-border = "blue"
+
+button-primary-bg     = "blue"
+button-primary-text   = "black"
+button-secondary-bg   = "dark-gray"
+button-secondary-text = "white"
+
+nav-bg     = "dark-blue"
+nav-text   = "white"
+nav-active = "blue"
+
+card-bg     = "dark-blue"
+card-border = "dark-gray"
+card-shadow = "black"

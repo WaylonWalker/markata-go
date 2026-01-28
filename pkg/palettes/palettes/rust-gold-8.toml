@@ -1,0 +1,89 @@
+# Rust Gold 8 Palette - A warm metallic 8-color palette
+# https://lospec.com/palette-list/rust-gold-8
+# License: CC0
+
+[palette]
+name = "Rust Gold 8"
+variant = "dark"
+author = "Lospec"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/rust-gold-8"
+description = "A warm metallic palette with rich golds, rusty browns, and cool grays"
+
+# Layer 1: Raw Colors
+# The 8 Rust Gold colors
+[palette.colors]
+gold        = "#f6cd26"
+orange      = "#ac6b26"
+brown       = "#563226"
+dark-brown  = "#331c17"
+tan         = "#bb7f57"
+gray-brown  = "#725956"
+gray        = "#393939"
+black       = "#202020"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "gold"
+text-secondary = "tan"
+text-muted     = "tan"
+
+# Background colors
+bg-primary   = "black"
+bg-secondary = "gray"
+bg-surface   = "gray"
+bg-elevated  = "gray"
+
+# Accent colors
+accent       = "gold"
+accent-hover = "orange"
+link         = "gold"
+link-hover   = "tan"
+link-visited = "orange"
+
+# Status colors
+success = "gold"
+warning = "gold"
+error   = "orange"
+info    = "tan"
+
+# Border colors
+border       = "gray"
+border-focus = "gold"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "gray"
+code-text     = "gold"
+code-comment  = "tan"
+code-keyword  = "gold"
+code-string   = "tan"
+code-number   = "gold"
+code-function = "gold"
+code-type     = "orange"
+code-operator = "tan"
+
+admonition-note-bg     = "gray"
+admonition-note-border = "gold"
+admonition-tip-bg      = "gray"
+admonition-tip-border  = "gold"
+admonition-warn-bg     = "gray"
+admonition-warn-border = "orange"
+admonition-error-bg    = "gray"
+admonition-error-border = "brown"
+admonition-info-bg     = "gray"
+admonition-info-border = "tan"
+
+button-primary-bg     = "gold"
+button-primary-text   = "black"
+button-secondary-bg   = "gray"
+button-secondary-text = "gold"
+
+nav-bg     = "gray"
+nav-text   = "gold"
+nav-active = "orange"
+
+card-bg     = "dark-brown"
+card-border = "gray"
+card-shadow = "black"

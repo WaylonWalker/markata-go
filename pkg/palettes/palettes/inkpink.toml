@@ -1,0 +1,87 @@
+# INKPINK Palette - A striking pink and purple 6-color palette
+# https://lospec.com/palette-list/inkpink
+# License: CC0
+
+[palette]
+name = "INKPINK"
+variant = "dark"
+author = "Lospec"
+license = "CC0"
+homepage = "https://lospec.com/palette-list/inkpink"
+description = "A bold palette transitioning from white through vivid pinks to deep purple-black"
+
+# Layer 1: Raw Colors
+# The 6 INKPINK colors from light to dark
+[palette.colors]
+white       = "#ffffff"
+pink        = "#fe6c90"
+magenta     = "#d03791"
+purple      = "#87286a"
+plum        = "#452459"
+black       = "#260d34"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "white"
+text-secondary = "pink"
+text-muted     = "magenta"
+
+# Background colors
+bg-primary   = "black"
+bg-secondary = "plum"
+bg-surface   = "purple"
+bg-elevated  = "purple"
+
+# Accent colors
+accent       = "pink"
+accent-hover = "magenta"
+link         = "pink"
+link-hover   = "white"
+link-visited = "magenta"
+
+# Status colors
+success = "pink"
+warning = "magenta"
+error   = "magenta"
+info    = "pink"
+
+# Border colors
+border       = "purple"
+border-focus = "pink"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "plum"
+code-text     = "white"
+code-comment  = "pink"
+code-keyword  = "pink"
+code-string   = "white"
+code-number   = "pink"
+code-function = "pink"
+code-type     = "magenta"
+code-operator = "magenta"
+
+admonition-note-bg     = "plum"
+admonition-note-border = "pink"
+admonition-tip-bg      = "plum"
+admonition-tip-border  = "pink"
+admonition-warn-bg     = "plum"
+admonition-warn-border = "magenta"
+admonition-error-bg    = "plum"
+admonition-error-border = "magenta"
+admonition-info-bg     = "plum"
+admonition-info-border = "pink"
+
+button-primary-bg     = "pink"
+button-primary-text   = "black"
+button-secondary-bg   = "purple"
+button-secondary-text = "white"
+
+nav-bg     = "plum"
+nav-text   = "white"
+nav-active = "pink"
+
+card-bg     = "purple"
+card-border = "magenta"
+card-shadow = "black"
