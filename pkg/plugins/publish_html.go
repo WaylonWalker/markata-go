@@ -79,6 +79,25 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
+	// Pre-pass: Identify all posts that changed (hash mismatch) and mark their slugs
+	// This enables dependency-based invalidation in a single build
+	cache := GetBuildCache(m)
+	if cache != nil {
+		posts := m.Posts()
+		changedCount := 0
+		for _, post := range posts {
+			if post.Skip || post.Draft || post.InputHash == "" {
+				continue
+			}
+			// Check if this post's hash changed
+			if cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
+				// Mark this slug as changed for dependency tracking
+				cache.MarkSlugChanged(post.Slug)
+				changedCount++
+			}
+		}
+	}
+
 	// Process posts concurrently
 	return m.ProcessPostsConcurrently(func(post *models.Post) error {
 		return p.writePost(post, config, engine, m)
