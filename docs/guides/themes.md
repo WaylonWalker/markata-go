@@ -185,6 +185,127 @@ The site automatically switches based on the visitor's system settings.
 
 ---
 
+## Multi-Palette Theme Switcher
+
+Allow visitors to choose any available color palette through a dropdown menu in the header.
+
+### Enabling the Switcher
+
+```toml
+[markata-go.theme]
+palette = "catppuccin"  # Default palette
+
+[markata-go.theme.switcher]
+enabled = true
+```
+
+When enabled, a dropdown appears in the site header allowing visitors to select from all available palettes. Their selection is persisted in localStorage.
+
+### Filtering Palettes
+
+By default, all discovered palettes are included. You can control which palettes appear:
+
+**Exclude specific palettes:**
+
+```toml
+[markata-go.theme.switcher]
+enabled = true
+include_all = true  # Default
+exclude = ["default-light", "default-dark"]  # Hide these palettes
+```
+
+**Include only specific palettes:**
+
+```toml
+[markata-go.theme.switcher]
+enabled = true
+include_all = false
+include = ["catppuccin-mocha", "catppuccin-latte", "nord-dark", "nord-light"]
+```
+
+### Switcher Configuration Reference
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | boolean | `false` | Show the palette switcher dropdown |
+| `include_all` | boolean | `true` | Include all discovered palettes |
+| `include` | array | `[]` | Palettes to include (when `include_all` is false) |
+| `exclude` | array | `[]` | Palettes to exclude (when `include_all` is true) |
+| `position` | string | `"header"` | Where to place the switcher: "header" or "footer" |
+
+### How It Works
+
+1. **CSS Generation**: When the switcher is enabled, markata-go generates CSS for all available palettes using `[data-palette="palette-name"]` selectors.
+
+2. **JavaScript**: The `theme-switcher.js` script reads the palette manifest from a CSS custom property and builds the dropdown UI.
+
+3. **Persistence**: Selected palette is saved to `localStorage.palette` and restored on page load.
+
+4. **Light/Dark Integration**: The palette switcher works alongside the existing light/dark toggle. When a user selects a palette, that palette's colors are applied. The light/dark toggle still works for the default theme when no custom palette is selected.
+
+### Styling the Switcher
+
+The switcher dropdown can be styled via CSS:
+
+```css
+/* In your custom CSS */
+.palette-switcher {
+  /* Container styles */
+}
+
+.palette-switcher-label {
+  /* Label styles */
+}
+
+.palette-switcher-select {
+  /* Dropdown styles */
+}
+```
+
+Or hide the label on mobile:
+
+```css
+@media (max-width: 768px) {
+  .palette-switcher-label {
+    display: none;
+  }
+}
+```
+
+### JavaScript API
+
+The switcher exposes a JavaScript API for programmatic control:
+
+```javascript
+// Get available palettes
+const palettes = window.markata.paletteSwitcher.getPalettes();
+
+// Get current palette
+const current = window.markata.paletteSwitcher.getCurrent();
+
+// Set palette
+window.markata.paletteSwitcher.set('catppuccin-mocha');
+
+// Clear selection (use default)
+window.markata.paletteSwitcher.clear();
+
+// Get default palettes
+const defaults = window.markata.paletteSwitcher.getDefaults();
+// { light: 'catppuccin-latte', dark: 'catppuccin-mocha' }
+```
+
+### Event Handling
+
+Listen for palette changes:
+
+```javascript
+window.addEventListener('palette-change', (e) => {
+  console.log('Palette changed to:', e.detail.palette);
+});
+```
+
+---
+
 ## Palette CLI Commands
 
 ### List All Palettes
