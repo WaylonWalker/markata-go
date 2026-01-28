@@ -101,6 +101,18 @@ var paletteToChroma = map[string]string{
 	// Modus themes - WCAG AAA accessible themes
 	"modus-vivendi":  "modus-vivendi",
 	"modus-operandi": "modus-operandi",
+
+	// Holiday and seasonal themes - mapped to closest Chroma equivalents
+	"halloween":      "dracula",    // Spooky purple/orange - dracula has similar vibe
+	"autumn":         "gruvbox",    // Warm earthy tones
+	"winter-frost":   "nord",       // Icy blues - nord is perfect match
+	"christmas":      "dracula",    // Deep greens/reds - dracula works
+	"lunar-new-year": "vim",        // Rich reds/golds - vim has warm tones
+	"valentine":      "witchhazel", // Pink/purple - witchhazel is purple-heavy
+	"st-patricks":    "evergarden", // Green theme - evergarden is green
+	"summer-beach":   "github",     // Bright, clean - github light works
+	"hanukkah":       "nord",       // Blues - nord is blue-based
+	"diwali":         "gruvbox",    // Warm golds/reds - gruvbox has warmth
 }
 
 // AvailableChromaThemes returns a list of all Chroma themes that are known to work.

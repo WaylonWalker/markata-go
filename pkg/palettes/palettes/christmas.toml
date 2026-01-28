@@ -1,0 +1,101 @@
+# Christmas - Classic holiday red, green, and gold
+# A festive theme for the holiday season
+# License: MIT
+
+[palette]
+name = "Christmas"
+variant = "dark"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - deep evergreen night
+background     = "#0f1a14"
+current-line   = "#1a2a20"
+selection      = "#2a3a30"
+gutter         = "#3a4a40"
+
+# Foreground colors
+foreground     = "#f0f5f0"
+foreground-dim = "#8a9a8a"
+
+# Accent colors - Christmas palette
+holly-green    = "#00563f"      # Holly green
+pine-green     = "#01796f"      # Pine/evergreen
+red            = "#c41e3a"      # Christmas red
+cranberry      = "#9b2335"      # Cranberry/deep red
+gold           = "#ffd700"      # Gold
+silver         = "#c0c0c0"      # Silver tinsel
+white          = "#fffafa"      # Snow white
+cream          = "#fffdd0"      # Cream/eggnog
+
+# Additional colors
+bg-darker      = "#080f0c"
+bg-lighter     = "#243428"
+comment        = "#5a7a5a"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "gold"
+accent-hover = "red"
+link         = "gold"
+link-hover   = "white"
+link-visited = "cranberry"
+
+# Status colors
+success = "holly-green"
+warning = "gold"
+error   = "red"
+info    = "pine-green"
+
+# Border colors
+border       = "current-line"
+border-focus = "gold"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "red"
+code-string   = "holly-green"
+code-number   = "gold"
+code-function = "pine-green"
+code-type     = "cranberry"
+code-operator = "silver"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "pine-green"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "holly-green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "gold"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "red"
+button-primary-text   = "white"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "gold"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"

@@ -1,0 +1,101 @@
+# Hanukkah - Blue, white, silver, and gold
+# A clean theme celebrating the Festival of Lights
+# License: MIT
+
+[palette]
+name = "Hanukkah"
+variant = "dark"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - deep midnight blue
+background     = "#0a1628"
+current-line   = "#142438"
+selection      = "#1e3448"
+gutter         = "#3a5068"
+
+# Foreground colors
+foreground     = "#f0f5ff"
+foreground-dim = "#8aa0c0"
+
+# Accent colors - Hanukkah palette
+blue           = "#0038b8"      # Israeli blue
+light-blue     = "#87ceeb"      # Light sky blue
+royal-blue     = "#4169e1"      # Royal blue
+white          = "#ffffff"      # Pure white
+silver         = "#c0c0c0"      # Silver
+gold           = "#ffd700"      # Menorah gold
+star           = "#f0e68c"      # Star of David gold
+navy           = "#1a2a4a"      # Deep navy
+
+# Additional colors
+bg-darker      = "#050d18"
+bg-lighter     = "#1e3050"
+comment        = "#6080a0"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "light-blue"
+accent-hover = "gold"
+link         = "light-blue"
+link-hover   = "gold"
+link-visited = "royal-blue"
+
+# Status colors
+success = "light-blue"
+warning = "gold"
+error   = "star"
+info    = "silver"
+
+# Border colors
+border       = "navy"
+border-focus = "light-blue"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "light-blue"
+code-string   = "gold"
+code-number   = "star"
+code-function = "royal-blue"
+code-type     = "light-blue"
+code-operator = "silver"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "royal-blue"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "light-blue"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "gold"
+admonition-error-bg    = "current-line"
+admonition-error-border = "star"
+
+button-primary-bg     = "blue"
+button-primary-text   = "white"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "gold"
+
+card-bg     = "current-line"
+card-border = "navy"
+card-shadow = "bg-darker"
