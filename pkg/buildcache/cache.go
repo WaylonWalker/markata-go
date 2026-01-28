@@ -36,6 +36,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"time"
 )
 
 // CacheVersion is incremented when the cache format changes.
@@ -107,6 +108,12 @@ type PostCache struct {
 
 	// FullHTMLPath is the path to the cached full page HTML file
 	FullHTMLPath string `json:"full_html_path,omitempty"`
+
+	// ModTime is the file modification time (Unix nanoseconds)
+	ModTime int64 `json:"mod_time,omitempty"`
+
+	// Slug is the post's slug for dependency tracking
+	Slug string `json:"slug,omitempty"`
 }
 
 // FeedCache stores cached metadata for a single feed.
@@ -321,6 +328,46 @@ func (c *Cache) MarkSkipped() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.skippedCount++
+}
+
+// IsFileUnchanged checks if a file's ModTime matches the cached value.
+// Returns true if the file has not changed since last build.
+// Returns false if file is not in cache or ModTime differs.
+func (c *Cache) IsFileUnchanged(sourcePath string, modTime int64) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	cached, ok := c.Posts[sourcePath]
+	if !ok {
+		return false
+	}
+	return cached.ModTime == modTime && cached.ModTime != 0
+}
+
+// GetCachedPost returns the cached post metadata if the file hasn't changed.
+// Returns nil if file is not in cache or has changed.
+func (c *Cache) GetCachedPost(sourcePath string) *PostCache {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.Posts[sourcePath]
+}
+
+// UpdateModTime updates the ModTime for a post.
+func (c *Cache) UpdateModTime(sourcePath string, modTime int64, slug string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.ModTime = modTime
+		cached.Slug = slug
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			ModTime: modTime,
+			Slug:    slug,
+		}
+	}
+	c.dirty = true
 }
 
 // Stats returns build statistics.
@@ -656,6 +703,105 @@ func (c *Cache) CacheFullHTML(sourcePath, fullHTML string) error {
 	} else {
 		c.Posts[sourcePath] = &PostCache{
 			FullHTMLPath: htmlPath,
+		}
+	}
+	c.dirty = true
+
+	return nil
+}
+
+// PostCacheDir is the subdirectory for cached parsed post JSON files.
+const PostCacheDir = "post-cache"
+
+// CachedPostData holds the serializable parts of a Post for caching.
+// This excludes rendered HTML which is cached separately.
+type CachedPostData struct {
+	Path           string            `json:"path"`
+	Content        string            `json:"content"`
+	Slug           string            `json:"slug"`
+	Href           string            `json:"href"`
+	Title          *string           `json:"title,omitempty"`
+	Date           *time.Time        `json:"date,omitempty"`
+	Published      bool              `json:"published"`
+	Draft          bool              `json:"draft"`
+	Private        bool              `json:"private"`
+	Skip           bool              `json:"skip"`
+	Tags           []string          `json:"tags,omitempty"`
+	Description    *string           `json:"description,omitempty"`
+	Template       string            `json:"template"`
+	Templates      map[string]string `json:"templates,omitempty"`
+	RawFrontmatter string            `json:"raw_frontmatter"`
+	InputHash      string            `json:"input_hash"`
+	Extra          map[string]any    `json:"extra,omitempty"`
+}
+
+// GetCachedPostData returns cached post data if ModTime matches.
+// Returns nil if post is not cached or file has changed.
+func (c *Cache) GetCachedPostData(sourcePath string, modTime int64) *CachedPostData {
+	c.mu.RLock()
+	cached, ok := c.Posts[sourcePath]
+	c.mu.RUnlock()
+
+	if !ok || cached.ModTime != modTime || cached.ModTime == 0 {
+		return nil
+	}
+
+	// Try to load from disk cache
+	cacheDir := filepath.Dir(c.path)
+	postCacheDir := filepath.Join(cacheDir, PostCacheDir)
+
+	// Use path hash as filename
+	h := sha256.Sum256([]byte(sourcePath))
+	hashPrefix := hex.EncodeToString(h[:])[:16]
+	postPath := filepath.Join(postCacheDir, hashPrefix+".json")
+
+	data, err := os.ReadFile(postPath)
+	if err != nil {
+		return nil
+	}
+
+	var postData CachedPostData
+	if err := json.Unmarshal(data, &postData); err != nil {
+		return nil
+	}
+
+	return &postData
+}
+
+// CachePostData stores parsed post data to disk.
+func (c *Cache) CachePostData(sourcePath string, modTime int64, postData *CachedPostData) error {
+	cacheDir := filepath.Dir(c.path)
+	postCacheDir := filepath.Join(cacheDir, PostCacheDir)
+
+	if err := os.MkdirAll(postCacheDir, 0o755); err != nil {
+		return fmt.Errorf("creating post cache dir: %w", err)
+	}
+
+	h := sha256.Sum256([]byte(sourcePath))
+	hashPrefix := hex.EncodeToString(h[:])[:16]
+	postPath := filepath.Join(postCacheDir, hashPrefix+".json")
+
+	data, err := json.Marshal(postData)
+	if err != nil {
+		return fmt.Errorf("marshaling post data: %w", err)
+	}
+
+	//nolint:gosec // G306: cache files need 0644 for reading
+	if err := os.WriteFile(postPath, data, 0o644); err != nil {
+		return fmt.Errorf("writing post cache: %w", err)
+	}
+
+	// Update ModTime in cache
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.ModTime = modTime
+		cached.Slug = postData.Slug
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			ModTime: modTime,
+			Slug:    postData.Slug,
 		}
 	}
 	c.dirty = true
