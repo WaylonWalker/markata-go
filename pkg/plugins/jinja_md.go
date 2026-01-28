@@ -88,7 +88,7 @@ func (p *JinjaMdPlugin) Transform(m *lifecycle.Manager) error {
 		}
 
 		// Create template context
-		ctx := templates.NewContext(post, "", toModelsConfig(config))
+		ctx := templates.NewContext(post, "", ToModelsConfig(config))
 		ctx = ctx.WithCore(m)
 		ctx = ctx.WithPosts(allPosts)
 

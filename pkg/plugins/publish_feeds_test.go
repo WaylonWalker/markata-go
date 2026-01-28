@@ -18,9 +18,9 @@ func TestPublishFeedsPlugin_Name(t *testing.T) {
 	}
 }
 
-// TestPublishFeedsPlugin_FormatRedirectsCreateDirectories tests that .md, .txt, and .json redirects
-// create slug.ext/index.html files, allowing /slug.ext URLs to serve the redirect.
-// This ensures web servers serve the redirect as HTML at /slug.ext (without trailing slash).
+// TestPublishFeedsPlugin_FormatRedirectsCreateDirectories tests that format redirects work correctly.
+// - For md/txt: Content at /slug.ext, reversed redirect from /slug/index.ext/index.html -> /slug.ext
+// - For json: Content at /slug/feed.json, forward redirect from /slug.json/index.html -> /slug/feed.json
 // Fixes: https://github.com/WaylonWalker/markata-go/issues/248
 func TestPublishFeedsPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 	tempDir := t.TempDir()
@@ -60,71 +60,103 @@ func TestPublishFeedsPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 		t.Fatalf("Write() error = %v", err)
 	}
 
-	// Test cases for each format redirect
-	tests := []struct {
-		name       string
-		dirPath    string
-		targetFile string
-	}{
-		{
-			name:       "markdown redirect creates directory",
-			dirPath:    filepath.Join(tempDir, "archive.md"),
-			targetFile: "index.md",
-		},
-		{
-			name:       "text redirect creates directory",
-			dirPath:    filepath.Join(tempDir, "archive.txt"),
-			targetFile: "index.txt",
-		},
-		{
-			name:       "json redirect creates directory",
-			dirPath:    filepath.Join(tempDir, "archive.json"),
-			targetFile: "feed.json",
-		},
-	}
+	// Test that md/txt content files exist at canonical short URLs
+	t.Run("markdown content at short URL", func(t *testing.T) {
+		contentPath := filepath.Join(tempDir, "archive.md")
+		info, err := os.Stat(contentPath)
+		if err != nil {
+			t.Fatalf("markdown content file %s not found: %v", contentPath, err)
+		}
+		if info.IsDir() {
+			t.Errorf("expected %s to be a file, but it's a directory", contentPath)
+		}
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Check that the path is a directory, not a file
-			info, err := os.Stat(tt.dirPath)
-			if err != nil {
-				t.Fatalf("redirect path %s not found: %v", tt.dirPath, err)
-			}
+	t.Run("text content at short URL", func(t *testing.T) {
+		contentPath := filepath.Join(tempDir, "archive.txt")
+		info, err := os.Stat(contentPath)
+		if err != nil {
+			t.Fatalf("text content file %s not found: %v", contentPath, err)
+		}
+		if info.IsDir() {
+			t.Errorf("expected %s to be a file, but it's a directory", contentPath)
+		}
+	})
 
-			if !info.IsDir() {
-				t.Errorf("expected %s to be a directory, but it's a file", tt.dirPath)
-			}
+	// Test that md/txt reversed redirects exist
+	t.Run("markdown reversed redirect", func(t *testing.T) {
+		// Redirect from /archive/index.md -> /archive.md
+		redirectPath := filepath.Join(tempDir, "archive", "index.md", "index.html")
+		content, err := os.ReadFile(redirectPath)
+		if err != nil {
+			t.Fatalf("markdown redirect %s not found: %v", redirectPath, err)
+		}
+		contentStr := string(content)
+		if !strings.Contains(contentStr, "<!DOCTYPE html>") {
+			t.Error("redirect file should contain DOCTYPE")
+		}
+		if !strings.Contains(contentStr, "meta http-equiv=\"refresh\"") {
+			t.Error("redirect file should contain meta refresh")
+		}
+		if !strings.Contains(contentStr, "/archive.md") {
+			t.Errorf("redirect should point to /archive.md, got: %s", contentStr)
+		}
+	})
 
-			// Check that index.html exists inside the directory
-			indexPath := filepath.Join(tt.dirPath, "index.html")
-			indexInfo, err := os.Stat(indexPath)
-			if err != nil {
-				t.Fatalf("index.html not found in %s: %v", tt.dirPath, err)
-			}
+	t.Run("text reversed redirect", func(t *testing.T) {
+		// Redirect from /archive/index.txt -> /archive.txt
+		redirectPath := filepath.Join(tempDir, "archive", "index.txt", "index.html")
+		content, err := os.ReadFile(redirectPath)
+		if err != nil {
+			t.Fatalf("text redirect %s not found: %v", redirectPath, err)
+		}
+		contentStr := string(content)
+		if !strings.Contains(contentStr, "<!DOCTYPE html>") {
+			t.Error("redirect file should contain DOCTYPE")
+		}
+		if !strings.Contains(contentStr, "meta http-equiv=\"refresh\"") {
+			t.Error("redirect file should contain meta refresh")
+		}
+		if !strings.Contains(contentStr, "/archive.txt") {
+			t.Errorf("redirect should point to /archive.txt, got: %s", contentStr)
+		}
+	})
 
-			if indexInfo.IsDir() {
-				t.Errorf("expected %s to be a file, but it's a directory", indexPath)
-			}
+	// Test that JSON still uses forward redirect (unchanged behavior)
+	t.Run("json forward redirect", func(t *testing.T) {
+		// JSON content at /archive/feed.json
+		jsonContentPath := filepath.Join(tempDir, "archive", "feed.json")
+		if _, err := os.Stat(jsonContentPath); err != nil {
+			t.Errorf("JSON content file %s not found: %v", jsonContentPath, err)
+		}
 
-			// Read content and verify it's valid redirect HTML
-			content, err := os.ReadFile(indexPath)
-			if err != nil {
-				t.Fatalf("failed to read %s: %v", indexPath, err)
-			}
+		// Redirect from /archive.json/index.html -> /archive/feed.json
+		redirectDir := filepath.Join(tempDir, "archive.json")
+		info, err := os.Stat(redirectDir)
+		if err != nil {
+			t.Fatalf("json redirect path %s not found: %v", redirectDir, err)
+		}
+		if !info.IsDir() {
+			t.Errorf("expected %s to be a directory, but it's a file", redirectDir)
+		}
 
-			contentStr := string(content)
-			if !strings.Contains(contentStr, "<!DOCTYPE html>") {
-				t.Error("redirect file should contain DOCTYPE")
-			}
-			if !strings.Contains(contentStr, "meta http-equiv=\"refresh\"") {
-				t.Error("redirect file should contain meta refresh")
-			}
-			expectedTarget := "/archive/" + tt.targetFile
-			if !strings.Contains(contentStr, expectedTarget) {
-				t.Errorf("redirect file should point to %s, got: %s", expectedTarget, contentStr)
-			}
-		})
-	}
+		indexPath := filepath.Join(redirectDir, "index.html")
+		content, err := os.ReadFile(indexPath)
+		if err != nil {
+			t.Fatalf("index.html not found in %s: %v", redirectDir, err)
+		}
+
+		contentStr := string(content)
+		if !strings.Contains(contentStr, "<!DOCTYPE html>") {
+			t.Error("redirect file should contain DOCTYPE")
+		}
+		if !strings.Contains(contentStr, "meta http-equiv=\"refresh\"") {
+			t.Error("redirect file should contain meta refresh")
+		}
+		if !strings.Contains(contentStr, "/archive/feed.json") {
+			t.Errorf("redirect file should point to /archive/feed.json, got: %s", contentStr)
+		}
+	})
 }
 
 // TestPublishFeedsPlugin_RootFeedNoRedirects tests that root feeds (empty slug) don't create redirects.

@@ -21,6 +21,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // categoryUncategorized is the default category name for feeds without a category.
@@ -30,6 +31,12 @@ const categoryUncategorized = "Uncategorized"
 const (
 	defaultBlogrollSlug = "blogroll"
 	defaultReaderSlug   = "reader"
+)
+
+// Search config default constants.
+const (
+	defaultSearchPosition    = "navbar"
+	defaultSearchPlaceholder = "Search..."
 )
 
 // blogrollHTMLTagRegex matches HTML tags for stripping.
@@ -857,8 +864,8 @@ func (p *BlogrollPlugin) categoriesToMaps(categories []*models.BlogrollCategory)
 }
 
 // configToMap converts config to a template-friendly map with essential fields.
-// This mirrors the logic from templates.go:toModelsConfig() to ensure all
-// template-accessible config fields are available in blogroll/reader pages.
+// Note: This should eventually be refactored to use ToModelsConfig + configToMap
+// from templates package for full consistency.
 func (p *BlogrollPlugin) configToMap(config *lifecycle.Config) map[string]interface{} {
 	if config == nil {
 		return nil
@@ -910,19 +917,61 @@ func (p *BlogrollPlugin) extractNavItems(extra, result map[string]interface{}) {
 }
 
 // extractSearchConfig converts search config from config.Extra.
+// Sets defaults (enabled=true, position="navbar") when no config is provided.
 func (p *BlogrollPlugin) extractSearchConfig(extra, result map[string]interface{}) {
-	search, ok := extra["search"].(models.SearchConfig)
-	if !ok {
-		return
+	// Start with defaults
+	search := models.NewSearchConfig()
+
+	// Override with config from Extra if available
+	if sc, ok := extra["search"].(models.SearchConfig); ok {
+		search = sc
 	}
+
+	// Determine enabled status (default: true)
 	searchEnabled := true
 	if search.Enabled != nil {
 		searchEnabled = *search.Enabled
 	}
+
+	// Default position to "navbar" if not set
+	position := search.Position
+	if position == "" {
+		position = defaultSearchPosition
+	}
+
+	// Default placeholder
+	placeholder := search.Placeholder
+	if placeholder == "" {
+		placeholder = defaultSearchPlaceholder
+	}
+
+	// Default show_images to true
+	showImages := true
+	if search.ShowImages != nil {
+		showImages = *search.ShowImages
+	}
+
+	// Default excerpt length
+	excerptLength := search.ExcerptLength
+	if excerptLength == 0 {
+		excerptLength = 200
+	}
+
+	// Convert pagefind config
+	bundleDir := search.Pagefind.BundleDir
+	if bundleDir == "" {
+		bundleDir = defaultBundleDir
+	}
+
 	result["search"] = map[string]interface{}{
-		"enabled":     searchEnabled,
-		"position":    search.Position,
-		"placeholder": search.Placeholder,
+		"enabled":        searchEnabled,
+		"position":       position,
+		"placeholder":    placeholder,
+		"show_images":    showImages,
+		"excerpt_length": excerptLength,
+		"pagefind": map[string]interface{}{
+			"bundle_dir": bundleDir,
+		},
 	}
 }
 
@@ -1255,53 +1304,10 @@ func (p *BlogrollPlugin) extractMiscConfigs(extra, result map[string]interface{}
 }
 
 // themeToMap converts ThemeConfig to a template-friendly map.
+// This delegates to the shared templates.ThemeToMap to ensure consistency
+// across all pages that use base.html.
 func (p *BlogrollPlugin) themeToMap(theme models.ThemeConfig) map[string]interface{} {
-	result := map[string]interface{}{
-		"name":          theme.Name,
-		"palette":       theme.Palette,
-		"palette_light": theme.PaletteLight,
-		"palette_dark":  theme.PaletteDark,
-		"custom_css":    theme.CustomCSS,
-	}
-
-	// Convert background config
-	bg := theme.Background
-	bgEnabled := false
-	if bg.Enabled != nil {
-		bgEnabled = *bg.Enabled
-	}
-
-	// Convert backgrounds array to template-friendly format
-	backgrounds := make([]map[string]interface{}, len(bg.Backgrounds))
-	for i, bgElem := range bg.Backgrounds {
-		backgrounds[i] = map[string]interface{}{
-			"html":    bgElem.HTML,
-			"z_index": bgElem.ZIndex,
-		}
-	}
-
-	result["background"] = map[string]interface{}{
-		"enabled":        bgEnabled,
-		"backgrounds":    backgrounds,
-		"scripts":        bg.Scripts,
-		"css":            bg.CSS,
-		"article_bg":     bg.ArticleBg,
-		"article_blur":   bg.ArticleBlur,
-		"article_shadow": bg.ArticleShadow,
-		"article_border": bg.ArticleBorder,
-		"article_radius": bg.ArticleRadius,
-	}
-
-	// Convert font config
-	result["font"] = map[string]interface{}{
-		"family":         theme.Font.Family,
-		"heading_family": theme.Font.HeadingFamily,
-		"code_family":    theme.Font.CodeFamily,
-		"size":           theme.Font.Size,
-		"line_height":    theme.Font.LineHeight,
-	}
-
-	return result
+	return templates.ThemeToMap(&theme)
 }
 
 // getStringFromMap safely gets a string value from a map.
