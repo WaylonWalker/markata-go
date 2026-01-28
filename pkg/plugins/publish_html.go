@@ -103,8 +103,8 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	// accessed via direct URL for review/sharing purposes.
 
 	// Determine output path
-	// Use the slug to create: output_dir/slug/index.html
-	if post.Slug == "" {
+	// Use slug to create: output_dir/slug/index.html
+	if !post.Has("_slug_explicit") && post.Slug == "" {
 		post.GenerateSlug()
 	}
 
