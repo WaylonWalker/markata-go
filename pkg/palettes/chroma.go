@@ -113,6 +113,19 @@ var paletteToChroma = map[string]string{
 	"summer-beach":   "github",     // Bright, clean - github light works
 	"hanukkah":       "nord",       // Blues - nord is blue-based
 	"diwali":         "gruvbox",    // Warm golds/reds - gruvbox has warmth
+
+	// Community GTK themes
+	"sweet":          "dracula",     // Neon candy - dracula has purple vibes
+	"whitesur-dark":  "github-dark", // macOS-style - clean like github
+	"whitesur-light": "github",      // macOS-style light
+	"graphite-dark":  "github-dark", // Neutral gray
+	"graphite-light": "github",      // Neutral gray light
+
+	// Minimalist themes
+	"pitch-black": "native",      // OLED black - native is dark
+	"ash":         "github-dark", // Dark gray
+	"white-gold":  "github",      // Light with gold - github base
+	"black-gold":  "monokai",     // Dark with gold - monokai has warm tones
 }
 
 // AvailableChromaThemes returns a list of all Chroma themes that are known to work.

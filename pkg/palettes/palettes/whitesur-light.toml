@@ -1,0 +1,104 @@
+# WhiteSur Light - macOS Big Sur inspired light theme
+# https://github.com/vinceliuice/WhiteSur-gtk-theme
+# A clean, modern theme inspired by macOS
+# License: GPL-3.0
+
+[palette]
+name = "WhiteSur Light"
+variant = "light"
+author = "vinceliuice"
+license = "GPL-3.0"
+homepage = "https://github.com/vinceliuice/WhiteSur-gtk-theme"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - macOS-style light
+background     = "#f5f5f5"
+current-line   = "#ebebeb"
+selection      = "#d4d4d4"
+gutter         = "#a0a0a0"
+
+# Foreground colors
+foreground     = "#242424"
+foreground-dim = "#606060"
+
+# Accent colors - macOS style
+blue           = "#007aff"      # Primary accent (macOS blue)
+purple         = "#af52de"      # Purple accent
+pink           = "#ff2d55"      # Pink accent
+red            = "#e9524a"      # Window close button (light variant)
+yellow         = "#f1ae1b"      # Window minimize button (light variant)
+green          = "#59c837"      # Window maximize button (light variant)
+orange         = "#ff9500"      # Orange accent
+teal           = "#5ac8fa"      # Teal accent
+gray           = "#8e8e93"      # System gray
+white          = "#ffffff"      # Pure white
+
+# Additional colors
+bg-darker      = "#ebebeb"
+bg-lighter     = "#ffffff"
+comment        = "#808080"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-lighter"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "blue"
+accent-hover = "teal"
+link         = "blue"
+link-hover   = "teal"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "teal"
+
+# Border colors
+border       = "selection"
+border-focus = "blue"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "current-line"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "pink"
+code-string   = "green"
+code-number   = "orange"
+code-function = "blue"
+code-type     = "teal"
+code-operator = "purple"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "blue"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "blue"
+button-primary-text   = "white"
+button-secondary-bg   = "selection"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-lighter"
+nav-text   = "foreground"
+nav-active = "blue"
+
+card-bg     = "bg-lighter"
+card-border = "selection"
+card-shadow = "current-line"

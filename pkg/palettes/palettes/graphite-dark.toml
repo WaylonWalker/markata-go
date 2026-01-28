@@ -1,0 +1,103 @@
+# Graphite Dark - Neutral gray minimalist theme
+# https://github.com/vinceliuice/Graphite-gtk-theme
+# A clean, neutral theme with subtle gray tones
+# License: GPL-3.0
+
+[palette]
+name = "Graphite Dark"
+variant = "dark"
+author = "vinceliuice"
+license = "GPL-3.0"
+homepage = "https://github.com/vinceliuice/Graphite-gtk-theme"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - neutral dark grays
+background     = "#212121"
+current-line   = "#2c2c2c"
+selection      = "#3c3c3c"
+gutter         = "#525252"
+
+# Foreground colors
+foreground     = "#e8e8e8"
+foreground-dim = "#909090"
+
+# Accent colors - neutral with subtle color
+gray           = "#808080"      # Primary neutral
+blue           = "#78a9ff"      # Accent blue (softer)
+teal           = "#3ddbd9"      # Teal accent
+green          = "#42be65"      # Success green
+yellow         = "#f2c744"      # Warning yellow
+orange         = "#ff832b"      # Orange accent
+red            = "#fa4d56"      # Error red
+purple         = "#be95ff"      # Purple accent
+pink           = "#ff7eb6"      # Pink accent
+
+# Additional colors
+bg-darker      = "#0f0f0f"
+bg-lighter     = "#3c3c3c"
+comment        = "#707070"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "blue"
+accent-hover = "teal"
+link         = "blue"
+link-hover   = "teal"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "teal"
+
+# Border colors
+border       = "selection"
+border-focus = "blue"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "purple"
+code-string   = "green"
+code-number   = "orange"
+code-function = "blue"
+code-type     = "teal"
+code-operator = "pink"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "blue"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "blue"
+button-primary-text   = "bg-darker"
+button-secondary-bg   = "selection"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "blue"
+
+card-bg     = "current-line"
+card-border = "selection"
+card-shadow = "bg-darker"

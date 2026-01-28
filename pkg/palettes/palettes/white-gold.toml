@@ -1,0 +1,105 @@
+# White Gold - Elegant light theme with gold accents
+# A luxurious light theme with warm gold highlights
+# Inspired by white marble and gold leaf
+# License: MIT
+
+[palette]
+name = "White Gold"
+variant = "light"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - warm whites
+background     = "#fefefe"
+current-line   = "#f8f6f0"
+selection      = "#f0ead6"
+gutter         = "#c0b8a0"
+
+# Foreground colors
+foreground     = "#2d2a24"
+foreground-dim = "#6b6560"
+
+# Accent colors - gold palette
+gold           = "#d4af37"      # Classic gold
+gold-dark      = "#b8960c"      # Darker gold
+gold-light     = "#ffd700"      # Bright gold
+bronze         = "#cd7f32"      # Bronze accent
+champagne      = "#f7e7ce"      # Champagne
+cream          = "#fffdd0"      # Cream
+white          = "#ffffff"      # Pure white
+# Supporting colors
+brown          = "#8b7355"      # Warm brown
+green          = "#6b8e23"      # Olive green
+red            = "#a52a2a"      # Brown red
+
+# Additional colors
+bg-darker      = "#f5f0e8"
+bg-lighter     = "#ffffff"
+comment        = "#908070"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-lighter"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "gold"
+accent-hover = "gold-dark"
+link         = "gold-dark"
+link-hover   = "gold"
+link-visited = "bronze"
+
+# Status colors
+success = "green"
+warning = "gold"
+error   = "red"
+info    = "gold-dark"
+
+# Border colors
+border       = "champagne"
+border-focus = "gold"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "current-line"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "gold-dark"
+code-string   = "green"
+code-number   = "bronze"
+code-function = "gold"
+code-type     = "brown"
+code-operator = "foreground-dim"
+
+admonition-note-bg     = "champagne"
+admonition-note-border = "gold"
+admonition-tip-bg      = "champagne"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "champagne"
+admonition-warn-border = "gold"
+admonition-error-bg    = "champagne"
+admonition-error-border = "red"
+
+button-primary-bg     = "gold"
+button-primary-text   = "white"
+button-secondary-bg   = "champagne"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-lighter"
+nav-text   = "foreground"
+nav-active = "gold"
+
+card-bg     = "bg-lighter"
+card-border = "champagne"
+card-shadow = "selection"
