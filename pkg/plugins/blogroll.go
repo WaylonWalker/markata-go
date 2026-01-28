@@ -33,6 +33,12 @@ const (
 	defaultReaderSlug   = "reader"
 )
 
+// Search config default constants.
+const (
+	defaultSearchPosition    = "navbar"
+	defaultSearchPlaceholder = "Search..."
+)
+
 // blogrollHTMLTagRegex matches HTML tags for stripping.
 var blogrollHTMLTagRegex = regexp.MustCompile(`<[^>]*>`)
 
@@ -930,13 +936,13 @@ func (p *BlogrollPlugin) extractSearchConfig(extra, result map[string]interface{
 	// Default position to "navbar" if not set
 	position := search.Position
 	if position == "" {
-		position = "navbar"
+		position = defaultSearchPosition
 	}
 
 	// Default placeholder
 	placeholder := search.Placeholder
 	if placeholder == "" {
-		placeholder = "Search..."
+		placeholder = defaultSearchPlaceholder
 	}
 
 	// Default show_images to true
@@ -954,7 +960,7 @@ func (p *BlogrollPlugin) extractSearchConfig(extra, result map[string]interface{
 	// Convert pagefind config
 	bundleDir := search.Pagefind.BundleDir
 	if bundleDir == "" {
-		bundleDir = "_pagefind"
+		bundleDir = defaultBundleDir
 	}
 
 	result["search"] = map[string]interface{}{
