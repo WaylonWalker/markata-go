@@ -911,19 +911,61 @@ func (p *BlogrollPlugin) extractNavItems(extra, result map[string]interface{}) {
 }
 
 // extractSearchConfig converts search config from config.Extra.
+// Sets defaults (enabled=true, position="navbar") when no config is provided.
 func (p *BlogrollPlugin) extractSearchConfig(extra, result map[string]interface{}) {
-	search, ok := extra["search"].(models.SearchConfig)
-	if !ok {
-		return
+	// Start with defaults
+	search := models.NewSearchConfig()
+
+	// Override with config from Extra if available
+	if sc, ok := extra["search"].(models.SearchConfig); ok {
+		search = sc
 	}
+
+	// Determine enabled status (default: true)
 	searchEnabled := true
 	if search.Enabled != nil {
 		searchEnabled = *search.Enabled
 	}
+
+	// Default position to "navbar" if not set
+	position := search.Position
+	if position == "" {
+		position = "navbar"
+	}
+
+	// Default placeholder
+	placeholder := search.Placeholder
+	if placeholder == "" {
+		placeholder = "Search..."
+	}
+
+	// Default show_images to true
+	showImages := true
+	if search.ShowImages != nil {
+		showImages = *search.ShowImages
+	}
+
+	// Default excerpt length
+	excerptLength := search.ExcerptLength
+	if excerptLength == 0 {
+		excerptLength = 200
+	}
+
+	// Convert pagefind config
+	bundleDir := search.Pagefind.BundleDir
+	if bundleDir == "" {
+		bundleDir = "_pagefind"
+	}
+
 	result["search"] = map[string]interface{}{
-		"enabled":     searchEnabled,
-		"position":    search.Position,
-		"placeholder": search.Placeholder,
+		"enabled":        searchEnabled,
+		"position":       position,
+		"placeholder":    placeholder,
+		"show_images":    showImages,
+		"excerpt_length": excerptLength,
+		"pagefind": map[string]interface{}{
+			"bundle_dir": bundleDir,
+		},
 	}
 }
 

@@ -459,9 +459,12 @@ func ToModelsConfig(config *lifecycle.Config) *models.Config {
 		}
 	}
 
-	// Copy Search config if available
+	// Copy Search config if available, otherwise use defaults
+	// This ensures search is enabled by default with position "navbar"
 	if search, ok := config.Extra["search"].(models.SearchConfig); ok {
 		modelsConfig.Search = search
+	} else {
+		modelsConfig.Search = models.NewSearchConfig()
 	}
 
 	// Copy Components config if available
