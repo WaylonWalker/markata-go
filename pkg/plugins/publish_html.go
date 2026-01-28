@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -119,9 +120,12 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	// Get post formats config from Extra
 	postFormats := getPostFormatsConfig(config)
 
+	// Get build cache for incremental builds
+	cache := GetBuildCache(m)
+
 	// Write HTML format (default)
 	if postFormats.IsHTMLEnabled() {
-		if err := p.writeHTMLFormat(post, config, postDir); err != nil {
+		if err := p.writeHTMLFormat(post, config, postDir, cache); err != nil {
 			return err
 		}
 	}
@@ -160,7 +164,8 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 }
 
 // writeHTMLFormat writes the standard HTML output for a post.
-func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle.Config, postDir string) error {
+// If incremental build caching is enabled, skips posts that haven't changed.
+func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle.Config, postDir string, cache *buildcache.Cache) error {
 	// Determine HTML content to write
 	var htmlContent string
 	switch {
@@ -177,9 +182,27 @@ func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle
 
 	// Write index.html
 	outputPath := filepath.Join(postDir, "index.html")
+
+	// Check if we can skip this post (incremental build)
+	if cache != nil && post.InputHash != "" {
+		if !cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
+			// Check if output file exists
+			if _, err := os.Stat(outputPath); err == nil {
+				cache.MarkSkipped()
+				return nil
+			}
+			// Output file missing, need to rebuild
+		}
+	}
+
 	//nolint:gosec // G306: HTML output files need 0644 for web serving
 	if err := os.WriteFile(outputPath, []byte(htmlContent), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", outputPath, err)
+	}
+
+	// Mark as rebuilt in cache
+	if cache != nil && post.InputHash != "" {
+		cache.MarkRebuilt(post.Path, post.InputHash, outputPath, post.Template)
 	}
 
 	return nil

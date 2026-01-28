@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -175,8 +176,8 @@ func (p *LoadPlugin) loadSequential(m *lifecycle.Manager, files []string, baseDi
 
 // parseFile parses a markdown file's content into a Post object.
 func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
-	// Parse frontmatter
-	metadata, body, err := ParseFrontmatter(content)
+	// Parse frontmatter and get raw frontmatter for hashing
+	metadata, body, rawFrontmatter, err := ParseFrontmatterWithRaw(content)
 	if err != nil {
 		return nil, err
 	}
@@ -184,6 +185,7 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 	// Create post with defaults
 	post := models.NewPost(path)
 	post.Content = body
+	post.RawFrontmatter = rawFrontmatter
 
 	// Apply metadata to post
 	if err := p.applyMetadata(post, metadata); err != nil {
@@ -198,6 +200,10 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 
 	// Generate href from slug
 	post.GenerateHref()
+
+	// Compute input hash (content + frontmatter + template)
+	// Template may be resolved later, so we use what we have now
+	post.InputHash = buildcache.ComputePostInputHash(body, rawFrontmatter, post.Template)
 
 	return post, nil
 }

@@ -82,19 +82,8 @@ func (p *LinkCollectorPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	// Build slug -> post lookup for quick resolution
-	postBySlug := make(map[string]*models.Post)
-	postByHref := make(map[string]*models.Post)
-	for _, post := range posts {
-		if post.Slug != "" {
-			postBySlug[post.Slug] = post
-		}
-		if post.Href != "" {
-			postByHref[post.Href] = post
-			// Also index without trailing slash
-			postByHref[strings.TrimSuffix(post.Href, "/")] = post
-		}
-	}
+	// Use the shared PostIndex from the lifecycle manager
+	idx := m.PostIndex()
 
 	// Collect all links from all posts
 	var allLinks []*models.Link
@@ -116,7 +105,7 @@ func (p *LinkCollectorPlugin) Render(m *lifecycle.Manager) error {
 		// Create Link objects for each href
 		var postLinks []*models.Link
 		for _, href := range hrefs {
-			link := p.createLink(post, baseURL, href, postBySlug, postByHref)
+			link := p.createLink(post, baseURL, href, idx)
 			if link != nil {
 				postLinks = append(postLinks, link)
 			}
@@ -212,7 +201,7 @@ func extractLinkText(html, href string) string {
 }
 
 // createLink creates a Link object from an href found in a post.
-func (p *LinkCollectorPlugin) createLink(sourcePost *models.Post, baseURL, href string, postBySlug, postByHref map[string]*models.Post) *models.Link {
+func (p *LinkCollectorPlugin) createLink(sourcePost *models.Post, baseURL, href string, idx *lifecycle.PostIndex) *models.Link {
 	// Resolve the href against the base URL
 	targetURL := resolveURL(baseURL, href)
 	if targetURL == "" {
@@ -233,7 +222,7 @@ func (p *LinkCollectorPlugin) createLink(sourcePost *models.Post, baseURL, href 
 	// Look up target post if internal
 	var targetPost *models.Post
 	if isInternal {
-		targetPost = p.resolveTargetPost(parsed.Path, postBySlug, postByHref)
+		targetPost = p.resolveTargetPost(parsed.Path, idx)
 	}
 
 	// Determine if self-link
@@ -310,26 +299,26 @@ func (p *LinkCollectorPlugin) isInternalLink(targetDomain string) bool {
 	return strings.EqualFold(targetDomain, p.siteDomain)
 }
 
-// resolveTargetPost looks up a post by its path/slug.
-func (p *LinkCollectorPlugin) resolveTargetPost(path string, postBySlug, postByHref map[string]*models.Post) *models.Post {
+// resolveTargetPost looks up a post by its path/slug using the shared PostIndex.
+func (p *LinkCollectorPlugin) resolveTargetPost(path string, idx *lifecycle.PostIndex) *models.Post {
 	// Normalize the path
 	path = strings.TrimSuffix(path, "/")
 	path = strings.TrimPrefix(path, "/")
 
-	// Try direct slug lookup
-	if post, ok := postBySlug[path]; ok {
+	// Try direct slug lookup (BySlug is already lowercase)
+	if post, ok := idx.BySlug[strings.ToLower(path)]; ok {
 		return post
 	}
 
-	// Try href lookup
+	// Try href lookup with trailing slash
 	hrefPath := "/" + path + "/"
-	if post, ok := postByHref[hrefPath]; ok {
+	if post, ok := idx.ByHref[hrefPath]; ok {
 		return post
 	}
 
 	// Try without trailing slash
 	hrefPathNoSlash := "/" + path
-	if post, ok := postByHref[hrefPathNoSlash]; ok {
+	if post, ok := idx.ByHref[hrefPathNoSlash]; ok {
 		return post
 	}
 

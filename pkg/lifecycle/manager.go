@@ -102,6 +102,53 @@ type Feed struct {
 	Path string
 }
 
+// PostIndex provides efficient lookups for posts by various keys.
+// This is built once after the Load stage and shared across all plugins
+// to avoid each plugin building its own lookup maps.
+type PostIndex struct {
+	// BySlug maps lowercase slug to post
+	BySlug map[string]*models.Post
+	// BySlugified maps slugified versions (spaces->hyphens, lowercase) to post
+	BySlugified map[string]*models.Post
+	// ByHref maps href path to post
+	ByHref map[string]*models.Post
+	// ByPath maps file path to post
+	ByPath map[string]*models.Post
+}
+
+// newPostIndex creates an empty PostIndex with pre-allocated maps.
+func newPostIndex(capacity int) *PostIndex {
+	return &PostIndex{
+		BySlug:      make(map[string]*models.Post, capacity),
+		BySlugified: make(map[string]*models.Post, capacity),
+		ByHref:      make(map[string]*models.Post, capacity),
+		ByPath:      make(map[string]*models.Post, capacity),
+	}
+}
+
+// LookupBySlug finds a post by slug, trying exact match first then slugified.
+// Returns nil if not found.
+func (idx *PostIndex) LookupBySlug(slug string) *models.Post {
+	if idx == nil {
+		return nil
+	}
+	// Try exact lowercase match first
+	lowerSlug := strings.ToLower(slug)
+	if post, ok := idx.BySlug[lowerSlug]; ok {
+		return post
+	}
+	// Try slugified match
+	slugified := models.Slugify(slug)
+	if post, ok := idx.BySlugified[slugified]; ok {
+		return post
+	}
+	// Also check exact map with slugified key
+	if post, ok := idx.BySlug[slugified]; ok {
+		return post
+	}
+	return nil
+}
+
 // Manager orchestrates the lifecycle stages and plugin execution.
 type Manager struct {
 	// plugins is the list of registered plugins.
@@ -112,6 +159,10 @@ type Manager struct {
 
 	// posts holds the processed posts.
 	posts []*models.Post
+
+	// postIndex provides efficient lookups by slug, href, path.
+	// Built once after Load stage, invalidated on post changes.
+	postIndex *PostIndex
 
 	// files holds discovered content file paths.
 	files []string
@@ -210,17 +261,90 @@ func (m *Manager) Posts() []*models.Post {
 }
 
 // SetPosts sets the posts slice.
+// This invalidates the post index, which will be rebuilt on next access.
 func (m *Manager) SetPosts(posts []*models.Post) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.posts = posts
+	m.postIndex = nil // Invalidate index
 }
 
 // AddPost adds a post to the posts slice.
+// This invalidates the post index, which will be rebuilt on next access.
 func (m *Manager) AddPost(post *models.Post) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.posts = append(m.posts, post)
+	m.postIndex = nil // Invalidate index
+}
+
+// PostIndex returns the shared post lookup index.
+// The index is built lazily on first access and cached.
+// It is automatically invalidated when posts are modified via SetPosts/AddPost.
+func (m *Manager) PostIndex() *PostIndex {
+	m.mu.RLock()
+	if m.postIndex != nil {
+		defer m.mu.RUnlock()
+		return m.postIndex
+	}
+	m.mu.RUnlock()
+
+	// Build index under write lock
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Double-check after acquiring write lock
+	if m.postIndex != nil {
+		return m.postIndex
+	}
+
+	m.postIndex = m.buildPostIndex()
+	return m.postIndex
+}
+
+// buildPostIndex creates the post lookup index from current posts.
+// Must be called with m.mu held for writing.
+func (m *Manager) buildPostIndex() *PostIndex {
+	idx := newPostIndex(len(m.posts) * 2) // Extra capacity for aliases
+
+	for _, post := range m.posts {
+		if post.Slug != "" {
+			lowerSlug := strings.ToLower(post.Slug)
+			idx.BySlug[lowerSlug] = post
+
+			// Also add slugified version if different
+			slugified := models.Slugify(post.Slug)
+			if slugified != lowerSlug {
+				idx.BySlugified[slugified] = post
+			}
+		}
+
+		if post.Href != "" {
+			idx.ByHref[post.Href] = post
+		}
+
+		if post.Path != "" {
+			idx.ByPath[post.Path] = post
+		}
+
+		// Register aliases
+		if aliases, ok := post.Extra["aliases"].([]interface{}); ok {
+			for _, alias := range aliases {
+				if aliasStr, ok := alias.(string); ok {
+					normalizedAlias := strings.ToLower(aliasStr)
+					if _, exists := idx.BySlug[normalizedAlias]; !exists {
+						idx.BySlug[normalizedAlias] = post
+					}
+					slugifiedAlias := models.Slugify(aliasStr)
+					if _, exists := idx.BySlugified[slugifiedAlias]; !exists {
+						idx.BySlugified[slugifiedAlias] = post
+					}
+				}
+			}
+		}
+	}
+
+	return idx
 }
 
 // Files returns a copy of the discovered file paths.
