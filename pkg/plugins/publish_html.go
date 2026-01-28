@@ -250,7 +250,7 @@ func (p *PublishHTMLPlugin) buildFormatContent(post *models.Post, config *lifecy
 	// If we have an engine and the template exists, render it
 	if engine != nil && templateName != "" && engine.TemplateExists(templateName) {
 		// Create template context
-		ctx := templates.NewContext(post, post.Content, toModelsConfig(config))
+		ctx := templates.NewContext(post, post.Content, ToModelsConfig(config))
 		ctx = ctx.WithCore(m)
 
 		// Render the template
@@ -344,7 +344,7 @@ func (p *PublishHTMLPlugin) renderTextContent(post *models.Post, config *lifecyc
 	templateName := p.resolveTextTemplate(post, engine)
 
 	// Build template context
-	ctx := templates.NewContext(post, post.Content, toModelsConfig(config))
+	ctx := templates.NewContext(post, post.Content, ToModelsConfig(config))
 
 	// Render the template
 	result, err := engine.Render(templateName, ctx)

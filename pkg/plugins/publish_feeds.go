@@ -19,6 +19,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
+	"github.com/WaylonWalker/markata-go/pkg/themes"
 )
 
 // PublishFeedsPlugin writes feeds to multiple output formats during the write stage.
@@ -317,8 +318,8 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(fc, config, feedDir) }},
 		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(fc, config, feedDir) }},
 		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(fc, config, feedDir) }, ext: "json", targetFile: "feed.json"},
-		{name: "Markdown", enabled: fc.Formats.Markdown, publish: func() error { return p.publishMarkdown(fc, feedDir) }, ext: "md", targetFile: "index.md"},
-		{name: "Text", enabled: fc.Formats.Text, publish: func() error { return p.publishText(fc, feedDir) }, ext: "txt", targetFile: "index.txt"},
+		{name: "Markdown", enabled: fc.Formats.Markdown, publish: func() error { return p.publishMarkdown(fc, fc.Slug, outputDir) }, ext: "md", targetFile: ""},
+		{name: "Text", enabled: fc.Formats.Text, publish: func() error { return p.publishText(fc, fc.Slug, outputDir) }, ext: "txt", targetFile: ""},
 		{name: "Sitemap", enabled: fc.Formats.Sitemap, publish: func() error { return p.publishSitemap(fc, config, feedDir) }},
 	}
 
@@ -367,8 +368,16 @@ func (p *PublishFeedsPlugin) publishFormat(pub feedFormatPublisher, slug, output
 
 	// Write redirect for non-root feeds with redirect configuration
 	if slug != "" && pub.ext != "" {
-		if err := p.writeFeedFormatRedirect(slug, pub.ext, pub.targetFile, outputDir); err != nil {
-			return fmt.Errorf("writing %s redirect: %w", pub.name, err)
+		if pub.targetFile == "" {
+			// Reversed redirect: /slug/index.ext -> /slug.ext (for Markdown/Text)
+			if err := p.writeReversedFeedRedirect(slug, pub.ext, outputDir); err != nil {
+				return fmt.Errorf("writing %s redirect: %w", pub.name, err)
+			}
+		} else {
+			// Forward redirect: /slug.ext -> /slug/targetFile (for JSON)
+			if err := p.writeFeedFormatRedirect(slug, pub.ext, pub.targetFile, outputDir); err != nil {
+				return fmt.Errorf("writing %s redirect: %w", pub.name, err)
+			}
 		}
 	}
 
@@ -431,29 +440,9 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 	// Try to use pongo2 template engine with feed.html template (cached)
 	engine, err := p.getOrCreateEngine(templatesDir, themeName)
 	if err == nil && engine.TemplateExists("feed.html") {
-		// Build config for template context
-		modelsConfig := &models.Config{
-			OutputDir:   config.OutputDir,
-			Title:       getStringFromExtra(config.Extra, "title"),
-			URL:         getStringFromExtra(config.Extra, "url"),
-			Description: getStringFromExtra(config.Extra, "description"),
-			Author:      getStringFromExtra(config.Extra, "author"),
-		}
-
-		// Copy nav items if available
-		if navItems, ok := config.Extra["nav"].([]models.NavItem); ok {
-			modelsConfig.Nav = navItems
-		}
-
-		// Copy footer config if available
-		if footer, ok := config.Extra["footer"].(models.FooterConfig); ok {
-			modelsConfig.Footer = footer
-		}
-
-		// Copy theme config for background-css partial
-		if theme, ok := config.Extra["theme"].(models.ThemeConfig); ok {
-			modelsConfig.Theme = theme
-		}
+		// Use shared config conversion to ensure all fields are available
+		// (search, head, components, theme, etc. - required by base.html)
+		modelsConfig := ToModelsConfig(config)
 
 		// Create feed context
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
@@ -600,7 +589,9 @@ func (p *PublishFeedsPlugin) publishJSON(fc *models.FeedConfig, config *lifecycl
 }
 
 // publishMarkdown generates and writes a Markdown feed listing.
-func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, feedDir string) error {
+// For non-root feeds, content is written to /slug.md (canonical URL).
+// For root feeds (slug=""), content is written to /index.md.
+func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, slug, outputDir string) error {
 	var sb strings.Builder
 
 	// Title
@@ -631,12 +622,20 @@ func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, feedDir stri
 		sb.WriteString("\n")
 	}
 
-	mdPath := filepath.Join(feedDir, "index.md")
+	// Determine output path: /slug.md for non-root, /index.md for root
+	var mdPath string
+	if slug == "" {
+		mdPath = filepath.Join(outputDir, "index.md")
+	} else {
+		mdPath = filepath.Join(outputDir, slug+".md")
+	}
 	return p.safeWriteFile(mdPath, []byte(sb.String()))
 }
 
 // publishText generates and writes a plain text feed listing.
-func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, feedDir string) error {
+// For non-root feeds, content is written to /slug.txt (canonical URL).
+// For root feeds (slug=""), content is written to /index.txt.
+func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, slug, outputDir string) error {
 	var sb strings.Builder
 
 	// Title
@@ -667,7 +666,13 @@ func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, feedDir string) 
 		sb.WriteString("  " + post.Href + "\n\n")
 	}
 
-	txtPath := filepath.Join(feedDir, "index.txt")
+	// Determine output path: /slug.txt for non-root, /index.txt for root
+	var txtPath string
+	if slug == "" {
+		txtPath = filepath.Join(outputDir, "index.txt")
+	} else {
+		txtPath = filepath.Join(outputDir, slug+".txt")
+	}
 	return p.safeWriteFile(txtPath, []byte(sb.String()))
 }
 
@@ -781,9 +786,58 @@ func (p *PublishFeedsPlugin) writeFeedFormatRedirect(slug, ext, targetFile, outp
 	return nil
 }
 
+// writeReversedFeedRedirect writes a redirect from /slug/index.ext to /slug.ext.
+// This is the "reversed" direction from writeFeedFormatRedirect - content is at the
+// short URL (/slug.ext) and the redirect points there from the long URL (/slug/index.ext).
+//
+// Creates a file at /slug/index.ext/index.html, which allows the URL /slug/index.ext
+// (without trailing slash) to serve the HTML redirect on most static hosts.
+//
+// For example, requesting /archive/index.md will serve the redirect HTML that
+// points to /archive.md where the actual markdown content lives.
+func (p *PublishFeedsPlugin) writeReversedFeedRedirect(slug, ext, outputDir string) error {
+	// Create redirect HTML that points to the canonical short URL
+	targetURL := fmt.Sprintf("/%s.%s", slug, ext)
+	redirectHTML := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="0; url=%s">
+<link rel="canonical" href="%s">
+<title>Redirecting...</title>
+</head>
+<body>
+<p>Redirecting to <a href="%s">%s</a>...</p>
+</body>
+</html>`, targetURL, targetURL, targetURL, targetURL)
+
+	// Create directory at /slug/index.ext/ (e.g., /archive/index.md/)
+	redirectDir := filepath.Join(outputDir, slug, "index."+ext)
+	if err := os.MkdirAll(redirectDir, 0o755); err != nil {
+		return fmt.Errorf("creating redirect directory %s: %w", redirectDir, err)
+	}
+
+	// Write index.html inside the directory
+	// This allows /slug/index.ext to be served without trailing slash on most static hosts
+	outputPath := filepath.Join(redirectDir, "index.html")
+	//nolint:gosec // G306: Output files need 0644 for web serving
+	if err := os.WriteFile(outputPath, []byte(redirectHTML), 0o644); err != nil {
+		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
+	}
+
+	return nil
+}
+
 // copyXSLStylesheets copies XSL stylesheets to the output directory for styled RSS/Atom feeds.
-// It searches for XSL files in the templates directory and copies them to the output root.
+// It searches for XSL files in the following order:
+// 1. User's templates directory (if configured)
+// 2. Embedded default theme templates (fallback)
 func (p *PublishFeedsPlugin) copyXSLStylesheets(config *lifecycle.Config, outputDir string) error {
+	// Ensure output directory exists
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return fmt.Errorf("creating output directory: %w", err)
+	}
+
 	// Get templates directory from config
 	templatesDir := PluginNameTemplates
 	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
@@ -794,20 +848,26 @@ func (p *PublishFeedsPlugin) copyXSLStylesheets(config *lifecycle.Config, output
 	xslFiles := []string{"rss.xsl", "atom.xsl"}
 
 	for _, xslFile := range xslFiles {
+		var content []byte
+		var err error
+
+		// First, try to read from user's templates directory
 		srcPath := filepath.Join(templatesDir, xslFile)
-
-		// Check if the XSL file exists
-		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			// XSL file doesn't exist, skip it (not an error, just not configured)
-			continue
-		} else if err != nil {
-			return fmt.Errorf("checking XSL file %s: %w", srcPath, err)
-		}
-
-		// Read the XSL file
-		content, err := os.ReadFile(srcPath)
-		if err != nil {
-			return fmt.Errorf("reading XSL file %s: %w", srcPath, err)
+		if _, statErr := os.Stat(srcPath); statErr == nil {
+			// User has their own XSL file, use it
+			content, err = os.ReadFile(srcPath)
+			if err != nil {
+				return fmt.Errorf("reading XSL file %s: %w", srcPath, err)
+			}
+		} else if os.IsNotExist(statErr) {
+			// No user file, try embedded templates as fallback
+			content, err = themes.ReadTemplate(xslFile)
+			if err != nil {
+				// XSL file doesn't exist in embedded templates either, skip it
+				continue
+			}
+		} else {
+			return fmt.Errorf("checking XSL file %s: %w", srcPath, statErr)
 		}
 
 		// Write to output directory

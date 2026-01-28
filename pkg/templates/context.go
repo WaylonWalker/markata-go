@@ -241,7 +241,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 	headerMap := headerToMap(&c.Header)
 
 	// Convert theme to map
-	themeMap := themeToMap(&c.Theme)
+	themeMap := ThemeToMap(&c.Theme)
 
 	result := map[string]interface{}{
 		"output_dir":    c.OutputDir,
@@ -704,15 +704,16 @@ func headerToMap(h *models.HeaderLayoutConfig) map[string]interface{} {
 	return result
 }
 
-// themeToMap converts a ThemeConfig to a map for template access.
-func themeToMap(t *models.ThemeConfig) map[string]interface{} {
+// ThemeToMap converts a ThemeConfig to a map for template access.
+// This is exported for use by plugins that need consistent theme config rendering.
+func ThemeToMap(t *models.ThemeConfig) map[string]interface{} {
 	if t == nil {
 		return nil
 	}
 
-	backgroundMap := backgroundToMap(&t.Background)
-	fontMap := fontToMap(&t.Font)
-	switcherMap := switcherToMap(&t.Switcher)
+	backgroundMap := BackgroundToMap(&t.Background)
+	fontMap := FontToMap(&t.Font)
+	switcherMap := SwitcherToMap(&t.Switcher)
 
 	return map[string]interface{}{
 		"name":          t.Name,
@@ -727,8 +728,9 @@ func themeToMap(t *models.ThemeConfig) map[string]interface{} {
 	}
 }
 
-// switcherToMap converts a ThemeSwitcherConfig to a map for template access.
-func switcherToMap(s *models.ThemeSwitcherConfig) map[string]interface{} {
+// SwitcherToMap converts a ThemeSwitcherConfig to a map for template access.
+// This is exported for use by plugins that need consistent switcher config rendering.
+func SwitcherToMap(s *models.ThemeSwitcherConfig) map[string]interface{} {
 	if s == nil {
 		return map[string]interface{}{
 			"enabled":     false,
@@ -746,8 +748,9 @@ func switcherToMap(s *models.ThemeSwitcherConfig) map[string]interface{} {
 	}
 }
 
-// backgroundToMap converts a BackgroundConfig to a map for template access.
-func backgroundToMap(b *models.BackgroundConfig) map[string]interface{} {
+// BackgroundToMap converts a BackgroundConfig to a map for template access.
+// This is exported for use by plugins that need consistent background config rendering.
+func BackgroundToMap(b *models.BackgroundConfig) map[string]interface{} {
 	if b == nil {
 		return nil
 	}
@@ -781,8 +784,9 @@ func backgroundToMap(b *models.BackgroundConfig) map[string]interface{} {
 	return result
 }
 
-// fontToMap converts a FontConfig to a map for template access.
-func fontToMap(f *models.FontConfig) map[string]interface{} {
+// FontToMap converts a FontConfig to a map for template access.
+// This is exported for use by plugins that need consistent font config rendering.
+func FontToMap(f *models.FontConfig) map[string]interface{} {
 	if f == nil {
 		return nil
 	}
