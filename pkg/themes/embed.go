@@ -8,7 +8,7 @@ import (
 	"embed"
 	"io/fs"
 	"path"
-	"path/filepath"
+	"strings"
 )
 
 //go:embed all:default
@@ -56,15 +56,15 @@ func ReadStatic(name string) ([]byte, error) {
 // ListTemplates returns all template files in the default theme.
 func ListTemplates() ([]string, error) {
 	var templates []string
-	err := fs.WalkDir(defaultTheme, "default/templates", func(path string, d fs.DirEntry, err error) error {
+	const prefix = "default/templates/"
+	err := fs.WalkDir(defaultTheme, "default/templates", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if !d.IsDir() {
-			// Strip the prefix to get relative path
-			rel, relErr := filepath.Rel("default/templates", path)
-			if relErr == nil {
-				templates = append(templates, rel)
+			// Strip the prefix to get relative path (embedded FS always uses forward slashes)
+			if strings.HasPrefix(p, prefix) {
+				templates = append(templates, p[len(prefix):])
 			}
 		}
 		return nil
@@ -75,15 +75,15 @@ func ListTemplates() ([]string, error) {
 // ListStatic returns all static files in the default theme.
 func ListStatic() ([]string, error) {
 	var files []string
-	err := fs.WalkDir(defaultTheme, "default/static", func(path string, d fs.DirEntry, err error) error {
+	const prefix = "default/static/"
+	err := fs.WalkDir(defaultTheme, "default/static", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if !d.IsDir() {
-			// Strip the prefix to get relative path
-			rel, relErr := filepath.Rel("default/static", path)
-			if relErr == nil {
-				files = append(files, rel)
+			// Strip the prefix to get relative path (embedded FS always uses forward slashes)
+			if strings.HasPrefix(p, prefix) {
+				files = append(files, p[len(prefix):])
 			}
 		}
 		return nil
