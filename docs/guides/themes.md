@@ -187,19 +187,38 @@ The site automatically switches based on the visitor's system settings.
 
 ## Multi-Palette Theme Switcher
 
-Allow visitors to choose any available color palette through a dropdown menu in the header.
+Allow visitors to choose any available color palette at runtime through an interactive UI in the header. The switcher provides:
+
+- **Dark/Light toggle**: A sun/moon button to instantly switch between dark and light mode
+- **Palette family selector**: A dropdown to choose from palette families (Catppuccin, Gruvbox, Rose Pine, etc.)
+- **Smart variant selection**: Automatically picks the appropriate light/dark variant based on current mode
+- **Keyboard shortcuts**: `]` next family, `[` previous family, `\` toggle dark/light mode
+- **Toast notifications**: Visual feedback when cycling through palettes
 
 ### Enabling the Switcher
 
 ```toml
 [markata-go.theme]
-palette = "catppuccin"  # Default palette
+palette = "rose-pine"  # Default palette
 
 [markata-go.theme.switcher]
 enabled = true
+include_all = true  # Include all 70+ built-in palettes
 ```
 
-When enabled, a dropdown appears in the site header allowing visitors to select from all available palettes. Their selection is persisted in localStorage.
+When enabled, the switcher UI appears in the site header. Visitor selections are persisted in localStorage and restored on return visits.
+
+### Keyboard Shortcuts
+
+The palette switcher includes convenient keyboard shortcuts:
+
+| Key | Action |
+|-----|--------|
+| `]` | Switch to next palette family |
+| `[` | Switch to previous palette family |
+| `\` | Toggle dark/light mode |
+
+These shortcuts work anywhere on the page and show a toast notification with the new palette name.
 
 ### Filtering Palettes
 
@@ -227,46 +246,77 @@ include = ["catppuccin-mocha", "catppuccin-latte", "nord-dark", "nord-light"]
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `enabled` | boolean | `false` | Show the palette switcher dropdown |
+| `enabled` | boolean | `false` | Show the palette switcher UI |
 | `include_all` | boolean | `true` | Include all discovered palettes |
 | `include` | array | `[]` | Palettes to include (when `include_all` is false) |
 | `exclude` | array | `[]` | Palettes to exclude (when `include_all` is true) |
-| `position` | string | `"header"` | Where to place the switcher: "header" or "footer" |
+| `position` | string | `"header"` | Where to place the switcher |
 
 ### How It Works
 
-1. **CSS Generation**: When the switcher is enabled, markata-go generates CSS for all available palettes using `[data-palette="palette-name"]` selectors.
+1. **Palette Manifest**: When the switcher is enabled, markata-go generates a JSON manifest of all available palettes embedded in `variables.css` as a CSS custom property (`--palette-manifest`).
 
-2. **JavaScript**: The `theme-switcher.js` script reads the palette manifest from a CSS custom property and builds the dropdown UI.
+2. **CSS Variables**: Each palette's colors are generated as CSS custom properties using `[data-palette="palette-name"]` selectors. When a user selects a palette, a data attribute is set on the `<html>` element.
 
-3. **Persistence**: Selected palette is saved to `localStorage.palette` and restored on page load.
+3. **JavaScript UI**: The `palette-switcher.js` script (loaded conditionally when enabled):
+   - Reads the palette manifest from CSS
+   - Groups palettes into "families" (e.g., all Catppuccin variants)
+   - Creates the sun/moon toggle and family dropdown
+   - Handles keyboard shortcuts and persistence
 
-4. **Light/Dark Integration**: The palette switcher works alongside the existing light/dark toggle. When a user selects a palette, that palette's colors are applied. The light/dark toggle still works for the default theme when no custom palette is selected.
+4. **Persistence**: Selected palette family and dark/light preference are saved to `localStorage` and restored on page load.
+
+5. **Smart Variants**: When you select a family like "Catppuccin", the switcher automatically chooses `catppuccin-latte` in light mode and `catppuccin-mocha` in dark mode.
 
 ### Styling the Switcher
 
-The switcher dropdown can be styled via CSS:
+The switcher UI uses CSS custom properties for easy customization:
 
 ```css
 /* In your custom CSS */
-.palette-switcher {
-  /* Container styles */
-}
+:root {
+  /* Toast notifications */
+  --toast-bg: var(--color-surface);
+  --toast-text: var(--color-text);
+  --toast-border: var(--color-border);
 
-.palette-switcher-label {
-  /* Label styles */
-}
+  /* Mode toggle button */
+  --toggle-size: 2rem;
+  --toggle-bg: var(--color-surface);
+  --toggle-hover-bg: var(--color-surface-hover);
 
-.palette-switcher-select {
-  /* Dropdown styles */
+  /* Family dropdown */
+  --dropdown-bg: var(--color-surface);
+  --dropdown-border: var(--color-border);
 }
 ```
 
-Or hide the label on mobile:
+The switcher container can also be styled:
+
+```css
+.palette-switcher {
+  /* Container styles */
+  gap: 0.5rem;
+}
+
+.palette-family-select {
+  /* Dropdown styles */
+  min-width: 120px;
+}
+
+.mode-toggle {
+  /* Sun/moon button styles */
+  border-radius: 50%;
+}
+```
+
+### Hide on Mobile
+
+To hide the family dropdown on mobile (keeping only the dark/light toggle):
 
 ```css
 @media (max-width: 768px) {
-  .palette-switcher-label {
+  .palette-family-select {
     display: none;
   }
 }
@@ -277,30 +327,38 @@ Or hide the label on mobile:
 The switcher exposes a JavaScript API for programmatic control:
 
 ```javascript
-// Get available palettes
-const palettes = window.markata.paletteSwitcher.getPalettes();
+// Get the current palette info
+const current = PaletteSwitcher.getCurrentPalette();
+// { family: "catppuccin", variant: "mocha", isDark: true }
 
-// Get current palette
-const current = window.markata.paletteSwitcher.getCurrent();
+// Set a specific palette
+PaletteSwitcher.setPalette("rose-pine-moon");
 
-// Set palette
-window.markata.paletteSwitcher.set('catppuccin-mocha');
+// Toggle dark/light mode
+PaletteSwitcher.toggleDarkMode();
 
-// Clear selection (use default)
-window.markata.paletteSwitcher.clear();
+// Get current dark mode state
+const isDark = PaletteSwitcher.isDarkMode();
 
-// Get default palettes
-const defaults = window.markata.paletteSwitcher.getDefaults();
-// { light: 'catppuccin-latte', dark: 'catppuccin-mocha' }
+// Get all palette families
+const families = PaletteSwitcher.getFamilies();
+// ["catppuccin", "gruvbox", "rose-pine", ...]
 ```
 
 ### Event Handling
 
-Listen for palette changes:
+Listen for palette and mode changes:
 
 ```javascript
-window.addEventListener('palette-change', (e) => {
-  console.log('Palette changed to:', e.detail.palette);
+// Palette family changed
+window.addEventListener('palette-family-change', (e) => {
+  console.log('Family:', e.detail.family);
+  console.log('Palette:', e.detail.palette);
+});
+
+// Dark/light mode toggled
+window.addEventListener('dark-mode-change', (e) => {
+  console.log('Dark mode:', e.detail.isDark);
 });
 ```
 

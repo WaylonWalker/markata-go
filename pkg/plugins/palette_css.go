@@ -194,13 +194,15 @@ func (p *PaletteCSSPlugin) generateMultiPaletteCSS(loader *palettes.Loader, extr
 	if err != nil {
 		manifestJSON = []byte("[]")
 	}
+	// Escape single quotes in the JSON for CSS single-quoted string
+	escapedManifest := strings.ReplaceAll(string(manifestJSON), "'", "\\'")
 
 	// Write non-color variables and palette manifest in :root
 	buf.WriteString("/* Global configuration and non-color variables */\n")
 	buf.WriteString(":root {\n")
 	buf.WriteString(fmt.Sprintf("  --palette-light: %q;\n", lightName))
 	buf.WriteString(fmt.Sprintf("  --palette-dark: %q;\n", darkName))
-	buf.WriteString(fmt.Sprintf("  --palette-manifest: '%s';\n", string(manifestJSON)))
+	buf.WriteString(fmt.Sprintf("  --palette-manifest: '%s';\n", escapedManifest))
 	buf.WriteString("  --palette-switcher-enabled: 1;\n")
 	p.writeNonColorVariables(&buf, "  ")
 	buf.WriteString("}\n\n")
@@ -229,23 +231,25 @@ func (p *PaletteCSSPlugin) generateMultiPaletteCSS(loader *palettes.Loader, extr
 	}
 
 	// Generate default light mode (using configured light palette)
+	// Only applies when no specific data-palette is set
 	if lightName != "" {
 		lightPalette, err := loader.Load(lightName)
 		if err == nil {
 			buf.WriteString(fmt.Sprintf("/* Default light mode - %s */\n", lightName))
-			buf.WriteString(":root,\n")
-			buf.WriteString("[data-theme=\"light\"] {\n")
+			buf.WriteString(":root:not([data-palette]),\n")
+			buf.WriteString("[data-theme=\"light\"]:not([data-palette]) {\n")
 			p.writePaletteVariables(&buf, lightPalette)
 			buf.WriteString("}\n\n")
 		}
 	}
 
 	// Generate default dark mode (using configured dark palette)
+	// Only applies when no specific data-palette is set
 	if darkName != "" {
 		darkPalette, err := loader.Load(darkName)
 		if err == nil {
 			buf.WriteString(fmt.Sprintf("/* Default dark mode - %s */\n", darkName))
-			buf.WriteString("[data-theme=\"dark\"] {\n")
+			buf.WriteString("[data-theme=\"dark\"]:not([data-palette]) {\n")
 			p.writePaletteVariables(&buf, darkPalette)
 			buf.WriteString("}\n\n")
 

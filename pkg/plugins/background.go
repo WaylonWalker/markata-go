@@ -41,6 +41,13 @@ func (p *BackgroundPlugin) Configure(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	// Handle parsed ThemeConfig struct
+	if tc, ok := themeConfig.(models.ThemeConfig); ok {
+		p.config = tc.Background
+		return p.validate()
+	}
+
+	// Handle map configuration (raw TOML)
 	themeMap, ok := themeConfig.(map[string]interface{})
 	if !ok {
 		return nil

@@ -13,12 +13,29 @@
   <!-- Theme CSS -->
   <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
   <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset }}">
   <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
   <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
   <link rel="stylesheet" href="/css/chroma.css">
+
+  <!-- Palette Switcher CSS (when enabled) -->
   {% if config.theme.switcher.enabled %}
-  <link rel="stylesheet" href="{{ 'css/theme-switcher.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset }}">
   {% endif %}
+
+  <!-- Conditional CSS Loading -->
+  <script>
+    // GLightbox CSS - only load if glightbox elements will exist
+    {% if config.Extra.glightbox_enabled %}
+    // Check synchronously during page load
+    if (document.documentElement.innerHTML.includes('glightbox')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '{% if config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/css/glightbox.min.css{% endif %}';
+      document.head.appendChild(link);
+    }
+    {% endif %}
+  </script>
 
   <!-- CSS variable overrides from theme config -->
   {% if config.theme.variables %}
@@ -93,24 +110,95 @@
 <body>
   {% include "partials/background-decorations.html" %}
   {% block header %}
-  {% include "partials/header.html" %}
+  <header class="site-header">
+    <div class="container">
+      <a href="/" class="site-title">{{ config.title | default:'My Site' }}</a>
+      {% include "components/nav.html" %}
+    </div>
+  </header>
   {% endblock %}
 
-  <main>
-    {% block content %}{% endblock %}
-  </main>
+  <div class="page-wrapper">
+    {# Left sidebar for feed navigation (if enabled) #}
+    {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
+    {% include "components/feed_sidebar.html" %}
+    {% endif %}
+
+    <main class="main-content">
+      {% block content %}{% endblock %}
+    </main>
+
+    {# Right sidebar for document TOC (if enabled) #}
+    {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'right' %}
+    {% include "components/doc_sidebar.html" %}
+    {% endif %}
+  </div>
 
   {% block footer %}
-  {% include "partials/footer.html" %}
+  {% include "components/footer.html" %}
   {% endblock %}
 
+  {% block htmx %}{% endblock %}
   {% block scripts %}{% endblock %}
 
-  <!-- Theme Toggle Script (always loaded) -->
-  <script src="{{ 'js/layout.js' | theme_asset }}"></script>
+  <!-- Conditional Script Loading: Only load when needed -->
+  <script>
+    // Wikilink Hover Tooltips - only load if wikilinks with data-title exist
+    if (document.querySelector('.wikilink[data-title]')) {
+      const script = document.createElement('script');
+      script.src = '{{ 'js/tooltips.js' | theme_asset }}';
+      script.defer = true;
+      document.body.appendChild(script);
+    }
+
+    // Mention Cards - only load if mention links exist
+    if (document.querySelector('a.mention')) {
+      const mentionScript = document.createElement('script');
+      mentionScript.src = '{{ 'js/mention-cards.js' | theme_asset }}';
+      mentionScript.defer = true;
+      document.body.appendChild(mentionScript);
+    }
+
+    // Keyboard Shortcuts - only load if search or shortcuts modal exist
+    if (document.querySelector('#pagefind-search, #shortcuts-modal, [type="search"]')) {
+      const shortcutsScript = document.createElement('script');
+      shortcutsScript.src = '{{ 'js/shortcuts.js' | theme_asset }}';
+      shortcutsScript.defer = true;
+      document.body.appendChild(shortcutsScript);
+    }
+
+    // Pagination (JS mode) - only load if JS pagination element exists
+    if (document.querySelector('.pagination-js')) {
+      const paginationScript = document.createElement('script');
+      paginationScript.src = '{{ 'js/pagination.js' | theme_asset }}';
+      paginationScript.defer = true;
+      document.body.appendChild(paginationScript);
+    }
+
+    // GLightbox - only load if glightbox elements exist
+    {% if config.Extra.glightbox_enabled %}
+    if (document.querySelector('.glightbox')) {
+      const glightboxScript = document.createElement('script');
+      glightboxScript.src = '{% if config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js{% else %}/js/glightbox.min.js{% endif %}';
+      glightboxScript.onload = function() {
+        const lightbox = GLightbox({
+          selector: '{{ config.Extra.glightbox_options.selector | default:".glightbox" }}',
+          openEffect: '{{ config.Extra.glightbox_options.openEffect | default:"zoom" }}',
+          closeEffect: '{{ config.Extra.glightbox_options.closeEffect | default:"zoom" }}',
+          slideEffect: '{{ config.Extra.glightbox_options.slideEffect | default:"slide" }}',
+          touchNavigation: {{ config.Extra.glightbox_options.touchNavigation | default:true | yesno:"true,false" }},
+          loop: {{ config.Extra.glightbox_options.loop | default:false | yesno:"true,false" }},
+          draggable: {{ config.Extra.glightbox_options.draggable | default:true | yesno:"true,false" }}
+        });
+      };
+      document.body.appendChild(glightboxScript);
+    }
+    {% endif %}
+  </script>
+
+  <!-- Palette Switcher JS (when enabled) -->
   {% if config.theme.switcher.enabled %}
-  <!-- Palette Switcher Script (loaded when switcher enabled) -->
-  <script src="{{ 'js/theme-switcher.js' | theme_asset }}"></script>
+  <script src="{{ 'js/palette-switcher.js' | theme_asset }}" defer></script>
   {% endif %}
 
   {% include "partials/background-scripts.html" %}

@@ -712,6 +712,7 @@ func themeToMap(t *models.ThemeConfig) map[string]interface{} {
 
 	backgroundMap := backgroundToMap(&t.Background)
 	fontMap := fontToMap(&t.Font)
+	switcherMap := switcherToMap(&t.Switcher)
 
 	return map[string]interface{}{
 		"name":          t.Name,
@@ -722,6 +723,26 @@ func themeToMap(t *models.ThemeConfig) map[string]interface{} {
 		"custom_css":    t.CustomCSS,
 		"background":    backgroundMap,
 		"font":          fontMap,
+		"switcher":      switcherMap,
+	}
+}
+
+// switcherToMap converts a ThemeSwitcherConfig to a map for template access.
+func switcherToMap(s *models.ThemeSwitcherConfig) map[string]interface{} {
+	if s == nil {
+		return map[string]interface{}{
+			"enabled":     false,
+			"include_all": true,
+			"position":    "header",
+		}
+	}
+
+	return map[string]interface{}{
+		"enabled":     s.IsEnabled(),
+		"include_all": s.IsIncludeAll(),
+		"include":     s.Include,
+		"exclude":     s.Exclude,
+		"position":    s.Position,
 	}
 }
 

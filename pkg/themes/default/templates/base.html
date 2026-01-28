@@ -18,6 +18,11 @@
   <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
   <link rel="stylesheet" href="/css/chroma.css">
 
+  <!-- Palette Switcher CSS (when enabled) -->
+  {% if config.theme.switcher.enabled %}
+  <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset }}">
+  {% endif %}
+
   <!-- Conditional CSS Loading -->
   <script>
     // GLightbox CSS - only load if glightbox elements will exist
@@ -190,6 +195,11 @@
     }
     {% endif %}
   </script>
+
+  <!-- Palette Switcher JS (when enabled) -->
+  {% if config.theme.switcher.enabled %}
+  <script src="{{ 'js/palette-switcher.js' | theme_asset }}" defer></script>
+  {% endif %}
 
   {% include "partials/background-scripts.html" %}
 </body>
