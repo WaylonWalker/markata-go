@@ -4,6 +4,7 @@ package plugins
 import (
 	"bytes"
 	"strings"
+	"sync"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 
@@ -17,6 +18,17 @@ import (
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/util"
 )
+
+// markdownBufferPool is a sync.Pool for reusing bytes.Buffer instances
+// during markdown rendering. This significantly reduces allocations and
+// GC pressure when processing many posts.
+var markdownBufferPool = sync.Pool{
+	New: func() interface{} {
+		// Pre-allocate 32KB buffer - typical blog post is 5-20KB HTML
+		buf := bytes.NewBuffer(make([]byte, 0, 32*1024))
+		return buf
+	},
+}
 
 // RenderMarkdownPlugin converts markdown content to HTML using goldmark.
 type RenderMarkdownPlugin struct {
@@ -190,6 +202,7 @@ func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 }
 
 // renderPost renders a single post's markdown content to HTML.
+// Uses a buffer pool to reduce allocations and GC pressure.
 func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 	// Skip posts marked as skip
 	if post.Skip {
@@ -202,12 +215,20 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 		return nil
 	}
 
+	// Get buffer from pool
+	buf, ok := markdownBufferPool.Get().(*bytes.Buffer)
+	if !ok {
+		buf = new(bytes.Buffer)
+	}
+	buf.Reset()
+	defer markdownBufferPool.Put(buf)
+
 	// Convert markdown to HTML
-	var buf bytes.Buffer
-	if err := p.md.Convert([]byte(post.Content), &buf); err != nil {
+	if err := p.md.Convert([]byte(post.Content), buf); err != nil {
 		return err
 	}
 
+	// Copy result since we're returning the buffer to the pool
 	post.ArticleHTML = buf.String()
 	return nil
 }

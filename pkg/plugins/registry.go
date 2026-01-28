@@ -31,6 +31,7 @@ func ensureRegistryInitialized() {
 // registerBuiltinPluginsLocked registers all built-in plugins with the registry.
 // Must be called with pluginRegistry.Lock held.
 func registerBuiltinPluginsLocked() {
+	pluginRegistry.constructors["build_cache"] = func() lifecycle.Plugin { return NewBuildCachePlugin() }
 	pluginRegistry.constructors["glob"] = func() lifecycle.Plugin { return NewGlobPlugin() }
 	pluginRegistry.constructors["load"] = func() lifecycle.Plugin { return NewLoadPlugin() }
 	pluginRegistry.constructors["jinja_md"] = func() lifecycle.Plugin { return NewJinjaMdPlugin() }
@@ -118,6 +119,9 @@ func RegisteredPlugins() []string {
 // This is the typical set of plugins for a complete markata build.
 func DefaultPlugins() []lifecycle.Plugin {
 	return []lifecycle.Plugin{
+		// Build cache plugin (Configure very early, Cleanup very late)
+		NewBuildCachePlugin(),
+
 		// Configure/Glob stage plugins
 		NewGlobPlugin(),
 		NewBackgroundPlugin(), // Configure background decorations early

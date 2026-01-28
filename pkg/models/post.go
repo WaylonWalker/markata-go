@@ -61,6 +61,14 @@ type Post struct {
 	// ArticleHTML is the rendered content without template wrapper
 	ArticleHTML string `json:"article_html" yaml:"article_html" toml:"article_html"`
 
+	// InputHash is a hash of the post's inputs (content + frontmatter + template)
+	// Used for incremental builds to detect changes
+	InputHash string `json:"input_hash,omitempty" yaml:"input_hash,omitempty" toml:"input_hash,omitempty"`
+
+	// RawFrontmatter stores the original frontmatter string for hash computation
+	// Not serialized to output
+	RawFrontmatter string `json:"-" yaml:"-" toml:"-"`
+
 	// Prev is the previous post in the navigation sequence
 	Prev *Post `json:"-" yaml:"-" toml:"-"`
 
