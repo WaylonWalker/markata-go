@@ -16,6 +16,9 @@
   <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
   <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
   <link rel="stylesheet" href="/css/chroma.css">
+  {% if config.theme.switcher.enabled %}
+  <link rel="stylesheet" href="{{ 'css/theme-switcher.css' | theme_asset }}">
+  {% endif %}
 
   <!-- CSS variable overrides from theme config -->
   {% if config.theme.variables %}
@@ -102,6 +105,13 @@
   {% endblock %}
 
   {% block scripts %}{% endblock %}
+
+  <!-- Theme Toggle Script (always loaded) -->
+  <script src="{{ 'js/layout.js' | theme_asset }}"></script>
+  {% if config.theme.switcher.enabled %}
+  <!-- Palette Switcher Script (loaded when switcher enabled) -->
+  <script src="{{ 'js/theme-switcher.js' | theme_asset }}"></script>
+  {% endif %}
 
   {% include "partials/background-scripts.html" %}
 </body>
