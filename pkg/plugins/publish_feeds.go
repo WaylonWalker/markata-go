@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -17,16 +18,52 @@ import (
 
 // PublishFeedsPlugin writes feeds to multiple output formats during the write stage.
 // It also registers synthetic posts in the Configure stage so they can be resolved by wikilinks.
-type PublishFeedsPlugin struct{}
+type PublishFeedsPlugin struct {
+	// engineCache caches template engines to avoid re-parsing templates for each feed
+	engineMu    sync.RWMutex
+	engineCache map[string]*templates.Engine
+}
 
 // NewPublishFeedsPlugin creates a new PublishFeedsPlugin.
 func NewPublishFeedsPlugin() *PublishFeedsPlugin {
-	return &PublishFeedsPlugin{}
+	return &PublishFeedsPlugin{
+		engineCache: make(map[string]*templates.Engine),
+	}
 }
 
 // Name returns the unique name of the plugin.
 func (p *PublishFeedsPlugin) Name() string {
 	return "publish_feeds"
+}
+
+// getOrCreateEngine returns a cached template engine, or creates one if not cached.
+func (p *PublishFeedsPlugin) getOrCreateEngine(templatesDir, themeName string) (*templates.Engine, error) {
+	cacheKey := templatesDir + ":" + themeName
+
+	// Fast path: check cache with read lock
+	p.engineMu.RLock()
+	if engine, ok := p.engineCache[cacheKey]; ok {
+		p.engineMu.RUnlock()
+		return engine, nil
+	}
+	p.engineMu.RUnlock()
+
+	// Slow path: create engine with write lock
+	p.engineMu.Lock()
+	defer p.engineMu.Unlock()
+
+	// Double-check after acquiring write lock
+	if engine, ok := p.engineCache[cacheKey]; ok {
+		return engine, nil
+	}
+
+	engine, err := templates.NewEngineWithTheme(templatesDir, themeName)
+	if err != nil {
+		return nil, err
+	}
+
+	p.engineCache[cacheKey] = engine
+	return engine, nil
 }
 
 // Configure registers synthetic posts for feed pages so they can be resolved by wikilinks.
@@ -73,6 +110,7 @@ func (p *PublishFeedsPlugin) Configure(m *lifecycle.Manager) error {
 }
 
 // Write generates and writes feed files in all configured formats.
+// Feed generation is parallelized for better performance with many feeds.
 func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
@@ -89,10 +127,49 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	// Process feeds concurrently with a worker pool
+	// Limit concurrency to avoid overwhelming the system
+	const maxConcurrency = 8
+	numFeeds := len(feedConfigs)
+
+	// For small numbers of feeds, just process sequentially
+	if numFeeds <= 2 {
+		for i := range feedConfigs {
+			fc := &feedConfigs[i]
+			if err := p.publishFeed(fc, config, outputDir); err != nil {
+				return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
+			}
+		}
+		return nil
+	}
+
+	// Use a semaphore to limit concurrency
+	semaphore := make(chan struct{}, maxConcurrency)
+	errChan := make(chan error, numFeeds)
+	var wg sync.WaitGroup
+
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
-		if err := p.publishFeed(fc, config, outputDir); err != nil {
-			return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
+		wg.Add(1)
+		go func(fc *models.FeedConfig) {
+			defer wg.Done()
+			semaphore <- struct{}{}        // Acquire
+			defer func() { <-semaphore }() // Release
+
+			if err := p.publishFeed(fc, config, outputDir); err != nil {
+				errChan <- fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
+			}
+		}(fc)
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+	close(errChan)
+
+	// Check for errors
+	for err := range errChan {
+		if err != nil {
+			return err
 		}
 	}
 
@@ -233,8 +310,8 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 		}
 	}
 
-	// Try to use pongo2 template engine with feed.html template
-	engine, err := templates.NewEngineWithTheme(templatesDir, themeName)
+	// Try to use pongo2 template engine with feed.html template (cached)
+	engine, err := p.getOrCreateEngine(templatesDir, themeName)
 	if err == nil && engine.TemplateExists("feed.html") {
 		// Build config for template context
 		modelsConfig := &models.Config{
