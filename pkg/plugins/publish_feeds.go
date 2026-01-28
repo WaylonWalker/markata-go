@@ -833,6 +833,11 @@ func (p *PublishFeedsPlugin) writeReversedFeedRedirect(slug, ext, outputDir stri
 // 1. User's templates directory (if configured)
 // 2. Embedded default theme templates (fallback)
 func (p *PublishFeedsPlugin) copyXSLStylesheets(config *lifecycle.Config, outputDir string) error {
+	// Ensure output directory exists
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return fmt.Errorf("creating output directory: %w", err)
+	}
+
 	// Get templates directory from config
 	templatesDir := PluginNameTemplates
 	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
