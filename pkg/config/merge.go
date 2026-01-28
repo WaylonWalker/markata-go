@@ -131,6 +131,32 @@ func mergeThemeConfig(base, override models.ThemeConfig) models.ThemeConfig {
 	// Merge font config
 	result.Font = mergeFontConfig(base.Font, override.Font)
 
+	// Merge switcher config
+	result.Switcher = mergeSwitcherConfig(base.Switcher, override.Switcher)
+
+	return result
+}
+
+// mergeSwitcherConfig merges ThemeSwitcherConfig, preferring override values.
+func mergeSwitcherConfig(base, override models.ThemeSwitcherConfig) models.ThemeSwitcherConfig {
+	result := base
+
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+	if override.IncludeAll != nil {
+		result.IncludeAll = override.IncludeAll
+	}
+	if len(override.Include) > 0 {
+		result.Include = override.Include
+	}
+	if len(override.Exclude) > 0 {
+		result.Exclude = override.Exclude
+	}
+	if override.Position != "" {
+		result.Position = override.Position
+	}
+
 	return result
 }
 
