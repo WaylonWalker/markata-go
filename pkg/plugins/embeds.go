@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -141,11 +142,48 @@ var internalEmbedRegex = regexp.MustCompile(`!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 // The alt text must be exactly "embed" to trigger embedding.
 var externalEmbedRegex = regexp.MustCompile(`!\[embed\]\(([^)]+)\)`)
 
+// embedsCodeBlockRegex matches fenced code blocks to avoid transforming content inside them.
+var embedsCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
+
+// htmlTitleRegex matches the <title> tag in HTML.
+var htmlTitleRegex = regexp.MustCompile(`<title[^>]*>([^<]+)</title>`)
+
+// metaPatternCache caches compiled regexes for meta tag extraction.
+var metaPatternCache = struct {
+	sync.RWMutex
+	m map[string][4]*regexp.Regexp // [propertyFirst, contentFirst, nameFirst, contentFirstName]
+}{m: make(map[string][4]*regexp.Regexp)}
+
+// getMetaPatterns returns cached regex patterns for a given property.
+func getMetaPatterns(property string) [4]*regexp.Regexp {
+	metaPatternCache.RLock()
+	patterns, ok := metaPatternCache.m[property]
+	metaPatternCache.RUnlock()
+
+	if ok {
+		return patterns
+	}
+
+	// Compile and cache patterns
+	escapedProp := regexp.QuoteMeta(property)
+	patterns = [4]*regexp.Regexp{
+		regexp.MustCompile(`<meta[^>]*property=["']` + escapedProp + `["'][^>]*content=["']([^"']+)["']`),
+		regexp.MustCompile(`<meta[^>]*content=["']([^"']+)["'][^>]*property=["']` + escapedProp + `["']`),
+		regexp.MustCompile(`<meta[^>]*name=["']` + escapedProp + `["'][^>]*content=["']([^"']+)["']`),
+		regexp.MustCompile(`<meta[^>]*content=["']([^"']+)["'][^>]*name=["']` + escapedProp + `["']`),
+	}
+
+	metaPatternCache.Lock()
+	metaPatternCache.m[property] = patterns
+	metaPatternCache.Unlock()
+
+	return patterns
+}
+
 // processInternalEmbeds replaces ![[slug]] syntax with embed cards.
 func (p *EmbedsPlugin) processInternalEmbeds(content string, postMap map[string]*models.Post, currentPost *models.Post) string {
 	// Split content by fenced code blocks to avoid transforming embeds inside them
-	codeBlockRegex := regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
-	codeBlocks := codeBlockRegex.FindAllStringIndex(content, -1)
+	codeBlocks := embedsCodeBlockRegex.FindAllStringIndex(content, -1)
 
 	if len(codeBlocks) == 0 {
 		return p.processInternalEmbedsInText(content, postMap, currentPost)
@@ -285,8 +323,7 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 // processExternalEmbeds replaces ![embed](url) syntax with embed cards.
 func (p *EmbedsPlugin) processExternalEmbeds(content string, currentPost *models.Post) string {
 	// Split content by fenced code blocks
-	codeBlockRegex := regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
-	codeBlocks := codeBlockRegex.FindAllStringIndex(content, -1)
+	codeBlocks := embedsCodeBlockRegex.FindAllStringIndex(content, -1)
 
 	if len(codeBlocks) == 0 {
 		return p.processExternalEmbedsInText(content, currentPost)
@@ -475,35 +512,25 @@ func (p *EmbedsPlugin) fetchMetadataFromURL(rawURL string) *OGMetadata {
 
 // extractMetaContent extracts content from a meta tag.
 func (p *EmbedsPlugin) extractMetaContent(htmlContent, property string) string {
+	patterns := getMetaPatterns(property)
+
 	// Try property attribute first (og:*)
-	propertyPattern := regexp.MustCompile(
-		`<meta[^>]*property=["']` + regexp.QuoteMeta(property) + `["'][^>]*content=["']([^"']+)["']`,
-	)
-	if match := propertyPattern.FindStringSubmatch(htmlContent); len(match) > 1 {
+	if match := patterns[0].FindStringSubmatch(htmlContent); len(match) > 1 {
 		return html.UnescapeString(match[1])
 	}
 
 	// Try content before property
-	propertyPattern2 := regexp.MustCompile(
-		`<meta[^>]*content=["']([^"']+)["'][^>]*property=["']` + regexp.QuoteMeta(property) + `["']`,
-	)
-	if match := propertyPattern2.FindStringSubmatch(htmlContent); len(match) > 1 {
+	if match := patterns[1].FindStringSubmatch(htmlContent); len(match) > 1 {
 		return html.UnescapeString(match[1])
 	}
 
 	// Try name attribute (description)
-	namePattern := regexp.MustCompile(
-		`<meta[^>]*name=["']` + regexp.QuoteMeta(property) + `["'][^>]*content=["']([^"']+)["']`,
-	)
-	if match := namePattern.FindStringSubmatch(htmlContent); len(match) > 1 {
+	if match := patterns[2].FindStringSubmatch(htmlContent); len(match) > 1 {
 		return html.UnescapeString(match[1])
 	}
 
 	// Try content before name
-	namePattern2 := regexp.MustCompile(
-		`<meta[^>]*content=["']([^"']+)["'][^>]*name=["']` + regexp.QuoteMeta(property) + `["']`,
-	)
-	if match := namePattern2.FindStringSubmatch(htmlContent); len(match) > 1 {
+	if match := patterns[3].FindStringSubmatch(htmlContent); len(match) > 1 {
 		return html.UnescapeString(match[1])
 	}
 
@@ -512,8 +539,7 @@ func (p *EmbedsPlugin) extractMetaContent(htmlContent, property string) string {
 
 // extractHTMLTitle extracts the title from HTML.
 func (p *EmbedsPlugin) extractHTMLTitle(htmlContent string) string {
-	titlePattern := regexp.MustCompile(`<title[^>]*>([^<]+)</title>`)
-	if match := titlePattern.FindStringSubmatch(htmlContent); len(match) > 1 {
+	if match := htmlTitleRegex.FindStringSubmatch(htmlContent); len(match) > 1 {
 		return html.UnescapeString(strings.TrimSpace(match[1]))
 	}
 	return ""

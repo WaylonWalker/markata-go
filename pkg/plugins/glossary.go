@@ -99,14 +99,20 @@ type GlossaryPlugin struct {
 
 	// mu protects terms map during concurrent access
 	mu sync.RWMutex
+
+	// termRegexCache caches compiled regexes for terms to avoid repeated compilation.
+	// Key format: "caseSensitive:termKey"
+	termRegexCache map[string]*regexp.Regexp
+	regexCacheMu   sync.RWMutex
 }
 
 // NewGlossaryPlugin creates a new GlossaryPlugin with default configuration.
 func NewGlossaryPlugin() *GlossaryPlugin {
 	return &GlossaryPlugin{
-		config:   NewGlossaryConfig(),
-		terms:    make(map[string]*GlossaryTerm),
-		allTerms: make([]*GlossaryTerm, 0),
+		config:         NewGlossaryConfig(),
+		terms:          make(map[string]*GlossaryTerm),
+		allTerms:       make([]*GlossaryTerm, 0),
+		termRegexCache: make(map[string]*regexp.Regexp),
 	}
 }
 
@@ -482,13 +488,8 @@ func (p *GlossaryPlugin) linkTerms(htmlContent string, currentPost *models.Post)
 			continue
 		}
 
-		// Build regex pattern for this term (word boundary matching)
-		var pattern *regexp.Regexp
-		if p.config.CaseSensitive {
-			pattern = regexp.MustCompile(`\b(` + regexp.QuoteMeta(termKey) + `)\b`)
-		} else {
-			pattern = regexp.MustCompile(`(?i)\b(` + regexp.QuoteMeta(termKey) + `)\b`)
-		}
+		// Get cached regex pattern for this term (word boundary matching)
+		pattern := p.getTermRegex(termKey, p.config.CaseSensitive)
 
 		// Find and replace matches
 		htmlContent = pattern.ReplaceAllStringFunc(htmlContent, func(match string) string {
@@ -549,6 +550,41 @@ func (p *GlossaryPlugin) Terms() []*GlossaryTerm {
 	result := make([]*GlossaryTerm, len(p.allTerms))
 	copy(result, p.allTerms)
 	return result
+}
+
+// getTermRegex returns a cached regex for matching the given term.
+// The caseSensitive flag determines whether the regex should be case-insensitive.
+func (p *GlossaryPlugin) getTermRegex(termKey string, caseSensitive bool) *regexp.Regexp {
+	// Build cache key
+	cacheKey := "i:" + termKey // case-insensitive prefix
+	if caseSensitive {
+		cacheKey = "s:" + termKey // case-sensitive prefix
+	}
+
+	// Check cache first
+	p.regexCacheMu.RLock()
+	pattern, ok := p.termRegexCache[cacheKey]
+	p.regexCacheMu.RUnlock()
+
+	if ok {
+		return pattern
+	}
+
+	// Compile and cache
+	escapedTerm := regexp.QuoteMeta(termKey)
+	var patternStr string
+	if caseSensitive {
+		patternStr = `\b(` + escapedTerm + `)\b`
+	} else {
+		patternStr = `(?i)\b(` + escapedTerm + `)\b`
+	}
+	pattern = regexp.MustCompile(patternStr)
+
+	p.regexCacheMu.Lock()
+	p.termRegexCache[cacheKey] = pattern
+	p.regexCacheMu.Unlock()
+
+	return pattern
 }
 
 // Ensure GlossaryPlugin implements the required interfaces.

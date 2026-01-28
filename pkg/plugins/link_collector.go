@@ -154,6 +154,13 @@ func (p *LinkCollectorPlugin) buildBaseURL(post *models.Post) string {
 // Captures the href value in group 1.
 var hrefRegex = regexp.MustCompile(`<a\s+[^>]*href=["']([^"']+)["'][^>]*>([^<]*)</a>`)
 
+// linkTextCache caches compiled regexes for extractLinkText to avoid repeated compilation.
+// Key is the escaped href pattern, value is the compiled regex.
+var linkTextCache = struct {
+	sync.RWMutex
+	m map[string]*regexp.Regexp
+}{m: make(map[string]*regexp.Regexp)}
+
 // extractHrefs extracts all href values from HTML content.
 func extractHrefs(html string) []string {
 	matches := hrefRegex.FindAllStringSubmatch(html, -1)
@@ -180,9 +187,23 @@ func extractHrefs(html string) []string {
 
 // extractLinkText extracts the text content from an anchor tag match.
 func extractLinkText(html, href string) string {
-	// Find the specific link and extract its text
-	pattern := `<a\s+[^>]*href=["']` + regexp.QuoteMeta(href) + `["'][^>]*>([^<]*)</a>`
-	re := regexp.MustCompile(pattern)
+	// Build pattern key using quoted href
+	escapedHref := regexp.QuoteMeta(href)
+
+	// Check cache first
+	linkTextCache.RLock()
+	re, ok := linkTextCache.m[escapedHref]
+	linkTextCache.RUnlock()
+
+	if !ok {
+		// Compile and cache the regex
+		pattern := `<a\s+[^>]*href=["']` + escapedHref + `["'][^>]*>([^<]*)</a>`
+		re = regexp.MustCompile(pattern)
+		linkTextCache.Lock()
+		linkTextCache.m[escapedHref] = re
+		linkTextCache.Unlock()
+	}
+
 	match := re.FindStringSubmatch(html)
 	if len(match) >= 2 {
 		return strings.TrimSpace(match[1])

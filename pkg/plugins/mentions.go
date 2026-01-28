@@ -227,12 +227,13 @@ func (p *MentionsPlugin) buildHandleMap(m *lifecycle.Manager) map[string]*mentio
 // another @ or word character.
 var mentionRegex = regexp.MustCompile(`((?:^|[^@\w])@([a-zA-Z][a-zA-Z0-9_.-]*))([^a-zA-Z0-9_.-]|$)`)
 
+// mentionsCodeBlockRegex matches fenced code blocks to avoid transforming mentions inside them.
+var mentionsCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
+
 // processMentions replaces @handle syntax with HTML anchor tags.
 func (p *MentionsPlugin) processMentions(content string, handleMap map[string]*mentionEntry) string {
 	// Split content by fenced code blocks to avoid transforming mentions inside them
-	codeBlockRegex := regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
-
-	codeBlocks := codeBlockRegex.FindAllStringIndex(content, -1)
+	codeBlocks := mentionsCodeBlockRegex.FindAllStringIndex(content, -1)
 
 	if len(codeBlocks) == 0 {
 		return p.processMentionsInText(content, handleMap)
