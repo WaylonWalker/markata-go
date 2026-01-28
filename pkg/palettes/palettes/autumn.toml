@@ -1,0 +1,102 @@
+# Autumn - Warm earthy tones for fall
+# A cozy theme inspired by autumn leaves and harvest
+# License: MIT
+
+[palette]
+name = "Autumn"
+variant = "dark"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - dark wood and earth
+background     = "#1e1812"
+current-line   = "#2a221a"
+selection      = "#3d3228"
+gutter         = "#5c4d3d"
+
+# Foreground colors
+foreground     = "#e8dcc8"
+foreground-dim = "#a89880"
+
+# Accent colors - Autumn palette
+orange         = "#cc5500"      # Burnt orange
+rust           = "#b7410e"      # Rust/terracotta
+yellow         = "#ffdb58"      # Mustard yellow
+gold           = "#d4a017"      # Harvest gold
+red            = "#800020"      # Burgundy
+green          = "#556b2f"      # Olive/dark olive green
+brown          = "#5c4033"      # Dark brown
+tan            = "#d2b48c"      # Tan/wheat
+cream          = "#fffdd0"      # Cream
+
+# Additional colors
+bg-darker      = "#15100c"
+bg-lighter     = "#362c22"
+comment        = "#8b7355"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "orange"
+accent-hover = "gold"
+link         = "gold"
+link-hover   = "yellow"
+link-visited = "rust"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "gold"
+
+# Border colors
+border       = "current-line"
+border-focus = "orange"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "rust"
+code-string   = "green"
+code-number   = "gold"
+code-function = "yellow"
+code-type     = "orange"
+code-operator = "tan"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "gold"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "orange"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "orange"
+button-primary-text   = "cream"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "orange"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"

@@ -1,0 +1,101 @@
+# Lunar New Year - Lucky red and gold
+# A festive theme celebrating Lunar New Year
+# License: MIT
+
+[palette]
+name = "Lunar New Year"
+variant = "dark"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - rich, dark lacquer
+background     = "#1a0a0a"
+current-line   = "#2a1515"
+selection      = "#3a2020"
+gutter         = "#5a3535"
+
+# Foreground colors
+foreground     = "#f8f0e8"
+foreground-dim = "#b8a090"
+
+# Accent colors - Lunar New Year palette
+lucky-red      = "#de2910"      # Traditional lucky red
+crimson        = "#c41e3a"      # Deep crimson
+gold           = "#ffd700"      # Prosperity gold
+orange         = "#ff8c00"      # Mandarin orange
+pink           = "#ff91a4"      # Cherry blossom pink
+jade           = "#00a86b"      # Jade green
+black          = "#000000"      # Ink black
+cream          = "#fffdd0"      # Rice paper cream
+
+# Additional colors
+bg-darker      = "#100505"
+bg-lighter     = "#3a1a1a"
+comment        = "#8a6060"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "gold"
+accent-hover = "lucky-red"
+link         = "gold"
+link-hover   = "orange"
+link-visited = "pink"
+
+# Status colors
+success = "jade"
+warning = "orange"
+error   = "crimson"
+info    = "gold"
+
+# Border colors
+border       = "current-line"
+border-focus = "gold"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "lucky-red"
+code-string   = "jade"
+code-number   = "gold"
+code-function = "orange"
+code-type     = "pink"
+code-operator = "crimson"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "gold"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "jade"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "orange"
+admonition-error-bg    = "current-line"
+admonition-error-border = "lucky-red"
+
+button-primary-bg     = "lucky-red"
+button-primary-text   = "gold"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "gold"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"

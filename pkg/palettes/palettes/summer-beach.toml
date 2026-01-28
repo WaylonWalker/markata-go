@@ -1,0 +1,102 @@
+# Summer Beach - Ocean blues and warm corals
+# A warm, inviting theme inspired by beach vibes
+# License: MIT
+
+[palette]
+name = "Summer Beach"
+variant = "light"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - sandy and bright
+background     = "#faf8f5"
+current-line   = "#f0ebe5"
+selection      = "#d4e8f0"
+gutter         = "#8a9199"
+
+# Foreground colors
+foreground     = "#2c3e50"
+foreground-dim = "#7f8c8d"
+
+# Accent colors - Summer/Beach palette
+ocean          = "#006994"      # Deep ocean blue
+teal           = "#008080"      # Teal water
+sky            = "#87ceeb"      # Sky blue
+coral          = "#ff7f50"      # Coral reef
+sand           = "#c2b280"      # Sandy beach
+sunshine       = "#ffd700"      # Sunshine yellow
+seafoam        = "#98ff98"      # Seafoam green
+sunset         = "#ff6347"      # Sunset orange/red
+white          = "#ffffff"      # White foam
+
+# Additional colors
+bg-darker      = "#f0ebe5"
+bg-lighter     = "#ffffff"
+comment        = "#95a5a6"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-lighter"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "ocean"
+accent-hover = "coral"
+link         = "ocean"
+link-hover   = "teal"
+link-visited = "coral"
+
+# Status colors
+success = "seafoam"
+warning = "sunshine"
+error   = "sunset"
+info    = "sky"
+
+# Border colors
+border       = "sand"
+border-focus = "ocean"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "current-line"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "coral"
+code-string   = "ocean"
+code-number   = "sunset"
+code-function = "teal"
+code-type     = "ocean"
+code-operator = "coral"
+
+admonition-note-bg     = "selection"
+admonition-note-border = "ocean"
+admonition-tip-bg      = "selection"
+admonition-tip-border  = "seafoam"
+admonition-warn-bg     = "selection"
+admonition-warn-border = "sunshine"
+admonition-error-bg    = "selection"
+admonition-error-border = "sunset"
+
+button-primary-bg     = "ocean"
+button-primary-text   = "white"
+button-secondary-bg   = "sand"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-lighter"
+nav-text   = "foreground"
+nav-active = "coral"
+
+card-bg     = "bg-lighter"
+card-border = "sand"
+card-shadow = "current-line"

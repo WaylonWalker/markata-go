@@ -81,6 +81,51 @@ var paletteToChroma = map[string]string{
 
 	// Matte black - use monokai for its dark, contrasty appearance
 	"matte-black": "monokai",
+
+	// One Dark/Light - Atom's iconic themes
+	"one-dark":  "onedark",
+	"one-light": "onelight",
+
+	// Monokai - classic Sublime Text theme
+	"monokai": "monokai",
+
+	// Ayu - simple, bright and elegant
+	"ayu-dark":   "ayu-dark",
+	"ayu-light":  "ayu-light",
+	"ayu-mirage": "ayu-mirage",
+
+	// Night Owl - accessibility-focused theme by Sarah Drasner
+	"night-owl":       "nightowl",
+	"night-owl-light": "github", // Chroma doesn't have night owl light, use github
+
+	// Modus themes - WCAG AAA accessible themes
+	"modus-vivendi":  "modus-vivendi",
+	"modus-operandi": "modus-operandi",
+
+	// Holiday and seasonal themes - mapped to closest Chroma equivalents
+	"halloween":      "dracula",    // Spooky purple/orange - dracula has similar vibe
+	"autumn":         "gruvbox",    // Warm earthy tones
+	"winter-frost":   "nord",       // Icy blues - nord is perfect match
+	"christmas":      "dracula",    // Deep greens/reds - dracula works
+	"lunar-new-year": "vim",        // Rich reds/golds - vim has warm tones
+	"valentine":      "witchhazel", // Pink/purple - witchhazel is purple-heavy
+	"st-patricks":    "evergarden", // Green theme - evergarden is green
+	"summer-beach":   "github",     // Bright, clean - github light works
+	"hanukkah":       "nord",       // Blues - nord is blue-based
+	"diwali":         "gruvbox",    // Warm golds/reds - gruvbox has warmth
+
+	// Community GTK themes
+	"sweet":          "dracula",     // Neon candy - dracula has purple vibes
+	"whitesur-dark":  "github-dark", // macOS-style - clean like github
+	"whitesur-light": "github",      // macOS-style light
+	"graphite-dark":  "github-dark", // Neutral gray
+	"graphite-light": "github",      // Neutral gray light
+
+	// Minimalist themes
+	"pitch-black": "native",      // OLED black - native is dark
+	"ash":         "github-dark", // Dark gray
+	"white-gold":  "github",      // Light with gold - github base
+	"black-gold":  "monokai",     // Dark with gold - monokai has warm tones
 }
 
 // AvailableChromaThemes returns a list of all Chroma themes that are known to work.
@@ -88,6 +133,9 @@ var paletteToChroma = map[string]string{
 var AvailableChromaThemes = []string{
 	// Light themes
 	"github",
+	"onelight",
+	"ayu-light",
+	"ayu-mirage",
 	"gruvbox-light",
 	"solarized-light",
 	"catppuccin-latte",
@@ -109,6 +157,8 @@ var AvailableChromaThemes = []string{
 
 	// Dark themes
 	"github-dark",
+	"ayu-dark",
+	"nightowl",
 	"gruvbox",
 	"solarized-dark",
 	"catppuccin-frappe",

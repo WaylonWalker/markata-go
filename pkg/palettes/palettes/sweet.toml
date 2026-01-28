@@ -1,0 +1,103 @@
+# Sweet - Neon candy colors GTK theme
+# https://github.com/EliverLara/Sweet
+# A vibrant theme with neon gradients and candy colors
+# License: GPL-3.0
+
+[palette]
+name = "Sweet"
+variant = "dark"
+author = "EliverLara"
+license = "GPL-3.0"
+homepage = "https://github.com/EliverLara/Sweet"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - dark with purple undertones
+background     = "#1b1b2f"
+current-line   = "#252542"
+selection      = "#353555"
+gutter         = "#454570"
+
+# Foreground colors
+foreground     = "#f8f8f2"
+foreground-dim = "#a0a0c0"
+
+# Accent colors - Sweet's signature neon palette
+teal           = "#00d3a7"      # Primary accent
+cyan           = "#00c1e4"      # Success/info
+pink           = "#ee0979"      # Destructive start
+orange         = "#ff6a00"      # Warning/destructive end
+blue           = "#1a93ed"      # Suggested action end
+light-blue     = "#3be4ea"      # Suggested action start
+red            = "#ed254e"      # Error
+yellow         = "#fdc92d"      # Warning alternative
+purple         = "#c678dd"      # Secondary accent
+
+# Additional colors
+bg-darker      = "#141428"
+bg-lighter     = "#2d2d50"
+comment        = "#6272a4"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "teal"
+accent-hover = "light-blue"
+link         = "teal"
+link-hover   = "cyan"
+link-visited = "purple"
+
+# Status colors
+success = "cyan"
+warning = "orange"
+error   = "red"
+info    = "light-blue"
+
+# Border colors
+border       = "current-line"
+border-focus = "teal"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "pink"
+code-string   = "teal"
+code-number   = "orange"
+code-function = "light-blue"
+code-type     = "cyan"
+code-operator = "purple"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "blue"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "teal"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "orange"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "teal"
+button-primary-text   = "bg-darker"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "teal"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"

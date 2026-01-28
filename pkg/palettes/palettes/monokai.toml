@@ -1,0 +1,101 @@
+# Monokai - The classic Sublime Text theme
+# https://monokai.pro
+# License: MIT
+
+[palette]
+name = "Monokai"
+variant = "dark"
+author = "Wimer Hazenberg"
+license = "MIT"
+homepage = "https://monokai.pro"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors
+background     = "#272822"
+current-line   = "#3e3d32"
+selection      = "#49483e"
+gutter         = "#75715e"
+
+# Foreground colors
+foreground     = "#f8f8f2"
+foreground-dim = "#75715e"
+
+# Accent colors - Monokai's iconic palette
+red        = "#f92672"
+orange     = "#fd971f"
+yellow     = "#e6db74"
+green      = "#a6e22e"
+cyan       = "#66d9ef"
+blue       = "#66d9ef"
+purple     = "#ae81ff"
+pink       = "#f92672"
+
+# Additional UI colors
+bg-darker  = "#1e1f1c"
+bg-lighter = "#3e3d32"
+comment    = "#75715e"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "comment"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "pink"
+accent-hover = "orange"
+link         = "cyan"
+link-hover   = "green"
+link-visited = "purple"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "cyan"
+
+# Border colors
+border       = "current-line"
+border-focus = "pink"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "background"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "pink"
+code-string   = "yellow"
+code-number   = "purple"
+code-function = "green"
+code-type     = "cyan"
+code-operator = "pink"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "cyan"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "yellow"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "pink"
+button-primary-text   = "foreground"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "pink"
+
+card-bg     = "current-line"
+card-border = "selection"
+card-shadow = "bg-darker"

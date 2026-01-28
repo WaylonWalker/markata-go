@@ -1,0 +1,103 @@
+# Halloween - Spooky dark theme for October
+# A dark theme inspired by Halloween aesthetics
+# License: MIT
+
+[palette]
+name = "Halloween"
+variant = "dark"
+author = "markata-go"
+license = "MIT"
+homepage = "https://github.com/WaylonWalker/markata-go"
+
+# Layer 1: Raw Colors
+[palette.colors]
+# Background colors - deep black like a moonless night
+background     = "#0d0d0d"
+current-line   = "#1a1a1a"
+selection      = "#2d2d2d"
+gutter         = "#404040"
+
+# Foreground colors
+foreground     = "#e8e8e8"
+foreground-dim = "#808080"
+
+# Accent colors - Halloween palette
+orange         = "#ff7518"      # Pumpkin orange
+orange-dark    = "#cc5500"      # Darker pumpkin
+purple         = "#6b2d5c"      # Poison purple
+purple-light   = "#9b4d8c"      # Lighter purple
+green          = "#32cd32"      # Lime/toxic green
+green-dark     = "#228b22"      # Forest green
+red            = "#8b0000"      # Blood red
+yellow         = "#ffd700"      # Candy corn gold
+black          = "#000000"      # Pure black
+white          = "#f8f8f8"      # Ghost white
+
+# Additional colors
+bg-darker      = "#000000"
+bg-lighter     = "#262626"
+comment        = "#666666"
+
+# Layer 2: Semantic Mapping
+[palette.semantic]
+# Text colors
+text-primary   = "foreground"
+text-secondary = "foreground-dim"
+text-muted     = "comment"
+
+# Background colors
+bg-primary   = "background"
+bg-secondary = "bg-darker"
+bg-surface   = "current-line"
+bg-elevated  = "bg-lighter"
+
+# Accent colors
+accent       = "orange"
+accent-hover = "yellow"
+link         = "orange"
+link-hover   = "yellow"
+link-visited = "purple-light"
+
+# Status colors
+success = "green"
+warning = "yellow"
+error   = "red"
+info    = "purple-light"
+
+# Border colors
+border       = "current-line"
+border-focus = "orange"
+
+# Layer 3: Component Colors
+[palette.components]
+code-bg       = "bg-darker"
+code-text     = "foreground"
+code-comment  = "comment"
+code-keyword  = "purple-light"
+code-string   = "green"
+code-number   = "orange"
+code-function = "yellow"
+code-type     = "orange"
+code-operator = "purple-light"
+
+admonition-note-bg     = "current-line"
+admonition-note-border = "purple-light"
+admonition-tip-bg      = "current-line"
+admonition-tip-border  = "green"
+admonition-warn-bg     = "current-line"
+admonition-warn-border = "orange"
+admonition-error-bg    = "current-line"
+admonition-error-border = "red"
+
+button-primary-bg     = "orange"
+button-primary-text   = "black"
+button-secondary-bg   = "current-line"
+button-secondary-text = "foreground"
+
+nav-bg     = "bg-darker"
+nav-text   = "foreground"
+nav-active = "orange"
+
+card-bg     = "current-line"
+card-border = "bg-lighter"
+card-shadow = "bg-darker"
