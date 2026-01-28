@@ -22,9 +22,9 @@ foreground     = "#f0f5f0"
 foreground-dim = "#8a9a8a"
 
 # Accent colors - Christmas palette
-holly-green    = "#00563f"      # Holly green
+holly-green    = "#2a9d6a"      # Holly green (brightened for contrast)
 pine-green     = "#01796f"      # Pine/evergreen
-red            = "#c41e3a"      # Christmas red
+red            = "#ff5a6e"      # Christmas red (brightened more for button text)
 cranberry      = "#9b2335"      # Cranberry/deep red
 gold           = "#ffd700"      # Gold
 silver         = "#c0c0c0"      # Silver tinsel
@@ -88,7 +88,7 @@ admonition-error-bg    = "current-line"
 admonition-error-border = "red"
 
 button-primary-bg     = "red"
-button-primary-text   = "white"
+button-primary-text   = "bg-darker"
 button-secondary-bg   = "current-line"
 button-secondary-text = "foreground"
 

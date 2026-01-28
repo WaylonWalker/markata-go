@@ -22,7 +22,7 @@ foreground     = "#f0f8f2"
 foreground-dim = "#8ab090"
 
 # Accent colors - St. Patrick's palette
-shamrock       = "#009e60"      # Shamrock green
+shamrock       = "#00c070"      # Shamrock green (brightened more for button text)
 irish-green    = "#009a44"      # Irish flag green
 forest         = "#228b22"      # Forest green
 lime           = "#32cd32"      # Lime green
@@ -88,7 +88,7 @@ admonition-error-bg    = "current-line"
 admonition-error-border = "orange"
 
 button-primary-bg     = "shamrock"
-button-primary-text   = "white"
+button-primary-text   = "bg-darker"
 button-secondary-bg   = "current-line"
 button-secondary-text = "foreground"
 

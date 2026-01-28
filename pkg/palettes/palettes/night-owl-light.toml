@@ -20,23 +20,23 @@ gutter         = "#93a1a1"
 
 # Foreground colors
 foreground     = "#403f53"
-foreground-dim = "#90a7b2"
+foreground-dim = "#5c6570"      # Darkened more for text-secondary contrast
 
 # Accent colors - Night Owl Light's signature palette
 red        = "#de3d3b"
 orange     = "#e0af0a"
-yellow     = "#daaa01"
+yellow     = "#9a7800"          # Darkened for warning contrast
 green      = "#08916a"
 cyan       = "#0c969b"
-blue       = "#4876d6"
-purple     = "#994cc3"
+blue       = "#3965b8"          # Darkened for link contrast
+purple     = "#7a2f99"          # Darkened for code-keyword contrast
 pink       = "#bc5454"
 
 # Additional colors
-accent     = "#0c969b"
+accent     = "#0a7a7f"          # Darkened for button text contrast
 bg-darker  = "#f0f0f0"
 bg-lighter = "#ffffff"
-comment    = "#989fb1"
+comment    = "#656b75"          # Darkened more for text-secondary contrast
 
 # Layer 2: Semantic Mapping
 [palette.semantic]

@@ -23,8 +23,8 @@ foreground     = "#2d2a24"
 foreground-dim = "#6b6560"
 
 # Accent colors - gold palette
-gold           = "#d4af37"      # Classic gold
-gold-dark      = "#b8960c"      # Darker gold
+gold           = "#7a5f00"      # Classic gold (darkened more for button text contrast)
+gold-dark      = "#6b5500"      # Darker gold (increased contrast)
 gold-light     = "#ffd700"      # Bright gold
 bronze         = "#cd7f32"      # Bronze accent
 champagne      = "#f7e7ce"      # Champagne
@@ -92,7 +92,7 @@ admonition-error-bg    = "champagne"
 admonition-error-border = "red"
 
 button-primary-bg     = "gold"
-button-primary-text   = "white"
+button-primary-text   = "bg-lighter"
 button-secondary-bg   = "champagne"
 button-secondary-text = "foreground"
 

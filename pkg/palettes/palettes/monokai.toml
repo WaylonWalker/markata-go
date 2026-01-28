@@ -19,7 +19,7 @@ gutter         = "#75715e"
 
 # Foreground colors
 foreground     = "#f8f8f2"
-foreground-dim = "#75715e"
+foreground-dim = "#969080"      # Brightened more for text contrast
 
 # Accent colors - Monokai's iconic palette
 red        = "#f92672"
@@ -29,12 +29,12 @@ green      = "#a6e22e"
 cyan       = "#66d9ef"
 blue       = "#66d9ef"
 purple     = "#ae81ff"
-pink       = "#f92672"
+pink       = "#ff4488"          # Brightened for button/keyword contrast
 
 # Additional UI colors
 bg-darker  = "#1e1f1c"
 bg-lighter = "#3e3d32"
-comment    = "#75715e"
+comment    = "#969080"          # Brightened more for contrast
 
 # Layer 2: Semantic Mapping
 [palette.semantic]
@@ -88,7 +88,7 @@ admonition-error-bg    = "current-line"
 admonition-error-border = "red"
 
 button-primary-bg     = "pink"
-button-primary-text   = "foreground"
+button-primary-text   = "bg-darker"
 button-secondary-bg   = "current-line"
 button-secondary-text = "foreground"
 

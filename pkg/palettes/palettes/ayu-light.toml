@@ -19,23 +19,23 @@ gutter         = "#8a9199"
 
 # Foreground colors
 foreground     = "#5c6166"
-foreground-dim = "#8a9199"
+foreground-dim = "#656a70"      # Darkened for text-secondary contrast
 
 # Accent colors - Ayu Light's signature palette
-red        = "#f07171"
-orange     = "#fa8d3e"
+red        = "#c43030"          # Darkened for error contrast
+orange     = "#9a5500"          # Darkened more for code-keyword contrast
 yellow     = "#f2ae49"
-green      = "#86b300"
-cyan       = "#4cbf99"
-blue       = "#399ee6"
+green      = "#5a8000"          # Darkened for success contrast
+cyan       = "#2a8a80"          # Darkened for info contrast
+blue       = "#2a6db5"          # Darkened for link contrast
 purple     = "#a37acc"
 pink       = "#f07171"
 
 # Additional colors
-accent     = "#ff9940"
+accent     = "#9a5200"          # Darkened more for button text contrast
 bg-darker  = "#f0f0f0"
 bg-lighter = "#ffffff"
-comment    = "#abb0b6"
+comment    = "#757a80"          # Darkened for text-muted contrast
 
 # Layer 2: Semantic Mapping
 [palette.semantic]

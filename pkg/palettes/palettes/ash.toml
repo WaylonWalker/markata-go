@@ -39,7 +39,7 @@ purple         = "#9988aa"
 # Additional colors
 bg-darker      = "#141414"
 bg-lighter     = "#2d2d2d"
-comment        = "#5a5a5a"
+comment        = "#717171"
 
 # Layer 2: Semantic Mapping
 [palette.semantic]
