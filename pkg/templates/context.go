@@ -97,9 +97,15 @@ func (c *Context) Get(key string) interface{} {
 	return c.Extra[key]
 }
 
-// postToMap converts a Post to a map for template access.
+// postToMap converts a Post to a map for template access using the global cache.
 // This handles pointer fields and provides a cleaner interface for pongo2.
 func postToMap(p *models.Post) map[string]interface{} {
+	return GetPostMap(p)
+}
+
+// postToMapUncached converts a Post to a map without caching.
+// This is the actual conversion logic used by the cache.
+func postToMapUncached(p *models.Post) map[string]interface{} {
 	if p == nil {
 		return nil
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/filter"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // Cache is an interface for caching data between stages.
@@ -331,6 +332,10 @@ func (m *Manager) RunTo(stage Stage) error {
 	if !IsValidStage(stage) {
 		return fmt.Errorf("invalid stage: %s", stage)
 	}
+
+	// Clear template caches at the start of each build cycle
+	// This ensures fresh data while still benefiting from caching within a build
+	templates.ClearAllCaches()
 
 	stages := StagesUpTo(stage)
 
