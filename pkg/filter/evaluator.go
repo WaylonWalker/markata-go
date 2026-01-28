@@ -419,8 +419,6 @@ func toBool(v interface{}) bool {
 }
 
 // compare compares two values and returns -1, 0, or 1
-//
-//nolint:gocyclo // complex type-switch logic for comparing heterogeneous values is inherently cyclomatic
 func compare(a, b interface{}) int {
 	// Handle nil
 	if a == nil && b == nil {
@@ -437,94 +435,94 @@ func compare(a, b interface{}) int {
 	a = normalizeValue(a)
 	b = normalizeValue(b)
 
-	// Same type comparison
+	// Type-specific comparison
 	switch av := a.(type) {
 	case bool:
-		bv, ok := b.(bool)
-		if !ok {
-			return compareTypes(a, b)
-		}
-		if av == bv {
-			return 0
-		}
-		if av {
-			return 1
-		}
-		return -1
-
+		return compareBool(av, b)
 	case int64:
-		switch bv := b.(type) {
-		case int64:
-			if av < bv {
-				return -1
-			}
-			if av > bv {
-				return 1
-			}
-			return 0
-		case float64:
-			af := float64(av)
-			if af < bv {
-				return -1
-			}
-			if af > bv {
-				return 1
-			}
-			return 0
-		}
-		return compareTypes(a, b)
-
+		return compareInt64(av, b)
 	case float64:
-		switch bv := b.(type) {
-		case float64:
-			if av < bv {
-				return -1
-			}
-			if av > bv {
-				return 1
-			}
-			return 0
-		case int64:
-			bf := float64(bv)
-			if av < bf {
-				return -1
-			}
-			if av > bf {
-				return 1
-			}
-			return 0
-		}
-		return compareTypes(a, b)
-
+		return compareFloat64(av, b)
 	case string:
-		bv, ok := b.(string)
-		if !ok {
-			return compareTypes(a, b)
-		}
-		if av < bv {
-			return -1
-		}
-		if av > bv {
-			return 1
-		}
-		return 0
-
+		return compareString(av, b)
 	case time.Time:
-		bv, ok := b.(time.Time)
-		if !ok {
-			return compareTypes(a, b)
-		}
-		if av.Before(bv) {
-			return -1
-		}
-		if av.After(bv) {
-			return 1
-		}
-		return 0
+		return compareTime(av, b)
 	}
 
 	// Fallback to string comparison
 	return strings.Compare(fmt.Sprint(a), fmt.Sprint(b))
+}
+
+// compareBool compares a boolean value with another value
+func compareBool(av bool, b interface{}) int {
+	bv, ok := b.(bool)
+	if !ok {
+		return compareTypes(av, b)
+	}
+	if av == bv {
+		return 0
+	}
+	if av {
+		return 1
+	}
+	return -1
+}
+
+// compareInt64 compares an int64 value with another value
+func compareInt64(av int64, b interface{}) int {
+	switch bv := b.(type) {
+	case int64:
+		return compareOrdered(av, bv)
+	case float64:
+		return compareOrdered(float64(av), bv)
+	}
+	return compareTypes(av, b)
+}
+
+// compareFloat64 compares a float64 value with another value
+func compareFloat64(av float64, b interface{}) int {
+	switch bv := b.(type) {
+	case float64:
+		return compareOrdered(av, bv)
+	case int64:
+		return compareOrdered(av, float64(bv))
+	}
+	return compareTypes(av, b)
+}
+
+// compareString compares a string value with another value
+func compareString(av string, b interface{}) int {
+	bv, ok := b.(string)
+	if !ok {
+		return compareTypes(av, b)
+	}
+	return compareOrdered(av, bv)
+}
+
+// compareTime compares a time.Time value with another value
+func compareTime(av time.Time, b interface{}) int {
+	bv, ok := b.(time.Time)
+	if !ok {
+		return compareTypes(av, b)
+	}
+	if av.Before(bv) {
+		return -1
+	}
+	if av.After(bv) {
+		return 1
+	}
+	return 0
+}
+
+// compareOrdered compares two ordered values (numbers, strings)
+func compareOrdered[T int64 | float64 | string](a, b T) int {
+	if a < b {
+		return -1
+	}
+	if a > b {
+		return 1
+	}
+	return 0
 }
 
 // normalizeValue converts values to standard types for comparison
