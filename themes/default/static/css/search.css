@@ -74,6 +74,30 @@
   z-index: 100;
   max-height: 70vh;
   overflow-y: auto;
+
+  /* Custom scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) var(--color-background);
+}
+
+/* Webkit scrollbar styling for search drawer */
+.search-container--navbar .pagefind-ui__drawer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.search-container--navbar .pagefind-ui__drawer::-webkit-scrollbar-track {
+  background: var(--color-background);
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.search-container--navbar .pagefind-ui__drawer::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+  border: 2px solid var(--color-background);
+}
+
+.search-container--navbar .pagefind-ui__drawer::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
 }
 
 /* Result items */
