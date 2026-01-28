@@ -178,7 +178,7 @@
                     </div>
                     <p>Subscribe by copying this URL into your feed reader:</p>
                     <div class="feed-url">
-                        <xsl:value-of select="/rss/channel/link" />rss.xml
+                        <xsl:value-of select="/rss/channel/atom:link[@rel='self']/@href" />
                     </div>
                     <details>
                         <summary>What is RSS? Popular feed readers</summary>
