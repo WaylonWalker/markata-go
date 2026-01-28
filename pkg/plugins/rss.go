@@ -104,7 +104,9 @@ func GenerateRSS(feed *lifecycle.Feed, config *lifecycle.Config) (string, error)
 		return "", fmt.Errorf("failed to marshal RSS: %w", err)
 	}
 
-	return xml.Header + string(output), nil
+	// Add XSL stylesheet processing instruction for human-readable display in browsers
+	xslPI := `<?xml-stylesheet href="/rss.xsl" type="text/xsl"?>` + "\n"
+	return xml.Header + xslPI + string(output), nil
 }
 
 // GenerateRSSFromFeedConfig generates an RSS 2.0 feed from a FeedConfig.

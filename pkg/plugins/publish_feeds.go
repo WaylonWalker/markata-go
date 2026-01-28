@@ -133,6 +133,11 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	// Copy XSL stylesheets to output directory for styled RSS/Atom feeds
+	if err := p.copyXSLStylesheets(config, outputDir); err != nil {
+		return fmt.Errorf("copying XSL stylesheets: %w", err)
+	}
+
 	// Get build cache for incremental builds
 	buildCache := GetBuildCache(m)
 	var changedSlugs map[string]bool
@@ -771,6 +776,46 @@ func (p *PublishFeedsPlugin) writeFeedFormatRedirect(slug, ext, targetFile, outp
 	//nolint:gosec // G306: Output files need 0644 for web serving
 	if err := os.WriteFile(outputPath, []byte(redirectHTML), 0o644); err != nil {
 		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
+	}
+
+	return nil
+}
+
+// copyXSLStylesheets copies XSL stylesheets to the output directory for styled RSS/Atom feeds.
+// It searches for XSL files in the templates directory and copies them to the output root.
+func (p *PublishFeedsPlugin) copyXSLStylesheets(config *lifecycle.Config, outputDir string) error {
+	// Get templates directory from config
+	templatesDir := PluginNameTemplates
+	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
+		templatesDir = extra
+	}
+
+	// List of XSL files to copy
+	xslFiles := []string{"rss.xsl", "atom.xsl"}
+
+	for _, xslFile := range xslFiles {
+		srcPath := filepath.Join(templatesDir, xslFile)
+
+		// Check if the XSL file exists
+		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
+			// XSL file doesn't exist, skip it (not an error, just not configured)
+			continue
+		} else if err != nil {
+			return fmt.Errorf("checking XSL file %s: %w", srcPath, err)
+		}
+
+		// Read the XSL file
+		content, err := os.ReadFile(srcPath)
+		if err != nil {
+			return fmt.Errorf("reading XSL file %s: %w", srcPath, err)
+		}
+
+		// Write to output directory
+		dstPath := filepath.Join(outputDir, xslFile)
+		//nolint:gosec // G306: XSL files need 0644 for web serving
+		if err := os.WriteFile(dstPath, content, 0o644); err != nil {
+			return fmt.Errorf("writing XSL file %s: %w", dstPath, err)
+		}
 	}
 
 	return nil
