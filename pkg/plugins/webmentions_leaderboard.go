@@ -71,7 +71,7 @@ func (p *WebmentionsLeaderboardPlugin) Transform(m *lifecycle.Manager) error {
 	posts := m.Posts()
 
 	// Build entries for all posts with webmentions
-	var entries []LeaderboardEntry
+	entries := make([]LeaderboardEntry, 0, len(posts))
 	totalLikes := 0
 	totalReposts := 0
 	totalReplies := 0

@@ -404,6 +404,9 @@ func getAttr(v *pongo2.Value, key string) *pongo2.Value {
 		if fv.IsValid() {
 			return pongo2.AsValue(fv.Interface())
 		}
+	default:
+		// Other types don't support field/key access
+		return nil
 	}
 
 	return nil
