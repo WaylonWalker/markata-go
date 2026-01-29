@@ -669,7 +669,12 @@ func collectParagraphs(html string, cfg excerptConfig) []string {
 		return nil
 	}
 
-	var paragraphs []string
+	// Pre-allocate with expected capacity
+	capacity := cfg.maxParagraphs
+	if len(matches) < capacity {
+		capacity = len(matches)
+	}
+	paragraphs := make([]string, 0, capacity)
 	totalChars := 0
 
 	for _, match := range matches {
