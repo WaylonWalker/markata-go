@@ -538,3 +538,51 @@ func TestFilterAbsoluteURL(t *testing.T) {
 		t.Errorf("got %q, want %q", result, expected)
 	}
 }
+
+func TestFilterExcerpt(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+
+	html := `<p>First paragraph with some text.</p>
+<p>Second paragraph with more content.</p>
+<p></p>
+<p>Third paragraph after an empty one.</p>
+<p>Fourth paragraph here.</p>
+<p>Fifth paragraph at the end.</p>`
+
+	ctx := NewContext(nil, "", nil)
+	ctx.Set("html", html)
+
+	result, err := engine.RenderString("{{ html | excerpt }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+
+	t.Logf("Result: %s", result)
+
+	// Should include first 3 non-empty paragraphs
+	if !contains(result, "First paragraph") {
+		t.Errorf("Expected 'First paragraph' in result")
+	}
+	if !contains(result, "Second paragraph") {
+		t.Errorf("Expected 'Second paragraph' in result")
+	}
+	if !contains(result, "Third paragraph") {
+		t.Errorf("Expected 'Third paragraph' in result")
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || stringContains(s, substr)))
+}
+
+func stringContains(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}

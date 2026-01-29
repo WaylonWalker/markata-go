@@ -30,6 +30,7 @@ var admonitionTypes = map[string]bool{
 	"quote":     true,
 	"abstract":  true,
 	"aside":     true,
+	"seealso":   true,
 }
 
 // admonitionRegex matches admonition syntax:
@@ -162,10 +163,8 @@ func (p *AdmonitionParser) Open(_ ast.Node, reader text.Reader, _ parser.Context
 func (p *AdmonitionParser) Continue(_ ast.Node, reader text.Reader, _ parser.Context) parser.State {
 	line, segment := reader.PeekLine()
 
-	// Check if this is a blank line
+	// Blank line ends the admonition
 	if util.IsBlank(line) {
-		// Check if the next non-blank line continues the admonition
-		// For now, blank lines end the admonition
 		return parser.Close
 	}
 
@@ -180,7 +179,7 @@ func (p *AdmonitionParser) Continue(_ ast.Node, reader text.Reader, _ parser.Con
 		return parser.Close
 	}
 
-	// Remove the indentation and advance
+	// Advance past this line
 	reader.Advance(segment.Stop - segment.Start)
 	return parser.Continue | parser.HasChildren
 }

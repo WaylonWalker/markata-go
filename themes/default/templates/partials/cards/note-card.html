@@ -1,0 +1,18 @@
+{# Note Card - Low prominence for pings, thoughts, status updates #}
+{# Minimal styling, left border accent, no title shown #}
+<article class="card card-note">
+  <div class="card-content">
+    {% if post.description %}
+    <p class="card-text">{{ post.description }}</p>
+    {% elif post.article_html %}
+    <div class="card-text">{{ post.article_html | striptags | truncatechars:200 }}</div>
+    {% endif %}
+  </div>
+
+  <footer class="card-meta">
+    {% if post.date %}
+    <time datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+    {% endif %}
+    <a href="{{ post.href }}" class="card-link">View</a>
+  </footer>
+</article>

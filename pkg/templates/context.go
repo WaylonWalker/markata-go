@@ -121,6 +121,7 @@ func postToMapUncached(p *models.Post) map[string]interface{} {
 		"skip":         p.Skip,
 		"tags":         p.Tags,
 		"template":     p.Template,
+		"templateKey":  p.Template, // Alias for backwards compatibility
 		"html":         p.HTML,
 		"article_html": p.ArticleHTML,
 	}
