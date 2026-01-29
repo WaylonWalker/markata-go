@@ -1,0 +1,742 @@
+/* ==========================================================================
+   Card Type System - Built-in Card Styles for Different Content Types
+
+   Card types: article, note, photo, video, link, quote, guide, inline, default
+
+   Design principles:
+   - Feed container constrained (max-width: 750px), cards fill container
+   - Differentiate by padding, background, borders - NOT width
+   - All cards same width for visual consistency
+   ========================================================================== */
+
+/* ==========================================================================
+   Feed Container - Constrain the feed, not individual cards
+   ========================================================================== */
+
+.feed .posts,
+.feed .posts-list {
+  max-width: 750px;
+  margin: 0 auto;
+}
+
+/* ==========================================================================
+   Base Card Styles (shared by all card types)
+   Extends the .card class from main.css
+   ========================================================================== */
+
+.card {
+  width: 100%;
+  /* Ensure solid background to prevent pattern bleed-through */
+  background: var(--color-surface);
+}
+
+/* Ensure all card sections have solid backgrounds */
+.card .card-header,
+.card .card-body,
+.card .card-content,
+.card .card-meta,
+.card footer {
+  background: inherit;
+}
+
+/* Card title links */
+.card .card-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xl);
+  line-height: var(--leading-tight);
+}
+
+.card .card-title a {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.card .card-title a:hover {
+  color: var(--color-primary);
+}
+
+/* Card meta (date, reading time, etc.) */
+.card .card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline; /* Align on text baseline */
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  margin-top: var(--space-3);
+}
+
+.card .card-meta time {
+  display: inline;
+}
+
+/* Card tags - inline with meta, baseline aligned */
+.card .card-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0; /* Remove top margin when inline with meta */
+}
+
+.card .card-tags .tag {
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+  line-height: 1;
+  vertical-align: baseline;
+}
+
+/* ==========================================================================
+   Article Card - High prominence for blog posts, tutorials, essays
+   Large title, excerpt, tags, reading time, generous padding
+   ========================================================================== */
+
+.card-article {
+  padding: var(--space-6);
+}
+
+.card-article .card-header {
+  margin-bottom: var(--space-3);
+}
+
+.card-article .card-title {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-3);
+}
+
+.card-article .card-excerpt {
+  color: var(--color-text);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-3);
+}
+
+.card-article .reading-time::before {
+  content: "\2022";
+  margin-right: var(--space-2);
+}
+
+/* ==========================================================================
+   Note Card - Low prominence for pings, thoughts, status updates
+   Centered, right border accent, subtle shadow, no left border
+   ========================================================================== */
+
+.card-note {
+  padding: var(--space-4);
+  border: none;
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  max-width: 550px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.card-note:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.card-note .card-content {
+  margin-bottom: var(--space-3);
+}
+
+.card-note .card-title {
+  font-size: var(--text-lg);
+  font-weight: 500;
+  margin-bottom: var(--space-2);
+}
+
+.card-note .card-title a {
+  color: var(--color-text);
+}
+
+.card-note .card-text {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+
+  /* Limit to 3 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-note .card-meta {
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.card-note .card-link {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  text-decoration: none;
+}
+
+.card-note .card-link:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Photo Card - Image/video prominent for shots, photos, gallery posts
+   Large media with aspect-ratio, caption/description below
+   Auto-detects video files (.mp4, .webm, .mov) and displays as looping video
+   ========================================================================== */
+
+.card-photo {
+  padding: 0;
+  overflow: hidden;
+}
+
+.card-photo .card-image-link {
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.card-photo .card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+/* Video element styling - ensure it fills container */
+.card-photo video.card-image {
+  display: block;
+}
+
+.card-photo:hover .card-image {
+  transform: scale(1.02);
+}
+
+.card-photo .card-body {
+  padding: var(--space-4);
+}
+
+.card-photo .card-title {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-2);
+}
+
+.card-photo .card-caption {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-2);
+
+  /* Limit to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Video Card - Video/thumbnail prominent for video, clip, stream posts
+   Video thumbnail with play indicator, title below
+   ========================================================================== */
+
+.card-video {
+  padding: 0;
+  overflow: hidden;
+}
+
+.card-video .card-video-link {
+  display: block;
+}
+
+.card-video .card-video-container {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.card-video .card-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.card-video:hover .card-thumbnail {
+  transform: scale(1.02);
+}
+
+.card-video .card-play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.card-video:hover .card-play-icon {
+  background: var(--color-primary);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.card-video .card-play-icon svg {
+  margin-left: 4px; /* Visual centering for play icon */
+}
+
+.card-video .card-body {
+  padding: var(--space-4);
+}
+
+.card-video .card-title {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-2);
+}
+
+.card-video .card-description {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-2);
+}
+
+.card-video .duration {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+/* ==========================================================================
+   Link Card - URL preview style for links, bookmarks, TIL posts
+   Shows domain, title, description in preview card style
+   ========================================================================== */
+
+.card-link {
+  padding: 0;
+  overflow: hidden;
+}
+
+.card-link .card-link-wrapper {
+  display: flex;
+  text-decoration: none;
+  color: inherit;
+}
+
+.card-link .card-link-image {
+  flex-shrink: 0;
+  width: 120px;
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.card-link .card-link-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-link .card-link-content {
+  flex: 1;
+  padding: var(--space-4);
+  min-width: 0;
+}
+
+.card-link .card-domain {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+  text-transform: lowercase;
+
+  /* Truncate long URLs */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-link .card-title {
+  font-size: var(--text-base);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+
+  /* Limit to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-link .card-description {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+
+  /* Limit to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-link .card-meta {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+/* ==========================================================================
+   Quote Card - Blockquote styling for quotes, quotations
+   Large quote with source attribution
+   ========================================================================== */
+
+.card-quote {
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border-left: 4px solid var(--color-primary);
+}
+
+.card-quote .card-blockquote {
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: none;
+  background: none;
+  font-style: italic;
+  font-size: var(--text-lg);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text);
+}
+
+.card-quote .card-blockquote p {
+  margin: 0;
+}
+
+.card-quote .card-attribution {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.card-quote .card-attribution cite {
+  font-style: normal;
+}
+
+.card-quote .quote-author {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.card-quote .quote-author::after {
+  content: ",";
+  margin-right: var(--space-1);
+}
+
+.card-quote .quote-source {
+  font-style: italic;
+}
+
+.card-quote .card-title-link {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.card-quote .card-title-link:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Guide Card - Step/chapter indicator for guides, series, tutorials
+   Shows step number, title, description
+   ========================================================================== */
+
+.card-guide {
+  padding: var(--space-4);
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.card-guide .card-step-indicator {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-guide .step-number {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.card-guide .card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-guide .card-title {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-2);
+}
+
+.card-guide .card-description {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-2);
+
+  /* Limit to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Inline Card - Full rendered content for gratitude, micro posts
+   Minimal wrapper, displays full article_html content
+   ========================================================================== */
+
+.card-inline {
+  padding: var(--space-4);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+}
+
+.card-inline:hover {
+  border-color: var(--color-border);
+  box-shadow: none;
+}
+
+.card-inline .card-content {
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text);
+}
+
+/* Style inline content (rendered markdown) */
+.card-inline .card-content h1,
+.card-inline .card-content h2,
+.card-inline .card-content h3,
+.card-inline .card-content h4,
+.card-inline .card-content h5,
+.card-inline .card-content h6 {
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+.card-inline .card-content h1:first-child,
+.card-inline .card-content h2:first-child,
+.card-inline .card-content h3:first-child,
+.card-inline .card-content h4:first-child {
+  margin-top: 0;
+}
+
+.card-inline .card-content p {
+  margin-bottom: var(--space-3);
+}
+
+.card-inline .card-content p:last-child {
+  margin-bottom: 0;
+}
+
+.card-inline .card-content img {
+  max-width: 100%;
+  border-radius: var(--radius);
+  margin: var(--space-3) 0;
+}
+
+.card-inline .card-content blockquote {
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  padding-left: var(--space-4);
+  border-left: 3px solid var(--color-primary);
+  background: var(--color-surface);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.card-inline .card-meta {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  justify-content: space-between;
+}
+
+.card-inline .card-permalink {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.card-inline .card-permalink:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Default Card - Fallback for unmapped templateKey values
+   Basic card layout, similar to original card.html
+   ========================================================================== */
+
+.card-default {
+  padding: var(--space-5);
+}
+
+.card-default .card-title {
+  font-size: var(--text-xl);
+  margin-bottom: var(--space-2);
+}
+
+.card-default .card-description {
+  color: var(--color-text-muted);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-3);
+}
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* Reduce feed max-width constraint on mobile */
+  .feed .posts,
+  .feed .posts-list {
+    max-width: 100%;
+  }
+
+  /* Article card */
+  .card-article {
+    padding: var(--space-4);
+  }
+
+  .card-article .card-title {
+    font-size: var(--text-xl);
+  }
+
+  /* Note card */
+  .card-note {
+    padding: var(--space-3);
+    max-width: 100%;
+  }
+
+  /* Photo card */
+  .card-photo .card-body {
+    padding: var(--space-3);
+  }
+
+  /* Video card */
+  .card-video .card-play-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .card-video .card-play-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .card-video .card-body {
+    padding: var(--space-3);
+  }
+
+  /* Link card - stack vertically on mobile */
+  .card-link .card-link-wrapper {
+    flex-direction: column;
+  }
+
+  .card-link .card-link-image {
+    width: 100%;
+    height: 120px;
+  }
+
+  /* Quote card */
+  .card-quote {
+    padding: var(--space-4);
+  }
+
+  .card-quote .card-blockquote {
+    font-size: var(--text-base);
+  }
+
+  /* Guide card - stack on mobile */
+  .card-guide {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .card-guide .card-step-indicator {
+    width: 40px;
+    height: 40px;
+  }
+
+  .card-guide .step-number {
+    font-size: var(--text-lg);
+  }
+
+  /* Inline card */
+  .card-inline {
+    padding: var(--space-3);
+  }
+
+  /* Default card */
+  .card-default {
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 480px) {
+  .card-article .card-title {
+    font-size: var(--text-lg);
+  }
+
+  .card-note .card-text {
+    -webkit-line-clamp: 2;
+  }
+
+  .card-photo .card-image-link {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  .card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px solid #ccc;
+    box-shadow: none;
+  }
+
+  .card-photo .card-image,
+  .card-video .card-thumbnail {
+    max-height: 200px;
+  }
+
+  .card-inline .card-content img {
+    max-height: 150px;
+  }
+}

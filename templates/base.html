@@ -1,292 +1,237 @@
 <!DOCTYPE html>
 <html lang="{{ config.lang | default:'en' }}">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {% if post.private %}<meta name="robots" content="noindex, nofollow">{% endif %}
-    <title>{% block title %}{% if post %}{{ post.title }} - {% endif %}{{ config.title | default:"My Site" }}{% endblock %}</title>
-    {% if post.description %}<meta name="description" content="{{ post.description }}">{% elif config.description %}<meta name="description" content="{{ config.description }}">{% endif %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Structured Data: OpenGraph -->
-    {% if post.structured_data.opengraph %}
-    {% for meta in post.structured_data.opengraph %}
-    <meta property="{{ meta.property }}" content="{{ meta.content }}">
-    {% endfor %}
-    {% elif post %}
-    {# Fallback to basic OG tags if no structured data #}
-    <meta property="og:title" content="{{ post.title }}">
-    <meta property="og:description" content="{{ post.description | default:config.description }}">
-    <meta property="og:url" content="{{ config.url }}{{ post.slug }}/">
-    <meta property="og:type" content="article">
-    {% if post.cover_image %}<meta property="og:image" content="{{ config.url }}{{ post.cover_image }}">{% elif config.seo.default_image %}<meta property="og:image" content="{{ config.url }}{{ config.seo.default_image }}">{% endif %}
-    <meta property="og:site_name" content="{{ config.title }}">
-    {% else %}
-    <meta property="og:title" content="{{ config.title }}">
-    <meta property="og:description" content="{{ config.description }}">
-    <meta property="og:url" content="{{ config.url }}">
-    <meta property="og:type" content="website">
-    {% if config.seo.default_image %}<meta property="og:image" content="{{ config.url }}{{ config.seo.default_image }}">{% endif %}
-    <meta property="og:site_name" content="{{ config.title }}">
-    {% endif %}
+  {% block meta %}
+  <title>{% block title %}{{ config.title | default:'My Site' }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ config.description | default:'' }}{% endblock %}">
+  {% endblock %}
 
-    <!-- Structured Data: Twitter Card -->
-    {% if post.structured_data.twitter %}
-    {% for meta in post.structured_data.twitter %}
-    <meta name="{{ meta.name }}" content="{{ meta.content }}">
-    {% endfor %}
-    {% else %}
-    {# Fallback to basic Twitter tags if no structured data #}
-    <meta name="twitter:card" content="summary_large_image">
-    {% if config.seo.twitter_handle %}<meta name="twitter:site" content="@{{ config.seo.twitter_handle }}">{% endif %}
-    {% if post %}
-    <meta name="twitter:title" content="{{ post.title }}">
-    <meta name="twitter:description" content="{{ post.description | default:config.description }}">
-    {% if post.cover_image %}<meta name="twitter:image" content="{{ config.url }}{{ post.cover_image }}">{% elif config.seo.default_image %}<meta name="twitter:image" content="{{ config.url }}{{ config.seo.default_image }}">{% endif %}
-    {% else %}
-    <meta name="twitter:title" content="{{ config.title }}">
-    <meta name="twitter:description" content="{{ config.description }}">
-    {% if config.seo.default_image %}<meta name="twitter:image" content="{{ config.url }}{{ config.seo.default_image }}">{% endif %}
-    {% endif %}
-    {% endif %}
+  {% block head %}
+  <!-- Theme CSS -->
+  <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset }}">
+  <link rel="stylesheet" href="/css/chroma.css">
 
-    <!-- Pagefind default image fallback for search results -->
-    {% if config.seo.default_image %}
-    <meta data-pagefind-default-meta="image" content="{{ config.seo.default_image }}">
-    {% endif %}
+  <!-- Palette Switcher CSS (when enabled) -->
+  {% if config.theme.switcher.enabled %}
+  <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset }}">
+  {% endif %}
 
-    <!-- Canonical URL -->
-    {% if post %}
-    <link rel="canonical" href="{{ config.url }}{{ post.href }}">
-    {% else %}
-    <link rel="canonical" href="{{ config.url }}/">
-    {% endif %}
+  <!-- Pagefind Search CSS (when enabled) -->
+  {% if config.search.enabled %}
+  <link rel="stylesheet" href="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.css">
+  <link rel="stylesheet" href="{{ 'css/search.css' | theme_asset }}">
+  {% endif %}
 
-    <!-- Alternate Post Formats -->
-    {% if post %}
-    {% if config.post_formats.markdown %}
-    <link rel="alternate" type="text/markdown" title="Markdown Source" href="{{ post.href }}index.md">
-    {% endif %}
-    {% if config.post_formats.og %}
-    <link rel="alternate" type="text/html" title="Social Card" href="{{ post.href }}og/">
-    {% endif %}
-    {% endif %}
-
-    {% block head %}
-    <!-- Font Configuration -->
-    {% if config.theme.font.google_fonts %}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="{{ config.theme.font | google_fonts_url }}" rel="stylesheet">
-    {% endif %}
-    {% for url in config.theme.font.custom_urls %}
-    <link href="{{ url }}" rel="stylesheet">
-    {% endfor %}
-    <style>
-    :root {
-        --font-family: {{ config.theme.font.family | default:"system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }};
-        --font-heading: {{ config.theme.font.heading_family | default:config.theme.font.family | default:"system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }};
-        --font-code: {{ config.theme.font.code_family | default:"ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" }};
-        --font-size: {{ config.theme.font.size | default:"16px" }};
-        --line-height: {{ config.theme.font.line_height | default:"1.6" }};
-    }
-    </style>
-
-    <!-- Pagefind Search CSS - Load before theme CSS so theme can override defaults -->
-    {% if config.search.enabled %}
-    <link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
-    {% endif %}
-
-    <!-- GLightbox CSS for image zoom -->
+  <!-- Conditional CSS Loading -->
+  <script>
+    // GLightbox CSS - only load if glightbox elements will exist
     {% if config.Extra.glightbox_enabled %}
-    {% if config.Extra.glightbox_cdn %}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css">
-    {% else %}
-    <link rel="stylesheet" href="/css/glightbox.min.css">
+    // Check synchronously during page load
+    if (document.documentElement.innerHTML.includes('glightbox')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '{% if config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/css/glightbox.min.css{% endif %}';
+      document.head.appendChild(link);
+    }
     {% endif %}
-    <!-- GLightbox theme overrides to match site palette -->
-    <style>
-    .glightbox-clean .gslide-description {
-        background: var(--color-background);
-        color: var(--color-text);
-    }
-    .glightbox-clean .goverlay {
-        background: color-mix(in srgb, var(--color-background) 90%, transparent);
-    }
-    .glightbox-clean .gclose,
-    .glightbox-clean .gnext,
-    .glightbox-clean .gprev {
-        color: var(--color-text);
-    }
-    .glightbox-clean .gclose:hover,
-    .glightbox-clean .gnext:hover,
-    .glightbox-clean .gprev:hover {
-        color: var(--color-accent);
-    }
-    </style>
-    {% endif %}
+  </script>
 
-    <!-- Theme CSS -->
-    <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
-    <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
-    <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset }}">
-    <link rel="stylesheet" href="{{ 'css/layouts.css' | theme_asset }}">
-    <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
-    <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
-    <link rel="stylesheet" href="/css/chroma.css">
+  <!-- CSS variable overrides from theme config -->
+  {% if config.theme.variables %}
+  <style>:root { {% for k, v in config.theme.variables.items() %}{{ k }}: {{ v }}; {% endfor %} }</style>
+  {% endif %}
 
-    <!-- RSS/Atom/JSON Feeds -->
-    {% if config.head.alternate_feeds %}
-    {% for feed in config.head.alternate_feeds %}
-    <link rel="alternate" type="{{ feed.mime_type }}" title="{{ feed.title }}" href="{{ feed.href }}">
+  <!-- Style config overrides (per HEAD_STYLE.md spec) -->
+  {% if config.style %}
+  <style>
+    :root {
+      {% if config.style.color_bg %}--color-background: {{ config.style.color_bg }};{% endif %}
+      {% if config.style.color_text %}--color-text: {{ config.style.color_text }};{% endif %}
+      {% if config.style.color_link %}--color-primary: {{ config.style.color_link }};{% endif %}
+      {% if config.style.color_accent %}--color-primary-dark: {{ config.style.color_accent }};{% endif %}
+      {% if config.style.body_width %}--content-width: {{ config.style.body_width }};{% endif %}
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        {% if config.style.color_bg_light %}--color-background: {{ config.style.color_bg_light }};{% endif %}
+        {% if config.style.color_text_light %}--color-text: {{ config.style.color_text_light }};{% endif %}
+        {% if config.style.color_link_light %}--color-primary: {{ config.style.color_link_light }};{% endif %}
+        {% if config.style.color_accent_light %}--color-primary-dark: {{ config.style.color_accent_light }};{% endif %}
+      }
+    }
+  </style>
+  {% endif %}
+
+  <!-- Custom CSS file -->
+  {% if config.theme.custom_css %}
+  <link rel="stylesheet" href="{{ config.theme.custom_css | asset_url }}">
+  {% endif %}
+
+  <!-- RSS/Atom/JSON Feeds -->
+  {% if config.head.alternate_feeds %}
+  {% for feed in config.head.alternate_feeds %}
+  <link rel="alternate" type="{{ feed.mime_type }}" title="{{ feed.title }}" href="{{ feed.href }}">
+  {% endfor %}
+  {% else %}
+  {# Default feeds when no alternate_feeds configured #}
+  <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+  <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+  {% endif %}
+
+  <!-- Global head config (per HEAD_STYLE.md spec) -->
+  {% if config.head %}
+    <!-- Raw text/HTML -->
+    {% if config.head.text %}{{ config.head.text | safe }}{% endif %}
+
+    <!-- Meta tags -->
+    {% for meta in config.head.meta %}
+      {% if meta.name %}
+      <meta name="{{ meta.name }}" content="{{ meta.content }}">
+      {% elif meta.property %}
+      <meta property="{{ meta.property }}" content="{{ meta.content }}">
+      {% endif %}
     {% endfor %}
-    {% else %}
-    {# Default feeds when no alternate_feeds configured #}
-    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
-    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
-    {% if config.feeds.json.enabled %}
-    <link rel="alternate" type="application/json" title="JSON Feed" href="/feed.json">
-    {% endif %}
-    {% endif %}
 
-    {% if config.webmention.enabled %}
-    {% if config.webmention.endpoint %}<link rel="webmention" href="{{ config.webmention.endpoint }}">{% endif %}
-    {% endif %}
+    <!-- Link tags -->
+    {% for link in config.head.link %}
+    <link rel="{{ link.rel }}" href="{{ link.href }}"{% if link.crossorigin %} crossorigin{% endif %}>
+    {% endfor %}
 
-    {% include "partials/background-css.html" %}
-    {% endblock %}
+    <!-- Script tags -->
+    {% for script in config.head.script %}
+    <script src="{{ script.src }}"></script>
+    {% endfor %}
+  {% endif %}
 
-    <!-- Structured Data: JSON-LD -->
-    {% if post.structured_data.jsonld %}
-    <script type="application/ld+json">
-    {{ post.structured_data.jsonld | safe }}
-    </script>
-    {% elif post %}
-    {# Fallback to static JSON-LD if no structured data #}
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "BlogPosting",
-      "headline": "{{ post.title }}",
-      "description": "{{ post.description | default:config.description }}",
-      "datePublished": "{{ post.date }}",
-      "author": {
-        "@type": "Person",
-        "name": "{{ config.author }}"
-      },
-      "publisher": {
-        "@type": "Organization",
-        "name": "{{ config.title }}"{% if config.seo.logo_url %},
-        "logo": {
-          "@type": "ImageObject",
-          "url": "{{ config.url }}{{ config.seo.logo_url }}"
-        }{% endif %}
-      }{% if post.cover_image %},
-      "image": "{{ config.url }}{{ post.cover_image }}"{% elif config.seo.default_image %},
-      "image": "{{ config.url }}{{ config.seo.default_image }}"{% endif %}
-    }
-    </script>
-    {% else %}
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "{{ config.title }}",
-      "description": "{{ config.description }}",
-      "url": "{{ config.url }}"{% if config.seo.logo_url %},
-      "publisher": {
-        "@type": "Organization",
-        "name": "{{ config.title }}",
-        "logo": {
-          "@type": "ImageObject",
-          "url": "{{ config.url }}{{ config.seo.logo_url }}"
-        }
-      }{% endif %}
-    }
-    </script>
-    {% endif %}
+  {% include "partials/background-css.html" %}
+  {% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}">
-    {% include "partials/background-decorations.html" %}
+<body>
+  {% include "partials/background-decorations.html" %}
+  {% block header %}
+  <header class="site-header">
+    <div class="container">
+      <a href="/" class="site-title">{{ config.title | default:'My Site' }}</a>
+      {% include "components/nav.html" %}
+      {% if config.search.enabled and config.search.position == 'navbar' %}
+      {% include "components/search.html" %}
+      {% endif %}
+    </div>
+  </header>
+  {% endblock %}
 
-    {% block header %}
-    <header class="site-header" data-pagefind-ignore>
-        <div class="container">
-            <a href="/" class="site-title">{{ config.title | default:"Home" }}</a>
-            {% include "components/nav.html" %}
-            <div class="header-actions">
-                {% if config.search.enabled and config.search.position == "navbar" %}
-                {% include "components/search.html" %}
-                {% endif %}
-                {% if config.header.show_theme_toggle %}
-                <button class="theme-toggle" aria-label="Toggle theme">
-                    <span class="theme-toggle-icon"></span>
-                </button>
-                {% endif %}
-            </div>
-        </div>
-    </header>
-    {% endblock %}
+  <div class="page-wrapper">
+    {# Left sidebar for feed navigation (if enabled) #}
+    {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
+    {% include "components/feed_sidebar.html" %}
+    {% endif %}
 
-    <main data-pagefind-body>
-        {% block content %}{% endblock %}
+    <main class="main-content">
+      {% block content %}{% endblock %}
     </main>
 
-    {% block footer %}
-    {% include "components/footer.html" %}
-    {% endblock %}
-
-    {# Keyboard Shortcuts Modal #}
-    {% include "partials/shortcuts-modal.html" %}
-
-    {% block htmx %}{% endblock %}
-    {% block scripts %}{% endblock %}
-    <script src="{{ 'js/tooltips.js' | theme_asset }}" defer></script>
-    <script src="{{ 'js/shortcuts.js' | theme_asset }}" defer></script>
-    <script src="{{ 'js/mention-cards.js' | theme_asset }}" defer></script>
-
-    <!-- Pagefind Search JS -->
-    {% if config.search.enabled %}
-    <script src="/_pagefind/pagefind-ui.js" defer></script>
-    <script>
-        window.addEventListener('DOMContentLoaded', function() {
-            if (typeof PagefindUI !== 'undefined') {
-                new PagefindUI({
-                    element: "#pagefind-search",
-                    showImages: {{ config.search.show_images | default:false | yesno:"true,false" }},
-                    excerptLength: {{ config.search.excerpt_length | default:15 }},
-                    showSubResults: {{ config.search.show_sub_results | default:false | yesno:"true,false" }},
-                    resetStyles: false,
-                    translations: {
-                        placeholder: "{{ config.search.placeholder | default:'Search' }}"
-                    }
-                });
-            }
-        });
-    </script>
+    {# Right sidebar for document TOC (if enabled) #}
+    {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'right' %}
+    {% include "components/doc_sidebar.html" %}
     {% endif %}
+  </div>
 
-    {% include "partials/background-scripts.html" %}
+  {% block footer %}
+  {% include "components/footer.html" %}
+  {% endblock %}
 
-    <!-- GLightbox JS for image zoom -->
+  {% block htmx %}{% endblock %}
+  {% block scripts %}{% endblock %}
+
+  <!-- Conditional Script Loading: Only load when needed -->
+  <script>
+    // Wikilink Hover Tooltips - only load if wikilinks with data-title exist
+    if (document.querySelector('.wikilink[data-title]')) {
+      const script = document.createElement('script');
+      script.src = '{{ 'js/tooltips.js' | theme_asset }}';
+      script.defer = true;
+      document.body.appendChild(script);
+    }
+
+    // Mention Cards - only load if mention links exist
+    if (document.querySelector('a.mention')) {
+      const mentionScript = document.createElement('script');
+      mentionScript.src = '{{ 'js/mention-cards.js' | theme_asset }}';
+      mentionScript.defer = true;
+      document.body.appendChild(mentionScript);
+    }
+
+    // Keyboard Shortcuts - only load if search or shortcuts modal exist
+    if (document.querySelector('#pagefind-search, #shortcuts-modal, [type="search"]')) {
+      const shortcutsScript = document.createElement('script');
+      shortcutsScript.src = '{{ 'js/shortcuts.js' | theme_asset }}';
+      shortcutsScript.defer = true;
+      document.body.appendChild(shortcutsScript);
+    }
+
+    // Pagination (JS mode) - only load if JS pagination element exists
+    if (document.querySelector('.pagination-js')) {
+      const paginationScript = document.createElement('script');
+      paginationScript.src = '{{ 'js/pagination.js' | theme_asset }}';
+      paginationScript.defer = true;
+      document.body.appendChild(paginationScript);
+    }
+
+    // GLightbox - only load if glightbox elements exist
     {% if config.Extra.glightbox_enabled %}
-    {% if config.Extra.glightbox_cdn %}
-    <script src="https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js"></script>
-    {% else %}
-    <script src="/js/glightbox.min.js"></script>
-    {% endif %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const lightbox = GLightbox({
-                selector: '{{ config.Extra.glightbox_options.selector | default:".glightbox" }}',
-                openEffect: '{{ config.Extra.glightbox_options.openEffect | default:"zoom" }}',
-                closeEffect: '{{ config.Extra.glightbox_options.closeEffect | default:"zoom" }}',
-                slideEffect: '{{ config.Extra.glightbox_options.slideEffect | default:"slide" }}',
-                touchNavigation: {{ config.Extra.glightbox_options.touchNavigation | default:true | yesno:"true,false" }},
-                loop: {{ config.Extra.glightbox_options.loop | default:false | yesno:"true,false" }},
-                draggable: {{ config.Extra.glightbox_options.draggable | default:true | yesno:"true,false" }}
-            });
+    if (document.querySelector('.glightbox')) {
+      const glightboxScript = document.createElement('script');
+      glightboxScript.src = '{% if config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js{% else %}/js/glightbox.min.js{% endif %}';
+      glightboxScript.onload = function() {
+        const lightbox = GLightbox({
+          selector: '{{ config.Extra.glightbox_options.selector | default:".glightbox" }}',
+          openEffect: '{{ config.Extra.glightbox_options.openEffect | default:"zoom" }}',
+          closeEffect: '{{ config.Extra.glightbox_options.closeEffect | default:"zoom" }}',
+          slideEffect: '{{ config.Extra.glightbox_options.slideEffect | default:"slide" }}',
+          touchNavigation: {{ config.Extra.glightbox_options.touchNavigation | default:true | yesno:"true,false" }},
+          loop: {{ config.Extra.glightbox_options.loop | default:false | yesno:"true,false" }},
+          draggable: {{ config.Extra.glightbox_options.draggable | default:true | yesno:"true,false" }}
         });
-    </script>
+      };
+      document.body.appendChild(glightboxScript);
+    }
     {% endif %}
+  </script>
+
+  <!-- Pagefind Search JS (when enabled) -->
+  {% if config.search.enabled %}
+  <script>
+    function initPagefindSearch() {
+      if (typeof PagefindUI !== 'undefined' && document.getElementById('pagefind-search')) {
+        new PagefindUI({
+          element: '#pagefind-search',
+          showSubResults: true,
+          showImages: {{ config.search.show_images | yesno:"true,false" }},
+          excerptLength: {{ config.search.excerpt_length | default:200 }},
+          translations: {
+            placeholder: '{{ config.search.placeholder | default:"Search..." }}'
+          }
+        });
+      }
+    }
+  </script>
+  <script src="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.js" onload="initPagefindSearch()"></script>
+  {% endif %}
+
+  <!-- Palette Switcher JS (when enabled) -->
+  {% if config.theme.switcher.enabled %}
+  <script src="{{ 'js/palette-switcher.js' | theme_asset }}" defer></script>
+  {% endif %}
+
+  {% include "partials/background-scripts.html" %}
 </body>
 </html>

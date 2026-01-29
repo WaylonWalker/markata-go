@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -48,6 +49,8 @@ func registerFilters() {
 		pongo2.RegisterFilter("join", filterJoin)
 		pongo2.RegisterFilter("reverse", filterReverse)
 		pongo2.RegisterFilter("sort", filterSort)
+		pongo2.RegisterFilter("selectattr", filterSelectAttr)
+		pongo2.RegisterFilter("rejectattr", filterRejectAttr)
 
 		// HTML/text filters
 		pongo2.ReplaceFilter("striptags", filterStripTags)
@@ -312,6 +315,101 @@ func filterSort(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	}
 
 	return pongo2.AsValue(result), nil
+}
+
+// filterSelectAttr filters a slice of maps/structs to only include items
+// where the specified attribute equals the given value.
+// Usage: {{ items|selectattr:"key:value" }}
+// Example: {{ webmentions|selectattr:"WMProperty:like-of" }}
+func filterSelectAttr(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	if !in.CanSlice() {
+		return in, nil
+	}
+
+	// Parse param as "key:value"
+	paramStr := param.String()
+	parts := strings.SplitN(paramStr, ":", 2)
+	if len(parts) != 2 {
+		return in, nil // Invalid param format, return original
+	}
+	key := parts[0]
+	value := parts[1]
+
+	var result []interface{}
+	for i := 0; i < in.Len(); i++ {
+		item := in.Index(i)
+		// Try to get the attribute
+		attr := getAttr(item, key)
+		if attr != nil && attr.String() == value {
+			result = append(result, item.Interface())
+		}
+	}
+
+	return pongo2.AsValue(result), nil
+}
+
+// filterRejectAttr filters a slice of maps/structs to exclude items
+// where the specified attribute equals the given value.
+// Usage: {{ items|rejectattr:"key:value" }}
+// Example: {{ webmentions|rejectattr:"WMProperty:like-of" }}
+func filterRejectAttr(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	if !in.CanSlice() {
+		return in, nil
+	}
+
+	// Parse param as "key:value"
+	paramStr := param.String()
+	parts := strings.SplitN(paramStr, ":", 2)
+	if len(parts) != 2 {
+		return in, nil // Invalid param format, return original
+	}
+	key := parts[0]
+	value := parts[1]
+
+	var result []interface{}
+	for i := 0; i < in.Len(); i++ {
+		item := in.Index(i)
+		// Try to get the attribute
+		attr := getAttr(item, key)
+		if attr == nil || attr.String() != value {
+			result = append(result, item.Interface())
+		}
+	}
+
+	return pongo2.AsValue(result), nil
+}
+
+// getAttr gets an attribute from a pongo2.Value (works with maps and structs).
+func getAttr(v *pongo2.Value, key string) *pongo2.Value {
+	// Get the underlying interface
+	iface := v.Interface()
+	if iface == nil {
+		return nil
+	}
+
+	rv := reflect.ValueOf(iface)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+
+	switch rv.Kind() {
+	case reflect.Map:
+		// Try string key first
+		mv := rv.MapIndex(reflect.ValueOf(key))
+		if mv.IsValid() {
+			return pongo2.AsValue(mv.Interface())
+		}
+	case reflect.Struct:
+		fv := rv.FieldByName(key)
+		if fv.IsValid() {
+			return pongo2.AsValue(fv.Interface())
+		}
+	default:
+		// Other types don't support field/key access
+		return nil
+	}
+
+	return nil
 }
 
 // filterStripTags removes HTML tags from a string and cleans up entities.
