@@ -38,17 +38,17 @@
   min-width: 200px;
 }
 
-/* Type-specific accent colors */
+/* Type-specific accent colors - using theme semantic colors */
 .webmention-facepile-group--likes {
-  border-left: 3px solid #ef4444;
+  border-left: 3px solid var(--color-error);
 }
 
 .webmention-facepile-group--reposts {
-  border-left: 3px solid #10b981;
+  border-left: 3px solid var(--color-success);
 }
 
 .webmention-facepile-group--bookmarks {
-  border-left: 3px solid #f59e0b;
+  border-left: 3px solid var(--color-warning);
 }
 
 .webmention-type-label {
@@ -64,15 +64,15 @@
 }
 
 .webmention-facepile-group--likes .webmention-type-label {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .webmention-facepile-group--reposts .webmention-type-label {
-  color: #10b981;
+  color: var(--color-success);
 }
 
 .webmention-facepile-group--bookmarks .webmention-type-label {
-  color: #f59e0b;
+  color: var(--color-warning);
 }
 
 .webmention-icon {
@@ -325,4 +325,35 @@
   .webmention:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   }
+}
+
+/* ==========================================================================
+   Webmention Counts - Compact display for post cards
+   ========================================================================== */
+
+.webmention-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--color-text-muted);
+}
+
+.wm-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  white-space: nowrap;
+}
+
+.wm-likes {
+  color: var(--color-error);
+}
+
+.wm-reposts {
+  color: var(--color-success);
+}
+
+.wm-replies {
+  color: var(--color-primary);
 }
