@@ -73,6 +73,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["mentions"] = func() lifecycle.Plugin { return NewMentionsPlugin() }
 	pluginRegistry.constructors["webmentions"] = func() lifecycle.Plugin { return NewWebMentionsPlugin() }
 	pluginRegistry.constructors["webmentions_fetch"] = func() lifecycle.Plugin { return NewWebmentionsFetchPlugin() }
+	pluginRegistry.constructors["webmentions_leaderboard"] = func() lifecycle.Plugin { return NewWebmentionsLeaderboardPlugin() }
 	pluginRegistry.constructors["background"] = func() lifecycle.Plugin { return NewBackgroundPlugin() }
 	pluginRegistry.constructors["image_zoom"] = func() lifecycle.Plugin { return NewImageZoomPlugin() }
 	pluginRegistry.constructors["static_file_conflicts"] = func() lifecycle.Plugin { return NewStaticFileConflictsPlugin() }
@@ -131,18 +132,19 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewLoadPlugin(),
 
 		// Transform stage plugins (in order)
-		NewAutoTitlePlugin(),        // Auto-generate titles first
-		NewDescriptionPlugin(),      // Auto-generate descriptions early
-		NewStructuredDataPlugin(),   // Generate structured data (needs title, description)
-		NewReadingTimePlugin(),      // Calculate reading time
-		NewStatsPlugin(),            // Calculate comprehensive content stats
-		NewBreadcrumbsPlugin(),      // Generate breadcrumb navigation
-		NewEmbedsPlugin(),           // Process embed syntax (before wikilinks)
-		NewWikilinksPlugin(),        // Process wikilinks before rendering
-		NewMentionsPlugin(),         // Process @mentions (after blogroll config is loaded)
-		NewWebmentionsFetchPlugin(), // Load cached webmentions and attach to posts
-		NewTocPlugin(),              // Extract TOC before rendering
-		NewJinjaMdPlugin(),          // Process Jinja templates in markdown
+		NewAutoTitlePlugin(),              // Auto-generate titles first
+		NewDescriptionPlugin(),            // Auto-generate descriptions early
+		NewStructuredDataPlugin(),         // Generate structured data (needs title, description)
+		NewReadingTimePlugin(),            // Calculate reading time
+		NewStatsPlugin(),                  // Calculate comprehensive content stats
+		NewBreadcrumbsPlugin(),            // Generate breadcrumb navigation
+		NewEmbedsPlugin(),                 // Process embed syntax (before wikilinks)
+		NewWikilinksPlugin(),              // Process wikilinks before rendering
+		NewMentionsPlugin(),               // Process @mentions (after blogroll config is loaded)
+		NewWebmentionsFetchPlugin(),       // Load cached webmentions and attach to posts
+		NewWebmentionsLeaderboardPlugin(), // Calculate top posts by webmentions (after fetch)
+		NewTocPlugin(),                    // Extract TOC before rendering
+		NewJinjaMdPlugin(),                // Process Jinja templates in markdown
 
 		// Render stage plugins
 		NewRenderMarkdownPlugin(),
