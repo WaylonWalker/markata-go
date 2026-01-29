@@ -112,6 +112,12 @@
   --admonition-icon: "#";
 }
 
+.admonition.seealso {
+  --admonition-color: var(--admonition-seealso-border, #8b5cf6);
+  --admonition-bg: var(--admonition-seealso-bg, #f5f3ff);
+  --admonition-icon: "->";
+}
+
 /* Aside - Sidebar/Marginal Note (Tufte-style) */
 /* Asides are positioned in the margin of the article, outside the main content flow */
 

@@ -58,6 +58,13 @@ func (p *TemplatesPlugin) Configure(m *lifecycle.Manager) error {
 	// Get theme name from config (default to "default")
 	themeName := ThemeDefault
 	if extra := config.Extra; extra != nil {
+		// Check for typed ThemeConfig struct (set by core.go)
+		if theme, ok := extra["theme"].(models.ThemeConfig); ok {
+			if theme.Name != "" {
+				themeName = theme.Name
+			}
+		}
+		// Also check for map[string]interface{} (legacy/dynamic config)
 		if theme, ok := extra["theme"].(map[string]interface{}); ok {
 			if name, ok := theme["name"].(string); ok && name != "" {
 				themeName = name

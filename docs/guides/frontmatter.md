@@ -328,7 +328,9 @@ description: "Learn how to use goroutines for concurrent programming in Go."
 
 - **Type:** string
 - **Default:** Auto-generated from first ~160 characters of content
-- **Used for:** Meta description, feed summaries, social previews, cards
+- **Used for:** Meta description, SEO, social previews
+
+**Note:** The `description` field is no longer used for article card excerpts in feeds. Excerpts are now auto-generated from your content (first 3 paragraphs or 1500 characters). However, `description` may still be used for SEO meta tags and RSS feeds.
 
 **Auto-generation:** If not provided, markata-go extracts the first paragraph or ~160 characters from your content (with HTML tags stripped).
 
@@ -361,7 +363,7 @@ Templates are looked up in:
 | `published` | bool | `false` | No | Whether to include in public feeds |
 | `draft` | bool | `false` | No | Whether this is a work-in-progress |
 | `tags` | []string | `[]` | No | List of categorization tags |
-| `description` | string | Auto-generated | No | Brief summary for SEO/feeds |
+| `description` | string | Auto-generated | No | Brief summary for SEO/meta tags |
 | `template` | string | `"post.html"` | No | Template file to use for rendering |
 | `skip` | bool | `false` | No | Skip this file during processing entirely |
 

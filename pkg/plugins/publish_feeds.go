@@ -427,11 +427,19 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 	// Get theme name from config (default to "default")
 	themeName := "default"
 	if extra := config.Extra; extra != nil {
+		// Check for typed ThemeConfig struct (set by core.go)
+		if theme, ok := extra["theme"].(models.ThemeConfig); ok {
+			if theme.Name != "" {
+				themeName = theme.Name
+			}
+		}
+		// Also check for map[string]interface{} (legacy/dynamic config)
 		if theme, ok := extra["theme"].(map[string]interface{}); ok {
 			if name, ok := theme["name"].(string); ok && name != "" {
 				themeName = name
 			}
 		}
+		// Also check for simple theme string
 		if name, ok := extra["theme"].(string); ok && name != "" {
 			themeName = name
 		}
@@ -449,10 +457,12 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 
 		// Render with pongo2 template
 		html, err := engine.Render("feed.html", ctx)
-		if err == nil {
+		if err != nil {
+			// Log template rendering errors to help debug issues
+			log.Printf("[publish_feeds] Warning: template rendering failed for feed.html: %v (falling back to built-in template)", err)
+		} else {
 			return html, nil
 		}
-		// If pongo2 rendering fails, fall back to built-in template
 	}
 
 	// Fallback: Use built-in Go template
