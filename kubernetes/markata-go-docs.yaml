@@ -53,6 +53,19 @@ spec:
                 claimName: markata-go-docs-site
 
           initContainers:
+            - name: fix-permissions
+              image: alpine:3.20
+              command:
+                - sh
+                - -c
+                - |
+                  set -e
+                  mkdir -p /site/repo /site/cache /site/output
+                  chown -R 65532:65532 /site/repo /site/cache /site/output || true
+                  chmod -R g+rwX /site/repo /site/cache /site/output || true
+              volumeMounts:
+                - name: site
+                  mountPath: /site
             - name: clone-repo
               image: alpine/git:v2.40.1
               securityContext:
