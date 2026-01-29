@@ -3,6 +3,7 @@ package templates
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,6 +34,9 @@ func registerFilters() {
 		pongo2.RegisterFilter("slugify", filterSlugify)
 		pongo2.RegisterFilter("truncate", filterTruncate)
 		pongo2.RegisterFilter("truncatewords", filterTruncateWords)
+		pongo2.RegisterFilter("endswith", filterEndsWith)
+		pongo2.RegisterFilter("startswith", filterStartsWith)
+		pongo2.RegisterFilter("split", filterSplit)
 
 		// Default/fallback filter
 		pongo2.RegisterFilter("default_if_none", filterDefaultIfNone)
@@ -66,6 +70,15 @@ func registerFilters() {
 
 		// String repeat filter for text output
 		pongo2.RegisterFilter("repeat", filterRepeat)
+
+		// Reading time filter
+		pongo2.RegisterFilter("reading_time", filterReadingTime)
+
+		// Excerpt filter
+		pongo2.RegisterFilter("excerpt", filterExcerpt)
+
+		// Type conversion filter
+		pongo2.RegisterFilter("string", filterString)
 	})
 }
 
@@ -170,6 +183,33 @@ func filterTruncateWords(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error)
 	}
 
 	return pongo2.AsValue(strings.Join(words[:wordCount], " ") + "..."), nil
+}
+
+// filterEndsWith checks if a string ends with a given suffix.
+// Usage: {{ filename|endswith:".mp4" }}
+func filterEndsWith(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	s := in.String()
+	suffix := param.String()
+	return pongo2.AsValue(strings.HasSuffix(s, suffix)), nil
+}
+
+// filterStartsWith checks if a string starts with a given prefix.
+// Usage: {{ filename|startswith:"http" }}
+func filterStartsWith(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	s := in.String()
+	prefix := param.String()
+	return pongo2.AsValue(strings.HasPrefix(s, prefix)), nil
+}
+
+// filterSplit splits a string by a delimiter and returns a slice.
+// Usage: {{ "a.b.c"|split:"." }} -> ["a", "b", "c"]
+func filterSplit(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	s := in.String()
+	delim := param.String()
+	if delim == "" {
+		delim = " " // default to space
+	}
+	return pongo2.AsValue(strings.Split(s, delim)), nil
 }
 
 // filterDefaultIfNone returns a default value if the input is nil or empty.
@@ -510,4 +550,206 @@ func toTime(in *pongo2.Value) (time.Time, error) {
 	}
 
 	return time.Time{}, fmt.Errorf("unable to parse time: %s", s)
+}
+
+// filterReadingTime calculates estimated reading time for content.
+// Assumes ~200 words per minute reading speed.
+// Returns a string like "5 min read" or "< 1 min read"
+func filterReadingTime(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	content := in.String()
+	if content == "" {
+		return pongo2.AsValue("< 1 min read"), nil
+	}
+
+	// Count words (simple: split by whitespace)
+	words := strings.Fields(content)
+	wordCount := len(words)
+
+	// Assume 200 words per minute
+	const wordsPerMinute = 200
+	minutes := (wordCount + wordsPerMinute - 1) / wordsPerMinute // Round up
+
+	if minutes < 1 {
+		return pongo2.AsValue("< 1 min read"), nil
+	}
+
+	if minutes == 1 {
+		return pongo2.AsValue("1 min read"), nil
+	}
+
+	return pongo2.AsValue(fmt.Sprintf("%d min read", minutes)), nil
+}
+
+// filterExcerpt extracts an excerpt from HTML content.
+// Extracts the first N paragraphs or M characters (whichever is shorter).
+// Usage: {{ post.article_html|excerpt }} - uses defaults (3 paragraphs or 1500 chars)
+// Usage: {{ post.article_html|excerpt:"paragraphs=3" }}
+// Usage: {{ post.article_html|excerpt:"chars=500" }}
+// Usage: {{ post.article_html|excerpt:"paragraphs=2,chars=800" }}
+func filterExcerpt(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	html := in.String()
+	if html == "" {
+		return pongo2.AsValue(""), nil
+	}
+
+	// Default values
+	maxParagraphs := 3
+	maxChars := 1500
+
+	// Parse parameters if provided
+	if param != nil && param.String() != "" {
+		paramStr := param.String()
+		parts := strings.Split(paramStr, ",")
+		for _, part := range parts {
+			kv := strings.Split(strings.TrimSpace(part), "=")
+			if len(kv) == 2 {
+				key := strings.TrimSpace(kv[0])
+				val := strings.TrimSpace(kv[1])
+				switch key {
+				case "paragraphs":
+					if n, err := strconv.Atoi(val); err == nil && n > 0 {
+						maxParagraphs = n
+					}
+				case "chars":
+					if n, err := strconv.Atoi(val); err == nil && n > 0 {
+						maxChars = n
+					}
+				}
+			}
+		}
+	}
+
+	// Remove admonition blocks before extracting paragraphs
+	// Admonitions are supplementary content and shouldn't appear in excerpts
+	admonitionRe := regexp.MustCompile(`(?s)<div class="admonition[^"]*">.*?</div>`)
+	html = admonitionRe.ReplaceAllString(html, "")
+
+	// Also remove details (collapsible admonitions)
+	detailsRe := regexp.MustCompile(`(?s)<details class="admonition[^"]*">.*?</details>`)
+	html = detailsRe.ReplaceAllString(html, "")
+
+	// Extract paragraphs using regex
+	pRe := regexp.MustCompile(`(?s)<p[^>]*>(.*?)</p>`)
+	matches := pRe.FindAllStringSubmatch(html, -1)
+
+	if len(matches) == 0 {
+		// No paragraphs found, strip all tags and truncate
+		stripped := stripHTMLTagsHelper(html)
+		if len(stripped) > maxChars {
+			// Find last space before maxChars
+			truncated := stripped[:maxChars]
+			if lastSpace := strings.LastIndex(truncated, " "); lastSpace > maxChars/2 {
+				truncated = truncated[:lastSpace]
+			}
+			return pongo2.AsValue(truncated + "..."), nil
+		}
+		return pongo2.AsValue(stripped), nil
+	}
+
+	// Collect paragraphs up to maxParagraphs
+	var paragraphs []string
+	totalChars := 0
+
+	for i := 0; i < len(matches); i++ {
+		// Stop if we've collected enough non-empty paragraphs
+		if len(paragraphs) >= maxParagraphs {
+			break
+		}
+
+		innerText := matches[i][1] // Content inside <p>
+
+		// Keep inline formatting, just clean up the text
+		text := cleanExcerptHTML(innerText)
+		text = strings.TrimSpace(text)
+
+		if text == "" {
+			continue // Skip empty paragraphs
+		}
+
+		// Check if adding this paragraph would exceed maxChars
+		pLen := len(text)
+		if totalChars+pLen > maxChars && len(paragraphs) > 0 {
+			// Truncate this paragraph to fit
+			remaining := maxChars - totalChars
+			if remaining > 50 { // Only add if there's meaningful space
+				truncated := text[:remaining]
+				if lastSpace := strings.LastIndex(truncated, " "); lastSpace > remaining/2 {
+					truncated = truncated[:lastSpace]
+				}
+				paragraphs = append(paragraphs, "<p>"+truncated+"...</p>")
+			}
+			break
+		}
+
+		paragraphs = append(paragraphs, "<p>"+text+"</p>")
+		totalChars += pLen
+
+		if totalChars >= maxChars {
+			break
+		}
+	}
+
+	if len(paragraphs) == 0 {
+		return pongo2.AsValue(""), nil
+	}
+
+	result := strings.Join(paragraphs, "\n")
+
+	// Add ellipsis if we truncated
+	if len(matches) > len(paragraphs) || totalChars >= maxChars {
+		// Check if last paragraph already has ellipsis
+		if !strings.HasSuffix(result, "...") {
+			result += "\n<p>...</p>"
+		}
+	}
+
+	return pongo2.AsValue(result), nil
+}
+
+// cleanExcerptHTML preserves inline formatting tags (code, strong, em, a, etc.)
+// while removing block elements and cleaning up content for excerpts
+func cleanExcerptHTML(s string) string {
+	// Remove block-level tags but keep their content
+	blockTags := []string{"div", "span", "section", "article", "header", "footer", "nav", "aside"}
+	for _, tag := range blockTags {
+		// Remove opening tags
+		openRe := regexp.MustCompile(`(?i)<` + tag + `[^>]*>`)
+		s = openRe.ReplaceAllString(s, "")
+		// Remove closing tags
+		closeRe := regexp.MustCompile(`(?i)</` + tag + `>`)
+		s = closeRe.ReplaceAllString(s, "")
+	}
+
+	// Collapse multiple whitespace
+	wsRe := regexp.MustCompile(`\s+`)
+	s = wsRe.ReplaceAllString(s, " ")
+
+	return strings.TrimSpace(s)
+}
+
+// stripHTMLTagsHelper removes all HTML tags from a string (helper for filterExcerpt)
+func stripHTMLTagsHelper(s string) string {
+	re := regexp.MustCompile(`<[^>]*>`)
+	s = re.ReplaceAllString(s, "")
+
+	// Decode common HTML entities
+	s = strings.ReplaceAll(s, "&nbsp;", " ")
+	s = strings.ReplaceAll(s, "&amp;", "&")
+	s = strings.ReplaceAll(s, "&lt;", "<")
+	s = strings.ReplaceAll(s, "&gt;", ">")
+	s = strings.ReplaceAll(s, "&quot;", "\"")
+	s = strings.ReplaceAll(s, "&#39;", "'")
+	s = strings.ReplaceAll(s, "&apos;", "'")
+
+	// Collapse multiple whitespace
+	wsRe := regexp.MustCompile(`\s+`)
+	s = wsRe.ReplaceAllString(s, " ")
+
+	return strings.TrimSpace(s)
+}
+
+// filterString converts a value to a string representation.
+// Usage: {{ number|string }} or {{ post.excerpt_paragraphs|string }}
+func filterString(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	return pongo2.AsValue(in.String()), nil
 }
