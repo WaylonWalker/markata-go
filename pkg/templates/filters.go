@@ -580,6 +580,133 @@ func filterReadingTime(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	return pongo2.AsValue(fmt.Sprintf("%d min read", minutes)), nil
 }
 
+// excerptConfig holds configuration for excerpt extraction.
+type excerptConfig struct {
+	maxParagraphs int
+	maxChars      int
+}
+
+// defaultExcerptConfig returns the default excerpt configuration.
+func defaultExcerptConfig() excerptConfig {
+	return excerptConfig{
+		maxParagraphs: 3,
+		maxChars:      1500,
+	}
+}
+
+// parseExcerptParams parses excerpt filter parameters.
+// Supports: "paragraphs=N", "chars=N", or "paragraphs=N,chars=M"
+func parseExcerptParams(param *pongo2.Value) excerptConfig {
+	cfg := defaultExcerptConfig()
+
+	if param == nil || param.String() == "" {
+		return cfg
+	}
+
+	parts := strings.Split(param.String(), ",")
+	for _, part := range parts {
+		kv := strings.Split(strings.TrimSpace(part), "=")
+		if len(kv) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(kv[0])
+		val := strings.TrimSpace(kv[1])
+
+		switch key {
+		case "paragraphs":
+			if n, err := strconv.Atoi(val); err == nil && n > 0 {
+				cfg.maxParagraphs = n
+			}
+		case "chars":
+			if n, err := strconv.Atoi(val); err == nil && n > 0 {
+				cfg.maxChars = n
+			}
+		}
+	}
+
+	return cfg
+}
+
+// removeAdmonitions strips admonition blocks from HTML.
+// Admonitions are supplementary content that shouldn't appear in excerpts.
+func removeAdmonitions(html string) string {
+	// Remove standard admonition divs
+	admonitionRe := regexp.MustCompile(`(?s)<div class="admonition[^"]*">.*?</div>`)
+	html = admonitionRe.ReplaceAllString(html, "")
+
+	// Remove collapsible admonitions (details elements)
+	detailsRe := regexp.MustCompile(`(?s)<details class="admonition[^"]*">.*?</details>`)
+	html = detailsRe.ReplaceAllString(html, "")
+
+	return html
+}
+
+// truncateAtWordBoundary truncates text at a word boundary.
+// Returns the truncated text with "..." appended if truncation occurred.
+func truncateAtWordBoundary(text string, maxLen int, addEllipsis bool) string {
+	if len(text) <= maxLen {
+		return text
+	}
+
+	truncated := text[:maxLen]
+	if lastSpace := strings.LastIndex(truncated, " "); lastSpace > maxLen/2 {
+		truncated = truncated[:lastSpace]
+	}
+
+	if addEllipsis {
+		return truncated + "..."
+	}
+	return truncated
+}
+
+// collectParagraphs extracts paragraphs from HTML up to the configured limits.
+func collectParagraphs(html string, cfg excerptConfig) []string {
+	pRe := regexp.MustCompile(`(?s)<p[^>]*>(.*?)</p>`)
+	matches := pRe.FindAllStringSubmatch(html, -1)
+
+	if len(matches) == 0 {
+		return nil
+	}
+
+	var paragraphs []string
+	totalChars := 0
+
+	for _, match := range matches {
+		if len(paragraphs) >= cfg.maxParagraphs {
+			break
+		}
+
+		text := cleanExcerptHTML(match[1])
+		text = strings.TrimSpace(text)
+
+		if text == "" {
+			continue
+		}
+
+		pLen := len(text)
+
+		// Check if adding this paragraph would exceed maxChars
+		if totalChars+pLen > cfg.maxChars && len(paragraphs) > 0 {
+			remaining := cfg.maxChars - totalChars
+			if remaining > 50 {
+				truncated := truncateAtWordBoundary(text, remaining, true)
+				paragraphs = append(paragraphs, "<p>"+truncated+"</p>")
+			}
+			break
+		}
+
+		paragraphs = append(paragraphs, "<p>"+text+"</p>")
+		totalChars += pLen
+
+		if totalChars >= cfg.maxChars {
+			break
+		}
+	}
+
+	return paragraphs
+}
+
 // filterExcerpt extracts an excerpt from HTML content.
 // Extracts the first N paragraphs or M characters (whichever is shorter).
 // Usage: {{ post.article_html|excerpt }} - uses defaults (3 paragraphs or 1500 chars)
@@ -592,115 +719,29 @@ func filterExcerpt(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		return pongo2.AsValue(""), nil
 	}
 
-	// Default values
-	maxParagraphs := 3
-	maxChars := 1500
+	cfg := parseExcerptParams(param)
+	html = removeAdmonitions(html)
 
-	// Parse parameters if provided
-	if param != nil && param.String() != "" {
-		paramStr := param.String()
-		parts := strings.Split(paramStr, ",")
-		for _, part := range parts {
-			kv := strings.Split(strings.TrimSpace(part), "=")
-			if len(kv) == 2 {
-				key := strings.TrimSpace(kv[0])
-				val := strings.TrimSpace(kv[1])
-				switch key {
-				case "paragraphs":
-					if n, err := strconv.Atoi(val); err == nil && n > 0 {
-						maxParagraphs = n
-					}
-				case "chars":
-					if n, err := strconv.Atoi(val); err == nil && n > 0 {
-						maxChars = n
-					}
-				}
-			}
-		}
-	}
+	// Try to extract paragraphs
+	paragraphs := collectParagraphs(html, cfg)
 
-	// Remove admonition blocks before extracting paragraphs
-	// Admonitions are supplementary content and shouldn't appear in excerpts
-	admonitionRe := regexp.MustCompile(`(?s)<div class="admonition[^"]*">.*?</div>`)
-	html = admonitionRe.ReplaceAllString(html, "")
-
-	// Also remove details (collapsible admonitions)
-	detailsRe := regexp.MustCompile(`(?s)<details class="admonition[^"]*">.*?</details>`)
-	html = detailsRe.ReplaceAllString(html, "")
-
-	// Extract paragraphs using regex
-	pRe := regexp.MustCompile(`(?s)<p[^>]*>(.*?)</p>`)
-	matches := pRe.FindAllStringSubmatch(html, -1)
-
-	if len(matches) == 0 {
-		// No paragraphs found, strip all tags and truncate
-		stripped := stripHTMLTagsHelper(html)
-		if len(stripped) > maxChars {
-			// Find last space before maxChars
-			truncated := stripped[:maxChars]
-			if lastSpace := strings.LastIndex(truncated, " "); lastSpace > maxChars/2 {
-				truncated = truncated[:lastSpace]
-			}
-			return pongo2.AsValue(truncated + "..."), nil
-		}
-		return pongo2.AsValue(stripped), nil
-	}
-
-	// Collect paragraphs up to maxParagraphs
-	var paragraphs []string
-	totalChars := 0
-
-	for i := 0; i < len(matches); i++ {
-		// Stop if we've collected enough non-empty paragraphs
-		if len(paragraphs) >= maxParagraphs {
-			break
-		}
-
-		innerText := matches[i][1] // Content inside <p>
-
-		// Keep inline formatting, just clean up the text
-		text := cleanExcerptHTML(innerText)
-		text = strings.TrimSpace(text)
-
-		if text == "" {
-			continue // Skip empty paragraphs
-		}
-
-		// Check if adding this paragraph would exceed maxChars
-		pLen := len(text)
-		if totalChars+pLen > maxChars && len(paragraphs) > 0 {
-			// Truncate this paragraph to fit
-			remaining := maxChars - totalChars
-			if remaining > 50 { // Only add if there's meaningful space
-				truncated := text[:remaining]
-				if lastSpace := strings.LastIndex(truncated, " "); lastSpace > remaining/2 {
-					truncated = truncated[:lastSpace]
-				}
-				paragraphs = append(paragraphs, "<p>"+truncated+"...</p>")
-			}
-			break
-		}
-
-		paragraphs = append(paragraphs, "<p>"+text+"</p>")
-		totalChars += pLen
-
-		if totalChars >= maxChars {
-			break
-		}
-	}
-
+	// Fallback: no paragraphs found, strip all tags and truncate
 	if len(paragraphs) == 0 {
-		return pongo2.AsValue(""), nil
+		stripped := stripHTMLTagsHelper(html)
+		if stripped == "" {
+			return pongo2.AsValue(""), nil
+		}
+		result := truncateAtWordBoundary(stripped, cfg.maxChars, len(stripped) > cfg.maxChars)
+		return pongo2.AsValue(result), nil
 	}
 
 	result := strings.Join(paragraphs, "\n")
 
-	// Add ellipsis if we truncated
-	if len(matches) > len(paragraphs) || totalChars >= maxChars {
-		// Check if last paragraph already has ellipsis
-		if !strings.HasSuffix(result, "...") {
-			result += "\n<p>...</p>"
-		}
+	// Add ellipsis if we truncated (more content exists)
+	pRe := regexp.MustCompile(`(?s)<p[^>]*>(.*?)</p>`)
+	allMatches := pRe.FindAllStringSubmatch(html, -1)
+	if len(allMatches) > len(paragraphs) && !strings.HasSuffix(result, "...") {
+		result += "\n<p>...</p>"
 	}
 
 	return pongo2.AsValue(result), nil
