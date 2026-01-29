@@ -53,19 +53,6 @@ spec:
                 claimName: markata-go-docs-site
 
           initContainers:
-            - name: fix-permissions
-              image: alpine:3.20
-              command:
-                - sh
-                - -c
-                - |
-                  set -e
-                  mkdir -p /site/repo /site/cache /site/output
-                  chown -R 65532:65532 /site/repo /site/cache /site/output || true
-                  chmod -R g+rwX /site/repo /site/cache /site/output || true
-              volumeMounts:
-                - name: site
-                  mountPath: /site
             - name: clone-repo
               image: alpine/git:v2.40.1
               securityContext:
@@ -77,12 +64,19 @@ spec:
                 - -c
                 - |
                   set -e
+                  umask 002
                   mkdir -p /site/repo /site/cache /site/output
                   if [ -d /site/repo/.git ]; then
+                    if [ ! -w /site/repo/.git ] || [ ! -w /site/repo/.git/objects ]; then
+                      echo "repo not writable; remove /site/repo or fix PVC permissions" >&2
+                      exit 1
+                    fi
+                    git -C /site/repo config core.sharedRepository group
                     git -C /site/repo fetch --depth=1 origin main
                     git -C /site/repo reset --hard FETCH_HEAD
                   else
                     git clone --depth=1 --single-branch --branch main https://github.com/WaylonWalker/markata-go.git /site/repo
+                    git -C /site/repo config core.sharedRepository group
                   fi
               volumeMounts:
                 - name: site
