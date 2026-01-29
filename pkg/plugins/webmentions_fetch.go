@@ -16,6 +16,14 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+// Compile-time interface verification.
+var (
+	_ lifecycle.Plugin          = (*WebmentionsFetchPlugin)(nil)
+	_ lifecycle.ConfigurePlugin = (*WebmentionsFetchPlugin)(nil)
+	_ lifecycle.TransformPlugin = (*WebmentionsFetchPlugin)(nil)
+	_ lifecycle.PriorityPlugin  = (*WebmentionsFetchPlugin)(nil)
+)
+
 // WebmentionIOResponse represents the response from webmention.io API.
 type WebmentionIOResponse struct {
 	Type     string               `json:"type"`
@@ -25,10 +33,11 @@ type WebmentionIOResponse struct {
 
 // WebmentionsFetchPlugin fetches incoming webmentions from webmention.io.
 type WebmentionsFetchPlugin struct {
-	config     models.WebMentionsConfig
-	siteURL    string
-	httpClient *http.Client
-	mentions   []ReceivedWebMention
+	config        models.WebMentionsConfig
+	siteURL       string
+	httpClient    *http.Client
+	mentions      []ReceivedWebMention
+	mentionsByURL map[string][]ReceivedWebMention
 }
 
 // NewWebmentionsFetchPlugin creates a new WebmentionsFetchPlugin.
@@ -38,7 +47,8 @@ func NewWebmentionsFetchPlugin() *WebmentionsFetchPlugin {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		mentions: make([]ReceivedWebMention, 0),
+		mentions:      make([]ReceivedWebMention, 0),
+		mentionsByURL: make(map[string][]ReceivedWebMention),
 	}
 }
 
@@ -99,8 +109,142 @@ func (p *WebmentionsFetchPlugin) Configure(m *lifecycle.Manager) error {
 }
 
 // Priority returns the execution priority for this plugin.
-func (p *WebmentionsFetchPlugin) Priority() int {
+// For Transform stage, run before other plugins that might cache post maps
+// (like jinja_md which runs at PriorityEarly).
+func (p *WebmentionsFetchPlugin) Priority(stage lifecycle.Stage) int {
+	if stage == lifecycle.StageTransform {
+		// Run before jinja_md (PriorityEarly = -100) so webmentions are attached
+		// before post maps are cached.
+		return lifecycle.PriorityFirst // -200
+	}
 	return lifecycle.PriorityDefault
+}
+
+// Transform loads cached webmentions and attaches them to posts.
+func (p *WebmentionsFetchPlugin) Transform(m *lifecycle.Manager) error {
+	if !p.config.Enabled {
+		return nil
+	}
+
+	// Load cached mentions
+	if err := p.loadMentionsCache(); err != nil {
+		// Not an error if cache doesn't exist yet
+		return nil
+	}
+
+	if len(p.mentions) == 0 {
+		// No mentions cached
+		return nil
+	}
+
+	// Build URL mapping for faster lookups
+	p.mentionsByURL = p.GroupMentionsByURL()
+
+	// Attach mentions to each post
+	posts := m.Posts()
+	attachCount := 0
+	for i := range posts {
+		post := posts[i]
+
+		// Build full URL for this post
+		postURL := p.siteURL + post.Href
+
+		// Normalize the URL (remove double slashes after protocol)
+		postURL = strings.Replace(postURL, "://", "PROTOCOL_SEP", 1)
+		postURL = strings.ReplaceAll(postURL, "//", "/")
+		postURL = strings.Replace(postURL, "PROTOCOL_SEP", "://", 1)
+
+		// Try various URL formats
+		urlVariants := []string{
+			postURL,
+			postURL + "/",
+			strings.TrimSuffix(postURL, "/"),
+		}
+
+		// Add legacy URL prefixes for migration compatibility
+		// Common case: posts used to be at /blog/slug but now at /slug
+		legacyPrefixes := []string{"/blog"}
+		for _, prefix := range legacyPrefixes {
+			legacyURL := p.siteURL + prefix + post.Href
+			// Normalize
+			legacyURL = strings.Replace(legacyURL, "://", "PROTOCOL_SEP", 1)
+			legacyURL = strings.ReplaceAll(legacyURL, "//", "/")
+			legacyURL = strings.Replace(legacyURL, "PROTOCOL_SEP", "://", 1)
+			urlVariants = append(urlVariants,
+				legacyURL,
+				legacyURL+"/",
+				strings.TrimSuffix(legacyURL, "/"),
+			)
+		}
+
+		// Also try with double slashes after domain (common in webmention.io data)
+		// e.g., https://waylonwalker.com//2025-07-04-notes
+		if strings.Contains(postURL, "://") {
+			parts := strings.SplitN(postURL, "://", 2)
+			if len(parts) == 2 && strings.Contains(parts[1], "/") {
+				// Split domain from path
+				domainPath := strings.SplitN(parts[1], "/", 2)
+				if len(domainPath) == 2 {
+					// Create URL with double slash after domain: https://domain//path
+					doubleSlashURL := parts[0] + "://" + domainPath[0] + "//" + domainPath[1]
+					urlVariants = append(urlVariants,
+						doubleSlashURL,
+						doubleSlashURL+"/",
+						strings.TrimSuffix(doubleSlashURL, "/"),
+					)
+				}
+			}
+		}
+
+		// Collect all mentions for this post
+		mentionMap := make(map[string]ReceivedWebMention)
+		for _, url := range urlVariants {
+			for i := range p.mentionsByURL[url] {
+				mention := &p.mentionsByURL[url][i]
+				// Use source URL as key to avoid duplicates
+				mentionMap[mention.Source] = *mention
+			}
+		}
+
+		if len(mentionMap) > 0 {
+			uniqueMentions := make([]ReceivedWebMention, 0, len(mentionMap))
+			for key := range mentionMap {
+				uniqueMentions = append(uniqueMentions, mentionMap[key])
+			}
+
+			// Add to post's Extra data
+			if post.Extra == nil {
+				post.Extra = make(map[string]interface{})
+			}
+			post.Extra["webmentions"] = uniqueMentions
+			attachCount++
+		}
+	}
+
+	if attachCount > 0 {
+		fmt.Fprintf(os.Stderr, "[webmentions_fetch] Attached webmentions to %d posts\n", attachCount)
+	}
+
+	return nil
+}
+
+// loadMentionsCache loads mentions from the cache file.
+func (p *WebmentionsFetchPlugin) loadMentionsCache() error {
+	if p.config.CacheDir == "" {
+		return nil
+	}
+
+	cacheFile := filepath.Join(p.config.CacheDir, "received_mentions.json")
+
+	data, err := os.ReadFile(cacheFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // Cache doesn't exist yet
+		}
+		return err
+	}
+
+	return json.Unmarshal(data, &p.mentions)
 }
 
 // FetchMentions fetches all webmentions from webmention.io for the configured domain.

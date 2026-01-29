@@ -1,0 +1,172 @@
+{# Webmentions section - displays received webmentions for a post #}
+{# Groups interactions by type: likes/reposts as facepiles, replies/mentions as cards #}
+{% if post.webmentions %}
+<section class="webmentions" aria-label="Webmentions">
+  <h2 class="webmentions-title">Interactions ({{ post.webmentions|length }})</h2>
+
+  {# Facepile section for likes, reposts, and bookmarks #}
+  {% with likes=post.webmentions|selectattr:"WMProperty:like-of" %}
+  {% with reposts=post.webmentions|selectattr:"WMProperty:repost-of" %}
+  {% with bookmarks=post.webmentions|selectattr:"WMProperty:bookmark-of" %}
+
+  {% if likes|length > 0 or reposts|length > 0 or bookmarks|length > 0 %}
+  <div class="webmentions-facepile">
+
+    {# Likes facepile #}
+    {% if likes|length > 0 %}
+    <div class="webmention-facepile-group webmention-facepile-group--likes">
+      <h3 class="webmention-type-label">
+        <span class="webmention-icon">&#10084;</span>
+        <span class="webmention-count">{{ likes|length }} Like{% if likes|length != 1 %}s{% endif %}</span>
+      </h3>
+      <div class="webmention-avatars">
+        {% for mention in likes %}
+        <a href="{{ mention.Author.URL|default:mention.URL }}" class="webmention-avatar" title="{{ mention.Author.Name|default:'Someone' }} liked this" rel="nofollow noopener">
+          {% if mention.Author.Photo %}
+          <img src="{{ mention.Author.Photo }}" alt="{{ mention.Author.Name|default:'Anonymous' }}" loading="lazy">
+          {% else %}
+          <span class="webmention-avatar-placeholder">{{ mention.Author.Name|default:'?'|first }}</span>
+          {% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# Reposts/Retweets facepile #}
+    {% if reposts|length > 0 %}
+    <div class="webmention-facepile-group webmention-facepile-group--reposts">
+      <h3 class="webmention-type-label">
+        <span class="webmention-icon">&#8634;</span>
+        <span class="webmention-count">{{ reposts|length }} Repost{% if reposts|length != 1 %}s{% endif %}</span>
+      </h3>
+      <div class="webmention-avatars">
+        {% for mention in reposts %}
+        <a href="{{ mention.Author.URL|default:mention.URL }}" class="webmention-avatar" title="{{ mention.Author.Name|default:'Someone' }} reposted this" rel="nofollow noopener">
+          {% if mention.Author.Photo %}
+          <img src="{{ mention.Author.Photo }}" alt="{{ mention.Author.Name|default:'Anonymous' }}" loading="lazy">
+          {% else %}
+          <span class="webmention-avatar-placeholder">{{ mention.Author.Name|default:'?'|first }}</span>
+          {% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# Bookmarks facepile #}
+    {% if bookmarks|length > 0 %}
+    <div class="webmention-facepile-group webmention-facepile-group--bookmarks">
+      <h3 class="webmention-type-label">
+        <span class="webmention-icon">&#9733;</span>
+        <span class="webmention-count">{{ bookmarks|length }} Bookmark{% if bookmarks|length != 1 %}s{% endif %}</span>
+      </h3>
+      <div class="webmention-avatars">
+        {% for mention in bookmarks %}
+        <a href="{{ mention.Author.URL|default:mention.URL }}" class="webmention-avatar" title="{{ mention.Author.Name|default:'Someone' }} bookmarked this" rel="nofollow noopener">
+          {% if mention.Author.Photo %}
+          <img src="{{ mention.Author.Photo }}" alt="{{ mention.Author.Name|default:'Anonymous' }}" loading="lazy">
+          {% else %}
+          <span class="webmention-avatar-placeholder">{{ mention.Author.Name|default:'?'|first }}</span>
+          {% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endif %}
+
+  {% endwith %}
+  {% endwith %}
+  {% endwith %}
+
+  {# Replies section - full cards with content #}
+  {% with replies=post.webmentions|selectattr:"WMProperty:in-reply-to" %}
+  {% if replies|length > 0 %}
+  <div class="webmentions-replies">
+    <h3 class="webmentions-section-title">
+      <span class="webmention-icon">&#128172;</span>
+      <span>{{ replies|length }} Repl{% if replies|length == 1 %}y{% else %}ies{% endif %}</span>
+    </h3>
+    <div class="webmentions-list">
+      {% for mention in replies %}
+      <article class="webmention webmention-reply">
+        <div class="webmention-header">
+          {% if mention.Author.Photo %}
+          <img src="{{ mention.Author.Photo }}" alt="{{ mention.Author.Name }}" class="webmention-author-photo" loading="lazy">
+          {% else %}
+          <div class="webmention-author-photo webmention-author-photo-placeholder">{{ mention.Author.Name|default:'?'|first }}</div>
+          {% endif %}
+          <div class="webmention-author-info">
+            <a href="{{ mention.Author.URL|default:mention.URL }}" class="webmention-author-name" rel="nofollow noopener">{{ mention.Author.Name|default:"Anonymous" }}</a>
+            {% if mention.Published %}
+            <time datetime="{{ mention.Published }}" class="webmention-date">{{ mention.Published }}</time>
+            {% endif %}
+          </div>
+        </div>
+        {% if mention.Content.Text or mention.Content.HTML %}
+        <div class="webmention-content">
+          {% if mention.Content.HTML %}
+          {{ mention.Content.HTML|safe }}
+          {% else %}
+          <p>{{ mention.Content.Text }}</p>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="webmention-footer">
+          <a href="{{ mention.URL }}" class="webmention-source-link" rel="nofollow noopener">View source</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  {# Mentions section - other mentions that link to this post #}
+  {% with mentions=post.webmentions|selectattr:"WMProperty:mention-of" %}
+  {% if mentions|length > 0 %}
+  <div class="webmentions-mentions">
+    <h3 class="webmentions-section-title">
+      <span class="webmention-icon">&#128279;</span>
+      <span>{{ mentions|length }} Mention{% if mentions|length != 1 %}s{% endif %}</span>
+    </h3>
+    <div class="webmentions-list">
+      {% for mention in mentions %}
+      <article class="webmention webmention-mention">
+        <div class="webmention-header">
+          {% if mention.Author.Photo %}
+          <img src="{{ mention.Author.Photo }}" alt="{{ mention.Author.Name }}" class="webmention-author-photo" loading="lazy">
+          {% else %}
+          <div class="webmention-author-photo webmention-author-photo-placeholder">{{ mention.Author.Name|default:'?'|first }}</div>
+          {% endif %}
+          <div class="webmention-author-info">
+            <a href="{{ mention.Author.URL|default:mention.URL }}" class="webmention-author-name" rel="nofollow noopener">{{ mention.Author.Name|default:"Anonymous" }}</a>
+            {% if mention.Published %}
+            <time datetime="{{ mention.Published }}" class="webmention-date">{{ mention.Published }}</time>
+            {% endif %}
+          </div>
+        </div>
+        {% if mention.Content.Text or mention.Content.HTML %}
+        <div class="webmention-content">
+          {% if mention.Content.HTML %}
+          {{ mention.Content.HTML|safe }}
+          {% else %}
+          <p>{{ mention.Content.Text }}</p>
+          {% endif %}
+        </div>
+        {% endif %}
+        <div class="webmention-footer">
+          <a href="{{ mention.URL }}" class="webmention-source-link" rel="nofollow noopener">View source</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% endwith %}
+
+</section>
+{% endif %}
