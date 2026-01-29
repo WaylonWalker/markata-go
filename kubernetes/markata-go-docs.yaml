@@ -46,26 +46,37 @@ spec:
             runAsGroup: 65532
             fsGroup: 65532
             fsGroupChangePolicy: OnRootMismatch
-          
+
           volumes:
             - name: site
               persistentVolumeClaim:
                 claimName: markata-go-docs-site
-          
+            - name: repo
+              emptyDir: {}
+
           initContainers:
             - name: clone-repo
               image: alpine/git:v2.40.1
-              command: ["git", "clone", "--depth=1", "--single-branch", 
-                "https://github.com/WaylonWalker/markata-go.git", "/repo"]
+              command:
+                [
+                  "git",
+                  "clone",
+                  "--depth=1",
+                  "--single-branch",
+                  "https://github.com/WaylonWalker/markata-go.git",
+                  "/tmp/repo",
+                ]
               volumeMounts:
                 - name: site
                   mountPath: /site
-          
+                - name: repo
+                  mountPath: /tmp/repo
+
           containers:
             - name: build-docs
               image: ghcr.io/waylonwalker/markata-go:latest
               command: ["markata-go", "build", "--output", "/site/output"]
-              workingDir: /repo
+              workingDir: /tmp/repo
               env:
                 - name: TZ
                   value: America/Chicago
@@ -74,7 +85,9 @@ spec:
               volumeMounts:
                 - name: site
                   mountPath: /site
-          
+                - name: repo
+                  mountPath: /tmp/repo
+
           restartPolicy: OnFailure
 
 ---
@@ -161,27 +174,27 @@ data:
     server {
       listen 80;
       server_name go.markata.dev;
-      
+
       # Gzip compression
       gzip on;
       gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/x-javascript image/svg+xml;
       gzip_min_length 512;
-      
+
       root /usr/share/nginx/html;
       index index.html;
-      
+
       # HTML files with short cache
       location ~* \.(html)$ {
         add_header Cache-Control "public, max-age=0, s-maxage=60" always;
         try_files $uri =404;
       }
-      
+
       # Static assets with long cache
       location ~* \.(?:css|js|mjs|json|ico|png|jpe?g|gif|webp|svg|avif|woff2?)$ {
         add_header Cache-Control "public, max-age=31536000, immutable" always;
         try_files $uri =404;
       }
-      
+
       # Default location with SPA fallback
       location / {
         add_header Cache-Control "public, max-age=0, s-maxage=60" always;
@@ -200,7 +213,6 @@ metadata:
     app: markata-go-docs
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
 spec:
   rules:
     - host: go.markata.dev
