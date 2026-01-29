@@ -51,42 +51,46 @@ spec:
             - name: site
               persistentVolumeClaim:
                 claimName: markata-go-docs-site
-            - name: repo
-              emptyDir: {}
 
           initContainers:
             - name: clone-repo
               image: alpine/git:v2.40.1
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 65532
+                runAsGroup: 65532
               command:
-                [
-                  "git",
-                  "clone",
-                  "--depth=1",
-                  "--single-branch",
-                  "https://github.com/WaylonWalker/markata-go.git",
-                  "/tmp/repo",
-                ]
+                - sh
+                - -c
+                - |
+                  set -e
+                  mkdir -p /site/repo /site/cache /site/output
+                  if [ -d /site/repo/.git ]; then
+                    git -C /site/repo fetch --depth=1 origin main
+                    git -C /site/repo reset --hard FETCH_HEAD
+                  else
+                    git clone --depth=1 --single-branch --branch main https://github.com/WaylonWalker/markata-go.git /site/repo
+                  fi
               volumeMounts:
                 - name: site
                   mountPath: /site
-                - name: repo
-                  mountPath: /tmp/repo
 
           containers:
             - name: build-docs
               image: ghcr.io/waylonwalker/markata-go:latest
+              imagePullPolicy: Always
               command: ["markata-go", "build", "--output", "/site/output"]
-              workingDir: /tmp/repo
+              workingDir: /site/repo
               env:
                 - name: TZ
                   value: America/Chicago
                 - name: MARKATA_GO_URL
                   value: https://go.markata.dev
+                - name: XDG_CACHE_HOME
+                  value: /site/cache
               volumeMounts:
                 - name: site
                   mountPath: /site
-                - name: repo
-                  mountPath: /tmp/repo
 
           restartPolicy: OnFailure
 
