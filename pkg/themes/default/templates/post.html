@@ -89,6 +89,9 @@
     {% endfor %}
   </div>
   {% endif %}
+
+  {# Webmentions #}
+  {% include "partials/webmentions.html" %}
 </article>
 
 {% if post.prev or post.next %}

@@ -208,6 +208,215 @@ Display WebMentions in your templates:
 .webmention--github { border-left: 3px solid #333; }
 ```
 
+## Fetching WebMentions
+
+WebMentions are fetched from webmention.io and cached locally. The build process reads from the cache, so you need to periodically fetch fresh mentions.
+
+### Fetching with CLI
+
+```bash
+# Fetch all webmentions for your site
+markata-go webmentions fetch
+
+# The mentions are saved to .cache/webmentions/received_mentions.json
+```
+
+### Environment Variable
+
+You can set your webmention.io token via environment variable instead of config:
+
+```bash
+export WEBMENTION_IO_TOKEN="your_token_here"
+markata-go webmentions fetch
+```
+
+### Automated Fetching
+
+Set up a cron job or CI workflow to fetch mentions regularly:
+
+```yaml
+# .github/workflows/fetch-webmentions.yml
+name: Fetch WebMentions
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch webmentions
+        run: markata-go webmentions fetch
+        env:
+          WEBMENTION_IO_TOKEN: ${{ secrets.WEBMENTION_IO_TOKEN }}
+      - name: Commit cache
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .cache/webmentions/
+          git diff --staged --quiet || git commit -m "chore: update webmention cache"
+          git push
+```
+
+## Displaying Counts on Post Cards
+
+The default theme includes a webmention counts partial that shows like/repost/reply counts on post cards.
+
+### Including the Partial
+
+Add to your card templates (e.g., `article-card.html`):
+
+```html
+<article class="article-card">
+  <a href="{{ post.Href }}">
+    <h3>{{ post.Title }}</h3>
+    <p>{{ post.Description }}</p>
+  </a>
+  <footer>
+    <time>{{ post.Date.Format "Jan 2, 2006" }}</time>
+    {% include "partials/webmention-counts.html" %}
+  </footer>
+</article>
+```
+
+### The Counts Partial
+
+The `partials/webmention-counts.html` partial renders compact counts:
+
+```html
+{% if post.Extra.webmentions %}
+{% set likes = post.Extra.webmentions|selectattr("WMProperty", "equalto", "like-of")|list|length %}
+{% set reposts = post.Extra.webmentions|selectattr("WMProperty", "equalto", "repost-of")|list|length %}
+{% set replies = post.Extra.webmentions|selectattr("WMProperty", "equalto", "in-reply-to")|list|length %}
+
+{% if likes > 0 or reposts > 0 or replies > 0 %}
+<div class="webmention-counts">
+  {% if likes > 0 %}<span class="wm-count wm-likes" title="Likes">{{ likes }}</span>{% endif %}
+  {% if reposts > 0 %}<span class="wm-count wm-reposts" title="Reposts">{{ reposts }}</span>{% endif %}
+  {% if replies > 0 %}<span class="wm-count wm-replies" title="Replies">{{ replies }}</span>{% endif %}
+</div>
+{% endif %}
+{% endif %}
+```
+
+### Styling Counts
+
+The default theme uses semantic color variables:
+
+```css
+.webmention-counts {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.wm-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.wm-count::before {
+  font-size: 1rem;
+}
+
+.wm-likes::before { content: ""; color: var(--color-error); }
+.wm-reposts::before { content: ""; color: var(--color-success); }
+.wm-replies::before { content: ""; color: var(--color-primary); }
+```
+
+## Engagement Leaderboard
+
+The `webmentions_leaderboard` plugin calculates top posts by engagement and makes the data available for analytics pages.
+
+### Enabling the Leaderboard
+
+The leaderboard plugin runs automatically when webmentions are present. No additional configuration needed.
+
+### Accessing Leaderboard Data
+
+In any Jinja-enabled page, access the leaderboard via `config.Extra.webmention_leaderboard`:
+
+```markdown
+---
+title: "Site Analytics"
+jinja: true
+---
+
+# Content Analytics
+
+{% if config.Extra.webmention_leaderboard %}
+
+## Most Liked Posts
+
+| Likes | Post |
+|------:|------|
+{% for entry in config.Extra.webmention_leaderboard.TopLiked %}| {{ entry.Likes }} | [{{ entry.Title }}]({{ entry.Href }}) |
+{% endfor %}
+
+## Most Discussed Posts
+
+| Replies | Post |
+|--------:|------|
+{% for entry in config.Extra.webmention_leaderboard.TopReplied %}| {{ entry.Replies }} | [{{ entry.Title }}]({{ entry.Href }}) |
+{% endfor %}
+
+## Most Shared Posts
+
+| Reposts | Post |
+|--------:|------|
+{% for entry in config.Extra.webmention_leaderboard.TopReposted %}| {{ entry.Reposts }} | [{{ entry.Title }}]({{ entry.Href }}) |
+{% endfor %}
+
+## Top Engaged Posts (Total)
+
+| Total | Likes | Reposts | Replies | Post |
+|------:|------:|--------:|--------:|------|
+{% for entry in config.Extra.webmention_leaderboard.TopTotal %}| {{ entry.Total }} | {{ entry.Likes }} | {{ entry.Reposts }} | {{ entry.Replies }} | [{{ entry.Title }}]({{ entry.Href }}) |
+{% endfor %}
+
+---
+
+## Site Totals
+
+- **Total Likes:** {{ config.Extra.webmention_leaderboard.TotalLikes }}
+- **Total Reposts:** {{ config.Extra.webmention_leaderboard.TotalReposts }}
+- **Total Replies:** {{ config.Extra.webmention_leaderboard.TotalReplies }}
+- **Total Mentions:** {{ config.Extra.webmention_leaderboard.TotalMentions }}
+
+{% else %}
+*No webmention data available.*
+{% endif %}
+```
+
+### Leaderboard Data Structure
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `TopLiked` | `[]LeaderboardEntry` | Top 20 posts by likes |
+| `TopReposted` | `[]LeaderboardEntry` | Top 20 posts by reposts |
+| `TopReplied` | `[]LeaderboardEntry` | Top 20 posts by replies |
+| `TopTotal` | `[]LeaderboardEntry` | Top 20 posts by total engagement |
+| `TotalLikes` | `int` | Site-wide total likes |
+| `TotalReposts` | `int` | Site-wide total reposts |
+| `TotalReplies` | `int` | Site-wide total replies |
+| `TotalMentions` | `int` | Site-wide total mentions |
+
+Each `LeaderboardEntry` contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Href` | `string` | Post URL |
+| `Title` | `string` | Post title |
+| `Likes` | `int` | Number of likes |
+| `Reposts` | `int` | Number of reposts |
+| `Replies` | `int` | Number of replies |
+| `Bookmarks` | `int` | Number of bookmarks |
+| `Mentions` | `int` | Number of generic mentions |
+| `Total` | `int` | Total engagement |
+
 ## Full Configuration Reference
 
 ```toml

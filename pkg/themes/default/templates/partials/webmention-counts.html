@@ -1,0 +1,15 @@
+{# Webmention counts - displays interaction counts for a post #}
+{# Usage: {% include "partials/webmention-counts.html" %} #}
+{% if post.webmentions and post.webmentions|length > 0 %}
+<span class="webmention-counts">
+  {% with likes=post.webmentions|selectattr:"WMProperty:like-of" %}
+  {% with reposts=post.webmentions|selectattr:"WMProperty:repost-of" %}
+  {% with replies=post.webmentions|selectattr:"WMProperty:in-reply-to" %}
+  {% if likes|length > 0 %}<span class="wm-count wm-likes" title="{{ likes|length }} like{% if likes|length != 1 %}s{% endif %}">&#10084; {{ likes|length }}</span>{% endif %}
+  {% if reposts|length > 0 %}<span class="wm-count wm-reposts" title="{{ reposts|length }} repost{% if reposts|length != 1 %}s{% endif %}">&#8634; {{ reposts|length }}</span>{% endif %}
+  {% if replies|length > 0 %}<span class="wm-count wm-replies" title="{{ replies|length }} repl{% if replies|length == 1 %}y{% else %}ies{% endif %}">&#128172; {{ replies|length }}</span>{% endif %}
+  {% endwith %}
+  {% endwith %}
+  {% endwith %}
+</span>
+{% endif %}

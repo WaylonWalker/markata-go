@@ -1,0 +1,102 @@
+{# Webmention Leaderboard - displays top posts by engagement #}
+{# Usage: {% include "partials/webmention-leaderboard.html" %} #}
+
+{% if config.webmention_leaderboard %}
+<div class="webmention-leaderboard">
+
+  {% if config.webmention_leaderboard.top_liked and config.webmention_leaderboard.top_liked|length > 0 %}
+  <section class="leaderboard-section">
+    <h3>Most Liked Posts</h3>
+    <table class="leaderboard-table">
+      <thead>
+        <tr>
+          <th class="col-count">Likes</th>
+          <th class="col-post">Post</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in config.webmention_leaderboard.top_liked %}
+        <tr>
+          <td class="col-count">{{ entry.Likes }}</td>
+          <td class="col-post"><a href="{{ entry.Href }}">{{ entry.Title }}</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  {% if config.webmention_leaderboard.top_reposted and config.webmention_leaderboard.top_reposted|length > 0 %}
+  <section class="leaderboard-section">
+    <h3>Most Reposted</h3>
+    <table class="leaderboard-table">
+      <thead>
+        <tr>
+          <th class="col-count">Reposts</th>
+          <th class="col-post">Post</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in config.webmention_leaderboard.top_reposted %}
+        <tr>
+          <td class="col-count">{{ entry.Reposts }}</td>
+          <td class="col-post"><a href="{{ entry.Href }}">{{ entry.Title }}</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  {% if config.webmention_leaderboard.top_replied and config.webmention_leaderboard.top_replied|length > 0 %}
+  <section class="leaderboard-section">
+    <h3>Most Replied To</h3>
+    <table class="leaderboard-table">
+      <thead>
+        <tr>
+          <th class="col-count">Replies</th>
+          <th class="col-post">Post</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in config.webmention_leaderboard.top_replied %}
+        <tr>
+          <td class="col-count">{{ entry.Replies }}</td>
+          <td class="col-post"><a href="{{ entry.Href }}">{{ entry.Title }}</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  {% if config.webmention_leaderboard.top_total and config.webmention_leaderboard.top_total|length > 0 %}
+  <section class="leaderboard-section">
+    <h3>Most Engagement Overall</h3>
+    <table class="leaderboard-table">
+      <thead>
+        <tr>
+          <th class="col-count">Total</th>
+          <th class="col-count">Likes</th>
+          <th class="col-count">Reposts</th>
+          <th class="col-count">Replies</th>
+          <th class="col-post">Post</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in config.webmention_leaderboard.top_total %}
+        <tr>
+          <td class="col-count">{{ entry.Total }}</td>
+          <td class="col-count">{{ entry.Likes }}</td>
+          <td class="col-count">{{ entry.Reposts }}</td>
+          <td class="col-count">{{ entry.Replies }}</td>
+          <td class="col-post"><a href="{{ entry.Href }}">{{ entry.Title }}</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+</div>
+{% endif %}

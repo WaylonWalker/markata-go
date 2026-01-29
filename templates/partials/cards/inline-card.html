@@ -1,0 +1,14 @@
+{# Inline Card - Full rendered content for gratitude, micro posts #}
+{# Minimal wrapper, displays full article_html content #}
+<article class="card card-inline">
+  <div class="card-content">
+    {{ post.article_html | safe }}
+  </div>
+
+  <footer class="card-meta">
+    {% if post.date %}
+    <time datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+    {% endif %}
+    <a href="{{ post.href }}" class="card-permalink">Permalink</a>
+  </footer>
+</article>
