@@ -2937,6 +2937,184 @@ When using `DefaultPlugins()`, plugins execute in this order:
 
 The following plugins are not enabled by default and must be explicitly configured. They provide specialized functionality that may not be needed for all sites.
 
+### webmentions_fetch
+
+**Name:** `webmentions_fetch`  
+**Stage:** Transform  
+**Priority:** First (-200, runs before jinja_md)  
+**Purpose:** Fetches incoming webmentions from webmention.io and attaches them to posts.
+
+**Configuration (TOML):**
+```toml
+[markata-go.webmentions]
+enabled = true
+webmention_io_token = "your_token_here"  # Or use WEBMENTION_IO_TOKEN env var
+cache_dir = ".cache/webmentions"
+timeout = "30s"
+user_agent = "markata-go/1.0 (WebMention)"
+```
+
+**Behavior:**
+1. Reads cached webmentions from `{cache_dir}/received_mentions.json`
+2. Groups mentions by target URL
+3. For each post, matches webmentions to the post's URL (with various URL format normalizations)
+4. Attaches matched webmentions to `post.Extra["webmentions"]`
+
+**Fetching webmentions:**
+The plugin loads from cache during builds. To fetch fresh webmentions from webmention.io:
+
+```bash
+markata-go webmentions fetch
+```
+
+This fetches all webmentions for your domain and saves them to the cache.
+
+**Post fields set (in `Extra`):**
+| Field | Type | Description |
+|-------|------|-------------|
+| `webmentions` | `[]ReceivedWebMention` | Array of webmentions for this post |
+
+**ReceivedWebMention structure:**
+```go
+type ReceivedWebMention struct {
+    Source     string    // Source URL
+    Target     string    // Target URL (your post)
+    WMProperty string    // Type: "like-of", "repost-of", "in-reply-to", "bookmark-of", "mention-of"
+    Author     Author    // Author info (name, photo, url)
+    Content    Content   // Content (text, html)
+    Published  time.Time // When the mention was published
+}
+```
+
+**Template usage:**
+```html
+{% if post.Extra.webmentions %}
+<section class="webmentions">
+  {% set likes = post.Extra.webmentions|selectattr("WMProperty", "equalto", "like-of")|list %}
+  {% set reposts = post.Extra.webmentions|selectattr("WMProperty", "equalto", "repost-of")|list %}
+  {% set replies = post.Extra.webmentions|selectattr("WMProperty", "equalto", "in-reply-to")|list %}
+
+  {% if likes %}
+  <div class="likes">
+    <h4>{{ likes|length }} Likes</h4>
+    <div class="facepile">
+      {% for mention in likes %}
+      <a href="{{ mention.Author.URL }}" title="{{ mention.Author.Name }}">
+        <img src="{{ mention.Author.Photo }}" alt="{{ mention.Author.Name }}">
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+```
+
+**URL matching:**
+The plugin tries multiple URL variants to match webmentions:
+- Exact URL match
+- With/without trailing slash
+- Legacy `/blog/` prefix (for migrated sites)
+- Double-slash normalization (common in webmention.io data)
+
+**Related:**
+- [[webmentions|WebMentions Guide]] - Complete webmentions documentation
+- [[#webmentions_leaderboard|webmentions_leaderboard]] - Engagement statistics
+
+---
+
+### webmentions_leaderboard
+
+**Name:** `webmentions_leaderboard`  
+**Stage:** Transform  
+**Priority:** -150 (after webmentions_fetch, before jinja_md)  
+**Purpose:** Calculates top posts by webmention engagement and provides leaderboard data for templates.
+
+**Configuration:** None required. Automatically processes webmentions attached by `webmentions_fetch`.
+
+**Behavior:**
+1. Iterates through all posts with webmentions
+2. Counts mentions by type (likes, reposts, replies, bookmarks, mentions)
+3. Creates sorted leaderboards (top 20 posts each)
+4. Stores results in `config.Extra["webmention_leaderboard"]`
+
+**Config fields set (in `Extra`):**
+| Field | Type | Description |
+|-------|------|-------------|
+| `webmention_leaderboard` | `WebmentionLeaderboard` | Leaderboard data structure |
+
+**WebmentionLeaderboard structure:**
+```go
+type WebmentionLeaderboard struct {
+    TopLiked      []LeaderboardEntry  // Top 20 by likes
+    TopReposted   []LeaderboardEntry  // Top 20 by reposts
+    TopReplied    []LeaderboardEntry  // Top 20 by replies
+    TopTotal      []LeaderboardEntry  // Top 20 by total engagement
+    TotalLikes    int                 // Site-wide total likes
+    TotalReposts  int                 // Site-wide total reposts
+    TotalReplies  int                 // Site-wide total replies
+    TotalMentions int                 // Site-wide total mentions
+}
+
+type LeaderboardEntry struct {
+    Post      *Post   // Reference to the post
+    Href      string  // Post URL
+    Title     string  // Post title
+    Likes     int     // Number of likes
+    Reposts   int     // Number of reposts
+    Replies   int     // Number of replies
+    Bookmarks int     // Number of bookmarks
+    Mentions  int     // Number of mentions
+    Total     int     // Total engagement
+}
+```
+
+**Template usage (in Jinja-enabled pages):**
+```markdown
+---
+title: "Analytics"
+jinja: true
+---
+
+## Webmention Leaderboard
+
+{% if config.Extra.webmention_leaderboard %}
+
+### Most Liked Posts
+
+| Likes | Post |
+|------:|------|
+{% for entry in config.Extra.webmention_leaderboard.TopLiked %}| {{ entry.Likes }} | [{{ entry.Title }}]({{ entry.Href }}) |
+{% endfor %}
+
+### Most Discussed Posts
+
+| Replies | Post |
+|--------:|------|
+{% for entry in config.Extra.webmention_leaderboard.TopReplied %}| {{ entry.Replies }} | [{{ entry.Title }}]({{ entry.Href }}) |
+{% endfor %}
+
+### Site Totals
+
+- **Total Likes:** {{ config.Extra.webmention_leaderboard.TotalLikes }}
+- **Total Reposts:** {{ config.Extra.webmention_leaderboard.TotalReposts }}
+- **Total Replies:** {{ config.Extra.webmention_leaderboard.TotalReplies }}
+
+{% endif %}
+```
+
+**Use cases:**
+- Analytics dashboards showing top-performing content
+- "Popular posts" widgets based on social engagement
+- Content performance tracking
+- Gamification/motivation for content creators
+
+**Related:**
+- [[webmentions|WebMentions Guide]] - Complete webmentions documentation
+- [[#webmentions_fetch|webmentions_fetch]] - Fetches webmentions
+
+---
+
 ### mermaid
 
 **Name:** `mermaid`  
