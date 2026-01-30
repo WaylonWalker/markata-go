@@ -133,7 +133,7 @@ func executeHooks[T Plugin](
 	check func(Plugin) (T, bool),
 	execute func(T) error,
 ) *HookErrors {
-	errors := &HookErrors{}
+	hookErrors := &HookErrors{}
 	critical := isCriticalStage(stage)
 
 	// Sort plugins by priority
@@ -144,16 +144,16 @@ func executeHooks[T Plugin](
 			if err := execute(typed); err != nil {
 				// Check if the error itself is marked as critical
 				errIsCritical := critical || isCriticalError(err)
-				errors.Add(stage, p.Name(), err, errIsCritical)
+				hookErrors.Add(stage, p.Name(), err, errIsCritical)
 				if errIsCritical {
 					// Stop on first critical error
-					return errors
+					return hookErrors
 				}
 			}
 		}
 	}
 
-	return errors
+	return hookErrors
 }
 
 // runConfigureHooks executes all ConfigurePlugin hooks.
