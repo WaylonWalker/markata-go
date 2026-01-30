@@ -183,16 +183,15 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
     // Calculate max value for this graph's scale
     const maxValue = Math.max(1, ...data.map(d => d.value || 0));
     
-    // Detect dark mode via CSS custom property or media query
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches ||
-                   document.documentElement.classList.contains('dark') ||
-                   document.body.classList.contains('dark');
-    
-    // Get theme colors with appropriate fallbacks for dark/light mode
+    // Get theme colors from CSS variables
     const styles = getComputedStyle(document.documentElement);
-    const surfaceColor = styles.getPropertyValue('--color-surface-1').trim() || 
-                         (isDark ? '#161b22' : '#ebedf0');
-    const accentColor = styles.getPropertyValue('--color-accent').trim() || '#216e39';
+    const bgColor = styles.getPropertyValue('--color-background').trim();
+    const surfaceColor = styles.getPropertyValue('--color-surface').trim();
+    const primaryColor = styles.getPropertyValue('--color-primary').trim();
+    
+    // Use surface color as base (slightly lighter than background), primary as accent
+    const baseColor = surfaceColor || bgColor || '#ebedf0';
+    const accentColor = primaryColor || '#216e39';
     
     cal.paint(
       {
@@ -206,7 +205,7 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
         scale: {
           color: {
             type: 'linear',
-            range: [surfaceColor, accentColor],
+            range: [baseColor, accentColor],
             domain: [0, maxValue]
           }
         }
@@ -308,7 +307,7 @@ func (p *ContributionGraphPlugin) injectCalHeatmapScripts(htmlContent string, in
   flex-shrink: 0;
 }
 #ch-tooltip {
-  background: var(--color-surface-2, #333);
+  background: var(--color-surface, #333);
   color: var(--color-text, #fff);
   padding: 0.5rem 0.75rem;
   border-radius: 4px;
