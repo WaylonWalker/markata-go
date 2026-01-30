@@ -421,6 +421,7 @@ type tomlSEOConfig struct {
 	TwitterHandle string `toml:"twitter_handle"`
 	DefaultImage  string `toml:"default_image"`
 	LogoURL       string `toml:"logo_url"`
+	AuthorImage   string `toml:"author_image"`
 }
 
 type tomlIndieAuthConfig struct {
@@ -440,6 +441,7 @@ func (s *tomlSEOConfig) toSEOConfig() models.SEOConfig {
 		TwitterHandle: s.TwitterHandle,
 		DefaultImage:  s.DefaultImage,
 		LogoURL:       s.LogoURL,
+		AuthorImage:   s.AuthorImage,
 	}
 }
 
@@ -1210,6 +1212,7 @@ type yamlSEOConfig struct {
 	TwitterHandle string `yaml:"twitter_handle"`
 	DefaultImage  string `yaml:"default_image"`
 	LogoURL       string `yaml:"logo_url"`
+	AuthorImage   string `yaml:"author_image"`
 }
 
 type yamlIndieAuthConfig struct {
@@ -1339,6 +1342,7 @@ func (s *yamlSEOConfig) toSEOConfig() models.SEOConfig {
 		TwitterHandle: s.TwitterHandle,
 		DefaultImage:  s.DefaultImage,
 		LogoURL:       s.LogoURL,
+		AuthorImage:   s.AuthorImage,
 	}
 }
 
@@ -2047,6 +2051,7 @@ type jsonSEOConfig struct {
 	TwitterHandle string `json:"twitter_handle"`
 	DefaultImage  string `json:"default_image"`
 	LogoURL       string `json:"logo_url"`
+	AuthorImage   string `json:"author_image"`
 }
 
 type jsonIndieAuthConfig struct {
@@ -2176,6 +2181,7 @@ func (s *jsonSEOConfig) toSEOConfig() models.SEOConfig {
 		TwitterHandle: s.TwitterHandle,
 		DefaultImage:  s.DefaultImage,
 		LogoURL:       s.LogoURL,
+		AuthorImage:   s.AuthorImage,
 	}
 }
 
