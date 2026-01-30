@@ -13,6 +13,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/yuin/goldmark"
+	emoji "github.com/yuin/goldmark-emoji"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
@@ -84,6 +85,14 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool) goldmark.Markd
 			highlighting.NewHighlighting(highlightOpts...),
 			// Custom admonition extension
 			&AdmonitionExtension{},
+			// Mark extension for ==highlighted text==
+			&MarkExtension{},
+			// Keys extension for ++Ctrl+Alt+Del++
+			&KeysExtension{},
+			// Container extension for ::: class
+			&ContainerExtension{},
+			// Emoji extension for :smile: syntax
+			emoji.Emoji,
 		),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),

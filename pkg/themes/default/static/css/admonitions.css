@@ -112,12 +112,6 @@
   --admonition-icon: "#";
 }
 
-.admonition.seealso {
-  --admonition-color: var(--admonition-seealso-border, #8b5cf6);
-  --admonition-bg: var(--admonition-seealso-bg, #f5f3ff);
-  --admonition-icon: "->";
-}
-
 /* Aside - Sidebar/Marginal Note (Tufte-style) */
 /* Asides are positioned in the margin of the article, outside the main content flow */
 
@@ -194,6 +188,90 @@ aside.admonition.aside .admonition-title::before {
 @media (prefers-color-scheme: dark) {
   aside.admonition.aside {
     --admonition-bg: #1f2937;
+  }
+}
+
+/* VSplit - Side-by-side comparison layout */
+/* Parent vsplit contains child vsplits arranged in columns */
+
+.admonition.vsplit {
+  --admonition-color: var(--admonition-vsplit-border, #6b7280);
+  --admonition-bg: transparent;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  padding: 0;
+  margin: var(--space-4) 0;
+  border-left: none;
+  background: transparent;
+}
+
+/* On larger screens, arrange child vsplits side by side */
+@media (min-width: 768px) {
+  .admonition.vsplit {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* VSplit title spans full width */
+.admonition.vsplit > .admonition-title {
+  grid-column: 1 / -1;
+  margin: 0 var(--space-4) var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid var(--color-border, #e5e7eb);
+}
+
+/* Nested vsplits (the actual split columns) */
+/* These should NOT be grids - only the parent is a grid */
+.admonition.vsplit > .admonition.vsplit {
+  display: block;
+  margin: 0;
+  padding: var(--space-4);
+  border: none;
+  border-top: 2px solid var(--color-border, #e5e7eb);
+  background: var(--color-surface, #f9fafb);
+}
+
+/* On larger screens, use vertical divider instead of horizontal */
+@media (min-width: 768px) {
+  .admonition.vsplit > .admonition.vsplit {
+    border-top: none;
+  }
+
+  /* First child - right border */
+  .admonition.vsplit > .admonition.vsplit:first-of-type {
+    border-right: 2px solid var(--color-border, #e5e7eb);
+  }
+
+  /* Last child - left border (if more than 2) */
+  .admonition.vsplit > .admonition.vsplit:last-of-type {
+    border-left: none;
+  }
+}
+
+/* On mobile, stack with top borders */
+@media (max-width: 767px) {
+  .admonition.vsplit > .admonition.vsplit:first-of-type {
+    border-top: none;
+  }
+}
+
+/* Nested vsplit title */
+.admonition.vsplit > .admonition.vsplit > .admonition-title {
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+/* Remove icon from vsplit titles */
+.admonition.vsplit .admonition-title::before {
+  content: none;
+}
+
+/* Dark mode for vsplit */
+@media (prefers-color-scheme: dark) {
+  .admonition.vsplit > .admonition.vsplit {
+    background: var(--color-surface, #1f2937);
   }
 }
 

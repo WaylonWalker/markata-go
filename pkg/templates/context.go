@@ -147,24 +147,30 @@ func postToMapUncached(p *models.Post) map[string]interface{} {
 
 	// Add extra fields
 	if p.Extra != nil {
+		// Also expose Extra as a nested map for template access like post.Extra.key
+		extraMap := make(map[string]interface{})
 		for k, v := range p.Extra {
-			// Don't override existing keys
+			extraMap[k] = v
+			// Don't override existing keys (flatten to top level for backwards compat)
 			if _, exists := m[k]; !exists {
 				// Special handling for structured_data
 				if k == "structured_data" {
 					if sd, ok := v.(*models.StructuredData); ok {
 						m[k] = structuredDataToMap(sd)
+						extraMap[k] = structuredDataToMap(sd)
 						continue
 					}
 				}
 				// Special handling for toc entries (from toc plugin)
 				if k == "toc" {
 					m[k] = tocEntriesToMaps(v)
+					extraMap[k] = tocEntriesToMaps(v)
 					continue
 				}
 				m[k] = v
 			}
 		}
+		m["Extra"] = extraMap
 	}
 
 	return m
