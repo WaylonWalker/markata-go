@@ -583,6 +583,103 @@ func (p *PaletteCSSPlugin) writePaletteVariablesIndented(buf *bytes.Buffer, pale
 			}
 		}
 	}
+
+	// Add mark/highlight colors
+	// These are used for ==highlighted text== rendered as <mark> elements
+	p.writeMarkColors(buf, palette, indent)
+}
+
+// writeMarkColors generates CSS variables for mark/highlight elements.
+// If mark-bg/mark-text are not defined in the palette, computes them from the warning color.
+func (p *PaletteCSSPlugin) writeMarkColors(buf *bytes.Buffer, palette *palettes.Palette, indent string) {
+	fmt.Fprintf(buf, "\n%s/* Mark/highlight colors */\n", indent)
+
+	// Try explicit mark colors first
+	markBg := palette.Resolve("mark-bg")
+	markText := palette.Resolve("mark-text")
+
+	// If not defined, compute from warning color
+	if markBg == "" {
+		warningHex := palette.Resolve("warning")
+		if warningHex != "" {
+			warningColor, err := palettes.ParseHexColor(warningHex)
+			if err == nil {
+				// Light palettes: lighten warning for subtle background
+				// Dark palettes: darken warning for subtle background
+				if palette.Variant == palettes.VariantLight {
+					markBg = warningColor.Lighten(0.75).Hex()
+				} else {
+					markBg = warningColor.Darken(0.6).Hex()
+				}
+			}
+		}
+	}
+
+	// Write mark-bg if we have it
+	if markBg != "" {
+		fmt.Fprintf(buf, "%s--color-mark-bg: %s;\n", indent, markBg)
+	}
+
+	// Compute mark-text with contrast checking
+	if markText == "" && markBg != "" {
+		bgColor, err := palettes.ParseHexColor(markBg)
+		if err == nil {
+			// Get the text color from the palette
+			textHex := palette.Resolve("text-primary")
+			if textHex == "" {
+				// Fallback: use black for light bg, white for dark bg
+				if bgColor.RelativeLuminance() > 0.5 {
+					textHex = "#1a1a1a"
+				} else {
+					textHex = "#f5f5f5"
+				}
+			}
+
+			textColor, err := palettes.ParseHexColor(textHex)
+			if err == nil {
+				// Ensure WCAG AA contrast (4.5:1 for normal text)
+				adjustedText, ok := textColor.AdjustForContrast(bgColor, 4.5)
+				if ok {
+					markText = adjustedText.Hex()
+				} else {
+					// Couldn't adjust, use high contrast fallback
+					if bgColor.RelativeLuminance() > 0.5 {
+						markText = "#000000"
+					} else {
+						markText = "#ffffff"
+					}
+				}
+			}
+		}
+	}
+
+	// Write mark-text if we have it
+	if markText != "" {
+		fmt.Fprintf(buf, "%s--color-mark-text: %s;\n", indent, markText)
+	}
+
+	// Add selection colors (for user text selection)
+	// These default to mark colors but can be overridden
+	p.writeSelectionColors(buf, palette, indent)
+}
+
+// writeSelectionColors generates CSS variables for user text selection.
+// Defaults to mark colors for consistency, but allows explicit override via palette.
+func (p *PaletteCSSPlugin) writeSelectionColors(buf *bytes.Buffer, palette *palettes.Palette, indent string) {
+	// Check for explicit selection colors
+	selectionBg := palette.Resolve("selection-bg")
+	selectionText := palette.Resolve("selection-text")
+
+	// Only write if explicitly set (CSS fallback handles the mark color default)
+	if selectionBg != "" || selectionText != "" {
+		fmt.Fprintf(buf, "\n%s/* Selection colors */\n", indent)
+		if selectionBg != "" {
+			fmt.Fprintf(buf, "%s--color-selection-bg: %s;\n", indent, selectionBg)
+		}
+		if selectionText != "" {
+			fmt.Fprintf(buf, "%s--color-selection-text: %s;\n", indent, selectionText)
+		}
+	}
 }
 
 // getPaletteConfig extracts palette configuration from config.Extra.
