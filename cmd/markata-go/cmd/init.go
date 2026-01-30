@@ -272,7 +272,7 @@ func addFeaturePostFormats(reader *bufio.Reader, cfg *models.Config) error {
 	fmt.Println("Post Output Formats")
 	fmt.Println("-------------------")
 
-	if promptYesNo(reader, "Enable markdown source output? (generates /slug/index.md)", false) {
+	if promptYesNo(reader, "Enable markdown source output? (generates /slug.md)", false) {
 		cfg.PostFormats.Markdown = true
 	}
 

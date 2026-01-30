@@ -21,7 +21,9 @@
         {% endif %}
 
         {# Format links for alternate views/formats #}
+        {% if post or feed %}
         {% include "components/format-links.html" %}
+        {% endif %}
 
         {% if footer.show_copyright %}
         <p class="footer-copyright">&copy; {{ "now" | date:"2006" }} {{ config.author | default:config.title | default:"" }}. Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>

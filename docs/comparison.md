@@ -63,8 +63,8 @@ html = true      # /tutorials/index.html
 rss = true       # /tutorials/rss.xml
 atom = true      # /tutorials/atom.xml
 json = true      # /tutorials/feed.json
-markdown = true  # /tutorials/index.md
-text = true      # /tutorials/index.txt
+markdown = true  # /tutorials.md
+text = true      # /tutorials.txt
 sitemap = true   # Included in sitemap.xml
 ```
 
@@ -231,7 +231,7 @@ markdown = true
 text = true
 ```
 
-This single definition generates `/tutorials/index.html`, `/tutorials/rss.xml`, `/tutorials/atom.xml`, `/tutorials/feed.json`, `/tutorials/index.md`, and `/tutorials/index.txt`.
+This single definition generates `/tutorials/index.html`, `/tutorials/rss.xml`, `/tutorials/atom.xml`, `/tutorials/feed.json`, `/tutorials.md`, and `/tutorials.txt`.
 
 **Hugo equivalent** requires separate template files for each format.
 
@@ -822,8 +822,8 @@ html = true      # /python/index.html + pagination
 rss = true       # /python/rss.xml
 atom = true      # /python/atom.xml
 json = true      # /python/feed.json
-markdown = true  # /python/index.md
-text = true      # /python/index.txt
+markdown = true  # /python.md
+text = true      # /python.txt
 ```
 
 **What other SSGs require:**

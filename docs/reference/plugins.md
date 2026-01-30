@@ -2397,8 +2397,8 @@ For each feed, generates enabled formats:
 | RSS | `rss.xml` | RSS 2.0 feed |
 | Atom | `atom.xml` | Atom 1.0 feed |
 | JSON | `feed.json` | JSON Feed 1.1 |
-| Markdown | `index.md` | Markdown listing |
-| Text | `index.txt` | Plain text listing |
+| Markdown | `slug.md` | Markdown listing |
+| Text | `slug.txt` | Plain text listing |
 
 **Output structure:**
 ```

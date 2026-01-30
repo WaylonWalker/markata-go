@@ -680,13 +680,13 @@ This section controls what output formats are generated for each post:
 | Format | Default | Output Path | Description |
 |--------|---------|-------------|-------------|
 | `html` | `true` | `/slug/index.html` | Standard rendered HTML page |
-| `markdown` | `true` | `/slug/index.md` | Raw markdown with reconstructed frontmatter |
-| `text` | `true` | `/slug/index.txt` | Plain text content |
+| `markdown` | `true` | `/slug.md` | Raw markdown with reconstructed frontmatter |
+| `text` | `true` | `/slug.txt` | Plain text content |
 | `og` | `false` | `/slug/og/index.html` | OpenGraph card HTML (1200x630) for social screenshots |
 
 **Directory-based Redirects for txt/md:**
 
-For `.txt` and `.md` formats, content is placed in a subdirectory (`/slug/index.txt`) with an HTML redirect at `/slug.txt/index.html` pointing to the content. This enables clean URLs while maintaining compatibility with static hosting.
+For `.txt` and `.md` formats, content is placed at the canonical short URL (`/slug.txt`, `/slug.md`). Redirects are provided at `/slug.txt/index.html` (for hosts that serve `index.html` in a directory) and `/slug/index.txt/index.html` (for backwards compatibility).
 
 **Special Files (robots, llms, humans, security, ads):**
 

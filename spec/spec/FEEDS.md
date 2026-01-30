@@ -69,8 +69,8 @@ html = true                        # /blog/index.html, /blog/page/2/index.html
 rss = true                         # /blog/rss.xml
 atom = true                        # /blog/atom.xml
 json = true                        # /blog/feed.json
-markdown = false                   # /blog/index.md
-text = false                       # /blog/index.txt
+markdown = false                   # /blog.md
+text = false                       # /blog.txt
 sitemap = false                    # /blog/sitemap.xml
 
 # Templates (can override per-format)
@@ -544,7 +544,7 @@ JSON Feed (version 1.1).
 
 Markdown list of posts (useful for READMEs, documentation).
 
-**Output path:** `/blog/index.md`
+**Output path:** `/blog.md`
 
 **Default format:**
 ```markdown
@@ -563,7 +563,7 @@ Markdown list of posts (useful for READMEs, documentation).
 
 Simple text list (useful for APIs, scripts, minimal readers).
 
-**Output path:** `/blog/index.txt`
+**Output path:** `/blog.txt`
 
 **Default format:**
 ```
