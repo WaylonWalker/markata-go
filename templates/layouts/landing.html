@@ -1,6 +1,9 @@
 {# Landing Layout - Full-width layout for marketing pages #}
 {% extends "base.html" %}
 
+{% block title %}{{ post.title | default:config.title | default:'My Site' }}{% endblock %}
+{% block description %}{{ post.description | default:config.description | default:'' }}{% endblock %}
+
 {% block body_class %}layout layout--landing{% endblock %}
 
 {% block header %}
