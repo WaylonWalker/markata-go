@@ -278,20 +278,9 @@ func (p *BlogrollPlugin) fetchFeeds(config models.BlogrollConfig) ([]*models.Ext
 		return strings.ToLower(feeds[i].Title) < strings.ToLower(feeds[j].Title)
 	})
 
-	// Sort entries by published date (newest first)
-	sort.Slice(allEntries, func(i, j int) bool {
-		ti := allEntries[i].Published
-		tj := allEntries[j].Published
-		if ti == nil && tj == nil {
-			return false
-		}
-		if ti == nil {
-			return false
-		}
-		if tj == nil {
-			return true
-		}
-		return ti.After(*tj)
+	// Sort entries deterministically: date desc, then feed URL, entry ID, title
+	sort.SliceStable(allEntries, func(i, j int) bool {
+		return compareEntries(allEntries[i], allEntries[j])
 	})
 
 	// Apply fallback image service for entries without images
@@ -439,6 +428,48 @@ func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir st
 	return feed
 }
 
+func compareEntries(a, b *models.ExternalEntry) bool {
+	// Date desc: prefer Published, then Updated
+	ai := entryDate(a)
+	bj := entryDate(b)
+	if ai == nil && bj != nil {
+		return false
+	}
+	if ai != nil && bj == nil {
+		return true
+	}
+	if ai != nil && bj != nil {
+		if ai.After(*bj) {
+			return true
+		}
+		if bj.After(*ai) {
+			return false
+		}
+	}
+
+	// Tie-breakers for deterministic ordering
+	if a.FeedURL != b.FeedURL {
+		return a.FeedURL < b.FeedURL
+	}
+	if a.ID != b.ID {
+		return a.ID < b.ID
+	}
+	return a.Title < b.Title
+}
+
+func entryDate(entry *models.ExternalEntry) *time.Time {
+	if entry == nil {
+		return nil
+	}
+	if entry.Published != nil {
+		return entry.Published
+	}
+	if entry.Updated != nil {
+		return entry.Updated
+	}
+	return nil
+}
+
 // loadFromCache loads a feed from cache if valid.
 func (p *BlogrollPlugin) loadFromCache(url, cacheDir string, maxAge time.Duration) *models.ExternalFeed {
 	cacheFile := filepath.Join(cacheDir, p.cacheKey(url)+".json")
@@ -560,12 +591,6 @@ func (p *BlogrollPlugin) writeBlogrollPage(m *lifecycle.Manager, outputDir strin
 		"config":       p.configToMap(m.Config()),
 		"blogroll_url": "/" + slug + "/",
 		"reader_url":   "/" + readerSlug + "/",
-		"post": map[string]interface{}{
-			"slug":        slug,
-			"title":       "Blogroll",
-			"description": "Blogs and feeds I follow",
-			"href":        "/" + slug + "/",
-		},
 	}
 
 	// Try to render with template engine
@@ -634,6 +659,7 @@ func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir str
 	}
 
 	// Build template context with config for theme inheritance
+	updated := latestEntryDate(page.Entries)
 	ctx := map[string]interface{}{
 		"title":           "Reader",
 		"description":     "Latest posts from blogs I follow",
@@ -644,12 +670,7 @@ func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir str
 		"pagination_type": string(page.PaginationType),
 		"blogroll_url":    "/" + blogrollSlug + "/",
 		"reader_url":      "/" + readerSlug + "/",
-		"post": map[string]interface{}{
-			"slug":        readerSlug,
-			"title":       "Reader",
-			"description": "Latest posts from blogs I follow",
-			"href":        "/" + readerSlug + "/",
-		},
+		"updated":         updated,
 	}
 
 	// Determine output path
@@ -860,6 +881,24 @@ func (p *BlogrollPlugin) entriesToMaps(entries []*models.ExternalEntry) []map[st
 		}
 	}
 	return result
+}
+
+func latestEntryDate(entries []*models.ExternalEntry) *time.Time {
+	var latest *time.Time
+	for _, entry := range entries {
+		if entry == nil {
+			continue
+		}
+		candidate := entryDate(entry)
+		if candidate == nil {
+			continue
+		}
+		if latest == nil || candidate.After(*latest) {
+			t := *candidate
+			latest = &t
+		}
+	}
+	return latest
 }
 
 // categoriesToMaps converts categories to template-friendly maps.
