@@ -1344,6 +1344,10 @@ include_index = false  # Include index page in inlinks (default: false)
 6. Populates `Inlinks` and `Outlinks` on each post
 7. Stores all links in cache for use by other plugins
 
+**Performance:**
+- Caches href extraction per post using a hash of `ArticleHTML`
+- Reuses cached hrefs on unchanged posts, while still rebuilding link objects
+
 **Post fields set:**
 | Field | Type | Description |
 |-------|------|-------------|
