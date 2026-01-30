@@ -1114,6 +1114,77 @@ Features are available in templates:
 
 ---
 
+## Conditional CSS Loading
+
+To optimize page size and load times, markata-go conditionally loads CSS files based on page content. This is implemented in two places:
+
+### Content-Based Detection (RenderMarkdownPlugin)
+
+The `render_markdown` plugin scans rendered HTML content and sets flags in `post.Extra`:
+
+| Flag | Detected When |
+|------|---------------|
+| `needs_admonitions_css` | HTML contains `class="admonition` |
+| `needs_code_css` | HTML contains `class="chroma"`, `class="highlight"`, `<pre><code`, or `<code class="language-` |
+
+### Template Implementation
+
+The base template (`base.html`) uses these flags to conditionally load CSS:
+
+```jinja2
+<!-- Core CSS (always loaded) -->
+<link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
+<link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
+<link rel="stylesheet" href="{{ 'css/components.css' | theme_asset }}">
+
+<!-- Cards CSS (only on feed pages) -->
+{% if feed or page %}
+<link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset }}">
+{% endif %}
+
+<!-- Admonitions CSS (only when content uses admonitions) -->
+{% if post.Extra.needs_admonitions_css %}
+<link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
+{% endif %}
+
+<!-- Code CSS (only when content has code blocks) -->
+{% if post.Extra.needs_code_css %}
+<link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
+<link rel="stylesheet" href="/css/chroma.css">
+{% endif %}
+
+<!-- Feature-based CSS -->
+{% if config.Webmention.Enabled %}
+<link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset }}">
+{% endif %}
+
+{% if config.theme.switcher.enabled %}
+<link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset }}">
+{% endif %}
+
+{% if config.search.enabled %}
+<link rel="stylesheet" href="/{{ config.search.pagefind.bundle_dir }}/pagefind-ui.css">
+<link rel="stylesheet" href="{{ 'css/search.css' | theme_asset }}">
+{% endif %}
+```
+
+### CSS File Categories
+
+| Category | Files | Loading Condition |
+|----------|-------|-------------------|
+| Core | `variables.css`, `main.css`, `components.css` | Always |
+| Layout | `cards.css` | Feed/index pages |
+| Content | `admonitions.css`, `code.css`, `chroma.css` | Content detection |
+| Features | `webmentions.css`, `palette-switcher.css`, `search.css` | Config flags |
+
+### Benefits
+
+1. **Reduced page size**: Pages without code blocks skip ~15KB of syntax highlighting CSS
+2. **Faster initial render**: Less CSS to parse before first paint
+3. **Better caching**: Shared core CSS files are cached across all pages
+
+---
+
 ## CSS Custom Properties
 
 Built-in themes SHOULD use CSS custom properties for consistency:
