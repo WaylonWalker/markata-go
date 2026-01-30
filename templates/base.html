@@ -113,6 +113,7 @@
   {% endif %}
 
   {% include "partials/background-css.html" %}
+  {% include "partials/aesthetic-css.html" %}
   {% endblock %}
 </head>
 <body>
@@ -125,6 +126,7 @@
       {% if config.search.enabled and config.search.position == 'navbar' %}
       {% include "components/search.html" %}
       {% endif %}
+      {% include "partials/palette-switcher.html" %}
     </div>
   </header>
   {% endblock %}

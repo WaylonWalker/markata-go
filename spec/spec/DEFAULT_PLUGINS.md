@@ -851,11 +851,10 @@ include_index = false          # Exclude index page from inlinks by default
 5. Exclude self-links from both inlinks and outlinks
 
 **Caching:**
-Results are cached per-post based on hash of:
-- Plugin file
-- Post slug
-- Post title  
-- Post content
+Per-post href extraction is cached using a hash of `article_html`. If the hash
+matches on a subsequent build, the plugin reuses cached hrefs instead of
+re-parsing HTML. Link objects are still rebuilt each run to keep target
+resolution and inlinks/outlinks consistent.
 
 **Hook behavior:**
 
@@ -1063,6 +1062,9 @@ For each feed, for each enabled format:
 1. Load format template
 2. Render with feed context
 3. Write to output path
+
+**Performance notes:**
+- Feed filtering results may be reused across feeds that share identical filter expressions and privacy settings within a single build.
 
 **Output paths:**
 | Format | Path Pattern |

@@ -102,8 +102,15 @@ func (p *ImageZoomPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		if post.Skip || post.ArticleHTML == "" {
+			return false
+		}
+		return strings.Contains(post.ArticleHTML, "<img")
+	})
+
 	// Process posts
-	if err := m.ProcessPostsConcurrently(p.processPost); err != nil {
+	if err := m.ProcessPostsSliceConcurrently(posts, p.processPost); err != nil {
 		return err
 	}
 

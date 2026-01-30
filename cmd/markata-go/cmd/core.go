@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/config"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -162,6 +163,7 @@ func runBuild(m *lifecycle.Manager) (*BuildResult, error) {
 	}
 
 	for _, stage := range stages {
+		stageStart := time.Now()
 		if verbose {
 			fmt.Printf("  [%s] running...\n", stage)
 		}
@@ -169,6 +171,7 @@ func runBuild(m *lifecycle.Manager) (*BuildResult, error) {
 			return nil, fmt.Errorf("stage %s: %w", stage, err)
 		}
 		if verbose {
+			fmt.Printf("  [%s] done in %s\n", stage, time.Since(stageStart).Truncate(100*time.Microsecond))
 			switch stage {
 			case lifecycle.StageGlob:
 				fmt.Printf("  [%s] discovered %d files\n", stage, len(m.Files()))

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -137,11 +138,19 @@ func (p *WebmentionsFetchPlugin) Transform(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	posts := m.Posts()
+
+	// Incremental build optimization: skip attaching when no posts will rebuild
+	if cache := GetBuildCache(m); cache != nil {
+		if !postsNeedWebmentionAttachments(posts, cache) {
+			return nil
+		}
+	}
+
 	// Build URL mapping for faster lookups
 	p.mentionsByURL = p.GroupMentionsByURL()
 
 	// Attach mentions to each post
-	posts := m.Posts()
 	attachCount := 0
 	for i := range posts {
 		post := posts[i]
@@ -226,6 +235,21 @@ func (p *WebmentionsFetchPlugin) Transform(m *lifecycle.Manager) error {
 	}
 
 	return nil
+}
+
+func postsNeedWebmentionAttachments(posts []*models.Post, cache *buildcache.Cache) bool {
+	if cache == nil {
+		return true
+	}
+	for _, post := range posts {
+		if post.Skip || post.InputHash == "" {
+			continue
+		}
+		if cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
+			return true
+		}
+	}
+	return false
 }
 
 // loadMentionsCache loads mentions from the cache file.

@@ -776,3 +776,82 @@ func (m *Manager) ProcessPostsConcurrently(fn func(*models.Post) error) error {
 
 	return nil
 }
+
+// ProcessPostsSliceConcurrently processes the provided posts slice concurrently.
+// This is useful when you have pre-filtered posts (e.g., only posts needing rebuild)
+// and want to avoid iterating all posts.
+//
+// Use this for incremental processing where you know only a subset of posts need work:
+//
+//	changedPosts := m.FilterPosts(func(p *models.Post) bool { return needsRebuild(p) })
+//	return m.ProcessPostsSliceConcurrently(changedPosts, processFunc)
+func (m *Manager) ProcessPostsSliceConcurrently(posts []*models.Post, fn func(*models.Post) error) error {
+	if len(posts) == 0 {
+		return nil
+	}
+
+	numWorkers := m.Concurrency()
+	if numWorkers > len(posts) {
+		numWorkers = len(posts)
+	}
+
+	jobs := make(chan *models.Post, len(posts))
+	errCh := make(chan error, len(posts))
+
+	var wg sync.WaitGroup
+
+	// Start fixed number of workers
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for post := range jobs {
+				if err := fn(post); err != nil {
+					errCh <- fmt.Errorf("processing %s: %w", post.Path, err)
+				}
+			}
+		}()
+	}
+
+	// Send posts to the jobs channel
+	for _, post := range posts {
+		jobs <- post
+	}
+	close(jobs)
+
+	// Wait for all workers to complete
+	wg.Wait()
+	close(errCh)
+
+	// Collect errors
+	errs := make([]error, 0)
+	for err := range errCh {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("%d posts failed to process; first error: %w", len(errs), errs[0])
+	}
+
+	return nil
+}
+
+// FilterPosts returns a new slice containing only posts that match the predicate.
+// This is useful for pre-filtering posts before processing:
+//
+//	changed := m.FilterPosts(func(p *models.Post) bool {
+//	    return cache.ShouldRebuild(p.Path, p.InputHash, p.Template)
+//	})
+//	return m.ProcessPostsSliceConcurrently(changed, processFunc)
+func (m *Manager) FilterPosts(predicate func(*models.Post) bool) []*models.Post {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	result := make([]*models.Post, 0, len(m.posts)/4) // Pre-allocate assuming ~25% match
+	for _, post := range m.posts {
+		if predicate(post) {
+			result = append(result, post)
+		}
+	}
+	return result
+}

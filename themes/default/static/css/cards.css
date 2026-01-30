@@ -7,6 +7,7 @@
    - Feed container constrained (max-width: 750px), cards fill container
    - Differentiate by padding, background, borders - NOT width
    - All cards same width for visual consistency
+   - Uses aesthetic tokens for border-radius, shadows, spacing
    ========================================================================== */
 
 /* ==========================================================================
@@ -28,6 +29,15 @@
   width: 100%;
   /* Ensure solid background to prevent pattern bleed-through */
   background: var(--color-surface);
+  border-radius: var(--radius-md, 8px);
+  border: var(--border-width-normal, 1px) solid var(--color-border);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.08));
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.1));
+  border-color: var(--color-primary);
 }
 
 /* Ensure all card sections have solid backgrounds */
@@ -92,7 +102,8 @@
    ========================================================================== */
 
 .card-article {
-  padding: var(--space-6);
+  padding: calc(var(--spacing-scale, 1) * var(--space-6));
+  border-radius: var(--radius-lg, 12px);
 }
 
 .card-article .card-header {
@@ -122,19 +133,19 @@
    ========================================================================== */
 
 .card-note {
-  padding: var(--space-4);
+  padding: calc(var(--spacing-scale, 1) * var(--space-4));
   border: none;
-  border-left: 3px solid var(--color-primary);
-  border-radius: var(--radius);
+  border-left: var(--border-width-thick, 3px) solid var(--color-primary);
+  border-radius: var(--radius-md, 8px);
   background: var(--color-surface);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.08));
   max-width: 550px;
   margin-left: auto;
   margin-right: auto;
 }
 
 .card-note:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(0, 0, 0, 0.12));
 }
 
 .card-note .card-content {

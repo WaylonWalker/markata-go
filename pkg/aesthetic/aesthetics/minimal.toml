@@ -1,0 +1,29 @@
+name = "Minimal"
+description = "Maximum whitespace: sharp corners, maximum spacing, no shadows"
+
+[tokens.radius]
+none = "0"
+sm = "0"
+md = "0"
+lg = "0"
+xl = "0"
+full = "9999px"
+
+[tokens.spacing]
+scale = 1.5
+
+[tokens.border]
+width_thin = "1px"
+width_normal = "1px"
+width_thick = "1px"
+style = "solid"
+
+[tokens.shadow]
+sm = "none"
+md = "none"
+lg = "none"
+xl = "none"
+
+[tokens.typography]
+font_primary = "var(--font-sans)"
+leading_scale = 1.2
