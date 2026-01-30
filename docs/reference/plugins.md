@@ -1633,6 +1633,89 @@ A doughnut chart is useful for showing a primary metric with breakdown:
 
 ---
 
+### contribution_graph
+
+**Name:** `contribution_graph`  
+**Stage:** Render (after render_markdown)  
+**Purpose:** Renders GitHub-style calendar heatmaps showing activity over time using Cal-Heatmap.
+
+**Configuration (TOML):**
+```toml
+[markata-go.contribution_graph]
+enabled = true
+cdn_url = "https://cdn.jsdelivr.net/npm/cal-heatmap@4"
+container_class = "contribution-graph-container"
+theme = "light"
+```
+
+**Options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `true` | Enable/disable the plugin |
+| `cdn_url` | `https://cdn.jsdelivr.net/npm/cal-heatmap@4` | Cal-Heatmap CDN URL |
+| `container_class` | `contribution-graph-container` | CSS class for wrapper div |
+| `theme` | `light` | Color theme (light, dark) |
+
+**Markdown syntax:**
+````markdown
+```contribution-graph
+{
+  "data": [
+    {"date": "2024-01-01", "value": 5},
+    {"date": "2024-01-02", "value": 3},
+    {"date": "2024-01-03", "value": 8}
+  ],
+  "options": {
+    "domain": "year",
+    "subDomain": "day",
+    "cellSize": 12
+  }
+}
+```
+````
+
+**HTML output:**
+```html
+<div class="contribution-graph-container">
+  <div id="contribution-graph-1"></div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap@4/cal-heatmap.css">
+<script src="https://cdn.jsdelivr.net/npm/cal-heatmap@4/cal-heatmap.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const cal = new CalHeatmap();
+  cal.paint({
+    itemSelector: '#contribution-graph-1',
+    data: { source: [...], x: 'date', y: 'value' },
+    domain: { type: 'year' },
+    subDomain: { type: 'day' }
+  });
+});
+</script>
+```
+
+**Data format:**
+- `date`: ISO date string (YYYY-MM-DD)
+- `value`: Numeric value (affects cell color intensity)
+
+**Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `domain` | string | `year` | Time domain: year, month, week, day |
+| `subDomain` | string | `day` | Sub-domain: day, hour, minute |
+| `cellSize` | number | `10` | Cell size in pixels |
+| `range` | number | `1` | Number of domain units to display |
+
+**Use cases:**
+- Blog post publishing frequency
+- Contribution tracking
+- Habit tracking displays
+
+**Related:** [[analytics|Analytics Guide]]
+
+---
+
 ### one_line_link
 
 **Name:** `one_line_link`  
