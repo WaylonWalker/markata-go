@@ -137,8 +137,8 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 		if options == nil {
 			options = map[string]interface{}{}
 		}
-		optionsMap, _ := options.(map[string]interface{})
-		if optionsMap == nil {
+		optionsMap, ok := options.(map[string]interface{})
+		if !ok || optionsMap == nil {
 			optionsMap = map[string]interface{}{}
 		}
 
@@ -258,56 +258,6 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 
 	post.ArticleHTML = result
 	return nil
-}
-
-// buildOptionsScript converts options JSON into Cal-Heatmap configuration.
-func (p *ContributionGraphPlugin) buildOptionsScript(optionsJSON []byte) string {
-	var options map[string]interface{}
-	if err := json.Unmarshal(optionsJSON, &options); err != nil {
-		return ""
-	}
-
-	// Build configuration options string
-	var configParts []string
-
-	// Handle date.start configuration from "year" option
-	// This is crucial for showing historical data
-	if year, ok := options["year"].(float64); ok {
-		configParts = append(configParts, fmt.Sprintf(`date: { start: new Date('%d-01-01') }`, int(year)))
-	}
-
-	// Handle domain configuration
-	if domain, ok := options["domain"].(string); ok {
-		configParts = append(configParts, fmt.Sprintf(`domain: { type: '%s' }`, domain))
-	} else {
-		configParts = append(configParts, `domain: { type: 'year' }`)
-	}
-
-	// Handle subDomain configuration
-	if subDomain, ok := options["subDomain"].(string); ok {
-		configParts = append(configParts, fmt.Sprintf(`subDomain: { type: '%s' }`, subDomain))
-	} else {
-		configParts = append(configParts, `subDomain: { type: 'day' }`)
-	}
-
-	// Handle cellSize/width
-	if cellSize, ok := options["cellSize"].(float64); ok {
-		configParts = append(configParts, fmt.Sprintf(`subDomain: { type: 'day', width: %d, height: %d }`, int(cellSize), int(cellSize)))
-	}
-
-	// Handle range
-	if rangeVal, ok := options["range"].(float64); ok {
-		configParts = append(configParts, fmt.Sprintf(`range: %d`, int(rangeVal)))
-	}
-
-	// Color scale is set dynamically in the init script using getComputedStyle
-	// to resolve CSS variables at runtime
-
-	result := strings.Join(configParts, ",\n      ")
-	if result != "" {
-		result += ","
-	}
-	return result
 }
 
 // buildOptionsObject converts options JSON into a JavaScript object literal for Cal-Heatmap.
