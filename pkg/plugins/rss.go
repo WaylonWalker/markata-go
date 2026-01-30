@@ -83,9 +83,19 @@ func GenerateRSS(feed *lifecycle.Feed, config *lifecycle.Config) (string, error)
 		},
 	}
 
-	// Set last build date
-	if len(feed.Posts) > 0 {
-		rss.Channel.LastBuildDate = time.Now().Format(time.RFC1123Z)
+	// Set last build date based on most recent post date (deterministic)
+	var latest *time.Time
+	for _, post := range feed.Posts {
+		if post.Date == nil {
+			continue
+		}
+		if latest == nil || post.Date.After(*latest) {
+			t := *post.Date
+			latest = &t
+		}
+	}
+	if latest != nil {
+		rss.Channel.LastBuildDate = latest.Format(time.RFC1123Z)
 	}
 
 	// Add items
