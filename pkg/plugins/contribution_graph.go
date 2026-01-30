@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync/atomic"
 
@@ -136,6 +137,24 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 		if options == nil {
 			options = map[string]interface{}{}
 		}
+		optionsMap, ok := options.(map[string]interface{})
+		if !ok || optionsMap == nil {
+			optionsMap = map[string]interface{}{}
+		}
+
+		// Auto-detect year from first data point if not specified
+		if _, hasYear := optionsMap["year"]; !hasYear {
+			if dataSlice, ok := data.([]interface{}); ok && len(dataSlice) > 0 {
+				if firstItem, ok := dataSlice[0].(map[string]interface{}); ok {
+					if dateStr, ok := firstItem["date"].(string); ok && len(dateStr) >= 4 {
+						// Extract year from date string (YYYY-MM-DD format)
+						if year, err := strconv.Atoi(dateStr[:4]); err == nil {
+							optionsMap["year"] = float64(year)
+						}
+					}
+				}
+			}
+		}
 
 		// Marshal data and options back to JSON for the script
 		dataJSON, err := json.Marshal(data)
@@ -145,7 +164,7 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
   <pre>%s</pre>
 </div>`, p.config.ContainerClass, html.EscapeString(err.Error()))
 		}
-		optionsJSON, err := json.Marshal(options)
+		optionsJSON, err := json.Marshal(optionsMap)
 		if err != nil {
 			return fmt.Sprintf(`<div class="%s contribution-graph-error">
   <p>Contribution Graph Error: Failed to serialize options</p>
@@ -154,19 +173,76 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 		}
 
 		// Create the initialization script for this graph
+		// Uses Cal-Heatmap Tooltip plugin for hover information
+		// Stores paint function for theme change re-rendering
 		initScript := fmt.Sprintf(`
   (function() {
-    const cal = new CalHeatmap();
-    cal.paint({
-      itemSelector: '#%s',
-      data: {
-        source: %s,
-        x: 'date',
-        y: 'value'
-      },
-      %s
-    });
-  })();`, graphID, string(dataJSON), p.buildOptionsScript(optionsJSON))
+    const graphId = '%s';
+    const data = %s;
+    const options = {%s};
+    
+    function paintGraph() {
+      // Clear existing graph
+      const container = document.getElementById(graphId);
+      if (!container) return;
+      container.innerHTML = '';
+      
+      // Calculate max value for this graph's scale
+      const maxValue = Math.max(1, ...data.map(d => d.value || 0));
+      
+      // Get theme colors from CSS variables
+      const styles = getComputedStyle(document.documentElement);
+      const bgColor = styles.getPropertyValue('--color-background').trim();
+      const surfaceColor = styles.getPropertyValue('--color-surface').trim();
+      const primaryColor = styles.getPropertyValue('--color-primary').trim();
+      
+      // Use surface color as base, primary as accent
+      const baseColor = surfaceColor || bgColor || '#ebedf0';
+      const accentColor = primaryColor || '#216e39';
+      
+      const cal = new CalHeatmap();
+      cal.paint(
+        {
+          itemSelector: '#' + graphId,
+          data: {
+            source: data,
+            x: 'date',
+            y: 'value'
+          },
+          date: options.date,
+          domain: options.domain || { type: 'year' },
+          subDomain: options.subDomain || { type: 'day' },
+          range: options.range,
+          scale: {
+            color: {
+              type: 'linear',
+              range: [baseColor, accentColor],
+              domain: [0, maxValue]
+            }
+          }
+        },
+        [
+          [
+            Tooltip,
+            {
+              text: function (date, value, dayjsDate) {
+                return (value ? value : 'No') + ' posts on ' + dayjsDate.format('MMM D, YYYY');
+              },
+            },
+          ],
+        ]
+      );
+    }
+    
+    // Initial paint
+    paintGraph();
+    
+    // Register for theme changes
+    if (!window._contributionGraphPainters) {
+      window._contributionGraphPainters = [];
+    }
+    window._contributionGraphPainters.push(paintGraph);
+  })();`, graphID, string(dataJSON), p.buildOptionsObject(optionsJSON))
 		initScripts = append(initScripts, initScript)
 
 		// Return the container div
@@ -184,58 +260,96 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 	return nil
 }
 
-// buildOptionsScript converts options JSON into Cal-Heatmap configuration.
-func (p *ContributionGraphPlugin) buildOptionsScript(optionsJSON []byte) string {
+// buildOptionsObject converts options JSON into a JavaScript object literal for Cal-Heatmap.
+// This is used by the reactive theme system to store options that can be re-applied.
+func (p *ContributionGraphPlugin) buildOptionsObject(optionsJSON []byte) string {
 	var options map[string]interface{}
 	if err := json.Unmarshal(optionsJSON, &options); err != nil {
 		return ""
 	}
 
-	// Build configuration options string
-	var configParts []string
+	var parts []string
+
+	// Handle date.start configuration from "year" option
+	if year, ok := options["year"].(float64); ok {
+		parts = append(parts, fmt.Sprintf(`date: { start: new Date('%d-01-01') }`, int(year)))
+	}
 
 	// Handle domain configuration
 	if domain, ok := options["domain"].(string); ok {
-		configParts = append(configParts, fmt.Sprintf(`domain: { type: '%s' }`, domain))
-	} else {
-		configParts = append(configParts, `domain: { type: 'year' }`)
+		parts = append(parts, fmt.Sprintf(`domain: { type: '%s' }`, domain))
 	}
 
 	// Handle subDomain configuration
 	if subDomain, ok := options["subDomain"].(string); ok {
-		configParts = append(configParts, fmt.Sprintf(`subDomain: { type: '%s' }`, subDomain))
-	} else {
-		configParts = append(configParts, `subDomain: { type: 'day' }`)
-	}
-
-	// Handle cellSize/width
-	if cellSize, ok := options["cellSize"].(float64); ok {
-		configParts = append(configParts, fmt.Sprintf(`subDomain: { type: 'day', width: %d, height: %d }`, int(cellSize), int(cellSize)))
+		parts = append(parts, fmt.Sprintf(`subDomain: { type: '%s' }`, subDomain))
 	}
 
 	// Handle range
 	if rangeVal, ok := options["range"].(float64); ok {
-		configParts = append(configParts, fmt.Sprintf(`range: %d`, int(rangeVal)))
+		parts = append(parts, fmt.Sprintf(`range: %d`, int(rangeVal)))
 	}
 
-	// Handle theme
-	if p.config.Theme != "" {
-		configParts = append(configParts, fmt.Sprintf(`theme: '%s'`, p.config.Theme))
-	}
-
-	return strings.Join(configParts, ",\n      ")
+	return strings.Join(parts, ", ")
 }
 
 // injectCalHeatmapScripts adds the Cal-Heatmap library and initialization scripts to the HTML.
 func (p *ContributionGraphPlugin) injectCalHeatmapScripts(htmlContent string, initScripts []string) string {
 	// Build the combined script
+	// Cal-Heatmap v4 requires d3 as a dependency
+	// Tooltip plugin requires popper.js
 	script := fmt.Sprintf(`
+<style>
+.contribution-graph-container {
+  width: 100%%;
+  overflow-x: auto;
+  margin: 1rem 0;
+  display: flex;
+  justify-content: center;
+}
+.contribution-graph-container > div {
+  flex-shrink: 0;
+}
+#ch-tooltip {
+  background: var(--color-surface, #333);
+  color: var(--color-text, #fff);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 10000 !important;
+}
+</style>
 <link rel="stylesheet" href="%s/cal-heatmap.css">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/@popperjs/core@2"></script>
 <script src="%s/cal-heatmap.min.js"></script>
+<script src="%s/plugins/Tooltip.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {%s
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize graphs
+  %s
+  
+  // Watch for theme/palette changes and re-paint graphs
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      if (mutation.attributeName === 'data-palette' || mutation.attributeName === 'class') {
+        // Small delay to let CSS variables update
+        setTimeout(function() {
+          if (window._contributionGraphPainters) {
+            window._contributionGraphPainters.forEach(function(paint) {
+              paint();
+            });
+          }
+        }, 50);
+      }
+    });
+  });
+  
+  observer.observe(document.documentElement, { attributes: true });
+  observer.observe(document.body, { attributes: true });
 });
-</script>`, p.config.CDNURL, p.config.CDNURL, strings.Join(initScripts, ""))
+</script>`, p.config.CDNURL, p.config.CDNURL, p.config.CDNURL, strings.Join(initScripts, "\n"))
 
 	// Append the script to the end of the content
 	return htmlContent + script

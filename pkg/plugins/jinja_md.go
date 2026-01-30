@@ -92,6 +92,9 @@ func (p *JinjaMdPlugin) Transform(m *lifecycle.Manager) error {
 		ctx = ctx.WithCore(m)
 		ctx = ctx.WithPosts(allPosts)
 
+		// Add all_posts alias for convenience (same as posts)
+		ctx.Set("all_posts", templates.PostsToMaps(allPosts))
+
 		// Add helper functions as extra context
 		ctx.Set("filter", createFilterFunc(m))
 		ctx.Set("map", createMapFunc(m))

@@ -908,7 +908,7 @@ func feedToMap(f *models.FeedConfig) map[string]interface{} {
 		"sort":           f.Sort,
 		"reverse":        f.Reverse,
 		"items_per_page": f.ItemsPerPage,
-		"posts":          postsToMaps(f.Posts),
+		"posts":          PostsToMaps(f.Posts),
 	}
 }
 
@@ -920,7 +920,7 @@ func feedPageToMap(p *models.FeedPage) map[string]interface{} {
 
 	return map[string]interface{}{
 		"number":          p.Number,
-		"posts":           postsToMaps(p.Posts),
+		"posts":           PostsToMaps(p.Posts),
 		"has_prev":        p.HasPrev,
 		"has_next":        p.HasNext,
 		"prev_url":        p.PrevURL,
@@ -933,8 +933,9 @@ func feedPageToMap(p *models.FeedPage) map[string]interface{} {
 	}
 }
 
-// postsToMaps converts a slice of Posts to a slice of maps.
-func postsToMaps(posts []*models.Post) []map[string]interface{} {
+// PostsToMaps converts a slice of Posts to a slice of maps.
+// Exported for use by plugins that need to add posts to template context.
+func PostsToMaps(posts []*models.Post) []map[string]interface{} {
 	if posts == nil {
 		return nil
 	}
@@ -976,7 +977,7 @@ func (c Context) ToPongo2() pongo2.Context {
 		"config":        configMap,
 		"feed":          feedToMap(c.Feed),
 		"page":          feedPageToMap(c.FeedPage),
-		"posts":         postsToMaps(c.Posts),
+		"posts":         PostsToMaps(c.Posts),
 		"core":          c.Core,
 		"sidebar_items": sidebarItemsToMaps(c.SidebarItems),
 		"sidebar_title": c.SidebarTitle,

@@ -959,8 +959,11 @@ func filterContributionData(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Err
 			postDate = *post.Date
 			found = true
 		} else {
-			// Try to get Date field from map or struct
-			dateVal := getAttr(item, "Date")
+			// Try to get date field from map or struct (try both lowercase and capitalized)
+			dateVal := getAttr(item, "date")
+			if dateVal == nil {
+				dateVal = getAttr(item, "Date")
+			}
 			if dateVal != nil {
 				if t, err := toTime(dateVal); err == nil {
 					postDate = t
@@ -1006,8 +1009,9 @@ func filterContributionData(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Err
 	// Marshal to JSON
 	jsonBytes, err := json.Marshal(data)
 	if err != nil {
-		return pongo2.AsValue("[]"), nil
+		return pongo2.AsSafeValue("[]"), nil
 	}
 
-	return pongo2.AsValue(string(jsonBytes)), nil
+	// Return as safe value to prevent HTML escaping of JSON
+	return pongo2.AsSafeValue(string(jsonBytes)), nil
 }
