@@ -3,6 +3,7 @@ package plugins
 import (
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -649,6 +650,44 @@ func TestLinkCollectorPlugin_Render_LinksStoredInCache(t *testing.T) {
 		}
 	} else {
 		t.Error("links in cache have unexpected type")
+	}
+}
+
+func TestLinkCollectorPlugin_Render_CachesAndInvalidatesHrefs(t *testing.T) {
+	p := NewLinkCollectorPlugin()
+	p.SetSiteURL("https://example.com")
+
+	cache := buildcache.New(t.TempDir())
+	m := lifecycle.NewManager()
+	m.Cache().Set("build_cache", cache)
+
+	posts := []*models.Post{
+		{
+			Path:        "posts/one.md",
+			Slug:        "one",
+			Href:        "/one/",
+			ArticleHTML: `<p><a href="https://example.com/a">A</a></p>`,
+		},
+	}
+	m.SetPosts(posts)
+
+	if err := p.Render(m); err != nil {
+		t.Fatalf("Render error: %v", err)
+	}
+
+	if len(posts[0].Hrefs) != 1 || posts[0].Hrefs[0] != "https://example.com/a" {
+		t.Fatalf("expected initial hrefs, got %v", posts[0].Hrefs)
+	}
+
+	posts[0].ArticleHTML = `<p><a href="https://example.com/b">B</a></p>`
+	posts[0].Hrefs = nil
+
+	if err := p.Render(m); err != nil {
+		t.Fatalf("Render error: %v", err)
+	}
+
+	if len(posts[0].Hrefs) != 1 || posts[0].Hrefs[0] != "https://example.com/b" {
+		t.Fatalf("expected updated hrefs after change, got %v", posts[0].Hrefs)
 	}
 }
 
