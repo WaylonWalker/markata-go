@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 
+{% block title %}{{ feed.title | default:config.title | default:'My Site' }}{% endblock %}
+{% block description %}{{ feed.description | default:config.description | default:'' }}{% endblock %}
+
 {% block htmx %}
 {% if page.pagination_type == "htmx" %}
 <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
