@@ -82,7 +82,14 @@ func (p *ContributionGraphPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	return m.ProcessPostsConcurrently(p.processPost)
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		if post.Skip || post.ArticleHTML == "" {
+			return false
+		}
+		return strings.Contains(post.ArticleHTML, `class="language-contribution-graph"`)
+	})
+
+	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
 }
 
 // contributionGraphCodeBlockRegex matches <pre><code class="language-contribution-graph"> blocks.
@@ -180,26 +187,26 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
     const graphId = '%s';
     const data = %s;
     const options = {%s};
-    
+
     function paintGraph() {
       // Clear existing graph
       const container = document.getElementById(graphId);
       if (!container) return;
       container.innerHTML = '';
-      
+
       // Calculate max value for this graph's scale
       const maxValue = Math.max(1, ...data.map(d => d.value || 0));
-      
+
       // Get theme colors from CSS variables
       const styles = getComputedStyle(document.documentElement);
       const bgColor = styles.getPropertyValue('--color-background').trim();
       const surfaceColor = styles.getPropertyValue('--color-surface').trim();
       const primaryColor = styles.getPropertyValue('--color-primary').trim();
-      
+
       // Use surface color as base, primary as accent
       const baseColor = surfaceColor || bgColor || '#ebedf0';
       const accentColor = primaryColor || '#216e39';
-      
+
       const cal = new CalHeatmap();
       cal.paint(
         {
@@ -233,10 +240,10 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
         ]
       );
     }
-    
+
     // Initial paint
     paintGraph();
-    
+
     // Register for theme changes
     if (!window._contributionGraphPainters) {
       window._contributionGraphPainters = [];
@@ -329,7 +336,7 @@ func (p *ContributionGraphPlugin) injectCalHeatmapScripts(htmlContent string, in
 document.addEventListener('DOMContentLoaded', function() {
   // Initialize graphs
   %s
-  
+
   // Watch for theme/palette changes and re-paint graphs
   const observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
@@ -345,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   });
-  
+
   observer.observe(document.documentElement, { attributes: true });
   observer.observe(document.body, { attributes: true });
 });

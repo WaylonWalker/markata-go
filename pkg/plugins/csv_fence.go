@@ -100,7 +100,14 @@ func (p *CSVFencePlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	return m.ProcessPostsConcurrently(p.processPost)
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		if post.Skip || post.ArticleHTML == "" {
+			return false
+		}
+		return strings.Contains(post.ArticleHTML, "language-csv")
+	})
+
+	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
 }
 
 // processPost converts CSV blocks to HTML tables in a single post's ArticleHTML.

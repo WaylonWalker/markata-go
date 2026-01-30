@@ -48,11 +48,11 @@ func (p *TocPlugin) Configure(m *lifecycle.Manager) error {
 
 // Transform extracts headings from markdown and builds a TOC for each post.
 func (p *TocPlugin) Transform(m *lifecycle.Manager) error {
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
-		if post.Skip || post.Content == "" {
-			return nil
-		}
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		return !post.Skip && post.Content != ""
+	})
 
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		toc := p.extractTOC(post.Content)
 		if len(toc) > 0 {
 			post.Set("toc", toc)
