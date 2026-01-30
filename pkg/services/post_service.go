@@ -189,6 +189,12 @@ func sortPosts(posts []*models.Post, field string, order SortOrder) {
 		default:
 			return false
 		}
+
+		// Use path as tie-breaker for deterministic ordering
+		if cmp == 0 && field != "path" {
+			cmp = strings.Compare(posts[i].Path, posts[j].Path)
+		}
+
 		if order == SortDesc {
 			return cmp > 0
 		}
