@@ -374,3 +374,142 @@ func TestSeverity_String(t *testing.T) {
 		})
 	}
 }
+
+func TestLint_AdmonitionFencedCode(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		wantLen int
+	}{
+		{
+			name: "admonition with blank line before code - OK",
+			content: `---
+title: Test
+---
+!!! note
+
+    ` + "```python" + `
+    print("hello")
+    ` + "```",
+			wantLen: 0,
+		},
+		{
+			name: "admonition without blank line before code - warning",
+			content: `---
+title: Test
+---
+!!! note
+    ` + "```python" + `
+    print("hello")
+    ` + "```",
+			wantLen: 1,
+		},
+		{
+			name: "nested admonition without blank line - warning",
+			content: `---
+title: Test
+---
+!!! vsplit
+    !!! vsplit
+        ` + "```python" + `
+        print("hello")
+        ` + "```",
+			wantLen: 1, // Only the inner admonition triggers warning
+		},
+		{
+			name: "regular code block not in admonition - OK",
+			content: `---
+title: Test
+---
+Some text
+` + "```python" + `
+print("hello")
+` + "```",
+			wantLen: 0,
+		},
+		{
+			name: "admonition with text content - OK",
+			content: `---
+title: Test
+---
+!!! note
+    This is some text content.
+    More text here.`,
+			wantLen: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Lint("test.md", tt.content)
+
+			var admonIssues []Issue
+			for _, issue := range result.Issues {
+				if issue.Type == "admonition-fenced-code" {
+					admonIssues = append(admonIssues, issue)
+				}
+			}
+
+			if len(admonIssues) != tt.wantLen {
+				t.Errorf("got %d admonition-fenced-code issues, want %d", len(admonIssues), tt.wantLen)
+				for _, issue := range admonIssues {
+					t.Logf("  issue: %s at line %d", issue.Message, issue.Line)
+				}
+			}
+		})
+	}
+}
+
+func TestFix_AdmonitionFencedCode(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{
+			name: "adds blank line after admonition",
+			content: `!!! note
+    ` + "```python" + `
+    print("hello")
+    ` + "```",
+			want: `!!! note
+
+    ` + "```python" + `
+    print("hello")
+    ` + "```",
+		},
+		{
+			name: "does not modify with existing blank line",
+			content: `!!! note
+
+    ` + "```python" + `
+    print("hello")
+    ` + "```",
+			want: `!!! note
+
+    ` + "```python" + `
+    print("hello")
+    ` + "```",
+		},
+		{
+			name: "does not modify non-admonition content",
+			content: `Some text
+` + "```python" + `
+print("hello")
+` + "```",
+			want: `Some text
+` + "```python" + `
+print("hello")
+` + "```",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Fix("test.md", tt.content)
+			if result.Fixed != tt.want {
+				t.Errorf("got:\n%s\n\nwant:\n%s", result.Fixed, tt.want)
+			}
+		})
+	}
+}

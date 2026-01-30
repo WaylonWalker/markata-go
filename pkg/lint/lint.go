@@ -9,6 +9,7 @@
 //   - Malformed image links (missing alt text)
 //   - Protocol-less URLs (//example.com instead of https://example.com)
 //   - H1 headings in content (templates add H1 from frontmatter title)
+//   - Fenced code blocks in admonitions without blank line (goldmark limitation)
 //
 // All issues can be auto-fixed using the Fix function (except H1 headings).
 package lint
@@ -112,6 +113,9 @@ func Lint(filePath, content string) *Result {
 	// Check for H1 headings in body (templates already add H1 from title)
 	result.Issues = append(result.Issues, checkH1Headings(filePath, body, hasFrontmatter, frontmatter)...)
 
+	// Check for fenced code blocks in admonitions without blank line
+	result.Issues = append(result.Issues, checkAdmonitionFencedCode(filePath, body, hasFrontmatter, frontmatter)...)
+
 	return result
 }
 
@@ -125,6 +129,7 @@ func Fix(filePath, content string) *Result {
 	fixed = fixDateFormats(fixed)
 	fixed = fixImageLinks(fixed)
 	fixed = fixProtocollessURLs(fixed)
+	fixed = fixAdmonitionFencedCode(fixed)
 
 	result.Fixed = fixed
 
@@ -456,4 +461,114 @@ func fixProtocollessURLs(content string) string {
 	// Be careful not to replace // in code or comments
 	protocollessRegex := regexp.MustCompile(`(\(|"|\s)//([a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,})`)
 	return protocollessRegex.ReplaceAllString(content, "${1}https://$2")
+}
+
+// checkAdmonitionFencedCode detects fenced code blocks inside admonitions
+// that don't have a blank line before them. This is a known goldmark limitation
+// where the indented code block parser has higher priority than the fenced
+// code block parser when content is indented without a blank line separator.
+func checkAdmonitionFencedCode(filePath, body string, hasFrontmatter bool, frontmatter string) []Issue {
+	var issues []Issue
+
+	// Calculate line offset for body
+	lineOffset := 0
+	if hasFrontmatter {
+		lineOffset = strings.Count(frontmatter, "\n") + 1
+		body = strings.TrimPrefix(body, "\n")
+	}
+
+	lines := strings.Split(body, "\n")
+
+	// Track admonition state
+	// Admonitions start with "!!!" and content is indented
+	inAdmonition := false
+	admonitionIndent := 0
+
+	// Pattern to match admonition start: !!! type or !!! type "title"
+	admonitionRegex := regexp.MustCompile(`^(\s*)!!!\s+\w+`)
+	// Pattern to match fenced code block start (with potential indentation)
+	fencedCodeRegex := regexp.MustCompile(`^\s*` + "```")
+
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		lineNum := i + 1 + lineOffset
+
+		// Check for admonition start
+		if match := admonitionRegex.FindStringSubmatch(line); match != nil {
+			inAdmonition = true
+			admonitionIndent = len(match[1])
+
+			// Check if next line is a fenced code block without blank line
+			if i+1 < len(lines) {
+				nextLine := lines[i+1]
+				// Next line should be indented more than admonition start
+				trimmedNext := strings.TrimLeft(nextLine, " \t")
+				nextIndent := len(nextLine) - len(trimmedNext)
+
+				// If next line is indented and starts with ``` (fenced code)
+				if nextIndent > admonitionIndent && fencedCodeRegex.MatchString(nextLine) {
+					issues = append(issues, Issue{
+						File:     filePath,
+						Line:     lineNum,
+						Column:   1,
+						Type:     "admonition-fenced-code",
+						Severity: SeverityWarning,
+						Message:  "fenced code block immediately follows admonition without blank line - this may not render correctly due to goldmark limitation",
+						Fixable:  true,
+					})
+				}
+			}
+			continue
+		}
+
+		// Check if we're still in admonition (indented content)
+		if inAdmonition {
+			trimmed := strings.TrimLeft(line, " \t")
+			currentIndent := len(line) - len(trimmed)
+
+			// If line is not empty and not indented more than admonition, we've left
+			if line != "" && currentIndent <= admonitionIndent {
+				inAdmonition = false
+			}
+		}
+	}
+
+	return issues
+}
+
+// fixAdmonitionFencedCode adds blank lines after admonition declarations
+// that are immediately followed by fenced code blocks.
+func fixAdmonitionFencedCode(content string) string {
+	lines := strings.Split(content, "\n")
+	var result []string
+
+	// Pattern to match admonition start
+	admonitionRegex := regexp.MustCompile(`^(\s*)!!!\s+\w+`)
+	// Pattern to match fenced code block start
+	fencedCodeRegex := regexp.MustCompile(`^\s*` + "```")
+
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		result = append(result, line)
+
+		// Check for admonition start
+		if match := admonitionRegex.FindStringSubmatch(line); match != nil {
+			admonitionIndent := len(match[1])
+
+			// Check if next line is a fenced code block without blank line
+			if i+1 < len(lines) {
+				nextLine := lines[i+1]
+				trimmedNext := strings.TrimLeft(nextLine, " \t")
+				nextIndent := len(nextLine) - len(trimmedNext)
+
+				// If next line is indented and starts with ``` (fenced code)
+				if nextIndent > admonitionIndent && fencedCodeRegex.MatchString(nextLine) {
+					// Add a blank line with proper indentation
+					result = append(result, "")
+				}
+			}
+		}
+	}
+
+	return strings.Join(result, "\n")
 }
