@@ -10,6 +10,10 @@
   const STORAGE_KEY = 'selected-palette';
   const FAMILY_KEY = 'selected-family';
   const MODE_KEY = 'color-mode'; // 'light' or 'dark'
+  const AESTHETIC_KEY = 'selected-aesthetic';
+
+  // Available aesthetics for cycling
+  const AESTHETICS = ['brutal', 'precision', 'balanced', 'elevated', 'minimal'];
 
   // Variant suffixes to strip when computing family names
   const VARIANT_SUFFIXES = [
@@ -502,6 +506,68 @@
   let sortedFamilyNames = [];
 
   /**
+   * Get the current aesthetic
+   */
+  function getAesthetic() {
+    const stored = localStorage.getItem(AESTHETIC_KEY);
+    if (stored && AESTHETICS.includes(stored)) {
+      return stored;
+    }
+    return 'balanced'; // default aesthetic
+  }
+
+  /**
+   * Set the aesthetic
+   */
+  function setAesthetic(aesthetic) {
+    if (!AESTHETICS.includes(aesthetic)) {
+      console.warn('[palette-switcher] Unknown aesthetic:', aesthetic);
+      return;
+    }
+
+    localStorage.setItem(AESTHETIC_KEY, aesthetic);
+    document.documentElement.dataset.aesthetic = aesthetic;
+
+    // Dispatch event
+    window.dispatchEvent(new CustomEvent('aesthetic-change', {
+      detail: { aesthetic: aesthetic }
+    }));
+  }
+
+  /**
+   * Cycle to next/previous aesthetic
+   */
+  function cycleAesthetic(direction) {
+    const currentAesthetic = getAesthetic();
+    const currentIndex = AESTHETICS.indexOf(currentAesthetic);
+
+    let newIndex;
+    if (direction === 'next') {
+      newIndex = (currentIndex + 1) % AESTHETICS.length;
+    } else {
+      newIndex = (currentIndex - 1 + AESTHETICS.length) % AESTHETICS.length;
+    }
+
+    const newAesthetic = AESTHETICS[newIndex];
+    setAesthetic(newAesthetic);
+
+    // Show notification with capitalized name
+    const displayName = newAesthetic.charAt(0).toUpperCase() + newAesthetic.slice(1);
+    showNotification(`Aesthetic: ${displayName}`);
+  }
+
+  /**
+   * Initialize aesthetic on page load
+   */
+  function initAesthetic() {
+    const aesthetic = getAesthetic();
+    document.documentElement.dataset.aesthetic = aesthetic;
+  }
+
+  // Initialize aesthetic immediately
+  initAesthetic();
+
+  /**
    * Cycle to next/previous family
    */
   function cycleFamily(direction) {
@@ -562,15 +628,27 @@
       }
 
       // [ = previous family
-      if (e.key === '[') {
+      if (e.key === '[' && !e.shiftKey) {
         e.preventDefault();
         cycleFamily('prev');
       }
 
       // ] = next family
-      if (e.key === ']') {
+      if (e.key === ']' && !e.shiftKey) {
         e.preventDefault();
         cycleFamily('next');
+      }
+
+      // { (Shift+[) = previous aesthetic
+      if (e.key === '{') {
+        e.preventDefault();
+        cycleAesthetic('prev');
+      }
+
+      // } (Shift+]) = next aesthetic
+      if (e.key === '}') {
+        e.preventDefault();
+        cycleAesthetic('next');
       }
 
       // \ = toggle dark/light
@@ -596,5 +674,10 @@
     cycleFamily,
     nextFamily: () => cycleFamily('next'),
     prevFamily: () => cycleFamily('prev'),
+    getAesthetic,
+    setAesthetic,
+    cycleAesthetic,
+    nextAesthetic: () => cycleAesthetic('next'),
+    prevAesthetic: () => cycleAesthetic('prev'),
   };
 })();

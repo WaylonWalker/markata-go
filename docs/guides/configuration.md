@@ -255,6 +255,65 @@ custom_css = "my-styles.css"
 
 See the [[themes-and-styling|Themes Guide]] for detailed customization options.
 
+### Aesthetic Settings (`[markata-go]`)
+
+Aesthetics control the non-color visual aspects of your site: border radius, spacing, shadows, and borders. While palettes control *what colors* you use, aesthetics control *how things are shaped*.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `aesthetic` | string | `"balanced"` | Aesthetic preset to use |
+
+```toml
+[markata-go]
+aesthetic = "elevated"
+```
+
+**Available aesthetics:**
+
+| Aesthetic | Description |
+|-----------|-------------|
+| `balanced` | Default. Comfortable rounding, subtle shadows, normal spacing |
+| `brutal` | Sharp corners, thick borders, tight spacing, no shadows |
+| `minimal` | No rounding, maximum whitespace, no shadows, hairline borders |
+| `elevated` | Generous rounding, layered shadows, generous spacing |
+| `precision` | Subtle corners, compact spacing, hairline borders, minimal shadows |
+
+#### Aesthetic Overrides (`[markata-go.aesthetic_overrides]`)
+
+Fine-tune individual aesthetic values without creating a full custom aesthetic:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `border_radius` | string | varies | CSS border-radius value (e.g., `"8px"`, `"0"`) |
+| `spacing_scale` | float | varies | Spacing multiplier (e.g., `1.0`, `1.5`) |
+| `border_width` | string | varies | CSS border-width value (e.g., `"1px"`, `"3px"`) |
+| `border_style` | string | varies | CSS border-style value (e.g., `"solid"`, `"none"`) |
+| `shadow_intensity` | float | varies | Shadow opacity multiplier (0.0-1.0) |
+| `shadow_size` | string | varies | Shadow size: `"none"`, `"sm"`, `"md"`, `"lg"`, `"xl"` |
+
+```toml
+[markata-go]
+aesthetic = "balanced"
+
+# Override specific values
+[markata-go.aesthetic_overrides]
+border_radius = "16px"
+shadow_intensity = 0.8
+spacing_scale = 1.2
+```
+
+**Combining with palettes:**
+
+```toml
+[markata-go]
+aesthetic = "elevated"
+
+[markata-go.theme]
+palette = "catppuccin-mocha"
+```
+
+See the [[themes-and-styling|Themes Guide]] for detailed aesthetic customization and the full list of built-in presets.
+
 ### Layout Components (`[markata-go.components]`)
 
 markata-go includes a configurable layout components system for navigation, footer, and sidebars. Each component can be enabled/disabled and positioned via configuration.

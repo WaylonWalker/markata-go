@@ -114,6 +114,12 @@ type PostCache struct {
 
 	// Slug is the post's slug for dependency tracking
 	Slug string `json:"slug,omitempty"`
+
+	// LinkHrefsHash is a hash of the post's article HTML used for link extraction caching
+	LinkHrefsHash string `json:"link_hrefs_hash,omitempty"`
+
+	// LinkHrefs caches extracted href values for the post
+	LinkHrefs []string `json:"link_hrefs,omitempty"`
 }
 
 // FeedCache stores cached metadata for a single feed.
@@ -365,6 +371,52 @@ func (c *Cache) UpdateModTime(sourcePath string, modTime int64, slug string) {
 		c.Posts[sourcePath] = &PostCache{
 			ModTime: modTime,
 			Slug:    slug,
+		}
+	}
+	c.dirty = true
+}
+
+// GetCachedLinkHrefs returns cached hrefs for a post if the article hash matches.
+// Returns nil if no matching cache exists.
+func (c *Cache) GetCachedLinkHrefs(sourcePath, articleHash string) []string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	cached, ok := c.Posts[sourcePath]
+	if !ok {
+		return nil
+	}
+	if cached.LinkHrefsHash == "" || cached.LinkHrefsHash != articleHash {
+		return nil
+	}
+	if len(cached.LinkHrefs) == 0 {
+		return []string{}
+	}
+
+	hrefs := make([]string, len(cached.LinkHrefs))
+	copy(hrefs, cached.LinkHrefs)
+	return hrefs
+}
+
+// CacheLinkHrefs stores extracted hrefs for a post keyed by article hash.
+func (c *Cache) CacheLinkHrefs(sourcePath, articleHash string, hrefs []string) {
+	if sourcePath == "" || articleHash == "" {
+		return
+	}
+
+	copyHrefs := make([]string, len(hrefs))
+	copy(copyHrefs, hrefs)
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.LinkHrefsHash = articleHash
+		cached.LinkHrefs = copyHrefs
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			LinkHrefsHash: articleHash,
+			LinkHrefs:     copyHrefs,
 		}
 	}
 	c.dirty = true

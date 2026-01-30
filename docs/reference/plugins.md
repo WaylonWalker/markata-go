@@ -1344,6 +1344,10 @@ include_index = false  # Include index page in inlinks (default: false)
 6. Populates `Inlinks` and `Outlinks` on each post
 7. Stores all links in cache for use by other plugins
 
+**Performance:**
+- Caches href extraction per post using a hash of `ArticleHTML`
+- Reuses cached hrefs on unchanged posts, while still rebuilding link objects
+
 **Post fields set:**
 | Field | Type | Description |
 |-------|------|-------------|
@@ -3042,6 +3046,9 @@ user_agent = "markata-go/1.0 (WebMention)"
 2. Groups mentions by target URL
 3. For each post, matches webmentions to the post's URL (with various URL format normalizations)
 4. Attaches matched webmentions to `post.Extra["webmentions"]`
+
+**Incremental builds:**
+When build cache is enabled, the plugin skips re-attaching webmentions if no posts are scheduled to rebuild.
 
 **Fetching webmentions:**
 The plugin loads from cache during builds. To fetch fresh webmentions from webmention.io:

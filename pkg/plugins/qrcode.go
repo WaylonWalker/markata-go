@@ -108,7 +108,11 @@ func (p *QRCodePlugin) Write(m *lifecycle.Manager) error {
 		return fmt.Errorf("failed to create QR code directory: %w", err)
 	}
 
-	return m.ProcessPostsConcurrently(p.processPost)
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		return !post.Skip
+	})
+
+	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
 }
 
 // processPost generates a QR code for a single post.

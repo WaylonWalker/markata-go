@@ -206,10 +206,24 @@ func (p *GlossaryPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	// Process each non-glossary post to link terms
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
-		return p.processPost(post)
+	postsToProcess := m.FilterPosts(func(post *models.Post) bool {
+		if post.Skip {
+			return false
+		}
+		if post.ArticleHTML == "" {
+			return false
+		}
+		if p.isGlossaryPost(post) {
+			return false
+		}
+		if p.hasExcludedTag(post) {
+			return false
+		}
+		return true
 	})
+
+	// Process each non-glossary post to link terms
+	return m.ProcessPostsSliceConcurrently(postsToProcess, p.processPost)
 }
 
 // Write exports the glossary JSON file if configured.

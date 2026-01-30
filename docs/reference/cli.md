@@ -115,6 +115,8 @@ The build command executes the full 9-stage lifecycle:
 8. **Write** - Output files to disk
 9. **Cleanup** - Release resources
 
+When `--verbose` is enabled, build output includes per-stage timing to highlight slow stages.
+
 ---
 
 ### serve
@@ -778,25 +780,91 @@ markata-go config init site.toml
 markata-go config init --force
 ```
 
-**Generated Config:**
+---
 
-```toml
-[markata-go]
-title = "My Site"
-description = "A site built with markata-go"
-url = "https://example.com"
-author = "Your Name"
+### aesthetic
 
-output_dir = "public"
-templates_dir = "templates"
-assets_dir = "static"
+Manage and inspect aesthetic presets for your site's visual styling.
 
-[markata-go.glob]
-patterns = ["posts/**/*.md", "pages/*.md"]
+#### Usage
 
-[markata-go.markdown]
-extensions = ["tables", "strikethrough", "autolinks", "tasklist"]
+```bash
+markata-go aesthetic <subcommand>
 ```
+
+#### Subcommands
+
+##### list
+
+List all available aesthetic presets.
+
+```bash
+markata-go aesthetic list
+```
+
+**Example Output:**
+
+```
+Available aesthetics:
+
+  balanced    Default. Comfortable rounding, subtle shadows, normal spacing
+  brutal      Sharp corners, thick borders, tight spacing, no shadows
+  elevated    Generous rounding, layered shadows, generous spacing
+  minimal     No rounding, maximum whitespace, no shadows, hairline borders
+  precision   Subtle corners, compact spacing, hairline borders, minimal shadows
+```
+
+##### show
+
+Display the details of a specific aesthetic preset.
+
+```bash
+markata-go aesthetic show <name>
+```
+
+**Arguments:**
+
+| Argument | Description | Required |
+|----------|-------------|----------|
+| `name` | Name of the aesthetic to show | Yes |
+
+**Examples:**
+
+```bash
+# Show details of the elevated aesthetic
+markata-go aesthetic show elevated
+
+# Show details of the brutal aesthetic
+markata-go aesthetic show brutal
+```
+
+**Example Output:**
+
+```
+Aesthetic: elevated
+
+Description: Generous rounding, layered shadows, generous spacing
+
+Values:
+  border_radius:    16px
+  spacing_scale:    1.5
+  border_width:     0px
+  border_style:     none
+  shadow_intensity: 0.6
+  shadow_size:      lg
+```
+
+#### Available Aesthetics
+
+| Aesthetic | Description |
+|-----------|-------------|
+| `balanced` | Default. Comfortable rounding, subtle shadows, normal spacing |
+| `brutal` | Sharp corners, thick borders, tight spacing, no shadows |
+| `elevated` | Generous rounding, layered shadows, generous spacing |
+| `minimal` | No rounding, maximum whitespace, no shadows, hairline borders |
+| `precision` | Subtle corners, compact spacing, hairline borders, minimal shadows |
+
+See [[themes-and-styling|Themes Guide]] for detailed aesthetic customization.
 
 ---
 

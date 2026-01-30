@@ -48,12 +48,11 @@ func (p *WikilinksPlugin) Transform(m *lifecycle.Manager) error {
 	postIndex.Refresh(m)
 	postIndex.Refresh(m)
 
-	// Process each post
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
-		if post.Skip || post.Content == "" {
-			return nil
-		}
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		return !post.Skip && post.Content != ""
+	})
 
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		content, warnings, dependencies := p.processWikilinks(post.Content, postIndex)
 		post.Content = content
 

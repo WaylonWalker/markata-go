@@ -1,6 +1,9 @@
 {# Documentation Layout - 3-panel layout with sidebar, content, and TOC #}
 {% extends "base.html" %}
 
+{% block title %}{{ post.title | default:config.title | default:'My Site' }}{% endblock %}
+{% block description %}{{ post.description | default:config.description | default:'' }}{% endblock %}
+
 {% block body_class %}layout layout--docs{% endblock %}
 
 {% block header %}

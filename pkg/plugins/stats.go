@@ -146,11 +146,11 @@ func (p *StatsPlugin) Configure(m *lifecycle.Manager) error {
 
 // Transform calculates statistics for each post.
 func (p *StatsPlugin) Transform(m *lifecycle.Manager) error {
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
-		if post.Skip || post.Content == "" {
-			return nil
-		}
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		return !post.Skip && post.Content != ""
+	})
 
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		stats := p.calculatePostStats(post.Content)
 
 		// Store individual stats in Extra for template access

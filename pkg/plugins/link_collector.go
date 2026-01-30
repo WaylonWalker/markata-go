@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -82,6 +83,9 @@ func (p *LinkCollectorPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	cache := GetBuildCache(m)
+	useCache := cache != nil
+
 	// Use the shared PostIndex from the lifecycle manager
 	idx := m.PostIndex()
 
@@ -89,17 +93,27 @@ func (p *LinkCollectorPlugin) Render(m *lifecycle.Manager) error {
 	var allLinks []*models.Link
 	var linksMu sync.Mutex
 
-	// Process each post to extract hrefs and create Link objects
-	err := m.ProcessPostsConcurrently(func(post *models.Post) error {
-		if post.Skip || post.ArticleHTML == "" {
-			return nil
-		}
+	postsToProcess := m.FilterPosts(func(post *models.Post) bool {
+		return !post.Skip && post.ArticleHTML != ""
+	})
 
+	// Process each post to extract hrefs and create Link objects
+	err := m.ProcessPostsSliceConcurrently(postsToProcess, func(post *models.Post) error {
 		// Build base URL for this post
 		baseURL := p.buildBaseURL(post)
 
-		// Extract all hrefs from article HTML
-		hrefs := extractHrefs(post.ArticleHTML)
+		var hrefs []string
+		if useCache {
+			articleHash := buildcache.ContentHash(post.ArticleHTML)
+			if cached := cache.GetCachedLinkHrefs(post.Path, articleHash); cached != nil {
+				hrefs = cached
+			} else {
+				hrefs = extractHrefs(post.ArticleHTML)
+				cache.CacheLinkHrefs(post.Path, articleHash, hrefs)
+			}
+		} else {
+			hrefs = extractHrefs(post.ArticleHTML)
+		}
 		post.Hrefs = hrefs
 
 		// Create Link objects for each href
