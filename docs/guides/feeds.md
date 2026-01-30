@@ -95,8 +95,8 @@ html = true                        # /blog/index.html, /blog/page/2/index.html
 rss = true                         # /blog/rss.xml
 atom = true                        # /blog/atom.xml
 json = true                        # /blog/feed.json
-markdown = false                   # /blog/index.md
-text = false                       # /blog/index.txt
+markdown = false                   # /blog.md
+text = false                       # /blog.txt
 
 # Custom Templates
 [markata-go.feeds.templates]
@@ -465,7 +465,7 @@ Markdown list of posts (useful for READMEs, documentation).
 markdown = true
 ```
 
-**Output:** `/blog/index.md`
+**Output:** `/blog.md`
 
 ```markdown
 # Blog
@@ -485,7 +485,7 @@ Simple text list (useful for APIs, scripts, minimal readers).
 text = true
 ```
 
-**Output:** `/blog/index.txt`
+**Output:** `/blog.txt`
 
 ```
 Blog

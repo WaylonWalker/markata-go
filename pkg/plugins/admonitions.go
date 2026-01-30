@@ -31,10 +31,16 @@ var admonitionTypes = map[string]bool{
 	"abstract":  true,
 	"aside":     true,
 	"seealso":   true,
+	"reminder":  true,
+	"attention": true,
+	"todo":      true,
+	"settings":  true,
+	"vsplit":    true,
 }
 
 // admonitionRegex matches admonition syntax:
-// - !!! type "title" (standard)
+// - !!! type "title" (standard with quoted title)
+// - !!! type title text (standard with unquoted title)
 // - !!! aside left "title" (aside positioned left)
 // - !!! aside right "title" (aside positioned right, default)
 // - !!! aside inline "title" (Material for MkDocs compat: left)
@@ -45,7 +51,8 @@ var admonitionTypes = map[string]bool{
 // Group 2: type
 // Group 3: optional modifiers (for aside: left, right, inline, inline end)
 // Group 4: optional quoted title
-var admonitionRegex = regexp.MustCompile(`^(\?\?\?\+?|!!!)\s+(\w+)(?:\s+(left|right|inline(?:\s+end)?))?\s*(?:"([^"]*)")?$`)
+// Group 5: optional unquoted title (everything after type/modifiers if no quotes)
+var admonitionRegex = regexp.MustCompile(`^(\?\?\?\+?|!!!)\s+(\w+)(?:\s+(left|right|inline(?:\s+end)?))?\s*(?:"([^"]*)"|(.*))?$`)
 
 // KindAdmonition is the AST node kind for admonitions.
 var KindAdmonition = ast.NewNodeKind("Admonition")
@@ -120,7 +127,8 @@ func (p *AdmonitionParser) Open(_ ast.Node, reader text.Reader, _ parser.Context
 	marker := matches[1]
 	adType := strings.ToLower(matches[2])
 	modifier := strings.ToLower(matches[3])
-	title := matches[4]
+	quotedTitle := matches[4]
+	unquotedTitle := strings.TrimSpace(matches[5])
 
 	if !admonitionTypes[adType] {
 		return nil, parser.NoChildren
@@ -142,6 +150,12 @@ func (p *AdmonitionParser) Open(_ ast.Node, reader text.Reader, _ parser.Context
 		}
 	}
 
+	// Use quoted title if present, otherwise use unquoted title
+	title := quotedTitle
+	if title == "" && unquotedTitle != "" {
+		title = unquotedTitle
+	}
+
 	// Set default title if not provided
 	if title == "" {
 		if adType == AdmonitionTypeAside {
@@ -160,27 +174,58 @@ func (p *AdmonitionParser) Open(_ ast.Node, reader text.Reader, _ parser.Context
 
 // Continue checks if the admonition block continues.
 // Admonition content is indented with at least 4 spaces.
+// Blank lines are allowed within admonitions if followed by indented content.
 func (p *AdmonitionParser) Continue(_ ast.Node, reader text.Reader, _ parser.Context) parser.State {
 	line, segment := reader.PeekLine()
 
-	// Blank line ends the admonition
+	// Check for blank line - need to look ahead to decide if we continue
 	if util.IsBlank(line) {
+		// Save current position
+		savedLine := segment
+
+		// Skip this blank line
+		reader.Advance(segment.Stop - segment.Start)
+
+		// Skip any additional blank lines
+		nextLine, nextSeg := reader.PeekLine()
+		for util.IsBlank(nextLine) && nextSeg.Len() > 0 {
+			reader.Advance(nextSeg.Stop - nextSeg.Start)
+			nextLine, nextSeg = reader.PeekLine()
+		}
+
+		// Check if next non-blank line is properly indented
+		if nextSeg.Len() > 0 {
+			nextIndent, _ := util.IndentWidth(nextLine, reader.LineOffset())
+			if nextIndent >= 4 {
+				// Content continues - process the indented line
+				pos, padding := util.IndentPosition(nextLine, reader.LineOffset(), 4)
+				if pos >= 0 {
+					reader.AdvanceAndSetPadding(pos, padding)
+					return parser.Continue | parser.HasChildren
+				}
+			}
+		}
+
+		// Content doesn't continue - but we've already advanced past blank lines
+		// We need to close but the reader is already past the blank line
+		_ = savedLine // Note: we can't easily reset the reader position
 		return parser.Close
 	}
 
 	// Check for proper indentation (at least 4 spaces)
-	indent := 0
-	for i := 0; i < len(line) && line[i] == ' '; i++ {
-		indent++
-	}
-
+	indent, _ := util.IndentWidth(line, reader.LineOffset())
 	if indent < 4 {
 		// Not indented enough - close the admonition
 		return parser.Close
 	}
 
-	// Advance past this line
-	reader.Advance(segment.Stop - segment.Start)
+	pos, padding := util.IndentPosition(line, reader.LineOffset(), 4)
+	if pos < 0 {
+		return parser.Close
+	}
+
+	// Advance to content start so child parsers can consume it
+	reader.AdvanceAndSetPadding(pos, padding)
 	return parser.Continue | parser.HasChildren
 }
 

@@ -317,14 +317,14 @@ func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 				t.Fatalf("writePost() error = %v", err)
 			}
 
-			// Content should be at /slug/index.ext
-			contentPath := filepath.Join(tempDir, "test-post", "index."+tt.ext)
-			// Redirect should be at /slug.ext/index.html
-			redirectPath := filepath.Join(tempDir, "test-post."+tt.ext, "index.html")
+			// Content should be at /slug.ext
+			contentPath := filepath.Join(tempDir, "test-post."+tt.ext)
+			// Redirect should be at /slug/index.ext/index.html
+			redirectPath := filepath.Join(tempDir, "test-post", "index."+tt.ext, "index.html")
 			// When HTML is disabled, /slug/index.html should also be a redirect
 			slugRedirectPath := filepath.Join(tempDir, "test-post", "index.html")
 
-			// Check that primary content file exists at /slug/index.ext
+			// Check that primary content file exists at /slug.ext
 			info, err := os.Stat(contentPath)
 			if err != nil {
 				t.Fatalf("primary content file %s not found: %v", contentPath, err)
@@ -346,7 +346,7 @@ func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 				t.Error("primary content file should contain post content")
 			}
 
-			// Check that redirect file exists at /slug.ext/index.html (always HTML!)
+			// Check that redirect file exists at /slug/index.ext/index.html (always HTML!)
 			redirectInfo, err := os.Stat(redirectPath)
 			if err != nil {
 				t.Fatalf("redirect file %s not found: %v", redirectPath, err)
@@ -367,8 +367,8 @@ func TestPublishHTMLPlugin_FormatRedirectsCreateDirectories(t *testing.T) {
 			if !strings.Contains(redirectStr, "meta http-equiv=\"refresh\"") {
 				t.Error("redirect file should contain meta refresh")
 			}
-			// Redirect should point TO the content at /slug/index.ext
-			expectedTarget := "/test-post/index." + tt.ext
+			// Redirect should point TO the content at /slug.ext
+			expectedTarget := "/test-post." + tt.ext
 			if !strings.Contains(redirectStr, expectedTarget) {
 				t.Errorf("redirect file should point to %s, got: %s", expectedTarget, redirectStr)
 			}
@@ -543,8 +543,8 @@ func TestPublishHTMLPlugin_TxtTemplateRendering(t *testing.T) {
 		t.Fatalf("writePost() error = %v", err)
 	}
 
-	// Read txt content from /slug/index.txt
-	txtPath := filepath.Join(tempDir, "test-post", "index.txt")
+	// Read txt content from /slug.txt
+	txtPath := filepath.Join(tempDir, "test-post.txt")
 	content, err := os.ReadFile(txtPath)
 	if err != nil {
 		t.Fatalf("failed to read txt file: %v", err)
@@ -616,11 +616,11 @@ func TestPublishHTMLPlugin_FormatExtRedirectsWithHTMLEnabled(t *testing.T) {
 	}
 
 	// Expected file structure:
-	// /test/index.txt     -> text content
-	// /test/index.md      -> markdown content
+	// /test.txt      -> text content
+	// /test.md       -> markdown content
 	// /test/index.html    -> HTML content (NOT a redirect)
-	// /test.txt/index.html -> redirect to /test/index.txt
-	// /test.md/index.html  -> redirect to /test/index.md
+	// /test/index.txt/index.html -> redirect to /test.txt
+	// /test/index.md/index.html  -> redirect to /test.md
 
 	// 1. Verify /test/index.html exists and contains HTML content (NOT a redirect)
 	htmlPath := filepath.Join(tempDir, "test", "index.html")
@@ -636,52 +636,44 @@ func TestPublishHTMLPlugin_FormatExtRedirectsWithHTMLEnabled(t *testing.T) {
 		t.Error("/test/index.html should contain the post's HTML content")
 	}
 
-	// 2. Verify /test/index.txt exists with text content
-	txtContentPath := filepath.Join(tempDir, "test", "index.txt")
+	// 2. Verify /test.txt exists with text content
+	txtContentPath := filepath.Join(tempDir, "test.txt")
 	txtContent, err := os.ReadFile(txtContentPath)
 	if err != nil {
 		t.Fatalf("failed to read txt file %s: %v", txtContentPath, err)
 	}
 	if strings.Contains(string(txtContent), "<!DOCTYPE html>") {
-		t.Error("/test/index.txt should contain text content, not HTML")
+		t.Error("/test.txt should contain text content, not HTML")
 	}
 
-	// 3. Verify /test.txt/index.html exists and is a redirect to /test/index.txt
-	txtRedirectPath := filepath.Join(tempDir, "test.txt", "index.html")
-	txtRedirectContent, err := os.ReadFile(txtRedirectPath)
-	if err != nil {
-		t.Fatalf("failed to read txt redirect %s: %v", txtRedirectPath, err)
-	}
-	txtRedirectStr := string(txtRedirectContent)
-	if !strings.Contains(txtRedirectStr, "http-equiv=\"refresh\"") {
-		t.Error("/test.txt/index.html should be a redirect")
-	}
-	if !strings.Contains(txtRedirectStr, "/test/index.txt") {
-		t.Error("/test.txt/index.html should redirect to /test/index.txt")
-	}
-
-	// 4. Verify /test/index.md exists with markdown content
-	mdContentPath := filepath.Join(tempDir, "test", "index.md")
+	// 3. Verify /test.md exists with markdown content
+	mdContentPath := filepath.Join(tempDir, "test.md")
 	mdContent, err := os.ReadFile(mdContentPath)
 	if err != nil {
 		t.Fatalf("failed to read md file %s: %v", mdContentPath, err)
 	}
 	if strings.Contains(string(mdContent), "<!DOCTYPE html>") {
-		t.Error("/test/index.md should contain markdown content, not HTML")
+		t.Error("/test.md should contain markdown content, not HTML")
 	}
 
-	// 5. Verify /test.md/index.html exists and is a redirect to /test/index.md
-	mdRedirectPath := filepath.Join(tempDir, "test.md", "index.html")
-	mdRedirectContent, err := os.ReadFile(mdRedirectPath)
+	// 4. Verify /test/index.txt/index.html exists and is a redirect to /test.txt
+	txtIndexRedirectPath := filepath.Join(tempDir, "test", "index.txt", "index.html")
+	txtIndexRedirectContent, err := os.ReadFile(txtIndexRedirectPath)
 	if err != nil {
-		t.Fatalf("failed to read md redirect %s: %v", mdRedirectPath, err)
+		t.Fatalf("failed to read txt index redirect %s: %v", txtIndexRedirectPath, err)
 	}
-	mdRedirectStr := string(mdRedirectContent)
-	if !strings.Contains(mdRedirectStr, "http-equiv=\"refresh\"") {
-		t.Error("/test.md/index.html should be a redirect")
+	if !strings.Contains(string(txtIndexRedirectContent), "/test.txt") {
+		t.Error("/test/index.txt/index.html should redirect to /test.txt")
 	}
-	if !strings.Contains(mdRedirectStr, "/test/index.md") {
-		t.Error("/test.md/index.html should redirect to /test/index.md")
+
+	// 5. Verify /test/index.md/index.html exists and is a redirect to /test.md
+	mdIndexRedirectPath := filepath.Join(tempDir, "test", "index.md", "index.html")
+	mdIndexRedirectContent, err := os.ReadFile(mdIndexRedirectPath)
+	if err != nil {
+		t.Fatalf("failed to read md index redirect %s: %v", mdIndexRedirectPath, err)
+	}
+	if !strings.Contains(string(mdIndexRedirectContent), "/test.md") {
+		t.Error("/test/index.md/index.html should redirect to /test.md")
 	}
 }
 

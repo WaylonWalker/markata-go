@@ -560,6 +560,12 @@ func (p *BlogrollPlugin) writeBlogrollPage(m *lifecycle.Manager, outputDir strin
 		"config":       p.configToMap(m.Config()),
 		"blogroll_url": "/" + slug + "/",
 		"reader_url":   "/" + readerSlug + "/",
+		"post": map[string]interface{}{
+			"slug":        slug,
+			"title":       "Blogroll",
+			"description": "Blogs and feeds I follow",
+			"href":        "/" + slug + "/",
+		},
 	}
 
 	// Try to render with template engine
@@ -638,6 +644,12 @@ func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir str
 		"pagination_type": string(page.PaginationType),
 		"blogroll_url":    "/" + blogrollSlug + "/",
 		"reader_url":      "/" + readerSlug + "/",
+		"post": map[string]interface{}{
+			"slug":        readerSlug,
+			"title":       "Reader",
+			"description": "Latest posts from blogs I follow",
+			"href":        "/" + readerSlug + "/",
+		},
 	}
 
 	// Determine output path

@@ -900,6 +900,16 @@ func feedToMap(f *models.FeedConfig) map[string]interface{} {
 		return nil
 	}
 
+	formats := map[string]interface{}{
+		"html":     f.Formats.HTML,
+		"rss":      f.Formats.RSS,
+		"atom":     f.Formats.Atom,
+		"json":     f.Formats.JSON,
+		"markdown": f.Formats.Markdown,
+		"text":     f.Formats.Text,
+		"sitemap":  f.Formats.Sitemap,
+	}
+
 	return map[string]interface{}{
 		"slug":           f.Slug,
 		"title":          f.Title,
@@ -909,6 +919,7 @@ func feedToMap(f *models.FeedConfig) map[string]interface{} {
 		"reverse":        f.Reverse,
 		"items_per_page": f.ItemsPerPage,
 		"posts":          PostsToMaps(f.Posts),
+		"formats":        formats,
 	}
 }
 
@@ -1013,6 +1024,13 @@ func (c Context) ToPongo2() pongo2.Context {
 		ctx["site_url"] = c.Config.URL
 		ctx["site_description"] = c.Config.Description
 		ctx["site_author"] = c.Config.Author
+	}
+
+	// Add feed fields directly for convenience (if feed exists)
+	if c.Feed != nil {
+		ctx["feed_slug"] = c.Feed.Slug
+		ctx["feed_title"] = c.Feed.Title
+		ctx["feed_description"] = c.Feed.Description
 	}
 
 	// Add extra context values

@@ -182,8 +182,10 @@ This site welcomes AI training on its content.
 With text format enabled (default), these generate:
 - `/robots.txt` - The canonical robots.txt file
 - `/robots/index.txt` - Redirect for backwards compatibility
+- `/robots/index.txt/index.html` - HTML redirect for static hosts
 - `/llms.txt` - The canonical llms.txt file
 - `/llms/index.txt` - Redirect for backwards compatibility
+- `/llms/index.txt/index.html` - HTML redirect for static hosts
 
 ## Reversed Redirects
 
@@ -239,7 +241,7 @@ For feeds, visitors see subscription options:
 
 ## Content Negotiation
 
-markata-go's directory-based URL structure (`/slug/index.html`, `/slug/index.md`, `/slug/index.txt`) enables server-side content negotiation. This allows clients to request their preferred format using HTTP `Accept` headers.
+markata-go's canonical short URLs (`/slug.md`, `/slug.txt`) plus HTML directory pages (`/slug/index.html`) enable server-side content negotiation. This allows clients to request their preferred format using HTTP `Accept` headers.
 
 ### How It Works
 
@@ -281,8 +283,14 @@ server {
             set $ext "md";
         }
 
+        # Strip trailing slash for canonical format files
+        set $base $uri;
+        if ($base ~ "^(.+)/$") {
+            set $base $1;
+        }
+
         # Try the negotiated format, falling back to index.html
-        try_files $uri/index.$ext $uri/index.html =404;
+        try_files $base.$ext $uri/index.html =404;
     }
 }
 ```
@@ -308,10 +316,16 @@ example.com {
     }
 
     # Rewrite to plain text when requested
-    rewrite @wantsText {path}/index.txt
+    handle @wantsText {
+        uri strip_suffix /
+        rewrite * {path}.txt
+    }
 
     # Rewrite to markdown when requested
-    rewrite @wantsMarkdown {path}/index.md
+    handle @wantsMarkdown {
+        uri strip_suffix /
+        rewrite * {path}.md
+    }
 
     # Try exact file first (for /robots.txt), then index.html
     try_files {path} {path}/index.html {path}.html

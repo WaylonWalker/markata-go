@@ -19,7 +19,9 @@
         {% endif %}
 
         {# Format links for alternate views/formats #}
+        {% if post or feed %}
         {% include "components/format-links.html" %}
+        {% endif %}
 
         <div class="footer-bottom">
             {% if footer.show_copyright %}

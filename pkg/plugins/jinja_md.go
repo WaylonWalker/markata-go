@@ -128,11 +128,11 @@ func collectPrivatePathsForJinja(posts []*models.Post) []string {
 			// Add base href (e.g., /slug/)
 			paths = append(paths, post.Href)
 			// Add format variants
-			// For regular posts: /slug/index.txt, /slug/index.md, /slug.og/
+			// For regular posts: /slug.txt, /slug.md, /slug.og/
 			if post.Slug != "" {
 				paths = append(paths,
-					"/"+post.Slug+"/index.txt",
-					"/"+post.Slug+"/index.md",
+					"/"+post.Slug+".txt",
+					"/"+post.Slug+".md",
 					"/"+post.Slug+".og/",
 				)
 			}

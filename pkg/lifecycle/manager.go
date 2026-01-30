@@ -126,6 +126,61 @@ func newPostIndex(capacity int) *PostIndex {
 	}
 }
 
+// Refresh rebuilds the index from the manager's current posts.
+// Safe to call multiple times; replaces all lookup maps.
+func (idx *PostIndex) Refresh(m *Manager) {
+	if idx == nil || m == nil {
+		return
+	}
+
+	posts := m.Posts()
+	newIdx := newPostIndex(len(posts) * 2)
+
+	for _, post := range posts {
+		if post.Slug != "" {
+			lowerSlug := strings.ToLower(post.Slug)
+			newIdx.BySlug[lowerSlug] = post
+
+			// Also add slugified version if different
+			slugified := models.Slugify(post.Slug)
+			if slugified != lowerSlug {
+				newIdx.BySlugified[slugified] = post
+			}
+		}
+
+		if post.Href != "" {
+			newIdx.ByHref[post.Href] = post
+		}
+
+		if post.Path != "" {
+			newIdx.ByPath[post.Path] = post
+		}
+
+		// Register aliases
+		if post.Extra != nil {
+			if aliases, ok := post.Extra["aliases"].([]interface{}); ok {
+				for _, alias := range aliases {
+					if aliasStr, ok := alias.(string); ok {
+						normalizedAlias := strings.ToLower(aliasStr)
+						if _, exists := newIdx.BySlug[normalizedAlias]; !exists {
+							newIdx.BySlug[normalizedAlias] = post
+						}
+						slugifiedAlias := models.Slugify(aliasStr)
+						if _, exists := newIdx.BySlugified[slugifiedAlias]; !exists {
+							newIdx.BySlugified[slugifiedAlias] = post
+						}
+					}
+				}
+			}
+		}
+	}
+
+	idx.BySlug = newIdx.BySlug
+	idx.BySlugified = newIdx.BySlugified
+	idx.ByHref = newIdx.ByHref
+	idx.ByPath = newIdx.ByPath
+}
+
 // LookupBySlug finds a post by slug, trying exact match first then slugified.
 // Returns nil if not found.
 func (idx *PostIndex) LookupBySlug(slug string) *models.Post {
