@@ -58,6 +58,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["glossary"] = func() lifecycle.Plugin { return NewGlossaryPlugin() }
 	pluginRegistry.constructors["md_video"] = func() lifecycle.Plugin { return NewMDVideoPlugin() }
 	pluginRegistry.constructors["chartjs"] = func() lifecycle.Plugin { return NewChartJSPlugin() }
+	pluginRegistry.constructors["contribution_graph"] = func() lifecycle.Plugin { return NewContributionGraphPlugin() }
 	pluginRegistry.constructors["one_line_link"] = func() lifecycle.Plugin { return NewOneLineLinkPlugin() }
 	pluginRegistry.constructors["wikilink_hover"] = func() lifecycle.Plugin { return NewWikilinkHoverPlugin() }
 	pluginRegistry.constructors["qrcode"] = func() lifecycle.Plugin { return NewQRCodePlugin() }
