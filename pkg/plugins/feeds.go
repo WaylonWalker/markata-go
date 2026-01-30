@@ -31,6 +31,7 @@ func (p *FeedsPlugin) Name() string {
 func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 	posts := m.Posts()
 	config := m.Config()
+	filterCache := newFeedFilterCache(posts)
 
 	// Get feed configs from manager's extra config
 	feedConfigs := getFeedConfigs(config)
@@ -45,10 +46,11 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 		fc.ApplyDefaults(feedDefaults)
 
 		// Filter posts
-		filteredPosts, err := filterPosts(posts, fc.Filter, fc.IncludePrivate)
+		filteredPosts, err := filterCache.FilterPosts(fc.Filter, fc.IncludePrivate)
 		if err != nil {
 			return fmt.Errorf("feed %q: %w", fc.Slug, err)
 		}
+		filteredPosts = cloneFeedPosts(filteredPosts)
 
 		// Determine sort field and direction based on feed type
 		sortField := fc.Sort
@@ -104,6 +106,65 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 	m.Cache().Set("feed_configs", feedConfigs)
 
 	return nil
+}
+
+type feedFilterKey struct {
+	expr           string
+	includePrivate bool
+}
+
+type feedFilterCache struct {
+	parsed      map[string]*filter.Filter
+	filtered    map[feedFilterKey][]*models.Post
+	publicPosts []*models.Post
+	allPosts    []*models.Post
+}
+
+func newFeedFilterCache(posts []*models.Post) *feedFilterCache {
+	publicPosts := make([]*models.Post, 0, len(posts))
+	for _, post := range posts {
+		if !post.Private {
+			publicPosts = append(publicPosts, post)
+		}
+	}
+
+	return &feedFilterCache{
+		parsed:      make(map[string]*filter.Filter),
+		filtered:    make(map[feedFilterKey][]*models.Post),
+		publicPosts: publicPosts,
+		allPosts:    posts,
+	}
+}
+
+func (c *feedFilterCache) FilterPosts(filterExpr string, includePrivate bool) ([]*models.Post, error) {
+	key := feedFilterKey{expr: filterExpr, includePrivate: includePrivate}
+	if cached, ok := c.filtered[key]; ok {
+		return cached, nil
+	}
+
+	candidatePosts := c.publicPosts
+	if includePrivate {
+		candidatePosts = c.allPosts
+	}
+
+	if filterExpr == "" {
+		c.filtered[key] = candidatePosts
+		return candidatePosts, nil
+	}
+
+	f, ok := c.parsed[filterExpr]
+	if !ok {
+		var err error
+		f, err = filter.Parse(filterExpr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid filter expression: %w", err)
+		}
+		c.parsed[filterExpr] = f
+	}
+
+	result := f.MatchAll(candidatePosts)
+	c.filtered[key] = result
+	return result, nil
 }
 
 // getFeedConfigs retrieves feed configurations from the manager config.
@@ -164,6 +225,15 @@ func filterPosts(posts []*models.Post, filterExpr string, includePrivate bool) (
 	}
 
 	return f.MatchAll(candidatePosts), nil
+}
+
+func cloneFeedPosts(posts []*models.Post) []*models.Post {
+	if len(posts) == 0 {
+		return nil
+	}
+	result := make([]*models.Post, len(posts))
+	copy(result, posts)
+	return result
 }
 
 // sortPosts sorts posts by the specified field.

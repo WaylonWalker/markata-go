@@ -234,6 +234,7 @@ func (p *AutoFeedsPlugin) Load(m *lifecycle.Manager) error {
 func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	posts := m.Posts()
 	config := m.Config()
+	filterCache := newFeedFilterCache(posts)
 
 	autoConfig := getAutoFeedsConfig(config)
 
@@ -284,10 +285,11 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 		fc.ApplyDefaults(feedDefaults)
 
 		// Filter posts for this feed
-		filteredPosts, err := filterPosts(posts, fc.Filter, fc.IncludePrivate)
+		filteredPosts, err := filterCache.FilterPosts(fc.Filter, fc.IncludePrivate)
 		if err != nil {
 			return fmt.Errorf("auto feed %q: %w", fc.Slug, err)
 		}
+		filteredPosts = cloneFeedPosts(filteredPosts)
 
 		// Sort posts by date, newest first
 		sortPosts(filteredPosts, "date", true)
