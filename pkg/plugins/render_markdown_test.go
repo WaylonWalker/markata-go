@@ -728,3 +728,83 @@ func TestRenderMarkdownPlugin_GetPaletteVariant(t *testing.T) {
 		})
 	}
 }
+
+func TestRenderMarkdownPlugin_DetectCSSRequirements(t *testing.T) {
+	tests := []struct {
+		name               string
+		content            string
+		wantAdmonitionsCSS bool
+		wantCodeCSS        bool
+	}{
+		{
+			name:               "plain text - no CSS needed",
+			content:            "Hello world, this is plain text.",
+			wantAdmonitionsCSS: false,
+			wantCodeCSS:        false,
+		},
+		{
+			name:               "fenced code block - needs code CSS",
+			content:            "```go\nfunc main() {}\n```",
+			wantAdmonitionsCSS: false,
+			wantCodeCSS:        true,
+		},
+		{
+			name:               "inline code - no special code CSS needed",
+			content:            "Use `fmt.Println()` to print.",
+			wantAdmonitionsCSS: false,
+			wantCodeCSS:        false, // inline code doesn't need syntax highlighting CSS
+		},
+		{
+			name:               "headings and links - no special CSS",
+			content:            "# Heading\n\n[Link](https://example.com)",
+			wantAdmonitionsCSS: false,
+			wantCodeCSS:        false,
+		},
+		{
+			name:               "code block without language - still needs code CSS",
+			content:            "```\nplain code block\n```",
+			wantAdmonitionsCSS: false,
+			wantCodeCSS:        true,
+		},
+		{
+			name:               "admonition - needs admonitions CSS (and code CSS due to indented content)",
+			content:            "!!! note \"Note\"\n    This is a note admonition.",
+			wantAdmonitionsCSS: true,
+			wantCodeCSS:        true, // Current behavior: 4-space indented content becomes code block
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewRenderMarkdownPlugin()
+			post := &models.Post{Content: tt.content}
+
+			err := p.renderPost(post)
+			if err != nil {
+				t.Fatalf("renderPost error: %v", err)
+			}
+
+			// Check admonitions CSS flag
+			gotAdmonitions := false
+			if post.Extra != nil {
+				if v, ok := post.Extra["needs_admonitions_css"].(bool); ok {
+					gotAdmonitions = v
+				}
+			}
+			if gotAdmonitions != tt.wantAdmonitionsCSS {
+				t.Errorf("needs_admonitions_css = %v, want %v", gotAdmonitions, tt.wantAdmonitionsCSS)
+			}
+
+			// Check code CSS flag
+			gotCode := false
+			if post.Extra != nil {
+				if v, ok := post.Extra["needs_code_css"].(bool); ok {
+					gotCode = v
+				}
+			}
+			if gotCode != tt.wantCodeCSS {
+				t.Errorf("needs_code_css = %v, want %v", gotCode, tt.wantCodeCSS)
+			}
+		})
+	}
+}
