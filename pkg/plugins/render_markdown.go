@@ -227,6 +227,8 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 		contentHash := buildcache.ContentHash(post.Content)
 		if cachedHTML := p.cache.GetCachedArticleHTML(post.Path, contentHash); cachedHTML != "" {
 			post.ArticleHTML = cachedHTML
+			// Detect CSS requirements from cached HTML
+			p.detectCSSRequirements(post)
 			return nil
 		}
 
@@ -240,6 +242,9 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 		// Cache the result (ignore errors, caching is best-effort)
 		//nolint:errcheck // caching is best-effort, failures are non-fatal
 		p.cache.CacheArticleHTML(post.Path, contentHash, renderedHTML)
+
+		// Detect CSS requirements from rendered HTML
+		p.detectCSSRequirements(post)
 		return nil
 	}
 
@@ -249,6 +254,9 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 		return err
 	}
 	post.ArticleHTML = renderedHTML
+
+	// Detect CSS requirements from rendered HTML
+	p.detectCSSRequirements(post)
 	return nil
 }
 
@@ -268,6 +276,33 @@ func (p *RenderMarkdownPlugin) doRender(content string) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+// detectCSSRequirements scans the rendered HTML and sets flags in post.Extra
+// to indicate which CSS files are needed. This follows the ImageZoom pattern
+// for conditional asset loading.
+func (p *RenderMarkdownPlugin) detectCSSRequirements(post *models.Post) {
+	if post.ArticleHTML == "" {
+		return
+	}
+
+	// Initialize Extra map if needed
+	if post.Extra == nil {
+		post.Extra = make(map[string]interface{})
+	}
+
+	// Detect admonitions - check for admonition class
+	if strings.Contains(post.ArticleHTML, `class="admonition`) {
+		post.Extra["needs_admonitions_css"] = true
+	}
+
+	// Detect code blocks - check for chroma syntax highlighting classes or code/pre tags
+	if strings.Contains(post.ArticleHTML, `class="chroma"`) ||
+		strings.Contains(post.ArticleHTML, `class="highlight"`) ||
+		strings.Contains(post.ArticleHTML, "<pre><code") ||
+		strings.Contains(post.ArticleHTML, `<code class="language-`) {
+		post.Extra["needs_code_css"] = true
+	}
 }
 
 // Ensure RenderMarkdownPlugin implements the required interfaces.

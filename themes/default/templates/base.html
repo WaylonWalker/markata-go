@@ -10,15 +10,31 @@
   {% endblock %}
 
   {% block head %}
-  <!-- Theme CSS -->
+  <!-- Core Theme CSS (always loaded) -->
   <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
   <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
   <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset }}">
+
+  <!-- Conditional CSS: Cards (only on feed/index pages where cards are displayed) -->
+  {% if feed or page %}
   <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset }}">
+  {% endif %}
+
+  <!-- Conditional CSS: Admonitions (only when post uses admonitions) -->
+  {% if post.Extra.needs_admonitions_css %}
   <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
+  {% endif %}
+
+  <!-- Conditional CSS: Code highlighting (only when post has code blocks) -->
+  {% if post.Extra.needs_code_css %}
   <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset }}">
   <link rel="stylesheet" href="/css/chroma.css">
+  {% endif %}
+
+  <!-- Conditional CSS: Webmentions (only when webmentions enabled and post may have mentions) -->
+  {% if config.Webmention.Enabled %}
+  <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset }}">
+  {% endif %}
 
   <!-- Palette Switcher CSS (when enabled) -->
   {% if config.theme.switcher.enabled %}
