@@ -111,7 +111,14 @@ func (p *MDVideoPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	return m.ProcessPostsConcurrently(p.processPost)
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		if post.Skip || post.ArticleHTML == "" {
+			return false
+		}
+		return strings.Contains(post.ArticleHTML, "<img")
+	})
+
+	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
 }
 
 // imgTagRegex matches <img> tags and captures src and alt attributes.

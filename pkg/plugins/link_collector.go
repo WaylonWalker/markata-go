@@ -89,12 +89,12 @@ func (p *LinkCollectorPlugin) Render(m *lifecycle.Manager) error {
 	var allLinks []*models.Link
 	var linksMu sync.Mutex
 
-	// Process each post to extract hrefs and create Link objects
-	err := m.ProcessPostsConcurrently(func(post *models.Post) error {
-		if post.Skip || post.ArticleHTML == "" {
-			return nil
-		}
+	postsToProcess := m.FilterPosts(func(post *models.Post) bool {
+		return !post.Skip && post.ArticleHTML != ""
+	})
 
+	// Process each post to extract hrefs and create Link objects
+	err := m.ProcessPostsSliceConcurrently(postsToProcess, func(post *models.Post) error {
 		// Build base URL for this post
 		baseURL := p.buildBaseURL(post)
 

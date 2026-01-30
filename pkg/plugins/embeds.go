@@ -111,12 +111,11 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 	// Use the shared PostIndex from the lifecycle manager
 	idx := m.PostIndex()
 
-	// Process each post
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
-		if post.Skip || post.Content == "" {
-			return nil
-		}
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		return !post.Skip && post.Content != ""
+	})
 
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		content, dependencies := p.processInternalEmbeds(post.Content, idx, post)
 		content = p.processExternalEmbeds(content, post)
 		post.Content = content

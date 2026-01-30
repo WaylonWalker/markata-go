@@ -97,7 +97,14 @@ func (p *OneLineLinkPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	return m.ProcessPostsConcurrently(p.processPost)
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		if post.Skip || post.ArticleHTML == "" {
+			return false
+		}
+		return strings.Contains(post.ArticleHTML, "http://") || strings.Contains(post.ArticleHTML, "https://")
+	})
+
+	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
 }
 
 // oneLineLinkRegex matches paragraphs containing only a URL.

@@ -85,7 +85,14 @@ func (p *WikilinkHoverPlugin) Render(m *lifecycle.Manager) error {
 	// Use the shared PostIndex from the lifecycle manager
 	p.postIdx = m.PostIndex()
 
-	return m.ProcessPostsConcurrently(p.processPost)
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		if post.Skip || post.ArticleHTML == "" {
+			return false
+		}
+		return strings.Contains(post.ArticleHTML, `class="wikilink"`)
+	})
+
+	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
 }
 
 // wikilinkAnchorRegex matches wikilink anchor tags created by the wikilinks plugin.
