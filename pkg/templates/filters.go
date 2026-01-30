@@ -231,8 +231,8 @@ func filterReplace(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	}
 
 	old := parts[0]
-	new := parts[1]
-	return pongo2.AsValue(strings.ReplaceAll(s, old, new)), nil
+	replacement := parts[1]
+	return pongo2.AsValue(strings.ReplaceAll(s, old, replacement)), nil
 }
 
 // filterDefaultIfNone returns a default value if the input is nil or empty.
