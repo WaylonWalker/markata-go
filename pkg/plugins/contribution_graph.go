@@ -229,8 +229,10 @@ func (p *ContributionGraphPlugin) buildOptionsScript(optionsJSON []byte) string 
 // injectCalHeatmapScripts adds the Cal-Heatmap library and initialization scripts to the HTML.
 func (p *ContributionGraphPlugin) injectCalHeatmapScripts(htmlContent string, initScripts []string) string {
 	// Build the combined script
+	// Cal-Heatmap v4 requires d3 as a dependency
 	script := fmt.Sprintf(`
 <link rel="stylesheet" href="%s/cal-heatmap.css">
+<script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="%s/cal-heatmap.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {%s
