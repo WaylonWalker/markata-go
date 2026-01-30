@@ -53,8 +53,7 @@ repos:
             .*_test\.go|
             testdata/.*|
             templates/.*\.html|
-            pkg/themes/.*/templates/.*\.html|
-            themes/.*/templates/.*\.html
+            pkg/themes/.*/templates/.*\.html
           )$
 
   # ─────────────────────────────────────────────────────────────────────────────
