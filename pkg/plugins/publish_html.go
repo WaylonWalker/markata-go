@@ -174,7 +174,7 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 
 	// Write OG format (social card HTML)
 	if postFormats.OG {
-		if err := p.writeOGFormat(post, config, postDir); err != nil {
+		if err := p.writeOGFormat(post, config, postDir, engine); err != nil {
 			return err
 		}
 	}
@@ -582,7 +582,7 @@ func (p *PublishHTMLPlugin) writeRegularFormatOutput(slug, ext, content, outputD
 }
 
 // writeOGFormat writes the OpenGraph card HTML for social image generation.
-func (p *PublishHTMLPlugin) writeOGFormat(post *models.Post, config *lifecycle.Config, postDir string) error {
+func (p *PublishHTMLPlugin) writeOGFormat(post *models.Post, config *lifecycle.Config, postDir string, engine *templates.Engine) error {
 	// Create og subdirectory
 	ogDir := filepath.Join(postDir, "og")
 	if err := os.MkdirAll(ogDir, 0o755); err != nil {
@@ -590,7 +590,7 @@ func (p *PublishHTMLPlugin) writeOGFormat(post *models.Post, config *lifecycle.C
 	}
 
 	// Generate OG HTML
-	ogHTML := p.generateOGHTML(post, config)
+	ogHTML := p.generateOGHTML(post, config, engine)
 
 	// Write og/index.html
 	outputPath := filepath.Join(ogDir, "index.html")
@@ -603,7 +603,34 @@ func (p *PublishHTMLPlugin) writeOGFormat(post *models.Post, config *lifecycle.C
 }
 
 // generateOGHTML generates OpenGraph card HTML optimized for 1200x630 screenshots.
-func (p *PublishHTMLPlugin) generateOGHTML(post *models.Post, config *lifecycle.Config) string {
+// It first tries to use a theme template (og-card.html), falling back to a built-in template.
+func (p *PublishHTMLPlugin) generateOGHTML(post *models.Post, config *lifecycle.Config, engine *templates.Engine) string {
+	// Try theme template first if engine is available
+	if engine != nil && engine.TemplateExists("og-card.html") {
+		return p.renderOGWithThemeTemplate(post, config, engine)
+	}
+
+	// Fall back to built-in template
+	return p.renderOGWithBuiltinTemplate(post, config)
+}
+
+// renderOGWithThemeTemplate renders the OG card using the theme's og-card.html template.
+func (p *PublishHTMLPlugin) renderOGWithThemeTemplate(post *models.Post, config *lifecycle.Config, engine *templates.Engine) string {
+	// Build context for pongo2 template
+	ctx := templates.NewContext(post, "", ToModelsConfig(config))
+
+	result, err := engine.Render("og-card.html", ctx)
+	if err != nil {
+		// Log error and fall back to built-in template
+		fmt.Printf("Warning: failed to render og-card.html template: %v, falling back to built-in\n", err)
+		return p.renderOGWithBuiltinTemplate(post, config)
+	}
+
+	return result
+}
+
+// renderOGWithBuiltinTemplate renders the OG card using the built-in Go template.
+func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, config *lifecycle.Config) string {
 	siteTitle := getSiteTitle(config)
 	siteURL := getSiteURL(config)
 

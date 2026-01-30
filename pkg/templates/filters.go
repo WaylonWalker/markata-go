@@ -38,6 +38,7 @@ func registerFilters() {
 		pongo2.RegisterFilter("endswith", filterEndsWith)
 		pongo2.RegisterFilter("startswith", filterStartsWith)
 		pongo2.RegisterFilter("split", filterSplit)
+		pongo2.RegisterFilter("replace", filterReplace)
 
 		// Default/fallback filter
 		pongo2.RegisterFilter("default_if_none", filterDefaultIfNone)
@@ -213,6 +214,25 @@ func filterSplit(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		delim = " " // default to space
 	}
 	return pongo2.AsValue(strings.Split(s, delim)), nil
+}
+
+// filterReplace replaces occurrences of a substring with another.
+// Usage: {{ url|replace:"https://," }} - replaces "https://" with ""
+// Format: "old,new" where old is replaced with new
+func filterReplace(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	s := in.String()
+	paramStr := param.String()
+
+	// Parse "old,new" format
+	parts := strings.SplitN(paramStr, ",", 2)
+	if len(parts) != 2 {
+		// If no comma, treat param as string to remove (replace with "")
+		return pongo2.AsValue(strings.ReplaceAll(s, paramStr, "")), nil
+	}
+
+	old := parts[0]
+	replacement := parts[1]
+	return pongo2.AsValue(strings.ReplaceAll(s, old, replacement)), nil
 }
 
 // filterDefaultIfNone returns a default value if the input is nil or empty.

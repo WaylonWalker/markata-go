@@ -416,6 +416,9 @@ func mergeSEOConfig(base, override models.SEOConfig) models.SEOConfig {
 	if override.LogoURL != "" {
 		result.LogoURL = override.LogoURL
 	}
+	if override.AuthorImage != "" {
+		result.AuthorImage = override.AuthorImage
+	}
 
 	return result
 }

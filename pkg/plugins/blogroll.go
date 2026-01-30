@@ -1285,6 +1285,7 @@ func (p *BlogrollPlugin) extractSEOConfig(extra, result map[string]interface{}) 
 			TwitterHandle: p.getStringFromMap(seoVal, "twitter_handle"),
 			DefaultImage:  p.getStringFromMap(seoVal, "default_image"),
 			LogoURL:       p.getStringFromMap(seoVal, "logo_url"),
+			AuthorImage:   p.getStringFromMap(seoVal, "author_image"),
 		}
 	}
 }

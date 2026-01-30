@@ -958,6 +958,9 @@ type SEOConfig struct {
 	// LogoURL is the site logo URL for Schema.org structured data
 	LogoURL string `json:"logo_url" yaml:"logo_url" toml:"logo_url"`
 
+	// AuthorImage is the author's profile image URL for OG cards
+	AuthorImage string `json:"author_image" yaml:"author_image" toml:"author_image"`
+
 	// StructuredData configures JSON-LD Schema.org generation
 	StructuredData StructuredDataConfig `json:"structured_data" yaml:"structured_data" toml:"structured_data"`
 }
