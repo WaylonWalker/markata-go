@@ -173,18 +173,31 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 		}
 
 		// Create the initialization script for this graph
+		// Uses Cal-Heatmap Tooltip plugin for hover information
 		initScript := fmt.Sprintf(`
   (function() {
     const cal = new CalHeatmap();
-    cal.paint({
-      itemSelector: '#%s',
-      data: {
-        source: %s,
-        x: 'date',
-        y: 'value'
+    cal.paint(
+      {
+        itemSelector: '#%s',
+        data: {
+          source: %s,
+          x: 'date',
+          y: 'value'
+        },
+        %s
       },
-      %s
-    });
+      [
+        [
+          Tooltip,
+          {
+            text: function (date, value, dayjsDate) {
+              return (value ? value : 'No') + ' posts on ' + dayjsDate.format('MMM D, YYYY');
+            },
+          },
+        ],
+      ]
+    );
   })();`, graphID, string(dataJSON), p.buildOptionsScript(optionsJSON))
 		initScripts = append(initScripts, initScript)
 
@@ -243,10 +256,15 @@ func (p *ContributionGraphPlugin) buildOptionsScript(optionsJSON []byte) string 
 		configParts = append(configParts, fmt.Sprintf(`range: %d`, int(rangeVal)))
 	}
 
-	// Handle theme
-	if p.config.Theme != "" {
-		configParts = append(configParts, fmt.Sprintf(`theme: '%s'`, p.config.Theme))
-	}
+	// Add color scale using theme accent color with opacity
+	// This creates a GitHub-style gradient from transparent to accent color
+	configParts = append(configParts, `scale: {
+        color: {
+          type: 'linear',
+          range: ['var(--color-surface-1)', 'var(--color-accent)'],
+          domain: [0, 10]
+        }
+      }`)
 
 	return strings.Join(configParts, ",\n      ")
 }
@@ -255,14 +273,35 @@ func (p *ContributionGraphPlugin) buildOptionsScript(optionsJSON []byte) string 
 func (p *ContributionGraphPlugin) injectCalHeatmapScripts(htmlContent string, initScripts []string) string {
 	// Build the combined script
 	// Cal-Heatmap v4 requires d3 as a dependency
+	// Tooltip plugin requires popper.js
 	script := fmt.Sprintf(`
+<style>
+.contribution-graph-container {
+  width: 100%%;
+  overflow-x: auto;
+}
+.contribution-graph-container svg {
+  width: 100%%;
+  height: auto;
+}
+#ch-tooltip {
+  background: var(--color-surface-2, #333);
+  color: var(--color-text, #fff);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+</style>
 <link rel="stylesheet" href="%s/cal-heatmap.css">
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/@popperjs/core@2"></script>
 <script src="%s/cal-heatmap.min.js"></script>
+<script src="%s/plugins/Tooltip.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {%s
 });
-</script>`, p.config.CDNURL, p.config.CDNURL, strings.Join(initScripts, ""))
+</script>`, p.config.CDNURL, p.config.CDNURL, p.config.CDNURL, strings.Join(initScripts, ""))
 
 	// Append the script to the end of the content
 	return htmlContent + script
