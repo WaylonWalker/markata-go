@@ -137,12 +137,18 @@ jobs:
           docker run --rm markata-go:pr-${{ github.event.number }} version
           docker run --rm markata-go:pr-${{ github.event.number }} --help
 
-          # Verify image size (should be under 25MB)
+          # Verify image size (should be under 100MB)
+          # Note: Go binaries are larger due to static linking. For comparison,
+          # Hugo (similar static site generator) is ~80-100MB. Our size includes:
+          # - goldmark + chroma (markdown + syntax highlighting)
+          # - charmbracelet stack (TUI)
+          # - pongo2 (templating)
+          # - go-dateparser (locale data)
           SIZE=$(docker image inspect markata-go:pr-${{ github.event.number }} --format='{{.Size}}')
           SIZE_MB=$((SIZE / 1024 / 1024))
           echo "Image size: ${SIZE_MB}MB"
-          if [ "$SIZE_MB" -gt 25 ]; then
-            echo "Error: Image size ${SIZE_MB}MB exceeds 25MB limit"
+          if [ "$SIZE_MB" -gt 100 ]; then
+            echo "Error: Image size ${SIZE_MB}MB exceeds 100MB limit"
             exit 1
           fi
 
