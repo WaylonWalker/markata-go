@@ -1,6 +1,6 @@
 ---
-title: "Themes and Styling"
-description: "Complete guide to customizing your site's appearance with themes, color palettes, and CSS"
+title: "Themes and Aesthetics"
+description: "Configure color palettes and visual aesthetics for your site's appearance"
 date: 2024-01-15
 published: true
 slug: /docs/guides/themes/
@@ -9,9 +9,10 @@ tags:
   - themes
   - styling
   - customization
+  - aesthetics
 ---
 
-# Themes and Styling
+# Themes, Palettes, and Aesthetics
 
 markata-go makes it easy to customize your site's appearance. You can go from zero configuration to a beautiful site, then progressively customize as needed.
 
@@ -468,6 +469,248 @@ Then use it:
 [markata-go.theme]
 palette = "my-brand"
 ```
+
+---
+
+## Aesthetics
+
+While palettes control **colors**, aesthetics control **form and layout** - the non-color design tokens that define your site's visual personality.
+
+> **Think of it this way:** Palettes are *what colors* you use. Aesthetics are *how things are shaped*.
+
+### Quick Start
+
+Set an aesthetic in one line:
+
+```toml
+[markata-go]
+aesthetic = "elevated"
+```
+
+Your entire site now uses generous rounded corners, layered shadows, and comfortable spacing.
+
+### Understanding the Separation
+
+| Aspect | Palettes | Aesthetics |
+|--------|----------|------------|
+| **Controls** | Colors | Shape, spacing, depth |
+| **Tokens** | `--color-*` variables | `--radius-*`, `--shadow-*`, `--spacing-*` |
+| **Examples** | Background, text, accent colors | Border radius, shadow depth, spacing scale |
+| **Switch** | Changes color scheme | Changes visual "feel" |
+
+This separation means you can:
+- Use any palette with any aesthetic
+- Switch aesthetics without changing colors
+- Fine-tune form independently of color
+
+### Available Aesthetics
+
+markata-go includes 5 built-in aesthetics:
+
+| Aesthetic | Description | Best For |
+|-----------|-------------|----------|
+| `balanced` | **Default.** Comfortable rounding, subtle shadows, normal spacing | General purpose, blogs |
+| `brutal` | Sharp corners, thick borders, tight spacing, no shadows | Bold statements, portfolios |
+| `minimal` | No rounding, maximum whitespace, no shadows, hairline borders | Documentation, reading-focused |
+| `elevated` | Generous rounding, layered shadows, generous spacing | Premium/SaaS, card-heavy layouts |
+| `precision` | Subtle corners, compact spacing, hairline borders, minimal shadows | Technical docs, data-heavy sites |
+
+### Visual Comparison
+
+**Brutal:**
+```
+┌────────────────────────┐
+│ No rounding            │
+│ Thick 3px borders      │
+│ Tight spacing          │
+│ No shadows             │
+└────────────────────────┘
+```
+
+**Balanced (default):**
+```
+╭────────────────────────╮
+│ Subtle 4-8px rounding  │
+│ Normal 1px borders     │
+│ Standard spacing       │
+│ Light shadows          │
+╰────────────────────────╯
+```
+
+**Elevated:**
+```
+╭────────────────────────╮
+│                        │
+│ Generous 16px rounding │
+│ Minimal borders        │
+│ Generous spacing       │
+│ Layered shadows ▓▒░    │
+│                        │
+╰────────────────────────╯
+```
+
+### Configuration Examples
+
+**Basic usage:**
+
+```toml
+[markata-go]
+aesthetic = "brutal"
+```
+
+**Combine with a palette:**
+
+```toml
+[markata-go]
+aesthetic = "elevated"
+
+[markata-go.theme]
+palette = "catppuccin-mocha"
+```
+
+**Override specific tokens:**
+
+```toml
+[markata-go]
+aesthetic = "balanced"
+
+[markata-go.aesthetic_overrides]
+border_radius = "12px"      # Override just the radius
+shadow_intensity = 1.5      # Make shadows 50% stronger
+spacing_scale = 1.1         # Slightly more spacing
+```
+
+### Aesthetic Overrides Reference
+
+Fine-tune any aesthetic with these overrides:
+
+| Override | Type | Description | Example |
+|----------|------|-------------|---------|
+| `border_radius` | string | Base border radius | `"8px"`, `"0.5rem"` |
+| `border_width` | string | Border thickness | `"1px"`, `"2px"` |
+| `border_style` | string | Border style | `"solid"`, `"dashed"`, `"none"` |
+| `spacing_scale` | float | Multiplier for spacing | `0.9` (tighter), `1.2` (looser) |
+| `shadow_intensity` | float | Multiplier for shadow opacity | `0` (none), `1.5` (stronger) |
+| `shadow_size` | string | Shadow size preset | `"sm"`, `"md"`, `"lg"`, `"none"` |
+
+**Example: Make "balanced" more spacious:**
+
+```toml
+[markata-go]
+aesthetic = "balanced"
+
+[markata-go.aesthetic_overrides]
+spacing_scale = 1.25
+shadow_intensity = 0.5  # Lighter shadows
+```
+
+**Example: Soften "brutal":**
+
+```toml
+[markata-go]
+aesthetic = "brutal"
+
+[markata-go.aesthetic_overrides]
+border_radius = "4px"   # Add slight rounding
+border_width = "2px"    # Thinner borders
+```
+
+### Aesthetic CLI Commands
+
+List all available aesthetics:
+
+```bash
+markata-go aesthetic list
+```
+
+Output:
+```
+Available aesthetics:
+  brutal     - Brutalist design: harsh, uncompromising, raw
+  precision  - Technical/engineering: clean, exact, minimal
+  balanced   - Default harmonious: comfortable, balanced
+  elevated   - Layered/premium: depth, floating cards
+  minimal    - Maximum whitespace: sparse, intentional
+```
+
+Show details of a specific aesthetic:
+
+```bash
+markata-go aesthetic show elevated
+```
+
+Output:
+```
+Aesthetic: elevated
+Description: Layered/premium: depth, floating cards
+
+Tokens:
+  radius:  0.5rem (sm), 0.75rem (md), 1rem (lg)
+  spacing: 1.25x scale
+  border:  none
+  shadow:  0 4px 12px rgba(0,0,0,0.15)
+
+CSS Preview:
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-full: 9999px;
+  --shadow: 0 4px 12px rgba(0,0,0,0.15);
+```
+
+### Creating Custom Aesthetics
+
+Create a custom aesthetic by adding a TOML file to `aesthetics/` in your project:
+
+```toml
+# aesthetics/my-aesthetic.toml
+name = "My Aesthetic"
+description = "Custom design for my brand"
+
+[tokens.radius]
+none = "0"
+sm = "6px"
+md = "10px"
+lg = "16px"
+xl = "24px"
+full = "9999px"
+
+[tokens.spacing]
+scale = 1.1
+
+[tokens.border]
+width_thin = "1px"
+width_normal = "2px"
+width_thick = "3px"
+style = "solid"
+
+[tokens.shadow]
+sm = "0 1px 2px rgba(0,0,0,0.05)"
+md = "0 4px 8px rgba(0,0,0,0.1)"
+lg = "0 8px 16px rgba(0,0,0,0.12)"
+xl = "0 16px 32px rgba(0,0,0,0.15)"
+
+[tokens.typography]
+font_primary = "var(--font-sans)"
+leading_scale = 1.0
+```
+
+Then use it:
+
+```toml
+[markata-go]
+aesthetic = "my-aesthetic"
+```
+
+### Keyboard Shortcuts
+
+When the palette switcher is enabled, these shortcuts also work for aesthetics:
+
+| Key | Action |
+|-----|--------|
+| `]` | Next palette family |
+| `[` | Previous palette family |
+| `\` | Toggle dark/light mode |
 
 ---
 

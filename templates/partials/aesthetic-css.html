@@ -1,0 +1,141 @@
+{# Aesthetic CSS Custom Properties #}
+{# Provides default values for aesthetic tokens that can be overridden by JS #}
+{# Aesthetics: brutal, precision, balanced (default), elevated, minimal #}
+
+<style>
+/* ==========================================================================
+   Aesthetic Token System - Default Values (Balanced)
+
+   These CSS custom properties control the visual "feel" of components:
+   - Border radius (sharp to rounded)
+   - Spacing scale (compact to spacious)
+   - Border widths (thin to thick)
+   - Shadows (flat to elevated)
+   - Typography (font and leading)
+
+   Values are overridden by JavaScript when user selects a different aesthetic.
+   ========================================================================== */
+
+:root {
+  /* Border Radius Tokens */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Spacing Scale Multiplier (applied to base spacing) */
+  --spacing-scale: 1;
+
+  /* Border Width Tokens */
+  --border-width-thin: 1px;
+  --border-width-normal: 1px;
+  --border-width-thick: 2px;
+
+  /* Shadow Tokens */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --shadow-xl: 0 12px 40px rgba(0,0,0,0.15);
+
+  /* Typography Tokens */
+  --font-primary: var(--font-body, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  --leading-scale: 1.6;
+}
+
+/* ==========================================================================
+   Aesthetic-Specific Overrides via Data Attribute
+
+   When [data-aesthetic] is set by JavaScript, these provide CSS-only fallbacks
+   for users with JavaScript disabled who still want a specific aesthetic.
+   ========================================================================== */
+
+/* Brutal - Sharp edges, bold borders, offset shadows, monospace feel */
+[data-aesthetic="brutal"] {
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --spacing-scale: 1.25;
+  --border-width-thin: 1px;
+  --border-width-normal: 2px;
+  --border-width-thick: 4px;
+  --shadow-sm: none;
+  --shadow-md: 4px 4px 0 var(--color-border);
+  --shadow-lg: 6px 6px 0 var(--color-border);
+  --shadow-xl: 8px 8px 0 var(--color-border);
+  --font-primary: var(--font-mono, monospace);
+  --leading-scale: 1.5;
+}
+
+/* Precision - Minimal radius, tight spacing, subtle shadows */
+[data-aesthetic="precision"] {
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --spacing-scale: 1;
+  --border-width-thin: 1px;
+  --border-width-normal: 1px;
+  --border-width-thick: 2px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-lg: 0 4px 8px rgba(0,0,0,0.08);
+  --shadow-xl: 0 8px 16px rgba(0,0,0,0.1);
+  --font-primary: var(--font-body, system-ui);
+  --leading-scale: 1.5;
+}
+
+/* Balanced - Default, moderate everything */
+[data-aesthetic="balanced"] {
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --spacing-scale: 1;
+  --border-width-thin: 1px;
+  --border-width-normal: 1px;
+  --border-width-thick: 2px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  --shadow-xl: 0 12px 40px rgba(0,0,0,0.15);
+  --font-primary: var(--font-body, system-ui);
+  --leading-scale: 1.6;
+}
+
+/* Elevated - Large radius, generous spacing, prominent shadows */
+[data-aesthetic="elevated"] {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --spacing-scale: 1.15;
+  --border-width-thin: 1px;
+  --border-width-normal: 1px;
+  --border-width-thick: 2px;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-xl: 0 24px 64px rgba(0,0,0,0.15), 0 8px 24px rgba(0,0,0,0.1);
+  --font-primary: var(--font-body, system-ui);
+  --leading-scale: 1.7;
+}
+
+/* Minimal - Small radius, compact spacing, near-flat shadows */
+[data-aesthetic="minimal"] {
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --spacing-scale: 0.9;
+  --border-width-thin: 1px;
+  --border-width-normal: 1px;
+  --border-width-thick: 1px;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-xl: 0 2px 6px rgba(0,0,0,0.08);
+  --font-primary: var(--font-body, system-ui);
+  --leading-scale: 1.6;
+}
+</style>
