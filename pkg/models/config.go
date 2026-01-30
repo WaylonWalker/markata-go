@@ -907,7 +907,7 @@ type ContributionGraphConfig struct {
 func NewContributionGraphConfig() ContributionGraphConfig {
 	return ContributionGraphConfig{
 		Enabled:        true,
-		CDNURL:         "https://cdn.jsdelivr.net/npm/cal-heatmap@4",
+		CDNURL:         "https://unpkg.com/cal-heatmap/dist",
 		ContainerClass: "contribution-graph-container",
 		Theme:          "light",
 	}

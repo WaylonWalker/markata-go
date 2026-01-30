@@ -149,11 +149,12 @@ func DefaultPlugins() []lifecycle.Plugin {
 
 		// Render stage plugins
 		NewRenderMarkdownPlugin(),
-		NewHeadingAnchorsPlugin(), // Add anchors after markdown rendering
-		NewImageZoomPlugin(),      // Process image zoom attributes
-		NewMDVideoPlugin(),        // Convert video images to video tags
-		NewYouTubePlugin(),        // Convert YouTube URLs to embeds
-		NewLinkCollectorPlugin(),  // Collect links after markdown rendering
+		NewHeadingAnchorsPlugin(),    // Add anchors after markdown rendering
+		NewImageZoomPlugin(),         // Process image zoom attributes
+		NewContributionGraphPlugin(), // Process contribution graph code blocks
+		NewMDVideoPlugin(),           // Convert video images to video tags
+		NewYouTubePlugin(),           // Convert YouTube URLs to embeds
+		NewLinkCollectorPlugin(),     // Collect links after markdown rendering
 		NewTemplatesPlugin(),
 
 		// Collect stage plugins
