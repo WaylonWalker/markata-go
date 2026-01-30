@@ -815,6 +815,47 @@ Then style it:
 
 ---
 
+## CSS Optimization
+
+markata-go automatically optimizes CSS loading by only including stylesheets that are actually needed for each page. This reduces page size and improves load times.
+
+### How It Works
+
+When rendering a page, markata-go scans the HTML content and detects which CSS features are used:
+
+| CSS File | Loaded When |
+|----------|-------------|
+| `variables.css` | Always (core theme variables) |
+| `main.css` | Always (core layout styles) |
+| `components.css` | Always (navigation, footer, etc.) |
+| `cards.css` | Feed/index pages with post cards |
+| `admonitions.css` | Posts containing admonition blocks |
+| `code.css` | Posts containing code blocks |
+| `chroma.css` | Posts with syntax-highlighted code |
+| `webmentions.css` | When webmentions are enabled |
+| `palette-switcher.css` | When palette switcher is enabled |
+| `search.css` | When search is enabled |
+
+### Content Detection
+
+The CSS detection works by analyzing the rendered HTML:
+
+- **Admonitions**: Detected when `class="admonition` is present
+- **Code blocks**: Detected when syntax highlighting classes (`class="chroma"`, `class="highlight"`) or code elements (`<pre><code`, `<code class="language-`) are present
+- **Cards**: Included on feed pages (where `feed` variable exists in template context)
+
+### Benefits
+
+- **Smaller page sizes**: Simple pages without code blocks or admonitions skip those CSS files
+- **Faster load times**: Less CSS to download and parse
+- **Better caching**: Core CSS files are shared across all pages
+
+### Custom CSS
+
+Your custom CSS (via `theme.custom_css`) is always loaded when configured. If you need conditional loading for custom styles, consider using CSS custom properties or JavaScript-based loading.
+
+---
+
 ## Media Borders and Gradient Effects
 
 markata-go provides beautiful, configurable borders for images and videos. From subtle solid borders to animated gradients, you have full control over how your media looks.
@@ -1320,6 +1361,7 @@ Now that you've styled your site, here are recommended next steps:
 
 ## See Also
 
+- [Keyboard Navigation Guide](/docs/guides/keyboard-navigation/) - Comprehensive keyboard shortcuts for site navigation
 - [Configuration Guide](/docs/guides/configuration/) - All configuration options
 - [Templates Guide](/docs/guides/templates/) - Template syntax and customization
 - [Frontmatter Guide](/docs/guides/frontmatter/) - Post-level configuration

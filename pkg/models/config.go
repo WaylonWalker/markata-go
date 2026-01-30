@@ -888,6 +888,31 @@ func NewChartJSConfig() ChartJSConfig {
 	}
 }
 
+// ContributionGraphConfig configures the contribution_graph plugin.
+type ContributionGraphConfig struct {
+	// Enabled controls whether contribution graph processing is active (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// CDNURL is the URL for the Cal-Heatmap library
+	CDNURL string `json:"cdn_url" yaml:"cdn_url" toml:"cdn_url"`
+
+	// ContainerClass is the CSS class for the graph container div (default: "contribution-graph-container")
+	ContainerClass string `json:"container_class" yaml:"container_class" toml:"container_class"`
+
+	// Theme is the Cal-Heatmap color theme (default: "light")
+	Theme string `json:"theme" yaml:"theme" toml:"theme"`
+}
+
+// NewContributionGraphConfig creates a new ContributionGraphConfig with default values.
+func NewContributionGraphConfig() ContributionGraphConfig {
+	return ContributionGraphConfig{
+		Enabled:        true,
+		CDNURL:         "https://cdn.jsdelivr.net/npm/cal-heatmap@4",
+		ContainerClass: "contribution-graph-container",
+		Theme:          "light",
+	}
+}
+
 // OneLineLinkConfig configures the one_line_link plugin.
 type OneLineLinkConfig struct {
 	// Enabled controls whether link expansion is active (default: true)

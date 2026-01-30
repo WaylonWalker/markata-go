@@ -1322,6 +1322,133 @@
    @mention links in content.
    ========================================================================== */
 
+/* ==========================================================================
+   Keyboard Navigation Styles
+
+   Styles for keyboard-navigated elements including post highlighting
+   and toast notifications.
+   ========================================================================== */
+
+/* Highlighted post in feed when using keyboard navigation (j/k) */
+.kb-highlighted {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  transition: outline-color 0.15s ease, background-color 0.15s ease;
+}
+
+/* Ensure highlighted cards are visible */
+.card.kb-highlighted,
+.post-card.kb-highlighted,
+article.kb-highlighted {
+  outline-offset: 4px;
+}
+
+/* Toast notification for keyboard actions (e.g., URL copied) */
+.kb-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(1rem);
+  padding: 0.75rem 1.5rem;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: 0.875rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  z-index: 10000;
+}
+
+.kb-toast--visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Shortcuts modal section styling */
+.shortcuts-section {
+  margin-bottom: 1.5rem;
+}
+
+.shortcuts-section:last-child {
+  margin-bottom: 0;
+}
+
+.shortcuts-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin: 0 0 0.5rem 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Compact table for shortcuts in sectioned modal */
+.shortcuts-section .shortcuts-table {
+  margin-bottom: 0;
+}
+
+.shortcuts-section .shortcuts-table td {
+  padding: 0.25rem 0.5rem;
+}
+
+.shortcuts-section .shortcuts-table td:first-child {
+  padding-left: 0;
+  white-space: nowrap;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .kb-highlighted {
+    transition: none;
+  }
+
+  .kb-toast {
+    transition: opacity 0.1s ease, visibility 0.1s;
+    transform: translateX(-50%);
+  }
+
+  .kb-toast--visible {
+    transform: translateX(-50%);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+  .kb-highlighted {
+    outline-width: 3px;
+    outline-color: var(--color-text);
+  }
+
+  .kb-toast {
+    border-width: 2px;
+    border-color: var(--color-text);
+  }
+}
+
+/* Print styles - hide keyboard-related elements */
+@media print {
+  .kb-highlighted {
+    outline: none;
+    background-color: transparent;
+  }
+
+  .kb-toast {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   End Keyboard Navigation Styles
+   ========================================================================== */
+
 /* Base card styling */
 .mention-card {
   position: absolute;
