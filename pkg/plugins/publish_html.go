@@ -475,8 +475,8 @@ func (p *PublishHTMLPlugin) buildTextContentFallback(post *models.Post) string {
 // - /slug/index.html - redirect to /slug.<ext> if HTML is disabled
 //
 // For regular files:
-// - /slug/index.<ext> - actual content (e.g., /test/index.txt)
-// - /slug.<ext>/index.html - redirect to /slug/index.<ext> (e.g., /test.txt/index.html -> /test/index.txt)
+// - /slug.<ext> - actual content (e.g., /test.txt)
+// - /slug/index.<ext> - redirect to /slug.<ext> (e.g., /test/index.txt -> /test.txt)
 // - /slug/index.html - redirect to /slug.<ext> if HTML is disabled
 //
 // If skipSlugRedirect is true, the /slug/index.html redirect is skipped
@@ -489,7 +489,7 @@ func (p *PublishHTMLPlugin) writeReversedFormatOutput(slug, ext, content, output
 		return p.writeSpecialFileOutput(slug, ext, content, outputDir, skipSlugRedirect)
 	}
 
-	// Regular files get content in subdirectory (e.g., /test/index.txt)
+	// Regular files get content at /slug.<ext> (e.g., /test.txt)
 	return p.writeRegularFormatOutput(slug, ext, content, outputDir, skipSlugRedirect)
 }
 
@@ -550,23 +550,17 @@ func (p *PublishHTMLPlugin) writeSpecialFileOutput(slug, ext, content, outputDir
 }
 
 // writeRegularFormatOutput writes output for regular (non-special) files.
-// Content is placed at /slug/index.<ext> with redirects from /slug.<ext>/index.html.
+// Content is placed at /slug.<ext> with redirects from /slug.<ext>/index.html.
 func (p *PublishHTMLPlugin) writeRegularFormatOutput(slug, ext, content, outputDir string, skipSlugRedirect bool) error {
-	// Ensure slug directory exists for content
-	slugDir := filepath.Join(outputDir, slug)
-	if err := os.MkdirAll(slugDir, 0o755); err != nil {
-		return fmt.Errorf("creating slug directory %s: %w", slugDir, err)
-	}
-
-	// Write actual content at /slug/index.<ext> (e.g., /test/index.txt)
-	contentPath := filepath.Join(slugDir, "index."+ext)
+	// Write actual content at /slug.<ext> (e.g., /test.txt)
+	contentPath := filepath.Join(outputDir, slug+"."+ext)
 	//nolint:gosec // G306: Output files need 0644 for web serving
 	if err := os.WriteFile(contentPath, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("writing %s: %w", contentPath, err)
 	}
 
-	// Create redirect HTML that points to /slug/index.<ext>
-	targetURL := fmt.Sprintf("/%s/index.%s", slug, ext)
+	// Create redirect HTML that points to /slug.<ext>
+	targetURL := fmt.Sprintf("/%s.%s", slug, ext)
 	redirectHTML := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
@@ -580,27 +574,31 @@ func (p *PublishHTMLPlugin) writeRegularFormatOutput(slug, ext, content, outputD
 </body>
 </html>`, targetURL, targetURL, targetURL, targetURL)
 
-	// Create redirect at /slug.<ext>/index.html (e.g., /test.txt/index.html)
-	// This enables both /test.txt and /test.txt/ to redirect to /test/index.txt
-	extRedirectDir := filepath.Join(outputDir, slug+"."+ext)
-	if err := os.MkdirAll(extRedirectDir, 0o755); err != nil {
-		return fmt.Errorf("creating format redirect directory %s: %w", extRedirectDir, err)
-	}
-
-	extRedirectPath := filepath.Join(extRedirectDir, "index.html")
-	//nolint:gosec // G306: Output files need 0644 for web serving
-	if err := os.WriteFile(extRedirectPath, []byte(redirectHTML), 0o644); err != nil {
-		return fmt.Errorf("writing format redirect %s: %w", extRedirectPath, err)
-	}
-
 	// Create redirect at /slug/index.html if HTML is not enabled
 	// (when HTML is enabled, /slug/index.html already has the main HTML content)
 	if !skipSlugRedirect {
+		slugDir := filepath.Join(outputDir, slug)
+		if err := os.MkdirAll(slugDir, 0o755); err != nil {
+			return fmt.Errorf("creating slug directory %s: %w", slugDir, err)
+		}
+
 		redirectPath := filepath.Join(slugDir, "index.html")
 		//nolint:gosec // G306: Output files need 0644 for web serving
 		if err := os.WriteFile(redirectPath, []byte(redirectHTML), 0o644); err != nil {
 			return fmt.Errorf("writing redirect %s: %w", redirectPath, err)
 		}
+	}
+
+	// Create redirect at /slug/index.<ext> to /slug.<ext>
+	slugExtRedirectDir := filepath.Join(outputDir, slug, "index."+ext)
+	if err := os.MkdirAll(slugExtRedirectDir, 0o755); err != nil {
+		return fmt.Errorf("creating slug index redirect directory %s: %w", slugExtRedirectDir, err)
+	}
+
+	slugExtRedirectPath := filepath.Join(slugExtRedirectDir, "index.html")
+	//nolint:gosec // G306: Output files need 0644 for web serving
+	if err := os.WriteFile(slugExtRedirectPath, []byte(redirectHTML), 0o644); err != nil {
+		return fmt.Errorf("writing slug index redirect %s: %w", slugExtRedirectPath, err)
 	}
 
 	return nil

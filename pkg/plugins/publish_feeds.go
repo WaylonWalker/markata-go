@@ -757,9 +757,8 @@ func (p *PublishFeedsPlugin) publishSitemap(fc *models.FeedConfig, config *lifec
 // This creates a file at slug.ext/index.html, which allows the URL /slug.ext
 // (without trailing slash) to serve the HTML redirect on most static hosts.
 //
-// For example, requesting /archive.md will serve the redirect HTML that
-// points to /archive/index.md where the actual markdown content lives.
-// Similarly, /archive.json redirects to /archive/feed.json.
+// For example, requesting /archive.json will serve the redirect HTML that
+// points to /archive/feed.json where the actual JSON content lives.
 //
 // Note: Web servers serve slug.ext/index.html when /slug.ext is requested,
 // without adding a trailing slash redirect (unlike directory-only approaches).

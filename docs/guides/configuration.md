@@ -958,13 +958,13 @@ text = true       # /slug.txt (canonical) - enabled by default
 og = false        # /slug/og/index.html (social card)
 ```
 
-**Reversed Redirects for txt/md**: For `.txt` and `.md` formats, content is placed at the canonical URL (`/slug.txt`, `/slug.md`) with a backwards-compatible redirect at `/slug/index.txt`. This supports standard web txt files like `robots.txt`, `llms.txt`, and `humans.txt`.
+**Reversed Redirects for txt/md**: For `.txt` and `.md` formats, content is placed at the canonical URL (`/slug.txt`, `/slug.md`) with backwards-compatible redirects at `/slug/index.txt` and `/slug/index.txt/index.html`. This supports standard web txt files like `robots.txt`, `llms.txt`, and `humans.txt`.
 
 **Canonical URLs and Alternate Links**: When post formats are enabled, markata-go automatically adds:
 
 - `<link rel="canonical">` pointing to the post's primary URL (for SEO)
 - `<link rel="alternate">` for each enabled format:
-  - Markdown: `type="text/markdown"` linking to `index.md`
+  - Markdown: `type="text/markdown"` linking to `/slug.md`
   - OG Card: `type="text/html"` linking to `og/`
 
 **Visible Format Links**: When alternate formats are enabled, posts and feeds display visible links allowing visitors to access content in their preferred format.
@@ -1120,8 +1120,8 @@ include_content = true
 | `rss` | `/{slug}/rss.xml` | RSS 2.0 feed |
 | `atom` | `/{slug}/atom.xml` | Atom 1.0 feed |
 | `json` | `/{slug}/feed.json` | JSON Feed |
-| `markdown` | `/{slug}/index.md` | Markdown output |
-| `text` | `/{slug}/index.txt` | Plain text output |
+| `markdown` | `/{slug}.md` | Markdown output |
+| `text` | `/{slug}.txt` | Plain text output |
 
 ### Feed Configuration (`[[markata-go.feeds]]`)
 

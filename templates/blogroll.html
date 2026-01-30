@@ -2,6 +2,7 @@
 {% extends "base.html" %}
 
 {% block title %}{{ title | default:"Blogroll" }} - {{ config.title | default:"My Site" }}{% endblock %}
+{% block description %}{{ description | default:"Blogs and feeds I follow" }}{% endblock %}
 
 {% block body_class %}page-blogroll{% endblock %}
 

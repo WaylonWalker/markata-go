@@ -237,20 +237,6 @@ func TestPublishFeedsPlugin_writeFeedFormatRedirect(t *testing.T) {
 		wantURL    string
 	}{
 		{
-			name:       "markdown redirect",
-			slug:       "archive",
-			ext:        "md",
-			targetFile: "index.md",
-			wantURL:    "/archive/index.md",
-		},
-		{
-			name:       "text redirect",
-			slug:       "blog",
-			ext:        "txt",
-			targetFile: "index.txt",
-			wantURL:    "/blog/index.txt",
-		},
-		{
 			name:       "json redirect",
 			slug:       "posts",
 			ext:        "json",
@@ -260,9 +246,9 @@ func TestPublishFeedsPlugin_writeFeedFormatRedirect(t *testing.T) {
 		{
 			name:       "nested slug redirect",
 			slug:       "tags/python",
-			ext:        "md",
-			targetFile: "index.md",
-			wantURL:    "/tags/python/index.md",
+			ext:        "json",
+			targetFile: "feed.json",
+			wantURL:    "/tags/python/feed.json",
 		},
 	}
 

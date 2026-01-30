@@ -45,6 +45,8 @@ func (p *WikilinksPlugin) Configure(m *lifecycle.Manager) error {
 func (p *WikilinksPlugin) Transform(m *lifecycle.Manager) error {
 	// Use the shared post index instead of building our own maps
 	postIndex := m.PostIndex()
+	postIndex.Refresh(m)
+	postIndex.Refresh(m)
 
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		return !post.Skip && post.Content != ""

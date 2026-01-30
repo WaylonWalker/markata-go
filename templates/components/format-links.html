@@ -21,7 +21,7 @@
 
 {% elif feed %}
 {# Feed format links #}
-{% if feed.formats %}
+{% if feed.formats or feed.slug %}
 <div class="format-links">
   <span class="format-links-label">Subscribe:</span>
   {% if feed.formats.rss %}
@@ -34,10 +34,10 @@
   <a href="{{ feed.base_url }}/feed.json" class="format-link format-link--json" title="JSON Feed">JSON</a>
   {% endif %}
   {% if feed.formats.markdown %}
-  <a href="{{ feed.base_url }}.md" class="format-link format-link--markdown" title="Markdown">Markdown</a>
+  <a href="/{{ feed.slug }}.md" class="format-link format-link--markdown" title="Markdown">Markdown</a>
   {% endif %}
   {% if feed.formats.text %}
-  <a href="{{ feed.base_url }}.txt" class="format-link format-link--text" title="Plain Text">Text</a>
+  <a href="/{{ feed.slug }}.txt" class="format-link format-link--text" title="Plain Text">Text</a>
   {% endif %}
 </div>
 {% endif %}
