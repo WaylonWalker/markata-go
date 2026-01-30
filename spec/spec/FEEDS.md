@@ -463,7 +463,7 @@ RSS feed for feed readers.
     <link>{{ config.url }}{{ feed.href }}</link>
     <description>{{ feed.description }}</description>
     <language>{{ config.lang | default('en') }}</language>
-    <lastBuildDate>{{ now | rss_date }}</lastBuildDate>
+    <lastBuildDate>{{ feed.updated | rss_date }}</lastBuildDate>
     <atom:link href="{{ config.url }}{{ feed.href }}rss.xml" rel="self" type="application/rss+xml"/>
 
     {% for post in feed.posts[:20] %}
@@ -497,7 +497,7 @@ Atom feed (RFC 4287).
   <link href="{{ config.url }}{{ feed.href }}" rel="alternate"/>
   <link href="{{ config.url }}{{ feed.href }}atom.xml" rel="self"/>
   <id>{{ config.url }}{{ feed.href }}</id>
-  <updated>{{ now | atom_date }}</updated>
+  <updated>{{ feed.updated | atom_date }}</updated>
 
   {% for post in feed.posts[:20] %}
   <entry>

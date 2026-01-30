@@ -326,6 +326,12 @@ The reader page shows the latest posts from all feeds in reverse chronological o
 - Links to the original article
 - Pagination navigation (when more than one page)
 
+**Deterministic ordering:**
+1. Most recent publish/update date first
+2. Feed URL (ascending)
+3. Entry ID (ascending)
+4. Title (ascending)
+
 ## Custom Templates
 
 Create custom templates for full control over the appearance.
