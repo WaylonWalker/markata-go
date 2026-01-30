@@ -1192,11 +1192,11 @@ type PostFormatsConfig struct {
 	HTML *bool `json:"html,omitempty" yaml:"html,omitempty" toml:"html,omitempty"`
 
 	// Markdown enables raw markdown output (default: false)
-	// Generates: /slug/index.md (source with frontmatter)
+	// Generates: /slug.md (source with frontmatter)
 	Markdown bool `json:"markdown" yaml:"markdown" toml:"markdown"`
 
 	// Text enables plain text output (default: false)
-	// Generates: /slug/index.txt (content only, no formatting)
+	// Generates: /slug.txt (content only, no formatting)
 	Text bool `json:"text" yaml:"text" toml:"text"`
 
 	// OG enables OpenGraph card HTML output for social image generation (default: false)

@@ -36,6 +36,7 @@ Disallow: /private/
 3. **Build your site** - markata-go generates:
    - `/robots.txt` - The canonical robots.txt file
    - `/robots/index.txt` - Redirect for backwards compatibility
+   - `/robots/index.txt/index.html` - HTML redirect for static hosts
 
 ## Common Txt Files
 
@@ -137,8 +138,8 @@ For `.txt` and `.md` formats, markata-go uses **reversed redirects**:
 
 | Canonical Location | Redirect From |
 |-------------------|---------------|
-| `/robots.txt` | `/robots/index.txt` |
-| `/llms.txt` | `/llms/index.txt` |
+| `/robots.txt` | `/robots/index.txt`, `/robots/index.txt/index.html` |
+| `/llms.txt` | `/llms/index.txt`, `/llms/index.txt/index.html` |
 
 This ensures:
 - Standard files work at their expected URLs
@@ -151,15 +152,18 @@ After building, your output directory contains:
 
 ```
 output/
-├── robots.txt              ← Canonical content
+├── robots.txt                   ← Canonical content
 ├── robots/
-│   └── index.txt           ← Redirect to /robots.txt
-├── llms.txt                ← Canonical content
+│   └── index.txt/
+│       └── index.html           ← HTML redirect to /robots.txt
+├── llms.txt                     ← Canonical content
 ├── llms/
-│   └── index.txt           ← Redirect to /llms.txt
-└── humans.txt              ← Canonical content
+│   └── index.txt/
+│       └── index.html           ← HTML redirect to /llms.txt
+└── humans.txt                   ← Canonical content
     humans/
-    └── index.txt           ← Redirect to /humans.txt
+    └── index.txt/
+        └── index.html           ← HTML redirect to /humans.txt
 ```
 
 ## Configuration

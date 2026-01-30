@@ -40,11 +40,8 @@ RUN ./markata-go version
 # =============================================================================
 # Runtime Stage
 # =============================================================================
-# Using distroless static image for minimal attack surface
-# - No shell, no package manager
-# - Only statically-linked binaries can run
-# - nonroot variant runs as non-root user by default
-FROM gcr.io/distroless/static-debian12:nonroot
+# Use scratch for the smallest possible runtime image
+FROM scratch
 
 # Labels for container registry metadata
 LABEL org.opencontainers.image.title="markata-go"
@@ -55,7 +52,7 @@ LABEL org.opencontainers.image.vendor="Waylon Walker"
 LABEL org.opencontainers.image.licenses="MIT"
 
 # Copy CA certificates for HTTPS support
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 # Copy the binary
 COPY --from=builder /app/markata-go /usr/local/bin/markata-go
@@ -63,8 +60,8 @@ COPY --from=builder /app/markata-go /usr/local/bin/markata-go
 # Set working directory for user content
 WORKDIR /site
 
-# Run as non-root user (provided by distroless:nonroot)
-USER nonroot:nonroot
+# Run as non-root user (numeric UID/GID)
+USER 65532:65532
 
 # Default entrypoint
 ENTRYPOINT ["markata-go"]

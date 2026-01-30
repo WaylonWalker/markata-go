@@ -1073,8 +1073,8 @@ For each feed, for each enabled format:
 | RSS | `/{slug}/rss.xml` |
 | Atom | `/{slug}/atom.xml` |
 | JSON | `/{slug}/feed.json` |
-| Markdown | `/{slug}/index.md` |
-| Text | `/{slug}/index.txt` |
+| Markdown | `/{slug}.md` |
+| Text | `/{slug}.txt` |
 | Sitemap | `/{slug}/sitemap.xml` |
 
 **Hook behavior:**

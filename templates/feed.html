@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}{{ feed.title | default:config.title | default:'My Site' }}{% endblock %}
-{% block description %}{{ feed.description | default:config.description | default:'' }}{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}{{ feed.title | default:config.title | default:"Posts" }}{% endblock %}
+{% block description %}{{ feed.description | default:config.description | default:"" }}{% endblock %}
 
 {% block htmx %}
 {% if page.pagination_type == "htmx" %}
