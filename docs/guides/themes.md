@@ -1077,6 +1077,7 @@ Now that you've styled your site, here are recommended next steps:
 
 ## See Also
 
+- [Keyboard Navigation Guide](/docs/guides/keyboard-navigation/) - Comprehensive keyboard shortcuts for site navigation
 - [Configuration Guide](/docs/guides/configuration/) - All configuration options
 - [Templates Guide](/docs/guides/templates/) - Template syntax and customization
 - [Frontmatter Guide](/docs/guides/frontmatter/) - Post-level configuration
