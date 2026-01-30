@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 )
@@ -106,6 +107,23 @@ func isCriticalStage(stage Stage) bool {
 	}
 }
 
+// CriticalError is an interface that errors can implement to indicate they should
+// be treated as critical errors that halt the build, regardless of which stage
+// they occur in.
+type CriticalError interface {
+	error
+	IsCritical() bool
+}
+
+// isCriticalError checks if an error implements CriticalError and returns true.
+func isCriticalError(err error) bool {
+	var ce CriticalError
+	if errors.As(err, &ce) {
+		return ce.IsCritical()
+	}
+	return false
+}
+
 // executeHooks runs all plugins that implement the given stage interface.
 // Returns collected errors. If any critical error occurs, execution stops.
 func executeHooks[T Plugin](
@@ -115,7 +133,7 @@ func executeHooks[T Plugin](
 	check func(Plugin) (T, bool),
 	execute func(T) error,
 ) *HookErrors {
-	errors := &HookErrors{}
+	hookErrors := &HookErrors{}
 	critical := isCriticalStage(stage)
 
 	// Sort plugins by priority
@@ -124,16 +142,18 @@ func executeHooks[T Plugin](
 	for _, p := range sorted {
 		if typed, ok := check(p); ok {
 			if err := execute(typed); err != nil {
-				errors.Add(stage, p.Name(), err, critical)
-				if critical {
+				// Check if the error itself is marked as critical
+				errIsCritical := critical || isCriticalError(err)
+				hookErrors.Add(stage, p.Name(), err, errIsCritical)
+				if errIsCritical {
 					// Stop on first critical error
-					return errors
+					return hookErrors
 				}
 			}
 		}
 	}
 
-	return errors
+	return hookErrors
 }
 
 // runConfigureHooks executes all ConfigurePlugin hooks.

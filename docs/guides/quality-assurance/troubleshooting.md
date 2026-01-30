@@ -3,6 +3,7 @@ title: "Troubleshooting Quality Checks"
 description: "Common issues and solutions for linting, pre-commit hooks, and CI/CD quality pipelines"
 date: 2026-01-24
 published: true
+slug: qa-troubleshooting
 tags:
   - quality-assurance
   - documentation
@@ -66,7 +67,7 @@ This guide covers common issues you may encounter when setting up and running co
    ```bash
    # markdownlint
    npm install -g markdownlint-cli
-   
+
    # yamllint
    pip install yamllint
    ```
@@ -166,9 +167,9 @@ git add -f file-with-issues.md
 3. **Disable for specific file:**
    ```markdown
    <!-- markdownlint-disable-file MD013 -->
-   
+
    # My Document
-   
+
    This file allows long lines...
    ```
 
@@ -195,9 +196,9 @@ git add -f file-with-issues.md
    <!-- markdownlint-disable MD033 -->
    <details>
    <summary>Click to expand</summary>
-   
+
    Content here...
-   
+
    </details>
    <!-- markdownlint-enable MD033 -->
    ```
@@ -301,7 +302,7 @@ This allows:
    ```yaml
    # Wrong
    title: My Post: A Journey
-   
+
    # Correct
    title: "My Post: A Journey"
    ```
@@ -311,7 +312,7 @@ This allows:
    # Wrong (tabs)
    tags:
    	- documentation
-   
+
    # Correct (2 spaces)
    tags:
      - documentation
@@ -321,7 +322,7 @@ This allows:
    ```yaml
    # Wrong (may be interpreted as number)
    version: 1.0
-   
+
    # Correct
    version: "1.0"
    ```
@@ -338,7 +339,7 @@ This allows:
     ---
    title: My Post
    ---
-   
+
    <!-- Correct: --- must be on line 1 -->
    ---
    title: My Post
@@ -351,7 +352,7 @@ This allows:
    ----
    title: My Post
    ----
-   
+
    <!-- Correct: exactly three dashes -->
    ---
    title: My Post
@@ -364,7 +365,7 @@ This allows:
    file your-file.md
    # Should show: UTF-8 Unicode text
    # NOT: UTF-8 Unicode (with BOM) text
-   
+
    # Remove BOM
    sed -i '1s/^\xEF\xBB\xBF//' your-file.md
    ```
@@ -388,7 +389,7 @@ This allows:
    ```yaml
    # Wrong
    titel: "My Post"
-   
+
    # Correct
    title: "My Post"
    ```
@@ -516,7 +517,7 @@ date: 01/24/2026
    ```bash
    # Build first
    markata-go build
-   
+
    # Check built HTML
    lychee ./public/**/*.html
    ```
@@ -637,7 +638,7 @@ jobs:
         with:
           name: site
           path: public/
-  
+
   test:
     needs: build
     steps:
@@ -869,7 +870,7 @@ If you can't resolve an issue:
    go version
    node --version
    python --version
-   
+
    # Tool versions
    pre-commit --version
    markdownlint --version

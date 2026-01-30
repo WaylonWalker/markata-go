@@ -78,6 +78,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["background"] = func() lifecycle.Plugin { return NewBackgroundPlugin() }
 	pluginRegistry.constructors["image_zoom"] = func() lifecycle.Plugin { return NewImageZoomPlugin() }
 	pluginRegistry.constructors["static_file_conflicts"] = func() lifecycle.Plugin { return NewStaticFileConflictsPlugin() }
+	pluginRegistry.constructors["slug_conflicts"] = func() lifecycle.Plugin { return NewSlugConflictsPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -158,6 +159,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewTemplatesPlugin(),
 
 		// Collect stage plugins
+		NewSlugConflictsPlugin(), // Detect slug conflicts (runs first in Collect)
 		NewFeedsPlugin(),
 		NewAutoFeedsPlugin(),
 		NewBlogrollPlugin(),            // Fetch external feeds for blogroll
