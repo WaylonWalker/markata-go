@@ -13,10 +13,12 @@
 package benchmarks
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/config"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -52,6 +54,56 @@ func BenchmarkBuild_EndToEnd(b *testing.B) {
 		if err := m.Run(); err != nil {
 			b.Fatalf("Build failed: %v", err)
 		}
+	}
+}
+
+// BenchmarkBuild_Incremental measures incremental build performance after a single file change.
+// It runs a full build to warm caches, then times a second build after touching one file.
+func BenchmarkBuild_Incremental(b *testing.B) {
+	fixturePath := filepath.Join(fixtureDir, "markata-go.toml")
+	if _, err := os.Stat(fixturePath); os.IsNotExist(err) {
+		b.Skipf("Benchmark fixture not found at %s - run 'go run generate_posts.go' first", fixturePath)
+	}
+
+	changedFile := filepath.Join("posts", "blog", "2024", "01", "post-001.md")
+
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+
+		workDir := b.TempDir()
+		if err := copyDir(fixtureDir, workDir); err != nil {
+			b.Fatalf("Failed to copy fixture: %v", err)
+		}
+
+		configPath := filepath.Join(workDir, "markata-go.toml")
+		outputDir := filepath.Join(workDir, "output")
+
+		// Warm caches with a full build
+		m, err := setupManager(configPath, outputDir)
+		if err != nil {
+			b.Fatalf("Failed to setup manager: %v", err)
+		}
+		if err := m.Run(); err != nil {
+			b.Fatalf("Warm build failed: %v", err)
+		}
+
+		// Touch one file to trigger incremental rebuild
+		if err := touchFile(filepath.Join(workDir, changedFile)); err != nil {
+			b.Fatalf("Failed to touch file: %v", err)
+		}
+
+		b.StartTimer()
+
+		m, err = setupManager(configPath, outputDir)
+		if err != nil {
+			b.Fatalf("Failed to setup manager: %v", err)
+		}
+		if err := m.Run(); err != nil {
+			b.Fatalf("Incremental build failed: %v", err)
+		}
+
+		b.StopTimer()
 	}
 }
 
@@ -290,6 +342,52 @@ func setupManager(configPath, outputDir string) (*lifecycle.Manager, error) {
 	m.RegisterPlugins(plugins.DefaultPlugins()...)
 
 	return m, nil
+}
+
+func copyDir(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+
+		targetPath := filepath.Join(dst, relPath)
+		if info.IsDir() {
+			return os.MkdirAll(targetPath, info.Mode())
+		}
+
+		return copyFile(path, targetPath, info.Mode())
+	})
+}
+
+func copyFile(src, dst string, mode os.FileMode) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+
+	dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
+}
+
+func touchFile(path string) error {
+	now := time.Now()
+	return os.Chtimes(path, now, now)
 }
 
 // concurrencyName returns a descriptive name for the concurrency level.
