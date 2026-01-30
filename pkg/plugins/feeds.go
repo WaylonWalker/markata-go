@@ -237,12 +237,19 @@ func cloneFeedPosts(posts []*models.Post) []*models.Post {
 }
 
 // sortPosts sorts posts by the specified field.
+// When primary sort values are equal, uses Path as a secondary sort key
+// to ensure deterministic ordering across builds.
 func sortPosts(posts []*models.Post, field string, reverse bool) {
 	sort.SliceStable(posts, func(i, j int) bool {
 		vi := getFieldValue(posts[i], field)
 		vj := getFieldValue(posts[j], field)
 
 		cmp := compareFieldValues(vi, vj)
+
+		// Use path as tie-breaker for deterministic ordering
+		if cmp == 0 {
+			cmp = strings.Compare(posts[i].Path, posts[j].Path)
+		}
 
 		if reverse {
 			return cmp > 0
