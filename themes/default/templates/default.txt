@@ -1,8 +1,0 @@
-{% if post.title %}{{ post.title }}
-{{ post.title|length|repeat:"=" }}
-
-{% endif %}{% if post.description %}{{ post.description }}
-
-{% endif %}{% if post.date %}Date: {{ post.date|date:"January 2, 2006" }}
-
-{% endif %}{{ post.content }}
