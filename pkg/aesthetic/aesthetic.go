@@ -221,8 +221,8 @@ func (a *Aesthetic) Merge(override *Aesthetic) *Aesthetic {
 	return merged
 }
 
-// AestheticInfo contains summary information about an aesthetic for listing.
-type AestheticInfo struct {
+// Info contains summary information about an aesthetic for listing.
+type Info struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 	Source      string `json:"source"` // "built-in", "user", "project"

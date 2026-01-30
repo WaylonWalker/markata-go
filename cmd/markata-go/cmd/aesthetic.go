@@ -10,6 +10,9 @@ import (
 // TODO: Import the aesthetic package when it's implemented.
 // import "github.com/WaylonWalker/markata-go/pkg/aesthetics"
 
+// tokenNone is the constant value for "none" tokens.
+const tokenNone = "none"
+
 // Aesthetic represents a design aesthetic with its tokens and description.
 // TODO: Move to pkg/aesthetics package when implemented.
 type Aesthetic struct {
@@ -42,7 +45,7 @@ var builtinAesthetics = []Aesthetic{
 			RadiusFull: "0",
 			Spacing:    "0.75x scale",
 			Border:     "3px solid",
-			Shadow:     "none",
+			Shadow:     tokenNone,
 		},
 	},
 	{
@@ -55,7 +58,7 @@ var builtinAesthetics = []Aesthetic{
 			RadiusFull: "4px",
 			Spacing:    "1x scale",
 			Border:     "1px solid",
-			Shadow:     "none",
+			Shadow:     tokenNone,
 		},
 	},
 	{
@@ -80,7 +83,7 @@ var builtinAesthetics = []Aesthetic{
 			RadiusLg:   "1rem",
 			RadiusFull: "9999px",
 			Spacing:    "1.25x scale",
-			Border:     "none",
+			Border:     tokenNone,
 			Shadow:     "0 4px 12px rgba(0,0,0,0.15)",
 		},
 	},
@@ -93,8 +96,8 @@ var builtinAesthetics = []Aesthetic{
 			RadiusLg:   "0",
 			RadiusFull: "0",
 			Spacing:    "1.5x scale",
-			Border:     "none",
-			Shadow:     "none",
+			Border:     tokenNone,
+			Shadow:     tokenNone,
 		},
 	},
 }
@@ -169,8 +172,8 @@ func runAestheticListCommand(_ *cobra.Command, _ []string) error {
 	}
 
 	fmt.Println("Available aesthetics:")
-	for _, a := range aestheticList {
-		fmt.Printf("  %-10s - %s\n", a.Name, a.Description)
+	for i := range aestheticList {
+		fmt.Printf("  %-10s - %s\n", aestheticList[i].Name, aestheticList[i].Description)
 	}
 
 	return nil
@@ -216,12 +219,12 @@ func runAestheticShowCommand(_ *cobra.Command, args []string) error {
 	fmt.Printf("  --radius-md: %s;\n", aesthetic.Tokens.RadiusMd)
 	fmt.Printf("  --radius-lg: %s;\n", aesthetic.Tokens.RadiusLg)
 	fmt.Printf("  --radius-full: %s;\n", aesthetic.Tokens.RadiusFull)
-	if aesthetic.Tokens.Shadow != "none" {
+	if aesthetic.Tokens.Shadow != tokenNone {
 		fmt.Printf("  --shadow: %s;\n", aesthetic.Tokens.Shadow)
 	} else {
 		fmt.Println("  --shadow: none;")
 	}
-	if aesthetic.Tokens.Border != "none" {
+	if aesthetic.Tokens.Border != tokenNone {
 		fmt.Printf("  --border: %s;\n", aesthetic.Tokens.Border)
 	} else {
 		fmt.Println("  --border: none;")

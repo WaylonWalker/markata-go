@@ -93,7 +93,7 @@ func (l *Loader) Load(name string) (*Aesthetic, error) {
 	if lastErr != nil {
 		return nil, lastErr
 	}
-	return nil, NewAestheticLoadError(name, "", "aesthetic not found in any search path", ErrAestheticNotFound)
+	return nil, NewLoadError(name, "", "aesthetic not found in any search path", ErrAestheticNotFound)
 }
 
 // loadFromPath attempts to load an aesthetic from a specific path.
@@ -111,14 +111,14 @@ func (l *Loader) loadFromPath(name, searchPath string) (*Aesthetic, error) {
 		return LoadFromFile(filePath)
 	}
 
-	return nil, NewAestheticLoadError(name, searchPath, "file not found", ErrAestheticNotFound)
+	return nil, NewLoadError(name, searchPath, "file not found", ErrAestheticNotFound)
 }
 
 // LoadFromFile loads an aesthetic from a specific file path.
 func LoadFromFile(path string) (*Aesthetic, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, NewAestheticLoadError("", path, "failed to read file", err)
+		return nil, NewLoadError("", path, "failed to read file", err)
 	}
 
 	return parseAesthetic(data, path, sourceFromPath(path))
@@ -131,7 +131,7 @@ func LoadBuiltin(name string) (*Aesthetic, error) {
 	// Try to read from embedded filesystem
 	data, err := builtinFS.ReadFile("aesthetics/" + normalized + ".toml")
 	if err != nil {
-		return nil, NewAestheticLoadError(name, "", "built-in aesthetic not found", ErrAestheticNotFound)
+		return nil, NewLoadError(name, "", "built-in aesthetic not found", ErrAestheticNotFound)
 	}
 
 	return parseAesthetic(data, "", sourceBuiltIn)
@@ -157,7 +157,7 @@ type rawAesthetic struct {
 func parseAesthetic(data []byte, path, source string) (*Aesthetic, error) {
 	var raw rawAesthetic
 	if err := toml.Unmarshal(data, &raw); err != nil {
-		return nil, NewAestheticParseError(path, "failed to parse TOML", err)
+		return nil, NewParseError(path, "failed to parse TOML", err)
 	}
 
 	// Convert raw aesthetic to typed Aesthetic
@@ -191,7 +191,7 @@ func parseAesthetic(data []byte, path, source string) (*Aesthetic, error) {
 
 	// Validate the loaded aesthetic
 	if errs := a.Validate(); len(errs) > 0 {
-		return nil, NewAestheticLoadError(a.Name, path, fmt.Sprintf("validation failed: %v", errs[0]), errs[0])
+		return nil, NewLoadError(a.Name, path, fmt.Sprintf("validation failed: %v", errs[0]), errs[0])
 	}
 
 	return a, nil
@@ -240,16 +240,16 @@ func HasBuiltin(name string) bool {
 }
 
 // DiscoverBuiltin returns info for all built-in aesthetics.
-func DiscoverBuiltin() []AestheticInfo {
+func DiscoverBuiltin() []Info {
 	names := BuiltinNames()
-	infos := make([]AestheticInfo, 0, len(names))
+	infos := make([]Info, 0, len(names))
 
 	for _, name := range names {
 		a, err := LoadBuiltin(name)
 		if err != nil {
 			continue
 		}
-		infos = append(infos, AestheticInfo{
+		infos = append(infos, Info{
 			Name:        a.Name,
 			Description: a.Description,
 			Source:      sourceBuiltIn,
@@ -261,8 +261,8 @@ func DiscoverBuiltin() []AestheticInfo {
 
 // Discover finds all available aesthetics across all sources.
 // Returns aesthetic info sorted by source priority.
-func (l *Loader) Discover() ([]AestheticInfo, error) {
-	infos := make(map[string]AestheticInfo)
+func (l *Loader) Discover() ([]Info, error) {
+	infos := make(map[string]Info)
 
 	// Discover built-in aesthetics first
 	builtinInfos := DiscoverBuiltin()
@@ -282,7 +282,7 @@ func (l *Loader) Discover() ([]AestheticInfo, error) {
 	}
 
 	// Convert map to sorted slice
-	result := make([]AestheticInfo, 0, len(infos))
+	result := make([]Info, 0, len(infos))
 	for _, info := range infos {
 		result = append(result, info)
 	}
@@ -296,13 +296,13 @@ func (l *Loader) Discover() ([]AestheticInfo, error) {
 }
 
 // discoverFromPath discovers aesthetics in a specific directory.
-func discoverFromPath(searchPath string) ([]AestheticInfo, error) {
+func discoverFromPath(searchPath string) ([]Info, error) {
 	entries, err := os.ReadDir(searchPath)
 	if err != nil {
 		return nil, err
 	}
 
-	infos := make([]AestheticInfo, 0, len(entries))
+	infos := make([]Info, 0, len(entries))
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -317,7 +317,7 @@ func discoverFromPath(searchPath string) ([]AestheticInfo, error) {
 			continue // Skip invalid aesthetics
 		}
 
-		infos = append(infos, AestheticInfo{
+		infos = append(infos, Info{
 			Name:        a.Name,
 			Description: a.Description,
 			Source:      a.Source,
@@ -357,7 +357,7 @@ func normalizeAestheticName(name string) string {
 }
 
 // ListAesthetics returns info for all available aesthetics (built-in and discovered).
-func ListAesthetics() []AestheticInfo {
+func ListAesthetics() []Info {
 	loader := NewLoader()
 	infos, err := loader.Discover()
 	if err != nil {
@@ -375,7 +375,7 @@ func Load(name string) (*Aesthetic, error) {
 }
 
 // Discover discovers all aesthetics using the default loader.
-func Discover() ([]AestheticInfo, error) {
+func Discover() ([]Info, error) {
 	return DefaultLoader.Discover()
 }
 

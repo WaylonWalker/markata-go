@@ -11,28 +11,28 @@ var (
 	ErrInvalidAesthetic = errors.New("invalid aesthetic")
 )
 
-// AestheticLoadError provides context for aesthetic loading failures.
-type AestheticLoadError struct {
+// LoadError provides context for aesthetic loading failures.
+type LoadError struct {
 	Name    string // Aesthetic name that failed to load
 	Path    string // Path attempted (if applicable)
 	Message string // Human-readable error message
 	Err     error  // Underlying error
 }
 
-func (e *AestheticLoadError) Error() string {
+func (e *LoadError) Error() string {
 	if e.Path != "" {
 		return "failed to load aesthetic " + e.Name + " from " + e.Path + ": " + e.Message
 	}
 	return "failed to load aesthetic " + e.Name + ": " + e.Message
 }
 
-func (e *AestheticLoadError) Unwrap() error {
+func (e *LoadError) Unwrap() error {
 	return e.Err
 }
 
-// NewAestheticLoadError creates a new AestheticLoadError.
-func NewAestheticLoadError(name, path, message string, err error) *AestheticLoadError {
-	return &AestheticLoadError{
+// NewLoadError creates a new LoadError.
+func NewLoadError(name, path, message string, err error) *LoadError {
+	return &LoadError{
 		Name:    name,
 		Path:    path,
 		Message: message,
@@ -40,27 +40,27 @@ func NewAestheticLoadError(name, path, message string, err error) *AestheticLoad
 	}
 }
 
-// AestheticParseError provides context for aesthetic parsing failures.
-type AestheticParseError struct {
+// ParseError provides context for aesthetic parsing failures.
+type ParseError struct {
 	Path    string // File path that failed to parse
 	Message string // Human-readable error message
 	Err     error  // Underlying error
 }
 
-func (e *AestheticParseError) Error() string {
+func (e *ParseError) Error() string {
 	if e.Path != "" {
 		return "failed to parse aesthetic at " + e.Path + ": " + e.Message
 	}
 	return "failed to parse aesthetic: " + e.Message
 }
 
-func (e *AestheticParseError) Unwrap() error {
+func (e *ParseError) Unwrap() error {
 	return e.Err
 }
 
-// NewAestheticParseError creates a new AestheticParseError.
-func NewAestheticParseError(path, message string, err error) *AestheticParseError {
-	return &AestheticParseError{
+// NewParseError creates a new ParseError.
+func NewParseError(path, message string, err error) *ParseError {
+	return &ParseError{
 		Path:    path,
 		Message: message,
 		Err:     err,
