@@ -200,60 +200,74 @@ func (p *RenderMarkdownPlugin) getPaletteVariant(paletteName string) palettes.Va
 // Posts with Skip=true are skipped.
 // The rendered HTML is stored in post.ArticleHTML.
 // Uses build cache to skip re-rendering unchanged content.
+//
+// Uses two-phase processing for incremental optimization:
+// Phase 1: Quick single-threaded pass to restore cached HTML (no worker overhead)
+// Phase 2: Concurrent processing only for posts that need rendering
 func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 	// Get build cache for HTML caching
 	p.cache = GetBuildCache(m)
 
-	return m.ProcessPostsConcurrently(p.renderPost)
+	// Phase 1: Pre-filter posts and restore cached HTML
+	// This avoids worker pool overhead for the ~98% of posts that are cached
+	postsNeedingRender := m.FilterPosts(func(post *models.Post) bool {
+		// Skip posts marked as skip
+		if post.Skip {
+			return false
+		}
+
+		// Skip posts with no content
+		if post.Content == "" {
+			post.ArticleHTML = ""
+			return false
+		}
+
+		// Try to get cached HTML if content hasn't changed
+		if p.cache != nil {
+			contentHash := buildcache.ContentHash(post.Content)
+			if cachedHTML := p.cache.GetCachedArticleHTML(post.Path, contentHash); cachedHTML != "" {
+				post.ArticleHTML = cachedHTML
+				// Detect CSS requirements from cached HTML
+				p.detectCSSRequirements(post)
+				return false // Already handled, no concurrent processing needed
+			}
+		}
+
+		return true // Needs rendering
+	})
+
+	// Phase 2: Process only posts that need rendering concurrently
+	return m.ProcessPostsSliceConcurrently(postsNeedingRender, p.renderPost)
 }
 
 // renderPost renders a single post's markdown content to HTML.
 // Uses a buffer pool to reduce allocations and GC pressure.
-// Leverages build cache to skip re-rendering unchanged content.
+// Note: Cache lookup is now done in the filter phase, so posts reaching here need rendering.
 func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
-	// Skip posts marked as skip
+	// Skip posts marked as skip (defensive check, filter should catch this)
 	if post.Skip {
 		return nil
 	}
 
-	// Skip posts with no content
+	// Skip posts with no content (defensive check, filter should catch this)
 	if post.Content == "" {
 		post.ArticleHTML = ""
 		return nil
 	}
 
-	// Try to get cached HTML if content hasn't changed
-	if p.cache != nil {
-		contentHash := buildcache.ContentHash(post.Content)
-		if cachedHTML := p.cache.GetCachedArticleHTML(post.Path, contentHash); cachedHTML != "" {
-			post.ArticleHTML = cachedHTML
-			// Detect CSS requirements from cached HTML
-			p.detectCSSRequirements(post)
-			return nil
-		}
-
-		// Not cached or stale, render and cache
-		renderedHTML, err := p.doRender(post.Content)
-		if err != nil {
-			return err
-		}
-		post.ArticleHTML = renderedHTML
-
-		// Cache the result (ignore errors, caching is best-effort)
-		//nolint:errcheck // caching is best-effort, failures are non-fatal
-		p.cache.CacheArticleHTML(post.Path, contentHash, renderedHTML)
-
-		// Detect CSS requirements from rendered HTML
-		p.detectCSSRequirements(post)
-		return nil
-	}
-
-	// No cache, just render
+	// Render the markdown
 	renderedHTML, err := p.doRender(post.Content)
 	if err != nil {
 		return err
 	}
 	post.ArticleHTML = renderedHTML
+
+	// Cache the result for future incremental builds
+	if p.cache != nil {
+		contentHash := buildcache.ContentHash(post.Content)
+		//nolint:errcheck // caching is best-effort, failures are non-fatal
+		p.cache.CacheArticleHTML(post.Path, contentHash, renderedHTML)
+	}
 
 	// Detect CSS requirements from rendered HTML
 	p.detectCSSRequirements(post)
