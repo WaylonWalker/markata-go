@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -83,6 +84,9 @@ func registerFilters() {
 
 		// Type conversion filter
 		pongo2.RegisterFilter("string", filterString)
+
+		// Contribution data filter for Cal-Heatmap
+		pongo2.RegisterFilter("contribution_data", filterContributionData)
 	})
 }
 
@@ -916,4 +920,94 @@ func stripHTMLTagsHelper(s string) string {
 // Usage: {{ number|string }} or {{ post.excerpt_paragraphs|string }}
 func filterString(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	return pongo2.AsValue(in.String()), nil
+}
+
+// filterContributionData generates Cal-Heatmap compatible JSON data from posts.
+// Takes a slice of posts and a year parameter, returns JSON array of {date, value} objects.
+// Usage: {{ posts|contribution_data:2024 }}
+// Returns: [{"date": "2024-01-01", "value": 2}, {"date": "2024-01-15", "value": 1}, ...]
+func filterContributionData(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	year := param.Integer()
+	if year == 0 {
+		year = time.Now().Year()
+	}
+
+	// Count posts per day for the specified year
+	postsByDate := make(map[string]int)
+
+	// Iterate through the input (should be a slice of posts)
+	if !in.CanSlice() {
+		return pongo2.AsValue("[]"), nil
+	}
+
+	for i := 0; i < in.Len(); i++ {
+		item := in.Index(i)
+		if item.IsNil() {
+			continue
+		}
+
+		// Try to get the date from the post
+		var postDate time.Time
+		var found bool
+
+		// Try different ways to access the date
+		iface := item.Interface()
+		if post, ok := iface.(*models.Post); ok && post != nil && post.Date != nil {
+			postDate = *post.Date
+			found = true
+		} else if post, ok := iface.(models.Post); ok && post.Date != nil {
+			postDate = *post.Date
+			found = true
+		} else {
+			// Try to get Date field from map or struct
+			dateVal := getAttr(item, "Date")
+			if dateVal != nil {
+				if t, err := toTime(dateVal); err == nil {
+					postDate = t
+					found = true
+				}
+			}
+		}
+
+		if !found {
+			continue
+		}
+
+		// Only include posts from the specified year
+		if postDate.Year() != year {
+			continue
+		}
+
+		// Format date as YYYY-MM-DD
+		dateStr := postDate.Format("2006-01-02")
+		postsByDate[dateStr]++
+	}
+
+	// Convert to Cal-Heatmap data format
+	type dataPoint struct {
+		Date  string `json:"date"`
+		Value int    `json:"value"`
+	}
+
+	var data []dataPoint
+	for date, count := range postsByDate {
+		data = append(data, dataPoint{Date: date, Value: count})
+	}
+
+	// Sort by date for consistent output
+	for i := 0; i < len(data)-1; i++ {
+		for j := i + 1; j < len(data); j++ {
+			if data[i].Date > data[j].Date {
+				data[i], data[j] = data[j], data[i]
+			}
+		}
+	}
+
+	// Marshal to JSON
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return pongo2.AsValue("[]"), nil
+	}
+
+	return pongo2.AsValue(string(jsonBytes)), nil
 }
