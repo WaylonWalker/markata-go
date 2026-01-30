@@ -1,0 +1,29 @@
+name = "Balanced"
+description = "Default harmonious: comfortable rounding, normal spacing, subtle shadows"
+
+[tokens.radius]
+none = "0"
+sm = "4px"
+md = "8px"
+lg = "12px"
+xl = "16px"
+full = "9999px"
+
+[tokens.spacing]
+scale = 1.0
+
+[tokens.border]
+width_thin = "1px"
+width_normal = "1px"
+width_thick = "2px"
+style = "solid"
+
+[tokens.shadow]
+sm = "0 1px 2px rgba(0,0,0,0.05)"
+md = "0 4px 6px rgba(0,0,0,0.1)"
+lg = "0 10px 15px rgba(0,0,0,0.1)"
+xl = "0 20px 25px rgba(0,0,0,0.1)"
+
+[tokens.typography]
+font_primary = "var(--font-sans)"
+leading_scale = 1.0

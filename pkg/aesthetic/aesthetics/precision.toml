@@ -1,0 +1,29 @@
+name = "Precision"
+description = "Technical/engineering: subtle corners, compact spacing, hairline borders"
+
+[tokens.radius]
+none = "0"
+sm = "2px"
+md = "4px"
+lg = "6px"
+xl = "8px"
+full = "9999px"
+
+[tokens.spacing]
+scale = 0.875
+
+[tokens.border]
+width_thin = "0.5px"
+width_normal = "1px"
+width_thick = "1.5px"
+style = "solid"
+
+[tokens.shadow]
+sm = "0 1px 1px rgba(0,0,0,0.03)"
+md = "0 2px 3px rgba(0,0,0,0.05)"
+lg = "0 4px 6px rgba(0,0,0,0.05)"
+xl = "0 8px 10px rgba(0,0,0,0.05)"
+
+[tokens.typography]
+font_primary = "var(--font-sans)"
+leading_scale = 0.95
