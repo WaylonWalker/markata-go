@@ -16,7 +16,7 @@ type AtomFeed struct {
 	Xmlns   string         `xml:"xmlns,attr"`
 	Title   string         `xml:"title"`
 	ID      string         `xml:"id"`
-	Updated string         `xml:"updated"`
+	Updated string         `xml:"updated,omitempty"`
 	Links   []AtomFeedLink `xml:"link"`
 	Author  *AtomAuthor    `xml:"author,omitempty"`
 	Entries []AtomEntry    `xml:"entry"`
@@ -40,7 +40,7 @@ type AtomAuthor struct {
 type AtomEntry struct {
 	Title     string         `xml:"title"`
 	ID        string         `xml:"id"`
-	Updated   string         `xml:"updated"`
+	Updated   string         `xml:"updated,omitempty"`
 	Published string         `xml:"published,omitempty"`
 	Links     []AtomFeedLink `xml:"link"`
 	Summary   *AtomContent   `xml:"summary,omitempty"`
@@ -71,22 +71,32 @@ func GenerateAtom(feed *lifecycle.Feed, config *lifecycle.Config) (string, error
 		title = siteTitle
 	}
 
-	// Determine updated time
-	updatedTime := time.Now()
-	if len(feed.Posts) > 0 && feed.Posts[0].Date != nil {
-		updatedTime = *feed.Posts[0].Date
+	// Determine updated time based on most recent post date (deterministic)
+	var updatedTime *time.Time
+	for _, post := range feed.Posts {
+		if post.Date == nil {
+			continue
+		}
+		if updatedTime == nil || post.Date.After(*updatedTime) {
+			t := *post.Date
+			updatedTime = &t
+		}
 	}
 
 	atomFeed := AtomFeed{
 		Xmlns:   "http://www.w3.org/2005/Atom",
 		Title:   title,
 		ID:      feedURL,
-		Updated: updatedTime.Format(time.RFC3339),
+		Updated: "",
 		Links: []AtomFeedLink{
 			{Href: siteURL, Rel: "alternate", Type: "text/html"},
 			{Href: feedURL, Rel: "self", Type: "application/atom+xml"},
 		},
 		Entries: make([]AtomEntry, 0, len(feed.Posts)),
+	}
+
+	if updatedTime != nil {
+		atomFeed.Updated = updatedTime.Format(time.RFC3339)
 	}
 
 	// Add author if available
@@ -145,8 +155,6 @@ func postToAtomEntry(post *models.Post, siteURL string) AtomEntry {
 		dateStr := post.Date.Format(time.RFC3339)
 		updated = dateStr
 		published = dateStr
-	} else {
-		updated = time.Now().Format(time.RFC3339)
 	}
 
 	entry := AtomEntry{

@@ -210,6 +210,15 @@ orphan_threshold = 3          # Merge last page if <= N items
 pagination_type = "manual"    # Pagination strategy
 ```
 
+## Feed Timestamps
+
+Feed timestamps are deterministic and based on content, not build time:
+
+- Atom `<updated>` and RSS `<lastBuildDate>` use the most recent post date in the feed.
+- If no posts have dates, these fields are omitted.
+
+This avoids no-change incremental builds rewriting feeds.
+
 ### Pagination Types
 
 | Type | Description | Use Case |
