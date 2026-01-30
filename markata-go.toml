@@ -179,7 +179,7 @@ text = true
 
 [markata-go.feed_defaults.templates]
 html = "feed.html"
-card = "partials/card.html"
+card = "partials/cards/card-router.html"
 
 [markata-go.feed_defaults.syndication]
 max_items = 20
