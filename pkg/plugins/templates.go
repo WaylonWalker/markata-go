@@ -463,6 +463,7 @@ func ToModelsConfig(config *lifecycle.Config) *models.Config {
 			TwitterHandle: getStringFromMap(seoVal, "twitter_handle"),
 			DefaultImage:  getStringFromMap(seoVal, "default_image"),
 			LogoURL:       getStringFromMap(seoVal, "logo_url"),
+			AuthorImage:   getStringFromMap(seoVal, "author_image"),
 		}
 	}
 

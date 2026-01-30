@@ -201,6 +201,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"twitter_handle": c.SEO.TwitterHandle,
 		"default_image":  c.SEO.DefaultImage,
 		"logo_url":       c.SEO.LogoURL,
+		"author_image":   c.SEO.AuthorImage,
 	}
 
 	// Convert IndieAuth to map
