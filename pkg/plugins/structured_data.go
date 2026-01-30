@@ -42,16 +42,14 @@ func (p *StructuredDataPlugin) Transform(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
+	posts := m.FilterPosts(func(post *models.Post) bool {
 		if post.Skip || post.Draft {
-			return nil
+			return false
 		}
+		return post.Title != nil && *post.Title != ""
+	})
 
-		// Skip posts without titles (required for structured data)
-		if post.Title == nil || *post.Title == "" {
-			return nil
-		}
-
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		return p.generateStructuredData(post, config, &seoConfig)
 	})
 }

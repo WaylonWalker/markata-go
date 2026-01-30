@@ -44,11 +44,11 @@ func (p *ReadingTimePlugin) Configure(m *lifecycle.Manager) error {
 
 // Transform calculates word count and reading time for each post.
 func (p *ReadingTimePlugin) Transform(m *lifecycle.Manager) error {
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
-		if post.Skip || post.Content == "" {
-			return nil
-		}
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		return !post.Skip && post.Content != ""
+	})
 
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		// Count words
 		wordCount := p.countWords(post.Content)
 		post.Set("word_count", wordCount)

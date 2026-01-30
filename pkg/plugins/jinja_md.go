@@ -70,23 +70,14 @@ func (p *JinjaMdPlugin) Transform(m *lifecycle.Manager) error {
 	// Collect private paths for robots.txt and similar templates
 	privatePaths := collectPrivatePathsForJinja(allPosts)
 
-	// Process each post
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
-		// Check if jinja processing is enabled for this post
-		if !isJinjaEnabled(post) {
-			return nil
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		if post.Skip || post.Content == "" {
+			return false
 		}
+		return isJinjaEnabled(post)
+	})
 
-		// Skip posts marked to skip
-		if post.Skip {
-			return nil
-		}
-
-		// Skip if content is empty
-		if post.Content == "" {
-			return nil
-		}
-
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		// Create template context
 		ctx := templates.NewContext(post, "", ToModelsConfig(config))
 		ctx = ctx.WithCore(m)

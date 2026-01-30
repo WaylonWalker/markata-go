@@ -53,24 +53,23 @@ func (p *DescriptionPlugin) Priority(stage lifecycle.Stage) int {
 // Transform generates descriptions for posts that don't have one,
 // and strips wikilinks from all descriptions (including user-provided ones).
 func (p *DescriptionPlugin) Transform(m *lifecycle.Manager) error {
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
+	posts := m.FilterPosts(func(post *models.Post) bool {
 		if post.Skip {
-			return nil
+			return false
 		}
+		if post.Description != nil && *post.Description != "" {
+			return true
+		}
+		return post.Content != ""
+	})
 
-		// If description is already set, strip any wikilinks from it
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		if post.Description != nil && *post.Description != "" {
 			cleaned := p.stripWikilinks(*post.Description)
 			post.Description = &cleaned
 			return nil
 		}
 
-		// Skip if no content
-		if post.Content == "" {
-			return nil
-		}
-
-		// Generate description from content
 		description := p.generateDescription(post.Content)
 		if description != "" {
 			post.Description = &description
