@@ -98,8 +98,33 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Process posts concurrently
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
+	// Two-phase processing for incremental optimization:
+	// Phase 1: Pre-filter to identify posts that need writing
+	// This avoids worker pool overhead for the ~98% of posts that are cached
+	postsNeedingWrite := m.FilterPosts(func(post *models.Post) bool {
+		// Skip posts marked as skip or drafts
+		if post.Skip || post.Draft {
+			return false
+		}
+
+		// For incremental builds, check if we can skip this post
+		if cache != nil && post.InputHash != "" {
+			if !cache.ShouldRebuildWithSlug(post.Path, post.Slug, post.InputHash, post.Template) {
+				// Check if output file exists
+				outputPath := filepath.Join(config.OutputDir, post.Slug, "index.html")
+				if _, err := os.Stat(outputPath); err == nil {
+					cache.MarkSkipped()
+					return false // Already up-to-date, skip
+				}
+				// Output file missing, need to write
+			}
+		}
+
+		return true // Needs writing
+	})
+
+	// Phase 2: Process only posts that need writing concurrently
+	return m.ProcessPostsSliceConcurrently(postsNeedingWrite, func(post *models.Post) error {
 		return p.writePost(post, config, engine, m)
 	})
 }

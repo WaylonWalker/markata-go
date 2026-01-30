@@ -250,6 +250,10 @@ func getDefaultTemplates(config *lifecycle.Config) map[string]string {
 // Render wraps markdown content in templates.
 // This runs after markdown rendering, using post.ArticleHTML as the body.
 // Skips posts that don't need rebuilding (incremental builds).
+//
+// Uses two-phase processing for incremental optimization:
+// Phase 1: Quick single-threaded pass to restore cached HTML (no worker overhead)
+// Phase 2: Concurrent processing only for posts that need rendering
 func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	if p.engine == nil {
 		return fmt.Errorf("template engine not initialized")
@@ -265,19 +269,25 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	// Collect private paths for robots.txt template variable
 	privatePaths := collectPrivatePaths(m.Posts())
 
-	// Process each post concurrently
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
+	// Phase 1: Quick pass to restore cached HTML for unchanged posts
+	// This avoids worker pool overhead for the ~98% of posts that are cached
+	postsNeedingRender := m.FilterPosts(func(post *models.Post) bool {
 		// Skip posts marked to skip or without article HTML
 		if post.Skip || post.ArticleHTML == "" {
-			return nil
+			return false
 		}
 
 		// Try to use cached HTML for unchanged posts
 		if cachedHTML := p.tryGetCachedHTML(post, cache, changedSlugs); cachedHTML != "" {
 			post.HTML = cachedHTML
-			return nil
+			return false // Already handled, no concurrent processing needed
 		}
 
+		return true // Needs rendering
+	})
+
+	// Phase 2: Process only posts that need rendering concurrently
+	return m.ProcessPostsSliceConcurrently(postsNeedingRender, func(post *models.Post) error {
 		// Render the template
 		html, err := p.renderPost(post, config, m, privatePaths)
 		if err != nil {

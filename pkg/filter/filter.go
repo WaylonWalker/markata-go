@@ -2,6 +2,7 @@ package filter
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -13,12 +14,40 @@ type Filter struct {
 	context    *EvalContext
 }
 
-// Parse parses a filter expression and returns a Filter
+// astCache caches parsed ASTs to avoid re-parsing identical expressions.
+// The AST is immutable after parsing, so this is safe for concurrent use.
+var astCache = struct {
+	sync.RWMutex
+	m map[string]Expr
+}{m: make(map[string]Expr)}
+
+// Parse parses a filter expression and returns a Filter.
+// Parsed ASTs are cached to avoid re-parsing identical expressions.
 func Parse(expression string) (*Filter, error) {
+	// Check cache first
+	astCache.RLock()
+	cachedAST, ok := astCache.m[expression]
+	astCache.RUnlock()
+
+	if ok {
+		// Return new Filter with cached AST and fresh context
+		return &Filter{
+			expression: expression,
+			ast:        cachedAST,
+			context:    NewEvalContext(),
+		}, nil
+	}
+
+	// Parse and cache
 	ast, err := ParseExpression(expression)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse filter expression %q: %w", expression, err)
 	}
+
+	// Cache the AST
+	astCache.Lock()
+	astCache.m[expression] = ast
+	astCache.Unlock()
 
 	return &Filter{
 		expression: expression,
