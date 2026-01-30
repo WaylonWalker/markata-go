@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync/atomic"
 
@@ -136,6 +137,24 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 		if options == nil {
 			options = map[string]interface{}{}
 		}
+		optionsMap, _ := options.(map[string]interface{})
+		if optionsMap == nil {
+			optionsMap = map[string]interface{}{}
+		}
+
+		// Auto-detect year from first data point if not specified
+		if _, hasYear := optionsMap["year"]; !hasYear {
+			if dataSlice, ok := data.([]interface{}); ok && len(dataSlice) > 0 {
+				if firstItem, ok := dataSlice[0].(map[string]interface{}); ok {
+					if dateStr, ok := firstItem["date"].(string); ok && len(dateStr) >= 4 {
+						// Extract year from date string (YYYY-MM-DD format)
+						if year, err := strconv.Atoi(dateStr[:4]); err == nil {
+							optionsMap["year"] = float64(year)
+						}
+					}
+				}
+			}
+		}
 
 		// Marshal data and options back to JSON for the script
 		dataJSON, err := json.Marshal(data)
@@ -145,7 +164,7 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
   <pre>%s</pre>
 </div>`, p.config.ContainerClass, html.EscapeString(err.Error()))
 		}
-		optionsJSON, err := json.Marshal(options)
+		optionsJSON, err := json.Marshal(optionsMap)
 		if err != nil {
 			return fmt.Sprintf(`<div class="%s contribution-graph-error">
   <p>Contribution Graph Error: Failed to serialize options</p>
@@ -193,6 +212,12 @@ func (p *ContributionGraphPlugin) buildOptionsScript(optionsJSON []byte) string 
 
 	// Build configuration options string
 	var configParts []string
+
+	// Handle date.start configuration from "year" option
+	// This is crucial for showing historical data
+	if year, ok := options["year"].(float64); ok {
+		configParts = append(configParts, fmt.Sprintf(`date: { start: new Date('%d-01-01') }`, int(year)))
+	}
 
 	// Handle domain configuration
 	if domain, ok := options["domain"].(string); ok {
