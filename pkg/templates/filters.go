@@ -989,7 +989,7 @@ func filterContributionData(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Err
 		Value int    `json:"value"`
 	}
 
-	var data []dataPoint
+	data := make([]dataPoint, 0, len(postsByDate))
 	for date, count := range postsByDate {
 		data = append(data, dataPoint{Date: date, Value: count})
 	}
