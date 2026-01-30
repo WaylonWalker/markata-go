@@ -1064,6 +1064,9 @@ For each feed, for each enabled format:
 2. Render with feed context
 3. Write to output path
 
+**Performance notes:**
+- Feed filtering results may be reused across feeds that share identical filter expressions and privacy settings within a single build.
+
 **Output paths:**
 | Format | Path Pattern |
 |--------|--------------|

@@ -115,6 +115,8 @@ The build command executes the full 9-stage lifecycle:
 8. **Write** - Output files to disk
 9. **Cleanup** - Release resources
 
+When `--verbose` is enabled, build output includes per-stage timing to highlight slow stages.
+
 ---
 
 ### serve

@@ -70,11 +70,19 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 
 	// Write to output directory
 	cssDir := filepath.Join(outputDir, "css")
+	cssPath := filepath.Join(cssDir, "variables.css")
+	if existing, err := os.ReadFile(cssPath); err == nil {
+		if bytes.Equal(existing, []byte(css)) {
+			log.Printf("[palette_css] CSS unchanged, skipping write")
+			return nil
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("reading existing palette CSS: %w", err)
+	}
+
 	if err := os.MkdirAll(cssDir, 0o755); err != nil {
 		return fmt.Errorf("creating css directory: %w", err)
 	}
-
-	cssPath := filepath.Join(cssDir, "variables.css")
 	//nolint:gosec // G306: variables.css is a public CSS file, 0644 is appropriate
 	if err := os.WriteFile(cssPath, []byte(css), 0o644); err != nil {
 		return fmt.Errorf("writing palette CSS: %w", err)
