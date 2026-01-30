@@ -80,7 +80,14 @@ func (p *YouTubePlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	return m.ProcessPostsConcurrently(p.processPost)
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		if post.Skip || post.ArticleHTML == "" {
+			return false
+		}
+		return strings.Contains(post.ArticleHTML, "youtube.com") || strings.Contains(post.ArticleHTML, "youtu.be")
+	})
+
+	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
 }
 
 // youtubeURLRegex matches YouTube URLs in various formats.

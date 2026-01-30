@@ -49,20 +49,19 @@ func (p *AutoTitlePlugin) Priority(stage lifecycle.Stage) int {
 // Transform generates titles for posts that don't have one.
 // Uses a comprehensive fallback strategy to ensure no post has a nil title.
 func (p *AutoTitlePlugin) Transform(m *lifecycle.Manager) error {
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
+	posts := m.FilterPosts(func(post *models.Post) bool {
 		if post.Skip {
-			return nil
+			return false
 		}
-
-		// Skip if title is already set (frontmatter takes highest priority)
 		if post.Title != nil && *post.Title != "" {
-			return nil
+			return false
 		}
+		return true
+	})
 
-		// Try fallback strategies in order of priority
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		title := p.inferTitle(post)
 		post.Title = &title
-
 		return nil
 	})
 }

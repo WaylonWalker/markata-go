@@ -4,6 +4,7 @@ package plugins
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -110,7 +111,14 @@ func (p *HeadingAnchorsPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	return m.ProcessPostsConcurrently(p.processPost)
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		if post.Skip || post.ArticleHTML == "" {
+			return false
+		}
+		return strings.Contains(post.ArticleHTML, "<h")
+	})
+
+	return m.ProcessPostsSliceConcurrently(posts, p.processPost)
 }
 
 // processPost adds anchor links to headings in a single post's ArticleHTML.

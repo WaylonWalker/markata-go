@@ -143,22 +143,25 @@ func (p *BreadcrumbsPlugin) Transform(m *lifecycle.Manager) error {
 
 	siteURL := getSiteURL(config)
 
-	return m.ProcessPostsConcurrently(func(post *models.Post) error {
+	posts := m.FilterPosts(func(post *models.Post) bool {
 		if post.Skip {
-			return nil
+			return false
 		}
-
-		// Check for per-post breadcrumb configuration
 		postConfig := p.getPostConfig(post)
+		if postConfig.Enabled != nil && !*postConfig.Enabled {
+			return false
+		}
+		return true
+	})
 
-		// Check if breadcrumbs are disabled for this post
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
+		postConfig := p.getPostConfig(post)
 		if postConfig.Enabled != nil && !*postConfig.Enabled {
 			return nil
 		}
 
 		// Generate breadcrumbs
 		breadcrumbs := p.generateBreadcrumbs(post, postConfig, siteURL)
-
 		if len(breadcrumbs) == 0 {
 			return nil
 		}
