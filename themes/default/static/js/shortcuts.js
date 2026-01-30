@@ -177,16 +177,65 @@
    * @returns {boolean}
    */
   function isInputElement(element) {
-    if (!element) return false;
-
-    var tagName = element.tagName;
-    if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
-      return true;
+    // Check both the provided element and document.activeElement as fallback
+    var elementsToCheck = [element];
+    if (document.activeElement && document.activeElement !== element) {
+      elementsToCheck.push(document.activeElement);
     }
 
-    // Check for contenteditable
-    if (element.isContentEditable) {
-      return true;
+    for (var i = 0; i < elementsToCheck.length; i++) {
+      var el = elementsToCheck[i];
+      if (!el) continue;
+
+      var tagName = el.tagName;
+
+      // TEXTAREA always blocks shortcuts
+      if (tagName === 'TEXTAREA') {
+        return true;
+      }
+
+      // SELECT always blocks shortcuts (keyboard navigation)
+      if (tagName === 'SELECT') {
+        return true;
+      }
+
+      // INPUT: block for text-input types, allow for non-text types
+      if (tagName === 'INPUT') {
+        var inputType = (el.type || 'text').toLowerCase();
+        // Non-text input types that should ALLOW shortcuts
+        var nonTextTypes = [
+          'submit',
+          'button',
+          'reset',
+          'checkbox',
+          'radio',
+          'range',
+          'color',
+          'file',
+          'hidden',
+          'image'
+        ];
+        // If it's NOT a non-text type, block shortcuts
+        // This covers: text, search, email, password, tel, url, number,
+        // date, time, datetime-local, month, week, and any unknown types
+        if (nonTextTypes.indexOf(inputType) === -1) {
+          return true;
+        }
+      }
+
+      // Check for contenteditable
+      if (el.isContentEditable) {
+        return true;
+      }
+
+      // Check ARIA roles that indicate text input
+      var role = el.getAttribute('role');
+      if (role) {
+        var textInputRoles = ['textbox', 'searchbox', 'combobox'];
+        if (textInputRoles.indexOf(role.toLowerCase()) !== -1) {
+          return true;
+        }
+      }
     }
 
     return false;
