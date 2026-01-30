@@ -9,6 +9,15 @@
 //   - Shadow tokens: Box shadow definitions for elevation
 //   - Typography tokens: Font families, sizes, and line heights
 //
+// # Aesthetic Presets
+//
+// Five built-in aesthetic presets are available:
+//   - brutal: Sharp corners, tight spacing, bold borders
+//   - precision: Subtle corners, compact spacing, clean lines
+//   - balanced: Comfortable rounding, normal spacing (default)
+//   - elevated: Generous rounding, layered shadows
+//   - minimal: Maximum whitespace, flat design
+//
 // # Aesthetic Discovery
 //
 // Aesthetics are discovered in order:
