@@ -174,9 +174,13 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 
 		// Create the initialization script for this graph
 		// Uses Cal-Heatmap Tooltip plugin for hover information
+		// Resolves CSS variables at runtime for theme colors
 		initScript := fmt.Sprintf(`
   (function() {
     const cal = new CalHeatmap();
+    const styles = getComputedStyle(document.documentElement);
+    const surfaceColor = styles.getPropertyValue('--color-surface-1').trim() || '#ebedf0';
+    const accentColor = styles.getPropertyValue('--color-accent').trim() || '#216e39';
     cal.paint(
       {
         itemSelector: '#%s',
@@ -186,6 +190,13 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
           y: 'value'
         },
         %s
+        scale: {
+          color: {
+            type: 'linear',
+            range: [surfaceColor, accentColor],
+            domain: [0, 10]
+          }
+        }
       },
       [
         [
@@ -256,17 +267,14 @@ func (p *ContributionGraphPlugin) buildOptionsScript(optionsJSON []byte) string 
 		configParts = append(configParts, fmt.Sprintf(`range: %d`, int(rangeVal)))
 	}
 
-	// Add color scale using theme accent color with opacity
-	// This creates a GitHub-style gradient from transparent to accent color
-	configParts = append(configParts, `scale: {
-        color: {
-          type: 'linear',
-          range: ['var(--color-surface-1)', 'var(--color-accent)'],
-          domain: [0, 10]
-        }
-      }`)
+	// Color scale is set dynamically in the init script using getComputedStyle
+	// to resolve CSS variables at runtime
 
-	return strings.Join(configParts, ",\n      ")
+	result := strings.Join(configParts, ",\n      ")
+	if result != "" {
+		result += ","
+	}
+	return result
 }
 
 // injectCalHeatmapScripts adds the Cal-Heatmap library and initialization scripts to the HTML.
@@ -279,10 +287,14 @@ func (p *ContributionGraphPlugin) injectCalHeatmapScripts(htmlContent string, in
 .contribution-graph-container {
   width: 100%%;
   overflow-x: auto;
+  margin: 1rem 0;
+}
+.contribution-graph-container > div {
+  min-width: 100%%;
 }
 .contribution-graph-container svg {
-  width: 100%%;
-  height: auto;
+  display: block;
+  max-width: 100%%;
 }
 #ch-tooltip {
   background: var(--color-surface-2, #333);
@@ -291,6 +303,7 @@ func (p *ContributionGraphPlugin) injectCalHeatmapScripts(htmlContent string, in
   border-radius: 4px;
   font-size: 0.875rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 10000 !important;
 }
 </style>
 <link rel="stylesheet" href="%s/cal-heatmap.css">
