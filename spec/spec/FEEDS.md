@@ -104,6 +104,15 @@ sitemap = "sitemap.xml"            # Template for sitemap
 | `pagination` | Pagination | Pagination info |
 | `formats` | FeedFormats | Enabled output formats (html, rss, atom, json, markdown, text, sitemap) |
 
+### Feed Timestamps
+
+Feed timestamps are deterministic and based on content, not build time:
+
+- **Atom `<updated>`** and **RSS `<lastBuildDate>`** use the most recent post date in the feed.
+- If no posts have dates, these fields are omitted or left empty (no build-time fallback).
+
+This ensures no-change incremental builds produce identical feed outputs.
+
 ### Pagination Object
 
 | Field | Type | Description |
