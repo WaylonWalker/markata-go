@@ -174,18 +174,31 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
 
 		// Create the initialization script for this graph
 		// Uses Cal-Heatmap Tooltip plugin for hover information
-		// Resolves CSS variables at runtime for theme colors
+		// Resolves theme colors at runtime and calculates per-graph scale
 		initScript := fmt.Sprintf(`
   (function() {
     const cal = new CalHeatmap();
+    const data = %s;
+    
+    // Calculate max value for this graph's scale
+    const maxValue = Math.max(1, ...data.map(d => d.value || 0));
+    
+    // Detect dark mode via CSS custom property or media query
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches ||
+                   document.documentElement.classList.contains('dark') ||
+                   document.body.classList.contains('dark');
+    
+    // Get theme colors with appropriate fallbacks for dark/light mode
     const styles = getComputedStyle(document.documentElement);
-    const surfaceColor = styles.getPropertyValue('--color-surface-1').trim() || '#ebedf0';
+    const surfaceColor = styles.getPropertyValue('--color-surface-1').trim() || 
+                         (isDark ? '#161b22' : '#ebedf0');
     const accentColor = styles.getPropertyValue('--color-accent').trim() || '#216e39';
+    
     cal.paint(
       {
         itemSelector: '#%s',
         data: {
-          source: %s,
+          source: data,
           x: 'date',
           y: 'value'
         },
@@ -194,7 +207,7 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
           color: {
             type: 'linear',
             range: [surfaceColor, accentColor],
-            domain: [0, 10]
+            domain: [0, maxValue]
           }
         }
       },
@@ -209,7 +222,7 @@ func (p *ContributionGraphPlugin) processPost(post *models.Post) error {
         ],
       ]
     );
-  })();`, graphID, string(dataJSON), p.buildOptionsScript(optionsJSON))
+  })();`, string(dataJSON), graphID, p.buildOptionsScript(optionsJSON))
 		initScripts = append(initScripts, initScript)
 
 		// Return the container div
@@ -288,13 +301,11 @@ func (p *ContributionGraphPlugin) injectCalHeatmapScripts(htmlContent string, in
   width: 100%%;
   overflow-x: auto;
   margin: 1rem 0;
+  display: flex;
+  justify-content: center;
 }
 .contribution-graph-container > div {
-  min-width: 100%%;
-}
-.contribution-graph-container svg {
-  display: block;
-  max-width: 100%%;
+  flex-shrink: 0;
 }
 #ch-tooltip {
   background: var(--color-surface-2, #333);
