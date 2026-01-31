@@ -229,49 +229,6 @@ func (p *GlobPlugin) scanFiles(absBaseDir string) []string {
 	return files
 }
 
-// findNewFiles returns files matching patterns that aren't in the cached list.
-func (p *GlobPlugin) findNewFiles(absBaseDir string, cached []string) []string {
-	known := make(map[string]struct{}, len(cached))
-	for _, f := range cached {
-		known[f] = struct{}{}
-	}
-
-	var newFiles []string
-	for _, pattern := range p.patterns {
-		fullPattern := pattern
-		if !filepath.IsAbs(pattern) {
-			fullPattern = filepath.Join(absBaseDir, pattern)
-		}
-
-		matches, err := doublestar.FilepathGlob(fullPattern)
-		if err != nil {
-			continue
-		}
-
-		for _, match := range matches {
-			relPath, err := filepath.Rel(absBaseDir, match)
-			if err != nil {
-				relPath = match
-			}
-
-			if _, exists := known[relPath]; exists {
-				continue
-			}
-			if p.isIgnored(relPath) {
-				continue
-			}
-
-			info, err := os.Stat(match)
-			if err != nil || info.IsDir() {
-				continue
-			}
-
-			newFiles = append(newFiles, relPath)
-		}
-	}
-	return newFiles
-}
-
 // verifyCachedFiles checks if all cached files still exist.
 // This is much faster than a full glob scan.
 func (p *GlobPlugin) verifyCachedFiles(absBaseDir string, cached []string) bool {
