@@ -12,8 +12,7 @@
 }
 
 /* Ensure search results dropdown can overflow the header */
-.site-header,
-.site-header .container {
+.site-header {
   overflow: visible !important;
 }
 
@@ -85,7 +84,7 @@
   position: absolute;
   top: 100%;
   right: 0;
-  width: 400px;
+  width: 600px;
   max-width: 90vw;
   background: var(--color-background);
   border: 1px solid var(--color-border);
@@ -271,12 +270,8 @@
 }
 
 /* Header layout adjustment to accommodate search */
-.site-header .container {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
+/* Note: .site-header .container flex layout is defined in main.css */
+/* We only need to ensure overflow is visible for dropdown */
 
 .site-header .site-title {
   flex-shrink: 0;
