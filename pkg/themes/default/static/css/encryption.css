@@ -1,0 +1,136 @@
+/**
+ * Encrypted Content Styles
+ *
+ * Styles for the encrypted content blocks used on private posts.
+ * Provides a clean UI for the decryption password prompt.
+ */
+
+.encrypted-content {
+  margin: 2rem 0;
+}
+
+.encrypted-content__locked {
+  background: var(--color-surface, #f5f5f5);
+  border: 2px dashed var(--color-border, #ddd);
+  border-radius: var(--radius-lg, 12px);
+  padding: 2rem;
+  text-align: center;
+  max-width: 500px;
+  margin: 2rem auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  .encrypted-content__locked {
+    background: var(--color-surface-dark, #1a1a2e);
+    border-color: var(--color-border-dark, #333);
+  }
+}
+
+.encrypted-content__icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  filter: grayscale(0.5);
+}
+
+.encrypted-content__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--color-text, #333);
+}
+
+.encrypted-content__message {
+  color: var(--color-text-muted, #666);
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+}
+
+.encrypted-content__hint {
+  background: var(--color-primary-muted, rgba(59, 130, 246, 0.1));
+  border-radius: var(--radius-sm, 6px);
+  padding: 0.75rem 1rem;
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  color: var(--color-primary, #3b82f6);
+}
+
+.encrypted-content__form {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.encrypted-content__input {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 1rem;
+  min-width: 200px;
+  background: var(--color-background, #fff);
+  color: var(--color-text, #333);
+}
+
+.encrypted-content__input:focus {
+  outline: none;
+  border-color: var(--color-primary, #3b82f6);
+  box-shadow: 0 0 0 3px var(--color-primary-muted, rgba(59, 130, 246, 0.2));
+}
+
+@media (prefers-color-scheme: dark) {
+  .encrypted-content__input {
+    background: var(--color-surface-dark, #1a1a2e);
+    border-color: var(--color-border-dark, #444);
+    color: var(--color-text-dark, #eee);
+  }
+}
+
+.encrypted-content__button {
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary, #3b82f6);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.encrypted-content__button:hover:not(:disabled) {
+  background: var(--color-primary-dark, #2563eb);
+}
+
+.encrypted-content__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.encrypted-content__error {
+  color: var(--color-error, #dc2626);
+  background: var(--color-error-bg, rgba(220, 38, 38, 0.1));
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm, 6px);
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+
+.encrypted-content__decrypted {
+  /* The decrypted content inherits normal post styles */
+}
+
+/* Animation for when content is successfully decrypted */
+.encrypted-content__decrypted {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
