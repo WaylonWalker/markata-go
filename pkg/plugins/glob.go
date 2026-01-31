@@ -165,20 +165,13 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 	if cache != nil {
 		cachedFiles, cachedHash := cache.GetGlobCache()
 		if cachedHash == patternHash && len(cachedFiles) > 0 {
-			// Patterns unchanged - use cached list, just check for new files
-			newFiles := p.findNewFiles(absBaseDir, cachedFiles)
-			if len(newFiles) == 0 {
+			// Patterns unchanged - verify cached files still exist
+			// This is much faster than a full glob scan
+			if p.verifyCachedFiles(absBaseDir, cachedFiles) {
 				m.SetFiles(cachedFiles)
 				return nil
 			}
-			// Append new files and re-sort
-			allFiles := make([]string, 0, len(cachedFiles)+len(newFiles))
-			allFiles = append(allFiles, cachedFiles...)
-			allFiles = append(allFiles, newFiles...)
-			sort.Strings(allFiles)
-			cache.SetGlobCache(allFiles, patternHash)
-			m.SetFiles(allFiles)
-			return nil
+			// Some files missing - fall through to full scan
 		}
 	}
 
@@ -277,6 +270,18 @@ func (p *GlobPlugin) findNewFiles(absBaseDir string, cached []string) []string {
 		}
 	}
 	return newFiles
+}
+
+// verifyCachedFiles checks if all cached files still exist.
+// This is much faster than a full glob scan.
+func (p *GlobPlugin) verifyCachedFiles(absBaseDir string, cached []string) bool {
+	for _, f := range cached {
+		fullPath := filepath.Join(absBaseDir, f)
+		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
 }
 
 // SetPatterns sets the glob patterns to use for file discovery.
