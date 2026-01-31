@@ -80,6 +80,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["static_file_conflicts"] = func() lifecycle.Plugin { return NewStaticFileConflictsPlugin() }
 	pluginRegistry.constructors["slug_conflicts"] = func() lifecycle.Plugin { return NewSlugConflictsPlugin() }
 	pluginRegistry.constructors["css_bundle"] = func() lifecycle.Plugin { return NewCSSBundlePlugin() }
+	pluginRegistry.constructors["resource_hints"] = func() lifecycle.Plugin { return NewResourceHintsPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -176,7 +177,8 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewCSSBundlePlugin(),    // Bundle CSS files (runs after CSS generators)
 		NewPublishFeedsPlugin(),
 		NewPublishHTMLPlugin(),
-		NewRedirectsPlugin(), // Generate redirect pages
+		NewResourceHintsPlugin(), // Inject resource hints (after HTML written)
+		NewRedirectsPlugin(),     // Generate redirect pages
 		NewSitemapPlugin(),
 
 		// Cleanup stage plugins
