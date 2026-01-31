@@ -79,6 +79,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["image_zoom"] = func() lifecycle.Plugin { return NewImageZoomPlugin() }
 	pluginRegistry.constructors["static_file_conflicts"] = func() lifecycle.Plugin { return NewStaticFileConflictsPlugin() }
 	pluginRegistry.constructors["slug_conflicts"] = func() lifecycle.Plugin { return NewSlugConflictsPlugin() }
+	pluginRegistry.constructors["css_purge"] = func() lifecycle.Plugin { return NewCSSPurgePlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -178,6 +179,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewSitemapPlugin(),
 
 		// Cleanup stage plugins
+		NewCSSPurgePlugin(), // Remove unused CSS (before search index)
 		NewPagefindPlugin(), // Generate search index (requires all HTML written first)
 	}
 }
