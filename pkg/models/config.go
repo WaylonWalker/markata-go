@@ -1396,6 +1396,41 @@ func NewYouTubeConfig() YouTubeConfig {
 	}
 }
 
+// CSSPurgeConfig configures the css_purge plugin for removing unused CSS rules.
+type CSSPurgeConfig struct {
+	// Enabled controls whether CSS purging is active (default: false)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// Verbose enables detailed logging of purge operations (default: false)
+	Verbose bool `json:"verbose" yaml:"verbose" toml:"verbose"`
+
+	// Preserve is a list of glob patterns for CSS selectors to always keep.
+	// These patterns match against class names and IDs.
+	// Example: ["js-*", "htmx-*", "active", "hidden"]
+	Preserve []string `json:"preserve" yaml:"preserve" toml:"preserve"`
+
+	// SkipFiles is a list of CSS file patterns to skip during purging.
+	// Useful for third-party CSS that should not be modified.
+	// Example: ["vendor/*", "normalize.css"]
+	SkipFiles []string `json:"skip_files" yaml:"skip_files" toml:"skip_files"`
+
+	// WarningThreshold is the minimum percentage of CSS removed before showing a warning.
+	// If more than this percentage is removed, a warning is shown (might indicate overly aggressive purging).
+	// Set to 0 to disable. Default: 0 (disabled)
+	WarningThreshold int `json:"warning_threshold" yaml:"warning_threshold" toml:"warning_threshold"`
+}
+
+// NewCSSPurgeConfig creates a new CSSPurgeConfig with default values.
+func NewCSSPurgeConfig() CSSPurgeConfig {
+	return CSSPurgeConfig{
+		Enabled:          false, // Disabled by default - opt-in feature
+		Verbose:          false,
+		Preserve:         []string{}, // Uses csspurge.DefaultPreservePatterns() when empty
+		SkipFiles:        []string{},
+		WarningThreshold: 0,
+	}
+}
+
 // ImageZoomConfig configures the image_zoom plugin for lightbox functionality.
 type ImageZoomConfig struct {
 	// Enabled controls whether image zoom is active (default: false)
