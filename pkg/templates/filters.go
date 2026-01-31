@@ -36,20 +36,24 @@ var (
 	excerptParagraphRe = regexp.MustCompile(`(?s)<p[^>]*>(.*?)</p>`)
 
 	// Used by cleanExcerptHTML - pre-compiled patterns for each block tag
-	blockTagOpenRe  map[string]*regexp.Regexp
-	blockTagCloseRe map[string]*regexp.Regexp
+	blockTagOpenRe  = compileBlockTagPatterns(true)
+	blockTagCloseRe = compileBlockTagPatterns(false)
 )
 
-func init() {
-	// Pre-compile block tag patterns for cleanExcerptHTML
+// compileBlockTagPatterns creates regex patterns for block tags.
+// If openTag is true, creates opening tag patterns; otherwise closing tag patterns.
+func compileBlockTagPatterns(openTag bool) map[string]*regexp.Regexp {
 	blockTags := []string{"div", "span", "section", "article", "header", "footer", "nav", "aside"}
-	blockTagOpenRe = make(map[string]*regexp.Regexp, len(blockTags))
-	blockTagCloseRe = make(map[string]*regexp.Regexp, len(blockTags))
+	patterns := make(map[string]*regexp.Regexp, len(blockTags))
 
 	for _, tag := range blockTags {
-		blockTagOpenRe[tag] = regexp.MustCompile(`(?i)<` + tag + `[^>]*>`)
-		blockTagCloseRe[tag] = regexp.MustCompile(`(?i)</` + tag + `>`)
+		if openTag {
+			patterns[tag] = regexp.MustCompile(`(?i)<` + tag + `[^>]*>`)
+		} else {
+			patterns[tag] = regexp.MustCompile(`(?i)</` + tag + `>`)
+		}
 	}
+	return patterns
 }
 
 // registerFilters registers all custom template filters with pongo2.

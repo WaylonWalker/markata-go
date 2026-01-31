@@ -251,7 +251,7 @@ func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
 // shouldSkipFeed checks if a feed can be skipped (incremental build).
 // Returns (skip bool, hash string) - hash is returned so callers can reuse it
 // for caching without recomputing.
-func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interface{}, changedSlugs map[string]bool, outputDir string) (bool, string) {
+func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interface{}, changedSlugs map[string]bool, outputDir string) (skip bool, hash string) {
 	// Always compute hash since we return it for caching
 	currentHash := p.computeFeedHash(fc)
 
