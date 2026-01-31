@@ -186,7 +186,7 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 	files := p.scanFiles(absBaseDir)
 
 	// Cache for next build
-	if cache != nil {
+	if cache != nil && len(files) > 0 {
 		cache.SetGlobCache(files, patternHash)
 	}
 
