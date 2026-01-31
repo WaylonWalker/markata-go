@@ -266,6 +266,9 @@ type Config struct {
 	// Mentions configures the @mentions resolution plugin
 	Mentions MentionsConfig `json:"mentions" yaml:"mentions" toml:"mentions"`
 
+	// ErrorPages configures custom error pages (404, etc.)
+	ErrorPages ErrorPagesConfig `json:"error_pages" yaml:"error_pages" toml:"error_pages"`
+
 	// TemplatePresets defines named template preset configurations
 	// Each preset specifies templates for all output formats
 	TemplatePresets map[string]TemplatePreset `json:"template_presets,omitempty" yaml:"template_presets,omitempty" toml:"template_presets,omitempty"`
@@ -1467,6 +1470,37 @@ func (c *ContentTemplatesConfig) GetPlacement(templateName string) string {
 	return templateName
 }
 
+// ErrorPagesConfig configures custom error pages (404, etc.)
+type ErrorPagesConfig struct {
+	// Enable404 enables the built-in 404 page (default: true)
+	Enable404 *bool `json:"enable_404,omitempty" yaml:"enable_404,omitempty" toml:"enable_404,omitempty"`
+
+	// Custom404Template is the path to a custom 404 template (default: "404.html")
+	Custom404Template string `json:"custom_404_template,omitempty" yaml:"custom_404_template,omitempty" toml:"custom_404_template,omitempty"`
+
+	// MaxSuggestions is the maximum number of similar posts to suggest (default: 5)
+	MaxSuggestions int `json:"max_suggestions,omitempty" yaml:"max_suggestions,omitempty" toml:"max_suggestions,omitempty"`
+}
+
+// NewErrorPagesConfig creates a new ErrorPagesConfig with default values.
+func NewErrorPagesConfig() ErrorPagesConfig {
+	enabled := true
+	return ErrorPagesConfig{
+		Enable404:         &enabled,
+		Custom404Template: "404.html",
+		MaxSuggestions:    5,
+	}
+}
+
+// Is404Enabled returns whether the 404 page is enabled.
+// Defaults to true if not explicitly set.
+func (e *ErrorPagesConfig) Is404Enabled() bool {
+	if e.Enable404 == nil {
+		return true
+	}
+	return *e.Enable404
+}
+
 // NewConfig creates a new Config with default values.
 func NewConfig() *Config {
 	return &Config{
@@ -1507,6 +1541,7 @@ func NewConfig() *Config {
 		ContentTemplates: NewContentTemplatesConfig(),
 		Blogroll:         NewBlogrollConfig(),
 		Mentions:         NewMentionsConfig(),
+		ErrorPages:       NewErrorPagesConfig(),
 	}
 }
 

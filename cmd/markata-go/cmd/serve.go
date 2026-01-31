@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -15,6 +16,9 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/slugmatch"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )
@@ -157,7 +161,7 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 
 	// Create HTTP server
 	addr := fmt.Sprintf("%s:%d", serveHost, servePort)
-	handler := createHandler(outputPath)
+	handler := createHandler(outputPath, m)
 
 	server := &http.Server{
 		Addr:              addr,
@@ -196,7 +200,8 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 }
 
 // createHandler creates an HTTP handler that serves files with live reload injection.
-func createHandler(outputDir string) http.Handler {
+// The manager is used for 404 page rendering with post suggestions.
+func createHandler(outputDir string, manager *lifecycle.Manager) http.Handler {
 	fileServer := http.FileServer(http.Dir(outputDir))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -229,9 +234,15 @@ func createHandler(outputDir string) http.Handler {
 			}
 		}
 
+		// Check if file exists - if not, serve 404 page
+		if err != nil && os.IsNotExist(err) {
+			serve404Page(w, r.URL.Path, manager)
+			return
+		}
+
 		// Check if it's an HTML file and inject live reload script
 		if strings.HasSuffix(path, ".html") || (info != nil && !info.IsDir() && strings.HasSuffix(fullPath, ".html")) {
-			serveHTMLWithLiveReload(w, fullPath)
+			serveHTMLWithLiveReload(w, fullPath, manager)
 			return
 		}
 
@@ -241,10 +252,11 @@ func createHandler(outputDir string) http.Handler {
 }
 
 // serveHTMLWithLiveReload reads an HTML file and injects the live reload script.
-func serveHTMLWithLiveReload(w http.ResponseWriter, path string) {
+func serveHTMLWithLiveReload(w http.ResponseWriter, path string, manager *lifecycle.Manager) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		http.Error(w, "File not found", http.StatusNotFound)
+		// File not found - serve 404 page
+		serve404Page(w, path, manager)
 		return
 	}
 
@@ -280,6 +292,137 @@ func serveHTMLWithLiveReload(w http.ResponseWriter, path string) {
 	if _, err := w.Write([]byte(html)); err != nil && verbose {
 		fmt.Printf("Error writing response: %v\n", err)
 	}
+}
+
+// serve404Page renders and serves a custom 404 page with post suggestions.
+func serve404Page(w http.ResponseWriter, requestedPath string, manager *lifecycle.Manager) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusNotFound)
+
+	// Get the full models.Config from the manager's Extra
+	lcConfig := manager.Config()
+	var config *models.Config
+	if lcConfig != nil && lcConfig.Extra != nil {
+		if cfg, ok := lcConfig.Extra["models_config"].(*models.Config); ok {
+			config = cfg
+		}
+	}
+
+	// Fallback if no config available
+	if config == nil {
+		_, _ = w.Write([]byte("<html><body><h1>404 - Page Not Found</h1><p>The requested page could not be found.</p></body></html>"))
+		return
+	}
+
+	// Check if 404 pages are enabled
+	if !config.ErrorPages.Is404Enabled() {
+		// Fallback to simple error message
+		_, _ = w.Write([]byte("<html><body><h1>404 - Page Not Found</h1><p>The requested page could not be found.</p></body></html>"))
+		return
+	}
+
+	// Get posts for suggestions
+	posts := manager.Posts()
+	maxSuggestions := config.ErrorPages.MaxSuggestions
+	if maxSuggestions <= 0 {
+		maxSuggestions = 5
+	}
+
+	// Find similar posts based on the requested path
+	suggestedPosts := slugmatch.FindSimilarSlugs(requestedPath, posts, maxSuggestions)
+
+	// Get recent posts as fallback if no similar posts found
+	var recentPosts []*models.Post
+	if len(suggestedPosts) == 0 && len(posts) > 0 {
+		// Sort by date descending and take top N
+		sortedPosts := make([]*models.Post, len(posts))
+		copy(sortedPosts, posts)
+		sort.Slice(sortedPosts, func(i, j int) bool {
+			if sortedPosts[i].Date == nil {
+				return false
+			}
+			if sortedPosts[j].Date == nil {
+				return true
+			}
+			return sortedPosts[i].Date.After(*sortedPosts[j].Date)
+		})
+
+		limit := maxSuggestions
+		if limit > len(sortedPosts) {
+			limit = len(sortedPosts)
+		}
+		recentPosts = sortedPosts[:limit]
+	}
+
+	// Create template engine
+	templatesDir := config.TemplatesDir
+	if templatesDir == "" {
+		templatesDir = "templates"
+	}
+	engine, err := templates.NewEngineWithTheme(templatesDir, config.Theme.Name)
+	if err != nil {
+		// Fallback to simple error message
+		if verbose {
+			fmt.Printf("Error creating template engine for 404 page: %v\n", err)
+		}
+		_, _ = w.Write([]byte("<html><body><h1>404 - Page Not Found</h1><p>The requested page could not be found.</p></body></html>"))
+		return
+	}
+
+	// Create template context
+	ctx := templates.NewContext(nil, "", config)
+	ctx.Set("requested_path", requestedPath)
+	ctx.Set("suggested_posts", templates.PostsToMaps(suggestedPosts))
+	ctx.Set("recent_posts", templates.PostsToMaps(recentPosts))
+
+	// Determine template name
+	templateName := config.ErrorPages.Custom404Template
+	if templateName == "" {
+		templateName = "404.html"
+	}
+
+	// Render the 404 template
+	html, err := engine.Render(templateName, ctx)
+	if err != nil {
+		// Fallback to simple error message
+		if verbose {
+			fmt.Printf("Error rendering 404 template: %v\n", err)
+		}
+		_, _ = w.Write([]byte(fmt.Sprintf(
+			"<html><body><h1>404 - Page Not Found</h1><p>The requested page <code>%s</code> could not be found.</p><p><a href=\"/\">Go home</a></p></body></html>",
+			requestedPath,
+		)))
+		return
+	}
+
+	// Inject live reload script
+	liveReloadScript := `<script>
+(function() {
+    var source = new EventSource('/__livereload');
+    source.onmessage = function(e) {
+        if (e.data === 'reload') {
+            location.reload();
+        }
+    };
+    source.onerror = function() {
+        source.close();
+        setTimeout(function() {
+            location.reload();
+        }, 1000);
+    };
+})();
+</script>`
+
+	switch {
+	case strings.Contains(html, "</body>"):
+		html = strings.Replace(html, "</body>", liveReloadScript+"</body>", 1)
+	case strings.Contains(html, "</html>"):
+		html = strings.Replace(html, "</html>", liveReloadScript+"</html>", 1)
+	default:
+		html += liveReloadScript
+	}
+
+	_, _ = w.Write([]byte(html))
 }
 
 // Live reload clients

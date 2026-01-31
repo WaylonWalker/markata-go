@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found | {{ config.title | default:"My Site" }}{% endblock %}
+{% block description %}The requested page could not be found.{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+    <article class="error-page error-page--404">
+        <header>
+            <h1>404 - Page Not Found</h1>
+            <p class="error-message">
+                The page you're looking for doesn't exist or has been moved.
+            </p>
+            {% if requested_path %}
+            <p class="requested-path">
+                <code>{{ requested_path }}</code>
+            </p>
+            {% endif %}
+        </header>
+
+        <div class="error-content">
+            {% if suggested_posts and suggested_posts|length > 0 %}
+            <section class="suggestions">
+                <h2>Did you mean one of these?</h2>
+                <ul class="suggestion-list">
+                    {% for post in suggested_posts %}
+                    <li class="suggestion-item">
+                        <a href="/{{ post.slug }}/">
+                            <span class="suggestion-title">{{ post.title | default:post.slug }}</span>
+                            {% if post.description %}
+                            <span class="suggestion-description">{{ post.description | truncatewords:20 }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            {% if recent_posts and recent_posts|length > 0 %}
+            <section class="recent-posts">
+                <h2>Recent Posts</h2>
+                <ul class="recent-list">
+                    {% for post in recent_posts %}
+                    <li class="recent-item">
+                        <a href="/{{ post.slug }}/">
+                            <span class="recent-title">{{ post.title | default:post.slug }}</span>
+                            {% if post.date %}
+                            <time datetime="{{ post.date | atom_date }}">{{ post.date | date:"Jan 2, 2006" }}</time>
+                            {% endif %}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </section>
+            {% endif %}
+
+            <section class="error-actions">
+                <p>You can try:</p>
+                <ul>
+                    <li><a href="/">Go to the home page</a></li>
+                    {% if config.search.enabled %}
+                    <li><a href="/#search">Search the site</a></li>
+                    {% endif %}
+                    <li>Check the URL for typos</li>
+                </ul>
+            </section>
+        </div>
+    </article>
+</div>
+
+<style>
+.error-page {
+    text-align: center;
+    padding: var(--spacing-xl, 3rem) var(--spacing-md, 1rem);
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.error-page h1 {
+    font-size: var(--font-size-3xl, 2.5rem);
+    color: var(--color-primary, #3b82f6);
+    margin-bottom: var(--spacing-md, 1rem);
+}
+
+.error-message {
+    font-size: var(--font-size-lg, 1.125rem);
+    color: var(--color-text-muted, #6b7280);
+    margin-bottom: var(--spacing-sm, 0.5rem);
+}
+
+.requested-path {
+    margin-bottom: var(--spacing-lg, 2rem);
+}
+
+.requested-path code {
+    background: var(--color-code-bg, #f3f4f6);
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+    border-radius: var(--radius-sm, 0.25rem);
+    font-family: var(--font-mono, monospace);
+    color: var(--color-text, #1f2937);
+}
+
+.error-content {
+    text-align: left;
+}
+
+.suggestions,
+.recent-posts,
+.error-actions {
+    margin-top: var(--spacing-xl, 2rem);
+}
+
+.suggestions h2,
+.recent-posts h2 {
+    font-size: var(--font-size-xl, 1.25rem);
+    margin-bottom: var(--spacing-md, 1rem);
+    color: var(--color-heading, #111827);
+}
+
+.suggestion-list,
+.recent-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.suggestion-item,
+.recent-item {
+    margin-bottom: var(--spacing-sm, 0.5rem);
+}
+
+.suggestion-item a,
+.recent-item a {
+    display: block;
+    padding: var(--spacing-md, 1rem);
+    background: var(--color-surface, #f9fafb);
+    border-radius: var(--radius-md, 0.5rem);
+    text-decoration: none;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.suggestion-item a:hover,
+.recent-item a:hover {
+    background: var(--color-surface-hover, #f3f4f6);
+    transform: translateX(4px);
+}
+
+.suggestion-title,
+.recent-title {
+    display: block;
+    font-weight: 600;
+    color: var(--color-primary, #3b82f6);
+}
+
+.suggestion-description {
+    display: block;
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-muted, #6b7280);
+    margin-top: var(--spacing-xs, 0.25rem);
+}
+
+.recent-item time {
+    display: block;
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-muted, #6b7280);
+    margin-top: var(--spacing-xs, 0.25rem);
+}
+
+.error-actions ul {
+    list-style-position: inside;
+    padding-left: 0;
+}
+
+.error-actions li {
+    margin-bottom: var(--spacing-xs, 0.25rem);
+}
+
+.error-actions a {
+    color: var(--color-primary, #3b82f6);
+    text-decoration: underline;
+}
+
+.error-actions a:hover {
+    color: var(--color-primary-dark, #2563eb);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .requested-path code {
+        background: var(--color-code-bg, #374151);
+    }
+
+    .suggestion-item a,
+    .recent-item a {
+        background: var(--color-surface, #1f2937);
+        border-color: var(--color-border, #374151);
+    }
+
+    .suggestion-item a:hover,
+    .recent-item a:hover {
+        background: var(--color-surface-hover, #374151);
+    }
+}
+</style>
+{% endblock %}
