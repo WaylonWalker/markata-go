@@ -916,8 +916,12 @@ func feedToMap(f *models.FeedConfig) map[string]interface{} {
 		"sitemap":  f.Formats.Sitemap,
 	}
 
+	// Compute base_url from slug (e.g., "archive" -> "/archive")
+	baseURL := "/" + f.Slug
+
 	return map[string]interface{}{
 		"slug":           f.Slug,
+		"base_url":       baseURL,
 		"title":          f.Title,
 		"description":    f.Description,
 		"filter":         f.Filter,
