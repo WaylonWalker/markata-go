@@ -171,7 +171,8 @@ func processSingleCSSFile(cssFile, relPath string, used *csspurge.UsedSelectors,
 	stats.totalPurged += purgeStats.PurgedSize
 
 	if purgeStats.RemovedRules > 0 {
-		if err := os.WriteFile(cssFile, []byte(purged), 0o600); err != nil {
+		//nolint:gosec // G306: CSS output files need 0644 for web serving
+		if err := os.WriteFile(cssFile, []byte(purged), 0o644); err != nil {
 			fmt.Printf("[css_purge] WARNING: failed to write %s: %v\n", relPath, err)
 			return
 		}
@@ -322,25 +323,23 @@ func shouldSkipCSSFile(relPath string, patterns []string) bool {
 	return false
 }
 
-// getCSSPurgeConfig extracts CSSPurgeConfig from lifecycle.Config.Extra.
-// Handles both direct struct assignment and raw map from TOML parsing.
+// getCSSPurgeConfig extracts CSSPurgeConfig from config.Extra.
 func getCSSPurgeConfig(config *lifecycle.Config) models.CSSPurgeConfig {
 	if config.Extra == nil {
 		return models.NewCSSPurgeConfig()
 	}
 
-	// Check if it's already a typed config
+	// Try direct type assertion
 	if pc, ok := config.Extra["css_purge"].(models.CSSPurgeConfig); ok {
 		return pc
 	}
 
-	// Check for raw map from TOML/YAML/JSON parsing
+	// Try to parse from map if stored as map[string]interface{}
 	rawConfig, ok := config.Extra["css_purge"].(map[string]interface{})
 	if !ok {
 		return models.NewCSSPurgeConfig()
 	}
 
-	// Parse the raw map into config
 	result := models.NewCSSPurgeConfig()
 
 	if enabled, ok := rawConfig["enabled"].(bool); ok {
@@ -349,11 +348,6 @@ func getCSSPurgeConfig(config *lifecycle.Config) models.CSSPurgeConfig {
 	if verbose, ok := rawConfig["verbose"].(bool); ok {
 		result.Verbose = verbose
 	}
-	if threshold, ok := rawConfig["warning_threshold"].(int64); ok {
-		result.WarningThreshold = int(threshold)
-	}
-
-	// Parse preserve patterns
 	if preserve, ok := rawConfig["preserve"].([]interface{}); ok {
 		result.Preserve = make([]string, 0, len(preserve))
 		for _, p := range preserve {
@@ -361,24 +355,35 @@ func getCSSPurgeConfig(config *lifecycle.Config) models.CSSPurgeConfig {
 				result.Preserve = append(result.Preserve, s)
 			}
 		}
+	} else if preserve, ok := rawConfig["preserve"].([]string); ok {
+		result.Preserve = preserve
 	}
-
-	// Parse skip_files patterns
-	if skipFiles, ok := rawConfig["skip_files"].([]interface{}); ok {
-		result.SkipFiles = make([]string, 0, len(skipFiles))
-		for _, sf := range skipFiles {
-			if s, ok := sf.(string); ok {
-				result.SkipFiles = append(result.SkipFiles, s)
+	if skip, ok := rawConfig["skip_files"].([]interface{}); ok {
+		result.SkipFiles = make([]string, 0, len(skip))
+		for _, s := range skip {
+			if str, ok := s.(string); ok {
+				result.SkipFiles = append(result.SkipFiles, str)
 			}
 		}
+	} else if skip, ok := rawConfig["skip_files"].([]string); ok {
+		result.SkipFiles = skip
+	}
+	if threshold, ok := parseIntFromInterface(rawConfig["warning_threshold"]); ok {
+		result.WarningThreshold = threshold
 	}
 
 	return result
 }
 
-// Ensure CSSPurgePlugin implements the required interfaces.
-var (
-	_ lifecycle.Plugin         = (*CSSPurgePlugin)(nil)
-	_ lifecycle.CleanupPlugin  = (*CSSPurgePlugin)(nil)
-	_ lifecycle.PriorityPlugin = (*CSSPurgePlugin)(nil)
-)
+func parseIntFromInterface(value interface{}) (int, bool) {
+	switch v := value.(type) {
+	case int:
+		return v, true
+	case int64:
+		return int(v), true
+	case float64:
+		return int(v), true
+	default:
+		return 0, false
+	}
+}

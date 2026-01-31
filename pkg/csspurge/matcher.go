@@ -237,91 +237,36 @@ func matchesPreservePattern(selector string, patterns []string) bool {
 	classes := ExtractClassesFromSelector(selector)
 	ids := ExtractIDsFromSelector(selector)
 
-	for _, class := range classes {
-		if matchesPreservePatterns(class, patterns) {
-			return true
-		}
-	}
-
-	for _, id := range ids {
-		if matchesPreservePatterns(id, patterns) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// matchesPreservePatterns checks if a name matches any preserve pattern.
-func matchesPreservePatterns(name string, patterns []string) bool {
 	for _, pattern := range patterns {
-		matched, err := filepath.Match(pattern, name)
-		if err == nil && matched {
+		// Match the entire selector directly
+		if matched, _ := filepath.Match(pattern, selector); matched {
+			return true
+		}
+
+		// Match against classes
+		for _, class := range classes {
+			if matched, _ := filepath.Match(pattern, class); matched {
+				return true
+			}
+		}
+
+		// Match against IDs
+		for _, id := range ids {
+			if matched, _ := filepath.Match(pattern, id); matched {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// matchesPreservePatterns checks if a class or ID matches any preserve pattern.
+func matchesPreservePatterns(value string, patterns []string) bool {
+	for _, pattern := range patterns {
+		if matched, _ := filepath.Match(pattern, value); matched {
 			return true
 		}
 	}
 	return false
-}
-
-// DefaultPreservePatterns returns the default patterns for selectors to preserve.
-// These are commonly used by JavaScript frameworks and should not be purged.
-func DefaultPreservePatterns() []string {
-	return []string{
-		// JavaScript-added classes
-		"js-*",
-
-		// HTMX framework classes
-		"htmx-*",
-
-		// Alpine.js framework (x-show, x-bind, x-data, x-cloak, etc.)
-		"x-*",
-
-		// Pagefind search UI classes
-		"pagefind-*",
-
-		// GLightbox image viewer
-		"glightbox*",
-		"gslide*",
-		"goverlay*",
-
-		// Common state classes (often added by JS)
-		"active",
-		"inactive",
-		"hidden",
-		"visible",
-		"show",
-		"hide",
-		"open",
-		"closed",
-		"loading",
-		"loaded",
-		"error",
-		"success",
-		"disabled",
-		"enabled",
-		"selected",
-		"focused",
-		"expanded",
-		"collapsed",
-
-		// Theme/mode classes
-		"dark",
-		"light",
-		"dark-mode",
-		"light-mode",
-
-		// Animation classes
-		"fade-*",
-		"slide-*",
-		"animate-*",
-
-		// Transition classes
-		"transition-*",
-		"entering",
-		"leaving",
-
-		// Accessibility
-		"sr-only",
-		"visually-hidden",
-	}
 }
