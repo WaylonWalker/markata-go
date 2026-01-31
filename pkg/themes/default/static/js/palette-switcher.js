@@ -15,6 +15,51 @@
   // Available aesthetics for cycling
   const AESTHETICS = ['brutal', 'precision', 'balanced', 'elevated', 'minimal'];
 
+  // Aesthetic CSS property definitions
+  // Uses --radius and --radius-lg to match the actual CSS variable names
+  const AESTHETIC_STYLES = {
+    brutal: {
+      '--radius': '0',
+      '--radius-lg': '0',
+      '--article-shadow': '4px 4px 0 var(--color-border)',
+      '--font-body': 'var(--font-mono, ui-monospace, monospace)',
+      '--leading-normal': '1.5',
+      '--leading-relaxed': '1.6'
+    },
+    precision: {
+      '--radius': '2px',
+      '--radius-lg': '4px',
+      '--article-shadow': '0 2px 4px rgba(0,0,0,0.06)',
+      '--font-body': 'system-ui, -apple-system, sans-serif',
+      '--leading-normal': '1.5',
+      '--leading-relaxed': '1.625'
+    },
+    balanced: {
+      '--radius': '0.375rem',
+      '--radius-lg': '0.5rem',
+      '--article-shadow': '0 4px 12px rgba(0,0,0,0.1)',
+      '--font-body': 'system-ui, -apple-system, sans-serif',
+      '--leading-normal': '1.5',
+      '--leading-relaxed': '1.625'
+    },
+    elevated: {
+      '--radius': '0.75rem',
+      '--radius-lg': '1rem',
+      '--article-shadow': '0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06)',
+      '--font-body': 'system-ui, -apple-system, sans-serif',
+      '--leading-normal': '1.6',
+      '--leading-relaxed': '1.75'
+    },
+    minimal: {
+      '--radius': '2px',
+      '--radius-lg': '4px',
+      '--article-shadow': 'none',
+      '--font-body': 'system-ui, -apple-system, sans-serif',
+      '--leading-normal': '1.5',
+      '--leading-relaxed': '1.625'
+    }
+  };
+
   // Variant suffixes to strip when computing family names
   const VARIANT_SUFFIXES = [
     '-light', '-dark',
@@ -271,6 +316,132 @@
   }
 
   /**
+   * Enhance an existing HTML-based theme switcher
+   */
+  function enhanceExistingSwitcher(container, families) {
+    // Wire up the existing mode toggle
+    const modeToggle = container.querySelector('.palette-mode-toggle');
+    if (modeToggle) {
+      modeToggle.addEventListener('click', () => {
+        const current = getColorMode();
+        setColorMode(current === 'dark' ? 'light' : 'dark');
+      });
+    }
+
+    // Populate the palette family dropdown if it exists
+    const familyList = container.querySelector('.palette-family-list');
+    const familyBtn = container.querySelector('.palette-family-btn');
+    const dropdown = container.querySelector('.palette-family-dropdown');
+
+    if (familyList && familyBtn && dropdown) {
+      // Sort families alphabetically
+      const sortedFamilies = Array.from(families.entries()).sort((a, b) =>
+        a[1].displayName.localeCompare(b[1].displayName)
+      );
+
+      // Populate family list
+      for (const [familyName, family] of sortedFamilies) {
+        const option = document.createElement('button');
+        option.className = 'palette-family-option';
+        option.type = 'button';
+        option.dataset.family = familyName;
+        option.setAttribute('role', 'option');
+
+        const hasLight = family.light.length > 0;
+        const hasDark = family.dark.length > 0;
+        let variantIndicator = '';
+        if (hasLight && hasDark) {
+          variantIndicator = '<span class="variant-indicator both">\u2600\u263E</span>';
+        } else if (hasLight) {
+          variantIndicator = '<span class="variant-indicator light">\u2600</span>';
+        } else {
+          variantIndicator = '<span class="variant-indicator dark">\u263E</span>';
+        }
+
+        option.innerHTML = '<span class="family-name">' + family.displayName + '</span>' + variantIndicator;
+
+        option.addEventListener('click', () => {
+          selectFamily(familyName, families);
+          dropdown.hidden = true;
+          familyBtn.setAttribute('aria-expanded', 'false');
+        });
+
+        familyList.appendChild(option);
+      }
+
+      // Toggle dropdown
+      familyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = !dropdown.hidden;
+        dropdown.hidden = isOpen;
+        familyBtn.setAttribute('aria-expanded', !isOpen);
+        if (!isOpen) {
+          const searchInput = dropdown.querySelector('input');
+          if (searchInput) searchInput.focus();
+        }
+      });
+
+      // Search functionality
+      const searchInput = dropdown.querySelector('.palette-search input');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const query = e.target.value.toLowerCase();
+          familyList.querySelectorAll('.palette-family-option').forEach(opt => {
+            const name = opt.querySelector('.family-name').textContent.toLowerCase();
+            opt.hidden = !name.includes(query);
+          });
+        });
+      }
+
+      // Close on outside click
+      document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) {
+          dropdown.hidden = true;
+          familyBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      // Close on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !dropdown.hidden) {
+          dropdown.hidden = true;
+          familyBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      // Store sorted family names for cycling
+      sortedFamilyNames = sortedFamilies.map(([name]) => name);
+    }
+
+    // Initialize state
+    const mode = getColorMode();
+    updateModeToggle(mode);
+
+    // Apply saved palette or default
+    const savedPalette = localStorage.getItem(STORAGE_KEY);
+    const savedFamily = localStorage.getItem(FAMILY_KEY);
+
+    if (savedPalette) {
+      applyPalette(savedPalette);
+      const manifest2 = getManifest();
+      const savedP = manifest2.find(p => p.name === savedPalette);
+      if (savedP && savedP.variant !== mode) {
+        setColorMode(savedP.variant);
+      }
+    } else if (savedFamily && families.has(savedFamily)) {
+      selectFamily(savedFamily, families);
+    } else {
+      // Default to first available family
+      const sortedFamilies = Array.from(families.entries()).sort((a, b) =>
+        a[1].displayName.localeCompare(b[1].displayName)
+      );
+      if (sortedFamilies.length > 0) {
+        selectFamily(sortedFamilies[0][0], families);
+      }
+    }
+  }
+
+  /**
    * Create the palette switcher UI
    */
   function createSwitcher() {
@@ -285,7 +456,15 @@
 
     const families = groupByFamily(manifest);
 
-    // Create container
+    // Check if we have an existing theme-switcher from HTML template
+    const existingSwitcher = document.querySelector('.theme-switcher');
+    if (existingSwitcher) {
+      // Enhance existing switcher instead of creating new one
+      enhanceExistingSwitcher(existingSwitcher, families);
+      return;
+    }
+
+    // Create new container (fallback if no HTML template)
     const container = document.createElement('div');
     container.className = 'palette-switcher';
 
@@ -517,7 +696,7 @@
   }
 
   /**
-   * Set the aesthetic
+   * Set the aesthetic and apply CSS properties
    */
   function setAesthetic(aesthetic) {
     if (!AESTHETICS.includes(aesthetic)) {
@@ -525,8 +704,27 @@
       return;
     }
 
+    const root = document.documentElement;
+    const styles = AESTHETIC_STYLES[aesthetic];
+
+    // Apply all CSS custom properties
+    if (styles) {
+      for (const [prop, value] of Object.entries(styles)) {
+        root.style.setProperty(prop, value);
+      }
+    }
+
+    // Set data attribute for CSS selectors
+    root.dataset.aesthetic = aesthetic;
+
+    // Persist selection
     localStorage.setItem(AESTHETIC_KEY, aesthetic);
-    document.documentElement.dataset.aesthetic = aesthetic;
+
+    // Update the dropdown if it exists
+    const select = document.getElementById('aesthetic-select');
+    if (select && select.value !== aesthetic) {
+      select.value = aesthetic;
+    }
 
     // Dispatch event
     window.dispatchEvent(new CustomEvent('aesthetic-change', {
@@ -561,7 +759,7 @@
    */
   function initAesthetic() {
     const aesthetic = getAesthetic();
-    document.documentElement.dataset.aesthetic = aesthetic;
+    setAesthetic(aesthetic);
   }
 
   // Initialize aesthetic immediately
