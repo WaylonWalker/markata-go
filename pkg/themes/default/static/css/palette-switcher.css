@@ -3,7 +3,8 @@
  * Family selector with separate dark/light toggle
  */
 
-.palette-switcher {
+.palette-switcher,
+.theme-switcher {
   display: inline-flex !important;
   align-items: center;
   gap: 0.5rem;
