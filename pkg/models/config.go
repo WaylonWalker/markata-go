@@ -266,6 +266,9 @@ type Config struct {
 	// Mentions configures the @mentions resolution plugin
 	Mentions MentionsConfig `json:"mentions" yaml:"mentions" toml:"mentions"`
 
+	// ResourceHints configures automatic resource hints generation (preconnect, dns-prefetch, etc.)
+	ResourceHints ResourceHintsConfig `json:"resource_hints" yaml:"resource_hints" toml:"resource_hints"`
+
 	// TemplatePresets defines named template preset configurations
 	// Each preset specifies templates for all output formats
 	TemplatePresets map[string]TemplatePreset `json:"template_presets,omitempty" yaml:"template_presets,omitempty" toml:"template_presets,omitempty"`
@@ -1184,6 +1187,70 @@ func NewWebMentionsConfig() WebMentionsConfig {
 	}
 }
 
+// ResourceHintsConfig configures automatic resource hints generation for network optimization.
+// Resource hints (preconnect, dns-prefetch, preload, prefetch) help browsers prepare
+// for external resources before they're needed, improving page load performance.
+type ResourceHintsConfig struct {
+	// Enabled controls whether resource hints are generated (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// AutoDetect enables automatic detection of external domains in HTML/CSS (default: true)
+	AutoDetect *bool `json:"auto_detect,omitempty" yaml:"auto_detect,omitempty" toml:"auto_detect,omitempty"`
+
+	// Domains is a list of manually configured domain hints
+	Domains []DomainHint `json:"domains,omitempty" yaml:"domains,omitempty" toml:"domains,omitempty"`
+
+	// ExcludeDomains is a list of domains to exclude from auto-detection
+	ExcludeDomains []string `json:"exclude_domains,omitempty" yaml:"exclude_domains,omitempty" toml:"exclude_domains,omitempty"`
+}
+
+// DomainHint represents a hint configuration for a specific domain.
+type DomainHint struct {
+	// Domain is the external domain (e.g., "fonts.googleapis.com")
+	Domain string `json:"domain" yaml:"domain" toml:"domain"`
+
+	// HintTypes specifies which hint types to generate for this domain
+	// Valid values: "preconnect", "dns-prefetch", "preload", "prefetch"
+	HintTypes []string `json:"hint_types" yaml:"hint_types" toml:"hint_types"`
+
+	// CrossOrigin specifies the crossorigin attribute value
+	// Valid values: "", "anonymous", "use-credentials" (default: "")
+	CrossOrigin string `json:"crossorigin,omitempty" yaml:"crossorigin,omitempty" toml:"crossorigin,omitempty"`
+
+	// As specifies the "as" attribute for preload hints (e.g., "font", "script", "style")
+	As string `json:"as,omitempty" yaml:"as,omitempty" toml:"as,omitempty"`
+}
+
+// NewResourceHintsConfig creates a new ResourceHintsConfig with default values.
+func NewResourceHintsConfig() ResourceHintsConfig {
+	enabled := true
+	autoDetect := true
+	return ResourceHintsConfig{
+		Enabled:        &enabled,
+		AutoDetect:     &autoDetect,
+		Domains:        []DomainHint{},
+		ExcludeDomains: []string{},
+	}
+}
+
+// IsEnabled returns whether resource hints generation is enabled.
+// Defaults to true if not explicitly set.
+func (r *ResourceHintsConfig) IsEnabled() bool {
+	if r.Enabled == nil {
+		return true
+	}
+	return *r.Enabled
+}
+
+// IsAutoDetectEnabled returns whether auto-detection is enabled.
+// Defaults to true if not explicitly set.
+func (r *ResourceHintsConfig) IsAutoDetectEnabled() bool {
+	if r.AutoDetect == nil {
+		return true
+	}
+	return *r.AutoDetect
+}
+
 // PostFormatsConfig configures the output formats for individual posts.
 // This controls what file formats are generated for each post.
 type PostFormatsConfig struct {
@@ -1560,6 +1627,7 @@ func NewConfig() *Config {
 		ContentTemplates: NewContentTemplatesConfig(),
 		Blogroll:         NewBlogrollConfig(),
 		Mentions:         NewMentionsConfig(),
+		ResourceHints:    NewResourceHintsConfig(),
 	}
 }
 
