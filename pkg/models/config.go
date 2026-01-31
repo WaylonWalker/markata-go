@@ -992,6 +992,12 @@ type SEOConfig struct {
 	// AuthorImage is the author's profile image URL for OG cards
 	AuthorImage string `json:"author_image" yaml:"author_image" toml:"author_image"`
 
+	// OGImageService is the URL for a screenshot service that generates OG images
+	// from OG card pages. The URL should accept a `url` query parameter.
+	// Example: "https://shots.example.com/shot/" generates URLs like:
+	// "https://shots.example.com/shot/?url=https://site.com/post/og/&height=600&width=1200&format=jpg"
+	OGImageService string `json:"og_image_service" yaml:"og_image_service" toml:"og_image_service"`
+
 	// StructuredData configures JSON-LD Schema.org generation
 	StructuredData StructuredDataConfig `json:"structured_data" yaml:"structured_data" toml:"structured_data"`
 }
