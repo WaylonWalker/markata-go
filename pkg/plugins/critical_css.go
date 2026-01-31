@@ -43,26 +43,30 @@ func (p *CriticalCSSPlugin) Name() string {
 func (p *CriticalCSSPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 
-	// Extract CriticalCSSConfig from Extra
+	pluginConfig := models.NewCriticalCSSConfig()
 	if config.Extra != nil {
-		if cfg, ok := config.Extra["critical_css"].(models.CriticalCSSConfig); ok {
-			p.config = cfg
+		switch v := config.Extra["critical_css"].(type) {
+		case models.CriticalCSSConfig:
+			pluginConfig = v
+		case map[string]interface{}:
+			pluginConfig = parseCriticalCSSConfig(v)
 		}
 	}
 
-	// Use defaults if not configured
 	// NOTE: ViewportWidth and ViewportHeight are stored for configuration compatibility
 	// but are NOT currently used. The extractor uses a selector-based approach, not
 	// viewport simulation. See issue #570 for discussion of future implementation.
-	if p.config.ViewportWidth == 0 {
-		p.config.ViewportWidth = 1300
+	if pluginConfig.ViewportWidth <= 0 {
+		pluginConfig.ViewportWidth = 1300
 	}
-	if p.config.ViewportHeight == 0 {
-		p.config.ViewportHeight = 900
+	if pluginConfig.ViewportHeight <= 0 {
+		pluginConfig.ViewportHeight = 900
 	}
-	if p.config.InlineThreshold == 0 {
-		p.config.InlineThreshold = 50000
+	if pluginConfig.InlineThreshold <= 0 {
+		pluginConfig.InlineThreshold = 50000
 	}
+
+	p.config = pluginConfig
 
 	// Initialize extractor
 	p.extractor = criticalcss.NewExtractor().
@@ -71,6 +75,66 @@ func (p *CriticalCSSPlugin) Configure(m *lifecycle.Manager) error {
 		WithExcludeSelectors(p.config.ExcludeSelectors)
 
 	return nil
+}
+
+func parseCriticalCSSConfig(raw map[string]interface{}) models.CriticalCSSConfig {
+	config := models.NewCriticalCSSConfig()
+
+	if enabled, ok := raw["enabled"].(bool); ok {
+		config.Enabled = &enabled
+	}
+	if minify, ok := raw["minify"].(bool); ok {
+		config.Minify = &minify
+	}
+	if preload, ok := raw["preload_non_critical"].(bool); ok {
+		config.PreloadNonCritical = &preload
+	}
+	if viewportWidth, ok := parseIntFromInterface(raw["viewport_width"]); ok {
+		config.ViewportWidth = viewportWidth
+	}
+	if viewportHeight, ok := parseIntFromInterface(raw["viewport_height"]); ok {
+		config.ViewportHeight = viewportHeight
+	}
+	if threshold, ok := parseIntFromInterface(raw["inline_threshold"]); ok {
+		config.InlineThreshold = threshold
+	}
+	switch extraSelectors := raw["extra_selectors"].(type) {
+	case []interface{}:
+		config.ExtraSelectors = toStringSlice(extraSelectors)
+	case []string:
+		config.ExtraSelectors = extraSelectors
+	}
+	switch excludeSelectors := raw["exclude_selectors"].(type) {
+	case []interface{}:
+		config.ExcludeSelectors = toStringSlice(excludeSelectors)
+	case []string:
+		config.ExcludeSelectors = excludeSelectors
+	}
+
+	return config
+}
+
+func parseIntFromInterface(value interface{}) (int, bool) {
+	switch v := value.(type) {
+	case int:
+		return v, true
+	case int64:
+		return int(v), true
+	case float64:
+		return int(v), true
+	default:
+		return 0, false
+	}
+}
+
+func toStringSlice(values []interface{}) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if str, ok := value.(string); ok {
+			result = append(result, str)
+		}
+	}
+	return result
 }
 
 // Write processes HTML files to inline critical CSS.
@@ -218,26 +282,20 @@ func (p *CriticalCSSPlugin) processHTML(html, criticalCSS string) (string, bool)
 		return html, false
 	}
 
-	// Build the critical CSS style tag
-	criticalTag := fmt.Sprintf(`<style id="critical-css">%s</style>`, criticalCSS)
-
-	// Track position as we process
-	lastEnd := 0
-
-	// Insert critical CSS before the first stylesheet link
+	// Insert critical CSS before first stylesheet
 	firstMatch := matches[0]
 	buf.WriteString(html[:firstMatch[0]])
-	buf.WriteString(criticalTag)
-	buf.WriteString("\n  ")
-	lastEnd = firstMatch[0]
+	buf.WriteString("\n<style id=\"critical-css\">\n")
+	buf.WriteString(criticalCSS)
+	buf.WriteString("\n</style>\n")
+
+	// Process all stylesheet links
+	lastEnd := firstMatch[0]
 	modified = true
 
-	// Process each stylesheet link
 	for _, match := range matches {
-		// Write content before this match (if not already written)
-		if match[0] > lastEnd {
-			buf.WriteString(html[lastEnd:match[0]])
-		}
+		// Write content between links
+		buf.WriteString(html[lastEnd:match[0]])
 
 		linkTag := html[match[0]:match[1]]
 
@@ -282,16 +340,14 @@ func (p *CriticalCSSPlugin) convertToPreload(linkTag string) string {
 		href,
 	)
 
-	return preloadLink + "\n  " + noscriptFallback
+	return preloadLink + "\n" + noscriptFallback
 }
 
-// Priority returns the plugin priority for each stage.
-// For Write stage, runs after publish_html to process generated HTML.
+// Priority returns the plugin priority for the given stage.
 func (p *CriticalCSSPlugin) Priority(stage lifecycle.Stage) int {
 	if stage == lifecycle.StageWrite {
-		// Run after publish_html (which has default priority)
-		// and after static_assets and palette_css
-		return lifecycle.PriorityLate + 50
+		// Run after publish_html, but before sitemap
+		return lifecycle.PriorityLate
 	}
 	return lifecycle.PriorityDefault
 }
