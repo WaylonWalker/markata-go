@@ -3,6 +3,7 @@ package plugins
 
 import (
 	"encoding/json"
+	"net/url"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -258,8 +259,9 @@ func (p *StructuredDataPlugin) getOGImageURL(post *models.Post, config *lifecycl
 		ogCardURL := siteURL + post.Href + "og/"
 
 		// Build the screenshot service URL with OG image dimensions (1200x600)
+		// URL-encode the ogCardURL to handle special characters safely
 		// Format: {og_image_service}?url={og_card_url}&height=600&width=1200&scaled_width=1200&scaled_height=600&format=jpg
-		return seoConfig.OGImageService + "?url=" + ogCardURL + "&height=600&width=1200&scaled_width=1200&scaled_height=600&format=jpg"
+		return seoConfig.OGImageService + "?url=" + url.QueryEscape(ogCardURL) + "&height=600&width=1200&scaled_width=1200&scaled_height=600&format=jpg"
 	}
 
 	// Fall back to post image
@@ -283,8 +285,9 @@ func (p *StructuredDataPlugin) getTwitterImageURL(post *models.Post, config *lif
 		ogCardURL := siteURL + post.Href + "og/"
 
 		// Build the screenshot service URL with Twitter image dimensions (1280x640)
+		// URL-encode the ogCardURL to handle special characters safely
 		// Format: {og_image_service}?url={og_card_url}&height=640&width=1280&scaled_width=1280&scaled_height=640&format=jpg
-		return seoConfig.OGImageService + "?url=" + ogCardURL + "&height=640&width=1280&scaled_width=1280&scaled_height=640&format=jpg"
+		return seoConfig.OGImageService + "?url=" + url.QueryEscape(ogCardURL) + "&height=640&width=1280&scaled_width=1280&scaled_height=640&format=jpg"
 	}
 
 	// Fall back to post image
