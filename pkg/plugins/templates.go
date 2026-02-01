@@ -417,7 +417,14 @@ func (p *TemplatesPlugin) Engine() *templates.Engine {
 // ToModelsConfig converts lifecycle.Config to models.Config for template context.
 // This is exported for use by other plugins that need to build template contexts
 // with the full config (e.g., publish_feeds, blogroll).
+// Note: This is not cached because lifecycle.Config.Extra is mutable and may be
+// modified by plugins throughout the build process (e.g., image_zoom sets glightbox_enabled).
 func ToModelsConfig(config *lifecycle.Config) *models.Config {
+	return toModelsConfigUncached(config)
+}
+
+// toModelsConfigUncached is the actual conversion logic, used by the cache.
+func toModelsConfigUncached(config *lifecycle.Config) *models.Config {
 	if config == nil {
 		return nil
 	}

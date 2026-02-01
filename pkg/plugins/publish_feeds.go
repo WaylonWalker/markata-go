@@ -162,14 +162,15 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	if numFeeds <= 2 {
 		for i := range feedConfigs {
 			fc := &feedConfigs[i]
-			if p.shouldSkipFeed(fc, buildCache, changedSlugs, outputDir) {
+			skip, hash := p.shouldSkipFeed(fc, buildCache, changedSlugs, outputDir)
+			if skip {
 				skippedCount++
 				continue
 			}
 			if err := p.publishFeed(fc, config, outputDir); err != nil {
 				return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 			}
-			p.cacheFeedHash(fc, buildCache)
+			p.cacheFeedHash(fc, buildCache, hash)
 			rebuiltCount++
 		}
 		return nil
@@ -183,12 +184,13 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
-		if p.shouldSkipFeed(fc, buildCache, changedSlugs, outputDir) {
+		skip, hash := p.shouldSkipFeed(fc, buildCache, changedSlugs, outputDir)
+		if skip {
 			skippedCount++
 			continue
 		}
 		wg.Add(1)
-		go func(fc *models.FeedConfig) {
+		go func(fc *models.FeedConfig, hash string) {
 			defer wg.Done()
 			semaphore <- struct{}{}        // Acquire
 			defer func() { <-semaphore }() // Release
@@ -197,11 +199,11 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 				errChan <- fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 				return
 			}
-			p.cacheFeedHash(fc, buildCache)
+			p.cacheFeedHash(fc, buildCache, hash)
 			countMu.Lock()
 			rebuiltCount++
 			countMu.Unlock()
-		}(fc)
+		}(fc, hash)
 	}
 
 	// Wait for all goroutines to complete
@@ -247,44 +249,48 @@ func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
 }
 
 // shouldSkipFeed checks if a feed can be skipped (incremental build).
-func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interface{}, changedSlugs map[string]bool, outputDir string) bool {
+// Returns (skip bool, hash string) - hash is returned so callers can reuse it
+// for caching without recomputing.
+func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interface{}, changedSlugs map[string]bool, outputDir string) (skip bool, hash string) {
+	// Always compute hash since we return it for caching
+	currentHash := p.computeFeedHash(fc)
+
 	if cache == nil {
-		return false
+		return false, currentHash
 	}
 
 	bc, ok := cache.(*buildcache.Cache)
 	if !ok || bc == nil {
-		return false
+		return false, currentHash
 	}
 
 	// Check if any post in this feed has changed
 	if len(changedSlugs) > 0 {
 		for _, post := range fc.Posts {
 			if changedSlugs[post.Slug] {
-				return false // Need to rebuild
+				return false, currentHash // Need to rebuild
 			}
 		}
 	}
 
 	// Check if feed hash changed (post list membership)
-	currentHash := p.computeFeedHash(fc)
 	cachedHash := bc.GetFeedHash(fc.Slug)
 	if cachedHash != currentHash {
-		return false // Need to rebuild
+		return false, currentHash // Need to rebuild
 	}
 
 	// Check if output files exist
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
 	indexPath := filepath.Join(feedDir, "index.html")
 	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
-		return false // Need to rebuild
+		return false, currentHash // Need to rebuild
 	}
 
-	return true // Can skip
+	return true, currentHash // Can skip
 }
 
 // cacheFeedHash stores the feed hash in the build cache.
-func (p *PublishFeedsPlugin) cacheFeedHash(fc *models.FeedConfig, cache interface{}) {
+func (p *PublishFeedsPlugin) cacheFeedHash(fc *models.FeedConfig, cache interface{}, hash string) {
 	if cache == nil {
 		return
 	}
@@ -292,7 +298,7 @@ func (p *PublishFeedsPlugin) cacheFeedHash(fc *models.FeedConfig, cache interfac
 	if !ok || bc == nil {
 		return
 	}
-	bc.SetFeedHash(fc.Slug, p.computeFeedHash(fc))
+	bc.SetFeedHash(fc.Slug, hash)
 }
 
 // feedFormatPublisher defines how to publish a specific feed format.
