@@ -310,14 +310,16 @@ func serve404Page(w http.ResponseWriter, requestedPath string, manager *lifecycl
 
 	// Fallback if no config available
 	if config == nil {
-		_, _ = w.Write([]byte("<html><body><h1>404 - Page Not Found</h1><p>The requested page could not be found.</p></body></html>"))
+		//nolint:errcheck // Best effort write to HTTP response
+		w.Write([]byte("<html><body><h1>404 - Page Not Found</h1><p>The requested page could not be found.</p></body></html>"))
 		return
 	}
 
 	// Check if 404 pages are enabled
 	if !config.ErrorPages.Is404Enabled() {
 		// Fallback to simple error message
-		_, _ = w.Write([]byte("<html><body><h1>404 - Page Not Found</h1><p>The requested page could not be found.</p></body></html>"))
+		//nolint:errcheck // Best effort write to HTTP response
+		w.Write([]byte("<html><body><h1>404 - Page Not Found</h1><p>The requested page could not be found.</p></body></html>"))
 		return
 	}
 
@@ -365,7 +367,8 @@ func serve404Page(w http.ResponseWriter, requestedPath string, manager *lifecycl
 		if verbose {
 			fmt.Printf("Error creating template engine for 404 page: %v\n", err)
 		}
-		_, _ = w.Write([]byte("<html><body><h1>404 - Page Not Found</h1><p>The requested page could not be found.</p></body></html>"))
+		//nolint:errcheck // Best effort write to HTTP response
+		w.Write([]byte("<html><body><h1>404 - Page Not Found</h1><p>The requested page could not be found.</p></body></html>"))
 		return
 	}
 
@@ -388,10 +391,11 @@ func serve404Page(w http.ResponseWriter, requestedPath string, manager *lifecycl
 		if verbose {
 			fmt.Printf("Error rendering 404 template: %v\n", err)
 		}
-		_, _ = w.Write([]byte(fmt.Sprintf(
+		//nolint:errcheck // Best effort write to HTTP response
+		fmt.Fprintf(w,
 			"<html><body><h1>404 - Page Not Found</h1><p>The requested page <code>%s</code> could not be found.</p><p><a href=\"/\">Go home</a></p></body></html>",
 			requestedPath,
-		)))
+		)
 		return
 	}
 
@@ -422,7 +426,8 @@ func serve404Page(w http.ResponseWriter, requestedPath string, manager *lifecycl
 		html += liveReloadScript
 	}
 
-	_, _ = w.Write([]byte(html))
+	//nolint:errcheck // Best effort write to HTTP response
+	w.Write([]byte(html))
 }
 
 // Live reload clients

@@ -88,7 +88,7 @@ func (p *ErrorPagesPlugin) generate404Page(m *lifecycle.Manager, cfg *models.Con
 	// Create template engine
 	templatesDir := cfg.TemplatesDir
 	if templatesDir == "" {
-		templatesDir = "templates"
+		templatesDir = PluginNameTemplates
 	}
 	engine, err := templates.NewEngineWithTheme(templatesDir, cfg.Theme.Name)
 	if err != nil {
@@ -124,7 +124,7 @@ func (p *ErrorPagesPlugin) generate404Page(m *lifecycle.Manager, cfg *models.Con
 		return fmt.Errorf("creating output directory for 404 page: %w", err)
 	}
 
-	if err := os.WriteFile(outputPath, []byte(html), 0o644); err != nil {
+	if err := os.WriteFile(outputPath, []byte(html), 0o600); err != nil {
 		return fmt.Errorf("writing 404.html: %w", err)
 	}
 

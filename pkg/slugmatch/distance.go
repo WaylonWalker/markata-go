@@ -30,10 +30,10 @@ import (
 //	LevenshteinDistance("kitten", "sitting") // returns 3
 //	LevenshteinDistance("hello", "hallo")    // returns 1
 func LevenshteinDistance(a, b string) int {
-	if len(a) == 0 {
+	if a == "" {
 		return len(b)
 	}
-	if len(b) == 0 {
+	if b == "" {
 		return len(a)
 	}
 
