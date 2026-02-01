@@ -4,16 +4,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
-	"github.com/WaylonWalker/markata-go/pkg/slugmatch"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // ErrorPagesPlugin generates static error pages (404.html) during build.
-// This allows production web servers to serve custom error pages.
+// The 404 page uses client-side JavaScript with Pagefind for fuzzy search
+// suggestions, so it works fully statically without any backend.
 type ErrorPagesPlugin struct{}
 
 // Compile-time interface verification.
@@ -54,37 +53,9 @@ func (p *ErrorPagesPlugin) Write(m *lifecycle.Manager) error {
 }
 
 // generate404Page creates the static 404.html file.
-func (p *ErrorPagesPlugin) generate404Page(m *lifecycle.Manager, cfg *models.Config) error {
-	// Get posts for suggestions
-	posts := m.Posts()
-	maxSuggestions := cfg.ErrorPages.MaxSuggestions
-	if maxSuggestions <= 0 {
-		maxSuggestions = 5
-	}
-
-	// Get recent posts for fallback (no slug to match against in static build)
-	var recentPosts []*models.Post
-	if len(posts) > 0 {
-		// Sort by date descending and take top N
-		sortedPosts := make([]*models.Post, len(posts))
-		copy(sortedPosts, posts)
-		sort.Slice(sortedPosts, func(i, j int) bool {
-			if sortedPosts[i].Date == nil {
-				return false
-			}
-			if sortedPosts[j].Date == nil {
-				return true
-			}
-			return sortedPosts[i].Date.After(*sortedPosts[j].Date)
-		})
-
-		limit := maxSuggestions
-		if limit > len(sortedPosts) {
-			limit = len(sortedPosts)
-		}
-		recentPosts = sortedPosts[:limit]
-	}
-
+// It renders through the post template so users get their full site experience
+// (search, sidebars, recent posts, etc.) and uses client-side JS for suggestions.
+func (p *ErrorPagesPlugin) generate404Page(_ *lifecycle.Manager, cfg *models.Config) error {
 	// Create template engine
 	templatesDir := cfg.TemplatesDir
 	if templatesDir == "" {
@@ -95,16 +66,25 @@ func (p *ErrorPagesPlugin) generate404Page(m *lifecycle.Manager, cfg *models.Con
 		return fmt.Errorf("creating template engine for 404 page: %w", err)
 	}
 
-	// Create template context
-	ctx := templates.NewContext(nil, "", cfg)
-	ctx.Set("requested_path", "")                          // Empty in static build
-	ctx.Set("suggested_posts", []map[string]interface{}{}) // Empty - we can't know the path ahead of time
-	ctx.Set("recent_posts", templates.PostsToMaps(recentPosts))
+	// Create a synthetic post for the 404 page
+	title := "Page Not Found"
+	description := "The requested page could not be found."
+	post := &models.Post{
+		Slug:        "404",
+		Title:       &title,
+		Description: &description,
+	}
 
-	// Determine template name
+	// Generate the 404 page body content with client-side fuzzy search
+	body := generate404Body(cfg)
+
+	// Create template context using the post template
+	ctx := templates.NewContext(post, body, cfg)
+
+	// Determine template name - use post template for full site experience
 	templateName := cfg.ErrorPages.Custom404Template
 	if templateName == "" {
-		templateName = "404.html"
+		templateName = "post.html"
 	}
 
 	// Render the 404 template
@@ -131,5 +111,222 @@ func (p *ErrorPagesPlugin) generate404Page(m *lifecycle.Manager, cfg *models.Con
 	return nil
 }
 
-// Ensure slugmatch is used (for interface checks during dev mode serving).
-var _ = slugmatch.LevenshteinDistance
+// generate404Body creates the HTML body content for the 404 page.
+// This includes the error message and client-side JavaScript that uses
+// Pagefind for fuzzy search suggestions based on the current URL.
+func generate404Body(cfg *models.Config) string {
+	// Get pagefind bundle directory
+	bundleDir := cfg.Search.Pagefind.BundleDir
+	if bundleDir == "" {
+		bundleDir = defaultBundleDir
+	}
+
+	return fmt.Sprintf(`<div class="error-404">
+    <p class="error-message">
+        The page you're looking for doesn't exist or has been moved.
+    </p>
+    <p class="requested-path">
+        Looking for: <code id="requested-path"></code>
+    </p>
+
+    <div id="suggestions-section" class="suggestions" style="display: none;">
+        <h2>Did you mean one of these?</h2>
+        <ul id="suggestions-list" class="suggestion-list"></ul>
+    </div>
+
+    <div class="error-actions">
+        <p>You can also try:</p>
+        <ul>
+            <li><a href="/">Go to the home page</a></li>
+            <li>Use the search above to find what you're looking for</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+.error-404 {
+    text-align: center;
+    padding: var(--spacing-lg, 2rem) 0;
+}
+
+.error-message {
+    font-size: var(--font-size-lg, 1.125rem);
+    color: var(--color-text-muted, #6b7280);
+    margin-bottom: var(--spacing-md, 1rem);
+}
+
+.requested-path {
+    margin-bottom: var(--spacing-lg, 2rem);
+}
+
+.requested-path code {
+    background: var(--color-code-bg, #f3f4f6);
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+    border-radius: var(--radius-sm, 0.25rem);
+    font-family: var(--font-mono, monospace);
+    color: var(--color-text, #1f2937);
+}
+
+.suggestions {
+    text-align: left;
+    margin: var(--spacing-xl, 2rem) 0;
+    padding: var(--spacing-lg, 1.5rem);
+    background: var(--color-surface, #f9fafb);
+    border-radius: var(--radius-md, 0.5rem);
+    border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.suggestions h2 {
+    font-size: var(--font-size-lg, 1.125rem);
+    margin-bottom: var(--spacing-md, 1rem);
+    color: var(--color-heading, #111827);
+}
+
+.suggestion-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.suggestion-item {
+    margin-bottom: var(--spacing-sm, 0.5rem);
+}
+
+.suggestion-item a {
+    display: block;
+    padding: var(--spacing-md, 1rem);
+    background: var(--color-bg, #ffffff);
+    border-radius: var(--radius-sm, 0.25rem);
+    text-decoration: none;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.suggestion-item a:hover {
+    background: var(--color-surface-hover, #f3f4f6);
+    transform: translateX(4px);
+}
+
+.suggestion-title {
+    display: block;
+    font-weight: 600;
+    color: var(--color-primary, #3b82f6);
+}
+
+.suggestion-excerpt {
+    display: block;
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-muted, #6b7280);
+    margin-top: var(--spacing-xs, 0.25rem);
+}
+
+.error-actions {
+    text-align: left;
+    margin-top: var(--spacing-xl, 2rem);
+}
+
+.error-actions ul {
+    list-style-position: inside;
+    padding-left: 0;
+}
+
+.error-actions li {
+    margin-bottom: var(--spacing-xs, 0.25rem);
+}
+
+.error-actions a {
+    color: var(--color-primary, #3b82f6);
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    .requested-path code {
+        background: var(--color-code-bg, #374151);
+    }
+
+    .suggestions {
+        background: var(--color-surface, #1f2937);
+        border-color: var(--color-border, #374151);
+    }
+
+    .suggestion-item a {
+        background: var(--color-bg, #111827);
+        border-color: var(--color-border, #374151);
+    }
+
+    .suggestion-item a:hover {
+        background: var(--color-surface-hover, #374151);
+    }
+}
+</style>
+
+<script type="module">
+// Client-side fuzzy search for 404 suggestions using Pagefind
+(async function() {
+    const path = window.location.pathname;
+    document.getElementById('requested-path').textContent = path;
+
+    // Extract search terms from the URL path
+    const searchTerms = path
+        .replace(/^\/+|\/+$/g, '')  // Remove leading/trailing slashes
+        .replace(/[-_]/g, ' ')       // Convert dashes/underscores to spaces
+        .replace(/\.[^.]+$/, '')     // Remove file extension
+        .toLowerCase();
+
+    if (!searchTerms) return;
+
+    try {
+        // Load Pagefind
+        const pagefind = await import('/%s/pagefind.js');
+        await pagefind.init();
+
+        // Search for similar content
+        const search = await pagefind.search(searchTerms);
+
+        if (search.results.length === 0) return;
+
+        // Get top 5 results
+        const results = await Promise.all(
+            search.results.slice(0, 5).map(r => r.data())
+        );
+
+        // Filter out the 404 page itself
+        const suggestions = results.filter(r => !r.url.includes('404'));
+
+        if (suggestions.length === 0) return;
+
+        // Show suggestions
+        const section = document.getElementById('suggestions-section');
+        const list = document.getElementById('suggestions-list');
+
+        suggestions.forEach(result => {
+            const li = document.createElement('li');
+            li.className = 'suggestion-item';
+
+            const a = document.createElement('a');
+            a.href = result.url;
+
+            const title = document.createElement('span');
+            title.className = 'suggestion-title';
+            title.textContent = result.meta?.title || result.url;
+            a.appendChild(title);
+
+            if (result.excerpt) {
+                const excerpt = document.createElement('span');
+                excerpt.className = 'suggestion-excerpt';
+                excerpt.innerHTML = result.excerpt;
+                a.appendChild(excerpt);
+            }
+
+            li.appendChild(a);
+            list.appendChild(li);
+        });
+
+        section.style.display = 'block';
+    } catch (e) {
+        // Pagefind not available or search failed - that's okay
+        console.debug('404 suggestions unavailable:', e.message);
+    }
+})();
+</script>`, bundleDir)
+}
