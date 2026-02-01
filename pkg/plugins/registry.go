@@ -79,6 +79,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["image_zoom"] = func() lifecycle.Plugin { return NewImageZoomPlugin() }
 	pluginRegistry.constructors["static_file_conflicts"] = func() lifecycle.Plugin { return NewStaticFileConflictsPlugin() }
 	pluginRegistry.constructors["slug_conflicts"] = func() lifecycle.Plugin { return NewSlugConflictsPlugin() }
+	pluginRegistry.constructors["css_bundle"] = func() lifecycle.Plugin { return NewCSSBundlePlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -172,6 +173,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewStaticAssetsPlugin(), // Copy static assets first
 		NewPaletteCSSPlugin(),   // Generate palette CSS (overwrites variables.css)
 		NewChromaCSSPlugin(),    // Generate syntax highlighting CSS
+		NewCSSBundlePlugin(),    // Bundle CSS files (runs after CSS generators)
 		NewPublishFeedsPlugin(),
 		NewPublishHTMLPlugin(),
 		NewRedirectsPlugin(), // Generate redirect pages
