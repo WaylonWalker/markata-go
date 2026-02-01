@@ -208,8 +208,23 @@ go test -v ./tests/...                                 # Integration tests
 ```bash
 go fmt ./...          # Format all code (ALWAYS run before committing)
 go vet ./...          # Check for common issues
-golangci-lint run     # Full linting (if installed)
 ```
+
+**Lint commands (choose based on context):**
+
+| Command | Time | Use When |
+|---------|------|----------|
+| `just lint-fast` | ~1s | Quick iteration while coding |
+| `just lint-new` | ~2-5s | Before committing (only changed files vs main) |
+| `just lint` | ~15-20s | Full validation before PR, uses all CPU cores |
+| `just lint-gentle` | ~20-25s | Full lint with reduced CPU (4 cores), good when multitasking |
+
+**Recommended workflow for agents:**
+1. Use `just lint-fast` during development iteration
+2. Use `just lint-new` before creating commits  
+3. Use `just lint` before creating PRs (CI runs this)
+
+**Note:** Full lint runs 36 linters across ~120K lines of code. The `--fast` flag runs only linters that don't require type-checking, which is sufficient for catching most issues during development.
 
 ## Project Structure
 

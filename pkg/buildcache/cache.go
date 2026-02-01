@@ -84,6 +84,12 @@ type Cache struct {
 
 	// changedSlugs tracks slugs that changed this build (for dependency invalidation)
 	changedSlugs map[string]bool
+
+	// GlobFiles caches the list of discovered files from glob stage
+	GlobFiles []string `json:"glob_files,omitempty"`
+
+	// GlobPatternHash detects when glob patterns change
+	GlobPatternHash string `json:"glob_pattern_hash,omitempty"`
 }
 
 // PostCache stores cached metadata for a single post.
@@ -592,6 +598,22 @@ func (c *Cache) MarkSlugChanged(slug string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.changedSlugs[slug] = true
+}
+
+// GetGlobCache returns the cached glob file list and pattern hash.
+func (c *Cache) GetGlobCache() (files []string, patternHash string) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.GlobFiles, c.GlobPatternHash
+}
+
+// SetGlobCache stores the glob file list and pattern hash.
+func (c *Cache) SetGlobCache(files []string, patternHash string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.GlobFiles = files
+	c.GlobPatternHash = patternHash
+	c.dirty = true
 }
 
 // GraphSize returns the number of posts with dependencies tracked.
