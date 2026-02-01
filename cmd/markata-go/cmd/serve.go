@@ -391,7 +391,6 @@ func serve404Page(w http.ResponseWriter, requestedPath string, manager *lifecycl
 		if verbose {
 			fmt.Printf("Error rendering 404 template: %v\n", err)
 		}
-		//nolint:errcheck // Best effort write to HTTP response
 		fmt.Fprintf(w,
 			"<html><body><h1>404 - Page Not Found</h1><p>The requested page <code>%s</code> could not be found.</p><p><a href=\"/\">Go home</a></p></body></html>",
 			requestedPath,
