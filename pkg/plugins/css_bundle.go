@@ -238,6 +238,8 @@ func (p *CSSBundlePlugin) processBundle(bundleConfig models.BundleConfig, output
 				if err != nil || relPath == "" {
 					relPath = filepath.Base(file)
 				}
+				// Always use forward slashes in source comments (web convention)
+				relPath = filepath.ToSlash(relPath)
 				buf.WriteString(fmt.Sprintf("/* === Source: %s === */\n", relPath))
 			}
 
