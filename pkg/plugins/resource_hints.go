@@ -130,7 +130,7 @@ func (p *ResourceHintsPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	// Convert map to slice
-	var detectedDomains []resourcehints.DetectedDomain
+	detectedDomains := make([]resourcehints.DetectedDomain, 0, len(allDomains))
 	for _, d := range allDomains {
 		detectedDomains = append(detectedDomains, d)
 	}

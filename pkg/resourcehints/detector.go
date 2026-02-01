@@ -183,15 +183,16 @@ func (d *Detector) DetectExternalDomains(htmlContent string) []DetectedDomain {
 
 	// Search for href, src, srcset attributes
 	for _, match := range hrefSrcRegex.FindAllStringSubmatch(htmlContent, -1) {
-		if len(match) >= 3 {
-			attrName := strings.ToLower(match[1])
-			url := match[2]
-			sourceType := "html"
-			if attrName == "src" {
-				sourceType = "script"
-			}
-			addDomain(url, sourceType)
+		if len(match) < 3 {
+			continue
 		}
+		attrName := strings.ToLower(match[1])
+		matchedURL := match[2]
+		sourceType := "html"
+		if attrName == "src" {
+			sourceType = "script"
+		}
+		addDomain(matchedURL, sourceType)
 	}
 
 	// Search for CSS url() functions
@@ -276,7 +277,7 @@ func (d *Detector) extractScheme(rawURL string) string {
 // SuggestHints suggests appropriate hints for detected domains.
 // Uses known domain database for optimal hint types.
 func (d *Detector) SuggestHints(domains []DetectedDomain) []SuggestedHint {
-	var hints []SuggestedHint
+	hints := make([]SuggestedHint, 0, len(domains))
 
 	for _, domain := range domains {
 		hint := SuggestedHint{

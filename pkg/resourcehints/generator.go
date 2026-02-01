@@ -81,22 +81,23 @@ func (g *Generator) generateTag(hint SuggestedHint, hintType HintType) string {
 
 	href := fmt.Sprintf("%s://%s", scheme, hint.Domain)
 
-	var attrs []string
-	attrs = append(attrs, fmt.Sprintf(`rel="%s"`, string(hintType)))
-	attrs = append(attrs, fmt.Sprintf(`href="%s"`, href))
+	attrs := []string{
+		fmt.Sprintf("rel=%q", string(hintType)),
+		fmt.Sprintf("href=%q", href),
+	}
 
 	// Add crossorigin attribute if specified
 	if hint.CrossOrigin != "" {
 		if hint.CrossOrigin == "anonymous" {
 			attrs = append(attrs, "crossorigin")
 		} else {
-			attrs = append(attrs, fmt.Sprintf(`crossorigin="%s"`, hint.CrossOrigin))
+			attrs = append(attrs, fmt.Sprintf("crossorigin=%q", hint.CrossOrigin))
 		}
 	}
 
 	// Add "as" attribute for preload hints
 	if hintType == HintTypePreload && hint.As != "" {
-		attrs = append(attrs, fmt.Sprintf(`as="%s"`, hint.As))
+		attrs = append(attrs, fmt.Sprintf("as=%q", hint.As))
 	}
 
 	return fmt.Sprintf("<link %s>", strings.Join(attrs, " "))
