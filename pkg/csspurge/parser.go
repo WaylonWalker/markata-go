@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+// CSS at-rule type constants
+const (
+	atRuleMedia = "media"
+)
+
 // CSSRule represents a CSS rule with its selector and content.
 type CSSRule struct {
 	// Selector is the CSS selector (e.g., ".class", "#id", "div")
@@ -21,13 +26,6 @@ type CSSRule struct {
 
 // Regular expressions for CSS parsing
 var (
-	// Match @-rules: @media, @keyframes, @font-face, @import, @supports, etc.
-	atRuleRegex = regexp.MustCompile(`@([\w-]+)\s*([^{;]*?)(\{|;)`)
-
-	// Match a CSS rule: selector { properties }
-	// This is a simplified regex - handles most common cases
-	ruleRegex = regexp.MustCompile(`([^{}@]+?)\s*\{([^{}]*)\}`)
-
 	// Match selectors within a selector list (comma-separated)
 	selectorSplitRegex = regexp.MustCompile(`\s*,\s*`)
 
@@ -122,7 +120,7 @@ func parseRules(content string, rules []CSSRule) []CSSRule {
 }
 
 // parseAtRule parses an @-rule starting at pos.
-func parseAtRule(content string, pos int) (*CSSRule, int) {
+func parseAtRule(content string, pos int) (rule *CSSRule, newPos int) {
 	// Find the @-rule type
 	start := pos
 	pos++ // Skip @
@@ -179,7 +177,7 @@ func parseAtRule(content string, pos int) (*CSSRule, int) {
 		}
 
 		// Parse nested rules for @media and @supports
-		if atType == "media" || atType == "supports" || atType == "layer" {
+		if atType == atRuleMedia || atType == "supports" || atType == "layer" {
 			rule.NestedRules = ParseCSS(blockContent)
 		}
 
@@ -190,7 +188,7 @@ func parseAtRule(content string, pos int) (*CSSRule, int) {
 }
 
 // parseRegularRule parses a regular CSS rule (selector { properties }).
-func parseRegularRule(content string, pos int) (*CSSRule, int) {
+func parseRegularRule(content string, pos int) (rule *CSSRule, newPos int) {
 	// Find the opening brace
 	selectorStart := pos
 	for pos < len(content) && content[pos] != '{' && content[pos] != '@' {
