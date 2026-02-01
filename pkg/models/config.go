@@ -1453,6 +1453,83 @@ func NewImageZoomConfig() ImageZoomConfig {
 	}
 }
 
+// CriticalCSSConfig configures the critical CSS extraction and inlining plugin.
+// Critical CSS optimization inlines above-the-fold styles and async loads the rest,
+// improving First Contentful Paint (FCP) by 200-800ms.
+type CriticalCSSConfig struct {
+	// Enabled controls whether critical CSS optimization is active (default: false)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// ViewportWidth is the simulated viewport width for determining above-the-fold content (default: 1300)
+	ViewportWidth int `json:"viewport_width,omitempty" yaml:"viewport_width,omitempty" toml:"viewport_width,omitempty"`
+
+	// ViewportHeight is the simulated viewport height for determining above-the-fold content (default: 900)
+	ViewportHeight int `json:"viewport_height,omitempty" yaml:"viewport_height,omitempty" toml:"viewport_height,omitempty"`
+
+	// Minify controls whether to minify the critical CSS output (default: true)
+	Minify *bool `json:"minify,omitempty" yaml:"minify,omitempty" toml:"minify,omitempty"`
+
+	// PreloadNonCritical uses link rel="preload" for non-critical CSS (default: true)
+	// This async loads the full stylesheet without blocking render
+	PreloadNonCritical *bool `json:"preload_non_critical,omitempty" yaml:"preload_non_critical,omitempty" toml:"preload_non_critical,omitempty"`
+
+	// ExtraSelectors is a list of additional CSS selectors to always include as critical
+	// Useful for JavaScript-injected content that may appear above the fold
+	ExtraSelectors []string `json:"extra_selectors,omitempty" yaml:"extra_selectors,omitempty" toml:"extra_selectors,omitempty"`
+
+	// ExcludeSelectors is a list of CSS selectors to always exclude from critical CSS
+	// Useful for content that should never be inlined (e.g., large animations)
+	ExcludeSelectors []string `json:"exclude_selectors,omitempty" yaml:"exclude_selectors,omitempty" toml:"exclude_selectors,omitempty"`
+
+	// InlineThreshold is the maximum size (in bytes) for the critical CSS before giving up inlining (default: 50000)
+	// If critical CSS exceeds this threshold, the optimization is skipped for that page
+	InlineThreshold int `json:"inline_threshold,omitempty" yaml:"inline_threshold,omitempty" toml:"inline_threshold,omitempty"`
+}
+
+// NewCriticalCSSConfig creates a new CriticalCSSConfig with default values.
+func NewCriticalCSSConfig() CriticalCSSConfig {
+	enabled := false
+	minify := true
+	preloadNonCritical := true
+	return CriticalCSSConfig{
+		Enabled:            &enabled,
+		ViewportWidth:      1300,
+		ViewportHeight:     900,
+		Minify:             &minify,
+		PreloadNonCritical: &preloadNonCritical,
+		ExtraSelectors:     []string{},
+		ExcludeSelectors:   []string{},
+		InlineThreshold:    50000,
+	}
+}
+
+// IsEnabled returns whether critical CSS optimization is enabled.
+// Defaults to false if not explicitly set.
+func (c *CriticalCSSConfig) IsEnabled() bool {
+	if c.Enabled == nil {
+		return false
+	}
+	return *c.Enabled
+}
+
+// IsMinify returns whether critical CSS minification is enabled.
+// Defaults to true if not explicitly set.
+func (c *CriticalCSSConfig) IsMinify() bool {
+	if c.Minify == nil {
+		return true
+	}
+	return *c.Minify
+}
+
+// IsPreloadNonCritical returns whether non-critical CSS should be preloaded.
+// Defaults to true if not explicitly set.
+func (c *CriticalCSSConfig) IsPreloadNonCritical() bool {
+	if c.PreloadNonCritical == nil {
+		return true
+	}
+	return *c.PreloadNonCritical
+}
+
 // EmbedsConfig configures the embeds plugin for embedding internal and external content.
 type EmbedsConfig struct {
 	// Enabled controls whether embed processing is active (default: true)
