@@ -37,6 +37,12 @@ type Post struct {
 	// Private posts are rendered but excluded from feeds, sitemaps, and add noindex meta tag
 	Private bool `json:"private" yaml:"private" toml:"private"`
 
+	// SecretKey is the name of the encryption key to use for this post.
+	// When set along with Private=true, the post content will be encrypted.
+	// The actual key is read from environment variable MARKATA_GO_ENCRYPTION_KEY_{SecretKey}
+	// Example: secret_key: "blog" reads from MARKATA_GO_ENCRYPTION_KEY_BLOG
+	SecretKey string `json:"secret_key,omitempty" yaml:"secret_key,omitempty" toml:"secret_key,omitempty"`
+
 	// Skip indicates if the post should be skipped during processing
 	Skip bool `json:"skip" yaml:"skip" toml:"skip"`
 

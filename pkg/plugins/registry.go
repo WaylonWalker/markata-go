@@ -81,6 +81,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["slug_conflicts"] = func() lifecycle.Plugin { return NewSlugConflictsPlugin() }
 	pluginRegistry.constructors["css_bundle"] = func() lifecycle.Plugin { return NewCSSBundlePlugin() }
 	pluginRegistry.constructors["resource_hints"] = func() lifecycle.Plugin { return NewResourceHintsPlugin() }
+	pluginRegistry.constructors["encryption"] = func() lifecycle.Plugin { return NewEncryptionPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -158,6 +159,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewMDVideoPlugin(),           // Convert video images to video tags
 		NewYouTubePlugin(),           // Convert YouTube URLs to embeds
 		NewLinkCollectorPlugin(),     // Collect links after markdown rendering
+		NewEncryptionPlugin(),        // Encrypt content for private posts (runs late in Render)
 		NewTemplatesPlugin(),
 
 		// Collect stage plugins
