@@ -17,7 +17,7 @@ func TestCSSBundlePlugin_Name(t *testing.T) {
 	}
 }
 
-func TestCSSBundlePlugin_InterfaceCompliance(t *testing.T) {
+func TestCSSBundlePlugin_InterfaceCompliance(_ *testing.T) {
 	var _ lifecycle.Plugin = (*CSSBundlePlugin)(nil)
 	var _ lifecycle.ConfigurePlugin = (*CSSBundlePlugin)(nil)
 	var _ lifecycle.WritePlugin = (*CSSBundlePlugin)(nil)
@@ -140,10 +140,10 @@ func TestCSSBundlePlugin_Write_CreatesBundles(t *testing.T) {
 	varCSS := ":root { --color-primary: #007bff; }\n"
 	mainCSS := "body { color: var(--color-primary); }\n"
 
-	if err := os.WriteFile(filepath.Join(cssDir, "variables.css"), []byte(varCSS), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cssDir, "variables.css"), []byte(varCSS), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(cssDir, "main.css"), []byte(mainCSS), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cssDir, "main.css"), []byte(mainCSS), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -199,8 +199,10 @@ func TestCSSBundlePlugin_Write_CreatesBundles(t *testing.T) {
 
 	// Check bundle paths in cache
 	if bundles, ok := m.Cache().Get("css_bundles"); ok {
-		bundleMap := bundles.(map[string]string)
-		if bundleMap["main"] != "/css/bundle.css" {
+		bundleMap, ok := bundles.(map[string]string)
+		if !ok {
+			t.Error("css_bundles is not map[string]string")
+		} else if bundleMap["main"] != "/css/bundle.css" {
 			t.Errorf("cache css_bundles[main] = %q, want %q", bundleMap["main"], "/css/bundle.css")
 		}
 	} else {
@@ -225,7 +227,7 @@ func TestCSSBundlePlugin_Write_NoSourceComments(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.WriteFile(filepath.Join(cssDir, "test.css"), []byte("body { margin: 0; }\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cssDir, "test.css"), []byte("body { margin: 0; }\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -249,8 +251,8 @@ func TestCSSBundlePlugin_Write_NoSourceComments(t *testing.T) {
 	cfg.OutputDir = tmpDir
 	m.SetConfig(cfg)
 	// Config set
-		
-// (config already set above)
+
+	// (config already set above)
 
 	err := p.Write(m)
 	if err != nil {
@@ -277,10 +279,10 @@ func TestCSSBundlePlugin_Write_ExcludesFiles(t *testing.T) {
 	}
 
 	// Create CSS files including one that should be excluded
-	if err := os.WriteFile(filepath.Join(cssDir, "main.css"), []byte("main { }\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cssDir, "main.css"), []byte("main { }\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(cssDir, "debug.css"), []byte("debug { }\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cssDir, "debug.css"), []byte("debug { }\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -306,8 +308,8 @@ func TestCSSBundlePlugin_Write_ExcludesFiles(t *testing.T) {
 	cfg.OutputDir = tmpDir
 	m.SetConfig(cfg)
 	// Config set
-		
-// (config already set above)
+
+	// (config already set above)
 
 	err := p.Write(m)
 	if err != nil {
@@ -340,13 +342,13 @@ func TestCSSBundlePlugin_Write_GlobPattern(t *testing.T) {
 	}
 
 	// Create multiple CSS files
-	if err := os.WriteFile(filepath.Join(cssDir, "a.css"), []byte(".a { }\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cssDir, "a.css"), []byte(".a { }\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(cssDir, "b.css"), []byte(".b { }\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cssDir, "b.css"), []byte(".b { }\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(cssDir, "c.css"), []byte(".c { }\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cssDir, "c.css"), []byte(".c { }\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -367,8 +369,8 @@ func TestCSSBundlePlugin_Write_GlobPattern(t *testing.T) {
 	cfg.OutputDir = tmpDir
 	m.SetConfig(cfg)
 	// Config set
-		
-// (config already set above)
+
+	// (config already set above)
 
 	err := p.Write(m)
 	if err != nil {
@@ -400,10 +402,10 @@ func TestCSSBundlePlugin_Write_MultipleBundles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.WriteFile(filepath.Join(cssDir, "critical.css"), []byte("critical { }\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cssDir, "critical.css"), []byte("critical { }\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(cssDir, "main.css"), []byte("main { }\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cssDir, "main.css"), []byte("main { }\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -429,8 +431,8 @@ func TestCSSBundlePlugin_Write_MultipleBundles(t *testing.T) {
 	cfg.OutputDir = tmpDir
 	m.SetConfig(cfg)
 	// Config set
-		
-// (config already set above)
+
+	// (config already set above)
 
 	err := p.Write(m)
 	if err != nil {
@@ -447,8 +449,10 @@ func TestCSSBundlePlugin_Write_MultipleBundles(t *testing.T) {
 
 	// Check cache has both bundles
 	if bundles, ok := m.Cache().Get("css_bundles"); ok {
-		bundleMap := bundles.(map[string]string)
-		if len(bundleMap) != 2 {
+		bundleMap, ok := bundles.(map[string]string)
+		if !ok {
+			t.Error("css_bundles is not map[string]string")
+		} else if len(bundleMap) != 2 {
 			t.Errorf("cache has %d bundles, want 2", len(bundleMap))
 		}
 	}
@@ -462,7 +466,7 @@ func TestCSSBundlePlugin_Write_MissingSourceFile(t *testing.T) {
 	}
 
 	// Create only one of the two source files
-	if err := os.WriteFile(filepath.Join(cssDir, "exists.css"), []byte("exists { }\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cssDir, "exists.css"), []byte("exists { }\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -483,8 +487,8 @@ func TestCSSBundlePlugin_Write_MissingSourceFile(t *testing.T) {
 	cfg.OutputDir = tmpDir
 	m.SetConfig(cfg)
 	// Config set
-		
-// (config already set above)
+
+	// (config already set above)
 
 	// Should not fail - just skip missing files
 	err := p.Write(m)
