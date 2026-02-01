@@ -86,6 +86,18 @@ vet:
 lint:
     golangci-lint run --timeout=5m
 
+# Run fast lint with only essential linters (good for development iteration)
+lint-fast:
+    golangci-lint run --timeout=2m --fast
+
+# Run lint on only changed files (compared to main branch)
+lint-new:
+    golangci-lint run --timeout=5m --new-from-rev=origin/main
+
+# Run lint with reduced parallelism (less CPU/memory pressure, good for laptops)
+lint-gentle:
+    GOLANGCI_LINT_CONCURRENCY=4 golangci-lint run --timeout=5m
+
 # Run all quality checks
 check: fmt vet lint test
 
