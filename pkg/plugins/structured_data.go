@@ -373,27 +373,27 @@ func (p *StructuredDataPlugin) getTwitterHandle(post *models.Post, seoConfig *mo
 }
 
 // makeAbsoluteURL converts a relative URL to an absolute URL.
-func (p *StructuredDataPlugin) makeAbsoluteURL(url, siteURL string) string {
-	if url == "" {
+func (p *StructuredDataPlugin) makeAbsoluteURL(rawURL, siteURL string) string {
+	if rawURL == "" {
 		return ""
 	}
 
 	// Already absolute
-	if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
-		return url
+	if strings.HasPrefix(rawURL, "http://") || strings.HasPrefix(rawURL, "https://") {
+		return rawURL
 	}
 
 	// Protocol-relative
-	if strings.HasPrefix(url, "//") {
-		return "https:" + url
+	if strings.HasPrefix(rawURL, "//") {
+		return "https:" + rawURL
 	}
 
 	// Relative URL - prepend site URL
 	siteURL = strings.TrimSuffix(siteURL, "/")
-	if !strings.HasPrefix(url, "/") {
-		url = "/" + url
+	if !strings.HasPrefix(rawURL, "/") {
+		rawURL = "/" + rawURL
 	}
-	return siteURL + url
+	return siteURL + rawURL
 }
 
 // getSEOConfig retrieves the SEOConfig from lifecycle.Config.Extra.
