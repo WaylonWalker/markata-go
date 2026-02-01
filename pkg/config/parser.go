@@ -418,10 +418,11 @@ type tomlPostFormatsConfig struct {
 }
 
 type tomlSEOConfig struct {
-	TwitterHandle string `toml:"twitter_handle"`
-	DefaultImage  string `toml:"default_image"`
-	LogoURL       string `toml:"logo_url"`
-	AuthorImage   string `toml:"author_image"`
+	TwitterHandle  string `toml:"twitter_handle"`
+	DefaultImage   string `toml:"default_image"`
+	LogoURL        string `toml:"logo_url"`
+	AuthorImage    string `toml:"author_image"`
+	OGImageService string `toml:"og_image_service"`
 }
 
 type tomlIndieAuthConfig struct {
@@ -438,10 +439,11 @@ type tomlWebmentionConfig struct {
 
 func (s *tomlSEOConfig) toSEOConfig() models.SEOConfig {
 	return models.SEOConfig{
-		TwitterHandle: s.TwitterHandle,
-		DefaultImage:  s.DefaultImage,
-		LogoURL:       s.LogoURL,
-		AuthorImage:   s.AuthorImage,
+		TwitterHandle:  s.TwitterHandle,
+		DefaultImage:   s.DefaultImage,
+		LogoURL:        s.LogoURL,
+		AuthorImage:    s.AuthorImage,
+		OGImageService: s.OGImageService,
 	}
 }
 
@@ -1209,10 +1211,11 @@ type yamlPostFormatsConfig struct {
 }
 
 type yamlSEOConfig struct {
-	TwitterHandle string `yaml:"twitter_handle"`
-	DefaultImage  string `yaml:"default_image"`
-	LogoURL       string `yaml:"logo_url"`
-	AuthorImage   string `yaml:"author_image"`
+	TwitterHandle  string `yaml:"twitter_handle"`
+	DefaultImage   string `yaml:"default_image"`
+	LogoURL        string `yaml:"logo_url"`
+	AuthorImage    string `yaml:"author_image"`
+	OGImageService string `yaml:"og_image_service"`
 }
 
 type yamlIndieAuthConfig struct {
@@ -1339,10 +1342,11 @@ func (f *yamlFontConfig) toFontConfig() models.FontConfig {
 
 func (s *yamlSEOConfig) toSEOConfig() models.SEOConfig {
 	return models.SEOConfig{
-		TwitterHandle: s.TwitterHandle,
-		DefaultImage:  s.DefaultImage,
-		LogoURL:       s.LogoURL,
-		AuthorImage:   s.AuthorImage,
+		TwitterHandle:  s.TwitterHandle,
+		DefaultImage:   s.DefaultImage,
+		LogoURL:        s.LogoURL,
+		AuthorImage:    s.AuthorImage,
+		OGImageService: s.OGImageService,
 	}
 }
 
@@ -2048,10 +2052,11 @@ type jsonPostFormatsConfig struct {
 }
 
 type jsonSEOConfig struct {
-	TwitterHandle string `json:"twitter_handle"`
-	DefaultImage  string `json:"default_image"`
-	LogoURL       string `json:"logo_url"`
-	AuthorImage   string `json:"author_image"`
+	TwitterHandle  string `json:"twitter_handle"`
+	DefaultImage   string `json:"default_image"`
+	LogoURL        string `json:"logo_url"`
+	AuthorImage    string `json:"author_image"`
+	OGImageService string `json:"og_image_service"`
 }
 
 type jsonIndieAuthConfig struct {
@@ -2178,10 +2183,11 @@ func (f *jsonFontConfig) toFontConfig() models.FontConfig {
 
 func (s *jsonSEOConfig) toSEOConfig() models.SEOConfig {
 	return models.SEOConfig{
-		TwitterHandle: s.TwitterHandle,
-		DefaultImage:  s.DefaultImage,
-		LogoURL:       s.LogoURL,
-		AuthorImage:   s.AuthorImage,
+		TwitterHandle:  s.TwitterHandle,
+		DefaultImage:   s.DefaultImage,
+		LogoURL:        s.LogoURL,
+		AuthorImage:    s.AuthorImage,
+		OGImageService: s.OGImageService,
 	}
 }
 

@@ -3,6 +3,7 @@ package plugins
 
 import (
 	"encoding/json"
+	"net/url"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -154,13 +155,12 @@ func (p *StructuredDataPlugin) generateOpenGraph(sd *models.StructuredData, post
 		sd.AddOpenGraph("og:description", siteDescription)
 	}
 
-	// Image
-	imageURL := p.getPostImage(post, seoConfig)
+	// Image - use og_image_service if available, otherwise fall back to post image
+	imageURL := p.getOGImageURL(post, config, seoConfig)
 	if imageURL != "" {
-		absImageURL := p.makeAbsoluteURL(imageURL, siteURL)
-		sd.AddOpenGraph("og:image", absImageURL)
+		sd.AddOpenGraph("og:image", imageURL)
 		sd.AddOpenGraph("og:image:width", "1200")
-		sd.AddOpenGraph("og:image:height", "630")
+		sd.AddOpenGraph("og:image:height", "600")
 	}
 
 	// Locale
@@ -192,13 +192,12 @@ func (p *StructuredDataPlugin) generateOpenGraph(sd *models.StructuredData, post
 
 // generateTwitterCard creates Twitter Card meta tags.
 func (p *StructuredDataPlugin) generateTwitterCard(sd *models.StructuredData, post *models.Post, config *lifecycle.Config, seoConfig *models.SEOConfig) {
-	siteURL := getSiteURL(config)
-
 	// Card type - summary_large_image if we have an image
-	imageURL := p.getPostImage(post, seoConfig)
+	// Use og_image_service if available, otherwise fall back to post image
+	imageURL := p.getTwitterImageURL(post, config, seoConfig)
 	if imageURL != "" {
 		sd.AddTwitter("twitter:card", "summary_large_image")
-		sd.AddTwitter("twitter:image", p.makeAbsoluteURL(imageURL, siteURL))
+		sd.AddTwitter("twitter:image", imageURL)
 	} else {
 		sd.AddTwitter("twitter:card", "summary")
 	}
@@ -246,6 +245,58 @@ func (p *StructuredDataPlugin) getPostImage(post *models.Post, seoConfig *models
 
 	// Fall back to default image
 	return seoConfig.DefaultImage
+}
+
+// getOGImageURL returns the OG image URL for a post.
+// If og_image_service is configured, generates a screenshot service URL.
+// Otherwise falls back to getPostImage().
+func (p *StructuredDataPlugin) getOGImageURL(post *models.Post, config *lifecycle.Config, seoConfig *models.SEOConfig) string {
+	siteURL := getSiteURL(config)
+
+	// If og_image_service is configured, use the screenshot service
+	if seoConfig.OGImageService != "" {
+		// Build the URL for the OG card page: {site_url}{post_href}og/
+		ogCardURL := siteURL + post.Href + "og/"
+
+		// Build the screenshot service URL with OG image dimensions (1200x600)
+		// URL-encode the ogCardURL to handle special characters safely
+		// Format: {og_image_service}?url={og_card_url}&height=600&width=1200&scaled_width=1200&scaled_height=600&format=jpg
+		return seoConfig.OGImageService + "?url=" + url.QueryEscape(ogCardURL) + "&height=600&width=1200&scaled_width=1200&scaled_height=600&format=jpg"
+	}
+
+	// Fall back to post image
+	imageURL := p.getPostImage(post, seoConfig)
+	if imageURL != "" {
+		return p.makeAbsoluteURL(imageURL, siteURL)
+	}
+
+	return ""
+}
+
+// getTwitterImageURL returns the Twitter card image URL for a post.
+// If og_image_service is configured, generates a screenshot service URL with Twitter dimensions.
+// Otherwise falls back to getPostImage().
+func (p *StructuredDataPlugin) getTwitterImageURL(post *models.Post, config *lifecycle.Config, seoConfig *models.SEOConfig) string {
+	siteURL := getSiteURL(config)
+
+	// If og_image_service is configured, use the screenshot service with Twitter dimensions
+	if seoConfig.OGImageService != "" {
+		// Build the URL for the OG card page: {site_url}{post_href}og/
+		ogCardURL := siteURL + post.Href + "og/"
+
+		// Build the screenshot service URL with Twitter image dimensions (1280x640)
+		// URL-encode the ogCardURL to handle special characters safely
+		// Format: {og_image_service}?url={og_card_url}&height=640&width=1280&scaled_width=1280&scaled_height=640&format=jpg
+		return seoConfig.OGImageService + "?url=" + url.QueryEscape(ogCardURL) + "&height=640&width=1280&scaled_width=1280&scaled_height=640&format=jpg"
+	}
+
+	// Fall back to post image
+	imageURL := p.getPostImage(post, seoConfig)
+	if imageURL != "" {
+		return p.makeAbsoluteURL(imageURL, siteURL)
+	}
+
+	return ""
 }
 
 // getAuthor returns the author SchemaAgent for a post.
@@ -322,27 +373,27 @@ func (p *StructuredDataPlugin) getTwitterHandle(post *models.Post, seoConfig *mo
 }
 
 // makeAbsoluteURL converts a relative URL to an absolute URL.
-func (p *StructuredDataPlugin) makeAbsoluteURL(url, siteURL string) string {
-	if url == "" {
+func (p *StructuredDataPlugin) makeAbsoluteURL(rawURL, siteURL string) string {
+	if rawURL == "" {
 		return ""
 	}
 
 	// Already absolute
-	if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
-		return url
+	if strings.HasPrefix(rawURL, "http://") || strings.HasPrefix(rawURL, "https://") {
+		return rawURL
 	}
 
 	// Protocol-relative
-	if strings.HasPrefix(url, "//") {
-		return "https:" + url
+	if strings.HasPrefix(rawURL, "//") {
+		return "https:" + rawURL
 	}
 
 	// Relative URL - prepend site URL
 	siteURL = strings.TrimSuffix(siteURL, "/")
-	if !strings.HasPrefix(url, "/") {
-		url = "/" + url
+	if !strings.HasPrefix(rawURL, "/") {
+		rawURL = "/" + rawURL
 	}
-	return siteURL + url
+	return siteURL + rawURL
 }
 
 // getSEOConfig retrieves the SEOConfig from lifecycle.Config.Extra.
