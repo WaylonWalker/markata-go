@@ -171,7 +171,7 @@ func processSingleCSSFile(cssFile, relPath string, used *csspurge.UsedSelectors,
 	stats.totalPurged += purgeStats.PurgedSize
 
 	if purgeStats.RemovedRules > 0 {
-		if err := os.WriteFile(cssFile, []byte(purged), 0o644); err != nil {
+		if err := os.WriteFile(cssFile, []byte(purged), 0o600); err != nil {
 			fmt.Printf("[css_purge] WARNING: failed to write %s: %v\n", relPath, err)
 			return
 		}
