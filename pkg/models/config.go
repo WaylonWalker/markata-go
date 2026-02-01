@@ -1467,6 +1467,59 @@ func (c *ContentTemplatesConfig) GetPlacement(templateName string) string {
 	return templateName
 }
 
+// CSSBundleConfig configures the css_bundle plugin for combining CSS files.
+type CSSBundleConfig struct {
+	// Enabled controls whether CSS bundling is active (default: false)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// Bundles is the list of bundle configurations
+	Bundles []BundleConfig `json:"bundles" yaml:"bundles" toml:"bundles"`
+
+	// Exclude is a list of CSS file patterns to exclude from bundling
+	Exclude []string `json:"exclude" yaml:"exclude" toml:"exclude"`
+
+	// Minify controls whether bundled CSS is minified (default: false)
+	// Note: minification is not yet implemented
+	Minify bool `json:"minify" yaml:"minify" toml:"minify"`
+
+	// AddSourceComments adds comments indicating source files in bundles (default: true)
+	AddSourceComments *bool `json:"add_source_comments,omitempty" yaml:"add_source_comments,omitempty" toml:"add_source_comments,omitempty"`
+}
+
+// BundleConfig defines a single CSS bundle.
+type BundleConfig struct {
+	// Name is the bundle identifier (e.g., "main", "critical")
+	Name string `json:"name" yaml:"name" toml:"name"`
+
+	// Sources is a list of CSS file paths or glob patterns to include
+	// Files are concatenated in the order specified
+	Sources []string `json:"sources" yaml:"sources" toml:"sources"`
+
+	// Output is the output file path relative to output_dir (e.g., "css/bundle.css")
+	Output string `json:"output" yaml:"output" toml:"output"`
+}
+
+// NewCSSBundleConfig creates a new CSSBundleConfig with default values.
+func NewCSSBundleConfig() CSSBundleConfig {
+	addSourceComments := true
+	return CSSBundleConfig{
+		Enabled:           false,
+		Bundles:           []BundleConfig{},
+		Exclude:           []string{},
+		Minify:            false,
+		AddSourceComments: &addSourceComments,
+	}
+}
+
+// IsAddSourceComments returns whether source comments should be added to bundles.
+// Defaults to true if not explicitly set.
+func (c *CSSBundleConfig) IsAddSourceComments() bool {
+	if c.AddSourceComments == nil {
+		return true
+	}
+	return *c.AddSourceComments
+}
+
 // NewConfig creates a new Config with default values.
 func NewConfig() *Config {
 	return &Config{
