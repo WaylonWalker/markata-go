@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,8 +12,10 @@ import (
 )
 
 // ErrorPagesPlugin generates static error pages (404.html) during build.
-// The 404 page uses client-side JavaScript with Pagefind for fuzzy search
-// suggestions, so it works fully statically without any backend.
+// The 404 page includes:
+// - A prefilled search form based on the URL path
+// - Client-side slug matching to suggest similar pages
+// - Optional Pagefind integration for enhanced search
 type ErrorPagesPlugin struct{}
 
 // Compile-time interface verification.
@@ -48,8 +51,73 @@ func (p *ErrorPagesPlugin) Write(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	// Generate posts index for client-side matching
+	if err := p.generatePostsIndex(m, cfg); err != nil {
+		return err
+	}
+
 	// Generate 404 page
 	return p.generate404Page(m, cfg)
+}
+
+// postIndexEntry is a lightweight post entry for the 404 search index.
+type postIndexEntry struct {
+	Slug        string `json:"slug"`
+	Title       string `json:"title"`
+	Description string `json:"description,omitempty"`
+	URL         string `json:"url"`
+}
+
+// generatePostsIndex creates a lightweight JSON index of all posts for client-side matching.
+func (p *ErrorPagesPlugin) generatePostsIndex(m *lifecycle.Manager, cfg *models.Config) error {
+	posts := m.Posts()
+	entries := make([]postIndexEntry, 0, len(posts))
+
+	for _, post := range posts {
+		if post == nil || post.Slug == "" {
+			continue
+		}
+
+		entry := postIndexEntry{
+			Slug: post.Slug,
+			URL:  "/" + post.Slug + "/",
+		}
+
+		if post.Title != nil {
+			entry.Title = *post.Title
+		} else {
+			entry.Title = post.Slug
+		}
+
+		if post.Description != nil {
+			entry.Description = *post.Description
+		}
+
+		entries = append(entries, entry)
+	}
+
+	// Marshal to JSON
+	data, err := json.Marshal(entries)
+	if err != nil {
+		return fmt.Errorf("marshaling posts index: %w", err)
+	}
+
+	// Write to output directory
+	outputDir := cfg.OutputDir
+	if outputDir == "" {
+		outputDir = "output"
+	}
+
+	indexPath := filepath.Join(outputDir, "_404-index.json")
+	if err := os.MkdirAll(filepath.Dir(indexPath), 0o755); err != nil {
+		return fmt.Errorf("creating output directory for 404 index: %w", err)
+	}
+
+	if err := os.WriteFile(indexPath, data, 0o600); err != nil {
+		return fmt.Errorf("writing 404 index: %w", err)
+	}
+
+	return nil
 }
 
 // generate404Page creates the static 404.html file.
@@ -112,10 +180,9 @@ func (p *ErrorPagesPlugin) generate404Page(_ *lifecycle.Manager, cfg *models.Con
 }
 
 // generate404Body creates the HTML body content for the 404 page.
-// This includes the error message and client-side JavaScript that uses
-// Pagefind for fuzzy search suggestions based on the current URL.
+// Includes a prefilled search form and client-side slug matching.
 func generate404Body(cfg *models.Config) string {
-	// Get pagefind bundle directory
+	// Get pagefind bundle directory for optional enhanced search
 	bundleDir := cfg.Search.Pagefind.BundleDir
 	if bundleDir == "" {
 		bundleDir = defaultBundleDir
@@ -129,34 +196,53 @@ func generate404Body(cfg *models.Config) string {
         Looking for: <code id="requested-path"></code>
     </p>
 
+    <!-- Prefilled search form -->
+    <div class="search-form-section">
+        <h2>Search for it</h2>
+        <form id="search-form" class="search-form" action="/" method="get">
+            <input
+                type="text"
+                id="search-input"
+                name="q"
+                class="search-input"
+                placeholder="Search..."
+                autocomplete="off"
+            >
+            <button type="submit" class="search-button">Search</button>
+        </form>
+    </div>
+
+    <!-- Suggestions based on URL slug matching -->
     <div id="suggestions-section" class="suggestions" style="display: none;">
         <h2>Did you mean one of these?</h2>
         <ul id="suggestions-list" class="suggestion-list"></ul>
     </div>
 
     <div class="error-actions">
-        <p>You can also try:</p>
+        <p>Or try:</p>
         <ul>
             <li><a href="/">Go to the home page</a></li>
-            <li>Use the search above to find what you're looking for</li>
         </ul>
     </div>
 </div>
 
 <style>
 .error-404 {
-    text-align: center;
-    padding: var(--spacing-lg, 2rem) 0;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: var(--spacing-lg, 2rem) var(--spacing-md, 1rem);
 }
 
 .error-message {
     font-size: var(--font-size-lg, 1.125rem);
     color: var(--color-text-muted, #6b7280);
     margin-bottom: var(--spacing-md, 1rem);
+    text-align: center;
 }
 
 .requested-path {
     margin-bottom: var(--spacing-lg, 2rem);
+    text-align: center;
 }
 
 .requested-path code {
@@ -167,8 +253,55 @@ func generate404Body(cfg *models.Config) string {
     color: var(--color-text, #1f2937);
 }
 
+.search-form-section {
+    margin: var(--spacing-xl, 2rem) 0;
+}
+
+.search-form-section h2 {
+    font-size: var(--font-size-lg, 1.125rem);
+    margin-bottom: var(--spacing-md, 1rem);
+    color: var(--color-heading, #111827);
+}
+
+.search-form {
+    display: flex;
+    gap: var(--spacing-sm, 0.5rem);
+}
+
+.search-input {
+    flex: 1;
+    padding: var(--spacing-sm, 0.75rem) var(--spacing-md, 1rem);
+    font-size: var(--font-size-base, 1rem);
+    border: 2px solid var(--color-border, #e5e7eb);
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--color-bg, #ffffff);
+    color: var(--color-text, #1f2937);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--color-primary, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-button {
+    padding: var(--spacing-sm, 0.75rem) var(--spacing-lg, 1.5rem);
+    font-size: var(--font-size-base, 1rem);
+    font-weight: 600;
+    color: white;
+    background: var(--color-primary, #3b82f6);
+    border: none;
+    border-radius: var(--radius-md, 0.5rem);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.search-button:hover {
+    background: var(--color-primary-dark, #2563eb);
+}
+
 .suggestions {
-    text-align: left;
     margin: var(--spacing-xl, 2rem) 0;
     padding: var(--spacing-lg, 1.5rem);
     background: var(--color-surface, #f9fafb);
@@ -213,15 +346,21 @@ func generate404Body(cfg *models.Config) string {
     color: var(--color-primary, #3b82f6);
 }
 
-.suggestion-excerpt {
+.suggestion-description {
     display: block;
     font-size: var(--font-size-sm, 0.875rem);
     color: var(--color-text-muted, #6b7280);
     margin-top: var(--spacing-xs, 0.25rem);
 }
 
+.suggestion-match {
+    display: inline-block;
+    font-size: var(--font-size-xs, 0.75rem);
+    color: var(--color-text-muted, #9ca3af);
+    margin-left: var(--spacing-sm, 0.5rem);
+}
+
 .error-actions {
-    text-align: left;
     margin-top: var(--spacing-xl, 2rem);
 }
 
@@ -244,6 +383,12 @@ func generate404Body(cfg *models.Config) string {
         background: var(--color-code-bg, #374151);
     }
 
+    .search-input {
+        background: var(--color-bg, #111827);
+        border-color: var(--color-border, #374151);
+        color: var(--color-text, #f3f4f6);
+    }
+
     .suggestions {
         background: var(--color-surface, #1f2937);
         border-color: var(--color-border, #374151);
@@ -260,72 +405,210 @@ func generate404Body(cfg *models.Config) string {
 }
 </style>
 
-<script type="module">
-// Client-side fuzzy search for 404 suggestions using Pagefind
-(async function() {
+<script>
+// 404 Page - Client-side slug matching and search prefill
+(function() {
+    'use strict';
+
     const path = window.location.pathname;
-    document.getElementById('requested-path').textContent = path;
+    const requestedPathEl = document.getElementById('requested-path');
+    const searchInput = document.getElementById('search-input');
+    const searchForm = document.getElementById('search-form');
+    const suggestionsSection = document.getElementById('suggestions-section');
+    const suggestionsList = document.getElementById('suggestions-list');
 
-    // Extract search terms from the URL path
-    const searchTerms = path
-        .replace(/^\/+|\/+$/g, '')  // Remove leading/trailing slashes
-        .replace(/[-_]/g, ' ')       // Convert dashes/underscores to spaces
-        .replace(/\.[^.]+$/, '')     // Remove file extension
-        .toLowerCase();
+    // Show the requested path
+    if (requestedPathEl) {
+        requestedPathEl.textContent = path;
+    }
 
-    if (!searchTerms) return;
+    // Extract search terms from URL path
+    function extractSearchTerms(urlPath) {
+        return urlPath
+            .replace(/^\/+|\/+$/g, '')   // Remove leading/trailing slashes
+            .replace(/[-_]/g, ' ')        // Convert dashes/underscores to spaces
+            .replace(/\.[^.]+$/, '')      // Remove file extension
+            .replace(/\s+/g, ' ')         // Normalize whitespace
+            .trim();
+    }
 
-    try {
-        // Load Pagefind
-        const pagefind = await import('/%s/pagefind.js');
-        await pagefind.init();
+    // Prefill the search input
+    const searchTerms = extractSearchTerms(path);
+    if (searchInput && searchTerms) {
+        searchInput.value = searchTerms;
+    }
 
-        // Search for similar content
-        const search = await pagefind.search(searchTerms);
+    // Handle form submission - redirect to home with search param
+    // This works with pagefind's URL-based search initialization
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = searchInput.value.trim();
+            if (query) {
+                // Redirect to home with search query in hash (pagefind style)
+                window.location.href = '/#search=' + encodeURIComponent(query);
+            } else {
+                window.location.href = '/';
+            }
+        });
+    }
 
-        if (search.results.length === 0) return;
+    // Levenshtein distance for fuzzy matching
+    function levenshtein(a, b) {
+        if (a.length === 0) return b.length;
+        if (b.length === 0) return a.length;
 
-        // Get top 5 results
-        const results = await Promise.all(
-            search.results.slice(0, 5).map(r => r.data())
-        );
+        const matrix = [];
+        for (let i = 0; i <= b.length; i++) {
+            matrix[i] = [i];
+        }
+        for (let j = 0; j <= a.length; j++) {
+            matrix[0][j] = j;
+        }
 
-        // Filter out the 404 page itself
-        const suggestions = results.filter(r => !r.url.includes('404'));
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1, // substitution
+                        matrix[i][j - 1] + 1,     // insertion
+                        matrix[i - 1][j] + 1      // deletion
+                    );
+                }
+            }
+        }
+        return matrix[b.length][a.length];
+    }
 
-        if (suggestions.length === 0) return;
+    // Normalize a slug for comparison
+    function normalizeSlug(slug) {
+        return slug
+            .toLowerCase()
+            .replace(/^\/+|\/+$/g, '')
+            .replace(/[-_]/g, '')
+            .replace(/\s+/g, '');
+    }
 
-        // Show suggestions
-        const section = document.getElementById('suggestions-section');
-        const list = document.getElementById('suggestions-list');
+    // Find similar posts based on slug
+    function findSimilarPosts(posts, targetPath, maxResults) {
+        const targetSlug = normalizeSlug(targetPath);
+        const targetWords = extractSearchTerms(targetPath).toLowerCase().split(/\s+/);
 
-        suggestions.forEach(result => {
+        const scored = posts.map(post => {
+            const postSlug = normalizeSlug(post.slug);
+            const postTitle = (post.title || '').toLowerCase();
+
+            // Calculate slug distance
+            const slugDistance = levenshtein(targetSlug, postSlug);
+
+            // Calculate word overlap score (bonus for matching words)
+            let wordMatchScore = 0;
+            targetWords.forEach(word => {
+                if (word.length >= 3) {
+                    if (postSlug.includes(word)) wordMatchScore += 2;
+                    if (postTitle.includes(word)) wordMatchScore += 1;
+                }
+            });
+
+            // Combined score (lower is better, subtract word matches as bonus)
+            const score = slugDistance - (wordMatchScore * 2);
+
+            return { post, score, slugDistance };
+        });
+
+        // Sort by score (lower is better) and filter reasonable matches
+        return scored
+            .filter(s => s.slugDistance <= Math.max(targetSlug.length * 0.6, 5))
+            .sort((a, b) => a.score - b.score)
+            .slice(0, maxResults)
+            .map(s => s.post);
+    }
+
+    // Render suggestions
+    function renderSuggestions(posts) {
+        if (!posts || posts.length === 0) return;
+
+        suggestionsList.innerHTML = '';
+        posts.forEach(post => {
             const li = document.createElement('li');
             li.className = 'suggestion-item';
 
             const a = document.createElement('a');
-            a.href = result.url;
+            a.href = post.url;
 
             const title = document.createElement('span');
             title.className = 'suggestion-title';
-            title.textContent = result.meta?.title || result.url;
+            title.textContent = post.title || post.slug;
             a.appendChild(title);
 
-            if (result.excerpt) {
-                const excerpt = document.createElement('span');
-                excerpt.className = 'suggestion-excerpt';
-                excerpt.innerHTML = result.excerpt;
-                a.appendChild(excerpt);
+            if (post.description) {
+                const desc = document.createElement('span');
+                desc.className = 'suggestion-description';
+                desc.textContent = post.description;
+                a.appendChild(desc);
             }
 
             li.appendChild(a);
-            list.appendChild(li);
+            suggestionsList.appendChild(li);
         });
 
-        section.style.display = 'block';
-    } catch (e) {
-        // Pagefind not available or search failed - that's okay
-        console.debug('404 suggestions unavailable:', e.message);
+        suggestionsSection.style.display = 'block';
+    }
+
+    // Load posts index and find suggestions
+    async function loadAndSuggest() {
+        try {
+            const response = await fetch('/_404-index.json');
+            if (!response.ok) return;
+
+            const posts = await response.json();
+            const similar = findSimilarPosts(posts, path, 5);
+            renderSuggestions(similar);
+        } catch (e) {
+            console.debug('404 suggestions unavailable:', e.message);
+        }
+    }
+
+    // Try Pagefind first for richer results, fall back to our index
+    async function init() {
+        try {
+            const pagefind = await import('/%s/pagefind.js');
+            await pagefind.init();
+
+            const search = await pagefind.search(searchTerms);
+            if (search.results.length > 0) {
+                const results = await Promise.all(
+                    search.results.slice(0, 5).map(r => r.data())
+                );
+                const suggestions = results
+                    .filter(r => !r.url.includes('404'))
+                    .map(r => ({
+                        url: r.url,
+                        title: r.meta?.title || r.url,
+                        description: r.excerpt ? r.excerpt.replace(/<[^>]*>/g, '') : ''
+                    }));
+
+                if (suggestions.length > 0) {
+                    renderSuggestions(suggestions);
+                    return;
+                }
+            }
+        } catch (e) {
+            // Pagefind not available, fall back to our index
+            console.debug('Pagefind not available, using fallback:', e.message);
+        }
+
+        // Fall back to our lightweight index
+        await loadAndSuggest();
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
 })();
 </script>`, bundleDir)
