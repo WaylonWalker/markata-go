@@ -431,7 +431,7 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 	}
 
 	// Get theme name from config (default to "default")
-	themeName := "default"
+	themeName := ThemeDefault
 	if extra := config.Extra; extra != nil {
 		// Check for typed ThemeConfig struct (set by core.go)
 		if theme, ok := extra["theme"].(models.ThemeConfig); ok {
