@@ -269,13 +269,13 @@ func (p *CriticalCSSPlugin) convertToPreload(linkTag string) string {
 	// Build preload link with onload handler
 	// The onload trick loads the stylesheet asynchronously without blocking render
 	preloadLink := fmt.Sprintf(
-		`<link rel="preload" href="%s" as="style" onload="this.onload=null;this.rel='stylesheet'">`,
+		`<link rel="preload" href=%q as="style" onload="this.onload=null;this.rel='stylesheet'">`,
 		href,
 	)
 
 	// Add noscript fallback for browsers without JavaScript
 	noscriptFallback := fmt.Sprintf(
-		`<noscript><link rel="stylesheet" href="%s"></noscript>`,
+		`<noscript><link rel="stylesheet" href=%q></noscript>`,
 		href,
 	)
 
