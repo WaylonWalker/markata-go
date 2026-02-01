@@ -990,7 +990,7 @@ func sidebarItemsToMaps(items []models.SidebarNavItem) []map[string]interface{} 
 // ToPongo2 converts the Context to a pongo2.Context for template execution.
 func (c Context) ToPongo2() pongo2.Context {
 	postMap := postToMap(c.Post)
-	configMap := configToMap(c.Config)
+	configMap := GetConfigMap(c.Config)
 
 	ctx := pongo2.Context{
 		"post":          postMap,
