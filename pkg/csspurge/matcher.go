@@ -84,7 +84,7 @@ func processRule(rule CSSRule, used *UsedSelectors, opts PurgeOptions, out *stri
 			out.WriteString("\n")
 			return true
 
-		case "media", "supports", "layer":
+		case atRuleMedia, "supports", "layer":
 			// Process nested rules
 			var nestedOut strings.Builder
 			keptNested := 0
@@ -162,40 +162,18 @@ func isSingleSelectorUsed(selector string, used *UsedSelectors, preserve []strin
 
 	// For pure element selectors (no class/id), check if element is used
 	if len(classes) == 0 && len(ids) == 0 && len(attrs) == 0 && len(elements) > 0 {
-		for _, elem := range elements {
-			if used.Elements[elem] {
-				return true
-			}
-		}
+		return anyElementUsed(elements, used)
+	}
+
+	// Check classes, IDs, and attributes
+	if !allClassesUsed(classes, used, preserve) {
 		return false
 	}
-
-	// For selectors with classes, all classes must be used
-	for _, class := range classes {
-		// Check preserve patterns for the class
-		if matchesPreservePatterns(class, preserve) {
-			continue
-		}
-		if !used.Classes[class] {
-			return false
-		}
+	if !allIDsUsed(ids, used, preserve) {
+		return false
 	}
-
-	// For selectors with IDs, the ID must be used
-	for _, id := range ids {
-		if matchesPreservePatterns(id, preserve) {
-			continue
-		}
-		if !used.IDs[id] {
-			return false
-		}
-	}
-
-	// For attribute selectors, the attribute must be used
-	for _, attr := range attrs {
-		if !used.Attributes[attr] {
-			return false
-		}
+	if !allAttributesUsed(attrs, used) {
+		return false
 	}
 
 	// If we have classes or IDs that passed, the selector is used
@@ -204,13 +182,53 @@ func isSingleSelectorUsed(selector string, used *UsedSelectors, preserve []strin
 	}
 
 	// Fall back to element check
+	return anyElementUsed(elements, used)
+}
+
+// anyElementUsed checks if any element is in the used set.
+func anyElementUsed(elements []string, used *UsedSelectors) bool {
 	for _, elem := range elements {
 		if used.Elements[elem] {
 			return true
 		}
 	}
-
 	return false
+}
+
+// allClassesUsed checks if all classes (not matching preserve patterns) are used.
+func allClassesUsed(classes []string, used *UsedSelectors, preserve []string) bool {
+	for _, class := range classes {
+		if matchesPreservePatterns(class, preserve) {
+			continue
+		}
+		if !used.Classes[class] {
+			return false
+		}
+	}
+	return true
+}
+
+// allIDsUsed checks if all IDs (not matching preserve patterns) are used.
+func allIDsUsed(ids []string, used *UsedSelectors, preserve []string) bool {
+	for _, id := range ids {
+		if matchesPreservePatterns(id, preserve) {
+			continue
+		}
+		if !used.IDs[id] {
+			return false
+		}
+	}
+	return true
+}
+
+// allAttributesUsed checks if all attributes are used.
+func allAttributesUsed(attrs []string, used *UsedSelectors) bool {
+	for _, attr := range attrs {
+		if !used.Attributes[attr] {
+			return false
+		}
+	}
+	return true
 }
 
 // matchesPreservePattern checks if a selector matches any preserve pattern.
@@ -237,8 +255,8 @@ func matchesPreservePattern(selector string, patterns []string) bool {
 // matchesPreservePatterns checks if a name matches any preserve pattern.
 func matchesPreservePatterns(name string, patterns []string) bool {
 	for _, pattern := range patterns {
-		matched, _ := filepath.Match(pattern, name)
-		if matched {
+		matched, err := filepath.Match(pattern, name)
+		if err == nil && matched {
 			return true
 		}
 	}

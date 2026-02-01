@@ -85,7 +85,7 @@ func TestScanHTML(t *testing.T) {
 	tmpDir := t.TempDir()
 	htmlPath := filepath.Join(tmpDir, "test.html")
 	content := `<div class="container"><span class="text">Hello</span></div>`
-	if err := os.WriteFile(htmlPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(htmlPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write temp file: %v", err)
 	}
 
