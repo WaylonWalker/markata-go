@@ -1,6 +1,6 @@
 module github.com/WaylonWalker/markata-go
 
-go 1.23.0
+go 1.22
 
 require (
 	github.com/BurntSushi/toml v1.6.0
@@ -16,8 +16,10 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.10.2
 	github.com/yuin/goldmark v1.7.16
+	github.com/yuin/goldmark-emoji v1.0.5
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
-	golang.org/x/text v0.25.0
+	golang.org/x/crypto v0.31.0
+	golang.org/x/text v0.21.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -54,9 +56,8 @@ require (
 	github.com/tetratelabs/wazero v1.2.1 // indirect
 	github.com/wasilibs/nottinygc v0.4.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	github.com/yuin/goldmark-emoji v1.0.5 // indirect
 	golang.org/x/exp v0.0.0-20220909182711-5c715a9e8561 // indirect
-	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/sync v0.14.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/net v0.30.0 // indirect
+	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 )

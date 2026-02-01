@@ -31,6 +31,11 @@
   <link rel="stylesheet" href="{{ 'css/search.css' | theme_asset }}">
   {% endif %}
 
+  <!-- Encryption CSS (when post has encrypted content) -->
+  {% if post.Extra.has_encrypted_content %}
+  <link rel="stylesheet" href="{{ 'css/encryption.css' | theme_asset }}">
+  {% endif %}
+
   <!-- Conditional CSS Loading -->
   <script>
     // GLightbox CSS - only load if glightbox elements will exist
@@ -232,6 +237,11 @@
   <!-- Palette Switcher JS (when enabled) -->
   {% if config.theme.switcher.enabled %}
   <script src="{{ 'js/palette-switcher.js' | theme_asset }}" defer></script>
+  {% endif %}
+
+  <!-- Decryption JS (when post has encrypted content) -->
+  {% if post.Extra.has_encrypted_content %}
+  <script src="{{ 'js/decryption.js' | theme_asset }}" defer></script>
   {% endif %}
 
   {% include "partials/background-scripts.html" %}

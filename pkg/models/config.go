@@ -269,6 +269,9 @@ type Config struct {
 	// ResourceHints configures automatic resource hints generation (preconnect, dns-prefetch, etc.)
 	ResourceHints ResourceHintsConfig `json:"resource_hints" yaml:"resource_hints" toml:"resource_hints"`
 
+	// Encryption configures content encryption for private posts
+	Encryption EncryptionConfig `json:"encryption" yaml:"encryption" toml:"encryption"`
+
 	// TemplatePresets defines named template preset configurations
 	// Each preset specifies templates for all output formats
 	TemplatePresets map[string]TemplatePreset `json:"template_presets,omitempty" yaml:"template_presets,omitempty" toml:"template_presets,omitempty"`
@@ -1485,6 +1488,31 @@ func NewEmbedsConfig() EmbedsConfig {
 	}
 }
 
+// EncryptionConfig configures content encryption for private posts.
+// When enabled and a post has private: true with secret_key set, the post content
+// will be encrypted using AES-256-GCM and require client-side decryption.
+type EncryptionConfig struct {
+	// Enabled controls whether encryption processing is active (default: false)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// DefaultKey is the default encryption key name to use when a post doesn't specify one.
+	// Maps to environment variable MARKATA_GO_ENCRYPTION_KEY_{DefaultKey}
+	// Example: default_key: "blog" reads from MARKATA_GO_ENCRYPTION_KEY_BLOG
+	DefaultKey string `json:"default_key,omitempty" yaml:"default_key,omitempty" toml:"default_key,omitempty"`
+
+	// DecryptionHint is a hint shown to users about how to get the decryption password
+	// Example: "Contact me on Twitter @user to get access"
+	DecryptionHint string `json:"decryption_hint,omitempty" yaml:"decryption_hint,omitempty" toml:"decryption_hint,omitempty"`
+}
+
+// NewEncryptionConfig creates a new EncryptionConfig with default values.
+func NewEncryptionConfig() EncryptionConfig {
+	return EncryptionConfig{
+		Enabled:    false,
+		DefaultKey: "",
+	}
+}
+
 // ContentTemplateConfig defines a single content template.
 type ContentTemplateConfig struct {
 	// Name is the template identifier (e.g., "post", "page", "docs")
@@ -1628,6 +1656,7 @@ func NewConfig() *Config {
 		Blogroll:         NewBlogrollConfig(),
 		Mentions:         NewMentionsConfig(),
 		ResourceHints:    NewResourceHintsConfig(),
+		Encryption:       NewEncryptionConfig(),
 	}
 }
 
