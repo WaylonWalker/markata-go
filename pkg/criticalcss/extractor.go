@@ -178,9 +178,10 @@ func (e *Extractor) Extract(css string) (*Result, error) {
 	for _, rule := range rules {
 		if e.isAtRule(rule) {
 			// Handle @rules specially
-			if e.isAlwaysCriticalAtRule(rule) {
+			switch {
+			case e.isAlwaysCriticalAtRule(rule):
 				criticalRules = append(criticalRules, rule)
-			} else if e.isAtRuleWithSelectors(rule) {
+			case e.isAtRuleWithSelectors(rule):
 				// For @media, @supports, etc., check the selectors inside
 				criticalPart, nonCriticalPart := e.splitAtRule(rule, criticalSet, excludeSet)
 				if criticalPart != "" {
@@ -189,7 +190,7 @@ func (e *Extractor) Extract(css string) (*Result, error) {
 				if nonCriticalPart != "" {
 					nonCriticalRules = append(nonCriticalRules, nonCriticalPart)
 				}
-			} else {
+			default:
 				// @keyframes, @font-face, etc. - include in critical if referenced
 				criticalRules = append(criticalRules, rule)
 			}
