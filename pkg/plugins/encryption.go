@@ -216,21 +216,37 @@ func (p *EncryptionPlugin) encryptPost(post *models.Post) error {
 		hintHTML = fmt.Sprintf(`<p class="encrypted-content__hint">%s</p>`, escapeHTML(p.decryptionHint))
 	}
 
+	// Generate unique ID for accessibility (based on post path hash)
+	inputID := fmt.Sprintf("decrypt-input-%d", hashString(post.Path))
+	checkboxID := fmt.Sprintf("decrypt-remember-%d", hashString(post.Path))
+
 	// Replace ArticleHTML with encrypted wrapper
-	post.ArticleHTML = fmt.Sprintf(`<div class="encrypted-content" data-encrypted="%s">
+	// Includes:
+	// - data-key-name for multi-post unlock feature
+	// - ARIA labels for accessibility
+	// - Remember me checkbox for explicit session storage opt-in
+	post.ArticleHTML = fmt.Sprintf(`<div class="encrypted-content" data-encrypted="%s" data-key-name="%s" role="region" aria-label="Encrypted content">
   <div class="encrypted-content__locked">
-    <div class="encrypted-content__icon">🔒</div>
-    <h3 class="encrypted-content__title">Encrypted Content</h3>
+    <div class="encrypted-content__icon" aria-hidden="true">🔒</div>
+    <h3 class="encrypted-content__title" id="encrypt-title-%d">Encrypted Content</h3>
     <p class="encrypted-content__message">This content is encrypted. Enter the password to decrypt and view.</p>
     %s
-    <div class="encrypted-content__form">
-      <input type="password" class="encrypted-content__input" placeholder="Enter password" autocomplete="off">
-      <button type="button" class="encrypted-content__button">Decrypt</button>
+    <div class="encrypted-content__form" role="form" aria-labelledby="encrypt-title-%d">
+      <label for="%s" class="sr-only">Password</label>
+      <input type="password" id="%s" class="encrypted-content__input" placeholder="Enter password" autocomplete="off" aria-describedby="encrypt-error-%d">
+      <button type="button" class="encrypted-content__button" aria-busy="false">Decrypt</button>
     </div>
-    <p class="encrypted-content__error" style="display: none;"></p>
+    <label class="encrypted-content__remember-label">
+      <input type="checkbox" id="%s" class="encrypted-content__remember" aria-describedby="remember-desc-%d">
+      <span>Remember for this session</span>
+    </label>
+    <span id="remember-desc-%d" class="sr-only">If checked, the password will be saved in your browser for this session only. It will be cleared when you close the browser.</span>
+    <p id="encrypt-error-%d" class="encrypted-content__error" style="display: none;" role="alert" aria-live="assertive"></p>
   </div>
-  <div class="encrypted-content__decrypted" style="display: none;"></div>
-</div>`, encryptedContent, hintHTML)
+  <div class="encrypted-content__decrypted" style="display: none;" tabindex="-1"></div>
+</div>`, encryptedContent, escapeHTML(keyName), hashString(post.Path), hintHTML,
+		hashString(post.Path), inputID, inputID, hashString(post.Path),
+		checkboxID, hashString(post.Path), hashString(post.Path), hashString(post.Path))
 
 	// Mark post as having encrypted content (for template to include decryption script)
 	post.Set("has_encrypted_content", true)
@@ -247,6 +263,16 @@ func escapeHTML(s string) string {
 	s = strings.ReplaceAll(s, "\"", "&quot;")
 	s = strings.ReplaceAll(s, "'", "&#39;")
 	return s
+}
+
+// hashString generates a simple numeric hash for a string.
+// Used for generating unique IDs in HTML elements.
+func hashString(s string) uint32 {
+	var hash uint32
+	for _, c := range s {
+		hash = hash*31 + uint32(c)
+	}
+	return hash
 }
 
 // getModelsConfig attempts to extract models.Config from lifecycle.Config.
