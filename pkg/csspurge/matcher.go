@@ -270,3 +270,66 @@ func matchesPreservePatterns(value string, patterns []string) bool {
 	}
 	return false
 }
+
+// DefaultPreservePatterns returns the default patterns for selectors to preserve.
+// These are commonly used by JavaScript frameworks and should not be purged.
+func DefaultPreservePatterns() []string {
+	return []string{
+		// JavaScript-added classes
+		"js-*",
+
+		// HTMX framework classes
+		"htmx-*",
+
+		// Alpine.js framework (x-show, x-bind, x-data, x-cloak, etc.)
+		"x-*",
+
+		// Pagefind search UI classes
+		"pagefind-*",
+
+		// GLightbox image viewer
+		"glightbox*",
+		"gslide*",
+		"goverlay*",
+
+		// Common state classes (often added by JS)
+		"active",
+		"inactive",
+		"hidden",
+		"visible",
+		"show",
+		"hide",
+		"open",
+		"closed",
+		"loading",
+		"loaded",
+		"error",
+		"success",
+		"disabled",
+		"enabled",
+		"selected",
+		"focused",
+		"expanded",
+		"collapsed",
+
+		// Theme/mode classes
+		"dark",
+		"light",
+		"dark-mode",
+		"light-mode",
+
+		// Animation classes
+		"fade-*",
+		"slide-*",
+		"animate-*",
+
+		// Transition classes
+		"transition-*",
+		"entering",
+		"leaving",
+
+		// Accessibility
+		"sr-only",
+		"visually-hidden",
+	}
+}
