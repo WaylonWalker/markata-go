@@ -273,6 +273,9 @@ func DefaultPreservePatterns() []string {
 		// HTMX framework classes
 		"htmx-*",
 
+		// Alpine.js framework (x-show, x-bind, x-data, x-cloak, etc.)
+		"x-*",
+
 		// Pagefind search UI classes
 		"pagefind-*",
 
