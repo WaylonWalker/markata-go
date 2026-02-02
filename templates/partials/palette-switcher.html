@@ -216,9 +216,20 @@
     select.value = saved;
     applyAesthetic(saved);
 
-    // Handle changes
+    // Handle changes - use global API if available (for consistency with keyboard shortcuts)
     select.addEventListener('change', (e) => {
-      applyAesthetic(e.target.value);
+      if (window.markata && window.markata.paletteSwitcher && window.markata.paletteSwitcher.setAesthetic) {
+        window.markata.paletteSwitcher.setAesthetic(e.target.value);
+      } else {
+        applyAesthetic(e.target.value);
+      }
+    });
+
+    // Listen for aesthetic changes from keyboard shortcuts
+    window.addEventListener('aesthetic-change', (e) => {
+      if (e.detail && e.detail.aesthetic && select.value !== e.detail.aesthetic) {
+        select.value = e.detail.aesthetic;
+      }
     });
   }
 

@@ -5,6 +5,8 @@ run:
   timeout: 5m
   tests: true
   go: "1.22"
+  # Note: Set GOLANGCI_LINT_CONCURRENCY=4 to reduce CPU/memory pressure locally
+  # By default, uses all available cores for faster CI
 
 linters:
   enable:
@@ -70,7 +72,7 @@ linters-settings:
   gocritic:
     enabled-tags:
       - diagnostic
-      - experimental
+      # - experimental  # Disabled: adds many checks, high resource cost, unstable APIs
       - opinionated
       - performance
       - style

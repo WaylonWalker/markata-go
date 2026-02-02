@@ -1,7 +1,5 @@
 {% extends "base.html" %}
 
-{% extends "base.html" %}
-
 {% block title %}{{ feed.title | default:config.title | default:"Posts" }}{% endblock %}
 {% block description %}{{ feed.description | default:config.description | default:"" }}{% endblock %}
 
@@ -31,20 +29,12 @@
     {% if page.pagination_type == "js" %}
     {# For JS pagination, render ALL posts - JavaScript will handle showing/hiding #}
     {% for post in feed.posts %}
-    {% if feed.type == "guide" %}
-    {% include "partials/guide-card.html" %}
-    {% else %}
-    {% include "partials/card.html" %}
-    {% endif %}
+    {% include "partials/cards/card-router.html" %}
     {% endfor %}
     {% else %}
     {# For manual/htmx pagination, render only current page posts #}
     {% for post in page.posts %}
-    {% if feed.type == "guide" %}
-    {% include "partials/guide-card.html" %}
-    {% else %}
-    {% include "partials/card.html" %}
-    {% endif %}
+    {% include "partials/cards/card-router.html" %}
     {% endfor %}
     {% endif %}
   </div>

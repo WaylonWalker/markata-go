@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -143,6 +144,7 @@ func (p *GlobPlugin) isIgnored(path string) bool {
 }
 
 // Glob discovers content files matching the configured patterns.
+// Uses cached file list when patterns haven't changed.
 func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 	config := m.Config()
 	baseDir := config.ContentDir
@@ -156,40 +158,62 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 		return err
 	}
 
-	// Use a map to deduplicate files
+	// Check for cached file list
+	cache := GetBuildCache(m)
+	patternHash := buildcache.HashContent(strings.Join(p.patterns, "\n"))
+
+	if cache != nil {
+		cachedFiles, cachedHash := cache.GetGlobCache()
+		if cachedHash == patternHash && len(cachedFiles) > 0 {
+			// Patterns unchanged - verify cached files still exist
+			// This is much faster than a full glob scan
+			if p.verifyCachedFiles(absBaseDir, cachedFiles) {
+				m.SetFiles(cachedFiles)
+				return nil
+			}
+			// Some files missing - fall through to full scan
+		}
+	}
+
+	// Full scan
+	files := p.scanFiles(absBaseDir)
+
+	// Cache for next build
+	if cache != nil && len(files) > 0 {
+		cache.SetGlobCache(files, patternHash)
+	}
+
+	m.SetFiles(files)
+	return nil
+}
+
+// scanFiles performs full glob scan.
+func (p *GlobPlugin) scanFiles(absBaseDir string) []string {
 	fileSet := make(map[string]struct{})
 
 	for _, pattern := range p.patterns {
-		// Handle both relative and absolute patterns
 		fullPattern := pattern
 		if !filepath.IsAbs(pattern) {
 			fullPattern = filepath.Join(absBaseDir, pattern)
 		}
 
-		// Use doublestar for glob matching with ** support
 		matches, err := doublestar.FilepathGlob(fullPattern)
 		if err != nil {
-			return err
+			continue
 		}
 
 		for _, match := range matches {
-			// Get path relative to base dir for consistency
 			relPath, err := filepath.Rel(absBaseDir, match)
 			if err != nil {
-				relPath = match // Fall back to absolute path
+				relPath = match
 			}
 
-			// Skip if ignored by gitignore
 			if p.isIgnored(relPath) {
 				continue
 			}
 
-			// Skip directories
 			info, err := os.Stat(match)
-			if err != nil {
-				continue
-			}
-			if info.IsDir() {
+			if err != nil || info.IsDir() {
 				continue
 			}
 
@@ -197,17 +221,24 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Convert map to sorted slice
 	files := make([]string, 0, len(fileSet))
 	for file := range fileSet {
 		files = append(files, file)
 	}
-
-	// Sort for deterministic ordering
 	sort.Strings(files)
+	return files
+}
 
-	m.SetFiles(files)
-	return nil
+// verifyCachedFiles checks if all cached files still exist.
+// This is much faster than a full glob scan.
+func (p *GlobPlugin) verifyCachedFiles(absBaseDir string, cached []string) bool {
+	for _, f := range cached {
+		fullPath := filepath.Join(absBaseDir, f)
+		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
 }
 
 // SetPatterns sets the glob patterns to use for file discovery.

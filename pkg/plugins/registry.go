@@ -78,6 +78,13 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["background"] = func() lifecycle.Plugin { return NewBackgroundPlugin() }
 	pluginRegistry.constructors["image_zoom"] = func() lifecycle.Plugin { return NewImageZoomPlugin() }
 	pluginRegistry.constructors["static_file_conflicts"] = func() lifecycle.Plugin { return NewStaticFileConflictsPlugin() }
+	pluginRegistry.constructors["slug_conflicts"] = func() lifecycle.Plugin { return NewSlugConflictsPlugin() }
+	pluginRegistry.constructors["error_pages"] = func() lifecycle.Plugin { return NewErrorPagesPlugin() }
+	pluginRegistry.constructors["css_bundle"] = func() lifecycle.Plugin { return NewCSSBundlePlugin() }
+	pluginRegistry.constructors["resource_hints"] = func() lifecycle.Plugin { return NewResourceHintsPlugin() }
+	pluginRegistry.constructors["encryption"] = func() lifecycle.Plugin { return NewEncryptionPlugin() }
+	pluginRegistry.constructors["critical_css"] = func() lifecycle.Plugin { return NewCriticalCSSPlugin() }
+	pluginRegistry.constructors["css_purge"] = func() lifecycle.Plugin { return NewCSSPurgePlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -155,9 +162,11 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewMDVideoPlugin(),           // Convert video images to video tags
 		NewYouTubePlugin(),           // Convert YouTube URLs to embeds
 		NewLinkCollectorPlugin(),     // Collect links after markdown rendering
+		NewEncryptionPlugin(),        // Encrypt content for private posts (runs late in Render)
 		NewTemplatesPlugin(),
 
 		// Collect stage plugins
+		NewSlugConflictsPlugin(), // Detect slug conflicts (runs first in Collect)
 		NewFeedsPlugin(),
 		NewAutoFeedsPlugin(),
 		NewBlogrollPlugin(),            // Fetch external feeds for blogroll
@@ -170,12 +179,16 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewStaticAssetsPlugin(), // Copy static assets first
 		NewPaletteCSSPlugin(),   // Generate palette CSS (overwrites variables.css)
 		NewChromaCSSPlugin(),    // Generate syntax highlighting CSS
+		NewCSSBundlePlugin(),    // Bundle CSS files (runs after CSS generators)
 		NewPublishFeedsPlugin(),
 		NewPublishHTMLPlugin(),
-		NewRedirectsPlugin(), // Generate redirect pages
+		NewRedirectsPlugin(),     // Generate redirect pages
+		NewErrorPagesPlugin(),    // Generate static 404 page
+		NewResourceHintsPlugin(), // Inject resource hints (after HTML written)
 		NewSitemapPlugin(),
 
 		// Cleanup stage plugins
+		NewCSSPurgePlugin(), // Remove unused CSS (before search index)
 		NewPagefindPlugin(), // Generate search index (requires all HTML written first)
 	}
 }

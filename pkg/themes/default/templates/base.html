@@ -113,6 +113,7 @@
   {% endif %}
 
   {% include "partials/background-css.html" %}
+  {% include "partials/aesthetic-css.html" %}
   {% endblock %}
 </head>
 <body>
@@ -122,9 +123,14 @@
     <div class="container">
       <a href="/" class="site-title">{{ config.title | default:'My Site' }}</a>
       {% include "components/nav.html" %}
-      {% if config.search.enabled and config.search.position == 'navbar' %}
-      {% include "components/search.html" %}
-      {% endif %}
+
+      {# Search and theme controls - pushed to right #}
+      <div class="header-controls">
+        {% if config.search.enabled and config.search.position == 'navbar' %}
+        {% include "components/search.html" %}
+        {% endif %}
+        {% include "partials/palette-switcher.html" %}
+      </div>
     </div>
   </header>
   {% endblock %}

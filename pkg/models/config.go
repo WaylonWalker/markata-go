@@ -266,6 +266,15 @@ type Config struct {
 	// Mentions configures the @mentions resolution plugin
 	Mentions MentionsConfig `json:"mentions" yaml:"mentions" toml:"mentions"`
 
+	// ErrorPages configures custom error pages (404, etc.)
+	ErrorPages ErrorPagesConfig `json:"error_pages" yaml:"error_pages" toml:"error_pages"`
+
+	// ResourceHints configures automatic resource hints generation (preconnect, dns-prefetch, etc.)
+	ResourceHints ResourceHintsConfig `json:"resource_hints" yaml:"resource_hints" toml:"resource_hints"`
+
+	// Encryption configures content encryption for private posts
+	Encryption EncryptionConfig `json:"encryption" yaml:"encryption" toml:"encryption"`
+
 	// TemplatePresets defines named template preset configurations
 	// Each preset specifies templates for all output formats
 	TemplatePresets map[string]TemplatePreset `json:"template_presets,omitempty" yaml:"template_presets,omitempty" toml:"template_presets,omitempty"`
@@ -986,6 +995,12 @@ type SEOConfig struct {
 	// AuthorImage is the author's profile image URL for OG cards
 	AuthorImage string `json:"author_image" yaml:"author_image" toml:"author_image"`
 
+	// OGImageService is the URL for a screenshot service that generates OG images
+	// from OG card pages. The URL should accept a `url` query parameter.
+	// Example: "https://shots.example.com/shot/" generates URLs like:
+	// "https://shots.example.com/shot/?url=https://site.com/post/og/&height=600&width=1200&format=jpg"
+	OGImageService string `json:"og_image_service" yaml:"og_image_service" toml:"og_image_service"`
+
 	// StructuredData configures JSON-LD Schema.org generation
 	StructuredData StructuredDataConfig `json:"structured_data" yaml:"structured_data" toml:"structured_data"`
 }
@@ -1184,6 +1199,70 @@ func NewWebMentionsConfig() WebMentionsConfig {
 	}
 }
 
+// ResourceHintsConfig configures automatic resource hints generation for network optimization.
+// Resource hints (preconnect, dns-prefetch, preload, prefetch) help browsers prepare
+// for external resources before they're needed, improving page load performance.
+type ResourceHintsConfig struct {
+	// Enabled controls whether resource hints are generated (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// AutoDetect enables automatic detection of external domains in HTML/CSS (default: true)
+	AutoDetect *bool `json:"auto_detect,omitempty" yaml:"auto_detect,omitempty" toml:"auto_detect,omitempty"`
+
+	// Domains is a list of manually configured domain hints
+	Domains []DomainHint `json:"domains,omitempty" yaml:"domains,omitempty" toml:"domains,omitempty"`
+
+	// ExcludeDomains is a list of domains to exclude from auto-detection
+	ExcludeDomains []string `json:"exclude_domains,omitempty" yaml:"exclude_domains,omitempty" toml:"exclude_domains,omitempty"`
+}
+
+// DomainHint represents a hint configuration for a specific domain.
+type DomainHint struct {
+	// Domain is the external domain (e.g., "fonts.googleapis.com")
+	Domain string `json:"domain" yaml:"domain" toml:"domain"`
+
+	// HintTypes specifies which hint types to generate for this domain
+	// Valid values: "preconnect", "dns-prefetch", "preload", "prefetch"
+	HintTypes []string `json:"hint_types" yaml:"hint_types" toml:"hint_types"`
+
+	// CrossOrigin specifies the crossorigin attribute value
+	// Valid values: "", "anonymous", "use-credentials" (default: "")
+	CrossOrigin string `json:"crossorigin,omitempty" yaml:"crossorigin,omitempty" toml:"crossorigin,omitempty"`
+
+	// As specifies the "as" attribute for preload hints (e.g., "font", "script", "style")
+	As string `json:"as,omitempty" yaml:"as,omitempty" toml:"as,omitempty"`
+}
+
+// NewResourceHintsConfig creates a new ResourceHintsConfig with default values.
+func NewResourceHintsConfig() ResourceHintsConfig {
+	enabled := true
+	autoDetect := true
+	return ResourceHintsConfig{
+		Enabled:        &enabled,
+		AutoDetect:     &autoDetect,
+		Domains:        []DomainHint{},
+		ExcludeDomains: []string{},
+	}
+}
+
+// IsEnabled returns whether resource hints generation is enabled.
+// Defaults to true if not explicitly set.
+func (r *ResourceHintsConfig) IsEnabled() bool {
+	if r.Enabled == nil {
+		return true
+	}
+	return *r.Enabled
+}
+
+// IsAutoDetectEnabled returns whether auto-detection is enabled.
+// Defaults to true if not explicitly set.
+func (r *ResourceHintsConfig) IsAutoDetectEnabled() bool {
+	if r.AutoDetect == nil {
+		return true
+	}
+	return *r.AutoDetect
+}
+
 // PostFormatsConfig configures the output formats for individual posts.
 // This controls what file formats are generated for each post.
 type PostFormatsConfig struct {
@@ -1320,6 +1399,41 @@ func NewYouTubeConfig() YouTubeConfig {
 	}
 }
 
+// CSSPurgeConfig configures the css_purge plugin for removing unused CSS rules.
+type CSSPurgeConfig struct {
+	// Enabled controls whether CSS purging is active (default: false)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// Verbose enables detailed logging of purge operations (default: false)
+	Verbose bool `json:"verbose" yaml:"verbose" toml:"verbose"`
+
+	// Preserve is a list of glob patterns for CSS selectors to always keep.
+	// These patterns match against class names and IDs.
+	// Example: ["js-*", "htmx-*", "active", "hidden"]
+	Preserve []string `json:"preserve" yaml:"preserve" toml:"preserve"`
+
+	// SkipFiles is a list of CSS file patterns to skip during purging.
+	// Useful for third-party CSS that should not be modified.
+	// Example: ["vendor/*", "normalize.css"]
+	SkipFiles []string `json:"skip_files" yaml:"skip_files" toml:"skip_files"`
+
+	// WarningThreshold is the minimum percentage of CSS removed before showing a warning.
+	// If more than this percentage is removed, a warning is shown (might indicate overly aggressive purging).
+	// Set to 0 to disable. Default: 0 (disabled)
+	WarningThreshold int `json:"warning_threshold" yaml:"warning_threshold" toml:"warning_threshold"`
+}
+
+// NewCSSPurgeConfig creates a new CSSPurgeConfig with default values.
+func NewCSSPurgeConfig() CSSPurgeConfig {
+	return CSSPurgeConfig{
+		Enabled:          false, // Disabled by default - opt-in feature
+		Verbose:          false,
+		Preserve:         []string{}, // Uses csspurge.DefaultPreservePatterns() when empty
+		SkipFiles:        []string{},
+		WarningThreshold: 0,
+	}
+}
+
 // ImageZoomConfig configures the image_zoom plugin for lightbox functionality.
 type ImageZoomConfig struct {
 	// Enabled controls whether image zoom is active (default: false)
@@ -1377,6 +1491,83 @@ func NewImageZoomConfig() ImageZoomConfig {
 	}
 }
 
+// CriticalCSSConfig configures the critical CSS extraction and inlining plugin.
+// Critical CSS optimization inlines above-the-fold styles and async loads the rest,
+// improving First Contentful Paint (FCP) by 200-800ms.
+type CriticalCSSConfig struct {
+	// Enabled controls whether critical CSS optimization is active (default: false)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// ViewportWidth is the simulated viewport width for determining above-the-fold content (default: 1300)
+	ViewportWidth int `json:"viewport_width,omitempty" yaml:"viewport_width,omitempty" toml:"viewport_width,omitempty"`
+
+	// ViewportHeight is the simulated viewport height for determining above-the-fold content (default: 900)
+	ViewportHeight int `json:"viewport_height,omitempty" yaml:"viewport_height,omitempty" toml:"viewport_height,omitempty"`
+
+	// Minify controls whether to minify the critical CSS output (default: true)
+	Minify *bool `json:"minify,omitempty" yaml:"minify,omitempty" toml:"minify,omitempty"`
+
+	// PreloadNonCritical uses link rel="preload" for non-critical CSS (default: true)
+	// This async loads the full stylesheet without blocking render
+	PreloadNonCritical *bool `json:"preload_non_critical,omitempty" yaml:"preload_non_critical,omitempty" toml:"preload_non_critical,omitempty"`
+
+	// ExtraSelectors is a list of additional CSS selectors to always include as critical
+	// Useful for JavaScript-injected content that may appear above the fold
+	ExtraSelectors []string `json:"extra_selectors,omitempty" yaml:"extra_selectors,omitempty" toml:"extra_selectors,omitempty"`
+
+	// ExcludeSelectors is a list of CSS selectors to always exclude from critical CSS
+	// Useful for content that should never be inlined (e.g., large animations)
+	ExcludeSelectors []string `json:"exclude_selectors,omitempty" yaml:"exclude_selectors,omitempty" toml:"exclude_selectors,omitempty"`
+
+	// InlineThreshold is the maximum size (in bytes) for the critical CSS before giving up inlining (default: 50000)
+	// If critical CSS exceeds this threshold, the optimization is skipped for that page
+	InlineThreshold int `json:"inline_threshold,omitempty" yaml:"inline_threshold,omitempty" toml:"inline_threshold,omitempty"`
+}
+
+// NewCriticalCSSConfig creates a new CriticalCSSConfig with default values.
+func NewCriticalCSSConfig() CriticalCSSConfig {
+	enabled := false
+	minify := true
+	preloadNonCritical := true
+	return CriticalCSSConfig{
+		Enabled:            &enabled,
+		ViewportWidth:      1300,
+		ViewportHeight:     900,
+		Minify:             &minify,
+		PreloadNonCritical: &preloadNonCritical,
+		ExtraSelectors:     []string{},
+		ExcludeSelectors:   []string{},
+		InlineThreshold:    50000,
+	}
+}
+
+// IsEnabled returns whether critical CSS optimization is enabled.
+// Defaults to false if not explicitly set.
+func (c *CriticalCSSConfig) IsEnabled() bool {
+	if c.Enabled == nil {
+		return false
+	}
+	return *c.Enabled
+}
+
+// IsMinify returns whether critical CSS minification is enabled.
+// Defaults to true if not explicitly set.
+func (c *CriticalCSSConfig) IsMinify() bool {
+	if c.Minify == nil {
+		return true
+	}
+	return *c.Minify
+}
+
+// IsPreloadNonCritical returns whether non-critical CSS should be preloaded.
+// Defaults to true if not explicitly set.
+func (c *CriticalCSSConfig) IsPreloadNonCritical() bool {
+	if c.PreloadNonCritical == nil {
+		return true
+	}
+	return *c.PreloadNonCritical
+}
+
 // EmbedsConfig configures the embeds plugin for embedding internal and external content.
 type EmbedsConfig struct {
 	// Enabled controls whether embed processing is active (default: true)
@@ -1415,6 +1606,31 @@ func NewEmbedsConfig() EmbedsConfig {
 		Timeout:           10,
 		FallbackTitle:     "External Link",
 		ShowImage:         true,
+	}
+}
+
+// EncryptionConfig configures content encryption for private posts.
+// When enabled and a post has private: true with secret_key set, the post content
+// will be encrypted using AES-256-GCM and require client-side decryption.
+type EncryptionConfig struct {
+	// Enabled controls whether encryption processing is active (default: false)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// DefaultKey is the default encryption key name to use when a post doesn't specify one.
+	// Maps to environment variable MARKATA_GO_ENCRYPTION_KEY_{DefaultKey}
+	// Example: default_key: "blog" reads from MARKATA_GO_ENCRYPTION_KEY_BLOG
+	DefaultKey string `json:"default_key,omitempty" yaml:"default_key,omitempty" toml:"default_key,omitempty"`
+
+	// DecryptionHint is a hint shown to users about how to get the decryption password
+	// Example: "Contact me on Twitter @user to get access"
+	DecryptionHint string `json:"decryption_hint,omitempty" yaml:"decryption_hint,omitempty" toml:"decryption_hint,omitempty"`
+}
+
+// NewEncryptionConfig creates a new EncryptionConfig with default values.
+func NewEncryptionConfig() EncryptionConfig {
+	return EncryptionConfig{
+		Enabled:    false,
+		DefaultKey: "",
 	}
 }
 
@@ -1467,6 +1683,90 @@ func (c *ContentTemplatesConfig) GetPlacement(templateName string) string {
 	return templateName
 }
 
+// ErrorPagesConfig configures custom error pages (404, etc.).
+type ErrorPagesConfig struct {
+	// Enable404 enables the built-in 404 page (default: true)
+	Enable404 *bool `json:"enable_404,omitempty" yaml:"enable_404,omitempty" toml:"enable_404,omitempty"`
+
+	// Custom404Template is the path to a custom 404 template (default: "404.html")
+	Custom404Template string `json:"custom_404_template,omitempty" yaml:"custom_404_template,omitempty" toml:"custom_404_template,omitempty"`
+
+	// MaxSuggestions is the maximum number of similar posts to suggest (default: 5)
+	MaxSuggestions int `json:"max_suggestions,omitempty" yaml:"max_suggestions,omitempty" toml:"max_suggestions,omitempty"`
+}
+
+// NewErrorPagesConfig creates a new ErrorPagesConfig with default values.
+func NewErrorPagesConfig() ErrorPagesConfig {
+	enabled := true
+	return ErrorPagesConfig{
+		Enable404:         &enabled,
+		Custom404Template: "404.html",
+		MaxSuggestions:    5,
+	}
+}
+
+// Is404Enabled returns whether the 404 page is enabled.
+// Defaults to true if not explicitly set.
+func (e *ErrorPagesConfig) Is404Enabled() bool {
+	if e.Enable404 == nil {
+		return true
+	}
+	return *e.Enable404
+}
+
+// CSSBundleConfig configures css_bundle plugin for combining CSS files.
+type CSSBundleConfig struct {
+	// Enabled controls whether CSS bundling is active (default: false)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// Bundles is list of bundle configurations
+	Bundles []BundleConfig `json:"bundles" yaml:"bundles" toml:"bundles"`
+
+	// Exclude is a list of CSS file patterns to exclude from bundling
+	Exclude []string `json:"exclude" yaml:"exclude" toml:"exclude"`
+
+	// Minify controls whether bundled CSS is minified (default: false)
+	// Note: minification is not yet implemented
+	Minify bool `json:"minify" yaml:"minify" toml:"minify"`
+
+	// AddSourceComments adds comments indicating source files in bundles (default: true)
+	AddSourceComments *bool `json:"add_source_comments,omitempty" yaml:"add_source_comments,omitempty" toml:"add_source_comments,omitempty"`
+}
+
+// BundleConfig defines a single CSS bundle.
+type BundleConfig struct {
+	// Name is the bundle identifier (e.g., "main", "critical")
+	Name string `json:"name" yaml:"name" toml:"name"`
+
+	// Sources is a list of CSS file paths or glob patterns to include
+	// Files are concatenated in the order specified
+	Sources []string `json:"sources" yaml:"sources" toml:"sources"`
+
+	// Output is the output file path relative to output_dir (e.g., "css/bundle.css")
+	Output string `json:"output" yaml:"output" toml:"output"`
+}
+
+// NewCSSBundleConfig creates a new CSSBundleConfig with default values.
+func NewCSSBundleConfig() CSSBundleConfig {
+	addSourceComments := true
+	return CSSBundleConfig{
+		Enabled:           false,
+		Bundles:           []BundleConfig{},
+		Exclude:           []string{},
+		Minify:            false,
+		AddSourceComments: &addSourceComments,
+	}
+}
+
+// IsAddSourceComments returns whether source comments should be added to bundles.
+// Defaults to true if not explicitly set.
+func (c *CSSBundleConfig) IsAddSourceComments() bool {
+	if c.AddSourceComments == nil {
+		return true
+	}
+	return *c.AddSourceComments
+}
+
 // NewConfig creates a new Config with default values.
 func NewConfig() *Config {
 	return &Config{
@@ -1507,6 +1807,9 @@ func NewConfig() *Config {
 		ContentTemplates: NewContentTemplatesConfig(),
 		Blogroll:         NewBlogrollConfig(),
 		Mentions:         NewMentionsConfig(),
+		ErrorPages:       NewErrorPagesConfig(),
+		ResourceHints:    NewResourceHintsConfig(),
+		Encryption:       NewEncryptionConfig(),
 	}
 }
 

@@ -171,13 +171,13 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 	go func() {
 		fmt.Printf("\nServing at http://%s\n", addr)
 		fmt.Println("Press Ctrl+C to stop")
-		close(serverStarted)
+		close(serverStarted) // Signal that server is ready
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			serverErr <- err
 		}
 	}()
 
-	// Wait for server to start
+	// Wait for server to start before entering select
 	<-serverStarted
 
 	// Wait for shutdown or error
@@ -202,6 +202,8 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 
 // createHandler creates an HTTP handler that serves files with live reload injection.
 func createHandler(outputDir string) http.Handler {
+	fileServer := http.FileServer(http.Dir(outputDir))
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Log requests in verbose mode
 		if verbose {
@@ -223,30 +225,19 @@ func createHandler(outputDir string) http.Handler {
 		// Check if file exists
 		fullPath := filepath.Join(outputDir, path)
 		info, err := os.Stat(fullPath)
-
-		// Handle file not found - serve custom 404
-		if err != nil {
-			if os.IsNotExist(err) {
-				serve404Page(w, outputDir)
-				return
-			}
-			// Other errors
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		// If it's a directory, try to serve index.html
-		if info.IsDir() {
+		if err == nil && info.IsDir() {
+			// Try index.html in directory
 			indexPath := filepath.Join(fullPath, "index.html")
-			if indexInfo, indexErr := os.Stat(indexPath); indexErr == nil && !indexInfo.IsDir() {
+			if _, err := os.Stat(indexPath); err == nil {
 				path = filepath.Join(path, "index.html")
 				fullPath = indexPath
-				info = indexInfo
-			} else {
-				// Directory without index.html - serve 404
-				serve404Page(w, outputDir)
-				return
 			}
+		}
+
+		// Check if file exists - if not, serve 404 page
+		if err != nil && os.IsNotExist(err) {
+			serve404Page(w, outputDir)
+			return
 		}
 
 		// Check if it's an HTML file and inject live reload script
@@ -255,8 +246,8 @@ func createHandler(outputDir string) http.Handler {
 			return
 		}
 
-		// For non-HTML files, serve directly
-		http.ServeFile(w, r, fullPath)
+		// Serve with file server
+		fileServer.ServeHTTP(w, r)
 	})
 }
 
@@ -264,7 +255,7 @@ func createHandler(outputDir string) http.Handler {
 func serveHTMLWithLiveReload(w http.ResponseWriter, path, outputDir string) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		// Try to serve custom 404 page
+		// File not found - serve 404 page
 		serve404Page(w, outputDir)
 		return
 	}
@@ -303,31 +294,32 @@ func serveHTMLWithLiveReload(w http.ResponseWriter, path, outputDir string) {
 	}
 }
 
-// serve404Page serves the custom 404.html page or a fallback.
+// serve404Page serves the static 404.html page with live reload injection.
+// The 404 page uses client-side JavaScript for fuzzy search suggestions,
+// so it works the same in dev server as in production.
 func serve404Page(w http.ResponseWriter, outputDir string) {
-	// Try to serve custom 404.html
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusNotFound)
+
+	// Try to serve the static 404.html
 	notFoundPath := filepath.Join(outputDir, "404.html")
 	content, err := os.ReadFile(notFoundPath)
-
 	if err != nil {
-		// Fallback to simple 404 if custom page doesn't exist
-		w.WriteHeader(http.StatusNotFound)
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fallback := `<!DOCTYPE html>
+		// Fallback to simple error message if 404.html doesn't exist
+		//nolint:errcheck // Best effort write to HTTP response
+		w.Write([]byte(`<!DOCTYPE html>
 <html>
-<head><title>404 Not Found</title></head>
+<head><title>404 - Page Not Found</title></head>
 <body>
 <h1>404 - Page Not Found</h1>
-<p>The page you requested could not be found.</p>
+<p>The requested page could not be found.</p>
+<p><a href="/">Go to home page</a></p>
 </body>
-</html>`
-		if _, writeErr := w.Write([]byte(fallback)); writeErr != nil && verbose {
-			fmt.Printf("Error writing 404 fallback: %v\n", writeErr)
-		}
+</html>`))
 		return
 	}
 
-	// Inject live reload script into custom 404 page
+	// Inject live reload script
 	liveReloadScript := `<script>
 (function() {
     var source = new EventSource('/__livereload');
@@ -355,11 +347,8 @@ func serve404Page(w http.ResponseWriter, outputDir string) {
 		html += liveReloadScript
 	}
 
-	w.WriteHeader(http.StatusNotFound)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if _, err := w.Write([]byte(html)); err != nil && verbose {
-		fmt.Printf("Error writing 404 page: %v\n", err)
-	}
+	//nolint:errcheck // Best effort write to HTTP response
+	w.Write([]byte(html))
 }
 
 // Live reload clients

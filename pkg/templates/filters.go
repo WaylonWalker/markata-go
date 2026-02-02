@@ -17,6 +17,45 @@ import (
 
 var registerOnce sync.Once
 
+// Pre-compiled regex patterns for performance - compiled once at package init
+var (
+	// Used by filterStripTags and stripHTMLTagsHelper
+	htmlTagRe = regexp.MustCompile(`<[^>]*>`)
+
+	// Used by filterStripTags, cleanExcerptHTML, and stripHTMLTagsHelper
+	whitespaceRe = regexp.MustCompile(`\s+`)
+
+	// Used by filterLinebreaks
+	paragraphSplitRe = regexp.MustCompile(`\n\n+`)
+
+	// Used by removeAdmonitions
+	admonitionDivRe     = regexp.MustCompile(`(?s)<div class="admonition[^"]*">.*?</div>`)
+	admonitionDetailsRe = regexp.MustCompile(`(?s)<details class="admonition[^"]*">.*?</details>`)
+
+	// Used by collectParagraphs and filterExcerpt
+	excerptParagraphRe = regexp.MustCompile(`(?s)<p[^>]*>(.*?)</p>`)
+
+	// Used by cleanExcerptHTML - pre-compiled patterns for each block tag
+	blockTagOpenRe  = compileBlockTagPatterns(true)
+	blockTagCloseRe = compileBlockTagPatterns(false)
+)
+
+// compileBlockTagPatterns creates regex patterns for block tags.
+// If openTag is true, creates opening tag patterns; otherwise closing tag patterns.
+func compileBlockTagPatterns(openTag bool) map[string]*regexp.Regexp {
+	blockTags := []string{"div", "span", "section", "article", "header", "footer", "nav", "aside"}
+	patterns := make(map[string]*regexp.Regexp, len(blockTags))
+
+	for _, tag := range blockTags {
+		if openTag {
+			patterns[tag] = regexp.MustCompile(`(?i)<` + tag + `[^>]*>`)
+		} else {
+			patterns[tag] = regexp.MustCompile(`(?i)</` + tag + `>`)
+		}
+	}
+	return patterns
+}
+
 // registerFilters registers all custom template filters with pongo2.
 // This is called once when the first Engine is created.
 // The pongo2 registration functions return errors only for duplicate registrations,
@@ -441,8 +480,7 @@ func filterStripTags(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s := in.String()
 
 	// Remove HTML tags
-	re := regexp.MustCompile(`<[^>]*>`)
-	s = re.ReplaceAllString(s, "")
+	s = htmlTagRe.ReplaceAllString(s, "")
 
 	// Decode common HTML entities
 	s = strings.ReplaceAll(s, "&nbsp;", " ")
@@ -454,8 +492,7 @@ func filterStripTags(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s = strings.ReplaceAll(s, "&apos;", "'")
 
 	// Collapse multiple whitespace into single space
-	wsRe := regexp.MustCompile(`\s+`)
-	s = wsRe.ReplaceAllString(s, " ")
+	s = whitespaceRe.ReplaceAllString(s, " ")
 
 	// Trim leading/trailing whitespace
 	s = strings.TrimSpace(s)
@@ -467,7 +504,7 @@ func filterStripTags(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 func filterLinebreaks(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s := in.String()
 	// Split by double newlines for paragraphs
-	paragraphs := regexp.MustCompile(`\n\n+`).Split(s, -1)
+	paragraphs := paragraphSplitRe.Split(s, -1)
 	var result []string
 	for _, p := range paragraphs {
 		p = strings.TrimSpace(p)
@@ -754,12 +791,10 @@ func parseExcerptParams(param *pongo2.Value) excerptConfig {
 // Admonitions are supplementary content that shouldn't appear in excerpts.
 func removeAdmonitions(html string) string {
 	// Remove standard admonition divs
-	admonitionRe := regexp.MustCompile(`(?s)<div class="admonition[^"]*">.*?</div>`)
-	html = admonitionRe.ReplaceAllString(html, "")
+	html = admonitionDivRe.ReplaceAllString(html, "")
 
 	// Remove collapsible admonitions (details elements)
-	detailsRe := regexp.MustCompile(`(?s)<details class="admonition[^"]*">.*?</details>`)
-	html = detailsRe.ReplaceAllString(html, "")
+	html = admonitionDetailsRe.ReplaceAllString(html, "")
 
 	return html
 }
@@ -784,8 +819,7 @@ func truncateAtWordBoundary(text string, maxLen int, addEllipsis bool) string {
 
 // collectParagraphs extracts paragraphs from HTML up to the configured limits.
 func collectParagraphs(html string, cfg excerptConfig) []string {
-	pRe := regexp.MustCompile(`(?s)<p[^>]*>(.*?)</p>`)
-	matches := pRe.FindAllStringSubmatch(html, -1)
+	matches := excerptParagraphRe.FindAllStringSubmatch(html, -1)
 
 	if len(matches) == 0 {
 		return nil
@@ -865,8 +899,7 @@ func filterExcerpt(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	result := strings.Join(paragraphs, "\n")
 
 	// Add ellipsis if we truncated (more content exists)
-	pRe := regexp.MustCompile(`(?s)<p[^>]*>(.*?)</p>`)
-	allMatches := pRe.FindAllStringSubmatch(html, -1)
+	allMatches := excerptParagraphRe.FindAllStringSubmatch(html, -1)
 	if len(allMatches) > len(paragraphs) && !strings.HasSuffix(result, "...") {
 		result += "\n<p>...</p>"
 	}
@@ -881,24 +914,20 @@ func cleanExcerptHTML(s string) string {
 	blockTags := []string{"div", "span", "section", "article", "header", "footer", "nav", "aside"}
 	for _, tag := range blockTags {
 		// Remove opening tags
-		openRe := regexp.MustCompile(`(?i)<` + tag + `[^>]*>`)
-		s = openRe.ReplaceAllString(s, "")
+		s = blockTagOpenRe[tag].ReplaceAllString(s, "")
 		// Remove closing tags
-		closeRe := regexp.MustCompile(`(?i)</` + tag + `>`)
-		s = closeRe.ReplaceAllString(s, "")
+		s = blockTagCloseRe[tag].ReplaceAllString(s, "")
 	}
 
 	// Collapse multiple whitespace
-	wsRe := regexp.MustCompile(`\s+`)
-	s = wsRe.ReplaceAllString(s, " ")
+	s = whitespaceRe.ReplaceAllString(s, " ")
 
 	return strings.TrimSpace(s)
 }
 
 // stripHTMLTagsHelper removes all HTML tags from a string (helper for filterExcerpt)
 func stripHTMLTagsHelper(s string) string {
-	re := regexp.MustCompile(`<[^>]*>`)
-	s = re.ReplaceAllString(s, "")
+	s = htmlTagRe.ReplaceAllString(s, "")
 
 	// Decode common HTML entities
 	s = strings.ReplaceAll(s, "&nbsp;", " ")
@@ -910,8 +939,7 @@ func stripHTMLTagsHelper(s string) string {
 	s = strings.ReplaceAll(s, "&apos;", "'")
 
 	// Collapse multiple whitespace
-	wsRe := regexp.MustCompile(`\s+`)
-	s = wsRe.ReplaceAllString(s, " ")
+	s = whitespaceRe.ReplaceAllString(s, " ")
 
 	return strings.TrimSpace(s)
 }
