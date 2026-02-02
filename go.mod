@@ -17,7 +17,7 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.10.2
 	github.com/yuin/goldmark v1.7.16
-	github.com/yuin/goldmark-emoji v1.0.5
+	github.com/yuin/goldmark-emoji v1.0.6
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc
 	golang.org/x/crypto v0.38.0
 	golang.org/x/text v0.25.0
