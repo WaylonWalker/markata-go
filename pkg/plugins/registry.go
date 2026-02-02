@@ -184,9 +184,9 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewCSSBundlePlugin(),    // Bundle CSS files (runs after CSS generators)
 		NewPublishFeedsPlugin(),
 		NewPublishHTMLPlugin(),
-		NewRedirectsPlugin(),     // Generate redirect pages
-		NewErrorPagesPlugin(),    // Generate static 404 page
-		NewResourceHintsPlugin(), // Inject resource hints (after HTML written)
+		NewRedirectsPlugin(),  // Generate redirect pages
+		NewErrorPagesPlugin(), // Generate static 404 page
+		// NewResourceHintsPlugin(), // Inject resource hints (after HTML written) // DISABLED: Performance issue on large sites
 		NewSitemapPlugin(),
 
 		// Cleanup stage plugins
