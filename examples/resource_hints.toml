@@ -1,0 +1,45 @@
+# Example resource hints configuration for waylonwalker.com
+
+# Add this to your markata.toml file:
+
+[resource_hints]
+# Enable resource hints generation
+enabled = true
+
+# Auto-detect external domains from page content
+auto_detect = true
+
+# Exclude domains that appear in blogroll/reader pages
+# These links are typically not visited from the current page
+exclude_domains = [
+    # Reader domain - has many external links to followed blogs
+    "reader.waylonwalker.com",
+
+    # Common social media domains that appear in many posts but aren't critical
+    # Uncomment if you want to exclude them:
+    # "twitter.com",
+    # "github.com",
+    # "youtube.com",
+]
+
+# Manually configure critical domains with specific hint types
+# Only add domains that appear on many pages and are critical for performance
+
+# Example: CDNs that are used across the site
+# [[resource_hints.domains]]
+# domain = "cdn.jsdelivr.net"
+# hint_types = ["dns-prefetch"]
+
+# [[resource_hints.domains]]
+# domain = "cdn.tailwindcss.com"
+# hint_types = ["dns-prefetch"]
+
+# Example: Google Fonts (if you use them)
+# [[resource_hints.domains]]
+# domain = "fonts.googleapis.com"
+# hint_types = ["preconnect"]
+
+# [[resource_hints.domains]]
+# domain = "fonts.gstatic.com"
+# hint_types = ["preconnect"]
+# crossorigin = "anonymous"
