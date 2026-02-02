@@ -12,7 +12,7 @@
       hx-get="{{ page.prev_url }}"
       hx-target=".posts-list"
       hx-select=".posts-list"
-      hx-swap="outerHTML swap:*"
+      hx-swap="outerHTML swap:* transition:true"
       hx-push-url="true">&laquo; Newer</a>
   {% else %}
   <span class="pagination-prev disabled">&laquo; Newer</span>
@@ -38,7 +38,7 @@
           hx-get="{{ url }}"
           hx-target=".posts-list"
           hx-select=".posts-list"
-          hx-swap="outerHTML swap:*"
+          hx-swap="outerHTML swap:* transition:true"
           hx-push-url="true">{{ page_num }}</a>
       {% endif %}
       {# Show ellipsis after page 1 if there's a gap #}
@@ -58,7 +58,7 @@
       hx-get="{{ page.next_url }}"
       hx-target=".posts-list"
       hx-select=".posts-list"
-      hx-swap="outerHTML swap:*"
+      hx-swap="outerHTML swap:* transition:true"
       hx-push-url="true">Older &raquo;</a>
   {% else %}
   <span class="pagination-next disabled">Older &raquo;</span>

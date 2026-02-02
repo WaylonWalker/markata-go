@@ -1621,9 +1621,12 @@ kbd.kbd {
    ============================================ */
 
 /* Assign transition names to key page elements */
-.post-content,
-.posts-list {
+.post-content {
    view-transition-name: main-content;
+}
+
+.posts-list {
+   view-transition-name: posts-list;
 }
 
 .site-nav--header {
@@ -1652,6 +1655,20 @@ kbd.kbd {
 
 ::view-transition-new(main-content) {
    animation: fade-in 0.3s ease-in, slide-up 0.3s ease-out;
+}
+
+/* Posts list transitions - smooth cross-fade */
+::view-transition-old(posts-list),
+::view-transition-new(posts-list) {
+   animation-duration: 0.3s;
+}
+
+::view-transition-old(posts-list) {
+   animation: fade-out 0.25s ease-out;
+}
+
+::view-transition-new(posts-list) {
+   animation: fade-in 0.3s ease-in;
 }
 
 /* Keep navigation elements stable during transitions */
