@@ -81,7 +81,9 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["slug_conflicts"] = func() lifecycle.Plugin { return NewSlugConflictsPlugin() }
 	pluginRegistry.constructors["error_pages"] = func() lifecycle.Plugin { return NewErrorPagesPlugin() }
 	pluginRegistry.constructors["css_bundle"] = func() lifecycle.Plugin { return NewCSSBundlePlugin() }
-	pluginRegistry.constructors["resource_hints"] = func() lifecycle.Plugin { return NewResourceHintsPlugin() }
+	// Disabled by default - causes 60+ second delay on large sites due to double filepath.Walk
+	// TODO: Optimize resource_hints to be faster or make it opt-in only
+	// pluginRegistry.constructors["resource_hints"] = func() lifecycle.Plugin { return NewResourceHintsPlugin() }
 	pluginRegistry.constructors["encryption"] = func() lifecycle.Plugin { return NewEncryptionPlugin() }
 	pluginRegistry.constructors["critical_css"] = func() lifecycle.Plugin { return NewCriticalCSSPlugin() }
 	pluginRegistry.constructors["css_purge"] = func() lifecycle.Plugin { return NewCSSPurgePlugin() }
