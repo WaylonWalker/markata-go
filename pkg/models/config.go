@@ -266,6 +266,9 @@ type Config struct {
 	// Mentions configures the @mentions resolution plugin
 	Mentions MentionsConfig `json:"mentions" yaml:"mentions" toml:"mentions"`
 
+	// ErrorPages configures custom error pages (404, etc.)
+	ErrorPages ErrorPagesConfig `json:"error_pages" yaml:"error_pages" toml:"error_pages"`
+
 	// ResourceHints configures automatic resource hints generation (preconnect, dns-prefetch, etc.)
 	ResourceHints ResourceHintsConfig `json:"resource_hints" yaml:"resource_hints" toml:"resource_hints"`
 
@@ -1680,12 +1683,43 @@ func (c *ContentTemplatesConfig) GetPlacement(templateName string) string {
 	return templateName
 }
 
-// CSSBundleConfig configures the css_bundle plugin for combining CSS files.
+// ErrorPagesConfig configures custom error pages (404, etc.).
+type ErrorPagesConfig struct {
+	// Enable404 enables the built-in 404 page (default: true)
+	Enable404 *bool `json:"enable_404,omitempty" yaml:"enable_404,omitempty" toml:"enable_404,omitempty"`
+
+	// Custom404Template is the path to a custom 404 template (default: "404.html")
+	Custom404Template string `json:"custom_404_template,omitempty" yaml:"custom_404_template,omitempty" toml:"custom_404_template,omitempty"`
+
+	// MaxSuggestions is the maximum number of similar posts to suggest (default: 5)
+	MaxSuggestions int `json:"max_suggestions,omitempty" yaml:"max_suggestions,omitempty" toml:"max_suggestions,omitempty"`
+}
+
+// NewErrorPagesConfig creates a new ErrorPagesConfig with default values.
+func NewErrorPagesConfig() ErrorPagesConfig {
+	enabled := true
+	return ErrorPagesConfig{
+		Enable404:         &enabled,
+		Custom404Template: "404.html",
+		MaxSuggestions:    5,
+	}
+}
+
+// Is404Enabled returns whether the 404 page is enabled.
+// Defaults to true if not explicitly set.
+func (e *ErrorPagesConfig) Is404Enabled() bool {
+	if e.Enable404 == nil {
+		return true
+	}
+	return *e.Enable404
+}
+
+// CSSBundleConfig configures css_bundle plugin for combining CSS files.
 type CSSBundleConfig struct {
 	// Enabled controls whether CSS bundling is active (default: false)
 	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
 
-	// Bundles is the list of bundle configurations
+	// Bundles is list of bundle configurations
 	Bundles []BundleConfig `json:"bundles" yaml:"bundles" toml:"bundles"`
 
 	// Exclude is a list of CSS file patterns to exclude from bundling
@@ -1773,6 +1807,7 @@ func NewConfig() *Config {
 		ContentTemplates: NewContentTemplatesConfig(),
 		Blogroll:         NewBlogrollConfig(),
 		Mentions:         NewMentionsConfig(),
+		ErrorPages:       NewErrorPagesConfig(),
 		ResourceHints:    NewResourceHintsConfig(),
 		Encryption:       NewEncryptionConfig(),
 	}
