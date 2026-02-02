@@ -25,7 +25,7 @@
 
         <div class="footer-bottom">
             {% if footer.show_copyright %}
-            <p class="footer-copyright">&copy; {{ "now" | date:"2006" }} {{ config.author | default:"" }}. Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.</p>
+            <p class="footer-copyright">&copy; {{ "now" | date:"2006" }} {{ config.author | default:"" }}.{% if footer.show_built_with %} Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.{% endif %}</p>
             {% endif %}
             <p class="footer-shortcuts-hint">Press <kbd>?</kbd> for keyboard shortcuts</p>
         </div>
