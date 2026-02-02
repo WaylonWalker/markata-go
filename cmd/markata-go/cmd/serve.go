@@ -167,13 +167,18 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 
 	// Start server in goroutine
 	serverErr := make(chan error, 1)
+	serverStarted := make(chan struct{})
 	go func() {
 		fmt.Printf("\nServing at http://%s\n", addr)
 		fmt.Println("Press Ctrl+C to stop")
+		close(serverStarted) // Signal that server is ready
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			serverErr <- err
 		}
 	}()
+
+	// Wait for server to start before entering select
+	<-serverStarted
 
 	// Wait for shutdown or error
 	select {
