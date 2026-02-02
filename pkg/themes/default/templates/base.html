@@ -238,6 +238,24 @@
   <script src="{{ 'js/palette-switcher.js' | theme_asset }}" defer></script>
   {% endif %}
 
-  {% include "partials/background-scripts.html" %}
+  <!-- View Transitions API - Global Navigation Interceptor -->
+  {% if config.view_transitions.enabled | default:true %}
+  <script>
+    // View Transitions Configuration
+    window.VIEW_TRANSITIONS_CONFIG = {
+      enabled: {{ config.view_transitions.enabled | default:true | yesno:"true,false" }},
+      debug: {{ config.view_transitions.debug | default:false | yesno:"true,false" }},
+      skipClasses: {{ config.view_transitions.skip_classes | default:"[]" | safe }},
+      skipSelectors: {{ config.view_transitions.skip_selectors | default:"[]" | safe }},
+      transitionDuration: {{ config.view_transitions.duration | default:300 }},
+      updateMeta: {{ config.view_transitions.update_meta | default:true | yesno:"true,false" }},
+      scrollToTop: {{ config.view_transitions.scroll_to_top | default:true | yesno:"true,false" }},
+    };
+  </script>
+  <script src="{{ 'js/view-transitions.js' | theme_asset }}" defer></script>
+  {% endif %}
+
+   {% include "partials/background-scripts.html" %}
+   {% include "partials/shortcuts-modal.html" %}
 </body>
 </html>
