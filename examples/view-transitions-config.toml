@@ -1,0 +1,35 @@
+# Example: View Transitions Configuration for markata.toml
+
+# Basic configuration (recommended defaults)
+[view_transitions]
+enabled = true
+debug = false
+
+# Advanced configuration example
+# [view_transitions]
+# enabled = true
+# debug = true
+# duration = 300
+# update_meta = true
+# scroll_to_top = true
+# skip_classes = ["no-transition", "instant"]
+# skip_selectors = ["[data-no-transition]", ".modal a"]
+
+# Disable view transitions globally
+# [view_transitions]
+# enabled = false
+
+# Debug mode for development
+# [view_transitions]
+# enabled = true
+# debug = true
+
+# Skip transitions for certain links
+# [view_transitions]
+# enabled = true
+# skip_classes = ["feed-nav-link", "tag-link"]
+# skip_selectors = ["[rel~='external']", ".sidebar a"]
+
+# Minimal configuration (uses all defaults)
+# [view_transitions]
+# enabled = true

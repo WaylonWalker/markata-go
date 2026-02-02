@@ -45,4 +45,10 @@
   } else {
     init();
   }
+
+  // Expose for view transitions to re-initialize
+  window.initTooltips = init;
+
+  // Re-initialize after view transitions
+  window.addEventListener('view-transition-complete', init);
 })();

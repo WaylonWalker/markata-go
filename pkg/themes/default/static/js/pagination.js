@@ -6,7 +6,17 @@
   'use strict';
 
   // Initialize pagination when DOM is ready
-  document.addEventListener('DOMContentLoaded', initPagination);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPagination);
+  } else {
+    initPagination();
+  }
+
+  // Expose for view transitions to re-initialize
+  window.initPagination = initPagination;
+
+  // Re-initialize after view transitions
+  window.addEventListener('view-transition-complete', initPagination);
 
   function initPagination() {
     const paginationNav = document.querySelector('.pagination-js');

@@ -111,6 +111,8 @@ For developers who want full control and customization.
 
 ### Features
 - [Search](/docs/guides/search/) - Pagefind integration for site search
+- [View Transitions](/docs/guides/view-transitions/) - Smooth page navigation animations
+- [Resource Hints](/docs/guides/resource-hints/) - Auto-generate dns-prefetch and preconnect
 - [YouTube Embeds](/docs/guides/youtube/) - Embedding YouTube videos
 - [Dynamic Content](/docs/guides/dynamic-content/) - Jinja expressions in Markdown
 - [Structured Data](/docs/guides/structured-data/) - JSON-LD and SEO
@@ -123,6 +125,7 @@ For developers who want full control and customization.
 - [Plugin Development](/docs/guides/plugin-development/) - Creating custom plugins
 - [Migration](/docs/guides/migration/) - Migrating from other static site generators
 - [Performance and Profiling](/docs/guides/performance/) - Benchmarking and profiling builds
+- [Resource Hints Implementation](/docs/reference/resource-hints-implementation/) - Technical details
 
 ---
 
@@ -133,6 +136,7 @@ For developers who want full control and customization.
 | Install markata-go | [Getting Started](/docs/getting-started/#installation) |
 | Change site colors | [Themes](/docs/guides/themes/#available-palettes) |
 | Add RSS feed | [Syndication Feeds](/docs/guides/syndication-feeds/) |
+| Fix excessive dns-prefetch | [Resource Hints Quick Fix](/docs/guides/resource-hints-quick-fix/) |
 | Deploy to GitHub Pages | [Deployment](/docs/guides/deployment/#deploying-to-github-pages) |
 | Create a custom template | [Templates](/docs/guides/templates/#template-inheritance) |
 | Filter posts by tag | [Feeds](/docs/guides/feeds/#filtering-posts) |

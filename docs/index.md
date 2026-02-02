@@ -38,6 +38,8 @@ A comprehensive, extendable static site generator written in Go.
 
 - [[configuration-guide|Configuration]] - All configuration options
 - [[templates-guide|Templates]] - Customize your site's appearance
+- [[view-transitions|View Transitions]] - Smooth page navigation animations
+- [[resource-hints|Resource Hints]] - Auto-generate performance hints
 - [[plugin-development|Plugin Development]] - Extend markata-go
 
 ### Publishing

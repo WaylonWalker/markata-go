@@ -6,8 +6,9 @@
 (function() {
   'use strict';
 
-  const tocLinks = document.querySelectorAll('.toc-link');
-  if (!tocLinks.length) return;
+  function initScrollSpy() {
+    const tocLinks = document.querySelectorAll('.toc-link');
+    if (!tocLinks.length) return;
 
   // Get all heading IDs from TOC links
   const headingIds = Array.from(tocLinks).map(link => {
@@ -119,4 +120,18 @@
       setTimeout(updateActiveLink, 100);
     });
   });
+  }
+
+  // Initialize on page load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initScrollSpy);
+  } else {
+    initScrollSpy();
+  }
+
+  // Expose for view transitions to re-initialize
+  window.initScrollSpy = initScrollSpy;
+
+  // Re-initialize after view transitions
+  window.addEventListener('view-transition-complete', initScrollSpy);
 })();
