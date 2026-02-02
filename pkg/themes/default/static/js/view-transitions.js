@@ -118,8 +118,9 @@
    * Navigate to a URL with view transition
    */
   async function navigateWithTransition(url) {
-    // Fetch new page content
-    const response = await fetch(url);
+    // Fetch new page content with cache bypass to ensure fresh content
+    // This prevents stale content (e.g., wrong pagination active state) after navigation
+    const response = await fetch(url, { cache: 'no-store' });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
