@@ -202,8 +202,6 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 
 // createHandler creates an HTTP handler that serves files with live reload injection.
 func createHandler(outputDir string) http.Handler {
-	fileServer := http.FileServer(http.Dir(outputDir))
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Log requests in verbose mode
 		if verbose {
@@ -225,31 +223,49 @@ func createHandler(outputDir string) http.Handler {
 		// Check if file exists
 		fullPath := filepath.Join(outputDir, path)
 		info, err := os.Stat(fullPath)
-		if err == nil && info.IsDir() {
-			// Try index.html in directory
+
+		// Handle file not found - serve custom 404
+		if err != nil {
+			if os.IsNotExist(err) {
+				serve404Page(w, outputDir)
+				return
+			}
+			// Other errors
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// If it's a directory, try to serve index.html
+		if info.IsDir() {
 			indexPath := filepath.Join(fullPath, "index.html")
-			if _, err := os.Stat(indexPath); err == nil {
+			if indexInfo, indexErr := os.Stat(indexPath); indexErr == nil && !indexInfo.IsDir() {
 				path = filepath.Join(path, "index.html")
 				fullPath = indexPath
+				info = indexInfo
+			} else {
+				// Directory without index.html - serve 404
+				serve404Page(w, outputDir)
+				return
 			}
 		}
 
 		// Check if it's an HTML file and inject live reload script
 		if strings.HasSuffix(path, ".html") || (info != nil && !info.IsDir() && strings.HasSuffix(fullPath, ".html")) {
-			serveHTMLWithLiveReload(w, fullPath)
+			serveHTMLWithLiveReload(w, fullPath, outputDir)
 			return
 		}
 
-		// Serve with file server
-		fileServer.ServeHTTP(w, r)
+		// For non-HTML files, serve directly
+		http.ServeFile(w, r, fullPath)
 	})
 }
 
 // serveHTMLWithLiveReload reads an HTML file and injects the live reload script.
-func serveHTMLWithLiveReload(w http.ResponseWriter, path string) {
+func serveHTMLWithLiveReload(w http.ResponseWriter, path, outputDir string) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		http.Error(w, "File not found", http.StatusNotFound)
+		// Try to serve custom 404 page
+		serve404Page(w, outputDir)
 		return
 	}
 
@@ -284,6 +300,65 @@ func serveHTMLWithLiveReload(w http.ResponseWriter, path string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if _, err := w.Write([]byte(html)); err != nil && verbose {
 		fmt.Printf("Error writing response: %v\n", err)
+	}
+}
+
+// serve404Page serves the custom 404.html page or a fallback.
+func serve404Page(w http.ResponseWriter, outputDir string) {
+	// Try to serve custom 404.html
+	notFoundPath := filepath.Join(outputDir, "404.html")
+	content, err := os.ReadFile(notFoundPath)
+
+	if err != nil {
+		// Fallback to simple 404 if custom page doesn't exist
+		w.WriteHeader(http.StatusNotFound)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fallback := `<!DOCTYPE html>
+<html>
+<head><title>404 Not Found</title></head>
+<body>
+<h1>404 - Page Not Found</h1>
+<p>The page you requested could not be found.</p>
+</body>
+</html>`
+		if _, writeErr := w.Write([]byte(fallback)); writeErr != nil && verbose {
+			fmt.Printf("Error writing 404 fallback: %v\n", writeErr)
+		}
+		return
+	}
+
+	// Inject live reload script into custom 404 page
+	liveReloadScript := `<script>
+(function() {
+    var source = new EventSource('/__livereload');
+    source.onmessage = function(e) {
+        if (e.data === 'reload') {
+            location.reload();
+        }
+    };
+    source.onerror = function() {
+        source.close();
+        setTimeout(function() {
+            location.reload();
+        }, 1000);
+    };
+})();
+</script>`
+
+	html := string(content)
+	switch {
+	case strings.Contains(html, "</body>"):
+		html = strings.Replace(html, "</body>", liveReloadScript+"</body>", 1)
+	case strings.Contains(html, "</html>"):
+		html = strings.Replace(html, "</html>", liveReloadScript+"</html>", 1)
+	default:
+		html += liveReloadScript
+	}
+
+	w.WriteHeader(http.StatusNotFound)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if _, err := w.Write([]byte(html)); err != nil && verbose {
+		fmt.Printf("Error writing 404 page: %v\n", err)
 	}
 }
 
