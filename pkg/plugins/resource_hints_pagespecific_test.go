@@ -43,10 +43,10 @@ func TestResourceHintsPageSpecific(t *testing.T) {
 	page1Path := filepath.Join(tempDir, "page1.html")
 	page2Path := filepath.Join(tempDir, "page2.html")
 
-	if err := os.WriteFile(page1Path, []byte(page1), 0644); err != nil {
+	if err := os.WriteFile(page1Path, []byte(page1), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(page2Path, []byte(page2), 0644); err != nil {
+	if err := os.WriteFile(page2Path, []byte(page2), 0600); err != nil {
 		t.Fatal(err)
 	}
 
