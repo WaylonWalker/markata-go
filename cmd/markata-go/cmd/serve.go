@@ -2,12 +2,15 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -23,6 +26,14 @@ import (
 const (
 	serverReadHeaderTimeout = 10 * time.Second
 )
+
+// searchResult represents a search result for the no-JS fallback search.
+type searchResult struct {
+	Title       string
+	Description string
+	URL         string
+	Score       int
+}
 
 var (
 	// servePort is the port to serve on.
@@ -216,6 +227,12 @@ func createHandler(outputDir string) http.Handler {
 			return
 		}
 
+		// Handle search endpoint (no-JS fallback for 404 page search)
+		if r.URL.Path == "/_search" && r.Method == http.MethodPost {
+			handleSearchFallback(w, r, outputDir)
+			return
+		}
+
 		// Determine the file path
 		path := r.URL.Path
 		if path == "/" {
@@ -349,6 +366,204 @@ func serve404Page(w http.ResponseWriter, outputDir string) {
 
 	//nolint:errcheck // Best effort write to HTTP response
 	w.Write([]byte(html))
+}
+
+// handleSearchFallback handles POST requests to /_search for no-JS fallback search.
+// It reads the posts index, performs fuzzy search, and renders results as HTML.
+func handleSearchFallback(w http.ResponseWriter, r *http.Request, outputDir string) {
+	// Parse the form to get the search query
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	query := strings.TrimSpace(r.FormValue("q"))
+	if query == "" {
+		// No query, redirect to home
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	// Load posts index
+	indexPath := filepath.Join(outputDir, "_404-index.json")
+	indexData, err := os.ReadFile(indexPath)
+	if err != nil {
+		// Index not available, redirect to home with query param
+		http.Redirect(w, r, "/?q="+query, http.StatusSeeOther)
+		return
+	}
+
+	// Parse the index
+	var posts []struct {
+		Slug        string `json:"slug"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		URL         string `json:"url"`
+	}
+	if err := json.Unmarshal(indexData, &posts); err != nil {
+		http.Redirect(w, r, "/?q="+query, http.StatusSeeOther)
+		return
+	}
+
+	// Perform simple search (case-insensitive substring matching + basic scoring)
+	queryLower := strings.ToLower(query)
+	queryWords := strings.Fields(queryLower)
+	var results []searchResult
+
+	for _, post := range posts {
+		titleLower := strings.ToLower(post.Title)
+		slugLower := strings.ToLower(post.Slug)
+		descLower := strings.ToLower(post.Description)
+
+		score := 0
+		for _, word := range queryWords {
+			if strings.Contains(titleLower, word) {
+				score += 10
+			}
+			if strings.Contains(slugLower, word) {
+				score += 8
+			}
+			if strings.Contains(descLower, word) {
+				score += 5
+			}
+		}
+
+		if score > 0 {
+			results = append(results, searchResult{
+				Title:       post.Title,
+				Description: post.Description,
+				URL:         post.URL,
+				Score:       score,
+			})
+		}
+	}
+
+	// Sort by score (descending)
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Score > results[j].Score
+	})
+
+	// Limit results
+	if len(results) > 20 {
+		results = results[:20]
+	}
+
+	// Render search results page
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	renderSearchResultsPage(w, query, results)
+}
+
+// renderSearchResultsPage renders HTML for search results (no-JS fallback).
+func renderSearchResultsPage(w http.ResponseWriter, query string, results []searchResult) {
+	var html strings.Builder
+	html.WriteString(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+            background: #f9fafb;
+            color: #1f2937;
+        }
+        @media (prefers-color-scheme: dark) {
+            body { background: #111827; color: #f3f4f6; }
+            .search-input { background: #1f2937; border-color: #374151; color: #f3f4f6; }
+            .result-item { background: #1f2937; border-color: #374151; }
+            .result-item:hover { background: #374151; }
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 1.5rem; }
+        .search-form { display: flex; gap: 0.5rem; margin-bottom: 2rem; }
+        .search-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+        }
+        .search-button {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background: #3b82f6;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+        }
+        .search-button:hover { background: #2563eb; }
+        .results-count { color: #6b7280; margin-bottom: 1rem; }
+        .result-item {
+            display: block;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .result-item:hover { background: #f3f4f6; transform: translateX(4px); }
+        .result-title { display: block; font-weight: 600; color: #3b82f6; margin-bottom: 0.25rem; }
+        .result-desc { display: block; font-size: 0.875rem; color: #6b7280; }
+        .no-results { color: #6b7280; font-style: italic; }
+        .back-link { display: inline-block; margin-top: 1.5rem; color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <h1>Search Results</h1>
+    <form class="search-form" action="/_search" method="POST">
+        <input type="text" name="q" class="search-input" value="`)
+	html.WriteString(template.HTMLEscapeString(query))
+	html.WriteString(`" placeholder="Search..." autocomplete="off">
+        <button type="submit" class="search-button">Search</button>
+    </form>
+`)
+
+	if len(results) == 0 {
+		html.WriteString(`    <p class="no-results">No results found for "`)
+		html.WriteString(template.HTMLEscapeString(query))
+		html.WriteString(`"</p>
+`)
+	} else {
+		html.WriteString(fmt.Sprintf(`    <p class="results-count">Found %d result(s) for "%s"</p>
+`, len(results), template.HTMLEscapeString(query)))
+
+		for _, result := range results {
+			html.WriteString(`    <a href="`)
+			html.WriteString(template.HTMLEscapeString(result.URL))
+			html.WriteString(`" class="result-item">
+        <span class="result-title">`)
+			html.WriteString(template.HTMLEscapeString(result.Title))
+			html.WriteString(`</span>
+`)
+			if result.Description != "" {
+				desc := result.Description
+				if len(desc) > 150 {
+					desc = desc[:150] + "..."
+				}
+				html.WriteString(`        <span class="result-desc">`)
+				html.WriteString(template.HTMLEscapeString(desc))
+				html.WriteString(`</span>
+`)
+			}
+			html.WriteString(`    </a>
+`)
+		}
+	}
+
+	html.WriteString(`    <a href="/" class="back-link">&larr; Back to home</a>
+</body>
+</html>`)
+
+	//nolint:errcheck // Best effort write to HTTP response
+	w.Write([]byte(html.String()))
 }
 
 // Live reload clients
