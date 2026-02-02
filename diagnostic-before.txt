@@ -1,0 +1,64 @@
+=== Markata-Go Build Diagnostics ===
+
+--- Environment ---
+Hostname: razorcrest
+User: waylon
+Date: Fri Jan 30 04:44:25 PM CST 2026
+Go version: go version go1.25.6 X:nodwarf5 linux/amd64
+Working directory: /home/waylon/git/markata-go
+
+--- Git Status ---
+Commit: 6685f17 chore: add build diagnostic and clean rebuild scripts
+Branch: main
+Uncommitted files: 1
+Warning: Uncommitted changes detected!
+?? diagnostic-before.txt
+
+--- Binary Information ---
+Binary: ~/go/bin/markata-go
+-rwxr-xr-x 1 waylon waylon 34M Jan 30 16:38 /home/waylon/go/bin/markata-go
+SHA256: a04fca196da47a0645206fe9407439bdff66b960d7bb7eee8b64de51c1de9ead
+Modified: 2026-01-30 16:38:21.270578400 -0600
+
+Binary: ./markata-go
+-rwxr-xr-x 1 waylon waylon 34M Jan 30 16:40 ./markata-go
+SHA256: a04fca196da47a0645206fe9407439bdff66b960d7bb7eee8b64de51c1de9ead
+Modified: 2026-01-30 16:40:14.842577097 -0600
+
+--- Embedded Template Checksums ---
+b4a5cab1c989446d62240e9e98126dc2dfc62accadc86775a2757c69788ad63a  pkg/themes/default/templates/feed.html
+f6e1b1e036b56cd45af21490ab7d6a444523dc77136ce02b3995e4d0401ca6b7  pkg/themes/default/templates/post.html
+b9a26a3dbbec42e00aaea791772de29c4c1060cb1cd6047b4a8bf9e30e158d23  pkg/themes/default/templates/partials/cards/article-card.html
+3283b236cace50c42f4396108a577ddcef2a47ccfee0926f27ad85ca616f1a9d  pkg/themes/default/templates/partials/cards/default-card.html
+12c02e186b2ca95f9c65187f91661a2da994984895bcaf4d2cfea89658835627  pkg/themes/default/templates/partials/cards/card-router.html
+
+--- Project Template Overrides ---
+004cdedfc95b02077317169e46eb456174299c3f1245ef03ab470d09c7cd456b  templates/feed.html
+47e10d8a3330f6b3a61ba5126cdea029e5ce679dac80caf5ab513eccbd0323fd  templates/post.html
+b9a26a3dbbec42e00aaea791772de29c4c1060cb1cd6047b4a8bf9e30e158d23  templates/partials/cards/article-card.html
+
+--- Cache Status ---
+Markata cache exists: .markata/
+total 24K
+-rw-r--r-- 1 waylon waylon  23K Jan 29 16:12 build-cache.json
+drwxr-xr-x 1 waylon waylon 2.3K Jan 29 16:12 fullhtml-cache
+drwxr-xr-x 1 waylon waylon 2.3K Jan 29 16:12 html-cache
+drwxr-xr-x 1 waylon waylon 2.3K Jan 29 16:12 post-cache
+drwxr-xr-x 1 waylon waylon  29K Jan 25 10:43 steam_cache
+
+--- Config File ---
+Config: markata-go.toml
+SHA256: a01e140d4788d732dddc1eb90f57b183781ebcbcbda78c90389eadf3e0691c9d
+Size: 5859 bytes
+
+--- Sample Build Output ---
+Output exists: public/
+Index size: 13646 bytes
+Cards found in output:
+class="card"
+class="card"
+class="card"
+class="card"
+class="card"
+
+=== End Diagnostics ===
