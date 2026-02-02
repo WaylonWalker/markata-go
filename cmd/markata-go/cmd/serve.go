@@ -229,9 +229,15 @@ func createHandler(outputDir string) http.Handler {
 			}
 		}
 
+		// Check if file exists - if not, serve 404 page
+		if err != nil && os.IsNotExist(err) {
+			serve404Page(w, outputDir)
+			return
+		}
+
 		// Check if it's an HTML file and inject live reload script
 		if strings.HasSuffix(path, ".html") || (info != nil && !info.IsDir() && strings.HasSuffix(fullPath, ".html")) {
-			serveHTMLWithLiveReload(w, fullPath)
+			serveHTMLWithLiveReload(w, fullPath, outputDir)
 			return
 		}
 
@@ -241,10 +247,11 @@ func createHandler(outputDir string) http.Handler {
 }
 
 // serveHTMLWithLiveReload reads an HTML file and injects the live reload script.
-func serveHTMLWithLiveReload(w http.ResponseWriter, path string) {
+func serveHTMLWithLiveReload(w http.ResponseWriter, path, outputDir string) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		http.Error(w, "File not found", http.StatusNotFound)
+		// File not found - serve 404 page
+		serve404Page(w, outputDir)
 		return
 	}
 
@@ -280,6 +287,63 @@ func serveHTMLWithLiveReload(w http.ResponseWriter, path string) {
 	if _, err := w.Write([]byte(html)); err != nil && verbose {
 		fmt.Printf("Error writing response: %v\n", err)
 	}
+}
+
+// serve404Page serves the static 404.html page with live reload injection.
+// The 404 page uses client-side JavaScript for fuzzy search suggestions,
+// so it works the same in dev server as in production.
+func serve404Page(w http.ResponseWriter, outputDir string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusNotFound)
+
+	// Try to serve the static 404.html
+	notFoundPath := filepath.Join(outputDir, "404.html")
+	content, err := os.ReadFile(notFoundPath)
+	if err != nil {
+		// Fallback to simple error message if 404.html doesn't exist
+		//nolint:errcheck // Best effort write to HTTP response
+		w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head><title>404 - Page Not Found</title></head>
+<body>
+<h1>404 - Page Not Found</h1>
+<p>The requested page could not be found.</p>
+<p><a href="/">Go to home page</a></p>
+</body>
+</html>`))
+		return
+	}
+
+	// Inject live reload script
+	liveReloadScript := `<script>
+(function() {
+    var source = new EventSource('/__livereload');
+    source.onmessage = function(e) {
+        if (e.data === 'reload') {
+            location.reload();
+        }
+    };
+    source.onerror = function() {
+        source.close();
+        setTimeout(function() {
+            location.reload();
+        }, 1000);
+    };
+})();
+</script>`
+
+	html := string(content)
+	switch {
+	case strings.Contains(html, "</body>"):
+		html = strings.Replace(html, "</body>", liveReloadScript+"</body>", 1)
+	case strings.Contains(html, "</html>"):
+		html = strings.Replace(html, "</html>", liveReloadScript+"</html>", 1)
+	default:
+		html += liveReloadScript
+	}
+
+	//nolint:errcheck // Best effort write to HTTP response
+	w.Write([]byte(html))
 }
 
 // Live reload clients

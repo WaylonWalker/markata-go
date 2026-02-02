@@ -104,6 +104,9 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 		}
 	}
 
+	// Store full models.Config for components that need direct access (e.g., 404 page handler)
+	lcConfig.Extra["models_config"] = cfg
+
 	m.SetConfig(lcConfig)
 
 	// Set concurrency if specified

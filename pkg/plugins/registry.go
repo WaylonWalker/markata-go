@@ -79,6 +79,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["image_zoom"] = func() lifecycle.Plugin { return NewImageZoomPlugin() }
 	pluginRegistry.constructors["static_file_conflicts"] = func() lifecycle.Plugin { return NewStaticFileConflictsPlugin() }
 	pluginRegistry.constructors["slug_conflicts"] = func() lifecycle.Plugin { return NewSlugConflictsPlugin() }
+	pluginRegistry.constructors["error_pages"] = func() lifecycle.Plugin { return NewErrorPagesPlugin() }
 	pluginRegistry.constructors["css_bundle"] = func() lifecycle.Plugin { return NewCSSBundlePlugin() }
 	pluginRegistry.constructors["resource_hints"] = func() lifecycle.Plugin { return NewResourceHintsPlugin() }
 	pluginRegistry.constructors["encryption"] = func() lifecycle.Plugin { return NewEncryptionPlugin() }
@@ -181,8 +182,9 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewCSSBundlePlugin(),    // Bundle CSS files (runs after CSS generators)
 		NewPublishFeedsPlugin(),
 		NewPublishHTMLPlugin(),
-		NewResourceHintsPlugin(), // Inject resource hints (after HTML written)
 		NewRedirectsPlugin(),     // Generate redirect pages
+		NewErrorPagesPlugin(),    // Generate static 404 page
+		NewResourceHintsPlugin(), // Inject resource hints (after HTML written)
 		NewSitemapPlugin(),
 
 		// Cleanup stage plugins
