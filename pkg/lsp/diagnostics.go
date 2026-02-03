@@ -19,7 +19,7 @@ func (s *Server) publishDiagnostics(uri, content string) error {
 
 // computeDiagnostics computes diagnostics for a document.
 func (s *Server) computeDiagnostics(_, content string) []Diagnostic {
-	var diagnostics []Diagnostic
+	diagnostics := []Diagnostic{}
 
 	// Find all wikilinks and check if they resolve
 	lines := strings.Split(content, "\n")
