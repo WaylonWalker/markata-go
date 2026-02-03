@@ -164,6 +164,15 @@
 
   <!-- Conditional Script Loading: Only load when needed -->
   <script>
+    // Custom Navigation Shortcuts from config
+    {% if config.shortcuts and config.shortcuts.navigation %}
+    window.customShortcuts = {
+      navigation: {
+        {% for key, url in config.shortcuts.navigation.items() %}"{{ key }}": "{{ url }}"{% if not loop.last %}, {% endif %}{% endfor %}
+      }
+    };
+    {% endif %}
+
     // Wikilink Hover Tooltips - only load if wikilinks with data-title exist
     if (document.querySelector('.wikilink[data-title]')) {
       const script = document.createElement('script');
@@ -211,6 +220,12 @@
     };
     document.body.appendChild(shortcutsRegistryScript);
 
+    // Custom Shortcuts - load if custom shortcuts are defined in config
+      {% if config.shortcuts and config.shortcuts.navigation %}
+      const customShortcutsScript = document.createElement('script');
+      customShortcutsScript.src = '{{ 'js/custom-shortcuts.js' | theme_asset }}';
+      document.body.appendChild(customShortcutsScript);
+      {% endif %}
     // Pagination (JS mode) - only load if JS pagination element exists
     if (document.querySelector('.pagination-js')) {
       const paginationScript = document.createElement('script');
