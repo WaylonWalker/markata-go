@@ -98,7 +98,7 @@ type rss2Item struct {
 
 // Atom structures for feed parsing.
 type atomFeed struct {
-	XMLName  xml.Name    `xml:"http://www.w3.org/2005/Atom feed"`
+	XMLName  xml.Name    `xml:"feed"`
 	Title    string      `xml:"title"`
 	Subtitle string      `xml:"subtitle"`
 	Link     []atomLink  `xml:"link"`
@@ -236,6 +236,11 @@ func parseAtomFeed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 	var feed atomFeed
 	if err := xml.Unmarshal(data, &feed); err != nil {
 		return nil, nil, err
+	}
+
+	// Check if it's actually an Atom feed
+	if feed.XMLName.Local != "feed" {
+		return nil, nil, fmt.Errorf("not an Atom feed")
 	}
 
 	// Get site URL from links
