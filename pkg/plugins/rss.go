@@ -224,25 +224,83 @@ func truncateText(s string, maxLen int) string {
 	return s[:maxLen] + "..."
 }
 
-// truncateHTML attempts to truncate HTML content, stripping tags for the preview.
+// truncateHTML truncates HTML content while preserving anchor tags.
+// It strips all HTML tags except <a> tags to keep wikilinks and mentions clickable.
 func truncateHTML(html string, maxLen int) string {
-	// Simple tag stripper - remove all HTML tags
 	var result strings.Builder
-	inTag := false
+	var textLen int
+	i := 0
+	runes := []rune(html)
+	n := len(runes)
+	openAnchors := 0 // Track open anchor tags
 
-	for _, r := range html {
-		if r == '<' {
-			inTag = true
-			continue
-		}
-		if r == '>' {
-			inTag = false
-			continue
-		}
-		if !inTag {
-			result.WriteRune(r)
+	for i < n && textLen < maxLen {
+		if runes[i] == '<' {
+			// Find the end of the tag
+			tagStart := i
+			i++
+			for i < n && runes[i] != '>' {
+				i++
+			}
+			if i >= n {
+				break
+			}
+			tagEnd := i + 1
+			tag := string(runes[tagStart:tagEnd])
+
+			// Check if it's an anchor tag
+			tagLower := strings.ToLower(tag)
+			if strings.HasPrefix(tagLower, "<a ") || tagLower == "<a>" {
+				// Opening anchor tag - preserve it
+				result.WriteString(tag)
+				openAnchors++
+			} else if tagLower == "</a>" {
+				// Closing anchor tag - preserve it
+				result.WriteString(tag)
+				if openAnchors > 0 {
+					openAnchors--
+				}
+			}
+			// Skip all other tags (don't write them)
+			i++
+		} else {
+			// Regular character - write it and count toward text length
+			result.WriteRune(runes[i])
+			textLen++
+			i++
 		}
 	}
 
-	return truncateText(result.String(), maxLen)
+	// Close any open anchor tags
+	for j := 0; j < openAnchors; j++ {
+		result.WriteString("</a>")
+	}
+
+	// Add ellipsis if truncated
+	if textLen >= maxLen && i < n {
+		// Find a good break point (last space)
+		text := result.String()
+		lastSpace := strings.LastIndex(text, " ")
+		if lastSpace > maxLen/2 {
+			// Truncate at last space, but we need to preserve unclosed anchors
+			// Extract just the text portion and find anchors
+			truncated := text[:lastSpace]
+			// Count anchors in truncated portion
+			truncatedOpenAnchors := strings.Count(strings.ToLower(truncated), "<a ") +
+				strings.Count(strings.ToLower(truncated), "<a>")
+			truncatedCloseAnchors := strings.Count(strings.ToLower(truncated), "</a>")
+			unclosedAnchors := truncatedOpenAnchors - truncatedCloseAnchors
+			// Add ellipsis and close any open anchors
+			var final strings.Builder
+			final.WriteString(truncated)
+			final.WriteString("...")
+			for j := 0; j < unclosedAnchors; j++ {
+				final.WriteString("</a>")
+			}
+			return final.String()
+		}
+		result.WriteString("...")
+	}
+
+	return result.String()
 }
