@@ -383,6 +383,9 @@ type Config struct {
 	// Shortcuts configures user-defined keyboard shortcuts
 	Shortcuts ShortcutsConfig `json:"shortcuts" yaml:"shortcuts" toml:"shortcuts"`
 
+	// Tags configures the tags listing page at /tags
+	Tags TagsConfig `json:"tags" yaml:"tags" toml:"tags"`
+
 	// TemplatePresets defines named template preset configurations
 	// Each preset specifies templates for all output formats
 	TemplatePresets map[string]TemplatePreset `json:"template_presets,omitempty" yaml:"template_presets,omitempty" toml:"template_presets,omitempty"`
@@ -1855,6 +1858,79 @@ func (e *ErrorPagesConfig) Is404Enabled() bool {
 	return *e.Enable404
 }
 
+// TagsConfig configures the tags listing page at /tags.
+// The tags listing page shows all available tags with post counts and links to tag pages.
+type TagsConfig struct {
+	// Enabled controls whether the tags listing page is generated (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Blacklist is a list of tag names to completely exclude from the tags listing.
+	// These tags will not appear on the /tags page and won't be visible publicly.
+	// Example: ["draft", "wip", "internal"]
+	Blacklist []string `json:"blacklist,omitempty" yaml:"blacklist,omitempty" toml:"blacklist,omitempty"`
+
+	// Private is a list of tag names that exist but should be hidden from the listing.
+	// Posts with these tags are still accessible via direct URL, but the tags
+	// won't appear on the /tags overview page.
+	// Example: ["personal", "unlisted"]
+	Private []string `json:"private,omitempty" yaml:"private,omitempty" toml:"private,omitempty"`
+
+	// Title is the title for the tags listing page (default: "Tags")
+	Title string `json:"title,omitempty" yaml:"title,omitempty" toml:"title,omitempty"`
+
+	// Description is the description for the tags listing page
+	Description string `json:"description,omitempty" yaml:"description,omitempty" toml:"description,omitempty"`
+
+	// Template is the template file to use (default: "tags.html")
+	Template string `json:"template,omitempty" yaml:"template,omitempty" toml:"template,omitempty"`
+
+	// SlugPrefix is the URL prefix for the tags listing (default: "tags")
+	SlugPrefix string `json:"slug_prefix,omitempty" yaml:"slug_prefix,omitempty" toml:"slug_prefix,omitempty"`
+}
+
+// NewTagsConfig creates a new TagsConfig with default values.
+func NewTagsConfig() TagsConfig {
+	enabled := true
+	return TagsConfig{
+		Enabled:     &enabled,
+		Blacklist:   []string{},
+		Private:     []string{},
+		Title:       "Tags",
+		Description: "",
+		Template:    "tags.html",
+		SlugPrefix:  "tags",
+	}
+}
+
+// IsEnabled returns whether the tags listing page is enabled.
+// Defaults to true if not explicitly set.
+func (t *TagsConfig) IsEnabled() bool {
+	if t.Enabled == nil {
+		return true
+	}
+	return *t.Enabled
+}
+
+// IsBlacklisted returns whether a tag is in the blacklist.
+func (t *TagsConfig) IsBlacklisted(tag string) bool {
+	for _, b := range t.Blacklist {
+		if b == tag {
+			return true
+		}
+	}
+	return false
+}
+
+// IsPrivate returns whether a tag is in the private list.
+func (t *TagsConfig) IsPrivate(tag string) bool {
+	for _, p := range t.Private {
+		if p == tag {
+			return true
+		}
+	}
+	return false
+}
+
 // CSSBundleConfig configures css_bundle plugin for combining CSS files.
 type CSSBundleConfig struct {
 	// Enabled controls whether CSS bundling is active (default: false)
@@ -1979,6 +2055,7 @@ func NewConfig() *Config {
 		ResourceHints:    NewResourceHintsConfig(),
 		Encryption:       NewEncryptionConfig(),
 		Shortcuts:        NewShortcutsConfig(),
+		Tags:             NewTagsConfig(),
 	}
 }
 
