@@ -380,6 +380,9 @@ type Config struct {
 	// Encryption configures content encryption for private posts
 	Encryption EncryptionConfig `json:"encryption" yaml:"encryption" toml:"encryption"`
 
+	// Shortcuts configures user-defined keyboard shortcuts
+	Shortcuts ShortcutsConfig `json:"shortcuts" yaml:"shortcuts" toml:"shortcuts"`
+
 	// TemplatePresets defines named template preset configurations
 	// Each preset specifies templates for all output formats
 	TemplatePresets map[string]TemplatePreset `json:"template_presets,omitempty" yaml:"template_presets,omitempty" toml:"template_presets,omitempty"`
@@ -1751,6 +1754,27 @@ func NewEncryptionConfig() EncryptionConfig {
 	}
 }
 
+// ShortcutsConfig configures user-defined keyboard shortcuts.
+// Shortcuts are organized by group (e.g., "navigation") and map key sequences to URLs.
+type ShortcutsConfig struct {
+	// Navigation contains shortcuts for navigating to specific pages.
+	// Keys are key sequences (e.g., "g t"), values are destination URLs.
+	// Example: {"g t": "/tags/", "g a": "/about/"}
+	Navigation map[string]string `json:"navigation,omitempty" yaml:"navigation,omitempty" toml:"navigation,omitempty"`
+}
+
+// NewShortcutsConfig creates a new ShortcutsConfig with default values.
+func NewShortcutsConfig() ShortcutsConfig {
+	return ShortcutsConfig{
+		Navigation: make(map[string]string),
+	}
+}
+
+// HasCustomShortcuts returns true if any custom shortcuts are defined.
+func (s *ShortcutsConfig) HasCustomShortcuts() bool {
+	return len(s.Navigation) > 0
+}
+
 // ContentTemplateConfig defines a single content template.
 type ContentTemplateConfig struct {
 	// Name is the template identifier (e.g., "post", "page", "docs")
@@ -1954,6 +1978,7 @@ func NewConfig() *Config {
 		ErrorPages:       NewErrorPagesConfig(),
 		ResourceHints:    NewResourceHintsConfig(),
 		Encryption:       NewEncryptionConfig(),
+		Shortcuts:        NewShortcutsConfig(),
 	}
 }
 
