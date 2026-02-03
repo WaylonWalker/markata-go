@@ -80,6 +80,7 @@ func (p *ResourceHintsPlugin) Configure(m *lifecycle.Manager) error {
 }
 
 // Write scans HTML files for external resources and injects resource hints.
+// Each page gets hints only for domains detected on that specific page.
 func (p *ResourceHintsPlugin) Write(m *lifecycle.Manager) error {
 	if !p.enabled {
 		return nil
@@ -88,63 +89,7 @@ func (p *ResourceHintsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
 
-	// Collect all external domains across the site
-	allDomains := make(map[string]resourcehints.DetectedDomain)
-
-	// Process all HTML files in output directory
-	err := filepath.Walk(outputDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Skip directories and non-HTML files
-		if info.IsDir() || !strings.HasSuffix(strings.ToLower(path), ".html") {
-			return nil
-		}
-
-		// Read HTML content
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return nil // Skip files we can't read
-		}
-
-		htmlContent := string(content)
-
-		// Skip files that don't have a <head> tag
-		if !strings.Contains(htmlContent, "<head") {
-			return nil
-		}
-
-		// Detect external domains
-		if p.autoDetect {
-			domains := p.detector.DetectExternalDomains(htmlContent)
-			for _, d := range domains {
-				allDomains[d.Domain] = d
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	// Convert map to slice
-	detectedDomains := make([]resourcehints.DetectedDomain, 0, len(allDomains))
-	for _, d := range allDomains {
-		detectedDomains = append(detectedDomains, d)
-	}
-
-	// Generate hint tags
-	hintTags := p.generator.GenerateFromConfig(p.config, detectedDomains)
-	if hintTags == "" {
-		return nil // No hints to inject
-	}
-
-	// Wrap in comment
-	hintBlock := resourcehints.GenerateComment(hintTags)
-
-	// Inject hints into all HTML files
+	// Process each HTML file individually for page-specific hints
 	return filepath.Walk(outputDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -172,6 +117,21 @@ func (p *ResourceHintsPlugin) Write(m *lifecycle.Manager) error {
 		if strings.Contains(htmlContent, "<!-- Auto-generated resource hints -->") {
 			return nil
 		}
+
+		// Detect external domains for THIS page only
+		var detectedDomains []resourcehints.DetectedDomain
+		if p.autoDetect {
+			detectedDomains = p.detector.DetectExternalDomains(htmlContent)
+		}
+
+		// Generate hint tags for this page
+		hintTags := p.generator.GenerateFromConfig(p.config, detectedDomains)
+		if hintTags == "" {
+			return nil // No hints to inject for this page
+		}
+
+		// Wrap in comment
+		hintBlock := resourcehints.GenerateComment(hintTags)
 
 		// Inject hints after <head> or after <meta charset>
 		modifiedContent := p.injectHints(htmlContent, hintBlock)
