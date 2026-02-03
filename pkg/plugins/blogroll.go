@@ -6,8 +6,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"html"
+	"io"
 	"net/http"
 	neturl "net/url"
 	"os"
@@ -63,11 +65,312 @@ type blogrollParsedFeed struct {
 	LastUpdated *time.Time `json:"last_updated"`
 }
 
+// RSS 2.0 structures for feed parsing.
+type rss2Feed struct {
+	XMLName xml.Name    `xml:"rss"`
+	Channel rss2Channel `xml:"channel"`
+}
+
+type rss2Channel struct {
+	Title       string     `xml:"title"`
+	Link        string     `xml:"link"`
+	Description string     `xml:"description"`
+	Language    string     `xml:"language"`
+	Image       rss2Image  `xml:"image"`
+	Items       []rss2Item `xml:"item"`
+}
+
+type rss2Image struct {
+	URL string `xml:"url"`
+}
+
+type rss2Item struct {
+	Title       string   `xml:"title"`
+	Link        string   `xml:"link"`
+	Description string   `xml:"description"`
+	Content     string   `xml:"http://purl.org/rss/1.0/modules/content/ encoded"`
+	PubDate     string   `xml:"pubDate"`
+	GUID        string   `xml:"guid"`
+	Author      string   `xml:"author"`
+	Creator     string   `xml:"http://purl.org/dc/elements/1.1/ creator"`
+	Categories  []string `xml:"category"`
+}
+
+// Atom structures for feed parsing.
+type atomFeed struct {
+	XMLName  xml.Name    `xml:"http://www.w3.org/2005/Atom feed"`
+	Title    string      `xml:"title"`
+	Subtitle string      `xml:"subtitle"`
+	Link     []atomLink  `xml:"link"`
+	Icon     string      `xml:"icon"`
+	Logo     string      `xml:"logo"`
+	Entries  []atomEntry `xml:"entry"`
+}
+
+type atomLink struct {
+	Href string `xml:"href,attr"`
+	Rel  string `xml:"rel,attr"`
+	Type string `xml:"type,attr"`
+}
+
+type atomEntry struct {
+	Title     string     `xml:"title"`
+	Link      []atomLink `xml:"link"`
+	ID        string     `xml:"id"`
+	Updated   string     `xml:"updated"`
+	Published string     `xml:"published"`
+	Summary   string     `xml:"summary"`
+	Content   atomText   `xml:"content"`
+	Author    atomAuthor `xml:"author"`
+	Category  []atomCat  `xml:"category"`
+}
+
+type atomText struct {
+	Type string `xml:"type,attr"`
+	Body string `xml:",chardata"`
+}
+
+type atomAuthor struct {
+	Name string `xml:"name"`
+}
+
+type atomCat struct {
+	Term string `xml:"term,attr"`
+}
+
 // parseBlogrollFeedResponse parses an HTTP response into a feed structure for blogroll plugin.
-func parseBlogrollFeedResponse(_ *http.Response) (*blogrollParsedFeed, []*models.ExternalEntry, error) {
-	// This would typically parse JSON or XML from the response
-	// For now, return empty structure to satisfy compiler
-	return &blogrollParsedFeed{}, []*models.ExternalEntry{}, nil
+func parseBlogrollFeedResponse(resp *http.Response) (*blogrollParsedFeed, []*models.ExternalEntry, error) {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read response: %w", err)
+	}
+
+	// Try RSS 2.0 first
+	feed, entries, err := parseRSS2Feed(body)
+	if err == nil {
+		return feed, entries, nil
+	}
+
+	// Try Atom
+	feed, entries, err = parseAtomFeed(body)
+	if err == nil {
+		return feed, entries, nil
+	}
+
+	return nil, nil, fmt.Errorf("failed to parse as RSS 2.0 or Atom: %w", err)
+}
+
+// parseRSS2Feed parses an RSS 2.0 feed.
+func parseRSS2Feed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, error) {
+	var feed rss2Feed
+	if err := xml.Unmarshal(data, &feed); err != nil {
+		return nil, nil, err
+	}
+
+	if feed.XMLName.Local != "rss" {
+		return nil, nil, fmt.Errorf("not an RSS 2.0 feed")
+	}
+
+	parsed := &blogrollParsedFeed{
+		Title:       feed.Channel.Title,
+		Description: feed.Channel.Description,
+		Language:    feed.Channel.Language,
+		SiteURL:     feed.Channel.Link,
+		ImageURL:    feed.Channel.Image.URL,
+	}
+
+	entries := make([]*models.ExternalEntry, 0, len(feed.Channel.Items))
+	for i := range feed.Channel.Items {
+		item := &feed.Channel.Items[i]
+
+		// Parse publish date
+		pubDate := parseRSSDate(item.PubDate)
+		var pubDatePtr *time.Time
+		if !pubDate.IsZero() {
+			pubDatePtr = &pubDate
+		}
+
+		// Determine content - prefer content:encoded over description
+		content := item.Content
+		if content == "" {
+			content = item.Description
+		}
+
+		// Determine author
+		author := item.Author
+		if author == "" {
+			author = item.Creator
+		}
+
+		// Determine ID
+		id := item.GUID
+		if id == "" {
+			id = item.Link
+		}
+
+		// Extract first image from content
+		imageURL := extractFirstImageFromHTML(content)
+
+		// Create entry
+		entry := &models.ExternalEntry{
+			ID:          id,
+			Title:       item.Title,
+			URL:         item.Link,
+			Published:   pubDatePtr,
+			Updated:     pubDatePtr,
+			Author:      author,
+			Content:     content,
+			Description: stripBlogrollHTML(item.Description),
+			ImageURL:    imageURL,
+			Categories:  item.Categories,
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return parsed, entries, nil
+}
+
+// parseAtomFeed parses an Atom feed.
+func parseAtomFeed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, error) {
+	var feed atomFeed
+	if err := xml.Unmarshal(data, &feed); err != nil {
+		return nil, nil, err
+	}
+
+	// Get site URL from links
+	siteURL := ""
+	for _, link := range feed.Link {
+		if link.Rel == "" || link.Rel == "alternate" {
+			siteURL = link.Href
+			break
+		}
+	}
+
+	// Prefer logo over icon
+	imageURL := feed.Logo
+	if imageURL == "" {
+		imageURL = feed.Icon
+	}
+
+	parsed := &blogrollParsedFeed{
+		Title:       feed.Title,
+		Description: feed.Subtitle,
+		SiteURL:     siteURL,
+		ImageURL:    imageURL,
+	}
+
+	entries := make([]*models.ExternalEntry, 0, len(feed.Entries))
+	for i := range feed.Entries {
+		entry := &feed.Entries[i]
+
+		// Parse dates
+		pubDate := parseAtomDate(entry.Published)
+		updDate := parseAtomDate(entry.Updated)
+
+		var pubDatePtr, updDatePtr *time.Time
+		if !pubDate.IsZero() {
+			pubDatePtr = &pubDate
+		}
+		if !updDate.IsZero() {
+			updDatePtr = &updDate
+		}
+
+		// Get entry URL
+		entryURL := ""
+		for _, link := range entry.Link {
+			if link.Rel == "" || link.Rel == "alternate" {
+				entryURL = link.Href
+				break
+			}
+		}
+
+		// Determine content
+		content := entry.Content.Body
+		if content == "" {
+			content = entry.Summary
+		}
+
+		// Get tags
+		var tags []string
+		for _, cat := range entry.Category {
+			if cat.Term != "" {
+				tags = append(tags, cat.Term)
+			}
+		}
+
+		// Extract first image from content
+		imageURL := extractFirstImageFromHTML(content)
+
+		// Create entry
+		extEntry := &models.ExternalEntry{
+			ID:          entry.ID,
+			Title:       entry.Title,
+			URL:         entryURL,
+			Published:   pubDatePtr,
+			Updated:     updDatePtr,
+			Author:      entry.Author.Name,
+			Content:     content,
+			Description: stripBlogrollHTML(entry.Summary),
+			ImageURL:    imageURL,
+			Categories:  tags,
+		}
+
+		entries = append(entries, extEntry)
+	}
+
+	return parsed, entries, nil
+}
+
+// parseRSSDate parses an RSS date string.
+func parseRSSDate(dateStr string) time.Time {
+	if dateStr == "" {
+		return time.Time{}
+	}
+
+	// RFC822, RFC822Z, RFC1123, RFC1123Z are common RSS date formats
+	formats := []string{
+		time.RFC1123Z,
+		time.RFC1123,
+		time.RFC822Z,
+		time.RFC822,
+		"Mon, 02 Jan 2006 15:04:05 -0700",
+		"Mon, 02 Jan 2006 15:04:05 MST",
+		"2 Jan 2006 15:04:05 -0700",
+		"2 Jan 2006 15:04:05 MST",
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, dateStr); err == nil {
+			return t
+		}
+	}
+
+	return time.Time{}
+}
+
+// parseAtomDate parses an Atom date string (RFC3339).
+func parseAtomDate(dateStr string) time.Time {
+	if dateStr == "" {
+		return time.Time{}
+	}
+
+	t, err := time.Parse(time.RFC3339, dateStr)
+	if err != nil {
+		return time.Time{}
+	}
+
+	return t
+}
+
+// stripBlogrollHTML strips HTML tags from content.
+func stripBlogrollHTML(s string) string {
+	// Decode HTML entities
+	decoded := html.UnescapeString(s)
+	// Remove HTML tags
+	stripped := blogrollHTMLTagRegex.ReplaceAllString(decoded, "")
+	// Trim whitespace
+	return strings.TrimSpace(stripped)
 }
 
 // Search config default constants.
