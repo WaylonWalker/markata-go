@@ -469,6 +469,7 @@ func (p *PaletteCSSPlugin) writeNonColorVariables(buf *bytes.Buffer, indent stri
 	fmt.Fprintf(buf, "%s--space-2: 0.5rem;\n", indent)
 	fmt.Fprintf(buf, "%s--space-3: 0.75rem;\n", indent)
 	fmt.Fprintf(buf, "%s--space-4: 1rem;\n", indent)
+	fmt.Fprintf(buf, "%s--space-5: 1.25rem;\n", indent)
 	fmt.Fprintf(buf, "%s--space-6: 1.5rem;\n", indent)
 	fmt.Fprintf(buf, "%s--space-8: 2rem;\n", indent)
 	fmt.Fprintf(buf, "%s--space-12: 3rem;\n", indent)
@@ -561,6 +562,7 @@ func (p *PaletteCSSPlugin) writePaletteVariablesIndented(buf *bytes.Buffer, pale
 		"warn", "warning", "caution", "important",
 		"danger", "error", "bug",
 		"example", "quote", "abstract",
+		"chat", "chat-reply",
 	}
 
 	hasAdmonitions := false

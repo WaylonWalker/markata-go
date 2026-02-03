@@ -15,27 +15,29 @@ import (
 
 // Supported admonition types
 var admonitionTypes = map[string]bool{
-	"note":      true,
-	"info":      true,
-	"tip":       true,
-	"hint":      true,
-	"success":   true,
-	"warning":   true,
-	"caution":   true,
-	"important": true,
-	"danger":    true,
-	"error":     true,
-	"bug":       true,
-	"example":   true,
-	"quote":     true,
-	"abstract":  true,
-	"aside":     true,
-	"seealso":   true,
-	"reminder":  true,
-	"attention": true,
-	"todo":      true,
-	"settings":  true,
-	"vsplit":    true,
+	"note":       true,
+	"info":       true,
+	"tip":        true,
+	"hint":       true,
+	"success":    true,
+	"warning":    true,
+	"caution":    true,
+	"important":  true,
+	"danger":     true,
+	"error":      true,
+	"bug":        true,
+	"example":    true,
+	"quote":      true,
+	"abstract":   true,
+	"aside":      true,
+	"seealso":    true,
+	"reminder":   true,
+	"attention":  true,
+	"todo":       true,
+	"settings":   true,
+	"vsplit":     true,
+	"chat":       true,
+	"chat-reply": true,
 }
 
 // admonitionRegex matches admonition syntax:
@@ -48,11 +50,11 @@ var admonitionTypes = map[string]bool{
 // - ??? type "title" (collapsible, collapsed by default)
 // - ???+ type "title" (collapsible, expanded by default)
 // Group 1: marker (!!!, ???, ???+)
-// Group 2: type
+// Group 2: type (allows hyphens for types like chat-reply)
 // Group 3: optional modifiers (for aside: left, right, inline, inline end)
 // Group 4: optional quoted title
 // Group 5: optional unquoted title (everything after type/modifiers if no quotes)
-var admonitionRegex = regexp.MustCompile(`^(\?\?\?\+?|!!!)\s+(\w+)(?:\s+(left|right|inline(?:\s+end)?))?\s*(?:"([^"]*)"|(.*))?$`)
+var admonitionRegex = regexp.MustCompile(`^(\?\?\?\+?|!!!)\s+([\w-]+)(?:\s+(left|right|inline(?:\s+end)?))?\s*(?:"([^"]*)"|(.*))?$`)
 
 // KindAdmonition is the AST node kind for admonitions.
 var KindAdmonition = ast.NewNodeKind("Admonition")
