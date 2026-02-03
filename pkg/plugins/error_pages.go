@@ -172,7 +172,7 @@ func (p *ErrorPagesPlugin) generate404Page(_ *lifecycle.Manager, cfg *models.Con
 		return fmt.Errorf("creating output directory for 404 page: %w", err)
 	}
 
-	if err := os.WriteFile(outputPath, []byte(html), 0o600); err != nil {
+	if err := os.WriteFile(outputPath, []byte(html), 0o644); err != nil { //nolint:gosec // G306: Public-facing HTML needs 644 permissions
 		return fmt.Errorf("writing 404.html: %w", err)
 	}
 
