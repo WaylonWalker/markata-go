@@ -1362,9 +1362,10 @@ func (p *BlogrollPlugin) extractSearchConfig(extra, result map[string]interface{
 	}
 
 	// Convert pagefind config
+	// Use the actual pagefind bundle directory (defaults to _pagefind), not the blogroll output dir
 	bundleDir := search.Pagefind.BundleDir
 	if bundleDir == "" {
-		bundleDir = blogrollBundleDir
+		bundleDir = defaultBundleDir
 	}
 
 	result["search"] = map[string]interface{}{
