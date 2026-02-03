@@ -87,6 +87,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["encryption"] = func() lifecycle.Plugin { return NewEncryptionPlugin() }
 	pluginRegistry.constructors["critical_css"] = func() lifecycle.Plugin { return NewCriticalCSSPlugin() }
 	pluginRegistry.constructors["css_purge"] = func() lifecycle.Plugin { return NewCSSPurgePlugin() }
+	pluginRegistry.constructors["css_minify"] = func() lifecycle.Plugin { return NewCSSMinifyPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -190,8 +191,9 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewSitemapPlugin(),
 
 		// Cleanup stage plugins
-		NewCSSPurgePlugin(), // Remove unused CSS (before search index)
-		NewPagefindPlugin(), // Generate search index (requires all HTML written first)
+		NewCSSMinifyPlugin(), // Minify CSS files (before purge for optimal results)
+		NewCSSPurgePlugin(),  // Remove unused CSS (before search index)
+		NewPagefindPlugin(),  // Generate search index (requires all HTML written first)
 	}
 }
 
