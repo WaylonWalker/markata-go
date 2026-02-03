@@ -1498,10 +1498,20 @@ type CriticalCSSConfig struct {
 	// Enabled controls whether critical CSS optimization is active (default: false)
 	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
 
-	// ViewportWidth is the simulated viewport width for determining above-the-fold content (default: 1300)
+	// ViewportWidth is reserved for future viewport-based critical CSS detection.
+	// NOTE: Currently NOT implemented. The critical CSS extractor uses a selector-based
+	// approach (see ExtraSelectors/ExcludeSelectors) rather than viewport simulation.
+	// True viewport-based detection would require a headless browser.
+	// This field is retained for configuration compatibility and future enhancement.
+	// Default: 1300
 	ViewportWidth int `json:"viewport_width,omitempty" yaml:"viewport_width,omitempty" toml:"viewport_width,omitempty"`
 
-	// ViewportHeight is the simulated viewport height for determining above-the-fold content (default: 900)
+	// ViewportHeight is reserved for future viewport-based critical CSS detection.
+	// NOTE: Currently NOT implemented. The critical CSS extractor uses a selector-based
+	// approach (see ExtraSelectors/ExcludeSelectors) rather than viewport simulation.
+	// True viewport-based detection would require a headless browser.
+	// This field is retained for configuration compatibility and future enhancement.
+	// Default: 900
 	ViewportHeight int `json:"viewport_height,omitempty" yaml:"viewport_height,omitempty" toml:"viewport_height,omitempty"`
 
 	// Minify controls whether to minify the critical CSS output (default: true)
@@ -1525,6 +1535,8 @@ type CriticalCSSConfig struct {
 }
 
 // NewCriticalCSSConfig creates a new CriticalCSSConfig with default values.
+// Note: ViewportWidth and ViewportHeight are set for future compatibility but
+// are not currently used by the selector-based critical CSS extractor.
 func NewCriticalCSSConfig() CriticalCSSConfig {
 	enabled := false
 	minify := true

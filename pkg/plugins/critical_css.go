@@ -51,6 +51,9 @@ func (p *CriticalCSSPlugin) Configure(m *lifecycle.Manager) error {
 	}
 
 	// Use defaults if not configured
+	// NOTE: ViewportWidth and ViewportHeight are stored for configuration compatibility
+	// but are NOT currently used. The extractor uses a selector-based approach, not
+	// viewport simulation. See issue #570 for discussion of future implementation.
 	if p.config.ViewportWidth == 0 {
 		p.config.ViewportWidth = 1300
 	}
