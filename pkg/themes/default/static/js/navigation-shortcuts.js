@@ -51,12 +51,12 @@
   function highlightCard(card) {
     // Remove previous highlight
     if (state.selectedCard) {
-      state.selectedCard.classList.remove('highlighted');
+      state.selectedCard.classList.remove('kb-highlighted');
     }
 
     // Highlight new card
     state.selectedCard = card;
-    card.classList.add('highlighted');
+    card.classList.add('kb-highlighted');
     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
