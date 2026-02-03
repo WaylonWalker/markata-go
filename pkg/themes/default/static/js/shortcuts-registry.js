@@ -117,10 +117,18 @@
     if (e.shiftKey) actualModifiers.push('shift');
     if (e.metaKey) actualModifiers.push('meta');
 
-    if (expectedSet.size === 0 && actualModifiers.length === 0) {
-      return true;
+    // If no modifiers expected, allow any printable character (even if shift is pressed)
+    // This handles cases like ? which is Shift+/ on US keyboards
+    if (expectedSet.size === 0) {
+      // For unmodified shortcuts, we DON'T want Ctrl/Meta/Alt to be held
+      // But we DO allow Shift since it's just the shift variant of a key
+      var significantModifiers = actualModifiers.filter(function(m) {
+        return m !== 'shift';
+      });
+      return significantModifiers.length === 0;
     }
 
+    // For shortcuts with expected modifiers, check exact match
     if (expectedSet.size !== actualModifiers.length) {
       return false;
     }

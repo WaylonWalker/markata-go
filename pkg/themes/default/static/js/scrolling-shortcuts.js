@@ -2,12 +2,15 @@
  * Scrolling Shortcuts Module for markata-go
  *
  * Registers scrolling-related keyboard shortcuts with the shortcuts registry.
- * - `j` or `↓` - Scroll down
- * - `k` or `↑` - Scroll up
+ * - `j` or `↓` - Scroll down (when no feed cards visible)
+ * - `k` or `↑` - Scroll up (when no feed cards visible)
  * - `d` - Scroll half-page down
  * - `u` - Scroll half-page up
  * - `g g` - Scroll to top
  * - `Shift+G` - Scroll to bottom
+ *
+ * Note: j/k are primarily for feed navigation when cards are present.
+ * On pages without feed cards, j/k will scroll instead.
  */
 
 (function() {
@@ -64,35 +67,16 @@
   }
 
   /**
+   * Check if there are feed cards on the page
+   */
+  function hasFeedCards() {
+    return document.querySelector('.card, [data-card]') !== null;
+  }
+
+  /**
    * Initialize scrolling shortcuts
    */
   function init() {
-    // j or ↓ - Scroll down
-    window.shortcutsRegistry.register({
-      key: 'j',
-      modifiers: [],
-      description: 'Scroll down',
-      group: 'scrolling',
-      handler: function(e) {
-        e.preventDefault();
-        scroll(100);
-      },
-      priority: 10
-    });
-
-    // k or ↑ - Scroll up
-    window.shortcutsRegistry.register({
-      key: 'k',
-      modifiers: [],
-      description: 'Scroll up',
-      group: 'scrolling',
-      handler: function(e) {
-        e.preventDefault();
-        scroll(-100);
-      },
-      priority: 10
-    });
-
     // d - Scroll half-page down
     window.shortcutsRegistry.register({
       key: 'd',
@@ -118,6 +102,36 @@
       },
       priority: 10
     });
+
+    // j/k scrolling - only when NO feed cards are present
+    // (when feed cards exist, navigation module handles j/k for card selection)
+    if (!hasFeedCards()) {
+      // j - Scroll down
+      window.shortcutsRegistry.register({
+        key: 'j',
+        modifiers: [],
+        description: 'Scroll down',
+        group: 'scrolling',
+        handler: function(e) {
+          e.preventDefault();
+          scroll(100);
+        },
+        priority: 10
+      });
+
+      // k - Scroll up
+      window.shortcutsRegistry.register({
+        key: 'k',
+        modifiers: [],
+        description: 'Scroll up',
+        group: 'scrolling',
+        handler: function(e) {
+          e.preventDefault();
+          scroll(-100);
+        },
+        priority: 10
+      });
+    }
 
     // Handle two-key sequence: g g for scroll to top
     var lastKeyTime = 0;

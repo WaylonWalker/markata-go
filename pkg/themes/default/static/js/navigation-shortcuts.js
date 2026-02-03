@@ -2,8 +2,8 @@
  * Navigation Shortcuts Module for markata-go
  *
  * Registers navigation-related keyboard shortcuts with the shortcuts registry.
- * - `j` or `↓` - Next post (in feeds)
- * - `k` or `↑` - Previous post (in feeds)
+ * - `j` or `↓` - Next post (in feeds) / Highlight next card
+ * - `k` or `↑` - Previous post (in feeds) / Highlight previous card
  * - `Enter` or `o` - Open highlighted post
  * - `Shift+O` - Open in new tab
  * - `g h` - Go to home
@@ -11,6 +11,9 @@
  * - `[` - Previous page
  * - `]` - Next page
  * - `y y` - Copy URL to clipboard
+ *
+ * When feed cards are present, j/k will navigate between cards (with visual highlight).
+ * Press o/Enter to open the selected card.
  */
 
 (function() {
@@ -250,7 +253,7 @@
     window.shortcutsRegistry.register({
       key: 'o',
       modifiers: [],
-      description: 'Open highlighted post',
+      description: 'Open highlighted card',
       group: 'navigation',
       handler: function(e) {
         e.preventDefault();
@@ -263,7 +266,7 @@
     window.shortcutsRegistry.register({
       key: 'O',
       modifiers: [],
-      description: 'Open highlighted post in new tab',
+      description: 'Open highlighted card in new tab',
       group: 'navigation',
       handler: function(e) {
         e.preventDefault();
@@ -325,34 +328,44 @@
     });
 
     // Listen for j/k navigation on card lists
-    document.addEventListener('keydown', function(e) {
-      if (window.shortcutsRegistry.areDisabled()) return;
-      if (window.shortcutsRegistry.isInputElement(e.target)) return;
-      if (state.cards.length === 0) return;
+    // Only register if we have cards
+    if (state.cards.length > 0) {
+      // j - Next card in feed
+      window.shortcutsRegistry.register({
+        key: 'j',
+        modifiers: [],
+        description: 'Select next card in feed',
+        group: 'navigation',
+        handler: function(e) {
+          // Initialize selection if needed
+          if (!state.selectedCard && state.cards.length > 0) {
+            highlightCard(state.cards[0]);
+          } else {
+            e.preventDefault();
+            nextPost();
+          }
+        },
+        priority: 20
+      });
 
-      if (e.key === 'j' || e.key === 'ArrowDown') {
-        // Initialize selection if needed
-        if (!state.selectedCard) {
-          state.cards = getCards();
-          if (state.cards.length > 0) {
+      // k - Previous card in feed
+      window.shortcutsRegistry.register({
+        key: 'k',
+        modifiers: [],
+        description: 'Select previous card in feed',
+        group: 'navigation',
+        handler: function(e) {
+          // Initialize selection if needed
+          if (!state.selectedCard && state.cards.length > 0) {
             highlightCard(state.cards[0]);
+          } else {
+            e.preventDefault();
+            previousPost();
           }
-        } else {
-          e.preventDefault();
-          nextPost();
-        }
-      } else if (e.key === 'k' || e.key === 'ArrowUp') {
-        if (!state.selectedCard) {
-          state.cards = getCards();
-          if (state.cards.length > 0) {
-            highlightCard(state.cards[0]);
-          }
-        } else {
-          e.preventDefault();
-          previousPost();
-        }
-      }
-    });
+        },
+        priority: 20
+      });
+    }
   }
 
   // Initialize when registry is available
