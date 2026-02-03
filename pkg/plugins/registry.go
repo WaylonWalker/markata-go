@@ -88,6 +88,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["critical_css"] = func() lifecycle.Plugin { return NewCriticalCSSPlugin() }
 	pluginRegistry.constructors["css_purge"] = func() lifecycle.Plugin { return NewCSSPurgePlugin() }
 	pluginRegistry.constructors["css_minify"] = func() lifecycle.Plugin { return NewCSSMinifyPlugin() }
+	pluginRegistry.constructors["tags_listing"] = func() lifecycle.Plugin { return NewTagsListingPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -185,8 +186,9 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewCSSBundlePlugin(),    // Bundle CSS files (runs after CSS generators)
 		NewPublishFeedsPlugin(),
 		NewPublishHTMLPlugin(),
-		NewRedirectsPlugin(),  // Generate redirect pages
-		NewErrorPagesPlugin(), // Generate static 404 page
+		NewRedirectsPlugin(),   // Generate redirect pages
+		NewErrorPagesPlugin(),  // Generate static 404 page
+		NewTagsListingPlugin(), // Generate /tags listing page
 		// NewResourceHintsPlugin(), // Inject resource hints (after HTML written) // DISABLED: Performance issue on large sites
 		NewSitemapPlugin(),
 

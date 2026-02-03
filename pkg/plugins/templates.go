@@ -660,6 +660,13 @@ func toModelsConfigUncached(config *lifecycle.Config) *models.Config {
 		modelsConfig.Theme = theme
 	}
 
+	// Copy Tags config if available
+	if tags, ok := config.Extra["tags"].(models.TagsConfig); ok {
+		modelsConfig.Tags = tags
+	} else {
+		modelsConfig.Tags = models.NewTagsConfig()
+	}
+
 	// Copy the entire Extra map so templates can access dynamic plugin config
 	// (e.g., glightbox_enabled, glightbox_options set by image_zoom plugin)
 	if config.Extra != nil {

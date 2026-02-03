@@ -26,6 +26,7 @@ type configSource interface {
 	getToc() tocConverter
 	getHeader() headerConverter
 	getBlogroll() blogrollConverter
+	getTags() tagsConverter
 }
 
 // baseConfigData holds the basic config fields that are directly assignable.
@@ -103,6 +104,10 @@ type blogrollConverter interface {
 	toBlogrollConfig() models.BlogrollConfig
 }
 
+type tagsConverter interface {
+	toTagsConfig() models.TagsConfig
+}
+
 // buildConfig constructs a models.Config from a configSource.
 // This helper eliminates code duplication across TOML, YAML, and JSON config converters.
 func buildConfig(src configSource) *models.Config {
@@ -177,6 +182,9 @@ func buildConfig(src configSource) *models.Config {
 	// Convert Blogroll config
 	config.Blogroll = src.getBlogroll().toBlogrollConfig()
 
+	// Convert Tags config
+	config.Tags = src.getTags().toTagsConfig()
+
 	return config
 }
 
@@ -220,7 +228,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"slug_conflicts":    false,
 			"default_templates": true, "auto_feeds": true, "head": true,
 			"content_templates": true, "footer_layout": true, "search": true,
-			"plugins": true, "thoughts": true, "wikilinks": true,
+			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
 		}
 
 		// Copy unknown sections to Extra
@@ -293,6 +301,7 @@ type tomlConfig struct {
 	Toc           tomlTocConfig          `toml:"toc"`
 	Header        tomlHeaderLayoutConfig `toml:"header"`
 	Blogroll      tomlBlogrollConfig     `toml:"blogroll"`
+	Tags          tomlTagsConfig         `toml:"tags"`
 	UnknownFields map[string]any         `toml:"-"`
 }
 
@@ -436,6 +445,46 @@ type tomlIndieAuthConfig struct {
 type tomlWebmentionConfig struct {
 	Enabled  bool   `toml:"enabled"`
 	Endpoint string `toml:"endpoint"`
+}
+
+type tomlTagsConfig struct {
+	Enabled     *bool    `toml:"enabled"`
+	Blacklist   []string `toml:"blacklist"`
+	Private     []string `toml:"private"`
+	Title       string   `toml:"title"`
+	Description string   `toml:"description"`
+	Template    string   `toml:"template"`
+	SlugPrefix  string   `toml:"slug_prefix"`
+}
+
+func (t *tomlTagsConfig) toTagsConfig() models.TagsConfig {
+	defaults := models.NewTagsConfig()
+
+	config := models.TagsConfig{
+		Enabled:     t.Enabled,
+		Blacklist:   t.Blacklist,
+		Private:     t.Private,
+		Title:       t.Title,
+		Description: t.Description,
+		Template:    t.Template,
+		SlugPrefix:  t.SlugPrefix,
+	}
+
+	// Apply defaults if not set
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Title == "" {
+		config.Title = defaults.Title
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.SlugPrefix == "" {
+		config.SlugPrefix = defaults.SlugPrefix
+	}
+
+	return config
 }
 
 func (s *tomlSEOConfig) toSEOConfig() models.SEOConfig {
@@ -989,6 +1038,7 @@ func (c *tomlConfig) getSidebar() sidebarConverter           { return &c.Sidebar
 func (c *tomlConfig) getToc() tocConverter                   { return &c.Toc }
 func (c *tomlConfig) getHeader() headerConverter             { return &c.Header }
 func (c *tomlConfig) getBlogroll() blogrollConverter         { return &c.Blogroll }
+func (c *tomlConfig) getTags() tagsConverter                 { return &c.Tags }
 
 func (c *tomlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -1159,6 +1209,7 @@ type yamlConfig struct {
 	Toc           yamlTocConfig          `yaml:"toc"`
 	Header        yamlHeaderLayoutConfig `yaml:"header"`
 	Blogroll      yamlBlogrollConfig     `yaml:"blogroll"`
+	Tags          yamlTagsConfig         `yaml:"tags"`
 }
 
 type yamlNavItem struct {
@@ -1253,6 +1304,46 @@ type yamlIndieAuthConfig struct {
 type yamlWebmentionConfig struct {
 	Enabled  bool   `yaml:"enabled"`
 	Endpoint string `yaml:"endpoint"`
+}
+
+type yamlTagsConfig struct {
+	Enabled     *bool    `yaml:"enabled"`
+	Blacklist   []string `yaml:"blacklist"`
+	Private     []string `yaml:"private"`
+	Title       string   `yaml:"title"`
+	Description string   `yaml:"description"`
+	Template    string   `yaml:"template"`
+	SlugPrefix  string   `yaml:"slug_prefix"`
+}
+
+func (t *yamlTagsConfig) toTagsConfig() models.TagsConfig {
+	defaults := models.NewTagsConfig()
+
+	config := models.TagsConfig{
+		Enabled:     t.Enabled,
+		Blacklist:   t.Blacklist,
+		Private:     t.Private,
+		Title:       t.Title,
+		Description: t.Description,
+		Template:    t.Template,
+		SlugPrefix:  t.SlugPrefix,
+	}
+
+	// Apply defaults if not set
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Title == "" {
+		config.Title = defaults.Title
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.SlugPrefix == "" {
+		config.SlugPrefix = defaults.SlugPrefix
+	}
+
+	return config
 }
 
 type yamlThemeConfig struct {
@@ -1906,6 +1997,7 @@ func (c *yamlConfig) getSidebar() sidebarConverter           { return &c.Sidebar
 func (c *yamlConfig) getToc() tocConverter                   { return &c.Toc }
 func (c *yamlConfig) getHeader() headerConverter             { return &c.Header }
 func (c *yamlConfig) getBlogroll() blogrollConverter         { return &c.Blogroll }
+func (c *yamlConfig) getTags() tagsConverter                 { return &c.Tags }
 
 func (c *yamlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -2014,6 +2106,7 @@ type jsonConfig struct {
 	Toc           jsonTocConfig          `json:"toc"`
 	Header        jsonHeaderLayoutConfig `json:"header"`
 	Blogroll      jsonBlogrollConfig     `json:"blogroll"`
+	Tags          jsonTagsConfig         `json:"tags"`
 }
 
 type jsonNavItem struct {
@@ -2108,6 +2201,46 @@ type jsonIndieAuthConfig struct {
 type jsonWebmentionConfig struct {
 	Enabled  bool   `json:"enabled"`
 	Endpoint string `json:"endpoint"`
+}
+
+type jsonTagsConfig struct {
+	Enabled     *bool    `json:"enabled"`
+	Blacklist   []string `json:"blacklist"`
+	Private     []string `json:"private"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Template    string   `json:"template"`
+	SlugPrefix  string   `json:"slug_prefix"`
+}
+
+func (t *jsonTagsConfig) toTagsConfig() models.TagsConfig {
+	defaults := models.NewTagsConfig()
+
+	config := models.TagsConfig{
+		Enabled:     t.Enabled,
+		Blacklist:   t.Blacklist,
+		Private:     t.Private,
+		Title:       t.Title,
+		Description: t.Description,
+		Template:    t.Template,
+		SlugPrefix:  t.SlugPrefix,
+	}
+
+	// Apply defaults if not set
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Title == "" {
+		config.Title = defaults.Title
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.SlugPrefix == "" {
+		config.SlugPrefix = defaults.SlugPrefix
+	}
+
+	return config
 }
 
 type jsonThemeConfig struct {
@@ -2761,6 +2894,7 @@ func (c *jsonConfig) getSidebar() sidebarConverter           { return &c.Sidebar
 func (c *jsonConfig) getToc() tocConverter                   { return &c.Toc }
 func (c *jsonConfig) getHeader() headerConverter             { return &c.Header }
 func (c *jsonConfig) getBlogroll() blogrollConverter         { return &c.Blogroll }
+func (c *jsonConfig) getTags() tagsConverter                 { return &c.Tags }
 
 func (c *jsonConfig) toConfig() *models.Config {
 	return buildConfig(c)
