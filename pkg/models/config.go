@@ -35,6 +35,9 @@ type ComponentsConfig struct {
 
 	// FeedSidebar configures the feed sidebar (series/collection navigation)
 	FeedSidebar FeedSidebarConfig `json:"feed_sidebar" yaml:"feed_sidebar" toml:"feed_sidebar"`
+
+	// CardRouter configures the card template routing for feeds
+	CardRouter CardRouterConfig `json:"card_router" yaml:"card_router" toml:"card_router"`
 }
 
 // NavComponentConfig configures the navigation component.
@@ -104,6 +107,103 @@ type FeedSidebarConfig struct {
 
 	// Feeds is the list of feed slugs to show navigation for
 	Feeds []string `json:"feeds,omitempty" yaml:"feeds,omitempty" toml:"feeds,omitempty"`
+}
+
+// CardRouterConfig configures the card template routing for feeds.
+// Maps post template types to card templates, merged with defaults.
+type CardRouterConfig struct {
+	// Mappings maps post template names to card template names.
+	// User mappings are merged with defaults, allowing overrides.
+	// Example: {"daily": "article", "meeting": "note"}
+	Mappings map[string]string `json:"mappings,omitempty" yaml:"mappings,omitempty" toml:"mappings,omitempty"`
+}
+
+// DefaultCardMappings returns the default template-to-card mappings.
+// These are the built-in mappings that user config merges with.
+func DefaultCardMappings() map[string]string {
+	return map[string]string{
+		// Article card - high prominence for blog-style content
+		"blog-post": "article",
+		"article":   "article",
+		"post":      "article",
+		"essay":     "article",
+		"tutorial":  "article",
+
+		// Note card - low prominence for short updates
+		"note":    "note",
+		"ping":    "note",
+		"thought": "note",
+		"status":  "note",
+		"tweet":   "note",
+
+		// Photo card - image prominent
+		"photo":   "photo",
+		"shot":    "photo",
+		"shots":   "photo",
+		"image":   "photo",
+		"gallery": "photo",
+
+		// Video card - video/thumbnail prominent
+		"video":  "video",
+		"clip":   "video",
+		"cast":   "video",
+		"stream": "video",
+
+		// Link card - URL preview style
+		"link":     "link",
+		"bookmark": "link",
+		"til":      "link",
+		"stars":    "link",
+
+		// Quote card - blockquote styling
+		"quote":     "quote",
+		"quotation": "quote",
+
+		// Guide card - step/chapter indicator
+		"guide":   "guide",
+		"series":  "guide",
+		"step":    "guide",
+		"chapter": "guide",
+
+		// Inline card - full rendered content
+		"gratitude": "inline",
+		"inline":    "inline",
+		"micro":     "inline",
+	}
+}
+
+// GetCardTemplate returns the card template for a given post template.
+// Returns the mapped card name, or "default" if not found.
+func (c *CardRouterConfig) GetCardTemplate(postTemplate string) string {
+	// First check user mappings
+	if c.Mappings != nil {
+		if card, ok := c.Mappings[postTemplate]; ok {
+			return card
+		}
+	}
+
+	// Fall back to defaults
+	defaults := DefaultCardMappings()
+	if card, ok := defaults[postTemplate]; ok {
+		return card
+	}
+
+	return "default"
+}
+
+// MergedMappings returns the user mappings merged with defaults.
+// User mappings take precedence over defaults.
+func (c *CardRouterConfig) MergedMappings() map[string]string {
+	result := DefaultCardMappings()
+
+	// Overlay user mappings
+	if c.Mappings != nil {
+		for k, v := range c.Mappings {
+			result[k] = v
+		}
+	}
+
+	return result
 }
 
 // NewComponentsConfig creates a new ComponentsConfig with default values.

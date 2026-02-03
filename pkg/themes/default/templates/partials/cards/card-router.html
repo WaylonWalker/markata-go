@@ -1,30 +1,36 @@
-{# Card Router - Routes to appropriate card template based on post.template #}
-{# Card types: article (blog-post), note (ping), photo (shots), video, link, quote, guide, inline (gratitude) #}
+{# Card Router - Routes to appropriate card template based on config mapping #}
+{# Uses config.components.card_router.mappings to determine card type #}
+{# Card types: article, note, photo, video, link, quote, guide, inline, default #}
 
-{% if post.template == "blog-post" or post.template == "article" or post.template == "post" or post.template == "essay" or post.template == "tutorial" %}
+{# Look up card type from config mappings, defaulting to "default" #}
+{% with card_type=config.components.card_router.mappings|getitem:post.template|default:"default" %}
+
+{% if card_type == "article" %}
 {% include "partials/cards/article-card.html" %}
 
-{% elif post.template == "note" or post.template == "ping" or post.template == "thought" or post.template == "status" or post.template == "tweet" %}
+{% elif card_type == "note" %}
 {% include "partials/cards/note-card.html" %}
 
-{% elif post.template == "photo" or post.template == "shot" or post.template == "shots" or post.template == "image" or post.template == "gallery" %}
+{% elif card_type == "photo" %}
 {% include "partials/cards/photo-card.html" %}
 
-{% elif post.template == "video" or post.template == "clip" or post.template == "cast" or post.template == "stream" %}
+{% elif card_type == "video" %}
 {% include "partials/cards/video-card.html" %}
 
-{% elif post.template == "link" or post.template == "bookmark" or post.template == "til" or post.template == "stars" %}
+{% elif card_type == "link" %}
 {% include "partials/cards/link-card.html" %}
 
-{% elif post.template == "quote" or post.template == "quotation" %}
+{% elif card_type == "quote" %}
 {% include "partials/cards/quote-card.html" %}
 
-{% elif post.template == "guide" or post.template == "series" or post.template == "step" or post.template == "chapter" %}
+{% elif card_type == "guide" %}
 {% include "partials/cards/guide-card.html" %}
 
-{% elif post.template == "gratitude" or post.template == "inline" or post.template == "micro" %}
+{% elif card_type == "inline" %}
 {% include "partials/cards/inline-card.html" %}
 
 {% else %}
 {% include "partials/cards/default-card.html" %}
 {% endif %}
+
+{% endwith %}
