@@ -39,7 +39,7 @@
     jKeyDown: false,
     kKeyDown: false,
     navRepeatTimer: null,
-    navRepeatDelay: 150 // ms between navigations when key held
+    navRepeatDelay: 80 // ms between navigations when key held (faster)
   };
 
   /**

@@ -104,19 +104,19 @@
 
       // Check which scroll keys are pressed
       if (keysPressed['j']) {
-        scrollAmount += 8; // Scroll down (smaller increments for smooth feel)
+        scrollAmount += 40; // Scroll down (60px per 60fps frame = ~2400px/sec)
         shouldScroll = true;
       }
       if (keysPressed['k']) {
-        scrollAmount -= 8; // Scroll up
+        scrollAmount -= 40; // Scroll up
         shouldScroll = true;
       }
       if (keysPressed['d']) {
-        scrollAmount += 4; // Half-page scroll is slower
+        scrollAmount += 20; // Half-page scroll (for d/u use slightly less)
         shouldScroll = true;
       }
       if (keysPressed['u']) {
-        scrollAmount -= 4; // Half-page scroll is slower
+        scrollAmount -= 20; // Half-page scroll
         shouldScroll = true;
       }
 
