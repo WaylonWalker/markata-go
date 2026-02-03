@@ -35,7 +35,11 @@
     cards: [],
     lastKeyTime: 0,
     lastKey: null,
-    keySequenceTimeout: 500 // ms
+    keySequenceTimeout: 500, // ms
+    jKeyDown: false,
+    kKeyDown: false,
+    navRepeatTimer: null,
+    navRepeatDelay: 150 // ms between navigations when key held
   };
 
   /**
@@ -327,7 +331,7 @@
       }
     });
 
-    // Listen for j/k navigation on card lists
+     // Listen for j/k navigation on card lists
     // Only register if we have cards
     if (state.cards.length > 0) {
       // j - Next card in feed
@@ -364,6 +368,51 @@
           }
         },
         priority: 20
+      });
+
+      // Handle held j/k for continuous navigation
+      document.addEventListener('keydown', function(e) {
+        if (window.shortcutsRegistry.areDisabled()) return;
+        if (window.shortcutsRegistry.isInputElement(e.target)) return;
+
+        if (e.key === 'j' && !state.jKeyDown) {
+          state.jKeyDown = true;
+          // Start repeat timer after initial delay
+          state.navRepeatTimer = setTimeout(function repeatJ() {
+            if (state.jKeyDown) {
+              nextPost();
+              state.navRepeatTimer = setTimeout(repeatJ, state.navRepeatDelay);
+            }
+          }, state.navRepeatDelay);
+          e.preventDefault();
+        } else if (e.key === 'k' && !state.kKeyDown) {
+          state.kKeyDown = true;
+          // Start repeat timer after initial delay
+          state.navRepeatTimer = setTimeout(function repeatK() {
+            if (state.kKeyDown) {
+              previousPost();
+              state.navRepeatTimer = setTimeout(repeatK, state.navRepeatDelay);
+            }
+          }, state.navRepeatDelay);
+          e.preventDefault();
+        }
+      });
+
+      // Clear repeat timer when keys are released
+      document.addEventListener('keyup', function(e) {
+        if (e.key === 'j') {
+          state.jKeyDown = false;
+          if (state.navRepeatTimer && !state.kKeyDown) {
+            clearTimeout(state.navRepeatTimer);
+            state.navRepeatTimer = null;
+          }
+        } else if (e.key === 'k') {
+          state.kKeyDown = false;
+          if (state.navRepeatTimer && !state.jKeyDown) {
+            clearTimeout(state.navRepeatTimer);
+            state.navRepeatTimer = null;
+          }
+        }
       });
     }
   }
