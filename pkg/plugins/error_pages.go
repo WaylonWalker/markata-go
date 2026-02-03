@@ -180,7 +180,8 @@ func (p *ErrorPagesPlugin) generate404Page(_ *lifecycle.Manager, cfg *models.Con
 }
 
 // generate404Body creates the HTML body content for the 404 page.
-// Includes a prefilled search form and client-side slug matching.
+// Includes a prefilled search form with live search and client-side slug matching.
+// Supports progressive enhancement: works without JS via form POST fallback.
 func generate404Body(cfg *models.Config) string {
 	// Get pagefind bundle directory for optional enhanced search
 	bundleDir := cfg.Search.Pagefind.BundleDir
@@ -196,10 +197,10 @@ func generate404Body(cfg *models.Config) string {
         Looking for: <code id="requested-path"></code>
     </p>
 
-    <!-- Prefilled search form -->
+    <!-- Search form with live search (JS) and POST fallback (no-JS) -->
     <div class="search-form-section">
         <h2>Search for it</h2>
-        <form id="search-form" class="search-form" action="/" method="get">
+        <form id="search-form" class="search-form" action="/_search" method="POST">
             <input
                 type="text"
                 id="search-input"
@@ -207,9 +208,20 @@ func generate404Body(cfg *models.Config) string {
                 class="search-input"
                 placeholder="Search..."
                 autocomplete="off"
+                aria-label="Search"
+                aria-describedby="search-results-status"
             >
             <button type="submit" class="search-button">Search</button>
         </form>
+        <noscript>
+            <p class="noscript-notice">JavaScript is disabled. Click the search button to find pages.</p>
+        </noscript>
+    </div>
+
+    <!-- Live search results (populated by JS) -->
+    <div id="live-search-results" class="live-search-results" style="display: none;" role="region" aria-live="polite">
+        <span id="search-results-status" class="visually-hidden"></span>
+        <ul id="live-results-list" class="suggestion-list"></ul>
     </div>
 
     <!-- Suggestions based on URL slug matching -->
@@ -377,6 +389,47 @@ func generate404Body(cfg *models.Config) string {
     color: var(--color-primary, #3b82f6);
 }
 
+.noscript-notice {
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--color-text-muted, #6b7280);
+    margin-top: var(--spacing-sm, 0.5rem);
+    font-style: italic;
+}
+
+.live-search-results {
+    margin: var(--spacing-lg, 1.5rem) 0;
+}
+
+.live-search-results h3 {
+    font-size: var(--font-size-base, 1rem);
+    margin-bottom: var(--spacing-sm, 0.5rem);
+    color: var(--color-heading, #111827);
+}
+
+.no-results {
+    color: var(--color-text-muted, #6b7280);
+    font-style: italic;
+    padding: var(--spacing-md, 1rem);
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.search-loading {
+    color: var(--color-text-muted, #6b7280);
+    padding: var(--spacing-md, 1rem);
+    text-align: center;
+}
+
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
     .requested-path code {
@@ -406,7 +459,7 @@ func generate404Body(cfg *models.Config) string {
 </style>
 
 <script>
-// 404 Page - Client-side slug matching and search prefill
+// 404 Page - Live search with fuzzy matching and progressive enhancement
 (function() {
     'use strict';
 
@@ -416,6 +469,13 @@ func generate404Body(cfg *models.Config) string {
     const searchForm = document.getElementById('search-form');
     const suggestionsSection = document.getElementById('suggestions-section');
     const suggestionsList = document.getElementById('suggestions-list');
+    const liveSearchResults = document.getElementById('live-search-results');
+    const liveResultsList = document.getElementById('live-results-list');
+    const searchResultsStatus = document.getElementById('search-results-status');
+
+    // Posts index cache
+    let postsIndex = null;
+    let searchDebounceTimer = null;
 
     // Show the requested path
     if (requestedPathEl) {
@@ -436,21 +496,6 @@ func generate404Body(cfg *models.Config) string {
     const searchTerms = extractSearchTerms(path);
     if (searchInput && searchTerms) {
         searchInput.value = searchTerms;
-    }
-
-    // Handle form submission - redirect to home with search param
-    // This works with pagefind's URL-based search initialization
-    if (searchForm) {
-        searchForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const query = searchInput.value.trim();
-            if (query) {
-                // Redirect to home with search query in hash (pagefind style)
-                window.location.href = '/#search=' + encodeURIComponent(query);
-            } else {
-                window.location.href = '/';
-            }
-        });
     }
 
     // Levenshtein distance for fuzzy matching
@@ -482,28 +527,80 @@ func generate404Body(cfg *models.Config) string {
         return matrix[b.length][a.length];
     }
 
-    // Normalize a slug for comparison
-    function normalizeSlug(slug) {
-        return slug
+    // Normalize text for comparison
+    function normalizeText(text) {
+        return text
             .toLowerCase()
             .replace(/^\/+|\/+$/g, '')
-            .replace(/[-_]/g, '')
-            .replace(/\s+/g, '');
+            .replace(/[-_]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
     }
 
-    // Find similar posts based on slug
+    // Search posts using fuzzy matching
+    function searchPosts(posts, query, maxResults) {
+        if (!query || query.length < 2) return [];
+
+        const normalizedQuery = normalizeText(query);
+        const queryWords = normalizedQuery.split(/\s+/).filter(w => w.length >= 2);
+
+        if (queryWords.length === 0) return [];
+
+        const scored = posts.map(post => {
+            const slug = normalizeText(post.slug);
+            const title = normalizeText(post.title || '');
+            const description = normalizeText(post.description || '');
+
+            let score = 0;
+            let matchCount = 0;
+
+            // Check each query word
+            queryWords.forEach(word => {
+                // Exact substring matches (highest score)
+                if (title.includes(word)) { score += 10; matchCount++; }
+                if (slug.includes(word)) { score += 8; matchCount++; }
+                if (description.includes(word)) { score += 5; matchCount++; }
+
+                // Fuzzy match using Levenshtein for title words
+                const titleWords = title.split(/\s+/);
+                titleWords.forEach(tw => {
+                    if (tw.length >= 3) {
+                        const dist = levenshtein(word, tw);
+                        if (dist <= Math.floor(tw.length * 0.3)) {
+                            score += Math.max(0, 6 - dist);
+                            matchCount++;
+                        }
+                    }
+                });
+            });
+
+            // Bonus for matching multiple words
+            if (matchCount >= queryWords.length) {
+                score += 5;
+            }
+
+            return { post, score, matchCount };
+        });
+
+        // Filter and sort by score
+        return scored
+            .filter(s => s.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, maxResults)
+            .map(s => s.post);
+    }
+
+    // Find similar posts based on URL slug (for initial suggestions)
     function findSimilarPosts(posts, targetPath, maxResults) {
-        const targetSlug = normalizeSlug(targetPath);
+        const targetSlug = normalizeText(targetPath).replace(/\s+/g, '');
         const targetWords = extractSearchTerms(targetPath).toLowerCase().split(/\s+/);
 
         const scored = posts.map(post => {
-            const postSlug = normalizeSlug(post.slug);
+            const postSlug = normalizeText(post.slug).replace(/\s+/g, '');
             const postTitle = (post.title || '').toLowerCase();
 
-            // Calculate slug distance
             const slugDistance = levenshtein(targetSlug, postSlug);
 
-            // Calculate word overlap score (bonus for matching words)
             let wordMatchScore = 0;
             targetWords.forEach(word => {
                 if (word.length >= 3) {
@@ -512,13 +609,10 @@ func generate404Body(cfg *models.Config) string {
                 }
             });
 
-            // Combined score (lower is better, subtract word matches as bonus)
             const score = slugDistance - (wordMatchScore * 2);
-
             return { post, score, slugDistance };
         });
 
-        // Sort by score (lower is better) and filter reasonable matches
         return scored
             .filter(s => s.slugDistance <= Math.max(targetSlug.length * 0.6, 5))
             .sort((a, b) => a.score - b.score)
@@ -526,11 +620,20 @@ func generate404Body(cfg *models.Config) string {
             .map(s => s.post);
     }
 
-    // Render suggestions
-    function renderSuggestions(posts) {
-        if (!posts || posts.length === 0) return;
+    // Render results to a list element
+    function renderResults(posts, listEl, sectionEl) {
+        listEl.innerHTML = '';
 
-        suggestionsList.innerHTML = '';
+        if (!posts || posts.length === 0) {
+            if (sectionEl === liveSearchResults) {
+                listEl.innerHTML = '<li class="no-results">No matching pages found</li>';
+                sectionEl.style.display = 'block';
+            } else {
+                sectionEl.style.display = 'none';
+            }
+            return;
+        }
+
         posts.forEach(post => {
             const li = document.createElement('li');
             li.className = 'suggestion-item';
@@ -546,33 +649,106 @@ func generate404Body(cfg *models.Config) string {
             if (post.description) {
                 const desc = document.createElement('span');
                 desc.className = 'suggestion-description';
-                desc.textContent = post.description;
+                desc.textContent = post.description.length > 100
+                    ? post.description.substring(0, 100) + '...'
+                    : post.description;
                 a.appendChild(desc);
             }
 
             li.appendChild(a);
-            suggestionsList.appendChild(li);
+            listEl.appendChild(li);
         });
 
-        suggestionsSection.style.display = 'block';
-    }
+        sectionEl.style.display = 'block';
 
-    // Load posts index and find suggestions
-    async function loadAndSuggest() {
-        try {
-            const response = await fetch('/_404-index.json');
-            if (!response.ok) return;
-
-            const posts = await response.json();
-            const similar = findSimilarPosts(posts, path, 5);
-            renderSuggestions(similar);
-        } catch (e) {
-            console.debug('404 suggestions unavailable:', e.message);
+        // Update screen reader status
+        if (searchResultsStatus) {
+            searchResultsStatus.textContent = posts.length + ' result' + (posts.length !== 1 ? 's' : '') + ' found';
         }
     }
 
-    // Try Pagefind first for richer results, fall back to our index
-    async function init() {
+    // Perform live search
+    function performLiveSearch(query) {
+        if (!postsIndex) return;
+
+        const results = searchPosts(postsIndex, query, 8);
+        renderResults(results, liveResultsList, liveSearchResults);
+
+        // Hide URL-based suggestions when user is actively searching
+        if (query && query.length >= 2) {
+            suggestionsSection.style.display = 'none';
+        }
+    }
+
+    // Handle search input with debounce
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            const query = e.target.value.trim();
+
+            // Clear previous timer
+            if (searchDebounceTimer) {
+                clearTimeout(searchDebounceTimer);
+            }
+
+            // Hide live results if query is too short
+            if (query.length < 2) {
+                liveSearchResults.style.display = 'none';
+                // Show URL-based suggestions again if available
+                if (suggestionsList.children.length > 0) {
+                    suggestionsSection.style.display = 'block';
+                }
+                return;
+            }
+
+            // Debounce search (150ms delay)
+            searchDebounceTimer = setTimeout(function() {
+                performLiveSearch(query);
+            }, 150);
+        });
+    }
+
+    // Handle form submission - prevent default if JS is working
+    // For no-JS fallback, the form will POST to /_search endpoint
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = searchInput.value.trim();
+            if (query) {
+                // Navigate to the first result if available
+                const firstResult = liveResultsList.querySelector('.suggestion-item a');
+                if (firstResult) {
+                    window.location.href = firstResult.href;
+                } else {
+                    // Fallback: redirect to home with search query
+                    window.location.href = '/?q=' + encodeURIComponent(query);
+                }
+            } else {
+                window.location.href = '/';
+            }
+        });
+    }
+
+    // Load posts index
+    async function loadPostsIndex() {
+        try {
+            const response = await fetch('/_404-index.json');
+            if (!response.ok) return null;
+            return await response.json();
+        } catch (e) {
+            console.debug('Failed to load posts index:', e.message);
+            return null;
+        }
+    }
+
+    // Initialize URL-based suggestions
+    function showUrlSuggestions() {
+        if (!postsIndex) return;
+        const similar = findSimilarPosts(postsIndex, path, 5);
+        renderResults(similar, suggestionsList, suggestionsSection);
+    }
+
+    // Try Pagefind for initial suggestions, fall back to our index
+    async function initWithPagefind() {
         try {
             const pagefind = await import('/%s/pagefind.js');
             await pagefind.init();
@@ -591,17 +767,33 @@ func generate404Body(cfg *models.Config) string {
                     }));
 
                 if (suggestions.length > 0) {
-                    renderSuggestions(suggestions);
-                    return;
+                    renderResults(suggestions, suggestionsList, suggestionsSection);
+                    return true;
                 }
             }
         } catch (e) {
-            // Pagefind not available, fall back to our index
-            console.debug('Pagefind not available, using fallback:', e.message);
+            console.debug('Pagefind not available:', e.message);
+        }
+        return false;
+    }
+
+    // Main initialization
+    async function init() {
+        // Load posts index first (needed for live search)
+        postsIndex = await loadPostsIndex();
+
+        // Try Pagefind for initial URL-based suggestions
+        const usedPagefind = await initWithPagefind();
+
+        // Fall back to our index for URL-based suggestions
+        if (!usedPagefind && postsIndex) {
+            showUrlSuggestions();
         }
 
-        // Fall back to our lightweight index
-        await loadAndSuggest();
+        // If search input has a value, trigger initial search
+        if (searchInput && searchInput.value.length >= 2) {
+            performLiveSearch(searchInput.value);
+        }
     }
 
     // Initialize when DOM is ready
