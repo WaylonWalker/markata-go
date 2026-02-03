@@ -359,11 +359,17 @@ func componentsToMap(c *models.ComponentsConfig) map[string]interface{} {
 		"feeds":    c.FeedSidebar.Feeds,
 	}
 
+	// Convert card_router component - use MergedMappings to include defaults
+	cardRouterMap := map[string]interface{}{
+		"mappings": c.CardRouter.MergedMappings(),
+	}
+
 	return map[string]interface{}{
 		"nav":          navMap,
 		"footer":       footerMap,
 		"doc_sidebar":  docSidebarMap,
 		"feed_sidebar": feedSidebarMap,
+		"card_router":  cardRouterMap,
 	}
 }
 

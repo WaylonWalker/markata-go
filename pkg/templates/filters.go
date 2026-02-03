@@ -92,6 +92,7 @@ func registerFilters() {
 		pongo2.RegisterFilter("sort", filterSort)
 		pongo2.RegisterFilter("selectattr", filterSelectAttr)
 		pongo2.RegisterFilter("rejectattr", filterRejectAttr)
+		pongo2.RegisterFilter("getitem", filterGetItem)
 
 		// HTML/text filters
 		pongo2.ReplaceFilter("striptags", filterStripTags)
@@ -307,6 +308,49 @@ func filterLast(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		return pongo2.AsValue(nil), nil
 	}
 	return in.Index(length - 1), nil
+}
+
+// filterGetItem gets an item from a map by key.
+// Usage: {{ map|getitem:key }} or {{ map|getitem:"literal_key" }}
+// Returns nil if the key doesn't exist.
+func filterGetItem(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	// Get the key as a string
+	key := param.String()
+	if key == "" {
+		return pongo2.AsValue(nil), nil
+	}
+
+	// Try to get the underlying value as a map
+	iface := in.Interface()
+	if iface == nil {
+		return pongo2.AsValue(nil), nil
+	}
+
+	// Handle map[string]string
+	if m, ok := iface.(map[string]string); ok {
+		if val, exists := m[key]; exists {
+			return pongo2.AsValue(val), nil
+		}
+		return pongo2.AsValue(nil), nil
+	}
+
+	// Handle map[string]interface{}
+	if m, ok := iface.(map[string]interface{}); ok {
+		if val, exists := m[key]; exists {
+			return pongo2.AsValue(val), nil
+		}
+		return pongo2.AsValue(nil), nil
+	}
+
+	// Handle map[string]any (same as interface{})
+	if m, ok := iface.(map[string]any); ok {
+		if val, exists := m[key]; exists {
+			return pongo2.AsValue(val), nil
+		}
+		return pongo2.AsValue(nil), nil
+	}
+
+	return pongo2.AsValue(nil), nil
 }
 
 // filterJoin joins slice elements with a separator.

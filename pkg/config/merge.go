@@ -424,6 +424,8 @@ func mergeSEOConfig(base, override models.SEOConfig) models.SEOConfig {
 }
 
 // mergeComponentsConfig merges ComponentsConfig values.
+//
+//nolint:gocyclo // This function merges many component fields; complexity is inherent
 func mergeComponentsConfig(base, override models.ComponentsConfig) models.ComponentsConfig {
 	result := base
 
@@ -470,6 +472,33 @@ func mergeComponentsConfig(base, override models.ComponentsConfig) models.Compon
 	}
 	if override.DocSidebar.MaxDepth != 0 {
 		result.DocSidebar.MaxDepth = override.DocSidebar.MaxDepth
+	}
+
+	// Merge FeedSidebar component
+	if override.FeedSidebar.Enabled != nil {
+		result.FeedSidebar.Enabled = override.FeedSidebar.Enabled
+	}
+	if override.FeedSidebar.Position != "" {
+		result.FeedSidebar.Position = override.FeedSidebar.Position
+	}
+	if override.FeedSidebar.Width != "" {
+		result.FeedSidebar.Width = override.FeedSidebar.Width
+	}
+	if override.FeedSidebar.Title != "" {
+		result.FeedSidebar.Title = override.FeedSidebar.Title
+	}
+	if len(override.FeedSidebar.Feeds) > 0 {
+		result.FeedSidebar.Feeds = override.FeedSidebar.Feeds
+	}
+
+	// Merge CardRouter component - mappings from override take precedence
+	if len(override.CardRouter.Mappings) > 0 {
+		if result.CardRouter.Mappings == nil {
+			result.CardRouter.Mappings = make(map[string]string)
+		}
+		for k, v := range override.CardRouter.Mappings {
+			result.CardRouter.Mappings[k] = v
+		}
 	}
 
 	return result
