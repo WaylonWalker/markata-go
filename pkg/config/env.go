@@ -109,6 +109,49 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		}
 	case "feed_defaults_syndication_include_content", "feeds_defaults_syndication_include_content":
 		config.FeedDefaults.Syndication.IncludeContent = parseBool(value)
+	// Pagefind search settings
+	case "search_pagefind_auto_install":
+		if config.Extra == nil {
+			config.Extra = make(map[string]interface{})
+		}
+		if searchConfig, ok := config.Extra["search"].(models.SearchConfig); ok {
+			autoInstall := parseBool(value)
+			searchConfig.Pagefind.AutoInstall = &autoInstall
+			config.Extra["search"] = searchConfig
+		}
+	case "search_pagefind_cache_dir":
+		if config.Extra == nil {
+			config.Extra = make(map[string]interface{})
+		}
+		if searchConfig, ok := config.Extra["search"].(models.SearchConfig); ok {
+			searchConfig.Pagefind.CacheDir = value
+			config.Extra["search"] = searchConfig
+		}
+	case "search_pagefind_version":
+		if config.Extra == nil {
+			config.Extra = make(map[string]interface{})
+		}
+		if searchConfig, ok := config.Extra["search"].(models.SearchConfig); ok {
+			searchConfig.Pagefind.Version = value
+			config.Extra["search"] = searchConfig
+		}
+	case "search_pagefind_bundle_dir":
+		if config.Extra == nil {
+			config.Extra = make(map[string]interface{})
+		}
+		if searchConfig, ok := config.Extra["search"].(models.SearchConfig); ok {
+			searchConfig.Pagefind.BundleDir = value
+			config.Extra["search"] = searchConfig
+		}
+	case "search_pagefind_verbose":
+		if config.Extra == nil {
+			config.Extra = make(map[string]interface{})
+		}
+		if searchConfig, ok := config.Extra["search"].(models.SearchConfig); ok {
+			verbose := parseBool(value)
+			searchConfig.Pagefind.Verbose = &verbose
+			config.Extra["search"] = searchConfig
+		}
 	}
 }
 
