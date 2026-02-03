@@ -1,0 +1,9 @@
+[mentions]
+enabled = true
+
+[blogroll]
+enabled = true
+feeds = [
+  { url = "https://daverupert.com/feed.xml", title = "Dave Rupert", handle = "daverupert", site_url = "https://daverupert.com", active = true },
+  { url = "https://simonwillison.net/atom.xml", title = "Simon Willison", handle = "simonwillison.net", site_url = "https://simonwillison.net", active = true },
+]

@@ -33,3 +33,4 @@ def hello():
 
 - Check out [[about|the about page]]
 - Visit the [GitHub repository](https://github.com/example/markata-go)
+- Thanks to @daverupert for CSS inspiration

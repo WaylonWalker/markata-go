@@ -2,12 +2,19 @@
 package plugins
 
 import (
+	"encoding/json"
 	"fmt"
 	"html"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/filter"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -64,20 +71,34 @@ func (p *MentionsPlugin) Priority(stage lifecycle.Stage) int {
 
 // Transform processes @mentions in all post content.
 func (p *MentionsPlugin) Transform(m *lifecycle.Manager) error {
-	// Build the handle resolution map from blogroll config
+	// Build handle resolution map from blogroll config
 	handleMap := p.buildHandleMap(m)
+
+	log.Printf("mentions: found %d handles in handleMap", len(handleMap))
 
 	if len(handleMap) == 0 {
 		// No blogroll entries, nothing to resolve
+		log.Printf("mentions: no handle map entries, skipping")
 		return nil
 	}
+
+	// Fetch metadata for all unique domains
+	domainMap := p.fetchAllMetadata(m, handleMap)
+
+	// Store in memory cache for other plugins
+	m.Cache().Set("mentions_metadata", domainMap)
+
+	// Attach metadata to mention entries
+	p.attachMetadataToEntries(handleMap, domainMap)
 
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		return !post.Skip && post.Content != ""
 	})
 
+	log.Printf("mentions: processing %d posts", len(posts))
+
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
-		content := p.processMentions(post.Content, handleMap)
+		content := p.processMentionsWithMetadata(post.Content, handleMap)
 		post.Content = content
 		return nil
 	})
@@ -85,9 +106,10 @@ func (p *MentionsPlugin) Transform(m *lifecycle.Manager) error {
 
 // mentionEntry holds resolved information for a handle.
 type mentionEntry struct {
-	Handle  string
-	SiteURL string
-	Title   string
+	Handle   string
+	SiteURL  string
+	Title    string
+	Metadata *models.MentionMetadata
 }
 
 // registerFeedConfig registers a feed config's handle and aliases in the map.
@@ -195,6 +217,8 @@ func (p *MentionsPlugin) buildHandleMap(m *lifecycle.Manager) map[string]*mentio
 	blogrollConfig := getBlogrollConfig(config)
 	mentionsConfig := getMentionsConfig(config)
 
+	log.Printf("mentions: blogroll config enabled: %v, feeds count: %d", blogrollConfig.Enabled, len(blogrollConfig.Feeds))
+
 	// Register from blogroll if enabled
 	if blogrollConfig.Enabled {
 		// Register feed configs
@@ -218,6 +242,273 @@ func (p *MentionsPlugin) buildHandleMap(m *lifecycle.Manager) map[string]*mentio
 	return handleMap
 }
 
+// cacheKey generates a cache filename for a domain.
+func (p *MentionsPlugin) cacheKey(domain string) string {
+	// Normalize domain and replace dots with underscores for safe filenames
+	return strings.ReplaceAll(strings.ToLower(domain), ".", "_")
+}
+
+// loadFromCache loads mention metadata from the file cache.
+// Returns nil if cache doesn't exist, is expired, or has errors.
+func (p *MentionsPlugin) loadFromCache(domain, cacheDir string, maxAge time.Duration) *models.MentionMetadata {
+	cacheFile := filepath.Join(cacheDir, p.cacheKey(domain)+".json")
+
+	info, err := os.Stat(cacheFile)
+	if err != nil {
+		return nil // Cache file doesn't exist
+	}
+
+	// Check if cache is expired
+	if time.Since(info.ModTime()) > maxAge {
+		return nil
+	}
+
+	data, err := os.ReadFile(cacheFile)
+	if err != nil {
+		return nil
+	}
+
+	var metadata models.MentionMetadata
+	if err := json.Unmarshal(data, &metadata); err != nil {
+		return nil
+	}
+
+	// Additional validation
+	if metadata.IsExpired(maxAge) {
+		return nil
+	}
+
+	return &metadata
+}
+
+// saveToCache saves mention metadata to the file cache.
+func (p *MentionsPlugin) saveToCache(metadata *models.MentionMetadata, cacheDir string) error {
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		return err
+	}
+
+	cacheFile := filepath.Join(cacheDir, p.cacheKey(metadata.Domain)+".json")
+
+	data, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(cacheFile, data, 0644)
+}
+
+// fetchMetadata fetches metadata for a single domain, using cache if available.
+func (p *MentionsPlugin) fetchMetadata(domain, cacheDir string, maxAge time.Duration, timeout time.Duration) *models.MentionMetadata {
+	// Try cache first
+	if cached := p.loadFromCache(domain, cacheDir, maxAge); cached != nil {
+		return cached
+	}
+
+	// Cache miss or expired, fetch from network
+	url := "https://" + domain
+	metadata := &models.MentionMetadata{
+		Domain:      domain,
+		URL:         url,
+		LastFetched: time.Now(),
+	}
+
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		metadata.Error = fmt.Sprintf("failed to create request: %v", err)
+		p.saveToCache(metadata, cacheDir) // Cache even errors to prevent repeated failed requests
+		return metadata
+	}
+
+	// Set user agent to be respectful
+	req.Header.Set("User-Agent", "markata-go/1.0 mentions-plugin")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		metadata.Error = fmt.Sprintf("HTTP request failed: %v", err)
+		p.saveToCache(metadata, cacheDir)
+		return metadata
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		metadata.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
+		p.saveToCache(metadata, cacheDir)
+		return metadata
+	}
+
+	// Parse HTML to extract metadata
+	if err := p.extractMetadataFromHTML(resp, metadata); err != nil {
+		metadata.Error = fmt.Sprintf("failed to parse HTML: %v", err)
+		p.saveToCache(metadata, cacheDir)
+		return metadata
+	}
+
+	// Cache successful metadata
+	if err := p.saveToCache(metadata, cacheDir); err != nil {
+		log.Printf("mentions: failed to cache metadata for %s: %v", domain, err)
+	}
+
+	return metadata
+}
+
+// extractMetadataFromHTML parses HTML response to extract mention metadata.
+func (p *MentionsPlugin) extractMetadataFromHTML(resp *http.Response, metadata *models.MentionMetadata) error {
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+	htmlContent := string(body)
+
+	// Extract title/name
+	if name := p.extractMetaContent(htmlContent, []string{
+		`<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']`,
+		`<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']`,
+		`<meta[^>]+name=["']author["'][^>]+content=["']([^"']+)["']`,
+		`<title>([^<]+)</title>`,
+	}); name != "" {
+		metadata.Name = name
+	} else {
+		metadata.Name = metadata.Domain // fallback to domain
+	}
+
+	// Extract description/bio
+	if bio := p.extractMetaContent(htmlContent, []string{
+		`<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']`,
+		`<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']`,
+	}); bio != "" {
+		metadata.Bio = bio
+	}
+
+	// Extract avatar/image
+	if avatar := p.extractMetaContent(htmlContent, []string{
+		`<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']`,
+		`<link[^>]+rel=["']icon["'][^>]+href=["']([^"']+)["']`,
+		`<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)["']`,
+	}); avatar != "" {
+		metadata.Avatar = p.resolveURL(avatar, metadata.URL)
+	}
+
+	return nil
+}
+
+// extractMetaContent extracts content from HTML using multiple regex patterns.
+// Returns the first match from the patterns list.
+func (p *MentionsPlugin) extractMetaContent(htmlContent string, patterns []string) string {
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(htmlContent)
+		if len(matches) > 1 {
+			return strings.TrimSpace(matches[1])
+		}
+	}
+	return ""
+}
+
+// resolveURL makes relative URLs absolute based on the base URL.
+func (p *MentionsPlugin) resolveURL(imageURL, baseURL string) string {
+	if imageURL == "" {
+		return ""
+	}
+
+	// If already absolute, return as-is
+	if strings.HasPrefix(imageURL, "http://") || strings.HasPrefix(imageURL, "https://") {
+		return imageURL
+	}
+
+	// Make relative URLs absolute
+	if strings.HasPrefix(imageURL, "/") {
+		if parsed, err := url.Parse(baseURL); err == nil {
+			return parsed.Scheme + "://" + parsed.Host + imageURL
+		}
+	}
+
+	// Return original if can't resolve
+	return imageURL
+}
+
+// fetchAllMetadata fetches metadata for all unique domains concurrently.
+func (p *MentionsPlugin) fetchAllMetadata(m *lifecycle.Manager, handleMap map[string]*mentionEntry) map[string]*models.MentionMetadata {
+	config := getMentionsConfig(m.Config())
+
+	// Extract unique domains
+	domains := p.extractUniqueDomains(handleMap)
+	if len(domains) == 0 {
+		return make(map[string]*models.MentionMetadata)
+	}
+
+	// Parse cache duration
+	cacheDuration, err := time.ParseDuration(config.GetCacheDuration())
+	if err != nil {
+		cacheDuration = 24 * time.Hour // fallback to 24h
+	}
+
+	timeout := time.Duration(config.GetTimeout()) * time.Second
+	cacheDir := config.GetCacheDir()
+
+	// Concurrent fetching with semaphore
+	semaphore := make(chan struct{}, config.GetConcurrentRequests())
+	var wg sync.WaitGroup
+	metadataMap := make(map[string]*models.MentionMetadata)
+	var mu sync.RWMutex
+
+	for _, domain := range domains {
+		wg.Add(1)
+		go func(d string) {
+			defer wg.Done()
+			semaphore <- struct{}{}        // Acquire
+			defer func() { <-semaphore }() // Release
+
+			metadata := p.fetchMetadata(d, cacheDir, cacheDuration, timeout)
+			mu.Lock()
+			metadataMap[d] = metadata
+			mu.Unlock()
+		}(domain)
+	}
+
+	wg.Wait()
+	return metadataMap
+}
+
+// extractUniqueDomains extracts unique domains from handleMap.
+func (p *MentionsPlugin) extractUniqueDomains(handleMap map[string]*mentionEntry) []string {
+	domainSet := make(map[string]bool)
+	for _, entry := range handleMap {
+		if entry.SiteURL != "" {
+			if parsed, err := url.Parse(entry.SiteURL); err == nil {
+				domain := strings.ToLower(parsed.Hostname())
+				if domain != "" {
+					domainSet[domain] = true
+				}
+			}
+		}
+	}
+
+	domains := make([]string, 0, len(domainSet))
+	for domain := range domainSet {
+		domains = append(domains, domain)
+	}
+	return domains
+}
+
+// attachMetadataToEntries attaches fetched metadata to mention entries.
+func (p *MentionsPlugin) attachMetadataToEntries(handleMap map[string]*mentionEntry, domainMap map[string]*models.MentionMetadata) {
+	for _, entry := range handleMap {
+		if entry.SiteURL != "" {
+			if parsed, err := url.Parse(entry.SiteURL); err == nil {
+				domain := strings.ToLower(parsed.Hostname())
+				if metadata, exists := domainMap[domain]; exists {
+					entry.Metadata = metadata
+				}
+			}
+		}
+	}
+}
+
 // mentionRegex matches @handle patterns.
 // Handles can contain alphanumeric characters, underscores, hyphens, and dots.
 // This supports both simple handles like @daverupert and domain-style handles
@@ -228,8 +519,8 @@ var mentionRegex = regexp.MustCompile(`((?:^|[^@\w])@([a-zA-Z][a-zA-Z0-9_.-]*))(
 // mentionsCodeBlockRegex matches fenced code blocks to avoid transforming mentions inside them.
 var mentionsCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
 
-// processMentions replaces @handle syntax with HTML anchor tags.
-func (p *MentionsPlugin) processMentions(content string, handleMap map[string]*mentionEntry) string {
+// processMentionsWithMetadata replaces @handle syntax with HTML anchor tags including metadata.
+func (p *MentionsPlugin) processMentionsWithMetadata(content string, handleMap map[string]*mentionEntry) string {
 	// Split content by fenced code blocks to avoid transforming mentions inside them
 	codeBlocks := mentionsCodeBlockRegex.FindAllStringIndex(content, -1)
 
@@ -291,10 +582,24 @@ func (p *MentionsPlugin) processMentionsInText(text string, handleMap map[string
 			prefix = match[:atPos]
 		}
 
+		// Build data attributes if metadata is available
+		dataAttrs := ""
+		if entry.Metadata != nil && entry.Metadata.IsValid() {
+			dataAttrs += fmt.Sprintf(` data-name=%q`, html.EscapeString(entry.Metadata.Name))
+			if entry.Metadata.Bio != "" {
+				dataAttrs += fmt.Sprintf(` data-bio=%q`, html.EscapeString(entry.Metadata.Bio))
+			}
+			if entry.Metadata.Avatar != "" {
+				dataAttrs += fmt.Sprintf(` data-avatar=%q`, html.EscapeString(entry.Metadata.Avatar))
+			}
+			dataAttrs += fmt.Sprintf(` data-handle=%q`, html.EscapeString("@"+entry.Handle))
+		}
+
 		// Build the HTML link
-		link := fmt.Sprintf(`<a href=%q class=%q>@%s</a>`,
+		link := fmt.Sprintf(`<a href=%q class=%q%s>@%s</a>`,
 			html.EscapeString(entry.SiteURL),
 			html.EscapeString(p.cssClass),
+			dataAttrs,
 			html.EscapeString(entry.Handle))
 
 		return prefix + link + suffix
