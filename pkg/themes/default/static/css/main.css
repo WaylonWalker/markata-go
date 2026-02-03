@@ -944,6 +944,59 @@ body:has(.background-decoration) div.feed {
   transition: opacity 0.2s;
 }
 
+/* Infinite Scroll Pagination */
+.pagination-infinite {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-8) 0;
+  margin-top: var(--space-6);
+}
+
+.infinite-scroll-trigger {
+  height: 1px;
+  width: 100%;
+}
+
+.infinite-scroll-loading {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.infinite-scroll-loading.htmx-request {
+  display: flex;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.infinite-scroll-end {
+  padding: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+  border-top: 1px solid var(--color-border);
+  width: 100%;
+  max-width: 300px;
+}
+
 /* Utility Classes */
 .sr-only {
   position: absolute;

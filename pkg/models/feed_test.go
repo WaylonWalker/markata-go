@@ -416,6 +416,7 @@ func TestFeedConfig_Paginate_PaginationType(t *testing.T) {
 	}{
 		{"manual explicit", PaginationManual, PaginationManual},
 		{"htmx explicit", PaginationHTMX, PaginationHTMX},
+		{"htmx-infinite explicit", PaginationHTMXInfinite, PaginationHTMXInfinite},
 		{"js explicit", PaginationJS, PaginationJS},
 		{"empty defaults to manual", "", PaginationManual},
 	}

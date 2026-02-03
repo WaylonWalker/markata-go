@@ -7,8 +7,11 @@
 {% block body_class %}page-reader{% endblock %}
 
 {% block htmx %}
-{% if page.pagination_type == "htmx" %}
+{% if page.pagination_type == "htmx" or page.pagination_type == "htmx-infinite" %}
 <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+{% if page.pagination_type == "htmx-infinite" %}
+<script src="{{ 'js/infinite-scroll.js' | theme_asset }}" defer></script>
+{% endif %}
 {% elif page.pagination_type == "js" %}
 <script src="{{ 'js/pagination.js' | theme_asset }}" defer></script>
 {% endif %}

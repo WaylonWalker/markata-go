@@ -10,6 +10,9 @@ const (
 	// PaginationHTMX uses HTMX for seamless AJAX-based page loading.
 	PaginationHTMX PaginationType = "htmx"
 
+	// PaginationHTMXInfinite uses HTMX for infinite scroll pagination.
+	PaginationHTMXInfinite PaginationType = "htmx-infinite"
+
 	// PaginationJS uses client-side JavaScript for pagination.
 	PaginationJS PaginationType = "js"
 )
