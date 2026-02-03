@@ -1,116 +1,76 @@
 package lsp
 
 import (
-	"regexp"
-	"strings"
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 )
+
+// indexResolver adapts the Index to the diagnostics.Resolver interface.
+type indexResolver struct {
+	index *Index
+}
+
+func (r *indexResolver) ResolveSlug(slug string) bool {
+	return r.index.GetBySlug(slug) != nil
+}
+
+func (r *indexResolver) ResolveHandle(handle string) bool {
+	return r.index.GetByHandle(handle) != nil
+}
 
 // publishDiagnostics publishes diagnostics for a document.
 func (s *Server) publishDiagnostics(uri, content string) error {
-	diagnostics := s.computeDiagnostics(uri, content)
+	diagnosticsList := s.computeDiagnostics(uri, content)
 
 	params := PublishDiagnosticsParams{
 		URI:         uri,
-		Diagnostics: diagnostics,
+		Diagnostics: diagnosticsList,
 	}
 
 	return s.sendNotification("textDocument/publishDiagnostics", params)
 }
 
 // computeDiagnostics computes diagnostics for a document.
-func (s *Server) computeDiagnostics(_, content string) []Diagnostic {
-	diagnostics := []Diagnostic{}
+func (s *Server) computeDiagnostics(uri, content string) []Diagnostic {
+	// Convert URI to file path for diagnostics
+	filePath := uriToPath(uri)
 
-	// Find all wikilinks and check if they resolve
-	lines := strings.Split(content, "\n")
+	// Create resolver adapter for the index
+	resolver := &indexResolver{index: s.index}
 
-	// Skip fenced code blocks
-	inCodeBlock := false
-	codeBlockPattern := regexp.MustCompile("^```|^~~~")
+	// Use shared diagnostics package
+	issues := diagnostics.Check(filePath, content, resolver)
 
-	// Regex for mentions - matches @handle where handle starts with letter
-	mentionDiagRegex := regexp.MustCompile(`@([a-zA-Z][a-zA-Z0-9_.-]*)`)
+	diagnosticsList := make([]Diagnostic, 0, len(issues))
 
-	for lineNum, line := range lines {
-		// Track code block state
-		if codeBlockPattern.MatchString(strings.TrimSpace(line)) {
-			inCodeBlock = !inCodeBlock
-			continue
+	for _, issue := range issues {
+		diag := Diagnostic{
+			Range: Range{
+				Start: Position{Line: issue.Range.StartLine, Character: issue.Range.StartCol},
+				End:   Position{Line: issue.Range.EndLine, Character: issue.Range.EndCol},
+			},
+			Severity: convertSeverity(issue.Severity),
+			Source:   "markata-go",
+			Message:  issue.Message,
+			Code:     issue.Code,
 		}
-
-		if inCodeBlock {
-			continue
-		}
-
-		// Find wikilinks on this line
-		matches := wikilinkRegex.FindAllStringSubmatchIndex(line, -1)
-		for _, match := range matches {
-			if len(match) < 4 {
-				continue
-			}
-
-			// Extract the slug from group 1
-			slugStart := match[2]
-			slugEnd := match[3]
-			slug := strings.TrimSpace(line[slugStart:slugEnd])
-
-			// Check if the target exists
-			if s.index.GetBySlug(slug) == nil {
-				diag := Diagnostic{
-					Range: Range{
-						Start: Position{Line: lineNum, Character: match[0]},
-						End:   Position{Line: lineNum, Character: match[1]},
-					},
-					Severity: DiagnosticSeverityWarning,
-					Source:   "markata-go",
-					Message:  "Broken wikilink: target post \"" + slug + "\" not found",
-					Code:     "broken-wikilink",
-				}
-				diagnostics = append(diagnostics, diag)
-			}
-		}
-
-		// Find mentions on this line
-		mentionMatches := mentionDiagRegex.FindAllStringSubmatchIndex(line, -1)
-		for _, match := range mentionMatches {
-			if len(match) < 4 {
-				continue
-			}
-
-			// Validate that @ is at a valid boundary (not preceded by word char)
-			start := match[0]
-			if start > 0 {
-				prevChar := line[start-1]
-				if (prevChar >= 'a' && prevChar <= 'z') ||
-					(prevChar >= 'A' && prevChar <= 'Z') ||
-					(prevChar >= '0' && prevChar <= '9') || prevChar == '_' || prevChar == '@' {
-					continue // Skip email addresses and @@mentions
-				}
-			}
-
-			// Extract the handle from group 1
-			handleStart := match[2]
-			handleEnd := match[3]
-			handle := strings.ToLower(line[handleStart:handleEnd])
-
-			// Check if the mention exists in the blogroll
-			if s.index.GetByHandle(handle) == nil {
-				diag := Diagnostic{
-					Range: Range{
-						Start: Position{Line: lineNum, Character: match[0]},
-						End:   Position{Line: lineNum, Character: match[1]},
-					},
-					Severity: DiagnosticSeverityWarning,
-					Source:   "markata-go",
-					Message:  "Unknown mention: @" + handle + " not found in blogroll",
-					Code:     "unknown-mention",
-				}
-				diagnostics = append(diagnostics, diag)
-			}
-		}
+		diagnosticsList = append(diagnosticsList, diag)
 	}
 
-	return diagnostics
+	return diagnosticsList
+}
+
+// convertSeverity converts diagnostics.Severity to LSP severity.
+func convertSeverity(s diagnostics.Severity) int {
+	switch s {
+	case diagnostics.SeverityError:
+		return DiagnosticSeverityError
+	case diagnostics.SeverityWarning:
+		return DiagnosticSeverityWarning
+	case diagnostics.SeverityInfo:
+		return DiagnosticSeverityInformation
+	default:
+		return DiagnosticSeverityWarning
+	}
 }
 
 // clearDiagnostics clears diagnostics for a document.

@@ -3,7 +3,7 @@
 //
 // # Supported Checks
 //
-// The linter detects the following issues:
+// The linter detects the following issues (via pkg/diagnostics):
 //   - Duplicate YAML keys in frontmatter
 //   - Invalid date formats (non-ISO 8601)
 //   - Malformed image links (missing alt text)
@@ -16,10 +16,10 @@ package lint
 
 import (
 	"bufio"
-	"fmt"
 	"regexp"
 	"strings"
-	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 )
 
 // Issue represents a linting issue found in a file.
@@ -85,6 +85,33 @@ func (r *Result) FixableCount() int {
 	return count
 }
 
+// convertSeverity converts diagnostics.Severity to lint.Severity.
+func convertSeverity(s diagnostics.Severity) Severity {
+	switch s {
+	case diagnostics.SeverityError:
+		return SeverityError
+	case diagnostics.SeverityWarning:
+		return SeverityWarning
+	case diagnostics.SeverityInfo:
+		return SeverityInfo
+	default:
+		return SeverityWarning
+	}
+}
+
+// convertIssue converts a diagnostics.Issue to a lint.Issue.
+func convertIssue(di diagnostics.Issue) Issue {
+	return Issue{
+		File:     di.File,
+		Line:     di.Range.StartLine + 1, // Convert 0-based to 1-based
+		Column:   di.Range.StartCol + 1,  // Convert 0-based to 1-based
+		Type:     di.Code,
+		Severity: convertSeverity(di.Severity),
+		Message:  di.Message,
+		Fixable:  di.Fixable,
+	}
+}
+
 // Lint analyzes content and returns any issues found.
 func Lint(filePath, content string) *Result {
 	result := &Result{
@@ -93,28 +120,30 @@ func Lint(filePath, content string) *Result {
 		Fixed:   content,
 	}
 
-	// Extract frontmatter for YAML-specific checks
-	frontmatter, body, hasFrontmatter := extractFrontmatter(content)
+	// Use shared diagnostics (without resolver - no wikilink/mention checks)
+	diagIssues := diagnostics.Check(filePath, content, nil)
 
-	if hasFrontmatter {
-		// Check for duplicate YAML keys
-		result.Issues = append(result.Issues, checkDuplicateKeys(filePath, frontmatter)...)
-
-		// Check for invalid date formats
-		result.Issues = append(result.Issues, checkDateFormats(filePath, frontmatter)...)
+	for _, di := range diagIssues {
+		result.Issues = append(result.Issues, convertIssue(di))
 	}
 
-	// Check for malformed image links (in body)
-	result.Issues = append(result.Issues, checkImageLinks(filePath, body, hasFrontmatter, frontmatter)...)
+	return result
+}
 
-	// Check for protocol-less URLs (in entire content)
-	result.Issues = append(result.Issues, checkProtocollessURLs(filePath, content)...)
+// WithResolver analyzes content and returns any issues found,
+// including wikilink and mention checks using the provided resolver.
+func WithResolver(filePath, content string, resolver diagnostics.Resolver) *Result {
+	result := &Result{
+		File:    filePath,
+		Content: content,
+		Fixed:   content,
+	}
 
-	// Check for H1 headings in body (templates already add H1 from title)
-	result.Issues = append(result.Issues, checkH1Headings(filePath, body, hasFrontmatter, frontmatter)...)
+	diagIssues := diagnostics.Check(filePath, content, resolver)
 
-	// Check for fenced code blocks in admonitions without blank line
-	result.Issues = append(result.Issues, checkAdmonitionFencedCode(filePath, body, hasFrontmatter, frontmatter)...)
+	for _, di := range diagIssues {
+		result.Issues = append(result.Issues, convertIssue(di))
+	}
 
 	return result
 }
@@ -139,237 +168,6 @@ func Fix(filePath, content string) *Result {
 	}
 
 	return result
-}
-
-// extractFrontmatter extracts frontmatter from content.
-func extractFrontmatter(content string) (frontmatter, body string, hasFrontmatter bool) {
-	if !strings.HasPrefix(content, "---") {
-		return "", content, false
-	}
-
-	parts := strings.SplitN(content[3:], "---", 2)
-	if len(parts) < 2 {
-		return "", content, false
-	}
-
-	return parts[0], parts[1], true
-}
-
-// checkDuplicateKeys finds duplicate YAML keys in frontmatter.
-func checkDuplicateKeys(filePath, frontmatter string) []Issue {
-	var issues []Issue
-	seen := make(map[string]int) // key -> first line number
-	scanner := bufio.NewScanner(strings.NewReader(frontmatter))
-	lineNum := 1 // Start at 1 (after the opening ---)
-
-	// Regex to match top-level YAML keys (not indented)
-	keyRegex := regexp.MustCompile(`^([a-zA-Z_][a-zA-Z0-9_]*)\s*:`)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		lineNum++
-
-		if match := keyRegex.FindStringSubmatch(line); match != nil {
-			key := match[1]
-			if firstLine, exists := seen[key]; exists {
-				issues = append(issues, Issue{
-					File:     filePath,
-					Line:     lineNum,
-					Type:     "duplicate-key",
-					Severity: SeverityError,
-					Message:  fmt.Sprintf("duplicate key '%s' (first occurrence at line %d)", key, firstLine),
-					Fixable:  true,
-				})
-			} else {
-				seen[key] = lineNum
-			}
-		}
-	}
-
-	return issues
-}
-
-// checkDateFormats validates date formats in frontmatter.
-func checkDateFormats(filePath, frontmatter string) []Issue {
-	var issues []Issue
-	scanner := bufio.NewScanner(strings.NewReader(frontmatter))
-	lineNum := 1
-
-	// Regex to match date-like fields
-	dateKeyRegex := regexp.MustCompile(`^(date|published_date|created|modified|updated)\s*:\s*(.+)$`)
-
-	// Common invalid date patterns
-	invalidDatePatterns := []struct {
-		pattern *regexp.Regexp
-		desc    string
-	}{
-		{regexp.MustCompile(`\d{4}-\d{1,2}-\d{1,2}T\d{2}:\d{2}:\d{2}`), "single-digit month/day"},
-		{regexp.MustCompile(`\d{4}/\d{2}/\d{2}`), "slash separator"},
-	}
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		lineNum++
-
-		if match := dateKeyRegex.FindStringSubmatch(line); match != nil {
-			key := match[1]
-			value := strings.TrimSpace(match[2])
-			value = strings.Trim(value, "\"'")
-
-			// Try to parse as valid ISO 8601
-			_, err := time.Parse(time.RFC3339, value)
-			if err != nil {
-				// Try other valid formats
-				_, err2 := time.Parse("2006-01-02", value)
-				if err2 != nil {
-					// Check for specific invalid patterns
-					for _, p := range invalidDatePatterns {
-						if p.pattern.MatchString(value) {
-							issues = append(issues, Issue{
-								File:     filePath,
-								Line:     lineNum,
-								Type:     "invalid-date",
-								Severity: SeverityWarning,
-								Message:  fmt.Sprintf("invalid date format for '%s': %s (%s)", key, value, p.desc),
-								Fixable:  true,
-							})
-							break
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return issues
-}
-
-// checkImageLinks finds malformed image links.
-func checkImageLinks(filePath, body string, hasFrontmatter bool, frontmatter string) []Issue {
-	var issues []Issue
-
-	// Regex for image links without alt text: ![](url)
-	noAltRegex := regexp.MustCompile(`!\[\]\(([^)]+)\)`)
-
-	// Calculate line offset for body
-	lineOffset := 0
-	if hasFrontmatter {
-		lineOffset = strings.Count(frontmatter, "\n") + 2 // +2 for both --- lines
-	}
-
-	scanner := bufio.NewScanner(strings.NewReader(body))
-	lineNum := 0
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		lineNum++
-
-		if matches := noAltRegex.FindAllStringSubmatchIndex(line, -1); matches != nil {
-			for _, match := range matches {
-				issues = append(issues, Issue{
-					File:     filePath,
-					Line:     lineNum + lineOffset,
-					Column:   match[0] + 1,
-					Type:     "missing-alt-text",
-					Severity: SeverityWarning,
-					Message:  "image link missing alt text",
-					Fixable:  true,
-				})
-			}
-		}
-	}
-
-	return issues
-}
-
-// checkProtocollessURLs finds protocol-less URLs.
-func checkProtocollessURLs(filePath, content string) []Issue {
-	var issues []Issue
-
-	// Regex for protocol-less URLs: //example.com
-	protocollessRegex := regexp.MustCompile(`[^:]//[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`)
-
-	scanner := bufio.NewScanner(strings.NewReader(content))
-	lineNum := 0
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		lineNum++
-
-		if matches := protocollessRegex.FindAllStringIndex(line, -1); matches != nil {
-			for _, match := range matches {
-				issues = append(issues, Issue{
-					File:     filePath,
-					Line:     lineNum,
-					Column:   match[0] + 2, // +2 to skip the non-colon char and point to //
-					Type:     "protocol-less-url",
-					Severity: SeverityWarning,
-					Message:  "protocol-less URL found (should use https://)",
-					Fixable:  true,
-				})
-			}
-		}
-	}
-
-	return issues
-}
-
-// checkH1Headings finds H1 headings in markdown content.
-// Templates already add an H1 from the frontmatter title, so H1 in content
-// creates duplicate H1 tags which harms SEO and accessibility.
-func checkH1Headings(filePath, body string, hasFrontmatter bool, frontmatter string) []Issue {
-	var issues []Issue
-
-	// Calculate line offset for body
-	// The body starts after the closing --- delimiter
-	// frontmatter includes the newline after opening ---, so count gives us the
-	// number of lines in frontmatter. Adding 1 for opening --- gives us the line
-	// number of the closing ---. Body content starts on the next line.
-	lineOffset := 0
-	if hasFrontmatter {
-		lineOffset = strings.Count(frontmatter, "\n") + 1 // +1 for opening --- line
-		// Skip the leading newline in body (it's the line terminator for closing ---)
-		body = strings.TrimPrefix(body, "\n")
-	}
-
-	// Track whether we're inside a code block
-	inCodeBlock := false
-
-	scanner := bufio.NewScanner(strings.NewReader(body))
-	lineNum := 0
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		lineNum++
-
-		// Check for code block boundaries (``` or ~~~)
-		trimmedLine := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmedLine, "```") || strings.HasPrefix(trimmedLine, "~~~") {
-			inCodeBlock = !inCodeBlock
-			continue
-		}
-
-		// Skip H1 detection inside code blocks
-		if inCodeBlock {
-			continue
-		}
-
-		// Match H1 heading: line starts with "# " (single # followed by space)
-		// Must not be "##" (H2 or deeper)
-		if strings.HasPrefix(line, "# ") || line == "#" {
-			issues = append(issues, Issue{
-				File:     filePath,
-				Line:     lineNum + lineOffset,
-				Column:   1,
-				Type:     "h1-in-content",
-				Severity: SeverityWarning,
-				Message:  "H1 heading found in content. Templates already add an H1 from frontmatter title. Use H2 (##) or deeper instead.",
-				Fixable:  false, // Auto-fixing could change document structure unexpectedly
-			})
-		}
-	}
-
-	return issues
 }
 
 // fixDuplicateKeys removes duplicate YAML keys, keeping the last occurrence.
@@ -461,79 +259,6 @@ func fixProtocollessURLs(content string) string {
 	// Be careful not to replace // in code or comments
 	protocollessRegex := regexp.MustCompile(`(\(|"|\s)//([a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,})`)
 	return protocollessRegex.ReplaceAllString(content, "${1}https://$2")
-}
-
-// checkAdmonitionFencedCode detects fenced code blocks inside admonitions
-// that don't have a blank line before them. This is a known goldmark limitation
-// where the indented code block parser has higher priority than the fenced
-// code block parser when content is indented without a blank line separator.
-func checkAdmonitionFencedCode(filePath, body string, hasFrontmatter bool, frontmatter string) []Issue {
-	var issues []Issue
-
-	// Calculate line offset for body
-	lineOffset := 0
-	if hasFrontmatter {
-		lineOffset = strings.Count(frontmatter, "\n") + 1
-		body = strings.TrimPrefix(body, "\n")
-	}
-
-	lines := strings.Split(body, "\n")
-
-	// Track admonition state
-	// Admonitions start with "!!!" and content is indented
-	inAdmonition := false
-	admonitionIndent := 0
-
-	// Pattern to match admonition start: !!! type or !!! type "title"
-	admonitionRegex := regexp.MustCompile(`^(\s*)!!!\s+\w+`)
-	// Pattern to match fenced code block start (with potential indentation)
-	fencedCodeRegex := regexp.MustCompile(`^\s*` + "```")
-
-	for i := 0; i < len(lines); i++ {
-		line := lines[i]
-		lineNum := i + 1 + lineOffset
-
-		// Check for admonition start
-		if match := admonitionRegex.FindStringSubmatch(line); match != nil {
-			inAdmonition = true
-			admonitionIndent = len(match[1])
-
-			// Check if next line is a fenced code block without blank line
-			if i+1 < len(lines) {
-				nextLine := lines[i+1]
-				// Next line should be indented more than admonition start
-				trimmedNext := strings.TrimLeft(nextLine, " \t")
-				nextIndent := len(nextLine) - len(trimmedNext)
-
-				// If next line is indented and starts with ``` (fenced code)
-				if nextIndent > admonitionIndent && fencedCodeRegex.MatchString(nextLine) {
-					issues = append(issues, Issue{
-						File:     filePath,
-						Line:     lineNum,
-						Column:   1,
-						Type:     "admonition-fenced-code",
-						Severity: SeverityWarning,
-						Message:  "fenced code block immediately follows admonition without blank line - this may not render correctly due to goldmark limitation",
-						Fixable:  true,
-					})
-				}
-			}
-			continue
-		}
-
-		// Check if we're still in admonition (indented content)
-		if inAdmonition {
-			trimmed := strings.TrimLeft(line, " \t")
-			currentIndent := len(line) - len(trimmed)
-
-			// If line is not empty and not indented more than admonition, we've left
-			if line != "" && currentIndent <= admonitionIndent {
-				inAdmonition = false
-			}
-		}
-	}
-
-	return issues
 }
 
 // fixAdmonitionFencedCode adds blank lines after admonition declarations
