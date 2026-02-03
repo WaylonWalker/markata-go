@@ -465,9 +465,11 @@ func (w *tomlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 }
 
 type tomlComponentsConfig struct {
-	Nav        tomlNavComponentConfig    `toml:"nav"`
-	Footer     tomlFooterComponentConfig `toml:"footer"`
-	DocSidebar tomlDocSidebarConfig      `toml:"doc_sidebar"`
+	Nav         tomlNavComponentConfig    `toml:"nav"`
+	Footer      tomlFooterComponentConfig `toml:"footer"`
+	DocSidebar  tomlDocSidebarConfig      `toml:"doc_sidebar"`
+	FeedSidebar tomlFeedSidebarConfig     `toml:"feed_sidebar"`
+	CardRouter  tomlCardRouterConfig      `toml:"card_router"`
 }
 
 type tomlNavComponentConfig struct {
@@ -490,6 +492,18 @@ type tomlDocSidebarConfig struct {
 	Width    string `toml:"width"`
 	MinDepth int    `toml:"min_depth"`
 	MaxDepth int    `toml:"max_depth"`
+}
+
+type tomlFeedSidebarConfig struct {
+	Enabled  *bool    `toml:"enabled"`
+	Position string   `toml:"position"`
+	Width    string   `toml:"width"`
+	Title    string   `toml:"title"`
+	Feeds    []string `toml:"feeds"`
+}
+
+type tomlCardRouterConfig struct {
+	Mappings map[string]string `toml:"mappings"`
 }
 
 // Layout-related TOML structs
@@ -884,6 +898,16 @@ func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Width:    c.DocSidebar.Width,
 			MinDepth: c.DocSidebar.MinDepth,
 			MaxDepth: c.DocSidebar.MaxDepth,
+		},
+		FeedSidebar: models.FeedSidebarConfig{
+			Enabled:  c.FeedSidebar.Enabled,
+			Position: c.FeedSidebar.Position,
+			Width:    c.FeedSidebar.Width,
+			Title:    c.FeedSidebar.Title,
+			Feeds:    c.FeedSidebar.Feeds,
+		},
+		CardRouter: models.CardRouterConfig{
+			Mappings: c.CardRouter.Mappings,
 		},
 	}
 
@@ -1368,9 +1392,11 @@ func (w *yamlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 }
 
 type yamlComponentsConfig struct {
-	Nav        yamlNavComponentConfig    `yaml:"nav"`
-	Footer     yamlFooterComponentConfig `yaml:"footer"`
-	DocSidebar yamlDocSidebarConfig      `yaml:"doc_sidebar"`
+	Nav         yamlNavComponentConfig    `yaml:"nav"`
+	Footer      yamlFooterComponentConfig `yaml:"footer"`
+	DocSidebar  yamlDocSidebarConfig      `yaml:"doc_sidebar"`
+	FeedSidebar yamlFeedSidebarConfig     `yaml:"feed_sidebar"`
+	CardRouter  yamlCardRouterConfig      `yaml:"card_router"`
 }
 
 type yamlNavComponentConfig struct {
@@ -1393,6 +1419,18 @@ type yamlDocSidebarConfig struct {
 	Width    string `yaml:"width"`
 	MinDepth int    `yaml:"min_depth"`
 	MaxDepth int    `yaml:"max_depth"`
+}
+
+type yamlFeedSidebarConfig struct {
+	Enabled  *bool    `yaml:"enabled"`
+	Position string   `yaml:"position"`
+	Width    string   `yaml:"width"`
+	Title    string   `yaml:"title"`
+	Feeds    []string `yaml:"feeds"`
+}
+
+type yamlCardRouterConfig struct {
+	Mappings map[string]string `yaml:"mappings"`
 }
 
 // Layout-related YAML structs
@@ -2209,9 +2247,11 @@ func (w *jsonWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 }
 
 type jsonComponentsConfig struct {
-	Nav        jsonNavComponentConfig    `json:"nav"`
-	Footer     jsonFooterComponentConfig `json:"footer"`
-	DocSidebar jsonDocSidebarConfig      `json:"doc_sidebar"`
+	Nav         jsonNavComponentConfig    `json:"nav"`
+	Footer      jsonFooterComponentConfig `json:"footer"`
+	DocSidebar  jsonDocSidebarConfig      `json:"doc_sidebar"`
+	FeedSidebar jsonFeedSidebarConfig     `json:"feed_sidebar"`
+	CardRouter  jsonCardRouterConfig      `json:"card_router"`
 }
 
 type jsonNavComponentConfig struct {
@@ -2234,6 +2274,18 @@ type jsonDocSidebarConfig struct {
 	Width    string `json:"width"`
 	MinDepth int    `json:"min_depth"`
 	MaxDepth int    `json:"max_depth"`
+}
+
+type jsonFeedSidebarConfig struct {
+	Enabled  *bool    `json:"enabled"`
+	Position string   `json:"position"`
+	Width    string   `json:"width"`
+	Title    string   `json:"title"`
+	Feeds    []string `json:"feeds"`
+}
+
+type jsonCardRouterConfig struct {
+	Mappings map[string]string `json:"mappings"`
 }
 
 // Layout-related JSON structs
