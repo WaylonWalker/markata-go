@@ -158,6 +158,9 @@
   {% block htmx %}{% endblock %}
   {% block scripts %}{% endblock %}
 
+  {# Shortcuts Modal - must be before conditional script loading so #shortcuts-modal exists when checked #}
+  {% include "partials/shortcuts-modal.html" %}
+
   <!-- Conditional Script Loading: Only load when needed -->
   <script>
     // Wikilink Hover Tooltips - only load if wikilinks with data-title exist
@@ -256,6 +259,5 @@
   {% endif %}
 
    {% include "partials/background-scripts.html" %}
-   {% include "partials/shortcuts-modal.html" %}
 </body>
 </html>
