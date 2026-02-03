@@ -21,6 +21,7 @@
   var scrollAnimationId = null;
   var lastScrollTime = 0;
   var scrollThrottle = 16; // ~60fps (ms between scrolls)
+  var duKeyPressTimers = {}; // Track when d/u were first pressed
 
   // Wait for registry to be available
   function waitForRegistry(callback, attempts = 0) {
@@ -218,25 +219,22 @@
         return;
       }
 
-      // For d/u: track for continuous scroll, but DON'T prevent event
-      // This allows the registry handler to execute for the first keypress
-      // while still tracking for held-key continuous scrolling
+      // For d/u: allow registry handler to execute first, then start continuous scroll
+      // This prevents conflict between registry's smooth scroll and rAF incremental scroll
       if (key === 'd' || key === 'u') {
-        // Only track/start rAF if key is already pressed (held key scenario)
-        // On first press, the registry handler will execute
-        if (keysPressed[key]) {
-          // Key is already pressed - it's a held key, ensure rAF is running
-          if (!scrollAnimationId) {
-            scrollAnimationId = requestAnimationFrame(continuousScroll);
-          }
-        } else {
-          // First press - let registry handler do single press scroll
+        if (!keysPressed[key]) {
+          // First press - mark key and start timer for continuous scroll
           keysPressed[key] = true;
-          if (!scrollAnimationId) {
-            scrollAnimationId = requestAnimationFrame(continuousScroll);
-          }
+
+          // Start continuous scroll after a short delay (200ms)
+          // This allows registry's smooth scroll to complete first
+          duKeyPressTimers[key] = setTimeout(function() {
+            if (keysPressed[key] && !scrollAnimationId) {
+              scrollAnimationId = requestAnimationFrame(continuousScroll);
+            }
+          }, 200);
         }
-        return; // Don't prevent, let registry handle it
+        return; // Don't prevent, let registry handler execute
       }
 
       var now = Date.now();
@@ -269,6 +267,13 @@
     // Track keyup to detect when keys are released
     document.addEventListener('keyup', function(e) {
       var key = e.key.toLowerCase();
+
+      // Clear d/u timers if they exist
+      if (duKeyPressTimers[key]) {
+        clearTimeout(duKeyPressTimers[key]);
+        delete duKeyPressTimers[key];
+      }
+
       if (keysPressed[key]) {
         delete keysPressed[key];
         // Continue scroll loop if other keys are still pressed
