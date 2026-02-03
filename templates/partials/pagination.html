@@ -11,7 +11,7 @@
      hx-get="{{ page.prev_url }}"
      hx-target=".posts-list"
      hx-select=".posts-list"
-     hx-swap="outerHTML"
+     hx-swap="outerHTML transition:true"
      hx-push-url="true">&laquo; Newer</a>
   {% else %}
   <span class="pagination-prev disabled">&laquo; Newer</span>
@@ -28,7 +28,7 @@
        hx-get="{{ url }}"
        hx-target=".posts-list"
        hx-select=".posts-list"
-       hx-swap="outerHTML"
+       hx-swap="outerHTML transition:true"
        hx-push-url="true">{{ forloop.Counter }}</a>
     {% endif %}
     {% endfor %}
@@ -42,7 +42,7 @@
      hx-get="{{ page.next_url }}"
      hx-target=".posts-list"
      hx-select=".posts-list"
-     hx-swap="outerHTML"
+     hx-swap="outerHTML transition:true"
      hx-push-url="true">Older &raquo;</a>
   {% else %}
   <span class="pagination-next disabled">Older &raquo;</span>

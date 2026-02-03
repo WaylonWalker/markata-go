@@ -71,6 +71,26 @@
     }
   }
 
+  /**
+   * Navigate to a page with View Transition API support
+   * Falls back to immediate update if View Transitions not supported
+   */
+  function navigateToPage(page, state, nav) {
+    var updatePage = function() {
+      state.currentPage = page;
+      setPageHash(page);
+      renderPage(state);
+      renderPaginationControls(nav, state);
+    };
+
+    // Use View Transitions if available
+    if (document.startViewTransition) {
+      document.startViewTransition(updatePage);
+    } else {
+      updatePage();
+    }
+  }
+
   function renderPage(state) {
     const { allPosts, postsList, currentPage, itemsPerPage } = state;
 
@@ -124,12 +144,12 @@
           pageEl.setAttribute('aria-current', 'page');
         } else {
           pageEl.dataset.page = i;
-          pageEl.addEventListener('click', function() {
-            state.currentPage = i;
-            setPageHash(i);
-            renderPage(state);
-            renderPaginationControls(nav, state);
-          });
+          // Use closure to capture correct page number
+          (function(pageNum) {
+            pageEl.addEventListener('click', function() {
+              navigateToPage(pageNum, state, nav);
+            });
+          })(i);
         }
 
         pagesContainer.appendChild(pageEl);
@@ -144,10 +164,7 @@
     if (prevBtn) {
       prevBtn.addEventListener('click', function() {
         if (state.currentPage > 1) {
-          state.currentPage--;
-          setPageHash(state.currentPage);
-          renderPage(state);
-          renderPaginationControls(nav, state);
+          navigateToPage(state.currentPage - 1, state, nav);
         }
       });
     }
@@ -155,10 +172,7 @@
     if (nextBtn) {
       nextBtn.addEventListener('click', function() {
         if (state.currentPage < state.totalPages) {
-          state.currentPage++;
-          setPageHash(state.currentPage);
-          renderPage(state);
-          renderPaginationControls(nav, state);
+          navigateToPage(state.currentPage + 1, state, nav);
         }
       });
     }
