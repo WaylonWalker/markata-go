@@ -2,6 +2,7 @@
 package plugins
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -316,10 +317,12 @@ func (p *MentionsPlugin) fetchMetadata(domain, cacheDir string, maxAge, timeout 
 		Timeout: timeout,
 	}
 
-	req, err := http.NewRequest("GET", url, http.NoBody)
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		metadata.Error = fmt.Sprintf("failed to create request: %v", err)
-		_ = p.saveToCache(metadata, cacheDir) // Cache even errors to prevent repeated failed requests
+		//nolint:errcheck // Cache even errors to prevent repeated failed requests
+		p.saveToCache(metadata, cacheDir)
 		return metadata
 	}
 
@@ -329,21 +332,24 @@ func (p *MentionsPlugin) fetchMetadata(domain, cacheDir string, maxAge, timeout 
 	resp, err := client.Do(req)
 	if err != nil {
 		metadata.Error = fmt.Sprintf("HTTP request failed: %v", err)
-		_ = p.saveToCache(metadata, cacheDir)
+		//nolint:errcheck // Cache even errors to prevent repeated failed requests
+		p.saveToCache(metadata, cacheDir)
 		return metadata
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		metadata.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
-		_ = p.saveToCache(metadata, cacheDir)
+		//nolint:errcheck // Cache even errors to prevent repeated failed requests
+		p.saveToCache(metadata, cacheDir)
 		return metadata
 	}
 
 	// Parse HTML to extract metadata
 	if err := p.extractMetadataFromHTML(resp, metadata); err != nil {
 		metadata.Error = fmt.Sprintf("failed to parse HTML: %v", err)
-		_ = p.saveToCache(metadata, cacheDir)
+		//nolint:errcheck // Cache even errors to prevent repeated failed requests
+		p.saveToCache(metadata, cacheDir)
 		return metadata
 	}
 
