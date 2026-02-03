@@ -1779,6 +1779,33 @@ func (c *CSSBundleConfig) IsAddSourceComments() bool {
 	return *c.AddSourceComments
 }
 
+// CSSMinifyConfig configures the css_minify plugin for minifying CSS files.
+// CSS minification reduces file sizes by 15-30%, improving page load performance
+// and Lighthouse scores.
+type CSSMinifyConfig struct {
+	// Enabled controls whether CSS minification is active (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// Exclude is a list of CSS file patterns to skip during minification.
+	// Useful for files that should not be modified (e.g., already minified vendor CSS).
+	// Example: ["variables.css", "vendor/*.css"]
+	Exclude []string `json:"exclude" yaml:"exclude" toml:"exclude"`
+
+	// PreserveComments is a list of comment patterns to preserve during minification.
+	// Comments containing any of these strings will not be removed.
+	// Example: ["/*! Copyright */", "/*! License */"]
+	PreserveComments []string `json:"preserve_comments" yaml:"preserve_comments" toml:"preserve_comments"`
+}
+
+// NewCSSMinifyConfig creates a new CSSMinifyConfig with default values.
+func NewCSSMinifyConfig() CSSMinifyConfig {
+	return CSSMinifyConfig{
+		Enabled:          true, // Enabled by default for performance
+		Exclude:          []string{},
+		PreserveComments: []string{},
+	}
+}
+
 // NewConfig creates a new Config with default values.
 func NewConfig() *Config {
 	return &Config{
