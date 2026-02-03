@@ -97,7 +97,13 @@
   {% include "partials/webmentions.html" %}
 </article>
 
-{% if post.prev or post.next %}
+{# Use sidebar prev/next if available (for feed-based navigation), otherwise fall back to post.prev/post.next #}
+{% if sidebar_prev or sidebar_next %}
+<nav class="post-nav">
+  {% if sidebar_prev %}<a href="{{ sidebar_prev.href }}" class="prev">{{ sidebar_prev.title }}</a>{% endif %}
+  {% if sidebar_next %}<a href="{{ sidebar_next.href }}" class="next">{{ sidebar_next.title }}</a>{% endif %}
+</nav>
+{% elif post.prev or post.next %}
 <nav class="post-nav">
   {% if post.prev %}<a href="{{ post.prev.href }}" class="prev">{{ post.prev.title }}</a>{% endif %}
   {% if post.next %}<a href="{{ post.next.href }}" class="next">{{ post.next.title }}</a>{% endif %}
