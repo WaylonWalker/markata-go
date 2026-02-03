@@ -218,13 +218,25 @@
         return;
       }
 
+      // For d/u: track for continuous scroll, but DON'T prevent event
+      // This allows the registry handler to execute for the first keypress
+      // while still tracking for held-key continuous scrolling
       if (key === 'd' || key === 'u') {
-        keysPressed[key] = true;
-        if (!scrollAnimationId) {
-          scrollAnimationId = requestAnimationFrame(continuousScroll);
+        // Only track/start rAF if key is already pressed (held key scenario)
+        // On first press, the registry handler will execute
+        if (keysPressed[key]) {
+          // Key is already pressed - it's a held key, ensure rAF is running
+          if (!scrollAnimationId) {
+            scrollAnimationId = requestAnimationFrame(continuousScroll);
+          }
+        } else {
+          // First press - let registry handler do single press scroll
+          keysPressed[key] = true;
+          if (!scrollAnimationId) {
+            scrollAnimationId = requestAnimationFrame(continuousScroll);
+          }
         }
-        e.preventDefault();
-        return;
+        return; // Don't prevent, let registry handle it
       }
 
       var now = Date.now();
