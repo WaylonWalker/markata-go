@@ -301,6 +301,112 @@ details.admonition[open] > summary::before {
   transform: rotate(90deg);
 }
 
+/* Chat Admonitions - conversation flow styling */
+/* !!! chat and !!! chat-reply create a back-and-forth conversation */
+
+.admonition.chat,
+.admonition.chat-reply {
+  border-radius: var(--radius-lg);
+  max-width: 85%;
+  margin: var(--space-3) 0;
+  padding: var(--space-3) var(--space-4);
+}
+
+/* Chat (incoming message) - left-aligned with left border */
+.admonition.chat {
+  --admonition-color: var(--admonition-chat-border, #6b7280);
+  --admonition-bg: var(--admonition-chat-bg, #f3f4f6);
+  border-left: 4px solid var(--admonition-color);
+  border-right: none;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  margin-right: auto;
+  margin-left: 0;
+}
+
+/* Chat-reply (outgoing message) - right-aligned with right border */
+.admonition.chat-reply {
+  --admonition-color: var(--admonition-chat-reply-border, var(--color-primary, #3b82f6));
+  --admonition-bg: var(--admonition-chat-reply-bg, #dbeafe);
+  border-left: none;
+  border-right: 4px solid var(--admonition-color);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  margin-left: auto;
+  margin-right: 0;
+}
+
+/* Chat titles (sender names) */
+.admonition.chat .admonition-title,
+.admonition.chat-reply .admonition-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.admonition.chat .admonition-title {
+  color: var(--admonition-chat-border, #4b5563);
+}
+
+.admonition.chat-reply .admonition-title {
+  color: var(--admonition-chat-reply-border, var(--color-primary, #2563eb));
+  text-align: right;
+}
+
+/* No icons for chat admonitions */
+.admonition.chat .admonition-title::before,
+.admonition.chat-reply .admonition-title::before {
+  content: none;
+}
+
+/* Chat content styling */
+.admonition.chat > p,
+.admonition.chat-reply > p {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  margin: 0;
+}
+
+.admonition.chat > p + p,
+.admonition.chat-reply > p + p {
+  margin-top: var(--space-2);
+}
+
+/* Images in chat messages */
+.admonition.chat img,
+.admonition.chat-reply img {
+  max-width: 100%;
+  border-radius: var(--radius);
+  margin-top: var(--space-2);
+}
+
+/* Dark mode for chat admonitions */
+@media (prefers-color-scheme: dark) {
+  .admonition.chat {
+    --admonition-bg: var(--admonition-chat-bg, #374151);
+    --admonition-color: var(--admonition-chat-border, #9ca3af);
+  }
+
+  .admonition.chat-reply {
+    --admonition-bg: var(--admonition-chat-reply-bg, #1e3a5f);
+    --admonition-color: var(--admonition-chat-reply-border, #60a5fa);
+  }
+
+  .admonition.chat .admonition-title {
+    color: #d1d5db;
+  }
+
+  .admonition.chat-reply .admonition-title {
+    color: #93c5fd;
+  }
+}
+
+/* Responsive - full width on small screens */
+@media (max-width: 480px) {
+  .admonition.chat,
+  .admonition.chat-reply {
+    max-width: 95%;
+  }
+}
+
 /* Chat container */
 .chat-container {
   display: flex;
