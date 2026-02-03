@@ -200,13 +200,19 @@
     scrollingScript.defer = true;
     document.body.appendChild(scrollingScript);
 
-    // Navigation Shortcuts - load if post cards exist
+     // Navigation Shortcuts - load if post cards exist
     if (document.querySelector('.card, [data-card]')) {
       const navigationScript = document.createElement('script');
       navigationScript.src = '{{ 'js/navigation-shortcuts.js' | theme_asset }}';
       navigationScript.defer = true;
       document.body.appendChild(navigationScript);
     }
+
+    // History Shortcuts - always available (go back/forward)
+    const historyScript = document.createElement('script');
+    historyScript.src = '{{ 'js/history-shortcuts.js' | theme_asset }}';
+    historyScript.defer = true;
+    document.body.appendChild(historyScript);
 
     // Pagination (JS mode) - only load if JS pagination element exists
     if (document.querySelector('.pagination-js')) {

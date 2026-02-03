@@ -2,12 +2,15 @@
  * Scrolling Shortcuts Module for markata-go
  *
  * Registers scrolling-related keyboard shortcuts with the shortcuts registry.
+ * - `j` - Scroll down (on post/article pages)
+ * - `k` - Scroll up (on post/article pages)
  * - `d` - Scroll half-page down
  * - `u` - Scroll half-page up
  * - `g g` - Scroll to top
  * - `Shift+G` - Scroll to bottom
  *
- * Note: j/k are handled by the navigation module for feed card selection.
+ * Note: j/k are primarily handled by navigation module for feed card selection.
+ * On post/article pages, j/k scroll the content.
  */
 
 (function() {
@@ -64,6 +67,14 @@
   }
 
   /**
+   * Check if we're on a post/article page
+   */
+  function isPostPage() {
+    // Check for article element or post-specific classes/data attributes
+    return document.querySelector('article, [data-type="post"], .post-content') !== null;
+  }
+
+  /**
    * Initialize scrolling shortcuts
    */
   function init() {
@@ -92,6 +103,36 @@
       },
       priority: 10
     });
+
+    // j/k scrolling - for post/article pages
+    // (navigation module handles j/k for feed card selection)
+    if (isPostPage()) {
+      // j - Scroll down
+      window.shortcutsRegistry.register({
+        key: 'j',
+        modifiers: [],
+        description: 'Scroll down',
+        group: 'scrolling',
+        handler: function(e) {
+          e.preventDefault();
+          scroll(100);
+        },
+        priority: 10
+      });
+
+      // k - Scroll up
+      window.shortcutsRegistry.register({
+        key: 'k',
+        modifiers: [],
+        description: 'Scroll up',
+        group: 'scrolling',
+        handler: function(e) {
+          e.preventDefault();
+          scroll(-100);
+        },
+        priority: 10
+      });
+    }
 
     // Handle two-key sequence: g g for scroll to top
     var lastKeyTime = 0;
