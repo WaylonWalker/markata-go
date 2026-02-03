@@ -541,16 +541,22 @@ func getAutoFeedsConfig(config *lifecycle.Config) AutoFeedsConfig {
 			Enabled:    true, // Tag feeds enabled by default
 			SlugPrefix: defaultTagsPrefix,
 			Formats: models.FeedFormats{
-				HTML: true,
-				RSS:  true,
+				HTML:     true,
+				RSS:      true,
+				Atom:     true,
+				Markdown: true,
+				Text:     true,
 			},
 		},
 		Categories: AutoFeedTypeConfig{
 			Enabled:    false,
 			SlugPrefix: defaultCategoriesPrefix,
 			Formats: models.FeedFormats{
-				HTML: true,
-				RSS:  true,
+				HTML:     true,
+				RSS:      true,
+				Atom:     true,
+				Markdown: true,
+				Text:     true,
 			},
 		},
 		Archives: AutoArchiveConfig{
@@ -559,8 +565,11 @@ func getAutoFeedsConfig(config *lifecycle.Config) AutoFeedsConfig {
 			YearlyFeeds:  true,
 			MonthlyFeeds: false,
 			Formats: models.FeedFormats{
-				HTML: true,
-				RSS:  false,
+				HTML:     true,
+				RSS:      false,
+				Atom:     false,
+				Markdown: true,
+				Text:     true,
 			},
 		},
 	}
