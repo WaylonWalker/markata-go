@@ -25,9 +25,9 @@
         {% include "components/format-links.html" %}
         {% endif %}
 
-        {% if footer.show_copyright %}
-        <p class="footer-copyright">&copy; {{ "now" | date:"2006" }} {{ config.author | default:config.title | default:"" }}.{% if footer.show_built_with %} Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a>.{% endif %}</p>
-        {% endif %}
+         {% if footer.show_copyright %}
+         <p class="footer-copyright">&copy; {{ "now" | date:"2006" }} {{ config.author | default:config.title | default:"" }}.{% if footer.show_built_with %} Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a> using {{ config.theme.name | default:"default" }} theme.{% endif %}</p>
+         {% endif %}
     </div>
 </footer>
 {% endif %}
