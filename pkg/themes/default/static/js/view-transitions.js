@@ -86,6 +86,9 @@
     // Skip links with rel=external
     if (link.rel && link.rel.includes('external')) return false;
 
+    // Skip XML files (RSS, Atom, sitemap) - they need native browser handling for XSL stylesheets
+    if (url.pathname.endsWith('.xml')) return false;
+
     // Skip TOC links (they have their own smooth scroll handling)
     if (link.classList.contains('toc-link')) return false;
 
