@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -160,7 +161,11 @@ func parseBlogrollFeedResponse(resp *http.Response) (*blogrollParsedFeed, []*mod
 		return feed, entries, nil
 	}
 
-	return nil, nil, fmt.Errorf("failed to parse as RSS 2.0 (%v) or Atom: %w", rssErr, err)
+	// Both parsers failed - return combined error
+	return nil, nil, fmt.Errorf("failed to parse feed: %w", errors.Join(
+		fmt.Errorf("rss 2.0: %w", rssErr),
+		fmt.Errorf("atom: %w", err),
+	))
 }
 
 // parseRSS2Feed parses an RSS 2.0 feed.
