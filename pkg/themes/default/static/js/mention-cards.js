@@ -21,10 +21,8 @@
   // Configuration
   var SHOW_DELAY = 300;   // ms before showing card
   var HIDE_DELAY = 200;   // ms before hiding card
-  var CACHE_TTL = 5 * 60 * 1000;  // 5 minutes in ms
 
   // State
-  var cache = {};
   var currentCard = null;
   var showTimer = null;
   var hideTimer = null;
@@ -75,176 +73,24 @@
     }
   }
 
-  /**
-   * Look up mention data in blogroll cache
-   * @param {string} url - The mention URL
-   * @returns {object|null} - Blogroll entry data or null
-   */
-  function lookupBlogroll(url) {
-    if (!window.blogrollData || !Array.isArray(window.blogrollData)) {
-      return null;
-    }
 
-    var targetDomain = getDomain(url).toLowerCase();
-
-    for (var i = 0; i < window.blogrollData.length; i++) {
-      var entry = window.blogrollData[i];
-      if (entry.url) {
-        var entryDomain = getDomain(entry.url).toLowerCase();
-        if (entryDomain === targetDomain) {
-          return {
-            name: entry.name || entry.title,
-            handle: '@' + getDomain(entry.url),
-            bio: entry.description || '',
-            avatar: entry.avatar || entry.icon || null,
-            url: entry.url
-          };
-        }
-      }
-    }
-
-    return null;
-  }
 
   /**
-   * Fetch meta tags from a URL
-   * @param {string} url
+   * Get mention data from data attributes (instant, no network requests)
+   * @param {HTMLElement} link - The mention link element
    * @returns {Promise<object>}
    */
-  function fetchMetaTags(url) {
-    return new Promise(function(resolve, reject) {
-      // Use a CORS proxy or direct fetch
-      // Note: This may fail due to CORS restrictions on many sites
-      fetch(url, {
-        method: 'GET',
-        mode: 'cors',
-        credentials: 'omit'
-      })
-      .then(function(response) {
-        if (!response.ok) {
-          throw new Error('HTTP ' + response.status);
-        }
-        return response.text();
-      })
-      .then(function(html) {
-        var parser = new DOMParser();
-        var doc = parser.parseFromString(html, 'text/html');
+  function getMentionData(link) {
+    // Read from data attributes (instant!)
+    var data = {
+      name: link.dataset.name || getDomain(link.href),
+      handle: link.dataset.handle || ('@' + getDomain(link.href)),
+      bio: link.dataset.bio || '',
+      avatar: link.dataset.avatar || null,
+      url: link.href
+    };
 
-        var data = {
-          name: null,
-          bio: null,
-          avatar: null
-        };
-
-        // Try various meta tags for name/title
-        var titleMeta = doc.querySelector('meta[property="og:site_name"]') ||
-                       doc.querySelector('meta[property="og:title"]') ||
-                       doc.querySelector('meta[name="author"]') ||
-                       doc.querySelector('title');
-
-        if (titleMeta) {
-          data.name = titleMeta.content || titleMeta.textContent;
-        }
-
-        // Try various meta tags for description
-        var descMeta = doc.querySelector('meta[property="og:description"]') ||
-                      doc.querySelector('meta[name="description"]');
-
-        if (descMeta) {
-          data.bio = descMeta.content;
-        }
-
-        // Try various meta tags for image/avatar
-        var imageMeta = doc.querySelector('meta[property="og:image"]') ||
-                       doc.querySelector('link[rel="icon"]') ||
-                       doc.querySelector('link[rel="apple-touch-icon"]');
-
-        if (imageMeta) {
-          var imageUrl = imageMeta.content || imageMeta.href;
-          if (imageUrl) {
-            // Make relative URLs absolute
-            if (imageUrl.startsWith('/')) {
-              try {
-                var baseUrl = new URL(url);
-                imageUrl = baseUrl.origin + imageUrl;
-              } catch (e) {
-                // Keep as-is
-              }
-            }
-            data.avatar = imageUrl;
-          }
-        }
-
-        resolve(data);
-      })
-      .catch(function(err) {
-        reject(err);
-      });
-    });
-  }
-
-  /**
-   * Get mention data (from cache, blogroll, or fetch)
-   * @param {string} url - The mention URL
-   * @param {string} handle - The @handle text
-   * @returns {Promise<object>}
-   */
-  function getMentionData(url, handle) {
-    // Check cache first
-    var cacheKey = url;
-    var cached = cache[cacheKey];
-
-    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
-      return Promise.resolve(cached.data);
-    }
-
-    // Check blogroll
-    var blogrollData = lookupBlogroll(url);
-    if (blogrollData) {
-      cache[cacheKey] = {
-        data: blogrollData,
-        timestamp: Date.now()
-      };
-      return Promise.resolve(blogrollData);
-    }
-
-    // Fetch from URL
-    return fetchMetaTags(url)
-      .then(function(metaData) {
-        var data = {
-          name: metaData.name || getDomain(url),
-          handle: handle || '@' + getDomain(url),
-          bio: metaData.bio || '',
-          avatar: metaData.avatar || null,
-          url: url
-        };
-
-        cache[cacheKey] = {
-          data: data,
-          timestamp: Date.now()
-        };
-
-        return data;
-      })
-      .catch(function() {
-        // Return fallback data on error
-        var data = {
-          name: getDomain(url),
-          handle: handle || '@' + getDomain(url),
-          bio: '',
-          avatar: null,
-          url: url,
-          error: true
-        };
-
-        // Still cache even on error to prevent repeated failed requests
-        cache[cacheKey] = {
-          data: data,
-          timestamp: Date.now()
-        };
-
-        return data;
-      });
+    return Promise.resolve(data);
   }
 
   /**
@@ -292,18 +138,7 @@
     return card;
   }
 
-  /**
-   * Create a loading state card
-   * @returns {HTMLElement}
-   */
-  function createLoadingCard() {
-    var card = document.createElement('div');
-    card.className = 'mention-card mention-card-loading';
-    card.setAttribute('role', 'tooltip');
-    card.setAttribute('aria-live', 'polite');
-    card.innerHTML = '<div class="mention-card-loading-text">Loading...</div>';
-    return card;
-  }
+
 
   /**
    * Escape HTML to prevent XSS
@@ -371,49 +206,24 @@
 
     currentTarget = target;
 
-    var url = target.href;
-    var handle = target.textContent.trim();
-
-    // Show loading state
-    var loadingCard = createLoadingCard();
-    document.body.appendChild(loadingCard);
-    currentCard = loadingCard;
-
-    // Position after adding to DOM so we can measure
-    requestAnimationFrame(function() {
-      if (currentCard === loadingCard) {
-        positionCard(loadingCard, target);
-        loadingCard.classList.add('mention-card--visible');
-      }
-    });
-
-    // Fetch data and update card
-    getMentionData(url, handle)
+    // Get data instantly from data attributes
+    getMentionData(target)
       .then(function(data) {
         // Check if we're still showing the card for this target
         if (currentTarget !== target) return;
 
-        var newCard = createCard(data);
-        document.body.appendChild(newCard);
+        var card = createCard(data);
+        document.body.appendChild(card);
 
         // Position and show
         requestAnimationFrame(function() {
-          positionCard(newCard, target);
-          newCard.classList.add('mention-card--visible');
-
-          // Remove loading card
-          if (loadingCard.parentNode) {
-            loadingCard.remove();
-          }
-
-          currentCard = newCard;
+          positionCard(card, target);
+          card.classList.add('mention-card--visible');
+          currentCard = card;
         });
       })
       .catch(function() {
-        // On error, just hide the loading card
-        if (loadingCard.parentNode) {
-          loadingCard.remove();
-        }
+        // This shouldn't happen with the new implementation, but handle gracefully
         currentCard = null;
       });
   }
@@ -588,7 +398,6 @@
   // Expose for external use if needed
   window.mentionCards = {
     show: showCard,
-    hide: hideCard,
-    clearCache: function() { cache = {}; }
+    hide: hideCard
   };
 })();

@@ -217,6 +217,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"seo": true, "indieauth": true, "webmention": true, "components": true,
 			"layout": true, "sidebar": true, "toc": true, "header": true,
 			"blogroll": true, "mentions": true, "template_presets": true,
+			"slug_conflicts":    false,
 			"default_templates": true, "auto_feeds": true, "head": true,
 			"content_templates": true, "footer_layout": true, "search": true,
 			"plugins": true, "thoughts": true, "wikilinks": true,
