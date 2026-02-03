@@ -63,6 +63,9 @@ type FooterComponentConfig struct {
 	// ShowCopyright shows the copyright line (default: true)
 	ShowCopyright *bool `json:"show_copyright,omitempty" yaml:"show_copyright,omitempty" toml:"show_copyright,omitempty"`
 
+	// ShowBuiltWith shows the "built with markata-go" text (default: true)
+	ShowBuiltWith *bool `json:"show_built_with,omitempty" yaml:"show_built_with,omitempty" toml:"show_built_with,omitempty"`
+
 	// Links are additional footer links
 	Links []NavItem `json:"links,omitempty" yaml:"links,omitempty" toml:"links,omitempty"`
 }
@@ -110,6 +113,7 @@ func NewComponentsConfig() ComponentsConfig {
 	docSidebarEnabled := false
 	feedSidebarEnabled := false
 	showCopyright := true
+	showBuiltWith := true
 
 	return ComponentsConfig{
 		Nav: NavComponentConfig{
@@ -120,6 +124,7 @@ func NewComponentsConfig() ComponentsConfig {
 		Footer: FooterComponentConfig{
 			Enabled:       &footerEnabled,
 			ShowCopyright: &showCopyright,
+			ShowBuiltWith: &showBuiltWith,
 		},
 		DocSidebar: DocSidebarConfig{
 			Enabled:  &docSidebarEnabled,
