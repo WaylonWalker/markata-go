@@ -816,46 +816,87 @@
   }
 
   /**
-   * Setup keyboard shortcuts
+   * Setup keyboard shortcuts using the registry
    */
   function setupKeyboardShortcuts() {
-    document.addEventListener('keydown', (e) => {
-      // Don't trigger when typing in inputs
-      if (e.target.matches('input, textarea, [contenteditable]')) {
-        return;
+    // Wait for registry to be available
+    function waitForRegistry(callback, attempts = 0) {
+      if (window.shortcutsRegistry) {
+        callback();
+      } else if (attempts < 50) {
+        setTimeout(function() {
+          waitForRegistry(callback, attempts + 1);
+        }, 10);
       }
+    }
 
+    waitForRegistry(function() {
       // [ = previous family
-      if (e.key === '[' && !e.shiftKey) {
-        e.preventDefault();
-        cycleFamily('prev');
-      }
+      window.shortcutsRegistry.register({
+        key: '[',
+        modifiers: [],
+        description: 'Previous palette',
+        group: 'theme',
+        handler: function(e) {
+          e.preventDefault();
+          cycleFamily('prev');
+        },
+        priority: 50
+      });
 
       // ] = next family
-      if (e.key === ']' && !e.shiftKey) {
-        e.preventDefault();
-        cycleFamily('next');
-      }
+      window.shortcutsRegistry.register({
+        key: ']',
+        modifiers: [],
+        description: 'Next palette',
+        group: 'theme',
+        handler: function(e) {
+          e.preventDefault();
+          cycleFamily('next');
+        },
+        priority: 50
+      });
 
       // { (Shift+[) = previous aesthetic
-      if (e.key === '{') {
-        e.preventDefault();
-        cycleAesthetic('prev');
-      }
+      window.shortcutsRegistry.register({
+        key: '{',
+        modifiers: [],
+        description: 'Previous aesthetic',
+        group: 'theme',
+        handler: function(e) {
+          e.preventDefault();
+          cycleAesthetic('prev');
+        },
+        priority: 50
+      });
 
       // } (Shift+]) = next aesthetic
-      if (e.key === '}') {
-        e.preventDefault();
-        cycleAesthetic('next');
-      }
+      window.shortcutsRegistry.register({
+        key: '}',
+        modifiers: [],
+        description: 'Next aesthetic',
+        group: 'theme',
+        handler: function(e) {
+          e.preventDefault();
+          cycleAesthetic('next');
+        },
+        priority: 50
+      });
 
       // \ = toggle dark/light
-      if (e.key === '\\') {
-        e.preventDefault();
-        const current = getColorMode();
-        setColorMode(current === 'dark' ? 'light' : 'dark');
-        showNotification(current === 'dark' ? 'Light Mode' : 'Dark Mode');
-      }
+      window.shortcutsRegistry.register({
+        key: '\\',
+        modifiers: [],
+        description: 'Toggle dark/light mode',
+        group: 'theme',
+        handler: function(e) {
+          e.preventDefault();
+          const current = getColorMode();
+          setColorMode(current === 'dark' ? 'light' : 'dark');
+          showNotification(current === 'dark' ? 'Light Mode' : 'Dark Mode');
+        },
+        priority: 50
+      });
     });
   }
 

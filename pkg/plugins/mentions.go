@@ -2,6 +2,7 @@
 package plugins
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -283,7 +284,7 @@ func (p *MentionsPlugin) loadFromCache(domain, cacheDir string, maxAge time.Dura
 
 // saveToCache saves mention metadata to the file cache.
 func (p *MentionsPlugin) saveToCache(metadata *models.MentionMetadata, cacheDir string) error {
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
 		return err
 	}
 
@@ -294,11 +295,11 @@ func (p *MentionsPlugin) saveToCache(metadata *models.MentionMetadata, cacheDir 
 		return err
 	}
 
-	return os.WriteFile(cacheFile, data, 0644)
+	return os.WriteFile(cacheFile, data, 0o600)
 }
 
 // fetchMetadata fetches metadata for a single domain, using cache if available.
-func (p *MentionsPlugin) fetchMetadata(domain, cacheDir string, maxAge time.Duration, timeout time.Duration) *models.MentionMetadata {
+func (p *MentionsPlugin) fetchMetadata(domain, cacheDir string, maxAge, timeout time.Duration) *models.MentionMetadata {
 	// Try cache first
 	if cached := p.loadFromCache(domain, cacheDir, maxAge); cached != nil {
 		return cached
@@ -316,10 +317,12 @@ func (p *MentionsPlugin) fetchMetadata(domain, cacheDir string, maxAge time.Dura
 		Timeout: timeout,
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		metadata.Error = fmt.Sprintf("failed to create request: %v", err)
-		p.saveToCache(metadata, cacheDir) // Cache even errors to prevent repeated failed requests
+		//nolint:errcheck // Cache even errors to prevent repeated failed requests
+		p.saveToCache(metadata, cacheDir)
 		return metadata
 	}
 
@@ -329,6 +332,7 @@ func (p *MentionsPlugin) fetchMetadata(domain, cacheDir string, maxAge time.Dura
 	resp, err := client.Do(req)
 	if err != nil {
 		metadata.Error = fmt.Sprintf("HTTP request failed: %v", err)
+		//nolint:errcheck // Cache even errors to prevent repeated failed requests
 		p.saveToCache(metadata, cacheDir)
 		return metadata
 	}
@@ -336,6 +340,7 @@ func (p *MentionsPlugin) fetchMetadata(domain, cacheDir string, maxAge time.Dura
 
 	if resp.StatusCode != http.StatusOK {
 		metadata.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
+		//nolint:errcheck // Cache even errors to prevent repeated failed requests
 		p.saveToCache(metadata, cacheDir)
 		return metadata
 	}
@@ -343,6 +348,7 @@ func (p *MentionsPlugin) fetchMetadata(domain, cacheDir string, maxAge time.Dura
 	// Parse HTML to extract metadata
 	if err := p.extractMetadataFromHTML(resp, metadata); err != nil {
 		metadata.Error = fmt.Sprintf("failed to parse HTML: %v", err)
+		//nolint:errcheck // Cache even errors to prevent repeated failed requests
 		p.saveToCache(metadata, cacheDir)
 		return metadata
 	}
