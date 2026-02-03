@@ -131,6 +131,8 @@ func GenerateRSSFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Config) 
 }
 
 // postToRSSItem converts a Post to an RSSItem.
+// Note: Do NOT manually escape XML here - xml.MarshalIndent handles escaping automatically.
+// Manually escaping would cause double-encoding (e.g., & becomes &amp; then &amp;amp;).
 func postToRSSItem(post *models.Post, siteURL string) RSSItem {
 	// Build permalink
 	permalink := siteURL + post.Href
@@ -147,12 +149,12 @@ func postToRSSItem(post *models.Post, siteURL string) RSSItem {
 	var description string
 	switch {
 	case post.Description != nil:
-		description = escapeXML(*post.Description)
+		description = *post.Description
 	case post.ArticleHTML != "":
 		// Use rendered HTML as description (truncated)
-		description = escapeXML(truncateHTML(post.ArticleHTML, 500))
+		description = truncateHTML(post.ArticleHTML, 500)
 	default:
-		description = escapeXML(truncateText(post.Content, 500))
+		description = truncateText(post.Content, 500)
 	}
 
 	// Get publication date
@@ -162,7 +164,7 @@ func postToRSSItem(post *models.Post, siteURL string) RSSItem {
 	}
 
 	return RSSItem{
-		Title:       escapeXML(title),
+		Title:       title,
 		Link:        permalink,
 		Description: description,
 		PubDate:     pubDate,
@@ -201,14 +203,6 @@ func getSiteDescription(config *lifecycle.Config) string {
 		}
 	}
 	return ""
-}
-
-// escapeXML escapes special XML characters in content.
-func escapeXML(s string) string {
-	// xml.EscapeString handles &, <, >, ", '
-	var buf strings.Builder
-	_ = xml.EscapeText(&buf, []byte(s)) //nolint:errcheck // writing to strings.Builder never fails
-	return buf.String()
 }
 
 // truncateText truncates text to a maximum length, adding ellipsis if truncated.

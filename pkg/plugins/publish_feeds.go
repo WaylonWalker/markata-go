@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/xml"
 	"fmt"
+	"html"
 	"html/template"
 	"log"
 	"os"
@@ -607,26 +608,27 @@ func (p *PublishFeedsPlugin) publishJSON(fc *models.FeedConfig, config *lifecycl
 // publishMarkdown generates and writes a Markdown feed listing.
 // For non-root feeds, content is written to /slug.md (canonical URL).
 // For root feeds (slug=""), content is written to /index.md.
+// HTML entities in titles and descriptions are decoded to readable characters.
 func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, slug, outputDir string) error {
 	var sb strings.Builder
 
-	// Title
+	// Title (decode HTML entities for plain text output)
 	title := fc.Title
 	if title == "" {
 		title = "Posts"
 	}
-	sb.WriteString("# " + title + "\n\n")
+	sb.WriteString("# " + html.UnescapeString(title) + "\n\n")
 
-	// Description
+	// Description (decode HTML entities)
 	if fc.Description != "" {
-		sb.WriteString(fc.Description + "\n\n")
+		sb.WriteString(html.UnescapeString(fc.Description) + "\n\n")
 	}
 
 	// Posts list
 	for _, post := range fc.Posts {
 		postTitle := post.Slug
 		if post.Title != nil {
-			postTitle = *post.Title
+			postTitle = html.UnescapeString(*post.Title)
 		}
 
 		sb.WriteString("- [" + postTitle + "](" + post.Href + ")")
@@ -651,27 +653,29 @@ func (p *PublishFeedsPlugin) publishMarkdown(fc *models.FeedConfig, slug, output
 // publishText generates and writes a plain text feed listing.
 // For non-root feeds, content is written to /slug.txt (canonical URL).
 // For root feeds (slug=""), content is written to /index.txt.
+// HTML entities in titles and descriptions are decoded to readable characters.
 func (p *PublishFeedsPlugin) publishText(fc *models.FeedConfig, slug, outputDir string) error {
 	var sb strings.Builder
 
-	// Title
+	// Title (decode HTML entities for plain text output)
 	title := fc.Title
 	if title == "" {
 		title = "Posts"
 	}
+	title = html.UnescapeString(title)
 	sb.WriteString(title + "\n")
 	sb.WriteString(strings.Repeat("=", len(title)) + "\n\n")
 
-	// Description
+	// Description (decode HTML entities)
 	if fc.Description != "" {
-		sb.WriteString(fc.Description + "\n\n")
+		sb.WriteString(html.UnescapeString(fc.Description) + "\n\n")
 	}
 
 	// Posts list
 	for _, post := range fc.Posts {
 		postTitle := post.Slug
 		if post.Title != nil {
-			postTitle = *post.Title
+			postTitle = html.UnescapeString(*post.Title)
 		}
 
 		if post.Date != nil {
