@@ -159,9 +159,8 @@ func parseBlogrollFeedResponse(resp *http.Response) (*blogrollParsedFeed, []*mod
 		// Successfully parsed as Atom
 		return feed, entries, nil
 	}
-	atomErr := err
 
-	return nil, nil, fmt.Errorf("failed to parse as RSS 2.0 (%v) or Atom (%v)", rssErr, atomErr)
+	return nil, nil, fmt.Errorf("failed to parse as RSS 2.0 (%v) or Atom: %w", rssErr, err)
 }
 
 // parseRSS2Feed parses an RSS 2.0 feed.
