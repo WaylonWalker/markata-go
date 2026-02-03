@@ -955,7 +955,7 @@ func (p *BlogrollPlugin) writeBlogrollPage(m *lifecycle.Manager, outputDir strin
 
 	// Write the file
 	outputFile := filepath.Join(blogrollDir, "index.html")
-	return os.WriteFile(outputFile, []byte(content), 0o600)
+	return os.WriteFile(outputFile, []byte(content), 0o644) //nolint:gosec // G306: Public-facing HTML needs 644 permissions
 }
 
 // writeReaderPage generates the paginated /reader pages.
@@ -1049,7 +1049,7 @@ func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir str
 	}
 
 	// Write the full page
-	if err := os.WriteFile(outputFile, []byte(content), 0o600); err != nil {
+	if err := os.WriteFile(outputFile, []byte(content), 0o644); err != nil { //nolint:gosec // G306: Public-facing HTML needs 644 permissions
 		return err
 	}
 
@@ -1061,7 +1061,7 @@ func (p *BlogrollPlugin) writeReaderPageFile(m *lifecycle.Manager, readerDir str
 
 		partialContent := p.renderReaderPartial(page.Entries, page)
 		partialFile := filepath.Join(partialDir, "index.html")
-		if err := os.WriteFile(partialFile, []byte(partialContent), 0o600); err != nil {
+		if err := os.WriteFile(partialFile, []byte(partialContent), 0o644); err != nil { //nolint:gosec // G306: Public-facing HTML needs 644 permissions
 			return err
 		}
 	}
