@@ -4,21 +4,22 @@
 {# Requires: post.Extra.toc ([]TocEntry) from toc plugin #}
 
 {% with sidebar = config.components.doc_sidebar %}
-{% if sidebar.enabled and post.Extra.toc %}
+{# Only show sidebar if enabled and we have TOC entries #}
+{% if sidebar.enabled and post.Extra.toc and post.Extra.toc|length > 0 %}
 <aside class="doc-sidebar doc-sidebar--{{ sidebar.position | default:'right' }}" style="width: {{ sidebar.width | default:'250px' }}" aria-label="Table of Contents">
     <nav class="toc">
         <h2 class="toc-title">On this page</h2>
         <ul class="toc-list">
             {% for entry in post.Extra.toc %}
-            {% if entry.Level >= sidebar.min_depth and entry.Level <= sidebar.max_depth %}
-            <li class="toc-item toc-item--level-{{ entry.Level }}">
-                <a href="#{{ entry.ID }}" class="toc-link">{{ entry.Text }}</a>
-                {% if entry.Children %}
+            {% if entry.level >= sidebar.min_depth and entry.level <= sidebar.max_depth %}
+            <li class="toc-item toc-item--level-{{ entry.level }}">
+                <a href="#{{ entry.id }}" class="toc-link">{{ entry.text }}</a>
+                {% if entry.children %}
                 <ul class="toc-list toc-list--nested">
-                    {% for child in entry.Children %}
-                    {% if child.Level >= sidebar.min_depth and child.Level <= sidebar.max_depth %}
-                    <li class="toc-item toc-item--level-{{ child.Level }}">
-                        <a href="#{{ child.ID }}" class="toc-link">{{ child.Text }}</a>
+                    {% for child in entry.children %}
+                    {% if child.level >= sidebar.min_depth and child.level <= sidebar.max_depth %}
+                    <li class="toc-item toc-item--level-{{ child.level }}">
+                        <a href="#{{ child.id }}" class="toc-link">{{ child.text }}</a>
                     </li>
                     {% endif %}
                     {% endfor %}

@@ -3,6 +3,7 @@ package plugins
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
@@ -360,9 +361,28 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	}
 
 	// Create template context
-	ctx := templates.NewContext(post, post.ArticleHTML, ToModelsConfig(config))
+	modelsConfig := ToModelsConfig(config)
+	ctx := templates.NewContext(post, post.ArticleHTML, modelsConfig)
 	ctx = ctx.WithCore(m)
 	ctx.Set("private_paths", privatePaths)
+
+	// Inject feed sidebar posts if configured
+	sidebarPosts, sidebarFeed := p.getFeedSidebarPosts(post, config, m)
+	if sidebarPosts != nil {
+		ctx.Set("sidebar_posts", sidebarPosts)
+		if sidebarFeed != nil {
+			ctx.Set("sidebar_feed", sidebarFeed)
+		}
+
+		// Calculate prev/next within the sidebar feed
+		sidebarPrev, sidebarNext := p.getSidebarPrevNext(post, sidebarPosts)
+		if sidebarPrev != nil {
+			ctx.Set("sidebar_prev", sidebarPrev)
+		}
+		if sidebarNext != nil {
+			ctx.Set("sidebar_next", sidebarNext)
+		}
+	}
 
 	// Render the template
 	html, err := p.engine.Render(templateName, ctx)
@@ -371,6 +391,134 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	}
 
 	return html, nil
+}
+
+// getFeedSidebarPosts returns the posts for the feed sidebar if the post belongs to a configured feed.
+// It checks if the post's tags match any of the configured feed_sidebar.feeds.
+// The function directly computes feed membership from tags since feed_configs may not be
+// available during the Render stage (feeds are built during Collect stage, which runs after Render).
+func (p *TemplatesPlugin) getFeedSidebarPosts(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
+	// Get components config
+	components, ok := config.Extra["components"].(models.ComponentsConfig)
+	if !ok {
+		return nil, nil
+	}
+
+	// Check if feed sidebar is enabled
+	if components.FeedSidebar.Enabled == nil || !*components.FeedSidebar.Enabled {
+		return nil, nil
+	}
+
+	// Get configured feed slugs (e.g., ["tags/daily-note"])
+	feedSlugs := components.FeedSidebar.Feeds
+	if len(feedSlugs) == 0 {
+		return nil, nil
+	}
+
+	// Check if this post belongs to any of the configured feeds
+	// For tag-based feeds (tags/xxx), check if post has the tag
+	for _, feedSlug := range feedSlugs {
+		if !strings.HasPrefix(feedSlug, "tags/") {
+			continue // Only handle tag feeds for now
+		}
+
+		// Extract tag name from feed slug (e.g., "tags/daily-note" -> "daily-note")
+		tagName := strings.TrimPrefix(feedSlug, "tags/")
+
+		// Check if post has this tag
+		hasTag := false
+		for _, postTag := range post.Tags {
+			if postTag == tagName {
+				hasTag = true
+				break
+			}
+		}
+
+		if !hasTag {
+			continue
+		}
+
+		// Post belongs to this feed - collect all posts with this tag
+		allPosts := m.Posts()
+		sidebarPosts := make([]*models.Post, 0)
+		for _, feedPost := range allPosts {
+			for _, t := range feedPost.Tags {
+				if t == tagName && feedPost.Published && !feedPost.Draft && !feedPost.Skip {
+					sidebarPosts = append(sidebarPosts, feedPost)
+					break
+				}
+			}
+		}
+
+		// Sort by date (newest first)
+		sortPostsByDate(sidebarPosts, true)
+
+		// Create a feed config for template display
+		feedConfig := &models.FeedConfig{
+			Slug:  feedSlug,
+			Title: fmt.Sprintf("Posts tagged: %s", tagName),
+			Posts: sidebarPosts,
+		}
+
+		return sidebarPosts, feedConfig
+	}
+
+	return nil, nil
+}
+
+// getSidebarPrevNext finds the previous and next posts relative to the current post
+// within the sidebar posts list. The sidebar posts are sorted by date (newest first),
+// so "prev" is the newer post (earlier in the list) and "next" is the older post.
+func (p *TemplatesPlugin) getSidebarPrevNext(currentPost *models.Post, sidebarPosts []*models.Post) (prev, next *models.Post) {
+	if len(sidebarPosts) == 0 {
+		return nil, nil
+	}
+
+	// Find current post's position in sidebar posts
+	position := -1
+	for i, post := range sidebarPosts {
+		if post.Slug == currentPost.Slug {
+			position = i
+			break
+		}
+	}
+
+	if position == -1 {
+		return nil, nil
+	}
+
+	// Since posts are sorted newest first:
+	// - prev (newer) is at position-1
+	// - next (older) is at position+1
+	if position > 0 {
+		prev = sidebarPosts[position-1]
+	}
+	if position < len(sidebarPosts)-1 {
+		next = sidebarPosts[position+1]
+	}
+
+	return prev, next
+}
+
+// sortPostsByDate sorts posts by date.
+// If reverse is true, sorts newest first.
+func sortPostsByDate(posts []*models.Post, reverse bool) {
+	sort.Slice(posts, func(i, j int) bool {
+		// Handle nil dates
+		if posts[i].Date == nil && posts[j].Date == nil {
+			return false
+		}
+		if posts[i].Date == nil {
+			return !reverse
+		}
+		if posts[j].Date == nil {
+			return reverse
+		}
+		if reverse {
+			return posts[i].Date.After(*posts[j].Date)
+		}
+		return posts[i].Date.Before(*posts[j].Date)
+	})
 }
 
 // collectPrivatePaths returns a list of paths (hrefs) for all private posts.
