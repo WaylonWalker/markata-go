@@ -327,9 +327,15 @@ func parseRSSFeedMetadata(content string, metadata *Metadata) {
 		metadata.FeedAuthor = stripCDATA(author)
 	}
 
-	// Extract image
+	// Extract image (try multiple sources)
 	if imgURL := extractNestedXMLTag(channel, "image", "url"); imgURL != "" {
 		metadata.FeedImageURL = stripCDATA(imgURL)
+	} else if icon := extractXMLTag(channel, "icon"); icon != "" {
+		// Fallback to Atom-style icon tag (some feeds mix formats)
+		metadata.FeedImageURL = stripCDATA(icon)
+	} else if logo := extractXMLTag(channel, "logo"); logo != "" {
+		// Fallback to Atom-style logo tag
+		metadata.FeedImageURL = stripCDATA(logo)
 	}
 
 	// Extract lastBuildDate or pubDate
