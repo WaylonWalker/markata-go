@@ -427,6 +427,49 @@ markata-go palette new my-palette
 
 Creates `palettes/my-palette.toml` that you can customize.
 
+### Fetch Palette from Lospec
+
+Import color palettes directly from [Lospec.com](https://lospec.com/palette-list), a popular source for pixel art and retro color palettes:
+
+```bash
+# Fetch a palette by URL
+markata-go palette fetch https://lospec.com/palette-list/sweetie-16.txt
+
+# Use a custom name
+markata-go palette fetch https://lospec.com/palette-list/cheese-palette.txt --name "My Cheese"
+
+# Save to a custom directory
+markata-go palette fetch https://lospec.com/palette-list/tokyo-night.txt -o palettes/
+```
+
+The fetched palette is saved to your user palettes directory (`~/.config/markata-go/palettes/`) by default. markata-go automatically:
+
+- Downloads the color list from Lospec
+- Analyzes colors to determine if it's a light or dark theme
+- Generates semantic mappings (text-primary, bg-primary, accent, etc.)
+- Caches the download to avoid repeated network requests
+
+**Example output:**
+```
+Fetching palette from: https://lospec.com/palette-list/sweetie-16.txt
+Palette saved to: /home/user/.config/markata-go/palettes/sweetie-16.toml
+
+Palette details:
+  Name:        Sweetie 16
+  Variant:     dark
+  Colors:      16
+  Source:      https://lospec.com/palette-list/sweetie-16.txt
+
+Semantic mappings:
+  bg-primary      -> color0      (#1a1c2c)
+  text-primary    -> color15     (#f4f4f4)
+  accent          -> color8      (#b13e53)
+
+Use this palette in your config:
+  [markata-go.theme]
+  palette = "sweetie-16"
+```
+
 ---
 
 ## Creating Custom Palettes
