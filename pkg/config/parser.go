@@ -899,7 +899,6 @@ func (e *tomlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 	}
 }
 
-//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	// Get default values
 	defaults := models.NewBlogrollConfig()
@@ -1884,7 +1883,6 @@ type yamlBlogrollTemplates struct {
 	Reader   string `yaml:"reader"`
 }
 
-//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *yamlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	// Get default values
 	defaults := models.NewBlogrollConfig()
@@ -2797,7 +2795,6 @@ type jsonBlogrollTemplates struct {
 	Reader   string `json:"reader"`
 }
 
-//nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *jsonBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	// Get default values
 	defaults := models.NewBlogrollConfig()
