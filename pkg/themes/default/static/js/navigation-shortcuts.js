@@ -168,8 +168,12 @@
    */
   function nextPage() {
     var nextBtn = document.querySelector('[data-action="next"]');
-    if (nextBtn && !nextBtn.disabled) {
-      nextBtn.click();
+    if (nextBtn) {
+      if (nextBtn.href) {
+        window.location.href = nextBtn.href;
+      } else if (!nextBtn.disabled) {
+        nextBtn.click();
+      }
     }
   }
 
@@ -178,8 +182,12 @@
    */
   function previousPage() {
     var prevBtn = document.querySelector('[data-action="prev"]');
-    if (prevBtn && !prevBtn.disabled) {
-      prevBtn.click();
+    if (prevBtn) {
+      if (prevBtn.href) {
+        window.location.href = prevBtn.href;
+      } else if (!prevBtn.disabled) {
+        prevBtn.click();
+      }
     }
   }
 
@@ -306,6 +314,32 @@
           openPost(true);
         },
         priority: 15
+      });
+
+      // [ - Previous page (uses data-action="prev" button)
+      window.shortcutsRegistry.register({
+        key: '[',
+        modifiers: [],
+        description: 'Previous page',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          previousPage();
+        },
+        priority: 20
+      });
+
+      // ] - Next page (uses data-action="next" button)
+      window.shortcutsRegistry.register({
+        key: ']',
+        modifiers: [],
+        description: 'Next page',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          nextPage();
+        },
+        priority: 20
       });
 
       // Handle multi-key sequences: g h and g s
