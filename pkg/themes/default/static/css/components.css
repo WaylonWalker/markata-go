@@ -259,6 +259,28 @@
   max-height: calc(100vh - 2rem);
   overflow-y: auto;
   flex-shrink: 0;
+
+  /* Themed scrollbar - Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* Themed scrollbar - WebKit (Chrome, Safari, Edge) */
+.feed-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.feed-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.feed-sidebar::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 3px;
+}
+
+.feed-sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-muted);
 }
 
 .feed-sidebar--left {
@@ -302,7 +324,7 @@
 .feed-nav-item--active .feed-nav-link {
   color: var(--color-primary);
   font-weight: 600;
-  background-color: var(--color-primary-bg, rgba(var(--color-primary-rgb, 59, 130, 246), 0.1));
+  background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
   border-radius: 4px;
 }
 
@@ -1667,7 +1689,8 @@ kbd.kbd {
    ============================================ */
 
 /* Assign transition names to key page elements */
-.post-content {
+/* Use article.post as the main content container (contains .post-content) */
+article.post {
    view-transition-name: main-content;
 }
 
@@ -1679,7 +1702,8 @@ kbd.kbd {
    view-transition-name: site-nav;
 }
 
-.site-footer {
+.site-footer,
+[class^="site-footer"] {
    view-transition-name: site-footer;
 }
 
@@ -1691,59 +1715,20 @@ kbd.kbd {
    view-transition-name: pagination;
 }
 
-/* Individual cards get unique IDs via inline styles if needed */
-/* Example: <article class="card" style="view-transition-name: card-123;"> */
-
-/* Default transition animation for main content */
-::view-transition-old(main-content) {
-   animation: fade-out 0.25s ease-out;
+/* Feed sidebar stays stable during post-to-post navigation */
+.feed-sidebar {
+   view-transition-name: feed-sidebar;
 }
 
-::view-transition-new(main-content) {
-   animation: fade-in 0.3s ease-in, slide-up 0.3s ease-out;
+/* Post navigation (prev/next) */
+.post-nav {
+   view-transition-name: post-nav;
 }
 
-/* Posts list transitions - smooth cross-fade */
-::view-transition-old(posts-list),
-::view-transition-new(posts-list) {
-   animation-duration: 0.3s;
-}
-
-::view-transition-old(posts-list) {
-   animation: fade-out 0.25s ease-out;
-}
-
-::view-transition-new(posts-list) {
-   animation: fade-in 0.3s ease-in;
-}
-
-/* Keep navigation elements stable during transitions */
-::view-transition-old(site-nav),
-::view-transition-new(site-nav) {
-   animation-duration: 0.2s;
-}
-
-::view-transition-old(site-footer),
-::view-transition-new(site-footer) {
-   animation-duration: 0.2s;
-}
-
-/* Breadcrumb transitions */
-::view-transition-old(breadcrumbs) {
-   animation: fade-out 0.2s ease-out;
-}
-
-::view-transition-new(breadcrumbs) {
-   animation: fade-in 0.25s ease-in;
-}
-
-/* Pagination transitions */
-::view-transition-old(pagination) {
-   animation: fade-out 0.2s ease-out;
-}
-
-::view-transition-new(pagination) {
-   animation: fade-in 0.25s ease-in;
+/* Disable all view transition animations - instant swap */
+::view-transition-old(*),
+::view-transition-new(*) {
+   animation: none;
 }
 
 /* Root transition container */
