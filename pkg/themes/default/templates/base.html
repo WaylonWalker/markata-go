@@ -40,7 +40,7 @@
     if (document.documentElement.innerHTML.includes('glightbox')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = '{% if config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/css/glightbox.min.css{% endif %}';
+      link.href = '{% if config.Extra.asset_urls.glightbox-css %}{{ config.Extra.asset_urls.glightbox-css }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/css/glightbox.min.css{% endif %}';
       document.head.appendChild(link);
     }
     {% endif %}
@@ -238,7 +238,7 @@
     {% if config.Extra.glightbox_enabled %}
     if (document.querySelector('.glightbox')) {
       const glightboxScript = document.createElement('script');
-      glightboxScript.src = '{% if config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js{% else %}/js/glightbox.min.js{% endif %}';
+      glightboxScript.src = '{% if config.Extra.asset_urls.glightbox-js %}{{ config.Extra.asset_urls.glightbox-js }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js{% else %}/js/glightbox.min.js{% endif %}';
       glightboxScript.onload = function() {
         const lightbox = GLightbox({
           selector: '{{ config.Extra.glightbox_options.selector | default:".glightbox" }}',

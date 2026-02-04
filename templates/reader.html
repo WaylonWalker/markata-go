@@ -8,7 +8,7 @@
 
 {% block htmx %}
 {% if page.pagination_type == "htmx" or page.pagination_type == "htmx-infinite" %}
-<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+<script src="{% if config.Extra.asset_urls.htmx %}{{ config.Extra.asset_urls.htmx }}{% else %}https://unpkg.com/htmx.org@1.9.10{% endif %}"></script>
 {% if page.pagination_type == "htmx-infinite" %}
 <script src="{{ 'js/infinite-scroll.js' | theme_asset }}" defer></script>
 {% endif %}
