@@ -12,32 +12,18 @@
   </header>
 
   {% if tag_list %}
-  <div class="tags-cloud">
+  <div class="tags-controls">
+    <button class="sort-btn" data-sort="alpha" aria-pressed="false">A–Z</button>
+    <button class="sort-btn" data-sort="count" aria-pressed="false">By Count</button>
+  </div>
+
+  <div class="tags-cloud" id="tags-cloud">
     {% for tag in tag_list %}
-    <a href="{{ tag.Href }}" class="tag-item" data-count="{{ tag.Count }}">
+    <a href="{{ tag.Href }}" class="tag-item" data-count="{{ tag.Count }}" data-name="{{ tag.Name }}">
       <span class="tag-name">{{ tag.Name }}</span>
       <span class="tag-count">({{ tag.Count }})</span>
     </a>
     {% endfor %}
-  </div>
-
-  <div class="tags-list">
-    <table class="tags-table">
-      <thead>
-        <tr>
-          <th>Tag</th>
-          <th>Posts</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for tag in tag_list %}
-        <tr>
-          <td><a href="{{ tag.Href }}">{{ tag.Name }}</a></td>
-          <td class="count">{{ tag.Count }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
   </div>
   {% else %}
   <p class="no-tags">No tags found.</p>
@@ -68,6 +54,45 @@
 .tags-count {
   color: var(--color-text-muted, #666);
   font-size: 0.9em;
+}
+
+.tags-controls {
+  display: flex;
+  gap: var(--spacing-sm, 0.5rem);
+  justify-content: center;
+  margin-bottom: var(--spacing-lg, 2rem);
+  flex-wrap: wrap;
+}
+
+.sort-btn {
+  padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+  border: 1px solid var(--color-border, #ddd);
+  background: var(--color-background, #fff);
+  color: var(--color-text, #333);
+  border-radius: var(--radius-md, 0.25rem);
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.sort-btn:hover {
+  border-color: var(--color-primary, #007bff);
+  color: var(--color-primary, #007bff);
+}
+
+.sort-btn[aria-pressed="true"] {
+  background: var(--color-primary, #007bff);
+  border-color: var(--color-primary, #007bff);
+  color: var(--color-background, #fff);
+}
+
+.sort-btn[aria-pressed="true"]::after {
+  content: " ↓";
+}
+
+.sort-btn[data-reversed="true"]::after {
+  content: " ↑" !important;
 }
 
 .tags-cloud {
@@ -111,51 +136,6 @@
   opacity: 0.7;
 }
 
-.tags-list {
-  margin-top: var(--spacing-xl, 3rem);
-}
-
-.tags-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.tags-table th,
-.tags-table td {
-  padding: var(--spacing-sm, 0.5rem) var(--spacing-md, 1rem);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border, #ddd);
-}
-
-.tags-table th {
-  font-weight: 600;
-  background: var(--color-surface, #f5f5f5);
-}
-
-.tags-table td.count {
-  text-align: center;
-  color: var(--color-text-muted, #666);
-}
-
-.tags-table tbody tr:hover {
-  background: var(--color-surface, #f5f5f5);
-}
-
-.tags-table a {
-  color: var(--color-primary, #007bff);
-  text-decoration: none;
-}
-
-.tags-table a:hover {
-  text-decoration: underline;
-}
-
-.no-tags {
-  text-align: center;
-  color: var(--color-text-muted, #666);
-  font-style: italic;
-}
-
 /* Responsive */
 @media (max-width: 600px) {
   .tags-listing {
@@ -166,10 +146,83 @@
     padding: var(--spacing-md, 1rem);
   }
 
-  .tags-table th,
-  .tags-table td {
-    padding: var(--spacing-xs, 0.25rem) var(--spacing-sm, 0.5rem);
+  .tags-controls {
+    gap: var(--spacing-xs, 0.25rem);
+  }
+
+  .sort-btn {
+    padding: var(--spacing-xs, 0.25rem) var(--spacing-xs, 0.25rem);
+    font-size: 0.85em;
   }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const cloud = document.getElementById('tags-cloud');
+  if (!cloud) return;
+
+  const buttons = document.querySelectorAll('.sort-btn');
+  let currentSort = null;
+  let isReversed = false;
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const sortType = this.dataset.sort;
+
+      // If clicking the same button, toggle reverse
+      if (currentSort === sortType) {
+        isReversed = !isReversed;
+      } else {
+        // Switch to new sort, reset reverse
+        currentSort = sortType;
+        isReversed = false;
+
+        // Update button states
+        buttons.forEach(b => {
+          b.setAttribute('aria-pressed', 'false');
+          b.removeAttribute('data-reversed');
+        });
+        this.setAttribute('aria-pressed', 'true');
+      }
+
+      // Update reversed state on active button
+      if (isReversed) {
+        this.setAttribute('data-reversed', 'true');
+      } else {
+        this.removeAttribute('data-reversed');
+      }
+
+      sortTags(sortType, isReversed);
+    });
+  });
+
+  function sortTags(sortType, reverse) {
+    const items = Array.from(cloud.querySelectorAll('.tag-item'));
+
+    items.sort((a, b) => {
+      let aValue, bValue;
+
+      if (sortType === 'alpha') {
+        aValue = a.dataset.name.toLowerCase();
+        bValue = b.dataset.name.toLowerCase();
+        return reverse
+          ? bValue.localeCompare(aValue)
+          : aValue.localeCompare(bValue);
+      } else if (sortType === 'count') {
+        aValue = parseInt(a.dataset.count, 10);
+        bValue = parseInt(b.dataset.count, 10);
+        return reverse
+          ? aValue - bValue
+          : bValue - aValue;
+      }
+
+      return 0;
+    });
+
+    // Re-render sorted items
+    items.forEach(item => cloud.appendChild(item));
+  }
+});
+</script>
 {% endblock %}
