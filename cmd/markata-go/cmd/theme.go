@@ -1133,50 +1133,60 @@ palette = "christmas"
 	fmt.Println(strings.Repeat("=", 60))
 
 	for _, rule := range rules {
-		name, _ := rule["name"].(string)
-		startDate, _ := rule["start_date"].(string)
-		endDate, _ := rule["end_date"].(string)
-		palette, _ := rule["palette"].(string)
-		paletteLight, _ := rule["palette_light"].(string)
-		paletteDark, _ := rule["palette_dark"].(string)
-
-		// Check if active
-		active := isDateInRangeForCLI(currentMonth, currentDay, startDate, endDate)
-		status := ""
-		if active && enabled {
-			status = " [ACTIVE]"
-		}
-
-		fmt.Printf("\n%s%s\n", name, status)
-		fmt.Printf("  Date Range: %s to %s\n", startDate, endDate)
-
-		if palette != "" {
-			fmt.Printf("  Palette: %s\n", palette)
-		}
-		if paletteLight != "" {
-			fmt.Printf("  Light Palette: %s\n", paletteLight)
-		}
-		if paletteDark != "" {
-			fmt.Printf("  Dark Palette: %s\n", paletteDark)
-		}
-
-		// Show other overrides if present
-		if customCSS, ok := rule["custom_css"].(string); ok && customCSS != "" {
-			fmt.Printf("  Custom CSS: (defined)\n")
-		}
-		if vars, ok := rule["variables"].(map[string]interface{}); ok && len(vars) > 0 {
-			fmt.Printf("  CSS Variables: %d defined\n", len(vars))
-		}
-		if _, ok := rule["background"].(map[string]interface{}); ok {
-			fmt.Printf("  Background: (custom)\n")
-		}
-		if _, ok := rule["font"].(map[string]interface{}); ok {
-			fmt.Printf("  Font: (custom)\n")
-		}
+		printCalendarRule(rule, currentMonth, currentDay, enabled)
 	}
 
 	fmt.Println()
 	return nil
+}
+
+// printCalendarRule prints a single calendar rule.
+func printCalendarRule(rule map[string]interface{}, currentMonth, currentDay int, enabled bool) {
+	name := getStringFromRule(rule, "name")
+	startDate := getStringFromRule(rule, "start_date")
+	endDate := getStringFromRule(rule, "end_date")
+
+	// Check if active
+	active := isDateInRangeForCLI(currentMonth, currentDay, startDate, endDate)
+	status := ""
+	if active && enabled {
+		status = " [ACTIVE]"
+	}
+
+	fmt.Printf("\n%s%s\n", name, status)
+	fmt.Printf("  Date Range: %s to %s\n", startDate, endDate)
+
+	if palette := getStringFromRule(rule, "palette"); palette != "" {
+		fmt.Printf("  Palette: %s\n", palette)
+	}
+	if paletteLight := getStringFromRule(rule, "palette_light"); paletteLight != "" {
+		fmt.Printf("  Light Palette: %s\n", paletteLight)
+	}
+	if paletteDark := getStringFromRule(rule, "palette_dark"); paletteDark != "" {
+		fmt.Printf("  Dark Palette: %s\n", paletteDark)
+	}
+
+	// Show other overrides if present
+	if customCSS, ok := rule["custom_css"].(string); ok && customCSS != "" {
+		fmt.Printf("  Custom CSS: (defined)\n")
+	}
+	if vars, ok := rule["variables"].(map[string]interface{}); ok && len(vars) > 0 {
+		fmt.Printf("  CSS Variables: %d defined\n", len(vars))
+	}
+	if _, ok := rule["background"].(map[string]interface{}); ok {
+		fmt.Printf("  Background: (custom)\n")
+	}
+	if _, ok := rule["font"].(map[string]interface{}); ok {
+		fmt.Printf("  Font: (custom)\n")
+	}
+}
+
+// getStringFromRule safely extracts a string value from a rule map.
+func getStringFromRule(rule map[string]interface{}, key string) string {
+	if v, ok := rule[key].(string); ok {
+		return v
+	}
+	return ""
 }
 
 // runThemeCalendarPreviewCommand previews the theme for a specific date.
@@ -1194,85 +1204,110 @@ func runThemeCalendarPreviewCommand(_ *cobra.Command, args []string) error {
 	}
 
 	// Parse target date
-	var targetMonth, targetDay int
-	if len(args) > 0 {
-		parsed, err := parseMMDDForCLI(args[0])
-		if err != nil {
-			return fmt.Errorf("invalid date format %q: %w (expected MM-DD)", args[0], err)
-		}
-		targetMonth = parsed.month
-		targetDay = parsed.day
-	} else {
-		now := time.Now()
-		targetMonth = int(now.Month())
-		targetDay = now.Day()
+	targetMonth, targetDay, err := parseTargetDate(args)
+	if err != nil {
+		return err
 	}
 
 	fmt.Printf("Checking theme for date: %02d-%02d\n", targetMonth, targetDay)
 	fmt.Println(strings.Repeat("-", 40))
 
 	// Check if calendar is enabled
-	enabled := isCalendarEnabled(cfg)
-	if !enabled {
+	if !isCalendarEnabled(cfg) {
 		fmt.Println("\nNote: Theme calendar is DISABLED in config")
 	}
 
 	// Find matching rule
-	var matchingRule map[string]interface{}
-	for _, rule := range rules {
-		startDate, _ := rule["start_date"].(string)
-		endDate, _ := rule["end_date"].(string)
-		if isDateInRangeForCLI(targetMonth, targetDay, startDate, endDate) {
-			matchingRule = rule
-			break
-		}
-	}
-
+	matchingRule := findMatchingRule(rules, targetMonth, targetDay)
 	if matchingRule == nil {
 		fmt.Println("\nNo matching rule found for this date.")
 		fmt.Println("The base theme configuration will be used.")
 		return nil
 	}
 
-	name, _ := matchingRule["name"].(string)
+	printMatchingRuleDetails(matchingRule)
+	return nil
+}
+
+// parseTargetDate parses the target date from args or returns current date.
+func parseTargetDate(args []string) (month, day int, err error) {
+	if len(args) > 0 {
+		parsed, parseErr := parseMMDDForCLI(args[0])
+		if parseErr != nil {
+			return 0, 0, fmt.Errorf("invalid date format %q: %w (expected MM-DD)", args[0], parseErr)
+		}
+		return parsed.month, parsed.day, nil
+	}
+	now := time.Now()
+	return int(now.Month()), now.Day(), nil
+}
+
+// findMatchingRule finds the first rule that matches the given date.
+func findMatchingRule(rules []map[string]interface{}, month, day int) map[string]interface{} {
+	for _, rule := range rules {
+		startDate := getStringFromRule(rule, "start_date")
+		endDate := getStringFromRule(rule, "end_date")
+		if isDateInRangeForCLI(month, day, startDate, endDate) {
+			return rule
+		}
+	}
+	return nil
+}
+
+// printMatchingRuleDetails prints the details of a matching rule.
+func printMatchingRuleDetails(rule map[string]interface{}) {
+	name := getStringFromRule(rule, "name")
 	fmt.Printf("\nMatching Rule: %s\n", name)
 
-	startDate, _ := matchingRule["start_date"].(string)
-	endDate, _ := matchingRule["end_date"].(string)
+	startDate := getStringFromRule(rule, "start_date")
+	endDate := getStringFromRule(rule, "end_date")
 	fmt.Printf("Date Range: %s to %s\n", startDate, endDate)
 
 	// Show what will be applied
 	fmt.Println("\nTheme Overrides:")
-	if palette, ok := matchingRule["palette"].(string); ok && palette != "" {
+	printRulePalettes(rule)
+	printRuleVariables(rule)
+	printRuleBackgroundAndFont(rule)
+}
+
+// printRulePalettes prints palette information from a rule.
+func printRulePalettes(rule map[string]interface{}) {
+	if palette := getStringFromRule(rule, "palette"); palette != "" {
 		fmt.Printf("  Palette: %s\n", palette)
 	}
-	if paletteLight, ok := matchingRule["palette_light"].(string); ok && paletteLight != "" {
+	if paletteLight := getStringFromRule(rule, "palette_light"); paletteLight != "" {
 		fmt.Printf("  Light Palette: %s\n", paletteLight)
 	}
-	if paletteDark, ok := matchingRule["palette_dark"].(string); ok && paletteDark != "" {
+	if paletteDark := getStringFromRule(rule, "palette_dark"); paletteDark != "" {
 		fmt.Printf("  Dark Palette: %s\n", paletteDark)
 	}
-	if customCSS, ok := matchingRule["custom_css"].(string); ok && customCSS != "" {
+	if customCSS := getStringFromRule(rule, "custom_css"); customCSS != "" {
 		fmt.Printf("  Custom CSS: %s\n", customCSS)
 	}
-	if vars, ok := matchingRule["variables"].(map[string]interface{}); ok && len(vars) > 0 {
+}
+
+// printRuleVariables prints CSS variables from a rule.
+func printRuleVariables(rule map[string]interface{}) {
+	if vars, ok := rule["variables"].(map[string]interface{}); ok && len(vars) > 0 {
 		fmt.Printf("  CSS Variables:\n")
 		for k, v := range vars {
 			fmt.Printf("    %s: %v\n", k, v)
 		}
 	}
-	if bg, ok := matchingRule["background"].(map[string]interface{}); ok {
+}
+
+// printRuleBackgroundAndFont prints background and font info from a rule.
+func printRuleBackgroundAndFont(rule map[string]interface{}) {
+	if bg, ok := rule["background"].(map[string]interface{}); ok {
 		if enabled, ok := bg["enabled"].(bool); ok && enabled {
 			fmt.Printf("  Background: enabled\n")
 		}
 	}
-	if font, ok := matchingRule["font"].(map[string]interface{}); ok {
+	if font, ok := rule["font"].(map[string]interface{}); ok {
 		if family, ok := font["family"].(string); ok && family != "" {
 			fmt.Printf("  Font Family: %s\n", family)
 		}
 	}
-
-	return nil
 }
 
 // loadConfigForCalendar loads the config file for calendar commands.
@@ -1289,13 +1324,9 @@ func loadConfigForCalendar() (map[string]interface{}, error) {
 				return nil, fmt.Errorf("failed to read config: %w", err)
 			}
 
-			var cfg map[string]interface{}
 			// Simple TOML parsing for the specific section we need
 			// For full TOML support, we'd use a proper parser
-			cfg, err = parseSimpleTOML(string(data))
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse config: %w", err)
-			}
+			cfg := parseSimpleTOML(string(data))
 			return cfg, nil
 		}
 	}
@@ -1305,7 +1336,7 @@ func loadConfigForCalendar() (map[string]interface{}, error) {
 
 // parseSimpleTOML is a simple TOML parser for theme calendar config.
 // This extracts the theme_calendar section without full TOML parsing.
-func parseSimpleTOML(content string) (map[string]interface{}, error) {
+func parseSimpleTOML(content string) map[string]interface{} {
 	cfg := make(map[string]interface{})
 
 	// Look for markata-go section
@@ -1318,18 +1349,30 @@ func parseSimpleTOML(content string) (map[string]interface{}, error) {
 	}
 
 	cfg["markata-go"] = markata
-	return cfg, nil
+	return cfg
+}
+
+// tomlParserState tracks the current parsing state.
+type tomlParserState struct {
+	result            map[string]interface{}
+	rules             []map[string]interface{}
+	currentRule       map[string]interface{}
+	inCalendarSection bool
+	inRuleSection     bool
+}
+
+// newTOMLParserState creates a new parser state.
+func newTOMLParserState() *tomlParserState {
+	return &tomlParserState{
+		result:      make(map[string]interface{}),
+		currentRule: make(map[string]interface{}),
+	}
 }
 
 // extractThemeCalendarSection extracts the theme_calendar config from TOML content.
 func extractThemeCalendarSection(content string) map[string]interface{} {
-	result := make(map[string]interface{})
-	var rules []map[string]interface{}
-
+	state := newTOMLParserState()
 	lines := strings.Split(content, "\n")
-	inCalendarSection := false
-	inRuleSection := false
-	currentRule := make(map[string]interface{})
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -1341,67 +1384,97 @@ func extractThemeCalendarSection(content string) map[string]interface{} {
 
 		// Check for section headers
 		if strings.HasPrefix(line, "[") {
-			if strings.Contains(line, "theme_calendar.rules") {
-				inRuleSection = true
-				inCalendarSection = false
-				if len(currentRule) > 0 {
-					rules = append(rules, currentRule)
-					currentRule = make(map[string]interface{})
-				}
-				continue
-			} else if strings.Contains(line, "theme_calendar") && !strings.Contains(line, ".") {
-				inCalendarSection = true
-				inRuleSection = false
-				continue
-			} else if strings.HasPrefix(line, "[") {
-				// Different section
-				if inRuleSection && len(currentRule) > 0 {
-					rules = append(rules, currentRule)
-					currentRule = make(map[string]interface{})
-				}
-				inCalendarSection = false
-				inRuleSection = false
-				continue
-			}
+			state.handleSectionHeader(line)
+			continue
 		}
 
 		// Parse key-value pairs
-		if inCalendarSection || inRuleSection {
-			if idx := strings.Index(line, "="); idx > 0 {
-				key := strings.TrimSpace(line[:idx])
-				value := strings.TrimSpace(line[idx+1:])
-				value = strings.Trim(value, "\"'")
+		state.handleKeyValue(line)
+	}
 
-				if inCalendarSection {
-					if key == "enabled" {
-						result["enabled"] = value == "true"
-					} else if key == "default_palette" {
-						result["default_palette"] = value
-					}
-				} else if inRuleSection {
-					if key == "enabled" {
-						currentRule[key] = value == "true"
-					} else {
-						currentRule[key] = value
-					}
-				}
-			}
+	return state.finalize()
+}
+
+// handleSectionHeader processes a TOML section header.
+func (s *tomlParserState) handleSectionHeader(line string) {
+	switch {
+	case strings.Contains(line, "theme_calendar.rules"):
+		s.inRuleSection = true
+		s.inCalendarSection = false
+		if len(s.currentRule) > 0 {
+			s.rules = append(s.rules, s.currentRule)
+			s.currentRule = make(map[string]interface{})
 		}
+	case strings.Contains(line, "theme_calendar") && !strings.Contains(line, "."):
+		s.inCalendarSection = true
+		s.inRuleSection = false
+	default:
+		// Different section
+		if s.inRuleSection && len(s.currentRule) > 0 {
+			s.rules = append(s.rules, s.currentRule)
+			s.currentRule = make(map[string]interface{})
+		}
+		s.inCalendarSection = false
+		s.inRuleSection = false
+	}
+}
+
+// handleKeyValue processes a key-value pair line.
+func (s *tomlParserState) handleKeyValue(line string) {
+	if !s.inCalendarSection && !s.inRuleSection {
+		return
 	}
 
+	idx := strings.Index(line, "=")
+	if idx <= 0 {
+		return
+	}
+
+	key := strings.TrimSpace(line[:idx])
+	value := strings.TrimSpace(line[idx+1:])
+	value = strings.Trim(value, "\"'")
+
+	if s.inCalendarSection {
+		s.setCalendarValue(key, value)
+	} else if s.inRuleSection {
+		s.setRuleValue(key, value)
+	}
+}
+
+// setCalendarValue sets a value in the calendar section.
+func (s *tomlParserState) setCalendarValue(key, value string) {
+	switch key {
+	case "enabled":
+		s.result["enabled"] = value == "true"
+	case "default_palette":
+		s.result["default_palette"] = value
+	}
+}
+
+// setRuleValue sets a value in a rule section.
+func (s *tomlParserState) setRuleValue(key, value string) {
+	if key == "enabled" {
+		s.currentRule[key] = value == "true"
+	} else {
+		s.currentRule[key] = value
+	}
+}
+
+// finalize completes parsing and returns the result.
+func (s *tomlParserState) finalize() map[string]interface{} {
 	// Don't forget the last rule
-	if len(currentRule) > 0 {
-		rules = append(rules, currentRule)
+	if len(s.currentRule) > 0 {
+		s.rules = append(s.rules, s.currentRule)
 	}
 
-	if len(rules) > 0 {
-		result["rules"] = rules
+	if len(s.rules) > 0 {
+		s.result["rules"] = s.rules
 	}
 
-	if len(result) == 0 {
+	if len(s.result) == 0 {
 		return nil
 	}
-	return result
+	return s.result
 }
 
 // getCalendarRules extracts calendar rules from config.

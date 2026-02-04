@@ -14,7 +14,7 @@ func TestThemeCalendarPlugin_Name(t *testing.T) {
 	}
 }
 
-func TestThemeCalendarPlugin_Interfaces(t *testing.T) {
+func TestThemeCalendarPlugin_Interfaces(_ *testing.T) {
 	p := NewThemeCalendarPlugin()
 
 	// Verify plugin implements required interfaces
@@ -464,8 +464,14 @@ func TestThemeCalendarPlugin_ApplyRule_Variables(t *testing.T) {
 	}
 
 	cfg := m.Config()
-	theme := cfg.Extra["theme"].(map[string]interface{})
-	vars := theme["variables"].(map[string]interface{})
+	theme, ok := cfg.Extra["theme"].(map[string]interface{})
+	if !ok {
+		t.Fatal("theme not found in config")
+	}
+	vars, ok := theme["variables"].(map[string]interface{})
+	if !ok {
+		t.Fatal("variables not found in theme")
+	}
 
 	// Check merged variables
 	if vars["--accent"] != "#ff0000" {
@@ -512,8 +518,14 @@ func TestThemeCalendarPlugin_ApplyRule_Font(t *testing.T) {
 	}
 
 	cfg := m.Config()
-	theme := cfg.Extra["theme"].(map[string]interface{})
-	font := theme["font"].(map[string]interface{})
+	theme, ok := cfg.Extra["theme"].(map[string]interface{})
+	if !ok {
+		t.Fatal("theme not found in config")
+	}
+	font, ok := theme["font"].(map[string]interface{})
+	if !ok {
+		t.Fatal("font not found in theme")
+	}
 
 	if font["family"] != "Mountains of Christmas" {
 		t.Errorf("font family = %v, want 'Mountains of Christmas'", font["family"])
@@ -553,7 +565,10 @@ func TestThemeCalendarPlugin_ApplyRule_LightDarkPalettes(t *testing.T) {
 	}
 
 	cfg := m.Config()
-	theme := cfg.Extra["theme"].(map[string]interface{})
+	theme, ok := cfg.Extra["theme"].(map[string]interface{})
+	if !ok {
+		t.Fatal("theme not found in config")
+	}
 
 	if theme["palette_light"] != "christmas-light" {
 		t.Errorf("palette_light = %v, want 'christmas-light'", theme["palette_light"])
@@ -601,9 +616,11 @@ func TestThemeCalendarPlugin_InvalidDateFormats(t *testing.T) {
 
 	cfg := m.Config()
 	if cfg.Extra["theme"] != nil {
-		theme := cfg.Extra["theme"].(map[string]interface{})
-		if palette, ok := theme["palette"].(string); ok && palette != "" {
-			t.Errorf("expected no palette to be set with invalid rules, got %q", palette)
+		theme, ok := cfg.Extra["theme"].(map[string]interface{})
+		if ok {
+			if palette, ok := theme["palette"].(string); ok && palette != "" {
+				t.Errorf("expected no palette to be set with invalid rules, got %q", palette)
+			}
 		}
 	}
 }

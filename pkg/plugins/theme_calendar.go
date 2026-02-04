@@ -208,10 +208,11 @@ func (p *ThemeCalendarPlugin) parseBackgroundConfig(m map[string]interface{}) *m
 				if html, ok := bgMap["html"].(string); ok {
 					elem.HTML = html
 				}
-				if zIndex, ok := bgMap["z_index"].(int64); ok {
-					elem.ZIndex = int(zIndex)
-				} else if zIndex, ok := bgMap["z_index"].(int); ok {
-					elem.ZIndex = zIndex
+				switch zVal := bgMap["z_index"].(type) {
+				case int64:
+					elem.ZIndex = int(zVal)
+				case int:
+					elem.ZIndex = zVal
 				}
 				bg.Backgrounds = append(bg.Backgrounds, elem)
 			}
@@ -315,28 +316,10 @@ func (p *ThemeCalendarPlugin) applyRule(config *lifecycle.Config, rule *models.T
 		config.Extra = make(map[string]interface{})
 	}
 
-	var themeMap map[string]interface{}
-	if existing, ok := config.Extra["theme"].(map[string]interface{}); ok {
-		themeMap = existing
-	} else {
-		themeMap = make(map[string]interface{})
-	}
+	themeMap := p.getOrCreateThemeMap(config)
 
-	// Apply palette override
-	if rule.Palette != "" {
-		themeMap["palette"] = rule.Palette
-		log.Printf("[theme_calendar] Setting palette to %q", rule.Palette)
-	}
-
-	// Apply light/dark palette overrides
-	if rule.PaletteLight != "" {
-		themeMap["palette_light"] = rule.PaletteLight
-		log.Printf("[theme_calendar] Setting palette_light to %q", rule.PaletteLight)
-	}
-	if rule.PaletteDark != "" {
-		themeMap["palette_dark"] = rule.PaletteDark
-		log.Printf("[theme_calendar] Setting palette_dark to %q", rule.PaletteDark)
-	}
+	// Apply palette overrides
+	p.applyPaletteOverrides(themeMap, rule)
 
 	// Apply custom CSS override
 	if rule.CustomCSS != "" {
@@ -345,78 +328,120 @@ func (p *ThemeCalendarPlugin) applyRule(config *lifecycle.Config, rule *models.T
 	}
 
 	// Merge variables (deep merge with existing)
-	if len(rule.Variables) > 0 {
-		existingVars, _ := themeMap["variables"].(map[string]interface{})
-		if existingVars == nil {
-			existingVars = make(map[string]interface{})
-		}
-		for k, v := range rule.Variables {
-			existingVars[k] = v
-		}
-		themeMap["variables"] = existingVars
-		log.Printf("[theme_calendar] Merged %d CSS variables", len(rule.Variables))
-	}
+	p.applyVariablesOverride(themeMap, rule)
 
 	// Apply background override (replace entirely if set)
-	if rule.Background != nil && rule.Background.Enabled != nil && *rule.Background.Enabled {
-		bgMap := make(map[string]interface{})
-		bgMap["enabled"] = true
-		if rule.Background.CSS != "" {
-			bgMap["css"] = rule.Background.CSS
-		}
-		if len(rule.Background.Scripts) > 0 {
-			bgMap["scripts"] = rule.Background.Scripts
-		}
-		if len(rule.Background.Backgrounds) > 0 {
-			bgs := make([]map[string]interface{}, 0, len(rule.Background.Backgrounds))
-			for _, b := range rule.Background.Backgrounds {
-				bgs = append(bgs, map[string]interface{}{
-					"html":    b.HTML,
-					"z_index": b.ZIndex,
-				})
-			}
-			bgMap["backgrounds"] = bgs
-		}
-		themeMap["background"] = bgMap
-		log.Printf("[theme_calendar] Applied background override")
-	}
+	p.applyBackgroundOverride(themeMap, rule)
 
 	// Apply font override (merge with existing)
-	if rule.Font != nil {
-		existingFont, _ := themeMap["font"].(map[string]interface{})
-		if existingFont == nil {
-			existingFont = make(map[string]interface{})
-		}
-		if rule.Font.Family != "" {
-			existingFont["family"] = rule.Font.Family
-		}
-		if rule.Font.HeadingFamily != "" {
-			existingFont["heading_family"] = rule.Font.HeadingFamily
-		}
-		if rule.Font.CodeFamily != "" {
-			existingFont["code_family"] = rule.Font.CodeFamily
-		}
-		if rule.Font.Size != "" {
-			existingFont["size"] = rule.Font.Size
-		}
-		if rule.Font.LineHeight != "" {
-			existingFont["line_height"] = rule.Font.LineHeight
-		}
-		if len(rule.Font.GoogleFonts) > 0 {
-			existingFont["google_fonts"] = rule.Font.GoogleFonts
-		}
-		if len(rule.Font.CustomURLs) > 0 {
-			existingFont["custom_urls"] = rule.Font.CustomURLs
-		}
-		themeMap["font"] = existingFont
-		log.Printf("[theme_calendar] Applied font override")
-	}
+	p.applyFontOverride(themeMap, rule)
 
 	// Store the updated theme map
 	config.Extra["theme"] = themeMap
 
 	// Log the active rule
 	log.Printf("[theme_calendar] Applied rule %q for current date", rule.Name)
+}
+
+// getOrCreateThemeMap retrieves existing theme map or creates a new one.
+func (p *ThemeCalendarPlugin) getOrCreateThemeMap(config *lifecycle.Config) map[string]interface{} {
+	if existing, ok := config.Extra["theme"].(map[string]interface{}); ok {
+		return existing
+	}
+	return make(map[string]interface{})
+}
+
+// applyPaletteOverrides applies palette-related overrides from the rule.
+func (p *ThemeCalendarPlugin) applyPaletteOverrides(themeMap map[string]interface{}, rule *models.ThemeCalendarRule) {
+	if rule.Palette != "" {
+		themeMap["palette"] = rule.Palette
+		log.Printf("[theme_calendar] Setting palette to %q", rule.Palette)
+	}
+	if rule.PaletteLight != "" {
+		themeMap["palette_light"] = rule.PaletteLight
+		log.Printf("[theme_calendar] Setting palette_light to %q", rule.PaletteLight)
+	}
+	if rule.PaletteDark != "" {
+		themeMap["palette_dark"] = rule.PaletteDark
+		log.Printf("[theme_calendar] Setting palette_dark to %q", rule.PaletteDark)
+	}
+}
+
+// applyVariablesOverride merges CSS variables from the rule.
+func (p *ThemeCalendarPlugin) applyVariablesOverride(themeMap map[string]interface{}, rule *models.ThemeCalendarRule) {
+	if len(rule.Variables) == 0 {
+		return
+	}
+	existingVars, ok := themeMap["variables"].(map[string]interface{})
+	if !ok || existingVars == nil {
+		existingVars = make(map[string]interface{})
+	}
+	for k, v := range rule.Variables {
+		existingVars[k] = v
+	}
+	themeMap["variables"] = existingVars
+	log.Printf("[theme_calendar] Merged %d CSS variables", len(rule.Variables))
+}
+
+// applyBackgroundOverride applies background decoration override from the rule.
+func (p *ThemeCalendarPlugin) applyBackgroundOverride(themeMap map[string]interface{}, rule *models.ThemeCalendarRule) {
+	if rule.Background == nil || rule.Background.Enabled == nil || !*rule.Background.Enabled {
+		return
+	}
+	bgMap := make(map[string]interface{})
+	bgMap["enabled"] = true
+	if rule.Background.CSS != "" {
+		bgMap["css"] = rule.Background.CSS
+	}
+	if len(rule.Background.Scripts) > 0 {
+		bgMap["scripts"] = rule.Background.Scripts
+	}
+	if len(rule.Background.Backgrounds) > 0 {
+		bgs := make([]map[string]interface{}, 0, len(rule.Background.Backgrounds))
+		for _, b := range rule.Background.Backgrounds {
+			bgs = append(bgs, map[string]interface{}{
+				"html":    b.HTML,
+				"z_index": b.ZIndex,
+			})
+		}
+		bgMap["backgrounds"] = bgs
+	}
+	themeMap["background"] = bgMap
+	log.Printf("[theme_calendar] Applied background override")
+}
+
+// applyFontOverride applies font configuration override from the rule.
+func (p *ThemeCalendarPlugin) applyFontOverride(themeMap map[string]interface{}, rule *models.ThemeCalendarRule) {
+	if rule.Font == nil {
+		return
+	}
+	existingFont, ok := themeMap["font"].(map[string]interface{})
+	if !ok || existingFont == nil {
+		existingFont = make(map[string]interface{})
+	}
+	if rule.Font.Family != "" {
+		existingFont["family"] = rule.Font.Family
+	}
+	if rule.Font.HeadingFamily != "" {
+		existingFont["heading_family"] = rule.Font.HeadingFamily
+	}
+	if rule.Font.CodeFamily != "" {
+		existingFont["code_family"] = rule.Font.CodeFamily
+	}
+	if rule.Font.Size != "" {
+		existingFont["size"] = rule.Font.Size
+	}
+	if rule.Font.LineHeight != "" {
+		existingFont["line_height"] = rule.Font.LineHeight
+	}
+	if len(rule.Font.GoogleFonts) > 0 {
+		existingFont["google_fonts"] = rule.Font.GoogleFonts
+	}
+	if len(rule.Font.CustomURLs) > 0 {
+		existingFont["custom_urls"] = rule.Font.CustomURLs
+	}
+	themeMap["font"] = existingFont
+	log.Printf("[theme_calendar] Applied font override")
 }
 
 // Compile-time interface verification.
