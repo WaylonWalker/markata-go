@@ -202,7 +202,7 @@ func (p *TagsListingPlugin) renderTagsPage(config *lifecycle.Config, tagsConfig 
 	}
 
 	ctx := templates.NewContext(syntheticPost, "", modelsConfig)
-	ctx.Extra["tags"] = tagInfos
+	ctx.Extra["tag_list"] = tagInfos
 	ctx.Extra["total_tags"] = len(tagInfos)
 
 	// Render template
