@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/spf13/cobra"
@@ -140,6 +143,26 @@ Example usage:
 	RunE: runPaletteNewCommand,
 }
 
+// paletteFetchCmd fetches a palette from a Lospec URL.
+var paletteFetchCmd = &cobra.Command{
+	Use:   "fetch <url>",
+	Short: "Fetch palette from Lospec",
+	Long: `Fetch a color palette from a Lospec.com URL.
+
+Downloads the palette, generates semantic mappings, and saves it to your
+user palettes directory (~/.config/markata-go/palettes/).
+
+Supported URL format:
+  https://lospec.com/palette-list/<palette-name>.txt
+
+Example usage:
+  markata-go palette fetch https://lospec.com/palette-list/cheese-palette.txt
+  markata-go palette fetch https://lospec.com/palette-list/sweetie-16.txt --name "My Sweetie"
+  markata-go palette fetch https://lospec.com/palette-list/tokyo-night.txt -o palettes/`,
+	Args: cobra.ExactArgs(1),
+	RunE: runPaletteFetchCommand,
+}
+
 var (
 	// paletteListVariant filters list by light/dark variant.
 	paletteListVariant string
@@ -170,6 +193,12 @@ var (
 
 	// palettePreviewAll shows all palettes in preview.
 	palettePreviewAll bool
+
+	// paletteFetchName is the custom name for a fetched palette.
+	paletteFetchName string
+
+	// paletteFetchOutput is the output directory for a fetched palette.
+	paletteFetchOutput string
 )
 
 func init() {
@@ -206,6 +235,11 @@ func init() {
 	paletteNewCmd.Flags().StringVar(&paletteNewVariant, "variant", "dark", "Palette variant (light/dark)")
 	paletteNewCmd.Flags().StringVar(&paletteFrom, "from", "", "Base palette to copy from")
 	paletteNewCmd.Flags().StringVarP(&paletteOutput, "output", "o", "", "Output file (default: palettes/<name>.toml)")
+
+	// Fetch subcommand
+	paletteCmd.AddCommand(paletteFetchCmd)
+	paletteFetchCmd.Flags().StringVarP(&paletteFetchName, "name", "n", "", "Custom name for the palette")
+	paletteFetchCmd.Flags().StringVarP(&paletteFetchOutput, "output", "o", "", "Output directory (default: ~/.config/markata-go/palettes/)")
 }
 
 // runPaletteListCommand lists available palettes.
@@ -585,6 +619,80 @@ func runPaletteNewCommand(_ *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Created new palette: %s\n", outputFile)
+	return nil
+}
+
+// runPaletteFetchCommand fetches a palette from a Lospec URL.
+func runPaletteFetchCommand(_ *cobra.Command, args []string) error {
+	rawURL := args[0]
+
+	// Validate and parse the URL
+	normalizedURL, err := palettes.ParseLospecURL(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid Lospec URL: %w\nExpected format: https://lospec.com/palette-list/<name>.txt", err)
+	}
+
+	fmt.Printf("Fetching palette from: %s\n", normalizedURL)
+
+	// Create client and fetch palette
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	client := palettes.NewLospecClient()
+	p, err := client.FetchPalette(ctx, normalizedURL)
+	if err != nil {
+		return fmt.Errorf("failed to fetch palette: %w", err)
+	}
+
+	// Override name if provided
+	if paletteFetchName != "" {
+		p.Name = paletteFetchName
+	}
+
+	// Determine output directory
+	var outputDir string
+	if paletteFetchOutput != "" {
+		outputDir = paletteFetchOutput
+	} else {
+		outputDir, err = palettes.GetUserPalettesDir()
+		if err != nil {
+			return fmt.Errorf("failed to get user palettes directory: %w", err)
+		}
+	}
+
+	// Generate output filename
+	outputFile := filepath.Join(outputDir, normalizeFileName(p.Name)+".toml")
+
+	// Check if file already exists
+	if _, err := os.Stat(outputFile); err == nil {
+		return fmt.Errorf("palette file already exists: %s\nUse a different name with --name or delete the existing file", outputFile)
+	}
+
+	// Save the palette
+	if err := palettes.SavePaletteToFile(p, outputFile); err != nil {
+		return fmt.Errorf("failed to save palette: %w", err)
+	}
+
+	fmt.Printf("Palette saved to: %s\n", outputFile)
+	fmt.Printf("\nPalette details:\n")
+	fmt.Printf("  Name:        %s\n", p.Name)
+	fmt.Printf("  Variant:     %s\n", p.Variant)
+	fmt.Printf("  Colors:      %d\n", len(p.Colors))
+	fmt.Printf("  Source:      %s\n", p.Homepage)
+
+	// Show semantic mappings
+	if len(p.Semantic) > 0 {
+		fmt.Printf("\nSemantic mappings:\n")
+		for name, ref := range p.Semantic {
+			hex := p.Resolve(name)
+			fmt.Printf("  %-15s -> %-10s (%s)\n", name, ref, hex)
+		}
+	}
+
+	fmt.Printf("\nUse this palette in your config:\n")
+	fmt.Printf("  [markata-go.theme]\n")
+	fmt.Printf("  palette = %q\n", normalizeFileName(p.Name))
+
 	return nil
 }
 
