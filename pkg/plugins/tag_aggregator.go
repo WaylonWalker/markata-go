@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"fmt"
 	"log"
 	"sort"
 	"strings"
@@ -15,6 +14,9 @@ import (
 // - Synonym normalization: Replace variant tag names with canonical tags (e.g., "k8s" -> "kubernetes")
 // - Hierarchical expansion: Automatically add parent/related tags (e.g., "pandas" adds "data" and "python")
 // - Recursive expansion: Additional tags are applied recursively to build complete tag hierarchies
+//
+// This plugin runs in the Load stage with priority 50 (after posts are loaded but before AutoFeedsPlugin
+// at PriorityLate=100) so that expanded tags are visible to auto-generated tag feeds.
 type TagAggregatorPlugin struct {
 	manager *lifecycle.Manager
 }
@@ -22,7 +24,8 @@ type TagAggregatorPlugin struct {
 var (
 	_ lifecycle.Plugin          = (*TagAggregatorPlugin)(nil)
 	_ lifecycle.ConfigurePlugin = (*TagAggregatorPlugin)(nil)
-	_ lifecycle.TransformPlugin = (*TagAggregatorPlugin)(nil)
+	_ lifecycle.LoadPlugin      = (*TagAggregatorPlugin)(nil)
+	_ lifecycle.PriorityPlugin  = (*TagAggregatorPlugin)(nil)
 )
 
 // NewTagAggregatorPlugin creates a new tag aggregator plugin.
@@ -35,18 +38,31 @@ func (p *TagAggregatorPlugin) Name() string {
 	return "tag_aggregator"
 }
 
+// Priority returns the plugin's priority for a given stage.
+// We run in Load stage with priority 50 - after posts are loaded (default=0)
+// but before AutoFeedsPlugin (PriorityLate=100) creates tag feeds.
+func (p *TagAggregatorPlugin) Priority(stage lifecycle.Stage) int {
+	if stage == lifecycle.StageLoad {
+		return 50 // Between default (0) and late (100)
+	}
+	return lifecycle.PriorityDefault
+}
+
 // Configure stores the manager reference.
 func (p *TagAggregatorPlugin) Configure(m *lifecycle.Manager) error {
 	p.manager = m
 	return nil
 }
 
-// Transform normalizes and expands tags for all posts.
-func (p *TagAggregatorPlugin) Transform(m *lifecycle.Manager) error {
+// Load normalizes and expands tags for all posts.
+// This runs in the Load stage so expanded tags are visible to auto-generated feeds.
+func (p *TagAggregatorPlugin) Load(m *lifecycle.Manager) error {
 	// Get models.Config from lifecycle.Config
 	modelsConfig, ok := getModelsConfig(m.Config())
 	if !ok {
-		return fmt.Errorf("tag_aggregator: could not access models.Config")
+		// Gracefully skip if models.Config is not available
+		// This can happen in tests or minimal configurations
+		return nil
 	}
 
 	cfg := &modelsConfig.TagAggregator

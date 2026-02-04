@@ -146,11 +146,11 @@ func DefaultPlugins() []lifecycle.Plugin {
 
 		// Load stage plugins
 		NewLoadPlugin(),
+		NewTagAggregatorPlugin(), // Normalize and expand tags (runs after Load, before AutoFeeds)
 
 		// Transform stage plugins (in order)
 		NewAutoTitlePlugin(),              // Auto-generate titles first
 		NewDescriptionPlugin(),            // Auto-generate descriptions early
-		NewTagAggregatorPlugin(),          // Normalize and expand tags early in Transform
 		NewStructuredDataPlugin(),         // Generate structured data (needs title, description)
 		NewReadingTimePlugin(),            // Calculate reading time
 		NewStatsPlugin(),                  // Calculate comprehensive content stats
