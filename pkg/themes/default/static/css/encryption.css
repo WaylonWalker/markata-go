@@ -6,7 +6,8 @@
  */
 
 .encrypted-content {
-  margin: 2rem 0;
+  margin: 4rem 0;
+  padding: 2rem 0;
 }
 
 .encrypted-content__locked {
