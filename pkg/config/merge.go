@@ -444,6 +444,20 @@ func mergeSEOConfig(base, override models.SEOConfig) models.SEOConfig {
 	if override.AuthorImage != "" {
 		result.AuthorImage = override.AuthorImage
 	}
+	if override.OGImageService != "" {
+		result.OGImageService = override.OGImageService
+	}
+
+	// Merge StructuredData config (pointer fields)
+	if override.StructuredData.Enabled != nil {
+		result.StructuredData.Enabled = override.StructuredData.Enabled
+	}
+	if override.StructuredData.Publisher != nil {
+		result.StructuredData.Publisher = override.StructuredData.Publisher
+	}
+	if override.StructuredData.DefaultAuthor != nil {
+		result.StructuredData.DefaultAuthor = override.StructuredData.DefaultAuthor
+	}
 
 	return result
 }
