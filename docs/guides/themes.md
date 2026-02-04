@@ -427,6 +427,31 @@ markata-go palette new my-palette
 
 Creates `palettes/my-palette.toml` that you can customize.
 
+### Clone Existing Palette
+
+Clone an existing palette as a starting point for customization:
+
+```bash
+# Interactive mode - opens fuzzy picker to select a palette
+markata-go palette clone
+
+# Clone a specific palette by name
+markata-go palette clone catppuccin-mocha
+
+# Clone with explicit new name
+markata-go palette clone catppuccin-mocha --name "my-custom-theme"
+```
+
+The cloned palette is saved to `~/.config/markata-go/palettes/` and includes:
+- All colors from the source palette
+- Semantic and component color mappings
+- A description noting the source palette
+
+This is useful when you want to:
+- Start from a well-designed palette and make minor adjustments
+- Create variants of existing palettes (e.g., higher contrast)
+- Experiment without modifying the original
+
 ### Fetch Palette from Lospec
 
 Import color palettes directly from [Lospec.com](https://lospec.com/palette-list), a popular source for pixel art and retro color palettes:
