@@ -88,15 +88,15 @@ func init() {
 }
 
 // getAssetsConfig loads the config and returns the assets configuration.
-func getAssetsConfig() (*assets.Downloader, string) {
+func getAssetsConfig() (downloader *assets.Downloader, cacheDir string) {
 	cfg, err := config.Load(cfgFile)
 	if err != nil {
 		// Use defaults if no config
-		cacheDir := ".markata/assets-cache"
+		cacheDir = ".markata/assets-cache"
 		return assets.NewDownloader(cacheDir, true), cacheDir
 	}
 
-	cacheDir := cfg.Assets.GetCacheDir()
+	cacheDir = cfg.Assets.GetCacheDir()
 	verifyIntegrity := cfg.Assets.IsVerifyIntegrityEnabled()
 	return assets.NewDownloader(cacheDir, verifyIntegrity), cacheDir
 }
