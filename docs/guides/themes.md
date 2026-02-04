@@ -1244,6 +1244,239 @@ css = '''
 
 ---
 
+## Seasonal Theme Calendar
+
+Automatically apply different themes based on the date. Perfect for seasonal decorations, holidays, or promotional periods.
+
+### Basic Configuration
+
+Enable date-based theme switching:
+
+```toml
+[markata-go.theme_calendar]
+enabled = true
+
+[[markata-go.theme_calendar.rules]]
+name = "Christmas Season"
+start_date = "12-15"
+end_date = "12-26"
+palette = "christmas"
+
+[[markata-go.theme_calendar.rules]]
+name = "Winter Frost"
+start_date = "12-01"
+end_date = "02-28"
+palette = "winter-frost"
+```
+
+During December 15-26, the site uses the "christmas" palette. From December 1 to February 28, it uses "winter-frost" (excluding the more specific Christmas period).
+
+### How It Works
+
+1. **First match wins**: Rules are evaluated in order. The first matching rule is applied.
+2. **MM-DD format**: Dates use month-day format (no year), so rules repeat annually.
+3. **Year boundary support**: Ranges like `12-01` to `02-28` correctly span December through February.
+4. **Runs early**: The calendar plugin runs at the Configure stage before other theme plugins, ensuring palette overrides are applied correctly.
+
+### Rule Configuration
+
+Each rule can override various theme settings:
+
+```toml
+[[markata-go.theme_calendar.rules]]
+name = "Spooky October"
+start_date = "10-01"
+end_date = "10-31"
+palette = "halloween"            # Single palette for both modes
+# Or use separate light/dark palettes:
+# palette_light = "halloween-light"
+# palette_dark = "halloween-dark"
+
+# CSS variable overrides
+[markata-go.theme_calendar.rules.variables]
+"--color-accent" = "#ff6600"
+"--color-link" = "#9b59b6"
+
+# Custom CSS file for the season
+custom_css = "halloween.css"
+```
+
+### Rule Options Reference
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `name` | string | Display name for the rule (used in logs and CLI) |
+| `start_date` | string | Start date in MM-DD format (e.g., "12-01") |
+| `end_date` | string | End date in MM-DD format (e.g., "02-28") |
+| `palette` | string | Palette to use (overrides both modes) |
+| `palette_light` | string | Light mode palette (if different from dark) |
+| `palette_dark` | string | Dark mode palette |
+| `custom_css` | string | Additional CSS file for this period |
+| `variables` | table | CSS variable overrides |
+| `background` | table | Background decoration override (see below) |
+| `font` | table | Font configuration override |
+
+### Background Overrides
+
+Apply seasonal background decorations:
+
+```toml
+[[markata-go.theme_calendar.rules]]
+name = "Winter Wonderland"
+start_date = "12-01"
+end_date = "02-28"
+palette = "winter-frost"
+
+[markata-go.theme_calendar.rules.background]
+enabled = true
+css = """
+.snowflake {
+  position: absolute;
+  color: white;
+  animation: fall linear infinite;
+}
+"""
+
+[[markata-go.theme_calendar.rules.background.backgrounds]]
+html = '<snow-fall count="100"></snow-fall>'
+z_index = -5
+```
+
+### Font Overrides
+
+Use a different font for special periods:
+
+```toml
+[[markata-go.theme_calendar.rules]]
+name = "Christmas Season"
+start_date = "12-15"
+end_date = "12-26"
+palette = "christmas"
+
+[markata-go.theme_calendar.rules.font]
+family = "Mountains of Christmas"
+heading_family = "Snowburst One"
+google_fonts = ["Mountains of Christmas", "Snowburst One"]
+```
+
+### Multiple Rules Example
+
+Create a full year of seasonal themes:
+
+```toml
+[markata-go.theme_calendar]
+enabled = true
+default_palette = "catppuccin-mocha"  # Fallback when no rule matches
+
+# Spring (March 20 - June 20)
+[[markata-go.theme_calendar.rules]]
+name = "Spring"
+start_date = "03-20"
+end_date = "06-20"
+palette = "spring-garden"
+
+# Summer (June 21 - September 22)
+[[markata-go.theme_calendar.rules]]
+name = "Summer"
+start_date = "06-21"
+end_date = "09-22"
+palette = "summer-sunset"
+
+# Halloween (October 15 - November 1)
+[[markata-go.theme_calendar.rules]]
+name = "Halloween"
+start_date = "10-15"
+end_date = "11-01"
+palette = "spooky"
+
+# Fall (September 23 - December 20, but after Halloween ends)
+[[markata-go.theme_calendar.rules]]
+name = "Fall"
+start_date = "11-02"
+end_date = "12-20"
+palette = "autumn-leaves"
+
+# Also need early fall before Halloween
+[[markata-go.theme_calendar.rules]]
+name = "Early Fall"
+start_date = "09-23"
+end_date = "10-14"
+palette = "autumn-leaves"
+
+# Winter (December 21 - March 19)
+[[markata-go.theme_calendar.rules]]
+name = "Winter"
+start_date = "12-21"
+end_date = "03-19"
+palette = "winter-frost"
+```
+
+### CLI Commands
+
+**List all calendar rules:**
+
+```bash
+markata-go theme calendar list
+```
+
+Output:
+```
+Theme Calendar Rules (3 configured)
+============================================================
+
+Christmas Season [ACTIVE]
+  Date Range: 12-15 to 12-26
+  Palette: christmas
+
+Winter Frost
+  Date Range: 12-01 to 02-28
+  Palette: winter-frost
+
+Halloween
+  Date Range: 10-15 to 11-01
+  Palette: spooky
+```
+
+**Preview theme for a specific date:**
+
+```bash
+# Check today's theme
+markata-go theme calendar preview
+
+# Check what theme applies on December 25
+markata-go theme calendar preview 12-25
+
+# Check New Year's Day
+markata-go theme calendar preview 01-01
+```
+
+Output:
+```
+Checking theme for date: 12-25
+----------------------------------------
+
+Matching Rule: Christmas Season
+Date Range: 12-15 to 12-26
+
+Theme Overrides:
+  Palette: christmas
+  Font Family: Mountains of Christmas
+```
+
+### Tips
+
+1. **Order matters**: Put more specific rules before general ones. Christmas should come before Winter.
+
+2. **Testing**: Use `markata-go theme calendar preview MM-DD` to test any date without waiting for that day.
+
+3. **Smooth transitions**: Consider overlapping date ranges with similar themes for gradual transitions.
+
+4. **Performance**: Each rule is checked in order; keep the number of rules reasonable.
+
+5. **Combine with switcher**: The calendar sets a default theme, but users can still override via the palette switcher if enabled.
+
+---
+
 ## Font Configuration
 
 markata-go provides flexible font configuration to customize your site's typography without writing CSS.

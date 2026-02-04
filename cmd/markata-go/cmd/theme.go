@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -81,6 +82,52 @@ Example usage:
 	RunE: runThemeCheckAllCommand,
 }
 
+// themeCalendarCmd manages seasonal theme calendar.
+var themeCalendarCmd = &cobra.Command{
+	Use:   "calendar",
+	Short: "Manage seasonal theme calendar",
+	Long: `Commands for working with the seasonal theme calendar.
+
+The theme calendar allows you to automatically switch themes based on
+date ranges. For example, apply a Christmas theme from Dec 15-26.
+
+Subcommands:
+  list    - List all configured calendar rules
+  preview - Preview which theme applies on a specific date`,
+}
+
+// themeCalendarListCmd lists calendar rules.
+var themeCalendarListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all calendar rules",
+	Long: `List all theme calendar rules from your configuration.
+
+Shows:
+  - Rule name
+  - Date range (start - end)
+  - Palette to apply
+  - Current status (active/inactive)
+
+Example usage:
+  markata-go theme calendar list`,
+	RunE: runThemeCalendarListCommand,
+}
+
+// themeCalendarPreviewCmd previews theme for a date.
+var themeCalendarPreviewCmd = &cobra.Command{
+	Use:   "preview [MM-DD]",
+	Short: "Preview theme for a specific date",
+	Long: `Preview which theme/palette would be applied on a specific date.
+
+If no date is provided, uses today's date.
+
+Example usage:
+  markata-go theme calendar preview          # Check today
+  markata-go theme calendar preview 12-25    # Check Christmas
+  markata-go theme calendar preview 01-01    # Check New Year`,
+	RunE: runThemeCalendarPreviewCommand,
+}
+
 var (
 	// themeOutputDir is the output directory for rendered themes.
 	themeOutputDir string
@@ -122,6 +169,11 @@ func init() {
 	themeCheckAllCmd.Flags().BoolVar(&themeCheckStrict, "strict", false, "Include AAA level checks")
 	themeCheckAllCmd.Flags().BoolVar(&themeCheckJSON, "json", false, "Output results as JSON")
 	themeCheckAllCmd.Flags().BoolVar(&themeCheckColorblindness, "colorblindness", false, "Include color blindness simulation warnings")
+
+	// calendar subcommand
+	themeCmd.AddCommand(themeCalendarCmd)
+	themeCalendarCmd.AddCommand(themeCalendarListCmd)
+	themeCalendarCmd.AddCommand(themeCalendarPreviewCmd)
 }
 
 // ThemeRenderResult holds the result of rendering a single theme.
@@ -1037,4 +1089,407 @@ func getWCAGLevel(strict bool) string {
 		return "AA+AAA"
 	}
 	return "AA"
+}
+
+// runThemeCalendarListCommand lists all calendar rules.
+func runThemeCalendarListCommand(_ *cobra.Command, _ []string) error {
+	// Load config
+	cfg, err := loadConfigForCalendar()
+	if err != nil {
+		return err
+	}
+
+	rules := getCalendarRules(cfg)
+	if len(rules) == 0 {
+		fmt.Println("No theme calendar rules configured.")
+		fmt.Println("\nTo add rules, add to your markata-go.toml:")
+		fmt.Print(`
+[markata-go.theme_calendar]
+enabled = true
+
+[[markata-go.theme_calendar.rules]]
+name = "Christmas Season"
+start_date = "12-15"
+end_date = "12-26"
+palette = "christmas"
+`)
+		return nil
+	}
+
+	// Check if calendar is enabled
+	enabled := isCalendarEnabled(cfg)
+	if !enabled {
+		fmt.Println("Theme calendar is DISABLED")
+		fmt.Println("Set 'enabled = true' in [markata-go.theme_calendar] to enable")
+		fmt.Println()
+	}
+
+	// Get current date for status
+	now := time.Now()
+	currentMonth := int(now.Month())
+	currentDay := now.Day()
+
+	fmt.Printf("Theme Calendar Rules (%d configured)\n", len(rules))
+	fmt.Println(strings.Repeat("=", 60))
+
+	for _, rule := range rules {
+		name, _ := rule["name"].(string)
+		startDate, _ := rule["start_date"].(string)
+		endDate, _ := rule["end_date"].(string)
+		palette, _ := rule["palette"].(string)
+		paletteLight, _ := rule["palette_light"].(string)
+		paletteDark, _ := rule["palette_dark"].(string)
+
+		// Check if active
+		active := isDateInRangeForCLI(currentMonth, currentDay, startDate, endDate)
+		status := ""
+		if active && enabled {
+			status = " [ACTIVE]"
+		}
+
+		fmt.Printf("\n%s%s\n", name, status)
+		fmt.Printf("  Date Range: %s to %s\n", startDate, endDate)
+
+		if palette != "" {
+			fmt.Printf("  Palette: %s\n", palette)
+		}
+		if paletteLight != "" {
+			fmt.Printf("  Light Palette: %s\n", paletteLight)
+		}
+		if paletteDark != "" {
+			fmt.Printf("  Dark Palette: %s\n", paletteDark)
+		}
+
+		// Show other overrides if present
+		if customCSS, ok := rule["custom_css"].(string); ok && customCSS != "" {
+			fmt.Printf("  Custom CSS: (defined)\n")
+		}
+		if vars, ok := rule["variables"].(map[string]interface{}); ok && len(vars) > 0 {
+			fmt.Printf("  CSS Variables: %d defined\n", len(vars))
+		}
+		if _, ok := rule["background"].(map[string]interface{}); ok {
+			fmt.Printf("  Background: (custom)\n")
+		}
+		if _, ok := rule["font"].(map[string]interface{}); ok {
+			fmt.Printf("  Font: (custom)\n")
+		}
+	}
+
+	fmt.Println()
+	return nil
+}
+
+// runThemeCalendarPreviewCommand previews the theme for a specific date.
+func runThemeCalendarPreviewCommand(_ *cobra.Command, args []string) error {
+	// Load config
+	cfg, err := loadConfigForCalendar()
+	if err != nil {
+		return err
+	}
+
+	rules := getCalendarRules(cfg)
+	if len(rules) == 0 {
+		fmt.Println("No theme calendar rules configured.")
+		return nil
+	}
+
+	// Parse target date
+	var targetMonth, targetDay int
+	if len(args) > 0 {
+		parsed, err := parseMMDDForCLI(args[0])
+		if err != nil {
+			return fmt.Errorf("invalid date format %q: %w (expected MM-DD)", args[0], err)
+		}
+		targetMonth = parsed.month
+		targetDay = parsed.day
+	} else {
+		now := time.Now()
+		targetMonth = int(now.Month())
+		targetDay = now.Day()
+	}
+
+	fmt.Printf("Checking theme for date: %02d-%02d\n", targetMonth, targetDay)
+	fmt.Println(strings.Repeat("-", 40))
+
+	// Check if calendar is enabled
+	enabled := isCalendarEnabled(cfg)
+	if !enabled {
+		fmt.Println("\nNote: Theme calendar is DISABLED in config")
+	}
+
+	// Find matching rule
+	var matchingRule map[string]interface{}
+	for _, rule := range rules {
+		startDate, _ := rule["start_date"].(string)
+		endDate, _ := rule["end_date"].(string)
+		if isDateInRangeForCLI(targetMonth, targetDay, startDate, endDate) {
+			matchingRule = rule
+			break
+		}
+	}
+
+	if matchingRule == nil {
+		fmt.Println("\nNo matching rule found for this date.")
+		fmt.Println("The base theme configuration will be used.")
+		return nil
+	}
+
+	name, _ := matchingRule["name"].(string)
+	fmt.Printf("\nMatching Rule: %s\n", name)
+
+	startDate, _ := matchingRule["start_date"].(string)
+	endDate, _ := matchingRule["end_date"].(string)
+	fmt.Printf("Date Range: %s to %s\n", startDate, endDate)
+
+	// Show what will be applied
+	fmt.Println("\nTheme Overrides:")
+	if palette, ok := matchingRule["palette"].(string); ok && palette != "" {
+		fmt.Printf("  Palette: %s\n", palette)
+	}
+	if paletteLight, ok := matchingRule["palette_light"].(string); ok && paletteLight != "" {
+		fmt.Printf("  Light Palette: %s\n", paletteLight)
+	}
+	if paletteDark, ok := matchingRule["palette_dark"].(string); ok && paletteDark != "" {
+		fmt.Printf("  Dark Palette: %s\n", paletteDark)
+	}
+	if customCSS, ok := matchingRule["custom_css"].(string); ok && customCSS != "" {
+		fmt.Printf("  Custom CSS: %s\n", customCSS)
+	}
+	if vars, ok := matchingRule["variables"].(map[string]interface{}); ok && len(vars) > 0 {
+		fmt.Printf("  CSS Variables:\n")
+		for k, v := range vars {
+			fmt.Printf("    %s: %v\n", k, v)
+		}
+	}
+	if bg, ok := matchingRule["background"].(map[string]interface{}); ok {
+		if enabled, ok := bg["enabled"].(bool); ok && enabled {
+			fmt.Printf("  Background: enabled\n")
+		}
+	}
+	if font, ok := matchingRule["font"].(map[string]interface{}); ok {
+		if family, ok := font["family"].(string); ok && family != "" {
+			fmt.Printf("  Font Family: %s\n", family)
+		}
+	}
+
+	return nil
+}
+
+// loadConfigForCalendar loads the config file for calendar commands.
+func loadConfigForCalendar() (map[string]interface{}, error) {
+	configPaths := []string{
+		"markata-go.toml",
+		"markata.toml",
+	}
+
+	for _, path := range configPaths {
+		if _, err := os.Stat(path); err == nil {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read config: %w", err)
+			}
+
+			var cfg map[string]interface{}
+			// Simple TOML parsing for the specific section we need
+			// For full TOML support, we'd use a proper parser
+			cfg, err = parseSimpleTOML(string(data))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse config: %w", err)
+			}
+			return cfg, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no config file found (checked: %s)", strings.Join(configPaths, ", "))
+}
+
+// parseSimpleTOML is a simple TOML parser for theme calendar config.
+// This extracts the theme_calendar section without full TOML parsing.
+func parseSimpleTOML(content string) (map[string]interface{}, error) {
+	cfg := make(map[string]interface{})
+
+	// Look for markata-go section
+	markata := make(map[string]interface{})
+
+	// Extract theme_calendar section
+	calendarConfig := extractThemeCalendarSection(content)
+	if calendarConfig != nil {
+		markata["theme_calendar"] = calendarConfig
+	}
+
+	cfg["markata-go"] = markata
+	return cfg, nil
+}
+
+// extractThemeCalendarSection extracts the theme_calendar config from TOML content.
+func extractThemeCalendarSection(content string) map[string]interface{} {
+	result := make(map[string]interface{})
+	var rules []map[string]interface{}
+
+	lines := strings.Split(content, "\n")
+	inCalendarSection := false
+	inRuleSection := false
+	currentRule := make(map[string]interface{})
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		// Skip comments and empty lines
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Check for section headers
+		if strings.HasPrefix(line, "[") {
+			if strings.Contains(line, "theme_calendar.rules") {
+				inRuleSection = true
+				inCalendarSection = false
+				if len(currentRule) > 0 {
+					rules = append(rules, currentRule)
+					currentRule = make(map[string]interface{})
+				}
+				continue
+			} else if strings.Contains(line, "theme_calendar") && !strings.Contains(line, ".") {
+				inCalendarSection = true
+				inRuleSection = false
+				continue
+			} else if strings.HasPrefix(line, "[") {
+				// Different section
+				if inRuleSection && len(currentRule) > 0 {
+					rules = append(rules, currentRule)
+					currentRule = make(map[string]interface{})
+				}
+				inCalendarSection = false
+				inRuleSection = false
+				continue
+			}
+		}
+
+		// Parse key-value pairs
+		if inCalendarSection || inRuleSection {
+			if idx := strings.Index(line, "="); idx > 0 {
+				key := strings.TrimSpace(line[:idx])
+				value := strings.TrimSpace(line[idx+1:])
+				value = strings.Trim(value, "\"'")
+
+				if inCalendarSection {
+					if key == "enabled" {
+						result["enabled"] = value == "true"
+					} else if key == "default_palette" {
+						result["default_palette"] = value
+					}
+				} else if inRuleSection {
+					if key == "enabled" {
+						currentRule[key] = value == "true"
+					} else {
+						currentRule[key] = value
+					}
+				}
+			}
+		}
+	}
+
+	// Don't forget the last rule
+	if len(currentRule) > 0 {
+		rules = append(rules, currentRule)
+	}
+
+	if len(rules) > 0 {
+		result["rules"] = rules
+	}
+
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+// getCalendarRules extracts calendar rules from config.
+func getCalendarRules(cfg map[string]interface{}) []map[string]interface{} {
+	markata, ok := cfg["markata-go"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	calendar, ok := markata["theme_calendar"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	rules, ok := calendar["rules"].([]map[string]interface{})
+	if !ok {
+		// Try interface slice
+		if iRules, ok := calendar["rules"].([]interface{}); ok {
+			result := make([]map[string]interface{}, 0, len(iRules))
+			for _, r := range iRules {
+				if rMap, ok := r.(map[string]interface{}); ok {
+					result = append(result, rMap)
+				}
+			}
+			return result
+		}
+		return nil
+	}
+
+	return rules
+}
+
+// isCalendarEnabled checks if the calendar is enabled.
+func isCalendarEnabled(cfg map[string]interface{}) bool {
+	markata, ok := cfg["markata-go"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+
+	calendar, ok := markata["theme_calendar"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+
+	enabled, ok := calendar["enabled"].(bool)
+	return ok && enabled
+}
+
+// parseMMDDForCLI parses a MM-DD date string for CLI commands.
+type parsedDate struct {
+	month int
+	day   int
+}
+
+func parseMMDDForCLI(s string) (parsedDate, error) {
+	parts := strings.Split(s, "-")
+	if len(parts) != 2 {
+		return parsedDate{}, fmt.Errorf("expected MM-DD format")
+	}
+
+	month, err := strconv.Atoi(parts[0])
+	if err != nil || month < 1 || month > 12 {
+		return parsedDate{}, fmt.Errorf("invalid month")
+	}
+
+	day, err := strconv.Atoi(parts[1])
+	if err != nil || day < 1 || day > 31 {
+		return parsedDate{}, fmt.Errorf("invalid day")
+	}
+
+	return parsedDate{month: month, day: day}, nil
+}
+
+// isDateInRangeForCLI checks if a date is in range (for CLI commands).
+func isDateInRangeForCLI(month, day int, startDate, endDate string) bool {
+	start, err1 := parseMMDDForCLI(startDate)
+	end, err2 := parseMMDDForCLI(endDate)
+	if err1 != nil || err2 != nil {
+		return false
+	}
+
+	current := month*100 + day
+	startVal := start.month*100 + start.day
+	endVal := end.month*100 + end.day
+
+	if startVal <= endVal {
+		return current >= startVal && current <= endVal
+	}
+	// Year boundary crossing
+	return current >= startVal || current <= endVal
 }

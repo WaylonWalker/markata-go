@@ -326,6 +326,9 @@ type Config struct {
 	// Theme configures the site theme
 	Theme ThemeConfig `json:"theme" yaml:"theme" toml:"theme"`
 
+	// ThemeCalendar configures automatic seasonal theme switching based on date ranges
+	ThemeCalendar ThemeCalendarConfig `json:"theme_calendar" yaml:"theme_calendar" toml:"theme_calendar"`
+
 	// PostFormats configures output formats for individual posts
 	PostFormats PostFormatsConfig `json:"post_formats" yaml:"post_formats" toml:"post_formats"`
 
@@ -756,6 +759,65 @@ func (s *ThemeSwitcherConfig) IsIncludeAll() bool {
 		return true
 	}
 	return *s.IncludeAll
+}
+
+// ThemeCalendarConfig configures automatic theme switching based on date ranges.
+// This enables seasonal themes, holiday themes, and event-specific styling.
+type ThemeCalendarConfig struct {
+	// Enabled controls whether the theme calendar is active (default: false)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Rules is the list of date-based theme rules
+	Rules []ThemeCalendarRule `json:"rules,omitempty" yaml:"rules,omitempty" toml:"rules,omitempty"`
+
+	// DefaultPalette is the fallback palette when no rules match (optional)
+	// If not set, uses the base theme.palette value
+	DefaultPalette string `json:"default_palette,omitempty" yaml:"default_palette,omitempty" toml:"default_palette,omitempty"`
+}
+
+// ThemeCalendarRule defines a date range and theme overrides for that period.
+// Rules are matched in order - the first matching rule is applied.
+type ThemeCalendarRule struct {
+	// Name is a descriptive name for the rule (e.g., "Christmas Season", "Winter Frost")
+	Name string `json:"name" yaml:"name" toml:"name"`
+
+	// StartDate is the start of the date range in MM-DD format (e.g., "12-15")
+	StartDate string `json:"start_date" yaml:"start_date" toml:"start_date"`
+
+	// EndDate is the end of the date range in MM-DD format (e.g., "12-26")
+	// Ranges can cross year boundaries (e.g., start="12-01", end="02-28")
+	EndDate string `json:"end_date" yaml:"end_date" toml:"end_date"`
+
+	// Palette overrides theme.palette for this period (optional)
+	Palette string `json:"palette,omitempty" yaml:"palette,omitempty" toml:"palette,omitempty"`
+
+	// PaletteLight overrides theme.palette_light for this period (optional)
+	PaletteLight string `json:"palette_light,omitempty" yaml:"palette_light,omitempty" toml:"palette_light,omitempty"`
+
+	// PaletteDark overrides theme.palette_dark for this period (optional)
+	PaletteDark string `json:"palette_dark,omitempty" yaml:"palette_dark,omitempty" toml:"palette_dark,omitempty"`
+
+	// Background overrides theme.background for this period (optional)
+	Background *BackgroundConfig `json:"background,omitempty" yaml:"background,omitempty" toml:"background,omitempty"`
+
+	// Font overrides theme.font for this period (optional)
+	Font *FontConfig `json:"font,omitempty" yaml:"font,omitempty" toml:"font,omitempty"`
+
+	// Variables merges with theme.variables for this period (optional)
+	// These are deep-merged with the base theme variables
+	Variables map[string]string `json:"variables,omitempty" yaml:"variables,omitempty" toml:"variables,omitempty"`
+
+	// CustomCSS overrides theme.custom_css for this period (optional)
+	CustomCSS string `json:"custom_css,omitempty" yaml:"custom_css,omitempty" toml:"custom_css,omitempty"`
+}
+
+// IsEnabled returns whether the theme calendar is enabled.
+// Defaults to false if not explicitly set.
+func (c *ThemeCalendarConfig) IsEnabled() bool {
+	if c.Enabled == nil {
+		return false
+	}
+	return *c.Enabled
 }
 
 // BackgroundConfig configures multi-layered background decorations for pages.
@@ -2101,6 +2163,7 @@ func NewConfig() *Config {
 			Font:      NewFontConfig(),
 			Switcher:  NewThemeSwitcherConfig(),
 		},
+		ThemeCalendar:    NewThemeCalendarConfig(),
 		PostFormats:      NewPostFormatsConfig(),
 		SEO:              NewSEOConfig(),
 		IndieAuth:        NewIndieAuthConfig(),
@@ -2132,6 +2195,15 @@ func NewThemeConfig() ThemeConfig {
 		Variables: make(map[string]string),
 		Font:      NewFontConfig(),
 		Switcher:  NewThemeSwitcherConfig(),
+	}
+}
+
+// NewThemeCalendarConfig creates a new ThemeCalendarConfig with default values.
+func NewThemeCalendarConfig() ThemeCalendarConfig {
+	enabled := false
+	return ThemeCalendarConfig{
+		Enabled: &enabled,
+		Rules:   []ThemeCalendarRule{},
 	}
 }
 
