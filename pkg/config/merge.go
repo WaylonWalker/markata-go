@@ -99,6 +99,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Encryption - merge
 	result.Encryption = mergeEncryptionConfig(base.Encryption, override.Encryption)
 
+	// TagAggregator - merge
+	result.TagAggregator = mergeTagAggregatorConfig(base.TagAggregator, override.TagAggregator)
+
 	// Extra (plugin configs) - merge
 	result.Extra = mergeExtra(base.Extra, override.Extra)
 
@@ -861,6 +864,43 @@ func mergeExtra(base, override map[string]any) map[string]any {
 	// Override with values from override
 	for k, v := range override {
 		result[k] = v
+	}
+
+	return result
+}
+
+// mergeTagAggregatorConfig merges TagAggregatorConfig values.
+func mergeTagAggregatorConfig(base, override models.TagAggregatorConfig) models.TagAggregatorConfig {
+	result := base
+
+	// Enabled - override if set
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+
+	// Synonyms - merge maps (override values take precedence)
+	if len(override.Synonyms) > 0 {
+		if result.Synonyms == nil {
+			result.Synonyms = make(map[string][]string)
+		}
+		for k, v := range override.Synonyms {
+			result.Synonyms[k] = v
+		}
+	}
+
+	// Additional - merge maps (override values take precedence)
+	if len(override.Additional) > 0 {
+		if result.Additional == nil {
+			result.Additional = make(map[string][]string)
+		}
+		for k, v := range override.Additional {
+			result.Additional[k] = v
+		}
+	}
+
+	// GenerateReport - override if true
+	if override.GenerateReport {
+		result.GenerateReport = true
 	}
 
 	return result
