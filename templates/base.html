@@ -12,29 +12,29 @@
 
   {% block head %}
   <!-- Theme CSS -->
-  <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset }}">
-  <link rel="stylesheet" href="/css/chroma.css">
+  <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/chroma.css' | theme_asset_hashed }}">
 
   <!-- Palette Switcher CSS (when enabled) -->
   {% if config.theme.switcher.enabled %}
-  <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset_hashed }}">
   {% endif %}
 
   <!-- Pagefind Search CSS (when enabled) -->
   {% if config.search.enabled %}
   <link rel="stylesheet" href="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.css">
-  <link rel="stylesheet" href="{{ 'css/search.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/search.css' | theme_asset_hashed }}">
   {% endif %}
 
   <!-- Encryption CSS (when post has encrypted content) -->
   {% if post.Extra.has_encrypted_content %}
-  <link rel="stylesheet" href="{{ 'css/encryption.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/encryption.css' | theme_asset_hashed }}">
   {% endif %}
 
   <!-- Conditional CSS Loading -->
@@ -165,7 +165,7 @@
     // Wikilink Hover Tooltips - only load if wikilinks with data-title exist
     if (document.querySelector('.wikilink[data-title]')) {
       const script = document.createElement('script');
-      script.src = '{{ 'js/tooltips.js' | theme_asset }}';
+      script.src = '{{ 'js/tooltips.js' | theme_asset_hashed }}';
       script.defer = true;
       document.body.appendChild(script);
     }
@@ -173,7 +173,7 @@
     // Mention Cards - only load if mention links exist
     if (document.querySelector('a.mention')) {
       const mentionScript = document.createElement('script');
-      mentionScript.src = '{{ 'js/mention-cards.js' | theme_asset }}';
+      mentionScript.src = '{{ 'js/mention-cards.js' | theme_asset_hashed }}';
       mentionScript.defer = true;
       document.body.appendChild(mentionScript);
     }
@@ -181,7 +181,7 @@
     // Keyboard Shortcuts - only load if search or shortcuts modal exist
     if (document.querySelector('#pagefind-search, #shortcuts-modal, [type="search"]')) {
       const shortcutsScript = document.createElement('script');
-      shortcutsScript.src = '{{ 'js/shortcuts.js' | theme_asset }}';
+      shortcutsScript.src = '{{ 'js/shortcuts.js' | theme_asset_hashed }}';
       shortcutsScript.defer = true;
       document.body.appendChild(shortcutsScript);
     }
@@ -189,7 +189,7 @@
     // Pagination (JS mode) - only load if JS pagination element exists
     if (document.querySelector('.pagination-js')) {
       const paginationScript = document.createElement('script');
-      paginationScript.src = '{{ 'js/pagination.js' | theme_asset }}';
+      paginationScript.src = '{{ 'js/pagination.js' | theme_asset_hashed }}';
       paginationScript.defer = true;
       document.body.appendChild(paginationScript);
     }
@@ -237,12 +237,12 @@
 
   <!-- Palette Switcher JS (when enabled) -->
   {% if config.theme.switcher.enabled %}
-  <script src="{{ 'js/palette-switcher.js' | theme_asset }}" defer></script>
+  <script src="{{ 'js/palette-switcher.js' | theme_asset_hashed }}" defer></script>
   {% endif %}
 
   <!-- Decryption JS (when post has encrypted content) -->
   {% if post.Extra.has_encrypted_content %}
-  <script src="{{ 'js/decryption.js' | theme_asset }}" defer></script>
+  <script src="{{ 'js/decryption.js' | theme_asset_hashed }}" defer></script>
   {% endif %}
 
   {% include "partials/background-scripts.html" %}

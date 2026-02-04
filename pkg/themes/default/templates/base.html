@@ -12,24 +12,24 @@
 
   {% block head %}
   <!-- Theme CSS -->
-  <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset }}">
-  <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset }}">
-  <link rel="stylesheet" href="/css/chroma.css">
+  <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/chroma.css' | theme_asset_hashed }}">
 
   <!-- Palette Switcher CSS (when enabled) -->
   {% if config.theme.switcher.enabled %}
-  <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset_hashed }}">
   {% endif %}
 
   <!-- Pagefind Search CSS (when enabled) -->
   {% if config.search.enabled %}
   <link rel="stylesheet" href="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.css">
-  <link rel="stylesheet" href="{{ 'css/search.css' | theme_asset }}">
+  <link rel="stylesheet" href="{{ 'css/search.css' | theme_asset_hashed }}">
   {% endif %}
 
   <!-- Conditional CSS Loading -->
@@ -176,7 +176,7 @@
     // Wikilink Hover Tooltips - only load if wikilinks with data-title exist
     if (document.querySelector('.wikilink[data-title]')) {
       const script = document.createElement('script');
-      script.src = '{{ 'js/tooltips.js' | theme_asset }}';
+      script.src = '{{ 'js/tooltips.js' | theme_asset_hashed }}';
       script.defer = true;
       document.body.appendChild(script);
     }
@@ -184,38 +184,38 @@
     // Mention Cards - only load if mention links exist
     if (document.querySelector('a.mention')) {
       const mentionScript = document.createElement('script');
-      mentionScript.src = '{{ 'js/mention-cards.js' | theme_asset }}';
+      mentionScript.src = '{{ 'js/mention-cards.js' | theme_asset_hashed }}';
       mentionScript.defer = true;
       document.body.appendChild(mentionScript);
     }
 
     // Keyboard Shortcuts Registry - load the core registry first, then load dependent scripts
     const shortcutsRegistryScript = document.createElement('script');
-    shortcutsRegistryScript.src = '{{ 'js/shortcuts-registry.js' | theme_asset }}';
+    shortcutsRegistryScript.src = '{{ 'js/shortcuts-registry.js' | theme_asset_hashed }}';
     // Use onload to ensure registry is fully loaded before dependent scripts
     shortcutsRegistryScript.onload = function() {
       // Keyboard Shortcuts - load search and core shortcuts
       if (document.querySelector('#pagefind-search, #shortcuts-modal, [type="search"]')) {
         const shortcutsScript = document.createElement('script');
-        shortcutsScript.src = '{{ 'js/search-shortcuts.js' | theme_asset }}';
+        shortcutsScript.src = '{{ 'js/search-shortcuts.js' | theme_asset_hashed }}';
         document.body.appendChild(shortcutsScript);
       }
 
       // Scrolling Shortcuts - always available
       const scrollingScript = document.createElement('script');
-      scrollingScript.src = '{{ 'js/scrolling-shortcuts.js' | theme_asset }}';
+      scrollingScript.src = '{{ 'js/scrolling-shortcuts.js' | theme_asset_hashed }}';
       document.body.appendChild(scrollingScript);
 
       // Navigation Shortcuts - load if post cards exist
       if (document.querySelector('.card, [data-card]')) {
         const navigationScript = document.createElement('script');
-        navigationScript.src = '{{ 'js/navigation-shortcuts.js' | theme_asset }}';
+        navigationScript.src = '{{ 'js/navigation-shortcuts.js' | theme_asset_hashed }}';
         document.body.appendChild(navigationScript);
       }
 
       // History Shortcuts - always available (go back/forward)
       const historyScript = document.createElement('script');
-      historyScript.src = '{{ 'js/history-shortcuts.js' | theme_asset }}';
+      historyScript.src = '{{ 'js/history-shortcuts.js' | theme_asset_hashed }}';
       document.body.appendChild(historyScript);
     };
     document.body.appendChild(shortcutsRegistryScript);
@@ -223,13 +223,13 @@
     // Custom Shortcuts - load if custom shortcuts are defined in config
       {% if config.shortcuts and config.shortcuts.navigation %}
       const customShortcutsScript = document.createElement('script');
-      customShortcutsScript.src = '{{ 'js/custom-shortcuts.js' | theme_asset }}';
+      customShortcutsScript.src = '{{ 'js/custom-shortcuts.js' | theme_asset_hashed }}';
       document.body.appendChild(customShortcutsScript);
       {% endif %}
     // Pagination (JS mode) - only load if JS pagination element exists
     if (document.querySelector('.pagination-js')) {
       const paginationScript = document.createElement('script');
-      paginationScript.src = '{{ 'js/pagination.js' | theme_asset }}';
+      paginationScript.src = '{{ 'js/pagination.js' | theme_asset_hashed }}';
       paginationScript.defer = true;
       document.body.appendChild(paginationScript);
     }
@@ -278,7 +278,7 @@
    <!-- Palette Switcher JS (when enabled) -->
    {# Note: Must load AFTER shortcuts-registry for keyboard shortcut registration #}
    {% if config.theme.switcher.enabled %}
-   <script src="{{ 'js/palette-switcher.js' | theme_asset }}" defer></script>
+   <script src="{{ 'js/palette-switcher.js' | theme_asset_hashed }}" defer></script>
    {% endif %}
 
   <!-- View Transitions API - Global Navigation Interceptor -->
@@ -295,7 +295,7 @@
       scrollToTop: {{ config.view_transitions.scroll_to_top | default:true | yesno:"true,false" }},
     };
   </script>
-  <script src="{{ 'js/view-transitions.js' | theme_asset }}" defer></script>
+  <script src="{{ 'js/view-transitions.js' | theme_asset_hashed }}" defer></script>
   {% endif %}
 
    {% include "partials/background-scripts.html" %}

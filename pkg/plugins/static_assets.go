@@ -1,13 +1,18 @@
 package plugins
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 	"github.com/WaylonWalker/markata-go/pkg/themes"
 )
 
@@ -28,11 +33,76 @@ func (p *StaticAssetsPlugin) Name() string {
 	return "static_assets"
 }
 
+// Configure computes content hashes for JS/CSS assets before templates are rendered.
+// This enables cache busting via the theme_asset_hashed filter.
+func (p *StaticAssetsPlugin) Configure(m *lifecycle.Manager) error {
+	config := m.Config()
+
+	// Get theme name
+	themeName := ThemeDefault
+	if extra := config.Extra; extra != nil {
+		if theme, ok := extra["theme"].(map[string]interface{}); ok {
+			if name, ok := theme["name"].(string); ok && name != "" {
+				themeName = name
+			}
+		}
+		if name, ok := extra["theme"].(string); ok && name != "" {
+			themeName = name
+		}
+	}
+
+	// Compute hashes for assets in priority order (last wins)
+	assetHashes := make(map[string]string)
+
+	// 1. Hash embedded assets (base layer)
+	if themeName == ThemeDefault {
+		if err := p.hashEmbeddedAssets(assetHashes); err != nil {
+			return fmt.Errorf("hashing embedded assets: %w", err)
+		}
+	}
+
+	// 2. Hash filesystem theme assets (overrides embedded)
+	themeStaticDir := p.findThemeStaticDir(themeName)
+	if themeStaticDir != "" {
+		if err := p.hashDirectoryAssets(themeStaticDir, "", assetHashes); err != nil {
+			return fmt.Errorf("hashing theme assets: %w", err)
+		}
+	}
+
+	// 3. Hash project assets (highest priority, overrides theme)
+	projectStaticDir := "static"
+	if _, err := os.Stat(projectStaticDir); err == nil {
+		if err := p.hashDirectoryAssets(projectStaticDir, "", assetHashes); err != nil {
+			return fmt.Errorf("hashing project assets: %w", err)
+		}
+	}
+
+	// Store hashes in Manager for Write stage use
+	for path, hash := range assetHashes {
+		m.SetAssetHash(path, hash)
+	}
+
+	// Set hashes in templates package for theme_asset_hashed filter
+	templates.SetAssetHashes(assetHashes)
+
+	// Update build cache with combined assets hash
+	// This ensures all pages are rebuilt when any JS/CSS file changes
+	if cache := GetBuildCache(m); cache != nil {
+		assetsHash := buildcache.HashAssetMap(assetHashes)
+		if cache.SetAssetsHash(assetsHash) {
+			log.Printf("[static_assets] JS/CSS assets changed, full rebuild required")
+		}
+	}
+
+	return nil
+}
+
 // Write copies static assets to the output directory.
 // Files are copied in layers with increasing priority:
 // 1. Embedded theme static files (lowest priority, base layer)
 // 2. Filesystem theme static files (can override embedded)
 // 3. Project static files (highest priority, can override all)
+// After copying, it creates hashed copies of JS/CSS files for cache busting.
 func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
@@ -73,6 +143,11 @@ func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 		if err := p.copyDir(projectStaticDir, outputDir); err != nil {
 			return fmt.Errorf("copying project static files: %w", err)
 		}
+	}
+
+	// Create hashed copies of JS/CSS files for cache busting
+	if err := p.createHashedCopies(m, outputDir); err != nil {
+		return fmt.Errorf("creating hashed asset copies: %w", err)
 	}
 
 	return nil
@@ -210,9 +285,118 @@ func (p *StaticAssetsPlugin) copyFile(src, dst string) error {
 	return os.Chmod(dst, srcInfo.Mode())
 }
 
+// shouldHashAsset returns true if the file should be content-hashed for cache busting.
+// Only JS and CSS files are hashed to avoid breaking image references.
+func (p *StaticAssetsPlugin) shouldHashAsset(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".js" || ext == ".css" || ext == ".mjs"
+}
+
+// hashEmbeddedAssets computes SHA-256 hashes for embedded JS/CSS assets.
+func (p *StaticAssetsPlugin) hashEmbeddedAssets(hashes map[string]string) error {
+	staticFS := themes.DefaultStatic()
+	if staticFS == nil {
+		return nil
+	}
+
+	return fs.WalkDir(staticFS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || path == "." {
+			return err
+		}
+
+		if !p.shouldHashAsset(path) {
+			return nil
+		}
+
+		// Read file content
+		content, err := fs.ReadFile(staticFS, path)
+		if err != nil {
+			return fmt.Errorf("reading embedded asset %s: %w", path, err)
+		}
+
+		// Compute hash (first 8 chars of SHA-256)
+		hash := fmt.Sprintf("%x", sha256.Sum256(content))[:8]
+		hashes[path] = hash
+
+		return nil
+	})
+}
+
+// hashDirectoryAssets computes SHA-256 hashes for JS/CSS assets in a directory.
+// prefix is the relative path prefix to prepend to file paths in the hash map.
+func (p *StaticAssetsPlugin) hashDirectoryAssets(dir, prefix string, hashes map[string]string) error {
+	return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+
+		if !p.shouldHashAsset(path) {
+			return nil
+		}
+
+		// Calculate relative path from dir
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			return fmt.Errorf("calculating relative path: %w", err)
+		}
+
+		// Add prefix if provided
+		if prefix != "" {
+			relPath = filepath.Join(prefix, relPath)
+		}
+
+		// Read file content
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("reading asset %s: %w", path, err)
+		}
+
+		// Compute hash (first 8 chars of SHA-256)
+		hash := fmt.Sprintf("%x", sha256.Sum256(content))[:8]
+		hashes[relPath] = hash
+
+		return nil
+	})
+}
+
+// createHashedCopies creates hashed copies of JS/CSS files in the output directory.
+// For each file with a hash, creates a copy like main.js -> main.abc12345.js
+func (p *StaticAssetsPlugin) createHashedCopies(m *lifecycle.Manager, outputDir string) error {
+	assetHashes := m.AssetHashes()
+
+	for path, hash := range assetHashes {
+		// Original file location in output
+		origPath := filepath.Join(outputDir, path)
+
+		// Check if file exists (might not if overridden)
+		if _, err := os.Stat(origPath); os.IsNotExist(err) {
+			continue
+		}
+
+		// Compute hashed filename: main.js -> main.abc12345.js
+		ext := filepath.Ext(path)
+		base := strings.TrimSuffix(path, ext)
+		hashedPath := base + "." + hash + ext
+		hashedFullPath := filepath.Join(outputDir, hashedPath)
+
+		// Create hashed copy
+		if err := p.copyFile(origPath, hashedFullPath); err != nil {
+			return fmt.Errorf("creating hashed copy %s: %w", hashedPath, err)
+		}
+	}
+
+	return nil
+}
+
 // Priority returns the plugin priority for the write stage.
 // Static assets should be written early so that other plugins can reference them.
 func (p *StaticAssetsPlugin) Priority(stage lifecycle.Stage) int {
+	// Run early in Configure to register asset hashes before other plugins
+	// (e.g., chroma_css) that also register hashes
+	if stage == lifecycle.StageConfigure {
+		return lifecycle.PriorityEarly
+	}
+	// Run early in Write to copy assets before other plugins generate files
 	if stage == lifecycle.StageWrite {
 		return lifecycle.PriorityEarly
 	}
@@ -221,7 +405,8 @@ func (p *StaticAssetsPlugin) Priority(stage lifecycle.Stage) int {
 
 // Ensure StaticAssetsPlugin implements the required interfaces.
 var (
-	_ lifecycle.Plugin         = (*StaticAssetsPlugin)(nil)
-	_ lifecycle.WritePlugin    = (*StaticAssetsPlugin)(nil)
-	_ lifecycle.PriorityPlugin = (*StaticAssetsPlugin)(nil)
+	_ lifecycle.Plugin          = (*StaticAssetsPlugin)(nil)
+	_ lifecycle.ConfigurePlugin = (*StaticAssetsPlugin)(nil)
+	_ lifecycle.WritePlugin     = (*StaticAssetsPlugin)(nil)
+	_ lifecycle.PriorityPlugin  = (*StaticAssetsPlugin)(nil)
 )

@@ -242,6 +242,10 @@ type Manager struct {
 
 	// concurrency controls the number of concurrent goroutines for parallel processing.
 	concurrency int
+
+	// assetHashes maps original asset paths to their content hashes for cache busting.
+	// Key: original path (e.g., "css/main.css"), Value: hash (first 8 chars of SHA-256).
+	assetHashes map[string]string
 }
 
 // NewManager creates a new lifecycle Manager with default settings.
@@ -265,6 +269,7 @@ func NewManager() *Manager {
 		cache:       newMemoryCache(),
 		warnings:    make([]*HookError, 0),
 		concurrency: concurrency,
+		assetHashes: make(map[string]string),
 	}
 }
 
@@ -498,6 +503,33 @@ func (m *Manager) Concurrency() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.concurrency
+}
+
+// SetAssetHash stores a content hash for an asset path (for cache busting).
+// This is called by the static_assets plugin during the Write stage.
+func (m *Manager) SetAssetHash(path, hash string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.assetHashes[path] = hash
+}
+
+// GetAssetHash retrieves the content hash for an asset path.
+// Returns empty string if no hash is registered.
+func (m *Manager) GetAssetHash(path string) string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.assetHashes[path]
+}
+
+// AssetHashes returns a copy of all registered asset hashes.
+func (m *Manager) AssetHashes() map[string]string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make(map[string]string, len(m.assetHashes))
+	for k, v := range m.assetHashes {
+		result[k] = v
+	}
+	return result
 }
 
 // Run executes all lifecycle stages in order.

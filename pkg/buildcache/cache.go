@@ -61,6 +61,9 @@ type Cache struct {
 	// TemplatesHash is the combined hash of all template files
 	TemplatesHash string `json:"templates_hash"`
 
+	// AssetsHash is the combined hash of all static assets (JS/CSS)
+	AssetsHash string `json:"assets_hash,omitempty"`
+
 	// Posts maps source path to cached post metadata
 	Posts map[string]*PostCache `json:"posts"`
 
@@ -246,6 +249,23 @@ func (c *Cache) SetTemplatesHash(hash string) bool {
 
 	// Templates changed - invalidate all posts
 	c.TemplatesHash = hash
+	c.Posts = make(map[string]*PostCache)
+	c.dirty = true
+	return true
+}
+
+// SetAssetsHash updates the assets hash and invalidates if changed.
+// This ensures pages are rebuilt when JS/CSS files change so they reference new hashed filenames.
+func (c *Cache) SetAssetsHash(hash string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.AssetsHash == hash {
+		return false // No change
+	}
+
+	// Assets changed - invalidate all posts
+	c.AssetsHash = hash
 	c.Posts = make(map[string]*PostCache)
 	c.dirty = true
 	return true
@@ -549,6 +569,30 @@ func HashDirectory(dir string, extensions []string) (string, error) {
 	}
 
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// HashAssetMap computes a combined hash from a map of asset paths to content hashes.
+// This is used to detect when any JS/CSS file changes so we can invalidate cached HTML.
+func HashAssetMap(assetHashes map[string]string) string {
+	if len(assetHashes) == 0 {
+		return ""
+	}
+
+	// Get sorted list of paths for deterministic ordering
+	paths := make([]string, 0, len(assetHashes))
+	for path := range assetHashes {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+
+	// Combine path+hash pairs
+	h := sha256.New()
+	for _, path := range paths {
+		h.Write([]byte(path))
+		h.Write([]byte(assetHashes[path]))
+	}
+
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // ComputePostInputHash computes the input hash for a post.

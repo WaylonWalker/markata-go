@@ -2,6 +2,7 @@
 package plugins
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // ChromaCSSPlugin generates CSS for syntax highlighting from Chroma themes.
@@ -23,6 +25,8 @@ import (
 // CSS classes for syntax highlighting (via WithClasses option).
 type ChromaCSSPlugin struct {
 	chromaTheme string
+	chromaCSS   string // Pre-generated CSS content (computed in Configure)
+	chromaHash  string // Content hash for cache busting
 }
 
 // NewChromaCSSPlugin creates a new ChromaCSSPlugin.
@@ -37,53 +41,91 @@ func (p *ChromaCSSPlugin) Name() string {
 	return "chroma_css"
 }
 
-// Configure reads the highlight theme configuration.
+// Configure reads the highlight theme configuration and pre-generates the CSS.
+// This runs before templates are rendered, allowing us to register the hash
+// for cache busting (css/chroma.css -> css/chroma.abc12345.css).
 func (p *ChromaCSSPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 	extra := config.Extra
+
+	configuredTheme := ""
 
 	// Try to get explicit highlight config from markdown.highlight.theme
 	if markdown, ok := extra["markdown"].(map[string]interface{}); ok {
 		if highlight, ok := markdown["highlight"].(map[string]interface{}); ok {
 			if theme, ok := highlight["theme"].(string); ok && theme != "" {
-				p.chromaTheme = theme
-				return nil
+				configuredTheme = theme
 			}
 		}
 	}
 
 	// Derive from palette if not explicitly set
-	paletteName := p.getPaletteName(extra)
-	if paletteName != "" {
-		chromaTheme := palettes.ChromaTheme(paletteName)
-		if chromaTheme != "" {
-			p.chromaTheme = chromaTheme
-			return nil
+	if configuredTheme == "" {
+		paletteName := p.getPaletteName(extra)
+		if paletteName != "" {
+			chromaTheme := palettes.ChromaTheme(paletteName)
+			if chromaTheme != "" {
+				configuredTheme = chromaTheme
+			} else {
+				// Fallback based on variant
+				variant := p.getPaletteVariant(paletteName)
+				configuredTheme = palettes.ChromaThemeForVariant(variant)
+			}
 		}
-
-		// Fallback based on variant
-		variant := p.getPaletteVariant(paletteName)
-		p.chromaTheme = palettes.ChromaThemeForVariant(variant)
 	}
 
-	return nil
-}
+	// Use configured theme if found, otherwise keep default
+	if configuredTheme != "" {
+		p.chromaTheme = configuredTheme
+	}
 
-// Write generates the Chroma CSS file.
-func (p *ChromaCSSPlugin) Write(m *lifecycle.Manager) error {
-	config := m.Config()
-	outputDir := config.OutputDir
-
-	// Get the style
+	// Pre-generate the CSS content so we can hash it for cache busting
 	style := styles.Get(p.chromaTheme)
 	if style == nil {
 		style = styles.Fallback
 	}
 
-	// Generate CSS using Chroma's formatter
 	css, err := p.generateCSS(style)
 	if err != nil {
 		return fmt.Errorf("generating chroma CSS: %w", err)
+	}
+	p.chromaCSS = css
+
+	// Compute hash for cache busting (first 8 chars of SHA-256)
+	hash := sha256.Sum256([]byte(css))
+	p.chromaHash = fmt.Sprintf("%x", hash[:4]) // 4 bytes = 8 hex chars
+
+	// Register the hash with the template engine for theme_asset_hashed filter
+	assetHashes := map[string]string{
+		"css/chroma.css": p.chromaHash,
+	}
+	templates.SetAssetHashes(assetHashes)
+
+	// Also register with the lifecycle manager for tracking
+	m.SetAssetHash("css/chroma.css", p.chromaHash)
+
+	return nil
+}
+
+// Write generates the Chroma CSS file.
+// The CSS content was already generated in Configure() for cache busting.
+func (p *ChromaCSSPlugin) Write(m *lifecycle.Manager) error {
+	config := m.Config()
+	outputDir := config.OutputDir
+
+	// CSS was pre-generated in Configure for hash computation
+	css := p.chromaCSS
+	if css == "" {
+		// Fallback: generate now if Configure didn't run (shouldn't happen)
+		style := styles.Get(p.chromaTheme)
+		if style == nil {
+			style = styles.Fallback
+		}
+		var err error
+		css, err = p.generateCSS(style)
+		if err != nil {
+			return fmt.Errorf("generating chroma CSS: %w", err)
+		}
 	}
 
 	// Write to output directory
@@ -92,10 +134,21 @@ func (p *ChromaCSSPlugin) Write(m *lifecycle.Manager) error {
 		return fmt.Errorf("creating css directory: %w", err)
 	}
 
+	// Write original filename (css/chroma.css)
 	cssPath := filepath.Join(cssDir, "chroma.css")
 	//nolint:gosec // G306: chroma.css is a public CSS file, 0644 is appropriate
 	if err := os.WriteFile(cssPath, []byte(css), 0o644); err != nil {
 		return fmt.Errorf("writing chroma CSS: %w", err)
+	}
+
+	// Write hashed version (css/chroma.abc12345.css) for cache busting
+	if p.chromaHash != "" {
+		hashedFilename := fmt.Sprintf("chroma.%s.css", p.chromaHash)
+		hashedPath := filepath.Join(cssDir, hashedFilename)
+		//nolint:gosec // G306: chroma CSS is a public file, 0644 is appropriate
+		if err := os.WriteFile(hashedPath, []byte(css), 0o644); err != nil {
+			return fmt.Errorf("writing hashed chroma CSS: %w", err)
+		}
 	}
 
 	return nil
