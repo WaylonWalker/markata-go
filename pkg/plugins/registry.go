@@ -90,6 +90,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["css_minify"] = func() lifecycle.Plugin { return NewCSSMinifyPlugin() }
 	pluginRegistry.constructors["cdn_assets"] = func() lifecycle.Plugin { return NewCDNAssetsPlugin() }
 	pluginRegistry.constructors["tags_listing"] = func() lifecycle.Plugin { return NewTagsListingPlugin() }
+	pluginRegistry.constructors["theme_calendar"] = func() lifecycle.Plugin { return NewThemeCalendarPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -138,6 +139,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewBuildCachePlugin(),
 
 		// Configure/Glob stage plugins
+		NewThemeCalendarPlugin(), // Apply date-based theme rules (runs very early)
 		NewGlobPlugin(),
 		NewBackgroundPlugin(), // Configure background decorations early
 		NewCDNAssetsPlugin(),  // Download CDN assets for self-hosting (Configure + Write)
