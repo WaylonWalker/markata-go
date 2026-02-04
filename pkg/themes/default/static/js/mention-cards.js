@@ -27,6 +27,8 @@
   var showTimer = null;
   var hideTimer = null;
   var currentTarget = null;
+  var boundMentions = null;  // WeakSet to track bound elements
+  var cardDelegationSetup = false;  // Track if card delegation is set up
 
   /**
    * Check if device supports touch (likely mobile)
@@ -349,6 +351,9 @@
    * Setup event delegation for dynamically added cards
    */
   function setupCardEventDelegation() {
+    // Only set up once (these are document-level listeners that survive view transitions)
+    if (cardDelegationSetup) return;
+
     document.addEventListener('mouseenter', function(e) {
       if (e.target.closest && e.target.closest('.mention-card')) {
         handleCardMouseEnter(e);
@@ -360,6 +365,31 @@
         handleCardMouseLeave(e);
       }
     }, true);
+
+    cardDelegationSetup = true;
+  }
+
+  /**
+   * Clean up before re-initialization (for view transitions)
+   */
+  function cleanup() {
+    // Clear any pending timers
+    clearTimers();
+
+    // Hide and remove any visible card
+    if (currentCard && currentCard.parentNode) {
+      currentCard.remove();
+    }
+    currentCard = null;
+    currentTarget = null;
+
+    // Remove any orphaned mention cards from the DOM
+    document.querySelectorAll('.mention-card').forEach(function(el) {
+      el.remove();
+    });
+
+    // Reset the WeakSet - old DOM elements are gone after view transition
+    boundMentions = new WeakSet();
   }
 
   /**
@@ -371,20 +401,30 @@
       return;
     }
 
+    // Clean up first to handle view transitions properly
+    cleanup();
+
     // Find all mention links
     var mentions = document.querySelectorAll('a.mention');
 
     mentions.forEach(function(mention) {
+      // Skip if already bound (shouldn't happen after cleanup, but defensive)
+      if (boundMentions.has(mention)) return;
+
       mention.addEventListener('mouseenter', handleMouseEnter);
       mention.addEventListener('mouseleave', handleMouseLeave);
       mention.addEventListener('focus', handleFocus);
       mention.addEventListener('blur', handleBlur);
+      boundMentions.add(mention);
     });
 
-    // Global keyboard handler for Escape
-    document.addEventListener('keydown', handleKeyDown);
+    // Global keyboard handler for Escape (only add once)
+    if (!init.keydownBound) {
+      document.addEventListener('keydown', handleKeyDown);
+      init.keydownBound = true;
+    }
 
-    // Setup card event delegation
+    // Setup card event delegation (only once)
     setupCardEventDelegation();
   }
 
@@ -398,6 +438,13 @@
   // Expose for external use if needed
   window.mentionCards = {
     show: showCard,
-    hide: hideCard
+    hide: hideCard,
+    init: init
   };
+
+  // Expose init for view transitions
+  window.initMentionCards = init;
+
+  // Re-initialize after view transitions
+  window.addEventListener('view-transition-complete', init);
 })();
