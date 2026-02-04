@@ -21,6 +21,9 @@
   <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset_hashed }}">
   <link rel="stylesheet" href="{{ 'css/chroma.css' | theme_asset_hashed }}">
 
+  <!-- Encryption CSS (always loaded for encrypted posts) -->
+  <link rel="stylesheet" href="{{ 'css/encryption.css' | theme_asset_hashed }}">
+
   <!-- Palette Switcher CSS (when enabled) -->
   {% if config.theme.switcher.enabled %}
   <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset_hashed }}">
@@ -297,6 +300,9 @@
   </script>
   <script src="{{ 'js/view-transitions.js' | theme_asset_hashed }}" defer></script>
   {% endif %}
+
+  <!-- Decryption JS (always loaded for encrypted posts) -->
+  <script src="{{ 'js/decryption.js' | theme_asset_hashed }}" defer></script>
 
    {% include "partials/background-scripts.html" %}
 </body>

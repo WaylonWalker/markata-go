@@ -149,6 +149,11 @@ issues:
         - goconst
         - funlen
 
+    # Config parser has legitimate duplication for TOML/YAML/JSON converters
+    - path: pkg/config/parser\.go
+      linters:
+        - dupl
+
     # Main can have init
     - path: main\.go
       linters:

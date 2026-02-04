@@ -9,6 +9,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/encryption"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // EncryptionEnvPrefix is the prefix for encryption key environment variables.
@@ -129,10 +130,14 @@ func (p *EncryptionPlugin) getKeyPassword(keyName string) (string, error) {
 }
 
 // Priority returns the plugin priority for the given stage.
-// Encryption should run late in the Render stage, after markdown is rendered to HTML.
+// Encryption should run in the middle of the Render stage:
+// - After markdown is rendered to HTML (PriorityDefault/PriorityEarly)
+// - Before templates wrap the HTML (PriorityLate)
 func (p *EncryptionPlugin) Priority(stage lifecycle.Stage) int {
 	if stage == lifecycle.StageRender {
-		return lifecycle.PriorityLast // Run after all other render plugins
+		// Run after markdown rendering but before templates
+		// Templates run at PriorityLate (100), so we run at 50
+		return 50
 	}
 	return lifecycle.PriorityDefault
 }
@@ -252,6 +257,9 @@ func (p *EncryptionPlugin) encryptPost(post *models.Post) error {
 	post.Set("has_encrypted_content", true)
 	post.Set("encryption_key_name", keyName)
 
+	// Invalidate the post map cache so templates pick up the new Extra fields
+	templates.InvalidatePost(post)
+
 	return nil
 }
 
@@ -282,9 +290,8 @@ func getModelsConfig(config *lifecycle.Config) (*models.Config, bool) {
 		return nil, false
 	}
 
-	// The models.Config is typically stored in Extra["_models_config"]
-	// or we can access individual encryption fields
-	if modelsConfig, ok := config.Extra["_models_config"].(*models.Config); ok {
+	// The models.Config is stored in Extra["models_config"] (set by core.go)
+	if modelsConfig, ok := config.Extra["models_config"].(*models.Config); ok {
 		return modelsConfig, true
 	}
 
