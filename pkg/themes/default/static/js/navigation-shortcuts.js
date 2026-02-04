@@ -20,7 +20,8 @@
   'use strict';
 
   // Wait for registry to be available
-  function waitForRegistry(callback, attempts = 0) {
+  function waitForRegistry(callback, attempts) {
+    attempts = attempts || 0;
     if (window.shortcutsRegistry) {
       callback();
     } else if (attempts < 50) {
@@ -39,7 +40,9 @@
     jKeyDown: false,
     kKeyDown: false,
     navRepeatTimer: null,
-    navRepeatDelay: 80 // ms between navigations when key held (faster)
+    navRepeatDelay: 80, // ms between navigations when key held (faster)
+    initialized: false,  // Track if already initialized
+    jkRegistered: false  // Track if j/k shortcuts are registered
   };
 
   /**
@@ -228,112 +231,141 @@
   }
 
   /**
+   * Clean up state for re-initialization (for view transitions)
+   */
+  function cleanup() {
+    // Clear any timers
+    if (state.navRepeatTimer) {
+      clearTimeout(state.navRepeatTimer);
+      state.navRepeatTimer = null;
+    }
+
+    // Reset key states
+    state.jKeyDown = false;
+    state.kKeyDown = false;
+
+    // Remove highlight from old card (if it still exists in DOM)
+    if (state.selectedCard && state.selectedCard.parentNode) {
+      state.selectedCard.classList.remove('kb-highlighted');
+    }
+
+    // Clear card references
+    state.selectedCard = null;
+    state.cards = [];
+  }
+
+  /**
    * Initialize navigation shortcuts
    */
   function init() {
+    // Clean up previous state
+    cleanup();
+
     // Initialize cards
     state.cards = getCards();
     if (state.cards.length > 0) {
       highlightCard(state.cards[0]);
     }
 
-    // j - Next post (handled via main registry to avoid conflicts)
-    // k - Previous post (handled via main registry to avoid conflicts)
-
-    // Enter - Open highlighted post
-    window.shortcutsRegistry.register({
-      key: 'Enter',
-      modifiers: [],
-      description: 'Open highlighted post',
-      group: 'navigation',
-      handler: function(e) {
-        e.preventDefault();
-        openPost(false);
-      },
-      priority: 15
-    });
-
-    // o - Open highlighted post
-    window.shortcutsRegistry.register({
-      key: 'o',
-      modifiers: [],
-      description: 'Open highlighted card',
-      group: 'navigation',
-      handler: function(e) {
-        e.preventDefault();
-        openPost(false);
-      },
-      priority: 15
-    });
-
-    // Shift+O - Open in new tab
-    window.shortcutsRegistry.register({
-      key: 'O',
-      modifiers: [],
-      description: 'Open highlighted card in new tab',
-      group: 'navigation',
-      handler: function(e) {
-        e.preventDefault();
-        openPost(true);
-      },
-      priority: 15
-    });
-
-    // Handle multi-key sequences: g h and g s
-    document.addEventListener('keydown', function(e) {
-      if (window.shortcutsRegistry.areDisabled()) return;
-      if (window.shortcutsRegistry.isInputElement(e.target)) return;
-
-      var now = Date.now();
-      var timeSinceLastKey = now - state.lastKeyTime;
-
-      if (e.key === 'g') {
-        state.lastKey = 'g';
-        state.lastKeyTime = now;
-      } else if (e.key === 'h' && state.lastKey === 'g' && timeSinceLastKey < state.keySequenceTimeout) {
-        // g h - go to home
-        e.preventDefault();
-        goHome();
-        state.lastKey = null;
-        state.lastKeyTime = 0;
-      } else if (e.key === 's' && state.lastKey === 'g' && timeSinceLastKey < state.keySequenceTimeout) {
-        // g s - focus search
-        e.preventDefault();
-        focusSearch();
-        state.lastKey = null;
-        state.lastKeyTime = 0;
-      } else {
-        state.lastKey = null;
-        state.lastKeyTime = 0;
-      }
-    });
-
-    // y y - Copy URL (special handling for repeated key)
-    var yKeyTime = 0;
-    document.addEventListener('keydown', function(e) {
-      if (window.shortcutsRegistry.areDisabled()) return;
-      if (window.shortcutsRegistry.isInputElement(e.target)) return;
-
-      if (e.key === 'y') {
-        var now = Date.now();
-        var timeSinceLastY = now - yKeyTime;
-
-        if (timeSinceLastY < state.keySequenceTimeout) {
-          // y y - copy URL
+    // Only register these shortcuts once (they use document-level listeners internally)
+    if (!state.initialized) {
+      // Enter - Open highlighted post
+      window.shortcutsRegistry.register({
+        key: 'Enter',
+        modifiers: [],
+        description: 'Open highlighted post',
+        group: 'navigation',
+        handler: function(e) {
           e.preventDefault();
-          copyUrl();
-          yKeyTime = 0;
-        } else {
-          yKeyTime = now;
-        }
-      } else {
-        yKeyTime = 0;
-      }
-    });
+          openPost(false);
+        },
+        priority: 15
+      });
 
-     // Listen for j/k navigation on card lists
-    // Only register if we have cards
-    if (state.cards.length > 0) {
+      // o - Open highlighted post
+      window.shortcutsRegistry.register({
+        key: 'o',
+        modifiers: [],
+        description: 'Open highlighted card',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          openPost(false);
+        },
+        priority: 15
+      });
+
+      // Shift+O - Open in new tab
+      window.shortcutsRegistry.register({
+        key: 'O',
+        modifiers: [],
+        description: 'Open highlighted card in new tab',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          openPost(true);
+        },
+        priority: 15
+      });
+
+      // Handle multi-key sequences: g h and g s
+      document.addEventListener('keydown', function(e) {
+        if (window.shortcutsRegistry.areDisabled()) return;
+        if (window.shortcutsRegistry.isInputElement(e.target)) return;
+
+        var now = Date.now();
+        var timeSinceLastKey = now - state.lastKeyTime;
+
+        if (e.key === 'g') {
+          state.lastKey = 'g';
+          state.lastKeyTime = now;
+        } else if (e.key === 'h' && state.lastKey === 'g' && timeSinceLastKey < state.keySequenceTimeout) {
+          // g h - go to home
+          e.preventDefault();
+          goHome();
+          state.lastKey = null;
+          state.lastKeyTime = 0;
+        } else if (e.key === 's' && state.lastKey === 'g' && timeSinceLastKey < state.keySequenceTimeout) {
+          // g s - focus search
+          e.preventDefault();
+          focusSearch();
+          state.lastKey = null;
+          state.lastKeyTime = 0;
+        } else {
+          state.lastKey = null;
+          state.lastKeyTime = 0;
+        }
+      });
+
+      // y y - Copy URL (special handling for repeated key)
+      var yKeyTime = 0;
+      document.addEventListener('keydown', function(e) {
+        if (window.shortcutsRegistry.areDisabled()) return;
+        if (window.shortcutsRegistry.isInputElement(e.target)) return;
+
+        if (e.key === 'y') {
+          var now = Date.now();
+          var timeSinceLastY = now - yKeyTime;
+
+          if (timeSinceLastY < state.keySequenceTimeout) {
+            // y y - copy URL
+            e.preventDefault();
+            copyUrl();
+            yKeyTime = 0;
+          } else {
+            yKeyTime = now;
+          }
+        } else {
+          yKeyTime = 0;
+        }
+      });
+
+      state.initialized = true;
+    }
+
+    // Register j/k shortcuts if we have cards (these use state.cards which gets refreshed)
+    // Only register once - the handlers will use the refreshed state.cards
+    if (state.cards.length > 0 && !state.jkRegistered) {
       // j - Next card in feed
       window.shortcutsRegistry.register({
         key: 'j',
@@ -341,8 +373,12 @@
         description: 'Select next card in feed',
         group: 'navigation',
         handler: function(e) {
+          // Refresh cards on each call to handle view transitions
+          state.cards = getCards();
+          if (state.cards.length === 0) return;
+
           // Initialize selection if needed
-          if (!state.selectedCard && state.cards.length > 0) {
+          if (!state.selectedCard || !state.selectedCard.parentNode) {
             highlightCard(state.cards[0]);
           } else {
             e.preventDefault();
@@ -359,8 +395,12 @@
         description: 'Select previous card in feed',
         group: 'navigation',
         handler: function(e) {
+          // Refresh cards on each call to handle view transitions
+          state.cards = getCards();
+          if (state.cards.length === 0) return;
+
           // Initialize selection if needed
-          if (!state.selectedCard && state.cards.length > 0) {
+          if (!state.selectedCard || !state.selectedCard.parentNode) {
             highlightCard(state.cards[0]);
           } else {
             e.preventDefault();
@@ -374,6 +414,10 @@
       document.addEventListener('keydown', function(e) {
         if (window.shortcutsRegistry.areDisabled()) return;
         if (window.shortcutsRegistry.isInputElement(e.target)) return;
+
+        // Refresh cards to handle view transitions
+        state.cards = getCards();
+        if (state.cards.length === 0) return;
 
         if (e.key === 'j' && !state.jKeyDown) {
           state.jKeyDown = true;
@@ -414,6 +458,8 @@
           }
         }
       });
+
+      state.jkRegistered = true;
     }
   }
 
@@ -425,4 +471,10 @@
       init();
     }
   });
+
+  // Expose init for view transitions
+  window.initNavigationShortcuts = init;
+
+  // Re-initialize after view transitions
+  window.addEventListener('view-transition-complete', init);
 })();
