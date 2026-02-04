@@ -294,10 +294,10 @@ func TestEncryptionPlugin_EncryptPost_MissingKey(t *testing.T) {
 func TestEncryptionPlugin_Priority(t *testing.T) {
 	plugin := NewEncryptionPlugin()
 
-	// Should run late in Render stage
+	// Should run at priority 50 (after markdown but before templates)
 	priority := plugin.Priority(lifecycle.StageRender)
-	if priority != lifecycle.PriorityLast {
-		t.Errorf("Priority(StageRender) = %d, want %d", priority, lifecycle.PriorityLast)
+	if priority != 50 {
+		t.Errorf("Priority(StageRender) = %d, want %d", priority, 50)
 	}
 
 	// Default priority for other stages

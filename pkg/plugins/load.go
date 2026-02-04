@@ -293,6 +293,7 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		"template":    true,
 		"templates":   true,
 		"slug":        true,
+		"secret_key":  true,
 	}
 
 	// Title
@@ -350,6 +351,11 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		// Mark that slug was explicitly set (prevents auto-generation)
 		post.Set("_slug_explicit", true)
 		_ = slugVal // Exists check used, value handled via GetString
+	}
+
+	// SecretKey - for encrypted posts  // pragma: allowlist secret
+	if secretKey := GetString(metadata, "secret_key"); secretKey != "" {
+		post.SecretKey = secretKey // pragma: allowlist secret
 	}
 
 	// Store unknown fields in Extra

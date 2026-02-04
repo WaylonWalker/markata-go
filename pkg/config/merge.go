@@ -96,6 +96,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Blogroll - merge
 	result.Blogroll = mergeBlogrollConfig(base.Blogroll, override.Blogroll)
 
+	// Encryption - merge
+	result.Encryption = mergeEncryptionConfig(base.Encryption, override.Encryption)
+
 	// Extra (plugin configs) - merge
 	result.Extra = mergeExtra(base.Extra, override.Extra)
 
@@ -383,7 +386,26 @@ func MergeSlice[T any](base, override []T, appendMode bool) []T {
 	return override
 }
 
-// AppendHooks appends hooks to the configuration's Hooks slice.
+// mergeEncryptionConfig merges EncryptionConfig values.
+func mergeEncryptionConfig(base, override models.EncryptionConfig) models.EncryptionConfig {
+	result := base
+
+	// Override enabled if explicitly set (even if false)
+	// We check if the override has any non-default values to determine if it was explicitly configured
+	if override.Enabled || override.DefaultKey != "" || override.DecryptionHint != "" {
+		result.Enabled = override.Enabled
+		if override.DefaultKey != "" {
+			result.DefaultKey = override.DefaultKey
+		}
+		if override.DecryptionHint != "" {
+			result.DecryptionHint = override.DecryptionHint
+		}
+	}
+
+	return result
+}
+
+// mergeExtra merges Extra map values (for plugin configs like image_zoom, wikilinks, etc.)// AppendHooks appends hooks to the configuration's Hooks slice.
 func AppendHooks(config *models.Config, hooks ...string) {
 	config.Hooks = MergeSlice(config.Hooks, hooks, true)
 }

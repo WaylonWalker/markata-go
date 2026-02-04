@@ -27,6 +27,7 @@ type configSource interface {
 	getHeader() headerConverter
 	getBlogroll() blogrollConverter
 	getTags() tagsConverter
+	getEncryption() encryptionConverter
 }
 
 // baseConfigData holds the basic config fields that are directly assignable.
@@ -108,6 +109,10 @@ type tagsConverter interface {
 	toTagsConfig() models.TagsConfig
 }
 
+type encryptionConverter interface {
+	toEncryptionConfig() models.EncryptionConfig
+}
+
 // buildConfig constructs a models.Config from a configSource.
 // This helper eliminates code duplication across TOML, YAML, and JSON config converters.
 func buildConfig(src configSource) *models.Config {
@@ -184,6 +189,9 @@ func buildConfig(src configSource) *models.Config {
 
 	// Convert Tags config
 	config.Tags = src.getTags().toTagsConfig()
+
+	// Convert Encryption config
+	config.Encryption = src.getEncryption().toEncryptionConfig()
 
 	return config
 }
@@ -302,6 +310,7 @@ type tomlConfig struct {
 	Header        tomlHeaderLayoutConfig `toml:"header"`
 	Blogroll      tomlBlogrollConfig     `toml:"blogroll"`
 	Tags          tomlTagsConfig         `toml:"tags"`
+	Encryption    tomlEncryptionConfig   `toml:"encryption"`
 	UnknownFields map[string]any         `toml:"-"`
 }
 
@@ -876,6 +885,20 @@ type tomlBlogrollTemplates struct {
 	Reader   string `toml:"reader"`
 }
 
+type tomlEncryptionConfig struct {
+	Enabled        bool   `toml:"enabled"`
+	DefaultKey     string `toml:"default_key"`
+	DecryptionHint string `toml:"decryption_hint"`
+}
+
+func (e *tomlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
+	return models.EncryptionConfig{
+		Enabled:        e.Enabled,
+		DefaultKey:     e.DefaultKey,
+		DecryptionHint: e.DecryptionHint,
+	}
+}
+
 //nolint:dupl // Intentional duplication - each format has its own conversion method
 func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	// Get default values
@@ -1039,6 +1062,7 @@ func (c *tomlConfig) getToc() tocConverter                   { return &c.Toc }
 func (c *tomlConfig) getHeader() headerConverter             { return &c.Header }
 func (c *tomlConfig) getBlogroll() blogrollConverter         { return &c.Blogroll }
 func (c *tomlConfig) getTags() tagsConverter                 { return &c.Tags }
+func (c *tomlConfig) getEncryption() encryptionConverter     { return &c.Encryption }
 
 func (c *tomlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -1210,6 +1234,7 @@ type yamlConfig struct {
 	Header        yamlHeaderLayoutConfig `yaml:"header"`
 	Blogroll      yamlBlogrollConfig     `yaml:"blogroll"`
 	Tags          yamlTagsConfig         `yaml:"tags"`
+	Encryption    yamlEncryptionConfig   `yaml:"encryption"`
 }
 
 type yamlNavItem struct {
@@ -1344,6 +1369,20 @@ func (t *yamlTagsConfig) toTagsConfig() models.TagsConfig {
 	}
 
 	return config
+}
+
+type yamlEncryptionConfig struct {
+	Enabled        bool   `yaml:"enabled"`
+	DefaultKey     string `yaml:"default_key"`
+	DecryptionHint string `yaml:"decryption_hint"`
+}
+
+func (e *yamlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
+	return models.EncryptionConfig{
+		Enabled:        e.Enabled,
+		DefaultKey:     e.DefaultKey,
+		DecryptionHint: e.DecryptionHint,
+	}
 }
 
 type yamlThemeConfig struct {
@@ -1998,6 +2037,7 @@ func (c *yamlConfig) getToc() tocConverter                   { return &c.Toc }
 func (c *yamlConfig) getHeader() headerConverter             { return &c.Header }
 func (c *yamlConfig) getBlogroll() blogrollConverter         { return &c.Blogroll }
 func (c *yamlConfig) getTags() tagsConverter                 { return &c.Tags }
+func (c *yamlConfig) getEncryption() encryptionConverter     { return &c.Encryption }
 
 func (c *yamlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -2107,6 +2147,7 @@ type jsonConfig struct {
 	Header        jsonHeaderLayoutConfig `json:"header"`
 	Blogroll      jsonBlogrollConfig     `json:"blogroll"`
 	Tags          jsonTagsConfig         `json:"tags"`
+	Encryption    jsonEncryptionConfig   `json:"encryption"`
 }
 
 type jsonNavItem struct {
@@ -2241,6 +2282,20 @@ func (t *jsonTagsConfig) toTagsConfig() models.TagsConfig {
 	}
 
 	return config
+}
+
+type jsonEncryptionConfig struct {
+	Enabled        bool   `json:"enabled"`
+	DefaultKey     string `json:"default_key"`
+	DecryptionHint string `json:"decryption_hint"`
+}
+
+func (e *jsonEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
+	return models.EncryptionConfig{
+		Enabled:        e.Enabled,
+		DefaultKey:     e.DefaultKey,
+		DecryptionHint: e.DecryptionHint,
+	}
 }
 
 type jsonThemeConfig struct {
@@ -2895,6 +2950,7 @@ func (c *jsonConfig) getToc() tocConverter                   { return &c.Toc }
 func (c *jsonConfig) getHeader() headerConverter             { return &c.Header }
 func (c *jsonConfig) getBlogroll() blogrollConverter         { return &c.Blogroll }
 func (c *jsonConfig) getTags() tagsConverter                 { return &c.Tags }
+func (c *jsonConfig) getEncryption() encryptionConverter     { return &c.Encryption }
 
 func (c *jsonConfig) toConfig() *models.Config {
 	return buildConfig(c)
