@@ -771,8 +771,8 @@ func generateThemeCard(entry ThemeGalleryEntry) string {
 	var sb strings.Builder
 
 	// Get background and text colors for preview
-	bgColor := "#1e1e1e"
-	textColor := "#e0e0e0"
+	bgColor := defaultBgColor
+	textColor := defaultTextColor
 	for _, swatch := range entry.ColorSwatches {
 		if swatch.Name == "bg-primary" {
 			bgColor = swatch.Hex

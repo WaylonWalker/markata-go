@@ -22,6 +22,13 @@ const (
 	paletteFormatSCSS     = "scss"
 	paletteFormatJSON     = "json"
 	paletteFormatTailwind = "tailwind"
+
+	// Default palette colors (shared with theme.go).
+	defaultTextColor = "#e0e0e0"
+	defaultBgColor   = "#1e1e1e"
+
+	// Semantic key for text color mapping.
+	colorKeyText = "text"
 )
 
 // paletteCmd represents the palette command group.
@@ -609,8 +616,8 @@ func runPaletteNewCommand(_ *cobra.Command, args []string) error {
 		p.Description = "Custom color palette"
 
 		// Add minimal default colors
-		p.Colors["text"] = "#e0e0e0"
-		p.Colors["background"] = "#1e1e1e"
+		p.Colors[colorKeyText] = defaultTextColor
+		p.Colors["background"] = defaultBgColor
 		p.Colors["primary"] = "#7c3aed"
 		p.Colors["secondary"] = "#06b6d4"
 		p.Colors["accent"] = "#f59e0b"
@@ -618,7 +625,7 @@ func runPaletteNewCommand(_ *cobra.Command, args []string) error {
 		p.Colors["warning"] = "#f59e0b"
 		p.Colors["error"] = "#ef4444"
 
-		p.Semantic["text-primary"] = "text"
+		p.Semantic["text-primary"] = colorKeyText
 		p.Semantic["bg-primary"] = "background"
 		p.Semantic["accent"] = "primary"
 		p.Semantic["link"] = "secondary"
