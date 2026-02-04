@@ -11,9 +11,9 @@
     <p class="tags-count">{{ total_tags }} tag{{ total_tags|pluralize }} found</p>
   </header>
 
-  {% if tags %}
+  {% if tag_list %}
   <div class="tags-cloud">
-    {% for tag in tags %}
+    {% for tag in tag_list %}
     <a href="{{ tag.Href }}" class="tag-item" data-count="{{ tag.Count }}">
       <span class="tag-name">{{ tag.Name }}</span>
       <span class="tag-count">({{ tag.Count }})</span>
@@ -30,7 +30,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for tag in tags %}
+        {% for tag in tag_list %}
         <tr>
           <td><a href="{{ tag.Href }}">{{ tag.Name }}</a></td>
           <td class="count">{{ tag.Count }}</td>
