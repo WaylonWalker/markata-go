@@ -168,7 +168,8 @@
    */
   function nextPage() {
     var nextBtn = document.querySelector('[data-action="next"]');
-    if (nextBtn && !nextBtn.disabled) {
+    if (nextBtn) {
+      // Use click() to trigger view transitions interceptor
       nextBtn.click();
     }
   }
@@ -178,7 +179,8 @@
    */
   function previousPage() {
     var prevBtn = document.querySelector('[data-action="prev"]');
-    if (prevBtn && !prevBtn.disabled) {
+    if (prevBtn) {
+      // Use click() to trigger view transitions interceptor
       prevBtn.click();
     }
   }
@@ -306,6 +308,32 @@
           openPost(true);
         },
         priority: 15
+      });
+
+      // [ - Previous page (uses data-action="prev" button)
+      window.shortcutsRegistry.register({
+        key: '[',
+        modifiers: [],
+        description: 'Previous page',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          previousPage();
+        },
+        priority: 20
+      });
+
+      // ] - Next page (uses data-action="next" button)
+      window.shortcutsRegistry.register({
+        key: ']',
+        modifiers: [],
+        description: 'Next page',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          nextPage();
+        },
+        priority: 20
       });
 
       // Handle multi-key sequences: g h and g s

@@ -1054,7 +1054,15 @@ func (c Context) ToPongo2() pongo2.Context {
 		for k, v := range c.Extra {
 			// Don't override existing keys
 			if _, exists := ctx[k]; !exists {
-				ctx[k] = v
+				// Convert Post types to maps for template access
+				switch typed := v.(type) {
+				case []*models.Post:
+					ctx[k] = PostsToMaps(typed)
+				case *models.Post:
+					ctx[k] = postToMap(typed)
+				default:
+					ctx[k] = v
+				}
 			}
 		}
 	}
