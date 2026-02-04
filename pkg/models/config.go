@@ -389,6 +389,9 @@ type Config struct {
 	// Tags configures the tags listing page at /tags
 	Tags TagsConfig `json:"tags" yaml:"tags" toml:"tags"`
 
+	// TagAggregator configures tag normalization and hierarchical expansion
+	TagAggregator TagAggregatorConfig `json:"tag_aggregator" yaml:"tag_aggregator" toml:"tag_aggregator"`
+
 	// Assets configures external CDN asset handling for self-hosting
 	Assets AssetsConfig `json:"assets" yaml:"assets" toml:"assets"`
 
@@ -1994,6 +1997,45 @@ func (t *TagsConfig) IsPrivate(tag string) bool {
 		}
 	}
 	return false
+}
+
+// TagAggregatorConfig configures the tag aggregator plugin for normalizing and expanding tags.
+type TagAggregatorConfig struct {
+	// Enabled controls whether tag aggregation is active (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Synonyms maps canonical tags to their synonyms/variants.
+	// When a post has a synonym tag, it's replaced with the canonical tag.
+	// Example: {"kubernetes": ["k8s"], "javascript": ["js"]}
+	Synonyms map[string][]string `json:"synonyms,omitempty" yaml:"synonyms,omitempty" toml:"synonyms,omitempty"`
+
+	// Additional maps tags to additional tags that should be automatically added.
+	// These are applied recursively to create tag hierarchies.
+	// Example: {"pandas": ["data", "python"], "docker": ["containers"]}
+	Additional map[string][]string `json:"additional,omitempty" yaml:"additional,omitempty" toml:"additional,omitempty"`
+
+	// GenerateReport controls whether to generate a debug report page (default: false)
+	GenerateReport bool `json:"generate_report,omitempty" yaml:"generate_report,omitempty" toml:"generate_report,omitempty"`
+}
+
+// NewTagAggregatorConfig creates a new TagAggregatorConfig with default values.
+func NewTagAggregatorConfig() TagAggregatorConfig {
+	enabled := true
+	return TagAggregatorConfig{
+		Enabled:        &enabled,
+		Synonyms:       make(map[string][]string),
+		Additional:     make(map[string][]string),
+		GenerateReport: false,
+	}
+}
+
+// IsEnabled returns whether tag aggregation is enabled.
+// Defaults to true if not explicitly set.
+func (t *TagAggregatorConfig) IsEnabled() bool {
+	if t.Enabled == nil {
+		return true
+	}
+	return *t.Enabled
 }
 
 // CSSBundleConfig configures css_bundle plugin for combining CSS files.
