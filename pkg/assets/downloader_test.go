@@ -1,6 +1,7 @@
 package assets
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -27,7 +28,9 @@ func TestDownloader_Download(t *testing.T) {
 	// Create a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test content"))
+		if _, err := w.Write([]byte("test content")); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -119,7 +122,7 @@ func TestDownloader_IsCached(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(cachedPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(cachedPath, []byte("content"), 0o644); err != nil {
+	if err := os.WriteFile(cachedPath, []byte("content"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -149,7 +152,7 @@ func TestDownloader_GetCachedPath(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(cachedPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(cachedPath, []byte("content"), 0o644); err != nil {
+	if err := os.WriteFile(cachedPath, []byte("content"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -176,7 +179,7 @@ func TestDownloader_CopyToOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 	content := []byte("test content for copy")
-	if err := os.WriteFile(cachedPath, content, 0o644); err != nil {
+	if err := os.WriteFile(cachedPath, content, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -191,7 +194,7 @@ func TestDownloader_CopyToOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read output file: %v", err)
 	}
-	if string(data) != string(content) {
+	if !bytes.Equal(data, content) {
 		t.Errorf("content mismatch: expected %s, got %s", content, data)
 	}
 }
@@ -221,7 +224,7 @@ func TestDownloader_Clean(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(testFile), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(testFile, []byte("content"), 0o644); err != nil {
+	if err := os.WriteFile(testFile, []byte("content"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -257,7 +260,9 @@ func TestDownloader_DownloadAll(t *testing.T) {
 	// Create a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test content"))
+		if _, err := w.Write([]byte("test content")); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 

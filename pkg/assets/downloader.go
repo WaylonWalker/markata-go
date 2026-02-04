@@ -85,7 +85,7 @@ func (d *Downloader) Download(ctx context.Context, asset Asset) (*DownloadResult
 
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
-		result.Error = fmt.Errorf("%w: %v", ErrDownloadFailed, err)
+		result.Error = fmt.Errorf("%w: %w", ErrDownloadFailed, err)
 		return result, result.Error
 	}
 	defer resp.Body.Close()
@@ -105,13 +105,13 @@ func (d *Downloader) Download(ctx context.Context, asset Asset) (*DownloadResult
 	// Verify integrity if hash provided and verification enabled
 	if d.verifyIntegrity && asset.Integrity != "" {
 		if err := verifyIntegrity(data, asset.Integrity); err != nil {
-			result.Error = fmt.Errorf("%w: %v", ErrIntegrityMismatch, err)
+			result.Error = fmt.Errorf("%w: %w", ErrIntegrityMismatch, err)
 			return result, result.Error
 		}
 	}
 
 	// Write to cache
-	if err := os.WriteFile(cachedPath, data, 0o644); err != nil { //nolint:gosec
+	if err := os.WriteFile(cachedPath, data, 0o644); err != nil { //nolint:gosec // cache files need to be readable by user
 		result.Error = fmt.Errorf("write cache file: %w", err)
 		return result, result.Error
 	}
@@ -139,7 +139,10 @@ func (d *Downloader) DownloadAll(ctx context.Context, concurrency int) []Downloa
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 
-			result, _ := d.Download(ctx, a)
+			result, err := d.Download(ctx, a)
+			if err != nil {
+				result.Error = err
+			}
 			results[idx] = *result
 		}(i, asset)
 	}
@@ -185,7 +188,7 @@ func (d *Downloader) CopyToOutput(asset Asset, outputDir string) error {
 	}
 
 	// Write to output
-	if err := os.WriteFile(outputPath, data, 0o644); err != nil { //nolint:gosec
+	if err := os.WriteFile(outputPath, data, 0o644); err != nil { //nolint:gosec // output files need to be readable by web server
 		return fmt.Errorf("write output file: %w", err)
 	}
 

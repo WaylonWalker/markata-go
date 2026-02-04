@@ -51,13 +51,15 @@ func (p *CDNAssetsPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Check for errors and log them (but don't fail - we can still use CDN fallback)
 	var successCount, cachedCount, errorCount int
-	for _, result := range results {
-		if result.Error != nil {
+	for i := range results {
+		result := &results[i]
+		switch {
+		case result.Error != nil:
 			log.Printf("[cdn_assets] Warning: failed to download %s: %v", result.Asset.Name, result.Error)
 			errorCount++
-		} else if result.Cached {
+		case result.Cached:
 			cachedCount++
-		} else {
+		default:
 			successCount++
 		}
 	}

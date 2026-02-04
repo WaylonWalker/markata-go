@@ -12,6 +12,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Constants for repeated strings.
+const (
+	statusYes = "yes"
+	statusNo  = "no"
+)
+
 // assetsCmd represents the assets command group.
 var assetsCmd = &cobra.Command{
 	Use:   "assets",
@@ -82,24 +88,21 @@ func init() {
 }
 
 // getAssetsConfig loads the config and returns the assets configuration.
-func getAssetsConfig() (*assets.Downloader, string, error) {
+func getAssetsConfig() (*assets.Downloader, string) {
 	cfg, err := config.Load(cfgFile)
 	if err != nil {
 		// Use defaults if no config
 		cacheDir := ".markata/assets-cache"
-		return assets.NewDownloader(cacheDir, true), cacheDir, nil
+		return assets.NewDownloader(cacheDir, true), cacheDir
 	}
 
 	cacheDir := cfg.Assets.GetCacheDir()
 	verifyIntegrity := cfg.Assets.IsVerifyIntegrityEnabled()
-	return assets.NewDownloader(cacheDir, verifyIntegrity), cacheDir, nil
+	return assets.NewDownloader(cacheDir, verifyIntegrity), cacheDir
 }
 
 func runAssetsDownload(_ *cobra.Command, _ []string) error {
-	downloader, _, err := getAssetsConfig()
-	if err != nil {
-		return err
-	}
+	downloader, _ := getAssetsConfig()
 
 	fmt.Println("Downloading external CDN assets...")
 	fmt.Println()
@@ -116,15 +119,18 @@ func runAssetsDownload(_ *cobra.Command, _ []string) error {
 	var totalSize int64
 	var successCount, cachedCount, errorCount int
 
-	for _, result := range results {
-		status := "downloaded"
-		if result.Error != nil {
+	for i := range results {
+		result := &results[i]
+		var status string
+		switch {
+		case result.Error != nil:
 			status = fmt.Sprintf("error: %v", result.Error)
 			errorCount++
-		} else if result.Cached {
+		case result.Cached:
 			status = "cached"
 			cachedCount++
-		} else {
+		default:
+			status = "downloaded"
 			successCount++
 		}
 
@@ -153,10 +159,7 @@ func runAssetsDownload(_ *cobra.Command, _ []string) error {
 }
 
 func runAssetsList(_ *cobra.Command, _ []string) error {
-	downloader, cacheDir, err := getAssetsConfig()
-	if err != nil {
-		return err
-	}
+	downloader, cacheDir := getAssetsConfig()
 
 	fmt.Printf("Assets cache directory: %s\n\n", cacheDir)
 
@@ -169,11 +172,12 @@ func runAssetsList(_ *cobra.Command, _ []string) error {
 	var cachedCount int
 	var totalSize int64
 
-	for _, status := range statuses {
-		cached := "no"
+	for i := range statuses {
+		status := &statuses[i]
+		cached := statusNo
 		sizeStr := "-"
 		if status.Cached {
-			cached = "yes"
+			cached = statusYes
 			sizeStr = formatSize(status.Size)
 			cachedCount++
 			totalSize += status.Size
@@ -197,10 +201,7 @@ func runAssetsList(_ *cobra.Command, _ []string) error {
 }
 
 func runAssetsClean(_ *cobra.Command, _ []string) error {
-	downloader, cacheDir, err := getAssetsConfig()
-	if err != nil {
-		return err
-	}
+	downloader, cacheDir := getAssetsConfig()
 
 	// Check if cache exists
 	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
