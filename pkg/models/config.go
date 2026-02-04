@@ -386,6 +386,9 @@ type Config struct {
 	// Tags configures the tags listing page at /tags
 	Tags TagsConfig `json:"tags" yaml:"tags" toml:"tags"`
 
+	// Assets configures external CDN asset handling for self-hosting
+	Assets AssetsConfig `json:"assets" yaml:"assets" toml:"assets"`
+
 	// TemplatePresets defines named template preset configurations
 	// Each preset specifies templates for all output formats
 	TemplatePresets map[string]TemplatePreset `json:"template_presets,omitempty" yaml:"template_presets,omitempty" toml:"template_presets,omitempty"`
@@ -2011,6 +2014,67 @@ func NewCSSMinifyConfig() CSSMinifyConfig {
 	}
 }
 
+// AssetsConfig configures external CDN asset handling for self-hosting.
+// When mode is "self-hosted", external assets (GLightbox, HTMX, Mermaid, etc.)
+// are downloaded at build time and served from the site itself.
+type AssetsConfig struct {
+	// Mode controls how external assets are handled:
+	// - "cdn": Always load from external CDN (default, no download)
+	// - "self-hosted": Download and serve from local output/assets/vendor/
+	// - "auto": Use self-hosted if assets are cached, fall back to CDN
+	Mode string `json:"mode,omitempty" yaml:"mode,omitempty" toml:"mode,omitempty"`
+
+	// CacheDir is the directory for caching downloaded assets (default: ".markata/assets-cache")
+	CacheDir string `json:"cache_dir,omitempty" yaml:"cache_dir,omitempty" toml:"cache_dir,omitempty"`
+
+	// VerifyIntegrity enables SRI hash verification for downloaded assets (default: true)
+	VerifyIntegrity *bool `json:"verify_integrity,omitempty" yaml:"verify_integrity,omitempty" toml:"verify_integrity,omitempty"`
+
+	// OutputDir is the subdirectory in output for vendor assets (default: "assets/vendor")
+	OutputDir string `json:"output_dir,omitempty" yaml:"output_dir,omitempty" toml:"output_dir,omitempty"`
+}
+
+// NewAssetsConfig creates a new AssetsConfig with default values.
+func NewAssetsConfig() AssetsConfig {
+	verifyIntegrity := true
+	return AssetsConfig{
+		Mode:            "cdn",
+		CacheDir:        ".markata/assets-cache",
+		VerifyIntegrity: &verifyIntegrity,
+		OutputDir:       "assets/vendor",
+	}
+}
+
+// IsSelfHosted returns true if assets should be self-hosted.
+func (a *AssetsConfig) IsSelfHosted() bool {
+	return a.Mode == "self-hosted" || a.Mode == "auto"
+}
+
+// IsVerifyIntegrityEnabled returns whether integrity verification is enabled.
+// Defaults to true if not explicitly set.
+func (a *AssetsConfig) IsVerifyIntegrityEnabled() bool {
+	if a.VerifyIntegrity == nil {
+		return true
+	}
+	return *a.VerifyIntegrity
+}
+
+// GetCacheDir returns the cache directory, with default if not set.
+func (a *AssetsConfig) GetCacheDir() string {
+	if a.CacheDir == "" {
+		return ".markata/assets-cache"
+	}
+	return a.CacheDir
+}
+
+// GetOutputDir returns the output directory for vendor assets.
+func (a *AssetsConfig) GetOutputDir() string {
+	if a.OutputDir == "" {
+		return "assets/vendor"
+	}
+	return a.OutputDir
+}
+
 // NewConfig creates a new Config with default values.
 func NewConfig() *Config {
 	return &Config{
@@ -2056,6 +2120,7 @@ func NewConfig() *Config {
 		Encryption:       NewEncryptionConfig(),
 		Shortcuts:        NewShortcutsConfig(),
 		Tags:             NewTagsConfig(),
+		Assets:           NewAssetsConfig(),
 	}
 }
 

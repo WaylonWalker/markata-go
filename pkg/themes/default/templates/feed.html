@@ -5,7 +5,7 @@
 
 {% block htmx %}
 {% if page.pagination_type == "htmx" or page.pagination_type == "htmx-infinite" %}
-<script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+<script src="{% if config.Extra.asset_urls.htmx %}{{ config.Extra.asset_urls.htmx }}{% else %}https://unpkg.com/htmx.org@1.9.10{% endif %}"></script>
 {% if page.pagination_type == "htmx-infinite" %}
 <script src="{{ 'js/infinite-scroll.js' | theme_asset }}" defer></script>
 {% endif %}

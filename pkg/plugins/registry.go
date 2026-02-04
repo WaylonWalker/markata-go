@@ -88,6 +88,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["critical_css"] = func() lifecycle.Plugin { return NewCriticalCSSPlugin() }
 	pluginRegistry.constructors["css_purge"] = func() lifecycle.Plugin { return NewCSSPurgePlugin() }
 	pluginRegistry.constructors["css_minify"] = func() lifecycle.Plugin { return NewCSSMinifyPlugin() }
+	pluginRegistry.constructors["cdn_assets"] = func() lifecycle.Plugin { return NewCDNAssetsPlugin() }
 	pluginRegistry.constructors["tags_listing"] = func() lifecycle.Plugin { return NewTagsListingPlugin() }
 }
 
@@ -139,6 +140,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		// Configure/Glob stage plugins
 		NewGlobPlugin(),
 		NewBackgroundPlugin(), // Configure background decorations early
+		NewCDNAssetsPlugin(),  // Download CDN assets for self-hosting (Configure + Write)
 
 		// Load stage plugins
 		NewLoadPlugin(),
