@@ -31,7 +31,7 @@
     debug: false,
     skipClasses: [],
     skipSelectors: [],
-    transitionDuration: 300,
+    transitionDuration: 150,
     updateMeta: true,
     scrollToTop: true,
   };

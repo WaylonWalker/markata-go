@@ -169,11 +169,8 @@
   function nextPage() {
     var nextBtn = document.querySelector('[data-action="next"]');
     if (nextBtn) {
-      if (nextBtn.href) {
-        window.location.href = nextBtn.href;
-      } else if (!nextBtn.disabled) {
-        nextBtn.click();
-      }
+      // Use click() to trigger view transitions interceptor
+      nextBtn.click();
     }
   }
 
@@ -183,11 +180,8 @@
   function previousPage() {
     var prevBtn = document.querySelector('[data-action="prev"]');
     if (prevBtn) {
-      if (prevBtn.href) {
-        window.location.href = prevBtn.href;
-      } else if (!prevBtn.disabled) {
-        prevBtn.click();
-      }
+      // Use click() to trigger view transitions interceptor
+      prevBtn.click();
     }
   }
 
