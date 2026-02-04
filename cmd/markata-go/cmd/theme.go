@@ -1445,7 +1445,7 @@ func (s *tomlParserState) handleKeyValue(line string) {
 func (s *tomlParserState) setCalendarValue(key, value string) {
 	switch key {
 	case "enabled":
-		s.result["enabled"] = value == "true"
+		s.result["enabled"] = value == boolStrTrue
 	case "default_palette":
 		s.result["default_palette"] = value
 	}
@@ -1454,7 +1454,7 @@ func (s *tomlParserState) setCalendarValue(key, value string) {
 // setRuleValue sets a value in a rule section.
 func (s *tomlParserState) setRuleValue(key, value string) {
 	if key == "enabled" {
-		s.currentRule[key] = value == "true"
+		s.currentRule[key] = value == boolStrTrue
 	} else {
 		s.currentRule[key] = value
 	}

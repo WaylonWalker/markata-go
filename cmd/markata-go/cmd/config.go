@@ -19,11 +19,12 @@ import (
 
 // Common string constants to avoid goconst warnings.
 const (
-	formatJSON = "json"
-	formatTOML = "toml"
-	formatYAML = "yaml"
-	extYAML    = ".yaml"
-	extYML     = ".yml"
+	formatJSON  = "json"
+	formatTOML  = "toml"
+	formatYAML  = "yaml"
+	extYAML     = ".yaml"
+	extYML      = ".yml"
+	boolStrTrue = "true"
 )
 
 // configCmd represents the config command group.
@@ -741,7 +742,7 @@ func marshalConfigMap(configMap map[string]interface{}, format string) ([]byte, 
 func parseValue(value string) interface{} {
 	// Check for boolean
 	lower := strings.ToLower(value)
-	if lower == "true" {
+	if lower == boolStrTrue {
 		return true
 	}
 	if lower == "false" {
