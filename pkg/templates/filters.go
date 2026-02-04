@@ -3,6 +3,7 @@ package templates
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -16,6 +17,40 @@ import (
 )
 
 var registerOnce sync.Once
+
+// assetHashRegistry stores asset path -> hash mappings for cache busting.
+// This is set by SetAssetHashes() before rendering templates.
+var assetHashRegistry map[string]string
+var assetHashMu sync.RWMutex
+
+// SetAssetHashes merges new hashes into the global asset hash registry.
+// This should be called before rendering templates that use theme_asset_hashed.
+// Multiple plugins can call this to register their generated assets.
+func SetAssetHashes(hashes map[string]string) {
+	assetHashMu.Lock()
+	defer assetHashMu.Unlock()
+
+	// Initialize the registry if needed
+	if assetHashRegistry == nil {
+		assetHashRegistry = make(map[string]string)
+	}
+
+	// Merge new hashes (later calls can override earlier ones)
+	for path, hash := range hashes {
+		assetHashRegistry[path] = hash
+	}
+}
+
+// GetAssetHash retrieves the hash for a given asset path.
+func GetAssetHash(path string) (string, bool) {
+	assetHashMu.RLock()
+	defer assetHashMu.RUnlock()
+	if assetHashRegistry == nil {
+		return "", false
+	}
+	hash, ok := assetHashRegistry[path]
+	return hash, ok
+}
 
 // Pre-compiled regex patterns for performance - compiled once at package init
 var (
@@ -105,6 +140,7 @@ func registerFilters() {
 
 		// Theme/asset filters (per THEMES.md spec)
 		pongo2.RegisterFilter("theme_asset", filterThemeAsset)
+		pongo2.RegisterFilter("theme_asset_hashed", filterThemeAssetHashed)
 		pongo2.RegisterFilter("asset_url", filterAssetURL)
 
 		// ISO date format filter (per THEMES.md spec)
@@ -625,6 +661,33 @@ func filterAssetURL(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	path := in.String()
 	if path == "" {
 		return pongo2.AsValue(""), nil
+	}
+
+	// Ensure path starts with /
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+
+	return pongo2.AsValue(path), nil
+}
+
+// filterThemeAssetHashed returns a cache-busted URL for theme assets.
+// Looks up content hash from global registry and appends to filename.
+// Usage: {{ 'css/main.css' | theme_asset_hashed }}
+// Returns: /css/main.abc12345.css (if hash registered), /css/main.css (fallback)
+func filterThemeAssetHashed(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	path := in.String()
+	if path == "" {
+		return pongo2.AsValue(""), nil
+	}
+
+	// Get hash from global registry
+	if hash, ok := GetAssetHash(path); ok && hash != "" {
+		// Insert hash before the file extension
+		// "css/main.css" → "css/main.abc12345.css"
+		ext := filepath.Ext(path)
+		base := strings.TrimSuffix(path, ext)
+		path = base + "." + hash + ext
 	}
 
 	// Ensure path starts with /
