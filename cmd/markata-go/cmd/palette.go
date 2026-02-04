@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +12,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
+	fuzzyfinder "github.com/ktr0731/go-fuzzyfinder"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +36,9 @@ Subcommands:
   check    - Validate palette contrast ratios
   preview  - Generate HTML preview
   export   - Export palette to different formats
-  new      - Create a new palette`,
+  new      - Create a new palette
+  clone    - Clone an existing palette with fuzzy picker
+  fetch    - Fetch palette from Lospec URL`,
 }
 
 // paletteListCmd lists available palettes.
@@ -143,6 +148,25 @@ Example usage:
 	RunE: runPaletteNewCommand,
 }
 
+// paletteCloneCmd clones an existing palette with a fuzzy picker.
+var paletteCloneCmd = &cobra.Command{
+	Use:   "clone [source-palette]",
+	Short: "Clone an existing palette",
+	Long: `Clone an existing palette to create a customized version.
+
+If no source palette is specified, opens a fuzzy picker to select one.
+After selection, prompts for a name for the new palette.
+
+The cloned palette is saved to ~/.config/markata-go/palettes/.
+
+Example usage:
+  markata-go palette clone                        # Fuzzy picker -> prompt for name
+  markata-go palette clone catppuccin-mocha       # Clone specific palette, prompt for name
+  markata-go palette clone catppuccin-mocha --name "my-custom"  # Clone with explicit name`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runPaletteCloneCommand,
+}
+
 // paletteFetchCmd fetches a palette from a Lospec URL.
 var paletteFetchCmd = &cobra.Command{
 	Use:   "fetch <url>",
@@ -194,6 +218,9 @@ var (
 	// palettePreviewAll shows all palettes in preview.
 	palettePreviewAll bool
 
+	// paletteCloneName is the name for the cloned palette.
+	paletteCloneName string
+
 	// paletteFetchName is the custom name for a fetched palette.
 	paletteFetchName string
 
@@ -235,6 +262,10 @@ func init() {
 	paletteNewCmd.Flags().StringVar(&paletteNewVariant, "variant", "dark", "Palette variant (light/dark)")
 	paletteNewCmd.Flags().StringVar(&paletteFrom, "from", "", "Base palette to copy from")
 	paletteNewCmd.Flags().StringVarP(&paletteOutput, "output", "o", "", "Output file (default: palettes/<name>.toml)")
+
+	// Clone subcommand
+	paletteCmd.AddCommand(paletteCloneCmd)
+	paletteCloneCmd.Flags().StringVar(&paletteCloneName, "name", "", "Name for the cloned palette")
 
 	// Fetch subcommand
 	paletteCmd.AddCommand(paletteFetchCmd)
@@ -622,78 +653,140 @@ func runPaletteNewCommand(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-// runPaletteFetchCommand fetches a palette from a Lospec URL.
-func runPaletteFetchCommand(_ *cobra.Command, args []string) error {
-	rawURL := args[0]
+// runPaletteCloneCommand clones an existing palette.
+func runPaletteCloneCommand(_ *cobra.Command, args []string) error {
+	loader := palettes.NewLoader()
 
-	// Validate and parse the URL
-	normalizedURL, err := palettes.ParseLospecURL(rawURL)
+	// Get all available palettes for selection
+	infos, err := loader.Discover()
 	if err != nil {
-		return fmt.Errorf("invalid Lospec URL: %w\nExpected format: https://lospec.com/palette-list/<name>.txt", err)
+		return fmt.Errorf("failed to discover palettes: %w", err)
 	}
 
-	fmt.Printf("Fetching palette from: %s\n", normalizedURL)
-
-	// Create client and fetch palette
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	client := palettes.NewLospecClient()
-	p, err := client.FetchPalette(ctx, normalizedURL)
-	if err != nil {
-		return fmt.Errorf("failed to fetch palette: %w", err)
+	if len(infos) == 0 {
+		return fmt.Errorf("no palettes available to clone")
 	}
 
-	// Override name if provided
-	if paletteFetchName != "" {
-		p.Name = paletteFetchName
-	}
+	var sourcePaletteName string
 
-	// Determine output directory
-	var outputDir string
-	if paletteFetchOutput != "" {
-		outputDir = paletteFetchOutput
+	if len(args) > 0 {
+		// Palette name provided as argument
+		sourcePaletteName = args[0]
 	} else {
-		outputDir, err = palettes.GetUserPalettesDir()
+		// Show fuzzy picker
+		idx, err := fuzzyfinder.Find(
+			infos,
+			func(i int) string {
+				return infos[i].Name
+			},
+			fuzzyfinder.WithPreviewWindow(func(i, _, _ int) string {
+				if i == -1 {
+					return ""
+				}
+				return formatPalettePreview(infos[i])
+			}),
+		)
 		if err != nil {
-			return fmt.Errorf("failed to get user palettes directory: %w", err)
+			if errors.Is(err, fuzzyfinder.ErrAbort) {
+				return fmt.Errorf("selection canceled")
+			}
+			return fmt.Errorf("fuzzy finder error: %w", err)
+		}
+		sourcePaletteName = infos[idx].Name
+	}
+
+	// Load the source palette
+	sourcePalette, err := loader.Load(sourcePaletteName)
+	if err != nil {
+		return fmt.Errorf("failed to load palette %q: %w", sourcePaletteName, err)
+	}
+
+	// Get the new palette name
+	var newName string
+	if paletteCloneName != "" {
+		newName = paletteCloneName
+	} else {
+		// Prompt for the new name
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Printf("Enter name for the cloned palette [%s-custom]: ", normalizeFileName(sourcePalette.Name))
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read input: %w", err)
+		}
+		newName = strings.TrimSpace(input)
+		if newName == "" {
+			newName = normalizeFileName(sourcePalette.Name) + "-custom"
 		}
 	}
 
-	// Generate output filename
-	outputFile := filepath.Join(outputDir, normalizeFileName(p.Name)+".toml")
+	// Validate the new name doesn't already exist
+	normalizedNewName := normalizeFileName(newName)
+
+	// Determine output path (user palettes directory)
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return fmt.Errorf("failed to get user config directory: %w", err)
+	}
+	palettesDir := filepath.Join(configDir, "markata-go", "palettes")
+	outputFile := filepath.Join(palettesDir, normalizedNewName+".toml")
 
 	// Check if file already exists
 	if _, err := os.Stat(outputFile); err == nil {
-		return fmt.Errorf("palette file already exists: %s\nUse a different name with --name or delete the existing file", outputFile)
+		return fmt.Errorf("palette already exists: %s", outputFile)
 	}
 
-	// Save the palette
-	if err := palettes.SavePaletteToFile(p, outputFile); err != nil {
-		return fmt.Errorf("failed to save palette: %w", err)
+	// Ensure the palettes directory exists
+	if err := os.MkdirAll(palettesDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create palettes directory: %w", err)
 	}
 
-	fmt.Printf("Palette saved to: %s\n", outputFile)
-	fmt.Printf("\nPalette details:\n")
-	fmt.Printf("  Name:        %s\n", p.Name)
-	fmt.Printf("  Variant:     %s\n", p.Variant)
-	fmt.Printf("  Colors:      %d\n", len(p.Colors))
-	fmt.Printf("  Source:      %s\n", p.Homepage)
+	// Clone the palette
+	clonedPalette := sourcePalette.Clone()
+	clonedPalette.Name = newName
+	clonedPalette.Author = ""
+	clonedPalette.Homepage = ""
+	clonedPalette.Description = fmt.Sprintf("Cloned from %s", sourcePaletteName)
 
-	// Show semantic mappings
-	if len(p.Semantic) > 0 {
-		fmt.Printf("\nSemantic mappings:\n")
-		for name, ref := range p.Semantic {
-			hex := p.Resolve(name)
-			fmt.Printf("  %-15s -> %-10s (%s)\n", name, ref, hex)
+	// Generate TOML and write
+	tomlContent := generatePaletteTOML(clonedPalette)
+	if err := os.WriteFile(outputFile, []byte(tomlContent), 0o644); err != nil { //nolint:gosec // palette files should be readable
+		return fmt.Errorf("failed to write palette file: %w", err)
+	}
+
+	fmt.Printf("Cloned palette %q to: %s\n", sourcePaletteName, outputFile)
+	return nil
+}
+
+// formatPalettePreview formats a palette info for the fuzzy finder preview.
+func formatPalettePreview(info palettes.PaletteInfo) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Name: %s\n", info.Name))
+	sb.WriteString(fmt.Sprintf("Variant: %s\n", info.Variant))
+	if info.Author != "" {
+		sb.WriteString(fmt.Sprintf("Author: %s\n", info.Author))
+	}
+	if info.Description != "" {
+		sb.WriteString(fmt.Sprintf("Description: %s\n", info.Description))
+	}
+	sb.WriteString(fmt.Sprintf("Source: %s\n", info.Source))
+
+	// Try to load the full palette for color preview
+	loader := palettes.NewLoader()
+	p, err := loader.Load(info.Name)
+	if err == nil {
+		sb.WriteString("\nColors:\n")
+		count := 0
+		for name, hex := range p.Colors {
+			if count >= 8 {
+				sb.WriteString(fmt.Sprintf("  ... and %d more\n", len(p.Colors)-8))
+				break
+			}
+			sb.WriteString(fmt.Sprintf("  %s: %s\n", name, hex))
+			count++
 		}
 	}
 
-	fmt.Printf("\nUse this palette in your config:\n")
-	fmt.Printf("  [markata-go.theme]\n")
-	fmt.Printf("  palette = %q\n", normalizeFileName(p.Name))
-
-	return nil
+	return sb.String()
 }
 
 // generatePreviewHTML generates an HTML preview page for a palette.
@@ -1012,4 +1105,73 @@ func openBrowser(path string) {
 	// Platform-specific browser opening would go here
 	// For now, just print a message
 	fmt.Printf("Open %s in your browser to view the preview.\n", path)
+}
+
+// runPaletteFetchCommand fetches a palette from a Lospec URL.
+func runPaletteFetchCommand(_ *cobra.Command, args []string) error {
+	rawURL := args[0]
+
+	// Validate and parse the URL
+	normalizedURL, err := palettes.ParseLospecURL(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid Lospec URL: %w\nExpected format: https://lospec.com/palette-list/<name>.txt", err)
+	}
+
+	fmt.Printf("Fetching palette from: %s\n", normalizedURL)
+
+	// Create client and fetch palette
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	client := palettes.NewLospecClient()
+	p, err := client.FetchPalette(ctx, normalizedURL)
+	if err != nil {
+		return fmt.Errorf("failed to fetch palette: %w", err)
+	}
+
+	// Override name if provided
+	if paletteFetchName != "" {
+		p.Name = paletteFetchName
+	}
+
+	// Determine output directory
+	var outputDir string
+	if paletteFetchOutput != "" {
+		outputDir = paletteFetchOutput
+	} else {
+		outputDir, err = palettes.GetUserPalettesDir()
+		if err != nil {
+			return fmt.Errorf("failed to get user palettes directory: %w", err)
+		}
+	}
+
+	// Generate output filename
+	outputFile := filepath.Join(outputDir, normalizeFileName(p.Name)+".toml")
+
+	// Check if file already exists
+	if _, err := os.Stat(outputFile); err == nil {
+		return fmt.Errorf("palette file already exists: %s\nUse a different name with --name or delete the existing file", outputFile)
+	}
+
+	// Save the palette
+	if err := palettes.SavePaletteToFile(p, outputFile); err != nil {
+		return fmt.Errorf("failed to save palette: %w", err)
+	}
+
+	fmt.Printf("Palette saved to: %s\n", outputFile)
+	fmt.Printf("\nPalette details:\n")
+	fmt.Printf("  Name:        %s\n", p.Name)
+	fmt.Printf("  Variant:     %s\n", p.Variant)
+	fmt.Printf("  Colors:      %d\n", len(p.Colors))
+	fmt.Printf("  Source:      %s\n", p.Homepage)
+
+	// Show semantic mappings
+	if len(p.Semantic) > 0 {
+		fmt.Printf("\nSemantic mappings:\n")
+		for name, ref := range p.Semantic {
+			fmt.Printf("  %-20s -> %s\n", name, ref)
+		}
+	}
+
+	return nil
 }
