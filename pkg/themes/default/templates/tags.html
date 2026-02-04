@@ -5,9 +5,9 @@
 
 {% block content %}
 <div class="tags-listing">
-  <header class="tags-header">
+  <header class="page-header">
     <h1>{{ title | default:"Tags" }}</h1>
-    {% if description %}<p class="tags-description">{{ description }}</p>{% endif %}
+    {% if description %}<p class="page-description">{{ description }}</p>{% endif %}
     <p class="tags-count">{{ total_tags }} tag{{ total_tags|pluralize }} found</p>
   </header>
 
@@ -37,16 +37,16 @@
   padding: var(--spacing-lg, 2rem);
 }
 
-.tags-header {
+.page-header {
   margin-bottom: var(--spacing-xl, 3rem);
   text-align: center;
 }
 
-.tags-header h1 {
+.page-header h1 {
   margin-bottom: var(--spacing-sm, 0.5rem);
 }
 
-.tags-description {
+.page-description {
   color: var(--color-text-muted, #666);
   margin-bottom: var(--spacing-sm, 0.5rem);
 }
