@@ -101,6 +101,9 @@ markata-go palette check catppuccin-mocha
 
 # Export palette as CSS
 markata-go palette export catppuccin-mocha --format css
+
+# Clone a palette for customization
+markata-go palette clone catppuccin-mocha --name "my-theme"
 ```
 
 ---
