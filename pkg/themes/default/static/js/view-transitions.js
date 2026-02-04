@@ -213,8 +213,16 @@
       window.initTooltips();
     }
 
+    if (window.initMentionCards && typeof window.initMentionCards === 'function') {
+      window.initMentionCards();
+    }
+
     if (window.initPagination && typeof window.initPagination === 'function') {
       window.initPagination();
+    }
+
+    if (window.initNavigationShortcuts && typeof window.initNavigationShortcuts === 'function') {
+      window.initNavigationShortcuts();
     }
 
     // Re-attach event listeners
