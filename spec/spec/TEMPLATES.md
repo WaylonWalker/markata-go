@@ -765,6 +765,64 @@ template_engine_compat:
 
 ---
 
+## Microformats2 Semantic Markup
+
+Default templates include Microformats2 classes for IndieWeb compatibility.
+
+### Post Pages (h-entry)
+
+Single post templates MUST include `h-entry` markup:
+
+```html
+<article class="post h-entry">
+  <a class="u-url" href="{{ config.url }}{{ post.href }}" hidden></a>
+  <h1 class="p-name">{{ post.title }}</h1>
+  <time class="dt-published" datetime="{{ post.date | atom_date }}">...</time>
+  <div class="post-content e-content">{{ body | safe }}</div>
+  {% for tag in post.tags %}
+  <a class="p-category" href="/tags/{{ tag | slugify }}/">{{ tag }}</a>
+  {% endfor %}
+  <span class="p-author h-card" hidden>
+    <a class="u-url p-name" href="{{ config.url }}">{{ config.author }}</a>
+  </span>
+</article>
+```
+
+### Feed Pages (h-feed)
+
+Feed/listing templates MUST include `h-feed` markup:
+
+```html
+<div class="feed h-feed">
+  <h1 class="p-name">{{ feed.title }}</h1>
+  <p class="p-summary">{{ feed.description }}</p>
+  <span class="p-author h-card" hidden>
+    <a class="u-url p-name" href="{{ config.url }}">{{ config.author }}</a>
+  </span>
+  {% for post in posts %}
+  <article class="card h-entry">...</article>
+  {% endfor %}
+</div>
+```
+
+### Required Microformat Classes
+
+| Class | Element | Description |
+|-------|---------|-------------|
+| `h-entry` | article | Entry container |
+| `p-name` | h1/h2 | Entry title |
+| `u-url` | a | Canonical permalink |
+| `dt-published` | time | Publication datetime |
+| `e-content` | div | Entry content (HTML) |
+| `p-summary` | p | Entry summary/excerpt |
+| `p-category` | a/span | Tags/categories |
+| `p-author h-card` | span | Author information |
+| `h-feed` | div | Feed container |
+| `u-photo` | img | Photo content |
+| `u-video` | video | Video content |
+
+---
+
 ## See Also
 
 - [SPEC.md](./SPEC.md) - Full specification
