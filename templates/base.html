@@ -87,8 +87,19 @@
   {% for feed in config.head.alternate_feeds %}
   <link rel="alternate" type="{{ feed.mime_type }}" title="{{ feed.title }}" href="{{ feed.href }}">
   {% endfor %}
+  {% elif discovery_feed %}
+  {# Per-page feed discovery: use sidebar feed if available, else site default #}
+  {% if discovery_feed.has_rss %}
+  <link rel="alternate" type="application/rss+xml" title="{{ discovery_feed.title }} (RSS)" href="{{ discovery_feed.rss_url }}">
+  {% endif %}
+  {% if discovery_feed.has_atom %}
+  <link rel="alternate" type="application/atom+xml" title="{{ discovery_feed.title }} (Atom)" href="{{ discovery_feed.atom_url }}">
+  {% endif %}
+  {% if discovery_feed.has_json %}
+  <link rel="alternate" type="application/feed+json" title="{{ discovery_feed.title }} (JSON)" href="{{ discovery_feed.json_url }}">
+  {% endif %}
   {% else %}
-  {# Default feeds when no alternate_feeds configured #}
+  {# Fallback: default feeds when no discovery_feed or alternate_feeds configured #}
   <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
   <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
   {% endif %}
