@@ -946,6 +946,83 @@ If a specified template doesn't exist, markata-go falls back to:
 
 ---
 
+## Microformats2 Support
+
+markata-go's default templates include [Microformats2](https://microformats.org/wiki/microformats2) markup for better interoperability with IndieWeb tools and feed readers.
+
+### h-entry on Posts
+
+Single post pages include `h-entry` markup on the `<article>` element:
+
+```html
+<article class="post h-entry">
+  <a class="u-url" href="https://example.com/my-post/" hidden></a>
+  <header>
+    <h1 class="p-name">Post Title</h1>
+    <time class="dt-published" datetime="2024-01-15T00:00:00Z">January 15, 2024</time>
+    <span class="p-author h-card" hidden>
+      <a class="u-url p-name" href="https://example.com">Author Name</a>
+    </span>
+  </header>
+  <div class="post-content e-content">
+    <!-- rendered content -->
+  </div>
+  <div class="tags">
+    <a class="p-category" href="/tags/topic/">topic</a>
+  </div>
+</article>
+```
+
+**Properties used:**
+- `h-entry` - Entry/post container
+- `p-name` - Post title
+- `u-url` - Canonical permalink
+- `dt-published` - Publication date
+- `e-content` - Entry content (HTML)
+- `p-summary` - Post description/excerpt
+- `p-category` - Tags/categories
+- `p-author h-card` - Author information
+
+### h-feed on Listings
+
+Feed and listing pages include `h-feed` markup:
+
+```html
+<div class="feed h-feed">
+  <h1 class="p-name">Blog Posts</h1>
+  <p class="p-summary">All blog posts</p>
+  <span class="p-author h-card" hidden>
+    <a class="u-url p-name" href="https://example.com">Site Author</a>
+  </span>
+
+  <!-- Each card is an h-entry -->
+  <article class="card h-entry">...</article>
+</div>
+```
+
+### Card Types
+
+All card templates include appropriate microformat classes:
+
+| Card Type | Key Classes |
+|-----------|-------------|
+| article-card | `h-entry`, `p-name`, `u-url`, `p-summary`, `dt-published`, `p-category` |
+| note-card | `h-entry`, `p-content`, `dt-published` |
+| photo-card | `h-entry`, `u-photo`, `u-video`, `p-name`, `p-summary` |
+| video-card | `h-entry`, `u-photo` (thumbnail), `p-name`, `p-summary` |
+| link-card | `h-entry`, `u-bookmark-of`, `p-name`, `p-summary` |
+| quote-card | `h-entry`, `e-content`, `h-cite` |
+| guide-card | `h-entry`, `p-name`, `u-url`, `p-summary` |
+| inline-card | `h-entry`, `e-content` |
+
+### Validation
+
+Test your microformats with:
+- [IndieWebify.me](https://indiewebify.me/) - Validate h-entry markup
+- [Pin13](https://pin13.net/mf2/) - Parse and view microformats
+
+---
+
 ## Tips and Best Practices
 
 1. **Always use `|safe` for HTML content** - When outputting rendered HTML (like `body` or `post.ArticleHTML`), use the `safe` filter to prevent double-escaping.

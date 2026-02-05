@@ -15,12 +15,18 @@
 {% endblock %}
 
 {% block content %}
-<div class="feed">
+<div class="feed h-feed">
   {% if feed.title %}
   <header class="feed-header">
-    <h1>{{ feed.title }}</h1>
-    {% if feed.description %}<p>{{ feed.description }}</p>{% endif %}
+    <h1 class="p-name">{{ feed.title }}</h1>
+    {% if feed.description %}<p class="p-summary">{{ feed.description }}</p>{% endif %}
   </header>
+  {% endif %}
+  {# Author h-card for the feed (representative) #}
+  {% if config.author %}
+  <span class="p-author h-card" hidden>
+    <a class="u-url p-name" href="{{ config.url }}">{{ config.author }}</a>
+  </span>
   {% endif %}
 
   <div class="posts posts-list" id="posts-list">
