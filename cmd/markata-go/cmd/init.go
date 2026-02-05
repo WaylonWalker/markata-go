@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/config"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
+	"github.com/WaylonWalker/markata-go/pkg/themes"
 )
 
 // initCmd represents the init command.
@@ -360,6 +362,538 @@ func valueOrNone(s string) string {
 	return s
 }
 
+// =============================================================================
+// Vending Functions - Export built-in assets for local customization
+// =============================================================================
+
+// venderContentTemplates exports built-in content templates to content-templates/.
+// Each template is written as a markdown file with YAML frontmatter.
+// A README.md is also generated explaining how to use and customize templates.
+func venderContentTemplates(force bool) error {
+	dir := "content-templates"
+
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", dir, err)
+	}
+
+	templates := BuiltinTemplates()
+
+	// Sort template names for consistent output
+	names := make([]string, 0, len(templates))
+	for name := range templates {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	written := 0
+	skipped := 0
+	for _, name := range names {
+		t := templates[name]
+		filename := filepath.Join(dir, name+".md")
+
+		// Check if file exists
+		if _, err := os.Stat(filename); err == nil && !force {
+			fmt.Printf("  ! Skipped %s (exists, use --force to overwrite)\n", filename)
+			skipped++
+			continue
+		}
+
+		content := t.ToMarkdown()
+		if err := os.WriteFile(filename, []byte(content), 0o644); err != nil { //nolint:gosec // template files should be readable
+			return fmt.Errorf("failed to write %s: %w", filename, err)
+		}
+		fmt.Printf("  Created %s\n", filename)
+		written++
+	}
+
+	// Write README
+	readmePath := filepath.Join(dir, "README.md")
+	if _, err := os.Stat(readmePath); err != nil || force {
+		readme := generateContentTemplatesREADME(templates)
+		if err := os.WriteFile(readmePath, []byte(readme), 0o644); err != nil { //nolint:gosec // readme should be readable
+			return fmt.Errorf("failed to write README: %w", err)
+		}
+		fmt.Printf("  Created %s\n", readmePath)
+	}
+
+	fmt.Printf("\n  Vendored %d content templates (%d skipped)\n", written, skipped)
+	return nil
+}
+
+// venderPalettes exports built-in palettes to palettes/.
+// Each palette is written as a TOML file.
+// A README.md is also generated explaining how to customize palettes.
+func venderPalettes(force bool) error {
+	dir := "palettes"
+
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", dir, err)
+	}
+
+	// Get all built-in palette files
+	paletteFiles, err := palettes.ListBuiltinFiles()
+	if err != nil {
+		return fmt.Errorf("failed to list built-in palettes: %w", err)
+	}
+
+	written := 0
+	skipped := 0
+	for filename, data := range paletteFiles {
+		fullPath := filepath.Join(dir, filename)
+
+		// Check if file exists
+		if _, err := os.Stat(fullPath); err == nil && !force {
+			fmt.Printf("  ! Skipped %s (exists, use --force to overwrite)\n", fullPath)
+			skipped++
+			continue
+		}
+
+		if err := os.WriteFile(fullPath, data, 0o644); err != nil { //nolint:gosec // palette files should be readable
+			return fmt.Errorf("failed to write %s: %w", fullPath, err)
+		}
+		fmt.Printf("  Created %s\n", fullPath)
+		written++
+	}
+
+	// Write README
+	readmePath := filepath.Join(dir, "README.md")
+	if _, err := os.Stat(readmePath); err != nil || force {
+		readme := generatePalettesREADME()
+		if err := os.WriteFile(readmePath, []byte(readme), 0o644); err != nil { //nolint:gosec // readme should be readable
+			return fmt.Errorf("failed to write README: %w", err)
+		}
+		fmt.Printf("  Created %s\n", readmePath)
+	}
+
+	fmt.Printf("\n  Vendored %d palettes (%d skipped)\n", written, skipped)
+	return nil
+}
+
+// venderLayouts exports built-in HTML templates to templates/.
+// This includes base templates, partials, and components.
+// A README.md is also generated explaining template customization.
+func venderLayouts(force bool) error {
+	dir := defaultTemplatesDir
+
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", dir, err)
+	}
+
+	// Get all template files
+	templateFiles, err := themes.ListTemplates()
+	if err != nil {
+		return fmt.Errorf("failed to list templates: %w", err)
+	}
+
+	written := 0
+	skipped := 0
+	for _, relPath := range templateFiles {
+		fullPath := filepath.Join(dir, relPath)
+
+		// Create subdirectories if needed
+		subdir := filepath.Dir(fullPath)
+		if err := os.MkdirAll(subdir, 0o755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", subdir, err)
+		}
+
+		// Check if file exists
+		if _, err := os.Stat(fullPath); err == nil && !force {
+			fmt.Printf("  ! Skipped %s (exists, use --force to overwrite)\n", fullPath)
+			skipped++
+			continue
+		}
+
+		// Read from embedded FS
+		data, err := themes.ReadTemplate(relPath)
+		if err != nil {
+			return fmt.Errorf("failed to read template %s: %w", relPath, err)
+		}
+
+		if err := os.WriteFile(fullPath, data, 0o644); err != nil { //nolint:gosec // template files should be readable
+			return fmt.Errorf("failed to write %s: %w", fullPath, err)
+		}
+		fmt.Printf("  Created %s\n", fullPath)
+		written++
+	}
+
+	// Write README
+	readmePath := filepath.Join(dir, "README.md")
+	if _, err := os.Stat(readmePath); err != nil || force {
+		readme := generateLayoutsREADME()
+		if err := os.WriteFile(readmePath, []byte(readme), 0o644); err != nil { //nolint:gosec // readme should be readable
+			return fmt.Errorf("failed to write README: %w", err)
+		}
+		fmt.Printf("  Created %s\n", readmePath)
+	}
+
+	fmt.Printf("\n  Vendored %d layout templates (%d skipped)\n", written, skipped)
+	return nil
+}
+
+// generateContentTemplatesREADME creates documentation for content templates.
+func generateContentTemplatesREADME(templates map[string]ContentTemplate) string {
+	var sb strings.Builder
+
+	sb.WriteString(`# Content Templates
+
+This directory contains content templates that control how new content files are created
+when using ` + "`markata-go new`" + `.
+
+## How Templates Work
+
+Each ` + "`.md`" + ` file in this directory defines a content template:
+- The filename (without .md) becomes the template name
+- The frontmatter defines default fields for new content
+- The body provides the starting content
+
+## Special Frontmatter Fields
+
+| Field | Purpose |
+|-------|---------|
+| ` + "`_directory`" + ` | Default output directory for new content using this template |
+| ` + "`template`" + ` | HTML template to use for rendering (e.g., "post", "docs") |
+
+## Available Templates
+
+`)
+
+	// Sort template names
+	names := make([]string, 0, len(templates))
+	for name := range templates {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		t := templates[name]
+		sb.WriteString(fmt.Sprintf("### %s\n\n", name))
+		sb.WriteString(fmt.Sprintf("- **Directory:** `%s/`\n", t.Directory))
+		if tpl, ok := t.Frontmatter["template"].(string); ok {
+			sb.WriteString(fmt.Sprintf("- **HTML Template:** `%s`\n", tpl))
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString(`## Creating Custom Templates
+
+1. Create a new ` + "`.md`" + ` file in this directory
+2. Add frontmatter with your default fields
+3. Include ` + "`_directory`" + ` to set where new content goes
+4. Add any body content as a starting point
+
+Example custom template (` + "`recipe.md`" + `):
+
+` + "```yaml" + `
+---
+_directory: recipes
+template: recipe
+servings: 4
+prep_time: ""
+cook_time: ""
+---
+
+## Ingredients
+
+-
+
+## Instructions
+
+1.
+` + "```" + `
+
+## Usage
+
+` + "```bash" + `
+markata-go new "My Recipe" --template recipe
+` + "```" + `
+
+This creates ` + "`recipes/my-recipe.md`" + ` with the template's frontmatter and body.
+
+## Obsidian Compatibility
+
+These templates work well with Obsidian's template plugin. Simply point Obsidian
+to this directory as your templates folder.
+`)
+
+	return sb.String()
+}
+
+// generatePalettesREADME creates documentation for palettes.
+func generatePalettesREADME() string {
+	return `# Color Palettes
+
+This directory contains color palettes that control your site's appearance.
+Local palettes override built-in palettes with the same name.
+
+## Palette Structure
+
+Each ` + "`.toml`" + ` file defines a complete color palette:
+
+` + "```toml" + `
+[palette]
+name = "My Custom Theme"
+variant = "dark"  # or "light"
+author = "Your Name"
+description = "A custom color scheme"
+
+[palette.colors]
+# Base colors (raw hex values)
+background = "#1e1e2e"
+foreground = "#cdd6f4"
+primary = "#89b4fa"
+# ... more colors
+
+[palette.semantic]
+# Semantic mappings (reference colors by name)
+text = "foreground"
+link = "primary"
+# ... more mappings
+
+[palette.components]
+# Component-specific colors (reference colors or semantic names)
+header_bg = "background"
+nav_link = "link"
+# ... more components
+` + "```" + `
+
+## Color Resolution
+
+Colors are resolved in this order:
+1. Direct hex values (e.g., ` + "`#89b4fa`" + `)
+2. Raw color names from ` + "`[palette.colors]`" + `
+3. Semantic names from ` + "`[palette.semantic]`" + `
+4. Component names from ` + "`[palette.components]`" + `
+
+## Creating a Custom Palette
+
+1. Copy an existing palette as a starting point
+2. Modify the colors to your liking
+3. Update the name, author, and description
+4. Save with a new filename
+
+## Using Your Palette
+
+In ` + "`markata-go.toml`" + `:
+
+` + "```toml" + `
+[markata-go.theme]
+palette = "my-custom-theme"  # Matches your palette's name field
+` + "```" + `
+
+## Variants
+
+Each palette should specify a variant:
+- ` + "`light`" + ` - For light backgrounds with dark text
+- ` + "`dark`" + ` - For dark backgrounds with light text
+
+This helps with automatic contrast and accessibility checks.
+
+## Required Colors
+
+At minimum, palettes should define:
+- ` + "`background`" + ` - Main page background
+- ` + "`foreground`" + ` - Primary text color
+- ` + "`primary`" + ` - Accent color for links and highlights
+
+## Resources
+
+- [Catppuccin](https://catppuccin.com/) - Popular palette collection
+- [Coolors](https://coolors.co/) - Color scheme generator
+- [Lospec](https://lospec.com/palette-list) - Pixel art palettes
+`
+}
+
+// generateLayoutsREADME creates documentation for HTML templates.
+func generateLayoutsREADME() string {
+	return `# HTML Layout Templates
+
+This directory contains Jinja2/Pongo2 templates that control how your content is rendered.
+Local templates override built-in templates with the same name.
+
+## Directory Structure
+
+` + "```" + `
+templates/
+├── base.html           # Base template with HTML structure
+├── post.html           # Individual post template
+├── feed.html           # Feed/listing template
+├── components/         # Reusable components
+│   ├── header.html
+│   ├── footer.html
+│   └── nav.html
+└── partials/           # Partial templates
+    └── cards/          # Card templates for feeds
+        ├── article-card.html
+        ├── note-card.html
+        └── ...
+` + "```" + `
+
+## Template Inheritance
+
+Templates use Jinja2-style inheritance:
+
+` + "```html" + `
+{% extends "base.html" %}
+
+{% block content %}
+  <article>{{ post.article_html|safe }}</article>
+{% endblock %}
+` + "```" + `
+
+## Available Variables
+
+### In all templates:
+| Variable | Type | Description |
+|----------|------|-------------|
+| ` + "`config`" + ` | Config | Site configuration |
+| ` + "`config.title`" + ` | string | Site title |
+| ` + "`config.url`" + ` | string | Site URL |
+| ` + "`config.description`" + ` | string | Site description |
+| ` + "`config.author`" + ` | string | Site author |
+
+### In post templates (post.html):
+| Variable | Type | Description |
+|----------|------|-------------|
+| ` + "`post`" + ` | Post | Current post object |
+| ` + "`post.title`" + ` | string | Post title |
+| ` + "`post.slug`" + ` | string | URL slug |
+| ` + "`post.href`" + ` | string | Full path (e.g., /my-post/) |
+| ` + "`post.date`" + ` | time | Publication date |
+| ` + "`post.published`" + ` | bool | Whether post is published |
+| ` + "`post.tags`" + ` | []string | Post tags |
+| ` + "`post.description`" + ` | string | Post description |
+| ` + "`post.content`" + ` | string | Raw markdown content |
+| ` + "`post.article_html`" + ` | string | Rendered HTML content |
+| ` + "`post.template`" + ` | string | Template name |
+| ` + "`post.prev`" + ` | Post | Previous post in sequence |
+| ` + "`post.next`" + ` | Post | Next post in sequence |
+
+### In feed templates (feed.html):
+| Variable | Type | Description |
+|----------|------|-------------|
+| ` + "`feed`" + ` | Feed | Current feed object |
+| ` + "`feed.title`" + ` | string | Feed title |
+| ` + "`feed.slug`" + ` | string | Feed slug |
+| ` + "`feed.posts`" + ` | []Post | Posts in this feed |
+| ` + "`feed.description`" + ` | string | Feed description |
+
+## Filters
+
+| Filter | Usage | Description |
+|--------|-------|-------------|
+| ` + "`safe`" + ` | ` + "`{{ html|safe }}`" + ` | Mark string as safe HTML |
+| ` + "`date`" + ` | ` + "`{{ post.date|date:\"Jan 2, 2006\" }}`" + ` | Format date |
+| ` + "`default`" + ` | ` + "`{{ value|default:\"fallback\" }}`" + ` | Provide default |
+| ` + "`length`" + ` | ` + "`{{ items|length }}`" + ` | Get length |
+| ` + "`join`" + ` | ` + "`{{ tags|join:\", \" }}`" + ` | Join array |
+
+## Customization Tips
+
+1. **Start small** - Override just the template you need
+2. **Use partials** - Break large templates into reusable pieces
+3. **Check variables** - Use ` + "`{% if post.description %}...{% endif %}`" + `
+4. **Test locally** - Run ` + "`markata-go serve`" + ` to preview changes
+
+## Card Templates
+
+Cards control how posts appear in feeds. The system selects cards based on
+the post's ` + "`template`" + ` field:
+
+| Post Template | Card Template |
+|--------------|---------------|
+| article | partials/cards/article-card.html |
+| note | partials/cards/note-card.html |
+| photo | partials/cards/photo-card.html |
+| video | partials/cards/video-card.html |
+| link | partials/cards/link-card.html |
+| quote | partials/cards/quote-card.html |
+| guide | partials/cards/guide-card.html |
+| (default) | partials/cards/default-card.html |
+
+## CSS Variables
+
+Templates use CSS custom properties from your palette:
+
+` + "```css" + `
+:root {
+  --color-background: {{ palette.background }};
+  --color-foreground: {{ palette.foreground }};
+  --color-primary: {{ palette.primary }};
+  /* ... */
+}
+` + "```" + `
+
+Access these in your CSS: ` + "`color: var(--color-primary);`" + `
+`
+}
+
+// promptVendSelection displays vending options and returns selected items.
+func promptVendSelection(reader *bufio.Reader) []string {
+	vendOptions := []struct {
+		name        string
+		description string
+	}{
+		{"templates", "Content templates (for 'markata-go new')"},
+		{"palettes", "Color palettes (TOML files)"},
+		{"layouts", "HTML layout templates (Jinja2/Pongo2)"},
+	}
+
+	fmt.Println()
+	fmt.Println("Select assets to vend (enter numbers separated by spaces):")
+	fmt.Println()
+	for i, opt := range vendOptions {
+		fmt.Printf("  %d) [ ] %s\n", i+1, opt.description)
+	}
+	fmt.Println()
+	fmt.Print("Enter numbers (e.g., 1 2 3 for all): ")
+
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		return nil
+	}
+
+	var selected []string
+	parts := strings.Fields(strings.TrimSpace(input))
+	for _, p := range parts {
+		var idx int
+		if _, err := fmt.Sscanf(p, "%d", &idx); err == nil {
+			if idx >= 1 && idx <= len(vendOptions) {
+				selected = append(selected, vendOptions[idx-1].name)
+			}
+		}
+	}
+
+	return selected
+}
+
+// runVendAssets runs the vending process for selected asset types.
+func runVendAssets(force bool, assets []string) error {
+	for _, asset := range assets {
+		fmt.Println()
+		switch asset {
+		case "templates":
+			fmt.Println("Vending content templates...")
+			if err := venderContentTemplates(force); err != nil {
+				return fmt.Errorf("failed to vend content templates: %w", err)
+			}
+		case "palettes":
+			fmt.Println("Vending palettes...")
+			if err := venderPalettes(force); err != nil {
+				return fmt.Errorf("failed to vend palettes: %w", err)
+			}
+		case "layouts":
+			fmt.Println("Vending layout templates...")
+			if err := venderLayouts(force); err != nil {
+				return fmt.Errorf("failed to vend layouts: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
 // updateSiteInfo prompts for updated site information.
 func updateSiteInfo(reader *bufio.Reader, cfg *models.Config) error {
 	fmt.Println()
@@ -493,6 +1027,7 @@ func runExistingProjectWizard(reader *bufio.Reader, configPath string) error {
 	menuOptions := []string{
 		"Add new features",
 		"Update site information",
+		"Vend built-in assets (templates, palettes, layouts)",
 		"View current configuration",
 		"Exit",
 	}
@@ -553,11 +1088,27 @@ func runExistingProjectWizard(reader *bufio.Reader, configPath string) error {
 			fmt.Println("Run 'markata-go build' to apply changes!")
 			return nil
 
-		case 2: // View current configuration
+		case 2: // Vend built-in assets
+			selected := promptVendSelection(reader)
+			if len(selected) == 0 {
+				fmt.Println("\nNo assets selected.")
+				continue
+			}
+
+			if err := runVendAssets(initForce, selected); err != nil {
+				return err
+			}
+
+			fmt.Println()
+			fmt.Println("Assets vendored successfully!")
+			fmt.Println("Local files will now override built-in defaults.")
+			return nil
+
+		case 3: // View current configuration
 			displayCurrentConfig(cfg)
 			// Continue the loop to show menu again
 
-		case 3: // Exit
+		case 4: // Exit
 			fmt.Println("\nExiting without changes.")
 			return nil
 		}
@@ -629,6 +1180,20 @@ func runInitCommand(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to write markata-go.toml: %w", err)
 	}
 	fmt.Println("  Created markata-go.toml")
+
+	fmt.Println()
+
+	// Offer to vend built-in assets
+	if promptYesNo(reader, "Vend built-in assets for customization? (Obsidian-compatible)", false) {
+		selected := promptVendSelection(reader)
+		if len(selected) > 0 {
+			if err := runVendAssets(initForce, selected); err != nil {
+				return err
+			}
+			fmt.Println()
+			fmt.Println("Assets vendored! Local files will override built-in defaults.")
+		}
+	}
 
 	fmt.Println()
 

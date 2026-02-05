@@ -55,7 +55,8 @@ func (l *Loader) AddPath(path string) {
 }
 
 // Load loads a palette by name.
-// It searches built-in palettes first, then search paths in order.
+// It searches in priority order: project directory, user config, then built-in.
+// This allows vendored palettes to override built-in ones.
 // Returns ErrPaletteNotFound if the palette cannot be found.
 func (l *Loader) Load(name string) (*Palette, error) {
 	// Check cache first
@@ -63,26 +64,22 @@ func (l *Loader) Load(name string) (*Palette, error) {
 		return p.Clone(), nil
 	}
 
-	// Try built-in palettes first
+	// Search paths in reverse order (project > user > built-in)
+	// Later paths in the slice have higher priority
+	for i := len(l.paths) - 1; i >= 0; i-- {
+		p, err := l.loadFromPath(name, l.paths[i])
+		if err == nil {
+			l.cache[name] = p
+			return p.Clone(), nil
+		}
+	}
+
+	// Fall back to built-in palettes
 	if p, err := LoadBuiltin(name); err == nil {
 		l.cache[name] = p
 		return p.Clone(), nil
 	}
 
-	// Search paths in order (later paths override)
-	var lastErr error
-	for _, searchPath := range l.paths {
-		p, err := l.loadFromPath(name, searchPath)
-		if err == nil {
-			l.cache[name] = p
-			return p.Clone(), nil
-		}
-		lastErr = err
-	}
-
-	if lastErr != nil {
-		return nil, lastErr
-	}
 	return nil, NewPaletteLoadError(name, "", "palette not found in any search path", ErrPaletteNotFound)
 }
 
