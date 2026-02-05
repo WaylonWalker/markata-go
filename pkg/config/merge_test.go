@@ -61,6 +61,53 @@ func TestMergeConfigs_StringFields(t *testing.T) {
 	}
 }
 
+func TestMergeConfigs_SEOConfig(t *testing.T) {
+	baseEnabled := true
+	overrideEnabled := false
+
+	base := &models.Config{
+		SEO: models.SEOConfig{
+			TwitterHandle:  "base",
+			DefaultImage:   "https://base.example/default.png",
+			LogoURL:        "https://base.example/logo.png",
+			AuthorImage:    "/base-author.png",
+			OGImageService: "https://base.example/shot/",
+			StructuredData: models.StructuredDataConfig{Enabled: &baseEnabled},
+		},
+	}
+
+	override := &models.Config{
+		SEO: models.SEOConfig{
+			TwitterHandle:  "override",
+			DefaultImage:   "https://override.example/default.png",
+			OGImageService: "https://override.example/shot/",
+			StructuredData: models.StructuredDataConfig{Enabled: &overrideEnabled},
+		},
+	}
+
+	result := MergeConfigs(base, override)
+
+	if result.SEO.TwitterHandle != "override" {
+		t.Errorf("SEO.TwitterHandle = %q, want %q", result.SEO.TwitterHandle, "override")
+	}
+	if result.SEO.DefaultImage != "https://override.example/default.png" {
+		t.Errorf("SEO.DefaultImage = %q, want %q", result.SEO.DefaultImage, "https://override.example/default.png")
+	}
+	// Not set in override; should keep base.
+	if result.SEO.LogoURL != "https://base.example/logo.png" {
+		t.Errorf("SEO.LogoURL = %q, want %q", result.SEO.LogoURL, "https://base.example/logo.png")
+	}
+	if result.SEO.AuthorImage != "/base-author.png" {
+		t.Errorf("SEO.AuthorImage = %q, want %q", result.SEO.AuthorImage, "/base-author.png")
+	}
+	if result.SEO.OGImageService != "https://override.example/shot/" {
+		t.Errorf("SEO.OGImageService = %q, want %q", result.SEO.OGImageService, "https://override.example/shot/")
+	}
+	if result.SEO.StructuredData.Enabled == nil || *result.SEO.StructuredData.Enabled != false {
+		t.Errorf("SEO.StructuredData.Enabled = %v, want false", result.SEO.StructuredData.Enabled)
+	}
+}
+
 func TestMergeConfigs_SliceFields(t *testing.T) {
 	base := &models.Config{
 		Hooks:         []string{"base-hook1", "base-hook2"},
