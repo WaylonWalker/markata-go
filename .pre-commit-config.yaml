@@ -32,6 +32,11 @@ repos:
 
       # Data file validation
       - id: check-json
+        exclude: |
+          (?x)^(
+            templates/.*|
+            pkg/themes/.*/templates/.*
+          )$
       - id: check-yaml
         args: [--allow-multiple-documents]
       - id: check-toml

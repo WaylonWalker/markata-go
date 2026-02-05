@@ -19,6 +19,7 @@ const (
 	wellKnownGeneratorVer  = "unknown"
 	wellKnownNodeInfoRel   = "http://nodeinfo.diaspora.software/ns/schema/2.0"
 	wellKnownWebfingerRel  = "http://webfinger.net/rel/profile-page"
+	wellKnownAvatarRel     = "http://webfinger.net/rel/avatar"
 	wellKnownHostMetaRel   = "lrdd"
 	wellKnownHostMetaType  = "application/jrd+json"
 	wellKnownWebfingerType = "text/html"
@@ -30,6 +31,7 @@ type wellKnownData struct {
 	SiteDescription  string
 	SiteHost         string
 	Author           string
+	AuthorImageURL   string
 	BuildTime        string
 	WebfingerSubject string
 	WebfingerURL     string
@@ -48,6 +50,7 @@ func (d wellKnownData) toMap() map[string]interface{} {
 		"site_description":  d.SiteDescription,
 		"site_host":         d.SiteHost,
 		"author":            d.Author,
+		"author_image_url":  d.AuthorImageURL,
 		"build_time":        d.BuildTime,
 		"webfinger_subject": d.WebfingerSubject,
 		"webfinger_url":     d.WebfingerURL,
@@ -104,10 +107,19 @@ func (p *WellKnownPlugin) Write(m *lifecycle.Manager) error {
 	data := buildWellKnownData(config, wellKnownConfig, p.now())
 	entries := resolveWellKnownEntries(wellKnownConfig)
 
+	// Add avatar endpoint if author image is available
+	if data.AuthorImageURL != "" {
+		entries = append(entries, wellKnownEntries["avatar"])
+	}
+
 	for _, entry := range entries {
 		content, err := p.renderEntry(entry, engine, config, m, data)
 		if err != nil {
 			return err
+		}
+		// Skip empty content (e.g., avatar with no image)
+		if content == "" || content == "\n" {
+			continue
 		}
 		if err := writeWellKnownFile(config.OutputDir, entry.path, content); err != nil {
 			return err
@@ -136,6 +148,7 @@ func buildWellKnownData(config *lifecycle.Config, wellKnownConfig models.WellKno
 	siteDescription := getSiteDescription(config)
 	siteHost := extractHost(siteURL)
 	author := getStringFromExtra(config.Extra, "author")
+	authorImageURL := getAuthorImageURL(config, siteURL)
 	webfingerURL := siteURL + "/" + wellKnownDir + "/webfinger"
 	nodeInfoURL := siteURL + "/nodeinfo/2.0"
 
@@ -150,6 +163,7 @@ func buildWellKnownData(config *lifecycle.Config, wellKnownConfig models.WellKno
 		SiteDescription:  siteDescription,
 		SiteHost:         siteHost,
 		Author:           author,
+		AuthorImageURL:   authorImageURL,
 		BuildTime:        buildTime.UTC().Format(time.RFC3339),
 		WebfingerSubject: webfingerSubject,
 		WebfingerURL:     webfingerURL,
@@ -172,6 +186,64 @@ func extractHost(siteURL string) string {
 		return strings.TrimSpace(siteURL)
 	}
 	return host
+}
+
+// getAuthorImageURL returns the absolute URL of the author's avatar image.
+// It checks seo.author_image first, falling back to seo.default_image.
+// Relative paths are resolved against the site URL.
+func getAuthorImageURL(config *lifecycle.Config, siteURL string) string {
+	if config == nil || config.Extra == nil {
+		return ""
+	}
+
+	// Try to get SEO config
+	seoVal, ok := config.Extra["seo"]
+	if !ok {
+		return ""
+	}
+
+	seoMap, ok := seoVal.(map[string]interface{})
+	if !ok {
+		// Try as SEOConfig struct
+		if seo, ok := seoVal.(models.SEOConfig); ok {
+			imageURL := seo.AuthorImage
+			if imageURL == "" {
+				imageURL = seo.DefaultImage
+			}
+			return resolveImageURL(imageURL, siteURL)
+		}
+		return ""
+	}
+
+	// Get author_image, fallback to default_image
+	imageURL := ""
+	if authorImage, ok := seoMap["author_image"].(string); ok && authorImage != "" {
+		imageURL = authorImage
+	} else if defaultImage, ok := seoMap["default_image"].(string); ok && defaultImage != "" {
+		imageURL = defaultImage
+	}
+
+	return resolveImageURL(imageURL, siteURL)
+}
+
+// resolveImageURL converts a potentially relative image URL to an absolute URL.
+func resolveImageURL(imageURL, siteURL string) string {
+	if imageURL == "" {
+		return ""
+	}
+
+	// Already absolute
+	if strings.HasPrefix(imageURL, "http://") || strings.HasPrefix(imageURL, "https://") {
+		return imageURL
+	}
+
+	// Relative path - resolve against site URL
+	if strings.HasPrefix(imageURL, "/") {
+		return strings.TrimSuffix(siteURL, "/") + imageURL
+	}
+
+	// Relative without leading slash
+	return strings.TrimSuffix(siteURL, "/") + "/" + imageURL
 }
 
 func resolveWellKnownEntries(wellKnownConfig models.WellKnownConfig) []wellKnownEntry {
@@ -288,19 +360,31 @@ var wellKnownEntries = map[string]wellKnownEntry{
 		path:     wellKnownDir + "/webfinger",
 		template: "well-known/webfinger.json",
 		fallback: func(data wellKnownData) string {
+			// Build links array - always include profile-page
+			links := fmt.Sprintf(`{
+      "rel": "%s",
+      "type": "%s",
+      "href": "%s"
+    }`, wellKnownWebfingerRel, wellKnownWebfingerType, withTrailingSlash(data.SiteURL))
+
+			// Add avatar link if author image is available
+			if data.AuthorImageURL != "" {
+				links += fmt.Sprintf(`,
+    {
+      "rel": "%s",
+      "href": "%s"
+    }`, wellKnownAvatarRel, data.AuthorImageURL)
+			}
+
 			return fmt.Sprintf(`{
   "subject": "%s",
   "aliases": [
     "%s"
   ],
   "links": [
-    {
-      "rel": "%s",
-      "type": "%s",
-      "href": "%s"
-    }
+    %s
   ]
-}`, data.WebfingerSubject, withTrailingSlash(data.SiteURL), wellKnownWebfingerRel, wellKnownWebfingerType, withTrailingSlash(data.SiteURL))
+}`, data.WebfingerSubject, withTrailingSlash(data.SiteURL), links)
 		},
 	},
 	"nodeinfo": {
@@ -372,6 +456,28 @@ var wellKnownEntries = map[string]wellKnownEntry{
 		template: "well-known/keybase.txt",
 		fallback: func(data wellKnownData) string {
 			return fmt.Sprintf("keybase: %s", data.KeybaseUsername)
+		},
+	},
+	"avatar": {
+		name:     "avatar",
+		path:     wellKnownDir + "/avatar",
+		template: "well-known/avatar",
+		fallback: func(data wellKnownData) string {
+			// Return an HTML redirect to the author image
+			// This works better than raw image bytes for static hosting
+			if data.AuthorImageURL == "" {
+				return ""
+			}
+			return fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="refresh" content="0;url=%s">
+<link rel="canonical" href="%s">
+</head>
+<body>
+<a href="%s">Avatar</a>
+</body>
+</html>`, data.AuthorImageURL, data.AuthorImageURL, data.AuthorImageURL)
 		},
 	},
 }
