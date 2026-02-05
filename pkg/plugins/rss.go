@@ -21,13 +21,13 @@ type RSS struct {
 
 // RSSChannel represents the channel element in an RSS feed.
 type RSSChannel struct {
-	Title         string    `xml:"title"`
-	Link          string    `xml:"link"`
-	Description   string    `xml:"description"`
-	Language      string    `xml:"language,omitempty"`
-	LastBuildDate string    `xml:"lastBuildDate,omitempty"`
-	AtomLink      *AtomLink `xml:"atom:link,omitempty"`
-	Items         []RSSItem `xml:"item"`
+	Title         string     `xml:"title"`
+	Link          string     `xml:"link"`
+	Description   string     `xml:"description"`
+	Language      string     `xml:"language,omitempty"`
+	LastBuildDate string     `xml:"lastBuildDate,omitempty"`
+	AtomLinks     []AtomLink `xml:"atom:link,omitempty"`
+	Items         []RSSItem  `xml:"item"`
 }
 
 // AtomLink represents an atom:link element for RSS feed self-reference.
@@ -74,12 +74,8 @@ func GenerateRSS(feed *lifecycle.Feed, config *lifecycle.Config) (string, error)
 			Link:        siteURL,
 			Description: siteDesc,
 			Language:    "en-us",
-			AtomLink: &AtomLink{
-				Href: feedURL,
-				Rel:  "self",
-				Type: "application/rss+xml",
-			},
-			Items: make([]RSSItem, 0, len(feed.Posts)),
+			AtomLinks:   buildRSSAtomLinks(feedURL, config),
+			Items:       make([]RSSItem, 0, len(feed.Posts)),
 		},
 	}
 
@@ -117,6 +113,22 @@ func GenerateRSS(feed *lifecycle.Feed, config *lifecycle.Config) (string, error)
 	// Add XSL stylesheet processing instruction for human-readable display in browsers
 	xslPI := `<?xml-stylesheet href="/rss.xsl" type="text/xsl"?>` + "\n"
 	return xml.Header + xslPI + string(output), nil
+}
+
+func buildRSSAtomLinks(feedURL string, config *lifecycle.Config) []AtomLink {
+	links := []AtomLink{
+		{
+			Href: feedURL,
+			Rel:  "self",
+			Type: "application/rss+xml",
+		},
+	}
+
+	for _, hub := range getWebSubHubs(config) {
+		links = append(links, AtomLink{Href: hub, Rel: "hub"})
+	}
+
+	return links
 }
 
 // GenerateRSSFromFeedConfig generates an RSS 2.0 feed from a FeedConfig.

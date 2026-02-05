@@ -95,6 +95,10 @@ func GenerateAtom(feed *lifecycle.Feed, config *lifecycle.Config) (string, error
 		Entries: make([]AtomEntry, 0, len(feed.Posts)),
 	}
 
+	for _, hub := range getWebSubHubs(config) {
+		atomFeed.Links = append(atomFeed.Links, AtomFeedLink{Href: hub, Rel: "hub"})
+	}
+
 	if updatedTime != nil {
 		atomFeed.Updated = updatedTime.Format(time.RFC3339)
 	}
