@@ -15,11 +15,11 @@
 {% endblock %}
 
 {% block content %}
-<div class="feed{% if feed.type == 'guide' %} feed--guide{% elif feed.type == 'series' %} feed--series{% endif %}">
+<div class="feed h-feed{% if feed.type == 'guide' %} feed--guide{% elif feed.type == 'series' %} feed--series{% endif %}">
   <header class="feed-header">
-    <h1>{{ feed.title | default:"Posts" }}</h1>
+    <h1 class="p-name">{{ feed.title | default:"Posts" }}</h1>
     {% if feed.description %}
-    <p>{{ feed.description }}</p>
+    <p class="p-summary">{{ feed.description }}</p>
     {% endif %}
     {% if feed.type == "guide" or feed.type == "series" %}
     <div class="feed-meta">
@@ -27,6 +27,12 @@
     </div>
     {% endif %}
   </header>
+  {# Author h-card for the feed (representative) #}
+  {% if config.author %}
+  <span class="p-author h-card" hidden>
+    <a class="u-url p-name" href="{{ config.url }}">{{ config.author }}</a>
+  </span>
+  {% endif %}
 
   <div class="posts posts-list" id="posts-list">
     {% if page.pagination_type == "js" %}

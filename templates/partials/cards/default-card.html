@@ -1,15 +1,15 @@
 {# Default Card - Fallback for unmapped templateKey values #}
 {# Basic card layout similar to original card.html #}
-<article class="card card-default">
-  <h2 class="card-title"><a href="{{ post.href }}">{{ post.title | default:post.slug }}</a></h2>
+<article class="card card-default h-entry">
+  <h2 class="card-title p-name"><a class="u-url" href="{{ post.href }}">{{ post.title | default:post.slug }}</a></h2>
 
   {% if post.description %}
-  <p class="card-description">{{ post.description }}</p>
+  <p class="card-description p-summary">{{ post.description }}</p>
   {% endif %}
 
   <footer class="card-meta">
     {% if post.date %}
-    <time datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+    <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
     {% endif %}
     {% if post.reading_time %}<span class="reading-time">{{ post.reading_time }} min</span>{% endif %}
     {% include "partials/webmention-counts.html" %}

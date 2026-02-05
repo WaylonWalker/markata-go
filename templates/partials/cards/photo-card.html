@@ -1,16 +1,16 @@
 {# Photo Card - Image/video prominent for shots, photos, gallery posts #}
 {# Large media with aspect-ratio, caption/description below #}
 {# Auto-detects video files by extension: .mp4, .webm, .mov, .m4v, .ogv #}
-<article class="card card-photo">
+<article class="card card-photo h-entry">
   {% if post.image %}
-  <a href="{{ post.href }}" class="card-image-link">
+  <a href="{{ post.href }}" class="card-image-link u-url">
     {% with post.image|lower as img_lower %}
     {% if img_lower|endswith:".mp4" or img_lower|endswith:".webm" or img_lower|endswith:".mov" or img_lower|endswith:".m4v" or img_lower|endswith:".ogv" %}
-    <video class="card-image" autoplay muted loop playsinline>
+    <video class="card-image u-video" autoplay muted loop playsinline>
       <source src="{{ post.image }}" type="video/{% if img_lower|endswith:".mp4" or img_lower|endswith:".m4v" %}mp4{% elif img_lower|endswith:".webm" %}webm{% elif img_lower|endswith:".mov" %}quicktime{% else %}ogg{% endif %}">
     </video>
     {% else %}
-    <img src="{{ post.image }}" alt="{{ post.title | default:post.description | default:'Photo' }}" class="card-image" loading="lazy">
+    <img src="{{ post.image }}" alt="{{ post.title | default:post.description | default:'Photo' }}" class="card-image u-photo" loading="lazy">
     {% endif %}
     {% endwith %}
   </a>
@@ -18,16 +18,16 @@
 
   <div class="card-body">
     {% if post.title %}
-    <h3 class="card-title"><a href="{{ post.href }}">{{ post.title }}</a></h3>
+    <h3 class="card-title p-name"><a href="{{ post.href }}">{{ post.title }}</a></h3>
     {% endif %}
 
     {% if post.description %}
-    <p class="card-caption">{{ post.description }}</p>
+    <p class="card-caption p-summary">{{ post.description }}</p>
     {% endif %}
 
     <footer class="card-meta">
       {% if post.date %}
-      <time datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+      <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
       {% endif %}
     </footer>
   </div>
