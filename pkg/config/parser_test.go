@@ -68,6 +68,29 @@ keybase_username = "alice"
 	}
 }
 
+func TestParseTOML_WebSub(t *testing.T) {
+	data := []byte(`
+[markata-go]
+title = "Test Site"
+
+[markata-go.websub]
+enabled = true
+hubs = ["https://hub.example.com/"]
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if config.WebSub.Enabled == nil || *config.WebSub.Enabled != true {
+		t.Fatalf("WebSub.Enabled = %v, want true", config.WebSub.Enabled)
+	}
+	if len(config.WebSub.Hubs) != 1 || config.WebSub.Hubs[0] != "https://hub.example.com/" {
+		t.Fatalf("WebSub.Hubs = %v, want hub list", config.WebSub.Hubs)
+	}
+}
+
 func TestParseTOML_InvalidSyntax(t *testing.T) {
 	data := []byte(`invalid toml {{{{ syntax`)
 

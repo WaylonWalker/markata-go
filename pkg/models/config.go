@@ -344,6 +344,9 @@ type Config struct {
 	// Webmention configures Webmention endpoint for receiving mentions
 	Webmention WebmentionConfig `json:"webmention" yaml:"webmention" toml:"webmention"`
 
+	// WebSub configures WebSub discovery links for feeds
+	WebSub WebSubConfig `json:"websub" yaml:"websub" toml:"websub"`
+
 	// Components configures layout components (nav, footer, sidebar)
 	Components ComponentsConfig `json:"components" yaml:"components" toml:"components"`
 
@@ -1289,6 +1292,39 @@ func NewWebmentionConfig() WebmentionConfig {
 		Enabled:  false,
 		Endpoint: "",
 	}
+}
+
+// WebSubConfig configures WebSub discovery links for feeds.
+// See https://www.w3.org/TR/websub/ for the specification.
+type WebSubConfig struct {
+	// Enabled controls whether WebSub discovery links are included (default: false)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Hubs is the list of WebSub hub URLs to advertise
+	Hubs []string `json:"hubs,omitempty" yaml:"hubs,omitempty" toml:"hubs,omitempty"`
+}
+
+// NewWebSubConfig creates a new WebSubConfig with default values.
+func NewWebSubConfig() WebSubConfig {
+	enabled := false
+	return WebSubConfig{
+		Enabled: &enabled,
+		Hubs:    []string{},
+	}
+}
+
+// IsEnabled returns whether WebSub discovery links are enabled.
+// Defaults to false if not explicitly set.
+func (w WebSubConfig) IsEnabled() bool {
+	if w.Enabled == nil {
+		return false
+	}
+	return *w.Enabled
+}
+
+// HubsList returns a copy of configured hub URLs.
+func (w WebSubConfig) HubsList() []string {
+	return append([]string{}, w.Hubs...)
 }
 
 // WebMentionsConfig configures the webmentions plugin for sending outgoing mentions.
@@ -2263,6 +2299,7 @@ func NewConfig() *Config {
 		SEO:              NewSEOConfig(),
 		IndieAuth:        NewIndieAuthConfig(),
 		Webmention:       NewWebmentionConfig(),
+		WebSub:           NewWebSubConfig(),
 		Components:       NewComponentsConfig(),
 		Search:           NewSearchConfig(),
 		Layout:           NewLayoutConfig(),

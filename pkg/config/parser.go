@@ -30,6 +30,7 @@ type configSource interface {
 	getTags() tagsConverter
 	getEncryption() encryptionConverter
 	getTagAggregator() tagAggregatorConverter
+	getWebSub() webSubConverter
 }
 
 // baseConfigData holds the basic config fields that are directly assignable.
@@ -123,6 +124,10 @@ type tagAggregatorConverter interface {
 	toTagAggregatorConfig() models.TagAggregatorConfig
 }
 
+type webSubConverter interface {
+	toWebSubConfig() models.WebSubConfig
+}
+
 // buildConfig constructs a models.Config from a configSource.
 // This helper eliminates code duplication across TOML, YAML, and JSON config converters.
 func buildConfig(src configSource) *models.Config {
@@ -209,6 +214,9 @@ func buildConfig(src configSource) *models.Config {
 	// Convert TagAggregator config
 	config.TagAggregator = src.getTagAggregator().toTagAggregatorConfig()
 
+	// Convert WebSub config
+	config.WebSub = src.getWebSub().toWebSubConfig()
+
 	return config
 }
 
@@ -253,7 +261,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"default_templates": true, "auto_feeds": true, "head": true,
 			"content_templates": true, "footer_layout": true, "search": true,
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
-			"tag_aggregator": true,
+			"tag_aggregator": true, "websub": true,
 		}
 
 		// Copy unknown sections to Extra
@@ -330,6 +338,7 @@ type tomlConfig struct {
 	Tags          tomlTagsConfig          `toml:"tags"`
 	Encryption    tomlEncryptionConfig    `toml:"encryption"`
 	TagAggregator tomlTagAggregatorConfig `toml:"tag_aggregator"`
+	WebSub        tomlWebSubConfig        `toml:"websub"`
 	UnknownFields map[string]any          `toml:"-"`
 }
 
@@ -544,6 +553,26 @@ func (t *tomlTagAggregatorConfig) toTagAggregatorConfig() models.TagAggregatorCo
 		config.Enabled = defaults.Enabled
 	}
 
+	return config
+}
+
+type tomlWebSubConfig struct {
+	Enabled *bool    `toml:"enabled"`
+	Hubs    []string `toml:"hubs"`
+}
+
+func (w *tomlWebSubConfig) toWebSubConfig() models.WebSubConfig {
+	defaults := models.NewWebSubConfig()
+	config := models.WebSubConfig{
+		Enabled: w.Enabled,
+		Hubs:    w.Hubs,
+	}
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Hubs == nil {
+		config.Hubs = defaults.Hubs
+	}
 	return config
 }
 
@@ -1134,6 +1163,7 @@ func (c *tomlConfig) getBlogroll() blogrollConverter           { return &c.Blogr
 func (c *tomlConfig) getTags() tagsConverter                   { return &c.Tags }
 func (c *tomlConfig) getEncryption() encryptionConverter       { return &c.Encryption }
 func (c *tomlConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAggregator }
+func (c *tomlConfig) getWebSub() webSubConverter               { return &c.WebSub }
 
 func (c *tomlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -1308,6 +1338,7 @@ type yamlConfig struct {
 	Tags          yamlTagsConfig          `yaml:"tags"`
 	Encryption    yamlEncryptionConfig    `yaml:"encryption"`
 	TagAggregator yamlTagAggregatorConfig `yaml:"tag_aggregator"`
+	WebSub        yamlWebSubConfig        `yaml:"websub"`
 }
 
 type yamlNavItem struct {
@@ -1487,6 +1518,26 @@ func (t *yamlTagAggregatorConfig) toTagAggregatorConfig() models.TagAggregatorCo
 		config.Enabled = defaults.Enabled
 	}
 
+	return config
+}
+
+type yamlWebSubConfig struct {
+	Enabled *bool    `yaml:"enabled"`
+	Hubs    []string `yaml:"hubs"`
+}
+
+func (w *yamlWebSubConfig) toWebSubConfig() models.WebSubConfig {
+	defaults := models.NewWebSubConfig()
+	config := models.WebSubConfig{
+		Enabled: w.Enabled,
+		Hubs:    w.Hubs,
+	}
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Hubs == nil {
+		config.Hubs = defaults.Hubs
+	}
 	return config
 }
 
@@ -2163,6 +2214,7 @@ func (c *yamlConfig) getBlogroll() blogrollConverter           { return &c.Blogr
 func (c *yamlConfig) getTags() tagsConverter                   { return &c.Tags }
 func (c *yamlConfig) getEncryption() encryptionConverter       { return &c.Encryption }
 func (c *yamlConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAggregator }
+func (c *yamlConfig) getWebSub() webSubConverter               { return &c.WebSub }
 
 func (c *yamlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -2275,6 +2327,7 @@ type jsonConfig struct {
 	Tags          jsonTagsConfig          `json:"tags"`
 	Encryption    jsonEncryptionConfig    `json:"encryption"`
 	TagAggregator jsonTagAggregatorConfig `json:"tag_aggregator"`
+	WebSub        jsonWebSubConfig        `json:"websub"`
 }
 
 type jsonNavItem struct {
@@ -2454,6 +2507,26 @@ func (t *jsonTagAggregatorConfig) toTagAggregatorConfig() models.TagAggregatorCo
 		config.Enabled = defaults.Enabled
 	}
 
+	return config
+}
+
+type jsonWebSubConfig struct {
+	Enabled *bool    `json:"enabled"`
+	Hubs    []string `json:"hubs"`
+}
+
+func (w *jsonWebSubConfig) toWebSubConfig() models.WebSubConfig {
+	defaults := models.NewWebSubConfig()
+	config := models.WebSubConfig{
+		Enabled: w.Enabled,
+		Hubs:    w.Hubs,
+	}
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Hubs == nil {
+		config.Hubs = defaults.Hubs
+	}
 	return config
 }
 
@@ -3130,6 +3203,7 @@ func (c *jsonConfig) getBlogroll() blogrollConverter           { return &c.Blogr
 func (c *jsonConfig) getTags() tagsConverter                   { return &c.Tags }
 func (c *jsonConfig) getEncryption() encryptionConverter       { return &c.Encryption }
 func (c *jsonConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAggregator }
+func (c *jsonConfig) getWebSub() webSubConverter               { return &c.WebSub }
 
 func (c *jsonConfig) toConfig() *models.Config {
 	return buildConfig(c)

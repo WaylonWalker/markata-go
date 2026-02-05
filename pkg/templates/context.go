@@ -236,6 +236,9 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert search to map
 	searchMap := searchToMap(&c.Search)
 
+	// Convert WebSub to map
+	webSubMap := webSubToMap(&c.WebSub)
+
 	// Convert layout to map
 	layoutMap := layoutToMap(&c.Layout)
 
@@ -268,6 +271,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"post_formats":  postFormatsMap,
 		"head":          headMap,
 		"search":        searchMap,
+		"websub":        webSubMap,
 		"layout":        layoutMap,
 		"sidebar":       sidebarMap,
 		"toc":           tocMap,
@@ -389,6 +393,23 @@ func postFormatsToMap(p *models.PostFormatsConfig) map[string]interface{} {
 		"markdown": p.Markdown,
 		"text":     p.Text,
 		"og":       p.OG,
+	}
+}
+
+// webSubToMap converts a WebSubConfig to a map for template access.
+func webSubToMap(w *models.WebSubConfig) map[string]interface{} {
+	if w == nil {
+		return nil
+	}
+
+	enabled := false
+	if w.Enabled != nil {
+		enabled = *w.Enabled
+	}
+
+	return map[string]interface{}{
+		"enabled": enabled,
+		"hubs":    append([]string{}, w.Hubs...),
 	}
 }
 

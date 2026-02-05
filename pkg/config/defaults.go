@@ -25,5 +25,6 @@ func DefaultConfig() *models.Config {
 			},
 		},
 		WellKnown: models.NewWellKnownConfig(),
+		WebSub:    models.NewWebSubConfig(),
 	}
 }

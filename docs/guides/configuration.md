@@ -468,6 +468,25 @@ When enabled, this adds the following link tag to your site's `<head>`:
 - [webmention.io](https://webmention.io/) - Free hosted webmention service
 - [Bridgy](https://brid.gy/) - Connects social media interactions to webmentions
 
+### WebSub Settings (`[markata-go.websub]`)
+
+[WebSub](https://www.w3.org/TR/websub/) enables near-real-time feed delivery by advertising hub URLs. When enabled, markata-go adds discovery links to HTML pages and RSS/Atom feeds.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Enable WebSub discovery links |
+| `hubs` | array | `[]` | List of WebSub hub URLs |
+
+```toml
+[markata-go.websub]
+enabled = true
+hubs = ["https://hub.example.com/"]
+```
+
+**Output:**
+- HTML `<head>` includes `<link rel="hub" href="...">` for each hub
+- RSS/Atom feeds include `rel="hub"` and `rel="self"` links
+
 ### Head Configuration (`[markata-go.head]`)
 
 The head configuration allows you to customize elements in the HTML `<head>` section, including custom meta tags, links, scripts, and feed alternate links.
