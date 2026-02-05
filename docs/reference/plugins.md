@@ -2386,6 +2386,32 @@ output/
 
 ---
 
+### well_known
+
+**Name:** `well_known`  
+**Stage:** Write  
+**Purpose:** Generates `.well-known` endpoints from site metadata.
+
+**Configuration:** `markata-go.well_known`
+
+**Behavior:**
+1. Resolves enabled entries from `auto_generate`
+2. Renders templates in `templates/well-known/` if present
+3. Writes files into `output/.well-known/`
+
+**Generated files (defaults):**
+- `/.well-known/host-meta`
+- `/.well-known/host-meta.json`
+- `/.well-known/webfinger`
+- `/.well-known/nodeinfo` and `/nodeinfo/2.0`
+- `/.well-known/time`
+
+**Optional files:**
+- `/.well-known/sshfp` (when `ssh_fingerprint` is set)
+- `/.well-known/keybase.txt` (when `keybase_username` is set)
+
+---
+
 ### publish_feeds
 
 **Name:** `publish_feeds`  

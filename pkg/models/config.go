@@ -332,6 +332,9 @@ type Config struct {
 	// PostFormats configures output formats for individual posts
 	PostFormats PostFormatsConfig `json:"post_formats" yaml:"post_formats" toml:"post_formats"`
 
+	// WellKnown configures auto-generated .well-known endpoints
+	WellKnown WellKnownConfig `json:"well_known" yaml:"well_known" toml:"well_known"`
+
 	// SEO configures SEO metadata generation
 	SEO SEOConfig `json:"seo" yaml:"seo" toml:"seo"`
 
@@ -1460,6 +1463,56 @@ type PostFormatsConfig struct {
 	// OG enables OpenGraph card HTML output for social image generation (default: false)
 	// Generates: /slug/og/index.html (1200x630 optimized for screenshots)
 	OG bool `json:"og" yaml:"og" toml:"og"`
+}
+
+// WellKnownConfig configures auto-generated .well-known entries.
+type WellKnownConfig struct {
+	// Enabled controls whether .well-known generation runs (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// AutoGenerate lists entries to generate from site metadata
+	AutoGenerate []string `json:"auto_generate,omitempty" yaml:"auto_generate,omitempty" toml:"auto_generate,omitempty"`
+
+	// SSHFingerprint is written to /.well-known/sshfp if set
+	SSHFingerprint string `json:"ssh_fingerprint,omitempty" yaml:"ssh_fingerprint,omitempty" toml:"ssh_fingerprint,omitempty"`
+
+	// KeybaseUsername is written to /.well-known/keybase.txt if set
+	KeybaseUsername string `json:"keybase_username,omitempty" yaml:"keybase_username,omitempty" toml:"keybase_username,omitempty"`
+}
+
+// DefaultWellKnownAutoGenerate lists the default auto-generated entries.
+var DefaultWellKnownAutoGenerate = []string{
+	"host-meta",
+	"host-meta.json",
+	"webfinger",
+	"nodeinfo",
+	"time",
+}
+
+// NewWellKnownConfig creates a WellKnownConfig with default values.
+func NewWellKnownConfig() WellKnownConfig {
+	enabled := true
+	return WellKnownConfig{
+		Enabled:      &enabled,
+		AutoGenerate: append([]string{}, DefaultWellKnownAutoGenerate...),
+	}
+}
+
+// IsEnabled returns whether .well-known generation is enabled.
+// Defaults to true if not explicitly set.
+func (w WellKnownConfig) IsEnabled() bool {
+	if w.Enabled == nil {
+		return true
+	}
+	return *w.Enabled
+}
+
+// AutoGenerateList returns the configured auto-generate list with defaults applied.
+func (w WellKnownConfig) AutoGenerateList() []string {
+	if w.AutoGenerate == nil {
+		return append([]string{}, DefaultWellKnownAutoGenerate...)
+	}
+	return append([]string{}, w.AutoGenerate...)
 }
 
 // TemplatePreset defines templates for all output formats.

@@ -63,6 +63,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["nav"] = cfg.Nav
 	lcConfig.Extra["footer"] = cfg.Footer
 	lcConfig.Extra["post_formats"] = cfg.PostFormats
+	lcConfig.Extra["well_known"] = cfg.WellKnown
 	lcConfig.Extra["seo"] = cfg.SEO
 	lcConfig.Extra["search"] = cfg.Search
 	lcConfig.Extra["components"] = cfg.Components

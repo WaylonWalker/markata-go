@@ -1,0 +1,10 @@
+{
+  "subject": "{{ well_known.site_url }}/",
+  "links": [
+    {
+      "rel": "lrdd",
+      "type": "application/jrd+json",
+      "template": "{{ well_known.webfinger_url }}?resource={uri}"
+    }
+  ]
+}

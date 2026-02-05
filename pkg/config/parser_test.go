@@ -37,6 +37,37 @@ filter = "published == True"
 	}
 }
 
+func TestParseTOML_WellKnown(t *testing.T) {
+	data := []byte(`
+[markata-go]
+title = "Test Site"
+
+[markata-go.well_known]
+enabled = false
+auto_generate = ["time"]
+ssh_fingerprint = "SHA256:abc"
+keybase_username = "alice"
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if config.WellKnown.Enabled == nil || *config.WellKnown.Enabled != false {
+		t.Fatalf("WellKnown.Enabled = %v, want false", config.WellKnown.Enabled)
+	}
+	if len(config.WellKnown.AutoGenerate) != 1 || config.WellKnown.AutoGenerate[0] != "time" {
+		t.Fatalf("WellKnown.AutoGenerate = %v, want [time]", config.WellKnown.AutoGenerate)
+	}
+	if config.WellKnown.SSHFingerprint != "SHA256:abc" {
+		t.Fatalf("WellKnown.SSHFingerprint = %q, want %q", config.WellKnown.SSHFingerprint, "SHA256:abc")
+	}
+	if config.WellKnown.KeybaseUsername != "alice" {
+		t.Fatalf("WellKnown.KeybaseUsername = %q, want %q", config.WellKnown.KeybaseUsername, "alice")
+	}
+}
+
 func TestParseTOML_InvalidSyntax(t *testing.T) {
 	data := []byte(`invalid toml {{{{ syntax`)
 

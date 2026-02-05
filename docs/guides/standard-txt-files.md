@@ -130,6 +130,34 @@ Preferred-Languages: en
 Canonical: https://example.com/.well-known/security.txt
 ```
 
+## Auto-Generated .well-known Entries
+
+markata-go can generate additional `.well-known` endpoints directly from your site metadata. These do not require markdown source files.
+
+### Default Auto-Generated Entries
+
+- `/.well-known/host-meta`
+- `/.well-known/host-meta.json`
+- `/.well-known/webfinger`
+- `/.well-known/nodeinfo` and `/nodeinfo/2.0`
+- `/.well-known/time`
+
+### Configuration
+
+```toml
+[markata-go.well_known]
+enabled = true
+auto_generate = ["host-meta", "host-meta.json", "webfinger", "nodeinfo", "time"]
+
+# Optional entries requiring config
+ssh_fingerprint = "SHA256:abcdef..."
+keybase_username = "username"
+```
+
+**Notes:**
+- If you set `auto_generate = []`, only optional entries with explicit config are generated.
+- Templates live under `templates/well-known/` and can be overridden.
+
 ## How It Works
 
 ### Reversed Redirects

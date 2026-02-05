@@ -41,6 +41,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["auto_feeds"] = func() lifecycle.Plugin { return NewAutoFeedsPlugin() }
 	pluginRegistry.constructors["publish_feeds"] = func() lifecycle.Plugin { return NewPublishFeedsPlugin() }
 	pluginRegistry.constructors["publish_html"] = func() lifecycle.Plugin { return NewPublishHTMLPlugin() }
+	pluginRegistry.constructors["well_known"] = func() lifecycle.Plugin { return NewWellKnownPlugin() }
 	pluginRegistry.constructors["sitemap"] = func() lifecycle.Plugin { return NewSitemapPlugin() }
 	pluginRegistry.constructors["wikilinks"] = func() lifecycle.Plugin { return NewWikilinksPlugin() }
 	pluginRegistry.constructors["toc"] = func() lifecycle.Plugin { return NewTocPlugin() }
@@ -190,6 +191,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewChromaCSSPlugin(),    // Generate syntax highlighting CSS
 		NewCSSBundlePlugin(),    // Bundle CSS files (runs after CSS generators)
 		NewPublishFeedsPlugin(),
+		NewWellKnownPlugin(),
 		NewPublishHTMLPlugin(),
 		NewRedirectsPlugin(),   // Generate redirect pages
 		NewErrorPagesPlugin(),  // Generate static 404 page

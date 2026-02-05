@@ -975,6 +975,36 @@ OG card pages automatically include:
 
 See the [[post-formats|Post Output Formats Guide]] for detailed usage including social image generation and content negotiation.
 
+### Well-Known Files (`[markata-go.well_known]`)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Enable auto-generated `.well-known` endpoints |
+| `auto_generate` | array | `[...]` | Entries to auto-generate from site metadata |
+| `ssh_fingerprint` | string | `""` | SSH fingerprint for `/.well-known/sshfp` |
+| `keybase_username` | string | `""` | Keybase username for `/.well-known/keybase.txt` |
+
+```toml
+[markata-go.well_known]
+enabled = true
+auto_generate = ["host-meta", "host-meta.json", "webfinger", "nodeinfo", "time"]
+
+# Optional entries requiring config
+ssh_fingerprint = "SHA256:abcdef..."
+keybase_username = "username"
+```
+
+**Generated files:**
+- `/.well-known/host-meta`
+- `/.well-known/host-meta.json`
+- `/.well-known/webfinger`
+- `/.well-known/nodeinfo` and `/nodeinfo/2.0`
+- `/.well-known/time`
+- `/.well-known/sshfp` (when `ssh_fingerprint` is set)
+- `/.well-known/keybase.txt` (when `keybase_username` is set)
+
+Templates live under `templates/well-known/` and can be overridden per theme.
+
 ### Content Templates (`[content_templates]`)
 
 Content templates configure the `markata-go new` command, controlling default frontmatter and output directories for different content types.

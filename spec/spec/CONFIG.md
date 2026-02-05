@@ -717,6 +717,41 @@ og = true        # Enable social card HTML for screenshot tools
 
 ---
 
+### Well-Known Files (`[my-ssg.well_known]`)
+
+```toml
+[my-ssg.well_known]
+enabled = true
+auto_generate = ["host-meta", "host-meta.json", "webfinger", "nodeinfo", "time"]
+
+# Optional entries requiring config
+ssh_fingerprint = "SHA256:abcdef..."
+keybase_username = "username"
+```
+
+This section controls auto-generated `.well-known` endpoints derived from site metadata:
+
+| Entry | Output Path | Description |
+|-------|-------------|-------------|
+| `host-meta` | `/.well-known/host-meta` | XRD host metadata for discovery |
+| `host-meta.json` | `/.well-known/host-meta.json` | JSON host metadata (JRD) |
+| `webfinger` | `/.well-known/webfinger` | WebFinger endpoint response |
+| `nodeinfo` | `/.well-known/nodeinfo` + `/nodeinfo/2.0` | NodeInfo discovery + instance metadata |
+| `time` | `/.well-known/time` | Build timestamp (RFC3339) |
+| `sshfp` | `/.well-known/sshfp` | SSH fingerprint text (requires `ssh_fingerprint`) |
+| `keybase` | `/.well-known/keybase.txt` | Keybase verification (requires `keybase_username`) |
+
+**Defaults:**
+- `enabled` defaults to `true`
+- `auto_generate` defaults to the five Phase 1 entries shown above
+
+**Notes:**
+- If `auto_generate` is empty, only optional entries with explicit config are generated.
+- `nodeinfo` generates both the discovery document and a minimal `/nodeinfo/2.0` payload.
+- `time` is rebuilt on each build and is always UTC RFC3339.
+
+---
+
 ## See Also
 
 - [SPEC.md](./SPEC.md) - Core specification

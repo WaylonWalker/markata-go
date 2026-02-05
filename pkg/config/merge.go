@@ -75,6 +75,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// PostFormats - merge if override has any formats enabled
 	result.PostFormats = mergePostFormatsConfig(base.PostFormats, override.PostFormats)
 
+	// WellKnown - merge
+	result.WellKnown = mergeWellKnownConfig(base.WellKnown, override.WellKnown)
+
 	// SEO - merge
 	result.SEO = mergeSEOConfig(base.SEO, override.SEO)
 
@@ -260,6 +263,26 @@ func mergePostFormatsConfig(base, override models.PostFormatsConfig) models.Post
 	}
 	if override.OG {
 		result.OG = true
+	}
+
+	return result
+}
+
+// mergeWellKnownConfig merges WellKnownConfig values.
+func mergeWellKnownConfig(base, override models.WellKnownConfig) models.WellKnownConfig {
+	result := base
+
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+	if override.AutoGenerate != nil {
+		result.AutoGenerate = append([]string{}, override.AutoGenerate...)
+	}
+	if override.SSHFingerprint != "" {
+		result.SSHFingerprint = override.SSHFingerprint
+	}
+	if override.KeybaseUsername != "" {
+		result.KeybaseUsername = override.KeybaseUsername
 	}
 
 	return result

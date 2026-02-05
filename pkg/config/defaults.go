@@ -24,5 +24,6 @@ func DefaultConfig() *models.Config {
 				RSS:  true,
 			},
 		},
+		WellKnown: models.NewWellKnownConfig(),
 	}
 }
