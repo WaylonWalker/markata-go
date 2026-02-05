@@ -39,6 +39,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors[PluginNameTemplates] = func() lifecycle.Plugin { return NewTemplatesPlugin() }
 	pluginRegistry.constructors["feeds"] = func() lifecycle.Plugin { return NewFeedsPlugin() }
 	pluginRegistry.constructors["auto_feeds"] = func() lifecycle.Plugin { return NewAutoFeedsPlugin() }
+	pluginRegistry.constructors["subscription_feeds"] = func() lifecycle.Plugin { return NewSubscriptionFeedsPlugin() }
 	pluginRegistry.constructors["publish_feeds"] = func() lifecycle.Plugin { return NewPublishFeedsPlugin() }
 	pluginRegistry.constructors["publish_html"] = func() lifecycle.Plugin { return NewPublishHTMLPlugin() }
 	pluginRegistry.constructors["well_known"] = func() lifecycle.Plugin { return NewWellKnownPlugin() }
@@ -176,7 +177,8 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewTemplatesPlugin(),
 
 		// Collect stage plugins
-		NewSlugConflictsPlugin(), // Detect slug conflicts (runs first in Collect)
+		NewSlugConflictsPlugin(),     // Detect slug conflicts (runs first in Collect)
+		NewSubscriptionFeedsPlugin(), // Inject root/archive subscription feeds (before FeedsPlugin)
 		NewFeedsPlugin(),
 		NewAutoFeedsPlugin(),
 		NewBlogrollPlugin(),            // Fetch external feeds for blogroll

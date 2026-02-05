@@ -858,6 +858,86 @@ Help feed readers find feeds with `<link>` tags:
 {% endfor %}
 ```
 
+### Per-Page Feed Discovery
+
+Pages can advertise different feeds based on their context. For example, a post in a series should advertise the series feed, not the site-wide feed.
+
+**Discovery feed selection rules:**
+
+1. If `config.head.alternate_feeds` is configured, use those feeds (explicit override)
+2. If the post has a `sidebar_feed` (belongs to a feed sidebar), use that feed
+3. Otherwise, use the site default feed (root subscription feed at `/rss.xml`, `/atom.xml`)
+
+**Template context:**
+
+The `discovery_feed` variable is injected into template context with:
+
+```jinja2
+{% if discovery_feed %}
+  {% if discovery_feed.has_rss %}
+  <link rel="alternate" type="application/rss+xml"
+        title="{{ discovery_feed.title }} (RSS)"
+        href="{{ discovery_feed.rss_url }}">
+  {% endif %}
+  {% if discovery_feed.has_atom %}
+  <link rel="alternate" type="application/atom+xml"
+        title="{{ discovery_feed.title }} (Atom)"
+        href="{{ discovery_feed.atom_url }}">
+  {% endif %}
+  {% if discovery_feed.has_json %}
+  <link rel="alternate" type="application/feed+json"
+        title="{{ discovery_feed.title }} (JSON)"
+        href="{{ discovery_feed.json_url }}">
+  {% endif %}
+{% endif %}
+```
+
+**discovery_feed fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `slug` | string | Feed slug (e.g., "tags/python", "") |
+| `title` | string | Feed title |
+| `rss_url` | string | RSS feed URL |
+| `atom_url` | string | Atom feed URL |
+| `json_url` | string | JSON feed URL |
+| `has_rss` | bool | RSS format enabled |
+| `has_atom` | bool | Atom format enabled |
+| `has_json` | bool | JSON format enabled |
+
+---
+
+## Built-in Subscription Feeds
+
+markata-go automatically creates subscription feeds at the site root:
+
+### Root Feed (slug="")
+
+- **RSS:** `/rss.xml`
+- **Atom:** `/atom.xml`
+- **HTML:** Not generated (won't overwrite `/index.html`)
+- **Filter:** `published == true`
+
+### Archive Feed (slug="archive")
+
+- **RSS:** `/archive/rss.xml`
+- **Atom:** `/archive/atom.xml`
+- **HTML:** Not generated
+- **Filter:** `published == true`
+
+These feeds provide consistent subscription endpoints for readers without requiring manual configuration.
+
+### Disabling Subscription Feeds
+
+To disable the auto-generated subscription feeds:
+
+```toml
+[markata-go]
+subscription_feeds_disabled = true
+```
+
+Or define your own feeds with `slug = ""` or `slug = "archive"` to override the defaults.
+
 ---
 
 ## Configuration Inheritance
