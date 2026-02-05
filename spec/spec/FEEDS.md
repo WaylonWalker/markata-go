@@ -113,6 +113,15 @@ Feed timestamps are deterministic and based on content, not build time:
 
 This ensures no-change incremental builds produce identical feed outputs.
 
+### WebSub Discovery
+
+When WebSub is enabled, feed outputs include discovery links so hubs and subscribers can find the feed endpoint:
+
+- RSS includes `<atom:link rel="self">` plus one `<atom:link rel="hub">` per configured hub.
+- Atom includes `<link rel="self">` plus one `<link rel="hub">` per configured hub.
+
+HTML pages include `<link rel="hub">` tags in the `<head>` for each hub.
+
 ### Pagination Object
 
 | Field | Type | Description |

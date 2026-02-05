@@ -989,6 +989,18 @@ Add `<link>` tags in your base template for feed autodiscovery:
 </head>
 ```
 
+### WebSub Discovery
+
+If you enable WebSub, markata-go also emits hub discovery links:
+
+```html
+<head>
+  <link rel="hub" href="https://hub.example.com/">
+</head>
+```
+
+RSS/Atom feeds include `rel="hub"` and `rel="self"` links when WebSub is enabled.
+
 ## Configuration Reference
 
 ### Feed Config Fields

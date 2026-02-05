@@ -24,5 +24,6 @@ func DefaultConfig() *models.Config {
 				RSS:  true,
 			},
 		},
+		WebSub: models.NewWebSubConfig(),
 	}
 }

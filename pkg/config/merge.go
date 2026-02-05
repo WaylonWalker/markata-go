@@ -75,6 +75,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// PostFormats - merge if override has any formats enabled
 	result.PostFormats = mergePostFormatsConfig(base.PostFormats, override.PostFormats)
 
+	// WebSub - merge
+	result.WebSub = mergeWebSubConfig(base.WebSub, override.WebSub)
+
 	// SEO - merge
 	result.SEO = mergeSEOConfig(base.SEO, override.SEO)
 
@@ -260,6 +263,20 @@ func mergePostFormatsConfig(base, override models.PostFormatsConfig) models.Post
 	}
 	if override.OG {
 		result.OG = true
+	}
+
+	return result
+}
+
+// mergeWebSubConfig merges WebSubConfig values.
+func mergeWebSubConfig(base, override models.WebSubConfig) models.WebSubConfig {
+	result := base
+
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+	if override.Hubs != nil {
+		result.Hubs = append([]string{}, override.Hubs...)
 	}
 
 	return result

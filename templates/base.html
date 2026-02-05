@@ -83,6 +83,12 @@
   {% endif %}
 
   <!-- RSS/Atom/JSON Feeds -->
+  {% if config.websub.enabled and config.websub.hubs %}
+  <!-- WebSub Hubs -->
+  {% for hub in config.websub.hubs %}
+  <link rel="hub" href="{{ hub }}">
+  {% endfor %}
+  {% endif %}
   {% if config.head.alternate_feeds %}
   {% for feed in config.head.alternate_feeds %}
   <link rel="alternate" type="{{ feed.mime_type }}" title="{{ feed.title }}" href="{{ feed.href }}">

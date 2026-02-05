@@ -17,6 +17,7 @@ type configSource interface {
 	getFeeds() []feedConfigConverter
 	getFeedDefaults() feedDefaultsConverter
 	getPostFormats() postFormatsConverter
+	getWebSub() webSubConverter
 	getSEO() seoConverter
 	getIndieAuth() indieAuthConverter
 	getWebmention() webmentionConverter
@@ -68,6 +69,10 @@ type feedDefaultsConverter interface {
 
 type postFormatsConverter interface {
 	toPostFormatsConfig() models.PostFormatsConfig
+}
+
+type webSubConverter interface {
+	toWebSubConfig() models.WebSubConfig
 }
 
 type seoConverter interface {
@@ -167,6 +172,9 @@ func buildConfig(src configSource) *models.Config {
 	// Convert post formats
 	config.PostFormats = src.getPostFormats().toPostFormatsConfig()
 
+	// Convert WebSub config
+	config.WebSub = src.getWebSub().toWebSubConfig()
+
 	// Convert SEO config
 	config.SEO = src.getSEO().toSEOConfig()
 
@@ -237,7 +245,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"author": true, "assets_dir": true, "templates_dir": true,
 			"nav": true, "footer": true, "hooks": true, "disabled_hooks": true,
 			"glob": true, "markdown": true, "feeds": true, "feed_defaults": true,
-			"concurrency": true, "theme": true, "post_formats": true,
+			"concurrency": true, "theme": true, "post_formats": true, "websub": true,
 			"seo": true, "indieauth": true, "webmention": true, "components": true,
 			"layout": true, "sidebar": true, "toc": true, "header": true,
 			"blogroll": true, "mentions": true, "template_presets": true,
@@ -309,6 +317,7 @@ type tomlConfig struct {
 	Concurrency   int                     `toml:"concurrency"`
 	Theme         tomlThemeConfig         `toml:"theme"`
 	PostFormats   tomlPostFormatsConfig   `toml:"post_formats"`
+	WebSub        tomlWebSubConfig        `toml:"websub"`
 	SEO           tomlSEOConfig           `toml:"seo"`
 	IndieAuth     tomlIndieAuthConfig     `toml:"indieauth"`
 	Webmention    tomlWebmentionConfig    `toml:"webmention"`
@@ -444,6 +453,11 @@ type tomlPostFormatsConfig struct {
 	Markdown bool  `toml:"markdown"`
 	Text     bool  `toml:"text"`
 	OG       bool  `toml:"og"`
+}
+
+type tomlWebSubConfig struct {
+	Enabled *bool    `toml:"enabled"`
+	Hubs    []string `toml:"hubs"`
 }
 
 type tomlSEOConfig struct {
@@ -1047,6 +1061,23 @@ func (p *tomlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	}
 }
 
+func (w *tomlWebSubConfig) toWebSubConfig() models.WebSubConfig {
+	defaults := models.NewWebSubConfig()
+	config := models.WebSubConfig{
+		Enabled: w.Enabled,
+		Hubs:    w.Hubs,
+	}
+
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Hubs == nil {
+		config.Hubs = defaults.Hubs
+	}
+
+	return config
+}
+
 // configSource interface implementation for tomlConfig.
 func (c *tomlConfig) getBaseConfig() baseConfigData {
 	return baseConfigData{
@@ -1086,6 +1117,7 @@ func (c *tomlConfig) getFeeds() []feedConfigConverter {
 
 func (c *tomlConfig) getFeedDefaults() feedDefaultsConverter   { return &c.FeedDefaults }
 func (c *tomlConfig) getPostFormats() postFormatsConverter     { return &c.PostFormats }
+func (c *tomlConfig) getWebSub() webSubConverter               { return &c.WebSub }
 func (c *tomlConfig) getSEO() seoConverter                     { return &c.SEO }
 func (c *tomlConfig) getIndieAuth() indieAuthConverter         { return &c.IndieAuth }
 func (c *tomlConfig) getWebmention() webmentionConverter       { return &c.Webmention }
@@ -1259,6 +1291,7 @@ type yamlConfig struct {
 	Concurrency   int                     `yaml:"concurrency"`
 	Theme         yamlThemeConfig         `yaml:"theme"`
 	PostFormats   yamlPostFormatsConfig   `yaml:"post_formats"`
+	WebSub        yamlWebSubConfig        `yaml:"websub"`
 	IndieAuth     yamlIndieAuthConfig     `yaml:"indieauth"`
 	Webmention    yamlWebmentionConfig    `yaml:"webmention"`
 	SEO           yamlSEOConfig           `yaml:"seo"`
@@ -1345,6 +1378,11 @@ type yamlPostFormatsConfig struct {
 	Markdown bool  `yaml:"markdown"`
 	Text     bool  `yaml:"text"`
 	OG       bool  `yaml:"og"`
+}
+
+type yamlWebSubConfig struct {
+	Enabled *bool    `yaml:"enabled"`
+	Hubs    []string `yaml:"hubs"`
 }
 
 type yamlSEOConfig struct {
@@ -2048,6 +2086,23 @@ func (p *yamlPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	}
 }
 
+func (w *yamlWebSubConfig) toWebSubConfig() models.WebSubConfig {
+	defaults := models.NewWebSubConfig()
+	config := models.WebSubConfig{
+		Enabled: w.Enabled,
+		Hubs:    w.Hubs,
+	}
+
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Hubs == nil {
+		config.Hubs = defaults.Hubs
+	}
+
+	return config
+}
+
 // configSource interface implementation for yamlConfig.
 func (c *yamlConfig) getBaseConfig() baseConfigData {
 	return baseConfigData{
@@ -2087,6 +2142,7 @@ func (c *yamlConfig) getFeeds() []feedConfigConverter {
 
 func (c *yamlConfig) getFeedDefaults() feedDefaultsConverter   { return &c.FeedDefaults }
 func (c *yamlConfig) getPostFormats() postFormatsConverter     { return &c.PostFormats }
+func (c *yamlConfig) getWebSub() webSubConverter               { return &c.WebSub }
 func (c *yamlConfig) getSEO() seoConverter                     { return &c.SEO }
 func (c *yamlConfig) getIndieAuth() indieAuthConverter         { return &c.IndieAuth }
 func (c *yamlConfig) getWebmention() webmentionConverter       { return &c.Webmention }
@@ -2198,6 +2254,7 @@ type jsonConfig struct {
 	Concurrency   int                     `json:"concurrency"`
 	Theme         jsonThemeConfig         `json:"theme"`
 	PostFormats   jsonPostFormatsConfig   `json:"post_formats"`
+	WebSub        jsonWebSubConfig        `json:"websub"`
 	IndieAuth     jsonIndieAuthConfig     `json:"indieauth"`
 	Webmention    jsonWebmentionConfig    `json:"webmention"`
 	SEO           jsonSEOConfig           `json:"seo"`
@@ -2284,6 +2341,11 @@ type jsonPostFormatsConfig struct {
 	Markdown bool  `json:"markdown"`
 	Text     bool  `json:"text"`
 	OG       bool  `json:"og"`
+}
+
+type jsonWebSubConfig struct {
+	Enabled *bool    `json:"enabled"`
+	Hubs    []string `json:"hubs"`
 }
 
 type jsonSEOConfig struct {
@@ -2987,6 +3049,23 @@ func (p *jsonPostFormatsConfig) toPostFormatsConfig() models.PostFormatsConfig {
 	}
 }
 
+func (w *jsonWebSubConfig) toWebSubConfig() models.WebSubConfig {
+	defaults := models.NewWebSubConfig()
+	config := models.WebSubConfig{
+		Enabled: w.Enabled,
+		Hubs:    w.Hubs,
+	}
+
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Hubs == nil {
+		config.Hubs = defaults.Hubs
+	}
+
+	return config
+}
+
 // configSource interface implementation for jsonConfig.
 func (c *jsonConfig) getBaseConfig() baseConfigData {
 	return baseConfigData{
@@ -3026,6 +3105,7 @@ func (c *jsonConfig) getFeeds() []feedConfigConverter {
 
 func (c *jsonConfig) getFeedDefaults() feedDefaultsConverter   { return &c.FeedDefaults }
 func (c *jsonConfig) getPostFormats() postFormatsConverter     { return &c.PostFormats }
+func (c *jsonConfig) getWebSub() webSubConverter               { return &c.WebSub }
 func (c *jsonConfig) getSEO() seoConverter                     { return &c.SEO }
 func (c *jsonConfig) getIndieAuth() indieAuthConverter         { return &c.IndieAuth }
 func (c *jsonConfig) getWebmention() webmentionConverter       { return &c.Webmention }

@@ -400,6 +400,7 @@ func createBenchmarkManager(cfgPath, workDir string) (*lifecycle.Manager, error)
 	lcConfig.Extra["nav"] = cfg.Nav
 	lcConfig.Extra["footer"] = cfg.Footer
 	lcConfig.Extra["post_formats"] = cfg.PostFormats
+	lcConfig.Extra["websub"] = cfg.WebSub
 	lcConfig.Extra["theme"] = map[string]interface{}{
 		"name":       cfg.Theme.Name,
 		"palette":    cfg.Theme.Palette,
