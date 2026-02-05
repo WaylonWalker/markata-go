@@ -752,6 +752,25 @@ This section controls auto-generated `.well-known` endpoints derived from site m
 
 ---
 
+### WebSub (`[my-ssg.websub]`)
+
+```toml
+[my-ssg.websub]
+enabled = true
+hubs = ["https://hub.example.com/"]
+```
+
+When enabled, markata-go emits WebSub discovery links:
+
+- HTML pages include `<link rel="hub" href="...">` for each hub
+- RSS/Atom feeds include `rel="hub"` and `rel="self"` links
+
+**Defaults:**
+- `enabled` defaults to `false`
+- `hubs` defaults to an empty list
+
+---
+
 ## See Also
 
 - [SPEC.md](./SPEC.md) - Core specification

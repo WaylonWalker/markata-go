@@ -650,6 +650,11 @@ func toModelsConfigUncached(config *lifecycle.Config) *models.Config {
 		modelsConfig.PostFormats = postFormats
 	}
 
+	// Copy WebSub config if available
+	if websub, ok := config.Extra["websub"].(models.WebSubConfig); ok {
+		modelsConfig.WebSub = websub
+	}
+
 	// Copy Head config if available
 	if head, ok := config.Extra["head"].(models.HeadConfig); ok {
 		modelsConfig.Head = head
