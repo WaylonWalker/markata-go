@@ -110,7 +110,7 @@ func (u *Updater) FetchMetadataWithResource(ctx context.Context, feedURL, resour
 	}
 
 	// Attempt avatar discovery (best-effort, doesn't fail the overall operation)
-	if avatarResult, _ := u.DiscoverAvatar(ctx, siteURL, resource); avatarResult != nil {
+	if avatarResult, _ := u.DiscoverAvatar(ctx, siteURL, resource); avatarResult != nil { //nolint:errcheck // intentionally ignoring error for best-effort operation
 		metadata.AvatarURL = avatarResult.URL
 		metadata.AvatarSource = avatarResult.Source
 	}

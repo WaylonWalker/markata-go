@@ -241,30 +241,6 @@ func extractUPhoto(content, baseURL string) string {
 	return ""
 }
 
-// extractRepresentativeHCard looks for the most representative h-card on a page.
-// This is typically the first h-card, or one marked with rel="me" or class="p-author".
-func extractRepresentativeHCard(htmlContent string) string {
-	// Look for h-card with rel="me" indicator
-	relMePattern := regexp.MustCompile(`(?is)<(?:div|article|section|span)[^>]*class="[^"]*\bh-card\b[^"]*"[^>]*>.*?rel="me".*?</(?:div|article|section|span)>`)
-	if match := relMePattern.FindString(htmlContent); match != "" {
-		return match
-	}
-
-	// Look for h-card with p-author class
-	authorPattern := regexp.MustCompile(`(?is)<(?:div|article|section|span)[^>]*class="[^"]*\bh-card\b[^"]*\bp-author\b[^"]*"[^>]*>.*?</(?:div|article|section|span)>`)
-	if match := authorPattern.FindString(htmlContent); match != "" {
-		return match
-	}
-
-	// Fallback to first h-card
-	hcardPattern := regexp.MustCompile(`(?is)<(?:div|article|section|span)[^>]*class="[^"]*\bh-card\b[^"]*"[^>]*>.*?</(?:div|article|section|span)>`)
-	if match := hcardPattern.FindString(htmlContent); match != "" {
-		return match
-	}
-
-	return ""
-}
-
 // isValidAvatarURL checks if a URL looks like a valid avatar image.
 func isValidAvatarURL(avatarURL string) bool {
 	if avatarURL == "" {

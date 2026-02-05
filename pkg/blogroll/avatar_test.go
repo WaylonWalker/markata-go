@@ -147,7 +147,7 @@ func TestWebFingerAvatarDiscovery(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/.well-known/webfinger" {
 			w.Header().Set("Content-Type", "application/jrd+json")
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
 				"subject": "acct:user@example.com",
 				"links": [
 					{
@@ -193,7 +193,7 @@ func TestWebFingerNoAvatarLink(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/.well-known/webfinger" {
 			w.Header().Set("Content-Type", "application/jrd+json")
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
 				"subject": "acct:user@example.com",
 				"links": [
 					{
@@ -224,9 +224,9 @@ func TestWebFingerNoAvatarLink(t *testing.T) {
 
 func TestHCardAvatarDiscovery(t *testing.T) {
 	// Create a test server that returns HTML with h-card
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(`<!DOCTYPE html>
+		_, _ = w.Write([]byte(`<!DOCTYPE html>
 <html>
 <head><title>Test</title></head>
 <body>
@@ -266,7 +266,7 @@ func TestWellKnownAvatarDiscovery(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/.well-known/avatar" {
 			w.Header().Set("Content-Type", "image/png")
-			w.Write([]byte("fake image content"))
+			_, _ = w.Write([]byte("fake image content"))
 			return
 		}
 		http.NotFound(w, r)
@@ -302,16 +302,16 @@ func TestDiscoverAvatar_PriorityOrder(t *testing.T) {
 		case "/":
 			// Homepage with h-card
 			w.Header().Set("Content-Type", "text/html")
-			w.Write([]byte(`<div class="h-card"><img class="u-photo" src="/hcard-avatar.jpg"></div>`))
+			_, _ = w.Write([]byte(`<div class="h-card"><img class="u-photo" src="/hcard-avatar.jpg"></div>`))
 		case "/.well-known/webfinger":
 			w.Header().Set("Content-Type", "application/jrd+json")
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
 				"subject": "acct:user@example.com",
 				"links": [{"rel": "http://webfinger.net/rel/avatar", "href": "/wf-avatar.jpg"}]
 			}`))
 		case "/.well-known/avatar":
 			w.Header().Set("Content-Type", "image/png")
-			w.Write([]byte("avatar"))
+			_, _ = w.Write([]byte("avatar"))
 		default:
 			http.NotFound(w, r)
 		}
@@ -372,7 +372,7 @@ func TestMetadataWithAvatar(t *testing.T) {
 		switch r.URL.Path {
 		case "/":
 			w.Header().Set("Content-Type", "text/html")
-			w.Write([]byte(`<!DOCTYPE html>
+			_, _ = w.Write([]byte(`<!DOCTYPE html>
 <html>
 <head>
 	<title>Test Site</title>
@@ -389,7 +389,7 @@ func TestMetadataWithAvatar(t *testing.T) {
 </html>`))
 		case "/feed.xml":
 			w.Header().Set("Content-Type", "application/rss+xml")
-			w.Write([]byte(`<?xml version="1.0"?>
+			_, _ = w.Write([]byte(`<?xml version="1.0"?>
 <rss version="2.0">
 <channel>
 	<title>Test Feed</title>
