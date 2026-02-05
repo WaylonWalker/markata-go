@@ -8,6 +8,10 @@
       "rel": "http://webfinger.net/rel/profile-page",
       "type": "text/html",
       "href": "{{ well_known.site_url }}/"
-    }
+    }{% if well_known.author_image_url %},
+    {
+      "rel": "http://webfinger.net/rel/avatar",
+      "href": "{{ well_known.author_image_url }}"
+    }{% endif %}
   ]
 }
