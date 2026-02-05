@@ -61,11 +61,11 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	// Check if root subscription feed already exists
 	hasRootFeed := false
 	hasArchiveFeed := false
-	for _, fc := range feedConfigs {
-		if fc.Slug == "" {
+	for i := range feedConfigs {
+		if feedConfigs[i].Slug == "" {
 			hasRootFeed = true
 		}
-		if fc.Slug == "archive" {
+		if feedConfigs[i].Slug == defaultArchivePrefix {
 			hasArchiveFeed = true
 		}
 	}
@@ -92,9 +92,9 @@ func (p *SubscriptionFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	// Create archive subscription feed (slug="archive") if not already defined
 	if !hasArchiveFeed {
 		archiveFeed := models.FeedConfig{
-			Slug:        "archive",
-			Title:       getSubscriptionFeedTitle(config, "archive"),
-			Description: getSubscriptionFeedDescription(config, "archive"),
+			Slug:        defaultArchivePrefix,
+			Title:       getSubscriptionFeedTitle(config, defaultArchivePrefix),
+			Description: getSubscriptionFeedDescription(config, defaultArchivePrefix),
 			Filter:      "published == true",
 			Sort:        "date",
 			Reverse:     true,
@@ -126,7 +126,7 @@ func getSubscriptionFeedTitle(config *lifecycle.Config, feedType string) string 
 	switch feedType {
 	case "root":
 		return siteTitle + " Feed"
-	case "archive":
+	case defaultArchivePrefix:
 		return siteTitle + " Archive Feed"
 	default:
 		return siteTitle + " Feed"
@@ -149,7 +149,7 @@ func getSubscriptionFeedDescription(config *lifecycle.Config, feedType string) s
 	switch feedType {
 	case "root":
 		return "All published posts"
-	case "archive":
+	case defaultArchivePrefix:
 		return "Archive of all published posts"
 	default:
 		return "Posts feed"
@@ -188,8 +188,10 @@ type DiscoveryFeed struct {
 // If the post has a sidebar_feed, that feed is used for discovery.
 // Otherwise, the site default feed (root subscription feed) is used.
 //
+// The post parameter is reserved for future use when discovery logic
+// may need to inspect post metadata (e.g., explicit feed assignment).
 // This function is called from templates.go renderPost to inject discovery_feed context.
-func GetDiscoveryFeed(post *models.Post, sidebarFeed *models.FeedConfig, allFeeds []models.FeedConfig) *DiscoveryFeed {
+func GetDiscoveryFeed(_ *models.Post, sidebarFeed *models.FeedConfig, allFeeds []models.FeedConfig) *DiscoveryFeed {
 	// If post has a sidebar feed, use that for discovery
 	if sidebarFeed != nil {
 		return feedConfigToDiscoveryFeed(sidebarFeed)

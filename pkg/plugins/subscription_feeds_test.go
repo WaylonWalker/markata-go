@@ -142,8 +142,14 @@ func TestSubscriptionFeedsPlugin_Collect_DoesNotDuplicateExisting(t *testing.T) 
 	}
 
 	// Check feed configs
-	cached, _ := m.Cache().Get("feed_configs")
-	feedConfigs := cached.([]models.FeedConfig)
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		t.Fatal("Expected feed_configs in cache")
+	}
+	feedConfigs, ok := cached.([]models.FeedConfig)
+	if !ok {
+		t.Fatal("Expected feed_configs to be []models.FeedConfig")
+	}
 
 	// Count root feeds
 	rootCount := 0
