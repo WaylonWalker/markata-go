@@ -39,6 +39,7 @@ This document specifies all built-in plugins that ship with the static site gene
 │  OUTPUT                                                              │
 │    ├─ publish_feeds      Write HTML/RSS/Atom/JSON/MD/TXT/Sitemap    │
 │    ├─ publish_html       Write individual post HTML files           │
+│    ├─ well_known         Generate .well-known endpoints             │
 │    ├─ copy_assets        Copy static files                           │
 │    └─ redirects          Generate HTML redirect pages                │
 └─────────────────────────────────────────────────────────────────────┘
@@ -1141,6 +1142,46 @@ for post in core.filter("not skip"):
     output_path = join(core.config.output_dir, post.slug, "index.html")
     create_parent_dirs(output_path)
     write_text(output_path, html)
+```
+
+---
+
+### `well_known`
+
+**Stage:** `write`
+
+**Purpose:** Generate `.well-known` endpoints from site configuration data.
+
+**Behavior:**
+1. Resolve `well_known` configuration
+2. Determine enabled entries (defaults + optional)
+3. Render templates (if available) or fall back to built-in defaults
+4. Write files to the output directory
+
+**Outputs:**
+- `/.well-known/host-meta`
+- `/.well-known/host-meta.json`
+- `/.well-known/webfinger`
+- `/.well-known/nodeinfo`
+- `/nodeinfo/2.0`
+- `/.well-known/time`
+- `/.well-known/sshfp` (optional)
+- `/.well-known/keybase.txt` (optional)
+
+**Template context:**
+| Variable | Type | Description |
+|----------|------|-------------|
+| `config` | Config | Site configuration |
+| `well_known` | map | Derived values (site URL, host, build time, author, etc.) |
+
+**Hook behavior:**
+
+```
+if config.well_known.enabled:
+    entries = resolve_entries(config.well_known)
+    for entry in entries:
+        output = render_template(entry.template, config, well_known_data)
+        write_file(output_dir, entry.path, output)
 ```
 
 ---
