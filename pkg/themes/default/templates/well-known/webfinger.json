@@ -1,0 +1,13 @@
+{
+  "subject": "{{ well_known.webfinger_subject }}",
+  "aliases": [
+    "{{ well_known.site_url }}/"
+  ],
+  "links": [
+    {
+      "rel": "http://webfinger.net/rel/profile-page",
+      "type": "text/html",
+      "href": "{{ well_known.site_url }}/"
+    }
+  ]
+}

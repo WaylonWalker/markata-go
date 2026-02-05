@@ -1,0 +1,25 @@
+{
+  "version": "2.0",
+  "software": {
+    "name": "{{ well_known.generator }}",
+    "version": "{{ well_known.generator_version }}"
+  },
+  "protocols": [],
+  "services": {
+    "inbound": [],
+    "outbound": []
+  },
+  "openRegistrations": false,
+  "usage": {
+    "users": {
+      "total": 0
+    }
+  },
+  "metadata": {
+    "site": {
+      "name": "{{ well_known.site_title }}",
+      "description": "{{ well_known.site_description }}",
+      "url": "{{ well_known.site_url }}/"
+    }
+  }
+}
