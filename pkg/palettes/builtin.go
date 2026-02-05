@@ -161,7 +161,7 @@ func HasBuiltin(name string) bool {
 // ReadBuiltinRaw reads the raw TOML content of a built-in palette by name.
 // This is useful for exporting palettes to the filesystem.
 // Returns ErrPaletteNotFound if the palette doesn't exist.
-func ReadBuiltinRaw(name string) ([]byte, string, error) {
+func ReadBuiltinRaw(name string) (content []byte, filename string, err error) {
 	ensureBuiltinLoaded()
 
 	// Find the palette to get its source path
@@ -182,7 +182,7 @@ func ReadBuiltinRaw(name string) ([]byte, string, error) {
 	}
 
 	// Extract filename from path (e.g., "palettes/catppuccin-mocha.toml" -> "catppuccin-mocha.toml")
-	filename := path.Base(p.SourcePath)
+	filename = path.Base(p.SourcePath)
 	return data, filename, nil
 }
 

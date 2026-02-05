@@ -475,7 +475,7 @@ func venderPalettes(force bool) error {
 // This includes base templates, partials, and components.
 // A README.md is also generated explaining template customization.
 func venderLayouts(force bool) error {
-	dir := "templates"
+	dir := defaultTemplatesDir
 
 	// Create directory if it doesn't exist
 	if err := os.MkdirAll(dir, 0o755); err != nil {
