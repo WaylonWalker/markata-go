@@ -23,6 +23,15 @@
     <div class="blogroll-grid">
       {% for feed in category.feeds %}
       <article class="blogroll-card">
+        {% if feed.avatar_url %}
+        <img src="{{ feed.avatar_url }}" alt="{{ feed.title }}" class="blogroll-card-avatar" loading="lazy">
+        {% elif feed.image_url %}
+        <img src="{{ feed.image_url }}" alt="{{ feed.title }}" class="blogroll-card-avatar" loading="lazy">
+        {% else %}
+        <div class="blogroll-card-avatar-placeholder" aria-hidden="true">
+          {{ feed.title|default:'?'|first|upper }}
+        </div>
+        {% endif %}
         <h3 class="blogroll-card-title">
           {% if feed.site_url %}
           <a href="{{ feed.site_url }}" target="_blank" rel="noopener">{{ feed.title }}</a>

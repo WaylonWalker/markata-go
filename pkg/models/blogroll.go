@@ -179,8 +179,16 @@ type ExternalFeed struct {
 	// FeedURL is the RSS/Atom feed URL
 	FeedURL string `json:"feed_url"`
 
-	// ImageURL is the feed's logo/icon
+	// ImageURL is the feed's logo/icon (general image, may be article image)
 	ImageURL string `json:"image_url"`
+
+	// AvatarURL is the author/site representative image (person avatar)
+	// Discovered via h-card u-photo, WebFinger rel=avatar, or .well-known/avatar
+	AvatarURL string `json:"avatar_url,omitempty"`
+
+	// AvatarSource indicates where the avatar was discovered from
+	// Possible values: "config", "h-card", "webfinger", "well-known", "feed", "opengraph", "favicon"
+	AvatarSource string `json:"avatar_source,omitempty"`
 
 	// Category is the feed category
 	Category string `json:"category"`
