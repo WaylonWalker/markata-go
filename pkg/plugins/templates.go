@@ -384,6 +384,13 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 		}
 	}
 
+	// Inject discovery feed for per-page feed discovery links
+	// If post has a sidebar feed, use that; otherwise use site default
+	discoveryFeed := p.getDiscoveryFeed(post, sidebarFeed, m)
+	if discoveryFeed != nil {
+		ctx.Set("discovery_feed", DiscoveryFeedToMap(discoveryFeed))
+	}
+
 	// Render the template
 	html, err := p.engine.Render(templateName, ctx)
 	if err != nil {
@@ -498,6 +505,21 @@ func (p *TemplatesPlugin) getSidebarPrevNext(currentPost *models.Post, sidebarPo
 	}
 
 	return prev, next
+}
+
+// getDiscoveryFeed returns the discovery feed for a post.
+// If the post has a sidebar feed, that feed is used for discovery.
+// Otherwise, the site default feed (root subscription feed) is used.
+func (p *TemplatesPlugin) getDiscoveryFeed(post *models.Post, sidebarFeed *models.FeedConfig, m *lifecycle.Manager) *DiscoveryFeed {
+	// Get feed configs from cache
+	var feedConfigs []models.FeedConfig
+	if cached, ok := m.Cache().Get("feed_configs"); ok {
+		if fcs, ok := cached.([]models.FeedConfig); ok {
+			feedConfigs = fcs
+		}
+	}
+
+	return GetDiscoveryFeed(post, sidebarFeed, feedConfigs)
 }
 
 // sortPostsByDate sorts posts by date.

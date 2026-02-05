@@ -968,7 +968,132 @@ Each post in `feed.posts` or `page.posts` has:
 
 ## Feed Discovery
 
-Add `<link>` tags in your base template for feed autodiscovery:
+markata-go provides automatic feed discovery so visitors and feed readers can find the right feed for each page.
+
+### How It Works
+
+Every page automatically includes `<link rel="alternate">` tags in the `<head>` for feed discovery. The feed advertised depends on the page:
+
+1. **Posts with a sidebar feed** - If a post participates in a feed sidebar (e.g., a series or guide), the discovery links point to that feed.
+2. **Other pages** - All other pages advertise the site's default subscription feeds (`/rss.xml`, `/atom.xml`).
+
+This ensures readers always discover the most relevant feed for the content they're viewing.
+
+### Template Context
+
+When rendering pages, markata-go injects a `discovery_feed` variable into the template context:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `discovery_feed.title` | string | Feed title |
+| `discovery_feed.has_rss` | bool | RSS format available |
+| `discovery_feed.has_atom` | bool | Atom format available |
+| `discovery_feed.has_json` | bool | JSON format available |
+| `discovery_feed.rss_url` | string | RSS feed URL |
+| `discovery_feed.atom_url` | string | Atom feed URL |
+| `discovery_feed.json_url` | string | JSON feed URL |
+
+### Default Template Behavior
+
+The default `base.html` template handles discovery automatically:
+
+```html
+<head>
+  {% if config.head.alternate_feeds %}
+    {# Explicit override - user-configured feeds take precedence #}
+    {% for feed in config.head.alternate_feeds %}
+    <link rel="alternate" type="{{ feed.type }}" title="{{ feed.title }}" href="{{ feed.href }}">
+    {% endfor %}
+  {% elif discovery_feed %}
+    {# Automatic per-page discovery #}
+    {% if discovery_feed.has_rss %}
+    <link rel="alternate" type="application/rss+xml"
+          title="{{ discovery_feed.title }} (RSS)"
+          href="{{ discovery_feed.rss_url }}">
+    {% endif %}
+    {% if discovery_feed.has_atom %}
+    <link rel="alternate" type="application/atom+xml"
+          title="{{ discovery_feed.title }} (Atom)"
+          href="{{ discovery_feed.atom_url }}">
+    {% endif %}
+    {% if discovery_feed.has_json %}
+    <link rel="alternate" type="application/feed+json"
+          title="{{ discovery_feed.title }} (JSON)"
+          href="{{ discovery_feed.json_url }}">
+    {% endif %}
+  {% else %}
+    {# Fallback #}
+    <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/rss.xml">
+  {% endif %}
+</head>
+```
+
+### Override with `head.alternate_feeds`
+
+If you need full control over discovery links, configure `head.alternate_feeds` explicitly:
+
+```toml
+[[markata-go.head.alternate_feeds]]
+type = "application/rss+xml"
+title = "My Custom Feed"
+href = "/custom/rss.xml"
+```
+
+When `head.alternate_feeds` is set, it completely overrides the automatic discovery behavior.
+
+## Built-in Subscription Feeds
+
+markata-go automatically creates site-wide subscription feeds so visitors always have a way to subscribe.
+
+### Generated Feeds
+
+By default, these feeds are created automatically:
+
+| Path | Description |
+|------|-------------|
+| `/rss.xml` | Site RSS feed (all published posts) |
+| `/atom.xml` | Site Atom feed (all published posts) |
+| `/archive/rss.xml` | Archive RSS feed (same content as root) |
+| `/archive/atom.xml` | Archive Atom feed (same content as root) |
+
+### How It Works
+
+The `subscription_feeds` plugin creates two internal feeds:
+
+1. **Root feed** (`slug = ""`) - Generates `/rss.xml` and `/atom.xml` (no HTML to avoid overwriting your home page)
+2. **Archive feed** (`slug = "archive"`) - Generates `/archive/rss.xml` and `/archive/atom.xml`
+
+Both feeds contain the same items: all published posts sorted by date (newest first).
+
+### Customizing Subscription Feeds
+
+The built-in feeds use sensible defaults, but you can override them by defining your own feeds with the same slugs:
+
+```toml
+# Override the root subscription feed
+[[markata-go.feeds]]
+slug = ""
+title = "My Site"
+filter = "published == True and featured == True"  # Only featured posts
+sort = "date"
+reverse = true
+
+[markata-go.feeds.formats]
+html = false      # Still no HTML (don't overwrite home page)
+rss = true
+atom = true
+```
+
+### Why Both Root and Archive?
+
+- **Root feeds** (`/rss.xml`, `/atom.xml`) - The standard location feed readers check first
+- **Archive feeds** (`/archive/...`) - Alternative paths for services that expect feeds in subdirectories
+
+Both contain identical content, ensuring maximum compatibility with feed readers and syndication services.
+
+## Manual Feed Discovery Links
+
+If you need to add discovery links manually in a custom template:
 
 ```html
 <head>
