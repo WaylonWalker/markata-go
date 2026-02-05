@@ -42,6 +42,11 @@ type Metadata struct {
 	// Author information
 	Author string `json:"author,omitempty"`
 
+	// Avatar (person/site representative image)
+	// Distinct from ImageURL which may be an article/page image
+	AvatarURL    string       `json:"avatar_url,omitempty"`
+	AvatarSource AvatarSource `json:"avatar_source,omitempty"`
+
 	// From feed
 	FeedTitle       string     `json:"feed_title,omitempty"`
 	FeedDescription string     `json:"feed_description,omitempty"`
@@ -65,7 +70,14 @@ type UpdateResult struct {
 
 // FetchMetadata fetches metadata from a site URL or feed URL.
 // It tries multiple sources in order: OpenGraph, HTML meta tags, feed metadata.
+// Additionally, it attempts avatar discovery via h-card, WebFinger, and .well-known/avatar.
 func (u *Updater) FetchMetadata(ctx context.Context, feedURL string) (*Metadata, error) {
+	return u.FetchMetadataWithResource(ctx, feedURL, "")
+}
+
+// FetchMetadataWithResource fetches metadata and attempts avatar discovery.
+// The resource parameter is used for WebFinger lookups (e.g., "acct:user@example.com").
+func (u *Updater) FetchMetadataWithResource(ctx context.Context, feedURL, resource string) (*Metadata, error) {
 	metadata := &Metadata{}
 
 	// First, try to extract site URL from feed URL
@@ -95,6 +107,12 @@ func (u *Updater) FetchMetadata(ctx context.Context, feedURL string) (*Metadata,
 	// Set the site URL if not already set
 	if metadata.SiteURL == "" {
 		metadata.SiteURL = siteURL
+	}
+
+	// Attempt avatar discovery (best-effort, doesn't fail the overall operation)
+	if avatarResult, _ := u.DiscoverAvatar(ctx, siteURL, resource); avatarResult != nil { //nolint:errcheck // intentionally ignoring error for best-effort operation
+		metadata.AvatarURL = avatarResult.URL
+		metadata.AvatarSource = avatarResult.Source
 	}
 
 	return metadata, nil
@@ -496,6 +514,10 @@ func mergeMetadata(target, source *Metadata) {
 	if source.Author != "" {
 		target.Author = source.Author
 	}
+	if source.AvatarURL != "" {
+		target.AvatarURL = source.AvatarURL
+		target.AvatarSource = source.AvatarSource
+	}
 	if source.FeedTitle != "" {
 		target.FeedTitle = source.FeedTitle
 	}
@@ -529,6 +551,10 @@ func mergeMetadataWithoutOverwrite(target, source *Metadata) {
 	}
 	if target.Author == "" && source.FeedAuthor != "" {
 		target.Author = source.FeedAuthor
+	}
+	if target.AvatarURL == "" && source.AvatarURL != "" {
+		target.AvatarURL = source.AvatarURL
+		target.AvatarSource = source.AvatarSource
 	}
 	if target.LastUpdated == nil && source.LastUpdated != nil {
 		target.LastUpdated = source.LastUpdated
