@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -47,7 +49,7 @@ func builtinTemplates() map[string]ContentTemplate {
 			Name:      "post",
 			Directory: "posts",
 			Frontmatter: map[string]interface{}{
-				"templateKey": "post",
+				"template": "post",
 			},
 			Body:   "Write your content here...",
 			Source: "builtin",
@@ -56,7 +58,7 @@ func builtinTemplates() map[string]ContentTemplate {
 			Name:      "page",
 			Directory: "pages",
 			Frontmatter: map[string]interface{}{
-				"templateKey": "page",
+				"template": "page",
 			},
 			Body:   "Write your page content here...",
 			Source: "builtin",
@@ -65,9 +67,85 @@ func builtinTemplates() map[string]ContentTemplate {
 			Name:      "docs",
 			Directory: "docs",
 			Frontmatter: map[string]interface{}{
-				"templateKey": "docs",
+				"template": "docs",
 			},
 			Body:   "Write your documentation here...",
+			Source: "builtin",
+		},
+		"article": {
+			Name:      "article",
+			Directory: "pages/article",
+			Frontmatter: map[string]interface{}{
+				"template": "article",
+			},
+			Body:   "Write your article here...",
+			Source: "builtin",
+		},
+		"note": {
+			Name:      "note",
+			Directory: "pages/note",
+			Frontmatter: map[string]interface{}{
+				"template": "note",
+			},
+			Body:   "A quick note...",
+			Source: "builtin",
+		},
+		"photo": {
+			Name:      "photo",
+			Directory: "pages/photo",
+			Frontmatter: map[string]interface{}{
+				"template": "photo",
+				"image":    "",
+			},
+			Body:   "Photo caption...",
+			Source: "builtin",
+		},
+		"video": {
+			Name:      "video",
+			Directory: "pages/video",
+			Frontmatter: map[string]interface{}{
+				"template":  "video",
+				"video_url": "",
+			},
+			Body:   "Video description...",
+			Source: "builtin",
+		},
+		"link": {
+			Name:      "link",
+			Directory: "pages/link",
+			Frontmatter: map[string]interface{}{
+				"template": "link",
+				"url":      "",
+			},
+			Body:   "Why I'm sharing this link...",
+			Source: "builtin",
+		},
+		"quote": {
+			Name:      "quote",
+			Directory: "pages/quote",
+			Frontmatter: map[string]interface{}{
+				"template":     "quote",
+				"quote_author": "",
+			},
+			Body:   "> The quote goes here...",
+			Source: "builtin",
+		},
+		"guide": {
+			Name:      "guide",
+			Directory: "pages/guide",
+			Frontmatter: map[string]interface{}{
+				"template": "guide",
+			},
+			Body:   "## Introduction\n\nWrite your guide here...",
+			Source: "builtin",
+		},
+		"inline": {
+			Name:      "inline",
+			Directory: "pages/inline",
+			Frontmatter: map[string]interface{}{
+				"template": "inline",
+			},
+			Body:   "Inline content...",
 			Source: "builtin",
 		},
 	}
@@ -89,7 +167,7 @@ The command generates a new markdown file with:
 
 Template System:
   Templates control the default frontmatter and output directory for new content.
-  Built-in templates: post, page, docs
+  Built-in templates: post, page, docs, article, note, photo, video, link, quote, guide, inline
 
   Custom templates can be defined:
   1. In markata-go.toml under [content_templates]
@@ -271,13 +349,9 @@ func parseConfigFile(path string) (*configWrapper, error) {
 	case ".yaml", ".yml":
 		err = yaml.Unmarshal(content, &cfg)
 	case ".toml":
-		// Use simple TOML parsing for content_templates section
-		// For full TOML support, we'd need the toml package
-		// For now, just return nil to use defaults
-		return nil, fmt.Errorf("toml parsing not implemented in simple loader")
+		err = toml.Unmarshal(content, &cfg)
 	case ".json":
-		// Similar simplification
-		return nil, fmt.Errorf("json parsing not implemented in simple loader")
+		err = json.Unmarshal(content, &cfg)
 	default:
 		return nil, fmt.Errorf("unsupported config format: %s", ext)
 	}
