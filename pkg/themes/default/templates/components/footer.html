@@ -29,6 +29,9 @@
          <p class="footer-copyright">&copy; {{ "now" | date:"2006" }} {{ config.author | default:config.title | default:"" }}.{% if footer.show_built_with %} Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a> using {{ config.theme.name | default:"default" }} theme.{% endif %}</p>
          {% endif %}
     </div>
+
+    {# Site-wide h-card for IndieWeb identity #}
+    {% include "components/h-card.html" %}
 </footer>
 {% endif %}
 {% endwith %}

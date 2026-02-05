@@ -1,0 +1,31 @@
+{# Site-wide h-card (Microformats2) #}
+{# This provides IndieWeb-friendly author/site identity markup #}
+{# It's hidden by default but machine-readable for parsers #}
+
+{% if config.author or config.url %}
+<div class="h-card site-author-card" hidden>
+    {# Author/site name #}
+    {% if config.author %}
+    <span class="p-name">{{ config.author }}</span>
+    {% elif config.title %}
+    <span class="p-name">{{ config.title }}</span>
+    {% endif %}
+
+    {# Canonical site URL #}
+    {% if config.url %}
+    <a class="u-url u-uid" href="{{ config.url }}">{{ config.url }}</a>
+    {% endif %}
+
+    {# Author avatar/photo from SEO config #}
+    {% if config.seo.author_image %}
+    <img class="u-photo" src="{% if config.seo.author_image | startswith:'http' %}{{ config.seo.author_image }}{% else %}{{ config.url }}{{ config.seo.author_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" hidden>
+    {% elif config.seo.default_image %}
+    <img class="u-photo" src="{% if config.seo.default_image | startswith:'http' %}{{ config.seo.default_image }}{% else %}{{ config.url }}{{ config.seo.default_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" hidden>
+    {% endif %}
+
+    {# Optional note/bio if available #}
+    {% if config.description %}
+    <span class="p-note">{{ config.description }}</span>
+    {% endif %}
+</div>
+{% endif %}
