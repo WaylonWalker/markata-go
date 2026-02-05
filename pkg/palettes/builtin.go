@@ -157,3 +157,59 @@ func HasBuiltin(name string) bool {
 	_, ok = builtinPalettes[normalizeFileName(name)]
 	return ok
 }
+
+// ReadBuiltinRaw reads the raw TOML content of a built-in palette by name.
+// This is useful for exporting palettes to the filesystem.
+// Returns ErrPaletteNotFound if the palette doesn't exist.
+func ReadBuiltinRaw(name string) ([]byte, string, error) {
+	ensureBuiltinLoaded()
+
+	// Find the palette to get its source path
+	var p *Palette
+	if found, ok := builtinPalettes[name]; ok {
+		p = found
+	} else if found, ok := builtinPalettes[normalizeFileName(name)]; ok {
+		p = found
+	}
+
+	if p == nil {
+		return nil, "", NewPaletteLoadError(name, "", "built-in palette not found", ErrPaletteNotFound)
+	}
+
+	data, err := builtinFS.ReadFile(p.SourcePath)
+	if err != nil {
+		return nil, "", NewPaletteLoadError(name, p.SourcePath, "failed to read palette file", err)
+	}
+
+	// Extract filename from path (e.g., "palettes/catppuccin-mocha.toml" -> "catppuccin-mocha.toml")
+	filename := path.Base(p.SourcePath)
+	return data, filename, nil
+}
+
+// ListBuiltinFiles returns all built-in palette filenames and their raw content.
+// This is useful for bulk export of all built-in palettes.
+func ListBuiltinFiles() (map[string][]byte, error) {
+	entries, err := builtinFS.ReadDir("palettes")
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string][]byte)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if !strings.HasSuffix(entry.Name(), ".toml") {
+			continue
+		}
+
+		filePath := path.Join("palettes", entry.Name())
+		data, err := builtinFS.ReadFile(filePath)
+		if err != nil {
+			continue
+		}
+		result[entry.Name()] = data
+	}
+
+	return result, nil
+}

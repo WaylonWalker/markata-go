@@ -42,6 +42,38 @@ type ContentTemplate struct {
 	Source      string // "builtin", "config", or "file"
 }
 
+// ToMarkdown converts a ContentTemplate to a markdown file format with YAML frontmatter.
+// The _directory field is included to preserve the placement information.
+func (ct *ContentTemplate) ToMarkdown() string {
+	// Build frontmatter with _directory
+	fm := make(map[string]interface{})
+	fm["_directory"] = ct.Directory
+	for k, v := range ct.Frontmatter {
+		fm[k] = v
+	}
+
+	fmBytes, err := yaml.Marshal(fm)
+	if err != nil {
+		// Fallback to minimal frontmatter
+		return fmt.Sprintf("---\n_directory: %s\n---\n\n%s\n", ct.Directory, ct.Body)
+	}
+
+	var sb strings.Builder
+	sb.WriteString("---\n")
+	sb.Write(fmBytes)
+	sb.WriteString("---\n\n")
+	sb.WriteString(ct.Body)
+	sb.WriteString("\n")
+
+	return sb.String()
+}
+
+// BuiltinTemplates returns the default built-in content templates.
+// This is exported for use by the init command for vending templates.
+func BuiltinTemplates() map[string]ContentTemplate {
+	return builtinTemplates()
+}
+
 // builtinTemplates returns the default built-in content templates.
 func builtinTemplates() map[string]ContentTemplate {
 	return map[string]ContentTemplate{
