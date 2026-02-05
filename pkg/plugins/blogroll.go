@@ -22,6 +22,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/WaylonWalker/markata-go/pkg/blogroll"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -58,12 +59,14 @@ func extractFirstImageFromHTML(htmlContent string) string {
 
 // blogrollParsedFeed represents a parsed feed response for blogroll plugin.
 type blogrollParsedFeed struct {
-	Title       string     `json:"title"`
-	Description string     `json:"description"`
-	Language    string     `json:"language"`
-	SiteURL     string     `json:"site_url"`
-	ImageURL    string     `json:"image_url"`
-	LastUpdated *time.Time `json:"last_updated"`
+	Title        string     `json:"title"`
+	Description  string     `json:"description"`
+	Language     string     `json:"language"`
+	SiteURL      string     `json:"site_url"`
+	ImageURL     string     `json:"image_url"`
+	AvatarURL    string     `json:"avatar_url"`
+	AvatarSource string     `json:"avatar_source"`
+	LastUpdated  *time.Time `json:"last_updated"`
 }
 
 // RSS 2.0 structures for feed parsing.
@@ -701,6 +704,10 @@ func updateFeedFromParsed(feed *models.ExternalFeed, parsed *blogrollParsedFeed)
 	if feed.ImageURL == "" {
 		feed.ImageURL = parsed.ImageURL
 	}
+	if feed.AvatarURL == "" && parsed.AvatarURL != "" {
+		feed.AvatarURL = parsed.AvatarURL
+		feed.AvatarSource = parsed.AvatarSource
+	}
 
 	now := time.Now()
 	feed.LastFetched = &now
@@ -758,6 +765,12 @@ func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir st
 
 	// Update feed with parsed values
 	updateFeedFromParsed(feed, parsedFeed)
+
+	// Attempt avatar discovery if no avatar set from config
+	// Best-effort: failures don't affect the feed
+	if feed.AvatarURL == "" && feed.SiteURL != "" {
+		p.discoverFeedAvatar(ctx, feed, config, timeout)
+	}
 
 	// Limit entries
 	if len(entries) > maxEntries {
@@ -1197,17 +1210,19 @@ func (p *BlogrollPlugin) feedsToMaps(feeds []*models.ExternalFeed) []map[string]
 	result := make([]map[string]interface{}, len(feeds))
 	for i, feed := range feeds {
 		result[i] = map[string]interface{}{
-			"title":        feed.Title,
-			"description":  feed.Description,
-			"site_url":     feed.SiteURL,
-			"feed_url":     feed.FeedURL,
-			"image_url":    feed.ImageURL,
-			"category":     feed.Category,
-			"tags":         feed.Tags,
-			"entry_count":  feed.EntryCount,
-			"last_fetched": feed.LastFetched,
-			"last_updated": feed.LastUpdated,
-			"error":        feed.Error,
+			"title":         feed.Title,
+			"description":   feed.Description,
+			"site_url":      feed.SiteURL,
+			"feed_url":      feed.FeedURL,
+			"image_url":     feed.ImageURL,
+			"avatar_url":    feed.AvatarURL,
+			"avatar_source": feed.AvatarSource,
+			"category":      feed.Category,
+			"tags":          feed.Tags,
+			"entry_count":   feed.EntryCount,
+			"last_fetched":  feed.LastFetched,
+			"last_updated":  feed.LastUpdated,
+			"error":         feed.Error,
 		}
 	}
 	return result
@@ -1873,10 +1888,14 @@ func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, ca
 		for _, feed := range cat.Feeds {
 			sb.WriteString(`        <article class="blogroll-card feed-card">
 `)
-			// Feed avatar
-			if feed.ImageURL != "" {
+			// Feed avatar - prefer AvatarURL (person/site avatar) over ImageURL (may be article image)
+			avatarURL := feed.AvatarURL
+			if avatarURL == "" {
+				avatarURL = feed.ImageURL
+			}
+			if avatarURL != "" {
 				sb.WriteString(fmt.Sprintf(`          <img src=%q alt="" class="feed-avatar" loading="lazy">
-`, feed.ImageURL))
+`, avatarURL))
 			} else {
 				// Placeholder with first letter
 				initial := "?"
@@ -2323,6 +2342,40 @@ func blogrollStripHTML(s string) string {
 func generateFallbackImageURL(template, entryURL string) string {
 	encodedURL := neturl.QueryEscape(entryURL)
 	return strings.ReplaceAll(template, "{url}", encodedURL)
+}
+
+// discoverFeedAvatar attempts to discover an avatar for a feed using IndieWeb methods.
+// It tries h-card u-photo, WebFinger rel=avatar, and .well-known/avatar.
+// This is best-effort and failures are silently ignored.
+func (p *BlogrollPlugin) discoverFeedAvatar(ctx context.Context, feed *models.ExternalFeed, config models.ExternalFeedConfig, timeout int) {
+	// Create an updater for avatar discovery
+	updater := blogroll.NewUpdater(time.Duration(timeout) * time.Second)
+
+	// Determine the resource for WebFinger lookup
+	// Use handle if available (e.g., "acct:user@example.com")
+	resource := ""
+	if config.Handle != "" {
+		// If handle looks like an email or acct URI, use it directly
+		if strings.Contains(config.Handle, "@") {
+			if !strings.HasPrefix(config.Handle, "acct:") {
+				resource = "acct:" + config.Handle
+			} else {
+				resource = config.Handle
+			}
+		}
+	}
+
+	// Attempt avatar discovery
+	avatarResult, err := updater.DiscoverAvatar(ctx, feed.SiteURL, resource)
+	if err != nil {
+		// Silent failure - avatar discovery is best-effort
+		return
+	}
+
+	if avatarResult != nil && avatarResult.URL != "" {
+		feed.AvatarURL = avatarResult.URL
+		feed.AvatarSource = string(avatarResult.Source)
+	}
 }
 
 // Ensure BlogrollPlugin implements the required interfaces.
