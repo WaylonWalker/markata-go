@@ -70,6 +70,17 @@ The foundation template that others extend:
 </html>
 ```
 
+### Theme Token Stylesheets
+
+Templates that render HTML MUST include the theme token layers before any component/layout CSS so that palettes and aesthetics can vary the "feel" without custom CSS.
+
+Recommended order:
+
+1. `css/variables.css` (theme defaults)
+2. `css/aesthetic.css` (generated non-color tokens)
+3. `css/palette.css` (generated color tokens)
+4. The rest of the theme CSS (main/components/layouts)
+
 ---
 
 ## Post Template

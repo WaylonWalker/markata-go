@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ config.lang | default:'en' }}">
+<html lang="{{ config.lang | default:'en' }}" data-aesthetic="{{ config.Extra.aesthetic | default:'balanced' }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,6 +13,9 @@
   {% block head %}
   <!-- Theme CSS -->
   <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/aesthetic.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/palette.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/layouts.css' | theme_asset_hashed }}">
   <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset_hashed }}">
   <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset_hashed }}">
   <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset_hashed }}">
@@ -124,7 +127,6 @@
   {% endif %}
 
   {% include "partials/background-css.html" %}
-  {% include "partials/aesthetic-css.html" %}
   {% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">

@@ -1,6 +1,5 @@
 /* Main Styles - Default Theme */
-@import url('variables.css');
-
+/* variables.css is linked from base.html */
 /* Reset */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -220,6 +219,8 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: var(--space-4);
   color: var(--color-text);
   position: relative;
+  /* Keep anchored headings visible under sticky headers */
+  scroll-margin-top: calc(var(--layout-header-height, 64px) + var(--space-4));
 }
 
 h1 { font-size: var(--text-4xl); }
@@ -259,13 +260,13 @@ p {
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--color-link, var(--color-primary));
   text-decoration: none;
   transition: color 0.2s;
 }
 
 a:hover {
-  color: var(--color-primary-dark);
+  color: var(--color-link-hover, var(--color-primary-dark));
   text-decoration: underline;
 }
 
@@ -1257,6 +1258,17 @@ a.wikilink.wikilink-missing {
 @keyframes tooltipFadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-content.gradient-animated img,
+  .post-content.gradient-animated video {
+    animation: none;
+  }
+
+  .wikilink-tooltip {
+    animation: none;
+  }
 }
 
 /* Reading Time (reading_time plugin) */
