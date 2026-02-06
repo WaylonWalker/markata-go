@@ -525,6 +525,7 @@
   background-color: var(--color-primary-dark);
   border-color: var(--color-primary-dark);
   text-decoration: none;
+  box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow-hover, var(--fx-glow-shadow, none));
 }
 
 .btn--secondary {
@@ -537,6 +538,7 @@
   border-color: var(--color-primary);
   color: var(--color-primary);
   text-decoration: none;
+  box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow-hover, var(--fx-glow-shadow, none));
 }
 
 /* ==========================================================================

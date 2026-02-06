@@ -32,6 +32,10 @@ pre {
   scrollbar-color: var(--color-border) transparent;
 }
 
+pre:hover {
+  box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow-hover, var(--fx-glow-shadow, none));
+}
+
 pre::-webkit-scrollbar {
   height: 6px;
 }

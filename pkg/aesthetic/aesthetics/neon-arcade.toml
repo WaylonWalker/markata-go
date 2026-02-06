@@ -10,7 +10,7 @@ xl = "28px"
 full = "9999px"
 
 [tokens.spacing]
-scale = 1.05
+scale = 1.12
 
 [tokens.border]
 width_thin = "1px"
@@ -29,7 +29,8 @@ font_primary = "var(--font-sans)"
 leading_scale = 1.05
 
 [tokens.effects]
-glow_shadow = "0 0 22px color-mix(in srgb, var(--color-primary) 65%, transparent)"
+glow_shadow = "0 0 10px color-mix(in srgb, var(--color-primary) 55%, transparent)"
+glow_shadow_hover = "0 0 18px color-mix(in srgb, var(--color-primary) 70%, transparent), 0 0 34px color-mix(in srgb, var(--color-info) 45%, transparent)"
 frame_border_width = "2px"
 frame_gradient = "linear-gradient(135deg, var(--color-primary), var(--color-info), var(--color-primary-dark))"
 heading_gradient = "linear-gradient(90deg, var(--color-primary), var(--color-info), var(--color-text))"

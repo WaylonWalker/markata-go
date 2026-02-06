@@ -74,6 +74,8 @@
 
   /* Effects (aesthetic tokens) */
   --fx-glow-shadow: none;
+  /* Hover glow lets you go bold without constant overlap */
+  --fx-glow-shadow-hover: var(--fx-glow-shadow);
   --fx-frame-border-width: 0px;
   /* Default frame is a solid border (no gradient). */
   --fx-frame-gradient: linear-gradient(0deg, var(--color-border), var(--color-border));

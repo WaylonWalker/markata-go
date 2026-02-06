@@ -995,7 +995,7 @@ body:has(.background-decoration) div.feed {
   box-shadow:
     0 0 0 1px var(--color-primary),
     0 4px 12px rgba(0, 0, 0, 0.05),
-    var(--fx-glow-shadow, none);
+    var(--fx-glow-shadow-hover, var(--fx-glow-shadow, none));
 }
 
 .card h2 {
