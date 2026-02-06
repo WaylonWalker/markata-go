@@ -244,6 +244,9 @@ skip_selectors = [
 - `a[hx-get]`, `a[hx-post]` - HTMX-managed links
 - `a[data-no-transition]` - Explicit opt-out
 
+**Built-in skip behavior** (always skipped):
+- Non-HTML resources (any URL with a non-HTML file extension), including `.md`, `.txt`, `.xml`, `.json`
+
 ---
 
 ## Common Use Cases

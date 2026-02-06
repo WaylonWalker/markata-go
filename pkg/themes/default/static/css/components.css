@@ -1706,10 +1706,13 @@ article.post {
    view-transition-name: post-nav;
 }
 
-/* Disable all view transition animations - instant swap */
-::view-transition-old(*),
-::view-transition-new(*) {
-   animation: none;
+/* Default cross-fade for everything (fixes old+new overlap flash). */
+::view-transition-old(root) {
+   animation: fade-out 160ms ease both;
+}
+
+::view-transition-new(root) {
+   animation: fade-in 200ms ease both;
 }
 
 /* Root transition container */
@@ -1740,6 +1743,40 @@ article.post {
    from {
       transform: translateY(-20px);
    }
+}
+
+/* Main content gets a slightly more directional motion. */
+::view-transition-old(main-content) {
+   animation: fade-out 140ms ease both;
+}
+
+::view-transition-new(main-content) {
+   animation: fade-in 220ms ease both, slide-up 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Lists feel snappier than full article transitions. */
+::view-transition-old(posts-list) {
+   animation: fade-out 120ms ease both;
+}
+
+::view-transition-new(posts-list) {
+   animation: fade-in 180ms ease both, slide-down 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Keep global chrome stable (no morphing). */
+::view-transition-old(site-nav),
+::view-transition-new(site-nav),
+::view-transition-old(site-footer),
+::view-transition-new(site-footer),
+::view-transition-old(breadcrumbs),
+::view-transition-new(breadcrumbs),
+::view-transition-old(pagination),
+::view-transition-new(pagination),
+::view-transition-old(feed-sidebar),
+::view-transition-new(feed-sidebar),
+::view-transition-old(post-nav),
+::view-transition-new(post-nav) {
+   animation: none;
 }
 
 /* Respect reduced motion - disable view transitions */
