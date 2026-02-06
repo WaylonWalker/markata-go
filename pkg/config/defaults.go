@@ -13,8 +13,24 @@ func DefaultConfig() *models.Config {
 		AssetsDir:    "static",
 		Hooks:        []string{"default"},
 		GlobConfig: models.GlobConfig{
-			Patterns:     []string{"**/*.md"},
+			Patterns:     []string{"content/**/*.md", "*.md"},
 			UseGitignore: true,
+		},
+		Feeds: []models.FeedConfig{
+			{
+				Slug:        "posts",
+				Title:       "All Posts",
+				Description: "All posts from this site",
+				Type:        models.FeedTypeBlog,
+				Filter:      "published == true",
+				Sort:        "date",
+				Reverse:     true,
+				Sidebar:     true,
+				Formats: models.FeedFormats{
+					HTML: true,
+					RSS:  true,
+				},
+			},
 		},
 		FeedDefaults: models.FeedDefaults{
 			ItemsPerPage:    10,

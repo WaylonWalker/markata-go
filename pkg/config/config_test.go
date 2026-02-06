@@ -79,9 +79,49 @@ func TestConfig_DefaultGlobPatterns(t *testing.T) {
 	// Test case: "default glob patterns"
 	config := DefaultConfig()
 
-	expectedPatterns := []string{"**/*.md"}
-	if len(config.GlobConfig.Patterns) != 1 || config.GlobConfig.Patterns[0] != "**/*.md" {
+	expectedPatterns := []string{"content/**/*.md", "*.md"}
+	if len(config.GlobConfig.Patterns) != 2 ||
+		config.GlobConfig.Patterns[0] != "content/**/*.md" ||
+		config.GlobConfig.Patterns[1] != "*.md" {
 		t.Errorf("glob.patterns: got %v, want %v", config.GlobConfig.Patterns, expectedPatterns)
+	}
+}
+
+func TestConfig_DefaultFeedConfiguration(t *testing.T) {
+	config := DefaultConfig()
+
+	// Verify default feed configuration
+	if len(config.Feeds) != 1 {
+		t.Errorf("feeds: got %d feeds, want 1", len(config.Feeds))
+	}
+
+	feed := config.Feeds[0]
+	if feed.Slug != "posts" {
+		t.Errorf("default feed slug: got %q, want 'posts'", feed.Slug)
+	}
+	if feed.Title != "All Posts" {
+		t.Errorf("default feed title: got %q, want 'All Posts'", feed.Title)
+	}
+	if feed.Type != models.FeedTypeBlog {
+		t.Errorf("default feed type: got %q, want 'blog'", feed.Type)
+	}
+	if feed.Filter != "published == true" {
+		t.Errorf("default feed filter: got %q, want 'published == true'", feed.Filter)
+	}
+	if feed.Sort != "date" {
+		t.Errorf("default feed sort: got %q, want 'date'", feed.Sort)
+	}
+	if !feed.Reverse {
+		t.Errorf("default feed reverse: got %v, want true", feed.Reverse)
+	}
+	if !feed.Sidebar {
+		t.Errorf("default feed sidebar: got %v, want true", feed.Sidebar)
+	}
+	if !feed.Formats.HTML {
+		t.Errorf("default feed HTML format: got %v, want true", feed.Formats.HTML)
+	}
+	if !feed.Formats.RSS {
+		t.Errorf("default feed RSS format: got %v, want true", feed.Formats.RSS)
 	}
 }
 
