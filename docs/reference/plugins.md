@@ -33,7 +33,7 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 | Transform | Pre-render modifications | description, reading_time, stats, breadcrumbs, jinja_md, wikilinks, toc |
 | Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube |
 | Collect | Build collections/feeds | feeds, auto_feeds, prevnext, overwrite_check, static_file_conflicts |
-| Write | Output files to disk | publish_html, publish_feeds, sitemap, rss, atom, jsonfeed, static_assets, redirects |
+| Write | Output files to disk | publish_html, random_post, publish_feeds, sitemap, rss, atom, jsonfeed, static_assets, redirects |
 | Cleanup | Post-build tasks | pagefind |
 
 ---
@@ -2383,6 +2383,29 @@ output/
   my-first-post/
     index.html
 ```
+
+---
+
+### random_post
+
+**Name:** `random_post`  
+**Stage:** Write  
+**Purpose:** Writes a static `/random/` page that picks a random eligible post in the browser.
+
+**Configuration (TOML):**
+```toml
+[markata-go.random_post]
+enabled = true
+path = "random"               # default: "random"
+exclude_tags = ["draft"]      # optional
+emit_posts_json = false        # optional
+```
+
+**Outputs:**
+- `/{path}/index.html`
+- `/{path}/posts.json` (optional)
+
+**Eligibility (defaults):** published, not draft/private/skip, and not tagged with any `exclude_tags`.
 
 ---
 

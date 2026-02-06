@@ -346,6 +346,16 @@
       updateMeta: {{ config.view_transitions.update_meta | default:true | yesno:"true,false" }},
       scrollToTop: {{ config.view_transitions.scroll_to_top | default:true | yesno:"true,false" }},
     };
+
+    // Special routes that should always use full navigation.
+    // (View-transition navigation swaps DOM without running inline scripts.)
+    {% if config.Extra.random_post and config.Extra.random_post.enabled %}
+    (function() {
+      var p = "{{ config.Extra.random_post.path | default:"random" }}";
+      p = (p || 'random').replace(/^\/+|\/+$/g, '');
+      window.MARKATA_GO_RANDOM_POST_PATH = '/' + p + '/';
+    })();
+    {% endif %}
   </script>
   <script src="{{ 'js/view-transitions.js' | theme_asset_hashed }}" defer></script>
   {% endif %}

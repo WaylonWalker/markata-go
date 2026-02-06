@@ -39,6 +39,7 @@ This document specifies all built-in plugins that ship with the static site gene
 │  OUTPUT                                                              │
 │    ├─ publish_feeds      Write HTML/RSS/Atom/JSON/MD/TXT/Sitemap    │
 │    ├─ publish_html       Write individual post HTML files           │
+│    ├─ random_post        Write /random/ redirect page               │
 │    ├─ well_known         Generate .well-known endpoints             │
 │    ├─ copy_assets        Copy static files                           │
 │    └─ redirects          Generate HTML redirect pages                │
@@ -1369,6 +1370,16 @@ redirect_template = "templates/redirect.html"
 /about-me /about
 /contact-us /contact
 ```
+
+---
+
+### `random_post`
+
+**Stage:** `write`
+
+**Purpose:** Generate a static `/random/` endpoint that redirects client-side to a random eligible post.
+
+**Specification:** See `spec/spec/RANDOM_POST.md`.
 
 ---
 

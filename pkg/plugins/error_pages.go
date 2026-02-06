@@ -105,7 +105,7 @@ func (p *ErrorPagesPlugin) generatePostsIndex(m *lifecycle.Manager, cfg *models.
 	// Write to output directory
 	outputDir := cfg.OutputDir
 	if outputDir == "" {
-		outputDir = "output"
+		outputDir = defaultOutputDir
 	}
 
 	indexPath := filepath.Join(outputDir, "_404-index.json")
