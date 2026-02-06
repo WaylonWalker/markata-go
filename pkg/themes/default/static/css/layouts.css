@@ -466,6 +466,13 @@
   font-weight: 800;
   line-height: 1.1;
   margin: 0;
+
+  /* Optional gradient heading effect (driven by aesthetic tokens) */
+  background: var(--fx-heading-gradient, none);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: var(--fx-heading-text-fill, currentColor);
+  -webkit-text-stroke: var(--fx-heading-text-stroke, 0px transparent);
 }
 
 .hero-subtitle {
@@ -503,6 +510,9 @@
   transition: background-color var(--layout-transition), border-color var(--layout-transition), color var(--layout-transition);
   cursor: pointer;
   border: 2px solid transparent;
+
+  /* Optional glow effect (driven by aesthetic tokens) */
+  box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow, none);
 }
 
 .btn--primary {

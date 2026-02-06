@@ -45,6 +45,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [SPEC.md](./spec/SPEC.md) | Core architecture, CLI, concurrency |
 | [CONFIG.md](./spec/CONFIG.md) | Configuration system, file discovery, env vars, CLI |
 | [THEMES.md](./spec/THEMES.md) | **Theming system, customization, built-in styles** |
+| [AESTHETICS.md](./spec/AESTHETICS.md) | Aesthetic token presets (non-color feel + effects) |
 | [LIFECYCLE.md](./spec/LIFECYCLE.md) | 13 build stages, incremental builds |
 | [FEEDS.md](./spec/FEEDS.md) | **Feed system - the core differentiator** |
 | [DEFAULT_PLUGINS.md](./spec/DEFAULT_PLUGINS.md) | All 15 built-in plugins |

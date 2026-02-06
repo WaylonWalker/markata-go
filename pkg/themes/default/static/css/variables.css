@@ -72,6 +72,19 @@
   --media-border-gradient: none;
   --media-border-radius: var(--radius-lg);
 
+  /* Effects (aesthetic tokens) */
+  --fx-glow-shadow: none;
+  --fx-frame-border-width: 0px;
+  --fx-frame-gradient: var(--gradient-accent);
+  --fx-heading-gradient: none;
+  --fx-heading-text-fill: currentColor;
+  --fx-heading-text-stroke: 0px transparent;
+  --fx-noise-image: none;
+  --fx-noise-opacity: 0;
+  --fx-noise-blend-mode: overlay;
+  --fx-surface-mix: 100%;
+  --fx-surface-blur: 0px;
+
   /* Font families */
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;

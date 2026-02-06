@@ -210,6 +210,23 @@ body {
   flex-direction: column;
 }
 
+/* Texture overlay (noise, scanlines, paper grain, etc.) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--fx-noise-image, none);
+  opacity: var(--fx-noise-opacity, 0);
+  mix-blend-mode: var(--fx-noise-blend-mode, overlay);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
@@ -592,10 +609,25 @@ main {
 
 /* Content background utility - use when decorative backgrounds are enabled */
 main.content-bg {
-  background: var(--article-bg, var(--color-background));
+  --surface-bg: var(--article-bg, var(--color-background));
+  background: var(--surface-bg);
+  border: var(--fx-frame-border-width, 0px) solid transparent;
+  background:
+    var(--surface-bg) padding-box,
+    var(--fx-frame-gradient, var(--gradient-accent)) border-box;
   border-radius: var(--radius-lg);
-  box-shadow: var(--article-shadow);
-  backdrop-filter: blur(var(--article-blur, 0px));
+  box-shadow: var(--article-shadow), var(--fx-glow-shadow, none);
+  backdrop-filter: blur(var(--fx-surface-blur, var(--article-blur, 0px)));
+}
+
+@supports (background: color-mix(in srgb, white 50%, transparent)) {
+  main.content-bg {
+    --surface-bg: color-mix(
+      in srgb,
+      var(--article-bg, var(--color-background)) var(--fx-surface-mix, 100%),
+      transparent
+    );
+  }
 }
 
 /* Header */
@@ -702,8 +734,25 @@ article.post {
 /* When background decorations are present, ensure content stands out */
 body:has(.background-layer) article.post,
 body:has(.background-decoration) article.post {
-  background: var(--article-bg, var(--color-background));
-  backdrop-filter: blur(var(--article-blur, 0px));
+  --surface-bg: var(--article-bg, var(--color-background));
+  background: var(--surface-bg);
+  border: var(--fx-frame-border-width, 0px) solid transparent;
+  background:
+    var(--surface-bg) padding-box,
+    var(--fx-frame-gradient, var(--gradient-accent)) border-box;
+  box-shadow: var(--article-shadow), var(--fx-glow-shadow, none);
+  backdrop-filter: blur(var(--fx-surface-blur, var(--article-blur, 0px)));
+}
+
+@supports (background: color-mix(in srgb, white 50%, transparent)) {
+  body:has(.background-layer) article.post,
+  body:has(.background-decoration) article.post {
+    --surface-bg: color-mix(
+      in srgb,
+      var(--article-bg, var(--color-background)) var(--fx-surface-mix, 100%),
+      transparent
+    );
+  }
 }
 
 .post-header {
@@ -724,6 +773,13 @@ body:has(.background-decoration) article.post {
   margin-top: 0;
   margin-bottom: 0;
   flex: 1 1 20rem;
+
+  /* Optional gradient heading effect (driven by aesthetic tokens) */
+  background: var(--fx-heading-gradient, none);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: var(--fx-heading-text-fill, currentColor);
+  -webkit-text-stroke: var(--fx-heading-text-stroke, 0px transparent);
 }
 
 .post-meta {

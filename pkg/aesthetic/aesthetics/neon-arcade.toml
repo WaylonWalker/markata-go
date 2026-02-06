@@ -1,0 +1,42 @@
+name = "Neon Arcade"
+description = "Electric glow, gradient frames, loud headings"
+
+[tokens.radius]
+none = "0"
+sm = "6px"
+md = "12px"
+lg = "18px"
+xl = "28px"
+full = "9999px"
+
+[tokens.spacing]
+scale = 1.05
+
+[tokens.border]
+width_thin = "1px"
+width_normal = "2px"
+width_thick = "4px"
+style = "solid"
+
+[tokens.shadow]
+sm = "0 2px 10px rgba(0,0,0,0.10)"
+md = "0 14px 40px rgba(0,0,0,0.18)"
+lg = "0 22px 70px rgba(0,0,0,0.24)"
+xl = "0 30px 90px rgba(0,0,0,0.30)"
+
+[tokens.typography]
+font_primary = "var(--font-sans)"
+leading_scale = 1.05
+
+[tokens.effects]
+glow_shadow = "0 0 22px color-mix(in srgb, var(--color-primary) 65%, transparent)"
+frame_border_width = "2px"
+frame_gradient = "linear-gradient(135deg, var(--color-primary), var(--color-info), var(--color-primary-dark))"
+heading_gradient = "linear-gradient(90deg, var(--color-primary), var(--color-info), var(--color-text))"
+heading_text_fill = "transparent"
+heading_text_stroke = "0px transparent"
+noise_opacity = "0.05"
+noise_image = "repeating-radial-gradient(circle at 10% 10%, rgba(255,255,255,0.08) 0 1px, transparent 1px 3px)"
+noise_blend_mode = "overlay"
+surface_mix = "88%"
+surface_blur = "12px"

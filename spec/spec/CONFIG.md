@@ -665,6 +665,25 @@ show_toc = true
 
 See [THEMES.md](./THEMES.md) for complete theming documentation.
 
+### Aesthetic (`[my-ssg]`)
+
+An **aesthetic** selects a non-color token preset that controls shape, spacing rhythm, shadow style, and optional effects (glow, gradient frames, gradient headings, textures).
+
+```toml
+[my-ssg]
+aesthetic = "balanced"
+
+[my-ssg.aesthetic_overrides]
+shadow_size = "lg"
+shadow_intensity = 1.4
+
+[my-ssg.aesthetic_overrides.effects]
+frame_border_width = "3px"
+heading_text_fill = "transparent"
+```
+
+See [AESTHETICS.md](./AESTHETICS.md) for the full token model.
+
 ### Post Formats (`[my-ssg.post_formats]`)
 
 ```toml

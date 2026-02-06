@@ -277,6 +277,9 @@ aesthetic = "elevated"
 | `minimal` | No rounding, maximum whitespace, no shadows, hairline borders |
 | `elevated` | Generous rounding, layered shadows, generous spacing |
 | `precision` | Subtle corners, compact spacing, hairline borders, minimal shadows |
+| `neon-arcade` | Electric glow, gradient frames, bold gradient headings |
+| `glass-satin` | Soft glass surfaces, calm depth, subtle frame |
+| `editorial-ink` | Quiet editorial feel, crisp borders, minimal effects |
 
 #### Aesthetic Overrides (`[markata-go.aesthetic_overrides]`)
 
@@ -290,6 +293,35 @@ Fine-tune individual aesthetic values without creating a full custom aesthetic:
 | `border_style` | string | varies | CSS border-style value (e.g., `"solid"`, `"none"`) |
 | `shadow_intensity` | float | varies | Shadow opacity multiplier (0.0-1.0) |
 | `shadow_size` | string | varies | Shadow size: `"none"`, `"sm"`, `"md"`, `"lg"`, `"xl"` |
+
+##### Effects Overrides (`[markata-go.aesthetic_overrides.effects]`)
+
+Some aesthetics expose optional "effects" tokens (glow, gradient frames, gradient headings, noise/glass). These are emitted as CSS variables with the `--fx-` prefix.
+
+Common overrides:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `glow_shadow` | string | Extra `box-shadow` layer (set to `"none"` to disable) |
+| `frame_border_width` | string | Gradient frame width (e.g. `"2px"`) |
+| `frame_gradient` | string | Frame gradient (any CSS gradient) |
+| `heading_gradient` | string | Heading text gradient (any CSS gradient) |
+| `heading_text_fill` | string | `"transparent"` to reveal gradient; `"currentColor"` for normal |
+| `noise_image` | string | Background-image string for texture/noise overlay |
+| `noise_opacity` | string | Opacity 0..1 (as a string) |
+| `surface_mix` | string | Percentage for glass surfaces (e.g. `"86%"`) |
+| `surface_blur` | string | Backdrop blur (e.g. `"14px"`) |
+
+```toml
+[markata-go]
+aesthetic = "neon-arcade"
+
+[markata-go.aesthetic_overrides.effects]
+frame_border_width = "3px"
+heading_text_fill = "transparent"
+heading_gradient = "linear-gradient(90deg, var(--color-primary), var(--color-info))"
+glow_shadow = "0 0 28px color-mix(in srgb, var(--color-primary) 70%, transparent)"
+```
 
 ```toml
 [markata-go]

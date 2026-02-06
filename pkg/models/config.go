@@ -329,6 +329,15 @@ type Config struct {
 	// ThemeCalendar configures automatic seasonal theme switching based on date ranges
 	ThemeCalendar ThemeCalendarConfig `json:"theme_calendar" yaml:"theme_calendar" toml:"theme_calendar"`
 
+	// Aesthetic selects a non-color token preset (shape, depth, effects).
+	// See spec/spec/AESTHETICS.md.
+	Aesthetic string `json:"aesthetic" yaml:"aesthetic" toml:"aesthetic"`
+
+	// AestheticOverrides holds token overrides applied on top of the selected aesthetic.
+	// This is intentionally a free-form map to allow expanding token surface without
+	// requiring a schema change for every new lever.
+	AestheticOverrides map[string]any `json:"aesthetic_overrides,omitempty" yaml:"aesthetic_overrides,omitempty" toml:"aesthetic_overrides,omitempty"`
+
 	// PostFormats configures output formats for individual posts
 	PostFormats PostFormatsConfig `json:"post_formats" yaml:"post_formats" toml:"post_formats"`
 
@@ -2294,28 +2303,30 @@ func NewConfig() *Config {
 			Font:      NewFontConfig(),
 			Switcher:  NewThemeSwitcherConfig(),
 		},
-		ThemeCalendar:    NewThemeCalendarConfig(),
-		PostFormats:      NewPostFormatsConfig(),
-		SEO:              NewSEOConfig(),
-		IndieAuth:        NewIndieAuthConfig(),
-		Webmention:       NewWebmentionConfig(),
-		WebSub:           NewWebSubConfig(),
-		Components:       NewComponentsConfig(),
-		Search:           NewSearchConfig(),
-		Layout:           NewLayoutConfig(),
-		Sidebar:          NewSidebarConfig(),
-		Toc:              NewTocConfig(),
-		Header:           NewHeaderLayoutConfig(),
-		FooterLayout:     NewFooterLayoutConfig(),
-		ContentTemplates: NewContentTemplatesConfig(),
-		Blogroll:         NewBlogrollConfig(),
-		Mentions:         NewMentionsConfig(),
-		ErrorPages:       NewErrorPagesConfig(),
-		ResourceHints:    NewResourceHintsConfig(),
-		Encryption:       NewEncryptionConfig(),
-		Shortcuts:        NewShortcutsConfig(),
-		Tags:             NewTagsConfig(),
-		Assets:           NewAssetsConfig(),
+		ThemeCalendar:      NewThemeCalendarConfig(),
+		Aesthetic:          "balanced",
+		AestheticOverrides: map[string]any{},
+		PostFormats:        NewPostFormatsConfig(),
+		SEO:                NewSEOConfig(),
+		IndieAuth:          NewIndieAuthConfig(),
+		Webmention:         NewWebmentionConfig(),
+		WebSub:             NewWebSubConfig(),
+		Components:         NewComponentsConfig(),
+		Search:             NewSearchConfig(),
+		Layout:             NewLayoutConfig(),
+		Sidebar:            NewSidebarConfig(),
+		Toc:                NewTocConfig(),
+		Header:             NewHeaderLayoutConfig(),
+		FooterLayout:       NewFooterLayoutConfig(),
+		ContentTemplates:   NewContentTemplatesConfig(),
+		Blogroll:           NewBlogrollConfig(),
+		Mentions:           NewMentionsConfig(),
+		ErrorPages:         NewErrorPagesConfig(),
+		ResourceHints:      NewResourceHintsConfig(),
+		Encryption:         NewEncryptionConfig(),
+		Shortcuts:          NewShortcutsConfig(),
+		Tags:               NewTagsConfig(),
+		Assets:             NewAssetsConfig(),
 	}
 }
 

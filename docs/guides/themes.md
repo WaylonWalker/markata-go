@@ -37,6 +37,30 @@ markata-go layers theme styling into separate CSS files so that changing a palet
 - `css/aesthetic.css`: generated non-color tokens from aesthetic presets
 - `css/palette.css`: generated color tokens from your selected palette(s)
 
+### Pick an Aesthetic (Shape + Effects)
+
+Palettes control colors. **Aesthetics** control the non-color feel: rounding, spacing rhythm, border weight, shadow style, and optional effects like glow, gradient frames, and gradient headings.
+
+```toml
+[markata-go]
+aesthetic = "glass-satin"
+```
+
+Override a few levers (no custom CSS required):
+
+```toml
+[markata-go]
+aesthetic = "neon-arcade"
+
+[markata-go.aesthetic_overrides]
+shadow_size = "lg"
+shadow_intensity = 1.4
+
+[markata-go.aesthetic_overrides.effects]
+frame_border_width = "3px"
+heading_text_fill = "transparent"
+```
+
 ---
 
 ## Available Palettes
