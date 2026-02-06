@@ -177,14 +177,13 @@ func getAestheticOverrides(extra map[string]interface{}) aestheticOverrides {
 func getRawAestheticOverrides(extra map[string]interface{}) map[string]interface{} {
 	// Prefer typed config if available.
 	if cfg, ok := extra["models_config"].(*models.Config); ok {
-		if cfg.AestheticOverrides == nil {
-			return nil
+		if len(cfg.AestheticOverrides) > 0 {
+			result := make(map[string]interface{}, len(cfg.AestheticOverrides))
+			for k, v := range cfg.AestheticOverrides {
+				result[k] = v
+			}
+			return result
 		}
-		result := make(map[string]interface{}, len(cfg.AestheticOverrides))
-		for k, v := range cfg.AestheticOverrides {
-			result[k] = v
-		}
-		return result
 	}
 
 	raw, ok := extra["aesthetic_overrides"].(map[string]interface{})
