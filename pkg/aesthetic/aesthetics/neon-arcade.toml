@@ -44,4 +44,4 @@ noise_image = "repeating-radial-gradient(circle at 10% 10%, rgba(255,255,255,0.0
 noise_blend_mode = "overlay"
 surface_mix = "88%"
 surface_blur = "12px"
-posts_gap = "var(--space-8)"
+posts_gap = "var(--space-12)"

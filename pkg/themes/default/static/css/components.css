@@ -1379,11 +1379,11 @@
 
 /* Highlighted post in feed when using keyboard navigation (j/k) */
 .kb-highlighted {
-   outline: 2px solid var(--color-primary);
-   outline-offset: 2px;
-   border-radius: 4px;
-   background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
-   transition: outline-color 0.15s ease, background-color 0.15s ease;
+   outline: var(--fx-focus-outline, 2px solid var(--color-primary));
+   outline-offset: 3px;
+   border-radius: var(--radius-lg, 12px);
+   box-shadow: var(--fx-glow-shadow-focus, none);
+   transition: outline-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 /* Ensure highlighted cards are visible */
