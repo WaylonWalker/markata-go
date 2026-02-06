@@ -33,10 +33,10 @@
     <li class="reader-entry">
       <article>
         {% if entry.image_url %}
-        <img src="{{ entry.image_url }}" alt="" class="entry-image" loading="lazy">
+        <img src="{{ entry.image_url }}" alt="" class="entry-image" width="120" height="80" loading="lazy">
         {% endif %}
         <h2 class="reader-entry-title">
-          <a href="{{ entry.url }}" target="_blank" rel="noopener">{{ entry.title }}</a>
+          <a href="{{ entry.url }}" target="_blank" rel="noopener noreferrer">{{ entry.title }}</a>
         </h2>
         <div class="reader-entry-meta">
           <span class="reader-entry-source">{{ entry.feed_title }}</span>
