@@ -180,6 +180,21 @@ url = "https://github.com/WaylonWalker/markata-go"
 external = true
 ```
 
+To add a built-in **Random post** link:
+
+```toml
+[markata-go.random_post]
+enabled = true
+path = "random"                # generates /random/
+exclude_tags = ["draft"]       # optional
+
+[[markata-go.nav]]
+label = "Random"
+url = "/random/"
+```
+
+If you use sidebar navigation, add the same `url = "/random/"` link to `[[markata-go.sidebar.nav]]` (or to `[[markata-go.components.nav.items]]` if you're using the components system).
+
 ### SEO Configuration (`[markata-go.seo]`)
 
 Configure SEO metadata and structured data generation for better search engine visibility.
