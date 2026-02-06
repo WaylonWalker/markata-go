@@ -900,8 +900,25 @@ assets_dir = "static"
 
 # File discovery
 [glob]
-patterns = ["**/*.md"]
+patterns = ["content/**/*.md", "*.md"]
 use_gitignore = true
+
+# Default feed - generates an "All Posts" archive
+[[feeds]]
+slug = "posts"
+title = "All Posts"
+description = "All posts from this site"
+type = "blog"
+filter = "published == true"
+sort = "date"
+reverse = true
+sidebar = true
+
+[feeds.formats]
+html = true
+rss = true
+atom = false
+json = false
 
 # Feed defaults
 [feed_defaults]
@@ -914,7 +931,7 @@ rss = true
 atom = false
 json = false
 
-# Define custom feeds
+# Define additional feeds
 # [[feeds]]
 # slug = "blog"
 # title = "Blog Posts"
@@ -939,8 +956,25 @@ assets_dir: static
 # File discovery
 glob:
   patterns:
-    - "**/*.md"
+    - "content/**/*.md"
+    - "*.md"
   use_gitignore: true
+
+# Default feed - generates an "All Posts" archive
+feeds:
+  - slug: posts
+    title: All Posts
+    description: All posts from this site
+    type: blog
+    filter: "published == true"
+    sort: date
+    reverse: true
+    sidebar: true
+    formats:
+      html: true
+      rss: true
+      atom: false
+      json: false
 
 # Feed defaults
 feed_defaults:
@@ -952,7 +986,7 @@ feed_defaults:
     atom: false
     json: false
 
-# Define custom feeds
+# Define additional feeds
 # feeds:
 #   - slug: blog
 #     title: Blog Posts
@@ -970,9 +1004,27 @@ const defaultConfigJSON = `{
   "templates_dir": "templates",
   "assets_dir": "static",
   "glob": {
-    "patterns": ["**/*.md"],
+    "patterns": ["content/**/*.md", "*.md"],
     "use_gitignore": true
   },
+  "feeds": [
+    {
+      "slug": "posts",
+      "title": "All Posts",
+      "description": "All posts from this site",
+      "type": "blog",
+      "filter": "published == true",
+      "sort": "date",
+      "reverse": true,
+      "sidebar": true,
+      "formats": {
+        "html": true,
+        "rss": true,
+        "atom": false,
+        "json": false
+      }
+    }
+  ],
   "feed_defaults": {
     "items_per_page": 10,
     "orphan_threshold": 3,
@@ -982,7 +1034,6 @@ const defaultConfigJSON = `{
       "atom": false,
       "json": false
     }
-  },
-  "feeds": []
+  }
 }
 `

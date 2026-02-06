@@ -1,6 +1,5 @@
 /* Main Styles - Default Theme */
-@import url('variables.css');
-
+/* variables.css is linked from base.html */
 /* Reset */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -211,6 +210,23 @@ body {
   flex-direction: column;
 }
 
+/* Texture overlay (noise, scanlines, paper grain, etc.) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--fx-noise-image, none);
+  opacity: var(--fx-noise-opacity, 0);
+  mix-blend-mode: var(--fx-noise-blend-mode, overlay);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
@@ -220,9 +236,21 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: var(--space-4);
   color: var(--color-text);
   position: relative;
+  /* Keep anchored headings visible under sticky headers */
+  scroll-margin-top: calc(var(--layout-header-height, 64px) + var(--space-4));
 }
 
-h1 { font-size: var(--text-4xl); }
+h1 {
+  font-size: var(--text-4xl);
+
+  /* Optional gradient heading effect (driven by aesthetic tokens) */
+  background: var(--fx-heading-gradient, none);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: var(--fx-heading-text-fill, currentColor);
+  -webkit-text-stroke: var(--fx-heading-text-stroke, 0px transparent);
+}
+
 h2 { font-size: var(--text-3xl); }
 h3 { font-size: var(--text-2xl); }
 h4 { font-size: var(--text-xl); }
@@ -259,13 +287,13 @@ p {
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--color-link, var(--color-primary));
   text-decoration: none;
   transition: color 0.2s;
 }
 
 a:hover {
-  color: var(--color-primary-dark);
+  color: var(--color-link-hover, var(--color-primary-dark));
   text-decoration: underline;
 }
 
@@ -591,10 +619,25 @@ main {
 
 /* Content background utility - use when decorative backgrounds are enabled */
 main.content-bg {
-  background: var(--article-bg, var(--color-background));
+  --surface-bg: var(--article-bg, var(--color-background));
+  background: var(--surface-bg);
+  border: var(--fx-frame-border-width, 0px) solid transparent;
+  background:
+    var(--surface-bg) padding-box,
+    var(--fx-frame-gradient, var(--gradient-accent)) border-box;
   border-radius: var(--radius-lg);
-  box-shadow: var(--article-shadow);
-  backdrop-filter: blur(var(--article-blur, 0px));
+  box-shadow: var(--article-shadow), var(--fx-glow-shadow, none);
+  backdrop-filter: blur(var(--fx-surface-blur, var(--article-blur, 0px)));
+}
+
+@supports (background: color-mix(in srgb, white 50%, transparent)) {
+  main.content-bg {
+    --surface-bg: color-mix(
+      in srgb,
+      var(--article-bg, var(--color-background)) var(--fx-surface-mix, 100%),
+      transparent
+    );
+  }
 }
 
 /* Header */
@@ -620,6 +663,13 @@ main.content-bg {
   color: var(--color-text);
   text-decoration: none;
   flex-shrink: 0;
+
+  /* Optional gradient heading effect (driven by aesthetic tokens) */
+  background: var(--fx-heading-gradient, none);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: var(--fx-heading-text-fill, currentColor);
+  -webkit-text-stroke: var(--fx-heading-text-stroke, 0px transparent);
 }
 
 .site-title:hover {
@@ -696,13 +746,26 @@ main.content-bg {
 article.post {
   padding: var(--space-6) var(--space-8);
   border-radius: var(--radius-lg);
+
+  /* Surface frame + glow (driven by aesthetic tokens) */
+  --surface-bg: var(--article-bg, var(--color-background));
+  background: var(--surface-bg);
+  border: var(--fx-frame-border-width, 0px) solid transparent;
+  background:
+    var(--surface-bg) padding-box,
+    var(--fx-frame-gradient, var(--gradient-accent)) border-box;
+  box-shadow: var(--article-shadow), var(--fx-glow-shadow, none);
+  backdrop-filter: blur(var(--fx-surface-blur, var(--article-blur, 0px)));
 }
 
-/* When background decorations are present, ensure content stands out */
-body:has(.background-layer) article.post,
-body:has(.background-decoration) article.post {
-  background: var(--article-bg, var(--color-background));
-  backdrop-filter: blur(var(--article-blur, 0px));
+@supports (background: color-mix(in srgb, white 50%, transparent)) {
+  article.post {
+    --surface-bg: color-mix(
+      in srgb,
+      var(--article-bg, var(--color-background)) var(--fx-surface-mix, 100%),
+      transparent
+    );
+  }
 }
 
 .post-header {
@@ -723,6 +786,13 @@ body:has(.background-decoration) article.post {
   margin-top: 0;
   margin-bottom: 0;
   flex: 1 1 20rem;
+
+  /* Optional gradient heading effect (driven by aesthetic tokens) */
+  background: var(--fx-heading-gradient, none);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: var(--fx-heading-text-fill, currentColor);
+  -webkit-text-stroke: var(--fx-heading-text-stroke, 0px transparent);
 }
 
 .post-meta {
@@ -910,15 +980,22 @@ body:has(.background-decoration) div.feed {
 /* Card */
 .card {
   padding: var(--space-6);
-  background: var(--color-surface);
+  --surface-bg: var(--color-surface);
+  background: var(--surface-bg);
+  border: calc(1px + var(--fx-frame-border-width, 0px)) solid transparent;
+  background:
+    var(--surface-bg) padding-box,
+    var(--fx-frame-gradient, linear-gradient(0deg, var(--color-border), var(--color-border))) border-box;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
   transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow, none);
 }
 
 .card:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 0 0 1px var(--color-primary),
+    0 4px 12px rgba(0, 0, 0, 0.05),
+    var(--fx-glow-shadow-hover, var(--fx-glow-shadow, none));
 }
 
 .card h2 {
@@ -1257,6 +1334,17 @@ a.wikilink.wikilink-missing {
 @keyframes tooltipFadeIn {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-content.gradient-animated img,
+  .post-content.gradient-animated video {
+    animation: none;
+  }
+
+  .wikilink-tooltip {
+    animation: none;
+  }
 }
 
 /* Reading Time (reading_time plugin) */

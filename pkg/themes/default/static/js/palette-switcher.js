@@ -12,53 +12,66 @@
   const MODE_KEY = 'color-mode'; // 'light' or 'dark'
   const AESTHETIC_KEY = 'selected-aesthetic';
 
-  // Available aesthetics for cycling
-  const AESTHETICS = ['brutal', 'precision', 'balanced', 'elevated', 'minimal'];
+  // Default aesthetics (fallback when manifest is missing)
+  const DEFAULT_AESTHETICS = ['brutal', 'precision', 'balanced', 'elevated', 'minimal'];
 
-  // Aesthetic CSS property definitions
-  // Uses --radius and --radius-lg to match the actual CSS variable names
-  const AESTHETIC_STYLES = {
-    brutal: {
-      '--radius': '0',
-      '--radius-lg': '0',
-      '--article-shadow': '4px 4px 0 var(--color-border)',
-      '--font-body': 'var(--font-mono, ui-monospace, monospace)',
-      '--leading-normal': '1.5',
-      '--leading-relaxed': '1.6'
-    },
-    precision: {
-      '--radius': '2px',
-      '--radius-lg': '4px',
-      '--article-shadow': '0 2px 4px rgba(0,0,0,0.06)',
-      '--font-body': 'system-ui, -apple-system, sans-serif',
-      '--leading-normal': '1.5',
-      '--leading-relaxed': '1.625'
-    },
-    balanced: {
-      '--radius': '0.375rem',
-      '--radius-lg': '0.5rem',
-      '--article-shadow': '0 4px 12px rgba(0,0,0,0.1)',
-      '--font-body': 'system-ui, -apple-system, sans-serif',
-      '--leading-normal': '1.5',
-      '--leading-relaxed': '1.625'
-    },
-    elevated: {
-      '--radius': '0.75rem',
-      '--radius-lg': '1rem',
-      '--article-shadow': '0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06)',
-      '--font-body': 'system-ui, -apple-system, sans-serif',
-      '--leading-normal': '1.6',
-      '--leading-relaxed': '1.75'
-    },
-    minimal: {
-      '--radius': '2px',
-      '--radius-lg': '4px',
-      '--article-shadow': 'none',
-      '--font-body': 'system-ui, -apple-system, sans-serif',
-      '--leading-normal': '1.5',
-      '--leading-relaxed': '1.625'
+  let cachedAesthetics = null;
+
+  function getAestheticManifest() {
+    const styles = getComputedStyle(document.documentElement);
+    let manifest = styles.getPropertyValue('--aesthetic-manifest').trim();
+
+    if (!manifest || manifest === 'none' || manifest === '') {
+      return [];
     }
-  };
+
+    try {
+      if (manifest.startsWith("'") && manifest.endsWith("'")) {
+        manifest = manifest.slice(1, -1);
+      }
+      if (manifest.startsWith('"') && manifest.endsWith('"')) {
+        manifest = manifest.slice(1, -1);
+      }
+      manifest = manifest.replace(/\\'/g, "'");
+
+      const parsed = JSON.parse(manifest);
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed.map(String).filter(Boolean);
+    } catch (e) {
+      console.warn('[palette-switcher] Failed to parse aesthetic manifest:', e);
+      return [];
+    }
+  }
+
+  function getAesthetics() {
+    if (cachedAesthetics) return cachedAesthetics;
+    const fromManifest = getAestheticManifest();
+    cachedAesthetics = fromManifest.length ? fromManifest : DEFAULT_AESTHETICS;
+    return cachedAesthetics;
+  }
+
+  function formatAestheticName(name) {
+    return String(name)
+      .split('-')
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  function populateAestheticSelect(select, aesthetics) {
+    if (!select) return;
+    if (!Array.isArray(aesthetics) || aesthetics.length === 0) return;
+
+    // Replace options so newly added aesthetics show up automatically.
+    select.innerHTML = '';
+    for (const a of aesthetics) {
+      const opt = document.createElement('option');
+      opt.value = a;
+      opt.textContent = formatAestheticName(a);
+      select.appendChild(opt);
+    }
+  }
 
   // Variant suffixes to strip when computing family names
   const VARIANT_SUFFIXES = [
@@ -688,10 +701,17 @@
    * Get the current aesthetic
    */
   function getAesthetic() {
+    const aesthetics = getAesthetics();
     const stored = localStorage.getItem(AESTHETIC_KEY);
-    if (stored && AESTHETICS.includes(stored)) {
+    if (stored && aesthetics.includes(stored)) {
       return stored;
     }
+
+    const fromDOM = document.documentElement.dataset.aesthetic;
+    if (fromDOM && aesthetics.includes(fromDOM)) {
+      return fromDOM;
+    }
+
     return 'balanced'; // default aesthetic
   }
 
@@ -699,22 +719,15 @@
    * Set the aesthetic and apply CSS properties
    */
   function setAesthetic(aesthetic) {
-    if (!AESTHETICS.includes(aesthetic)) {
+    const aesthetics = getAesthetics();
+    if (!aesthetics.includes(aesthetic)) {
       console.warn('[palette-switcher] Unknown aesthetic:', aesthetic);
       return;
     }
 
     const root = document.documentElement;
-    const styles = AESTHETIC_STYLES[aesthetic];
 
-    // Apply all CSS custom properties
-    if (styles) {
-      for (const [prop, value] of Object.entries(styles)) {
-        root.style.setProperty(prop, value);
-      }
-    }
-
-    // Set data attribute for CSS selectors
+    // Set data attribute for CSS selectors (tokens come from css/aesthetic.css)
     root.dataset.aesthetic = aesthetic;
 
     // Persist selection
@@ -737,16 +750,17 @@
    */
   function cycleAesthetic(direction) {
     const currentAesthetic = getAesthetic();
-    const currentIndex = AESTHETICS.indexOf(currentAesthetic);
+    const aesthetics = getAesthetics();
+    const currentIndex = aesthetics.indexOf(currentAesthetic);
 
     let newIndex;
     if (direction === 'next') {
-      newIndex = (currentIndex + 1) % AESTHETICS.length;
+      newIndex = (currentIndex + 1) % aesthetics.length;
     } else {
-      newIndex = (currentIndex - 1 + AESTHETICS.length) % AESTHETICS.length;
+      newIndex = (currentIndex - 1 + aesthetics.length) % aesthetics.length;
     }
 
-    const newAesthetic = AESTHETICS[newIndex];
+    const newAesthetic = aesthetics[newIndex];
     setAesthetic(newAesthetic);
 
     // Show notification with capitalized name
@@ -759,7 +773,26 @@
    */
   function initAesthetic() {
     const aesthetic = getAesthetic();
+    const select = document.getElementById('aesthetic-select');
+    populateAestheticSelect(select, getAesthetics());
     setAesthetic(aesthetic);
+
+    if (select) {
+      select.addEventListener('change', (e) => {
+        const next = e.target && e.target.value ? String(e.target.value) : '';
+        setAesthetic(next);
+      });
+    }
+
+    // Keep select in sync when aesthetics are changed via shortcuts.
+    window.addEventListener('aesthetic-change', (e) => {
+      if (!e || !e.detail || !e.detail.aesthetic) return;
+      const next = String(e.detail.aesthetic);
+      const el = document.getElementById('aesthetic-select');
+      if (el && el.value !== next) {
+        el.value = next;
+      }
+    });
   }
 
   // Initialize aesthetic immediately

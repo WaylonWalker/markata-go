@@ -29,6 +29,38 @@ palette = "catppuccin-mocha"
 
 That's it! Your entire site now uses the Catppuccin Mocha color scheme.
 
+### How Theme Layers Work
+
+markata-go layers theme styling into separate CSS files so that changing a palette does not overwrite your site's non-color identity (typography, spacing, radius, shadows):
+
+- `css/variables.css`: theme defaults (identity + fallback tokens)
+- `css/aesthetic.css`: generated non-color tokens from aesthetic presets
+- `css/palette.css`: generated color tokens from your selected palette(s)
+
+### Pick an Aesthetic (Shape + Effects)
+
+Palettes control colors. **Aesthetics** control the non-color feel: rounding, spacing rhythm, border weight, shadow style, and optional effects like glow, gradient frames, and gradient headings.
+
+```toml
+[markata-go]
+aesthetic = "glass-satin"
+```
+
+Override a few levers (no custom CSS required):
+
+```toml
+[markata-go]
+aesthetic = "neon-arcade"
+
+[markata-go.aesthetic_overrides]
+shadow_size = "lg"
+shadow_intensity = 1.4
+
+[markata-go.aesthetic_overrides.effects]
+frame_border_width = "3px"
+heading_text_fill = "transparent"
+```
+
 ---
 
 ## Available Palettes
@@ -255,7 +287,7 @@ include = ["catppuccin-mocha", "catppuccin-latte", "nord-dark", "nord-light"]
 
 ### How It Works
 
-1. **Palette Manifest**: When the switcher is enabled, markata-go generates a JSON manifest of all available palettes embedded in `variables.css` as a CSS custom property (`--palette-manifest`).
+1. **Palette Manifest**: When the switcher is enabled, markata-go generates a JSON manifest of all available palettes embedded in `palette.css` as a CSS custom property (`--palette-manifest`).
 
 2. **CSS Variables**: Each palette's colors are generated as CSS custom properties using `[data-palette="palette-name"]` selectors. When a user selects a palette, a data attribute is set on the `<html>` element.
 
@@ -894,6 +926,8 @@ When rendering a page, markata-go scans the HTML content and detects which CSS f
 | CSS File | Loaded When |
 |----------|-------------|
 | `variables.css` | Always (core theme variables) |
+| `aesthetic.css` | Always (generated aesthetic tokens) |
+| `palette.css` | Always (generated palette colors) |
 | `main.css` | Always (core layout styles) |
 | `components.css` | Always (navigation, footer, etc.) |
 | `cards.css` | Feed/index pages with post cards |

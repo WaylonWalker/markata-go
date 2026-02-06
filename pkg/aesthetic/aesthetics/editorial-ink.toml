@@ -1,0 +1,42 @@
+name = "Editorial Ink"
+description = "Quiet, editorial: minimal effects, crisp borders"
+
+[tokens.radius]
+none = "0"
+sm = "2px"
+md = "4px"
+lg = "8px"
+xl = "12px"
+full = "9999px"
+
+[tokens.spacing]
+scale = 1.0
+
+[tokens.border]
+width_thin = "1px"
+width_normal = "1px"
+width_thick = "2px"
+style = "solid"
+
+[tokens.shadow]
+sm = "none"
+md = "0 1px 0 rgba(0,0,0,0.10)"
+lg = "0 2px 0 rgba(0,0,0,0.10)"
+xl = "0 3px 0 rgba(0,0,0,0.10)"
+
+[tokens.typography]
+font_primary = "var(--font-serif)"
+leading_scale = 1.05
+
+[tokens.effects]
+glow_shadow = "none"
+frame_border_width = "0px"
+frame_gradient = "var(--gradient-accent)"
+heading_gradient = "none"
+heading_text_fill = "currentColor"
+heading_text_stroke = "0px transparent"
+noise_opacity = "0"
+noise_image = "none"
+noise_blend_mode = "overlay"
+surface_mix = "100%"
+surface_blur = "0px"
