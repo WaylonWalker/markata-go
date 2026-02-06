@@ -746,11 +746,8 @@ main.content-bg {
 article.post {
   padding: var(--space-6) var(--space-8);
   border-radius: var(--radius-lg);
-}
 
-/* When background decorations are present, ensure content stands out */
-body:has(.background-layer) article.post,
-body:has(.background-decoration) article.post {
+  /* Surface frame + glow (driven by aesthetic tokens) */
   --surface-bg: var(--article-bg, var(--color-background));
   background: var(--surface-bg);
   border: var(--fx-frame-border-width, 0px) solid transparent;
@@ -762,8 +759,7 @@ body:has(.background-decoration) article.post {
 }
 
 @supports (background: color-mix(in srgb, white 50%, transparent)) {
-  body:has(.background-layer) article.post,
-  body:has(.background-decoration) article.post {
+  article.post {
     --surface-bg: color-mix(
       in srgb,
       var(--article-bg, var(--color-background)) var(--fx-surface-mix, 100%),
