@@ -587,7 +587,7 @@ func NewSearchConfig() SearchConfig {
 	return SearchConfig{
 		Enabled:       &enabled,
 		Position:      "navbar",
-		Placeholder:   "Search...",
+		Placeholder:   "Search…",
 		ShowImages:    &showImages,
 		ExcerptLength: 200,
 		Pagefind: PagefindConfig{
