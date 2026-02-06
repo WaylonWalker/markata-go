@@ -719,13 +719,6 @@ body:has(.background-decoration) article.post {
   flex-wrap: wrap;
 }
 
-@media (max-width: 768px) {
-  /* When the title/byline wrap, avoid oversized vertical gaps */
-  .post-header__title-row {
-    gap: var(--space-4);
-  }
-}
-
 .post-header h1 {
   margin-top: 0;
   margin-bottom: 0;
@@ -1353,6 +1346,11 @@ a.wikilink.wikilink-missing {
   .site-nav {
     flex-wrap: wrap;
     gap: var(--space-3);
+  }
+
+  /* When the title/byline wrap, avoid oversized vertical gaps */
+  .post-header__title-row {
+    gap: var(--space-4);
   }
 
   /* Footer - full width, reduced padding */
