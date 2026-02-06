@@ -608,7 +608,7 @@ main.content-bg {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: space-between;
   gap: var(--space-4);
   max-width: var(--page-width);
   margin: 0 auto;
@@ -627,11 +627,13 @@ main.content-bg {
   text-decoration: none;
 }
 
-.site-nav {
+.site-header .site-nav {
   display: flex;
   gap: var(--space-4);
   flex-wrap: wrap;
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: center;
 }
 
 .site-nav a {
@@ -650,6 +652,7 @@ main.content-bg {
   align-items: center;
   gap: var(--space-3);
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* Footer */
@@ -716,6 +719,13 @@ body:has(.background-decoration) article.post {
   flex-wrap: wrap;
 }
 
+@media (max-width: 768px) {
+  /* When the title/byline wrap, avoid oversized vertical gaps */
+  .post-header__title-row {
+    gap: var(--space-4);
+  }
+}
+
 .post-header h1 {
   margin-top: 0;
   margin-bottom: 0;
@@ -759,7 +769,13 @@ body:has(.background-decoration) article.post {
   .post-header__title-row {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--space-4);
+    gap: var(--space-2);
+  }
+
+  /* In column layout, don't let the title reserve a huge flex-basis height */
+  .post-header h1 {
+    flex: 0 1 auto;
+    width: 100%;
   }
 }
 
@@ -1310,6 +1326,22 @@ a.wikilink.wikilink-missing {
 
   .site-header .container {
     gap: var(--space-3);
+    justify-content: space-between;
+  }
+
+  /* Mobile header stacking: title + controls, then nav full-width */
+  .site-title {
+    order: 1;
+  }
+
+  .header-controls {
+    order: 2;
+  }
+
+  .site-header .site-nav {
+    order: 3;
+    flex: 0 0 100%;
+    justify-content: flex-start;
   }
 
   /* Header controls wrap with nav */

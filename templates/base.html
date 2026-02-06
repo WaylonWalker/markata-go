@@ -252,21 +252,36 @@
   <!-- Pagefind Search JS (when enabled) -->
   {% if config.search.enabled %}
   <script>
-    function initPagefindSearch() {
-      if (typeof PagefindUI !== 'undefined' && document.getElementById('pagefind-search')) {
-        new PagefindUI({
-          element: '#pagefind-search',
-          showSubResults: true,
-          showImages: {{ config.search.show_images | yesno:"true,false" }},
-          excerptLength: {{ config.search.excerpt_length | default:200 }},
-          translations: {
-            placeholder: '{{ config.search.placeholder | default:"Search…" }}'
-          }
-        });
+    // Expose globally so view transitions can re-initialize after DOM swap.
+    window.initPagefindSearch = function initPagefindSearch() {
+      const root = document.getElementById('pagefind-search');
+      if (!root) return;
+      if (typeof PagefindUI === 'undefined') return;
+
+      // Tear down any previous instance if supported.
+      if (window.__pagefindUI && typeof window.__pagefindUI.destroy === 'function') {
+        try {
+          window.__pagefindUI.destroy();
+        } catch (_) {
+          // ignore
+        }
       }
-    }
+
+      // Remove stale markup from previous page.
+      root.innerHTML = '';
+
+      window.__pagefindUI = new PagefindUI({
+        element: '#pagefind-search',
+        showSubResults: true,
+        showImages: {{ config.search.show_images | yesno:"true,false" }},
+        excerptLength: {{ config.search.excerpt_length | default:200 }},
+        translations: {
+          placeholder: '{{ config.search.placeholder | default:"Search…" }}'
+        }
+      });
+    };
   </script>
-  <script src="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.js" onload="initPagefindSearch()"></script>
+  <script src="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.js" onload="window.initPagefindSearch()"></script>
   {% endif %}
 
   <!-- Palette Switcher JS (when enabled) -->
