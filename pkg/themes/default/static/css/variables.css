@@ -1,5 +1,8 @@
 /* CSS Custom Properties - Default Theme */
 :root {
+  /* Allow UA controls/scrollbars to theme appropriately */
+  color-scheme: light dark;
+
   /* Primary brand color */
   --color-primary: #3b82f6;
   --color-primary-light: #60a5fa;
@@ -7,10 +10,24 @@
 
   /* Semantic colors */
   --color-text: #1f2937;
+  --color-text-secondary: #374151;
   --color-text-muted: #6b7280;
   --color-background: #ffffff;
+  --color-background-secondary: #f3f4f6;
   --color-surface: #f9fafb;
+  --color-surface-elevated: #ffffff;
+
+  /* Interactive states */
+  --color-surface-hover: color-mix(in srgb, var(--color-surface) 92%, var(--color-primary));
+  --color-surface-active: color-mix(in srgb, var(--color-surface) 85%, var(--color-primary));
   --color-border: #e5e7eb;
+  --color-border-focus: var(--color-primary);
+  --color-border-strong: color-mix(in srgb, var(--color-border) 55%, var(--color-text));
+
+  /* Links */
+  --color-link: var(--color-primary);
+  --color-link-hover: var(--color-primary-dark);
+  --color-link-visited: var(--color-primary);
 
   /* Status colors */
   --color-success: #10b981;
@@ -18,16 +35,50 @@
   --color-error: #ef4444;
   --color-info: #3b82f6;
 
+  /* On-colors (text/icons on colored backgrounds) */
+  --color-on-primary: #ffffff;
+  --color-on-success: #ffffff;
+  --color-on-warning: #111827;
+  --color-on-error: #ffffff;
+  --color-on-info: #ffffff;
+
   /* Article/Content background (for readability over decorative backgrounds) */
   --article-bg: var(--color-background);
   --article-bg-opacity: 0.95;
   --article-blur: 0px;
-  --article-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --article-shadow: var(--shadow-md);
+
+  /* Accent gradients */
+  --gradient-accent: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  --gradient-vibrant: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+  --gradient-warm: linear-gradient(135deg, #f093fb, #f5576c, #f8b500);
+  --gradient-cool: linear-gradient(135deg, #4facfe, #00f2fe);
+  --gradient-sunset: linear-gradient(135deg, #fa709a, #fee140);
+  --gradient-ocean: linear-gradient(135deg, #2193b0, #6dd5ed);
+
+  /* Palette-matching gradients (keep as constants; they are decorative, not semantic) */
+  --gradient-catppuccin: linear-gradient(135deg, #cba6f7, #f5c2e7, #f38ba8);
+  --gradient-nord: linear-gradient(135deg, #88c0d0, #81a1c1, #5e81ac);
+  --gradient-dracula: linear-gradient(135deg, #bd93f9, #ff79c6, #8be9fd);
+  --gradient-gruvbox: linear-gradient(135deg, #fabd2f, #fe8019, #fb4934);
+  --gradient-rose-pine: linear-gradient(135deg, #c4a7e7, #ebbcba, #f6c177);
+  --gradient-solarized: linear-gradient(135deg, #268bd2, #2aa198, #859900);
+  --gradient-tokyo-night: linear-gradient(135deg, #7aa2f7, #bb9af7, #f7768e);
+
+  /* Media border settings */
+  --media-border-width: 3px;
+  --media-border-style: solid;
+  --media-border-color: var(--color-border);
+  --media-border-gradient: none;
+  --media-border-radius: var(--radius-lg);
 
   /* Font families */
-  --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-heading: var(--font-body);
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+
+  --font-body: var(--font-sans);
+  --font-heading: var(--font-body);
 
   /* Font sizes (modular scale) */
   --text-xs: 0.75rem;
@@ -44,6 +95,27 @@
   --leading-normal: 1.5;
   --leading-relaxed: 1.75;
 
+  /* Aesthetic tokens (default = balanced) */
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Legacy aliases used by older CSS */
+  --radius: var(--radius-md);
+
+  --border-width-thin: 1px;
+  --border-width-normal: 1px;
+  --border-width-thick: 2px;
+  --border-style: solid;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+
   /* Spacing scale */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -58,20 +130,22 @@
   /* Layout */
   --content-width: 65ch;
   --page-width: 1200px;
-  --radius: 0.375rem;
-  --radius-lg: 0.5rem;
 }
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   :root {
     --color-text: #f9fafb;
+    --color-text-secondary: #e5e7eb;
     --color-text-muted: #9ca3af;
     --color-background: #111827;
+    --color-background-secondary: #0b1220;
     --color-surface: #1f2937;
+    --color-surface-elevated: #273449;
+    --color-surface-hover: color-mix(in srgb, var(--color-surface) 88%, var(--color-primary));
+    --color-surface-active: color-mix(in srgb, var(--color-surface) 80%, var(--color-primary));
     --color-border: #374151;
 
-    /* Darker article shadow for dark mode */
-    --article-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --color-border-strong: color-mix(in srgb, var(--color-border) 60%, #ffffff);
   }
 }

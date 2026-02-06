@@ -917,6 +917,36 @@ Palettes are compiled to CSS custom properties:
 }
 ```
 
+### CSS Output Layering (Normative)
+
+The build output MUST layer tokens into separate stylesheets to prevent palette selection from overwriting theme identity.
+
+Required layers:
+
+1. `css/variables.css` (theme-owned, checked in)
+   - Non-color identity tokens (typography defaults, spacing scale, radius/shadows, decorative gradients)
+   - Default semantic tokens (colors + fallbacks) for the theme
+
+2. `css/aesthetic.css` (generated)
+   - Non-color design tokens from aesthetic presets (`pkg/aesthetic/aesthetics/*.toml`)
+   - `:root` defaults for the configured aesthetic
+   - Optional `[data-aesthetic="..."]` blocks for runtime switching
+
+3. `css/palette.css` (generated)
+   - Color tokens only (and small palette-switcher metadata like `--palette-manifest`)
+   - `:root` / `[data-theme="..."]` / `[data-palette="..."]` rules for palette selection
+
+Templates SHOULD include these in this order before all other theme CSS:
+
+```html
+<link rel="stylesheet" href="/css/variables.css">
+<link rel="stylesheet" href="/css/aesthetic.css">
+<link rel="stylesheet" href="/css/palette.css">
+```
+
+Backward compatibility:
+- Older versions overwrote `css/variables.css` with palette output. Newer versions MUST NOT overwrite theme-owned identity tokens during palette generation.
+
 ### Contrast Validation
 
 Palettes SHOULD pass WCAG 2.1 contrast requirements:

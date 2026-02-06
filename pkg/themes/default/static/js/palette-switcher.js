@@ -15,51 +15,6 @@
   // Available aesthetics for cycling
   const AESTHETICS = ['brutal', 'precision', 'balanced', 'elevated', 'minimal'];
 
-  // Aesthetic CSS property definitions
-  // Uses --radius and --radius-lg to match the actual CSS variable names
-  const AESTHETIC_STYLES = {
-    brutal: {
-      '--radius': '0',
-      '--radius-lg': '0',
-      '--article-shadow': '4px 4px 0 var(--color-border)',
-      '--font-body': 'var(--font-mono, ui-monospace, monospace)',
-      '--leading-normal': '1.5',
-      '--leading-relaxed': '1.6'
-    },
-    precision: {
-      '--radius': '2px',
-      '--radius-lg': '4px',
-      '--article-shadow': '0 2px 4px rgba(0,0,0,0.06)',
-      '--font-body': 'system-ui, -apple-system, sans-serif',
-      '--leading-normal': '1.5',
-      '--leading-relaxed': '1.625'
-    },
-    balanced: {
-      '--radius': '0.375rem',
-      '--radius-lg': '0.5rem',
-      '--article-shadow': '0 4px 12px rgba(0,0,0,0.1)',
-      '--font-body': 'system-ui, -apple-system, sans-serif',
-      '--leading-normal': '1.5',
-      '--leading-relaxed': '1.625'
-    },
-    elevated: {
-      '--radius': '0.75rem',
-      '--radius-lg': '1rem',
-      '--article-shadow': '0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06)',
-      '--font-body': 'system-ui, -apple-system, sans-serif',
-      '--leading-normal': '1.6',
-      '--leading-relaxed': '1.75'
-    },
-    minimal: {
-      '--radius': '2px',
-      '--radius-lg': '4px',
-      '--article-shadow': 'none',
-      '--font-body': 'system-ui, -apple-system, sans-serif',
-      '--leading-normal': '1.5',
-      '--leading-relaxed': '1.625'
-    }
-  };
-
   // Variant suffixes to strip when computing family names
   const VARIANT_SUFFIXES = [
     '-light', '-dark',
@@ -692,6 +647,12 @@
     if (stored && AESTHETICS.includes(stored)) {
       return stored;
     }
+
+    const fromDOM = document.documentElement.dataset.aesthetic;
+    if (fromDOM && AESTHETICS.includes(fromDOM)) {
+      return fromDOM;
+    }
+
     return 'balanced'; // default aesthetic
   }
 
@@ -705,16 +666,8 @@
     }
 
     const root = document.documentElement;
-    const styles = AESTHETIC_STYLES[aesthetic];
 
-    // Apply all CSS custom properties
-    if (styles) {
-      for (const [prop, value] of Object.entries(styles)) {
-        root.style.setProperty(prop, value);
-      }
-    }
-
-    // Set data attribute for CSS selectors
+    // Set data attribute for CSS selectors (tokens come from css/aesthetic.css)
     root.dataset.aesthetic = aesthetic;
 
     // Persist selection
@@ -760,6 +713,24 @@
   function initAesthetic() {
     const aesthetic = getAesthetic();
     setAesthetic(aesthetic);
+
+    const select = document.getElementById('aesthetic-select');
+    if (select) {
+      select.addEventListener('change', (e) => {
+        const next = e.target && e.target.value ? String(e.target.value) : '';
+        setAesthetic(next);
+      });
+    }
+
+    // Keep select in sync when aesthetics are changed via shortcuts.
+    window.addEventListener('aesthetic-change', (e) => {
+      if (!e || !e.detail || !e.detail.aesthetic) return;
+      const next = String(e.detail.aesthetic);
+      const el = document.getElementById('aesthetic-select');
+      if (el && el.value !== next) {
+        el.value = next;
+      }
+    });
   }
 
   // Initialize aesthetic immediately
