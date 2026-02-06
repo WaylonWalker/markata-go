@@ -36,6 +36,21 @@
     scrollToTop: true,
   };
 
+  const HTML_EXTENSIONS = new Set(['.html', '.htm', '.xhtml']);
+
+  function getLowercaseExtension(pathname) {
+    const lastSegment = (pathname || '').split('/').pop() || '';
+    const dotIndex = lastSegment.lastIndexOf('.');
+    if (dotIndex <= 0) return '';
+    return lastSegment.slice(dotIndex).toLowerCase();
+  }
+
+  function isNonHTMLDocumentURL(url) {
+    const ext = getLowercaseExtension(url.pathname);
+    if (!ext) return false; // Pretty URLs and extensionless routes are assumed HTML.
+    return !HTML_EXTENSIONS.has(ext);
+  }
+
   // Merge with user config
   const config = Object.assign({}, DEFAULT_CONFIG, window.VIEW_TRANSITIONS_CONFIG || {});
 
@@ -71,6 +86,13 @@
     // Only handle same-origin links
     if (url.origin !== window.location.origin) return false;
 
+    // Only transition between HTML documents
+    // (Non-HTML resources like .md/.txt/.xml/.json should use native browser navigation.)
+    if (isNonHTMLDocumentURL(url)) {
+      if (config.debug) console.log('Skipping non-HTML navigation:', url.href);
+      return false;
+    }
+
     // Skip if same page (just hash changes)
     if (url.pathname === window.location.pathname &&
         url.search === window.location.search) {
@@ -80,14 +102,14 @@
     // Skip external links (target=_blank)
     if (link.target === '_blank') return false;
 
+    // Skip non-default navigation targets
+    if (link.target && link.target !== '_self') return false;
+
     // Skip download links
     if (link.hasAttribute('download')) return false;
 
     // Skip links with rel=external
     if (link.rel && link.rel.includes('external')) return false;
-
-    // Skip XML files (RSS, Atom, sitemap) - they need native browser handling for XSL stylesheets
-    if (url.pathname.endsWith('.xml')) return false;
 
     // Skip TOC links (they have their own smooth scroll handling)
     if (link.classList.contains('toc-link')) return false;
@@ -123,10 +145,20 @@
   async function navigateWithTransition(url) {
     // Fetch new page content with cache bypass to ensure fresh content
     // This prevents stale content (e.g., wrong pagination active state) after navigation
-    const response = await fetch(url, { cache: 'no-store' });
+    const response = await fetch(url, {
+      cache: 'no-store',
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    if (!contentType.includes('text/html') && !contentType.includes('application/xhtml+xml')) {
+      throw new Error(`Non-HTML navigation (content-type: ${contentType || 'unknown'})`);
     }
 
     const html = await response.text();
@@ -204,6 +236,11 @@
     // Dispatch custom event for other scripts to listen to
     window.dispatchEvent(new CustomEvent('view-transition-complete'));
 
+    // Pagefind Search (navbar) - needs re-init after DOM swap
+    if (window.initPagefindSearch && typeof window.initPagefindSearch === 'function') {
+      window.initPagefindSearch();
+    }
+
     // Re-initialize common scripts if they exist
     if (window.initScrollSpy && typeof window.initScrollSpy === 'function') {
       window.initScrollSpy();
@@ -233,6 +270,11 @@
    * Handle navigation click with view transition
    */
   async function handleNavigationClick(event) {
+    // Respect other handlers and normal browser behaviors
+    if (event.defaultPrevented) return;
+    if (event.button !== 0) return; // Only left clicks
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
     const link = event.target.closest('a');
 
     if (!shouldTransition(link)) return;
@@ -287,6 +329,7 @@
    */
   function initNavigationInterceptor() {
     // Use event delegation on document for better performance
+    document.removeEventListener('click', handleNavigationClick);
     document.addEventListener('click', handleNavigationClick);
   }
 

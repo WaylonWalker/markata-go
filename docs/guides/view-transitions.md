@@ -297,6 +297,7 @@ Users who prefer reduced motion automatically get instant transitions:
 2. **HTMX link?** - Links with `hx-get` are skipped
 3. **TOC link?** - Anchor links use smooth scroll
 4. **Custom skip rule?** - Check `skip_classes` and `skip_selectors`
+5. **Non-HTML file?** - URLs like `.md`, `.txt`, `.xml`, `.json` use native browser navigation
 
 Enable debug mode to see why links are skipped:
 
