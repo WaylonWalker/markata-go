@@ -10,7 +10,7 @@
       <source src="{{ post.image }}" type="video/{% if img_lower|endswith:".mp4" or img_lower|endswith:".m4v" %}mp4{% elif img_lower|endswith:".webm" %}webm{% elif img_lower|endswith:".mov" %}quicktime{% else %}ogg{% endif %}">
     </video>
     {% else %}
-    <img src="{{ post.image }}" alt="{{ post.title | default:post.description | default:'Photo' }}" class="card-image u-photo" loading="lazy">
+    <img src="{{ post.image }}" alt="{{ post.title | default:post.description | default:'Photo' }}" class="card-image u-photo" width="1200" height="675" loading="lazy">
     {% endif %}
     {% endwith %}
   </a>

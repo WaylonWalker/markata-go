@@ -25,8 +25,8 @@
             {% include "components/search.html" %}
             {% endif %}
             {% if config.header.show_theme_toggle %}
-            <button class="theme-toggle" aria-label="Toggle theme">
-                <span class="theme-toggle-icon"></span>
+            <button class="theme-toggle" type="button" aria-label="Toggle theme">
+                <span class="theme-toggle-icon" aria-hidden="true"></span>
             </button>
             {% endif %}
         </div>
@@ -34,10 +34,9 @@
 </header>
 {% endblock %}
 
-{% block content %}
+{% block main %}
 <div class="layout-container layout-container--blog">
-    <main class="layout-content layout-content--blog" id="main-content" style="--content-max-width: {{ config.layout.blog.content_max_width | default:'720px' }}">
-        <a href="#main-content" class="skip-link">Skip to main content</a>
+    <main class="layout-content layout-content--blog" id="main-content" tabindex="-1" style="--content-max-width: {{ config.layout.blog.content_max_width | default:'720px' }}">
         <article class="post post--blog">
             <header class="post-header">
                 <h1>{{ post.title }}</h1>

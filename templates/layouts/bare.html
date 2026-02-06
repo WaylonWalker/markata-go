@@ -10,8 +10,8 @@
 {# No header in bare layout #}
 {% endblock %}
 
-{% block content %}
-<main class="layout-content layout-content--bare" id="main-content" style="--content-max-width: {{ config.layout.bare.content_max_width | default:'100%' }}">
+{% block main %}
+<main class="layout-content layout-content--bare" id="main-content" tabindex="-1" style="--content-max-width: {{ config.layout.bare.content_max_width | default:'100%' }}">
     <div class="post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
         {{ body | safe }}
     </div>

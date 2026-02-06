@@ -493,7 +493,7 @@ func searchToMap(s *models.SearchConfig) map[string]interface{} {
 
 	placeholder := s.Placeholder
 	if placeholder == "" {
-		placeholder = "Search..."
+		placeholder = "Search…"
 	}
 
 	excerptLength := s.ExcerptLength

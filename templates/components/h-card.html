@@ -3,7 +3,8 @@
 {# It's hidden by default but machine-readable for parsers #}
 
 {% if config.author or config.url %}
-<div class="h-card site-author-card" hidden>
+{# Use CSS-based hiding instead of HTML `hidden` so mf2 parsers can discover u-photo. #}
+<div class="h-card site-author-card visually-hidden">
     {# Author/site name #}
     {% if config.author %}
     <span class="p-name">{{ config.author }}</span>
@@ -18,9 +19,9 @@
 
     {# Author avatar/photo from SEO config #}
     {% if config.seo.author_image %}
-    <img class="u-photo" src="{% if config.seo.author_image | startswith:'http' %}{{ config.seo.author_image }}{% else %}{{ config.url }}{{ config.seo.author_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" hidden>
+    <img class="u-photo" src="{% if config.seo.author_image | startswith:'http' %}{{ config.seo.author_image }}{% else %}{{ config.url }}{{ config.seo.author_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" width="44" height="44" loading="lazy">
     {% elif config.seo.default_image %}
-    <img class="u-photo" src="{% if config.seo.default_image | startswith:'http' %}{{ config.seo.default_image }}{% else %}{{ config.url }}{{ config.seo.default_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" hidden>
+    <img class="u-photo" src="{% if config.seo.default_image | startswith:'http' %}{{ config.seo.default_image }}{% else %}{{ config.url }}{{ config.seo.default_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" width="44" height="44" loading="lazy">
     {% endif %}
 
     {# Optional note/bio if available #}

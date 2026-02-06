@@ -104,8 +104,8 @@ func TestGetSearchConfig_Default(t *testing.T) {
 		t.Errorf("Position = %v, want navbar", searchConfig.Position)
 	}
 
-	if searchConfig.Placeholder != "Search..." {
-		t.Errorf("Placeholder = %v, want Search...", searchConfig.Placeholder)
+	if searchConfig.Placeholder != "Search…" {
+		t.Errorf("Placeholder = %v, want Search…", searchConfig.Placeholder)
 	}
 
 	if !searchConfig.IsShowImages() {
@@ -233,8 +233,8 @@ func TestNewSearchConfig(t *testing.T) {
 		t.Errorf("Position = %v, want navbar", sc.Position)
 	}
 
-	if sc.Placeholder != "Search..." {
-		t.Errorf("Placeholder = %v, want Search...", sc.Placeholder)
+	if sc.Placeholder != "Search…" {
+		t.Errorf("Placeholder = %v, want Search…", sc.Placeholder)
 	}
 
 	if !sc.IsShowImages() {
