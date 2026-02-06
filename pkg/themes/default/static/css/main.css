@@ -240,7 +240,17 @@ h1, h2, h3, h4, h5, h6 {
   scroll-margin-top: calc(var(--layout-header-height, 64px) + var(--space-4));
 }
 
-h1 { font-size: var(--text-4xl); }
+h1 {
+  font-size: var(--text-4xl);
+
+  /* Optional gradient heading effect (driven by aesthetic tokens) */
+  background: var(--fx-heading-gradient, none);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: var(--fx-heading-text-fill, currentColor);
+  -webkit-text-stroke: var(--fx-heading-text-stroke, 0px transparent);
+}
+
 h2 { font-size: var(--text-3xl); }
 h3 { font-size: var(--text-2xl); }
 h4 { font-size: var(--text-xl); }
@@ -653,6 +663,13 @@ main.content-bg {
   color: var(--color-text);
   text-decoration: none;
   flex-shrink: 0;
+
+  /* Optional gradient heading effect (driven by aesthetic tokens) */
+  background: var(--fx-heading-gradient, none);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: var(--fx-heading-text-fill, currentColor);
+  -webkit-text-stroke: var(--fx-heading-text-stroke, 0px transparent);
 }
 
 .site-title:hover {
@@ -975,7 +992,7 @@ body:has(.background-decoration) div.feed {
 
 .card:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), var(--fx-glow-shadow, none);
 }
 
 .card h2 {

@@ -21,6 +21,7 @@ pre {
   overflow-x: auto;
   margin: var(--space-4) 0;
   border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow, none);
 
   /* Scrollbar styling */
   scrollbar-width: thin;
