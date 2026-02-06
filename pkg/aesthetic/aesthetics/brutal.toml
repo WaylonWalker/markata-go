@@ -27,3 +27,16 @@ xl = "none"
 [tokens.typography]
 font_primary = "var(--font-mono)"
 leading_scale = 1.0
+
+[tokens.effects]
+# Brutal stays harsh and flat: no glow, minimal selection treatment.
+focus_shadow = "0 0 0 0 transparent"
+focus_outline = "2px solid var(--color-border)"
+selection_outline = "2px solid var(--color-border-strong, var(--color-border))"
+selection_shadow = "none"
+glow_shadow = "none"
+glow_shadow_hover = "none"
+glow_shadow_focus = "none"
+glow_shadow_surface = "none"
+glow_shadow_interactive = "none"
+posts_gap = "var(--space-5)"

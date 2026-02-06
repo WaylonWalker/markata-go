@@ -86,6 +86,10 @@
   --fx-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
   --fx-focus-outline: 2px solid var(--color-primary);
 
+  /* Keyboard selection tokens (j/k highlight) */
+  --fx-selection-outline: var(--fx-focus-outline);
+  --fx-selection-shadow: none;
+
   /* Vertical rhythm for feeds (lets neon breathe) */
   --fx-posts-gap: var(--space-6);
   --fx-frame-border-width: 0px;

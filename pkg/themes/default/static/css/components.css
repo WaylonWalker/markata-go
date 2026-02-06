@@ -1379,10 +1379,10 @@
 
 /* Highlighted post in feed when using keyboard navigation (j/k) */
 .kb-highlighted {
-   outline: var(--fx-focus-outline, 2px solid var(--color-primary));
+   outline: var(--fx-selection-outline, var(--fx-focus-outline, 2px solid var(--color-primary)));
    outline-offset: 3px;
    border-radius: var(--radius-lg, 12px);
-   box-shadow: var(--fx-glow-shadow-focus, none);
+   box-shadow: var(--fx-selection-shadow, none);
    transition: outline-color 0.15s ease, box-shadow 0.15s ease;
 }
 

@@ -30,6 +30,14 @@ leading_scale = 1.05
 
 [tokens.effects]
 glow_shadow = "none"
+glow_shadow_hover = "none"
+glow_shadow_focus = "none"
+glow_shadow_surface = "none"
+glow_shadow_interactive = "none"
+focus_shadow = "0 0 0 2px color-mix(in srgb, var(--color-primary) 10%, transparent)"
+focus_outline = "1px solid color-mix(in srgb, var(--color-primary) 55%, transparent)"
+selection_outline = "0px solid transparent"
+selection_shadow = "none"
 frame_border_width = "0px"
 frame_gradient = "var(--gradient-accent)"
 heading_gradient = "none"
