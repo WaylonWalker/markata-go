@@ -37,19 +37,9 @@
   <link rel="stylesheet" href="{{ 'css/encryption.css' | theme_asset_hashed }}">
   {% endif %}
 
-  <!-- Conditional CSS Loading -->
-  <script>
-    // GLightbox CSS - only load if glightbox elements will exist
-    {% if config.Extra.glightbox_enabled %}
-    // Check synchronously during page load
-    if (document.documentElement.innerHTML.includes('glightbox')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = '{% if config.Extra.asset_urls.glightbox-css %}{{ config.Extra.asset_urls.glightbox-css }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/css/glightbox.min.css{% endif %}';
-      document.head.appendChild(link);
-    }
-    {% endif %}
-  </script>
+  {% if config.Extra.glightbox_enabled %}
+  <link rel="stylesheet" href="{% if config.Extra.asset_urls.glightbox-css %}{{ config.Extra.asset_urls.glightbox-css }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/css/glightbox.min.css{% endif %}">
+  {% endif %}
 
   <!-- CSS variable overrides from theme config -->
   {% if config.theme.variables %}
@@ -139,7 +129,8 @@
   {% include "partials/aesthetic-css.html" %}
   {% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
+  <a href="#main-content" class="skip-link">Skip to main content</a>
   {% include "partials/background-decorations.html" %}
   {% block header %}
   <header class="site-header">
@@ -155,19 +146,21 @@
   {% endblock %}
 
   <div class="page-wrapper">
-    {# Left sidebar for feed navigation (if enabled) #}
-    {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
-    {% include "components/feed_sidebar.html" %}
-    {% endif %}
+    {% block main %}
+      {# Left sidebar for feed navigation (if enabled) #}
+      {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
+      {% include "components/feed_sidebar.html" %}
+      {% endif %}
 
-    <main class="main-content">
-      {% block content %}{% endblock %}
-    </main>
+      <main class="main-content" id="main-content" tabindex="-1">
+        {% block content %}{% endblock %}
+      </main>
 
-    {# Right sidebar for document TOC (if enabled) #}
-    {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'right' %}
-    {% include "components/doc_sidebar.html" %}
-    {% endif %}
+      {# Right sidebar for document TOC (if enabled) #}
+      {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'right' %}
+      {% include "components/doc_sidebar.html" %}
+      {% endif %}
+    {% endblock %}
   </div>
 
   {% block footer %}
@@ -179,6 +172,30 @@
 
   <!-- Conditional Script Loading: Only load when needed -->
   <script>
+    // Honor prefers-reduced-motion: pause autoplaying preview videos
+    (function() {
+      function handleReducedMotion() {
+        if (!window.matchMedia) return;
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        document.querySelectorAll('video[autoplay]').forEach((v) => {
+          try {
+            v.pause();
+            v.removeAttribute('autoplay');
+          } catch (_) {
+            // ignore
+          }
+        });
+      }
+
+      handleReducedMotion();
+      if (window.matchMedia) {
+        const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+        if (mq && typeof mq.addEventListener === 'function') {
+          mq.addEventListener('change', handleReducedMotion);
+        }
+      }
+    })();
+
     // Wikilink Hover Tooltips - only load if wikilinks with data-title exist
     if (document.querySelector('.wikilink[data-title]')) {
       const script = document.createElement('script');
@@ -243,7 +260,7 @@
           showImages: {{ config.search.show_images | yesno:"true,false" }},
           excerptLength: {{ config.search.excerpt_length | default:200 }},
           translations: {
-            placeholder: '{{ config.search.placeholder | default:"Search..." }}'
+            placeholder: '{{ config.search.placeholder | default:"Search…" }}'
           }
         });
       }

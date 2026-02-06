@@ -25,8 +25,8 @@
             {% include "components/search.html" %}
             {% endif %}
             {% if config.header.show_theme_toggle %}
-            <button class="theme-toggle" aria-label="Toggle theme">
-                <span class="theme-toggle-icon"></span>
+            <button class="theme-toggle" type="button" aria-label="Toggle theme">
+                <span class="theme-toggle-icon" aria-hidden="true"></span>
             </button>
             {% endif %}
         </div>
@@ -34,7 +34,7 @@
 </header>
 {% endblock %}
 
-{% block content %}
+{% block main %}
 <div class="layout-container layout-container--landing">
     {% if config.layout.landing.hero_enabled and post.hero %}
     <section class="hero" aria-label="Hero">
@@ -64,8 +64,7 @@
     </section>
     {% endif %}
 
-    <main class="layout-content layout-content--landing" id="main-content" style="--content-max-width: {{ config.layout.landing.content_max_width | default:'100%' }}">
-        <a href="#main-content" class="skip-link">Skip to main content</a>
+    <main class="layout-content layout-content--landing" id="main-content" tabindex="-1" style="--content-max-width: {{ config.layout.landing.content_max_width | default:'100%' }}">
         <div class="post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
             {{ body | safe }}
         </div>

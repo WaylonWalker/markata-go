@@ -206,7 +206,7 @@ func generate404Body(cfg *models.Config) string {
                 id="search-input"
                 name="q"
                 class="search-input"
-                placeholder="Search..."
+				placeholder="Search…"
                 autocomplete="off"
                 aria-label="Search"
                 aria-describedby="search-results-status"

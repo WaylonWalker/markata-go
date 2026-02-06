@@ -25,21 +25,21 @@
             {% include "components/search.html" %}
             {% endif %}
             {% if config.header.show_theme_toggle %}
-            <button class="theme-toggle" aria-label="Toggle theme">
-                <span class="theme-toggle-icon"></span>
+            <button class="theme-toggle" type="button" aria-label="Toggle theme">
+                <span class="theme-toggle-icon" aria-hidden="true"></span>
             </button>
             {% endif %}
-            <button class="mobile-menu-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar">
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
+            <button class="mobile-menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar">
+                <span class="hamburger-line" aria-hidden="true"></span>
+                <span class="hamburger-line" aria-hidden="true"></span>
+                <span class="hamburger-line" aria-hidden="true"></span>
             </button>
         </div>
     </div>
 </header>
 {% endblock %}
 
-{% block content %}
+{% block main %}
 <div class="layout-container">
     {% if config.sidebar.enabled %}
     <aside class="layout-sidebar layout-sidebar--{{ config.layout.docs.sidebar_position | default:'left' }}"
@@ -56,8 +56,7 @@
     <div class="sidebar-overlay"></div>
     {% endif %}
 
-    <main class="layout-content" id="main-content" style="--content-max-width: {{ config.layout.docs.content_max_width | default:'800px' }}">
-        <a href="#main-content" class="skip-link">Skip to main content</a>
+    <main class="layout-content" id="main-content" tabindex="-1" style="--content-max-width: {{ config.layout.docs.content_max_width | default:'800px' }}">
         <article class="post">
             <header class="post-header">
                 <h1>{{ post.title }}</h1>

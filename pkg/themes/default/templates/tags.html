@@ -13,8 +13,8 @@
 
   {% if tag_list %}
   <div class="tags-controls">
-    <button class="sort-btn" data-sort="alpha" aria-pressed="false">A–Z</button>
-    <button class="sort-btn" data-sort="count" aria-pressed="false">By Count</button>
+    <button class="sort-btn" type="button" data-sort="alpha" aria-pressed="false">A–Z</button>
+    <button class="sort-btn" type="button" data-sort="count" aria-pressed="false">By Count</button>
   </div>
 
   <div class="tags-cloud" id="tags-cloud">
@@ -73,7 +73,7 @@
   cursor: pointer;
   font-size: 0.9em;
   font-weight: 500;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .sort-btn:hover {
@@ -116,7 +116,7 @@
   border-radius: var(--radius-md, 0.25rem);
   text-decoration: none;
   color: var(--color-text, #333);
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .tag-item:hover {

@@ -24,9 +24,14 @@
   {% endif %}
   {# Author h-card for the feed (representative) #}
   {% if config.author %}
-  <span class="p-author h-card" hidden>
-    <a class="u-url p-name" href="{{ config.url }}">{{ config.author }}</a>
-  </span>
+  <div class="feed-author-card p-author h-card visually-hidden">
+    {% if config.seo.author_image %}
+    <img class="u-photo" src="{% if config.seo.author_image | startswith:'http' %}{{ config.seo.author_image }}{% else %}{{ config.url }}{{ config.seo.author_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" width="44" height="44" loading="lazy">
+    {% elif config.seo.default_image %}
+    <img class="u-photo" src="{% if config.seo.default_image | startswith:'http' %}{{ config.seo.default_image }}{% else %}{{ config.url }}{{ config.seo.default_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" width="44" height="44" loading="lazy">
+    {% endif %}
+    <a class="u-url u-uid p-name" href="{{ config.url }}" rel="author">{{ config.author }}</a>
+  </div>
   {% endif %}
 
   <div class="posts posts-list" id="posts-list">

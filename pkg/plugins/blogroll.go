@@ -392,7 +392,7 @@ func stripBlogrollHTML(s string) string {
 // Search config default constants.
 const (
 	defaultSearchPosition    = "navbar"
-	defaultSearchPlaceholder = "Search..."
+	defaultSearchPlaceholder = "Search…"
 )
 
 // blogrollHTMLTagRegex matches HTML tags for stripping.

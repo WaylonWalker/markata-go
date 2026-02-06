@@ -4,9 +4,9 @@
   {% if post.image or post.thumbnail %}
   <a href="{{ post.href }}" class="card-video-link u-url">
     <div class="card-video-container">
-      <img src="{{ post.image | default:post.thumbnail }}" alt="{{ post.title | default:'Video thumbnail' }}" class="card-thumbnail u-photo" loading="lazy">
+      <img src="{{ post.image | default:post.thumbnail }}" alt="{{ post.title | default:'Video thumbnail' }}" class="card-thumbnail u-photo" width="1200" height="675" loading="lazy">
       <div class="card-play-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48" aria-hidden="true" focusable="false">
           <path d="M8 5v14l11-7z"/>
         </svg>
       </div>

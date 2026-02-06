@@ -32,13 +32,13 @@
     <li class="reader-entry">
       <article class="reader-entry-article{% if entry.image_url %} has-image{% endif %}">
         {% if entry.image_url %}
-        <a href="{{ entry.url }}" target="_blank" rel="noopener" class="reader-entry-image-link">
-          <img src="{{ entry.image_url }}" alt="" class="reader-entry-image" loading="lazy">
+        <a href="{{ entry.url }}" target="_blank" rel="noopener noreferrer" class="reader-entry-image-link">
+          <img src="{{ entry.image_url }}" alt="" class="reader-entry-image" width="120" height="80" loading="lazy">
         </a>
         {% endif %}
         <div class="reader-entry-content">
           <h2 class="reader-entry-title">
-            <a href="{{ entry.url }}" target="_blank" rel="noopener">{{ entry.title }}</a>
+            <a href="{{ entry.url }}" target="_blank" rel="noopener noreferrer">{{ entry.title }}</a>
           </h2>
           <div class="reader-entry-meta">
             <span class="reader-entry-source">{{ entry.feed_title }}</span>
