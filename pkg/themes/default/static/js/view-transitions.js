@@ -38,6 +38,51 @@
 
   const HTML_EXTENSIONS = new Set(['.html', '.htm', '.xhtml']);
 
+  function normalizePathname(p) {
+    if (typeof p !== 'string') return '';
+    let s = p.trim();
+    if (!s) return '';
+    // Drop origin if an absolute URL was provided.
+    try {
+      if (s.startsWith('http://') || s.startsWith('https://')) {
+        s = new URL(s).pathname;
+      }
+    } catch (_) {
+      // ignore
+    }
+    if (!s.startsWith('/')) s = '/' + s;
+    // Collapse multiple slashes.
+    s = s.replace(/\/{2,}/g, '/');
+    return s;
+  }
+
+  function shouldSkipSpecialRoutes(url) {
+    if (!url || !url.pathname) return false;
+
+    const pathname = url.pathname;
+
+    // Random post endpoint performs a client-side redirect.
+    // View-transition navigation swaps DOM without executing inline scripts,
+    // which prevents the redirect script from running.
+    const randomCandidates = new Set(['/random', '/random/']);
+    const configured = normalizePathname(window.MARKATA_GO_RANDOM_POST_PATH);
+    if (configured) {
+      randomCandidates.add(configured);
+      if (configured.endsWith('/')) {
+        randomCandidates.add(configured.slice(0, -1));
+      } else {
+        randomCandidates.add(configured + '/');
+      }
+    }
+
+    if (randomCandidates.has(pathname)) {
+      if (config.debug) console.log('Skipping special route navigation:', pathname);
+      return true;
+    }
+
+    return false;
+  }
+
   function getLowercaseExtension(pathname) {
     const lastSegment = (pathname || '').split('/').pop() || '';
     const dotIndex = lastSegment.lastIndexOf('.');
@@ -85,6 +130,9 @@
 
     // Only handle same-origin links
     if (url.origin !== window.location.origin) return false;
+
+    // Skip special routes that must use full navigation
+    if (shouldSkipSpecialRoutes(url)) return false;
 
     // Only transition between HTML documents
     // (Non-HTML resources like .md/.txt/.xml/.json should use native browser navigation.)
@@ -310,6 +358,17 @@
    */
   async function handlePopState(event) {
     if (config.debug) console.log('Handling popstate to:', window.location.href);
+
+    // If we land on a special route, force a full reload so its scripts run.
+    try {
+      const currentURL = new URL(window.location.href);
+      if (shouldSkipSpecialRoutes(currentURL)) {
+        window.location.reload();
+        return;
+      }
+    } catch (_) {
+      // ignore
+    }
 
     try {
       const transition = document.startViewTransition(async () => {

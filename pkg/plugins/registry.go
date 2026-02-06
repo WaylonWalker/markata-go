@@ -42,6 +42,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["subscription_feeds"] = func() lifecycle.Plugin { return NewSubscriptionFeedsPlugin() }
 	pluginRegistry.constructors["publish_feeds"] = func() lifecycle.Plugin { return NewPublishFeedsPlugin() }
 	pluginRegistry.constructors["publish_html"] = func() lifecycle.Plugin { return NewPublishHTMLPlugin() }
+	pluginRegistry.constructors["random_post"] = func() lifecycle.Plugin { return NewRandomPostPlugin() }
 	pluginRegistry.constructors["well_known"] = func() lifecycle.Plugin { return NewWellKnownPlugin() }
 	pluginRegistry.constructors["sitemap"] = func() lifecycle.Plugin { return NewSitemapPlugin() }
 	pluginRegistry.constructors["wikilinks"] = func() lifecycle.Plugin { return NewWikilinksPlugin() }
@@ -195,6 +196,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewPublishFeedsPlugin(),
 		NewWellKnownPlugin(),
 		NewPublishHTMLPlugin(),
+		NewRandomPostPlugin(),  // Generate /random/ client-side redirect endpoint
 		NewRedirectsPlugin(),   // Generate redirect pages
 		NewErrorPagesPlugin(),  // Generate static 404 page
 		NewTagsListingPlugin(), // Generate /tags listing page
