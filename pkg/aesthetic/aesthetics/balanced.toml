@@ -27,3 +27,14 @@ xl = "0 20px 25px rgba(0,0,0,0.1)"
 [tokens.typography]
 font_primary = "var(--font-sans)"
 leading_scale = 1.0
+
+[tokens.effects]
+# Keep focus cues crisp, not glowy.
+focus_shadow = "0 0 0 2px color-mix(in srgb, var(--color-primary) 12%, transparent)"
+focus_outline = "1px solid color-mix(in srgb, var(--color-primary) 70%, transparent)"
+glow_shadow = "none"
+glow_shadow_hover = "none"
+glow_shadow_focus = "none"
+glow_shadow_surface = "none"
+glow_shadow_interactive = "none"
+posts_gap = "var(--space-6)"

@@ -27,3 +27,14 @@ xl = "0 8px 10px rgba(0,0,0,0.05)"
 [tokens.typography]
 font_primary = "var(--font-sans)"
 leading_scale = 0.95
+
+[tokens.effects]
+# Precision should be crisp and low-flare.
+focus_shadow = "0 0 0 2px color-mix(in srgb, var(--color-primary) 10%, transparent)"
+focus_outline = "1px solid color-mix(in srgb, var(--color-primary) 65%, transparent)"
+glow_shadow = "none"
+glow_shadow_hover = "none"
+glow_shadow_focus = "none"
+glow_shadow_surface = "none"
+glow_shadow_interactive = "none"
+posts_gap = "var(--space-5)"

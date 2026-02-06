@@ -25,7 +25,7 @@ pre {
   background:
     var(--surface-bg) padding-box,
     var(--fx-frame-gradient, linear-gradient(0deg, var(--color-border), var(--color-border))) border-box;
-  box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow, none);
+  box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow-surface, var(--fx-glow-shadow, none));
 
   /* Scrollbar styling */
   scrollbar-width: thin;
@@ -34,6 +34,10 @@ pre {
 
 pre:hover {
   box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow-hover, var(--fx-glow-shadow, none));
+}
+
+pre:focus-within {
+  box-shadow: 0 0 0 2px var(--color-primary), var(--shadow-sm, none), var(--fx-glow-shadow-focus, var(--fx-glow-shadow-hover, var(--fx-glow-shadow, none)));
 }
 
 pre::-webkit-scrollbar {

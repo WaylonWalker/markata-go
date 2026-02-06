@@ -30,7 +30,10 @@ leading_scale = 1.05
 
 [tokens.effects]
 glow_shadow = "0 0 10px color-mix(in srgb, var(--color-primary) 55%, transparent)"
-glow_shadow_hover = "0 0 18px color-mix(in srgb, var(--color-primary) 70%, transparent), 0 0 34px color-mix(in srgb, var(--color-info) 45%, transparent)"
+glow_shadow_surface = "0 0 16px color-mix(in srgb, var(--color-primary) 65%, transparent), 0 0 36px color-mix(in srgb, var(--color-info) 25%, transparent)"
+glow_shadow_interactive = "0 0 10px color-mix(in srgb, var(--color-primary) 60%, transparent)"
+glow_shadow_hover = "0 0 18px color-mix(in srgb, var(--color-primary) 75%, transparent), 0 0 42px color-mix(in srgb, var(--color-info) 55%, transparent)"
+glow_shadow_focus = "0 0 22px color-mix(in srgb, var(--color-primary) 85%, transparent), 0 0 54px color-mix(in srgb, var(--color-info) 60%, transparent)"
 frame_border_width = "2px"
 frame_gradient = "linear-gradient(135deg, var(--color-primary), var(--color-info), var(--color-primary-dark))"
 heading_gradient = "linear-gradient(90deg, var(--color-primary), var(--color-info), var(--color-text))"
@@ -41,3 +44,4 @@ noise_image = "repeating-radial-gradient(circle at 10% 10%, rgba(255,255,255,0.0
 noise_blend_mode = "overlay"
 surface_mix = "88%"
 surface_blur = "12px"
+posts_gap = "var(--space-8)"

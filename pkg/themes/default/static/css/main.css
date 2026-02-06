@@ -754,8 +754,15 @@ article.post {
   background:
     var(--surface-bg) padding-box,
     var(--fx-frame-gradient, var(--gradient-accent)) border-box;
-  box-shadow: var(--article-shadow), var(--fx-glow-shadow, none);
+  box-shadow: var(--article-shadow), var(--fx-glow-shadow-surface, var(--fx-glow-shadow, none));
   backdrop-filter: blur(var(--fx-surface-blur, var(--article-blur, 0px)));
+}
+
+article.post:focus-within {
+  box-shadow:
+    0 0 0 2px var(--color-primary),
+    var(--article-shadow),
+    var(--fx-glow-shadow-focus, var(--fx-glow-shadow-hover, var(--fx-glow-shadow, none)));
 }
 
 @supports (background: color-mix(in srgb, white 50%, transparent)) {

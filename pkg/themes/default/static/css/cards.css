@@ -127,14 +127,21 @@
   border-left: 3px solid var(--color-primary);
   border-radius: var(--radius);
   background: var(--color-surface);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), var(--fx-glow-shadow-surface, var(--fx-glow-shadow, none));
   max-width: 550px;
   margin-left: auto;
   margin-right: auto;
 }
 
 .card-note:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), var(--fx-glow-shadow-hover, var(--fx-glow-shadow, none));
+}
+
+.card-note:focus-within {
+  box-shadow:
+    0 0 0 2px var(--color-primary),
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    var(--fx-glow-shadow-focus, var(--fx-glow-shadow-hover, var(--fx-glow-shadow, none)));
 }
 
 .card-note .card-content {
@@ -523,8 +530,13 @@
 }
 
 .card-inline:hover {
-  border-color: var(--color-border);
-  box-shadow: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--fx-glow-shadow-hover, var(--fx-glow-shadow, none));
+}
+
+.card-inline:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--fx-glow-shadow-focus, var(--fx-glow-shadow-hover, var(--fx-glow-shadow, none)));
 }
 
 .card-inline .card-content {

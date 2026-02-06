@@ -512,7 +512,7 @@
   border: 2px solid transparent;
 
   /* Optional glow effect (driven by aesthetic tokens) */
-  box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow, none);
+  box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow-interactive, var(--fx-glow-shadow, none));
 }
 
 .btn--primary {
