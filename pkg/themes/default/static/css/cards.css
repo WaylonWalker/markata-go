@@ -27,7 +27,7 @@
 .card {
   width: 100%;
   /* Ensure solid background to prevent pattern bleed-through */
-  background: var(--color-surface);
+  background-color: var(--color-surface);
 }
 
 /* Ensure all card sections have solid backgrounds */
@@ -36,7 +36,7 @@
 .card .card-content,
 .card .card-meta,
 .card footer {
-  background: inherit;
+  background-color: transparent;
 }
 
 /* Card title links */

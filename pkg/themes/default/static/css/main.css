@@ -992,7 +992,7 @@ body:has(.background-decoration) div.feed {
     var(--fx-frame-gradient, linear-gradient(0deg, var(--color-border), var(--color-border))) border-box;
   border-radius: var(--radius-lg);
   transition: border-color 0.2s, box-shadow 0.2s;
-  box-shadow: var(--shadow-sm, none);
+  box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow, none);
 }
 
 .card:hover {
