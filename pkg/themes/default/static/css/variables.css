@@ -75,7 +75,8 @@
   /* Effects (aesthetic tokens) */
   --fx-glow-shadow: none;
   --fx-frame-border-width: 0px;
-  --fx-frame-gradient: var(--gradient-accent);
+  /* Default frame is a solid border (no gradient). */
+  --fx-frame-gradient: linear-gradient(0deg, var(--color-border), var(--color-border));
   --fx-heading-gradient: none;
   --fx-heading-text-fill: currentColor;
   --fx-heading-text-stroke: 0px transparent;

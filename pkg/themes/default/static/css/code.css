@@ -16,11 +16,15 @@ pre {
   font-size: var(--text-sm);
   line-height: var(--leading-relaxed);
   padding: var(--space-4);
-  background: var(--color-surface);
+  --surface-bg: var(--color-surface);
+  background: var(--surface-bg);
   border-radius: var(--radius-lg);
   overflow-x: auto;
   margin: var(--space-4) 0;
-  border: 1px solid var(--color-border);
+  border: calc(1px + var(--fx-frame-border-width, 0px)) solid transparent;
+  background:
+    var(--surface-bg) padding-box,
+    var(--fx-frame-gradient, linear-gradient(0deg, var(--color-border), var(--color-border))) border-box;
   box-shadow: var(--shadow-sm, none), var(--fx-glow-shadow, none);
 
   /* Scrollbar styling */

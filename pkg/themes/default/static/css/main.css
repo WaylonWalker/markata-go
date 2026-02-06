@@ -984,15 +984,22 @@ body:has(.background-decoration) div.feed {
 /* Card */
 .card {
   padding: var(--space-6);
-  background: var(--color-surface);
+  --surface-bg: var(--color-surface);
+  background: var(--surface-bg);
+  border: calc(1px + var(--fx-frame-border-width, 0px)) solid transparent;
+  background:
+    var(--surface-bg) padding-box,
+    var(--fx-frame-gradient, linear-gradient(0deg, var(--color-border), var(--color-border))) border-box;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
   transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-sm, none);
 }
 
 .card:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), var(--fx-glow-shadow, none);
+  box-shadow:
+    0 0 0 1px var(--color-primary),
+    0 4px 12px rgba(0, 0, 0, 0.05),
+    var(--fx-glow-shadow, none);
 }
 
 .card h2 {
