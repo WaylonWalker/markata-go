@@ -27,3 +27,16 @@ xl = "none"
 [tokens.typography]
 font_primary = "var(--font-sans)"
 leading_scale = 1.2
+
+[tokens.effects]
+# Minimal should be nearly zero chrome for keyboard selection.
+focus_shadow = "0 0 0 2px color-mix(in srgb, var(--color-primary) 8%, transparent)"
+focus_outline = "1px solid color-mix(in srgb, var(--color-primary) 35%, transparent)"
+selection_outline = "0px solid transparent"
+selection_shadow = "none"
+glow_shadow = "none"
+glow_shadow_hover = "none"
+glow_shadow_focus = "none"
+glow_shadow_surface = "none"
+glow_shadow_interactive = "none"
+posts_gap = "var(--space-8)"

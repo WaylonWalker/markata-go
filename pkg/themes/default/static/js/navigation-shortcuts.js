@@ -265,9 +265,7 @@
 
     // Initialize cards
     state.cards = getCards();
-    if (state.cards.length > 0) {
-      highlightCard(state.cards[0]);
-    }
+    // Do not preselect a card on load; only highlight after explicit keyboard navigation.
 
     // Only register these shortcuts once (they use document-level listeners internally)
     if (!state.initialized) {

@@ -12,8 +12,14 @@ type CSSFormat struct {
 	IncludeSpacing    bool   // Include spacing tokens
 	IncludeBorders    bool   // Include border tokens
 	IncludeShadows    bool   // Include shadow tokens
+	IncludeEffects    bool   // Include effects tokens (prefixed with --fx-)
 	Minify            bool   // Produce minified output
 	Prefix            string // Custom prefix for CSS variables (e.g., "theme" -> "--theme-radius-sm")
+}
+
+type cssSection struct {
+	name string
+	vars map[string]string
 }
 
 // DefaultCSSFormat returns the default CSS format options.
@@ -23,6 +29,7 @@ func DefaultCSSFormat() CSSFormat {
 		IncludeSpacing:    true,
 		IncludeBorders:    true,
 		IncludeShadows:    true,
+		IncludeEffects:    true,
 		Minify:            false,
 		Prefix:            "",
 	}
@@ -64,50 +71,7 @@ func (a *Aesthetic) GenerateCSSWithFormat(format CSSFormat) string {
 	sb.WriteString(":root {")
 	sb.WriteString(newline)
 
-	sections := []struct {
-		name    string
-		include bool
-		vars    map[string]string
-	}{}
-
-	// Collect sections based on format options
-	// Check for legacy flat maps first (used by css_test.go), then tokens
-	typography := a.getTypographyMap()
-	spacing := a.getSpacingMap()
-	borders := a.getBordersMap()
-	shadows := a.getShadowsMap()
-
-	if format.IncludeTypography && len(typography) > 0 {
-		sections = append(sections, struct {
-			name    string
-			include bool
-			vars    map[string]string
-		}{"Typography", true, typography})
-	}
-
-	if format.IncludeSpacing && len(spacing) > 0 {
-		sections = append(sections, struct {
-			name    string
-			include bool
-			vars    map[string]string
-		}{"Spacing", true, spacing})
-	}
-
-	if format.IncludeBorders && len(borders) > 0 {
-		sections = append(sections, struct {
-			name    string
-			include bool
-			vars    map[string]string
-		}{"Borders", true, borders})
-	}
-
-	if format.IncludeShadows && len(shadows) > 0 {
-		sections = append(sections, struct {
-			name    string
-			include bool
-			vars    map[string]string
-		}{"Shadows", true, shadows})
-	}
+	sections := a.collectCSSSections(format)
 
 	// Write each section
 	for i, section := range sections {
@@ -120,23 +84,7 @@ func (a *Aesthetic) GenerateCSSWithFormat(format CSSFormat) string {
 			sb.WriteString(fmt.Sprintf("%s/* %s */\n", indent, section.name))
 		}
 
-		// Sort keys for consistent output
-		keys := make([]string, 0, len(section.vars))
-		for k := range section.vars {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-
-		// Write CSS variables
-		for _, key := range keys {
-			value := section.vars[key]
-			varName := formatVarName(key, format.Prefix)
-			if format.Minify {
-				sb.WriteString(fmt.Sprintf("%s:%s;", varName, value))
-			} else {
-				sb.WriteString(fmt.Sprintf("%s%s: %s;\n", indent, varName, value))
-			}
-		}
+		writeCSSVars(&sb, section.vars, format, indent)
 	}
 
 	// Close :root block
@@ -146,6 +94,73 @@ func (a *Aesthetic) GenerateCSSWithFormat(format CSSFormat) string {
 	}
 
 	return sb.String()
+}
+
+func (a *Aesthetic) collectCSSSections(format CSSFormat) []cssSection {
+	sections := make([]cssSection, 0, 5)
+
+	// Check for legacy flat maps first (used by css_test.go), then tokens.
+	if format.IncludeTypography {
+		if m := a.getTypographyMap(); len(m) > 0 {
+			sections = append(sections, cssSection{name: "Typography", vars: m})
+		}
+	}
+	if format.IncludeSpacing {
+		if m := a.getSpacingMap(); len(m) > 0 {
+			sections = append(sections, cssSection{name: "Spacing", vars: m})
+		}
+	}
+	if format.IncludeBorders {
+		if m := a.getBordersMap(); len(m) > 0 {
+			sections = append(sections, cssSection{name: "Borders", vars: m})
+		}
+	}
+	if format.IncludeShadows {
+		if m := a.getShadowsMap(); len(m) > 0 {
+			sections = append(sections, cssSection{name: "Shadows", vars: m})
+		}
+	}
+	if format.IncludeEffects {
+		if m := a.getEffectsMap(); len(m) > 0 {
+			sections = append(sections, cssSection{name: "Effects", vars: m})
+		}
+	}
+
+	return sections
+}
+
+func writeCSSVars(sb *strings.Builder, vars map[string]string, format CSSFormat, indent string) {
+	// Sort keys for consistent output
+	keys := make([]string, 0, len(vars))
+	for k := range vars {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// Write CSS variables
+	for _, key := range keys {
+		value := vars[key]
+		varName := formatVarName(key, format.Prefix)
+		if format.Minify {
+			fmt.Fprintf(sb, "%s:%s;", varName, value)
+			continue
+		}
+		fmt.Fprintf(sb, "%s%s: %s;\n", indent, varName, value)
+	}
+}
+
+// getEffectsMap returns effects tokens as a map for CSS generation.
+// Effects are emitted with the "fx" prefix by default (e.g. --fx-glow-shadow).
+func (a *Aesthetic) getEffectsMap() map[string]string {
+	if len(a.Tokens.Effects) == 0 {
+		return nil
+	}
+	result := make(map[string]string)
+	for k, v := range a.Tokens.Effects {
+		cssKey := tokenToCSSName(k, "fx")
+		result[cssKey] = v
+	}
+	return result
 }
 
 // getTypographyMap returns typography tokens as a map for CSS generation.

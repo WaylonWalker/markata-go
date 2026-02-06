@@ -12,8 +12,66 @@
   const MODE_KEY = 'color-mode'; // 'light' or 'dark'
   const AESTHETIC_KEY = 'selected-aesthetic';
 
-  // Available aesthetics for cycling
-  const AESTHETICS = ['brutal', 'precision', 'balanced', 'elevated', 'minimal'];
+  // Default aesthetics (fallback when manifest is missing)
+  const DEFAULT_AESTHETICS = ['brutal', 'precision', 'balanced', 'elevated', 'minimal'];
+
+  let cachedAesthetics = null;
+
+  function getAestheticManifest() {
+    const styles = getComputedStyle(document.documentElement);
+    let manifest = styles.getPropertyValue('--aesthetic-manifest').trim();
+
+    if (!manifest || manifest === 'none' || manifest === '') {
+      return [];
+    }
+
+    try {
+      if (manifest.startsWith("'") && manifest.endsWith("'")) {
+        manifest = manifest.slice(1, -1);
+      }
+      if (manifest.startsWith('"') && manifest.endsWith('"')) {
+        manifest = manifest.slice(1, -1);
+      }
+      manifest = manifest.replace(/\\'/g, "'");
+
+      const parsed = JSON.parse(manifest);
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed.map(String).filter(Boolean);
+    } catch (e) {
+      console.warn('[palette-switcher] Failed to parse aesthetic manifest:', e);
+      return [];
+    }
+  }
+
+  function getAesthetics() {
+    if (cachedAesthetics) return cachedAesthetics;
+    const fromManifest = getAestheticManifest();
+    cachedAesthetics = fromManifest.length ? fromManifest : DEFAULT_AESTHETICS;
+    return cachedAesthetics;
+  }
+
+  function formatAestheticName(name) {
+    return String(name)
+      .split('-')
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  function populateAestheticSelect(select, aesthetics) {
+    if (!select) return;
+    if (!Array.isArray(aesthetics) || aesthetics.length === 0) return;
+
+    // Replace options so newly added aesthetics show up automatically.
+    select.innerHTML = '';
+    for (const a of aesthetics) {
+      const opt = document.createElement('option');
+      opt.value = a;
+      opt.textContent = formatAestheticName(a);
+      select.appendChild(opt);
+    }
+  }
 
   // Variant suffixes to strip when computing family names
   const VARIANT_SUFFIXES = [
@@ -643,13 +701,14 @@
    * Get the current aesthetic
    */
   function getAesthetic() {
+    const aesthetics = getAesthetics();
     const stored = localStorage.getItem(AESTHETIC_KEY);
-    if (stored && AESTHETICS.includes(stored)) {
+    if (stored && aesthetics.includes(stored)) {
       return stored;
     }
 
     const fromDOM = document.documentElement.dataset.aesthetic;
-    if (fromDOM && AESTHETICS.includes(fromDOM)) {
+    if (fromDOM && aesthetics.includes(fromDOM)) {
       return fromDOM;
     }
 
@@ -660,7 +719,8 @@
    * Set the aesthetic and apply CSS properties
    */
   function setAesthetic(aesthetic) {
-    if (!AESTHETICS.includes(aesthetic)) {
+    const aesthetics = getAesthetics();
+    if (!aesthetics.includes(aesthetic)) {
       console.warn('[palette-switcher] Unknown aesthetic:', aesthetic);
       return;
     }
@@ -690,16 +750,17 @@
    */
   function cycleAesthetic(direction) {
     const currentAesthetic = getAesthetic();
-    const currentIndex = AESTHETICS.indexOf(currentAesthetic);
+    const aesthetics = getAesthetics();
+    const currentIndex = aesthetics.indexOf(currentAesthetic);
 
     let newIndex;
     if (direction === 'next') {
-      newIndex = (currentIndex + 1) % AESTHETICS.length;
+      newIndex = (currentIndex + 1) % aesthetics.length;
     } else {
-      newIndex = (currentIndex - 1 + AESTHETICS.length) % AESTHETICS.length;
+      newIndex = (currentIndex - 1 + aesthetics.length) % aesthetics.length;
     }
 
-    const newAesthetic = AESTHETICS[newIndex];
+    const newAesthetic = aesthetics[newIndex];
     setAesthetic(newAesthetic);
 
     // Show notification with capitalized name
@@ -712,9 +773,10 @@
    */
   function initAesthetic() {
     const aesthetic = getAesthetic();
+    const select = document.getElementById('aesthetic-select');
+    populateAestheticSelect(select, getAesthetics());
     setAesthetic(aesthetic);
 
-    const select = document.getElementById('aesthetic-select');
     if (select) {
       select.addEventListener('change', (e) => {
         const next = e.target && e.target.value ? String(e.target.value) : '';

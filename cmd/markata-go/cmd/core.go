@@ -76,6 +76,10 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	// Pass theme configuration to plugins
 	lcConfig.Extra["theme"] = cfg.Theme
 
+	// Pass aesthetic configuration to plugins
+	lcConfig.Extra["aesthetic"] = cfg.Aesthetic
+	lcConfig.Extra["aesthetic_overrides"] = cfg.AestheticOverrides
+
 	// Pass layout configuration for automatic layout selection
 	lcConfig.Extra["layout"] = &cfg.Layout
 

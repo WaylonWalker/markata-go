@@ -12,6 +12,7 @@ type Tokens struct {
 	Border     map[string]string `json:"border,omitempty" yaml:"border,omitempty" toml:"border,omitempty"`
 	Shadow     map[string]string `json:"shadow,omitempty" yaml:"shadow,omitempty" toml:"shadow,omitempty"`
 	Typography map[string]string `json:"typography,omitempty" yaml:"typography,omitempty" toml:"typography,omitempty"`
+	Effects    map[string]string `json:"effects,omitempty" yaml:"effects,omitempty" toml:"effects,omitempty"`
 }
 
 // Aesthetic represents a complete design token set with metadata.
@@ -45,6 +46,7 @@ func NewAesthetic(name string) *Aesthetic {
 			Border:     make(map[string]string),
 			Shadow:     make(map[string]string),
 			Typography: make(map[string]string),
+			Effects:    make(map[string]string),
 		},
 	}
 }
@@ -73,6 +75,11 @@ func (a *Aesthetic) Get(tokenType, tokenKey string) string {
 			return ""
 		}
 		return a.Tokens.Typography[tokenKey]
+	case "effects":
+		if a.Tokens.Effects == nil {
+			return ""
+		}
+		return a.Tokens.Effects[tokenKey]
 	default:
 		return ""
 	}
@@ -111,6 +118,7 @@ func (a *Aesthetic) Clone() *Aesthetic {
 			Border:     make(map[string]string),
 			Shadow:     make(map[string]string),
 			Typography: make(map[string]string),
+			Effects:    make(map[string]string),
 		},
 	}
 
@@ -133,6 +141,9 @@ func (a *Aesthetic) Clone() *Aesthetic {
 	}
 	for k, v := range a.Tokens.Typography {
 		clone.Tokens.Typography[k] = v
+	}
+	for k, v := range a.Tokens.Effects {
+		clone.Tokens.Effects[k] = v
 	}
 
 	// Copy legacy flat maps if populated
@@ -208,6 +219,11 @@ func (a *Aesthetic) Merge(override *Aesthetic) *Aesthetic {
 	if override.Tokens.Typography != nil {
 		for k, v := range override.Tokens.Typography {
 			merged.Tokens.Typography[k] = v
+		}
+	}
+	if override.Tokens.Effects != nil {
+		for k, v := range override.Tokens.Effects {
+			merged.Tokens.Effects[k] = v
 		}
 	}
 

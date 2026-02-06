@@ -72,6 +72,38 @@
   --media-border-gradient: none;
   --media-border-radius: var(--radius-lg);
 
+  /* Effects (aesthetic tokens) */
+  --fx-glow-shadow: none;
+  /* Hover glow lets you go bold without constant overlap */
+  --fx-glow-shadow-hover: var(--fx-glow-shadow);
+  /* Focus glow is used for keyboard selection cues */
+  --fx-glow-shadow-focus: var(--fx-glow-shadow-hover);
+  /* Optional specialization: surfaces vs interactive elements */
+  --fx-glow-shadow-surface: var(--fx-glow-shadow);
+  --fx-glow-shadow-interactive: var(--fx-glow-shadow);
+
+  /* Focus ring tokens (avoid hard-coded glow across aesthetics) */
+  --fx-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  --fx-focus-outline: 2px solid var(--color-primary);
+
+  /* Keyboard selection tokens (j/k highlight) */
+  --fx-selection-outline: var(--fx-focus-outline);
+  --fx-selection-shadow: none;
+
+  /* Vertical rhythm for feeds (lets neon breathe) */
+  --fx-posts-gap: var(--space-6);
+  --fx-frame-border-width: 0px;
+  /* Default frame is a solid border (no gradient). */
+  --fx-frame-gradient: linear-gradient(0deg, var(--color-border), var(--color-border));
+  --fx-heading-gradient: none;
+  --fx-heading-text-fill: currentColor;
+  --fx-heading-text-stroke: 0px transparent;
+  --fx-noise-image: none;
+  --fx-noise-opacity: 0;
+  --fx-noise-blend-mode: overlay;
+  --fx-surface-mix: 100%;
+  --fx-surface-blur: 0px;
+
   /* Font families */
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
