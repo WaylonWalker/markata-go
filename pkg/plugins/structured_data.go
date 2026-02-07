@@ -114,8 +114,8 @@ func (p *StructuredDataPlugin) generateJSONLD(post *models.Post, config *lifecyc
 		bp.Keywords = post.Tags
 	}
 
-	// Add author
-	bp.Author = p.getAuthor(post, config, seoConfig)
+	// Add authors
+	bp.Authors = p.getAuthor(post, config, seoConfig)
 
 	// Add publisher
 	bp.Publisher = p.getPublisher(config, seoConfig)
@@ -177,10 +177,12 @@ func (p *StructuredDataPlugin) generateOpenGraph(sd *models.StructuredData, post
 			}
 		}
 
-		// Author URL
-		author := p.getAuthor(post, config, seoConfig)
-		if author != nil && author.URL != "" {
-			sd.AddOpenGraph("article:author", author.URL)
+		// Author URLs
+		authors := p.getAuthor(post, config, seoConfig)
+		for _, author := range authors {
+			if author.URL != "" {
+				sd.AddOpenGraph("article:author", author.URL)
+			}
 		}
 
 		// Tags
@@ -207,8 +209,8 @@ func (p *StructuredDataPlugin) generateTwitterCard(sd *models.StructuredData, po
 		sd.AddTwitter("twitter:site", "@"+seoConfig.TwitterHandle)
 	}
 
-	// Creator handle (use author's twitter if available, otherwise site handle)
-	creatorHandle := p.getTwitterHandle(post, seoConfig)
+	// Creator handle (use first author's twitter if available, otherwise site handle)
+	creatorHandle := p.getFirstAuthorTwitterHandle(post, config, seoConfig)
 	if creatorHandle != "" {
 		sd.AddTwitter("twitter:creator", "@"+creatorHandle)
 	}
@@ -299,9 +301,32 @@ func (p *StructuredDataPlugin) getTwitterImageURL(post *models.Post, config *lif
 	return ""
 }
 
-// getAuthor returns the author SchemaAgent for a post.
-func (p *StructuredDataPlugin) getAuthor(post *models.Post, config *lifecycle.Config, seoConfig *models.SEOConfig) *models.SchemaAgent {
-	// Check for author in frontmatter
+// getAuthor returns author SchemaAgents for a post.
+// Supports multiple authors and legacy single author.
+func (p *StructuredDataPlugin) getAuthor(post *models.Post, config *lifecycle.Config, seoConfig *models.SEOConfig) []*models.SchemaAgent {
+	var agents []*models.SchemaAgent
+
+	// Handle multi-author posts
+	if len(post.AuthorObjects) > 0 {
+		for _, author := range post.AuthorObjects {
+			agent := models.NewSchemaAgent("Person", author.Name)
+
+			// Add URL if available
+			if author.URL != nil {
+				agent = agent.WithURL(*author.URL)
+			}
+
+			// Add email if available
+			if author.Email != nil {
+				agent = agent.WithEmail(*author.Email)
+			}
+
+			agents = append(agents, agent)
+		}
+		return agents
+	}
+
+	// Handle legacy single author
 	var authorName string
 	if author, ok := post.Extra["author"]; ok {
 		if authorStr, ok := author.(string); ok && authorStr != "" {
@@ -309,24 +334,28 @@ func (p *StructuredDataPlugin) getAuthor(post *models.Post, config *lifecycle.Co
 		}
 	}
 
-	// If we have a custom author name, create a basic agent
 	if authorName != "" {
-		return models.NewSchemaAgent("Person", authorName)
+		agent := models.NewSchemaAgent("Person", authorName)
+		agents = append(agents, agent)
+		return agents
 	}
 
 	// Use default author from config
 	if seoConfig.StructuredData.DefaultAuthor != nil {
 		da := seoConfig.StructuredData.DefaultAuthor
-		return models.NewSchemaAgent(da.Type, da.Name).WithURL(da.URL)
+		agent := models.NewSchemaAgent(da.Type, da.Name).WithURL(da.URL)
+		agents = append(agents, agent)
+		return agents
 	}
 
 	// Fall back to site author
 	siteAuthor := getSiteAuthor(config)
 	if siteAuthor != "" {
-		return models.NewSchemaAgent("Person", siteAuthor)
+		agent := models.NewSchemaAgent("Person", siteAuthor)
+		agents = append(agents, agent)
 	}
 
-	return nil
+	return agents
 }
 
 // getPublisher returns the publisher SchemaAgent for the site.
@@ -358,14 +387,36 @@ func (p *StructuredDataPlugin) getPublisher(config *lifecycle.Config, seoConfig 
 	return nil
 }
 
+// getFirstAuthorTwitterHandle returns the Twitter handle for the first author of a post.
+func (p *StructuredDataPlugin) getFirstAuthorTwitterHandle(post *models.Post, config *lifecycle.Config, seoConfig *models.SEOConfig) string {
+	authors := p.getAuthor(post, config, seoConfig)
+	if len(authors) > 0 && authors[0].Social != nil {
+		if handle, exists := authors[0].Social["twitter"]; exists {
+			return handle
+		}
+	}
+	
+	// Fall back to site handle
+	if seoConfig.TwitterHandle != "" {
+		return seoConfig.TwitterHandle
+	}
+	
+	return ""
+}
+
 // getTwitterHandle returns the Twitter handle for the post author or site.
-func (p *StructuredDataPlugin) getTwitterHandle(post *models.Post, seoConfig *models.SEOConfig) string {
+func (p *StructuredDataPlugin) getTwitterHandle(post *models.Post, config *lifecycle.Config, seoConfig *models.SEOConfig) string {
 	// Check for author's twitter handle in frontmatter
 	if twitterHandle, ok := post.Extra["twitter"]; ok {
 		if handleStr, ok := twitterHandle.(string); ok && handleStr != "" {
 			// Remove @ if present
 			return strings.TrimPrefix(handleStr, "@")
 		}
+	}
+
+	// Fall back to site handle
+	return seoConfig.TwitterHandle
+}
 	}
 
 	// Fall back to site handle

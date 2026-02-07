@@ -145,6 +145,26 @@ func postToMapUncached(p *models.Post) map[string]interface{} {
 		m["description"] = nil
 	}
 
+	// Handle author fields
+	if len(p.AuthorObjects) > 0 {
+		// Convert Author objects to maps for template access
+		authorMaps := make([]map[string]interface{}, len(p.AuthorObjects))
+		for i, author := range p.AuthorObjects {
+			authorMaps[i] = authorToMap(&author)
+		}
+		m["author_objects"] = authorMaps
+	}
+
+	// Add legacy author field
+	if p.Author != nil {
+		m["author"] = *p.Author
+	}
+
+	// Add authors array
+	if len(p.Authors) > 0 {
+		m["authors"] = p.Authors
+	}
+
 	// Add extra fields
 	if p.Extra != nil {
 		// Also expose Extra as a nested map for template access like post.Extra.key
@@ -174,6 +194,74 @@ func postToMapUncached(p *models.Post) map[string]interface{} {
 	}
 
 	return m
+}
+
+// authorToMap converts an Author to a map for template access.
+func authorToMap(a *models.Author) map[string]interface{} {
+	if a == nil {
+		return nil
+	}
+
+	m := map[string]interface{}{
+		"id":      a.ID,
+		"name":    a.Name,
+		"guest":   a.Guest,
+		"active":  a.Active,
+		"default": a.Default,
+	}
+
+	// Handle pointer fields - dereference if not nil
+	if a.Bio != nil {
+		m["bio"] = *a.Bio
+	}
+	if a.Email != nil {
+		m["email"] = *a.Email
+	}
+	if a.Avatar != nil {
+		m["avatar"] = *a.Avatar
+	}
+	if a.URL != nil {
+		m["url"] = *a.URL
+	}
+	if a.Role != nil {
+		m["role"] = *a.Role
+	}
+	if a.Contribution != nil {
+		m["contribution"] = *a.Contribution
+	}
+
+	// Handle slice and map fields
+	if len(a.Contributions) > 0 {
+		m["contributions"] = a.Contributions
+	}
+	if len(a.Social) > 0 {
+		socialMap := make(map[string]interface{})
+		for k, v := range a.Social {
+			socialMap[k] = v
+		}
+		m["social"] = socialMap
+	}
+
+	return m
+}
+
+// authorsToMap converts AuthorsConfig to a map for template access.
+func authorsToMap(ac *models.AuthorsConfig) map[string]interface{} {
+	if ac == nil {
+		return nil
+	}
+
+	authorsMap := make(map[string]interface{})
+	for id, author := range ac.Authors {
+		authorsMap[id] = authorToMap(&author)
+	}
+
+	return map[string]interface{}{
+		"generate_pages": ac.GeneratePages,
+		"url_pattern":    ac.URLPattern,
+		"feeds_enabled":  ac.FeedsEnabled,
+		"authors":        authorsMap,
+	}
 }
 
 // configToMap converts a Config to a map for template access.
@@ -254,6 +342,9 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert theme to map
 	themeMap := ThemeToMap(&c.Theme)
 
+	// Convert authors to map
+	authorsMap := authorsToMap(&c.Authors)
+
 	result := map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
@@ -277,6 +368,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"toc":           tocMap,
 		"header":        headerMap,
 		"theme":         themeMap,
+		"authors":       authorsMap,
 	}
 
 	// Add Extra map for plugin configs (e.g., glightbox_enabled, glightbox_options)

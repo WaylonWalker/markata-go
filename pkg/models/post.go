@@ -101,8 +101,15 @@ type Post struct {
 	// Not persisted to output files.
 	Dependencies []string `json:"-" yaml:"-" toml:"-"`
 
+	// Author fields (backward compatible)
+	Authors []string `json:"authors,omitempty" yaml:"authors,omitempty" toml:"authors,omitempty"`
+	Author  *string  `json:"author,omitempty" yaml:"author,omitempty" toml:"author,omitempty"` // Backward compatibility
+
 	// Extra holds dynamic/unknown fields from frontmatter
 	Extra map[string]interface{} `json:"extra,omitempty" yaml:"extra,omitempty" toml:"extra,omitempty"`
+
+	// Computed fields (not in frontmatter)
+	AuthorObjects []Author `json:"-" yaml:"-" toml:"-"`
 }
 
 // NewPost creates a new Post with the given source file path and default values.
@@ -255,4 +262,49 @@ func (p *Post) Has(key string) bool {
 	}
 	_, exists := p.Extra[key]
 	return exists
+}
+
+// GetAuthors returns a list of author IDs for this post.
+// Prefers the Authors array if available, falls back to single Author field.
+func (p *Post) GetAuthors() []string {
+	if len(p.Authors) > 0 {
+		return p.Authors
+	}
+	if p.Author != nil && *p.Author != "" {
+		return []string{*p.Author}
+	}
+	return []string{}
+}
+
+// HasAuthor checks if the post has the specified author ID.
+func (p *Post) HasAuthor(authorID string) bool {
+	for _, id := range p.GetAuthors() {
+		if id == authorID {
+			return true
+		}
+	}
+	return false
+}
+
+// SetAuthors sets the authors for this post.
+// Accepts either a single string (for backward compatibility) or an array of strings.
+func (p *Post) SetAuthors(authors interface{}) {
+	switch v := authors.(type) {
+	case string:
+		p.Author = &v
+		p.Authors = nil
+	case []string:
+		p.Authors = v
+		p.Author = nil
+	case []interface{}:
+		// Convert []interface{} to []string
+		authorStrings := make([]string, len(v))
+		for i, author := range v {
+			if str, ok := author.(string); ok {
+				authorStrings[i] = str
+			}
+		}
+		p.Authors = authorStrings
+		p.Author = nil
+	}
 }
