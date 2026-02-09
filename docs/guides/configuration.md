@@ -46,7 +46,7 @@ url = "https://example.com"
 output_dir = "public"
 
 [markata-go.glob]
-patterns = ["posts/**/*.md", "pages/*.md"]
+patterns = ["content/**/*.md", "*.md"]
 use_gitignore = true
 
 [markata-go.markdown]
@@ -64,8 +64,8 @@ markata-go:
 
   glob:
     patterns:
-      - "posts/**/*.md"
-      - "pages/*.md"
+      - "content/**/*.md"
+      - "*.md"
     use_gitignore: true
 
   markdown:
@@ -85,7 +85,7 @@ markata-go:
     "url": "https://example.com",
     "output_dir": "public",
     "glob": {
-      "patterns": ["posts/**/*.md", "pages/*.md"],
+      "patterns": ["content/**/*.md", "*.md"],
       "use_gitignore": true
     },
     "markdown": {
@@ -601,9 +601,9 @@ src = "/js/analytics.js"
 
 ### Glob Settings (`[markata-go.glob]`)
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `patterns` | string[] | `["**/*.md"]` | Glob patterns to find content files |
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `patterns` | string[] | `["content/**/*.md", "*.md"]` | Glob patterns to find content files |
 | `use_gitignore` | bool | `true` | Respect .gitignore when finding files |
 
 ```toml
@@ -1203,6 +1203,8 @@ Each feed is defined as an array item:
 | `orphan_threshold` | int | inherited | Orphan threshold (inherits from defaults) |
 | `formats` | object | inherited | Output formats (inherits from defaults) |
 | `templates` | object | inherited | Templates (inherits from defaults) |
+
+**Default Feed**: If no feeds are configured, markata-go automatically creates a default "posts" feed that includes all published posts with HTML and RSS formats. This provides an out-of-the-box archive page and RSS feed for new sites.
 
 ```toml
 # Main blog feed

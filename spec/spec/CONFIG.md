@@ -574,9 +574,9 @@ concurrency = 0                   # Worker threads (0 = auto)
 
 ```toml
 [my-ssg.glob]
-patterns = ["**/*.md"]            # File patterns to match
-use_gitignore = true              # Respect .gitignore
-exclude = ["node_modules/**"]     # Patterns to exclude
+patterns = ["content/**/*.md", "*.md"]  # File patterns to match
+use_gitignore = true                      # Respect .gitignore
+exclude = ["node_modules/**"]            # Patterns to exclude
 ```
 
 ### Markdown (`[my-ssg.markdown]`)
@@ -593,6 +593,28 @@ line_numbers = false
 ```
 
 ### Feeds (`[my-ssg.feeds]`)
+
+If no feeds are configured, the system creates a default feed:
+
+```toml
+[[my-ssg.feeds]]
+slug = "posts"
+title = "All Posts"
+description = "All posts from this site"
+type = "blog"
+filter = "published == true"
+sort = "date"
+reverse = true
+sidebar = true
+
+[my-ssg.feeds.formats]
+html = true
+rss = true
+atom = false
+json = false
+```
+
+You can also define feed defaults and additional feeds:
 
 ```toml
 [my-ssg.feeds.defaults]
