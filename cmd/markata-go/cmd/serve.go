@@ -97,7 +97,10 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigCh
-		fmt.Println("\nShutting down...")
+		fmt.Println("\nInterrupt received - shutting down...")
+		if isRebuilding.Load() {
+			fmt.Println("Rebuild in progress - canceling...")
+		}
 		cancel()
 	}()
 
@@ -195,17 +198,48 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 	select {
 	case <-ctx.Done():
 		// Graceful shutdown
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		fmt.Println("Initiating graceful shutdown...")
+
+		// Close live reload connections first
+		closeAllLiveReloadConnections()
+
+		// Shorter timeout for faster shutdown
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer shutdownCancel()
+
+		fmt.Printf("Shutting down HTTP server (timeout: 2s)...\n")
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			fmt.Printf("Server shutdown error: %v\n", err)
+		} else {
+			fmt.Println("HTTP server shutdown completed")
 		}
 	case err := <-serverErr:
 		return fmt.Errorf("server error: %w", err)
 	}
 
-	// Wait for goroutines to finish
-	wg.Wait()
+	// Wait for goroutines to finish with timeout
+	activeConnections := liveReloadCount.Load()
+	if verbose || activeConnections > 0 {
+		fmt.Printf("Waiting for goroutines to finish (active SSE connections: %d)...\n", activeConnections)
+	} else {
+		fmt.Println("Waiting for goroutines to finish...")
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		fmt.Println("All tracked goroutines finished")
+	case <-time.After(1 * time.Second):
+		fmt.Printf("Shutdown timeout after 1s - forcing exit\n")
+		if activeConnections > 0 {
+			fmt.Printf("Note: Had %d active SSE connections that may not have closed cleanly\n", activeConnections)
+		}
+	}
 
 	fmt.Println("Server stopped")
 	return nil
@@ -568,8 +602,11 @@ func renderSearchResultsPage(w http.ResponseWriter, query string, results []sear
 
 // Live reload clients
 var (
-	liveReloadClients   = make(map[chan string]struct{})
-	liveReloadClientsMu sync.RWMutex
+	liveReloadClients    = make(map[chan string]struct{})
+	liveReloadClientsMu  sync.RWMutex
+	liveReloadCount      atomic.Int32
+	liveReloadShutdown   = make(chan struct{})
+	liveReloadShutdownMu sync.Mutex
 )
 
 // handleLiveReload handles Server-Sent Events for live reload.
@@ -586,14 +623,30 @@ func handleLiveReload(w http.ResponseWriter, r *http.Request) {
 	// Register client
 	liveReloadClientsMu.Lock()
 	liveReloadClients[ch] = struct{}{}
+	liveReloadCount.Add(1)
 	liveReloadClientsMu.Unlock()
+
+	if verbose {
+		fmt.Printf("Live reload client connected (total: %d)\n", liveReloadCount.Load())
+	}
 
 	// Ensure client is removed on disconnect
 	defer func() {
 		liveReloadClientsMu.Lock()
 		delete(liveReloadClients, ch)
-		close(ch)
+		liveReloadCount.Add(-1)
+		// Close channel if not already closed
+		select {
+		case <-ch:
+			// Channel already closed
+		default:
+			close(ch)
+		}
 		liveReloadClientsMu.Unlock()
+
+		if verbose {
+			fmt.Printf("Live reload client disconnected (total: %d)\n", liveReloadCount.Load())
+		}
 	}()
 
 	// Get flusher for streaming
@@ -610,10 +663,19 @@ func handleLiveReload(w http.ResponseWriter, r *http.Request) {
 	// Wait for messages or disconnect
 	for {
 		select {
-		case msg := <-ch:
+		case msg, ok := <-ch:
+			if !ok {
+				// Channel closed by global shutdown
+				return
+			}
 			fmt.Fprintf(w, "data: %s\n\n", msg)
 			flusher.Flush()
 		case <-r.Context().Done():
+			return
+		case <-liveReloadShutdown:
+			if verbose {
+				fmt.Printf("SSE handler received global shutdown signal\n")
+			}
 			return
 		}
 	}
@@ -627,9 +689,48 @@ func notifyLiveReload() {
 	for ch := range liveReloadClients {
 		select {
 		case ch <- "reload":
+		case <-ch:
+			// Channel closed, skip
 		default:
 			// Skip if channel is full
 		}
+	}
+}
+
+// closeAllLiveReloadConnections closes all SSE connections for shutdown.
+func closeAllLiveReloadConnections() {
+	liveReloadShutdownMu.Lock()
+	defer liveReloadShutdownMu.Unlock()
+
+	liveReloadClientsMu.Lock()
+	defer liveReloadClientsMu.Unlock()
+
+	count := len(liveReloadClients)
+	if count > 0 {
+		fmt.Printf("Closing %d live reload connection(s)...\n", count)
+
+		// Signal global shutdown - this will cause all SSE handlers to exit
+		select {
+		case <-liveReloadShutdown:
+			// Already closed
+		default:
+			close(liveReloadShutdown)
+		}
+
+		// Close all client channels to force immediate exit
+		for ch := range liveReloadClients {
+			select {
+			case <-ch:
+				// Channel already closed
+			default:
+				close(ch)
+			}
+		}
+
+		// Clear the map
+		clear(liveReloadClients)
+		liveReloadCount.Store(0)
+		fmt.Printf("Closed all live reload connections\n")
 	}
 }
 
@@ -638,6 +739,9 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 	for {
 		select {
 		case <-ctx.Done():
+			if verbose {
+				fmt.Println("File watcher canceled")
+			}
 			return
 		case event, ok := <-watcher.Events:
 			if !ok {
@@ -703,6 +807,9 @@ func handleRebuilds(ctx context.Context, rebuildCh <-chan struct{}) {
 			if timer != nil {
 				timer.Stop()
 			}
+			if verbose {
+				fmt.Println("Rebuild handler canceled")
+			}
 			return
 		case <-rebuildCh:
 			// Reset debounce timer
@@ -710,14 +817,14 @@ func handleRebuilds(ctx context.Context, rebuildCh <-chan struct{}) {
 				timer.Stop()
 			}
 			timer = time.AfterFunc(debounceDelay, func() {
-				doRebuild()
+				doRebuild(ctx)
 			})
 		}
 	}
 }
 
 // doRebuild performs an incremental rebuild.
-func doRebuild() {
+func doRebuild(ctx context.Context) {
 	// Set rebuilding flag to ignore events during build
 	isRebuilding.Store(true)
 	defer isRebuilding.Store(false)
@@ -725,16 +832,40 @@ func doRebuild() {
 	fmt.Println("\nRebuilding...")
 	startTime := time.Now()
 
+	// Check if context is canceled before starting rebuild
+	select {
+	case <-ctx.Done():
+		fmt.Println("Rebuild canceled")
+		return
+	default:
+	}
+
 	m, err := createManager(cfgFile)
 	if err != nil {
 		fmt.Printf("Rebuild failed: %v\n", err)
 		return
 	}
 
+	// Check for cancellation after creating manager
+	select {
+	case <-ctx.Done():
+		fmt.Println("Rebuild canceled")
+		return
+	default:
+	}
+
 	result, err := runBuild(m)
 	if err != nil {
 		fmt.Printf("Rebuild failed: %v\n", err)
 		return
+	}
+
+	// Check for cancellation after build
+	select {
+	case <-ctx.Done():
+		fmt.Println("Rebuild canceled")
+		return
+	default:
 	}
 
 	duration := time.Since(startTime)
