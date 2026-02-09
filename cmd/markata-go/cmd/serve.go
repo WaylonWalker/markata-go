@@ -3,12 +3,14 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -53,6 +55,9 @@ var (
 
 	// isRebuilding tracks whether a rebuild is in progress to avoid event loops.
 	isRebuilding atomic.Bool
+
+	// rebuildPending tracks whether changes happened during a rebuild.
+	rebuildPending atomic.Bool
 )
 
 // serveCmd represents the serve command.
@@ -97,7 +102,10 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigCh
-		fmt.Println("\nShutting down...")
+		fmt.Println("\nInterrupt received - shutting down...")
+		if isRebuilding.Load() {
+			fmt.Println("Rebuild in progress - canceling...")
+		}
 		cancel()
 	}()
 
@@ -195,17 +203,48 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 	select {
 	case <-ctx.Done():
 		// Graceful shutdown
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		fmt.Println("Initiating graceful shutdown...")
+
+		// Close live reload connections first
+		closeAllLiveReloadConnections()
+
+		// Shorter timeout for faster shutdown
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer shutdownCancel()
+
+		fmt.Printf("Shutting down HTTP server (timeout: 2s)...\n")
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			fmt.Printf("Server shutdown error: %v\n", err)
+		} else {
+			fmt.Println("HTTP server shutdown completed")
 		}
 	case err := <-serverErr:
 		return fmt.Errorf("server error: %w", err)
 	}
 
-	// Wait for goroutines to finish
-	wg.Wait()
+	// Wait for goroutines to finish with timeout
+	activeConnections := liveReloadCount.Load()
+	if verbose || activeConnections > 0 {
+		fmt.Printf("Waiting for goroutines to finish (active SSE connections: %d)...\n", activeConnections)
+	} else {
+		fmt.Println("Waiting for goroutines to finish...")
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		fmt.Println("All tracked goroutines finished")
+	case <-time.After(1 * time.Second):
+		fmt.Printf("Shutdown timeout after 1s - forcing exit\n")
+		if activeConnections > 0 {
+			fmt.Printf("Note: Had %d active SSE connections that may not have closed cleanly\n", activeConnections)
+		}
+	}
 
 	fmt.Println("Server stopped")
 	return nil
@@ -214,6 +253,10 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 // createHandler creates an HTTP handler that serves files with live reload injection.
 func createHandler(outputDir string) http.Handler {
 	fileServer := http.FileServer(http.Dir(outputDir))
+	absOutputDir, err := filepath.Abs(outputDir)
+	if err != nil {
+		absOutputDir = outputDir
+	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Log requests in verbose mode
@@ -234,19 +277,19 @@ func createHandler(outputDir string) http.Handler {
 		}
 
 		// Determine the file path
-		path := r.URL.Path
-		if path == "/" {
-			path = "/index.html"
+		fullPath, requestPath, resolveErr := resolveRequestPath(absOutputDir, r.URL.Path)
+		if resolveErr != nil {
+			serve404Page(w, outputDir)
+			return
 		}
 
 		// Check if file exists
-		fullPath := filepath.Join(outputDir, path)
 		info, err := os.Stat(fullPath)
 		if err == nil && info.IsDir() {
 			// Try index.html in directory
 			indexPath := filepath.Join(fullPath, "index.html")
 			if _, err := os.Stat(indexPath); err == nil {
-				path = filepath.Join(path, "index.html")
+				requestPath = path.Join(requestPath, "index.html")
 				fullPath = indexPath
 			}
 		}
@@ -258,12 +301,13 @@ func createHandler(outputDir string) http.Handler {
 		}
 
 		// Check if it's an HTML file and inject live reload script
-		if strings.HasSuffix(path, ".html") || (info != nil && !info.IsDir() && strings.HasSuffix(fullPath, ".html")) {
+		if strings.HasSuffix(requestPath, ".html") || (info != nil && !info.IsDir() && strings.HasSuffix(fullPath, ".html")) {
 			serveHTMLWithLiveReload(w, fullPath, outputDir)
 			return
 		}
 
 		// Serve with file server
+		r.URL.Path = requestPath
 		fileServer.ServeHTTP(w, r)
 	})
 }
@@ -568,8 +612,11 @@ func renderSearchResultsPage(w http.ResponseWriter, query string, results []sear
 
 // Live reload clients
 var (
-	liveReloadClients   = make(map[chan string]struct{})
-	liveReloadClientsMu sync.RWMutex
+	liveReloadClients    = make(map[chan string]struct{})
+	liveReloadClientsMu  sync.RWMutex
+	liveReloadCount      atomic.Int32
+	liveReloadShutdown   = make(chan struct{})
+	liveReloadShutdownMu sync.Mutex
 )
 
 // handleLiveReload handles Server-Sent Events for live reload.
@@ -586,14 +633,30 @@ func handleLiveReload(w http.ResponseWriter, r *http.Request) {
 	// Register client
 	liveReloadClientsMu.Lock()
 	liveReloadClients[ch] = struct{}{}
+	liveReloadCount.Add(1)
 	liveReloadClientsMu.Unlock()
+
+	if verbose {
+		fmt.Printf("Live reload client connected (total: %d)\n", liveReloadCount.Load())
+	}
 
 	// Ensure client is removed on disconnect
 	defer func() {
 		liveReloadClientsMu.Lock()
 		delete(liveReloadClients, ch)
-		close(ch)
+		liveReloadCount.Add(-1)
+		// Close channel if not already closed
+		select {
+		case <-ch:
+			// Channel already closed
+		default:
+			close(ch)
+		}
 		liveReloadClientsMu.Unlock()
+
+		if verbose {
+			fmt.Printf("Live reload client disconnected (total: %d)\n", liveReloadCount.Load())
+		}
 	}()
 
 	// Get flusher for streaming
@@ -610,10 +673,19 @@ func handleLiveReload(w http.ResponseWriter, r *http.Request) {
 	// Wait for messages or disconnect
 	for {
 		select {
-		case msg := <-ch:
+		case msg, ok := <-ch:
+			if !ok {
+				// Channel closed by global shutdown
+				return
+			}
 			fmt.Fprintf(w, "data: %s\n\n", msg)
 			flusher.Flush()
 		case <-r.Context().Done():
+			return
+		case <-liveReloadShutdown:
+			if verbose {
+				fmt.Printf("SSE handler received global shutdown signal\n")
+			}
 			return
 		}
 	}
@@ -627,9 +699,48 @@ func notifyLiveReload() {
 	for ch := range liveReloadClients {
 		select {
 		case ch <- "reload":
+		case <-ch:
+			// Channel closed, skip
 		default:
 			// Skip if channel is full
 		}
+	}
+}
+
+// closeAllLiveReloadConnections closes all SSE connections for shutdown.
+func closeAllLiveReloadConnections() {
+	liveReloadShutdownMu.Lock()
+	defer liveReloadShutdownMu.Unlock()
+
+	liveReloadClientsMu.Lock()
+	defer liveReloadClientsMu.Unlock()
+
+	count := len(liveReloadClients)
+	if count > 0 {
+		fmt.Printf("Closing %d live reload connection(s)...\n", count)
+
+		// Signal global shutdown - this will cause all SSE handlers to exit
+		select {
+		case <-liveReloadShutdown:
+			// Already closed
+		default:
+			close(liveReloadShutdown)
+		}
+
+		// Close all client channels to force immediate exit
+		for ch := range liveReloadClients {
+			select {
+			case <-ch:
+				// Channel already closed
+			default:
+				close(ch)
+			}
+		}
+
+		// Clear the map
+		clear(liveReloadClients)
+		liveReloadCount.Store(0)
+		fmt.Printf("Closed all live reload connections\n")
 	}
 }
 
@@ -638,15 +749,13 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 	for {
 		select {
 		case <-ctx.Done():
+			if verbose {
+				fmt.Println("File watcher canceled")
+			}
 			return
 		case event, ok := <-watcher.Events:
 			if !ok {
 				return
-			}
-
-			// Skip events during rebuild to avoid infinite loops
-			if isRebuilding.Load() {
-				continue
 			}
 
 			// Get absolute path for comparison
@@ -656,7 +765,7 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 			}
 
 			// Ignore events for output directory
-			if serveOutputPath != "" && strings.HasPrefix(absEventPath, serveOutputPath) {
+			if isPathWithinDir(absEventPath, serveOutputPath) {
 				continue
 			}
 
@@ -670,10 +779,15 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 				continue
 			}
 
-			// Only trigger on write and create events
-			if event.Op&(fsnotify.Write|fsnotify.Create) != 0 {
+			// Trigger on write/create/remove/rename
+			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) != 0 {
 				if verbose {
 					fmt.Printf("File changed: %s\n", event.Name)
+				}
+
+				if isRebuilding.Load() {
+					rebuildPending.Store(true)
+					continue
 				}
 
 				// Debounce rebuilds
@@ -692,7 +806,7 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 }
 
 // handleRebuilds processes rebuild requests with debouncing.
-func handleRebuilds(ctx context.Context, rebuildCh <-chan struct{}) {
+func handleRebuilds(ctx context.Context, rebuildCh chan struct{}) {
 	// Debounce timer
 	var timer *time.Timer
 	debounceDelay := 300 * time.Millisecond
@@ -701,29 +815,64 @@ func handleRebuilds(ctx context.Context, rebuildCh <-chan struct{}) {
 		select {
 		case <-ctx.Done():
 			if timer != nil {
-				timer.Stop()
+				if !timer.Stop() {
+					drainTimer(timer)
+				}
+			}
+			if verbose {
+				fmt.Println("Rebuild handler canceled")
 			}
 			return
 		case <-rebuildCh:
 			// Reset debounce timer
 			if timer != nil {
-				timer.Stop()
+				if !timer.Stop() {
+					drainTimer(timer)
+				}
+				timer.Reset(debounceDelay)
+				continue
 			}
-			timer = time.AfterFunc(debounceDelay, func() {
-				doRebuild()
-			})
+			timer = time.NewTimer(debounceDelay)
+		case <-timerChannel(timer):
+			if timer != nil {
+				timer.Stop()
+				timer = nil
+			}
+			if ctx.Err() != nil {
+				return
+			}
+			doRebuild(ctx, rebuildCh)
 		}
 	}
 }
 
 // doRebuild performs an incremental rebuild.
-func doRebuild() {
+func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	// Set rebuilding flag to ignore events during build
 	isRebuilding.Store(true)
-	defer isRebuilding.Store(false)
+	defer func() {
+		isRebuilding.Store(false)
+		if rebuildPending.Swap(false) {
+			if ctx.Err() != nil {
+				return
+			}
+			select {
+			case rebuildCh <- struct{}{}:
+			default:
+			}
+		}
+	}()
 
 	fmt.Println("\nRebuilding...")
 	startTime := time.Now()
+
+	// Check if context is canceled before starting rebuild
+	select {
+	case <-ctx.Done():
+		fmt.Println("Rebuild canceled")
+		return
+	default:
+	}
 
 	m, err := createManager(cfgFile)
 	if err != nil {
@@ -731,10 +880,26 @@ func doRebuild() {
 		return
 	}
 
+	// Check for cancellation after creating manager
+	select {
+	case <-ctx.Done():
+		fmt.Println("Rebuild canceled")
+		return
+	default:
+	}
+
 	result, err := runBuild(m)
 	if err != nil {
 		fmt.Printf("Rebuild failed: %v\n", err)
 		return
+	}
+
+	// Check for cancellation after build
+	select {
+	case <-ctx.Done():
+		fmt.Println("Rebuild canceled")
+		return
+	default:
 	}
 
 	duration := time.Since(startTime)
@@ -802,7 +967,7 @@ func addDirRecursive(watcher *fsnotify.Watcher, root string) error {
 		}
 
 		// Skip output directory
-		if serveOutputPath != "" && strings.HasPrefix(absPath, serveOutputPath) {
+		if isPathWithinDir(absPath, serveOutputPath) {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
@@ -824,4 +989,55 @@ func addDirRecursive(watcher *fsnotify.Watcher, root string) error {
 
 		return nil
 	})
+}
+
+func resolveRequestPath(outputDir, requestPath string) (fullPath, cleanURLPath string, err error) {
+	if requestPath == "" || requestPath == "/" {
+		requestPath = "/index.html"
+	}
+
+	cleanURLPath = path.Clean("/" + requestPath)
+	relPath := strings.TrimPrefix(cleanURLPath, "/")
+	if relPath == "" {
+		relPath = "index.html"
+		cleanURLPath = "/index.html"
+	}
+
+	fullPath = filepath.Join(outputDir, filepath.FromSlash(relPath))
+	if !isPathWithinDir(fullPath, outputDir) {
+		return "", "", errors.New("resolved path escapes output directory")
+	}
+
+	return fullPath, cleanURLPath, nil
+}
+
+func isPathWithinDir(pathname, dir string) bool {
+	if dir == "" {
+		return false
+	}
+	if filepath.Clean(pathname) == filepath.Clean(dir) {
+		return true
+	}
+	rel, err := filepath.Rel(dir, pathname)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+func timerChannel(timer *time.Timer) <-chan time.Time {
+	if timer == nil {
+		return nil
+	}
+	return timer.C
+}
+
+func drainTimer(timer *time.Timer) {
+	if timer == nil {
+		return
+	}
+	select {
+	case <-timer.C:
+	default:
+	}
 }
