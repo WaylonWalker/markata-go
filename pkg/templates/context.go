@@ -203,11 +203,12 @@ func authorToMap(a *models.Author) map[string]interface{} {
 	}
 
 	m := map[string]interface{}{
-		"id":      a.ID,
-		"name":    a.Name,
-		"guest":   a.Guest,
-		"active":  a.Active,
-		"default": a.Default,
+		"id":           a.ID,
+		"name":         a.Name,
+		"guest":        a.Guest,
+		"active":       a.Active,
+		"default":      a.Default,
+		"role_display": a.GetRoleDisplay(), // Pre-computed for template access
 	}
 
 	// Handle pointer fields - dereference if not nil

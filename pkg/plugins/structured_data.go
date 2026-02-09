@@ -359,13 +359,33 @@ func (p *StructuredDataPlugin) getPublisher(config *lifecycle.Config, seoConfig 
 }
 
 // getFirstAuthorTwitterHandle returns the Twitter handle for the first author of a post.
-func (p *StructuredDataPlugin) getFirstAuthorTwitterHandle(_ *models.Post, _ *lifecycle.Config, seoConfig *models.SEOConfig) string {
-	// Fall back to site handle
-	if seoConfig.TwitterHandle != "" {
-		return seoConfig.TwitterHandle
+// Checks post frontmatter first, then author config, then falls back to site handle.
+func (p *StructuredDataPlugin) getFirstAuthorTwitterHandle(post *models.Post, config *lifecycle.Config, seoConfig *models.SEOConfig) string {
+	// Check for author's twitter handle in post frontmatter
+	if twitterHandle, ok := post.Extra["twitter"]; ok {
+		if handleStr, ok := twitterHandle.(string); ok && handleStr != "" {
+			// Remove @ if present
+			return strings.TrimPrefix(handleStr, "@")
+		}
 	}
 
-	return ""
+	// Check first author's social links if multi-author is configured
+	authorIDs := post.GetAuthors()
+	if len(authorIDs) > 0 {
+		// Get models.Config from lifecycle.Config.Extra
+		if modelsConfig, ok := config.Extra["models_config"].(*models.Config); ok {
+			if modelsConfig.Authors.Authors != nil {
+				if author, ok := modelsConfig.Authors.Authors[authorIDs[0]]; ok {
+					if twitter, ok := author.Social["twitter"]; ok && twitter != "" {
+						return strings.TrimPrefix(twitter, "@")
+					}
+				}
+			}
+		}
+	}
+
+	// Fall back to site handle
+	return seoConfig.TwitterHandle
 }
 
 // makeAbsoluteURL converts a relative URL to an absolute URL.

@@ -11,18 +11,18 @@
       {% if author.avatar %}
       <img class="u-photo" src="{{ author.avatar }}" alt="{{ author.name }}" width="44" height="44" loading="lazy">
       {% endif %}
-      
+
       <div class="author-info">
         <a class="p-name u-url" href="/authors/{{ author_id }}/">{{ author.name }}</a>
-        
+
         {% if author.bio %}
         <span class="p-note">{{ author.bio }}</span>
         {% endif %}
-        
+
         {% if author.role or author.contributions or author.contribution %}
-        <span class="author-role">{{ author.GetRoleDisplay() }}</span>
+        <span class="author-role">{{ author.role_display }}</span>
         {% endif %}
-        
+
         {% if author.guest %}
         <span class="author-badge">Guest</span>
         {% endif %}
