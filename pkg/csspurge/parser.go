@@ -120,7 +120,7 @@ func parseRules(content string, rules []CSSRule) []CSSRule {
 }
 
 // parseAtRule parses an @-rule starting at the given position.
-func parseAtRule(content string, startPos int) (*CSSRule, int) {
+func parseAtRule(content string, startPos int) (rule *CSSRule, newPos int) {
 	pos := startPos
 
 	// Find the end of the @-rule header
@@ -136,13 +136,13 @@ func parseAtRule(content string, startPos int) (*CSSRule, int) {
 	if semicolonPos != -1 && (bracePos == -1 || semicolonPos < bracePos) {
 		// Simple rule like @import or @charset
 		endPos := pos + semicolonPos + 1
-		rule := CSSRule{
+		rule = &CSSRule{
 			IsAtRule: true,
 			Content:  strings.TrimSpace(content[pos:endPos]),
 		}
 		// Determine rule type
 		rule.AtRuleType = getAtRuleType(rule.Content)
-		return &rule, endPos
+		return rule, endPos
 	}
 
 	// Block rule with {...}
@@ -159,7 +159,7 @@ func parseAtRule(content string, startPos int) (*CSSRule, int) {
 	}
 
 	// Parse the @-rule
-	rule := CSSRule{
+	rule = &CSSRule{
 		IsAtRule: true,
 		Content:  fullContent,
 	}
@@ -168,7 +168,7 @@ func parseAtRule(content string, startPos int) (*CSSRule, int) {
 	rule.AtRuleType = getAtRuleType(fullContent)
 
 	// For @media and other nested rules, parse nested content
-	if rule.AtRuleType == atRuleMedia || strings.Contains(fullContent, "{") {
+	if rule.AtRuleType == atRuleMedia || rule.AtRuleType == "supports" || rule.AtRuleType == "layer" {
 		// Extract content inside braces
 		innerContent := extractInnerContent(fullContent)
 		if innerContent != "" {
@@ -176,11 +176,11 @@ func parseAtRule(content string, startPos int) (*CSSRule, int) {
 		}
 	}
 
-	return &rule, endPos
+	return rule, endPos
 }
 
 // parseRegularRule parses a regular CSS rule.
-func parseRegularRule(content string, startPos int) (*CSSRule, int) {
+func parseRegularRule(content string, startPos int) (rule *CSSRule, newPos int) {
 	// Find the opening brace
 	bracePos := strings.Index(content[startPos:], "{")
 	if bracePos == -1 {

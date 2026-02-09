@@ -239,20 +239,20 @@ func matchesPreservePattern(selector string, patterns []string) bool {
 
 	for _, pattern := range patterns {
 		// Match the entire selector directly
-		if matched, _ := filepath.Match(pattern, selector); matched {
+		if matched, err := filepath.Match(pattern, selector); err == nil && matched {
 			return true
 		}
 
 		// Match against classes
 		for _, class := range classes {
-			if matched, _ := filepath.Match(pattern, class); matched {
+			if matched, err := filepath.Match(pattern, class); err == nil && matched {
 				return true
 			}
 		}
 
 		// Match against IDs
 		for _, id := range ids {
-			if matched, _ := filepath.Match(pattern, id); matched {
+			if matched, err := filepath.Match(pattern, id); err == nil && matched {
 				return true
 			}
 		}
@@ -264,7 +264,7 @@ func matchesPreservePattern(selector string, patterns []string) bool {
 // matchesPreservePatterns checks if a class or ID matches any preserve pattern.
 func matchesPreservePatterns(value string, patterns []string) bool {
 	for _, pattern := range patterns {
-		if matched, _ := filepath.Match(pattern, value); matched {
+		if matched, err := filepath.Match(pattern, value); err == nil && matched {
 			return true
 		}
 	}

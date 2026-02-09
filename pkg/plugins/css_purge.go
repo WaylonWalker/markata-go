@@ -348,42 +348,35 @@ func getCSSPurgeConfig(config *lifecycle.Config) models.CSSPurgeConfig {
 	if verbose, ok := rawConfig["verbose"].(bool); ok {
 		result.Verbose = verbose
 	}
-	if preserve, ok := rawConfig["preserve"].([]interface{}); ok {
-		result.Preserve = make([]string, 0, len(preserve))
-		for _, p := range preserve {
-			if s, ok := p.(string); ok {
-				result.Preserve = append(result.Preserve, s)
+	if preserve, ok := rawConfig["preserve"]; ok {
+		switch values := preserve.(type) {
+		case []interface{}:
+			result.Preserve = make([]string, 0, len(values))
+			for _, p := range values {
+				if s, ok := p.(string); ok {
+					result.Preserve = append(result.Preserve, s)
+				}
 			}
+		case []string:
+			result.Preserve = values
 		}
-	} else if preserve, ok := rawConfig["preserve"].([]string); ok {
-		result.Preserve = preserve
 	}
-	if skip, ok := rawConfig["skip_files"].([]interface{}); ok {
-		result.SkipFiles = make([]string, 0, len(skip))
-		for _, s := range skip {
-			if str, ok := s.(string); ok {
-				result.SkipFiles = append(result.SkipFiles, str)
+	if skip, ok := rawConfig["skip_files"]; ok {
+		switch values := skip.(type) {
+		case []interface{}:
+			result.SkipFiles = make([]string, 0, len(values))
+			for _, s := range values {
+				if str, ok := s.(string); ok {
+					result.SkipFiles = append(result.SkipFiles, str)
+				}
 			}
+		case []string:
+			result.SkipFiles = values
 		}
-	} else if skip, ok := rawConfig["skip_files"].([]string); ok {
-		result.SkipFiles = skip
 	}
 	if threshold, ok := parseIntFromInterface(rawConfig["warning_threshold"]); ok {
 		result.WarningThreshold = threshold
 	}
 
 	return result
-}
-
-func parseIntFromInterface(value interface{}) (int, bool) {
-	switch v := value.(type) {
-	case int:
-		return v, true
-	case int64:
-		return int(v), true
-	case float64:
-		return int(v), true
-	default:
-		return 0, false
-	}
 }
