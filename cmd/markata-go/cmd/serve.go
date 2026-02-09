@@ -744,6 +744,50 @@ func closeAllLiveReloadConnections() {
 	}
 }
 
+// shouldIgnoreEvent returns true if the event should be ignored.
+func shouldIgnoreEvent(event fsnotify.Event) bool {
+	// Get absolute path for comparison
+	absEventPath, err := filepath.Abs(event.Name)
+	if err != nil {
+		absEventPath = event.Name
+	}
+
+	// Ignore events for output directory
+	if isPathWithinDir(absEventPath, serveOutputPath) {
+		return true
+	}
+
+	// Ignore temporary/backup files and hidden files
+	baseName := filepath.Base(event.Name)
+	return strings.HasSuffix(event.Name, "~") ||
+		strings.HasPrefix(baseName, ".") ||
+		strings.HasSuffix(event.Name, ".swp") ||
+		strings.HasSuffix(event.Name, ".swo") ||
+		strings.HasSuffix(event.Name, ".tmp")
+}
+
+// handleNewDirectory adds newly created directories to the watcher.
+// This ensures new post folders, tag directories, etc. are watched.
+func handleNewDirectory(watcher *fsnotify.Watcher, event fsnotify.Event) {
+	if event.Op&fsnotify.Create == 0 {
+		return
+	}
+
+	info, statErr := os.Stat(event.Name)
+	if statErr != nil || !info.IsDir() {
+		return
+	}
+
+	// Add the new directory and any subdirectories to the watcher
+	if watchErr := addDirRecursive(watcher, event.Name); watchErr != nil {
+		if verbose {
+			fmt.Printf("Failed to watch new directory %s: %v\n", event.Name, watchErr)
+		}
+	} else if verbose {
+		fmt.Printf("Now watching new directory: %s\n", event.Name)
+	}
+}
+
 // watchFiles handles file system events.
 func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<- struct{}) {
 	for {
@@ -758,31 +802,18 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 				return
 			}
 
-			// Get absolute path for comparison
-			absEventPath, err := filepath.Abs(event.Name)
-			if err != nil {
-				absEventPath = event.Name
-			}
-
-			// Ignore events for output directory
-			if isPathWithinDir(absEventPath, serveOutputPath) {
+			if shouldIgnoreEvent(event) {
 				continue
 			}
 
-			// Ignore temporary/backup files and hidden files
-			baseName := filepath.Base(event.Name)
-			if strings.HasSuffix(event.Name, "~") ||
-				strings.HasPrefix(baseName, ".") ||
-				strings.HasSuffix(event.Name, ".swp") ||
-				strings.HasSuffix(event.Name, ".swo") ||
-				strings.HasSuffix(event.Name, ".tmp") {
-				continue
-			}
+			// Handle newly created directories
+			handleNewDirectory(watcher, event)
 
 			// Trigger on write/create/remove/rename
+			// Rename is important for editors that save via temp file + rename (vim, vscode, etc.)
 			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) != 0 {
 				if verbose {
-					fmt.Printf("File changed: %s\n", event.Name)
+					fmt.Printf("File changed: %s (%s)\n", event.Name, event.Op.String())
 				}
 
 				if isRebuilding.Load() {
