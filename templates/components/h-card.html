@@ -1,8 +1,37 @@
-{# Site-wide h-card (Microformats2) #}
-{# This provides IndieWeb-friendly author/site identity markup #}
-{# It's hidden by default but machine-readable for parsers #}
+{# Post-specific h-card (Microformats2) #}
+{# This provides IndieWeb-friendly per-post author markup #}
+{# Supports both multi-author and single author configurations #}
 
-{% if config.author or config.url %}
+{% if post.authors and authors %}
+{# Multi-author post - show individual author h-cards #}
+<div class="post-authors">
+  {% for author_id in post.authors %}
+    {% set author = authors[author_id] %}
+    <div class="author h-card">
+      {% if author.avatar %}
+      <img class="u-photo" src="{{ author.avatar }}" alt="{{ author.name }}" width="44" height="44" loading="lazy">
+      {% endif %}
+      
+      <div class="author-info">
+        <a class="p-name u-url" href="/authors/{{ author_id }}/">{{ author.name }}</a>
+        
+        {% if author.bio %}
+        <span class="p-note">{{ author.bio }}</span>
+        {% endif %}
+        
+        {% if author.role or author.contributions or author.contribution %}
+        <span class="author-role">{{ author.GetRoleDisplay() }}</span>
+        {% endif %}
+        
+        {% if author.guest %}
+        <span class="author-badge">Guest</span>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% elif config.author or config.title %}
+{# Backward compatibility: Single site author #}
 {# Use CSS-based hiding instead of HTML `hidden` so mf2 parsers can discover u-photo. #}
 <div class="h-card site-author-card visually-hidden">
     {# Author/site name #}

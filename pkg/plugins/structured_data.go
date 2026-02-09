@@ -207,8 +207,8 @@ func (p *StructuredDataPlugin) generateTwitterCard(sd *models.StructuredData, po
 		sd.AddTwitter("twitter:site", "@"+seoConfig.TwitterHandle)
 	}
 
-	// Creator handle (use author's twitter if available, otherwise site handle)
-	creatorHandle := p.getTwitterHandle(post, seoConfig)
+	// Creator handle (use first author's twitter if available, otherwise site handle)
+	creatorHandle := p.getFirstAuthorTwitterHandle(post, config, seoConfig)
 	if creatorHandle != "" {
 		sd.AddTwitter("twitter:creator", "@"+creatorHandle)
 	}
@@ -299,7 +299,7 @@ func (p *StructuredDataPlugin) getTwitterImageURL(post *models.Post, config *lif
 	return ""
 }
 
-// getAuthor returns the author SchemaAgent for a post.
+// getAuthor returns author SchemaAgent for a post.
 func (p *StructuredDataPlugin) getAuthor(post *models.Post, config *lifecycle.Config, seoConfig *models.SEOConfig) *models.SchemaAgent {
 	// Check for author in frontmatter
 	var authorName string
@@ -358,18 +358,14 @@ func (p *StructuredDataPlugin) getPublisher(config *lifecycle.Config, seoConfig 
 	return nil
 }
 
-// getTwitterHandle returns the Twitter handle for the post author or site.
-func (p *StructuredDataPlugin) getTwitterHandle(post *models.Post, seoConfig *models.SEOConfig) string {
-	// Check for author's twitter handle in frontmatter
-	if twitterHandle, ok := post.Extra["twitter"]; ok {
-		if handleStr, ok := twitterHandle.(string); ok && handleStr != "" {
-			// Remove @ if present
-			return strings.TrimPrefix(handleStr, "@")
-		}
+// getFirstAuthorTwitterHandle returns the Twitter handle for the first author of a post.
+func (p *StructuredDataPlugin) getFirstAuthorTwitterHandle(_ *models.Post, _ *lifecycle.Config, seoConfig *models.SEOConfig) string {
+	// Fall back to site handle
+	if seoConfig.TwitterHandle != "" {
+		return seoConfig.TwitterHandle
 	}
 
-	// Fall back to site handle
-	return seoConfig.TwitterHandle
+	return ""
 }
 
 // makeAbsoluteURL converts a relative URL to an absolute URL.
