@@ -318,23 +318,38 @@ markata-go init [flags]
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--force` | Overwrite existing files | `false` |
+| `--plain` | Use plain text prompts instead of the TUI wizard | `false` (auto-detected) |
 
 #### Examples
 
 ```bash
-# Start interactive project setup
+# Start interactive project setup (uses TUI wizard when available)
 markata-go init
 
 # Overwrite existing configuration
 markata-go init --force
+
+# Use plain text prompts (for scripts or non-TTY environments)
+markata-go init --plain
 ```
 
 #### Interactive Flow
 
-The `init` command guides you through setting up a new project:
+The `init` command provides a rich TUI (Text User Interface) wizard powered by [charmbracelet/huh](https://github.com/charmbracelet/huh) for an enhanced user experience. The wizard automatically falls back to plain text prompts when:
+
+- The `--plain` flag is specified
+- stdin is not a TTY (e.g., when piping input or running in CI)
+
+**TUI Mode Features:**
+- Searchable palette selection
+- Multi-select for features
+- Form validation
+- Styled using your site's configured palette (for existing projects)
+
+**Plain mode example:**
 
 ```
-$ markata-go init
+$ markata-go init --plain
 
 Welcome to markata-go!
 
