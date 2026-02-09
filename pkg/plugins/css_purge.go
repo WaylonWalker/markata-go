@@ -380,3 +380,10 @@ func getCSSPurgeConfig(config *lifecycle.Config) models.CSSPurgeConfig {
 
 	return result
 }
+
+// Ensure CSSPurgePlugin implements the required interfaces.
+var (
+	_ lifecycle.Plugin         = (*CSSPurgePlugin)(nil)
+	_ lifecycle.CleanupPlugin  = (*CSSPurgePlugin)(nil)
+	_ lifecycle.PriorityPlugin = (*CSSPurgePlugin)(nil)
+)

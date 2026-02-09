@@ -215,7 +215,7 @@ func getAtRuleType(content string) string {
 	re := regexp.MustCompile(`@([a-zA-Z-]+)`)
 	matches := re.FindStringSubmatch(content)
 	if len(matches) > 1 {
-		return matches[1]
+		return strings.ToLower(matches[1])
 	}
 	return ""
 }
