@@ -1,0 +1,256 @@
+package cmd
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/fsnotify/fsnotify"
+)
+
+func TestAddDirRecursive(t *testing.T) {
+	// Create a temporary directory structure
+	tmpDir := t.TempDir()
+	subDir := filepath.Join(tmpDir, "subdir")
+	nestedDir := filepath.Join(subDir, "nested")
+
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
+		t.Fatalf("Failed to create test directories: %v", err)
+	}
+
+	// Create a watcher
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer watcher.Close()
+
+	// Clear the global output path to avoid filtering
+	origOutputPath := serveOutputPath
+	serveOutputPath = ""
+	defer func() { serveOutputPath = origOutputPath }()
+
+	// Add the directory recursively
+	if err := addDirRecursive(watcher, tmpDir); err != nil {
+		t.Fatalf("addDirRecursive failed: %v", err)
+	}
+
+	// Verify all directories are being watched
+	// We can't directly check the watch list, but we can verify
+	// events are received for files in nested directories
+	testFile := filepath.Join(nestedDir, "test.md")
+
+	// Write a file and check for events
+	done := make(chan bool, 1)
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if event.Op&fsnotify.Create != 0 && filepath.Base(event.Name) == "test.md" {
+					done <- true
+					return
+				}
+			case <-time.After(2 * time.Second):
+				done <- false
+				return
+			}
+		}
+	}()
+
+	// Create the test file
+	if err := os.WriteFile(testFile, []byte("# Test"), 0o600); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	// Wait for the event
+	select {
+	case received := <-done:
+		if !received {
+			t.Error("Did not receive create event for nested file")
+		}
+	case <-time.After(3 * time.Second):
+		t.Error("Timeout waiting for file event")
+	}
+}
+
+func TestAddDirRecursive_SkipsHiddenDirs(t *testing.T) {
+	// Skip on Windows as hidden dirs are handled via file attributes, not dot prefix
+	if filepath.Separator == '\\' {
+		t.Skip("Skipping on Windows: hidden directories use file attributes, not dot prefix")
+	}
+
+	tmpDir := t.TempDir()
+	hiddenDir := filepath.Join(tmpDir, ".hidden")
+	fileInHidden := filepath.Join(hiddenDir, "file.md")
+
+	if err := os.MkdirAll(hiddenDir, 0o755); err != nil {
+		t.Fatalf("Failed to create hidden directory: %v", err)
+	}
+	if err := os.WriteFile(fileInHidden, []byte("test"), 0o600); err != nil {
+		t.Fatalf("Failed to create file in hidden dir: %v", err)
+	}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer watcher.Close()
+
+	// Clear the global output path
+	origOutputPath := serveOutputPath
+	serveOutputPath = ""
+	defer func() { serveOutputPath = origOutputPath }()
+
+	if err := addDirRecursive(watcher, tmpDir); err != nil {
+		t.Fatalf("addDirRecursive failed: %v", err)
+	}
+
+	// Verify hidden directory is NOT watched by creating a file
+	// and checking that no event is received
+	newFile := filepath.Join(hiddenDir, "new.md")
+
+	eventReceived := make(chan bool, 1)
+	timeout := time.After(500 * time.Millisecond)
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if filepath.Base(event.Name) == "new.md" {
+					eventReceived <- true
+					return
+				}
+			case <-timeout:
+				eventReceived <- false
+				return
+			}
+		}
+	}()
+
+	if err := os.WriteFile(newFile, []byte("new"), 0o600); err != nil {
+		t.Fatalf("Failed to write new file: %v", err)
+	}
+
+	select {
+	case received := <-eventReceived:
+		if received {
+			t.Error("Should not receive events for files in hidden directories")
+		}
+	case <-time.After(1 * time.Second):
+		// No event received, which is expected
+	}
+}
+
+func TestAddDirRecursive_SkipsOutputDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputDir := filepath.Join(tmpDir, "output")
+	contentDir := filepath.Join(tmpDir, "content")
+
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		t.Fatalf("Failed to create output directory: %v", err)
+	}
+	if err := os.MkdirAll(contentDir, 0o755); err != nil {
+		t.Fatalf("Failed to create content directory: %v", err)
+	}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatalf("Failed to create watcher: %v", err)
+	}
+	defer watcher.Close()
+
+	// Set the output path to skip
+	origOutputPath := serveOutputPath
+	serveOutputPath = outputDir
+	defer func() { serveOutputPath = origOutputPath }()
+
+	if err := addDirRecursive(watcher, tmpDir); err != nil {
+		t.Fatalf("addDirRecursive failed: %v", err)
+	}
+
+	// Create a file in output dir - should NOT trigger event
+	outputFile := filepath.Join(outputDir, "index.html")
+
+	eventReceived := make(chan bool, 1)
+	go func() {
+		select {
+		case event := <-watcher.Events:
+			if filepath.Base(event.Name) == "index.html" {
+				eventReceived <- true
+			}
+		case <-time.After(500 * time.Millisecond):
+			eventReceived <- false
+		}
+	}()
+
+	if err := os.WriteFile(outputFile, []byte("<html></html>"), 0o600); err != nil {
+		t.Fatalf("Failed to write output file: %v", err)
+	}
+
+	received := <-eventReceived
+	if received {
+		t.Error("Should not receive events for files in output directory")
+	}
+}
+
+func TestIsPathWithinDir(t *testing.T) {
+	tests := []struct {
+		name     string
+		pathname string
+		dir      string
+		want     bool
+	}{
+		{
+			name:     "file within dir",
+			pathname: "/home/user/project/file.txt",
+			dir:      "/home/user/project",
+			want:     true,
+		},
+		{
+			name:     "nested file within dir",
+			pathname: "/home/user/project/sub/file.txt",
+			dir:      "/home/user/project",
+			want:     true,
+		},
+		{
+			name:     "file outside dir",
+			pathname: "/home/user/other/file.txt",
+			dir:      "/home/user/project",
+			want:     false,
+		},
+		{
+			name:     "path traversal attempt",
+			pathname: "/home/user/project/../other/file.txt",
+			dir:      "/home/user/project",
+			want:     false,
+		},
+		{
+			name:     "same path",
+			pathname: "/home/user/project",
+			dir:      "/home/user/project",
+			want:     true,
+		},
+		{
+			name:     "empty dir",
+			pathname: "/home/user/file.txt",
+			dir:      "",
+			want:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isPathWithinDir(tt.pathname, tt.dir)
+			if got != tt.want {
+				t.Errorf("isPathWithinDir(%q, %q) = %v, want %v",
+					tt.pathname, tt.dir, got, tt.want)
+			}
+		})
+	}
+}
