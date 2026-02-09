@@ -86,12 +86,15 @@ repos:
         files: go\.(mod|sum)$
         pass_filenames: false
 
-  # golangci-lint (fast mode for pre-commit)
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v1.61.0
+  # golangci-lint (fast mode for pre-commit, use system binary)
+  - repo: local
     hooks:
       - id: golangci-lint
-        args: [--fast, --timeout=3m]
+        name: golangci-lint
+        entry: golangci-lint run --fast --timeout=3m
+        language: system
+        types: [go]
+        pass_filenames: false
 
   # Go tests (only run on staged go files)
   - repo: local
