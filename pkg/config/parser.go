@@ -30,6 +30,7 @@ type configSource interface {
 	getTags() tagsConverter
 	getEncryption() encryptionConverter
 	getTagAggregator() tagAggregatorConverter
+	getMentions() mentionsConverter
 	getWebSub() webSubConverter
 }
 
@@ -124,6 +125,10 @@ type tagAggregatorConverter interface {
 	toTagAggregatorConfig() models.TagAggregatorConfig
 }
 
+type mentionsConverter interface {
+	toMentionsConfig() models.MentionsConfig
+}
+
 type webSubConverter interface {
 	toWebSubConfig() models.WebSubConfig
 }
@@ -213,6 +218,9 @@ func buildConfig(src configSource) *models.Config {
 
 	// Convert TagAggregator config
 	config.TagAggregator = src.getTagAggregator().toTagAggregatorConfig()
+
+	// Convert Mentions config
+	config.Mentions = src.getMentions().toMentionsConfig()
 
 	// Convert WebSub config
 	config.WebSub = src.getWebSub().toWebSubConfig()
@@ -338,6 +346,7 @@ type tomlConfig struct {
 	Tags          tomlTagsConfig          `toml:"tags"`
 	Encryption    tomlEncryptionConfig    `toml:"encryption"`
 	TagAggregator tomlTagAggregatorConfig `toml:"tag_aggregator"`
+	Mentions      tomlMentionsConfig      `toml:"mentions"`
 	WebSub        tomlWebSubConfig        `toml:"websub"`
 	UnknownFields map[string]any          `toml:"-"`
 }
@@ -979,6 +988,68 @@ func (e *tomlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 	}
 }
 
+// Mentions-related TOML structs
+
+type tomlMentionsConfig struct {
+	Enabled            *bool                   `toml:"enabled"`
+	CSSClass           string                  `toml:"css_class"`
+	FromPosts          []tomlMentionPostSource `toml:"from_posts"`
+	CacheDir           string                  `toml:"cache_dir"`
+	CacheDuration      string                  `toml:"cache_duration"`
+	Timeout            int                     `toml:"timeout"`
+	ConcurrentRequests int                     `toml:"concurrent_requests"`
+}
+
+type tomlMentionPostSource struct {
+	Filter       string `toml:"filter"`
+	HandleField  string `toml:"handle_field"`
+	AliasesField string `toml:"aliases_field"`
+}
+
+func (m *tomlMentionsConfig) toMentionsConfig() models.MentionsConfig {
+	defaults := models.NewMentionsConfig()
+
+	config := models.MentionsConfig{
+		Enabled:            m.Enabled,
+		CSSClass:           m.CSSClass,
+		CacheDir:           m.CacheDir,
+		CacheDuration:      m.CacheDuration,
+		Timeout:            m.Timeout,
+		ConcurrentRequests: m.ConcurrentRequests,
+	}
+
+	// Apply defaults for unset values
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.CSSClass == "" {
+		config.CSSClass = defaults.CSSClass
+	}
+	if config.CacheDir == "" {
+		config.CacheDir = defaults.CacheDir
+	}
+	if config.CacheDuration == "" {
+		config.CacheDuration = defaults.CacheDuration
+	}
+	if config.Timeout == 0 {
+		config.Timeout = defaults.Timeout
+	}
+	if config.ConcurrentRequests == 0 {
+		config.ConcurrentRequests = defaults.ConcurrentRequests
+	}
+
+	// Convert from_posts sources
+	for _, src := range m.FromPosts {
+		config.FromPosts = append(config.FromPosts, models.MentionPostSource{
+			Filter:       src.Filter,
+			HandleField:  src.HandleField,
+			AliasesField: src.AliasesField,
+		})
+	}
+
+	return config
+}
+
 func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	// Get default values
 	defaults := models.NewBlogrollConfig()
@@ -1164,6 +1235,7 @@ func (c *tomlConfig) getTags() tagsConverter                   { return &c.Tags 
 func (c *tomlConfig) getEncryption() encryptionConverter       { return &c.Encryption }
 func (c *tomlConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAggregator }
 func (c *tomlConfig) getWebSub() webSubConverter               { return &c.WebSub }
+func (c *tomlConfig) getMentions() mentionsConverter           { return &c.Mentions }
 
 func (c *tomlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -1338,6 +1410,7 @@ type yamlConfig struct {
 	Tags          yamlTagsConfig          `yaml:"tags"`
 	Encryption    yamlEncryptionConfig    `yaml:"encryption"`
 	TagAggregator yamlTagAggregatorConfig `yaml:"tag_aggregator"`
+	Mentions      yamlMentionsConfig      `yaml:"mentions"`
 	WebSub        yamlWebSubConfig        `yaml:"websub"`
 }
 
@@ -1518,6 +1591,67 @@ func (t *yamlTagAggregatorConfig) toTagAggregatorConfig() models.TagAggregatorCo
 		config.Enabled = defaults.Enabled
 	}
 
+	return config
+}
+
+// Mentions-related YAML structs
+
+type yamlMentionsConfig struct {
+	Enabled            *bool                   `yaml:"enabled"`
+	CSSClass           string                  `yaml:"css_class"`
+	FromPosts          []yamlMentionPostSource `yaml:"from_posts"`
+	CacheDir           string                  `yaml:"cache_dir"`
+	CacheDuration      string                  `yaml:"cache_duration"`
+	Timeout            int                     `yaml:"timeout"`
+	ConcurrentRequests int                     `yaml:"concurrent_requests"`
+}
+
+type yamlMentionPostSource struct {
+	Filter       string `yaml:"filter"`
+	HandleField  string `yaml:"handle_field"`
+	AliasesField string `yaml:"aliases_field"`
+}
+
+func (m *yamlMentionsConfig) toMentionsConfig() models.MentionsConfig {
+	defaults := models.NewMentionsConfig()
+
+	config := models.MentionsConfig{
+		Enabled:            m.Enabled,
+		CSSClass:           m.CSSClass,
+		CacheDir:           m.CacheDir,
+		CacheDuration:      m.CacheDuration,
+		Timeout:            m.Timeout,
+		ConcurrentRequests: m.ConcurrentRequests,
+	}
+
+	// Apply defaults for unset values
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.CSSClass == "" {
+		config.CSSClass = defaults.CSSClass
+	}
+	if config.CacheDir == "" {
+		config.CacheDir = defaults.CacheDir
+	}
+	if config.CacheDuration == "" {
+		config.CacheDuration = defaults.CacheDuration
+	}
+	if config.Timeout == 0 {
+		config.Timeout = defaults.Timeout
+	}
+	if config.ConcurrentRequests == 0 {
+		config.ConcurrentRequests = defaults.ConcurrentRequests
+	}
+
+	// Convert from_posts sources
+	for _, src := range m.FromPosts {
+		config.FromPosts = append(config.FromPosts, models.MentionPostSource{
+			Filter:       src.Filter,
+			HandleField:  src.HandleField,
+			AliasesField: src.AliasesField,
+		})
+	}
 	return config
 }
 
@@ -2215,6 +2349,7 @@ func (c *yamlConfig) getTags() tagsConverter                   { return &c.Tags 
 func (c *yamlConfig) getEncryption() encryptionConverter       { return &c.Encryption }
 func (c *yamlConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAggregator }
 func (c *yamlConfig) getWebSub() webSubConverter               { return &c.WebSub }
+func (c *yamlConfig) getMentions() mentionsConverter           { return &c.Mentions }
 
 func (c *yamlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -2327,6 +2462,7 @@ type jsonConfig struct {
 	Tags          jsonTagsConfig          `json:"tags"`
 	Encryption    jsonEncryptionConfig    `json:"encryption"`
 	TagAggregator jsonTagAggregatorConfig `json:"tag_aggregator"`
+	Mentions      jsonMentionsConfig      `json:"mentions"`
 	WebSub        jsonWebSubConfig        `json:"websub"`
 }
 
@@ -2507,6 +2643,67 @@ func (t *jsonTagAggregatorConfig) toTagAggregatorConfig() models.TagAggregatorCo
 		config.Enabled = defaults.Enabled
 	}
 
+	return config
+}
+
+// Mentions-related JSON structs
+
+type jsonMentionsConfig struct {
+	Enabled            *bool                   `json:"enabled"`
+	CSSClass           string                  `json:"css_class"`
+	FromPosts          []jsonMentionPostSource `json:"from_posts"`
+	CacheDir           string                  `json:"cache_dir"`
+	CacheDuration      string                  `json:"cache_duration"`
+	Timeout            int                     `json:"timeout"`
+	ConcurrentRequests int                     `json:"concurrent_requests"`
+}
+
+type jsonMentionPostSource struct {
+	Filter       string `json:"filter"`
+	HandleField  string `json:"handle_field"`
+	AliasesField string `json:"aliases_field"`
+}
+
+func (m *jsonMentionsConfig) toMentionsConfig() models.MentionsConfig {
+	defaults := models.NewMentionsConfig()
+
+	config := models.MentionsConfig{
+		Enabled:            m.Enabled,
+		CSSClass:           m.CSSClass,
+		CacheDir:           m.CacheDir,
+		CacheDuration:      m.CacheDuration,
+		Timeout:            m.Timeout,
+		ConcurrentRequests: m.ConcurrentRequests,
+	}
+
+	// Apply defaults for unset values
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.CSSClass == "" {
+		config.CSSClass = defaults.CSSClass
+	}
+	if config.CacheDir == "" {
+		config.CacheDir = defaults.CacheDir
+	}
+	if config.CacheDuration == "" {
+		config.CacheDuration = defaults.CacheDuration
+	}
+	if config.Timeout == 0 {
+		config.Timeout = defaults.Timeout
+	}
+	if config.ConcurrentRequests == 0 {
+		config.ConcurrentRequests = defaults.ConcurrentRequests
+	}
+
+	// Convert from_posts sources
+	for _, src := range m.FromPosts {
+		config.FromPosts = append(config.FromPosts, models.MentionPostSource{
+			Filter:       src.Filter,
+			HandleField:  src.HandleField,
+			AliasesField: src.AliasesField,
+		})
+	}
 	return config
 }
 
@@ -3203,6 +3400,7 @@ func (c *jsonConfig) getBlogroll() blogrollConverter           { return &c.Blogr
 func (c *jsonConfig) getTags() tagsConverter                   { return &c.Tags }
 func (c *jsonConfig) getEncryption() encryptionConverter       { return &c.Encryption }
 func (c *jsonConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAggregator }
+func (c *jsonConfig) getMentions() mentionsConverter           { return &c.Mentions }
 func (c *jsonConfig) getWebSub() webSubConverter               { return &c.WebSub }
 
 func (c *jsonConfig) toConfig() *models.Config {
