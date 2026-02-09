@@ -40,6 +40,9 @@ var (
 
 	// Extract attribute selectors: [attr], [attr=value], etc.
 	attrRegex = regexp.MustCompile(`\[([a-zA-Z][a-zA-Z0-9-]*)`)
+
+	// Extract @-rule type (e.g., "media" from "@media")
+	atRuleTypeRegex = regexp.MustCompile(`@([a-zA-Z-]+)`)
 )
 
 // ParseCSS parses CSS content into a slice of CSSRule structs.
@@ -211,9 +214,7 @@ func parseRegularRule(content string, startPos int) (rule *CSSRule, newPos int) 
 
 // getAtRuleType extracts the type of @-rule.
 func getAtRuleType(content string) string {
-	// Extract the rule type (word after @)
-	re := regexp.MustCompile(`@([a-zA-Z-]+)`)
-	matches := re.FindStringSubmatch(content)
+	matches := atRuleTypeRegex.FindStringSubmatch(content)
 	if len(matches) > 1 {
 		return strings.ToLower(matches[1])
 	}
@@ -289,25 +290,32 @@ func ExtractIDsFromSelector(selector string) []string {
 	return ids
 }
 
-// ExtractElementsFromSelector extracts element names from a selector.
+// ExtractElementsFromSelector extracts unique element names from a selector.
+// Element names are normalized to lowercase and deduplicated.
 func ExtractElementsFromSelector(selector string) []string {
 	matches := elementRegex.FindAllStringSubmatch(selector, -1)
 	elements := make([]string, 0, len(matches))
+	seen := make(map[string]bool)
 	for _, match := range matches {
 		if len(match) > 1 {
-			elements = append(elements, strings.ToLower(match[1]))
+			elem := strings.ToLower(match[1])
+			if !seen[elem] {
+				elements = append(elements, elem)
+				seen[elem] = true
+			}
 		}
 	}
 	return elements
 }
 
 // ExtractAttributesFromSelector extracts attribute names from a selector.
+// Attribute names are normalized to lowercase for case-insensitive matching.
 func ExtractAttributesFromSelector(selector string) []string {
 	matches := attrRegex.FindAllStringSubmatch(selector, -1)
 	attrs := make([]string, 0, len(matches))
 	for _, match := range matches {
 		if len(match) > 1 {
-			attrs = append(attrs, match[1])
+			attrs = append(attrs, strings.ToLower(match[1]))
 		}
 	}
 	return attrs
