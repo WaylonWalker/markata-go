@@ -3,12 +3,14 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -53,6 +55,9 @@ var (
 
 	// isRebuilding tracks whether a rebuild is in progress to avoid event loops.
 	isRebuilding atomic.Bool
+
+	// rebuildPending tracks whether changes happened during a rebuild.
+	rebuildPending atomic.Bool
 )
 
 // serveCmd represents the serve command.
@@ -248,6 +253,10 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 // createHandler creates an HTTP handler that serves files with live reload injection.
 func createHandler(outputDir string) http.Handler {
 	fileServer := http.FileServer(http.Dir(outputDir))
+	absOutputDir, err := filepath.Abs(outputDir)
+	if err != nil {
+		absOutputDir = outputDir
+	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Log requests in verbose mode
@@ -268,19 +277,19 @@ func createHandler(outputDir string) http.Handler {
 		}
 
 		// Determine the file path
-		path := r.URL.Path
-		if path == "/" {
-			path = "/index.html"
+		fullPath, requestPath, resolveErr := resolveRequestPath(absOutputDir, r.URL.Path)
+		if resolveErr != nil {
+			serve404Page(w, outputDir)
+			return
 		}
 
 		// Check if file exists
-		fullPath := filepath.Join(outputDir, path)
 		info, err := os.Stat(fullPath)
 		if err == nil && info.IsDir() {
 			// Try index.html in directory
 			indexPath := filepath.Join(fullPath, "index.html")
 			if _, err := os.Stat(indexPath); err == nil {
-				path = filepath.Join(path, "index.html")
+				requestPath = path.Join(requestPath, "index.html")
 				fullPath = indexPath
 			}
 		}
@@ -292,12 +301,13 @@ func createHandler(outputDir string) http.Handler {
 		}
 
 		// Check if it's an HTML file and inject live reload script
-		if strings.HasSuffix(path, ".html") || (info != nil && !info.IsDir() && strings.HasSuffix(fullPath, ".html")) {
+		if strings.HasSuffix(requestPath, ".html") || (info != nil && !info.IsDir() && strings.HasSuffix(fullPath, ".html")) {
 			serveHTMLWithLiveReload(w, fullPath, outputDir)
 			return
 		}
 
 		// Serve with file server
+		r.URL.Path = requestPath
 		fileServer.ServeHTTP(w, r)
 	})
 }
@@ -748,11 +758,6 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 				return
 			}
 
-			// Skip events during rebuild to avoid infinite loops
-			if isRebuilding.Load() {
-				continue
-			}
-
 			// Get absolute path for comparison
 			absEventPath, err := filepath.Abs(event.Name)
 			if err != nil {
@@ -760,7 +765,7 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 			}
 
 			// Ignore events for output directory
-			if serveOutputPath != "" && strings.HasPrefix(absEventPath, serveOutputPath) {
+			if isPathWithinDir(absEventPath, serveOutputPath) {
 				continue
 			}
 
@@ -774,10 +779,15 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 				continue
 			}
 
-			// Only trigger on write and create events
-			if event.Op&(fsnotify.Write|fsnotify.Create) != 0 {
+			// Trigger on write/create/remove/rename
+			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) != 0 {
 				if verbose {
 					fmt.Printf("File changed: %s\n", event.Name)
+				}
+
+				if isRebuilding.Load() {
+					rebuildPending.Store(true)
+					continue
 				}
 
 				// Debounce rebuilds
@@ -796,7 +806,7 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 }
 
 // handleRebuilds processes rebuild requests with debouncing.
-func handleRebuilds(ctx context.Context, rebuildCh <-chan struct{}) {
+func handleRebuilds(ctx context.Context, rebuildCh chan struct{}) {
 	// Debounce timer
 	var timer *time.Timer
 	debounceDelay := 300 * time.Millisecond
@@ -805,7 +815,9 @@ func handleRebuilds(ctx context.Context, rebuildCh <-chan struct{}) {
 		select {
 		case <-ctx.Done():
 			if timer != nil {
-				timer.Stop()
+				if !timer.Stop() {
+					drainTimer(timer)
+				}
 			}
 			if verbose {
 				fmt.Println("Rebuild handler canceled")
@@ -814,20 +826,42 @@ func handleRebuilds(ctx context.Context, rebuildCh <-chan struct{}) {
 		case <-rebuildCh:
 			// Reset debounce timer
 			if timer != nil {
-				timer.Stop()
+				if !timer.Stop() {
+					drainTimer(timer)
+				}
+				timer.Reset(debounceDelay)
+				continue
 			}
-			timer = time.AfterFunc(debounceDelay, func() {
-				doRebuild(ctx)
-			})
+			timer = time.NewTimer(debounceDelay)
+		case <-timerChannel(timer):
+			if timer != nil {
+				timer.Stop()
+				timer = nil
+			}
+			if ctx.Err() != nil {
+				return
+			}
+			doRebuild(ctx, rebuildCh)
 		}
 	}
 }
 
 // doRebuild performs an incremental rebuild.
-func doRebuild(ctx context.Context) {
+func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	// Set rebuilding flag to ignore events during build
 	isRebuilding.Store(true)
-	defer isRebuilding.Store(false)
+	defer func() {
+		isRebuilding.Store(false)
+		if rebuildPending.Swap(false) {
+			if ctx.Err() != nil {
+				return
+			}
+			select {
+			case rebuildCh <- struct{}{}:
+			default:
+			}
+		}
+	}()
 
 	fmt.Println("\nRebuilding...")
 	startTime := time.Now()
@@ -933,7 +967,7 @@ func addDirRecursive(watcher *fsnotify.Watcher, root string) error {
 		}
 
 		// Skip output directory
-		if serveOutputPath != "" && strings.HasPrefix(absPath, serveOutputPath) {
+		if isPathWithinDir(absPath, serveOutputPath) {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
@@ -955,4 +989,55 @@ func addDirRecursive(watcher *fsnotify.Watcher, root string) error {
 
 		return nil
 	})
+}
+
+func resolveRequestPath(outputDir, requestPath string) (string, string, error) {
+	if requestPath == "" || requestPath == "/" {
+		requestPath = "/index.html"
+	}
+
+	cleanURLPath := path.Clean("/" + requestPath)
+	relPath := strings.TrimPrefix(cleanURLPath, "/")
+	if relPath == "" {
+		relPath = "index.html"
+		cleanURLPath = "/index.html"
+	}
+
+	fullPath := filepath.Join(outputDir, filepath.FromSlash(relPath))
+	if !isPathWithinDir(fullPath, outputDir) {
+		return "", "", errors.New("resolved path escapes output directory")
+	}
+
+	return fullPath, cleanURLPath, nil
+}
+
+func isPathWithinDir(pathname, dir string) bool {
+	if dir == "" {
+		return false
+	}
+	if filepath.Clean(pathname) == filepath.Clean(dir) {
+		return true
+	}
+	rel, err := filepath.Rel(dir, pathname)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+func timerChannel(timer *time.Timer) <-chan time.Time {
+	if timer == nil {
+		return nil
+	}
+	return timer.C
+}
+
+func drainTimer(timer *time.Timer) {
+	if timer == nil {
+		return
+	}
+	select {
+	case <-timer.C:
+	default:
+	}
 }
