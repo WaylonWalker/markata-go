@@ -991,19 +991,19 @@ func addDirRecursive(watcher *fsnotify.Watcher, root string) error {
 	})
 }
 
-func resolveRequestPath(outputDir, requestPath string) (string, string, error) {
+func resolveRequestPath(outputDir, requestPath string) (fullPath, cleanURLPath string, err error) {
 	if requestPath == "" || requestPath == "/" {
 		requestPath = "/index.html"
 	}
 
-	cleanURLPath := path.Clean("/" + requestPath)
+	cleanURLPath = path.Clean("/" + requestPath)
 	relPath := strings.TrimPrefix(cleanURLPath, "/")
 	if relPath == "" {
 		relPath = "index.html"
 		cleanURLPath = "/index.html"
 	}
 
-	fullPath := filepath.Join(outputDir, filepath.FromSlash(relPath))
+	fullPath = filepath.Join(outputDir, filepath.FromSlash(relPath))
 	if !isPathWithinDir(fullPath, outputDir) {
 		return "", "", errors.New("resolved path escapes output directory")
 	}
