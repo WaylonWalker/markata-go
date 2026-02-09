@@ -24,14 +24,23 @@ var initCmd = &cobra.Command{
 	Short: "Initialize a new markata-go project",
 	Long: `Initialize a new markata-go project with interactive setup.
 
-This command creates the basic project structure and configuration file
-by asking you a few questions about your site.
+This command provides a rich TUI (Text User Interface) wizard for
+project initialization. The wizard guides you through:
+
+  - Setting site information (title, description, author, URL)
+  - Configuring optional features (themes, SEO, post formats, feeds)
+  - Vending built-in assets for customization
+  - Creating your first post
+
+The wizard automatically falls back to plain text prompts when stdin
+is not a TTY. Use --plain to force plain text mode.
 
 If a configuration file already exists, you can add new features or
 update site information interactively.
 
 Example usage:
-  markata-go init           # Interactive project setup
+  markata-go init           # Interactive project setup (TUI)
+  markata-go init --plain   # Use plain text prompts
   markata-go init --force   # Overwrite existing files`,
 	RunE: runInitCommand,
 }
@@ -39,11 +48,14 @@ Example usage:
 var (
 	// initForce overwrites existing files.
 	initForce bool
+	// initPlain uses plain text prompts instead of the huh TUI wizard.
+	initPlain bool
 )
 
 func init() {
 	rootCmd.AddCommand(initCmd)
 	initCmd.Flags().BoolVar(&initForce, "force", false, "overwrite existing files")
+	initCmd.Flags().BoolVar(&initPlain, "plain", false, "use plain text prompts (for non-TTY environments)")
 }
 
 // prompt displays a question and returns the user's response or a default value.
@@ -83,6 +95,17 @@ func promptYesNo(reader *bufio.Reader, question string, defaultYes bool) bool {
 	return input == "y" || input == "yes"
 }
 
+// Feature name constants for the init wizard.
+const (
+	featureTheme        = "theme"
+	featureSEO          = "seo"
+	featurePostFormats  = "post_formats"
+	featureAdvancedFeed = "advanced_feeds"
+)
+
+// defaultConfigFilename is the default name for the configuration file.
+const defaultConfigFilename = "markata-go.toml"
+
 // featureInfo describes an available feature for the wizard.
 type featureInfo struct {
 	Name        string
@@ -93,10 +116,10 @@ type featureInfo struct {
 // detectConfiguredFeatures checks which features are already configured.
 func detectConfiguredFeatures(cfg *models.Config) map[string]bool {
 	features := make(map[string]bool)
-	features["theme"] = cfg.Theme.Palette != "" && cfg.Theme.Palette != "default-light"
-	features["seo"] = cfg.SEO.TwitterHandle != "" || cfg.SEO.DefaultImage != ""
-	features["post_formats"] = cfg.PostFormats.Markdown || cfg.PostFormats.OG
-	features["advanced_feeds"] = cfg.FeedDefaults.Formats.Atom || cfg.FeedDefaults.Formats.JSON
+	features[featureTheme] = cfg.Theme.Palette != "" && cfg.Theme.Palette != "default-light"
+	features[featureSEO] = cfg.SEO.TwitterHandle != "" || cfg.SEO.DefaultImage != ""
+	features[featurePostFormats] = cfg.PostFormats.Markdown || cfg.PostFormats.OG
+	features[featureAdvancedFeed] = cfg.FeedDefaults.Formats.Atom || cfg.FeedDefaults.Formats.JSON
 	return features
 }
 
@@ -104,24 +127,24 @@ func detectConfiguredFeatures(cfg *models.Config) map[string]bool {
 func getAvailableFeatures(configured map[string]bool) []featureInfo {
 	allFeatures := []featureInfo{
 		{
-			Name:        "theme",
+			Name:        featureTheme,
 			Description: "Theme/Palette system (color schemes)",
-			Configured:  configured["theme"],
+			Configured:  configured[featureTheme],
 		},
 		{
-			Name:        "seo",
+			Name:        featureSEO,
 			Description: "SEO metadata (Twitter, Open Graph)",
-			Configured:  configured["seo"],
+			Configured:  configured[featureSEO],
 		},
 		{
-			Name:        "post_formats",
+			Name:        featurePostFormats,
 			Description: "Post output formats (markdown source, OG cards)",
-			Configured:  configured["post_formats"],
+			Configured:  configured[featurePostFormats],
 		},
 		{
-			Name:        "advanced_feeds",
+			Name:        featureAdvancedFeed,
 			Description: "Advanced feeds (Atom, JSON Feed)",
-			Configured:  configured["advanced_feeds"],
+			Configured:  configured[featureAdvancedFeed],
 		},
 	}
 
@@ -306,13 +329,13 @@ func addFeatureAdvancedFeeds(reader *bufio.Reader, cfg *models.Config) error {
 // addFeature adds a specific feature to the configuration.
 func addFeature(reader *bufio.Reader, feature string, cfg *models.Config) error {
 	switch feature {
-	case "theme":
+	case featureTheme:
 		return addFeatureTheme(reader, cfg)
-	case "seo":
+	case featureSEO:
 		return addFeatureSEO(reader, cfg)
-	case "post_formats":
+	case featurePostFormats:
 		return addFeaturePostFormats(reader, cfg)
-	case "advanced_feeds":
+	case featureAdvancedFeed:
 		return addFeatureAdvancedFeeds(reader, cfg)
 	}
 	return nil
@@ -1116,19 +1139,65 @@ func runExistingProjectWizard(reader *bufio.Reader, configPath string) error {
 }
 
 func runInitCommand(_ *cobra.Command, _ []string) error {
-	reader := bufio.NewReader(os.Stdin)
+	// Determine if we should use the huh TUI wizard
+	// Use plain mode if: --plain flag is set, or stdin is not a TTY
+	usePlain := initPlain || !isStdinTerminal()
+
+	configPath := defaultConfigFilename
 
 	// Check for existing config file
-	configPath := "markata-go.toml"
 	if _, err := os.Stat(configPath); err == nil {
 		if initForce {
 			// Force mode - proceed with new project setup
 			fmt.Println("--force specified, overwriting existing configuration")
 		} else {
 			// Run the wizard for existing projects
-			return runExistingProjectWizard(reader, configPath)
+			if usePlain {
+				reader := bufio.NewReader(os.Stdin)
+				return runExistingProjectWizard(reader, configPath)
+			}
+			// Try to load existing config to get palette for theming
+			theme := createHuhTheme(getPaletteFromConfig(configPath))
+			return runHuhExistingProjectWizard(configPath, theme, initForce)
 		}
 	}
+
+	// New project wizard
+	if usePlain {
+		return runPlainNewProjectWizard()
+	}
+
+	// Use huh TUI wizard
+	theme := createHuhTheme("")
+	state, err := runHuhNewProjectWizard(theme)
+	if err != nil {
+		return err
+	}
+
+	return applyWizardState(state, initForce)
+}
+
+// isStdinTerminal checks if stdin is a terminal (for init wizard).
+func isStdinTerminal() bool {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) != 0
+}
+
+// getPaletteFromConfig attempts to extract the palette name from an existing config file.
+func getPaletteFromConfig(configPath string) string {
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return ""
+	}
+	return cfg.Theme.Palette
+}
+
+// runPlainNewProjectWizard runs the plain text wizard for new projects.
+func runPlainNewProjectWizard() error {
+	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println()
 	fmt.Println("Welcome to markata-go!")
@@ -1176,10 +1245,11 @@ func runInitCommand(_ *cobra.Command, _ []string) error {
 	}
 
 	// Write config file
+	configPath := defaultConfigFilename
 	if err := writeConfigTOML(configPath, cfg); err != nil {
-		return fmt.Errorf("failed to write markata-go.toml: %w", err)
+		return fmt.Errorf("failed to write %s: %w", defaultConfigFilename, err)
 	}
-	fmt.Println("  Created markata-go.toml")
+	fmt.Printf("  Created %s\n", defaultConfigFilename)
 
 	fmt.Println()
 
