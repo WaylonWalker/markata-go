@@ -237,26 +237,34 @@ func matchesPreservePattern(selector string, patterns []string) bool {
 	classes := ExtractClassesFromSelector(selector)
 	ids := ExtractIDsFromSelector(selector)
 
-	for _, class := range classes {
-		if matchesPreservePatterns(class, patterns) {
+	for _, pattern := range patterns {
+		// Match the entire selector directly
+		if matched, err := filepath.Match(pattern, selector); err == nil && matched {
 			return true
 		}
-	}
 
-	for _, id := range ids {
-		if matchesPreservePatterns(id, patterns) {
-			return true
+		// Match against classes
+		for _, class := range classes {
+			if matched, err := filepath.Match(pattern, class); err == nil && matched {
+				return true
+			}
+		}
+
+		// Match against IDs
+		for _, id := range ids {
+			if matched, err := filepath.Match(pattern, id); err == nil && matched {
+				return true
+			}
 		}
 	}
 
 	return false
 }
 
-// matchesPreservePatterns checks if a name matches any preserve pattern.
-func matchesPreservePatterns(name string, patterns []string) bool {
+// matchesPreservePatterns checks if a class or ID matches any preserve pattern.
+func matchesPreservePatterns(value string, patterns []string) bool {
 	for _, pattern := range patterns {
-		matched, err := filepath.Match(pattern, name)
-		if err == nil && matched {
+		if matched, err := filepath.Match(pattern, value); err == nil && matched {
 			return true
 		}
 	}

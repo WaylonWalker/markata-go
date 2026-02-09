@@ -114,19 +114,6 @@ func parseCriticalCSSConfig(raw map[string]interface{}) models.CriticalCSSConfig
 	return config
 }
 
-func parseIntFromInterface(value interface{}) (int, bool) {
-	switch v := value.(type) {
-	case int:
-		return v, true
-	case int64:
-		return int(v), true
-	case float64:
-		return int(v), true
-	default:
-		return 0, false
-	}
-}
-
 func toStringSlice(values []interface{}) []string {
 	result := make([]string, 0, len(values))
 	for _, value := range values {

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// CSS at-rule type constants
+// CSS at-rule type constants.
 const (
 	atRuleMedia = "media"
 )
@@ -24,7 +24,7 @@ type CSSRule struct {
 	NestedRules []CSSRule
 }
 
-// Regular expressions for CSS parsing
+// Regular expressions for CSS parsing.
 var (
 	// Match selectors within a selector list (comma-separated)
 	selectorSplitRegex = regexp.MustCompile(`\s*,\s*`)
@@ -40,6 +40,9 @@ var (
 
 	// Extract attribute selectors: [attr], [attr=value], etc.
 	attrRegex = regexp.MustCompile(`\[([a-zA-Z][a-zA-Z0-9-]*)`)
+
+	// Extract @-rule type (e.g., "media" from "@media")
+	atRuleTypeRegex = regexp.MustCompile(`@([a-zA-Z-]+)`)
 )
 
 // ParseCSS parses CSS content into a slice of CSSRule structs.
@@ -119,181 +122,201 @@ func parseRules(content string, rules []CSSRule) []CSSRule {
 	return rules
 }
 
-// parseAtRule parses an @-rule starting at pos.
-func parseAtRule(content string, pos int) (rule *CSSRule, newPos int) {
-	// Find the @-rule type
-	start := pos
-	pos++ // Skip @
+// parseAtRule parses an @-rule starting at the given position.
+func parseAtRule(content string, startPos int) (rule *CSSRule, newPos int) {
+	pos := startPos
 
-	// Read the at-rule name
-	nameStart := pos
-	for pos < len(content) && !isWhitespace(content[pos]) && content[pos] != '{' && content[pos] != ';' && content[pos] != '(' {
-		pos++
-	}
-	atType := strings.ToLower(content[nameStart:pos])
+	// Find the end of the @-rule header
+	bracePos := strings.Index(content[pos:], "{")
+	semicolonPos := strings.Index(content[pos:], ";")
 
-	// Skip whitespace and any condition/query
-	for pos < len(content) && content[pos] != '{' && content[pos] != ';' {
-		pos++
+	// If no { or ; found, invalid rule
+	if bracePos == -1 && semicolonPos == -1 {
+		return nil, startPos + 1
 	}
 
-	if pos >= len(content) {
-		return nil, pos
-	}
-
-	// Handle simple @-rules that end with semicolon (@import, @charset)
-	if content[pos] == ';' {
-		return &CSSRule{
-			Selector:   "",
-			Content:    strings.TrimSpace(content[start : pos+1]),
-			IsAtRule:   true,
-			AtRuleType: atType,
-		}, pos + 1
-	}
-
-	// Handle block @-rules (@media, @keyframes, @font-face, @supports)
-	if content[pos] == '{' {
-		// Find matching closing brace
-		braceCount := 1
-		blockStart := pos + 1
-		pos++
-		for pos < len(content) && braceCount > 0 {
-			if content[pos] == '{' {
-				braceCount++
-			} else if content[pos] == '}' {
-				braceCount--
-			}
-			pos++
+	// Check if this is a simple @-rule (ends with ;) or a block rule (has { ... })
+	if semicolonPos != -1 && (bracePos == -1 || semicolonPos < bracePos) {
+		// Simple rule like @import or @charset
+		endPos := pos + semicolonPos + 1
+		rule = &CSSRule{
+			IsAtRule: true,
+			Content:  strings.TrimSpace(content[pos:endPos]),
 		}
-
-		blockContent := content[blockStart : pos-1]
-		fullContent := content[start:pos]
-
-		rule := &CSSRule{
-			Selector:   "",
-			Content:    fullContent,
-			IsAtRule:   true,
-			AtRuleType: atType,
-		}
-
-		// Parse nested rules for @media and @supports
-		if atType == atRuleMedia || atType == "supports" || atType == "layer" {
-			rule.NestedRules = ParseCSS(blockContent)
-		}
-
-		return rule, pos
+		// Determine rule type
+		rule.AtRuleType = getAtRuleType(rule.Content)
+		return rule, endPos
 	}
 
-	return nil, pos
+	// Block rule with {...}
+	bracePos = pos + bracePos
+	endPos := findMatchingBrace(content, bracePos)
+	if endPos == -1 {
+		return nil, startPos + 1
+	}
+	endPos++
+
+	fullContent := strings.TrimSpace(content[pos:endPos])
+	if fullContent == "" {
+		return nil, startPos + 1
+	}
+
+	// Parse the @-rule
+	rule = &CSSRule{
+		IsAtRule: true,
+		Content:  fullContent,
+	}
+
+	// Extract the rule type and nested content
+	rule.AtRuleType = getAtRuleType(fullContent)
+
+	// For @media and other nested rules, parse nested content
+	if rule.AtRuleType == atRuleMedia || rule.AtRuleType == "supports" || rule.AtRuleType == "layer" {
+		// Extract content inside braces
+		innerContent := extractInnerContent(fullContent)
+		if innerContent != "" {
+			rule.NestedRules = parseRules(innerContent, nil)
+		}
+	}
+
+	return rule, endPos
 }
 
-// parseRegularRule parses a regular CSS rule (selector { properties }).
-func parseRegularRule(content string, pos int) (rule *CSSRule, newPos int) {
+// parseRegularRule parses a regular CSS rule.
+func parseRegularRule(content string, startPos int) (rule *CSSRule, newPos int) {
 	// Find the opening brace
-	selectorStart := pos
-	for pos < len(content) && content[pos] != '{' && content[pos] != '@' {
-		pos++
+	bracePos := strings.Index(content[startPos:], "{")
+	if bracePos == -1 {
+		return nil, startPos + 1
 	}
+	bracePos += startPos
 
-	if pos >= len(content) || content[pos] == '@' {
-		return nil, selectorStart
+	// Find the matching closing brace
+	endPos := findMatchingBrace(content, bracePos)
+	if endPos == -1 {
+		return nil, startPos + 1
 	}
+	endPos++
 
-	selector := strings.TrimSpace(content[selectorStart:pos])
+	// Extract selector and content
+	selector := strings.TrimSpace(content[startPos:bracePos])
 	if selector == "" {
-		return nil, pos
+		return nil, endPos
 	}
 
-	// Find the closing brace
-	braceCount := 1
-	pos++ // Skip opening brace
-	propsStart := pos
-	for pos < len(content) && braceCount > 0 {
-		if content[pos] == '{' {
-			braceCount++
-		} else if content[pos] == '}' {
-			braceCount--
-		}
-		pos++
-	}
-
-	props := content[propsStart : pos-1]
+	fullContent := strings.TrimSpace(content[startPos:endPos])
 
 	return &CSSRule{
 		Selector: selector,
-		Content:  selector + " {" + props + "}",
-		IsAtRule: false,
-	}, pos
+		Content:  fullContent,
+	}, endPos
 }
 
-// isWhitespace returns true if c is a whitespace character.
-func isWhitespace(c byte) bool {
-	return c == ' ' || c == '\t' || c == '\n' || c == '\r'
+// getAtRuleType extracts the type of @-rule.
+func getAtRuleType(content string) string {
+	matches := atRuleTypeRegex.FindStringSubmatch(content)
+	if len(matches) > 1 {
+		return strings.ToLower(matches[1])
+	}
+	return ""
 }
 
-// ExtractSelectorsFromRule extracts individual selectors from a CSS rule.
-// A rule like "h1, h2, .title { ... }" returns ["h1", "h2", ".title"].
+// findMatchingBrace finds the matching closing brace for the opening brace at position start.
+func findMatchingBrace(content string, start int) int {
+	count := 0
+	for i := start; i < len(content); i++ {
+		switch content[i] {
+		case '{':
+			count++
+		case '}':
+			count--
+			if count == 0 {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+// extractInnerContent extracts the content inside braces.
+func extractInnerContent(content string) string {
+	start := strings.Index(content, "{")
+	end := strings.LastIndex(content, "}")
+	if start == -1 || end == -1 || end <= start {
+		return ""
+	}
+	return strings.TrimSpace(content[start+1 : end])
+}
+
+// isWhitespace returns true for CSS whitespace characters.
+func isWhitespace(ch byte) bool {
+	return ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t'
+}
+
+// ExtractSelectorsFromRule extracts individual selectors from a selector list.
 func ExtractSelectorsFromRule(selector string) []string {
-	parts := selectorSplitRegex.Split(selector, -1)
-	result := make([]string, 0, len(parts))
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part != "" {
-			result = append(result, part)
+	selectors := selectorSplitRegex.Split(selector, -1)
+	result := make([]string, 0, len(selectors))
+	for _, sel := range selectors {
+		trimmed := strings.TrimSpace(sel)
+		if trimmed != "" {
+			result = append(result, trimmed)
 		}
 	}
 	return result
 }
 
-// ExtractClassesFromSelector extracts class names from a CSS selector.
+// ExtractClassesFromSelector extracts class names from a selector.
 func ExtractClassesFromSelector(selector string) []string {
 	matches := classRegex.FindAllStringSubmatch(selector, -1)
-	result := make([]string, 0, len(matches))
+	classes := make([]string, 0, len(matches))
 	for _, match := range matches {
 		if len(match) > 1 {
-			result = append(result, match[1])
+			classes = append(classes, match[1])
 		}
 	}
-	return result
+	return classes
 }
 
-// ExtractIDsFromSelector extracts ID names from a CSS selector.
+// ExtractIDsFromSelector extracts IDs from a selector.
 func ExtractIDsFromSelector(selector string) []string {
 	matches := idRegex.FindAllStringSubmatch(selector, -1)
-	result := make([]string, 0, len(matches))
+	ids := make([]string, 0, len(matches))
 	for _, match := range matches {
 		if len(match) > 1 {
-			result = append(result, match[1])
+			ids = append(ids, match[1])
 		}
 	}
-	return result
+	return ids
 }
 
-// ExtractElementsFromSelector extracts element/tag names from a CSS selector.
+// ExtractElementsFromSelector extracts unique element names from a selector.
+// Element names are normalized to lowercase and deduplicated.
 func ExtractElementsFromSelector(selector string) []string {
 	matches := elementRegex.FindAllStringSubmatch(selector, -1)
-	result := make([]string, 0, len(matches))
+	elements := make([]string, 0, len(matches))
 	seen := make(map[string]bool)
 	for _, match := range matches {
 		if len(match) > 1 {
 			elem := strings.ToLower(match[1])
 			if !seen[elem] {
-				result = append(result, elem)
+				elements = append(elements, elem)
 				seen[elem] = true
 			}
 		}
 	}
-	return result
+	return elements
 }
 
-// ExtractAttributesFromSelector extracts attribute names from a CSS selector.
+// ExtractAttributesFromSelector extracts attribute names from a selector.
+// Attribute names are normalized to lowercase for case-insensitive matching.
 func ExtractAttributesFromSelector(selector string) []string {
 	matches := attrRegex.FindAllStringSubmatch(selector, -1)
-	result := make([]string, 0, len(matches))
+	attrs := make([]string, 0, len(matches))
 	for _, match := range matches {
 		if len(match) > 1 {
-			result = append(result, strings.ToLower(match[1]))
+			attrs = append(attrs, strings.ToLower(match[1]))
 		}
 	}
-	return result
+	return attrs
 }
