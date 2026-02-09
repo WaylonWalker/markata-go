@@ -106,15 +106,78 @@ func (s *Server) handleMentionHover(msg *Message, handle string, mentionRange *R
 		hover := &Hover{
 			Contents: MarkupContent{
 				Kind:  "markdown",
-				Value: "**Unknown mention**\n\n`@" + handle + "` not found in blogroll configuration.",
+				Value: "**Unknown mention**\n\n`@" + handle + "` not found in blogroll or contacts.",
 			},
 			Range: mentionRange,
 		}
 		return s.sendResponse(msg.ID, hover)
 	}
 
-	// Format hover content
+	var content string
+	if mention.IsInternal {
+		content = s.formatInternalMentionHover(mention)
+	} else {
+		content = s.formatExternalMentionHover(mention)
+	}
+
+	hover := &Hover{
+		Contents: MarkupContent{
+			Kind:  "markdown",
+			Value: content,
+		},
+		Range: mentionRange,
+	}
+
+	return s.sendResponse(msg.ID, hover)
+}
+
+// formatInternalMentionHover formats hover content for internal mentions (from posts).
+func (s *Server) formatInternalMentionHover(mention *MentionInfo) string {
 	var sb strings.Builder
+
+	// Title (similar to wikilink hover)
+	sb.WriteString("## ")
+	if mention.Title != "" {
+		sb.WriteString(mention.Title)
+	} else {
+		sb.WriteString("@")
+		sb.WriteString(mention.Handle)
+	}
+	sb.WriteString("\n\n")
+
+	// Description
+	if mention.Description != "" {
+		sb.WriteString(mention.Description)
+		sb.WriteString("\n\n")
+	}
+
+	// Metadata section
+	sb.WriteString("---\n")
+	sb.WriteString("*Slug:* `")
+	sb.WriteString(mention.Slug)
+	sb.WriteString("`\n\n")
+
+	if mention.Path != "" {
+		sb.WriteString("*Path:* `")
+		sb.WriteString(mention.Path)
+		sb.WriteString("`\n")
+	}
+
+	// Show aliases if present
+	if len(mention.Aliases) > 0 {
+		sb.WriteString("\n*Aliases:* @")
+		sb.WriteString(strings.Join(mention.Aliases, ", @"))
+		sb.WriteString("\n")
+	}
+
+	return strings.TrimRight(sb.String(), "\n ")
+}
+
+// formatExternalMentionHover formats hover content for external mentions (blogroll).
+func (s *Server) formatExternalMentionHover(mention *MentionInfo) string {
+	var sb strings.Builder
+
+	// Header with handle and title
 	sb.WriteString("## @")
 	sb.WriteString(mention.Handle)
 	if mention.Title != "" {
@@ -123,6 +186,7 @@ func (s *Server) handleMentionHover(msg *Message, handle string, mentionRange *R
 	}
 	sb.WriteString("\n\n")
 
+	// Description
 	if mention.Description != "" {
 		sb.WriteString(mention.Description)
 		sb.WriteString("\n\n")
@@ -152,21 +216,7 @@ func (s *Server) handleMentionHover(msg *Message, handle string, mentionRange *R
 		sb.WriteString("*No additional information available.*\n")
 	}
 
-	// Trim trailing whitespace to avoid width calculation issues in editors
-	content := strings.TrimRight(sb.String(), "\n ")
-	if content == "" {
-		content = "## @" + mention.Handle
-	}
-
-	hover := &Hover{
-		Contents: MarkupContent{
-			Kind:  "markdown",
-			Value: content,
-		},
-		Range: mentionRange,
-	}
-
-	return s.sendResponse(msg.ID, hover)
+	return strings.TrimRight(sb.String(), "\n ")
 }
 
 // getWikilinkAtPosition returns the wikilink slug at the given position.

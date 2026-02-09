@@ -108,6 +108,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// TagAggregator - merge
 	result.TagAggregator = mergeTagAggregatorConfig(base.TagAggregator, override.TagAggregator)
 
+	// Mentions - merge
+	result.Mentions = mergeMentionsConfig(base.Mentions, override.Mentions)
+
 	// Extra (plugin configs) - merge
 	result.Extra = mergeExtra(base.Extra, override.Extra)
 
@@ -955,6 +958,48 @@ func mergeTagAggregatorConfig(base, override models.TagAggregatorConfig) models.
 	// GenerateReport - override if true
 	if override.GenerateReport {
 		result.GenerateReport = true
+	}
+
+	return result
+}
+
+// mergeMentionsConfig merges MentionsConfig values.
+func mergeMentionsConfig(base, override models.MentionsConfig) models.MentionsConfig {
+	result := base
+
+	// Enabled - override if explicitly set
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+
+	// CSSClass - override if set
+	if override.CSSClass != "" {
+		result.CSSClass = override.CSSClass
+	}
+
+	// FromPosts - override if set (don't merge, replace entirely)
+	if len(override.FromPosts) > 0 {
+		result.FromPosts = override.FromPosts
+	}
+
+	// CacheDir - override if set
+	if override.CacheDir != "" {
+		result.CacheDir = override.CacheDir
+	}
+
+	// CacheDuration - override if set
+	if override.CacheDuration != "" {
+		result.CacheDuration = override.CacheDuration
+	}
+
+	// Timeout - override if set
+	if override.Timeout > 0 {
+		result.Timeout = override.Timeout
+	}
+
+	// ConcurrentRequests - override if set
+	if override.ConcurrentRequests > 0 {
+		result.ConcurrentRequests = override.ConcurrentRequests
 	}
 
 	return result

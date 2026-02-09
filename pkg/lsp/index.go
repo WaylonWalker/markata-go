@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/BurntSushi/toml"
+	"github.com/WaylonWalker/markata-go/pkg/filter"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/plugins"
 	"gopkg.in/yaml.v3"
@@ -47,6 +48,9 @@ type PostInfo struct {
 	// Description is the post description/excerpt
 	Description string
 
+	// Metadata is the parsed frontmatter for filter evaluation
+	Metadata map[string]interface{}
+
 	// Aliases are alternative slugs that resolve to this post
 	Aliases []string
 
@@ -54,7 +58,8 @@ type PostInfo struct {
 	Wikilinks []WikilinkInfo
 }
 
-// MentionInfo contains indexed information about a blogroll mention.
+// MentionInfo contains indexed information about a mention.
+// Mentions can be external (from blogroll) or internal (from posts matching a filter).
 type MentionInfo struct {
 	// Handle is the primary handle (e.g., "daverupert")
 	Handle string
@@ -65,14 +70,27 @@ type MentionInfo struct {
 	// Title is the display name (e.g., "Dave Rupert")
 	Title string
 
-	// SiteURL is the website URL
-	SiteURL string
-
-	// FeedURL is the RSS/Atom feed URL
-	FeedURL string
-
 	// Description is a short description
 	Description string
+
+	// --- External (blogroll) fields ---
+
+	// SiteURL is the website URL (external mentions only)
+	SiteURL string
+
+	// FeedURL is the RSS/Atom feed URL (external mentions only)
+	FeedURL string
+
+	// --- Internal (from_posts) fields ---
+
+	// IsInternal indicates this mention comes from a post, not blogroll
+	IsInternal bool
+
+	// Slug is the post slug (internal mentions only)
+	Slug string
+
+	// Path is the file path (internal mentions only)
+	Path string
 }
 
 // WikilinkInfo contains information about a wikilink in a post.
@@ -116,8 +134,8 @@ func (idx *Index) Build(rootPath string) error {
 	idx.indexBlogrollMentions(rootPath)
 
 	// Walk the directory tree
-	return filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
+	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
 			return nil // Skip files we can't access
 		}
 
@@ -136,12 +154,21 @@ func (idx *Index) Build(rootPath string) error {
 		}
 
 		// Index this file
-		if err := idx.indexFile(path); err != nil {
-			idx.logger.Printf("Failed to index %s: %v", path, err)
+		if indexErr := idx.indexFile(path); indexErr != nil {
+			idx.logger.Printf("Failed to index %s: %v", path, indexErr)
 		}
 
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	// Index mentions from posts matching from_posts config
+	idx.indexFromPostsMentions(rootPath)
+
+	return nil
 }
 
 // indexFile indexes a single markdown file.
@@ -198,6 +225,7 @@ func (idx *Index) indexContent(path, content string) error {
 		Slug:        slug,
 		Title:       title,
 		Description: description,
+		Metadata:    metadata,
 		Aliases:     aliases,
 		Wikilinks:   wikilinks,
 	}
@@ -620,6 +648,271 @@ func (idx *Index) indexFeedAsMention(feed *blogrollFeedConfig) {
 			}
 		}
 	}
+}
+
+// indexFromPostsMentions reads the mentions.from_posts config and indexes
+// matching posts as mentions for LSP completion and hover.
+func (idx *Index) indexFromPostsMentions(rootPath string) {
+	// Try to find and parse config file
+	configPaths := []string{
+		filepath.Join(rootPath, "markata-go.toml"),
+		filepath.Join(rootPath, "markata.toml"),
+		filepath.Join(rootPath, "markata-go.yaml"),
+		filepath.Join(rootPath, "markata.yaml"),
+	}
+
+	for _, configPath := range configPaths {
+		content, err := os.ReadFile(configPath)
+		if err != nil {
+			continue
+		}
+
+		var sources []mentionPostSource
+		if strings.HasSuffix(configPath, ".toml") {
+			sources = idx.parseMentionsFromPostsTOML(content)
+		} else {
+			sources = idx.parseMentionsFromPostsYAML(content)
+		}
+
+		if len(sources) == 0 {
+			continue
+		}
+
+		// Get all unique posts (filter out alias entries)
+		uniquePosts := idx.getUniquePosts()
+
+		for _, source := range sources {
+			if source.Filter == "" {
+				continue
+			}
+
+			// Parse the filter expression
+			f, err := filter.Parse(source.Filter)
+			if err != nil {
+				idx.logger.Printf("mentions from_posts: error parsing filter %q: %v", source.Filter, err)
+				continue
+			}
+
+			// Evaluate filter against each post
+			matchCount := 0
+			for _, postInfo := range uniquePosts {
+				// Convert PostInfo to a minimal models.Post for filter evaluation
+				post := idx.postInfoToPost(postInfo)
+
+				match, err := f.Match(post)
+				if err != nil {
+					continue
+				}
+
+				if match {
+					idx.indexPostAsMention(postInfo, source)
+					matchCount++
+				}
+			}
+
+			if matchCount > 0 {
+				idx.logger.Printf("Indexed %d mentions from posts matching filter %q", matchCount, source.Filter)
+			}
+		}
+
+		return // Only use first config found
+	}
+}
+
+// mentionPostSource mirrors models.MentionPostSource for config parsing.
+type mentionPostSource struct {
+	Filter       string `toml:"filter" yaml:"filter"`
+	HandleField  string `toml:"handle_field" yaml:"handle_field"`
+	AliasesField string `toml:"aliases_field" yaml:"aliases_field"`
+}
+
+// parseMentionsFromPostsTOML extracts from_posts config from TOML content.
+func (idx *Index) parseMentionsFromPostsTOML(content []byte) []mentionPostSource {
+	// Try markata-go.mentions first (new format)
+	var configNew struct {
+		MarktaGo struct {
+			Mentions struct {
+				FromPosts []mentionPostSource `toml:"from_posts"`
+			} `toml:"mentions"`
+		} `toml:"markata-go"`
+	}
+
+	if err := toml.Unmarshal(content, &configNew); err == nil {
+		if len(configNew.MarktaGo.Mentions.FromPosts) > 0 {
+			return configNew.MarktaGo.Mentions.FromPosts
+		}
+	}
+
+	// Fall back to mentions (old format)
+	var configOld struct {
+		Mentions struct {
+			FromPosts []mentionPostSource `toml:"from_posts"`
+		} `toml:"mentions"`
+	}
+
+	if err := toml.Unmarshal(content, &configOld); err != nil {
+		return nil
+	}
+
+	return configOld.Mentions.FromPosts
+}
+
+// parseMentionsFromPostsYAML extracts from_posts config from YAML content.
+func (idx *Index) parseMentionsFromPostsYAML(content []byte) []mentionPostSource {
+	var config struct {
+		Mentions struct {
+			FromPosts []mentionPostSource `yaml:"from_posts"`
+		} `yaml:"mentions"`
+	}
+
+	if err := yaml.Unmarshal(content, &config); err != nil {
+		return nil
+	}
+
+	return config.Mentions.FromPosts
+}
+
+// getUniquePosts returns all unique posts (excluding alias entries).
+func (idx *Index) getUniquePosts() []*PostInfo {
+	seen := make(map[string]bool)
+	var posts []*PostInfo
+
+	for _, post := range idx.posts {
+		if !seen[post.Path] {
+			seen[post.Path] = true
+			posts = append(posts, post)
+		}
+	}
+
+	return posts
+}
+
+// postInfoToPost converts a PostInfo to a minimal models.Post for filter evaluation.
+func (idx *Index) postInfoToPost(info *PostInfo) *models.Post {
+	post := &models.Post{
+		Path: info.Path,
+		Slug: info.Slug,
+		Href: "/" + info.Slug + "/",
+	}
+
+	// Set title if present
+	if info.Title != "" {
+		post.Title = &info.Title
+	}
+
+	// Set description if present
+	if info.Description != "" {
+		post.Description = &info.Description
+	}
+
+	// Extract tags from metadata
+	if info.Metadata != nil {
+		if tags, ok := info.Metadata["tags"]; ok {
+			post.Tags = extractTagsFromMetadata(tags)
+		}
+
+		// Copy other metadata to Extra for filter access
+		post.Extra = make(map[string]interface{})
+		for k, v := range info.Metadata {
+			post.Extra[k] = v
+		}
+	}
+
+	return post
+}
+
+// extractTagsFromMetadata converts various tag formats to []string.
+func extractTagsFromMetadata(tags interface{}) []string {
+	switch t := tags.(type) {
+	case []string:
+		return t
+	case []interface{}:
+		result := make([]string, 0, len(t))
+		for _, v := range t {
+			if s, ok := v.(string); ok {
+				result = append(result, s)
+			}
+		}
+		return result
+	case string:
+		// Single tag as string
+		return []string{t}
+	default:
+		return nil
+	}
+}
+
+// indexPostAsMention indexes a post as a mention.
+func (idx *Index) indexPostAsMention(postInfo *PostInfo, source mentionPostSource) {
+	idx.mentionMu.Lock()
+	defer idx.mentionMu.Unlock()
+
+	// Determine handle from configured field or fall back to slug
+	handle := idx.getHandleFromPostInfo(postInfo, source.HandleField)
+	if handle == "" {
+		return
+	}
+
+	handle = strings.ToLower(handle)
+
+	// Create mention info for internal post
+	info := &MentionInfo{
+		Handle:      handle,
+		Title:       postInfo.Title,
+		Description: postInfo.Description,
+		IsInternal:  true,
+		Slug:        postInfo.Slug,
+		Path:        postInfo.Path,
+	}
+
+	// Index by handle (first entry wins)
+	if _, exists := idx.mentions[handle]; !exists {
+		idx.mentions[handle] = info
+	}
+
+	// Index aliases if configured
+	if source.AliasesField != "" && postInfo.Metadata != nil {
+		if aliasesRaw, ok := postInfo.Metadata[source.AliasesField]; ok {
+			aliases := extractTagsFromMetadata(aliasesRaw) // Reuse tag extraction logic
+			for _, alias := range aliases {
+				alias = strings.ToLower(alias)
+				if alias != "" && alias != handle {
+					if _, exists := idx.mentions[alias]; !exists {
+						idx.mentions[alias] = info
+					}
+				}
+			}
+			info.Aliases = aliases
+		}
+	}
+}
+
+// getHandleFromPostInfo extracts a handle from a post's metadata.
+func (idx *Index) getHandleFromPostInfo(postInfo *PostInfo, fieldName string) string {
+	// If no field specified, use slug
+	if fieldName == "" {
+		return postInfo.Slug
+	}
+
+	// Check metadata for the field
+	if postInfo.Metadata == nil {
+		return postInfo.Slug
+	}
+
+	// Special case: if field is "slug", return slug directly
+	if fieldName == "slug" {
+		return postInfo.Slug
+	}
+
+	// Look up the field in metadata
+	if val, ok := postInfo.Metadata[fieldName]; ok {
+		if str, ok := val.(string); ok && str != "" {
+			return str
+		}
+	}
+
+	// Fall back to slug
+	return postInfo.Slug
 }
 
 // extractHandleFromFeedURL extracts a handle from a URL's domain.

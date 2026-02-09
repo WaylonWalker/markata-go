@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -667,6 +668,115 @@ site_url = "https://simonwillison.net"
 	results = idx.SearchMentions("simon")
 	if len(results) != 1 {
 		t.Errorf("SearchMentions(simon) returned %d results, want 1", len(results))
+	}
+}
+
+func TestFromPostsMentions(t *testing.T) {
+	// Create temp directory with config and contact posts
+	tmpDir := t.TempDir()
+	logger := log.New(io.Discard, "", 0)
+	idx := NewIndex(logger)
+
+	// Create config with from_posts mentions
+	configContent := `[markata-go.mentions]
+css_class = "mention"
+
+[[markata-go.mentions.from_posts]]
+filter = "'contact' in tags"
+handle_field = "slug"
+`
+	configPath := filepath.Join(tmpDir, "markata-go.toml")
+	if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+
+	// Create contact posts
+	aliceContent := `---
+title: Alice Smith
+slug: alice-smith
+tags:
+  - contact
+---
+Alice is a developer.
+`
+	alicePath := filepath.Join(tmpDir, "alice-smith.md")
+	if err := os.WriteFile(alicePath, []byte(aliceContent), 0o600); err != nil {
+		t.Fatalf("Failed to write alice.md: %v", err)
+	}
+
+	bobContent := `---
+title: Bob Jones
+slug: bob-jones
+tags:
+  - contact
+  - team
+---
+Bob is a designer.
+`
+	bobPath := filepath.Join(tmpDir, "bob-jones.md")
+	if err := os.WriteFile(bobPath, []byte(bobContent), 0o600); err != nil {
+		t.Fatalf("Failed to write bob.md: %v", err)
+	}
+
+	// Create a non-contact post (should not be indexed as mention)
+	blogContent := `---
+title: My Blog Post
+slug: my-blog-post
+tags:
+  - blog
+---
+This is a blog post.
+`
+	blogPath := filepath.Join(tmpDir, "my-blog-post.md")
+	if err := os.WriteFile(blogPath, []byte(blogContent), 0o600); err != nil {
+		t.Fatalf("Failed to write blog.md: %v", err)
+	}
+
+	// Build index
+	if err := idx.Build(tmpDir); err != nil {
+		t.Fatalf("Build failed: %v", err)
+	}
+
+	// Check that contact mentions were indexed
+	mentions := idx.AllMentions()
+	if len(mentions) != 2 {
+		t.Errorf("got %d mentions, want 2 (alice-smith, bob-jones)", len(mentions))
+	}
+
+	// Test specific handle lookup
+	alice := idx.GetByHandle("alice-smith")
+	if alice == nil {
+		t.Error("GetByHandle(alice-smith) returned nil")
+	} else {
+		if alice.Handle != "alice-smith" {
+			t.Errorf("alice.Handle = %q, want %q", alice.Handle, "alice-smith")
+		}
+		if alice.Title != "Alice Smith" {
+			t.Errorf("alice.Title = %q, want %q", alice.Title, "Alice Smith")
+		}
+		if !alice.IsInternal {
+			t.Error("alice.IsInternal should be true for from_posts mention")
+		}
+		if alice.Slug != "alice-smith" {
+			t.Errorf("alice.Slug = %q, want %q", alice.Slug, "alice-smith")
+		}
+	}
+
+	bob := idx.GetByHandle("bob-jones")
+	if bob == nil {
+		t.Error("GetByHandle(bob-jones) returned nil")
+	}
+
+	// Test that non-contact post is NOT a mention
+	blogMention := idx.GetByHandle("my-blog-post")
+	if blogMention != nil {
+		t.Error("GetByHandle(my-blog-post) should return nil for non-contact post")
+	}
+
+	// Test prefix search
+	results := idx.SearchMentions("alice")
+	if len(results) != 1 {
+		t.Errorf("SearchMentions(alice) returned %d results, want 1", len(results))
 	}
 }
 
