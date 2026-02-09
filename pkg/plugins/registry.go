@@ -94,6 +94,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["cdn_assets"] = func() lifecycle.Plugin { return NewCDNAssetsPlugin() }
 	pluginRegistry.constructors["tags_listing"] = func() lifecycle.Plugin { return NewTagsListingPlugin() }
 	pluginRegistry.constructors["theme_calendar"] = func() lifecycle.Plugin { return NewThemeCalendarPlugin() }
+	pluginRegistry.constructors["link_avatars"] = func() lifecycle.Plugin { return NewLinkAvatarsPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -197,6 +198,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewWellKnownPlugin(),
 		NewPublishHTMLPlugin(),
 		NewRandomPostPlugin(),  // Generate /random/ client-side redirect endpoint
+		NewLinkAvatarsPlugin(), // Add favicon icons to external links
 		NewRedirectsPlugin(),   // Generate redirect pages
 		NewErrorPagesPlugin(),  // Generate static 404 page
 		NewTagsListingPlugin(), // Generate /tags listing page
