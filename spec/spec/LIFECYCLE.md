@@ -947,9 +947,18 @@ When a dependency changes, all dependent posts are marked for rebuild.
 | Template file | All posts using that template |
 | Base template | All posts (cascades through inheritance) |
 | Partial/include | All posts whose templates use it |
+| Feed membership change | All posts in the affected feed |
 | Config change | Full rebuild |
 | Plugin code change | Full rebuild |
 | Markdown extension settings | Full rebuild |
+
+**Feed Membership Tracking:**
+
+Posts that belong to a feed sidebar (configured via `[components.feed_sidebar]`) track a
+`FeedMembershipHash` -- a hash of the sorted slugs of all co-members in the feed. When a
+post is added to or removed from a tag-based feed, this hash changes and all existing
+members are rebuilt with the updated sidebar. This ensures sidebar navigation stays
+consistent even when only one post's content changes.
 
 ### Implementation Notes
 
