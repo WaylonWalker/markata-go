@@ -2277,7 +2277,7 @@ func NewConfig() *Config {
 		Hooks:         []string{"default"},
 		DisabledHooks: []string{},
 		GlobConfig: GlobConfig{
-			Patterns:     []string{},
+			Patterns:     []string{"pages/**/*.md", "posts/**/*.md"},
 			UseGitignore: true,
 		},
 		MarkdownConfig: MarkdownConfig{

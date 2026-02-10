@@ -111,7 +111,7 @@ output_dir = "public"
 
 # Plugin namespaces
 [markata-go.glob]
-patterns = ["**/*.md"]
+patterns = ["pages/**/*.md", "posts/**/*.md"]
 
 [markata-go.markdown]
 extensions = ["tables"]
@@ -603,7 +603,7 @@ src = "/js/analytics.js"
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `patterns` | string[] | `["**/*.md"]` | Glob patterns to find content files |
+| `patterns` | string[] | `["pages/**/*.md", "posts/**/*.md"]` | Glob patterns to find content files |
 | `use_gitignore` | bool | `true` | Respect .gitignore when finding files |
 
 ```toml
@@ -1444,7 +1444,7 @@ hooks = ["default"]
 concurrency = 0  # Auto-detect based on CPU cores
 
 [markata-go.glob]
-patterns = ["**/*.md"]
+patterns = ["pages/**/*.md", "posts/**/*.md"]
 use_gitignore = true
 
 [markata-go.feed_defaults]
