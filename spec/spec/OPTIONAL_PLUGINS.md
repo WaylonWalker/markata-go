@@ -165,6 +165,9 @@ The plugin MUST implement:
 enabled = true
 cdn_url = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs"
 theme = "default"                  # default, dark, forest, neutral
+use_css_variables = true           # Use site palette CSS variables for diagram theming
+lightbox = true                    # Click diagrams to open in full-screen lightbox with pan/zoom
+lightbox_selector = ".glightbox-mermaid"  # CSS selector for mermaid lightbox links
 ```
 
 **Configuration Fields:**
@@ -174,6 +177,9 @@ theme = "default"                  # default, dark, forest, neutral
 | `enabled` | bool | `true` | Whether the plugin is active |
 | `cdn_url` | string | `"https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs"` | URL for Mermaid.js library |
 | `theme` | string | `"default"` | Mermaid theme (default, dark, forest, neutral) |
+| `use_css_variables` | bool | `true` | Derive diagram colors from site CSS custom properties (`--color-background`, `--color-text`, `--color-primary`, etc.) with hardcoded fallbacks. When enabled, the `theme` field is ignored. |
+| `lightbox` | bool | `true` | Enable click-to-zoom lightbox overlay for rendered diagrams. Uses a programmatic GLightbox instance with svg-pan-zoom for interactive pan and zoom. |
+| `lightbox_selector` | string | `".glightbox-mermaid"` | CSS selector for mermaid lightbox links (retained for backward compatibility; programmatic API does not use it). |
 
 **Syntax:**
 
@@ -190,9 +196,18 @@ graph TD
 
 1. Find all `<pre><code class="language-mermaid">` blocks
 2. Replace with `<pre class="mermaid">{diagram code}</pre>`
-3. Inject Mermaid.js script (once per post with mermaid content)
+3. Inject Mermaid.js initialization script (once per post with mermaid content)
+4. When `use_css_variables` is true, inject a script that reads CSS custom properties (`--color-background`, `--color-text`, `--color-primary`, `--color-code-bg`, `--color-surface`) and passes them to `mermaid.initialize()` with hardcoded fallbacks for each
+5. When `lightbox` is true:
+   a. Attach click handlers to each rendered SVG diagram
+   b. On first click, lazy-load svg-pan-zoom (~29KB, BSD-2) from CDN
+   c. Open a separate programmatic GLightbox instance (`selector: false`, `draggable: false`) with the SVG as `content`
+   d. On `slide_after_load` event, use `requestAnimationFrame` to `resize()` + `fit()` + `center()` the svg-pan-zoom instance
+   e. Render a toolbar overlay (Fit / + / - buttons) positioned top-right
+   f. Destroy the svg-pan-zoom instance on lightbox close to prevent memory leaks
+   g. SVG `viewBox` is synthesized from width/height attributes if missing; fixed dimensions are stripped so CSS controls sizing
 
-**Output:**
+**Output (basic, without lightbox):**
 
 ```html
 <pre class="mermaid">
@@ -207,6 +222,26 @@ graph TD
   mermaid.initialize({ startOnLoad: true, theme: 'default' });
 </script>
 ```
+
+**Lightbox interaction:**
+
+| Action | Result |
+|--------|--------|
+| Click diagram | Open lightbox with full-size diagram |
+| Mouse wheel / pinch | Zoom in/out |
+| Click + drag | Pan the diagram |
+| Fit button | Reset zoom to fit diagram in viewport |
+| + / - buttons | Zoom in / out |
+| Escape / click overlay | Close lightbox |
+
+**CSS classes added (when lightbox enabled):**
+
+| Class | Purpose |
+|-------|---------|
+| `.mermaid-lightbox-wrap` | Container inside lightbox (`position: relative; width: 100%; height: 90vh; overflow: hidden`) |
+| `.mermaid-lightbox-toolbar` | Absolute-positioned toolbar (top-right, z-index 10) |
+| `.mermaid-pz-btn` | Pan-zoom control buttons (Fit, +, -) |
+| `.svg-pan-zoom_viewport` | Applied by svg-pan-zoom; `cursor: grab` / `cursor: grabbing` |
 
 **Supported Diagram Types:**
 
