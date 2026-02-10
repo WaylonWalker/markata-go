@@ -163,6 +163,15 @@ func (p *MermaidPlugin) cssVariablesScript() string {
 	const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches ||
 	  document.documentElement.dataset.theme === 'dark';
 	const accent = css('--color-primary', '#ffcd11');
+	const flowchart = {
+		nodeSpacing: 60,
+		rankSpacing: 90,
+		padding: 12,
+	};
+	const themeCSS = ` + "`" + `
+    .label foreignObject > div { padding: 14px 14px 10px; line-height: 1.2; }
+    .nodeLabel { padding: 14px 14px 10px; line-height: 1.2; }
+  ` + "`" + `;
 	const themeVariables = {
 		background: css('--color-background', '#ffffff'),
 		primaryColor: css('--color-code-bg', '#0a0a0a'),
@@ -173,13 +182,16 @@ func (p *MermaidPlugin) cssVariablesScript() string {
 		nodeBkg: css('--color-code-bg', '#0a0a0a'),
 		nodeBorder: accent,
 		nodeTextColor: css('--color-text', '#1f2937'),
+		fontSize: '16px',
+		nodePadding: 20,
+		nodeTextMargin: 14,
 		clusterBkg: isDark ? css('--color-background', '#0f0f0f') : css('--color-surface', '#f9fafb'),
 		clusterBorder: accent,
 		clusterTextColor: css('--color-text', '#1f2937'),
 		titleColor: css('--color-text', '#1f2937'),
 		edgeLabelBackground: css('--color-code-bg', '#0a0a0a'),
 	};
-  mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables });
+  mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables, flowchart, themeCSS });
 </script>`
 }
 
