@@ -1409,12 +1409,14 @@ type Link struct {
 **Stage:** Render (after render_markdown)  
 **Purpose:** Converts `chartjs` code blocks into interactive Chart.js charts.
 
+**Status:** Enabled by default. Set `enabled = false` to disable.
+
 **Configuration (TOML):**
 ```toml
 [markata-go.chartjs]
-enabled = true
-cdn_url = "https://cdn.jsdelivr.net/npm/chart.js"
-container_class = "chartjs-container"
+enabled = true                                     # Enabled by default; set to false to disable
+cdn_url = "https://cdn.jsdelivr.net/npm/chart.js"  # Chart.js CDN URL
+container_class = "chartjs-container"              # CSS class for wrapper div
 ```
 
 **Options:**
@@ -1796,12 +1798,14 @@ exclude_patterns = ["^https://twitter\\.com", "^https://x\\.com"]
 **Stage:** Render (after wikilinks)  
 **Purpose:** Adds hover preview data attributes to wikilinks for tooltip/popup previews.
 
+**Status:** Enabled by default. Set `enabled = false` to disable.
+
 **Configuration (TOML):**
 ```toml
 [markata-go.wikilink_hover]
-enabled = true
-preview_length = 200
-include_image = true
+enabled = true           # Enabled by default; set to false to disable
+preview_length = 200     # Max characters for preview text
+include_image = true     # Add preview image if available
 screenshot_service = ""  # Optional: "https://screenshot.example.com/capture?url="
 ```
 
@@ -3048,6 +3052,11 @@ When using `DefaultPlugins()`, plugins execute in this order:
     // Render stage
     NewRenderMarkdownPlugin(),
     NewHeadingAnchorsPlugin(), // Add anchor links to headings
+    NewChartJSPlugin(),        // Convert Chart.js code blocks to charts
+    NewCSVFencePlugin(),       // Convert CSV code blocks to tables
+    NewMermaidPlugin(),        // Convert Mermaid code blocks to diagrams
+    NewGlossaryPlugin(),       // Auto-link glossary terms
+    NewWikilinkHoverPlugin(),  // Add hover data to wikilinks
     NewLinkCollectorPlugin(),  // Track inlinks/outlinks
     NewTemplatesPlugin(),
 
@@ -3260,10 +3269,12 @@ jinja: true
 **Stage:** Render (post_render)  
 **Purpose:** Converts Mermaid code blocks into rendered diagrams using Mermaid.js.
 
+**Status:** Enabled by default. Set `enabled = false` to disable.
+
 **Configuration (TOML):**
 ```toml
 [markata-go.mermaid]
-enabled = true                                              # Enable the plugin (default: false)
+enabled = true                                              # Enabled by default; set to false to disable
 cdn_url = "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs"  # Mermaid CDN URL
 theme = "default"                                           # Mermaid theme (default, dark, forest, neutral)
 ```
@@ -3310,19 +3321,6 @@ graph TD
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs';
   mermaid.initialize({ startOnLoad: true, theme: 'default' });
 </script>
-```
-
-**Enabling the plugin:**
-```go
-plugins := append(plugins.DefaultPlugins(), plugins.NewMermaidPlugin())
-```
-
-Or by name:
-```go
-pluginList, _ := plugins.PluginsByNames([]string{
-    // ... default plugins ...
-    "mermaid",
-})
 ```
 
 ### Examples
@@ -3555,10 +3553,12 @@ gitGraph
 **Stage:** Render (post_render) + Write  
 **Purpose:** Automatically links glossary terms in post content and exports a glossary JSON file.
 
+**Status:** Enabled by default. Set `enabled = false` to disable.
+
 **Configuration (TOML):**
 ```toml
 [markata-go.glossary]
-enabled = true              # Enable the plugin (default: true when configured)
+enabled = true              # Enabled by default; set to false to disable
 link_class = "glossary-term"  # CSS class for glossary links (default)
 case_sensitive = false      # Case-sensitive term matching (default: false)
 tooltip = true              # Add title attribute with description (default: true)
@@ -3630,11 +3630,6 @@ routines, and tools for building software applications...
 }
 ```
 
-**Enabling the plugin:**
-```go
-plugins := append(plugins.DefaultPlugins(), plugins.NewGlossaryPlugin())
-```
-
 ---
 
 ### csv_fence
@@ -3643,13 +3638,93 @@ plugins := append(plugins.DefaultPlugins(), plugins.NewGlossaryPlugin())
 **Stage:** Render (post_render)  
 **Purpose:** Converts CSV code blocks into HTML tables for easy data display.
 
+**Status:** Enabled by default. Set `enabled = false` to disable.
+
 **Configuration (TOML):**
 ```toml
 [markata-go.csv_fence]
-enabled = true          # Enable the plugin (default: true when configured)
+enabled = true          # Enabled by default; set to false to disable
 table_class = "csv-table"  # CSS class for generated tables (default)
 has_header = true       # Treat first row as header (default: true)
 delimiter = ","         # CSV field delimiter (default: ",")
+```
+
+**Markdown usage:**
+````markdown
+```csv
+Name,Age,City
+Alice,30,New York
+Bob,25,Los Angeles
+Charlie,35,Chicago
+```
+````
+
+**Per-block options:**
+You can override global settings per code block:
+
+````markdown
+```csv delimiter=";" has_header="false" table_class="data-table"
+Alice;30;New York
+Bob;25;Los Angeles
+```
+````
+
+**Behavior:**
+1. Finds code blocks with `language-csv` class in `ArticleHTML`
+2. Parses the CSV content with the configured delimiter
+3. Generates an HTML table with `<thead>` (if `has_header`) and `<tbody>`
+4. Properly escapes all cell content for HTML safety
+
+**HTML output:**
+```html
+<table class="csv-table">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Age</th>
+      <th>City</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Alice</td>
+      <td>30</td>
+      <td>New York</td>
+    </tr>
+    <tr>
+      <td>Bob</td>
+      <td>25</td>
+      <td>Los Angeles</td>
+    </tr>
+    <tr>
+      <td>Charlie</td>
+      <td>35</td>
+      <td>Chicago</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+**CSS styling:**
+```css
+.csv-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+}
+.csv-table th,
+.csv-table td {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    text-align: left;
+}
+.csv-table th {
+    background: #f5f5f5;
+    font-weight: bold;
+}
+.csv-table tr:nth-child(even) {
+    background: #fafafa;
+}
 ```
 
 **Markdown usage:**
