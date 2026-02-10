@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
+
+	"github.com/flosch/pongo2/v6"
 )
 
 func TestFilterRSSDate(t *testing.T) {
@@ -585,4 +587,72 @@ func stringContains(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestFilterIsVideo(t *testing.T) {
+	// Ensure filters are registered
+	registerFilters()
+
+	tests := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		{"mp4", "photo.mp4", true},
+		{"webm", "clip.webm", true},
+		{"mov", "movie.mov", true},
+		{"m4v", "video.m4v", true},
+		{"ogv", "video.ogv", true},
+		{"png", "photo.png", false},
+		{"jpg", "photo.jpg", false},
+		{"empty", "", false},
+		{"mp4_uppercase", "VIDEO.MP4", true},
+		{"no_extension", "filename", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := pongo2.AsValue(tt.input)
+			result, err := filterIsVideo(in, nil)
+			if err != nil {
+				t.Fatalf("filterIsVideo() error: %v", err)
+			}
+			got := result.Bool()
+			if got != tt.want {
+				t.Errorf("filterIsVideo(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFilterMediaURL(t *testing.T) {
+	// Ensure filters are registered
+	registerFilters()
+
+	tests := []struct {
+		name     string
+		primary  string
+		fallback string
+		want     string
+	}{
+		{"primary_only", "img.png", "", "img.png"},
+		{"fallback_only", "", "video.mp4", "video.mp4"},
+		{"both_prefers_primary", "img.png", "video.mp4", "img.png"},
+		{"both_empty", "", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := pongo2.AsValue(tt.primary)
+			param := pongo2.AsValue(tt.fallback)
+			result, err := filterMediaURL(in, param)
+			if err != nil {
+				t.Fatalf("filterMediaURL() error: %v", err)
+			}
+			got := result.String()
+			if got != tt.want {
+				t.Errorf("filterMediaURL(%q, %q) = %q, want %q", tt.primary, tt.fallback, got, tt.want)
+			}
+		})
+	}
 }

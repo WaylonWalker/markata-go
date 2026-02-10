@@ -1,20 +1,21 @@
 {# Photo Card - Image/video prominent for shots, photos, gallery posts #}
 {# Large media with aspect-ratio, caption/description below #}
 {# Auto-detects video files by extension: .mp4, .webm, .mov, .m4v, .ogv #}
+{# Supports both image and video frontmatter fields interchangeably #}
 <article class="card card-photo h-entry">
-  {% if post.image %}
+  {% with post.image|media_url:post.video as media_src %}
+  {% if media_src %}
   <a href="{{ post.href }}" class="card-image-link u-url">
-    {% with post.image|lower as img_lower %}
-    {% if img_lower|endswith:".mp4" or img_lower|endswith:".webm" or img_lower|endswith:".mov" or img_lower|endswith:".m4v" or img_lower|endswith:".ogv" %}
+    {% if media_src|is_video %}
     <video class="card-image u-video" autoplay muted loop playsinline>
-      <source src="{{ post.image }}" type="video/{% if img_lower|endswith:".mp4" or img_lower|endswith:".m4v" %}mp4{% elif img_lower|endswith:".webm" %}webm{% elif img_lower|endswith:".mov" %}quicktime{% else %}ogg{% endif %}">
+      <source src="{{ media_src }}" type="video/{% with media_src|lower as src_lower %}{% if src_lower|endswith:".mp4" or src_lower|endswith:".m4v" %}mp4{% elif src_lower|endswith:".webm" %}webm{% elif src_lower|endswith:".mov" %}quicktime{% else %}ogg{% endif %}{% endwith %}">
     </video>
     {% else %}
-    <img src="{{ post.image }}" alt="{{ post.title | default:post.description | default:'Photo' }}" class="card-image u-photo" width="1200" height="675" loading="lazy">
+    <img src="{{ media_src }}" alt="{{ post.title | default:post.description | default:'Photo' }}" class="card-image u-photo" width="1200" height="675" loading="lazy">
     {% endif %}
-    {% endwith %}
   </a>
   {% endif %}
+  {% endwith %}
 
   <div class="card-body">
     {% if post.title %}
