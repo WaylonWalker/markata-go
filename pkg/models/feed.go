@@ -225,9 +225,9 @@ func NewFeedDefaults() FeedDefaults {
 		Formats: FeedFormats{
 			HTML:    true,
 			RSS:     true,
-			Atom:    false,
-			JSON:    false,
-			Sitemap: false,
+			Atom:    true,
+			JSON:    true,
+			Sitemap: true,
 		},
 		Templates: FeedTemplates{
 			HTML:    "feed.html",

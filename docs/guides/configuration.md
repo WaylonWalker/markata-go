@@ -111,7 +111,7 @@ output_dir = "public"
 
 # Plugin namespaces
 [markata-go.glob]
-patterns = ["**/*.md"]
+patterns = ["pages/**/*.md", "posts/**/*.md"]
 
 [markata-go.markdown]
 extensions = ["tables"]
@@ -603,7 +603,7 @@ src = "/js/analytics.js"
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `patterns` | string[] | `["**/*.md"]` | Glob patterns to find content files |
+| `patterns` | string[] | `["pages/**/*.md", "posts/**/*.md"]` | Glob patterns to find content files |
 | `use_gitignore` | bool | `true` | Respect .gitignore when finding files |
 
 ```toml
@@ -982,14 +982,14 @@ See the [Blogroll Guide](/docs/guides/blogroll/) for detailed configuration and 
 | `html` | bool | `true` | Generate standard HTML pages |
 | `markdown` | bool | `true` | Generate raw markdown source |
 | `text` | bool | `true` | Generate plain text output |
-| `og` | bool | `false` | Generate OpenGraph card HTML |
+| `og` | bool | `true` | Generate OpenGraph card HTML |
 
 ```toml
 [markata-go.post_formats]
 html = true       # /slug/index.html (default)
 markdown = true   # /slug.md (canonical) - enabled by default
 text = true       # /slug.txt (canonical) - enabled by default
-og = false        # /slug/og/index.html (social card)
+og = true         # /slug/og/index.html (social card)
 ```
 
 **Reversed Redirects for txt/md**: For `.txt` and `.md` formats, content is placed at the canonical URL (`/slug.txt`, `/slug.md`) with backwards-compatible redirects at `/slug/index.txt` and `/slug/index.txt/index.html`. This supports standard web txt files like `robots.txt`, `llms.txt`, and `humans.txt`.
@@ -1444,7 +1444,7 @@ hooks = ["default"]
 concurrency = 0  # Auto-detect based on CPU cores
 
 [markata-go.glob]
-patterns = ["**/*.md"]
+patterns = ["pages/**/*.md", "posts/**/*.md"]
 use_gitignore = true
 
 [markata-go.feed_defaults]

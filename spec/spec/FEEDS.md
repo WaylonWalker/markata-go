@@ -1148,11 +1148,11 @@ If no `[markata-go.feeds.defaults]` is specified, these built-in values apply:
 | `orphan_threshold` | 3 |
 | `formats.html` | true |
 | `formats.rss` | true |
-| `formats.atom` | false |
-| `formats.json` | false |
+| `formats.atom` | true |
+| `formats.json` | true |
 | `formats.markdown` | false |
 | `formats.text` | false |
-| `formats.sitemap` | false |
+| `formats.sitemap` | true |
 | `syndication.max_items` | 20 |
 | `syndication.include_content` | false |
 
