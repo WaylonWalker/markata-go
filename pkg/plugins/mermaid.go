@@ -100,7 +100,7 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 	}
 
 	// Check if there are any mermaid code blocks
-	if !strings.Contains(post.ArticleHTML, `class="language-mermaid"`) {
+	if !strings.Contains(post.ArticleHTML, `class="language-mermaid"`) && !strings.Contains(post.ArticleHTML, `class="mermaid"`) {
 		return nil
 	}
 
@@ -127,8 +127,8 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 		return `<pre class="mermaid">` + "\n" + diagramCode + "\n</pre>"
 	})
 
-	// If we found mermaid blocks, inject the script
-	if foundMermaid {
+	// If we found mermaid blocks or existing mermaid blocks, inject the script
+	if foundMermaid || strings.Contains(result, `class="mermaid"`) {
 		result = p.injectMermaidScript(result)
 	}
 
