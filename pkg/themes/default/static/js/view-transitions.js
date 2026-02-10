@@ -310,6 +310,10 @@
       window.initNavigationShortcuts();
     }
 
+    if (window.initMermaid && typeof window.initMermaid === 'function') {
+      window.initMermaid();
+    }
+
     // Re-attach event listeners
     initNavigationInterceptor();
   }

@@ -192,6 +192,13 @@ func (p *MermaidPlugin) cssVariablesScript() string {
 		edgeLabelBackground: css('--color-code-bg', '#0a0a0a'),
 	};
   mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables, flowchart, themeCSS });
+  window.initMermaid = () => {
+    try {
+      mermaid.run();
+    } catch (_) {
+      // no-op
+    }
+  };
 </script>`
 }
 
