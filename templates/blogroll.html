@@ -36,7 +36,7 @@
         <div class="blogroll-card-content">
           <h3 class="blogroll-card-title">
             {% if feed.site_url %}
-            <a href="{{ feed.site_url }}" target="_blank" rel="noopener noreferrer">{{ feed.title }}</a>
+            <a href="{{ feed.site_url }}" target="_blank" rel="noopener noreferrer">{{ feed.title }}<span class="visually-hidden">(opens in new tab)</span></a>
             {% else %}
             {{ feed.title }}
             {% endif %}

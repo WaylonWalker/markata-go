@@ -873,3 +873,25 @@ Photo and video card templates use both filters together to support interchangea
 - [CONFIG.md](./CONFIG.md) - Template configuration
 - [CONTENT.md](./CONTENT.md) - Markdown processing
 - [PLUGINS.md](./PLUGINS.md) - Plugin development
+
+---
+
+## Accessibility Requirements
+
+Templates MUST follow these accessibility guidelines:
+
+### Image Dimensions
+
+All `<img>` tags MUST include explicit `width` and `height` attributes to prevent
+Cumulative Layout Shift (CLS). Large content images SHOULD also include `loading="lazy"`.
+
+### External Link Hints
+
+Links that open in a new tab (`target="_blank"`) MUST include a visually-hidden
+screen reader hint such as `<span class="visually-hidden">(opens in new tab)</span>`
+so that assistive technology users are warned about the navigation change.
+
+### Reduced Motion
+
+CSS hover/transition effects MUST be disabled or reduced inside a
+`@media (prefers-reduced-motion: reduce)` block to respect user motion preferences.
