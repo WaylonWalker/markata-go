@@ -174,6 +174,11 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewContributionGraphPlugin(), // Process contribution graph code blocks
 		NewMDVideoPlugin(),           // Convert video images to video tags
 		NewYouTubePlugin(),           // Convert YouTube URLs to embeds
+		NewChartJSPlugin(),           // Convert Chart.js code blocks to charts
+		NewCSVFencePlugin(),          // Convert CSV code blocks to tables
+		NewMermaidPlugin(),           // Convert Mermaid code blocks to diagrams
+		NewGlossaryPlugin(),          // Auto-link glossary terms (Render + Write stages)
+		NewWikilinkHoverPlugin(),     // Add hover data to wikilinks (runs after wikilinks)
 		NewLinkCollectorPlugin(),     // Collect links after markdown rendering
 		NewEncryptionPlugin(),        // Encrypt content for private posts (runs late in Render)
 		NewTemplatesPlugin(),
