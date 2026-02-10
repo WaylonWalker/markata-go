@@ -900,7 +900,7 @@ assets_dir = "static"
 
 # File discovery
 [glob]
-patterns = ["**/*.md"]
+patterns = ["pages/**/*.md", "posts/**/*.md"]
 use_gitignore = true
 
 # Post output formats
@@ -947,7 +947,8 @@ assets_dir: static
 # File discovery
 glob:
   patterns:
-    - "**/*.md"
+    - "pages/**/*.md"
+    - "posts/**/*.md"
   use_gitignore: true
 
 # Post output formats
@@ -986,7 +987,7 @@ const defaultConfigJSON = `{
   "templates_dir": "templates",
   "assets_dir": "static",
   "glob": {
-    "patterns": ["**/*.md"],
+    "patterns": ["pages/**/*.md", "posts/**/*.md"],
     "use_gitignore": true
   },
   "post_formats": {

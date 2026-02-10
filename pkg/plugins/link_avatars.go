@@ -57,7 +57,7 @@ type LinkAvatarsConfig struct {
 // defaultLinkAvatarsConfig returns the default configuration.
 func defaultLinkAvatarsConfig() LinkAvatarsConfig {
 	return LinkAvatarsConfig{
-		Enabled:         false,
+		Enabled:         true,
 		Selector:        "a[href^='http']",
 		Service:         "duckduckgo",
 		Template:        "",

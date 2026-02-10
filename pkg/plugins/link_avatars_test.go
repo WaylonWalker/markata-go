@@ -21,8 +21,8 @@ func TestLinkAvatarsPlugin_DefaultConfig(t *testing.T) {
 	p := NewLinkAvatarsPlugin()
 	cfg := p.Config()
 
-	if cfg.Enabled != false {
-		t.Errorf("default Enabled = %v, want false", cfg.Enabled)
+	if cfg.Enabled != true {
+		t.Errorf("default Enabled = %v, want true", cfg.Enabled)
 	}
 	if cfg.Selector != "a[href^='http']" {
 		t.Errorf("default Selector = %q, want %q", cfg.Selector, "a[href^='http']")
@@ -48,7 +48,7 @@ func TestLinkAvatarsPlugin_Configure(t *testing.T) {
 			name:  "nil_extra",
 			extra: nil,
 			expected: LinkAvatarsConfig{
-				Enabled:  false,
+				Enabled:  true,
 				Selector: "a[href^='http']",
 				Service:  "duckduckgo",
 				Size:     16,
@@ -190,9 +190,16 @@ func TestLinkAvatarsPlugin_Configure(t *testing.T) {
 
 func TestLinkAvatarsPlugin_WriteDisabled(t *testing.T) {
 	p := NewLinkAvatarsPlugin()
+	// Explicitly disable the plugin (default is now enabled)
+	p.SetConfig(LinkAvatarsConfig{
+		Enabled:  false,
+		Selector: "a[href^='http']",
+		Service:  "duckduckgo",
+		Size:     16,
+		Position: "before",
+	})
 	m := lifecycle.NewManager()
 
-	// Plugin is disabled by default
 	tmpDir := t.TempDir()
 	cfg := m.Config()
 	cfg.OutputDir = tmpDir
