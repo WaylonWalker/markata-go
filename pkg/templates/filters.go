@@ -163,6 +163,10 @@ func registerFilters() {
 
 		// Contribution data filter for Cal-Heatmap
 		pongo2.RegisterFilter("contribution_data", filterContributionData)
+
+		// Media detection filters
+		pongo2.RegisterFilter("is_video", filterIsVideo)
+		pongo2.RegisterFilter("media_url", filterMediaURL)
 	})
 }
 
@@ -1055,6 +1059,43 @@ func stripHTMLTagsHelper(s string) string {
 // Usage: {{ number|string }} or {{ post.excerpt_paragraphs|string }}
 func filterString(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	return pongo2.AsValue(in.String()), nil
+}
+
+// videoExtensions is the canonical set of video file extensions.
+var videoExtensions = map[string]bool{
+	".mp4": true, ".webm": true, ".mov": true,
+	".m4v": true, ".ogv": true, ".ogg": true,
+}
+
+// isVideoFile checks if a filename has a video extension.
+func isVideoFile(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	return videoExtensions[ext]
+}
+
+// filterIsVideo returns true if the input string has a video file extension.
+// Usage: {% if post.image|is_video %}...{% endif %}
+func filterIsVideo(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	s := in.String()
+	if s == "" {
+		return pongo2.AsValue(false), nil
+	}
+	return pongo2.AsValue(isVideoFile(s)), nil
+}
+
+// filterMediaURL resolves a media URL from multiple fields.
+// Returns the first non-empty value from the input and parameter.
+// Usage: {{ post.image|media_url:post.video }}
+func filterMediaURL(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	// Try input first (primary field)
+	if !in.IsNil() && in.String() != "" {
+		return in, nil
+	}
+	// Fall back to parameter (secondary field)
+	if param != nil && !param.IsNil() && param.String() != "" {
+		return param, nil
+	}
+	return pongo2.AsValue(""), nil
 }
 
 // filterContributionData generates Cal-Heatmap compatible JSON data from posts.

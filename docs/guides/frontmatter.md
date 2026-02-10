@@ -688,6 +688,66 @@ In the previous part, we set up our project structure...
 
 ---
 
+## Media Fields
+
+The `image` and `video` frontmatter fields can be used **interchangeably** in photo and video card templates. The system auto-detects whether a URL points to a video or image based on the file extension.
+
+### Recognized Video Extensions
+
+`.mp4`, `.webm`, `.mov`, `.m4v`, `.ogv`, `.ogg` (case-insensitive)
+
+Any other extension (or no extension) is treated as an image.
+
+### How It Works
+
+Card templates use two filters to resolve media:
+
+1. **`media_url`** -- picks the first non-empty value between `image` and `video` fields
+2. **`is_video`** -- checks the file extension to decide whether to render `<video>` or `<img>`
+
+This means all of the following work equally well for a photo card:
+
+```yaml
+# Option A: image field with a video file
+---
+image: "/media/demo.mp4"
+---
+
+# Option B: video field with a video file
+---
+video: "/media/demo.mp4"
+---
+
+# Option C: image field with an image file
+---
+image: "/photos/sunset.jpg"
+---
+
+# Option D: both fields (image takes priority)
+---
+image: "/photos/sunset.jpg"
+video: "/media/demo.mp4"
+---
+```
+
+### Using Media Fields in Custom Templates
+
+You can use the `is_video` and `media_url` filters in your own templates:
+
+```html
+{% with post.image|media_url:post.video as media_src %}
+{% if media_src %}
+  {% if media_src|is_video %}
+  <video src="{{ media_src }}" autoplay muted loop playsinline></video>
+  {% else %}
+  <img src="{{ media_src }}" alt="{{ post.title }}">
+  {% endif %}
+{% endif %}
+{% endwith %}
+```
+
+---
+
 ## Common Patterns
 
 ### Draft Workflow
