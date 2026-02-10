@@ -672,7 +672,7 @@ See [THEMES.md](./THEMES.md) for complete theming documentation.
 html = true       # /slug/index.html (default: true)
 markdown = true   # /slug.md - raw source with frontmatter (default: true)
 text = true       # /slug.txt - plain text content (default: true)
-og = false        # /slug/og/index.html - social card for screenshots
+og = true         # /slug/og/index.html - social card for screenshots
 ```
 
 This section controls what output formats are generated for each post:
@@ -682,7 +682,7 @@ This section controls what output formats are generated for each post:
 | `html` | `true` | `/slug/index.html` | Standard rendered HTML page |
 | `markdown` | `true` | `/slug.md` | Raw markdown with reconstructed frontmatter |
 | `text` | `true` | `/slug.txt` | Plain text content |
-| `og` | `false` | `/slug/og/index.html` | OpenGraph card HTML (1200x630) for social screenshots |
+| `og` | `true` | `/slug/og/index.html` | OpenGraph card HTML (1200x630) for social screenshots |
 
 **Directory-based Redirects for txt/md:**
 

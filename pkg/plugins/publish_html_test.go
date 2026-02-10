@@ -495,8 +495,8 @@ func TestPublishHTMLPlugin_PostFormatsDefaultEnabled(t *testing.T) {
 		t.Error("Text should be enabled by default")
 	}
 
-	if defaults.OG {
-		t.Error("OG should NOT be enabled by default")
+	if !defaults.OG {
+		t.Error("OG should be enabled by default")
 	}
 }
 

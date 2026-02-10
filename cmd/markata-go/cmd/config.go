@@ -903,6 +903,13 @@ assets_dir = "static"
 patterns = ["**/*.md"]
 use_gitignore = true
 
+# Post output formats
+[post_formats]
+html = true
+markdown = true
+text = true
+og = true
+
 # Feed defaults
 [feed_defaults]
 items_per_page = 10
@@ -911,8 +918,9 @@ orphan_threshold = 3
 [feed_defaults.formats]
 html = true
 rss = true
-atom = false
-json = false
+atom = true
+json = true
+sitemap = true
 
 # Define custom feeds
 # [[feeds]]
@@ -942,6 +950,13 @@ glob:
     - "**/*.md"
   use_gitignore: true
 
+# Post output formats
+post_formats:
+  html: true
+  markdown: true
+  text: true
+  og: true
+
 # Feed defaults
 feed_defaults:
   items_per_page: 10
@@ -949,8 +964,9 @@ feed_defaults:
   formats:
     html: true
     rss: true
-    atom: false
-    json: false
+    atom: true
+    json: true
+    sitemap: true
 
 # Define custom feeds
 # feeds:
@@ -973,14 +989,21 @@ const defaultConfigJSON = `{
     "patterns": ["**/*.md"],
     "use_gitignore": true
   },
+  "post_formats": {
+    "html": true,
+    "markdown": true,
+    "text": true,
+    "og": true
+  },
   "feed_defaults": {
     "items_per_page": 10,
     "orphan_threshold": 3,
     "formats": {
       "html": true,
       "rss": true,
-      "atom": false,
-      "json": false
+      "atom": true,
+      "json": true,
+      "sitemap": true
     }
   },
   "feeds": []
