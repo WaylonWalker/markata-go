@@ -300,6 +300,13 @@ func DefaultPreservePatterns() []string {
 		"glightbox*",
 		"gslide*",
 		"goverlay*",
+		"ginlined*",
+		"gclose*",
+		"gnext*",
+		"gprev*",
+
+		// Mermaid lightbox (injected by mermaid plugin JS)
+		"mermaid-lightbox*",
 
 		// Common state classes (often added by JS)
 		"active",
