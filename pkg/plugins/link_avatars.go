@@ -91,10 +91,16 @@ func (p *LinkAvatarsPlugin) Name() string {
 // Configure loads plugin configuration from the manager.
 func (p *LinkAvatarsPlugin) Configure(m *lifecycle.Manager) error {
 	p.config = parseLinkAvatarsConfig(m.Config())
+
+	// If enabled, inject head tags during Configure so they're available for templates
+	if p.config.Enabled {
+		p.injectHeadTags(m.Config())
+	}
+
 	return nil
 }
 
-// Write generates the JavaScript and CSS assets and injects head tags.
+// Write generates the JavaScript and CSS assets.
 func (p *LinkAvatarsPlugin) Write(m *lifecycle.Manager) error {
 	if !p.config.Enabled {
 		return nil
@@ -125,9 +131,6 @@ func (p *LinkAvatarsPlugin) Write(m *lifecycle.Manager) error {
 	if err := os.WriteFile(cssPath, []byte(cssContent), 0o644); err != nil { //nolint:gosec // static CSS needs world-readable permissions
 		return fmt.Errorf("writing link-avatars.css: %w", err)
 	}
-
-	// Inject head tags
-	p.injectHeadTags(cfg)
 
 	return nil
 }
@@ -377,60 +380,30 @@ a.has-avatar[data-favicon-error]::after {
 
 // injectHeadTags adds the CSS and JS references to the config head.
 func (p *LinkAvatarsPlugin) injectHeadTags(cfg *lifecycle.Config) {
-	if cfg.Extra == nil {
-		cfg.Extra = make(map[string]interface{})
+	if cfg == nil || cfg.Extra == nil {
+		return
 	}
 
-	// Get existing head config or create new one
-	headConfig := getOrCreateHeadConfig(cfg)
+	// Get the models.Config from Extra (set by createManager in core.go)
+	modelsConfig, ok := cfg.Extra["models_config"].(*models.Config)
+	if !ok {
+		return
+	}
 
 	// Add CSS link
-	headConfig.Link = append(headConfig.Link, models.LinkTag{
+	modelsConfig.Head.Link = append(modelsConfig.Head.Link, models.LinkTag{
 		Rel:  "stylesheet",
 		Href: "/assets/markata/link-avatars.css",
 	})
 
 	// Add JS script
-	headConfig.Script = append(headConfig.Script, models.ScriptTag{
+	modelsConfig.Head.Script = append(modelsConfig.Head.Script, models.ScriptTag{
 		Src: "/assets/markata/link-avatars.js",
 	})
 
-	// Mark link avatars as enabled for templates
-	cfg.Extra["link_avatars_enabled"] = true
-}
-
-// getOrCreateHeadConfig gets the existing head config or creates a new one.
-func getOrCreateHeadConfig(cfg *lifecycle.Config) *models.HeadConfig {
-	if cfg.Extra == nil {
-		cfg.Extra = make(map[string]interface{})
-	}
-
-	// Check if we have direct access to models.Config through Extra
-	if modelsConfig, ok := cfg.Extra["_models_config"].(*models.Config); ok {
-		return &modelsConfig.Head
-	}
-
-	// For standalone lifecycle.Config, we need to use Extra to store head elements
-	// The templates plugin will read these
-	links, linksOK := cfg.Extra["head_links"].([]models.LinkTag)
-	if !linksOK {
-		links = []models.LinkTag{}
-	}
-	scripts, scriptsOK := cfg.Extra["head_scripts"].([]models.ScriptTag)
-	if !scriptsOK {
-		scripts = []models.ScriptTag{}
-	}
-
-	headConfig := &models.HeadConfig{
-		Link:   links,
-		Script: scripts,
-	}
-
-	// Store back
-	cfg.Extra["head_links"] = headConfig.Link
-	cfg.Extra["head_scripts"] = headConfig.Script
-
-	return headConfig
+	// Also update the head in Extra since ToModelsConfig reads from there
+	// (cfg.Extra["head"] is a copy of modelsConfig.Head made at initialization)
+	cfg.Extra["head"] = modelsConfig.Head
 }
 
 // parseLinkAvatarsConfig parses the configuration from the manager config.
