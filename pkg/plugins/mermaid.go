@@ -86,7 +86,8 @@ func (p *MermaidPlugin) Render(m *lifecycle.Manager) error {
 		if post.Skip || post.ArticleHTML == "" {
 			return false
 		}
-		return strings.Contains(post.ArticleHTML, `class="language-mermaid"`)
+		return strings.Contains(post.ArticleHTML, `class="language-mermaid"`) ||
+			strings.Contains(post.ArticleHTML, `class="mermaid"`)
 	})
 
 	if err := m.ProcessPostsSliceConcurrently(posts, p.processPost); err != nil {
@@ -110,10 +111,12 @@ func (p *MermaidPlugin) Render(m *lifecycle.Manager) error {
 			if config.Extra == nil {
 				config.Extra = make(map[string]interface{})
 			}
+			// Only enable GLightbox loading; do NOT set glightbox_options.
+			// The mermaid lightbox uses a separate programmatic GLightbox
+			// instance (selector: false) and does not need the template's
+			// shared instance. Overwriting glightbox_options would clobber
+			// settings from image_zoom or other plugins.
 			config.Extra["glightbox_enabled"] = true
-			config.Extra["glightbox_options"] = map[string]interface{}{
-				"selector": p.config.LightboxSelector,
-			}
 			config.Extra["glightbox_cdn"] = true
 		}
 	}
@@ -134,33 +137,39 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 		return nil
 	}
 
-	// Check if there are any mermaid code blocks
-	if !strings.Contains(post.ArticleHTML, `class="language-mermaid"`) {
+	// Check if there are any mermaid code blocks (language-mermaid needs conversion)
+	// or pre-rendered mermaid blocks (class="mermaid" just needs the script)
+	hasLanguageMermaid := strings.Contains(post.ArticleHTML, `class="language-mermaid"`)
+	hasPreRendered := strings.Contains(post.ArticleHTML, `class="mermaid"`)
+	if !hasLanguageMermaid && !hasPreRendered {
 		return nil
 	}
 
 	// Track if we found any mermaid blocks
 	foundMermaid := false
+	result := post.ArticleHTML
 
-	// Replace mermaid code blocks with proper mermaid pre tags
-	result := mermaidCodeBlockRegex.ReplaceAllStringFunc(post.ArticleHTML, func(match string) string {
-		foundMermaid = true
+	// Replace language-mermaid code blocks with proper mermaid pre tags
+	if hasLanguageMermaid {
+		result = mermaidCodeBlockRegex.ReplaceAllStringFunc(result, func(match string) string {
+			foundMermaid = true
 
-		// Extract the diagram code
-		submatches := mermaidCodeBlockRegex.FindStringSubmatch(match)
-		if len(submatches) < 2 {
-			return match
-		}
+			// Extract the diagram code
+			submatches := mermaidCodeBlockRegex.FindStringSubmatch(match)
+			if len(submatches) < 2 {
+				return match
+			}
 
-		// Decode HTML entities in the diagram code (goldmark encodes them)
-		diagramCode := html.UnescapeString(submatches[1])
+			// Decode HTML entities in the diagram code (goldmark encodes them)
+			diagramCode := html.UnescapeString(submatches[1])
 
-		// Trim whitespace from the diagram code
-		diagramCode = strings.TrimSpace(diagramCode)
+			// Trim whitespace from the diagram code
+			diagramCode = strings.TrimSpace(diagramCode)
 
-		// Return the mermaid pre block
-		return `<pre class="mermaid">` + "\n" + diagramCode + "\n</pre>"
-	})
+			// Return the mermaid pre block
+			return `<pre class="mermaid">` + "\n" + diagramCode + "\n</pre>"
+		})
+	}
 
 	// If we found mermaid blocks or existing mermaid blocks, inject the script
 	if foundMermaid || strings.Contains(result, `class="mermaid"`) {
