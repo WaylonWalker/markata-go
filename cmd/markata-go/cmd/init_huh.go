@@ -37,12 +37,17 @@ type initWizardState struct {
 	LogoURL       string
 
 	// Post formats
+	EnableHTML     bool
 	EnableMarkdown bool
+	EnableText     bool
 	EnableOG       bool
 
 	// Advanced feeds
-	EnableAtom bool
-	EnableJSON bool
+	EnableFeedHTML    bool
+	EnableFeedRSS     bool
+	EnableFeedAtom    bool
+	EnableFeedJSON    bool
+	EnableFeedSitemap bool
 
 	// Vend options
 	VendAssets         bool
@@ -118,11 +123,21 @@ func getPaletteOptions() []huh.Option[string] {
 
 // runHuhNewProjectWizard runs the interactive huh wizard for new projects.
 func runHuhNewProjectWizard(theme *huh.Theme) (*initWizardState, error) {
+	defaults := models.NewConfig()
 	state := &initWizardState{
-		Title:       "My Site",
-		Description: "A site built with markata-go",
-		URL:         "https://example.com",
-		Palette:     "default-light",
+		Title:             "My Site",
+		Description:       "A site built with markata-go",
+		URL:               "https://example.com",
+		Palette:           "default-light",
+		EnableHTML:        defaults.PostFormats.IsHTMLEnabled(),
+		EnableMarkdown:    defaults.PostFormats.Markdown,
+		EnableText:        defaults.PostFormats.Text,
+		EnableOG:          defaults.PostFormats.OG,
+		EnableFeedHTML:    defaults.FeedDefaults.Formats.HTML,
+		EnableFeedRSS:     defaults.FeedDefaults.Formats.RSS,
+		EnableFeedAtom:    defaults.FeedDefaults.Formats.Atom,
+		EnableFeedJSON:    defaults.FeedDefaults.Formats.JSON,
+		EnableFeedSitemap: defaults.FeedDefaults.Formats.Sitemap,
 	}
 
 	// Group 1: Basic site information
@@ -186,8 +201,8 @@ func runFeatureSelectionForm(state *initWizardState, theme *huh.Theme) error {
 	featureOptions := []huh.Option[string]{
 		huh.NewOption("Theme/Palette system (color schemes)", featureTheme),
 		huh.NewOption("SEO metadata (Twitter, Open Graph)", featureSEO),
-		huh.NewOption("Post output formats (markdown source, OG cards)", featurePostFormats),
-		huh.NewOption("Advanced feeds (Atom, JSON Feed)", featureAdvancedFeed),
+		huh.NewOption("Post output formats (HTML, markdown, text, OG cards)", featurePostFormats),
+		huh.NewOption("Feed formats (HTML, RSS, Atom, JSON, sitemap)", featureAdvancedFeed),
 	}
 
 	selectGroup := huh.NewGroup(
@@ -281,14 +296,10 @@ func runPostFormatsConfigForm(state *initWizardState, theme *huh.Theme) error {
 		huh.NewNote().
 			Title("Post Output Formats").
 			Description("Configure additional output formats for your posts"),
-		huh.NewConfirm().
-			Title("Enable Markdown source output?").
-			Description("Generates /slug.md alongside HTML").
-			Value(&state.EnableMarkdown),
-		huh.NewConfirm().
-			Title("Enable OG card output?").
-			Description("Generates /slug/og/index.html for social image generation").
-			Value(&state.EnableOG),
+		newEnabledDisabledSelect("HTML output", "Generates standard HTML output for posts", &state.EnableHTML),
+		newEnabledDisabledSelect("Markdown source output", "Generates /slug.md alongside HTML", &state.EnableMarkdown),
+		newEnabledDisabledSelect("Text output", "Generates /slug.txt alongside HTML", &state.EnableText),
+		newEnabledDisabledSelect("OG card output", "Generates /slug/og/index.html for social image generation", &state.EnableOG),
 	)
 
 	form := huh.NewForm(group).WithTheme(theme)
@@ -300,13 +311,12 @@ func runFeedsConfigForm(state *initWizardState, theme *huh.Theme) error {
 	group := huh.NewGroup(
 		huh.NewNote().
 			Title("Advanced Feed Formats").
-			Description("HTML and RSS feeds are enabled by default"),
-		huh.NewConfirm().
-			Title("Enable Atom feed output?").
-			Value(&state.EnableAtom),
-		huh.NewConfirm().
-			Title("Enable JSON Feed output?").
-			Value(&state.EnableJSON),
+			Description("Configure feed output formats"),
+		newEnabledDisabledSelect("HTML feed output", "", &state.EnableFeedHTML),
+		newEnabledDisabledSelect("RSS feed output", "", &state.EnableFeedRSS),
+		newEnabledDisabledSelect("Atom feed output", "", &state.EnableFeedAtom),
+		newEnabledDisabledSelect("JSON Feed output", "", &state.EnableFeedJSON),
+		newEnabledDisabledSelect("Sitemap output", "", &state.EnableFeedSitemap),
 	)
 
 	form := huh.NewForm(group).WithTheme(theme)
@@ -401,8 +411,6 @@ func applyWizardState(state *initWizardState, force bool) error {
 	cfg.Description = state.Description
 	cfg.Author = state.Author
 	cfg.URL = state.URL
-	cfg.GlobConfig.Patterns = []string{"**/*.md"}
-	cfg.GlobConfig.UseGitignore = true
 
 	// Apply feature configurations
 	for _, feature := range state.SelectedFeatures {
@@ -414,11 +422,16 @@ func applyWizardState(state *initWizardState, force bool) error {
 			cfg.SEO.DefaultImage = state.DefaultImage
 			cfg.SEO.LogoURL = state.LogoURL
 		case featurePostFormats:
+			cfg.PostFormats.HTML = &state.EnableHTML
 			cfg.PostFormats.Markdown = state.EnableMarkdown
+			cfg.PostFormats.Text = state.EnableText
 			cfg.PostFormats.OG = state.EnableOG
 		case featureAdvancedFeed:
-			cfg.FeedDefaults.Formats.Atom = state.EnableAtom
-			cfg.FeedDefaults.Formats.JSON = state.EnableJSON
+			cfg.FeedDefaults.Formats.HTML = state.EnableFeedHTML
+			cfg.FeedDefaults.Formats.RSS = state.EnableFeedRSS
+			cfg.FeedDefaults.Formats.Atom = state.EnableFeedAtom
+			cfg.FeedDefaults.Formats.JSON = state.EnableFeedJSON
+			cfg.FeedDefaults.Formats.Sitemap = state.EnableFeedSitemap
 		}
 	}
 
@@ -554,7 +567,16 @@ func runAddFeaturesWizard(cfg *models.Config, configPath string, theme *huh.Them
 
 	// Create a temporary state to hold feature configs
 	state := &initWizardState{
-		Palette: cfg.Theme.Palette,
+		Palette:           cfg.Theme.Palette,
+		EnableHTML:        cfg.PostFormats.IsHTMLEnabled(),
+		EnableMarkdown:    cfg.PostFormats.Markdown,
+		EnableText:        cfg.PostFormats.Text,
+		EnableOG:          cfg.PostFormats.OG,
+		EnableFeedHTML:    cfg.FeedDefaults.Formats.HTML,
+		EnableFeedRSS:     cfg.FeedDefaults.Formats.RSS,
+		EnableFeedAtom:    cfg.FeedDefaults.Formats.Atom,
+		EnableFeedJSON:    cfg.FeedDefaults.Formats.JSON,
+		EnableFeedSitemap: cfg.FeedDefaults.Formats.Sitemap,
 	}
 
 	// Configure each selected feature
@@ -574,11 +596,16 @@ func runAddFeaturesWizard(cfg *models.Config, configPath string, theme *huh.Them
 			cfg.SEO.DefaultImage = state.DefaultImage
 			cfg.SEO.LogoURL = state.LogoURL
 		case featurePostFormats:
+			cfg.PostFormats.HTML = &state.EnableHTML
 			cfg.PostFormats.Markdown = state.EnableMarkdown
+			cfg.PostFormats.Text = state.EnableText
 			cfg.PostFormats.OG = state.EnableOG
 		case featureAdvancedFeed:
-			cfg.FeedDefaults.Formats.Atom = state.EnableAtom
-			cfg.FeedDefaults.Formats.JSON = state.EnableJSON
+			cfg.FeedDefaults.Formats.HTML = state.EnableFeedHTML
+			cfg.FeedDefaults.Formats.RSS = state.EnableFeedRSS
+			cfg.FeedDefaults.Formats.Atom = state.EnableFeedAtom
+			cfg.FeedDefaults.Formats.JSON = state.EnableFeedJSON
+			cfg.FeedDefaults.Formats.Sitemap = state.EnableFeedSitemap
 		}
 	}
 
@@ -681,6 +708,27 @@ func runVendWizard(theme *huh.Theme, force bool) error {
 // loadConfigForWizard loads config for the wizard, using the config package.
 func loadConfigForWizard(configPath string) (*models.Config, error) {
 	return config.Load(configPath)
+}
+
+func newEnabledDisabledSelect(title, description string, value *bool) *huh.Select[bool] {
+	options := []huh.Option[bool]{
+		huh.NewOption("Enabled", true),
+		huh.NewOption("Disabled", false),
+	}
+	if *value {
+		options[0] = options[0].Selected(true)
+	} else {
+		options[1] = options[1].Selected(true)
+	}
+
+	selectField := huh.NewSelect[bool]().
+		Title(title).
+		Options(options...).
+		Value(value)
+	if description != "" {
+		selectField = selectField.Description(description)
+	}
+	return selectField
 }
 
 // createFirstPost creates the first post for a new project.

@@ -203,7 +203,7 @@ Text output is enabled by default. To customize:
 html = true       # Standard HTML (default: true)
 markdown = true   # Raw markdown at /slug.md (default: true)
 text = true       # Plain text at /slug.txt (default: true)
-og = false        # OpenGraph cards (default: false)
+og = true         # OpenGraph cards (default: true)
 ```
 
 To disable text output:

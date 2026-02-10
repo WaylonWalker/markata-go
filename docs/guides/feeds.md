@@ -59,7 +59,7 @@ reverse = true
 This creates a feed at `/blog/` with:
 - All published posts
 - Sorted by date (newest first)
-- HTML and RSS output (default formats)
+- HTML, RSS, Atom, JSON, and sitemap output (default formats)
 
 ### Minimal Example
 

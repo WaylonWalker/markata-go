@@ -76,25 +76,6 @@ func prompt(reader *bufio.Reader, question, defaultVal string) string {
 	return input
 }
 
-// promptYesNo displays a yes/no question and returns the boolean result.
-func promptYesNo(reader *bufio.Reader, question string, defaultYes bool) bool {
-	defaultStr := "y/N"
-	if defaultYes {
-		defaultStr = "Y/n"
-	}
-	fmt.Printf("%s (%s): ", question, defaultStr)
-	input, err := reader.ReadString('\n')
-	if err != nil {
-		return defaultYes
-	}
-	input = strings.TrimSpace(strings.ToLower(input))
-
-	if input == "" {
-		return defaultYes
-	}
-	return input == "y" || input == "yes"
-}
-
 // Feature name constants for the init wizard.
 const (
 	featureTheme        = "theme"
@@ -118,8 +99,8 @@ func detectConfiguredFeatures(cfg *models.Config) map[string]bool {
 	features := make(map[string]bool)
 	features[featureTheme] = cfg.Theme.Palette != "" && cfg.Theme.Palette != "default-light"
 	features[featureSEO] = cfg.SEO.TwitterHandle != "" || cfg.SEO.DefaultImage != ""
-	features[featurePostFormats] = cfg.PostFormats.Markdown || cfg.PostFormats.OG
-	features[featureAdvancedFeed] = cfg.FeedDefaults.Formats.Atom || cfg.FeedDefaults.Formats.JSON
+	features[featurePostFormats] = cfg.PostFormats.Markdown || cfg.PostFormats.Text || cfg.PostFormats.OG || !cfg.PostFormats.IsHTMLEnabled()
+	features[featureAdvancedFeed] = cfg.FeedDefaults.Formats.Atom || cfg.FeedDefaults.Formats.JSON || cfg.FeedDefaults.Formats.Sitemap
 	return features
 }
 
@@ -138,12 +119,12 @@ func getAvailableFeatures(configured map[string]bool) []featureInfo {
 		},
 		{
 			Name:        featurePostFormats,
-			Description: "Post output formats (markdown source, OG cards)",
+			Description: "Post output formats (HTML, markdown, text, OG cards)",
 			Configured:  configured[featurePostFormats],
 		},
 		{
 			Name:        featureAdvancedFeed,
-			Description: "Advanced feeds (Atom, JSON Feed)",
+			Description: "Feed formats (HTML, RSS, Atom, JSON, sitemap)",
 			Configured:  configured[featureAdvancedFeed],
 		},
 	}
@@ -171,6 +152,44 @@ func promptMenuChoice(reader *bufio.Reader, question string, options []string) i
 		return 0
 	}
 	return choice - 1
+}
+
+// promptMenuChoiceDefault displays a numbered menu and returns the selected option.
+// Uses defaultIndex when input is empty or invalid.
+func promptMenuChoiceDefault(reader *bufio.Reader, question string, options []string, defaultIndex int) int {
+	if defaultIndex < 0 || defaultIndex >= len(options) {
+		defaultIndex = 0
+	}
+
+	fmt.Println()
+	fmt.Println(question)
+	for i, opt := range options {
+		fmt.Printf("  %d) %s\n", i+1, opt)
+	}
+	fmt.Printf("\nEnter choice [%d]: ", defaultIndex+1)
+
+	input, err := reader.ReadString('\n')
+	if err != nil || strings.TrimSpace(input) == "" {
+		return defaultIndex
+	}
+
+	var choice int
+	_, err = fmt.Sscanf(strings.TrimSpace(input), "%d", &choice)
+	if err != nil || choice < 1 || choice > len(options) {
+		return defaultIndex
+	}
+	return choice - 1
+}
+
+// promptRadioBool displays an enabled/disabled choice and returns the selected value.
+func promptRadioBool(reader *bufio.Reader, question string, defaultEnabled bool) bool {
+	options := []string{"Enabled", "Disabled"}
+	defaultIndex := 1
+	if defaultEnabled {
+		defaultIndex = 0
+	}
+	choice := promptMenuChoiceDefault(reader, question, options, defaultIndex)
+	return choice == 0
 }
 
 // promptFeatureSelection displays checkboxes for feature selection.
@@ -297,13 +316,12 @@ func addFeaturePostFormats(reader *bufio.Reader, cfg *models.Config) error {
 	fmt.Println("Post Output Formats")
 	fmt.Println("-------------------")
 
-	if promptYesNo(reader, "Enable markdown source output? (generates /slug.md)", false) {
-		cfg.PostFormats.Markdown = true
-	}
+	htmlEnabled := promptRadioBool(reader, "HTML output", cfg.PostFormats.IsHTMLEnabled())
+	cfg.PostFormats.HTML = &htmlEnabled
 
-	if promptYesNo(reader, "Enable OG card output? (generates /slug/og/index.html for social images)", false) {
-		cfg.PostFormats.OG = true
-	}
+	cfg.PostFormats.Markdown = promptRadioBool(reader, "Markdown source output (generates /slug.md)", cfg.PostFormats.Markdown)
+	cfg.PostFormats.Text = promptRadioBool(reader, "Text output (generates /slug.txt)", cfg.PostFormats.Text)
+	cfg.PostFormats.OG = promptRadioBool(reader, "OG card output (generates /slug/og/index.html for social images)", cfg.PostFormats.OG)
 
 	return nil
 }
@@ -313,15 +331,12 @@ func addFeatureAdvancedFeeds(reader *bufio.Reader, cfg *models.Config) error {
 	fmt.Println()
 	fmt.Println("Advanced Feed Formats")
 	fmt.Println("---------------------")
-	fmt.Println("HTML and RSS feeds are enabled by default.")
 
-	if promptYesNo(reader, "Enable Atom feed output?", false) {
-		cfg.FeedDefaults.Formats.Atom = true
-	}
-
-	if promptYesNo(reader, "Enable JSON Feed output?", false) {
-		cfg.FeedDefaults.Formats.JSON = true
-	}
+	cfg.FeedDefaults.Formats.HTML = promptRadioBool(reader, "HTML feed output", cfg.FeedDefaults.Formats.HTML)
+	cfg.FeedDefaults.Formats.RSS = promptRadioBool(reader, "RSS feed output", cfg.FeedDefaults.Formats.RSS)
+	cfg.FeedDefaults.Formats.Atom = promptRadioBool(reader, "Atom feed output", cfg.FeedDefaults.Formats.Atom)
+	cfg.FeedDefaults.Formats.JSON = promptRadioBool(reader, "JSON Feed output", cfg.FeedDefaults.Formats.JSON)
+	cfg.FeedDefaults.Formats.Sitemap = promptRadioBool(reader, "Sitemap output", cfg.FeedDefaults.Formats.Sitemap)
 
 	return nil
 }
@@ -368,6 +383,7 @@ func displayCurrentConfig(cfg *models.Config) {
 	fmt.Printf("Post Formats:\n")
 	fmt.Printf("  HTML:        %v\n", cfg.PostFormats.IsHTMLEnabled())
 	fmt.Printf("  Markdown:    %v\n", cfg.PostFormats.Markdown)
+	fmt.Printf("  Text:        %v\n", cfg.PostFormats.Text)
 	fmt.Printf("  OG Cards:    %v\n", cfg.PostFormats.OG)
 	fmt.Println()
 	fmt.Printf("Feed Formats (defaults):\n")
@@ -375,6 +391,7 @@ func displayCurrentConfig(cfg *models.Config) {
 	fmt.Printf("  RSS:         %v\n", cfg.FeedDefaults.Formats.RSS)
 	fmt.Printf("  Atom:        %v\n", cfg.FeedDefaults.Formats.Atom)
 	fmt.Printf("  JSON:        %v\n", cfg.FeedDefaults.Formats.JSON)
+	fmt.Printf("  Sitemap:     %v\n", cfg.FeedDefaults.Formats.Sitemap)
 	fmt.Println()
 }
 
@@ -998,17 +1015,13 @@ func writeConfigTOML(path string, cfg *models.Config) error {
 	}
 
 	// Post formats config
-	if cfg.PostFormats.Markdown || cfg.PostFormats.OG {
-		sb.WriteString("# Post output formats\n")
-		sb.WriteString("[markata-go.post_formats]\n")
-		if cfg.PostFormats.Markdown {
-			sb.WriteString("markdown = true\n")
-		}
-		if cfg.PostFormats.OG {
-			sb.WriteString("og = true\n")
-		}
-		sb.WriteString("\n")
-	}
+	sb.WriteString("# Post output formats\n")
+	sb.WriteString("[markata-go.post_formats]\n")
+	sb.WriteString(fmt.Sprintf("html = %v\n", cfg.PostFormats.IsHTMLEnabled()))
+	sb.WriteString(fmt.Sprintf("markdown = %v\n", cfg.PostFormats.Markdown))
+	sb.WriteString(fmt.Sprintf("text = %v\n", cfg.PostFormats.Text))
+	sb.WriteString(fmt.Sprintf("og = %v\n", cfg.PostFormats.OG))
+	sb.WriteString("\n")
 
 	// Feed defaults
 	sb.WriteString("# Feed defaults\n")
@@ -1022,6 +1035,7 @@ func writeConfigTOML(path string, cfg *models.Config) error {
 	sb.WriteString(fmt.Sprintf("rss = %v\n", cfg.FeedDefaults.Formats.RSS))
 	sb.WriteString(fmt.Sprintf("atom = %v\n", cfg.FeedDefaults.Formats.Atom))
 	sb.WriteString(fmt.Sprintf("json = %v\n", cfg.FeedDefaults.Formats.JSON))
+	sb.WriteString(fmt.Sprintf("sitemap = %v\n", cfg.FeedDefaults.Formats.Sitemap))
 	sb.WriteString("\n")
 
 	// Custom feeds (commented example)
@@ -1227,12 +1241,11 @@ func runPlainNewProjectWizard() error {
 	cfg.Description = description
 	cfg.Author = author
 	cfg.URL = url
-	cfg.GlobConfig.Patterns = []string{"**/*.md"}
 	cfg.GlobConfig.UseGitignore = true
 
 	// Ask about optional features for new projects
 	fmt.Println()
-	if promptYesNo(reader, "Would you like to configure additional features?", false) {
+	if promptRadioBool(reader, "Configure additional features", false) {
 		configured := detectConfiguredFeatures(cfg)
 		features := getAvailableFeatures(configured)
 		selected := promptFeatureSelection(reader, features)
@@ -1254,7 +1267,7 @@ func runPlainNewProjectWizard() error {
 	fmt.Println()
 
 	// Offer to vend built-in assets
-	if promptYesNo(reader, "Vend built-in assets for customization? (Obsidian-compatible)", false) {
+	if promptRadioBool(reader, "Vend built-in assets for customization? (Obsidian-compatible)", false) {
 		selected := promptVendSelection(reader)
 		if len(selected) > 0 {
 			if err := runVendAssets(initForce, selected); err != nil {
@@ -1268,7 +1281,7 @@ func runPlainNewProjectWizard() error {
 	fmt.Println()
 
 	// Offer to create first post
-	if promptYesNo(reader, "Create your first post?", true) {
+	if promptRadioBool(reader, "Create your first post", true) {
 		postTitle := prompt(reader, "Post title", "Hello World")
 
 		slug := generateSlug(postTitle)
