@@ -307,6 +307,8 @@ func DefaultPreservePatterns() []string {
 
 		// Mermaid lightbox (injected by mermaid plugin JS)
 		"mermaid-lightbox*",
+		"mermaid-pz*",
+		"svg-pan-zoom*",
 
 		// Common state classes (often added by JS)
 		"active",

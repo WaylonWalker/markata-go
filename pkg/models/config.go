@@ -1021,8 +1021,8 @@ func NewMermaidConfig() MermaidConfig {
 		Enabled:          true,
 		CDNURL:           "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
 		Theme:            "default",
-		UseCSSVariables:  false,
-		Lightbox:         false,
+		UseCSSVariables:  true,
+		Lightbox:         true,
 		LightboxSelector: ".glightbox-mermaid",
 	}
 }
