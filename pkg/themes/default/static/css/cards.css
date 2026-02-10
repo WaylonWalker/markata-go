@@ -740,3 +740,24 @@
     max-height: 150px;
   }
 }
+
+/* ==========================================================================
+   Reduced Motion - Respect prefers-reduced-motion for card hover effects
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .card-photo .card-image,
+  .card-video .card-thumbnail,
+  .card-video .card-play-icon {
+    transition: none;
+  }
+
+  .card-photo:hover .card-image,
+  .card-video:hover .card-thumbnail {
+    transform: none;
+  }
+
+  .card-video:hover .card-play-icon {
+    transform: translate(-50%, -50%);
+  }
+}

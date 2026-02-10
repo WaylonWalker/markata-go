@@ -38,7 +38,7 @@
         {% endif %}
         <div class="reader-entry-content">
           <h2 class="reader-entry-title">
-            <a href="{{ entry.url }}" target="_blank" rel="noopener noreferrer">{{ entry.title }}</a>
+            <a href="{{ entry.url }}" target="_blank" rel="noopener noreferrer">{{ entry.title }}<span class="visually-hidden">(opens in new tab)</span></a>
           </h2>
           <div class="reader-entry-meta">
             <span class="reader-entry-source">{{ entry.feed_title }}</span>
