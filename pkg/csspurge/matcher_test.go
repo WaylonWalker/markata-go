@@ -205,8 +205,12 @@ func TestDefaultPreservePatterns(t *testing.T) {
 		t.Error("DefaultPreservePatterns() should return patterns")
 	}
 
-	// Check some expected patterns
-	expected := []string{"js-*", "htmx-*", "active", "hidden", "dark", "light"}
+	// Check some expected patterns including theme-related ones
+	expected := []string{
+		"js-*", "htmx-*", "active", "hidden",
+		"dark", "light", "dark-mode", "light-mode",
+		"theme-*", "palette-*", // Theme class patterns
+	}
 	patternSet := make(map[string]bool)
 	for _, p := range patterns {
 		patternSet[p] = true
@@ -268,9 +272,156 @@ func TestIsSelectorUsed(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.selector, func(t *testing.T) {
-			got := isSelectorUsed(tt.selector, used, nil)
+			got := isSelectorUsed(tt.selector, used, PurgeOptions{})
 			if got != tt.want {
 				t.Errorf("isSelectorUsed(%q) = %v, want %v", tt.selector, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDefaultPreserveAttributes(t *testing.T) {
+	attrs := DefaultPreserveAttributes()
+	if len(attrs) == 0 {
+		t.Error("DefaultPreserveAttributes() should return patterns")
+	}
+
+	// Check expected theme attributes
+	expected := []string{"data-theme", "data-palette", "data-mode", "data-color-scheme"}
+	attrSet := make(map[string]bool)
+	for _, a := range attrs {
+		attrSet[a] = true
+	}
+
+	for _, e := range expected {
+		if !attrSet[e] {
+			t.Errorf("expected attribute %q not found", e)
+		}
+	}
+}
+
+// TestThemeSelectorsPreserved verifies that theme-related selectors are preserved
+// when css_purge runs, even if they're not present in the static HTML.
+// This addresses GitHub issue #710.
+func TestThemeSelectorsPreserved(t *testing.T) {
+	tests := []struct {
+		name            string
+		css             string
+		usedClasses     []string
+		usedElements    []string
+		usedAttributes  []string
+		preserve        []string
+		preserveAttrs   []string
+		wantKept        bool
+		wantContains    []string
+		wantNotContains []string
+	}{
+		{
+			name:          "preserve data-theme attribute selector",
+			css:           `[data-theme="dark"] { background: #000; } .unused { color: red; }`,
+			usedElements:  []string{"html"},
+			preserveAttrs: []string{"data-theme"},
+			wantKept:      true,
+			wantContains:  []string{"data-theme"},
+		},
+		{
+			name:          "preserve data-palette attribute selector",
+			css:           `[data-palette="blue"] .card { border-color: blue; }`,
+			usedClasses:   []string{"card"},
+			preserveAttrs: []string{"data-palette"},
+			wantKept:      true,
+			wantContains:  []string{"data-palette"},
+		},
+		{
+			name:         "preserve theme-* class pattern",
+			css:          `.theme-dark { background: #1a1a1a; } .theme-light { background: #fff; }`,
+			preserve:     []string{"theme-*"},
+			wantKept:     true,
+			wantContains: []string{"theme-dark", "theme-light"},
+		},
+		{
+			name:         "preserve palette-* class pattern",
+			css:          `.palette-ocean { --primary: blue; } .palette-forest { --primary: green; }`,
+			preserve:     []string{"palette-*"},
+			wantKept:     true,
+			wantContains: []string{"palette-ocean", "palette-forest"},
+		},
+		{
+			name:         "preserve .dark and .light classes",
+			css:          `.dark { color-scheme: dark; } .light { color-scheme: light; }`,
+			preserve:     []string{"dark", "light"},
+			wantKept:     true,
+			wantContains: []string{".dark", ".light"},
+		},
+		{
+			name:         "default patterns preserve theme classes",
+			css:          `.dark { background: black; } .light { background: white; } .dark-mode { color: white; } .light-mode { color: black; }`,
+			preserve:     DefaultPreservePatterns(),
+			wantKept:     true,
+			wantContains: []string{".dark", ".light", "dark-mode", "light-mode"},
+		},
+		{
+			name:            "default preserve attributes preserve data-theme",
+			css:             `[data-theme="dark"] body { background: #111; } .unused { margin: 0; }`,
+			usedElements:    []string{"body"},
+			preserveAttrs:   DefaultPreserveAttributes(),
+			wantKept:        true,
+			wantContains:    []string{"data-theme"},
+			wantNotContains: []string{".unused"},
+		},
+		{
+			name:          "combined theme attribute and class preservation",
+			css:           `[data-theme="dark"] .theme-dark { display: block; } [data-theme="light"] .theme-light { display: block; }`,
+			preserve:      []string{"theme-*"},
+			preserveAttrs: []string{"data-theme"},
+			wantKept:      true,
+			wantContains:  []string{"data-theme", "theme-dark", "theme-light"},
+		},
+		{
+			name:            "purge non-theme selectors",
+			css:             `.unused-class { color: red; } [data-theme] .content { color: blue; }`,
+			usedClasses:     []string{"content"},
+			preserveAttrs:   []string{"data-theme"},
+			wantKept:        true,
+			wantContains:    []string{"data-theme", ".content"},
+			wantNotContains: []string{".unused-class"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			used := NewUsedSelectors()
+			for _, c := range tt.usedClasses {
+				used.Classes[c] = true
+			}
+			for _, elem := range tt.usedElements {
+				used.Elements[elem] = true
+			}
+			for _, attr := range tt.usedAttributes {
+				used.Attributes[attr] = true
+			}
+
+			opts := PurgeOptions{
+				Preserve:           tt.preserve,
+				PreserveAttributes: tt.preserveAttrs,
+			}
+
+			output, stats := PurgeCSS(tt.css, used, opts)
+
+			if tt.wantKept && stats.KeptRules == 0 {
+				t.Errorf("expected rules to be kept, but none were kept")
+			}
+
+			for _, want := range tt.wantContains {
+				if !strings.Contains(output, want) {
+					t.Errorf("output should contain %q, got: %s", want, output)
+				}
+			}
+
+			for _, notWant := range tt.wantNotContains {
+				if strings.Contains(output, notWant) {
+					t.Errorf("output should NOT contain %q, got: %s", notWant, output)
+				}
 			}
 		})
 	}

@@ -11,6 +11,11 @@ type PurgeOptions struct {
 	// Example: ["js-*", "htmx-*", "active", "hidden"]
 	Preserve []string
 
+	// PreserveAttributes is a list of attribute names to always preserve.
+	// Selectors with these attributes (e.g., [data-theme]) will not be purged.
+	// Example: ["data-theme", "data-palette"]
+	PreserveAttributes []string
+
 	// Verbose enables detailed logging.
 	Verbose bool
 }
@@ -119,7 +124,7 @@ func processRule(rule CSSRule, used *UsedSelectors, opts PurgeOptions, out *stri
 	}
 
 	// Check if regular rule is used
-	if isSelectorUsed(rule.Selector, used, opts.Preserve) {
+	if isSelectorUsed(rule.Selector, used, opts) {
 		out.WriteString(rule.Content)
 		out.WriteString("\n")
 		return true
@@ -130,11 +135,11 @@ func processRule(rule CSSRule, used *UsedSelectors, opts PurgeOptions, out *stri
 
 // isSelectorUsed checks if a CSS selector matches any used elements.
 // For comma-separated selectors, returns true if ANY selector matches.
-func isSelectorUsed(selector string, used *UsedSelectors, preserve []string) bool {
+func isSelectorUsed(selector string, used *UsedSelectors, opts PurgeOptions) bool {
 	selectors := ExtractSelectorsFromRule(selector)
 
 	for _, sel := range selectors {
-		if isSingleSelectorUsed(sel, used, preserve) {
+		if isSingleSelectorUsed(sel, used, opts) {
 			return true
 		}
 	}
@@ -143,9 +148,9 @@ func isSelectorUsed(selector string, used *UsedSelectors, preserve []string) boo
 }
 
 // isSingleSelectorUsed checks if a single CSS selector is used.
-func isSingleSelectorUsed(selector string, used *UsedSelectors, preserve []string) bool {
+func isSingleSelectorUsed(selector string, used *UsedSelectors, opts PurgeOptions) bool {
 	// Check if selector matches a preserve pattern
-	if matchesPreservePattern(selector, preserve) {
+	if matchesPreservePattern(selector, opts.Preserve) {
 		return true
 	}
 
@@ -166,13 +171,13 @@ func isSingleSelectorUsed(selector string, used *UsedSelectors, preserve []strin
 	}
 
 	// Check classes, IDs, and attributes
-	if !allClassesUsed(classes, used, preserve) {
+	if !allClassesUsed(classes, used, opts.Preserve) {
 		return false
 	}
-	if !allIDsUsed(ids, used, preserve) {
+	if !allIDsUsed(ids, used, opts.Preserve) {
 		return false
 	}
-	if !allAttributesUsed(attrs, used) {
+	if !allAttributesUsed(attrs, used, opts.PreserveAttributes) {
 		return false
 	}
 
@@ -221,9 +226,13 @@ func allIDsUsed(ids []string, used *UsedSelectors, preserve []string) bool {
 	return true
 }
 
-// allAttributesUsed checks if all attributes are used.
-func allAttributesUsed(attrs []string, used *UsedSelectors) bool {
+// allAttributesUsed checks if all attributes (not matching preserve patterns) are used.
+func allAttributesUsed(attrs []string, used *UsedSelectors, preserveAttrs []string) bool {
 	for _, attr := range attrs {
+		// Check if attribute matches a preserve pattern
+		if matchesPreservePatterns(attr, preserveAttrs) {
+			continue
+		}
 		if !used.Attributes[attr] {
 			return false
 		}
@@ -312,11 +321,13 @@ func DefaultPreservePatterns() []string {
 		"expanded",
 		"collapsed",
 
-		// Theme/mode classes
+		// Theme/mode classes (for runtime theme switching)
 		"dark",
 		"light",
 		"dark-mode",
 		"light-mode",
+		"theme-*",
+		"palette-*",
 
 		// Animation classes
 		"fade-*",
@@ -331,5 +342,17 @@ func DefaultPreservePatterns() []string {
 		// Accessibility
 		"sr-only",
 		"visually-hidden",
+	}
+}
+
+// DefaultPreserveAttributes returns the default attribute name patterns to preserve.
+// These are commonly used for runtime theming and should not be purged.
+func DefaultPreserveAttributes() []string {
+	return []string{
+		// Theme attribute selectors (e.g., [data-theme="dark"], [data-palette="blue"])
+		"data-theme",
+		"data-palette",
+		"data-mode",
+		"data-color-scheme",
 	}
 }
