@@ -59,7 +59,7 @@ reverse = true
 This creates a feed at `/blog/` with:
 - All published posts
 - Sorted by date (newest first)
-- HTML and RSS output (default formats)
+- HTML, RSS, Atom, JSON, and sitemap output (default formats)
 
 ### Minimal Example
 
@@ -508,6 +508,8 @@ Latest blog posts
 2024-01-10 - Another Post
   /another-post/
 ```
+
+Text output always produces clean plain text -- HTML entities are decoded to their literal characters and no HTML tags appear in the output. Links from HTML content are converted to footnote-style references. See the [Templates Guide](/docs/guides/templates/#text-templates) for details on using the `plaintext` filter.
 
 ### Sitemap
 

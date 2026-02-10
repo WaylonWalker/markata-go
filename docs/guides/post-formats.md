@@ -23,10 +23,10 @@ Configure output formats in your `markata-go.toml`:
 html = true       # Standard HTML (default: true)
 markdown = true   # Raw markdown source (default: true)
 text = true       # Plain text output (default: true)
-og = false        # OpenGraph card HTML (default: false)
+og = true         # OpenGraph card HTML (default: true)
 ```
 
-By default, HTML, Markdown, and Text formats are enabled. This allows standard web txt files like `robots.txt`, `llms.txt`, and `humans.txt` to work out of the box.
+By default, all post formats are enabled. This allows standard web txt files like `robots.txt`, `llms.txt`, and `humans.txt` to work out of the box while also providing social sharing cards.
 
 ## Available Formats
 

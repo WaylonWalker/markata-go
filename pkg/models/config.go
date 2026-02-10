@@ -1585,14 +1585,14 @@ func (p *TemplatePreset) TemplateForFormat(format string) string {
 }
 
 // NewPostFormatsConfig creates a new PostFormatsConfig with default values.
-// By default, HTML, Markdown, and Text output are enabled.
+// By default, all post output formats are enabled.
 func NewPostFormatsConfig() PostFormatsConfig {
 	enabled := true
 	return PostFormatsConfig{
 		HTML:     &enabled,
 		Markdown: true,
 		Text:     true,
-		OG:       false,
+		OG:       true,
 	}
 }
 
@@ -2284,7 +2284,7 @@ func NewConfig() *Config {
 		Hooks:         []string{"default"},
 		DisabledHooks: []string{},
 		GlobConfig: GlobConfig{
-			Patterns:     []string{},
+			Patterns:     []string{"pages/**/*.md", "posts/**/*.md"},
 			UseGitignore: true,
 		},
 		MarkdownConfig: MarkdownConfig{

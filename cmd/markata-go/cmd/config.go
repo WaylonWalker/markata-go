@@ -900,8 +900,15 @@ assets_dir = "static"
 
 # File discovery
 [glob]
-patterns = ["**/*.md"]
+patterns = ["pages/**/*.md", "posts/**/*.md"]
 use_gitignore = true
+
+# Post output formats
+[post_formats]
+html = true
+markdown = true
+text = true
+og = true
 
 # Feed defaults
 [feed_defaults]
@@ -911,8 +918,9 @@ orphan_threshold = 3
 [feed_defaults.formats]
 html = true
 rss = true
-atom = false
-json = false
+atom = true
+json = true
+sitemap = true
 
 # Define custom feeds
 # [[feeds]]
@@ -939,8 +947,16 @@ assets_dir: static
 # File discovery
 glob:
   patterns:
-    - "**/*.md"
+    - "pages/**/*.md"
+    - "posts/**/*.md"
   use_gitignore: true
+
+# Post output formats
+post_formats:
+  html: true
+  markdown: true
+  text: true
+  og: true
 
 # Feed defaults
 feed_defaults:
@@ -949,8 +965,9 @@ feed_defaults:
   formats:
     html: true
     rss: true
-    atom: false
-    json: false
+    atom: true
+    json: true
+    sitemap: true
 
 # Define custom feeds
 # feeds:
@@ -970,8 +987,14 @@ const defaultConfigJSON = `{
   "templates_dir": "templates",
   "assets_dir": "static",
   "glob": {
-    "patterns": ["**/*.md"],
+    "patterns": ["pages/**/*.md", "posts/**/*.md"],
     "use_gitignore": true
+  },
+  "post_formats": {
+    "html": true,
+    "markdown": true,
+    "text": true,
+    "og": true
   },
   "feed_defaults": {
     "items_per_page": 10,
@@ -979,8 +1002,9 @@ const defaultConfigJSON = `{
     "formats": {
       "html": true,
       "rss": true,
-      "atom": false,
-      "json": false
+      "atom": true,
+      "json": true,
+      "sitemap": true
     }
   },
   "feeds": []
