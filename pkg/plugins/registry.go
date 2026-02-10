@@ -169,6 +169,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 
 		// Render stage plugins
 		NewRenderMarkdownPlugin(),
+		NewMermaidPlugin(),
 		NewHeadingAnchorsPlugin(),    // Add anchors after markdown rendering
 		NewImageZoomPlugin(),         // Process image zoom attributes
 		NewContributionGraphPlugin(), // Process contribution graph code blocks
