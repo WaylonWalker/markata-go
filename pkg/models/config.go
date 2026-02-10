@@ -1004,14 +1004,26 @@ type MermaidConfig struct {
 
 	// Theme is the Mermaid theme to use (default, dark, forest, neutral)
 	Theme string `json:"theme" yaml:"theme" toml:"theme"`
+
+	// UseCSSVariables enables palette-aware theme variables from CSS custom properties.
+	UseCSSVariables bool `json:"use_css_variables" yaml:"use_css_variables" toml:"use_css_variables"`
+
+	// Lightbox enables GLightbox zoom for rendered Mermaid diagrams.
+	Lightbox bool `json:"lightbox" yaml:"lightbox" toml:"lightbox"`
+
+	// LightboxSelector is the CSS selector used for Mermaid lightbox links.
+	LightboxSelector string `json:"lightbox_selector" yaml:"lightbox_selector" toml:"lightbox_selector"`
 }
 
 // NewMermaidConfig creates a new MermaidConfig with default values.
 func NewMermaidConfig() MermaidConfig {
 	return MermaidConfig{
-		Enabled: true,
-		CDNURL:  "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
-		Theme:   "default",
+		Enabled:          true,
+		CDNURL:           "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
+		Theme:            "default",
+		UseCSSVariables:  true,
+		Lightbox:         true,
+		LightboxSelector: ".glightbox-mermaid",
 	}
 }
 

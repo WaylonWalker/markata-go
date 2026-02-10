@@ -3277,13 +3277,27 @@ jinja: true
 enabled = true                                              # Enabled by default; set to false to disable
 cdn_url = "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs"  # Mermaid CDN URL
 theme = "default"                                           # Mermaid theme (default, dark, forest, neutral)
+use_css_variables = true                                    # Derive diagram colors from site CSS palette (default: true)
+lightbox = true                                             # Click diagrams to open in lightbox with pan/zoom (default: true)
+lightbox_selector = ".glightbox-mermaid"                    # CSS selector for lightbox links (default: ".glightbox-mermaid")
 ```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Whether mermaid processing is active |
+| `cdn_url` | string | mermaid CDN | URL for the Mermaid.js library |
+| `theme` | string | `"default"` | Mermaid theme: default, dark, forest, neutral. Ignored when `use_css_variables` is true. |
+| `use_css_variables` | bool | `true` | Read site CSS custom properties (`--color-background`, `--color-text`, `--color-primary`, `--color-code-bg`, `--color-surface`) and pass them to Mermaid's theming. Hardcoded fallbacks are used if variables are not defined. |
+| `lightbox` | bool | `true` | Enable click-to-zoom lightbox overlay with interactive pan and zoom via svg-pan-zoom. |
+| `lightbox_selector` | string | `".glightbox-mermaid"` | CSS selector for mermaid lightbox links. Retained for backward compatibility; the programmatic GLightbox API does not use it. |
 
 **Behavior:**
 1. Finds code blocks with `language-mermaid` class in `ArticleHTML`
 2. Converts them to `<pre class="mermaid">` blocks that Mermaid.js can render
 3. Automatically injects the Mermaid.js initialization script
 4. Only injects the script once per post (even with multiple diagrams)
+5. When `use_css_variables` is true, reads site CSS custom properties and passes them to `mermaid.initialize()` so diagrams match the site palette automatically
+6. When `lightbox` is true, attaches click handlers to each rendered SVG. Clicking opens a programmatic GLightbox overlay with svg-pan-zoom for interactive pan and zoom. svg-pan-zoom (~29KB) is lazy-loaded from CDN on first click.
 
 **Markdown usage:**
 ````markdown
@@ -3322,6 +3336,50 @@ graph TD
   mermaid.initialize({ startOnLoad: true, theme: 'default' });
 </script>
 ```
+
+When `lightbox` is enabled, each rendered SVG also gets a click handler that opens a GLightbox overlay. The lightbox contains a toolbar with Fit / + / - controls and supports mouse wheel zoom and click-drag panning via svg-pan-zoom.
+
+#### Lightbox / Pan-Zoom for Diagrams
+
+When `lightbox = true` (the default), clicking any rendered mermaid diagram opens a full-screen overlay with interactive pan and zoom.
+
+**How it works:**
+- A separate GLightbox instance (`selector: false`) is created for mermaid diagrams to avoid conflicts with image lightbox
+- svg-pan-zoom v3.6.2 is lazy-loaded from CDN on first click (zero cost for pages without interaction)
+- GLightbox `draggable` is set to `false` to prevent conflict with svg-pan-zoom panning
+- On lightbox open, `requestAnimationFrame` is used to `resize()` + `fit()` + `center()` the diagram for reliable initial positioning
+
+**Interaction:**
+
+| Action | Result |
+|--------|--------|
+| Click diagram | Open lightbox with full-size diagram |
+| Mouse wheel / pinch | Zoom in / out |
+| Click + drag | Pan the diagram |
+| Fit button | Reset zoom to fit diagram in viewport |
+| + / - buttons | Zoom in / out incrementally |
+| Escape / click overlay | Close lightbox |
+
+**CSS classes:**
+
+| Class | Purpose |
+|-------|---------|
+| `.mermaid-lightbox-wrap` | Container inside lightbox (100% width, 90vh height, overflow hidden) |
+| `.mermaid-lightbox-toolbar` | Absolute-positioned button toolbar (top-right) |
+| `.mermaid-pz-btn` | Themed control buttons using `var(--color-surface)`, `var(--color-border)`, `var(--color-text)` |
+| `.svg-pan-zoom_viewport` | Added by svg-pan-zoom; styled with `cursor: grab` / `cursor: grabbing` |
+
+**GLightbox theming:**
+
+The lightbox overlay is themed to match the site's dark palette. CSS overrides in `components.css` apply to:
+- `.goverlay` -- dark background overlay
+- `.ginlined-content` -- content container
+- Navigation buttons and description area
+
+**Performance:**
+- svg-pan-zoom JS (~29KB, BSD-2 license) is only loaded on first diagram click
+- GLightbox CSS/JS is loaded with the page (shared with image_zoom if enabled)
+- Pan-zoom instance is destroyed on lightbox close to prevent memory leaks
 
 ### Examples
 
