@@ -279,7 +279,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		}
 
 		// Try to use cached HTML for unchanged posts
-		if cachedHTML := p.tryGetCachedHTML(post, cache, changedSlugs); cachedHTML != "" {
+		if cachedHTML := p.tryGetCachedHTML(post, cache, changedSlugs, config, m); cachedHTML != "" {
 			post.HTML = cachedHTML
 			return false // Already handled, no concurrent processing needed
 		}
@@ -300,6 +300,10 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		if cache != nil && post.InputHash != "" {
 			//nolint:errcheck // caching is best-effort, failures are non-fatal
 			cache.CacheFullHTML(post.Path, html)
+			// Store feed membership hash for future builds
+			if membershipHash := p.computeFeedMembershipHash(post, config, m); membershipHash != "" {
+				cache.SetFeedMembershipHash(post.Path, membershipHash)
+			}
 		}
 
 		return nil
@@ -320,7 +324,7 @@ func getChangedSlugsMap(cache *buildcache.Cache) map[string]bool {
 
 // tryGetCachedHTML checks if a post can use cached HTML.
 // Returns cached HTML if available and valid, empty string otherwise.
-func (p *TemplatesPlugin) tryGetCachedHTML(post *models.Post, cache *buildcache.Cache, changedSlugs map[string]bool) string {
+func (p *TemplatesPlugin) tryGetCachedHTML(post *models.Post, cache *buildcache.Cache, changedSlugs map[string]bool, config *lifecycle.Config, m *lifecycle.Manager) string {
 	if cache == nil || post.InputHash == "" {
 		return ""
 	}
@@ -343,8 +347,62 @@ func (p *TemplatesPlugin) tryGetCachedHTML(post *models.Post, cache *buildcache.
 		}
 	}
 
+	// Check if feed membership changed (for sidebar invalidation)
+	if currentHash := p.computeFeedMembershipHash(post, config, m); currentHash != "" {
+		cachedHash := cache.GetFeedMembershipHash(post.Path)
+		if cachedHash != currentHash {
+			return ""
+		}
+	}
+
 	// Try to load cached HTML
 	return cache.GetCachedFullHTML(post.Path)
+}
+
+// computeFeedMembershipHash computes a hash of the feed membership for sidebar invalidation.
+// Returns empty string if the post doesn't belong to any configured feed sidebar.
+func (p *TemplatesPlugin) computeFeedMembershipHash(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager) string {
+	components, ok := config.Extra["components"].(models.ComponentsConfig)
+	if !ok {
+		return ""
+	}
+	if components.FeedSidebar.Enabled == nil || !*components.FeedSidebar.Enabled {
+		return ""
+	}
+	feedSlugs := components.FeedSidebar.Feeds
+	if len(feedSlugs) == 0 {
+		return ""
+	}
+
+	for _, feedSlug := range feedSlugs {
+		if !strings.HasPrefix(feedSlug, "tags/") {
+			continue
+		}
+		tagName := strings.TrimPrefix(feedSlug, "tags/")
+		hasTag := false
+		for _, postTag := range post.Tags {
+			if postTag == tagName {
+				hasTag = true
+				break
+			}
+		}
+		if !hasTag {
+			continue
+		}
+
+		// Collect slugs of all posts in this feed
+		var memberSlugs []string
+		for _, feedPost := range m.Posts() {
+			for _, t := range feedPost.Tags {
+				if t == tagName && feedPost.Published && !feedPost.Draft && !feedPost.Skip {
+					memberSlugs = append(memberSlugs, feedPost.Slug)
+					break
+				}
+			}
+		}
+		return buildcache.ComputeFeedMembershipHash(memberSlugs)
+	}
+	return ""
 }
 
 // renderPost renders a single post using the appropriate template.
