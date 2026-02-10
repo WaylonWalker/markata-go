@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestLinkAvatarsPlugin_Name(t *testing.T) {
@@ -373,9 +374,6 @@ func TestLinkAvatarsPlugin_GenerateCSS(t *testing.T) {
 
 func TestLinkAvatarsPlugin_HeadInjection(t *testing.T) {
 	p := NewLinkAvatarsPlugin()
-	p.SetConfig(LinkAvatarsConfig{
-		Enabled: true,
-	})
 
 	m := lifecycle.NewManager()
 	tmpDir := t.TempDir()
@@ -383,14 +381,47 @@ func TestLinkAvatarsPlugin_HeadInjection(t *testing.T) {
 	cfg.OutputDir = tmpDir
 	cfg.Extra = make(map[string]interface{})
 
-	err := p.Write(m)
-	if err != nil {
-		t.Fatalf("Write() error = %v", err)
+	// Create a models.Config and store it in Extra (as done by createManager)
+	modelsConfig := &models.Config{}
+	cfg.Extra["models_config"] = modelsConfig
+
+	// Set link_avatars config in Extra (as done by config loader)
+	cfg.Extra["link_avatars"] = map[string]interface{}{
+		"enabled": true,
 	}
 
-	// Check that link_avatars_enabled is set in Extra
-	if enabled, ok := cfg.Extra["link_avatars_enabled"].(bool); !ok || !enabled {
-		t.Error("link_avatars_enabled should be true in Extra")
+	// Run Configure (which now handles head injection)
+	err := p.Configure(m)
+	if err != nil {
+		t.Fatalf("Configure() error = %v", err)
+	}
+
+	// Check that head tags were injected into models_config
+	if len(modelsConfig.Head.Link) != 1 {
+		t.Errorf("Expected 1 link tag, got %d", len(modelsConfig.Head.Link))
+	}
+	if len(modelsConfig.Head.Script) != 1 {
+		t.Errorf("Expected 1 script tag, got %d", len(modelsConfig.Head.Script))
+	}
+
+	// Check that the head was also updated in Extra (for ToModelsConfig)
+	updatedHead, ok := cfg.Extra["head"].(models.HeadConfig)
+	if !ok {
+		t.Fatal("head should be set in Extra")
+	}
+	if len(updatedHead.Link) != 1 {
+		t.Errorf("Expected 1 link tag in Extra[head], got %d", len(updatedHead.Link))
+	}
+	if len(updatedHead.Script) != 1 {
+		t.Errorf("Expected 1 script tag in Extra[head], got %d", len(updatedHead.Script))
+	}
+
+	// Verify the correct paths
+	if updatedHead.Link[0].Href != "/assets/markata/link-avatars.css" {
+		t.Errorf("CSS href = %q, want %q", updatedHead.Link[0].Href, "/assets/markata/link-avatars.css")
+	}
+	if updatedHead.Script[0].Src != "/assets/markata/link-avatars.js" {
+		t.Errorf("JS src = %q, want %q", updatedHead.Script[0].Src, "/assets/markata/link-avatars.js")
 	}
 }
 
