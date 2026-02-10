@@ -165,6 +165,7 @@ The plugin MUST implement:
 enabled = true
 cdn_url = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs"
 theme = "default"                  # default, dark, forest, neutral
+use_css_variables = false           # use CSS custom properties for themeVariables
 ```
 
 **Configuration Fields:**
@@ -174,6 +175,7 @@ theme = "default"                  # default, dark, forest, neutral
 | `enabled` | bool | `true` | Whether the plugin is active |
 | `cdn_url` | string | `"https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs"` | URL for Mermaid.js library |
 | `theme` | string | `"default"` | Mermaid theme (default, dark, forest, neutral) |
+| `use_css_variables` | bool | `false` | Use CSS custom properties to derive Mermaid theme variables |
 
 **Syntax:**
 
@@ -191,6 +193,7 @@ graph TD
 1. Find all `<pre><code class="language-mermaid">` blocks
 2. Replace with `<pre class="mermaid">{diagram code}</pre>`
 3. Inject Mermaid.js script (once per post with mermaid content)
+4. When `use_css_variables` is enabled, initialize Mermaid with `theme: "base"` and `themeVariables` derived from CSS custom properties
 
 **Output:**
 

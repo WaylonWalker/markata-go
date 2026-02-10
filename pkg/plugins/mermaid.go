@@ -62,6 +62,9 @@ func (p *MermaidPlugin) Configure(m *lifecycle.Manager) error {
 		if theme, ok := cfgMap["theme"].(string); ok && theme != "" {
 			p.config.Theme = theme
 		}
+		if useCSSVariables, ok := cfgMap["use_css_variables"].(bool); ok {
+			p.config.UseCSSVariables = useCSSVariables
+		}
 	}
 
 	return nil
@@ -136,15 +139,43 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 // injectMermaidScript adds the Mermaid.js initialization script to the HTML.
 // The script is only injected once per post.
 func (p *MermaidPlugin) injectMermaidScript(htmlContent string) string {
-	// Build the script tag
-	script := `
+	var script string
+	if p.config.UseCSSVariables {
+		script = p.cssVariablesScript()
+	} else {
+		script = `
 <script type="module">
   import mermaid from '` + p.config.CDNURL + `';
   mermaid.initialize({ startOnLoad: true, theme: '` + p.config.Theme + `' });
 </script>`
+	}
 
 	// Append the script to the end of the content
 	return htmlContent + script
+}
+
+func (p *MermaidPlugin) cssVariablesScript() string {
+	return `
+<script type="module">
+  import mermaid from '` + p.config.CDNURL + `';
+  const rootStyle = getComputedStyle(document.documentElement);
+  const css = (name, fallback) => (rootStyle.getPropertyValue(name) || fallback).trim();
+  const themeVariables = {
+    background: css('--color-background', '#ffffff'),
+    primaryColor: css('--color-primary', '#3b82f6'),
+    primaryTextColor: css('--color-text', '#1f2937'),
+    primaryBorderColor: css('--color-border', '#e5e7eb'),
+    lineColor: css('--color-border', '#e5e7eb'),
+    textColor: css('--color-text', '#1f2937'),
+    nodeBkg: css('--color-surface', '#f9fafb'),
+    nodeBorder: css('--color-border', '#e5e7eb'),
+    clusterBkg: css('--color-surface', '#f9fafb'),
+    clusterBorder: css('--color-border', '#e5e7eb'),
+    titleColor: css('--color-text', '#1f2937'),
+    edgeLabelBackground: css('--color-background', '#ffffff'),
+  };
+  mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables });
+</script>`
 }
 
 // SetConfig sets the mermaid configuration directly.

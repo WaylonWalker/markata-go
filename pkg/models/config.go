@@ -1004,14 +1004,18 @@ type MermaidConfig struct {
 
 	// Theme is the Mermaid theme to use (default, dark, forest, neutral)
 	Theme string `json:"theme" yaml:"theme" toml:"theme"`
+
+	// UseCSSVariables enables palette-aware theme variables from CSS custom properties.
+	UseCSSVariables bool `json:"use_css_variables" yaml:"use_css_variables" toml:"use_css_variables"`
 }
 
 // NewMermaidConfig creates a new MermaidConfig with default values.
 func NewMermaidConfig() MermaidConfig {
 	return MermaidConfig{
-		Enabled: true,
-		CDNURL:  "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
-		Theme:   "default",
+		Enabled:         true,
+		CDNURL:          "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
+		Theme:           "default",
+		UseCSSVariables: false,
 	}
 }
 

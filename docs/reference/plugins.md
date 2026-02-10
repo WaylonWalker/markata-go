@@ -3266,6 +3266,7 @@ jinja: true
 enabled = true                                              # Enable the plugin (default: false)
 cdn_url = "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs"  # Mermaid CDN URL
 theme = "default"                                           # Mermaid theme (default, dark, forest, neutral)
+use_css_variables = false                                   # Use CSS custom properties for themeVariables
 ```
 
 **Behavior:**
@@ -3273,6 +3274,7 @@ theme = "default"                                           # Mermaid theme (def
 2. Converts them to `<pre class="mermaid">` blocks that Mermaid.js can render
 3. Automatically injects the Mermaid.js initialization script
 4. Only injects the script once per post (even with multiple diagrams)
+5. When `use_css_variables` is enabled, Mermaid initializes with `theme: "base"` and palette-derived `themeVariables`
 
 **Markdown usage:**
 ````markdown
@@ -3311,6 +3313,17 @@ graph TD
   mermaid.initialize({ startOnLoad: true, theme: 'default' });
 </script>
 ```
+
+**Palette-aware theme variables:**
+
+```toml
+[markata-go.mermaid]
+use_css_variables = true
+```
+
+When enabled, Mermaid pulls colors from CSS custom properties such as
+`--color-background`, `--color-surface`, `--color-text`, `--color-border`, and
+`--color-primary` to keep diagrams aligned with the active palette.
 
 **Enabling the plugin:**
 ```go
