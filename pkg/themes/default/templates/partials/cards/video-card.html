@@ -1,18 +1,27 @@
 {# Video Card - Video/thumbnail prominent for video, clip, stream posts #}
 {# Video thumbnail with play indicator, title below #}
+{# Supports image, video, and thumbnail fields interchangeably #}
 <article class="card card-video h-entry">
-  {% if post.image or post.thumbnail %}
+  {% with post.image|media_url:post.video as media_src %}
+  {% if media_src %}
   <a href="{{ post.href }}" class="card-video-link u-url">
+    {% if media_src|is_video %}
+    <video class="card-thumbnail u-video" autoplay muted loop playsinline>
+      <source src="{{ media_src }}" type="video/{% with media_src|lower as src_lower %}{% if src_lower|endswith:".mp4" or src_lower|endswith:".m4v" %}mp4{% elif src_lower|endswith:".webm" %}webm{% elif src_lower|endswith:".mov" %}quicktime{% else %}ogg{% endif %}{% endwith %}">
+    </video>
+    {% else %}
     <div class="card-video-container">
-      <img src="{{ post.image | default:post.thumbnail }}" alt="{{ post.title | default:'Video thumbnail' }}" class="card-thumbnail u-photo" width="1200" height="675" loading="lazy">
+      <img src="{{ media_src }}" alt="{{ post.title | default:'Video thumbnail' }}" class="card-thumbnail u-photo" width="1200" height="675" loading="lazy">
       <div class="card-play-icon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48" aria-hidden="true" focusable="false">
           <path d="M8 5v14l11-7z"/>
         </svg>
       </div>
     </div>
+    {% endif %}
   </a>
   {% endif %}
+  {% endwith %}
 
   <div class="card-body">
     {% if post.title %}

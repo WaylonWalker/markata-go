@@ -823,6 +823,49 @@ Feed/listing templates MUST include `h-feed` markup:
 
 ---
 
+## Media Detection Filters
+
+Templates can auto-detect media type (image vs video) using file extension analysis. This allows `image` and `video` frontmatter fields to be used interchangeably.
+
+### `is_video` Filter
+
+Returns `true` if the input string has a video file extension.
+
+**Recognized video extensions:** `.mp4`, `.webm`, `.mov`, `.m4v`, `.ogv`, `.ogg`
+
+Extension matching is case-insensitive.
+
+```jinja2
+{% if post.image|is_video %}
+<video src="{{ post.image }}" autoplay muted loop playsinline></video>
+{% else %}
+<img src="{{ post.image }}" alt="{{ post.title }}">
+{% endif %}
+```
+
+### `media_url` Filter
+
+Resolves a media URL from multiple fields. Returns the first non-empty value from the input (primary) and parameter (fallback).
+
+```jinja2
+{# Use image field first, fall back to video field #}
+{% with post.image|media_url:post.video as media_src %}
+{% if media_src %}
+  {# Render media_src #}
+{% endif %}
+{% endwith %}
+```
+
+### Card Template Behavior
+
+Photo and video card templates use both filters together to support interchangeable `image` and `video` frontmatter fields:
+
+1. `media_url` resolves which field has a value (`image` preferred over `video`)
+2. `is_video` determines whether to render a `<video>` or `<img>` element
+3. Video MIME type is inferred from the file extension
+
+---
+
 ## See Also
 
 - [SPEC.md](./SPEC.md) - Full specification
