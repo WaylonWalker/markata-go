@@ -160,20 +160,25 @@ func (p *MermaidPlugin) cssVariablesScript() string {
   import mermaid from '` + p.config.CDNURL + `';
   const rootStyle = getComputedStyle(document.documentElement);
   const css = (name, fallback) => (rootStyle.getPropertyValue(name) || fallback).trim();
-  const themeVariables = {
-    background: css('--color-background', '#ffffff'),
-    primaryColor: css('--color-primary', '#3b82f6'),
-    primaryTextColor: css('--color-text', '#1f2937'),
-    primaryBorderColor: css('--color-border', '#e5e7eb'),
-    lineColor: css('--color-border', '#e5e7eb'),
-    textColor: css('--color-text', '#1f2937'),
-    nodeBkg: css('--color-surface', '#f9fafb'),
-    nodeBorder: css('--color-border', '#e5e7eb'),
-    clusterBkg: css('--color-surface', '#f9fafb'),
-    clusterBorder: css('--color-border', '#e5e7eb'),
-    titleColor: css('--color-text', '#1f2937'),
-    edgeLabelBackground: css('--color-background', '#ffffff'),
-  };
+	const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches ||
+	  document.documentElement.dataset.theme === 'dark';
+	const accent = css('--color-primary', '#ffcd11');
+	const themeVariables = {
+		background: css('--color-background', '#ffffff'),
+		primaryColor: css('--color-code-bg', '#0a0a0a'),
+		primaryTextColor: css('--color-text', '#1f2937'),
+		primaryBorderColor: accent,
+		lineColor: accent,
+		textColor: css('--color-text', '#1f2937'),
+		nodeBkg: css('--color-code-bg', '#0a0a0a'),
+		nodeBorder: accent,
+		nodeTextColor: css('--color-text', '#1f2937'),
+		clusterBkg: isDark ? css('--color-background', '#0f0f0f') : css('--color-surface', '#f9fafb'),
+		clusterBorder: accent,
+		clusterTextColor: css('--color-text', '#1f2937'),
+		titleColor: css('--color-text', '#1f2937'),
+		edgeLabelBackground: css('--color-code-bg', '#0a0a0a'),
+	};
   mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables });
 </script>`
 }
