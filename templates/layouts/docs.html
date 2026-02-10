@@ -12,7 +12,7 @@
         {% if config.header.show_logo or config.header.show_title %}
         <a href="/" class="site-title">
             {% if config.header.show_logo and config.logo %}
-            <img src="{{ config.logo }}" alt="{{ config.title }}" class="site-logo">
+            <img src="{{ config.logo }}" alt="{{ config.title }}" class="site-logo" width="32" height="32">
             {% endif %}
             {% if config.header.show_title %}{{ config.title | default:"Home" }}{% endif %}
         </a>

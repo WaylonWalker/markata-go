@@ -15,7 +15,7 @@
         {% if footer.links %}
         <nav class="footer-links" aria-label="Footer navigation">
             {% for link in footer.links %}
-            <a href="{{ link.url }}"{% if link.external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ link.label }}</a>
+            <a href="{{ link.url }}"{% if link.external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ link.label }}{% if link.external %}<span class="visually-hidden">(opens in new tab)</span>{% endif %}</a>
             {% endfor %}
         </nav>
         {% endif %}

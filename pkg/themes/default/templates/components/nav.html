@@ -7,12 +7,12 @@
 <nav class="site-nav site-nav--{{ nav.position | default:'header' }} site-nav--{{ nav.style | default:'horizontal' }}" aria-label="Main navigation">
     {% if nav.items %}
         {% for item in nav.items %}
-    <a href="{{ item.url }}"{% if item.external %} target="_blank" rel="noopener noreferrer"{% endif %} class="nav-link">{{ item.label }}</a>
+    <a href="{{ item.url }}"{% if item.external %} target="_blank" rel="noopener noreferrer"{% endif %} class="nav-link">{{ item.label }}{% if item.external %}<span class="visually-hidden">(opens in new tab)</span>{% endif %}</a>
         {% endfor %}
     {% elif config.nav %}
         {# Fallback to legacy config.nav for backward compatibility #}
         {% for item in config.nav %}
-    <a href="{{ item.url }}"{% if item.external %} target="_blank" rel="noopener noreferrer"{% endif %} class="nav-link">{{ item.label }}</a>
+    <a href="{{ item.url }}"{% if item.external %} target="_blank" rel="noopener noreferrer"{% endif %} class="nav-link">{{ item.label }}{% if item.external %}<span class="visually-hidden">(opens in new tab)</span>{% endif %}</a>
         {% endfor %}
     {% else %}
     <a href="/" class="nav-link">Home</a>

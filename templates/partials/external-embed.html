@@ -9,7 +9,7 @@
     </div>
     {% endif %}
     <div class="embed-card-content">
-      <div class="embed-card-title">{{ og_title|default:fallback_title }}</div>
+      <div class="embed-card-title">{{ og_title|default:fallback_title }}<span class="visually-hidden">(opens in new tab)</span></div>
       {% if og_description %}
       <div class="embed-card-description">{{ og_description|truncate:200 }}</div>
       {% endif %}
