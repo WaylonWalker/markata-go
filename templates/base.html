@@ -228,13 +228,13 @@
       document.body.appendChild(paginationScript);
     }
 
-    // GLightbox - only load if glightbox elements exist
+    // GLightbox - load when enabled
     {% if config.Extra.glightbox_enabled %}
-    if (document.querySelector('.glightbox')) {
-      const glightboxScript = document.createElement('script');
-      glightboxScript.src = '{% if config.Extra.asset_urls.glightbox-js %}{{ config.Extra.asset_urls.glightbox-js }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js{% else %}/js/glightbox.min.js{% endif %}';
-      glightboxScript.onload = function() {
-        const lightbox = GLightbox({
+    const glightboxScript = document.createElement('script');
+    glightboxScript.src = '{% if config.Extra.asset_urls.glightbox-js %}{{ config.Extra.asset_urls.glightbox-js }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js{% else %}/js/glightbox.min.js{% endif %}';
+    glightboxScript.onload = function() {
+      window.initGLightbox = function initGLightbox() {
+        window.__glightboxInstance = GLightbox({
           selector: '{{ config.Extra.glightbox_options.selector | default:".glightbox" }}',
           openEffect: '{{ config.Extra.glightbox_options.openEffect | default:"zoom" }}',
           closeEffect: '{{ config.Extra.glightbox_options.closeEffect | default:"zoom" }}',
@@ -244,8 +244,10 @@
           draggable: {{ config.Extra.glightbox_options.draggable | default:true | yesno:"true,false" }}
         });
       };
-      document.body.appendChild(glightboxScript);
-    }
+      window.initGLightbox();
+      window.dispatchEvent(new CustomEvent('glightbox-ready'));
+    };
+    document.body.appendChild(glightboxScript);
     {% endif %}
   </script>
 

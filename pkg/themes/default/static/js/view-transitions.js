@@ -165,6 +165,9 @@
     // Skip HTMX-managed links (they handle their own updates)
     if (link.hasAttribute('hx-get') || link.hasAttribute('hx-post')) return false;
 
+    // Skip GLightbox links (inline lightbox should not trigger navigation)
+    if (link.classList.contains('glightbox-mermaid') || link.hasAttribute('data-glightbox')) return false;
+
     // Skip links that explicitly opt-out
     if (link.dataset.noTransition) return false;
 
