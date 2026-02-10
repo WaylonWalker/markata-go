@@ -847,3 +847,131 @@ func TestParseJSON_BlogrollFallbackImageService(t *testing.T) {
 		t.Errorf("len(Blogroll.Feeds) = %d, want 1", len(config.Blogroll.Feeds))
 	}
 }
+
+// TestParseTOML_Shortcuts tests parsing of shortcuts from TOML config
+func TestParseTOML_Shortcuts(t *testing.T) {
+	data := []byte(`
+[markata-go]
+title = "Test Site"
+
+[markata-go.shortcuts.navigation]
+"g t" = "/tags/"
+"g a" = "/about/"
+"g h" = "/"
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if config.Shortcuts.Navigation == nil {
+		t.Fatal("Shortcuts.Navigation should not be nil")
+	}
+
+	if len(config.Shortcuts.Navigation) != 3 {
+		t.Errorf("len(Shortcuts.Navigation) = %d, want 3", len(config.Shortcuts.Navigation))
+	}
+
+	tests := []struct {
+		key  string
+		want string
+	}{
+		{"g t", "/tags/"},
+		{"g a", "/about/"},
+		{"g h", "/"},
+	}
+
+	for _, tt := range tests {
+		if got := config.Shortcuts.Navigation[tt.key]; got != tt.want {
+			t.Errorf("Shortcuts.Navigation[%q] = %q, want %q", tt.key, got, tt.want)
+		}
+	}
+}
+
+// TestParseTOML_Shortcuts_Empty tests parsing of empty shortcuts from TOML config
+func TestParseTOML_Shortcuts_Empty(t *testing.T) {
+	data := []byte(`
+[markata-go]
+title = "Test Site"
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	// Empty shortcuts should still work (navigation may be nil or empty)
+	if len(config.Shortcuts.Navigation) != 0 {
+		t.Errorf("Shortcuts.Navigation should be nil or empty, got %v", config.Shortcuts.Navigation)
+	}
+}
+
+// TestParseYAML_Shortcuts tests parsing of shortcuts from YAML config
+func TestParseYAML_Shortcuts(t *testing.T) {
+	data := []byte(`
+markata-go:
+  title: Test Site
+  shortcuts:
+    navigation:
+      "g t": "/tags/"
+      "g a": "/about/"
+`)
+
+	config, err := ParseYAML(data)
+	if err != nil {
+		t.Fatalf("ParseYAML() error = %v", err)
+	}
+
+	if config.Shortcuts.Navigation == nil {
+		t.Fatal("Shortcuts.Navigation should not be nil")
+	}
+
+	if len(config.Shortcuts.Navigation) != 2 {
+		t.Errorf("len(Shortcuts.Navigation) = %d, want 2", len(config.Shortcuts.Navigation))
+	}
+
+	if got := config.Shortcuts.Navigation["g t"]; got != "/tags/" {
+		t.Errorf("Shortcuts.Navigation[\"g t\"] = %q, want %q", got, "/tags/")
+	}
+
+	if got := config.Shortcuts.Navigation["g a"]; got != "/about/" {
+		t.Errorf("Shortcuts.Navigation[\"g a\"] = %q, want %q", got, "/about/")
+	}
+}
+
+// TestParseJSON_Shortcuts tests parsing of shortcuts from JSON config
+func TestParseJSON_Shortcuts(t *testing.T) {
+	data := []byte(`{
+  "markata-go": {
+    "title": "Test Site",
+    "shortcuts": {
+      "navigation": {
+        "g t": "/tags/",
+        "g a": "/about/"
+      }
+    }
+  }
+}`)
+
+	config, err := ParseJSON(data)
+	if err != nil {
+		t.Fatalf("ParseJSON() error = %v", err)
+	}
+
+	if config.Shortcuts.Navigation == nil {
+		t.Fatal("Shortcuts.Navigation should not be nil")
+	}
+
+	if len(config.Shortcuts.Navigation) != 2 {
+		t.Errorf("len(Shortcuts.Navigation) = %d, want 2", len(config.Shortcuts.Navigation))
+	}
+
+	if got := config.Shortcuts.Navigation["g t"]; got != "/tags/" {
+		t.Errorf("Shortcuts.Navigation[\"g t\"] = %q, want %q", got, "/tags/")
+	}
+
+	if got := config.Shortcuts.Navigation["g a"]; got != "/about/" {
+		t.Errorf("Shortcuts.Navigation[\"g a\"] = %q, want %q", got, "/about/")
+	}
+}
