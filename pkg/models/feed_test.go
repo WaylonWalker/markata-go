@@ -235,11 +235,14 @@ func TestNewFeedDefaults(t *testing.T) {
 	if !defaults.Formats.RSS {
 		t.Error("rss format should be enabled by default")
 	}
-	if defaults.Formats.Atom {
-		t.Error("atom format should be disabled by default")
+	if !defaults.Formats.Atom {
+		t.Error("atom format should be enabled by default")
 	}
-	if defaults.Formats.JSON {
-		t.Error("json format should be disabled by default")
+	if !defaults.Formats.JSON {
+		t.Error("json format should be enabled by default")
+	}
+	if !defaults.Formats.Sitemap {
+		t.Error("sitemap format should be enabled by default")
 	}
 }
 
