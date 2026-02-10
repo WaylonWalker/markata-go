@@ -2432,18 +2432,69 @@ div[class]:not([class=""]) {
   background-color: var(--color-text-muted);
 }
 
-/* Mermaid lightbox SVG wrapper */
+/* Mermaid lightbox SVG wrapper
+   The wrapper must have an explicit height so svg-pan-zoom has a concrete
+   region to render into.  GLightbox passes height:'90vh' in setElements(),
+   and the wrapper fills that space. */
 .mermaid-lightbox-wrap {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 2rem;
-  min-height: 100%;
+  position: relative;
+  width: 100%;
+  height: 90vh;
+  overflow: hidden;
 }
 
 .mermaid-lightbox-wrap svg {
-  max-width: 100%;
-  height: auto;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Mermaid pan-zoom toolbar -- positioned top-right over the SVG */
+.mermaid-lightbox-toolbar {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.25rem;
+  z-index: 10;
+}
+
+.mermaid-pz-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: var(--font-body, sans-serif);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background-color 0.15s, border-color 0.15s;
+  user-select: none;
+}
+
+.mermaid-pz-btn:hover {
+  background: var(--color-background);
+  border-color: var(--color-primary);
+}
+
+.mermaid-pz-btn:active {
+  background: var(--color-border);
+}
+
+/* Cursor states for svg-pan-zoom */
+.mermaid-lightbox-wrap svg.svg-pan-zoom_viewport {
+  cursor: grab;
+}
+
+.mermaid-lightbox-wrap svg.svg-pan-zoom_viewport:active {
+  cursor: grabbing;
 }
 
 /* Also theme scrollbars on nested overflow containers (e.g. tall SVGs) */

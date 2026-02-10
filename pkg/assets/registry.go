@@ -118,6 +118,16 @@ var assetRegistry = []Asset{
 		Version:   "2",
 		Type:      "js",
 	},
+
+	// svg-pan-zoom - SVG pan & zoom for mermaid diagram lightbox
+	{
+		Name:      "svg-pan-zoom",
+		URL:       "https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.2/dist/svg-pan-zoom.min.js",
+		LocalPath: "svg-pan-zoom/svg-pan-zoom.min.js",
+		Integrity: "",
+		Version:   "3.6.2",
+		Type:      "js",
+	},
 }
 
 // Registry returns a copy of all registered assets.
