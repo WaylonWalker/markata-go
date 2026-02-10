@@ -1680,6 +1680,12 @@ type CSSPurgeConfig struct {
 	// Example: ["js-*", "htmx-*", "active", "hidden"]
 	Preserve []string `json:"preserve" yaml:"preserve" toml:"preserve"`
 
+	// PreserveAttributes is a list of attribute names to always preserve.
+	// Selectors with these attributes (e.g., [data-theme], [data-palette]) will not be purged.
+	// This is essential for runtime theming where attributes are set via JavaScript.
+	// Example: ["data-theme", "data-palette"]
+	PreserveAttributes []string `json:"preserve_attributes" yaml:"preserve_attributes" toml:"preserve_attributes"`
+
 	// SkipFiles is a list of CSS file patterns to skip during purging.
 	// Useful for third-party CSS that should not be modified.
 	// Example: ["vendor/*", "normalize.css"]
@@ -1694,11 +1700,12 @@ type CSSPurgeConfig struct {
 // NewCSSPurgeConfig creates a new CSSPurgeConfig with default values.
 func NewCSSPurgeConfig() CSSPurgeConfig {
 	return CSSPurgeConfig{
-		Enabled:          false, // Disabled by default - opt-in feature
-		Verbose:          false,
-		Preserve:         []string{}, // Uses csspurge.DefaultPreservePatterns() when empty
-		SkipFiles:        []string{},
-		WarningThreshold: 0,
+		Enabled:            false, // Disabled by default - opt-in feature
+		Verbose:            false,
+		Preserve:           []string{}, // Uses csspurge.DefaultPreservePatterns() when empty
+		PreserveAttributes: []string{}, // Uses csspurge.DefaultPreserveAttributes() when empty
+		SkipFiles:          []string{},
+		WarningThreshold:   0,
 	}
 }
 

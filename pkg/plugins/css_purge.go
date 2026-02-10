@@ -127,9 +127,15 @@ func buildPurgeOptions(purgeConfig models.CSSPurgeConfig, verbose bool) csspurge
 		preserve = csspurge.DefaultPreservePatterns()
 	}
 
+	preserveAttrs := purgeConfig.PreserveAttributes
+	if len(preserveAttrs) == 0 {
+		preserveAttrs = csspurge.DefaultPreserveAttributes()
+	}
+
 	return csspurge.PurgeOptions{
-		Preserve: preserve,
-		Verbose:  verbose,
+		Preserve:           preserve,
+		PreserveAttributes: preserveAttrs,
+		Verbose:            verbose,
 	}
 }
 
@@ -340,6 +346,11 @@ func getCSSPurgeConfig(config *lifecycle.Config) models.CSSPurgeConfig {
 		return models.NewCSSPurgeConfig()
 	}
 
+	return parseCSSPurgeConfigFromMap(rawConfig)
+}
+
+// parseCSSPurgeConfigFromMap parses CSSPurgeConfig from a raw map.
+func parseCSSPurgeConfigFromMap(rawConfig map[string]interface{}) models.CSSPurgeConfig {
 	result := models.NewCSSPurgeConfig()
 
 	if enabled, ok := rawConfig["enabled"].(bool); ok {
@@ -349,36 +360,37 @@ func getCSSPurgeConfig(config *lifecycle.Config) models.CSSPurgeConfig {
 		result.Verbose = verbose
 	}
 	if preserve, ok := rawConfig["preserve"]; ok {
-		switch values := preserve.(type) {
-		case []interface{}:
-			result.Preserve = make([]string, 0, len(values))
-			for _, p := range values {
-				if s, ok := p.(string); ok {
-					result.Preserve = append(result.Preserve, s)
-				}
-			}
-		case []string:
-			result.Preserve = values
-		}
+		result.Preserve = parseStringSlice(preserve)
 	}
 	if skip, ok := rawConfig["skip_files"]; ok {
-		switch values := skip.(type) {
-		case []interface{}:
-			result.SkipFiles = make([]string, 0, len(values))
-			for _, s := range values {
-				if str, ok := s.(string); ok {
-					result.SkipFiles = append(result.SkipFiles, str)
-				}
-			}
-		case []string:
-			result.SkipFiles = values
-		}
+		result.SkipFiles = parseStringSlice(skip)
+	}
+	if preserveAttrs, ok := rawConfig["preserve_attributes"]; ok {
+		result.PreserveAttributes = parseStringSlice(preserveAttrs)
 	}
 	if threshold, ok := parseIntFromInterface(rawConfig["warning_threshold"]); ok {
 		result.WarningThreshold = threshold
 	}
 
 	return result
+}
+
+// parseStringSlice extracts a string slice from an interface value.
+func parseStringSlice(value interface{}) []string {
+	switch values := value.(type) {
+	case []interface{}:
+		result := make([]string, 0, len(values))
+		for _, v := range values {
+			if s, ok := v.(string); ok {
+				result = append(result, s)
+			}
+		}
+		return result
+	case []string:
+		return values
+	default:
+		return nil
+	}
 }
 
 // Ensure CSSPurgePlugin implements the required interfaces.
