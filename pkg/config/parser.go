@@ -32,6 +32,7 @@ type configSource interface {
 	getTagAggregator() tagAggregatorConverter
 	getMentions() mentionsConverter
 	getWebSub() webSubConverter
+	getShortcuts() shortcutsConverter
 }
 
 // baseConfigData holds the basic config fields that are directly assignable.
@@ -133,6 +134,10 @@ type webSubConverter interface {
 	toWebSubConfig() models.WebSubConfig
 }
 
+type shortcutsConverter interface {
+	toShortcutsConfig() models.ShortcutsConfig
+}
+
 // buildConfig constructs a models.Config from a configSource.
 // This helper eliminates code duplication across TOML, YAML, and JSON config converters.
 func buildConfig(src configSource) *models.Config {
@@ -225,6 +230,9 @@ func buildConfig(src configSource) *models.Config {
 	// Convert WebSub config
 	config.WebSub = src.getWebSub().toWebSubConfig()
 
+	// Convert Shortcuts config
+	config.Shortcuts = src.getShortcuts().toShortcutsConfig()
+
 	return config
 }
 
@@ -269,7 +277,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"default_templates": true, "auto_feeds": true, "head": true,
 			"content_templates": true, "footer_layout": true, "search": true,
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
-			"tag_aggregator": true, "websub": true,
+			"tag_aggregator": true, "websub": true, "shortcuts": true, "encryption": true,
 		}
 
 		// Copy unknown sections to Extra
@@ -348,6 +356,7 @@ type tomlConfig struct {
 	TagAggregator tomlTagAggregatorConfig `toml:"tag_aggregator"`
 	Mentions      tomlMentionsConfig      `toml:"mentions"`
 	WebSub        tomlWebSubConfig        `toml:"websub"`
+	Shortcuts     tomlShortcutsConfig     `toml:"shortcuts"`
 	UnknownFields map[string]any          `toml:"-"`
 }
 
@@ -581,6 +590,20 @@ func (w *tomlWebSubConfig) toWebSubConfig() models.WebSubConfig {
 	}
 	if config.Hubs == nil {
 		config.Hubs = defaults.Hubs
+	}
+	return config
+}
+
+type tomlShortcutsConfig struct {
+	Navigation map[string]string `toml:"navigation"`
+}
+
+func (s *tomlShortcutsConfig) toShortcutsConfig() models.ShortcutsConfig {
+	config := models.ShortcutsConfig{
+		Navigation: s.Navigation,
+	}
+	if config.Navigation == nil {
+		config.Navigation = make(map[string]string)
 	}
 	return config
 }
@@ -1236,6 +1259,7 @@ func (c *tomlConfig) getEncryption() encryptionConverter       { return &c.Encry
 func (c *tomlConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAggregator }
 func (c *tomlConfig) getWebSub() webSubConverter               { return &c.WebSub }
 func (c *tomlConfig) getMentions() mentionsConverter           { return &c.Mentions }
+func (c *tomlConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
 
 func (c *tomlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -1412,6 +1436,7 @@ type yamlConfig struct {
 	TagAggregator yamlTagAggregatorConfig `yaml:"tag_aggregator"`
 	Mentions      yamlMentionsConfig      `yaml:"mentions"`
 	WebSub        yamlWebSubConfig        `yaml:"websub"`
+	Shortcuts     yamlShortcutsConfig     `yaml:"shortcuts"`
 }
 
 type yamlNavItem struct {
@@ -1671,6 +1696,20 @@ func (w *yamlWebSubConfig) toWebSubConfig() models.WebSubConfig {
 	}
 	if config.Hubs == nil {
 		config.Hubs = defaults.Hubs
+	}
+	return config
+}
+
+type yamlShortcutsConfig struct {
+	Navigation map[string]string `yaml:"navigation"`
+}
+
+func (s *yamlShortcutsConfig) toShortcutsConfig() models.ShortcutsConfig {
+	config := models.ShortcutsConfig{
+		Navigation: s.Navigation,
+	}
+	if config.Navigation == nil {
+		config.Navigation = make(map[string]string)
 	}
 	return config
 }
@@ -2350,6 +2389,7 @@ func (c *yamlConfig) getEncryption() encryptionConverter       { return &c.Encry
 func (c *yamlConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAggregator }
 func (c *yamlConfig) getWebSub() webSubConverter               { return &c.WebSub }
 func (c *yamlConfig) getMentions() mentionsConverter           { return &c.Mentions }
+func (c *yamlConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
 
 func (c *yamlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -2464,6 +2504,7 @@ type jsonConfig struct {
 	TagAggregator jsonTagAggregatorConfig `json:"tag_aggregator"`
 	Mentions      jsonMentionsConfig      `json:"mentions"`
 	WebSub        jsonWebSubConfig        `json:"websub"`
+	Shortcuts     jsonShortcutsConfig     `json:"shortcuts"`
 }
 
 type jsonNavItem struct {
@@ -2723,6 +2764,20 @@ func (w *jsonWebSubConfig) toWebSubConfig() models.WebSubConfig {
 	}
 	if config.Hubs == nil {
 		config.Hubs = defaults.Hubs
+	}
+	return config
+}
+
+type jsonShortcutsConfig struct {
+	Navigation map[string]string `json:"navigation"`
+}
+
+func (s *jsonShortcutsConfig) toShortcutsConfig() models.ShortcutsConfig {
+	config := models.ShortcutsConfig{
+		Navigation: s.Navigation,
+	}
+	if config.Navigation == nil {
+		config.Navigation = make(map[string]string)
 	}
 	return config
 }
@@ -3402,6 +3457,7 @@ func (c *jsonConfig) getEncryption() encryptionConverter       { return &c.Encry
 func (c *jsonConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAggregator }
 func (c *jsonConfig) getMentions() mentionsConverter           { return &c.Mentions }
 func (c *jsonConfig) getWebSub() webSubConverter               { return &c.WebSub }
+func (c *jsonConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
 
 func (c *jsonConfig) toConfig() *models.Config {
 	return buildConfig(c)
