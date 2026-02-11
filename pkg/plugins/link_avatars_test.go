@@ -36,6 +36,9 @@ func TestLinkAvatarsPlugin_DefaultConfig(t *testing.T) {
 	if cfg.Position != "before" {
 		t.Errorf("default Position = %q, want %q", cfg.Position, "before")
 	}
+	if len(cfg.IgnoreClasses) != 1 || cfg.IgnoreClasses[0] != "no-avatar" {
+		t.Errorf("default IgnoreClasses = %v, want %v", cfg.IgnoreClasses, []string{"no-avatar"})
+	}
 }
 
 func TestLinkAvatarsPlugin_Configure(t *testing.T) {
@@ -48,11 +51,12 @@ func TestLinkAvatarsPlugin_Configure(t *testing.T) {
 			name:  "nil_extra",
 			extra: nil,
 			expected: LinkAvatarsConfig{
-				Enabled:  true,
-				Selector: "a[href^='http']",
-				Service:  "duckduckgo",
-				Size:     16,
-				Position: "before",
+				Enabled:       true,
+				Selector:      "a[href^='http']",
+				Service:       "duckduckgo",
+				IgnoreClasses: []string{"no-avatar"},
+				Size:          16,
+				Position:      "before",
 			},
 		},
 		{
@@ -63,11 +67,12 @@ func TestLinkAvatarsPlugin_Configure(t *testing.T) {
 				},
 			},
 			expected: LinkAvatarsConfig{
-				Enabled:  true,
-				Selector: "a[href^='http']",
-				Service:  "duckduckgo",
-				Size:     16,
-				Position: "before",
+				Enabled:       true,
+				Selector:      "a[href^='http']",
+				Service:       "duckduckgo",
+				IgnoreClasses: []string{"no-avatar"},
+				Size:          16,
+				Position:      "before",
 			},
 		},
 		{
@@ -80,11 +85,12 @@ func TestLinkAvatarsPlugin_Configure(t *testing.T) {
 				},
 			},
 			expected: LinkAvatarsConfig{
-				Enabled:  true,
-				Selector: "a[href^='http']",
-				Service:  "google",
-				Size:     14,
-				Position: "before",
+				Enabled:       true,
+				Selector:      "a[href^='http']",
+				Service:       "google",
+				IgnoreClasses: []string{"no-avatar"},
+				Size:          14,
+				Position:      "before",
 			},
 		},
 		{
@@ -117,11 +123,12 @@ func TestLinkAvatarsPlugin_Configure(t *testing.T) {
 				},
 			},
 			expected: LinkAvatarsConfig{
-				Enabled:  true,
-				Selector: "a[href^='http']",
-				Service:  "duckduckgo",
-				Size:     16,
-				Position: "after",
+				Enabled:       true,
+				Selector:      "a[href^='http']",
+				Service:       "duckduckgo",
+				IgnoreClasses: []string{"no-avatar"},
+				Size:          16,
+				Position:      "after",
 			},
 		},
 		{
@@ -134,12 +141,13 @@ func TestLinkAvatarsPlugin_Configure(t *testing.T) {
 				},
 			},
 			expected: LinkAvatarsConfig{
-				Enabled:  true,
-				Selector: "a[href^='http']",
-				Service:  "custom",
-				Template: "https://favicon.example.com/?url={origin}",
-				Size:     16,
-				Position: "before",
+				Enabled:       true,
+				Selector:      "a[href^='http']",
+				Service:       "custom",
+				Template:      "https://favicon.example.com/?url={origin}",
+				IgnoreClasses: []string{"no-avatar"},
+				Size:          16,
+				Position:      "before",
 			},
 		},
 	}

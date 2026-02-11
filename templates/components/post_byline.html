@@ -9,9 +9,9 @@
     {% for author_obj in post.author_objects %}
         <div class="post-byline__author p-author h-card">
             {% if author_obj.avatar %}
-            <img class="u-photo post-byline__photo" src="{% if author_obj.avatar | startswith:'http' %}{{ author_obj.avatar }}{% else %}{{ config.url }}{{ author_obj.avatar }}{% endif %}" alt="{{ author_obj.name }} avatar" width="44" height="44" loading="lazy">
+            <img class="u-photo post-byline__photo" src="{% if author_obj.avatar | startswith:'http' %}{{ author_obj.avatar }}{% else %}{{ config.url }}{{ author_obj.avatar }}{% endif %}" alt="{{ author_obj.name }} avatar" width="36" height="36" loading="lazy">
             {% elif config.seo.author_image %}
-            <img class="u-photo post-byline__photo" src="{% if config.seo.author_image | startswith:'http' %}{{ config.seo.author_image }}{% else %}{{ config.url }}{{ config.seo.author_image }}{% endif %}" alt="{{ author_obj.name }} avatar" width="44" height="44" loading="lazy">
+            <img class="u-photo post-byline__photo" src="{% if config.seo.author_image | startswith:'http' %}{{ config.seo.author_image }}{% else %}{{ config.url }}{{ config.seo.author_image }}{% endif %}" alt="{{ author_obj.name }} avatar" width="36" height="36" loading="lazy">
             {% endif %}
             <div class="post-byline__author-info">
                 {% if author_obj.url %}
