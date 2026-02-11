@@ -28,9 +28,10 @@ The authors system allows sites to define a registry of author profiles in the c
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `authors` | string[] | List of author IDs from frontmatter |
+| `authors` | string[] or AuthorRef[] | List of author IDs or extended author references from frontmatter |
 | `author` | string? | Legacy single-author field from frontmatter |
 | `author_objects` | Author[] | Computed: resolved Author structs (not serialized) |
+| `author_role_overrides` | map[string]string | Per-post role overrides keyed by author ID (not serialized) |
 
 ### AuthorsConfig
 
@@ -66,7 +67,7 @@ active = true
 
 ## Frontmatter
 
-Posts reference authors by ID:
+Posts reference authors by ID using a simple string format:
 
 ```yaml
 ---
@@ -76,6 +77,35 @@ authors:
   - guest
 ---
 ```
+
+### Per-Post Role Overrides
+
+Authors can play different roles on different posts. Use the extended format to specify per-post roles:
+
+```yaml
+---
+title: Collaborative Post
+authors:
+  - id: waylon
+    role: author
+  - id: codex
+    role: pair programmer
+---
+```
+
+Mixed formats are supported -- strings and extended references can be combined:
+
+```yaml
+---
+title: Mixed Format Example
+authors:
+  - waylon
+  - id: codex
+    role: editor
+---
+```
+
+When a per-post role is specified, it overrides the author's config-level role for that post only. The `role_display` in templates will reflect the per-post override.
 
 Legacy single-author field is also supported:
 
@@ -106,7 +136,9 @@ author: "Jane Doe"
    - Calls `post.GetAuthors()` to get author IDs (from `authors` array or `author` string)
    - If no author IDs: assigns the default author (if one exists)
    - If author IDs exist: resolves each ID against the config map
-   - Populates `post.AuthorObjects` with the resolved Author structs
+   - Checks `post.AuthorRoleOverrides` for per-post role overrides
+   - If a per-post role override exists for an author ID, clones the Author struct and sets the overridden Role (clearing Contribution so `GetRoleDisplay()` uses the new Role)
+   - Populates `post.AuthorObjects` with the resolved (possibly role-overridden) Author structs
 4. Logs a warning for unknown author IDs
 
 ### Template Access
@@ -147,9 +179,10 @@ The `Authors` and `Author` fields are included in `CachedPostData` so that autho
 
 A reusable component (`templates/components/post_byline.html`) renders the author byline:
 
-- **Multi-author**: Shows each author with avatar, linked name, and role badge
-- **Single author fallback**: Shows the site-level `config.author` with avatar
+- **Multi-author**: Shows each author name (linked if URL set) with role in parentheses, comma-separated
+- **Single author fallback**: Shows the site-level `config.author` as a linked name
 - **Date and reading time**: Shown alongside author info when available
+- **No avatars in byline**: Avatars are intentionally omitted to avoid visual duplication with linked author names
 
 This component is included in all layout templates (docs, blog) and the standalone post template.
 

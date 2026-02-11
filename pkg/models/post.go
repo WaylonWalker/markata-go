@@ -105,6 +105,11 @@ type Post struct {
 	Authors []string `json:"authors,omitempty" yaml:"authors,omitempty" toml:"authors,omitempty"`
 	Author  *string  `json:"author,omitempty" yaml:"author,omitempty" toml:"author,omitempty"` // Backward compatibility
 
+	// AuthorRoleOverrides stores per-post role overrides keyed by author ID.
+	// Populated when frontmatter uses extended format: authors: [{id: waylon, role: editor}]
+	// Not serialized; rebuilt from frontmatter on each load.
+	AuthorRoleOverrides map[string]string `json:"-" yaml:"-" toml:"-"`
+
 	// Extra holds dynamic/unknown fields from frontmatter
 	Extra map[string]interface{} `json:"extra,omitempty" yaml:"extra,omitempty" toml:"extra,omitempty"`
 
@@ -287,24 +292,52 @@ func (p *Post) HasAuthor(authorID string) bool {
 }
 
 // SetAuthors sets the authors for this post.
-// Accepts either a single string (for backward compatibility) or an array of strings.
+// Accepts either a single string (for backward compatibility), an array of strings,
+// or a mixed array where items can be strings or maps with "id" and optional "role".
+// Per-post role overrides from map entries are stored in AuthorRoleOverrides.
 func (p *Post) SetAuthors(authors interface{}) {
 	switch v := authors.(type) {
 	case string:
 		p.Author = &v
 		p.Authors = nil
+		p.AuthorRoleOverrides = nil
 	case []string:
 		p.Authors = v
 		p.Author = nil
+		p.AuthorRoleOverrides = nil
 	case []interface{}:
-		// Convert []interface{} to []string
-		authorStrings := make([]string, len(v))
-		for i, author := range v {
-			if str, ok := author.(string); ok {
-				authorStrings[i] = str
+		// Mixed format: items can be strings or maps with {id, role}
+		authorIDs := make([]string, 0, len(v))
+		var roleOverrides map[string]string
+		for _, item := range v {
+			switch entry := item.(type) {
+			case string:
+				authorIDs = append(authorIDs, entry)
+			case map[string]interface{}:
+				if id, ok := entry["id"].(string); ok && id != "" {
+					authorIDs = append(authorIDs, id)
+					if role, ok := entry["role"].(string); ok && role != "" {
+						if roleOverrides == nil {
+							roleOverrides = make(map[string]string)
+						}
+						roleOverrides[id] = role
+					}
+				}
+			case map[interface{}]interface{}:
+				// YAML sometimes produces map[interface{}]interface{} instead of map[string]interface{}
+				if id, ok := entry["id"].(string); ok && id != "" {
+					authorIDs = append(authorIDs, id)
+					if role, ok := entry["role"].(string); ok && role != "" {
+						if roleOverrides == nil {
+							roleOverrides = make(map[string]string)
+						}
+						roleOverrides[id] = role
+					}
+				}
 			}
 		}
-		p.Authors = authorStrings
+		p.Authors = authorIDs
 		p.Author = nil
+		p.AuthorRoleOverrides = roleOverrides
 	}
 }

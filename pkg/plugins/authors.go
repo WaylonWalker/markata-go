@@ -38,6 +38,7 @@ func (p *AuthorsPlugin) Priority(stage lifecycle.Stage) int {
 // For each post with author references, it looks up the Author structs from
 // config.Authors.Authors and populates post.AuthorObjects.
 // Posts without any author references get the default author assigned.
+// Per-post role overrides from AuthorRoleOverrides take precedence over config roles.
 func (p *AuthorsPlugin) Transform(m *lifecycle.Manager) error {
 	modelsConfig, ok := getModelsConfig(m.Config())
 	if !ok {
@@ -73,10 +74,22 @@ func (p *AuthorsPlugin) Transform(m *lifecycle.Manager) error {
 			continue
 		}
 
-		// Resolve each author ID
+		// Resolve each author ID, applying per-post role overrides
 		objects := make([]models.Author, 0, len(authorIDs))
 		for _, id := range authorIDs {
 			if author, exists := authorMap[id]; exists {
+				// Check for per-post role override
+				if post.AuthorRoleOverrides != nil {
+					if roleOverride, hasOverride := post.AuthorRoleOverrides[id]; hasOverride {
+						// Clone the author and apply the role override
+						authorCopy := author
+						authorCopy.Role = &roleOverride
+						// Clear Contribution so GetRoleDisplay() uses the overridden Role
+						authorCopy.Contribution = nil
+						objects = append(objects, authorCopy)
+						continue
+					}
+				}
 				objects = append(objects, author)
 			} else {
 				log.Printf("[authors] Warning: unknown author ID %q in post %s", id, post.Path)

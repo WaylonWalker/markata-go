@@ -365,13 +365,9 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 	}
 
 	// Author fields - support both legacy 'author' and new 'authors' arrays
-	if _, ok := metadata["authors"]; ok {
-		if authors := GetStringSlice(metadata, "authors"); authors != nil {
-			post.Authors = authors
-		} else if authorStr := GetString(metadata, "authors"); authorStr != "" {
-			// Single author in authors field
-			post.Authors = []string{authorStr}
-		}
+	// SetAuthors handles: strings, []string, and mixed []interface{} with {id, role} maps
+	if authorsVal, ok := metadata["authors"]; ok {
+		post.SetAuthors(authorsVal)
 	} else if author := GetString(metadata, "author"); author != "" {
 		// Legacy single author field
 		post.Author = &author
