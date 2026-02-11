@@ -200,6 +200,8 @@ func (p *LoadPlugin) restorePostFromCache(data *buildcache.CachedPostData) *mode
 	post.Templates = data.Templates
 	post.RawFrontmatter = data.RawFrontmatter
 	post.InputHash = data.InputHash
+	post.Authors = data.Authors
+	post.Author = data.Author
 	if data.Extra != nil {
 		for k, v := range data.Extra {
 			post.Set(k, v)
@@ -227,6 +229,8 @@ func (p *LoadPlugin) postToCachedData(post *models.Post) *buildcache.CachedPostD
 		Templates:      post.Templates,
 		RawFrontmatter: post.RawFrontmatter,
 		InputHash:      post.InputHash,
+		Authors:        post.Authors,
+		Author:         post.Author,
 		Extra:          post.Extra,
 	}
 }

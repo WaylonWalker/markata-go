@@ -1154,6 +1154,17 @@ func (c Context) ToPongo2() pongo2.Context {
 		ctx["site_url"] = c.Config.URL
 		ctx["site_description"] = c.Config.Description
 		ctx["site_author"] = c.Config.Author
+
+		// Expose authors map at top level for multi-author template access
+		// Templates use {% set author = authors[author_id] %} for per-post author lookup
+		if len(c.Config.Authors.Authors) > 0 {
+			topLevelAuthors := make(map[string]interface{}, len(c.Config.Authors.Authors))
+			for id, author := range c.Config.Authors.Authors {
+				a := author // avoid closure capture
+				topLevelAuthors[id] = authorToMap(&a)
+			}
+			ctx["authors"] = topLevelAuthors
+		}
 	}
 
 	// Add feed fields directly for convenience (if feed exists)

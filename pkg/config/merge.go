@@ -111,6 +111,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Mentions - merge
 	result.Mentions = mergeMentionsConfig(base.Mentions, override.Mentions)
 
+	// Authors - merge
+	result.Authors = mergeAuthorsConfig(base.Authors, override.Authors)
+
 	// Extra (plugin configs) - merge
 	result.Extra = mergeExtra(base.Extra, override.Extra)
 
@@ -430,6 +433,37 @@ func MergeSlice[T any](base, override []T, appendMode bool) []T {
 		return result
 	}
 	return override
+}
+
+// mergeAuthorsConfig merges AuthorsConfig values.
+// Override authors take precedence; individual author entries are merged by ID.
+func mergeAuthorsConfig(base, override models.AuthorsConfig) models.AuthorsConfig {
+	result := base
+
+	// Bool fields - override if true
+	if override.GeneratePages {
+		result.GeneratePages = true
+	}
+	if override.FeedsEnabled {
+		result.FeedsEnabled = true
+	}
+
+	// String fields - override if non-empty
+	if override.URLPattern != "" {
+		result.URLPattern = override.URLPattern
+	}
+
+	// Authors map - merge (override entries take precedence)
+	if len(override.Authors) > 0 {
+		if result.Authors == nil {
+			result.Authors = make(map[string]models.Author, len(override.Authors))
+		}
+		for id, author := range override.Authors {
+			result.Authors[id] = author
+		}
+	}
+
+	return result
 }
 
 // mergeEncryptionConfig merges EncryptionConfig values.

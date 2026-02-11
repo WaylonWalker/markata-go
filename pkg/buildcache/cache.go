@@ -888,6 +888,8 @@ type CachedPostData struct {
 	Templates      map[string]string `json:"templates,omitempty"`
 	RawFrontmatter string            `json:"raw_frontmatter"`
 	InputHash      string            `json:"input_hash"`
+	Authors        []string          `json:"authors,omitempty"`
+	Author         *string           `json:"author,omitempty"`
 	Extra          map[string]any    `json:"extra,omitempty"`
 }
 
