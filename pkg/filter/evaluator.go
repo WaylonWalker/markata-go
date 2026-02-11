@@ -24,8 +24,11 @@ type EvalContext struct {
 // NewEvalContext creates a new evaluation context with current time values
 func NewEvalContext() *EvalContext {
 	now := time.Now()
-	// today is midnight of the current day
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	// today is end of the current day (23:59:59.999999999) so that
+	// "date <= today" includes all posts from today regardless of their
+	// time component.  Previously this was midnight (00:00:00), which
+	// caused posts dated today with any time component to be excluded.
+	today := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, now.Location())
 	return &EvalContext{
 		Today: today,
 		Now:   now,
