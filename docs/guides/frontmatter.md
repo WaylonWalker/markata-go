@@ -366,6 +366,8 @@ Templates are looked up in:
 | `description` | string | Auto-generated | No | Brief summary for SEO/meta tags |
 | `template` | string | `"post.html"` | No | Template file to use for rendering |
 | `skip` | bool | `false` | No | Skip this file during processing entirely |
+| `authors` | []string | `[]` | No | List of author IDs (multi-author support) |
+| `author` | string | None | No | Legacy single-author name or ID |
 
 ### Field Details
 
@@ -378,6 +380,38 @@ skip: true
 ```
 
 Use this for files you want to keep in your content directory but never process (notes, drafts not ready for review, etc.).
+
+#### authors
+
+Assign one or more authors to a post by referencing author IDs defined in your site configuration:
+
+```yaml
+---
+title: "Collaborative Article"
+authors:
+  - waylon
+  - guest
+---
+```
+
+Each author ID is resolved against the `[markata-go.authors.authors]` config map during the build. Resolved author objects (with name, avatar, role, bio, etc.) are available in templates as `post.author_objects`.
+
+If no `authors` or `author` field is set, the default author from config (the one with `default = true`) is assigned automatically.
+
+#### author
+
+Legacy single-author field. Use this for simple sites or backward compatibility:
+
+```yaml
+---
+title: "Solo Post"
+author: "Jane Doe"
+---
+```
+
+**Priority:** If both `authors` and `author` are set on the same post, `authors` takes precedence.
+
+**Related:** See [Authors Configuration](configuration.md#authors-configuration) for defining author profiles.
 
 ---
 

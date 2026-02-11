@@ -793,6 +793,65 @@ enabled = false
 
 ---
 
+### authors
+
+**Name:** `authors`  
+**Stage:** Transform  
+**Priority:** `PriorityFirst + 1` (runs right after `auto_title`)  
+**Purpose:** Resolves author IDs in post frontmatter against the site-wide authors configuration, populating rich author objects for templates.
+
+**Configuration:**
+
+Authors are defined in the site configuration under `[markata-go.authors]`:
+
+```toml
+[markata-go.authors]
+generate_pages = false
+feeds_enabled = false
+
+[markata-go.authors.authors.waylon]
+name = "Waylon Walker"
+role = "author"
+active = true
+default = true
+
+[markata-go.authors.authors.guest]
+name = "Guest Writer"
+role = "editor"
+guest = true
+active = true
+```
+
+**Behavior:**
+
+1. Reads the authors map from the site configuration
+2. Identifies the default author (the entry with `default = true`)
+3. For each post:
+   - Reads author IDs from `authors` array or `author` string in frontmatter
+   - If no authors specified, assigns the default author
+   - Resolves each author ID against the config map
+   - Populates `post.AuthorObjects` with resolved Author structs
+4. Logs a warning for unrecognized author IDs
+
+**Post fields set:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `author_objects` | []Author | Resolved author structs (computed, not serialized) |
+| `authors` | []string | Author IDs (may be set if default author assigned) |
+
+**Template access:**
+
+- `post.author_objects` -- Array of author maps with all fields (name, role, avatar, url, etc.)
+- `post.authors` -- Array of author ID strings
+- `authors` -- Top-level map of all configured authors (ID to author map)
+
+**Related:**
+- [Authors Configuration](../guides/configuration.md#authors-configuration) -- Config setup guide
+- [Frontmatter Guide](../guides/frontmatter.md) -- `authors` and `author` fields
+
+---
+
 ## Render Stage
 
 ### admonitions

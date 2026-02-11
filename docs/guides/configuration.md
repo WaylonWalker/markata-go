@@ -1496,6 +1496,110 @@ markdown = false
 text = false
 ```
 
+## Authors Configuration
+
+The authors system lets you define author profiles in your configuration and reference them from post frontmatter. This enables multi-author support where each post can have one or more authors with rich metadata.
+
+### Basic Setup
+
+```toml
+[markata-go.authors]
+generate_pages = false    # Generate individual author profile pages
+feeds_enabled = false     # Generate per-author feeds
+
+[markata-go.authors.authors.jane]
+name = "Jane Doe"
+role = "author"
+url = "https://janedoe.com"
+active = true
+default = true            # Assigned to posts with no explicit author
+
+[markata-go.authors.authors.bob]
+name = "Bob Smith"
+role = "editor"
+active = true
+```
+
+### Author Fields
+
+Each author entry supports these fields:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | string | **required** | Display name |
+| `bio` | string | - | Short biography |
+| `email` | string | - | Contact email (must contain `@` if set) |
+| `avatar` | string | - | Avatar image URL or path |
+| `url` | string | - | Personal website URL |
+| `role` | string | - | Role label (e.g., "author", "editor") |
+| `guest` | bool | `false` | Whether this is a guest author |
+| `active` | bool | `false` | Whether the author is currently active |
+| `default` | bool | `false` | Default author for posts without explicit authors |
+| `contribution` | string | - | Free-text contribution description |
+| `contributions` | []string | `[]` | CReDiT taxonomy roles |
+
+### Referencing Authors in Posts
+
+Use author IDs in post frontmatter:
+
+```yaml
+---
+title: "Our Collaborative Post"
+authors:
+  - jane
+  - bob
+---
+```
+
+The legacy single-author field is also supported:
+
+```yaml
+---
+title: "Solo Post"
+author: "Jane Doe"
+---
+```
+
+**Priority:** `authors` array takes precedence over `author` string. If neither is specified, the default author (the one with `default = true`) is assigned automatically.
+
+### Author Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `generate_pages` | bool | `false` | Generate individual author profile pages |
+| `url_pattern` | string | `""` | URL pattern for author pages (e.g., `/authors/{id}/`) |
+| `feeds_enabled` | bool | `false` | Generate per-author feeds |
+
+### Full Author Example
+
+```toml
+[markata-go.authors]
+generate_pages = false
+feeds_enabled = false
+
+[markata-go.authors.authors.waylon]
+name = "Waylon Walker"
+bio = "Python and Go developer, blogger"
+email = "waylon@example.com"
+avatar = "/images/waylon.jpg"
+url = "https://waylonwalker.com"
+role = "author"
+active = true
+default = true
+contributions = ["Writing", "Original Draft"]
+
+[markata-go.authors.authors.guest]
+name = "Guest Writer"
+role = "editor"
+guest = true
+active = true
+contribution = "Technical review"
+```
+
+**Related:** See the [Frontmatter Guide](frontmatter.md) for details on the `authors` and `author` fields.
+
+---
+
 ## Complete Configuration Example
 
 Here's a comprehensive example showing all available options:
@@ -1595,6 +1699,18 @@ items_per_page = 6
 [markata-go.feeds.formats]
 html = true
 rss = true
+
+# Authors
+[markata-go.authors]
+generate_pages = false
+feeds_enabled = false
+
+[markata-go.authors.authors.jane]
+name = "Jane Doe"
+role = "author"
+url = "https://janedoe.com"
+active = true
+default = true
 ```
 
 ## Common Configuration Patterns
