@@ -191,16 +191,20 @@ func (p *MermaidPlugin) injectMermaidScript(htmlContent string) string {
 <script type="module">
   import mermaid from '` + p.config.CDNURL + `';
 ` + p.mermaidLightboxJS() + `
-  mermaid.initialize({ startOnLoad: true, theme: '` + p.config.Theme + `' });
-  window.initMermaid = () => {
+  mermaid.initialize({ startOnLoad: false, theme: '` + p.config.Theme + `' });
+  window.initMermaid = async () => {
     try {
-      mermaid.run();
-      setTimeout(ensureMermaidLightbox, 100);
-    } catch (_) {
-      // no-op
+      await mermaid.run();
+    } catch (e) {
+      console.error('mermaid.run failed:', e);
     }
+    ensureMermaidLightbox();
   };
-  setTimeout(window.initMermaid, 0);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => window.initMermaid());
+  } else {
+    window.initMermaid();
+  }
 </script>`
 	}
 
@@ -225,7 +229,7 @@ func (p *MermaidPlugin) cssVariablesScript() string {
   const themeCSS = ` + "`" + `
     .label foreignObject > div { padding: 14px 14px 10px; line-height: 1.2; }
     .nodeLabel { padding: 14px 14px 10px; line-height: 1.2; }
-    .mermaid svg { cursor: zoom-in; }
+    * { cursor: pointer; }
   ` + "`" + `;
   const themeVariables = {
     background: css('--color-background', '#ffffff'),
@@ -247,16 +251,20 @@ func (p *MermaidPlugin) cssVariablesScript() string {
     edgeLabelBackground: css('--color-code-bg', '#0a0a0a'),
   };
 ` + p.mermaidLightboxJS() + `
-  mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables, flowchart, themeCSS });
-  window.initMermaid = () => {
+  mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables, flowchart, themeCSS });
+  window.initMermaid = async () => {
     try {
-      mermaid.run();
-      setTimeout(ensureMermaidLightbox, 100);
-    } catch (_) {
-      // no-op
+      await mermaid.run();
+    } catch (e) {
+      console.error('mermaid.run failed:', e);
     }
+    ensureMermaidLightbox();
   };
-  setTimeout(window.initMermaid, 0);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => window.initMermaid());
+  } else {
+    window.initMermaid();
+  }
 </script>`
 }
 
@@ -283,6 +291,9 @@ func (p *MermaidPlugin) mermaidLightboxJS() string {
 
   // Initialize svg-pan-zoom on the SVG inside the lightbox.
   // Called after the container has its final layout dimensions.
+  // Retries a few times because GLightbox animation or sequence diagram
+  // layout may not be settled when slide_after_load fires.
+  let _pzRetries = 0;
   const initPanZoom = () => {
     if (activePanZoom) return; // already initialized
     const container = document.querySelector('.glightbox-container .gslide.current .mermaid-lightbox-wrap');
@@ -293,10 +304,28 @@ func (p *MermaidPlugin) mermaidLightboxJS() string {
     // svg-pan-zoom needs a viewBox to calculate zoom/pan transforms.
     // Mermaid sets width/height attrs but not always a viewBox.
     if (!svgEl.getAttribute('viewBox')) {
-      const w = svgEl.getAttribute('width') || svgEl.getBoundingClientRect().width;
-      const h = svgEl.getAttribute('height') || svgEl.getBoundingClientRect().height;
-      if (w && h) svgEl.setAttribute('viewBox', '0 0 ' + parseFloat(w) + ' ' + parseFloat(h));
+      // Try width/height attributes first (flowcharts, pie, etc.)
+      let w = parseFloat(svgEl.getAttribute('width'));
+      let h = parseFloat(svgEl.getAttribute('height'));
+      // Sequence diagrams: mermaid sets style="max-width: Npx;" with no width/height attrs.
+      if (!w && svgEl.style.maxWidth) w = parseFloat(svgEl.style.maxWidth);
+      // Last resort: bounding rect (needs layout to be settled)
+      if (!w || !h) {
+        const rect = svgEl.getBoundingClientRect();
+        if (!w) w = rect.width;
+        if (!h) h = rect.height;
+      }
+      if (w > 0 && h > 0) {
+        svgEl.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+      } else if (_pzRetries < 10) {
+        // SVG has no dimensions yet (lightbox still animating) -- retry
+        _pzRetries++;
+        setTimeout(initPanZoom, 80);
+        return;
+      }
     }
+    _pzRetries = 0;
+
     // Remove fixed width/height so SVG fills the container via CSS (100%)
     svgEl.removeAttribute('width');
     svgEl.removeAttribute('height');
@@ -359,13 +388,19 @@ func (p *MermaidPlugin) mermaidLightboxJS() string {
     }
   };
 
+  let _lbRetries = 0;
   const ensureMermaidLightbox = () => {
     const diagrams = document.querySelectorAll('.mermaid svg');
-    if (!diagrams.length) return;
+    if (!diagrams.length) {
+      // Mermaid ESM may still be rendering -- retry up to 2s
+      if (_lbRetries < 20) { _lbRetries++; setTimeout(ensureMermaidLightbox, 100); }
+      return;
+    }
+    _lbRetries = 0;
     diagrams.forEach((svg) => {
       if (svg.dataset.lightboxBound) return;
       svg.dataset.lightboxBound = 'true';
-      svg.style.cursor = 'zoom-in';
+      svg.style.cursor = 'pointer';
       svg.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -381,6 +416,7 @@ func (p *MermaidPlugin) mermaidLightboxJS() string {
             });
             mermaidLightbox.on('slide_after_load', () => {
               destroyPanZoom();
+              _pzRetries = 0;
               loadSvgPanZoom().then(() => initPanZoom());
             });
             mermaidLightbox.on('close', destroyPanZoom);

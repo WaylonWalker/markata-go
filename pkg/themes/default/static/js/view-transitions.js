@@ -237,6 +237,16 @@
     // Replace body content
     document.body.innerHTML = newDoc.body.innerHTML;
 
+    // Re-execute inline module scripts (e.g. mermaid, chartjs).
+    // innerHTML assignment does not run <script> tags, so we clone them
+    // into fresh elements which the browser will evaluate.
+    document.body.querySelectorAll('script[type="module"]').forEach(old => {
+      const fresh = document.createElement('script');
+      fresh.type = 'module';
+      fresh.textContent = old.textContent;
+      old.replaceWith(fresh);
+    });
+
     // Re-initialize scripts
     reinitializeScripts();
 
@@ -311,6 +321,11 @@
 
     if (window.initNavigationShortcuts && typeof window.initNavigationShortcuts === 'function') {
       window.initNavigationShortcuts();
+    }
+
+    // Re-initialize mermaid diagrams (module script won't re-execute after DOM swap)
+    if (window.initMermaid && typeof window.initMermaid === 'function') {
+      window.initMermaid();
     }
 
     // Re-attach event listeners

@@ -2432,6 +2432,15 @@ div[class]:not([class=""]) {
   background-color: var(--color-text-muted);
 }
 
+/* Mermaid diagrams -- indicate clickability on the rendered SVG.
+   The wildcard is needed because mermaid uses <foreignObject> with
+   HTML content inside SVG, and browsers apply the default cursor to that HTML
+   (e.g. text cursor over labels).  We force pointer on every SVG descendant. */
+pre.mermaid svg,
+pre.mermaid svg * {
+  cursor: pointer;
+}
+
 /* Mermaid lightbox SVG wrapper
    The wrapper must have an explicit height so svg-pan-zoom has a concrete
    region to render into.  GLightbox passes height:'90vh' in setElements(),
