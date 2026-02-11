@@ -110,6 +110,11 @@ type Post struct {
 	// Not serialized; rebuilt from frontmatter on each load.
 	AuthorRoleOverrides map[string]string `json:"-" yaml:"-" toml:"-"`
 
+	// AuthorDetailsOverrides stores per-post details overrides keyed by author ID.
+	// Populated when frontmatter uses extended format: authors: [{id: waylon, details: "wrote the intro"}]
+	// Not serialized; rebuilt from frontmatter on each load.
+	AuthorDetailsOverrides map[string]string `json:"-" yaml:"-" toml:"-"`
+
 	// Extra holds dynamic/unknown fields from frontmatter
 	Extra map[string]interface{} `json:"extra,omitempty" yaml:"extra,omitempty" toml:"extra,omitempty"`
 
@@ -301,43 +306,66 @@ func (p *Post) SetAuthors(authors interface{}) {
 		p.Author = &v
 		p.Authors = nil
 		p.AuthorRoleOverrides = nil
+		p.AuthorDetailsOverrides = nil
 	case []string:
 		p.Authors = v
 		p.Author = nil
 		p.AuthorRoleOverrides = nil
+		p.AuthorDetailsOverrides = nil
 	case []interface{}:
-		// Mixed format: items can be strings or maps with {id, role}
-		authorIDs := make([]string, 0, len(v))
-		var roleOverrides map[string]string
-		for _, item := range v {
-			switch entry := item.(type) {
-			case string:
-				authorIDs = append(authorIDs, entry)
-			case map[string]interface{}:
-				if id, ok := entry["id"].(string); ok && id != "" {
-					authorIDs = append(authorIDs, id)
-					if role, ok := entry["role"].(string); ok && role != "" {
-						if roleOverrides == nil {
-							roleOverrides = make(map[string]string)
-						}
-						roleOverrides[id] = role
-					}
-				}
-			case map[interface{}]interface{}:
-				// YAML sometimes produces map[interface{}]interface{} instead of map[string]interface{}
-				if id, ok := entry["id"].(string); ok && id != "" {
-					authorIDs = append(authorIDs, id)
-					if role, ok := entry["role"].(string); ok && role != "" {
-						if roleOverrides == nil {
-							roleOverrides = make(map[string]string)
-						}
-						roleOverrides[id] = role
-					}
-				}
-			}
-		}
+		authorIDs, roleOverrides, detailsOverrides := parseAuthorItems(v)
 		p.Authors = authorIDs
 		p.Author = nil
 		p.AuthorRoleOverrides = roleOverrides
+		p.AuthorDetailsOverrides = detailsOverrides
+	}
+}
+
+// parseAuthorItems processes a mixed-format author slice where items can be
+// strings or maps with "id", optional "role", and optional "details".
+// Returns the collected author IDs and any per-author overrides.
+func parseAuthorItems(items []interface{}) (ids []string, roles, details map[string]string) {
+	ids = make([]string, 0, len(items))
+	roles = make(map[string]string)
+	details = make(map[string]string)
+	for _, item := range items {
+		switch entry := item.(type) {
+		case string:
+			ids = append(ids, entry)
+		case map[string]interface{}:
+			addAuthorEntry(entry, &ids, roles, details)
+		case map[interface{}]interface{}:
+			// YAML sometimes produces map[interface{}]interface{} instead of map[string]interface{}
+			normalized := make(map[string]interface{}, len(entry))
+			for k, v := range entry {
+				if ks, ok := k.(string); ok {
+					normalized[ks] = v
+				}
+			}
+			addAuthorEntry(normalized, &ids, roles, details)
+		}
+	}
+	if len(roles) == 0 {
+		roles = nil
+	}
+	if len(details) == 0 {
+		details = nil
+	}
+	return ids, roles, details
+}
+
+// addAuthorEntry extracts id, role, and details from a map-format author entry.
+// Appends the author ID to ids and populates role/details override maps as needed.
+func addAuthorEntry(entry map[string]interface{}, ids *[]string, roles, details map[string]string) {
+	id, ok := entry["id"].(string)
+	if !ok || id == "" {
+		return
+	}
+	*ids = append(*ids, id)
+	if role, ok := entry["role"].(string); ok && role != "" {
+		roles[id] = role
+	}
+	if detail, ok := entry["details"].(string); ok && detail != "" {
+		details[id] = detail
 	}
 }

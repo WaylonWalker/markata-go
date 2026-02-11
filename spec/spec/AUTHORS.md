@@ -23,6 +23,7 @@ The authors system allows sites to define a registry of author profiles in the c
 | `contributions` | string[] | [] | CReDiT taxonomy roles |
 | `role` | string? | null | Simple role label (e.g., "author", "editor") |
 | `contribution` | string? | null | Free-text contribution description |
+| `details` | string? | null | Per-post description of what the author did (shown as tooltip on hover) |
 
 ### Post Author Fields
 
@@ -32,6 +33,7 @@ The authors system allows sites to define a registry of author profiles in the c
 | `author` | string? | Legacy single-author field from frontmatter |
 | `author_objects` | Author[] | Computed: resolved Author structs (not serialized) |
 | `author_role_overrides` | map[string]string | Per-post role overrides keyed by author ID (not serialized) |
+| `author_details_overrides` | map[string]string | Per-post details overrides keyed by author ID (not serialized) |
 
 ### AuthorsConfig
 
@@ -93,6 +95,28 @@ authors:
 ---
 ```
 
+### Per-Post Details
+
+Authors can have per-post details describing their specific contribution. Details are shown as a tooltip on hover in the byline:
+
+```yaml
+---
+title: Collaborative Post
+authors:
+  - id: waylon
+    role: author
+    details: wrote the introduction and conclusion
+  - id: codex
+    role: pair programmer
+    details: wrote the code examples
+  - id: kimmi
+    role: outliner
+    details: outlined the post structure
+---
+```
+
+The `details` field is optional and independent of `role`. Both can be set together or separately.
+
 Mixed formats are supported -- strings and extended references can be combined:
 
 ```yaml
@@ -136,8 +160,10 @@ author: "Jane Doe"
    - Calls `post.GetAuthors()` to get author IDs (from `authors` array or `author` string)
    - If no author IDs: assigns the default author (if one exists)
    - If author IDs exist: resolves each ID against the config map
-   - Checks `post.AuthorRoleOverrides` for per-post role overrides
-   - If a per-post role override exists for an author ID, clones the Author struct and sets the overridden Role (clearing Contribution so `GetRoleDisplay()` uses the new Role)
+    - Checks `post.AuthorRoleOverrides` for per-post role overrides
+    - Checks `post.AuthorDetailsOverrides` for per-post details overrides
+    - If a per-post role override exists for an author ID, clones the Author struct and sets the overridden Role (clearing Contribution so `GetRoleDisplay()` uses the new Role)
+    - If a per-post details override exists for an author ID, sets the Details field on the (possibly already cloned) Author struct
    - Populates `post.AuthorObjects` with the resolved (possibly role-overridden) Author structs
 4. Logs a warning for unknown author IDs
 
@@ -168,6 +194,7 @@ Each author object in templates has:
 | `social` | map | Social links (if set) |
 | `contributions` | []string | CReDiT roles (if set) |
 | `contribution` | string | Contribution text (if set) |
+| `details` | string | Per-post details text (if set, shown as tooltip) |
 
 ## Build Cache
 

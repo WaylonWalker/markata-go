@@ -396,6 +396,37 @@ authors:
 
 Each author ID is resolved against the `[markata-go.authors.authors]` config map during the build. Resolved author objects (with name, avatar, role, bio, etc.) are available in templates as `post.author_objects`.
 
+You can use the extended format to specify per-post roles and details for each author:
+
+```yaml
+---
+title: "Collaborative Article"
+authors:
+  - id: waylon
+    role: author
+    details: wrote the introduction and conclusion
+  - id: codex
+    role: pair programmer
+    details: wrote the code examples
+  - id: kimmi
+    role: outliner
+---
+```
+
+The `role` overrides the author's config-level role for this post only. The `details` field provides a short description of what the author did on this specific post, displayed as a tooltip when hovering over the author's name in the byline. Both fields are optional and can be used independently.
+
+You can mix simple string IDs and extended format in the same array:
+
+```yaml
+---
+authors:
+  - waylon
+  - id: codex
+    role: editor
+    details: reviewed and edited the draft
+---
+```
+
 If no `authors` or `author` field is set, the default author from config (the one with `default = true`) is assigned automatically.
 
 #### author

@@ -885,4 +885,96 @@ func TestPost_SetAuthors(t *testing.T) {
 			t.Errorf("SetAuthors([]interface{}) should set Authors array, got length %d", len(p.Authors))
 		}
 	})
+
+	t.Run("set extended format with role and details overrides", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":      "waylon",
+				"role":    "author",
+				"details": "wrote the introduction",
+			},
+			map[string]interface{}{
+				"id":      "codex",
+				"role":    "pair programmer",
+				"details": "wrote the code examples",
+			},
+			"guest", // plain string, no overrides
+		})
+		if p.Author != nil {
+			t.Error("SetAuthors(extended) should clear Author field")
+		}
+		if len(p.Authors) != 3 {
+			t.Errorf("SetAuthors(extended) should set 3 authors, got %d", len(p.Authors))
+		}
+		if p.Authors[0] != "waylon" || p.Authors[1] != "codex" || p.Authors[2] != "guest" {
+			t.Errorf("SetAuthors(extended) incorrect author IDs: %v", p.Authors)
+		}
+		// Check role overrides
+		if p.AuthorRoleOverrides == nil {
+			t.Fatal("AuthorRoleOverrides should not be nil")
+		}
+		if p.AuthorRoleOverrides["waylon"] != "author" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "author")
+		}
+		if p.AuthorRoleOverrides["codex"] != "pair programmer" {
+			t.Errorf("AuthorRoleOverrides[codex] = %q, want %q", p.AuthorRoleOverrides["codex"], "pair programmer")
+		}
+		// Check details overrides
+		if p.AuthorDetailsOverrides == nil {
+			t.Fatal("AuthorDetailsOverrides should not be nil")
+		}
+		if p.AuthorDetailsOverrides["waylon"] != "wrote the introduction" {
+			t.Errorf("AuthorDetailsOverrides[waylon] = %q, want %q", p.AuthorDetailsOverrides["waylon"], "wrote the introduction")
+		}
+		if p.AuthorDetailsOverrides["codex"] != "wrote the code examples" {
+			t.Errorf("AuthorDetailsOverrides[codex] = %q, want %q", p.AuthorDetailsOverrides["codex"], "wrote the code examples")
+		}
+		// guest should not have overrides
+		if _, ok := p.AuthorRoleOverrides["guest"]; ok {
+			t.Error("guest should not have role override")
+		}
+		if _, ok := p.AuthorDetailsOverrides["guest"]; ok {
+			t.Error("guest should not have details override")
+		}
+	})
+
+	t.Run("set extended format with details only (no role)", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":      "waylon",
+				"details": "outlined the post",
+			},
+		})
+		if p.AuthorRoleOverrides != nil {
+			t.Error("AuthorRoleOverrides should be nil when no roles specified")
+		}
+		if p.AuthorDetailsOverrides == nil {
+			t.Fatal("AuthorDetailsOverrides should not be nil")
+		}
+		if p.AuthorDetailsOverrides["waylon"] != "outlined the post" {
+			t.Errorf("AuthorDetailsOverrides[waylon] = %q, want %q", p.AuthorDetailsOverrides["waylon"], "outlined the post")
+		}
+	})
+
+	t.Run("string format clears details overrides", func(t *testing.T) {
+		p := &Post{
+			AuthorDetailsOverrides: map[string]string{"old": "data"},
+		}
+		p.SetAuthors("john-doe")
+		if p.AuthorDetailsOverrides != nil {
+			t.Error("SetAuthors(string) should clear AuthorDetailsOverrides")
+		}
+	})
+
+	t.Run("string slice format clears details overrides", func(t *testing.T) {
+		p := &Post{
+			AuthorDetailsOverrides: map[string]string{"old": "data"},
+		}
+		p.SetAuthors([]string{"john-doe"})
+		if p.AuthorDetailsOverrides != nil {
+			t.Error("SetAuthors([]string) should clear AuthorDetailsOverrides")
+		}
+	})
 }

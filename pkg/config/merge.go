@@ -458,8 +458,8 @@ func mergeAuthorsConfig(base, override models.AuthorsConfig) models.AuthorsConfi
 		if result.Authors == nil {
 			result.Authors = make(map[string]models.Author, len(override.Authors))
 		}
-		for id, author := range override.Authors {
-			result.Authors[id] = author
+		for id := range override.Authors {
+			result.Authors[id] = override.Authors[id]
 		}
 	}
 

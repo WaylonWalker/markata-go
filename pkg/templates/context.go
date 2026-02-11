@@ -149,8 +149,8 @@ func postToMapUncached(p *models.Post) map[string]interface{} {
 	if len(p.AuthorObjects) > 0 {
 		// Convert Author objects to maps for template access
 		authorMaps := make([]map[string]interface{}, len(p.AuthorObjects))
-		for i, author := range p.AuthorObjects {
-			authorMaps[i] = authorToMap(&author)
+		for i := range p.AuthorObjects {
+			authorMaps[i] = authorToMap(&p.AuthorObjects[i])
 		}
 		m["author_objects"] = authorMaps
 	}
@@ -230,6 +230,9 @@ func authorToMap(a *models.Author) map[string]interface{} {
 	if a.Contribution != nil {
 		m["contribution"] = *a.Contribution
 	}
+	if a.Details != nil {
+		m["details"] = *a.Details
+	}
 
 	// Handle slice and map fields
 	if len(a.Contributions) > 0 {
@@ -253,8 +256,9 @@ func authorsToMap(ac *models.AuthorsConfig) map[string]interface{} {
 	}
 
 	authorsMap := make(map[string]interface{})
-	for id, author := range ac.Authors {
-		authorsMap[id] = authorToMap(&author)
+	for id := range ac.Authors {
+		a := ac.Authors[id]
+		authorsMap[id] = authorToMap(&a)
 	}
 
 	return map[string]interface{}{
@@ -1159,8 +1163,8 @@ func (c Context) ToPongo2() pongo2.Context {
 		// Templates use {% set author = authors[author_id] %} for per-post author lookup
 		if len(c.Config.Authors.Authors) > 0 {
 			topLevelAuthors := make(map[string]interface{}, len(c.Config.Authors.Authors))
-			for id, author := range c.Config.Authors.Authors {
-				a := author // avoid closure capture
+			for id := range c.Config.Authors.Authors {
+				a := c.Config.Authors.Authors[id]
 				topLevelAuthors[id] = authorToMap(&a)
 			}
 			ctx["authors"] = topLevelAuthors

@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+// RoleAuthor is the simple role name for a primary author.
+const RoleAuthor = "author"
+
 // Author represents an author or contributor to content
 type Author struct {
 	ID      string            `json:"id" yaml:"id" toml:"id"`
@@ -26,6 +29,10 @@ type Author struct {
 
 	// Level 3: Custom free-form contribution
 	Contribution *string `json:"contribution,omitempty" yaml:"contribution,omitempty" toml:"contribution,omitempty"`
+
+	// Details is an optional per-post description of what the author did.
+	// Typically set via frontmatter overrides, displayed as a tooltip on hover.
+	Details *string `json:"details,omitempty" yaml:"details,omitempty" toml:"details,omitempty"`
 }
 
 // CReDiTRoles defines standard CReDiT contributor roles taxonomy
@@ -49,7 +56,7 @@ var CReDiTRoles = []string{
 
 // SimpleRoles defines common roles for blog/content sites
 var SimpleRoles = []string{
-	"author",      // Primary writer
+	RoleAuthor,    // Primary writer
 	"editor",      // Editorial contributions
 	"designer",    // Visual/UX design
 	"maintainer",  // Project maintenance
@@ -122,7 +129,7 @@ func (a *Author) IsPrimaryContributor() bool {
 	}
 
 	// Check simple role
-	if a.Role != nil && *a.Role == "author" {
+	if a.Role != nil && *a.Role == RoleAuthor {
 		return true
 	}
 
@@ -153,7 +160,8 @@ func ValidateAuthors(authors map[string]Author) error {
 	}
 
 	defaultCount := 0
-	for id, author := range authors {
+	for id := range authors {
+		author := authors[id]
 		if err := author.Validate(); err != nil {
 			return fmt.Errorf("author %s: %w", id, err)
 		}
@@ -175,18 +183,20 @@ func GetDefaultAuthor(authors map[string]Author) (defaultAuthor *Author, default
 		return nil, ""
 	}
 
-	for id, author := range authors {
-		if author.Default {
-			defaultAuthor = &author
+	for id := range authors {
+		if authors[id].Default {
+			a := authors[id]
+			defaultAuthor = &a
 			defaultID = id
 			return
 		}
 	}
 
 	// Fallback: return first active author if no default specified
-	for id, author := range authors {
-		if author.Active {
-			defaultAuthor = &author
+	for id := range authors {
+		if authors[id].Active {
+			a := authors[id]
+			defaultAuthor = &a
 			defaultID = id
 			return
 		}

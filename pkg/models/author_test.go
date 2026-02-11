@@ -360,3 +360,29 @@ func TestGetDefaultAuthor(t *testing.T) {
 func authorTestStrPtr(s string) *string {
 	return &s
 }
+
+func TestAuthor_DetailsField(t *testing.T) {
+	t.Run("details nil by default", func(t *testing.T) {
+		a := Author{ID: "test", Name: "Test"}
+		if a.Details != nil {
+			t.Error("Details should be nil by default")
+		}
+	})
+
+	t.Run("details set", func(t *testing.T) {
+		details := "wrote the code examples"
+		a := Author{ID: "test", Name: "Test", Details: &details}
+		if a.Details == nil || *a.Details != "wrote the code examples" {
+			t.Errorf("Details = %v, want %q", a.Details, "wrote the code examples")
+		}
+	})
+
+	t.Run("details does not affect GetRoleDisplay", func(t *testing.T) {
+		details := "wrote everything"
+		a := Author{ID: "test", Name: "Test", Role: authorTestStrPtr("author"), Details: &details}
+		got := a.GetRoleDisplay()
+		if got != "author" {
+			t.Errorf("GetRoleDisplay() = %q, want %q (details should not affect role display)", got, "author")
+		}
+	})
+}

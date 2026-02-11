@@ -884,6 +884,78 @@ body:has(.background-decoration) article.post {
   opacity: 0.85;
 }
 
+/* --------------------------------------------------------------------------
+   Author Details Tooltip (CSS-only)
+   Shows per-post contribution details on hover via data-details attribute.
+   The native title attribute provides a fallback for non-hover devices.
+   -------------------------------------------------------------------------- */
+
+.post-byline__author[data-details] {
+  position: relative;
+  cursor: help;
+}
+
+/* Small info indicator for authors with details */
+.post-byline__details-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  font-size: 10px;
+  font-style: italic;
+  font-family: Georgia, serif;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease;
+}
+
+.post-byline__author[data-details]:hover .post-byline__details-icon {
+  opacity: 1;
+  border-color: var(--color-text-muted);
+}
+
+/* Tooltip via ::after pseudo-element */
+.post-byline__author[data-details]::after {
+  content: attr(data-details);
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-elevated, var(--color-bg));
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius, 6px);
+  font-size: var(--text-xs);
+  font-style: normal;
+  line-height: 1.4;
+  white-space: normal;
+  min-width: 160px;
+  max-width: 280px;
+  width: max-content;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.post-byline__author[data-details]:hover::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Suppress native title tooltip when CSS tooltip is showing */
+.post-byline__author[data-details]:hover {
+  /* title attr tooltips can't be fully suppressed via CSS, but
+     the CSS tooltip appears faster so it takes precedence visually */
+}
+
 /* Multi-author meta (date/reading time) sits below the authors row */
 .post-byline--multi .post-byline__meta {
   /* Override single-author grid placement */

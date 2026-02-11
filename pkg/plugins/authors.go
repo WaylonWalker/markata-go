@@ -21,7 +21,7 @@ func NewAuthorsPlugin() *AuthorsPlugin {
 
 // Name returns the unique name of the plugin.
 func (p *AuthorsPlugin) Name() string {
-	return "authors"
+	return "authors" //nolint:goconst // plugin name used as identifier, not a shared constant
 }
 
 // Priority returns the plugin priority for the given stage.
@@ -74,22 +74,38 @@ func (p *AuthorsPlugin) Transform(m *lifecycle.Manager) error {
 			continue
 		}
 
-		// Resolve each author ID, applying per-post role overrides
+		// Resolve each author ID, applying per-post role and details overrides
 		objects := make([]models.Author, 0, len(authorIDs))
 		for _, id := range authorIDs {
 			if author, exists := authorMap[id]; exists {
-				// Check for per-post role override
-				if post.AuthorRoleOverrides != nil {
-					if roleOverride, hasOverride := post.AuthorRoleOverrides[id]; hasOverride {
-						// Clone the author and apply the role override
-						authorCopy := author
+				hasRoleOverride := post.AuthorRoleOverrides != nil
+				hasDetailsOverride := post.AuthorDetailsOverrides != nil
+
+				roleOverride, applyRole := "", false
+				if hasRoleOverride {
+					roleOverride, applyRole = post.AuthorRoleOverrides[id]
+				}
+
+				detailsOverride, applyDetails := "", false
+				if hasDetailsOverride {
+					detailsOverride, applyDetails = post.AuthorDetailsOverrides[id]
+				}
+
+				if applyRole || applyDetails {
+					// Clone the author and apply overrides
+					authorCopy := author
+					if applyRole {
 						authorCopy.Role = &roleOverride
 						// Clear Contribution so GetRoleDisplay() uses the overridden Role
 						authorCopy.Contribution = nil
-						objects = append(objects, authorCopy)
-						continue
 					}
+					if applyDetails {
+						authorCopy.Details = &detailsOverride
+					}
+					objects = append(objects, authorCopy)
+					continue
 				}
+
 				objects = append(objects, author)
 			} else {
 				log.Printf("[authors] Warning: unknown author ID %q in post %s", id, post.Path)

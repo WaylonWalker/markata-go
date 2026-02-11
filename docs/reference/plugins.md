@@ -830,6 +830,8 @@ active = true
    - Reads author IDs from `authors` array or `author` string in frontmatter
    - If no authors specified, assigns the default author
    - Resolves each author ID against the config map
+   - Applies per-post role overrides (from extended frontmatter format)
+   - Applies per-post details overrides (shown as hover tooltips in byline)
    - Populates `post.AuthorObjects` with resolved Author structs
 4. Logs a warning for unrecognized author IDs
 
@@ -842,9 +844,11 @@ active = true
 
 **Template access:**
 
-- `post.author_objects` -- Array of author maps with all fields (name, role, avatar, url, etc.)
+- `post.author_objects` -- Array of author maps with all fields (name, role, avatar, url, details, etc.)
 - `post.authors` -- Array of author ID strings
 - `authors` -- Top-level map of all configured authors (ID to author map)
+
+Each author object includes a `details` field (when set via frontmatter) that provides a per-post description of the author's contribution, displayed as a CSS tooltip on hover.
 
 **Related:**
 - [Authors Configuration](../guides/configuration.md#authors-configuration) -- Config setup guide
