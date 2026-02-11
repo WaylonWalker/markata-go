@@ -165,13 +165,20 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 	if cache != nil {
 		cachedFiles, cachedHash := cache.GetGlobCache()
 		if cachedHash == patternHash && len(cachedFiles) > 0 {
-			// Patterns unchanged - verify cached files still exist
-			// This is much faster than a full glob scan
-			if p.verifyCachedFiles(absBaseDir, cachedFiles) {
+			// Patterns unchanged - do a full scan to detect new files,
+			// but use the cached list to verify nothing was removed.
+			// Previously this only checked if cached files still existed,
+			// which meant newly added files were never discovered.
+			freshFiles := p.scanFiles(absBaseDir)
+			if p.fileListsEqual(cachedFiles, freshFiles) {
+				// No changes - use cached list
 				m.SetFiles(cachedFiles)
 				return nil
 			}
-			// Some files missing - fall through to full scan
+			// File list changed (new or removed files) - update cache
+			cache.SetGlobCache(freshFiles, patternHash)
+			m.SetFiles(freshFiles)
+			return nil
 		}
 	}
 
@@ -229,12 +236,13 @@ func (p *GlobPlugin) scanFiles(absBaseDir string) []string {
 	return files
 }
 
-// verifyCachedFiles checks if all cached files still exist.
-// This is much faster than a full glob scan.
-func (p *GlobPlugin) verifyCachedFiles(absBaseDir string, cached []string) bool {
-	for _, f := range cached {
-		fullPath := filepath.Join(absBaseDir, f)
-		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+// fileListsEqual checks if two sorted file lists are identical.
+func (p *GlobPlugin) fileListsEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
 			return false
 		}
 	}

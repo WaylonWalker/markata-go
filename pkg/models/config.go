@@ -2358,6 +2358,56 @@ func NewThemeCalendarConfig() ThemeCalendarConfig {
 	}
 }
 
+// ExternalCacheDirs returns the list of Tier 2 external plugin cache directories.
+// These directories contain expensive-to-rebuild data (fetched RSS feeds, embed
+// metadata, webmentions) and are only cleaned by --clean-all, not --clean.
+// For plugins configured via the Extra map (embeds, webmentions), defaults are
+// included when the plugin isn't explicitly configured, since the plugins still
+// create these directories at runtime.
+func (c *Config) ExternalCacheDirs() []string {
+	var dirs []string
+
+	// Blogroll cache (typed config field, falls back to default)
+	blogrollDir := c.Blogroll.CacheDir
+	if blogrollDir == "" {
+		blogrollDir = NewBlogrollConfig().CacheDir
+	}
+	dirs = append(dirs, blogrollDir)
+
+	// Mentions cache (typed config field with getter that handles default)
+	if dir := c.Mentions.GetCacheDir(); dir != "" {
+		dirs = append(dirs, dir)
+	}
+
+	// Embeds cache (untyped Extra map — stored as map[string]interface{})
+	embedsDir := NewEmbedsConfig().CacheDir // default: ".cache/embeds"
+	if c.Extra != nil {
+		if embedsCfg, ok := c.Extra["embeds"]; ok {
+			if cfgMap, ok := embedsCfg.(map[string]interface{}); ok {
+				if dir, ok := cfgMap["cache_dir"].(string); ok && dir != "" {
+					embedsDir = dir
+				}
+			}
+		}
+	}
+	dirs = append(dirs, embedsDir)
+
+	// Webmentions cache (untyped Extra map — stored as WebMentionsConfig)
+	wmDir := NewWebMentionsConfig().CacheDir // default: ".cache/webmentions"
+	if c.Extra != nil {
+		if wmCfg, ok := c.Extra["webmentions"]; ok {
+			if wm, ok := wmCfg.(WebMentionsConfig); ok {
+				if wm.CacheDir != "" {
+					wmDir = wm.CacheDir
+				}
+			}
+		}
+	}
+	dirs = append(dirs, wmDir)
+
+	return dirs
+}
+
 // IsHookEnabled checks if a hook is enabled (in Hooks and not in DisabledHooks).
 func (c *Config) IsHookEnabled(name string) bool {
 	// Check if disabled
