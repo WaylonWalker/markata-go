@@ -158,8 +158,10 @@ func TestEvaluate_StringInList(t *testing.T) {
 }
 
 func TestEvaluate_DateComparison(t *testing.T) {
+	// today is end-of-day (23:59:59.999999999) so that "date <= today"
+	// includes posts from today regardless of their time component.
 	ctx := &EvalContext{
-		Today: time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+		Today: time.Date(2024, 1, 15, 23, 59, 59, 999999999, time.UTC),
 		Now:   time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC),
 	}
 
@@ -176,9 +178,21 @@ func TestEvaluate_DateComparison(t *testing.T) {
 			expected: true,
 		},
 		{
-			name:     "date <= today (today)",
+			name:     "date <= today (today at midnight)",
 			expr:     "date <= today",
 			post:     makePost(withDate(time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC))),
+			expected: true,
+		},
+		{
+			name:     "date <= today (today with time component)",
+			expr:     "date <= today",
+			post:     makePost(withDate(time.Date(2024, 1, 15, 9, 24, 52, 0, time.UTC))),
+			expected: true,
+		},
+		{
+			name:     "date <= today (today at 23:59)",
+			expr:     "date <= today",
+			post:     makePost(withDate(time.Date(2024, 1, 15, 23, 59, 0, 0, time.UTC))),
 			expected: true,
 		},
 		{
