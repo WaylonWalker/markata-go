@@ -146,11 +146,24 @@
   }
 
   /**
+   * Check if the shortcuts modal is currently open
+   */
+  function isModalOpen() {
+    var modal = document.getElementById('shortcuts-modal');
+    return modal && modal.classList.contains('shortcuts-modal--open');
+  }
+
+  /**
    * Handle click outside modal to close it
    */
   function handleModalBackdropClick(e) {
     var modal = document.getElementById('shortcuts-modal');
-    if (modal && e.target === modal) {
+    if (!modal) return;
+
+    // Close if clicking the backdrop (the modal overlay itself) or
+    // any area outside the modal content
+    var content = modal.querySelector('.shortcuts-modal-content');
+    if (content && !content.contains(e.target)) {
       hideShortcutsModal();
     }
   }
@@ -184,25 +197,33 @@
       }
     });
 
-    // Register ? for help modal
+    // Register ? for help modal (toggles open/close)
     window.shortcutsRegistry.register({
       key: '?',
       modifiers: [],
-      description: 'Show shortcuts help',
+      description: 'Toggle shortcuts help',
       group: 'help',
       handler: function(e) {
         e.preventDefault();
-        showShortcutsModal();
+        if (isModalOpen()) {
+          hideShortcutsModal();
+        } else {
+          showShortcutsModal();
+        }
       },
       priority: 100
     });
 
-    // Handle Escape globally (always works, even in inputs)
+    // Handle Escape and x to close modals (always works, even in inputs)
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
         if (closeModals()) {
           e.preventDefault();
         }
+      } else if (e.key === 'x' && isModalOpen()) {
+        // x closes the shortcuts modal when it is open
+        e.preventDefault();
+        hideShortcutsModal();
       }
     });
 

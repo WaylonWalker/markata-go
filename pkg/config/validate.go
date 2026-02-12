@@ -318,8 +318,8 @@ func validateFeedConfig(index int, feed *models.FeedConfig) []error {
 
 // hasAnyFormat returns true if any feed format is enabled.
 func hasAnyFormat(formats models.FeedFormats) bool {
-	return formats.HTML || formats.RSS || formats.Atom ||
-		formats.JSON || formats.Markdown || formats.Text
+	return formats.HTML || formats.SimpleHTML || formats.RSS || formats.Atom ||
+		formats.JSON || formats.Markdown || formats.Text || formats.Sitemap
 }
 
 // sortErrors sorts validation errors so that errors come before warnings.

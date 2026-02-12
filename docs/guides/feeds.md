@@ -30,15 +30,15 @@ Feeds solve a common problem in static site generation: you need the same collec
                               |
                               v
                         OUTPUT FORMATS
-  +-------+-------+-------+-------+----------+------+---------+
-  | HTML  |  RSS  | Atom  | JSON  | Markdown | Text | Sitemap |
-  | index | feed  | feed  |  API  |   list   | list |   XML   |
-  +-------+-------+-------+-------+----------+------+---------+
+  +-------+--------+-------+-------+-------+----------+------+---------+
+  | HTML  | Simple |  RSS  | Atom  | JSON  | Markdown | Text | Sitemap |
+  | index |  list  | feed  | feed  |  API  |   list   | list |   XML   |
+  +-------+--------+-------+-------+-------+----------+------+---------+
 ```
 
 **Benefits:**
 
-1. **One definition, many outputs** - Define a collection once, get HTML pages, RSS, Atom, JSON API, sitemap, etc.
+1. **One definition, many outputs** - Define a collection once, get HTML pages, a simple list view, RSS, Atom, JSON API, sitemap, etc.
 2. **Composable** - Feeds can share filters or inherit from defaults
 3. **Flexible** - Every "index page" is a feed: home, archives, tags, categories, search indexes
 4. **Familiar** - Mirrors how content platforms work (RSS readers, APIs, syndication)
@@ -92,6 +92,7 @@ orphan_threshold = 3               # If last page has <=3 items, merge with prev
 # Output Formats
 [markata-go.feeds.formats]
 html = true                        # /blog/index.html, /blog/page/2/index.html
+simple_html = true                 # /blog/simple/index.html
 rss = true                         # /blog/rss.xml
 atom = true                        # /blog/atom.xml
 json = true                        # /blog/feed.json
@@ -368,6 +369,38 @@ html = true
 ```
 /blog/index.html           # Page 1
 /blog/page/2/index.html    # Page 2
+```
+
+### Simple HTML
+
+A compact, dense list view of posts designed to fit many entries on screen. Each post renders as a single line with title (as a link), date, and reading time. The simple feed is generated alongside the standard HTML feed automatically.
+
+```toml
+[markata-go.feeds.formats]
+simple_html = true
+```
+
+**Output:**
+```
+/blog/simple/index.html           # Page 1
+/blog/simple/page/2/index.html    # Page 2
+```
+
+The simple feed page includes a navigation switcher to toggle between the full (rich card) view and the simple list view. Each entry uses [microformats2](http://microformats.org/wiki/h-entry) markup (`h-entry`, `p-name`, `dt-published`).
+
+**When to use the simple format:**
+
+- **Dense archives** -- Show many posts at a glance without scrolling through large cards
+- **Quick scanning** -- Readers who know what they're looking for can scan titles and dates rapidly
+- **Low-bandwidth** -- Minimal HTML and no images, loads fast on slow connections
+- **Print-friendly** -- Styled for clean printing via `@media print`
+
+**Disabling the simple format** for a specific feed:
+
+```toml
+[[markata-go.feeds]]
+slug = "api/posts"
+formats = { simple_html = false }
 ```
 
 ### RSS 2.0
@@ -1152,6 +1185,7 @@ RSS/Atom feeds include `rel="hub"` and `rel="self"` links when WebSub is enabled
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `html` | bool | `true` | Generate HTML pages |
+| `simple_html` | bool | `true` | Generate simple list HTML pages |
 | `rss` | bool | `true` | Generate RSS feed |
 | `atom` | bool | `false` | Generate Atom feed |
 | `json` | bool | `false` | Generate JSON feed |
@@ -1164,6 +1198,7 @@ RSS/Atom feeds include `rel="hub"` and `rel="self"` links when WebSub is enabled
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `html` | string | `"feed.html"` | HTML template |
+| `simple_html` | string | `"simple-feed.html"` | Simple list HTML template |
 | `card` | string | `"card.html"` | Post card template |
 | `rss` | string | `"feed.xml"` | RSS template |
 | `atom` | string | `"atom.xml"` | Atom template |
@@ -1304,14 +1339,21 @@ public/
   blog/
     index.html                   # Blog page 1
     page/2/index.html            # Blog page 2
+    simple/
+      index.html                 # Simple list page 1
+      page/2/index.html          # Simple list page 2
     rss.xml
     atom.xml
   tutorials/
     index.html
+    simple/
+      index.html
     rss.xml
     atom.xml
   archive/
     index.html                   # All posts, no pagination
+    simple/
+      index.html
   api/
     posts/
       feed.json                  # JSON API

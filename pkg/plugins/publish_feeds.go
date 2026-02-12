@@ -322,6 +322,7 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 	// Define all format publishers with their configurations
 	publishers := []feedFormatPublisher{
 		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(fc, config, feedDir) }},
+		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(fc, config, feedDir) }},
 		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(fc, config, feedDir) }},
 		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(fc, config, feedDir) }},
 		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(fc, config, feedDir) }, ext: "json", targetFile: "feed.json"},
@@ -421,6 +422,135 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 	}
 
 	return nil
+}
+
+// publishSimpleHTMLPages publishes the simple (compact list) HTML pages for a feed.
+// Output is written to feedDir/simple/ with pagination at feedDir/simple/page/N/.
+func (p *PublishFeedsPlugin) publishSimpleHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, feedDir string) error {
+	simpleDir := filepath.Join(feedDir, "simple")
+
+	// Compute the base URL prefix for simple feed pagination links.
+	// For a feed with slug "blog", this is "/blog/simple".
+	// For the root feed (slug ""), this is "/simple".
+	simpleBaseURL := "/" + fc.Slug + "/simple"
+	if fc.Slug == "" {
+		simpleBaseURL = "/simple"
+	}
+
+	for i := range fc.Pages {
+		srcPage := &fc.Pages[i]
+
+		// Create an adjusted copy of the page with URLs pointing to /simple/ paths
+		adjustedPage := p.adjustPageURLsForSimple(srcPage, simpleBaseURL)
+
+		// Determine output path
+		var pagePath string
+		if adjustedPage.Number == 1 {
+			if err := os.MkdirAll(simpleDir, 0o755); err != nil {
+				return fmt.Errorf("creating simple feed directory: %w", err)
+			}
+			pagePath = filepath.Join(simpleDir, "index.html")
+		} else {
+			pageDir := filepath.Join(simpleDir, "page", fmt.Sprintf("%d", adjustedPage.Number))
+			if err := os.MkdirAll(pageDir, 0o755); err != nil {
+				return fmt.Errorf("creating simple feed page directory: %w", err)
+			}
+			pagePath = filepath.Join(pageDir, "index.html")
+		}
+
+		// Generate HTML content using simple-feed.html template
+		htmlContent, err := p.generateSimpleFeedPageHTML(fc, &adjustedPage, config)
+		if err != nil {
+			return fmt.Errorf("generating simple page %d: %w", adjustedPage.Number, err)
+		}
+
+		//nolint:gosec // G306: HTML output files need 0644 for web serving
+		if err := os.WriteFile(pagePath, []byte(htmlContent), 0o644); err != nil {
+			return fmt.Errorf("writing simple page %d: %w", adjustedPage.Number, err)
+		}
+	}
+
+	return nil
+}
+
+// adjustPageURLsForSimple creates a copy of FeedPage with URLs adjusted for the simple feed subdirectory.
+func (p *PublishFeedsPlugin) adjustPageURLsForSimple(page *models.FeedPage, simpleBaseURL string) models.FeedPage {
+	adjusted := *page
+
+	// Adjust prev/next URLs
+	if adjusted.HasPrev {
+		if adjusted.Number == 2 {
+			adjusted.PrevURL = simpleBaseURL + "/"
+		} else {
+			adjusted.PrevURL = simpleBaseURL + "/page/" + fmt.Sprintf("%d", adjusted.Number-1) + "/"
+		}
+	}
+	if adjusted.HasNext {
+		adjusted.NextURL = simpleBaseURL + "/page/" + fmt.Sprintf("%d", adjusted.Number+1) + "/"
+	}
+
+	// Adjust page URLs for numbered navigation
+	adjustedURLs := make([]string, len(adjusted.PageURLs))
+	for i := range adjusted.PageURLs {
+		if i == 0 {
+			adjustedURLs[i] = simpleBaseURL + "/"
+		} else {
+			adjustedURLs[i] = simpleBaseURL + "/page/" + fmt.Sprintf("%d", i+1) + "/"
+		}
+	}
+	adjusted.PageURLs = adjustedURLs
+
+	return adjusted
+}
+
+// generateSimpleFeedPageHTML generates HTML for a simple feed page using the simple-feed.html template.
+func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config) (string, error) {
+	// Get templates directory from config
+	templatesDir := PluginNameTemplates
+	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
+		templatesDir = extra
+	}
+
+	// Get theme name from config (default to "default")
+	themeName := ThemeDefault
+	if extra := config.Extra; extra != nil {
+		if theme, ok := extra["theme"].(models.ThemeConfig); ok {
+			if theme.Name != "" {
+				themeName = theme.Name
+			}
+		}
+		if theme, ok := extra["theme"].(map[string]interface{}); ok {
+			if name, ok := theme["name"].(string); ok && name != "" {
+				themeName = name
+			}
+		}
+		if name, ok := extra["theme"].(string); ok && name != "" {
+			themeName = name
+		}
+	}
+
+	// Determine which template to use
+	templateName := fc.Templates.SimpleHTML
+	if templateName == "" {
+		templateName = "simple-feed.html"
+	}
+
+	// Try to use pongo2 template engine (cached)
+	engine, err := p.getOrCreateEngine(templatesDir, themeName)
+	if err == nil && engine.TemplateExists(templateName) {
+		modelsConfig := ToModelsConfig(config)
+		ctx := templates.NewFeedContext(fc, page, modelsConfig)
+
+		htmlContent, err := engine.Render(templateName, ctx)
+		if err != nil {
+			log.Printf("[publish_feeds] Warning: template rendering failed for %s: %v (falling back to built-in template)", templateName, err)
+		} else {
+			return htmlContent, nil
+		}
+	}
+
+	// Fallback: use the standard HTML fallback (better than nothing)
+	return p.generateFeedPageHTMLFallback(fc, page, config)
 }
 
 // generateFeedPageHTML generates HTML for a feed page.

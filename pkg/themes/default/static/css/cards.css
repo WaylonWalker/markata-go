@@ -709,6 +709,153 @@
 }
 
 /* ==========================================================================
+   Simple Feed - Dense, compact list view for scanning many posts quickly
+   Each post renders as a single line: Title (link) · Date · Reading Time
+   ========================================================================== */
+
+.feed-simple {
+  max-width: 750px;
+  margin: 0 auto;
+}
+
+.feed-simple-header {
+  margin-bottom: var(--space-4);
+}
+
+.feed-simple-header h1 {
+  margin-bottom: var(--space-2);
+}
+
+.feed-simple-header .p-summary {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-3);
+}
+
+/* Feed view switcher */
+.feed-simple-nav {
+  display: flex;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.feed-simple-nav a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.feed-simple-nav a:hover {
+  text-decoration: underline;
+}
+
+.feed-simple-nav-current {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Simple list (ordered) */
+.simple-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Individual simple item - single line on desktop */
+.simple-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.simple-item:last-child {
+  border-bottom: none;
+}
+
+/* Title link - takes remaining space, truncates if needed */
+.simple-item-title {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.simple-item-title:hover {
+  color: var(--color-primary);
+}
+
+/* Date - fixed width for alignment */
+.simple-item-date {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+/* Reading time */
+.simple-item-reading-time {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.simple-item-reading-time::before {
+  content: "\00B7";
+  margin-right: var(--space-2);
+}
+
+/* ==========================================================================
+   Simple Feed Responsive
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .feed-simple {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .simple-item {
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+  }
+
+  .simple-item-title {
+    flex-basis: 100%;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .simple-item-reading-time::before {
+    content: "\00B7";
+  }
+}
+
+/* ==========================================================================
+   Simple Feed Print
+   ========================================================================== */
+
+@media print {
+  .simple-item {
+    border-bottom-color: #ccc;
+  }
+
+  .feed-simple-nav {
+    display: none;
+  }
+}
+
+/* ==========================================================================
    Responsive Adjustments
    ========================================================================== */
 

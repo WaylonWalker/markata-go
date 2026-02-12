@@ -243,8 +243,8 @@
       scrollingScript.src = '{{ 'js/scrolling-shortcuts.js' | theme_asset_hashed }}';
       document.body.appendChild(scrollingScript);
 
-      // Navigation Shortcuts - load if post cards or prev/next navigation exist
-      if (document.querySelector('.card, [data-card], [data-action="prev"], [data-action="next"]')) {
+      // Navigation Shortcuts - load if feed, post cards, or prev/next navigation exist
+      if (document.querySelector('.feed, .card, [data-card], [data-action="prev"], [data-action="next"], .pagination-prev, .pagination-next')) {
         const navigationScript = document.createElement('script');
         navigationScript.src = '{{ 'js/navigation-shortcuts.js' | theme_asset_hashed }}';
         document.body.appendChild(navigationScript);

@@ -105,6 +105,9 @@ type FeedFormats struct {
 	// HTML generates an HTML page
 	HTML bool `json:"html" yaml:"html" toml:"html"`
 
+	// SimpleHTML generates a compact, dense list view of posts
+	SimpleHTML bool `json:"simple_html" yaml:"simple_html" toml:"simple_html"`
+
 	// RSS generates an RSS feed
 	RSS bool `json:"rss" yaml:"rss" toml:"rss"`
 
@@ -126,13 +129,16 @@ type FeedFormats struct {
 
 // HasAnyEnabled returns true if any output format is enabled.
 func (f FeedFormats) HasAnyEnabled() bool {
-	return f.HTML || f.RSS || f.Atom || f.JSON || f.Markdown || f.Text || f.Sitemap
+	return f.HTML || f.SimpleHTML || f.RSS || f.Atom || f.JSON || f.Markdown || f.Text || f.Sitemap
 }
 
 // FeedTemplates specifies custom templates for feed formats.
 type FeedTemplates struct {
 	// HTML is the template for HTML output
 	HTML string `json:"html" yaml:"html" toml:"html"`
+
+	// SimpleHTML is the template for simple HTML list output
+	SimpleHTML string `json:"simple_html" yaml:"simple_html" toml:"simple_html"`
 
 	// RSS is the template for RSS output
 	RSS string `json:"rss" yaml:"rss" toml:"rss"`
@@ -223,19 +229,21 @@ func NewFeedDefaults() FeedDefaults {
 		OrphanThreshold: 3,
 		PaginationType:  PaginationManual,
 		Formats: FeedFormats{
-			HTML:    true,
-			RSS:     true,
-			Atom:    true,
-			JSON:    true,
-			Sitemap: true,
+			HTML:       true,
+			SimpleHTML: true,
+			RSS:        true,
+			Atom:       true,
+			JSON:       true,
+			Sitemap:    true,
 		},
 		Templates: FeedTemplates{
-			HTML:    "feed.html",
-			RSS:     "feed.xml",
-			Atom:    "atom.xml",
-			JSON:    "feed.json",
-			Card:    "card.html",
-			Sitemap: "sitemap.xml",
+			HTML:       "feed.html",
+			SimpleHTML: "simple-feed.html",
+			RSS:        "feed.xml",
+			Atom:       "atom.xml",
+			JSON:       "feed.json",
+			Card:       "card.html",
+			Sitemap:    "sitemap.xml",
 		},
 		Syndication: SyndicationConfig{
 			MaxItems:       20,
@@ -278,6 +286,9 @@ func (f *FeedConfig) ApplyDefaults(defaults FeedDefaults) {
 	// Apply template defaults for any empty template paths
 	if f.Templates.HTML == "" {
 		f.Templates.HTML = defaults.Templates.HTML
+	}
+	if f.Templates.SimpleHTML == "" {
+		f.Templates.SimpleHTML = defaults.Templates.SimpleHTML
 	}
 	if f.Templates.RSS == "" {
 		f.Templates.RSS = defaults.Templates.RSS

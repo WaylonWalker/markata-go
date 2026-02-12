@@ -375,7 +375,7 @@ func mergeFeedDefaults(base, override models.FeedDefaults) models.FeedDefaults {
 // This allows explicitly disabling formats by setting only the desired ones.
 func mergeFeedFormats(base, override models.FeedFormats) models.FeedFormats {
 	// Check if override has any format set to true
-	if override.HTML || override.RSS || override.Atom || override.JSON || override.Markdown || override.Text {
+	if override.HTML || override.SimpleHTML || override.RSS || override.Atom || override.JSON || override.Markdown || override.Text || override.Sitemap {
 		// Override is "active" - use it entirely
 		return override
 	}
@@ -389,6 +389,9 @@ func mergeFeedTemplates(base, override models.FeedTemplates) models.FeedTemplate
 
 	if override.HTML != "" {
 		result.HTML = override.HTML
+	}
+	if override.SimpleHTML != "" {
+		result.SimpleHTML = override.SimpleHTML
 	}
 	if override.RSS != "" {
 		result.RSS = override.RSS
