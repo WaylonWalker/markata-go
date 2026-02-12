@@ -1027,6 +1027,7 @@ type tomlMentionPostSource struct {
 	Filter       string `toml:"filter"`
 	HandleField  string `toml:"handle_field"`
 	AliasesField string `toml:"aliases_field"`
+	AvatarField  string `toml:"avatar_field"`
 }
 
 func (m *tomlMentionsConfig) toMentionsConfig() models.MentionsConfig {
@@ -1067,7 +1068,13 @@ func (m *tomlMentionsConfig) toMentionsConfig() models.MentionsConfig {
 			Filter:       src.Filter,
 			HandleField:  src.HandleField,
 			AliasesField: src.AliasesField,
+			AvatarField:  src.AvatarField,
 		})
+	}
+
+	// Fall back to defaults when user has mentions config but no from_posts
+	if len(config.FromPosts) == 0 {
+		config.FromPosts = defaults.FromPosts
 	}
 
 	return config
@@ -1635,6 +1642,7 @@ type yamlMentionPostSource struct {
 	Filter       string `yaml:"filter"`
 	HandleField  string `yaml:"handle_field"`
 	AliasesField string `yaml:"aliases_field"`
+	AvatarField  string `yaml:"avatar_field"`
 }
 
 func (m *yamlMentionsConfig) toMentionsConfig() models.MentionsConfig {
@@ -1675,8 +1683,15 @@ func (m *yamlMentionsConfig) toMentionsConfig() models.MentionsConfig {
 			Filter:       src.Filter,
 			HandleField:  src.HandleField,
 			AliasesField: src.AliasesField,
+			AvatarField:  src.AvatarField,
 		})
 	}
+
+	// Fall back to defaults when user has mentions config but no from_posts
+	if len(config.FromPosts) == 0 {
+		config.FromPosts = defaults.FromPosts
+	}
+
 	return config
 }
 
@@ -2703,6 +2718,7 @@ type jsonMentionPostSource struct {
 	Filter       string `json:"filter"`
 	HandleField  string `json:"handle_field"`
 	AliasesField string `json:"aliases_field"`
+	AvatarField  string `json:"avatar_field"`
 }
 
 func (m *jsonMentionsConfig) toMentionsConfig() models.MentionsConfig {
@@ -2743,8 +2759,15 @@ func (m *jsonMentionsConfig) toMentionsConfig() models.MentionsConfig {
 			Filter:       src.Filter,
 			HandleField:  src.HandleField,
 			AliasesField: src.AliasesField,
+			AvatarField:  src.AvatarField,
 		})
 	}
+
+	// Fall back to defaults when user has mentions config but no from_posts
+	if len(config.FromPosts) == 0 {
+		config.FromPosts = defaults.FromPosts
+	}
+
 	return config
 }
 

@@ -39,12 +39,29 @@ Configure mentions in your `markata-go.toml`:
 [markata-go.mentions]
 enabled = true
 css_class = "mention"  # CSS class for links (default: "mention")
+```
 
-# Source handles from internal posts
+That's it for most use cases! By default, mentions resolves handles from:
+
+1. **Blogroll feeds** (if blogroll is enabled)
+2. **Contact posts** - any post with `template: contact` in frontmatter
+
+The default `from_posts` source is equivalent to:
+
+```toml
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"
-handle_field = "handle"       # Frontmatter field for handle (optional, uses slug if not set)
-aliases_field = "aliases"     # Frontmatter field for aliases (optional)
+filter = "template == 'contact'"
+handle_field = "handle"
+```
+
+You can override this by specifying your own `from_posts` sources:
+
+```toml
+# Custom sources replace the default
+[[markata-go.mentions.from_posts]]
+filter = "'team' in tags"
+handle_field = "github_handle"
+aliases_field = "nicknames"
 ```
 
 ## Resolving from Internal Posts
@@ -78,11 +95,11 @@ description: "Software engineer specializing in Go and web development."
 Alice is a software engineer specializing in Go and web development.
 ```
 
-Configure the mentions plugin to use these posts:
+Configure the mentions plugin to use these posts (or rely on the default which already matches `template: contact`):
 
 ```toml
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"
+filter = "template == 'contact'"
 handle_field = "handle"
 aliases_field = "aliases"
 ```
@@ -93,7 +110,7 @@ The mention hovercard will show the avatar (from the `avatar`, `image`, or `icon
 
 ```toml
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"
+filter = "template == 'contact'"
 handle_field = "handle"
 aliases_field = "aliases"
 avatar_field = "icon"   # Use 'icon' field instead of default lookup order
@@ -104,9 +121,9 @@ avatar_field = "icon"   # Use 'icon' field instead of default lookup order
 You can define multiple `from_posts` sources for different content types:
 
 ```toml
-# Contact pages
+# Contact pages (this is the default, shown here for clarity)
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"
+filter = "template == 'contact'"
 handle_field = "handle"
 aliases_field = "aliases"
 
@@ -206,7 +223,7 @@ Follow @example on social       <!-- Transformed -->
 |--------|------|---------|-------------|
 | `enabled` | bool | `true` | Enable/disable mentions processing |
 | `css_class` | string | `"mention"` | CSS class for mention links |
-| `from_posts` | array | `[]` | List of internal post sources |
+| `from_posts` | array | see below | List of internal post sources. Default: one source with `filter = "template == 'contact'"` and `handle_field = "handle"` |
 
 ### from_posts Options
 

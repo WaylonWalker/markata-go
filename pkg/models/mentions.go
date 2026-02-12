@@ -90,9 +90,14 @@ type MentionPostSource struct {
 func NewMentionsConfig() MentionsConfig {
 	enabled := true
 	return MentionsConfig{
-		Enabled:            &enabled,
-		CSSClass:           "mention",
-		FromPosts:          []MentionPostSource{},
+		Enabled:  &enabled,
+		CSSClass: "mention",
+		FromPosts: []MentionPostSource{
+			{
+				Filter:      "template == 'contact'",
+				HandleField: "handle",
+			},
+		},
 		CacheDir:           "cache/mentions",
 		CacheDuration:      "24h",
 		Timeout:            30,

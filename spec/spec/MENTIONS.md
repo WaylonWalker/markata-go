@@ -26,11 +26,12 @@ Handle pattern: `@[a-zA-Z][a-zA-Z0-9_-]*`
 enabled = true                    # Enable/disable the plugin (default: true)
 css_class = "mention"             # CSS class for links (default: "mention")
 
-# Source handles from internal posts
+# Source handles from internal posts (optional - a default source is provided, see below)
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"      # Filter expression to select posts
+filter = "template == 'contact'"  # Filter expression to select posts
 handle_field = "handle"           # Frontmatter field for handle (optional, uses slug if not set)
 aliases_field = "aliases"         # Frontmatter field for aliases (optional)
+avatar_field = "avatar"           # Frontmatter field for avatar URL (optional, auto-detects if not set)
 ```
 
 ### Configuration Fields
@@ -39,7 +40,19 @@ aliases_field = "aliases"         # Frontmatter field for aliases (optional)
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Enable/disable mentions processing |
 | `css_class` | string | `"mention"` | CSS class applied to mention links |
-| `from_posts` | array | `[]` | List of internal post sources |
+| `from_posts` | array | see below | List of internal post sources |
+
+### from_posts Default
+
+When no `from_posts` sources are configured (or when a `[markata-go.mentions]` section exists without any `[[markata-go.mentions.from_posts]]` entries), a default source is used:
+
+```toml
+[[markata-go.mentions.from_posts]]
+filter = "template == 'contact'"
+handle_field = "handle"
+```
+
+This means any post with `template: contact` in its frontmatter is automatically available as a mentionable contact. To disable this default, set `from_posts` to an explicit source with a different filter.
 
 ### from_posts Fields
 
@@ -107,7 +120,7 @@ With config:
 
 ```toml
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"
+filter = "template == 'contact'"
 handle_field = "handle"
 aliases_field = "aliases"
 ```
@@ -272,7 +285,7 @@ site_url = "https://external.com"
 
 # Internal contacts
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"
+filter = "template == 'contact'"
 handle_field = "handle"
 aliases_field = "aliases"
 
@@ -285,10 +298,13 @@ filter = "'project' in tags"
 ### Minimal Configuration
 
 ```toml
-# Just enable with defaults - uses blogroll handles only
+# Just enable with defaults - automatically picks up template: contact posts
+# and blogroll handles
 [markata-go.mentions]
 enabled = true
 ```
+
+This uses the default `from_posts` source (`template == 'contact'` filter with `handle` field), so any post with `template: contact` frontmatter is automatically mentionable.
 
 ## Related Features
 
