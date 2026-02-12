@@ -978,3 +978,176 @@ func TestPost_SetAuthors(t *testing.T) {
 		}
 	})
 }
+
+func TestPost_SetAuthors_KeyAliases(t *testing.T) {
+	t.Run("name alias for id", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"name": "waylon",
+				"role": "author",
+			},
+		})
+		if len(p.Authors) != 1 || p.Authors[0] != "waylon" {
+			t.Errorf("Authors = %v, want [waylon]", p.Authors)
+		}
+		if p.AuthorRoleOverrides["waylon"] != "author" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "author")
+		}
+	})
+
+	t.Run("handle alias for id", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"handle": "codex",
+			},
+		})
+		if len(p.Authors) != 1 || p.Authors[0] != "codex" {
+			t.Errorf("Authors = %v, want [codex]", p.Authors)
+		}
+	})
+
+	t.Run("id takes precedence over name and handle", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":     "correct",
+				"name":   "wrong",
+				"handle": "also-wrong",
+			},
+		})
+		if len(p.Authors) != 1 || p.Authors[0] != "correct" {
+			t.Errorf("Authors = %v, want [correct]", p.Authors)
+		}
+	})
+
+	t.Run("detail alias for details", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":     "waylon",
+				"detail": "wrote the intro",
+			},
+		})
+		if p.AuthorDetailsOverrides == nil || p.AuthorDetailsOverrides["waylon"] != "wrote the intro" {
+			t.Errorf("AuthorDetailsOverrides[waylon] = %q, want %q", p.AuthorDetailsOverrides["waylon"], "wrote the intro")
+		}
+	})
+
+	t.Run("description alias for details", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":          "waylon",
+				"description": "reviewed the code",
+			},
+		})
+		if p.AuthorDetailsOverrides == nil || p.AuthorDetailsOverrides["waylon"] != "reviewed the code" {
+			t.Errorf("AuthorDetailsOverrides[waylon] = %q, want %q", p.AuthorDetailsOverrides["waylon"], "reviewed the code")
+		}
+	})
+
+	t.Run("details takes precedence over aliases", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":          "waylon",
+				"details":     "canonical",
+				"detail":      "alias1",
+				"description": "alias2",
+			},
+		})
+		if p.AuthorDetailsOverrides["waylon"] != "canonical" {
+			t.Errorf("AuthorDetailsOverrides[waylon] = %q, want %q", p.AuthorDetailsOverrides["waylon"], "canonical")
+		}
+	})
+
+	t.Run("job alias for role", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":  "waylon",
+				"job": "developer",
+			},
+		})
+		if p.AuthorRoleOverrides == nil || p.AuthorRoleOverrides["waylon"] != "developer" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "developer")
+		}
+	})
+
+	t.Run("position alias for role", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":       "waylon",
+				"position": "lead",
+			},
+		})
+		if p.AuthorRoleOverrides["waylon"] != "lead" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "lead")
+		}
+	})
+
+	t.Run("part alias for role", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":   "waylon",
+				"part": "code review",
+			},
+		})
+		if p.AuthorRoleOverrides["waylon"] != "code review" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "code review")
+		}
+	})
+
+	t.Run("title alias for role", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":    "waylon",
+				"title": "senior engineer",
+			},
+		})
+		if p.AuthorRoleOverrides["waylon"] != "senior engineer" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "senior engineer")
+		}
+	})
+
+	t.Run("role takes precedence over aliases", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":       "waylon",
+				"role":     "canonical",
+				"job":      "alias1",
+				"position": "alias2",
+				"title":    "alias3",
+			},
+		})
+		if p.AuthorRoleOverrides["waylon"] != "canonical" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "canonical")
+		}
+	})
+
+	t.Run("all aliases together", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"handle":      "waylon",
+				"title":       "maintainer",
+				"description": "built the feature",
+			},
+		})
+		if len(p.Authors) != 1 || p.Authors[0] != "waylon" {
+			t.Errorf("Authors = %v, want [waylon]", p.Authors)
+		}
+		if p.AuthorRoleOverrides["waylon"] != "maintainer" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "maintainer")
+		}
+		if p.AuthorDetailsOverrides["waylon"] != "built the feature" {
+			t.Errorf("AuthorDetailsOverrides[waylon] = %q, want %q", p.AuthorDetailsOverrides["waylon"], "built the feature")
+		}
+	})
+}

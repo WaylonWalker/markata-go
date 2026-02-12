@@ -415,6 +415,31 @@ authors:
 
 The `role` overrides the author's config-level role for this post only. The `details` field provides a short description of what the author did on this specific post, displayed as a tooltip when hovering over the author's name in the byline. Both fields are optional and can be used independently.
 
+**Key aliases:** For convenience, the extended format supports aliases so you can use whichever key name feels natural:
+
+| Canonical Key | Aliases |
+|---------------|---------|
+| `id` | `name`, `handle` |
+| `role` | `job`, `position`, `part`, `title` |
+| `details` | `detail`, `description` |
+
+For example, these are all equivalent:
+
+```yaml
+---
+authors:
+  - name: waylon
+    title: maintainer
+    description: built the feature
+  # same as:
+  - id: waylon
+    role: maintainer
+    details: built the feature
+---
+```
+
+The canonical key always takes precedence when both it and an alias are present.
+
 You can mix simple string IDs and extended format in the same array:
 
 ```yaml

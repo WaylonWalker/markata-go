@@ -850,6 +850,8 @@ active = true
 
 Each author object includes a `details` field (when set via frontmatter) that provides a per-post description of the author's contribution, displayed as a CSS tooltip on hover.
 
+The extended frontmatter format supports key aliases for convenience (`name`/`handle` for `id`, `job`/`position`/`part`/`title` for `role`, `detail`/`description` for `details`). See the [Frontmatter Guide](../guides/frontmatter.md#authors) for the full alias table.
+
 **Related:**
 - [Authors Configuration](../guides/configuration.md#authors-configuration) -- Config setup guide
 - [Frontmatter Guide](../guides/frontmatter.md) -- `authors` and `author` fields

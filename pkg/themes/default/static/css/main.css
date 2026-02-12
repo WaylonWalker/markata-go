@@ -893,6 +893,11 @@ body:has(.background-decoration) article.post {
 .post-byline__author[data-details] {
   position: relative;
   cursor: help;
+  z-index: 1;
+}
+
+.post-byline__author[data-details]:hover {
+  z-index: 100;
 }
 
 /* Small info indicator for authors with details */
@@ -926,7 +931,7 @@ body:has(.background-decoration) article.post {
   top: 100%;
   margin-top: var(--space-1);
   padding: var(--space-2) var(--space-3);
-  background: var(--color-bg-elevated, var(--color-bg));
+  background: var(--color-surface, #f9fafb);
   color: var(--color-text);
   border: 1px solid var(--color-border);
   border-radius: var(--radius, 6px);
@@ -937,8 +942,8 @@ body:has(.background-decoration) article.post {
   min-width: 160px;
   max-width: 280px;
   width: max-content;
-  z-index: 10;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   pointer-events: none;
   opacity: 0;
   transform: translateY(4px);
@@ -950,11 +955,8 @@ body:has(.background-decoration) article.post {
   transform: translateY(0);
 }
 
-/* Suppress native title tooltip when CSS tooltip is showing */
-.post-byline__author[data-details]:hover {
-  /* title attr tooltips can't be fully suppressed via CSS, but
-     the CSS tooltip appears faster so it takes precedence visually */
-}
+/* Hide native title tooltip when CSS tooltip is active (title can't be fully
+   suppressed in CSS, but the CSS tooltip appears faster and covers it). */
 
 /* Multi-author meta (date/reading time) sits below the authors row */
 .post-byline--multi .post-byline__meta {

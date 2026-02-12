@@ -356,16 +356,33 @@ func parseAuthorItems(items []interface{}) (ids []string, roles, details map[str
 
 // addAuthorEntry extracts id, role, and details from a map-format author entry.
 // Appends the author ID to ids and populates role/details override maps as needed.
+//
+// Supports aliases for convenience:
+//
+//	id:      "name", "handle"
+//	role:    "job", "position", "part", "title"
+//	details: "detail", "description"
 func addAuthorEntry(entry map[string]interface{}, ids *[]string, roles, details map[string]string) {
-	id, ok := entry["id"].(string)
-	if !ok || id == "" {
+	id := firstString(entry, "id", "name", "handle")
+	if id == "" {
 		return
 	}
 	*ids = append(*ids, id)
-	if role, ok := entry["role"].(string); ok && role != "" {
+	if role := firstString(entry, "role", "job", "position", "part", "title"); role != "" {
 		roles[id] = role
 	}
-	if detail, ok := entry["details"].(string); ok && detail != "" {
+	if detail := firstString(entry, "details", "detail", "description"); detail != "" {
 		details[id] = detail
 	}
+}
+
+// firstString returns the string value of the first key found in the map.
+// Keys are checked in order; the first non-empty string wins.
+func firstString(m map[string]interface{}, keys ...string) string {
+	for _, k := range keys {
+		if v, ok := m[k].(string); ok && v != "" {
+			return v
+		}
+	}
+	return ""
 }

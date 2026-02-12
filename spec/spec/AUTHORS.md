@@ -117,6 +117,44 @@ authors:
 
 The `details` field is optional and independent of `role`. Both can be set together or separately.
 
+### Key Aliases
+
+For convenience, the extended author format supports aliases for the standard keys. The canonical key always takes precedence if present alongside an alias.
+
+| Canonical Key | Aliases |
+|---------------|---------|
+| `id` | `name`, `handle` |
+| `role` | `job`, `position`, `part`, `title` |
+| `details` | `detail`, `description` |
+
+Example using aliases:
+
+```yaml
+---
+authors:
+  - name: waylon
+    title: maintainer
+    description: built the feature
+  - handle: codex
+    job: pair programmer
+    detail: wrote the tests
+---
+```
+
+This is equivalent to:
+
+```yaml
+---
+authors:
+  - id: waylon
+    role: maintainer
+    details: built the feature
+  - id: codex
+    role: pair programmer
+    details: wrote the tests
+---
+```
+
 Mixed formats are supported -- strings and extended references can be combined:
 
 ```yaml
