@@ -1,0 +1,81 @@
+{# Post byline - shows author(s), date, and reading time #}
+{# Supports multi-author display with per-post roles #}
+{# Author links use no-avatar class to prevent link_avatars plugin from adding favicons #}
+
+{% if post.author_objects %}
+{# Multi-author byline from resolved author objects #}
+<div class="post-byline post-byline--multi">
+    <div class="post-byline__authors">
+    {% for author_obj in post.author_objects %}
+        <div class="post-byline__author p-author h-card"{% if author_obj.details %} data-details="{{ author_obj.details }}" title="{{ author_obj.details }}"{% endif %}>
+            {% if author_obj.avatar %}
+            <img class="u-photo post-byline__photo" src="{% if author_obj.avatar | startswith:'http' %}{{ author_obj.avatar }}{% else %}{{ config.url }}{{ author_obj.avatar }}{% endif %}" alt="{{ author_obj.name }} avatar" width="36" height="36" loading="lazy">
+            {% elif config.seo.author_image %}
+            <img class="u-photo post-byline__photo" src="{% if config.seo.author_image | startswith:'http' %}{{ config.seo.author_image }}{% else %}{{ config.url }}{{ config.seo.author_image }}{% endif %}" alt="{{ author_obj.name }} avatar" width="36" height="36" loading="lazy">
+            {% endif %}
+            <div class="post-byline__author-info">
+                {% if author_obj.url %}
+                <a class="u-url p-name post-byline__name no-avatar" href="{{ author_obj.url }}" rel="author">{{ author_obj.name }}</a>
+                {% else %}
+                <span class="p-name post-byline__name">{{ author_obj.name }}</span>
+                {% endif %}
+                {% if author_obj.role_display %}
+                <span class="post-byline__role">{{ author_obj.role_display }}</span>
+                {% endif %}
+            </div>
+            {% if author_obj.details %}
+            <span class="post-byline__details-icon" aria-hidden="true">i</span>
+            {% endif %}
+        </div>
+    {% endfor %}
+    </div>
+
+    {% if post.date or post.reading_time %}
+    <div class="post-meta post-byline__meta">
+        {% if post.date %}
+        <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+        {% endif %}
+        {% if post.reading_time %}
+        <span class="post-meta__reading-time">{{ post.reading_time }} min read</span>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% elif config.author %}
+{# Single author fallback from config #}
+<div class="post-byline p-author h-card">
+    {% if config.seo.author_image %}
+    <img class="u-photo post-byline__photo" src="{% if config.seo.author_image | startswith:'http' %}{{ config.seo.author_image }}{% else %}{{ config.url }}{{ config.seo.author_image }}{% endif %}" alt="{{ config.author }} avatar" width="44" height="44" loading="lazy">
+    {% endif %}
+    <div class="post-byline__author-info">
+        {% if config.url %}
+        <a class="u-url p-name post-byline__name no-avatar" href="{{ config.url }}" rel="author">{{ config.author }}</a>
+        {% else %}
+        <span class="p-name post-byline__name">{{ config.author }}</span>
+        {% endif %}
+    </div>
+
+    {% if post.date or post.reading_time %}
+    <div class="post-meta post-byline__meta">
+        {% if post.date %}
+        <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+        {% endif %}
+        {% if post.reading_time %}
+        <span class="post-meta__reading-time">{{ post.reading_time }} min read</span>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% elif post.date or post.reading_time %}
+{# No author info, just date/reading time #}
+<div class="post-meta post-meta--header">
+    {% if post.date %}
+    <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+    {% endif %}
+    {% if post.reading_time %}
+    <span class="post-meta__reading-time">{{ post.reading_time }} min read</span>
+    {% endif %}
+</div>
+{% endif %}

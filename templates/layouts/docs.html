@@ -57,12 +57,13 @@
     {% endif %}
 
     <main class="layout-content" id="main-content" tabindex="-1" style="--content-max-width: {{ config.layout.docs.content_max_width | default:'800px' }}">
-        <article class="post">
+        <article class="post h-entry" data-pagefind-body>
             <header class="post-header">
-                <h1>{{ post.title }}</h1>
+                <h1 class="p-name">{{ post.title }}</h1>
                 {% if post.description %}
-                <p class="post-description">{{ post.description }}</p>
+                <p class="post-description p-summary">{{ post.description }}</p>
                 {% endif %}
+                {% include "components/post_byline.html" %}
             </header>
             <div class="post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
                 {{ body | safe }}

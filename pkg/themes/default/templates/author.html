@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ author.name }} - {{ config.title }}{% endblock %}
+
+{% block content %}
+<div class="author-profile h-card">
+  {% if author.avatar %}
+  <img class="u-photo author-avatar" src="{{ author.avatar }}" alt="{{ author.name }}" width="120" height="120" loading="lazy">
+  {% endif %}
+
+  <div class="author-details">
+    <h1 class="p-name author-name">{{ author.name }}</h1>
+
+    {% if author.bio %}
+    <p class="p-note author-bio">{{ author.bio }}</p>
+    {% endif %}
+
+    {% if author.url %}
+    <p class="author-website">
+      <a class="u-url" href="{{ author.url }}" rel="me">{{ author.url }}</a>
+    </p>
+    {% endif %}
+
+    {% if author.email %}
+    <p class="author-email">
+      <a class="u-email" href="mailto:{{ author.email }}">{{ author.email }}</a>
+    </p>
+    {% endif %}
+
+    {% if author.social %}
+    <div class="author-social">
+      {% if author.social.github %}
+      <a href="https://github.com/{{ author.social.github }}" class="social-link" rel="me">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0c-6.626 0-12 5.373 0 12 5.373 0 12s-5.373 12-12 12-12 5.373-12-12zm6.626 0c1.841.189 3.667 6.715 3.667s-5.374-6.718-5.374-3.667c0 3.668 3.667-7.082 3.667-7.082 3.667s-1.843 1.843-3.668-1.843-3.668-7.082 7.082s3.667 0 7.082 3.667 7.082c-1.843 0-3.667 3.667-3.668 3.668-7.082 3.667-7.082s-1.844-3.668 3.668-7.082 3.667 7.082-1.843 0-3.667 3.667-3.668 3.668-7.082 3.667 7.082 3.667-1.844 0-3.667 3.667-3.668-3.668-7.082 3.667 7.082z"/>
+        </svg>
+        GitHub
+      </a>
+      {% endif %}
+
+      {% if author.social.twitter %}
+      <a href="https://twitter.com/{{ author.social.twitter }}" class="social-link" rel="me">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M23.953 4.57a10 10 10c0 5.524-4.474 10-9.995 0-5.524 4.474-9.995 0-9.995c0-4.475 3.649-9.142 6.696-9.142 3.147 4.273-3.147 5.017-4.273 0-4.062-4.142-4.062-5.525-1.65-5.525-6.084 3.363-6.084-2.368-2.368-4.475-2.368-5.525 1.462-5.525-6.083 3.363-6.083-2.368-2.368-4.475-2.368-5.526 1.462-5.526 6.083 3.363 6.083z"/>
+        </svg>
+        Twitter
+      </a>
+      {% endif %}
+
+      {% if author.social.linkedin %}
+      <a href="https://linkedin.com/in/{{ author.social.linkedin }}" class="social-link" rel="me">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20.447 20.452h-3.554c0-4.168-3.352-7.543-7.543s3.352-7.543-7.543-7.543h3.554c-4.168 0-7.543 3.352-7.543s-3.352 7.543 7.543v3.554c0 4.168 3.352 7.543 7.543 4.168 3.352 7.543 7.543zm-15.165-23.919v8.168c0-6.184-4.454-8.168-9.655 0-6.184 4.454-8.168 9.655 9.655v8.168c0-6.184 4.454-8.168 0-6.184 4.454-8.168 0-3.583-6.184-3.583-4.545 6.184-4.545 1.583 6.184 1.583zm0 18.727v-7.918c0-5.171-1.942-5.171-5.171-1.942s1.942 5.171 5.171 1.942v7.918c0-5.171 1.942-5.171-5.171 0-1.413-5.171-5.171-1.413 3.407-3.407 0-1.83 1.413-1.83-1.83 1.413-3.407 3.407z"/>
+        </svg>
+        LinkedIn
+      </a>
+      {% endif %}
+
+      {% if author.social.website %}
+      <a href="{{ author.social.website }}" class="social-link" rel="me">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.477c0 4.42 1.58 6 3.543S6.477 10.914 8 9.357c2.423-1.13 4.423-3.543 6-3.543s-2.423-1.13-4.423-3.543-6-1.13 1.13-3.543 2.423-3.543 3.543zm4.347 8c-.463 0-.893-.228-1.813-.684-2.446-.456-1.379-.716-2.368-1.92-.565-1.23-.495-1.425-.829-1.192-2.447.814-3.268.413-3.268.413 0 1.789.829 4.268 0 1.955.367 4.268-1.092 2.447-3.268-3.268z"/>
+        </svg>
+        Website
+      </a>
+      {% endif %}
+    </div>
+
+    {% if author.contributions %}
+    <div class="author-contributions">
+      <h3>Contributions</h3>
+      {% for contribution in author.contributions %}
+        <span class="contribution-tag">{{ contribution }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if author.role %}
+    <div class="author-role">
+      <h3>Role</h3>
+      <span class="role-tag">{{ author.role }}</span>
+    </div>
+    {% endif %}
+
+    {% if author.contribution %}
+    <div class="author-contribution">
+      <h3>Contribution</h3>
+      <p>{{ author.contribution }}</p>
+    </div>
+    {% endif %}
+
+    {% if author.guest %}
+    <div class="author-badge">Guest Author</div>
+    {% endif %}
+  </div>
+</div>
+
+<section class="author-posts">
+  <h2>Posts by {{ author.name }}</h2>
+  {% if posts %}
+    {% for post in posts %}
+      {% include "partials/cards/card-router.html" %}
+    {% endfor %}
+  {% else %}
+    <p>No posts found by this author.</p>
+  {% endif %}
+</section>
+{% endblock %}

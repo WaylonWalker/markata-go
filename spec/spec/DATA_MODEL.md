@@ -43,6 +43,9 @@ These fields SHOULD be supported:
 | `config_overrides` | object? | null | Per-post configuration overrides |
 | `html` | string? | null | Final rendered HTML |
 | `article_html` | string? | null | Rendered content (without template) |
+| `authors` | string[] | [] | Author IDs from frontmatter |
+| `author` | string? | null | Legacy single-author field |
+| `author_objects` | Author[] | [] | Computed: resolved Author structs (not serialized, see [AUTHORS.md](AUTHORS.md)) |
 
 ### Field Behaviors
 

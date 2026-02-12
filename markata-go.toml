@@ -26,6 +26,23 @@ logo_url = "/static/logo.png"
 hooks = ["default"]
 disabled_hooks = []
 
+# Authors Configuration
+[markata-go.authors]
+generate_pages = false
+
+[markata-go.authors.authors.waylon]
+name = "Waylon Walker"
+role = "author"
+url = "https://waylonwalker.com"
+active = true
+default = true
+
+[markata-go.authors.authors.guest]
+name = "Guest Writer"
+role = "editor"
+guest = true
+active = true
+
 # Navigation links
 [[markata-go.nav]]
 label = "Docs"

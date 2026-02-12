@@ -21,6 +21,21 @@ type FooterConfig struct {
 	ShowCopyright *bool `json:"show_copyright,omitempty" yaml:"show_copyright,omitempty" toml:"show_copyright,omitempty"`
 }
 
+// AuthorsConfig configures multi-author support for the site.
+type AuthorsConfig struct {
+	// GeneratePages enables automatic author bio page generation (default: false)
+	GeneratePages bool `json:"generate_pages,omitempty" yaml:"generate_pages,omitempty" toml:"generate_pages,omitempty"`
+
+	// URLPattern defines the URL pattern for author pages (default: "/authors/{author}/")
+	URLPattern string `json:"url_pattern,omitempty" yaml:"url_pattern,omitempty" toml:"url_pattern,omitempty"`
+
+	// FeedsEnabled enables author-specific RSS/Atom feeds (default: false)
+	FeedsEnabled bool `json:"feeds_enabled,omitempty" yaml:"feeds_enabled,omitempty" toml:"feeds_enabled,omitempty"`
+
+	// Authors is a map of author configurations keyed by author ID
+	Authors map[string]Author `json:"authors,omitempty" yaml:"authors,omitempty" toml:"authors,omitempty"`
+}
+
 // ComponentsConfig configures the layout components system.
 // This enables configuration-driven control over common UI elements.
 type ComponentsConfig struct {
@@ -409,6 +424,9 @@ type Config struct {
 	// Keys: "html", "txt", "markdown", "og"
 	// Values: template file names
 	DefaultTemplates map[string]string `json:"default_templates,omitempty" yaml:"default_templates,omitempty" toml:"default_templates,omitempty"`
+
+	// Authors configures multi-author support for the site
+	Authors AuthorsConfig `json:"authors" yaml:"authors" toml:"authors"`
 
 	// Extra holds arbitrary plugin configurations that aren't part of the core config.
 	// Plugin-specific configs like [markata-go.image_zoom] are stored here.
