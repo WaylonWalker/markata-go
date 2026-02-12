@@ -35,6 +35,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -129,6 +130,11 @@ type PostCache struct {
 
 	// LinkHrefs caches extracted href values for the post
 	LinkHrefs []string `json:"link_hrefs,omitempty"`
+
+	// FeedMembershipHash is the hash of the sorted slugs of feed co-members.
+	// When feed membership changes (posts added/removed from a tag), this hash
+	// changes and the post is rebuilt with the updated sidebar.
+	FeedMembershipHash string `json:"feed_membership_hash,omitempty"`
 }
 
 // FeedCache stores cached metadata for a single feed.
@@ -446,6 +452,38 @@ func (c *Cache) CacheLinkHrefs(sourcePath, articleHash string, hrefs []string) {
 		}
 	}
 	c.dirty = true
+}
+
+// SetFeedMembershipHash stores the feed membership hash for a post.
+func (c *Cache) SetFeedMembershipHash(sourcePath, hash string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.FeedMembershipHash = hash
+	}
+	c.dirty = true
+}
+
+// GetFeedMembershipHash returns the cached feed membership hash for a post.
+func (c *Cache) GetFeedMembershipHash(sourcePath string) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if cached, ok := c.Posts[sourcePath]; ok {
+		return cached.FeedMembershipHash
+	}
+	return ""
+}
+
+// ComputeFeedMembershipHash computes a hash of the sorted slugs of feed co-members.
+// Returns empty string if the slug list is empty.
+func ComputeFeedMembershipHash(slugs []string) string {
+	if len(slugs) == 0 {
+		return ""
+	}
+	sorted := make([]string, len(slugs))
+	copy(sorted, slugs)
+	sort.Strings(sorted)
+	return HashContent(strings.Join(sorted, "\x00"))
 }
 
 // Stats returns build statistics.
@@ -850,6 +888,8 @@ type CachedPostData struct {
 	Templates      map[string]string `json:"templates,omitempty"`
 	RawFrontmatter string            `json:"raw_frontmatter"`
 	InputHash      string            `json:"input_hash"`
+	Authors        []string          `json:"authors,omitempty"`
+	Author         *string           `json:"author,omitempty"`
 	Extra          map[string]any    `json:"extra,omitempty"`
 }
 

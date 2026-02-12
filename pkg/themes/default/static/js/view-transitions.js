@@ -165,6 +165,9 @@
     // Skip HTMX-managed links (they handle their own updates)
     if (link.hasAttribute('hx-get') || link.hasAttribute('hx-post')) return false;
 
+    // Skip GLightbox links (inline lightbox should not trigger navigation)
+    if (link.classList.contains('glightbox-mermaid') || link.hasAttribute('data-glightbox')) return false;
+
     // Skip links that explicitly opt-out
     if (link.dataset.noTransition) return false;
 
@@ -233,6 +236,16 @@
 
     // Replace body content
     document.body.innerHTML = newDoc.body.innerHTML;
+
+    // Re-execute inline module scripts (e.g. mermaid, chartjs).
+    // innerHTML assignment does not run <script> tags, so we clone them
+    // into fresh elements which the browser will evaluate.
+    document.body.querySelectorAll('script[type="module"]').forEach(old => {
+      const fresh = document.createElement('script');
+      fresh.type = 'module';
+      fresh.textContent = old.textContent;
+      old.replaceWith(fresh);
+    });
 
     // Re-initialize scripts
     reinitializeScripts();
@@ -308,6 +321,11 @@
 
     if (window.initNavigationShortcuts && typeof window.initNavigationShortcuts === 'function') {
       window.initNavigationShortcuts();
+    }
+
+    // Re-initialize mermaid diagrams (module script won't re-execute after DOM swap)
+    if (window.initMermaid && typeof window.initMermaid === 'function') {
+      window.initMermaid();
     }
 
     // Re-attach event listeners

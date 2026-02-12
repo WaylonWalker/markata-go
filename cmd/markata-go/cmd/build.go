@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -16,8 +17,11 @@ const (
 )
 
 var (
-	// buildClean removes output directory before building.
+	// buildClean removes output directory and build cache before building.
 	buildClean bool
+
+	// buildCleanAll removes output, build cache, AND external plugin caches before building.
+	buildCleanAll bool
 
 	// buildDryRun shows what would be built without building.
 	buildDryRun bool
@@ -38,9 +42,18 @@ The build process includes:
   6. Collect - Build feeds and archives
   7. Write - Output files to disk
 
+Clean modes:
+  --clean      Remove output directory and build cache (.markata/).
+               This is cheap to rebuild and fixes most caching issues.
+
+  --clean-all  Everything --clean does, plus remove external plugin caches
+               (blogroll feeds, embeds metadata, mentions, webmentions).
+               These are expensive to re-fetch from remote servers.
+
 Example usage:
   markata-go build              # Standard build
-  markata-go build --clean      # Clean output directory first
+  markata-go build --clean      # Clean build cache + output
+  markata-go build --clean-all  # Also nuke external plugin caches
   markata-go build --dry-run    # Show what would be built
   markata-go build -v           # Build with verbose output`,
 	RunE: runBuildCommand,
@@ -49,7 +62,8 @@ Example usage:
 func init() {
 	rootCmd.AddCommand(buildCmd)
 
-	buildCmd.Flags().BoolVar(&buildClean, "clean", false, "clean output directory before build")
+	buildCmd.Flags().BoolVar(&buildClean, "clean", false, "clean output directory and build cache before build")
+	buildCmd.Flags().BoolVar(&buildCleanAll, "clean-all", false, "clean everything including external plugin caches (blogroll, embeds, etc.)")
 	buildCmd.Flags().BoolVar(&buildDryRun, "dry-run", false, "show what would be built without building")
 }
 
@@ -71,21 +85,10 @@ func runBuildCommand(_ *cobra.Command, _ []string) error {
 			m.Config().OutputDir, m.Config().GlobPatterns)
 	}
 
-	// Clean output directory if requested
-	if buildClean {
-		outputPath := m.Config().OutputDir
-		if outputPath == "" {
-			outputPath = defaultOutputDir
-		}
-
-		if verbose {
-			fmt.Printf("Cleaning output directory: %s\n", outputPath)
-		}
-
-		if !buildDryRun {
-			if err := os.RemoveAll(outputPath); err != nil && !os.IsNotExist(err) {
-				return fmt.Errorf("failed to clean output directory: %w", err)
-			}
+	// Clean directories if requested
+	if buildCleanAll || buildClean {
+		if err := cleanBuildDirs(m); err != nil {
+			return err
 		}
 	}
 
@@ -112,6 +115,57 @@ func runBuildCommand(_ *cobra.Command, _ []string) error {
 		fmt.Println("\nWarnings:")
 		for _, w := range result.Warnings {
 			fmt.Printf("  - %s\n", w)
+		}
+	}
+
+	return nil
+}
+
+// cleanBuildDirs removes build artifacts before a fresh build.
+// --clean removes output dir and .markata/ build cache (Tier 1).
+// --clean-all additionally removes external plugin caches (Tier 2).
+func cleanBuildDirs(m *lifecycle.Manager) error {
+	outputPath := m.Config().OutputDir
+	if outputPath == "" {
+		outputPath = defaultOutputDir
+	}
+
+	// Build cache directory (.markata/) is a sibling of the output directory.
+	// Without cleaning it, the glob cache retains stale file lists.
+	cacheDir := filepath.Join(outputPath, "..", ".markata")
+	if extra := m.Config().Extra; extra != nil {
+		if dir, ok := extra["cache_dir"].(string); ok && dir != "" {
+			cacheDir = dir
+		}
+	}
+
+	if verbose {
+		fmt.Printf("Cleaning output directory: %s\n", outputPath)
+		fmt.Printf("Cleaning cache directory: %s\n", cacheDir)
+	}
+
+	if !buildDryRun {
+		if err := os.RemoveAll(outputPath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to clean output directory: %w", err)
+		}
+		if err := os.RemoveAll(cacheDir); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to clean cache directory: %w", err)
+		}
+	}
+
+	// --clean-all: also remove external plugin caches (Tier 2)
+	if buildCleanAll {
+		if modelsConfig, ok := m.Config().Extra["models_config"].(*models.Config); ok {
+			for _, dir := range modelsConfig.ExternalCacheDirs() {
+				if verbose {
+					fmt.Printf("Cleaning external cache: %s\n", dir)
+				}
+				if !buildDryRun {
+					if err := os.RemoveAll(dir); err != nil && !os.IsNotExist(err) {
+						return fmt.Errorf("failed to clean external cache %s: %w", dir, err)
+					}
+				}
+			}
 		}
 	}
 

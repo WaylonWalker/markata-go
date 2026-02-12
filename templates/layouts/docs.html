@@ -12,7 +12,7 @@
         {% if config.header.show_logo or config.header.show_title %}
         <a href="/" class="site-title">
             {% if config.header.show_logo and config.logo %}
-            <img src="{{ config.logo }}" alt="{{ config.title }}" class="site-logo">
+            <img src="{{ config.logo }}" alt="{{ config.title }}" class="site-logo" width="32" height="32">
             {% endif %}
             {% if config.header.show_title %}{{ config.title | default:"Home" }}{% endif %}
         </a>
@@ -57,12 +57,13 @@
     {% endif %}
 
     <main class="layout-content" id="main-content" tabindex="-1" style="--content-max-width: {{ config.layout.docs.content_max_width | default:'800px' }}">
-        <article class="post">
+        <article class="post h-entry" data-pagefind-body>
             <header class="post-header">
-                <h1>{{ post.title }}</h1>
+                <h1 class="p-name">{{ post.title }}</h1>
                 {% if post.description %}
-                <p class="post-description">{{ post.description }}</p>
+                <p class="post-description p-summary">{{ post.description }}</p>
                 {% endif %}
+                {% include "components/post_byline.html" %}
             </header>
             <div class="post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
                 {{ body | safe }}

@@ -218,3 +218,112 @@ func TestCache_GraphSize(t *testing.T) {
 		t.Errorf("GraphSize = %d, want 2", cache.GraphSize())
 	}
 }
+
+func TestComputeFeedMembershipHash_Empty(t *testing.T) {
+	hash := ComputeFeedMembershipHash(nil)
+	if hash != "" {
+		t.Errorf("ComputeFeedMembershipHash(nil) = %q, want empty", hash)
+	}
+	hash = ComputeFeedMembershipHash([]string{})
+	if hash != "" {
+		t.Errorf("ComputeFeedMembershipHash([]) = %q, want empty", hash)
+	}
+}
+
+func TestComputeFeedMembershipHash_Deterministic(t *testing.T) {
+	// Same slugs in different order should produce the same hash
+	hash1 := ComputeFeedMembershipHash([]string{"post-c", "post-a", "post-b"})
+	hash2 := ComputeFeedMembershipHash([]string{"post-a", "post-b", "post-c"})
+	hash3 := ComputeFeedMembershipHash([]string{"post-b", "post-c", "post-a"})
+
+	if hash1 == "" {
+		t.Fatal("ComputeFeedMembershipHash returned empty for non-empty input")
+	}
+	if hash1 != hash2 {
+		t.Errorf("hash mismatch: %q != %q (different order should produce same hash)", hash1, hash2)
+	}
+	if hash1 != hash3 {
+		t.Errorf("hash mismatch: %q != %q (different order should produce same hash)", hash1, hash3)
+	}
+}
+
+func TestComputeFeedMembershipHash_ChangesOnMembershipChange(t *testing.T) {
+	hash1 := ComputeFeedMembershipHash([]string{"post-a", "post-b"})
+	hash2 := ComputeFeedMembershipHash([]string{"post-a", "post-b", "post-c"})
+	hash3 := ComputeFeedMembershipHash([]string{"post-a"})
+
+	if hash1 == hash2 {
+		t.Error("hash should change when a member is added")
+	}
+	if hash1 == hash3 {
+		t.Error("hash should change when a member is removed")
+	}
+}
+
+func TestComputeFeedMembershipHash_DoesNotMutateInput(t *testing.T) {
+	input := []string{"post-c", "post-a", "post-b"}
+	original := make([]string, len(input))
+	copy(original, input)
+
+	ComputeFeedMembershipHash(input)
+
+	for i, v := range input {
+		if v != original[i] {
+			t.Errorf("input[%d] = %q, want %q (input was mutated)", i, v, original[i])
+		}
+	}
+}
+
+func TestCache_SetGetFeedMembershipHash(t *testing.T) {
+	cache := New("")
+
+	// Getting hash for non-existent post returns empty string
+	hash := cache.GetFeedMembershipHash("pages/post-a.md")
+	if hash != "" {
+		t.Errorf("GetFeedMembershipHash for missing post = %q, want empty", hash)
+	}
+
+	// Create a post entry first
+	cache.MarkRebuilt("pages/post-a.md", "hash123", "output/post-a/index.html", "post.html")
+
+	// Set and get the membership hash
+	cache.SetFeedMembershipHash("pages/post-a.md", "membership-hash-abc")
+	hash = cache.GetFeedMembershipHash("pages/post-a.md")
+	if hash != "membership-hash-abc" {
+		t.Errorf("GetFeedMembershipHash = %q, want %q", hash, "membership-hash-abc")
+	}
+
+	// Update the membership hash
+	cache.SetFeedMembershipHash("pages/post-a.md", "membership-hash-def")
+	hash = cache.GetFeedMembershipHash("pages/post-a.md")
+	if hash != "membership-hash-def" {
+		t.Errorf("GetFeedMembershipHash after update = %q, want %q", hash, "membership-hash-def")
+	}
+}
+
+func TestCache_FeedMembershipHash_SaveLoad(t *testing.T) {
+	dir := t.TempDir()
+	cacheDir := filepath.Join(dir, ".markata")
+
+	// Create cache with feed membership hash
+	cache := New(cacheDir)
+	cache.MarkRebuilt("pages/post-a.md", "hash-a", "output/post-a/index.html", "post.html")
+	cache.SetFeedMembershipHash("pages/post-a.md", "membership-hash-123")
+
+	// Save
+	if err := cache.Save(); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	// Load into new cache
+	loaded, err := Load(cacheDir)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	// Verify feed membership hash was preserved
+	hash := loaded.GetFeedMembershipHash("pages/post-a.md")
+	if hash != "membership-hash-123" {
+		t.Errorf("GetFeedMembershipHash after load = %q, want %q", hash, "membership-hash-123")
+	}
+}

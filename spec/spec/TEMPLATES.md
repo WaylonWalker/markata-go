@@ -869,6 +869,49 @@ Feed/listing templates MUST include `h-feed` markup:
 
 ---
 
+## Media Detection Filters
+
+Templates can auto-detect media type (image vs video) using file extension analysis. This allows `image` and `video` frontmatter fields to be used interchangeably.
+
+### `is_video` Filter
+
+Returns `true` if the input string has a video file extension.
+
+**Recognized video extensions:** `.mp4`, `.webm`, `.mov`, `.m4v`, `.ogv`, `.ogg`
+
+Extension matching is case-insensitive.
+
+```jinja2
+{% if post.image|is_video %}
+<video src="{{ post.image }}" autoplay muted loop playsinline></video>
+{% else %}
+<img src="{{ post.image }}" alt="{{ post.title }}">
+{% endif %}
+```
+
+### `media_url` Filter
+
+Resolves a media URL from multiple fields. Returns the first non-empty value from the input (primary) and parameter (fallback).
+
+```jinja2
+{# Use image field first, fall back to video field #}
+{% with post.image|media_url:post.video as media_src %}
+{% if media_src %}
+  {# Render media_src #}
+{% endif %}
+{% endwith %}
+```
+
+### Card Template Behavior
+
+Photo and video card templates use both filters together to support interchangeable `image` and `video` frontmatter fields:
+
+1. `media_url` resolves which field has a value (`image` preferred over `video`)
+2. `is_video` determines whether to render a `<video>` or `<img>` element
+3. Video MIME type is inferred from the file extension
+
+---
+
 ## See Also
 
 - [SPEC.md](./SPEC.md) - Full specification
@@ -876,3 +919,25 @@ Feed/listing templates MUST include `h-feed` markup:
 - [CONFIG.md](./CONFIG.md) - Template configuration
 - [CONTENT.md](./CONTENT.md) - Markdown processing
 - [PLUGINS.md](./PLUGINS.md) - Plugin development
+
+---
+
+## Accessibility Requirements
+
+Templates MUST follow these accessibility guidelines:
+
+### Image Dimensions
+
+All `<img>` tags MUST include explicit `width` and `height` attributes to prevent
+Cumulative Layout Shift (CLS). Large content images SHOULD also include `loading="lazy"`.
+
+### External Link Hints
+
+Links that open in a new tab (`target="_blank"`) MUST include a visually-hidden
+screen reader hint such as `<span class="visually-hidden">(opens in new tab)</span>`
+so that assistive technology users are warned about the navigation change.
+
+### Reduced Motion
+
+CSS hover/transition effects MUST be disabled or reduced inside a
+`@media (prefers-reduced-motion: reduce)` block to respect user motion preferences.

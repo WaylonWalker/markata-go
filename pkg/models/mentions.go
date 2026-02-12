@@ -79,15 +79,25 @@ type MentionPostSource struct {
 	// AliasesField is the frontmatter field containing handle aliases (optional)
 	// Example: "aliases" for frontmatter like `aliases: [alices, asmith]`
 	AliasesField string `json:"aliases_field,omitempty" yaml:"aliases_field,omitempty" toml:"aliases_field,omitempty"`
+
+	// AvatarField is the frontmatter field containing the avatar/image URL (optional).
+	// If not set, looks for "avatar", "image", and "icon" fields in order.
+	// This is used for mention hovercard display.
+	AvatarField string `json:"avatar_field,omitempty" yaml:"avatar_field,omitempty" toml:"avatar_field,omitempty"`
 }
 
 // NewMentionsConfig creates a new MentionsConfig with default values.
 func NewMentionsConfig() MentionsConfig {
 	enabled := true
 	return MentionsConfig{
-		Enabled:            &enabled,
-		CSSClass:           "mention",
-		FromPosts:          []MentionPostSource{},
+		Enabled:  &enabled,
+		CSSClass: "mention",
+		FromPosts: []MentionPostSource{
+			{
+				Filter:      "template == 'contact'",
+				HandleField: "handle",
+			},
+		},
 		CacheDir:           "cache/mentions",
 		CacheDuration:      "24h",
 		Timeout:            30,

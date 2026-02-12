@@ -33,6 +33,7 @@ type configSource interface {
 	getMentions() mentionsConverter
 	getWebSub() webSubConverter
 	getShortcuts() shortcutsConverter
+	getAuthors() authorsConverter
 }
 
 // baseConfigData holds the basic config fields that are directly assignable.
@@ -138,6 +139,10 @@ type shortcutsConverter interface {
 	toShortcutsConfig() models.ShortcutsConfig
 }
 
+type authorsConverter interface {
+	toAuthorsConfig() models.AuthorsConfig
+}
+
 // buildConfig constructs a models.Config from a configSource.
 // This helper eliminates code duplication across TOML, YAML, and JSON config converters.
 func buildConfig(src configSource) *models.Config {
@@ -233,6 +238,9 @@ func buildConfig(src configSource) *models.Config {
 	// Convert Shortcuts config
 	config.Shortcuts = src.getShortcuts().toShortcutsConfig()
 
+	// Convert Authors config
+	config.Authors = src.getAuthors().toAuthorsConfig()
+
 	return config
 }
 
@@ -278,6 +286,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"content_templates": true, "footer_layout": true, "search": true,
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
 			"tag_aggregator": true, "websub": true, "shortcuts": true, "encryption": true,
+			"authors": true,
 		}
 
 		// Copy unknown sections to Extra
@@ -357,6 +366,7 @@ type tomlConfig struct {
 	Mentions      tomlMentionsConfig      `toml:"mentions"`
 	WebSub        tomlWebSubConfig        `toml:"websub"`
 	Shortcuts     tomlShortcutsConfig     `toml:"shortcuts"`
+	Authors       tomlAuthorsConfig       `toml:"authors"`
 	UnknownFields map[string]any          `toml:"-"`
 }
 
@@ -604,6 +614,79 @@ func (s *tomlShortcutsConfig) toShortcutsConfig() models.ShortcutsConfig {
 	}
 	if config.Navigation == nil {
 		config.Navigation = make(map[string]string)
+	}
+	return config
+}
+
+type tomlAuthorsConfig struct {
+	GeneratePages bool                  `toml:"generate_pages"`
+	URLPattern    string                `toml:"url_pattern"`
+	FeedsEnabled  bool                  `toml:"feeds_enabled"`
+	Authors       map[string]tomlAuthor `toml:"authors"`
+}
+
+type tomlAuthor struct {
+	Name          string            `toml:"name"`
+	Bio           string            `toml:"bio"`
+	Email         string            `toml:"email"`
+	Avatar        string            `toml:"avatar"`
+	URL           string            `toml:"url"`
+	Social        map[string]string `toml:"social"`
+	Guest         bool              `toml:"guest"`
+	Active        bool              `toml:"active"`
+	Default       bool              `toml:"default"`
+	Contributions []string          `toml:"contributions"`
+	Role          string            `toml:"role"`
+	Contribution  string            `toml:"contribution"`
+}
+
+func (a *tomlAuthorsConfig) toAuthorsConfig() models.AuthorsConfig {
+	config := models.AuthorsConfig{
+		GeneratePages: a.GeneratePages,
+		URLPattern:    a.URLPattern,
+		FeedsEnabled:  a.FeedsEnabled,
+	}
+	if a.Authors != nil {
+		config.Authors = make(map[string]models.Author, len(a.Authors))
+		for id := range a.Authors {
+			author := a.Authors[id]
+			ma := models.Author{
+				ID:      id,
+				Name:    author.Name,
+				Guest:   author.Guest,
+				Active:  author.Active,
+				Default: author.Default,
+				Social:  author.Social,
+			}
+			if author.Bio != "" {
+				bio := author.Bio
+				ma.Bio = &bio
+			}
+			if author.Email != "" {
+				email := author.Email
+				ma.Email = &email
+			}
+			if author.Avatar != "" {
+				avatar := author.Avatar
+				ma.Avatar = &avatar
+			}
+			if author.URL != "" {
+				url := author.URL
+				ma.URL = &url
+			}
+			if author.Role != "" {
+				role := author.Role
+				ma.Role = &role
+			}
+			if author.Contribution != "" {
+				contribution := author.Contribution
+				ma.Contribution = &contribution
+			}
+			if len(author.Contributions) > 0 {
+				ma.Contributions = author.Contributions
+			}
+			config.Authors[id] = ma
+		}
 	}
 	return config
 }
@@ -1027,6 +1110,7 @@ type tomlMentionPostSource struct {
 	Filter       string `toml:"filter"`
 	HandleField  string `toml:"handle_field"`
 	AliasesField string `toml:"aliases_field"`
+	AvatarField  string `toml:"avatar_field"`
 }
 
 func (m *tomlMentionsConfig) toMentionsConfig() models.MentionsConfig {
@@ -1067,7 +1151,13 @@ func (m *tomlMentionsConfig) toMentionsConfig() models.MentionsConfig {
 			Filter:       src.Filter,
 			HandleField:  src.HandleField,
 			AliasesField: src.AliasesField,
+			AvatarField:  src.AvatarField,
 		})
+	}
+
+	// Fall back to defaults when user has mentions config but no from_posts
+	if len(config.FromPosts) == 0 {
+		config.FromPosts = defaults.FromPosts
 	}
 
 	return config
@@ -1260,6 +1350,7 @@ func (c *tomlConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAg
 func (c *tomlConfig) getWebSub() webSubConverter               { return &c.WebSub }
 func (c *tomlConfig) getMentions() mentionsConverter           { return &c.Mentions }
 func (c *tomlConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
+func (c *tomlConfig) getAuthors() authorsConverter             { return &c.Authors }
 
 func (c *tomlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -1437,6 +1528,7 @@ type yamlConfig struct {
 	Mentions      yamlMentionsConfig      `yaml:"mentions"`
 	WebSub        yamlWebSubConfig        `yaml:"websub"`
 	Shortcuts     yamlShortcutsConfig     `yaml:"shortcuts"`
+	Authors       yamlAuthorsConfig       `yaml:"authors"`
 }
 
 type yamlNavItem struct {
@@ -1635,6 +1727,7 @@ type yamlMentionPostSource struct {
 	Filter       string `yaml:"filter"`
 	HandleField  string `yaml:"handle_field"`
 	AliasesField string `yaml:"aliases_field"`
+	AvatarField  string `yaml:"avatar_field"`
 }
 
 func (m *yamlMentionsConfig) toMentionsConfig() models.MentionsConfig {
@@ -1675,8 +1768,15 @@ func (m *yamlMentionsConfig) toMentionsConfig() models.MentionsConfig {
 			Filter:       src.Filter,
 			HandleField:  src.HandleField,
 			AliasesField: src.AliasesField,
+			AvatarField:  src.AvatarField,
 		})
 	}
+
+	// Fall back to defaults when user has mentions config but no from_posts
+	if len(config.FromPosts) == 0 {
+		config.FromPosts = defaults.FromPosts
+	}
+
 	return config
 }
 
@@ -1710,6 +1810,79 @@ func (s *yamlShortcutsConfig) toShortcutsConfig() models.ShortcutsConfig {
 	}
 	if config.Navigation == nil {
 		config.Navigation = make(map[string]string)
+	}
+	return config
+}
+
+type yamlAuthorsConfig struct {
+	GeneratePages bool                  `yaml:"generate_pages"`
+	URLPattern    string                `yaml:"url_pattern"`
+	FeedsEnabled  bool                  `yaml:"feeds_enabled"`
+	Authors       map[string]yamlAuthor `yaml:"authors"`
+}
+
+type yamlAuthor struct {
+	Name          string            `yaml:"name"`
+	Bio           string            `yaml:"bio"`
+	Email         string            `yaml:"email"`
+	Avatar        string            `yaml:"avatar"`
+	URL           string            `yaml:"url"`
+	Social        map[string]string `yaml:"social"`
+	Guest         bool              `yaml:"guest"`
+	Active        bool              `yaml:"active"`
+	Default       bool              `yaml:"default"`
+	Contributions []string          `yaml:"contributions"`
+	Role          string            `yaml:"role"`
+	Contribution  string            `yaml:"contribution"`
+}
+
+func (a *yamlAuthorsConfig) toAuthorsConfig() models.AuthorsConfig {
+	config := models.AuthorsConfig{
+		GeneratePages: a.GeneratePages,
+		URLPattern:    a.URLPattern,
+		FeedsEnabled:  a.FeedsEnabled,
+	}
+	if a.Authors != nil {
+		config.Authors = make(map[string]models.Author, len(a.Authors))
+		for id := range a.Authors {
+			author := a.Authors[id]
+			ma := models.Author{
+				ID:      id,
+				Name:    author.Name,
+				Guest:   author.Guest,
+				Active:  author.Active,
+				Default: author.Default,
+				Social:  author.Social,
+			}
+			if author.Bio != "" {
+				bio := author.Bio
+				ma.Bio = &bio
+			}
+			if author.Email != "" {
+				email := author.Email
+				ma.Email = &email
+			}
+			if author.Avatar != "" {
+				avatar := author.Avatar
+				ma.Avatar = &avatar
+			}
+			if author.URL != "" {
+				url := author.URL
+				ma.URL = &url
+			}
+			if author.Role != "" {
+				role := author.Role
+				ma.Role = &role
+			}
+			if author.Contribution != "" {
+				contribution := author.Contribution
+				ma.Contribution = &contribution
+			}
+			if len(author.Contributions) > 0 {
+				ma.Contributions = author.Contributions
+			}
+			config.Authors[id] = ma
+		}
 	}
 	return config
 }
@@ -2390,6 +2563,7 @@ func (c *yamlConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAg
 func (c *yamlConfig) getWebSub() webSubConverter               { return &c.WebSub }
 func (c *yamlConfig) getMentions() mentionsConverter           { return &c.Mentions }
 func (c *yamlConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
+func (c *yamlConfig) getAuthors() authorsConverter             { return &c.Authors }
 
 func (c *yamlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -2505,6 +2679,7 @@ type jsonConfig struct {
 	Mentions      jsonMentionsConfig      `json:"mentions"`
 	WebSub        jsonWebSubConfig        `json:"websub"`
 	Shortcuts     jsonShortcutsConfig     `json:"shortcuts"`
+	Authors       jsonAuthorsConfig       `json:"authors"`
 }
 
 type jsonNavItem struct {
@@ -2703,6 +2878,7 @@ type jsonMentionPostSource struct {
 	Filter       string `json:"filter"`
 	HandleField  string `json:"handle_field"`
 	AliasesField string `json:"aliases_field"`
+	AvatarField  string `json:"avatar_field"`
 }
 
 func (m *jsonMentionsConfig) toMentionsConfig() models.MentionsConfig {
@@ -2743,8 +2919,15 @@ func (m *jsonMentionsConfig) toMentionsConfig() models.MentionsConfig {
 			Filter:       src.Filter,
 			HandleField:  src.HandleField,
 			AliasesField: src.AliasesField,
+			AvatarField:  src.AvatarField,
 		})
 	}
+
+	// Fall back to defaults when user has mentions config but no from_posts
+	if len(config.FromPosts) == 0 {
+		config.FromPosts = defaults.FromPosts
+	}
+
 	return config
 }
 
@@ -2778,6 +2961,79 @@ func (s *jsonShortcutsConfig) toShortcutsConfig() models.ShortcutsConfig {
 	}
 	if config.Navigation == nil {
 		config.Navigation = make(map[string]string)
+	}
+	return config
+}
+
+type jsonAuthorsConfig struct {
+	GeneratePages bool                  `json:"generate_pages"`
+	URLPattern    string                `json:"url_pattern"`
+	FeedsEnabled  bool                  `json:"feeds_enabled"`
+	Authors       map[string]jsonAuthor `json:"authors"`
+}
+
+type jsonAuthor struct {
+	Name          string            `json:"name"`
+	Bio           string            `json:"bio"`
+	Email         string            `json:"email"`
+	Avatar        string            `json:"avatar"`
+	URL           string            `json:"url"`
+	Social        map[string]string `json:"social"`
+	Guest         bool              `json:"guest"`
+	Active        bool              `json:"active"`
+	Default       bool              `json:"default"`
+	Contributions []string          `json:"contributions"`
+	Role          string            `json:"role"`
+	Contribution  string            `json:"contribution"`
+}
+
+func (a *jsonAuthorsConfig) toAuthorsConfig() models.AuthorsConfig {
+	config := models.AuthorsConfig{
+		GeneratePages: a.GeneratePages,
+		URLPattern:    a.URLPattern,
+		FeedsEnabled:  a.FeedsEnabled,
+	}
+	if a.Authors != nil {
+		config.Authors = make(map[string]models.Author, len(a.Authors))
+		for id := range a.Authors {
+			author := a.Authors[id]
+			ma := models.Author{
+				ID:      id,
+				Name:    author.Name,
+				Guest:   author.Guest,
+				Active:  author.Active,
+				Default: author.Default,
+				Social:  author.Social,
+			}
+			if author.Bio != "" {
+				bio := author.Bio
+				ma.Bio = &bio
+			}
+			if author.Email != "" {
+				email := author.Email
+				ma.Email = &email
+			}
+			if author.Avatar != "" {
+				avatar := author.Avatar
+				ma.Avatar = &avatar
+			}
+			if author.URL != "" {
+				url := author.URL
+				ma.URL = &url
+			}
+			if author.Role != "" {
+				role := author.Role
+				ma.Role = &role
+			}
+			if author.Contribution != "" {
+				contribution := author.Contribution
+				ma.Contribution = &contribution
+			}
+			if len(author.Contributions) > 0 {
+				ma.Contributions = author.Contributions
+			}
+			config.Authors[id] = ma
+		}
 	}
 	return config
 }
@@ -3458,6 +3714,7 @@ func (c *jsonConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAg
 func (c *jsonConfig) getMentions() mentionsConverter           { return &c.Mentions }
 func (c *jsonConfig) getWebSub() webSubConverter               { return &c.WebSub }
 func (c *jsonConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
+func (c *jsonConfig) getAuthors() authorsConverter             { return &c.Authors }
 
 func (c *jsonConfig) toConfig() *models.Config {
 	return buildConfig(c)

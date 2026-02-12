@@ -200,6 +200,8 @@ func (p *LoadPlugin) restorePostFromCache(data *buildcache.CachedPostData) *mode
 	post.Templates = data.Templates
 	post.RawFrontmatter = data.RawFrontmatter
 	post.InputHash = data.InputHash
+	post.Authors = data.Authors
+	post.Author = data.Author
 	if data.Extra != nil {
 		for k, v := range data.Extra {
 			post.Set(k, v)
@@ -227,6 +229,8 @@ func (p *LoadPlugin) postToCachedData(post *models.Post) *buildcache.CachedPostD
 		Templates:      post.Templates,
 		RawFrontmatter: post.RawFrontmatter,
 		InputHash:      post.InputHash,
+		Authors:        post.Authors,
+		Author:         post.Author,
 		Extra:          post.Extra,
 	}
 }
@@ -294,6 +298,8 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		"templates":   true,
 		"slug":        true,
 		"secret_key":  true,
+		"author":      true,
+		"authors":     true,
 	}
 
 	// Title
@@ -358,9 +364,18 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		post.SecretKey = secretKey // pragma: allowlist secret
 	}
 
+	// Author fields - support both legacy 'author' and new 'authors' arrays
+	// SetAuthors handles: strings, []string, and mixed []interface{} with {id, role} maps
+	if authorsVal, ok := metadata["authors"]; ok {
+		post.SetAuthors(authorsVal)
+	} else if author := GetString(metadata, "author"); author != "" {
+		// Legacy single author field
+		post.Author = &author
+	}
+
 	// Store unknown fields in Extra
 	for key, value := range metadata {
-		if !knownFields[key] {
+		if !knownFields[key] && key != "author" && key != "authors" {
 			post.Set(key, value)
 		}
 	}

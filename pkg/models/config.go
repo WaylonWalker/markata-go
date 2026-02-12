@@ -21,6 +21,21 @@ type FooterConfig struct {
 	ShowCopyright *bool `json:"show_copyright,omitempty" yaml:"show_copyright,omitempty" toml:"show_copyright,omitempty"`
 }
 
+// AuthorsConfig configures multi-author support for the site.
+type AuthorsConfig struct {
+	// GeneratePages enables automatic author bio page generation (default: false)
+	GeneratePages bool `json:"generate_pages,omitempty" yaml:"generate_pages,omitempty" toml:"generate_pages,omitempty"`
+
+	// URLPattern defines the URL pattern for author pages (default: "/authors/{author}/")
+	URLPattern string `json:"url_pattern,omitempty" yaml:"url_pattern,omitempty" toml:"url_pattern,omitempty"`
+
+	// FeedsEnabled enables author-specific RSS/Atom feeds (default: false)
+	FeedsEnabled bool `json:"feeds_enabled,omitempty" yaml:"feeds_enabled,omitempty" toml:"feeds_enabled,omitempty"`
+
+	// Authors is a map of author configurations keyed by author ID
+	Authors map[string]Author `json:"authors,omitempty" yaml:"authors,omitempty" toml:"authors,omitempty"`
+}
+
 // ComponentsConfig configures the layout components system.
 // This enables configuration-driven control over common UI elements.
 type ComponentsConfig struct {
@@ -169,6 +184,11 @@ func DefaultCardMappings() map[string]string {
 		"gratitude": "inline",
 		"inline":    "inline",
 		"micro":     "inline",
+
+		// Contact card - person/character profile
+		"contact":   "contact",
+		"character": "contact",
+		"person":    "contact",
 	}
 }
 
@@ -409,6 +429,9 @@ type Config struct {
 	// Keys: "html", "txt", "markdown", "og"
 	// Values: template file names
 	DefaultTemplates map[string]string `json:"default_templates,omitempty" yaml:"default_templates,omitempty" toml:"default_templates,omitempty"`
+
+	// Authors configures multi-author support for the site
+	Authors AuthorsConfig `json:"authors" yaml:"authors" toml:"authors"`
 
 	// Extra holds arbitrary plugin configurations that aren't part of the core config.
 	// Plugin-specific configs like [markata-go.image_zoom] are stored here.
@@ -1004,14 +1027,26 @@ type MermaidConfig struct {
 
 	// Theme is the Mermaid theme to use (default, dark, forest, neutral)
 	Theme string `json:"theme" yaml:"theme" toml:"theme"`
+
+	// UseCSSVariables enables palette-aware theme variables from CSS custom properties.
+	UseCSSVariables bool `json:"use_css_variables" yaml:"use_css_variables" toml:"use_css_variables"`
+
+	// Lightbox enables GLightbox zoom for rendered Mermaid diagrams.
+	Lightbox bool `json:"lightbox" yaml:"lightbox" toml:"lightbox"`
+
+	// LightboxSelector is the CSS selector used for Mermaid lightbox links.
+	LightboxSelector string `json:"lightbox_selector" yaml:"lightbox_selector" toml:"lightbox_selector"`
 }
 
 // NewMermaidConfig creates a new MermaidConfig with default values.
 func NewMermaidConfig() MermaidConfig {
 	return MermaidConfig{
-		Enabled: true,
-		CDNURL:  "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
-		Theme:   "default",
+		Enabled:          true,
+		CDNURL:           "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
+		Theme:            "default",
+		UseCSSVariables:  true,
+		Lightbox:         true,
+		LightboxSelector: ".glightbox-mermaid",
 	}
 }
 
@@ -2344,6 +2379,56 @@ func NewThemeCalendarConfig() ThemeCalendarConfig {
 		Enabled: &enabled,
 		Rules:   []ThemeCalendarRule{},
 	}
+}
+
+// ExternalCacheDirs returns the list of Tier 2 external plugin cache directories.
+// These directories contain expensive-to-rebuild data (fetched RSS feeds, embed
+// metadata, webmentions) and are only cleaned by --clean-all, not --clean.
+// For plugins configured via the Extra map (embeds, webmentions), defaults are
+// included when the plugin isn't explicitly configured, since the plugins still
+// create these directories at runtime.
+func (c *Config) ExternalCacheDirs() []string {
+	var dirs []string
+
+	// Blogroll cache (typed config field, falls back to default)
+	blogrollDir := c.Blogroll.CacheDir
+	if blogrollDir == "" {
+		blogrollDir = NewBlogrollConfig().CacheDir
+	}
+	dirs = append(dirs, blogrollDir)
+
+	// Mentions cache (typed config field with getter that handles default)
+	if dir := c.Mentions.GetCacheDir(); dir != "" {
+		dirs = append(dirs, dir)
+	}
+
+	// Embeds cache (untyped Extra map — stored as map[string]interface{})
+	embedsDir := NewEmbedsConfig().CacheDir // default: ".cache/embeds"
+	if c.Extra != nil {
+		if embedsCfg, ok := c.Extra["embeds"]; ok {
+			if cfgMap, ok := embedsCfg.(map[string]interface{}); ok {
+				if dir, ok := cfgMap["cache_dir"].(string); ok && dir != "" {
+					embedsDir = dir
+				}
+			}
+		}
+	}
+	dirs = append(dirs, embedsDir)
+
+	// Webmentions cache (untyped Extra map — stored as WebMentionsConfig)
+	wmDir := NewWebMentionsConfig().CacheDir // default: ".cache/webmentions"
+	if c.Extra != nil {
+		if wmCfg, ok := c.Extra["webmentions"]; ok {
+			if wm, ok := wmCfg.(WebMentionsConfig); ok {
+				if wm.CacheDir != "" {
+					wmDir = wm.CacheDir
+				}
+			}
+		}
+	}
+	dirs = append(dirs, wmDir)
+
+	return dirs
 }
 
 // IsHookEnabled checks if a hook is enabled (in Hooks and not in DisabledHooks).

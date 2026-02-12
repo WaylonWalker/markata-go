@@ -65,29 +65,8 @@
             <div class="post-header__title-row">
                 <h1 class="p-name" data-pagefind-meta="title">{{ post.title }}</h1>
 
-                {# Author h-card (representative) + post meta grouped to the right of the title #}
-                {% if config.author %}
-                <div class="post-byline p-author h-card">
-                    {% if config.seo.author_image %}
-                    <img class="u-photo post-byline__photo" src="{% if config.seo.author_image | startswith:'http' %}{{ config.seo.author_image }}{% else %}{{ config.url }}{{ config.seo.author_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" width="44" height="44" loading="lazy">
-                    {% elif config.seo.default_image %}
-                    <img class="u-photo post-byline__photo" src="{% if config.seo.default_image | startswith:'http' %}{{ config.seo.default_image }}{% else %}{{ config.url }}{{ config.seo.default_image }}{% endif %}" alt="{{ config.author | default:config.title }} avatar" width="44" height="44" loading="lazy">
-                    {% endif %}
-                    <a class="u-url u-uid p-name post-byline__name" href="{{ config.url }}" rel="author">{{ config.author }}</a>
-
-                    {% if post.date or post.reading_time %}
-                    <div class="post-meta post-byline__meta">
-                        {% if post.date %}<time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>{% endif %}
-                        {% if post.reading_time %}<span>{{ post.reading_time }} min read</span>{% endif %}
-                    </div>
-                    {% endif %}
-                </div>
-                {% elif post.date or post.reading_time %}
-                <div class="post-meta post-meta--header">
-                    {% if post.date %}<time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>{% endif %}
-                    {% if post.reading_time %}<span>{{ post.reading_time }} min read</span>{% endif %}
-                </div>
-                {% endif %}
+                {# Author byline and post metadata #}
+                {% include "components/post_byline.html" %}
             </div>
 
             {% if post.description %}
