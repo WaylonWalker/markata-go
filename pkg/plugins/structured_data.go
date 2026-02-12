@@ -207,8 +207,8 @@ func (p *StructuredDataPlugin) generateTwitterCard(sd *models.StructuredData, po
 		sd.AddTwitter("twitter:site", "@"+seoConfig.TwitterHandle)
 	}
 
-	// Creator handle (use author's twitter if available, otherwise site handle)
-	creatorHandle := p.getTwitterHandle(post, seoConfig)
+	// Creator handle (use first author's twitter if available, otherwise site handle)
+	creatorHandle := p.getFirstAuthorTwitterHandle(post, config, seoConfig)
 	if creatorHandle != "" {
 		sd.AddTwitter("twitter:creator", "@"+creatorHandle)
 	}
@@ -299,7 +299,7 @@ func (p *StructuredDataPlugin) getTwitterImageURL(post *models.Post, config *lif
 	return ""
 }
 
-// getAuthor returns the author SchemaAgent for a post.
+// getAuthor returns author SchemaAgent for a post.
 func (p *StructuredDataPlugin) getAuthor(post *models.Post, config *lifecycle.Config, seoConfig *models.SEOConfig) *models.SchemaAgent {
 	// Check for author in frontmatter
 	var authorName string
@@ -358,13 +358,29 @@ func (p *StructuredDataPlugin) getPublisher(config *lifecycle.Config, seoConfig 
 	return nil
 }
 
-// getTwitterHandle returns the Twitter handle for the post author or site.
-func (p *StructuredDataPlugin) getTwitterHandle(post *models.Post, seoConfig *models.SEOConfig) string {
-	// Check for author's twitter handle in frontmatter
+// getFirstAuthorTwitterHandle returns the Twitter handle for the first author of a post.
+// Checks post frontmatter first, then author config, then falls back to site handle.
+func (p *StructuredDataPlugin) getFirstAuthorTwitterHandle(post *models.Post, config *lifecycle.Config, seoConfig *models.SEOConfig) string {
+	// Check for author's twitter handle in post frontmatter
 	if twitterHandle, ok := post.Extra["twitter"]; ok {
 		if handleStr, ok := twitterHandle.(string); ok && handleStr != "" {
 			// Remove @ if present
 			return strings.TrimPrefix(handleStr, "@")
+		}
+	}
+
+	// Check first author's social links if multi-author is configured
+	authorIDs := post.GetAuthors()
+	if len(authorIDs) > 0 {
+		// Get models.Config from lifecycle.Config.Extra
+		if modelsConfig, ok := config.Extra["models_config"].(*models.Config); ok {
+			if modelsConfig.Authors.Authors != nil {
+				if author, ok := modelsConfig.Authors.Authors[authorIDs[0]]; ok {
+					if twitter, ok := author.Social["twitter"]; ok && twitter != "" {
+						return strings.TrimPrefix(twitter, "@")
+					}
+				}
+			}
 		}
 	}
 

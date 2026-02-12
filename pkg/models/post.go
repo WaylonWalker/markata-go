@@ -101,8 +101,25 @@ type Post struct {
 	// Not persisted to output files.
 	Dependencies []string `json:"-" yaml:"-" toml:"-"`
 
+	// Author fields (backward compatible)
+	Authors []string `json:"authors,omitempty" yaml:"authors,omitempty" toml:"authors,omitempty"`
+	Author  *string  `json:"author,omitempty" yaml:"author,omitempty" toml:"author,omitempty"` // Backward compatibility
+
+	// AuthorRoleOverrides stores per-post role overrides keyed by author ID.
+	// Populated when frontmatter uses extended format: authors: [{id: waylon, role: editor}]
+	// Not serialized; rebuilt from frontmatter on each load.
+	AuthorRoleOverrides map[string]string `json:"-" yaml:"-" toml:"-"`
+
+	// AuthorDetailsOverrides stores per-post details overrides keyed by author ID.
+	// Populated when frontmatter uses extended format: authors: [{id: waylon, details: "wrote the intro"}]
+	// Not serialized; rebuilt from frontmatter on each load.
+	AuthorDetailsOverrides map[string]string `json:"-" yaml:"-" toml:"-"`
+
 	// Extra holds dynamic/unknown fields from frontmatter
 	Extra map[string]interface{} `json:"extra,omitempty" yaml:"extra,omitempty" toml:"extra,omitempty"`
+
+	// Computed fields (not in frontmatter)
+	AuthorObjects []Author `json:"-" yaml:"-" toml:"-"`
 }
 
 // NewPost creates a new Post with the given source file path and default values.
@@ -255,4 +272,117 @@ func (p *Post) Has(key string) bool {
 	}
 	_, exists := p.Extra[key]
 	return exists
+}
+
+// GetAuthors returns a list of author IDs for this post.
+// Prefers the Authors array if available, falls back to single Author field.
+func (p *Post) GetAuthors() []string {
+	if len(p.Authors) > 0 {
+		return p.Authors
+	}
+	if p.Author != nil && *p.Author != "" {
+		return []string{*p.Author}
+	}
+	return []string{}
+}
+
+// HasAuthor checks if the post has the specified author ID.
+func (p *Post) HasAuthor(authorID string) bool {
+	for _, id := range p.GetAuthors() {
+		if id == authorID {
+			return true
+		}
+	}
+	return false
+}
+
+// SetAuthors sets the authors for this post.
+// Accepts either a single string (for backward compatibility), an array of strings,
+// or a mixed array where items can be strings or maps with "id" and optional "role".
+// Per-post role overrides from map entries are stored in AuthorRoleOverrides.
+func (p *Post) SetAuthors(authors interface{}) {
+	switch v := authors.(type) {
+	case string:
+		p.Author = &v
+		p.Authors = nil
+		p.AuthorRoleOverrides = nil
+		p.AuthorDetailsOverrides = nil
+	case []string:
+		p.Authors = v
+		p.Author = nil
+		p.AuthorRoleOverrides = nil
+		p.AuthorDetailsOverrides = nil
+	case []interface{}:
+		authorIDs, roleOverrides, detailsOverrides := parseAuthorItems(v)
+		p.Authors = authorIDs
+		p.Author = nil
+		p.AuthorRoleOverrides = roleOverrides
+		p.AuthorDetailsOverrides = detailsOverrides
+	}
+}
+
+// parseAuthorItems processes a mixed-format author slice where items can be
+// strings or maps with "id", optional "role", and optional "details".
+// Returns the collected author IDs and any per-author overrides.
+func parseAuthorItems(items []interface{}) (ids []string, roles, details map[string]string) {
+	ids = make([]string, 0, len(items))
+	roles = make(map[string]string)
+	details = make(map[string]string)
+	for _, item := range items {
+		switch entry := item.(type) {
+		case string:
+			ids = append(ids, entry)
+		case map[string]interface{}:
+			addAuthorEntry(entry, &ids, roles, details)
+		case map[interface{}]interface{}:
+			// YAML sometimes produces map[interface{}]interface{} instead of map[string]interface{}
+			normalized := make(map[string]interface{}, len(entry))
+			for k, v := range entry {
+				if ks, ok := k.(string); ok {
+					normalized[ks] = v
+				}
+			}
+			addAuthorEntry(normalized, &ids, roles, details)
+		}
+	}
+	if len(roles) == 0 {
+		roles = nil
+	}
+	if len(details) == 0 {
+		details = nil
+	}
+	return ids, roles, details
+}
+
+// addAuthorEntry extracts id, role, and details from a map-format author entry.
+// Appends the author ID to ids and populates role/details override maps as needed.
+//
+// Supports aliases for convenience:
+//
+//	id:      "name", "handle"
+//	role:    "job", "position", "part", "title"
+//	details: "detail", "description"
+func addAuthorEntry(entry map[string]interface{}, ids *[]string, roles, details map[string]string) {
+	id := firstString(entry, "id", "name", "handle")
+	if id == "" {
+		return
+	}
+	*ids = append(*ids, id)
+	if role := firstString(entry, "role", "job", "position", "part", "title"); role != "" {
+		roles[id] = role
+	}
+	if detail := firstString(entry, "details", "detail", "description"); detail != "" {
+		details[id] = detail
+	}
+}
+
+// firstString returns the string value of the first key found in the map.
+// Keys are checked in order; the first non-empty string wins.
+func firstString(m map[string]interface{}, keys ...string) string {
+	for _, k := range keys {
+		if v, ok := m[k].(string); ok && v != "" {
+			return v
+		}
+	}
+	return ""
 }

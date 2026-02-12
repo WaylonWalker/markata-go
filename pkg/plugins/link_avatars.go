@@ -64,7 +64,7 @@ func defaultLinkAvatarsConfig() LinkAvatarsConfig {
 		IgnoreDomains:   []string{},
 		IgnoreOrigins:   []string{},
 		IgnoreSelectors: []string{},
-		IgnoreClasses:   []string{},
+		IgnoreClasses:   []string{"no-avatar"},
 		IgnoreIDs:       []string{},
 		Size:            16,
 		Position:        "before",

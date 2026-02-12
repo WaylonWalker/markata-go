@@ -366,6 +366,8 @@ Templates are looked up in:
 | `description` | string | Auto-generated | No | Brief summary for SEO/meta tags |
 | `template` | string | `"post.html"` | No | Template file to use for rendering |
 | `skip` | bool | `false` | No | Skip this file during processing entirely |
+| `authors` | []string | `[]` | No | List of author IDs (multi-author support) |
+| `author` | string | None | No | Legacy single-author name or ID |
 
 ### Field Details
 
@@ -378,6 +380,94 @@ skip: true
 ```
 
 Use this for files you want to keep in your content directory but never process (notes, drafts not ready for review, etc.).
+
+#### authors
+
+Assign one or more authors to a post by referencing author IDs defined in your site configuration:
+
+```yaml
+---
+title: "Collaborative Article"
+authors:
+  - waylon
+  - guest
+---
+```
+
+Each author ID is resolved against the `[markata-go.authors.authors]` config map during the build. Resolved author objects (with name, avatar, role, bio, etc.) are available in templates as `post.author_objects`.
+
+You can use the extended format to specify per-post roles and details for each author:
+
+```yaml
+---
+title: "Collaborative Article"
+authors:
+  - id: waylon
+    role: author
+    details: wrote the introduction and conclusion
+  - id: codex
+    role: pair programmer
+    details: wrote the code examples
+  - id: kimmi
+    role: outliner
+---
+```
+
+The `role` overrides the author's config-level role for this post only. The `details` field provides a short description of what the author did on this specific post, displayed as a tooltip when hovering over the author's name in the byline. Both fields are optional and can be used independently.
+
+**Key aliases:** For convenience, the extended format supports aliases so you can use whichever key name feels natural:
+
+| Canonical Key | Aliases |
+|---------------|---------|
+| `id` | `name`, `handle` |
+| `role` | `job`, `position`, `part`, `title` |
+| `details` | `detail`, `description` |
+
+For example, these are all equivalent:
+
+```yaml
+---
+authors:
+  - name: waylon
+    title: maintainer
+    description: built the feature
+  # same as:
+  - id: waylon
+    role: maintainer
+    details: built the feature
+---
+```
+
+The canonical key always takes precedence when both it and an alias are present.
+
+You can mix simple string IDs and extended format in the same array:
+
+```yaml
+---
+authors:
+  - waylon
+  - id: codex
+    role: editor
+    details: reviewed and edited the draft
+---
+```
+
+If no `authors` or `author` field is set, the default author from config (the one with `default = true`) is assigned automatically.
+
+#### author
+
+Legacy single-author field. Use this for simple sites or backward compatibility:
+
+```yaml
+---
+title: "Solo Post"
+author: "Jane Doe"
+---
+```
+
+**Priority:** If both `authors` and `author` are set on the same post, `authors` takes precedence.
+
+**Related:** See [Authors Configuration](configuration.md#authors-configuration) for defining author profiles.
 
 ---
 

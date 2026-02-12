@@ -95,6 +95,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["tags_listing"] = func() lifecycle.Plugin { return NewTagsListingPlugin() }
 	pluginRegistry.constructors["theme_calendar"] = func() lifecycle.Plugin { return NewThemeCalendarPlugin() }
 	pluginRegistry.constructors["link_avatars"] = func() lifecycle.Plugin { return NewLinkAvatarsPlugin() }
+	pluginRegistry.constructors["authors"] = func() lifecycle.Plugin { return NewAuthorsPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -154,6 +155,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 
 		// Transform stage plugins (in order)
 		NewAutoTitlePlugin(),              // Auto-generate titles first
+		NewAuthorsPlugin(),                // Resolve author IDs to Author objects
 		NewDescriptionPlugin(),            // Auto-generate descriptions early
 		NewStructuredDataPlugin(),         // Generate structured data (needs title, description)
 		NewReadingTimePlugin(),            // Calculate reading time

@@ -731,3 +731,423 @@ func TestStripKnownExtension(t *testing.T) {
 		})
 	}
 }
+
+// =============================================================================
+// Post Author Tests (Multi-Author Support)
+// =============================================================================
+
+func TestPost_GetAuthors(t *testing.T) {
+	tests := []struct {
+		name     string
+		post     *Post
+		expected []string
+	}{
+		{
+			name: "multiple authors via Authors array",
+			post: &Post{
+				Authors: []string{"john-doe", "jane-doe"},
+			},
+			expected: []string{"john-doe", "jane-doe"},
+		},
+		{
+			name: "single author via legacy Author field",
+			post: func() *Post {
+				author := "john-doe"
+				return &Post{Author: &author}
+			}(),
+			expected: []string{"john-doe"},
+		},
+		{
+			name: "Authors array takes precedence over Author field",
+			post: func() *Post {
+				author := "old-author"
+				return &Post{
+					Author:  &author,
+					Authors: []string{"new-author-1", "new-author-2"},
+				}
+			}(),
+			expected: []string{"new-author-1", "new-author-2"},
+		},
+		{
+			name:     "no authors returns empty slice",
+			post:     &Post{},
+			expected: []string{},
+		},
+		{
+			name: "empty Author string returns empty slice",
+			post: func() *Post {
+				author := ""
+				return &Post{Author: &author}
+			}(),
+			expected: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.post.GetAuthors()
+			if len(got) != len(tt.expected) {
+				t.Errorf("GetAuthors() length = %d, want %d", len(got), len(tt.expected))
+				return
+			}
+			for i, v := range got {
+				if v != tt.expected[i] {
+					t.Errorf("GetAuthors()[%d] = %q, want %q", i, v, tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
+func TestPost_HasAuthor(t *testing.T) {
+	tests := []struct {
+		name     string
+		post     *Post
+		authorID string
+		expected bool
+	}{
+		{
+			name: "has author in Authors array",
+			post: &Post{
+				Authors: []string{"john-doe", "jane-doe"},
+			},
+			authorID: "john-doe",
+			expected: true,
+		},
+		{
+			name: "has author via legacy field",
+			post: func() *Post {
+				author := "john-doe"
+				return &Post{Author: &author}
+			}(),
+			authorID: "john-doe",
+			expected: true,
+		},
+		{
+			name: "does not have author",
+			post: &Post{
+				Authors: []string{"john-doe"},
+			},
+			authorID: "jane-doe",
+			expected: false,
+		},
+		{
+			name:     "empty post has no authors",
+			post:     &Post{},
+			authorID: "anyone",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.post.HasAuthor(tt.authorID)
+			if got != tt.expected {
+				t.Errorf("HasAuthor(%q) = %v, want %v", tt.authorID, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestPost_SetAuthors(t *testing.T) {
+	t.Run("set single string author", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors("john-doe")
+		if p.Author == nil || *p.Author != "john-doe" {
+			t.Error("SetAuthors(string) should set Author field")
+		}
+		if p.Authors != nil {
+			t.Error("SetAuthors(string) should clear Authors array")
+		}
+	})
+
+	t.Run("set string slice authors", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]string{"john-doe", "jane-doe"})
+		if p.Author != nil {
+			t.Error("SetAuthors([]string) should clear Author field")
+		}
+		if len(p.Authors) != 2 {
+			t.Errorf("SetAuthors([]string) should set Authors array, got length %d", len(p.Authors))
+		}
+		if p.Authors[0] != "john-doe" || p.Authors[1] != "jane-doe" {
+			t.Error("SetAuthors([]string) should preserve author order")
+		}
+	})
+
+	t.Run("set interface slice authors", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{"john-doe", "jane-doe"})
+		if p.Author != nil {
+			t.Error("SetAuthors([]interface{}) should clear Author field")
+		}
+		if len(p.Authors) != 2 {
+			t.Errorf("SetAuthors([]interface{}) should set Authors array, got length %d", len(p.Authors))
+		}
+	})
+
+	t.Run("set extended format with role and details overrides", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":      "waylon",
+				"role":    "author",
+				"details": "wrote the introduction",
+			},
+			map[string]interface{}{
+				"id":      "codex",
+				"role":    "pair programmer",
+				"details": "wrote the code examples",
+			},
+			"guest", // plain string, no overrides
+		})
+		if p.Author != nil {
+			t.Error("SetAuthors(extended) should clear Author field")
+		}
+		if len(p.Authors) != 3 {
+			t.Errorf("SetAuthors(extended) should set 3 authors, got %d", len(p.Authors))
+		}
+		if p.Authors[0] != "waylon" || p.Authors[1] != "codex" || p.Authors[2] != "guest" {
+			t.Errorf("SetAuthors(extended) incorrect author IDs: %v", p.Authors)
+		}
+		// Check role overrides
+		if p.AuthorRoleOverrides == nil {
+			t.Fatal("AuthorRoleOverrides should not be nil")
+		}
+		if p.AuthorRoleOverrides["waylon"] != "author" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "author")
+		}
+		if p.AuthorRoleOverrides["codex"] != "pair programmer" {
+			t.Errorf("AuthorRoleOverrides[codex] = %q, want %q", p.AuthorRoleOverrides["codex"], "pair programmer")
+		}
+		// Check details overrides
+		if p.AuthorDetailsOverrides == nil {
+			t.Fatal("AuthorDetailsOverrides should not be nil")
+		}
+		if p.AuthorDetailsOverrides["waylon"] != "wrote the introduction" {
+			t.Errorf("AuthorDetailsOverrides[waylon] = %q, want %q", p.AuthorDetailsOverrides["waylon"], "wrote the introduction")
+		}
+		if p.AuthorDetailsOverrides["codex"] != "wrote the code examples" {
+			t.Errorf("AuthorDetailsOverrides[codex] = %q, want %q", p.AuthorDetailsOverrides["codex"], "wrote the code examples")
+		}
+		// guest should not have overrides
+		if _, ok := p.AuthorRoleOverrides["guest"]; ok {
+			t.Error("guest should not have role override")
+		}
+		if _, ok := p.AuthorDetailsOverrides["guest"]; ok {
+			t.Error("guest should not have details override")
+		}
+	})
+
+	t.Run("set extended format with details only (no role)", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":      "waylon",
+				"details": "outlined the post",
+			},
+		})
+		if p.AuthorRoleOverrides != nil {
+			t.Error("AuthorRoleOverrides should be nil when no roles specified")
+		}
+		if p.AuthorDetailsOverrides == nil {
+			t.Fatal("AuthorDetailsOverrides should not be nil")
+		}
+		if p.AuthorDetailsOverrides["waylon"] != "outlined the post" {
+			t.Errorf("AuthorDetailsOverrides[waylon] = %q, want %q", p.AuthorDetailsOverrides["waylon"], "outlined the post")
+		}
+	})
+
+	t.Run("string format clears details overrides", func(t *testing.T) {
+		p := &Post{
+			AuthorDetailsOverrides: map[string]string{"old": "data"},
+		}
+		p.SetAuthors("john-doe")
+		if p.AuthorDetailsOverrides != nil {
+			t.Error("SetAuthors(string) should clear AuthorDetailsOverrides")
+		}
+	})
+
+	t.Run("string slice format clears details overrides", func(t *testing.T) {
+		p := &Post{
+			AuthorDetailsOverrides: map[string]string{"old": "data"},
+		}
+		p.SetAuthors([]string{"john-doe"})
+		if p.AuthorDetailsOverrides != nil {
+			t.Error("SetAuthors([]string) should clear AuthorDetailsOverrides")
+		}
+	})
+}
+
+func TestPost_SetAuthors_KeyAliases(t *testing.T) {
+	t.Run("name alias for id", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"name": "waylon",
+				"role": "author",
+			},
+		})
+		if len(p.Authors) != 1 || p.Authors[0] != "waylon" {
+			t.Errorf("Authors = %v, want [waylon]", p.Authors)
+		}
+		if p.AuthorRoleOverrides["waylon"] != "author" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "author")
+		}
+	})
+
+	t.Run("handle alias for id", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"handle": "codex",
+			},
+		})
+		if len(p.Authors) != 1 || p.Authors[0] != "codex" {
+			t.Errorf("Authors = %v, want [codex]", p.Authors)
+		}
+	})
+
+	t.Run("id takes precedence over name and handle", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":     "correct",
+				"name":   "wrong",
+				"handle": "also-wrong",
+			},
+		})
+		if len(p.Authors) != 1 || p.Authors[0] != "correct" {
+			t.Errorf("Authors = %v, want [correct]", p.Authors)
+		}
+	})
+
+	t.Run("detail alias for details", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":     "waylon",
+				"detail": "wrote the intro",
+			},
+		})
+		if p.AuthorDetailsOverrides == nil || p.AuthorDetailsOverrides["waylon"] != "wrote the intro" {
+			t.Errorf("AuthorDetailsOverrides[waylon] = %q, want %q", p.AuthorDetailsOverrides["waylon"], "wrote the intro")
+		}
+	})
+
+	t.Run("description alias for details", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":          "waylon",
+				"description": "reviewed the code",
+			},
+		})
+		if p.AuthorDetailsOverrides == nil || p.AuthorDetailsOverrides["waylon"] != "reviewed the code" {
+			t.Errorf("AuthorDetailsOverrides[waylon] = %q, want %q", p.AuthorDetailsOverrides["waylon"], "reviewed the code")
+		}
+	})
+
+	t.Run("details takes precedence over aliases", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":          "waylon",
+				"details":     "canonical",
+				"detail":      "alias1",
+				"description": "alias2",
+			},
+		})
+		if p.AuthorDetailsOverrides["waylon"] != "canonical" {
+			t.Errorf("AuthorDetailsOverrides[waylon] = %q, want %q", p.AuthorDetailsOverrides["waylon"], "canonical")
+		}
+	})
+
+	t.Run("job alias for role", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":  "waylon",
+				"job": "developer",
+			},
+		})
+		if p.AuthorRoleOverrides == nil || p.AuthorRoleOverrides["waylon"] != "developer" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "developer")
+		}
+	})
+
+	t.Run("position alias for role", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":       "waylon",
+				"position": "lead",
+			},
+		})
+		if p.AuthorRoleOverrides["waylon"] != "lead" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "lead")
+		}
+	})
+
+	t.Run("part alias for role", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":   "waylon",
+				"part": "code review",
+			},
+		})
+		if p.AuthorRoleOverrides["waylon"] != "code review" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "code review")
+		}
+	})
+
+	t.Run("title alias for role", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":    "waylon",
+				"title": "senior engineer",
+			},
+		})
+		if p.AuthorRoleOverrides["waylon"] != "senior engineer" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "senior engineer")
+		}
+	})
+
+	t.Run("role takes precedence over aliases", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"id":       "waylon",
+				"role":     "canonical",
+				"job":      "alias1",
+				"position": "alias2",
+				"title":    "alias3",
+			},
+		})
+		if p.AuthorRoleOverrides["waylon"] != "canonical" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "canonical")
+		}
+	})
+
+	t.Run("all aliases together", func(t *testing.T) {
+		p := &Post{}
+		p.SetAuthors([]interface{}{
+			map[string]interface{}{
+				"handle":      "waylon",
+				"title":       "maintainer",
+				"description": "built the feature",
+			},
+		})
+		if len(p.Authors) != 1 || p.Authors[0] != "waylon" {
+			t.Errorf("Authors = %v, want [waylon]", p.Authors)
+		}
+		if p.AuthorRoleOverrides["waylon"] != "maintainer" {
+			t.Errorf("AuthorRoleOverrides[waylon] = %q, want %q", p.AuthorRoleOverrides["waylon"], "maintainer")
+		}
+		if p.AuthorDetailsOverrides["waylon"] != "built the feature" {
+			t.Errorf("AuthorDetailsOverrides[waylon] = %q, want %q", p.AuthorDetailsOverrides["waylon"], "built the feature")
+		}
+	})
+}
