@@ -82,11 +82,16 @@
                             <td><kbd>]</kbd></td>
                             <td>Next page</td>
                         </tr>
+                        <tr>
+                            <td><kbd>s</kbd></td>
+                            <td>Toggle simple/rich feed view</td>
+                        </tr>
                     </tbody>
                 </table>
             </section>
 
-            {# Theme Section #}
+            {# Theme Section - only shown when theme switcher is enabled #}
+            {% if config.theme.switcher.enabled %}
             <section class="shortcuts-section">
                 <h3 class="shortcuts-section-title">Theme</h3>
                 <table class="shortcuts-table">
@@ -106,6 +111,7 @@
                     </tbody>
                 </table>
             </section>
+            {% endif %}
 
             {# Utility Section #}
             <section class="shortcuts-section">

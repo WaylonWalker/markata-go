@@ -188,6 +188,7 @@ orphan_threshold = 3
 
 [markata-go.feed_defaults.formats]
 html = true
+simple_html = true
 rss = true
 atom = true
 json = true
@@ -196,6 +197,7 @@ text = true
 
 [markata-go.feed_defaults.templates]
 html = "feed.html"
+simple_html = "simple-feed.html"
 card = "partials/cards/card-router.html"
 
 [markata-go.feed_defaults.syndication]

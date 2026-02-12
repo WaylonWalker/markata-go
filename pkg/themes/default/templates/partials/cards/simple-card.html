@@ -1,0 +1,10 @@
+{# Simple Card - Compact single-line post entry for dense list feeds #}
+<li class="simple-item h-entry">
+  <a class="simple-item-title u-url p-name" href="{{ post.href }}">{{ post.title | default:post.slug }}</a>
+  {% if post.date %}
+  <time class="simple-item-date dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"2006-01-02" }}</time>
+  {% endif %}
+  {% if post.reading_time %}
+  <span class="simple-item-reading-time">{{ post.reading_time }} min</span>
+  {% endif %}
+</li>
