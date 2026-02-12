@@ -975,3 +975,125 @@ func TestParseJSON_Shortcuts(t *testing.T) {
 		t.Errorf("Shortcuts.Navigation[\"g a\"] = %q, want %q", got, "/about/")
 	}
 }
+
+// TestParseTOML_MentionsFromPostsDefault tests that default from_posts source
+// is applied when mentions section exists but no from_posts are configured.
+func TestParseTOML_MentionsFromPostsDefault(t *testing.T) {
+	data := []byte(`
+[markata-go]
+output_dir = "public"
+
+[markata-go.mentions]
+css_class = "mention"
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if len(config.Mentions.FromPosts) == 0 {
+		t.Fatal("Mentions.FromPosts should have default entries when not configured")
+	}
+
+	if config.Mentions.FromPosts[0].Filter != "template == 'contact'" {
+		t.Errorf("default FromPosts[0].Filter = %q, want %q",
+			config.Mentions.FromPosts[0].Filter, "template == 'contact'")
+	}
+
+	if config.Mentions.FromPosts[0].HandleField != "handle" {
+		t.Errorf("default FromPosts[0].HandleField = %q, want %q",
+			config.Mentions.FromPosts[0].HandleField, "handle")
+	}
+}
+
+// TestParseTOML_MentionsFromPostsExplicit tests that explicit from_posts
+// overrides the defaults and includes AvatarField.
+func TestParseTOML_MentionsFromPostsExplicit(t *testing.T) {
+	data := []byte(`
+[markata-go]
+output_dir = "public"
+
+[markata-go.mentions]
+css_class = "mention"
+
+[[markata-go.mentions.from_posts]]
+filter = "'team' in tags"
+handle_field = "github_handle"
+aliases_field = "nicknames"
+avatar_field = "photo"
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if len(config.Mentions.FromPosts) != 1 {
+		t.Fatalf("len(Mentions.FromPosts) = %d, want 1", len(config.Mentions.FromPosts))
+	}
+
+	src := config.Mentions.FromPosts[0]
+	if src.Filter != "'team' in tags" {
+		t.Errorf("FromPosts[0].Filter = %q, want %q", src.Filter, "'team' in tags")
+	}
+	if src.HandleField != "github_handle" {
+		t.Errorf("FromPosts[0].HandleField = %q, want %q", src.HandleField, "github_handle")
+	}
+	if src.AliasesField != "nicknames" {
+		t.Errorf("FromPosts[0].AliasesField = %q, want %q", src.AliasesField, "nicknames")
+	}
+	if src.AvatarField != "photo" {
+		t.Errorf("FromPosts[0].AvatarField = %q, want %q", src.AvatarField, "photo")
+	}
+}
+
+// TestParseYAML_MentionsFromPostsDefault tests default from_posts in YAML config.
+func TestParseYAML_MentionsFromPostsDefault(t *testing.T) {
+	data := []byte(`
+markata-go:
+  output_dir: public
+  mentions:
+    css_class: mention
+`)
+
+	config, err := ParseYAML(data)
+	if err != nil {
+		t.Fatalf("ParseYAML() error = %v", err)
+	}
+
+	if len(config.Mentions.FromPosts) == 0 {
+		t.Fatal("Mentions.FromPosts should have default entries when not configured")
+	}
+
+	if config.Mentions.FromPosts[0].Filter != "template == 'contact'" {
+		t.Errorf("default FromPosts[0].Filter = %q, want %q",
+			config.Mentions.FromPosts[0].Filter, "template == 'contact'")
+	}
+}
+
+// TestParseJSON_MentionsFromPostsDefault tests default from_posts in JSON config.
+func TestParseJSON_MentionsFromPostsDefault(t *testing.T) {
+	data := []byte(`{
+  "markata-go": {
+    "output_dir": "public",
+    "mentions": {
+      "css_class": "mention"
+    }
+  }
+}`)
+
+	config, err := ParseJSON(data)
+	if err != nil {
+		t.Fatalf("ParseJSON() error = %v", err)
+	}
+
+	if len(config.Mentions.FromPosts) == 0 {
+		t.Fatal("Mentions.FromPosts should have default entries when not configured")
+	}
+
+	if config.Mentions.FromPosts[0].Filter != "template == 'contact'" {
+		t.Errorf("default FromPosts[0].Filter = %q, want %q",
+			config.Mentions.FromPosts[0].Filter, "template == 'contact'")
+	}
+}

@@ -39,12 +39,29 @@ Configure mentions in your `markata-go.toml`:
 [markata-go.mentions]
 enabled = true
 css_class = "mention"  # CSS class for links (default: "mention")
+```
 
-# Source handles from internal posts
+That's it for most use cases! By default, mentions resolves handles from:
+
+1. **Blogroll feeds** (if blogroll is enabled)
+2. **Contact posts** - any post with `template: contact` in frontmatter
+
+The default `from_posts` source is equivalent to:
+
+```toml
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"
-handle_field = "handle"       # Frontmatter field for handle (optional, uses slug if not set)
-aliases_field = "aliases"     # Frontmatter field for aliases (optional)
+filter = "template == 'contact'"
+handle_field = "handle"
+```
+
+You can override this by specifying your own `from_posts` sources:
+
+```toml
+# Custom sources replace the default
+[[markata-go.mentions.from_posts]]
+filter = "'team' in tags"
+handle_field = "github_handle"
+aliases_field = "nicknames"
 ```
 
 ## Resolving from Internal Posts
@@ -63,36 +80,50 @@ Create contact pages with handle information in frontmatter:
 # pages/contact/alice-smith.md
 ---
 title: "Alice Smith"
+template: contact
 tags:
   - contact
 handle: alice
 aliases:
   - alices
   - asmith
+avatar: /images/alice.jpg
+url: https://alicesmith.dev
+description: "Software engineer specializing in Go and web development."
 ---
 
 Alice is a software engineer specializing in Go and web development.
 ```
 
-Configure the mentions plugin to use these posts:
+Configure the mentions plugin to use these posts (or rely on the default which already matches `template: contact`):
 
 ```toml
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"
+filter = "template == 'contact'"
 handle_field = "handle"
 aliases_field = "aliases"
 ```
 
-Now `@alice`, `@alices`, and `@asmith` all link to `/contact/alice-smith/`.
+Now `@alice`, `@alices`, and `@asmith` all link to `/contact/alice-smith/` and display `@alice` as the link text.
+
+The mention hovercard will show the avatar (from the `avatar`, `image`, or `icon` frontmatter field), the post title as the name, and the description as the bio. You can specify which field to use for the avatar with `avatar_field`:
+
+```toml
+[[markata-go.mentions.from_posts]]
+filter = "template == 'contact'"
+handle_field = "handle"
+aliases_field = "aliases"
+avatar_field = "icon"   # Use 'icon' field instead of default lookup order
+```
 
 ### Multiple Sources
 
 You can define multiple `from_posts` sources for different content types:
 
 ```toml
-# Contact pages
+# Contact pages (this is the default, shown here for clarity)
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"
+filter = "template == 'contact'"
 handle_field = "handle"
 aliases_field = "aliases"
 
@@ -192,7 +223,7 @@ Follow @example on social       <!-- Transformed -->
 |--------|------|---------|-------------|
 | `enabled` | bool | `true` | Enable/disable mentions processing |
 | `css_class` | string | `"mention"` | CSS class for mention links |
-| `from_posts` | array | `[]` | List of internal post sources |
+| `from_posts` | array | see below | List of internal post sources. Default: one source with `filter = "template == 'contact'"` and `handle_field = "handle"` |
 
 ### from_posts Options
 
@@ -201,6 +232,7 @@ Follow @example on social       <!-- Transformed -->
 | `filter` | string | required | Filter expression to select posts |
 | `handle_field` | string | (slug) | Frontmatter field for handle |
 | `aliases_field` | string | - | Frontmatter field for aliases |
+| `avatar_field` | string | - | Frontmatter field for avatar URL. If not set, checks `avatar`, `image`, `icon` in order |
 
 ## Examples
 

@@ -25,6 +25,9 @@
 {% elif post.template == "gratitude" or post.template == "inline" or post.template == "micro" %}
 {% include "partials/cards/inline-card.html" %}
 
+{% elif post.template == "contact" or post.template == "character" or post.template == "person" %}
+{% include "partials/cards/contact-card.html" %}
+
 {% else %}
 {% include "partials/cards/default-card.html" %}
 {% endif %}

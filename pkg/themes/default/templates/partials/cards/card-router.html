@@ -1,6 +1,6 @@
 {# Card Router - Routes to appropriate card template based on config mapping #}
 {# Uses config.components.card_router.mappings to determine card type #}
-{# Card types: article, note, photo, video, link, quote, guide, inline, default #}
+{# Card types: article, note, photo, video, link, quote, guide, inline, contact, default #}
 
 {# Look up card type from config mappings, defaulting to "default" #}
 {% with card_type=config.components.card_router.mappings|getitem:post.template|default:"default" %}
@@ -28,6 +28,9 @@
 
 {% elif card_type == "inline" %}
 {% include "partials/cards/inline-card.html" %}
+
+{% elif card_type == "contact" %}
+{% include "partials/cards/contact-card.html" %}
 
 {% else %}
 {% include "partials/cards/default-card.html" %}

@@ -26,11 +26,12 @@ Handle pattern: `@[a-zA-Z][a-zA-Z0-9_-]*`
 enabled = true                    # Enable/disable the plugin (default: true)
 css_class = "mention"             # CSS class for links (default: "mention")
 
-# Source handles from internal posts
+# Source handles from internal posts (optional - a default source is provided, see below)
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"      # Filter expression to select posts
+filter = "template == 'contact'"  # Filter expression to select posts
 handle_field = "handle"           # Frontmatter field for handle (optional, uses slug if not set)
 aliases_field = "aliases"         # Frontmatter field for aliases (optional)
+avatar_field = "avatar"           # Frontmatter field for avatar URL (optional, auto-detects if not set)
 ```
 
 ### Configuration Fields
@@ -39,7 +40,19 @@ aliases_field = "aliases"         # Frontmatter field for aliases (optional)
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Enable/disable mentions processing |
 | `css_class` | string | `"mention"` | CSS class applied to mention links |
-| `from_posts` | array | `[]` | List of internal post sources |
+| `from_posts` | array | see below | List of internal post sources |
+
+### from_posts Default
+
+When no `from_posts` sources are configured (or when a `[markata-go.mentions]` section exists without any `[[markata-go.mentions.from_posts]]` entries), a default source is used:
+
+```toml
+[[markata-go.mentions.from_posts]]
+filter = "template == 'contact'"
+handle_field = "handle"
+```
+
+This means any post with `template: contact` in its frontmatter is automatically available as a mentionable contact. To disable this default, set `from_posts` to an explicit source with a different filter.
 
 ### from_posts Fields
 
@@ -48,6 +61,7 @@ aliases_field = "aliases"         # Frontmatter field for aliases (optional)
 | `filter` | string | Yes | Filter expression to select posts |
 | `handle_field` | string | No | Frontmatter field containing the handle (defaults to post slug) |
 | `aliases_field` | string | No | Frontmatter field containing handle aliases |
+| `avatar_field` | string | No | Frontmatter field containing avatar URL. If not set, checks `avatar`, `image`, `icon` in order |
 
 ## Handle Resolution
 
@@ -89,12 +103,16 @@ Example post frontmatter:
 ---
 title: "Alice Smith"
 slug: alice-smith
+template: contact
 tags:
   - contact
 handle: alice
 aliases:
   - alices
   - asmith
+avatar: /images/alice.jpg
+url: https://alicesmith.dev
+description: "Software engineer specializing in Go and web development."
 ---
 ```
 
@@ -102,7 +120,7 @@ With config:
 
 ```toml
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"
+filter = "template == 'contact'"
 handle_field = "handle"
 aliases_field = "aliases"
 ```
@@ -162,15 +180,28 @@ const handle = "@alice";
 
 ### Generated HTML
 
+For external mentions (blogroll):
+
 ```html
-<a href="/contact/alice/" class="mention">@alice</a>
+<a href="https://example.com" class="mention" data-name="Example Blog" data-bio="A great blog" data-avatar="https://example.com/avatar.jpg" data-handle="@example">@example</a>
+```
+
+For internal mentions (from_posts), the link points to the contact page and includes metadata for hovercards:
+
+```html
+<a href="/contact/alice-smith/" class="mention" data-name="Alice Smith" data-bio="Software engineer specializing in Go and web development." data-avatar="/images/alice.jpg" data-handle="@alice">@alice</a>
 ```
 
 Attributes:
-- `href` - Link target URL
+- `href` - Link target URL (contact page for internal, site URL for external)
 - `class` - Configured CSS class (default: "mention")
+- `data-name` - Display name (from metadata or post title)
+- `data-bio` - Bio/description (from metadata or post description)
+- `data-avatar` - Avatar URL (from metadata or post frontmatter)
+- `data-handle` - The original @handle
 
-The `@` symbol is included in the link text.
+The display text is always `@handle` for both internal and external mentions.
+The `data-name`, `data-bio`, and `data-avatar` attributes provide hovercard data.
 
 ## Lifecycle Stage
 
@@ -195,6 +226,7 @@ type MentionPostSource struct {
     Filter       string // Filter expression (required)
     HandleField  string // Frontmatter field for handle (optional)
     AliasesField string // Frontmatter field for aliases (optional)
+    AvatarField  string // Frontmatter field for avatar URL (optional)
 }
 ```
 
@@ -253,7 +285,7 @@ site_url = "https://external.com"
 
 # Internal contacts
 [[markata-go.mentions.from_posts]]
-filter = "'contact' in tags"
+filter = "template == 'contact'"
 handle_field = "handle"
 aliases_field = "aliases"
 
@@ -266,10 +298,13 @@ filter = "'project' in tags"
 ### Minimal Configuration
 
 ```toml
-# Just enable with defaults - uses blogroll handles only
+# Just enable with defaults - automatically picks up template: contact posts
+# and blogroll handles
 [markata-go.mentions]
 enabled = true
 ```
+
+This uses the default `from_posts` source (`template == 'contact'` filter with `handle` field), so any post with `template: contact` frontmatter is automatically mentionable.
 
 ## Related Features
 

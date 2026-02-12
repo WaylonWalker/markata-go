@@ -704,7 +704,7 @@ func TestMentionsPlugin_Transform_FromPosts(t *testing.T) {
 		t.Fatal("could not find transformed blog post")
 	}
 
-	want := `I recently collaborated with <a href="/contact/alice/" class="mention">@alice</a> on a project.`
+	want := `I recently collaborated with <a href="/contact/alice/" class="mention" data-name="Alice Smith" data-handle="@alice">@alice</a> on a project.`
 	if transformedPost.Content != want {
 		t.Errorf("Content = %q, want %q", transformedPost.Content, want)
 	}
@@ -769,5 +769,306 @@ func TestMentionsPlugin_CombinedSources(t *testing.T) {
 		t.Error("expected 'alice' from from_posts in handleMap")
 	} else if entry.SiteURL != "/contact/alice/" {
 		t.Errorf("alice.SiteURL = %q, want %q", entry.SiteURL, "/contact/alice/")
+	}
+}
+
+func TestMentionsPlugin_BuildPostMetadata(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	tests := []struct {
+		name       string
+		post       *models.Post
+		source     models.MentionPostSource
+		wantName   string
+		wantBio    string
+		wantAvatar string
+	}{
+		{
+			name: "all fields present with avatar",
+			post: func() *models.Post {
+				title := "Alice Smith"
+				desc := "Software engineer"
+				return &models.Post{
+					Title:       &title,
+					Description: &desc,
+					Slug:        "alice",
+					Href:        "/contact/alice/",
+					Extra: map[string]interface{}{
+						"avatar": "/images/alice.jpg",
+					},
+				}
+			}(),
+			source:     models.MentionPostSource{},
+			wantName:   "Alice Smith",
+			wantBio:    "Software engineer",
+			wantAvatar: "/images/alice.jpg",
+		},
+		{
+			name: "image field as avatar fallback",
+			post: func() *models.Post {
+				title := "Bob Jones"
+				return &models.Post{
+					Title: &title,
+					Slug:  "bob",
+					Href:  "/contact/bob/",
+					Extra: map[string]interface{}{
+						"image": "/images/bob.png",
+					},
+				}
+			}(),
+			source:     models.MentionPostSource{},
+			wantName:   "Bob Jones",
+			wantAvatar: "/images/bob.png",
+		},
+		{
+			name: "icon field as avatar fallback",
+			post: func() *models.Post {
+				title := "Charlie"
+				return &models.Post{
+					Title: &title,
+					Slug:  "charlie",
+					Href:  "/contact/charlie/",
+					Extra: map[string]interface{}{
+						"icon": "/icons/charlie.svg",
+					},
+				}
+			}(),
+			source:     models.MentionPostSource{},
+			wantName:   "Charlie",
+			wantAvatar: "/icons/charlie.svg",
+		},
+		{
+			name: "avatar_field config overrides default lookup",
+			post: func() *models.Post {
+				title := "Dana"
+				return &models.Post{
+					Title: &title,
+					Slug:  "dana",
+					Href:  "/contact/dana/",
+					Extra: map[string]interface{}{
+						"avatar":   "/images/dana-avatar.jpg",
+						"portrait": "/images/dana-portrait.jpg",
+					},
+				}
+			}(),
+			source:     models.MentionPostSource{AvatarField: "portrait"},
+			wantName:   "Dana",
+			wantAvatar: "/images/dana-portrait.jpg",
+		},
+		{
+			name: "avatar field priority: avatar over image",
+			post: func() *models.Post {
+				title := "Eve"
+				return &models.Post{
+					Title: &title,
+					Slug:  "eve",
+					Href:  "/contact/eve/",
+					Extra: map[string]interface{}{
+						"avatar": "/images/eve-avatar.jpg",
+						"image":  "/images/eve-photo.jpg",
+						"icon":   "/icons/eve.svg",
+					},
+				}
+			}(),
+			source:     models.MentionPostSource{},
+			wantName:   "Eve",
+			wantAvatar: "/images/eve-avatar.jpg",
+		},
+		{
+			name: "no avatar fields present",
+			post: func() *models.Post {
+				title := "Frank"
+				return &models.Post{
+					Title: &title,
+					Slug:  "frank",
+					Href:  "/contact/frank/",
+					Extra: map[string]interface{}{},
+				}
+			}(),
+			source:     models.MentionPostSource{},
+			wantName:   "Frank",
+			wantAvatar: "",
+		},
+		{
+			name: "no title falls back to slug",
+			post: &models.Post{
+				Slug: "ghost",
+				Href: "/contact/ghost/",
+			},
+			source:   models.MentionPostSource{},
+			wantName: "ghost",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metadata := p.buildPostMetadata(tt.post, tt.source)
+			if metadata == nil {
+				t.Fatal("buildPostMetadata returned nil")
+			}
+			if metadata.Name != tt.wantName {
+				t.Errorf("Name = %q, want %q", metadata.Name, tt.wantName)
+			}
+			if metadata.Bio != tt.wantBio {
+				t.Errorf("Bio = %q, want %q", metadata.Bio, tt.wantBio)
+			}
+			if metadata.Avatar != tt.wantAvatar {
+				t.Errorf("Avatar = %q, want %q", metadata.Avatar, tt.wantAvatar)
+			}
+			if metadata.URL != tt.post.Href {
+				t.Errorf("URL = %q, want %q", metadata.URL, tt.post.Href)
+			}
+		})
+	}
+}
+
+func TestMentionsPlugin_InternalMentionDisplaysHandle(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	// Simulate a mention entry with metadata (as built from internal post)
+	handleMap := map[string]*mentionEntry{
+		"alice": {
+			Handle:  "alice",
+			SiteURL: "/contact/alice/",
+			Title:   "Alice Smith",
+			Metadata: &models.MentionMetadata{
+				Name:   "Alice Smith",
+				Bio:    "Software engineer",
+				Avatar: "/images/alice.jpg",
+				URL:    "/contact/alice/",
+			},
+		},
+	}
+
+	content := "I was working with @alice on this project."
+	got := p.processMentionsWithMetadata(content, handleMap)
+
+	// Should display @handle as link text (not the title)
+	wantContains := `>@alice</a>`
+	if !strings.Contains(got, wantContains) {
+		t.Errorf("expected @handle display text, got: %q", got)
+	}
+
+	// Should include data attributes for hovercard
+	if !strings.Contains(got, `data-name="Alice Smith"`) {
+		t.Error("missing data-name attribute")
+	}
+	if !strings.Contains(got, `data-bio="Software engineer"`) {
+		t.Error("missing data-bio attribute")
+	}
+	if !strings.Contains(got, `data-avatar="/images/alice.jpg"`) {
+		t.Error("missing data-avatar attribute")
+	}
+	if !strings.Contains(got, `data-handle="@alice"`) {
+		t.Error("missing data-handle attribute")
+	}
+
+	// Should link to the contact page
+	if !strings.Contains(got, `href="/contact/alice/"`) {
+		t.Error("missing href to contact page")
+	}
+}
+
+func TestMentionsPlugin_ExternalMentionDisplaysHandle(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	// External mention without metadata (e.g., fetch failed or not yet fetched)
+	handleMap := map[string]*mentionEntry{
+		"daverupert": {
+			Handle:  "daverupert",
+			SiteURL: "https://daverupert.com",
+			Title:   "Dave Rupert",
+		},
+	}
+
+	content := "Check out @daverupert"
+	got := p.processMentionsWithMetadata(content, handleMap)
+
+	// Without metadata, should display @handle
+	wantContains := `>@daverupert</a>`
+	if !strings.Contains(got, wantContains) {
+		t.Errorf("expected @handle display text for external mention without metadata, got: %q", got)
+	}
+}
+
+func TestMentionsPlugin_FromPosts_WithMetadata(t *testing.T) {
+	p := NewMentionsPlugin()
+	m := lifecycle.NewManager()
+
+	// Configure mentions with from_posts
+	config := m.Config()
+	config.Extra = map[string]interface{}{
+		"mentions": models.MentionsConfig{
+			FromPosts: []models.MentionPostSource{
+				{
+					Filter:      "'contact' in tags",
+					HandleField: "handle",
+				},
+			},
+		},
+	}
+
+	// Add a contact post with avatar
+	aliceTitle := "Alice Smith"
+	aliceDesc := "Software engineer"
+	contactPost := &models.Post{
+		Path:        "pages/contact/alice.md",
+		Slug:        "contact/alice",
+		Href:        "/contact/alice/",
+		Title:       &aliceTitle,
+		Description: &aliceDesc,
+		Tags:        []string{"contact"},
+		Extra: map[string]interface{}{
+			"handle": "alice",
+			"avatar": "/images/alice.jpg",
+		},
+	}
+
+	m.AddPost(contactPost)
+
+	handleMap := p.buildHandleMap(m)
+
+	// Check that metadata is populated from post
+	entry, ok := handleMap["alice"]
+	if !ok {
+		t.Fatal("expected 'alice' in handleMap")
+	}
+
+	if entry.Metadata == nil {
+		t.Fatal("expected Metadata to be populated from post")
+	}
+
+	if entry.Metadata.Name != "Alice Smith" {
+		t.Errorf("Metadata.Name = %q, want %q", entry.Metadata.Name, "Alice Smith")
+	}
+	if entry.Metadata.Bio != "Software engineer" {
+		t.Errorf("Metadata.Bio = %q, want %q", entry.Metadata.Bio, "Software engineer")
+	}
+	if entry.Metadata.Avatar != "/images/alice.jpg" {
+		t.Errorf("Metadata.Avatar = %q, want %q", entry.Metadata.Avatar, "/images/alice.jpg")
+	}
+}
+
+func TestGetStringField(t *testing.T) {
+	tests := []struct {
+		name  string
+		extra map[string]interface{}
+		key   string
+		want  string
+	}{
+		{"string value", map[string]interface{}{"avatar": "/img.jpg"}, "avatar", "/img.jpg"},
+		{"missing key", map[string]interface{}{"other": "val"}, "avatar", ""},
+		{"nil map", nil, "avatar", ""},
+		{"non-string value", map[string]interface{}{"avatar": 42}, "avatar", ""},
+		{"empty string", map[string]interface{}{"avatar": ""}, "avatar", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getStringField(tt.extra, tt.key)
+			if got != tt.want {
+				t.Errorf("getStringField() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }

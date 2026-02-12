@@ -675,7 +675,13 @@ func (idx *Index) indexFromPostsMentions(rootPath string) {
 		}
 
 		if len(sources) == 0 {
-			continue
+			// Fall back to default: template == 'contact' posts
+			sources = []mentionPostSource{
+				{
+					Filter:      "template == 'contact'",
+					HandleField: "handle",
+				},
+			}
 		}
 
 		// Get all unique posts (filter out alias entries)
@@ -724,6 +730,7 @@ type mentionPostSource struct {
 	Filter       string `toml:"filter" yaml:"filter"`
 	HandleField  string `toml:"handle_field" yaml:"handle_field"`
 	AliasesField string `toml:"aliases_field" yaml:"aliases_field"`
+	AvatarField  string `toml:"avatar_field" yaml:"avatar_field"`
 }
 
 // parseMentionsFromPostsTOML extracts from_posts config from TOML content.
