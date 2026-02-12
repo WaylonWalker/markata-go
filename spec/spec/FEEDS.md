@@ -17,8 +17,8 @@ Feeds are the core differentiator of this static site generator. A feed is a **f
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         OUTPUT FORMATS                               │
 ├──────────┬──────────┬──────────┬──────────┬──────────┬─────────────┤
-│   HTML   │   RSS    │   Atom   │   JSON   │ Markdown │    Text     │ Sitemap  │
-│  index   │   feed   │   feed   │   API    │   list   │   list      │   XML    │
+│   HTML   │  Simple  │   RSS    │   Atom   │   JSON   │ Markdown │    Text     │ Sitemap  │
+│  index   │  list    │   feed   │   feed   │   API    │   list   │   list      │   XML    │
 └──────────┴──────────┴──────────┴──────────┴──────────┴─────────────┴──────────┘
 ```
 
@@ -66,6 +66,7 @@ orphan_threshold = 3               # If last page has ≤3 items, merge with pre
 # Output Formats (all optional, defaults shown)
 [markata-go.feeds.formats]
 html = true                        # /blog/index.html, /blog/page/2/index.html
+simple_html = true                 # /blog/simple/index.html (compact list view)
 rss = true                         # /blog/rss.xml
 atom = true                        # /blog/atom.xml
 json = true                        # /blog/feed.json
@@ -76,6 +77,7 @@ sitemap = false                    # /blog/sitemap.xml
 # Templates (can override per-format)
 [markata-go.feeds.templates]
 html = "feed.html"                 # Template for HTML pages
+simple_html = "simple-feed.html"   # Template for simple list pages
 card = "partials/card.html"        # Template for post cards in list
 rss = "rss.xml"                    # Template for RSS (usually default)
 atom = "atom.xml"                  # Template for Atom
@@ -102,7 +104,7 @@ sitemap = "sitemap.xml"            # Template for sitemap
 | `posts` | List[Post] | All matching posts (pre-pagination) |
 | `page_posts` | List[Post] | Posts for current page |
 | `pagination` | Pagination | Pagination info |
-| `formats` | FeedFormats | Enabled output formats (html, rss, atom, json, markdown, text, sitemap) |
+| `formats` | FeedFormats | Enabled output formats (html, simple_html, rss, atom, json, markdown, text, sitemap) |
 
 ### Feed Timestamps
 
@@ -454,6 +456,46 @@ Paginated HTML index pages.
 ```
 
 **Default template:** `feed.html`
+
+---
+
+### Simple HTML
+
+A compact, dense list view of posts designed for scanning many posts quickly.
+Each post renders as a single line with title (anchor link), date, and reading time.
+
+**Output paths:**
+```
+/blog/simple/index.html           # Page 1
+/blog/simple/page/2/index.html    # Page 2
+/blog/simple/page/3/index.html    # Page 3
+```
+
+**Design goals:**
+- Dense list optimized for scanning many posts at a glance
+- Each post fits on one line on desktop: `Title (link)  ·  Date  ·  Reading Time`
+- Wraps gracefully on mobile (stacks vertically within each entry)
+- Uses semantic HTML (`<ol>` list) with microformats2 (`h-feed`, `h-entry`)
+- Links back to the rich HTML feed view for full card layout
+
+**Default template:** `simple-feed.html`
+
+**Template context:** Same as HTML feed (`feed`, `page`, `config`).
+
+**Configuration:**
+
+```toml
+# Enable/disable simple HTML format (default: true)
+[markata-go.feeds.formats]
+simple_html = true                 # /blog/simple/index.html
+```
+
+**Custom template:**
+
+```toml
+[markata-go.feeds.templates]
+simple_html = "simple-feed.html"   # Override the simple feed page template
+```
 
 ---
 
@@ -964,6 +1006,7 @@ Feed configuration follows a **defaults → override** pattern. Global defaults 
 | Items per page | `defaults.items_per_page` | `items_per_page` |
 | Orphan threshold | `defaults.orphan_threshold` | `orphan_threshold` |
 | HTML format | `defaults.formats.html` | `formats.html` |
+| Simple HTML format | `defaults.formats.simple_html` | `formats.simple_html` |
 | RSS format | `defaults.formats.rss` | `formats.rss` |
 | Atom format | `defaults.formats.atom` | `formats.atom` |
 | JSON format | `defaults.formats.json` | `formats.json` |
@@ -1114,6 +1157,7 @@ orphan_threshold = 3
 # Formats enabled by default
 [markata-go.feeds.defaults.formats]
 html = true
+simple_html = true
 rss = true
 atom = false
 json = false
@@ -1124,6 +1168,7 @@ sitemap = false
 # Templates used by default
 [markata-go.feeds.defaults.templates]
 html = "feed.html"
+simple_html = "simple-feed.html"
 card = "partials/card.html"
 rss = "rss.xml"
 atom = "atom.xml"
@@ -1147,6 +1192,7 @@ If no `[markata-go.feeds.defaults]` is specified, these built-in values apply:
 | `items_per_page` | 10 |
 | `orphan_threshold` | 3 |
 | `formats.html` | true |
+| `formats.simple_html` | true |
 | `formats.rss` | true |
 | `formats.atom` | true |
 | `formats.json` | true |
@@ -1161,6 +1207,7 @@ If no `[markata-go.feeds.defaults]` is specified, these built-in values apply:
 | Format | Default Limit | Configurable |
 |--------|---------------|--------------|
 | HTML | Paginated | `items_per_page` |
+| Simple HTML | Paginated | `items_per_page` |
 | RSS | 20 | `syndication.max_items` or `max_items` |
 | Atom | 20 | `syndication.max_items` or `max_items` |
 | JSON | All | `items_per_page` |

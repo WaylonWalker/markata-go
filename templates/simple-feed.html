@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}{{ feed.title | default:config.title | default:"Posts" }} (Simple){% endblock %}
+{% block description %}{{ feed.description | default:config.description | default:"" }}{% endblock %}
+
+{% block content %}
+<div class="feed feed-simple h-feed">
+  <header class="feed-simple-header">
+    <h1 class="p-name">{{ feed.title | default:"Posts" }}</h1>
+    {% if feed.description %}
+    <p class="p-summary">{{ feed.description }}</p>
+    {% endif %}
+    <nav class="feed-simple-nav" aria-label="Feed views">
+      <a href="{{ feed.href }}">Full view</a>
+      <span class="feed-simple-nav-current" aria-current="page">Simple list</span>
+    </nav>
+  </header>
+
+  <ol class="simple-list" id="posts-list">
+    {% for post in page.posts %}
+    {% include "partials/cards/simple-card.html" %}
+    {% endfor %}
+  </ol>
+
+  {% include "partials/pagination.html" %}
+</div>
+{% endblock %}
