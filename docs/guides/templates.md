@@ -275,6 +275,7 @@ When rendering feeds/archives, these additional variables are available:
 |--------|---------|-------------|
 | `safe` | `{{ html\|safe }}` | Mark HTML as safe (don't escape) |
 | `escape` | `{{ text\|escape }}` | HTML escape (default behavior) |
+| `plaintext` | `{{ html\|plaintext }}` | Convert HTML to clean plain text (entities decoded, tags stripped, links as footnotes) |
 | `linebreaks` | `{{ text\|linebreaks }}` | Convert newlines to `<p>` and `<br>` |
 | `linebreaksbr` | `{{ text\|linebreaksbr }}` | Convert newlines to `<br>` |
 
@@ -1020,6 +1021,60 @@ All card templates include appropriate microformat classes:
 Test your microformats with:
 - [IndieWebify.me](https://indiewebify.me/) - Validate h-entry markup
 - [Pin13](https://pin13.net/mf2/) - Parse and view microformats
+
+---
+
+## Text Templates
+
+markata-go generates `.txt` versions of posts for consumers that need plain text (LLMs, CLI tools, accessibility readers, etc.). Text templates require special handling because pongo2 auto-escapes all `{{ }}` output by default, which would produce HTML entities (`&amp;`, `&lt;`) in plain text files.
+
+### The `plaintext` Filter
+
+Use `|plaintext` for any variable that contains HTML content (like rendered Markdown):
+
+```django
+{{ post.content|plaintext }}
+```
+
+This filter:
+1. Strips all HTML tags
+2. Decodes HTML entities to literal characters
+3. Converts `<a href="...">` links to footnote-style references
+4. Marks the output as safe so pongo2 won't re-escape it
+
+### The `safe` Filter for Metadata
+
+For plain text strings that never contain HTML (like title and description), use `|safe` to prevent auto-escaping:
+
+```django
+{{ post.title|safe }}
+{{ post.description|safe }}
+```
+
+### Example: default.txt
+
+```django
+{{ post.title|safe }}
+
+{{ post.description|safe }}
+
+{{ post.content|plaintext }}
+```
+
+### Link Footnotes
+
+Links in HTML content are converted to numbered footnote references:
+
+```
+Read the Go docs [1] for more info. See also the
+Go blog [2] for tutorials.
+
+References:
+[1]: https://go.dev/doc/
+[2]: https://go.dev/blog/
+```
+
+Duplicate URLs reuse the same reference number. When link text is the same as the URL, no footnote marker is added.
 
 ---
 

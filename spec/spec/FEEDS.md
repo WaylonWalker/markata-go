@@ -596,6 +596,31 @@ Simple text list (useful for APIs, scripts, minimal readers).
 {% endfor %}
 ```
 
+#### Text Output Encoding
+
+Text output (`.txt` files for both feeds and individual posts) MUST produce clean plain text with no HTML artifacts:
+
+1. **No HTML entities** - Characters like `&`, `<`, `>`, `"` appear as literal characters, never as `&amp;`, `&lt;`, `&gt;`, `&quot;`
+2. **No HTML tags** - All HTML tags are stripped from the output
+3. **Footnote-style links** - Links from HTML content are converted to numbered footnote references:
+   ```
+   Read the Go docs [1] for more info.
+
+   References:
+   [1]: https://go.dev/doc/
+   ```
+4. **Block structure preserved** - Block-level HTML elements produce appropriate line breaks in text output
+
+This applies to:
+- Individual post `.txt` output (rendered through `default.txt` template using the `plaintext` filter)
+- The `buildTextContentFallback()` code path (when no template engine is available)
+- Feed listing `.txt` output already handles entity decoding via `html.UnescapeString()`
+
+**Implementation notes:**
+- The `plaintext` template filter handles HTML-to-text conversion and marks output as safe to prevent template engine re-escaping
+- Plain text metadata fields (title, description) that never contain HTML should use the `safe` filter to prevent auto-escaping
+- RSS/Atom/XML output is NOT affected - entities in XML output are correct and expected
+
 ---
 
 ### Sitemap

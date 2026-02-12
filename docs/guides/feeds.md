@@ -509,6 +509,8 @@ Latest blog posts
   /another-post/
 ```
 
+Text output always produces clean plain text -- HTML entities are decoded to their literal characters and no HTML tags appear in the output. Links from HTML content are converted to footnote-style references. See the [Templates Guide](/docs/guides/templates/#text-templates) for details on using the `plaintext` filter.
+
 ### Sitemap
 
 XML sitemap for search engines.

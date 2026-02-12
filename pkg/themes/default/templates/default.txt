@@ -1,8 +1,8 @@
-{% if post.title %}{{ post.title }}
+{% if post.title %}{{ post.title|safe }}
 {{ post.title|length|repeat:"=" }}
 
-{% endif %}{% if post.description %}{{ post.description }}
+{% endif %}{% if post.description %}{{ post.description|safe }}
 
 {% endif %}{% if post.date %}Date: {{ post.date|date:"January 2, 2006" }}
 
-{% endif %}{{ post.content }}
+{% endif %}{{ post.content|plaintext }}

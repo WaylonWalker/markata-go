@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/htmltotext"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 
 	"github.com/flosch/pongo2/v6"
@@ -131,6 +132,7 @@ func registerFilters() {
 
 		// HTML/text filters
 		pongo2.ReplaceFilter("striptags", filterStripTags)
+		pongo2.RegisterFilter("plaintext", filterPlaintext)
 		pongo2.RegisterFilter("linebreaks", filterLinebreaks)
 		pongo2.RegisterFilter("linebreaksbr", filterLinebreaksBR)
 
@@ -582,6 +584,20 @@ func filterStripTags(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	s = strings.TrimSpace(s)
 
 	return pongo2.AsValue(s), nil
+}
+
+// filterPlaintext converts HTML content to plain text with footnote-style link
+// references. It decodes HTML entities, strips tags while preserving block
+// structure, and formats links as "[text] [N]" with a references section.
+// The output is marked as safe to prevent pongo2 from re-escaping entities.
+//
+// Usage: {{ post.content | plaintext }}
+func filterPlaintext(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	s := in.String()
+	if s == "" {
+		return pongo2.AsSafeValue(""), nil
+	}
+	return pongo2.AsSafeValue(htmltotext.Convert(s)), nil
 }
 
 // filterLinebreaks converts newlines to <p> and <br> tags.

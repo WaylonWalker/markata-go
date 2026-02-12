@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/htmltotext"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -437,6 +438,7 @@ func (p *PublishHTMLPlugin) resolveTextTemplate(post *models.Post, engine *templ
 // buildTextContentFallback builds plain text content without templates.
 // This is the fallback when no template engine is available.
 // Returns plain text with title, description, date, and content.
+// HTML content is converted to plain text with footnote-style link references.
 func (p *PublishHTMLPlugin) buildTextContentFallback(post *models.Post) string {
 	var buf strings.Builder
 
@@ -461,8 +463,8 @@ func (p *PublishHTMLPlugin) buildTextContentFallback(post *models.Post) string {
 		buf.WriteString("\n\n")
 	}
 
-	// Write the raw content (without markdown processing)
-	buf.WriteString(post.Content)
+	// Convert HTML content to plain text with footnote-style links
+	buf.WriteString(htmltotext.Convert(post.Content))
 
 	return buf.String()
 }
