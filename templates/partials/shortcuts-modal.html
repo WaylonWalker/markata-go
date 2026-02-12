@@ -90,7 +90,8 @@
                 </table>
             </section>
 
-            {# Theme Section #}
+            {# Theme Section - only shown when theme switcher is enabled #}
+            {% if config.theme.switcher.enabled %}
             <section class="shortcuts-section">
                 <h3 class="shortcuts-section-title">Theme</h3>
                 <table class="shortcuts-table">
@@ -110,6 +111,7 @@
                     </tbody>
                 </table>
             </section>
+            {% endif %}
 
             {# Utility Section #}
             <section class="shortcuts-section">
