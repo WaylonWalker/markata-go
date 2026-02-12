@@ -110,6 +110,7 @@ type mentionEntry struct {
 	Handle   string
 	SiteURL  string
 	Title    string
+	Internal bool // true for from_posts entries, false for blogroll entries
 	Metadata *models.MentionMetadata
 }
 
@@ -502,8 +503,13 @@ func (p *MentionsPlugin) extractUniqueDomains(handleMap map[string]*mentionEntry
 }
 
 // attachMetadataToEntries attaches fetched metadata to mention entries.
+// Entries that already have metadata (e.g., from internal posts) are skipped.
 func (p *MentionsPlugin) attachMetadataToEntries(handleMap map[string]*mentionEntry, domainMap map[string]*models.MentionMetadata) {
 	for _, entry := range handleMap {
+		// Skip entries that already have metadata (e.g., from internal posts)
+		if entry.Metadata != nil {
+			continue
+		}
 		if entry.SiteURL != "" {
 			if parsed, err := url.Parse(entry.SiteURL); err == nil {
 				domain := strings.ToLower(parsed.Hostname())
@@ -601,7 +607,7 @@ func (p *MentionsPlugin) processMentionsInText(text string, handleMap map[string
 			dataAttrs += fmt.Sprintf(` data-handle=%q`, html.EscapeString("@"+entry.Handle))
 		}
 
-		// Build the HTML link
+		// Build the HTML link — always display @handle as the link text
 		link := fmt.Sprintf(`<a href=%q class=%q%s>@%s</a>`,
 			html.EscapeString(entry.SiteURL),
 			html.EscapeString(p.cssClass),
@@ -735,11 +741,16 @@ func (p *MentionsPlugin) registerPostAsHandle(post *models.Post, source models.M
 		title = *post.Title
 	}
 
+	// Build metadata from the post's frontmatter fields
+	metadata := p.buildPostMetadata(post, source)
+
 	// Create the entry with the post's Href as the URL
 	entry := &mentionEntry{
-		Handle:  handle,
-		SiteURL: post.Href,
-		Title:   title,
+		Handle:   handle,
+		SiteURL:  post.Href,
+		Title:    title,
+		Internal: true,
+		Metadata: metadata,
 	}
 
 	// Register the handle (first entry wins)
@@ -810,6 +821,75 @@ func (p *MentionsPlugin) getAliasesFromPost(post *models.Post, fieldName string)
 	}
 
 	return nil
+}
+
+// buildPostMetadata creates MentionMetadata from a post's frontmatter fields.
+// This allows internal posts (contacts, characters, etc.) to provide hovercard
+// data directly from frontmatter instead of fetching from HTTP.
+func (p *MentionsPlugin) buildPostMetadata(post *models.Post, source models.MentionPostSource) *models.MentionMetadata {
+	metadata := &models.MentionMetadata{
+		URL:         post.Href,
+		LastFetched: time.Now(),
+	}
+
+	// Name from post title
+	if post.Title != nil {
+		metadata.Name = *post.Title
+	} else {
+		metadata.Name = post.Slug
+	}
+
+	// Bio from post description
+	if post.Description != nil {
+		metadata.Bio = *post.Description
+	}
+
+	// Avatar: try configured field first, then default fields
+	metadata.Avatar = p.getAvatarFromPost(post, source.AvatarField)
+
+	return metadata
+}
+
+// avatarDefaultFields are the frontmatter fields checked for avatar URLs
+// when no explicit avatar_field is configured. Checked in order.
+var avatarDefaultFields = []string{"avatar", "image", "icon"}
+
+// getAvatarFromPost extracts an avatar URL from a post's frontmatter.
+// If avatarField is specified, it checks only that field.
+// Otherwise, it checks "avatar", "image", and "icon" fields in order.
+func (p *MentionsPlugin) getAvatarFromPost(post *models.Post, avatarField string) string {
+	if post.Extra == nil {
+		return ""
+	}
+
+	// If a specific field is configured, use only that
+	if avatarField != "" {
+		return getStringField(post.Extra, avatarField)
+	}
+
+	// Check default fields in order
+	for _, field := range avatarDefaultFields {
+		if value := getStringField(post.Extra, field); value != "" {
+			return value
+		}
+	}
+
+	return ""
+}
+
+// getStringField extracts a string value from a map, returning "" if not found or not a string.
+func getStringField(extra map[string]interface{}, key string) string {
+	if extra == nil {
+		return ""
+	}
+	value, ok := extra[key]
+	if !ok {
+		return ""
+	}
+	if str, ok := value.(string); ok {
+		return str
+	}
+	return ""
 }
 
 // getMentionsConfig retrieves mentions configuration from the manager config.
