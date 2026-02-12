@@ -197,15 +197,19 @@
       }
     });
 
-    // Register ? for help modal
+    // Register ? for help modal (toggles open/close)
     window.shortcutsRegistry.register({
       key: '?',
       modifiers: [],
-      description: 'Show shortcuts help',
+      description: 'Toggle shortcuts help',
       group: 'help',
       handler: function(e) {
         e.preventDefault();
-        showShortcutsModal();
+        if (isModalOpen()) {
+          hideShortcutsModal();
+        } else {
+          showShortcutsModal();
+        }
       },
       priority: 100
     });
