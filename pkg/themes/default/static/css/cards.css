@@ -667,6 +667,22 @@
   overflow: hidden;
 }
 
+.card-contact-site {
+  display: inline-block;
+  font-size: var(--text-sm);
+  color: var(--color-link);
+  margin-top: var(--space-1);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.card-contact-site:hover {
+  text-decoration: underline;
+}
+
 .card-contact .card-meta {
   margin-top: var(--space-3);
 }

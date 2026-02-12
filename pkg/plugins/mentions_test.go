@@ -704,7 +704,7 @@ func TestMentionsPlugin_Transform_FromPosts(t *testing.T) {
 		t.Fatal("could not find transformed blog post")
 	}
 
-	want := `I recently collaborated with <a href="/contact/alice/" class="mention" data-name="Alice Smith" data-handle="@alice">Alice Smith</a> on a project.`
+	want := `I recently collaborated with <a href="/contact/alice/" class="mention" data-name="Alice Smith" data-handle="@alice">@alice</a> on a project.`
 	if transformedPost.Content != want {
 		t.Errorf("Content = %q, want %q", transformedPost.Content, want)
 	}
@@ -922,16 +922,15 @@ func TestMentionsPlugin_BuildPostMetadata(t *testing.T) {
 	}
 }
 
-func TestMentionsPlugin_InternalMentionDisplaysTitle(t *testing.T) {
+func TestMentionsPlugin_InternalMentionDisplaysHandle(t *testing.T) {
 	p := NewMentionsPlugin()
 
 	// Simulate a mention entry with metadata (as built from internal post)
 	handleMap := map[string]*mentionEntry{
 		"alice": {
-			Handle:   "alice",
-			SiteURL:  "/contact/alice/",
-			Title:    "Alice Smith",
-			Internal: true,
+			Handle:  "alice",
+			SiteURL: "/contact/alice/",
+			Title:   "Alice Smith",
 			Metadata: &models.MentionMetadata{
 				Name:   "Alice Smith",
 				Bio:    "Software engineer",
@@ -944,10 +943,10 @@ func TestMentionsPlugin_InternalMentionDisplaysTitle(t *testing.T) {
 	content := "I was working with @alice on this project."
 	got := p.processMentionsWithMetadata(content, handleMap)
 
-	// Should display title, not @handle
-	wantContains := `>Alice Smith</a>`
+	// Should display @handle as link text (not the title)
+	wantContains := `>@alice</a>`
 	if !strings.Contains(got, wantContains) {
-		t.Errorf("expected display text to be title, got: %q", got)
+		t.Errorf("expected @handle display text, got: %q", got)
 	}
 
 	// Should include data attributes for hovercard

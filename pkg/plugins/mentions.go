@@ -596,7 +596,6 @@ func (p *MentionsPlugin) processMentionsInText(text string, handleMap map[string
 
 		// Build data attributes if metadata is available
 		dataAttrs := ""
-		displayText := "@" + entry.Handle
 		if entry.Metadata != nil && entry.Metadata.IsValid() {
 			dataAttrs += fmt.Sprintf(` data-name=%q`, html.EscapeString(entry.Metadata.Name))
 			if entry.Metadata.Bio != "" {
@@ -606,20 +605,14 @@ func (p *MentionsPlugin) processMentionsInText(text string, handleMap map[string
 				dataAttrs += fmt.Sprintf(` data-avatar=%q`, html.EscapeString(entry.Metadata.Avatar))
 			}
 			dataAttrs += fmt.Sprintf(` data-handle=%q`, html.EscapeString("@"+entry.Handle))
-
-			// For internal entries (from_posts), use the name as display text
-			// External entries (blogroll) keep the @handle display
-			if entry.Internal && entry.Metadata.Name != "" {
-				displayText = entry.Metadata.Name
-			}
 		}
 
-		// Build the HTML link
-		link := fmt.Sprintf(`<a href=%q class=%q%s>%s</a>`,
+		// Build the HTML link — always display @handle as the link text
+		link := fmt.Sprintf(`<a href=%q class=%q%s>@%s</a>`,
 			html.EscapeString(entry.SiteURL),
 			html.EscapeString(p.cssClass),
 			dataAttrs,
-			html.EscapeString(displayText))
+			html.EscapeString(entry.Handle))
 
 		return prefix + link + suffix
 	})

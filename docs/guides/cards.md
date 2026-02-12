@@ -92,6 +92,7 @@ Each card type has different visual elements:
 - Name (post title)
 - Handle (`@handle`)
 - Short bio (description)
+- External site link (from `url` frontmatter field, if set)
 - Tags
 
 ## Examples

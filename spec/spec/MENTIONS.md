@@ -98,6 +98,7 @@ aliases:
   - alices
   - asmith
 avatar: /images/alice.jpg
+url: https://alicesmith.dev
 description: "Software engineer specializing in Go and web development."
 ---
 ```
@@ -172,24 +173,22 @@ For external mentions (blogroll):
 <a href="https://example.com" class="mention" data-name="Example Blog" data-bio="A great blog" data-avatar="https://example.com/avatar.jpg" data-handle="@example">@example</a>
 ```
 
-For internal mentions (from_posts), the display text is the post title and the link points to the contact page:
+For internal mentions (from_posts), the link points to the contact page and includes metadata for hovercards:
 
 ```html
-<a href="/contact/alice-smith/" class="mention" data-name="Alice Smith" data-bio="Software engineer specializing in Go and web development." data-avatar="/images/alice.jpg" data-handle="@alice">Alice Smith</a>
+<a href="/contact/alice-smith/" class="mention" data-name="Alice Smith" data-bio="Software engineer specializing in Go and web development." data-avatar="/images/alice.jpg" data-handle="@alice">@alice</a>
 ```
 
 Attributes:
-- `href` - Link target URL
+- `href` - Link target URL (contact page for internal, site URL for external)
 - `class` - Configured CSS class (default: "mention")
 - `data-name` - Display name (from metadata or post title)
 - `data-bio` - Bio/description (from metadata or post description)
 - `data-avatar` - Avatar URL (from metadata or post frontmatter)
 - `data-handle` - The original @handle
 
-For internal mentions with metadata, the display text is the post title (from `data-name`).
-For external mentions or entries without metadata, the display text is `@handle`.
-
-The `@` symbol is included in the link text for external mentions.
+The display text is always `@handle` for both internal and external mentions.
+The `data-name`, `data-bio`, and `data-avatar` attributes provide hovercard data.
 
 ## Lifecycle Stage
 

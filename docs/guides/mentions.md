@@ -71,6 +71,7 @@ aliases:
   - alices
   - asmith
 avatar: /images/alice.jpg
+url: https://alicesmith.dev
 description: "Software engineer specializing in Go and web development."
 ---
 
@@ -86,7 +87,7 @@ handle_field = "handle"
 aliases_field = "aliases"
 ```
 
-Now `@alice`, `@alices`, and `@asmith` all link to `/contact/alice-smith/` and display "Alice Smith" as the link text.
+Now `@alice`, `@alices`, and `@asmith` all link to `/contact/alice-smith/` and display `@alice` as the link text.
 
 The mention hovercard will show the avatar (from the `avatar`, `image`, or `icon` frontmatter field), the post title as the name, and the description as the bio. You can specify which field to use for the avatar with `avatar_field`:
 
