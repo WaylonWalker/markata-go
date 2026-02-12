@@ -39,6 +39,9 @@
   {% if feed.formats.text %}
   <a href="/{{ feed.slug }}.txt" class="format-link format-link--text" title="Plain Text">Text</a>
   {% endif %}
+  {% if feed.formats.simple_html %}
+  <a href="{{ feed.base_url }}/simple/" class="format-link format-link--simple" title="Simple List">Simple</a>
+  {% endif %}
 </div>
 {% endif %}
 {% endif %}

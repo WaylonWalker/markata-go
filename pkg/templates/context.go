@@ -934,13 +934,14 @@ func feedToMap(f *models.FeedConfig) map[string]interface{} {
 	}
 
 	formats := map[string]interface{}{
-		"html":     f.Formats.HTML,
-		"rss":      f.Formats.RSS,
-		"atom":     f.Formats.Atom,
-		"json":     f.Formats.JSON,
-		"markdown": f.Formats.Markdown,
-		"text":     f.Formats.Text,
-		"sitemap":  f.Formats.Sitemap,
+		"html":        f.Formats.HTML,
+		"simple_html": f.Formats.SimpleHTML,
+		"rss":         f.Formats.RSS,
+		"atom":        f.Formats.Atom,
+		"json":        f.Formats.JSON,
+		"markdown":    f.Formats.Markdown,
+		"text":        f.Formats.Text,
+		"sitemap":     f.Formats.Sitemap,
 	}
 
 	// Compute base_url from slug (e.g., "archive" -> "/archive")
