@@ -335,6 +335,7 @@ comment
 | `trim` | `{{ "  hi  " \| trim }}` | `hi` |
 | `truncate(n)` | `{{ text \| truncate(100) }}` | First 100 chars... |
 | `striptags` | `{{ html \| striptags }}` | Remove HTML tags |
+| `plaintext` | `{{ html \| plaintext }}` | Convert HTML to clean plain text (see below) |
 | `escape` | `{{ html \| escape }}` | HTML escape (default) |
 | `safe` | `{{ html \| safe }}` | Don't escape |
 | `slugify` | `{{ "Hello World" \| slugify }}` | `hello-world` |
@@ -402,6 +403,51 @@ Usage:
 {{ post.content | reading_time }}
 {{ post.content | reading_time(250) }}
 ```
+
+### The `plaintext` Filter
+
+The `plaintext` filter converts HTML content to clean plain text. It is designed for `.txt` template output where HTML tags and entities must not appear.
+
+**Behavior:**
+
+1. **Entity decoding** - HTML entities (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&#39;`, numeric entities) are decoded to their character equivalents
+2. **Tag stripping** - All HTML tags are removed
+3. **Block structure** - Block-level elements (`<p>`, `<div>`, `<h1>`-`<h6>`, `<li>`, `<br>`, `<hr>`) produce appropriate line breaks
+4. **Footnote-style links** - Anchor tags (`<a href="...">`) are converted to footnote-style references following the Lynx/Pandoc convention
+5. **Auto-escaping bypass** - Output is marked safe to prevent pongo2 from re-escaping it
+
+**Link footnote format:**
+
+Links in the HTML are replaced with numbered references in the text body, and a references section is appended at the end:
+
+```
+Input HTML:
+  <p>Read the <a href="https://go.dev/doc/">Go docs</a> for more info.</p>
+
+Output text:
+  Read the Go docs [1] for more info.
+
+  References:
+  [1]: https://go.dev/doc/
+```
+
+**Footnote rules:**
+- Duplicate URLs reuse the same reference number
+- When link text is identical to the URL, no footnote marker is added (the URL is already visible)
+- Reference numbers are sequential integers starting at 1
+
+**Usage in templates:**
+
+```jinja2
+{# In .txt templates - use plaintext for HTML content #}
+{{ post.content | plaintext }}
+
+{# For plain text strings that don't contain HTML, use safe instead #}
+{{ post.title | safe }}
+{{ post.description | safe }}
+```
+
+**Difference from `striptags`:** The `striptags` filter only removes HTML tags. The `plaintext` filter additionally decodes HTML entities, preserves block structure with line breaks, converts links to footnotes, and marks the output as safe.
 
 ---
 
