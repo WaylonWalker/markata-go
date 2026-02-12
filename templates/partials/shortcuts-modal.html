@@ -82,6 +82,10 @@
                             <td><kbd>]</kbd></td>
                             <td>Next page</td>
                         </tr>
+                        <tr>
+                            <td><kbd>s</kbd></td>
+                            <td>Toggle simple/rich feed view</td>
+                        </tr>
                     </tbody>
                 </table>
             </section>
@@ -137,6 +141,23 @@
                     </tbody>
                 </table>
             </section>
+
+            {# Custom Navigation Section (from config) #}
+            {% if config.shortcuts and config.shortcuts.navigation %}
+            <section class="shortcuts-section">
+                <h3 class="shortcuts-section-title">Custom Navigation</h3>
+                <table class="shortcuts-table">
+                    <tbody>
+                        {% for key, url in config.shortcuts.navigation.items() %}
+                        <tr>
+                            <td>{% for k in key.split(' ') %}<kbd>{{ k }}</kbd>{% if not loop.last %} {% endif %}{% endfor %}</td>
+                            <td>Go to {{ url }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+            {% endif %}
         </div>
 
         <footer class="shortcuts-modal-footer">

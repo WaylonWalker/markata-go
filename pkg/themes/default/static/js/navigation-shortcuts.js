@@ -8,6 +8,7 @@
  * - `Shift+O` - Open in new tab
  * - `g h` - Go to home
  * - `g s` - Focus search
+ * - `s` - Toggle simple/rich feed view (on feed pages only)
  * - `[` - Previous page
  * - `]` - Next page
  * - `y y` - Copy URL to clipboard
@@ -164,24 +165,76 @@
   }
 
   /**
-   * Navigate to next page
+   * Toggle between simple and rich feed views.
+   * On simple feed pages (URL contains /simple/), navigates to the rich feed.
+   * On rich feed pages, navigates to the simple feed variant.
+   * Only works on feed pages (elements with .feed class).
    */
-  function nextPage() {
-    var nextBtn = document.querySelector('[data-action="next"]');
-    if (nextBtn) {
-      // Use click() to trigger view transitions interceptor
-      nextBtn.click();
+  function toggleFeedView() {
+    var feedEl = document.querySelector('.feed');
+    if (!feedEl) return;
+
+    var path = window.location.pathname;
+    var isSimple = feedEl.classList.contains('feed-simple');
+
+    if (isSimple) {
+      // On simple feed -> go to rich feed: remove /simple/ from path
+      var richPath = path.replace(/\/simple\/(page\/\d+\/)?$/, '/');
+      // Preserve page number if present
+      var pageMatch = path.match(/\/simple\/page\/(\d+)\//);
+      if (pageMatch) {
+        richPath = path.replace(/\/simple\/page\/(\d+)\//, '/page/' + pageMatch[1] + '/');
+      }
+      window.location.href = richPath;
+    } else {
+      // On rich feed -> go to simple feed: insert /simple/ before any /page/ or at end
+      var simplePath;
+      var richPageMatch = path.match(/\/page\/(\d+)\/$/);
+      if (richPageMatch) {
+        simplePath = path.replace(/\/page\/(\d+)\/$/, '/simple/page/' + richPageMatch[1] + '/');
+      } else {
+        // Ensure trailing slash
+        simplePath = path.replace(/\/?$/, '/') + 'simple/';
+      }
+      window.location.href = simplePath;
     }
   }
 
   /**
-   * Navigate to previous page
+   * Navigate to next page.
+   * Checks for JS pagination buttons (data-action="next") and also
+   * manual/htmx pagination links (.pagination-next).
+   */
+  function nextPage() {
+    // Try JS pagination button first
+    var nextBtn = document.querySelector('[data-action="next"]:not(:disabled)');
+    if (nextBtn) {
+      nextBtn.click();
+      return;
+    }
+    // Try manual/htmx pagination link
+    var nextLink = document.querySelector('a.pagination-next');
+    if (nextLink) {
+      nextLink.click();
+    }
+  }
+
+  /**
+   * Navigate to previous page.
+   * Checks for JS pagination buttons (data-action="prev") and also
+   * manual/htmx pagination links (.pagination-prev).
    */
   function previousPage() {
-    var prevBtn = document.querySelector('[data-action="prev"]');
+    // Try JS pagination button first
+    var prevBtn = document.querySelector('[data-action="prev"]:not(:disabled)');
     if (prevBtn) {
-      // Use click() to trigger view transitions interceptor
       prevBtn.click();
+      return;
+    }
+    // Try manual/htmx pagination link
+    var prevLink = document.querySelector('a.pagination-prev');
+    if (prevLink) {
+      prevLink.click();
     }
   }
 
@@ -310,33 +363,38 @@
         priority: 15
       });
 
-      // [ - Previous page (uses data-action="prev" button)
-      window.shortcutsRegistry.register({
-        key: '[',
-        modifiers: [],
-        description: 'Previous page',
-        group: 'navigation',
-        handler: function(e) {
-          e.preventDefault();
-          previousPage();
-        },
-        priority: 20
-      });
+      // [ and ] - Previous/Next page
+      // Only register when pagination elements exist on the page.
+      // Priority 55: higher than palette-switcher (50) so pagination wins.
+      // Without this guard, palette cycling ([/]) would be shadowed on all
+      // feed pages even when no pagination is present.
+      if (document.querySelector('[data-action="prev"], [data-action="next"], a.pagination-prev, a.pagination-next')) {
+        window.shortcutsRegistry.register({
+          key: '[',
+          modifiers: [],
+          description: 'Previous page',
+          group: 'navigation',
+          handler: function(e) {
+            e.preventDefault();
+            previousPage();
+          },
+          priority: 55
+        });
 
-      // ] - Next page (uses data-action="next" button)
-      window.shortcutsRegistry.register({
-        key: ']',
-        modifiers: [],
-        description: 'Next page',
-        group: 'navigation',
-        handler: function(e) {
-          e.preventDefault();
-          nextPage();
-        },
-        priority: 20
-      });
+        window.shortcutsRegistry.register({
+          key: ']',
+          modifiers: [],
+          description: 'Next page',
+          group: 'navigation',
+          handler: function(e) {
+            e.preventDefault();
+            nextPage();
+          },
+          priority: 55
+        });
+      }
 
-      // Handle multi-key sequences: g h and g s
+      // Handle multi-key sequences: g h, g s, and standalone s for feed toggle
       document.addEventListener('keydown', function(e) {
         if (window.shortcutsRegistry.areDisabled()) return;
         if (window.shortcutsRegistry.isInputElement(e.target)) return;
@@ -357,6 +415,14 @@
           // g s - focus search
           e.preventDefault();
           focusSearch();
+          state.lastKey = null;
+          state.lastKeyTime = 0;
+        } else if (e.key === 's' && state.lastKey !== 'g') {
+          // Standalone s - toggle simple/rich feed view (only on feed pages)
+          if (document.querySelector('.feed')) {
+            e.preventDefault();
+            toggleFeedView();
+          }
           state.lastKey = null;
           state.lastKeyTime = 0;
         } else {
