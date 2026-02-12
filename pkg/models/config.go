@@ -169,6 +169,11 @@ func DefaultCardMappings() map[string]string {
 		"gratitude": "inline",
 		"inline":    "inline",
 		"micro":     "inline",
+
+		// Contact card - person/character profile
+		"contact":   "contact",
+		"character": "contact",
+		"person":    "contact",
 	}
 }
 

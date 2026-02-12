@@ -63,12 +63,15 @@ Create contact pages with handle information in frontmatter:
 # pages/contact/alice-smith.md
 ---
 title: "Alice Smith"
+template: contact
 tags:
   - contact
 handle: alice
 aliases:
   - alices
   - asmith
+avatar: /images/alice.jpg
+description: "Software engineer specializing in Go and web development."
 ---
 
 Alice is a software engineer specializing in Go and web development.
@@ -83,7 +86,17 @@ handle_field = "handle"
 aliases_field = "aliases"
 ```
 
-Now `@alice`, `@alices`, and `@asmith` all link to `/contact/alice-smith/`.
+Now `@alice`, `@alices`, and `@asmith` all link to `/contact/alice-smith/` and display "Alice Smith" as the link text.
+
+The mention hovercard will show the avatar (from the `avatar`, `image`, or `icon` frontmatter field), the post title as the name, and the description as the bio. You can specify which field to use for the avatar with `avatar_field`:
+
+```toml
+[[markata-go.mentions.from_posts]]
+filter = "'contact' in tags"
+handle_field = "handle"
+aliases_field = "aliases"
+avatar_field = "icon"   # Use 'icon' field instead of default lookup order
+```
 
 ### Multiple Sources
 
@@ -201,6 +214,7 @@ Follow @example on social       <!-- Transformed -->
 | `filter` | string | required | Filter expression to select posts |
 | `handle_field` | string | (slug) | Frontmatter field for handle |
 | `aliases_field` | string | - | Frontmatter field for aliases |
+| `avatar_field` | string | - | Frontmatter field for avatar URL. If not set, checks `avatar`, `image`, `icon` in order |
 
 ## Examples
 

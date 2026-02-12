@@ -593,6 +593,85 @@
 }
 
 /* ==========================================================================
+   Contact Card - Person/character profile for contacts, characters, people
+   Shows avatar, name, handle, and short bio
+   ========================================================================== */
+
+.card-contact {
+  padding: var(--space-4);
+}
+
+.card-contact-layout {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.card-contact-avatar-link {
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.card-contact-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-contact-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-contact-initials {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.card-contact-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-contact .card-title {
+  font-size: var(--text-lg);
+  margin-bottom: var(--space-1);
+}
+
+.card-contact-handle {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+.card-contact-bio {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  line-height: var(--leading-relaxed);
+
+  /* Limit to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-contact .card-meta {
+  margin-top: var(--space-3);
+}
+
+/* ==========================================================================
    Default Card - Fallback for unmapped templateKey values
    Basic card layout, similar to original card.html
    ========================================================================== */
@@ -697,6 +776,16 @@
   /* Inline card */
   .card-inline {
     padding: var(--space-3);
+  }
+
+  /* Contact card */
+  .card-contact {
+    padding: var(--space-3);
+  }
+
+  .card-contact-avatar {
+    width: 48px;
+    height: 48px;
   }
 
   /* Default card */

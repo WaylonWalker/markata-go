@@ -53,6 +53,7 @@ Both `template` and `templateKey` work in markata-go frontmatter.
 | `quote` | `quote`, `quotation` | Quoted text with attribution |
 | `guide` | `guide`, `series`, `step`, `chapter` | Multi-part tutorials |
 | `inline` | `gratitude`, `inline`, `micro` | Full content shown in feed |
+| `contact` | `contact`, `character`, `person` | Person/character profile cards |
 | `default` | (any other value) | Fallback for unmapped types |
 
 ## Card Anatomy
@@ -85,6 +86,13 @@ Each card type has different visual elements:
 - Domain indicator
 - Title and description
 - External link styling
+
+### Contact Card
+- Avatar (from `avatar`, `image`, or `icon` frontmatter fields)
+- Name (post title)
+- Handle (`@handle`)
+- Short bio (description)
+- Tags
 
 ## Examples
 
@@ -186,6 +194,7 @@ Card styles are in `themes/default/static/css/cards.css`. Each card has a class:
 - `.card-quote`
 - `.card-guide`
 - `.card-inline`
+- `.card-contact`
 - `.card-default`
 
 ## How It Works
