@@ -2644,6 +2644,80 @@ $ markata-go palette list --json
 
 ---
 
+### `palette pick`
+
+Interactively browse and select a palette using a full-screen TUI fuzzy picker. Sets the chosen palette in the project config by default.
+
+**Usage:**
+```bash
+markata-go palette pick [flags]
+```
+
+**Flags:**
+| Flag | Description |
+|------|-------------|
+| `--no-set` | Only print the palette name without updating the config file |
+
+**Behavior:**
+
+Opens a full-screen alternate-screen TUI with two panels:
+
+- **Left panel:** Scrollable, fuzzy-filterable list of all discovered palettes (built-in, user, project). Each entry shows the palette name and a variant badge (`[dark]`/`[light]`). A search prompt at the top accepts typed input for fuzzy matching. Scroll indicators appear when the list overflows.
+
+- **Right panel:** Live preview of the currently highlighted palette showing:
+  - Palette metadata (name, author, description, source)
+  - Raw color swatch grid (alphabetically sorted `"██"` blocks with labels)
+  - Semantic color swatches for key roles (text, bg, accent, link, success, warning, error, border)
+  - Contrast preview block rendering sample text with `bg-primary` background and `text-primary` foreground, plus underlined link text
+
+**Key bindings:**
+| Key | Action |
+|-----|--------|
+| Type characters | Fuzzy-filter the palette list |
+| Backspace | Delete last filter character |
+| Up / Down | Move cursor |
+| Page Up / Page Down | Scroll by page |
+| Enter | Select the highlighted palette |
+| Esc / Ctrl+C | Cancel without selecting |
+
+**Default behavior (sets config):**
+```bash
+$ markata-go palette pick
+# (interactive TUI opens)
+# On Enter, prints the palette name and updates config:
+catppuccin-mocha
+Set palette to "catppuccin-mocha" in markata-go.toml
+```
+
+On selection, the command discovers the project config file (or uses `--config`), parses it, sets `theme.palette` to the chosen name, and writes it back. The palette name is printed to stdout and the status message to stderr.
+
+**With `--no-set` (echo only):**
+```bash
+$ markata-go palette pick --no-set
+# (interactive TUI opens)
+# On Enter, only prints the selected palette name to stdout:
+catppuccin-mocha
+```
+
+**Composability:**
+```bash
+# Use pick output as input to other commands (skip config write)
+markata-go palette info "$(markata-go palette pick --no-set)"
+
+# Pick, set, and rebuild
+markata-go palette pick && markata-go build
+```
+
+**Implementation notes:**
+- Uses Bubble Tea (`tea.NewProgram` with `tea.WithAltScreen()`) for the TUI
+- Uses Lipgloss for styled color swatch rendering
+- Pre-loads all palettes at startup for instant preview switching
+- Fuzzy matching checks that all characters in the query appear in the palette name in order
+- Config writing reuses the `config set` infrastructure (`parseConfigToMap`, `setMapValue`, `marshalConfigMap`)
+- Palette discovery via `palettes.NewLoader().Discover()`, loading via `loader.Load(name)`
+
+---
+
 ### `palette info`
 
 Show detailed information about a specific palette.

@@ -905,6 +905,116 @@ See [[themes-and-styling|Themes Guide]] for detailed aesthetic customization.
 
 ---
 
+### palette
+
+Manage, browse, and select color palettes for your site's theme.
+
+#### Usage
+
+```bash
+markata-go palette <subcommand> [flags]
+```
+
+#### Subcommands
+
+##### list
+
+List all available palettes from built-in, user, and project sources.
+
+```bash
+markata-go palette list
+markata-go palette list --variant dark
+markata-go palette list --json
+```
+
+##### info
+
+Show detailed information about a specific palette including colors, semantic mappings, and component colors.
+
+```bash
+markata-go palette info catppuccin-mocha
+markata-go palette info catppuccin-mocha --json
+```
+
+##### pick
+
+Open an interactive full-screen TUI to browse and select a palette with live color previews. Sets the chosen palette in your config by default.
+
+```bash
+# Pick and set in your config (default)
+markata-go palette pick
+
+# Only print the name without updating config
+markata-go palette pick --no-set
+```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--no-set` | Only print the palette name without updating the config file |
+
+The picker shows a two-panel layout with a fuzzy-filterable palette list on the left and a live color swatch preview on the right. Type to filter, arrow keys to navigate, Enter to select, Esc to cancel.
+
+**Composability:**
+
+```bash
+# View info for the palette you pick (without setting it)
+markata-go palette info "$(markata-go palette pick --no-set)"
+```
+
+##### check
+
+Check a palette for accessibility (WCAG contrast ratios).
+
+```bash
+markata-go palette check catppuccin-mocha
+```
+
+##### preview
+
+Preview a palette's colors in the terminal.
+
+```bash
+markata-go palette preview catppuccin-mocha
+```
+
+##### new
+
+Create a new custom palette interactively.
+
+```bash
+markata-go palette new my-brand
+```
+
+##### clone
+
+Clone an existing palette as a starting point for customization.
+
+```bash
+markata-go palette clone catppuccin-mocha my-custom
+```
+
+##### export
+
+Export a palette to different formats (CSS, SCSS, JSON).
+
+```bash
+markata-go palette export catppuccin-mocha --format css
+```
+
+##### fetch
+
+Import a palette from [Lospec.com](https://lospec.com/palette-list).
+
+```bash
+markata-go palette fetch https://lospec.com/palette-list/sweetie-16.txt
+```
+
+See [[themes-and-styling|Themes Guide]] for detailed palette customization.
+
+---
+
 ## Environment Variables
 
 markata-go configuration can be overridden using environment variables with the `MARKATA_GO_` prefix.
