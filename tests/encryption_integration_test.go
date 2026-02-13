@@ -46,6 +46,8 @@ func buildWithEncryption(t *testing.T, site *testSite, modelsConfig *models.Conf
 
 	m.RegisterPlugin(plugins.NewGlobPlugin())
 	m.RegisterPlugin(plugins.NewLoadPlugin())
+	m.RegisterPlugin(plugins.NewDescriptionPlugin())
+	m.RegisterPlugin(plugins.NewStructuredDataPlugin())
 	m.RegisterPlugin(plugins.NewRenderMarkdownPlugin())
 	m.RegisterPlugin(plugins.NewEncryptionPlugin())
 	m.RegisterPlugin(plugins.NewPublishHTMLPlugin())
@@ -493,27 +495,31 @@ func TestIntegration_Encryption_TracerScan(t *testing.T) {
 
 	site := newTestSite(t)
 
-	// Use a very distinctive marker that cannot appear by accident
-	const tracerMarker = "TRACER_CANARY_7f3a9b2e1d4c_PRIVATE_CONTENT_LEAK_DETECTOR"
+	// Use separate markers for content (private) vs metadata (public).
+	// The CONTENT marker must never appear in any output file in plaintext.
+	// The TITLE and DESCRIPTION markers are public metadata and SHOULD appear.
+	const contentMarker = "TRACER_CONTENT_7f3a9b2e1d4c_PRIVATE_BODY_LEAK_DETECTOR"
+	const titleText = "My Secret Encrypted Post Title"
+	const descriptionText = "An explicit frontmatter description for the encrypted post"
 
-	// Private post with the tracer marker in title, content, and a custom description
+	// Private post with content marker in body only, and safe title/description
 	site.addPost("private-tracer.md", `---
-title: My Secret Title With `+tracerMarker+`
+title: `+titleText+`
 slug: private-tracer
 published: true
 private: true
-description: "This description contains `+tracerMarker+` and must be scrubbed"
+description: "`+descriptionText+`"
 tags:
   - golang
   - secrets
 ---
 # Private Heading
 
-This private post body contains the tracer marker: `+tracerMarker+`
+This private post body contains the tracer marker: `+contentMarker+`
 
 It also has **bold** and [links](https://example.com) and other markdown.
 
-Second paragraph also has `+tracerMarker+` for good measure.
+Second paragraph also has `+contentMarker+` for good measure.
 `)
 
 	// Public post for reference (ensures build works and output is produced)
@@ -608,29 +614,29 @@ Another public post for navigation testing.
 			continue
 		}
 
-		// ArticleHTML must not contain the marker in plaintext
-		if strings.Contains(post.ArticleHTML, tracerMarker) {
-			t.Errorf("SECURITY LEAK: private post %q has marker in ArticleHTML", post.Path)
+		// ArticleHTML must not contain the content marker in plaintext
+		if strings.Contains(post.ArticleHTML, contentMarker) {
+			t.Errorf("SECURITY LEAK: private post %q has content marker in ArticleHTML", post.Path)
 		}
 
-		// Content must be scrubbed
-		if strings.Contains(post.Content, tracerMarker) {
-			t.Errorf("SECURITY LEAK: private post %q has marker in Content (raw markdown not scrubbed)", post.Path)
+		// Content (raw markdown) must be scrubbed
+		if strings.Contains(post.Content, contentMarker) {
+			t.Errorf("SECURITY LEAK: private post %q has content marker in Content (raw markdown not scrubbed)", post.Path)
 		}
 
-		// Description must be scrubbed
-		if post.Description != nil && strings.Contains(*post.Description, tracerMarker) {
-			t.Errorf("SECURITY LEAK: private post %q has marker in Description", post.Path)
+		// Title should be PRESERVED (public metadata)
+		if post.Title == nil || *post.Title != titleText {
+			t.Errorf("private post %q: Title should be preserved as %q, got %v", post.Path, titleText, post.Title)
 		}
 
-		// Structured data must be removed
-		if sd, ok := post.Extra["structured_data"]; ok && sd != nil {
-			t.Errorf("SECURITY LEAK: private post %q still has structured_data in Extra", post.Path)
+		// Description should be PRESERVED (explicitly set in frontmatter)
+		if post.Description == nil || *post.Description != descriptionText {
+			t.Errorf("private post %q: explicit Description should be preserved as %q, got %v", post.Path, descriptionText, post.Description)
 		}
 
-		// HTML (full page) must not contain the marker
-		if strings.Contains(post.HTML, tracerMarker) {
-			t.Errorf("SECURITY LEAK: private post %q has marker in full-page HTML", post.Path)
+		// Structured data should be PRESERVED (contains only title/description/dates)
+		if _, ok := post.Extra["structured_data"]; !ok {
+			t.Errorf("private post %q: structured_data should be preserved in Extra", post.Path)
 		}
 
 		// Must have data-pagefind-ignore to prevent search indexing
@@ -640,7 +646,7 @@ Another public post for navigation testing.
 	}
 
 	// Phase 2: Recursively scan EVERY file in the output directory
-	// This is the definitive test — no file should contain the marker
+	// The CONTENT marker must not appear in any file in plaintext.
 	var filesScanned int
 	var leakFiles []string
 
@@ -662,13 +668,13 @@ Another public post for navigation testing.
 		}
 
 		content := string(data)
-		if strings.Contains(content, tracerMarker) {
+		if strings.Contains(content, contentMarker) {
 			relPath := path
 			if rel, relErr := filepath.Rel(site.outputDir, path); relErr == nil {
 				relPath = rel
 			}
 			leakFiles = append(leakFiles, relPath)
-			t.Errorf("SECURITY LEAK: tracer marker found in output file: %s", relPath)
+			t.Errorf("SECURITY LEAK: content marker found in output file: %s", relPath)
 		}
 
 		return nil
@@ -684,7 +690,7 @@ Another public post for navigation testing.
 	t.Logf("Tracer scan complete: scanned %d files, found %d leaks", filesScanned, len(leakFiles))
 
 	if len(leakFiles) > 0 {
-		t.Errorf("SECURITY FAILURE: tracer marker leaked to %d files: %s",
+		t.Errorf("SECURITY FAILURE: content marker leaked to %d files: %s",
 			len(leakFiles), strings.Join(leakFiles, ", "))
 	}
 
@@ -703,8 +709,8 @@ Another public post for navigation testing.
 			t.Errorf("failed to decrypt private post %q: %v", post.Path, decErr)
 			continue
 		}
-		if !strings.Contains(string(decrypted), tracerMarker) {
-			t.Errorf("decrypted content of %q should contain the tracer marker", post.Path)
+		if !strings.Contains(string(decrypted), contentMarker) {
+			t.Errorf("decrypted content of %q should contain the content marker", post.Path)
 		}
 	}
 
@@ -724,24 +730,39 @@ Another public post for navigation testing.
 }
 
 // TestIntegration_Encryption_MetadataScrubbing verifies that private post metadata
-// is properly scrubbed after encryption, covering all known leak channels.
+// is handled correctly after encryption: title and explicit description are preserved,
+// raw content is scrubbed, and structured data is kept.
 func TestIntegration_Encryption_MetadataScrubbing(t *testing.T) {
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "scrub-test-password") // pragma: allowlist secret
 
 	site := newTestSite(t)
 
-	const marker = "METADATA_SCRUB_MARKER_abc123"
+	const contentMarker = "METADATA_SCRUB_CONTENT_abc123"
+	const titleText = "Private Meta Test"
+	const descriptionText = "An explicit description from frontmatter"
 
 	site.addPost("private-meta.md", `---
-title: Private Meta Test
+title: `+titleText+`
 slug: private-meta
 published: true
 private: true
-description: "Description with `+marker+`"
+description: "`+descriptionText+`"
 tags:
   - golang
 ---
-Body content with `+marker+` inside.
+Body content with `+contentMarker+` inside.
+`)
+
+	// Private post WITHOUT explicit description
+	site.addPost("private-no-desc.md", `---
+title: Private No Description
+slug: private-no-desc
+published: true
+private: true
+tags:
+  - golang
+---
+Body with `+contentMarker+` and no frontmatter description.
 `)
 
 	site.addPost("public-meta.md", `---
@@ -769,16 +790,34 @@ Normal public content.
 			t.Errorf("private post %q: Content should be empty after scrubbing, got %q", post.Path, post.Content)
 		}
 
-		// Description must be generic encrypted message
-		if post.Description == nil {
-			t.Errorf("private post %q: Description should not be nil", post.Path)
-		} else if *post.Description != "This content is encrypted." {
-			t.Errorf("private post %q: Description should be generic encrypted message, got %q", post.Path, *post.Description)
+		if strings.HasSuffix(post.Path, "private-meta.md") {
+			// Title should be preserved
+			if post.Title == nil || *post.Title != titleText {
+				t.Errorf("private post %q: Title should be preserved as %q, got %v", post.Path, titleText, post.Title)
+			}
+
+			// Explicit frontmatter description should be preserved
+			if post.Description == nil || *post.Description != descriptionText {
+				t.Errorf("private post %q: explicit Description should be preserved as %q, got %v", post.Path, descriptionText, post.Description)
+			}
+
+			// Structured data should be preserved
+			if _, ok := post.Extra["structured_data"]; !ok {
+				t.Errorf("private post %q: structured_data should be preserved in Extra", post.Path)
+			}
 		}
 
-		// Structured data must be removed
-		if _, ok := post.Extra["structured_data"]; ok {
-			t.Errorf("private post %q: structured_data should be removed from Extra", post.Path)
+		if strings.HasSuffix(post.Path, "private-no-desc.md") {
+			// Title should be preserved
+			if post.Title == nil || *post.Title != "Private No Description" {
+				t.Errorf("private post %q: Title should be preserved, got %v", post.Path, post.Title)
+			}
+
+			// No explicit description was provided, so it should remain nil
+			// (description plugin skips private posts, so no auto-generation)
+			if post.Description != nil {
+				t.Errorf("private post %q: Description should be nil (no explicit frontmatter description), got %q", post.Path, *post.Description)
+			}
 		}
 	}
 

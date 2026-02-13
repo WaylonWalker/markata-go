@@ -353,39 +353,41 @@ func (p *EncryptionPlugin) encryptPost(post *models.Post) error {
 	return nil
 }
 
-// scrubPrivateMetadata removes all plaintext content from a private post
-// that could leak through downstream plugins and output channels.
+// scrubPrivateMetadata removes content-derived plaintext from a private post
+// while preserving user-provided metadata that is safe to display publicly.
 //
-// This covers:
-//   - Title -> leaked via HTML <title>, feed listings, 404 index, OG cards
-//   - Description (auto-generated or user-provided) -> leaked via feeds, meta tags, 404 index
+// Preserved (intentionally public):
+//   - Title -> kept for page cards, feed listings, HTML <title>, and SEO
+//   - Description (if explicitly set in frontmatter) -> kept for cards and meta tags
+//   - Structured data (JSON-LD, OpenGraph, Twitter) -> kept; derived from title/description only
+//
+// Scrubbed (contains private content):
 //   - Content (raw markdown) -> leaked via Atom/JSON feeds, description generation
-//   - Structured data (JSON-LD, OpenGraph, Twitter) -> leaked via HTML meta tags
+//   - Description (if NOT set in frontmatter) -> cleared to nil since the description
+//     plugin skips private posts, so a nil description here means none was provided
 //   - Inlinks/Outlinks text -> leaked via link analysis output
 func (p *EncryptionPlugin) scrubPrivateMetadata(post *models.Post) {
-	// Replace title with generic encrypted notice.
-	// This prevents leaks through HTML <title>, <h1>, feed listings,
-	// 404 index entries, OG card pages, and text format output.
-	encryptedTitle := "Encrypted Content"
-	post.Title = &encryptedTitle
+	// Title is preserved — users expect encrypted pages to show their title
+	// in cards, feed listings, HTML <title>, and navigation. The title is
+	// considered public metadata, not private content.
 
-	// Clear raw markdown content - prevents leaks through feed content_text,
-	// Atom <content type="text">, and any future content consumers
+	// Clear raw markdown content — prevents leaks through feed content_text,
+	// Atom <content type="text">, and any future content consumers.
 	post.Content = ""
 
-	// Replace description with a generic encrypted notice.
-	// This prevents leaks through RSS <description>, Atom <summary>,
-	// JSON Feed summary, <meta name="description">, 404 index, and feed cards.
-	encryptedDesc := "This content is encrypted."
-	post.Description = &encryptedDesc
+	// Description: preserve if explicitly set in frontmatter (user chose to
+	// make it public). The description plugin already skips private posts,
+	// so if Description is non-nil here, it was explicitly provided in
+	// frontmatter. If nil, leave it nil — no auto-generated description
+	// should be created for encrypted posts.
 
-	// Remove structured data entirely - prevents leaks through
-	// JSON-LD (headline, description), OpenGraph (og:title, og:description),
-	// and Twitter Cards (twitter:title, twitter:description)
-	delete(post.Extra, "structured_data")
+	// Structured data is preserved — it contains only title, description,
+	// dates, author, and URL. No article body or raw content is included.
+	// Since we preserve title and explicit description, the structured data
+	// remains accurate and useful for SEO.
 
-	// Clear inlinks/outlinks source text - prevents content-derived
-	// anchor text from leaking through link analysis
+	// Clear inlinks/outlinks source text — prevents content-derived
+	// anchor text from leaking through link analysis.
 	for _, link := range post.Inlinks {
 		if link != nil {
 			link.SourceText = ""
