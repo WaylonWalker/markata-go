@@ -405,8 +405,9 @@ markata-go new [title] [flags]
 | `--template` | `-t` | Content template to use | `post` |
 | `--list` | `-l` | List available templates | `false` |
 | `--dir` | | Directory to create the content in (overrides template) | Template's default |
-| `--draft` | | Create as a draft | `true` |
+| `--draft` | | Create as a draft | `false` |
 | `--tags` | | Comma-separated list of tags | `""` |
+| `--plain` | | Use plain text prompts instead of TUI wizard | `false` |
 
 #### Built-in Templates
 
@@ -436,21 +437,24 @@ markata-go new --list
 markata-go new "Hello World" --template post --dir blog
 # Creates: blog/hello-world.md
 
-# Create as a draft (default behavior)
+# Create as a draft (opt-in, default is published)
 markata-go new "Work in Progress" --draft
 # Creates: posts/work-in-progress.md with draft: true
 
-# Create as published
-markata-go new "Ready to Publish" --draft=false
+# Create as published (default behavior)
+markata-go new "Ready to Publish"
 # Creates: posts/ready-to-publish.md with draft: false, published: true
 
 # Create with tags
 markata-go new "Go Tutorial" --tags "go,tutorial,programming"
 # Creates: posts/go-tutorial.md with tags: ["go", "tutorial", "programming"]
 
-# Interactive mode (no arguments)
+# Interactive mode (no arguments) - launches TUI wizard
 markata-go new
-# Prompts for title, template, directory, tags, and draft status
+# TUI wizard prompts for: template, title, directory, tags, privacy, authors
+
+# Interactive mode with plain text prompts (no TUI)
+markata-go new --plain
 ```
 
 #### Template System
@@ -510,20 +514,38 @@ The `_directory` field in frontmatter sets the output directory (removed from ge
 
 #### Interactive Mode
 
-When called without a title argument, the command enters interactive mode:
+When called without a title argument (or no arguments at all), the command launches an
+interactive TUI wizard powered by [charmbracelet/huh](https://github.com/charmbracelet/huh).
+
+The wizard guides you through:
+
+1. **Template selection** - Pick from built-in, config, and file-based templates
+2. **Title** - Enter the post title
+3. **Directory** - Choose from existing directories or enter a custom one, with config-driven defaults per template type
+4. **Tags** - Select from existing site tags and/or type custom tags
+5. **Privacy** - Mark the post as private
+6. **Authors** - If multiple authors are configured, choose whether to use the default or select specific authors
+7. **Summary** - Review all choices before creating the file
 
 ```
 $ markata-go new
 
-Title: My New Post
-Available templates: docs, page, post
-Template [post]: post
-Directory [posts]: blog
-Tags (comma-separated): go, tutorial
-Create as draft? (Y/n): y
+? Select a template
+  > post - Blog post (posts/)
+    page - Static page (pages/)
+    docs - Documentation (docs/)
 
-Created: blog/my-new-post.md
+? Title: My New Post
+? Select a directory: posts (default)
+? Select tags: [go, tutorial]
+? Make this post private? No
+? Create my-new-post.md in posts/? Yes
+
+Created: posts/my-new-post.md
 ```
+
+**Plain text mode:** Use `--plain` or pipe input to get simple text prompts instead of the TUI.
+Falls back automatically when stdin is not a TTY.
 
 #### Generated File
 
@@ -534,8 +556,8 @@ The command creates a markdown file with template-specific frontmatter:
 title: My First Post
 slug: my-first-post
 date: "2024-01-15"
-published: false
-draft: true
+published: true
+draft: false
 templateKey: post
 tags:
   - go
