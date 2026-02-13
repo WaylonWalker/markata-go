@@ -60,6 +60,11 @@ type initWizardState struct {
 
 // createHuhTheme creates a huh theme based on the configured palette.
 // If no palette is configured or loading fails, returns the default Charm theme.
+//
+// This maps palette semantic and component colors to all huh theme fields so
+// that interactive forms (select chevrons, multi-select indicators, buttons,
+// input prompts, etc.) match the site's configured color palette instead of
+// using the default Charm fuchsia (#F780E2).
 func createHuhTheme(paletteName string) *huh.Theme {
 	if paletteName == "" {
 		return huh.ThemeCharm()
@@ -71,29 +76,200 @@ func createHuhTheme(paletteName string) *huh.Theme {
 		return huh.ThemeCharm()
 	}
 
-	// Create a custom theme based on the palette
+	return buildThemeFromPalette(palette)
+}
+
+// paletteColors holds resolved palette colors for theme building.
+type paletteColors struct {
+	accent           lipgloss.TerminalColor
+	textPrimary      lipgloss.TerminalColor
+	textSecondary    lipgloss.TerminalColor
+	textMuted        lipgloss.TerminalColor
+	success          lipgloss.TerminalColor
+	errorColor       lipgloss.TerminalColor
+	border           lipgloss.TerminalColor
+	borderFocus      lipgloss.TerminalColor
+	link             lipgloss.TerminalColor
+	btnPrimaryBg     lipgloss.TerminalColor
+	btnPrimaryText   lipgloss.TerminalColor
+	btnSecondaryBg   lipgloss.TerminalColor
+	btnSecondaryText lipgloss.TerminalColor
+}
+
+// buildThemeFromPalette creates a huh theme from a resolved palette.
+// Starts from ThemeCharm and overrides every field that has a matching
+// palette color. This is separated from createHuhTheme so it can be
+// unit-tested without needing the palette loader.
+func buildThemeFromPalette(palette *palettes.Palette) *huh.Theme {
 	theme := huh.ThemeCharm()
 
-	// Map palette colors to huh theme
-	if hex := palette.Resolve("accent"); hex != "" {
-		accentColor := lipgloss.Color(hex)
-		theme.Focused.Title = theme.Focused.Title.Foreground(accentColor)
-		theme.Focused.SelectedOption = theme.Focused.SelectedOption.Foreground(accentColor)
-		theme.Focused.FocusedButton = theme.Focused.FocusedButton.Background(accentColor)
+	pc := paletteColors{
+		accent:           resolveColor(palette, "accent"),
+		textPrimary:      resolveColor(palette, "text-primary"),
+		textSecondary:    resolveColor(palette, "text-secondary"),
+		textMuted:        resolveColor(palette, "text-muted"),
+		success:          resolveColor(palette, "success"),
+		errorColor:       resolveColor(palette, "error"),
+		border:           resolveColor(palette, "border"),
+		borderFocus:      resolveColor(palette, "border-focus"),
+		link:             resolveColor(palette, "link"),
+		btnPrimaryBg:     resolveColor(palette, "button-primary-bg"),
+		btnPrimaryText:   resolveColor(palette, "button-primary-text"),
+		btnSecondaryBg:   resolveColor(palette, "button-secondary-bg"),
+		btnSecondaryText: resolveColor(palette, "button-secondary-text"),
 	}
 
-	if hex := palette.Resolve("text-muted"); hex != "" {
-		mutedColor := lipgloss.Color(hex)
-		theme.Focused.Description = theme.Focused.Description.Foreground(mutedColor)
-		theme.Blurred.Title = theme.Blurred.Title.Foreground(mutedColor)
-	}
-
-	if hex := palette.Resolve("link"); hex != "" {
-		linkColor := lipgloss.Color(hex)
-		theme.Focused.Option = theme.Focused.Option.Foreground(linkColor)
-	}
+	applyFocusedStyles(theme, &pc)
+	applyBlurredStyles(theme, &pc)
+	applyGroupStyles(theme, &pc)
+	applyHelpStyles(theme, &pc)
 
 	return theme
+}
+
+// applyFocusedStyles applies palette colors to focused field styles including
+// titles, select chevrons, multi-select indicators, buttons, and input prompts.
+func applyFocusedStyles(theme *huh.Theme, pc *paletteColors) {
+	if pc.accent != nil {
+		theme.Focused.Title = theme.Focused.Title.Foreground(pc.accent)
+		theme.Focused.NoteTitle = theme.Focused.NoteTitle.Foreground(pc.accent)
+		theme.Focused.Directory = theme.Focused.Directory.Foreground(pc.accent)
+		theme.Focused.SelectSelector = theme.Focused.SelectSelector.Foreground(pc.accent)
+		theme.Focused.MultiSelectSelector = theme.Focused.MultiSelectSelector.Foreground(pc.accent)
+		theme.Focused.NextIndicator = theme.Focused.NextIndicator.Foreground(pc.accent)
+		theme.Focused.PrevIndicator = theme.Focused.PrevIndicator.Foreground(pc.accent)
+		theme.Focused.TextInput.Prompt = theme.Focused.TextInput.Prompt.Foreground(pc.accent)
+	}
+
+	if pc.textMuted != nil {
+		theme.Focused.Description = theme.Focused.Description.Foreground(pc.textMuted)
+		theme.Focused.TextInput.Placeholder = theme.Focused.TextInput.Placeholder.Foreground(pc.textMuted)
+	}
+
+	applyOptionStyles(theme, pc)
+	applySelectedStyles(theme, pc)
+	applyErrorStyles(theme, pc)
+	applyBorderStyles(theme, pc)
+	applyButtonStyles(theme, pc)
+}
+
+// applyOptionStyles applies palette colors to option text in select/multi-select.
+func applyOptionStyles(theme *huh.Theme, pc *paletteColors) {
+	if pc.link != nil {
+		theme.Focused.Option = theme.Focused.Option.Foreground(pc.link)
+	} else if pc.textPrimary != nil {
+		theme.Focused.Option = theme.Focused.Option.Foreground(pc.textPrimary)
+	}
+
+	if pc.textPrimary != nil {
+		theme.Focused.UnselectedOption = theme.Focused.UnselectedOption.Foreground(pc.textPrimary)
+	}
+
+	if pc.textSecondary != nil {
+		theme.Focused.UnselectedPrefix = theme.Focused.UnselectedPrefix.Foreground(pc.textSecondary)
+	}
+}
+
+// applySelectedStyles applies palette colors to selected option indicators.
+func applySelectedStyles(theme *huh.Theme, pc *paletteColors) {
+	if pc.success != nil {
+		theme.Focused.SelectedOption = theme.Focused.SelectedOption.Foreground(pc.success)
+		theme.Focused.SelectedPrefix = theme.Focused.SelectedPrefix.Foreground(pc.success)
+		theme.Focused.TextInput.Cursor = theme.Focused.TextInput.Cursor.Foreground(pc.success)
+	} else if pc.accent != nil {
+		theme.Focused.SelectedOption = theme.Focused.SelectedOption.Foreground(pc.accent)
+		theme.Focused.SelectedPrefix = theme.Focused.SelectedPrefix.Foreground(pc.accent)
+	}
+}
+
+// applyErrorStyles applies palette colors to error indicators and messages.
+func applyErrorStyles(theme *huh.Theme, pc *paletteColors) {
+	if pc.errorColor != nil {
+		theme.Focused.ErrorIndicator = theme.Focused.ErrorIndicator.Foreground(pc.errorColor)
+		theme.Focused.ErrorMessage = theme.Focused.ErrorMessage.Foreground(pc.errorColor)
+	}
+}
+
+// applyBorderStyles applies palette colors to focus/card borders.
+func applyBorderStyles(theme *huh.Theme, pc *paletteColors) {
+	if pc.borderFocus != nil {
+		theme.Focused.Base = theme.Focused.Base.BorderForeground(pc.borderFocus)
+		theme.Focused.Card = theme.Focused.Base
+	} else if pc.border != nil {
+		theme.Focused.Base = theme.Focused.Base.BorderForeground(pc.border)
+		theme.Focused.Card = theme.Focused.Base
+	}
+}
+
+// applyButtonStyles applies palette colors to focused and blurred buttons.
+func applyButtonStyles(theme *huh.Theme, pc *paletteColors) {
+	if pc.btnPrimaryBg != nil && pc.btnPrimaryText != nil {
+		theme.Focused.FocusedButton = theme.Focused.FocusedButton.Foreground(pc.btnPrimaryText).Background(pc.btnPrimaryBg)
+		theme.Focused.Next = theme.Focused.FocusedButton
+	} else if pc.accent != nil {
+		theme.Focused.FocusedButton = theme.Focused.FocusedButton.Background(pc.accent)
+		theme.Focused.Next = theme.Focused.FocusedButton
+	}
+
+	if pc.btnSecondaryBg != nil && pc.btnSecondaryText != nil {
+		theme.Focused.BlurredButton = theme.Focused.BlurredButton.Foreground(pc.btnSecondaryText).Background(pc.btnSecondaryBg)
+	}
+}
+
+// applyBlurredStyles creates blurred (unfocused) styles from focused styles.
+func applyBlurredStyles(theme *huh.Theme, pc *paletteColors) {
+	theme.Blurred = theme.Focused
+	theme.Blurred.Base = theme.Focused.Base.BorderStyle(lipgloss.HiddenBorder())
+	theme.Blurred.Card = theme.Blurred.Base
+	theme.Blurred.NextIndicator = lipgloss.NewStyle()
+	theme.Blurred.PrevIndicator = lipgloss.NewStyle()
+	theme.Blurred.MultiSelectSelector = lipgloss.NewStyle().SetString("  ")
+
+	if pc.textMuted != nil {
+		theme.Blurred.Title = theme.Blurred.Title.Foreground(pc.textMuted)
+		theme.Blurred.NoteTitle = theme.Blurred.NoteTitle.Foreground(pc.textMuted)
+		theme.Blurred.Description = theme.Blurred.Description.Foreground(pc.textMuted)
+		theme.Blurred.TextInput.Prompt = theme.Blurred.TextInput.Prompt.Foreground(pc.textMuted)
+		theme.Blurred.TextInput.Text = theme.Blurred.TextInput.Text.Foreground(pc.textMuted)
+	} else if pc.textSecondary != nil {
+		theme.Blurred.Title = theme.Blurred.Title.Foreground(pc.textSecondary)
+		theme.Blurred.NoteTitle = theme.Blurred.NoteTitle.Foreground(pc.textSecondary)
+	}
+}
+
+// applyGroupStyles applies palette colors to group-level title and description.
+func applyGroupStyles(theme *huh.Theme, pc *paletteColors) {
+	if pc.accent != nil {
+		theme.Group.Title = theme.Focused.Title
+	}
+	if pc.textMuted != nil {
+		theme.Group.Description = theme.Focused.Description
+	}
+}
+
+// applyHelpStyles applies palette colors to the help key/description text.
+func applyHelpStyles(theme *huh.Theme, pc *paletteColors) {
+	if pc.textMuted != nil {
+		theme.Help.ShortKey = theme.Help.ShortKey.Foreground(pc.textMuted)
+		theme.Help.FullKey = theme.Help.FullKey.Foreground(pc.textMuted)
+		theme.Help.ShortSeparator = theme.Help.ShortSeparator.Foreground(pc.textMuted)
+		theme.Help.FullSeparator = theme.Help.FullSeparator.Foreground(pc.textMuted)
+		theme.Help.Ellipsis = theme.Help.Ellipsis.Foreground(pc.textMuted)
+	}
+	if pc.textSecondary != nil {
+		theme.Help.ShortDesc = theme.Help.ShortDesc.Foreground(pc.textSecondary)
+		theme.Help.FullDesc = theme.Help.FullDesc.Foreground(pc.textSecondary)
+	}
+}
+
+// resolveColor resolves a palette color name and returns a lipgloss.Color
+// if found, or nil if the color is not defined in the palette.
+func resolveColor(palette *palettes.Palette, name string) lipgloss.TerminalColor {
+	hex := palette.Resolve(name)
+	if hex == "" {
+		return nil
+	}
+	return lipgloss.Color(hex)
 }
 
 // getPaletteOptions returns huh options for palette selection with search support.
