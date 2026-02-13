@@ -178,6 +178,50 @@ author: "Jane Doe"
 ---
 ```
 
+### Frontmatter Field Aliases
+
+For convenience, the `author` frontmatter field supports aliases. These aliases are resolved during frontmatter loading:
+
+| Canonical Field | Aliases |
+|-----------------|---------|
+| `author` | `by`, `writer` |
+
+Example:
+
+```yaml
+---
+title: My Post
+by: waylon
+---
+```
+
+This is equivalent to:
+
+```yaml
+---
+title: My Post
+author: waylon
+---
+```
+
+If both the canonical field and an alias are present, the canonical field takes precedence.
+
+### Author Posts
+
+Authors can also be defined as posts with `template: author`. These posts work similarly to `template: contact` posts and are automatically included as mentionable contacts by the mentions plugin.
+
+```yaml
+---
+title: "Waylon Walker"
+template: author
+handle: waylon
+avatar: /images/waylon.jpg
+description: "Python and Go developer"
+---
+
+Full bio content here...
+```
+
 ### Priority
 
 1. `authors` array (new multi-author format) takes precedence

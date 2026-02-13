@@ -3,6 +3,8 @@ package plugins
 import (
 	"testing"
 	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestParseDateString(t *testing.T) {
@@ -193,6 +195,79 @@ func TestNormalizeDateString(t *testing.T) {
 			got := normalizeDateString(tt.input)
 			if got != tt.want {
 				t.Errorf("normalizeDateString(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestApplyMetadata_AuthorAliases(t *testing.T) {
+	p := &LoadPlugin{}
+
+	tests := []struct {
+		name       string
+		metadata   map[string]interface{}
+		wantAuthor string
+	}{
+		{
+			name:       "author field takes priority",
+			metadata:   map[string]interface{}{"author": "alice", "by": "bob", "writer": "charlie"},
+			wantAuthor: "alice",
+		},
+		{
+			name:       "by alias resolves to author",
+			metadata:   map[string]interface{}{"by": "bob"},
+			wantAuthor: "bob",
+		},
+		{
+			name:       "writer alias resolves to author",
+			metadata:   map[string]interface{}{"writer": "charlie"},
+			wantAuthor: "charlie",
+		},
+		{
+			name:       "by takes priority over writer",
+			metadata:   map[string]interface{}{"by": "bob", "writer": "charlie"},
+			wantAuthor: "bob",
+		},
+		{
+			name:       "no author fields leaves author nil",
+			metadata:   map[string]interface{}{"title": "some post"},
+			wantAuthor: "",
+		},
+		{
+			name:       "by and writer not stored in Extra",
+			metadata:   map[string]interface{}{"by": "bob"},
+			wantAuthor: "bob",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			post := &models.Post{}
+			if err := p.applyMetadata(post, tt.metadata); err != nil {
+				t.Fatalf("applyMetadata() error = %v", err)
+			}
+
+			if tt.wantAuthor == "" {
+				if post.Author != nil {
+					t.Errorf("expected Author to be nil, got %q", *post.Author)
+				}
+			} else {
+				if post.Author == nil {
+					t.Fatalf("expected Author to be %q, got nil", tt.wantAuthor)
+				}
+				if *post.Author != tt.wantAuthor {
+					t.Errorf("Author = %q, want %q", *post.Author, tt.wantAuthor)
+				}
+			}
+
+			// Verify aliases are not stored in Extra
+			if tt.name == "by and writer not stored in Extra" {
+				if val := post.Get("by"); val != nil {
+					t.Errorf("'by' should not be in Extra, got %v", val)
+				}
+				if val := post.Get("writer"); val != nil {
+					t.Errorf("'writer' should not be in Extra, got %v", val)
+				}
 			}
 		})
 	}

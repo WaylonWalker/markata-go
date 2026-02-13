@@ -97,6 +97,10 @@ func NewMentionsConfig() MentionsConfig {
 				Filter:      "template == 'contact'",
 				HandleField: "handle",
 			},
+			{
+				Filter:      "template == 'author'",
+				HandleField: "handle",
+			},
 		},
 		CacheDir:           "cache/mentions",
 		CacheDuration:      "24h",

@@ -21,7 +21,7 @@ func NewAuthorsPlugin() *AuthorsPlugin {
 
 // Name returns the unique name of the plugin.
 func (p *AuthorsPlugin) Name() string {
-	return "authors" //nolint:goconst // plugin name used as identifier, not a shared constant
+	return "authors"
 }
 
 // Priority returns the plugin priority for the given stage.
