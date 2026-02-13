@@ -134,8 +134,15 @@ func processAnchors(
 
 	spans := make([]anchorSpan, 0, len(openMatches))
 
+	lastEnd := 0
 	// For each open tag, find the matching close tag
 	for _, openIdx := range openMatches {
+		// Skip if this open tag starts before the previous span ended
+		// (handles nested anchors which would create invalid spans)
+		if openIdx[0] < lastEnd {
+			continue
+		}
+
 		openTag := htmlContent[openIdx[0]:openIdx[1]]
 		hrefMatch := anchorOpenRe.FindStringSubmatch(openTag)
 		if len(hrefMatch) < 2 {
@@ -159,6 +166,7 @@ func processAnchors(
 			href:     href,
 			textHTML: htmlContent[textStart:textEnd],
 		})
+		lastEnd = fullEnd
 	}
 
 	if len(spans) == 0 {
