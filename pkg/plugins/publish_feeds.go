@@ -230,48 +230,63 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 // configuration fields that affect feed output.
 func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
 	h := sha256.New()
+	writeStringField := func(value string) {
+		fmt.Fprintf(h, "%d:", len(value))
+		h.Write([]byte(value))
+		h.Write([]byte{0})
+	}
+	writeBoolField := func(value bool) {
+		fmt.Fprintf(h, "%t", value)
+		h.Write([]byte{0})
+	}
+	writeIntField := func(value int) {
+		fmt.Fprintf(h, "%d", value)
+		h.Write([]byte{0})
+	}
 
 	// Hash post slugs in their current (sorted) order, not alphabetically.
 	// This ensures sort order changes are detected.
 	for _, post := range fc.Posts {
-		h.Write([]byte(post.Slug))
-		h.Write([]byte{0}) // separator
+		writeStringField(post.Slug)
 	}
 
 	// Hash all feed config fields that affect output
-	h.Write([]byte(fc.Slug))
-	h.Write([]byte(fc.Title))
-	h.Write([]byte(fc.Description))
-	h.Write([]byte(string(fc.Type)))
-	h.Write([]byte(fc.Filter))
-	h.Write([]byte(fc.Sort))
-	fmt.Fprintf(h, "%t", fc.Reverse)
-	fmt.Fprintf(h, "%d", fc.ItemsPerPage)
-	fmt.Fprintf(h, "%d", fc.OrphanThreshold)
-	h.Write([]byte(string(fc.PaginationType)))
-	fmt.Fprintf(h, "%t", fc.IncludePrivate)
+	writeStringField(fc.Slug)
+	writeStringField(fc.Title)
+	writeStringField(fc.Description)
+	writeStringField(string(fc.Type))
+	writeStringField(fc.Filter)
+	writeStringField(fc.Sort)
+	writeBoolField(fc.Reverse)
+	writeIntField(fc.ItemsPerPage)
+	writeIntField(fc.OrphanThreshold)
+	writeStringField(string(fc.PaginationType))
+	writeBoolField(fc.IncludePrivate)
 
 	// Hash sidebar config
-	fmt.Fprintf(h, "%t", fc.Sidebar)
-	h.Write([]byte(fc.SidebarTitle))
-	fmt.Fprintf(h, "%d", fc.SidebarOrder)
-	h.Write([]byte(fc.SidebarGroupBy))
+	writeBoolField(fc.Sidebar)
+	writeStringField(fc.SidebarTitle)
+	writeIntField(fc.SidebarOrder)
+	writeStringField(fc.SidebarGroupBy)
 
 	// Hash format flags
-	fmt.Fprintf(h, "%t%t%t%t%t%t%t%t",
-		fc.Formats.HTML, fc.Formats.SimpleHTML,
-		fc.Formats.RSS, fc.Formats.Atom,
-		fc.Formats.JSON, fc.Formats.Markdown,
-		fc.Formats.Text, fc.Formats.Sitemap)
+	writeBoolField(fc.Formats.HTML)
+	writeBoolField(fc.Formats.SimpleHTML)
+	writeBoolField(fc.Formats.RSS)
+	writeBoolField(fc.Formats.Atom)
+	writeBoolField(fc.Formats.JSON)
+	writeBoolField(fc.Formats.Markdown)
+	writeBoolField(fc.Formats.Text)
+	writeBoolField(fc.Formats.Sitemap)
 
 	// Hash template overrides
-	h.Write([]byte(fc.Templates.HTML))
-	h.Write([]byte(fc.Templates.SimpleHTML))
-	h.Write([]byte(fc.Templates.RSS))
-	h.Write([]byte(fc.Templates.Atom))
-	h.Write([]byte(fc.Templates.JSON))
-	h.Write([]byte(fc.Templates.Card))
-	h.Write([]byte(fc.Templates.Sitemap))
+	writeStringField(fc.Templates.HTML)
+	writeStringField(fc.Templates.SimpleHTML)
+	writeStringField(fc.Templates.RSS)
+	writeStringField(fc.Templates.Atom)
+	writeStringField(fc.Templates.JSON)
+	writeStringField(fc.Templates.Card)
+	writeStringField(fc.Templates.Sitemap)
 
 	return hex.EncodeToString(h.Sum(nil))
 }
