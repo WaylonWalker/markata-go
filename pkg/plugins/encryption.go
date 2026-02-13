@@ -274,7 +274,9 @@ func (p *EncryptionPlugin) shouldEncrypt(post *models.Post) bool {
 	return true
 }
 
-// encryptPost encrypts the post's ArticleHTML content.
+// encryptPost encrypts the post's ArticleHTML content and scrubs all
+// plaintext metadata to prevent content leaks through descriptions,
+// structured data, search indexes, and other output channels.
 func (p *EncryptionPlugin) encryptPost(post *models.Post) error {
 	keyName := post.SecretKey
 	if keyName == "" {
@@ -310,9 +312,10 @@ func (p *EncryptionPlugin) encryptPost(post *models.Post) error {
 	// Replace ArticleHTML with encrypted wrapper
 	// Includes:
 	// - data-key-name for multi-post unlock feature
+	// - data-pagefind-ignore to prevent search indexing of encrypted content
 	// - ARIA labels for accessibility
 	// - Remember me checkbox for explicit session storage opt-in
-	post.ArticleHTML = fmt.Sprintf(`<div class="encrypted-content" data-encrypted="%s" data-key-name="%s" role="region" aria-label="Encrypted content">
+	post.ArticleHTML = fmt.Sprintf(`<div class="encrypted-content" data-encrypted="%s" data-key-name="%s" data-pagefind-ignore role="region" aria-label="Encrypted content">
   <div class="encrypted-content__locked">
     <div class="encrypted-content__icon" aria-hidden="true">🔒</div>
     <h3 class="encrypted-content__title" id="encrypt-title-%d">Encrypted Content</h3>
@@ -335,6 +338,11 @@ func (p *EncryptionPlugin) encryptPost(post *models.Post) error {
 		hashString(post.Path), inputID, inputID, hashString(post.Path),
 		checkboxID, hashString(post.Path), hashString(post.Path), hashString(post.Path))
 
+	// Scrub all plaintext metadata to prevent content leaks.
+	// This is critical: without scrubbing, private content leaks through
+	// descriptions, feeds, search indexes, structured data, and 404 indexes.
+	p.scrubPrivateMetadata(post)
+
 	// Mark post as having encrypted content (for template to include decryption script)
 	post.Set("has_encrypted_content", true)
 	post.Set("encryption_key_name", keyName)
@@ -343,6 +351,53 @@ func (p *EncryptionPlugin) encryptPost(post *models.Post) error {
 	templates.InvalidatePost(post)
 
 	return nil
+}
+
+// scrubPrivateMetadata removes all plaintext content from a private post
+// that could leak through downstream plugins and output channels.
+//
+// This covers:
+//   - Title -> leaked via HTML <title>, feed listings, 404 index, OG cards
+//   - Description (auto-generated or user-provided) -> leaked via feeds, meta tags, 404 index
+//   - Content (raw markdown) -> leaked via Atom/JSON feeds, description generation
+//   - Structured data (JSON-LD, OpenGraph, Twitter) -> leaked via HTML meta tags
+//   - Inlinks/Outlinks text -> leaked via link analysis output
+func (p *EncryptionPlugin) scrubPrivateMetadata(post *models.Post) {
+	// Replace title with generic encrypted notice.
+	// This prevents leaks through HTML <title>, <h1>, feed listings,
+	// 404 index entries, OG card pages, and text format output.
+	encryptedTitle := "Encrypted Content"
+	post.Title = &encryptedTitle
+
+	// Clear raw markdown content - prevents leaks through feed content_text,
+	// Atom <content type="text">, and any future content consumers
+	post.Content = ""
+
+	// Replace description with a generic encrypted notice.
+	// This prevents leaks through RSS <description>, Atom <summary>,
+	// JSON Feed summary, <meta name="description">, 404 index, and feed cards.
+	encryptedDesc := "This content is encrypted."
+	post.Description = &encryptedDesc
+
+	// Remove structured data entirely - prevents leaks through
+	// JSON-LD (headline, description), OpenGraph (og:title, og:description),
+	// and Twitter Cards (twitter:title, twitter:description)
+	delete(post.Extra, "structured_data")
+
+	// Clear inlinks/outlinks source text - prevents content-derived
+	// anchor text from leaking through link analysis
+	for _, link := range post.Inlinks {
+		if link != nil {
+			link.SourceText = ""
+			link.TargetText = ""
+		}
+	}
+	for _, link := range post.Outlinks {
+		if link != nil {
+			link.SourceText = ""
+			link.TargetText = ""
+		}
+	}
 }
 
 // escapeHTML escapes special characters for safe HTML output.

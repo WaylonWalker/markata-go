@@ -3,6 +3,8 @@ package tests
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -466,6 +468,328 @@ Public content.`)
 	_, err := buildWithEncryption(t, site, modelsConfig)
 	if err != nil {
 		t.Fatalf("build should succeed when only draft/skipped posts are private: %v", err)
+	}
+}
+
+// =============================================================================
+// Tracer Scan Test — The Definitive Security Test
+// =============================================================================
+
+// TestIntegration_Encryption_TracerScan is the definitive security test.
+// It plants a unique marker string in a private post, runs a comprehensive
+// build with all output-producing plugins, then recursively scans every file
+// in the output directory. The marker must NOT appear in ANY file in plaintext.
+//
+// This test catches leaks through ALL channels:
+//   - HTML output (publish_html)
+//   - Feed output (RSS, Atom, JSON, HTML feeds, Markdown, Text)
+//   - 404 index (_404-index.json)
+//   - Sitemaps (sitemap.xml)
+//   - Search index (pagefind, if present)
+//   - Any other file written to the output directory
+func TestIntegration_Encryption_TracerScan(t *testing.T) {
+	// Set encryption key
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "tracer-test-password-xyz") // pragma: allowlist secret
+
+	site := newTestSite(t)
+
+	// Use a very distinctive marker that cannot appear by accident
+	const tracerMarker = "TRACER_CANARY_7f3a9b2e1d4c_PRIVATE_CONTENT_LEAK_DETECTOR"
+
+	// Private post with the tracer marker in title, content, and a custom description
+	site.addPost("private-tracer.md", `---
+title: My Secret Title With `+tracerMarker+`
+slug: private-tracer
+published: true
+private: true
+description: "This description contains `+tracerMarker+` and must be scrubbed"
+tags:
+  - golang
+  - secrets
+---
+# Private Heading
+
+This private post body contains the tracer marker: `+tracerMarker+`
+
+It also has **bold** and [links](https://example.com) and other markdown.
+
+Second paragraph also has `+tracerMarker+` for good measure.
+`)
+
+	// Public post for reference (ensures build works and output is produced)
+	site.addPost("public-post.md", `---
+title: A Normal Public Post
+slug: public-post
+published: true
+description: "This is a perfectly normal public post"
+tags:
+  - golang
+  - tutorial
+---
+# Public Content
+
+This is a public post. It should be output normally.
+`)
+
+	// Another public post to enable prev/next navigation
+	site.addPost("another-public.md", `---
+title: Another Public Post
+slug: another-public
+published: true
+tags:
+  - golang
+---
+Another public post for navigation testing.
+`)
+
+	modelsConfig := models.NewConfig()
+	// Encryption is enabled by default
+
+	// Build with a comprehensive set of plugins covering all output channels
+	m := lifecycle.NewManager()
+
+	cfg := &lifecycle.Config{
+		ContentDir:   site.contentDir,
+		OutputDir:    site.outputDir,
+		GlobPatterns: []string{"**/*.md"},
+		Extra:        make(map[string]interface{}),
+	}
+	cfg.Extra["url"] = "https://example.com"
+	cfg.Extra["title"] = "Test Site"
+	cfg.Extra["models_config"] = modelsConfig
+
+	// Configure a feed so feed output is generated
+	cfg.Extra["feeds"] = []models.FeedConfig{
+		{
+			Slug:   "all",
+			Title:  "All Posts",
+			Filter: "published==true",
+			Formats: models.FeedFormats{
+				HTML: true,
+				RSS:  true,
+			},
+		},
+	}
+	cfg.Extra["feed_defaults"] = models.FeedDefaults{
+		ItemsPerPage:    10,
+		OrphanThreshold: 3,
+		Formats: models.FeedFormats{
+			HTML: true,
+			RSS:  true,
+		},
+	}
+
+	m.SetConfig(cfg)
+
+	// Register all output-producing plugins (excluding external deps like pagefind/blogroll)
+	m.RegisterPlugin(plugins.NewGlobPlugin())
+	m.RegisterPlugin(plugins.NewLoadPlugin())
+	m.RegisterPlugin(plugins.NewAutoTitlePlugin())
+	m.RegisterPlugin(plugins.NewDescriptionPlugin())
+	m.RegisterPlugin(plugins.NewStructuredDataPlugin())
+	m.RegisterPlugin(plugins.NewRenderMarkdownPlugin())
+	m.RegisterPlugin(plugins.NewEncryptionPlugin())
+	m.RegisterPlugin(plugins.NewTemplatesPlugin())
+	m.RegisterPlugin(plugins.NewFeedsPlugin())
+	m.RegisterPlugin(plugins.NewPrevNextPlugin())
+	m.RegisterPlugin(plugins.NewPublishFeedsPlugin())
+	m.RegisterPlugin(plugins.NewPublishHTMLPlugin())
+	m.RegisterPlugin(plugins.NewErrorPagesPlugin())
+	m.RegisterPlugin(plugins.NewSitemapPlugin())
+
+	err := m.Run()
+	if err != nil {
+		t.Fatalf("build should succeed: %v", err)
+	}
+
+	// Phase 1: Check in-memory post objects
+	for _, post := range m.Posts() {
+		if !post.Private {
+			continue
+		}
+
+		// ArticleHTML must not contain the marker in plaintext
+		if strings.Contains(post.ArticleHTML, tracerMarker) {
+			t.Errorf("SECURITY LEAK: private post %q has marker in ArticleHTML", post.Path)
+		}
+
+		// Content must be scrubbed
+		if strings.Contains(post.Content, tracerMarker) {
+			t.Errorf("SECURITY LEAK: private post %q has marker in Content (raw markdown not scrubbed)", post.Path)
+		}
+
+		// Description must be scrubbed
+		if post.Description != nil && strings.Contains(*post.Description, tracerMarker) {
+			t.Errorf("SECURITY LEAK: private post %q has marker in Description", post.Path)
+		}
+
+		// Structured data must be removed
+		if sd, ok := post.Extra["structured_data"]; ok && sd != nil {
+			t.Errorf("SECURITY LEAK: private post %q still has structured_data in Extra", post.Path)
+		}
+
+		// HTML (full page) must not contain the marker
+		if strings.Contains(post.HTML, tracerMarker) {
+			t.Errorf("SECURITY LEAK: private post %q has marker in full-page HTML", post.Path)
+		}
+
+		// Must have data-pagefind-ignore to prevent search indexing
+		if !strings.Contains(post.ArticleHTML, "data-pagefind-ignore") {
+			t.Errorf("private post %q missing data-pagefind-ignore attribute", post.Path)
+		}
+	}
+
+	// Phase 2: Recursively scan EVERY file in the output directory
+	// This is the definitive test — no file should contain the marker
+	var filesScanned int
+	var leakFiles []string
+
+	scanErr := filepath.Walk(site.outputDir, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		filesScanned++
+
+		// Read the file content
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Errorf("failed to read output file %s: %v", path, readErr)
+			return nil
+		}
+
+		content := string(data)
+		if strings.Contains(content, tracerMarker) {
+			relPath := path
+			if rel, relErr := filepath.Rel(site.outputDir, path); relErr == nil {
+				relPath = rel
+			}
+			leakFiles = append(leakFiles, relPath)
+			t.Errorf("SECURITY LEAK: tracer marker found in output file: %s", relPath)
+		}
+
+		return nil
+	})
+	if scanErr != nil {
+		t.Fatalf("failed to walk output directory: %v", scanErr)
+	}
+
+	if filesScanned == 0 {
+		t.Fatal("no files found in output directory — build may not have produced output")
+	}
+
+	t.Logf("Tracer scan complete: scanned %d files, found %d leaks", filesScanned, len(leakFiles))
+
+	if len(leakFiles) > 0 {
+		t.Errorf("SECURITY FAILURE: tracer marker leaked to %d files: %s",
+			len(leakFiles), strings.Join(leakFiles, ", "))
+	}
+
+	// Phase 3: Verify the encrypted content CAN be decrypted (proves encryption actually worked)
+	for _, post := range m.Posts() {
+		if !post.Private {
+			continue
+		}
+		encData := extractEncryptedData(t, post.ArticleHTML)
+		if encData == "" {
+			t.Errorf("private post %q has no encrypted data attribute", post.Path)
+			continue
+		}
+		decrypted, decErr := encryption.Decrypt(encData, "tracer-test-password-xyz") // pragma: allowlist secret
+		if decErr != nil {
+			t.Errorf("failed to decrypt private post %q: %v", post.Path, decErr)
+			continue
+		}
+		if !strings.Contains(string(decrypted), tracerMarker) {
+			t.Errorf("decrypted content of %q should contain the tracer marker", post.Path)
+		}
+	}
+
+	// Phase 4: Verify public posts are unaffected
+	for _, post := range m.Posts() {
+		if post.Private {
+			continue
+		}
+		if strings.Contains(post.ArticleHTML, `class="encrypted-content"`) {
+			t.Errorf("public post %q should NOT be encrypted", post.Path)
+		}
+		// Public posts should have their content intact
+		if post.Content == "" && post.ArticleHTML == "" {
+			t.Errorf("public post %q has empty content — scrubbing may have been too aggressive", post.Path)
+		}
+	}
+}
+
+// TestIntegration_Encryption_MetadataScrubbing verifies that private post metadata
+// is properly scrubbed after encryption, covering all known leak channels.
+func TestIntegration_Encryption_MetadataScrubbing(t *testing.T) {
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "scrub-test-password") // pragma: allowlist secret
+
+	site := newTestSite(t)
+
+	const marker = "METADATA_SCRUB_MARKER_abc123"
+
+	site.addPost("private-meta.md", `---
+title: Private Meta Test
+slug: private-meta
+published: true
+private: true
+description: "Description with `+marker+`"
+tags:
+  - golang
+---
+Body content with `+marker+` inside.
+`)
+
+	site.addPost("public-meta.md", `---
+title: Public Meta Test
+slug: public-meta
+published: true
+---
+Normal public content.
+`)
+
+	modelsConfig := models.NewConfig()
+
+	m, err := buildWithEncryption(t, site, modelsConfig)
+	if err != nil {
+		t.Fatalf("build should succeed: %v", err)
+	}
+
+	for _, post := range m.Posts() {
+		if !post.Private {
+			continue
+		}
+
+		// Content (raw markdown) must be empty
+		if post.Content != "" {
+			t.Errorf("private post %q: Content should be empty after scrubbing, got %q", post.Path, post.Content)
+		}
+
+		// Description must be generic encrypted message
+		if post.Description == nil {
+			t.Errorf("private post %q: Description should not be nil", post.Path)
+		} else if *post.Description != "This content is encrypted." {
+			t.Errorf("private post %q: Description should be generic encrypted message, got %q", post.Path, *post.Description)
+		}
+
+		// Structured data must be removed
+		if _, ok := post.Extra["structured_data"]; ok {
+			t.Errorf("private post %q: structured_data should be removed from Extra", post.Path)
+		}
+	}
+
+	// Verify public posts still have their metadata
+	for _, post := range m.Posts() {
+		if post.Private {
+			continue
+		}
+		if post.Content == "" {
+			t.Errorf("public post %q: Content should not be empty", post.Path)
+		}
 	}
 }
 
