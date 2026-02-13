@@ -1072,3 +1072,577 @@ func TestGetStringField(t *testing.T) {
 		})
 	}
 }
+
+func TestMentionsPlugin_TrailingPunctuation(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	handleMap := map[string]*mentionEntry{
+		"alice": {
+			Handle:  "alice",
+			SiteURL: "https://alice.dev",
+			Title:   "Alice",
+			Metadata: &models.MentionMetadata{
+				Name: "Alice",
+			},
+		},
+		"simonwillison.net": {
+			Handle:  "simonwillison.net",
+			SiteURL: "https://simonwillison.net",
+			Title:   "Simon Willison",
+			Metadata: &models.MentionMetadata{
+				Name: "Simon Willison",
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{
+			name:    "handle with trailing period",
+			content: "Talk to @alice.",
+			want:    `Talk to <a href="https://alice.dev" class="mention" data-name="Alice" data-handle="@alice">@alice</a>.`,
+		},
+		{
+			name:    "handle with trailing comma",
+			content: "Hey @alice, welcome!",
+			want:    `Hey <a href="https://alice.dev" class="mention" data-name="Alice" data-handle="@alice">@alice</a>, welcome!`,
+		},
+		{
+			name:    "domain handle exact match preserved",
+			content: "Check @simonwillison.net for more",
+			want:    `Check <a href="https://simonwillison.net" class="mention" data-name="Simon Willison" data-handle="@simonwillison.net">@simonwillison.net</a> for more`,
+		},
+		{
+			name:    "domain handle with trailing period",
+			content: "Visit @simonwillison.net.",
+			want:    `Visit <a href="https://simonwillison.net" class="mention" data-name="Simon Willison" data-handle="@simonwillison.net">@simonwillison.net</a>.`,
+		},
+		{
+			name:    "handle without punctuation unchanged",
+			content: "Follow @alice on social",
+			want:    `Follow <a href="https://alice.dev" class="mention" data-name="Alice" data-handle="@alice">@alice</a> on social`,
+		},
+		{
+			name:    "unknown handle with punctuation stays plain",
+			content: "Hello @unknown.",
+			want:    "Hello @unknown.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := p.processMentionsWithMetadata(tt.content, handleMap)
+			if got != tt.want {
+				t.Errorf("processMentionsWithMetadata() =\n  %q\nwant:\n  %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMentionsPlugin_RegisterAuthors(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	bio := "Go developer"
+	avatar := "/images/waylon.jpg"
+	url := "https://waylonwalker.com"
+
+	config := &lifecycle.Config{
+		Extra: map[string]interface{}{
+			"models_config": &models.Config{
+				Authors: models.AuthorsConfig{
+					Authors: map[string]models.Author{
+						"waylon": {
+							ID:     "waylon",
+							Name:   "Waylon Walker",
+							Bio:    &bio,
+							Avatar: &avatar,
+							URL:    &url,
+						},
+						"guest": {
+							ID:   "guest",
+							Name: "Guest Writer",
+							// No URL — should not be registered
+						},
+					},
+				},
+			},
+		},
+	}
+
+	handleMap := make(map[string]*mentionEntry)
+	p.registerAuthors(config, handleMap)
+
+	// Waylon should be registered (has URL)
+	if entry, exists := handleMap["waylon"]; !exists {
+		t.Error("waylon should be registered in handleMap")
+	} else {
+		if entry.SiteURL != url {
+			t.Errorf("waylon SiteURL = %q, want %q", entry.SiteURL, url)
+		}
+		if entry.Metadata == nil {
+			t.Fatal("waylon metadata should not be nil")
+		}
+		if entry.Metadata.Name != "Waylon Walker" {
+			t.Errorf("waylon metadata.Name = %q, want %q", entry.Metadata.Name, "Waylon Walker")
+		}
+		if entry.Metadata.Bio != bio {
+			t.Errorf("waylon metadata.Bio = %q, want %q", entry.Metadata.Bio, bio)
+		}
+		if entry.Metadata.Avatar != avatar {
+			t.Errorf("waylon metadata.Avatar = %q, want %q", entry.Metadata.Avatar, avatar)
+		}
+	}
+
+	// Guest should not be registered (no URL)
+	if _, exists := handleMap["guest"]; exists {
+		t.Error("guest should not be registered (no URL)")
+	}
+}
+
+func TestMentionsPlugin_RegisterAuthors_FirstEntryWins(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	url := "https://waylonwalker.com"
+
+	config := &lifecycle.Config{
+		Extra: map[string]interface{}{
+			"models_config": &models.Config{
+				Authors: models.AuthorsConfig{
+					Authors: map[string]models.Author{
+						"alice": {
+							ID:   "alice",
+							Name: "Alice Author",
+							URL:  &url,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Pre-populate handleMap with existing entry
+	handleMap := map[string]*mentionEntry{
+		"alice": {Handle: "alice", SiteURL: "https://existing.com", Title: "Existing"},
+	}
+
+	p.registerAuthors(config, handleMap)
+
+	// Existing entry should win
+	if entry := handleMap["alice"]; entry.SiteURL != "https://existing.com" {
+		t.Errorf("first entry should win, got SiteURL = %q", entry.SiteURL)
+	}
+}
+
+func TestMentionsPlugin_ChatAdmonitionTitles(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	handleMap := map[string]*mentionEntry{
+		"alice": {
+			Handle:  "alice",
+			SiteURL: "/contact/alice/",
+			Title:   "Alice Smith",
+			Metadata: &models.MentionMetadata{
+				Name:   "Alice Smith",
+				Avatar: "/images/alice.jpg",
+				Bio:    "Software engineer",
+			},
+		},
+		"bob": {
+			Handle:  "bob",
+			SiteURL: "/contact/bob/",
+			Title:   "Bob Jones",
+			Metadata: &models.MentionMetadata{
+				Name:   "Bob Jones",
+				Avatar: "/images/bob.jpg",
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		content string
+		check   func(t *testing.T, result string)
+	}{
+		{
+			name:    "chat with @handle gets enriched",
+			content: `!!! chat "@alice"` + "\n    Hello there!",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if !strings.Contains(result, `chat-contact-avatar`) {
+					t.Error("should contain avatar img")
+				}
+				if !strings.Contains(result, `class="mention"`) {
+					t.Error("should contain mention link")
+				}
+				if !strings.Contains(result, `@alice`) {
+					t.Error("should contain @alice text")
+				}
+				if !strings.Contains(result, `/contact/alice/`) {
+					t.Error("should contain alice's URL")
+				}
+			},
+		},
+		{
+			name:    "chat-reply with @handle gets enriched",
+			content: `!!! chat-reply "@bob"` + "\n    Great, thanks!",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if !strings.Contains(result, `chat-contact-avatar`) {
+					t.Error("should contain avatar img for bob")
+				}
+				if !strings.Contains(result, `@bob`) {
+					t.Error("should contain @bob text")
+				}
+			},
+		},
+		{
+			name:    "chat with unknown handle stays unchanged",
+			content: `!!! chat "@unknown"` + "\n    Some message",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if strings.Contains(result, `chat-contact`) {
+					t.Error("unknown handle should not be enriched")
+				}
+				if !strings.Contains(result, `@unknown`) {
+					t.Error("should preserve original @unknown")
+				}
+			},
+		},
+		{
+			name:    "non-chat admonition not affected",
+			content: `!!! note "@alice"` + "\n    This is a note",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if strings.Contains(result, `chat-contact`) {
+					t.Error("note admonition should not be affected")
+				}
+			},
+		},
+		{
+			name:    "collapsible chat admonition with handle",
+			content: `??? chat "@alice"` + "\n    Collapsible chat",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if !strings.Contains(result, `chat-contact-avatar`) {
+					t.Error("collapsible chat should also get enriched")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := p.processChatAdmonitionTitles(tt.content, handleMap)
+			tt.check(t, result)
+		})
+	}
+}
+
+func TestNewMentionsConfig_IncludesAuthorTemplate(t *testing.T) {
+	config := models.NewMentionsConfig()
+
+	foundContact := false
+	foundAuthor := false
+	for _, source := range config.FromPosts {
+		if source.Filter == "template == 'contact'" {
+			foundContact = true
+		}
+		if source.Filter == "template == 'author'" {
+			foundAuthor = true
+		}
+	}
+
+	if !foundContact {
+		t.Error("default from_posts should include template == 'contact'")
+	}
+	if !foundAuthor {
+		t.Error("default from_posts should include template == 'author'")
+	}
+}
+
+func TestMentionsPlugin_ChatAdmonitionTitles_Unquoted(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	handleMap := map[string]*mentionEntry{
+		"alice": {
+			Handle:  "alice",
+			SiteURL: "/contact/alice/",
+			Title:   "Alice Smith",
+			Metadata: &models.MentionMetadata{
+				Name:   "Alice Smith",
+				Avatar: "/images/alice.jpg",
+				Bio:    "Software engineer",
+			},
+		},
+		"bob": {
+			Handle:  "bob",
+			SiteURL: "/contact/bob/",
+			Title:   "Bob Jones",
+			Metadata: &models.MentionMetadata{
+				Name:   "Bob Jones",
+				Avatar: "/images/bob.jpg",
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		content string
+		check   func(t *testing.T, result string)
+	}{
+		{
+			name:    "unquoted chat @handle gets enriched",
+			content: "!!! chat @alice\n    Hello there!",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if !strings.Contains(result, `chat-contact-avatar`) {
+					t.Error("should contain avatar img")
+				}
+				if !strings.Contains(result, `class="mention"`) {
+					t.Error("should contain mention link")
+				}
+				if !strings.Contains(result, `@alice`) {
+					t.Error("should contain @alice text")
+				}
+				// Enriched title should NOT be wrapped in quotes (quotes break goldmark parsing)
+				if strings.Contains(result, `!!! chat "`) {
+					t.Error("enriched title should not be wrapped in quotes")
+				}
+			},
+		},
+		{
+			name:    "unquoted chat-reply @handle gets enriched",
+			content: "!!! chat-reply @bob\n    Thanks!",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if !strings.Contains(result, `chat-contact-avatar`) {
+					t.Error("should contain avatar img for bob")
+				}
+				if !strings.Contains(result, `@bob`) {
+					t.Error("should contain @bob text")
+				}
+			},
+		},
+		{
+			name:    "unquoted collapsible chat @handle gets enriched",
+			content: "??? chat @alice\n    Collapsible",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if !strings.Contains(result, `chat-contact-avatar`) {
+					t.Error("collapsible unquoted chat should also get enriched")
+				}
+			},
+		},
+		{
+			name:    "unquoted expanded collapsible chat @handle gets enriched",
+			content: "???+ chat @alice\n    Expanded collapsible",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if !strings.Contains(result, `chat-contact-avatar`) {
+					t.Error("expanded collapsible unquoted chat should also get enriched")
+				}
+			},
+		},
+		{
+			name:    "unquoted unknown handle stays unchanged",
+			content: "!!! chat @unknown\n    Message",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if strings.Contains(result, `chat-contact`) {
+					t.Error("unknown handle should not be enriched")
+				}
+				if result != "!!! chat @unknown\n    Message" {
+					t.Errorf("should preserve original content, got: %q", result)
+				}
+			},
+		},
+		{
+			name:    "unquoted non-chat admonition not affected",
+			content: "!!! note @alice\n    This is a note",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if strings.Contains(result, `chat-contact`) {
+					t.Error("note admonition should not be affected")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := p.processChatAdmonitionTitles(tt.content, handleMap)
+			tt.check(t, result)
+		})
+	}
+}
+
+func TestMentionsPlugin_AdmonitionLinesProtected(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	handleMap := map[string]*mentionEntry{
+		"alice": {
+			Handle:  "alice",
+			SiteURL: "/contact/alice/",
+			Title:   "Alice Smith",
+			Metadata: &models.MentionMetadata{
+				Name: "Alice Smith",
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		content string
+		check   func(t *testing.T, result string)
+	}{
+		{
+			name:    "admonition header line @mention not linkified",
+			content: "!!! note @alice\n    Some note content",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				// The admonition header line should NOT have the @alice transformed
+				if strings.Contains(result, `<a href=`) {
+					t.Error("@mention on admonition header line should not be linkified")
+				}
+				if !strings.Contains(result, "!!! note @alice") {
+					t.Error("admonition header should be preserved")
+				}
+			},
+		},
+		{
+			name:    "mention in body after admonition is still processed",
+			content: "!!! note \"Title\"\n    Content mentioning @alice here.\n\nText outside with @alice too",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				// The body content and text outside should have mentions processed
+				// But the mention inside an indented admonition body is fine (it's not a header line)
+				if !strings.Contains(result, `<a href="/contact/alice/"`) {
+					t.Error("@mention outside admonition header should still be linkified")
+				}
+			},
+		},
+		{
+			name:    "collapsible admonition header protected",
+			content: "??? warning @alice\n    Warning content",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if strings.Contains(result, `<a href=`) {
+					t.Error("@mention on ??? header should not be linkified")
+				}
+			},
+		},
+		{
+			name:    "expanded collapsible admonition header protected",
+			content: "???+ info @alice\n    Info content",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if strings.Contains(result, `<a href=`) {
+					t.Error("@mention on ???+ header should not be linkified")
+				}
+			},
+		},
+		{
+			name:    "quoted admonition title with @handle protected",
+			content: `!!! tip "@alice"` + "\n    Tip content",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if strings.Contains(result, `<a href=`) {
+					t.Error("@mention in quoted admonition title should not be linkified by general pass")
+				}
+			},
+		},
+		{
+			name:    "multiple admonitions with mentions between",
+			content: "!!! chat @alice\n    Chat content\n\nHello @alice!\n\n!!! note @alice\n    Note content",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				// The text between admonitions should have the mention linkified
+				if !strings.Contains(result, `Hello <a href="/contact/alice/"`) {
+					t.Error("mention between admonitions should be linkified")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := p.processMentionsWithMetadata(tt.content, handleMap)
+			tt.check(t, result)
+		})
+	}
+}
+
+func TestMentionsPlugin_NoDoubleTransformation(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	handleMap := map[string]*mentionEntry{
+		"alice": {
+			Handle:  "alice",
+			SiteURL: "/contact/alice/",
+			Title:   "Alice Smith",
+			Metadata: &models.MentionMetadata{
+				Name:   "Alice Smith",
+				Avatar: "/images/alice.jpg",
+				Bio:    "Software engineer",
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		content string
+		check   func(t *testing.T, result string)
+	}{
+		{
+			name:    "enriched chat title not re-processed by general mention pass",
+			content: `!!! chat "@alice"` + "\n    Hello there!\n\nSome text mentioning @alice.",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				// First, enrich the chat title
+				enriched := p.processChatAdmonitionTitles(result, handleMap)
+				// Then run the general mention pass
+				final := p.processMentionsWithMetadata(enriched, handleMap)
+
+				// The chat title line should NOT have nested <a> tags
+				lines := strings.Split(final, "\n")
+				chatLine := lines[0]
+				// Count <a href occurrences in the chat title line
+				aCount := strings.Count(chatLine, `<a href=`)
+				if aCount > 1 {
+					t.Errorf("chat title line has %d <a> tags (double transformation), got: %q", aCount, chatLine)
+				}
+
+				// The mention in the body text should still be linkified
+				if !strings.Contains(final, `Some text mentioning <a href="/contact/alice/"`) {
+					t.Error("mention in body text should still be linkified")
+				}
+			},
+		},
+		{
+			name:    "unquoted enriched chat title not re-processed",
+			content: "!!! chat @alice\n    Hello there!\n\nSome text mentioning @alice.",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				enriched := p.processChatAdmonitionTitles(result, handleMap)
+				final := p.processMentionsWithMetadata(enriched, handleMap)
+
+				// The chat title line should NOT have nested <a> tags
+				lines := strings.Split(final, "\n")
+				chatLine := lines[0]
+				aCount := strings.Count(chatLine, `<a href=`)
+				if aCount > 1 {
+					t.Errorf("unquoted chat title line has %d <a> tags (double transformation), got: %q", aCount, chatLine)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.check(t, tt.content)
+		})
+	}
+}

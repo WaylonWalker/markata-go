@@ -300,6 +300,8 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		"secret_key":  true,
 		"author":      true,
 		"authors":     true,
+		"by":          true,
+		"writer":      true,
 	}
 
 	// Title
@@ -365,17 +367,24 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 	}
 
 	// Author fields - support both legacy 'author' and new 'authors' arrays
+	// Also support aliases: 'by' and 'writer' map to 'author'
 	// SetAuthors handles: strings, []string, and mixed []interface{} with {id, role} maps
 	if authorsVal, ok := metadata["authors"]; ok {
 		post.SetAuthors(authorsVal)
 	} else if author := GetString(metadata, "author"); author != "" {
 		// Legacy single author field
 		post.Author = &author
+	} else if by := GetString(metadata, "by"); by != "" {
+		// Alias: 'by' -> 'author'
+		post.Author = &by
+	} else if writer := GetString(metadata, "writer"); writer != "" {
+		// Alias: 'writer' -> 'author'
+		post.Author = &writer
 	}
 
 	// Store unknown fields in Extra
 	for key, value := range metadata {
-		if !knownFields[key] && key != "author" && key != "authors" {
+		if !knownFields[key] {
 			post.Set(key, value)
 		}
 	}

@@ -99,7 +99,8 @@ func (p *MentionsPlugin) Transform(m *lifecycle.Manager) error {
 	log.Printf("mentions: processing %d posts", len(posts))
 
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
-		content := p.processMentionsWithMetadata(post.Content, handleMap)
+		content := p.processChatAdmonitionTitles(post.Content, handleMap)
+		content = p.processMentionsWithMetadata(content, handleMap)
 		post.Content = content
 		return nil
 	})
@@ -180,6 +181,62 @@ func (p *MentionsPlugin) registerAlias(alias string, entry *mentionEntry, handle
 	handleMap[normalizedAlias] = entry
 }
 
+// registerAuthors registers authors from the site configuration as mentionable contacts.
+// Authors with a URL are registered using their config key (ID) as the handle.
+// Author metadata (name, bio, avatar) is used for hovercards.
+func (p *MentionsPlugin) registerAuthors(config *lifecycle.Config, handleMap map[string]*mentionEntry) {
+	modelsConfig, ok := getModelsConfig(config)
+	if !ok {
+		return
+	}
+
+	authorMap := modelsConfig.Authors.Authors
+	if len(authorMap) == 0 {
+		return
+	}
+
+	registered := 0
+	for id := range authorMap {
+		author := authorMap[id]
+		// Authors need a URL to be linkable mentions
+		if author.URL == nil || *author.URL == "" {
+			continue
+		}
+
+		handle := strings.ToLower(id)
+
+		// Build metadata from author fields
+		metadata := &models.MentionMetadata{
+			Name: author.Name,
+			URL:  *author.URL,
+		}
+		if author.Bio != nil {
+			metadata.Bio = *author.Bio
+		}
+		if author.Avatar != nil {
+			metadata.Avatar = *author.Avatar
+		}
+
+		entry := &mentionEntry{
+			Handle:   handle,
+			SiteURL:  *author.URL,
+			Title:    author.Name,
+			Internal: true,
+			Metadata: metadata,
+		}
+
+		// Register the handle (first entry wins)
+		if _, exists := handleMap[handle]; !exists {
+			handleMap[handle] = entry
+			registered++
+		}
+	}
+
+	if registered > 0 {
+		log.Printf("mentions: registered %d authors as mentionable contacts", registered)
+	}
+}
+
 // registerCachedFeed registers a cached feed's handle in the map.
 func (p *MentionsPlugin) registerCachedFeed(feed *models.ExternalFeed, handleMap map[string]*mentionEntry) {
 	if feed.SiteURL == "" {
@@ -206,12 +263,13 @@ func (p *MentionsPlugin) registerCachedFeed(feed *models.ExternalFeed, handleMap
 	}
 }
 
-// buildHandleMap builds a map of handles to their site URLs from blogroll config
-// and internal posts configured via from_posts.
+// buildHandleMap builds a map of handles to their site URLs from blogroll config,
+// configured authors, and internal posts configured via from_posts.
 // Resolution order:
-// 1. Explicit handle from config
+// 1. Explicit handle from blogroll config
 // 2. Auto-generated handle from domain
-// 3. Internal posts matching from_posts filters
+// 3. Authors from site configuration
+// 4. Internal posts matching from_posts filters
 func (p *MentionsPlugin) buildHandleMap(m *lifecycle.Manager) map[string]*mentionEntry {
 	handleMap := make(map[string]*mentionEntry)
 
@@ -237,6 +295,9 @@ func (p *MentionsPlugin) buildHandleMap(m *lifecycle.Manager) map[string]*mentio
 			}
 		}
 	}
+
+	// Register authors from site configuration
+	p.registerAuthors(config, handleMap)
 
 	// Register from internal posts (from_posts sources)
 	p.registerFromPosts(m, mentionsConfig, handleMap)
@@ -528,8 +589,23 @@ func (p *MentionsPlugin) attachMetadataToEntries(handleMap map[string]*mentionEn
 // another @ or word character.
 var mentionRegex = regexp.MustCompile(`((?:^|[^@\w])@([a-zA-Z][a-zA-Z0-9_.-]*))([^a-zA-Z0-9_.-]|$)`)
 
+// mentionTrailingPunctRegex strips trailing punctuation from handles.
+// When the greedy handle match includes trailing dots, commas, etc. that are
+// actually sentence punctuation (e.g., "@contact." at end of sentence),
+// we strip them and retry the lookup. This preserves domain-style handles
+// like @simonwillison.net when they exist in the handle map.
+var mentionTrailingPunctRegex = regexp.MustCompile(`[.,;:!?]+$`)
+
 // mentionsCodeBlockRegex matches fenced code blocks to avoid transforming mentions inside them.
 var mentionsCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
+
+// admonitionHeaderRegex matches admonition header lines (!!!, ???, ???+).
+// These lines must be skipped during general mention processing because
+// @handles in admonition titles are either:
+// 1. Already enriched by processChatAdmonitionTitles (for chat/chat-reply), or
+// 2. Part of the admonition title syntax that goldmark needs to parse intact.
+// Transforming @handles on these lines into <a> tags would break the admonition parser.
+var admonitionHeaderRegex = regexp.MustCompile(`(?m)^(?:\?{3}\+?|!!!)\s+\S`)
 
 // processMentionsWithMetadata replaces @handle syntax with HTML anchor tags including metadata.
 func (p *MentionsPlugin) processMentionsWithMetadata(content string, handleMap map[string]*mentionEntry) string {
@@ -568,7 +644,63 @@ func (p *MentionsPlugin) processMentionsWithMetadata(content string, handleMap m
 }
 
 // processMentionsInText processes @mentions in a text segment (not inside code blocks).
+// Admonition header lines are skipped to avoid breaking admonition title parsing.
 func (p *MentionsPlugin) processMentionsInText(text string, handleMap map[string]*mentionEntry) string {
+	// Find admonition header lines to skip
+	admonitionLines := admonitionHeaderRegex.FindAllStringIndex(text, -1)
+
+	// If there are admonition lines, process text in segments
+	if len(admonitionLines) > 0 {
+		return p.processMentionsSkippingAdmonitions(text, handleMap, admonitionLines)
+	}
+
+	return p.replaceMentionsInText(text, handleMap)
+}
+
+// processMentionsSkippingAdmonitions processes mentions while skipping admonition header lines.
+func (p *MentionsPlugin) processMentionsSkippingAdmonitions(text string, handleMap map[string]*mentionEntry, admonitionLines [][]int) string {
+	// Expand each admonition match to cover the full line
+	skipRanges := make([][]int, 0, len(admonitionLines))
+	for _, loc := range admonitionLines {
+		lineStart := loc[0]
+		// Find end of line
+		lineEnd := strings.Index(text[lineStart:], "\n")
+		if lineEnd == -1 {
+			lineEnd = len(text)
+		} else {
+			lineEnd = lineStart + lineEnd
+		}
+		skipRanges = append(skipRanges, []int{lineStart, lineEnd})
+	}
+
+	var result strings.Builder
+	lastEnd := 0
+
+	for _, r := range skipRanges {
+		start, end := r[0], r[1]
+
+		// Process text before this admonition line
+		if start > lastEnd {
+			processed := p.replaceMentionsInText(text[lastEnd:start], handleMap)
+			result.WriteString(processed)
+		}
+
+		// Keep admonition line unchanged
+		result.WriteString(text[start:end])
+		lastEnd = end
+	}
+
+	// Process any remaining text
+	if lastEnd < len(text) {
+		processed := p.replaceMentionsInText(text[lastEnd:], handleMap)
+		result.WriteString(processed)
+	}
+
+	return result.String()
+}
+
+// replaceMentionsInText replaces @mentions with HTML links in a text segment.
+func (p *MentionsPlugin) replaceMentionsInText(text string, handleMap map[string]*mentionEntry) string {
 	return mentionRegex.ReplaceAllStringFunc(text, func(match string) string {
 		// Extract the handle from the match
 		// Groups: [0]=full match, [1]=prefix+@handle, [2]=handle, [3]=suffix
@@ -583,8 +715,23 @@ func (p *MentionsPlugin) processMentionsInText(text string, handleMap map[string
 		// Look up the handle
 		entry, found := handleMap[handle]
 		if !found {
-			// Handle not found, keep original
-			return match
+			// Try stripping trailing punctuation from the handle.
+			// The regex greedily captures dots/commas in handles (e.g., "@contact."
+			// at end of sentence captures handle as "contact."). Strip trailing
+			// punctuation and retry. This preserves domain-style handles like
+			// @simonwillison.net because their exact match succeeds above.
+			stripped := mentionTrailingPunctRegex.ReplaceAllString(handle, "")
+			if stripped != handle && stripped != "" {
+				entry, found = handleMap[stripped]
+				if found {
+					// Move the stripped punctuation to the suffix
+					suffix = handle[len(stripped):] + suffix
+					handle = stripped
+				}
+			}
+			if !found {
+				return match
+			}
 		}
 
 		// Determine what prefix was captured (space, newline, etc.)
@@ -616,6 +763,101 @@ func (p *MentionsPlugin) processMentionsInText(text string, handleMap map[string
 
 		return prefix + link + suffix
 	})
+}
+
+// chatAdmonitionTitleRegex matches chat/chat-reply admonition lines whose title
+// starts with @handle. Supports both quoted and unquoted forms:
+//   - !!! chat "@alice"   (quoted)
+//   - !!! chat @alice     (unquoted)
+//
+// Captures:
+// Group 1: marker and type prefix (e.g., '!!! chat ')
+// Group 2: opening quote ("") or empty string
+// Group 3: handle (e.g., 'alice')
+// Group 4: closing quote and anything after, or end-of-line remainder
+var chatAdmonitionTitleRegex = regexp.MustCompile(`(?m)^((?:\?\?\?\+?|!!!)\s+(?:chat|chat-reply)\s+)(?:(")@([a-zA-Z][a-zA-Z0-9_.-]*)(".*)|@([a-zA-Z][a-zA-Z0-9_.-]*)(.*))$`)
+
+// processChatAdmonitionTitles finds chat/chat-reply admonition lines with @handle
+// titles and replaces the title with enriched HTML containing the contact's avatar
+// and a linked mention. Supports both quoted ("@handle") and unquoted (@handle)
+// forms. The enriched title is always emitted unquoted so the admonition parser
+// captures it via its unquoted-title group; wrapping in quotes would break because
+// the HTML attributes contain internal double-quote characters.
+func (p *MentionsPlugin) processChatAdmonitionTitles(content string, handleMap map[string]*mentionEntry) string {
+	return chatAdmonitionTitleRegex.ReplaceAllStringFunc(content, func(match string) string {
+		groups := chatAdmonitionTitleRegex.FindStringSubmatch(match)
+		if len(groups) < 7 {
+			return match
+		}
+
+		prefix := groups[1] // e.g., "!!! chat "
+
+		// Determine quoted vs unquoted form:
+		// Quoted:   groups[2]=`"`, groups[3]=handle, groups[4]=`"...`
+		// Unquoted: groups[5]=handle, groups[6]=rest
+		var handle, suffix string
+		if groups[2] != "" {
+			// Quoted form: !!! chat "@alice"
+			handle = groups[3]
+			// Drop the quotes; any trailing content after the closing quote is kept
+			rest := strings.TrimPrefix(groups[4], `"`)
+			suffix = strings.TrimSpace(rest)
+		} else {
+			// Unquoted form: !!! chat @alice
+			handle = groups[5]
+			suffix = strings.TrimSpace(groups[6])
+		}
+
+		normalizedHandle := strings.ToLower(handle)
+		entry, found := handleMap[normalizedHandle]
+		if !found {
+			return match
+		}
+
+		// Build enriched title HTML with avatar and mention link.
+		// Emit as unquoted title so the admonition parser captures it via (.*)
+		enrichedTitle := p.buildChatEnrichedTitle(entry)
+
+		if suffix != "" {
+			return prefix + enrichedTitle + " " + suffix
+		}
+		return prefix + enrichedTitle
+	})
+}
+
+// buildChatEnrichedTitle builds the enriched HTML for a chat admonition title.
+func (p *MentionsPlugin) buildChatEnrichedTitle(entry *mentionEntry) string {
+	var titleHTML strings.Builder
+
+	// Avatar image
+	if entry.Metadata != nil && entry.Metadata.Avatar != "" {
+		titleHTML.WriteString(fmt.Sprintf(`<img class="chat-contact-avatar" src=%q alt=%q />`,
+			html.EscapeString(entry.Metadata.Avatar),
+			html.EscapeString(entry.Metadata.Name)))
+	}
+
+	// Build data attributes for hovercard
+	dataAttrs := ""
+	if entry.Metadata != nil && entry.Metadata.IsValid() {
+		dataAttrs += fmt.Sprintf(` data-name=%q`, html.EscapeString(entry.Metadata.Name))
+		if entry.Metadata.Bio != "" {
+			dataAttrs += fmt.Sprintf(` data-bio=%q`, html.EscapeString(entry.Metadata.Bio))
+		}
+		if entry.Metadata.Avatar != "" {
+			dataAttrs += fmt.Sprintf(` data-avatar=%q`, html.EscapeString(entry.Metadata.Avatar))
+		}
+		dataAttrs += fmt.Sprintf(` data-handle=%q`, html.EscapeString("@"+entry.Handle))
+	}
+
+	// Mention link
+	titleHTML.WriteString(fmt.Sprintf(` <a href=%q class=%q%s>@%s</a>`,
+		html.EscapeString(entry.SiteURL),
+		html.EscapeString(p.cssClass),
+		dataAttrs,
+		html.EscapeString(entry.Handle)))
+
+	// Wrap in a span for styling
+	return fmt.Sprintf(`<span class="chat-contact">%s</span>`, titleHTML.String())
 }
 
 // extractSiteURL extracts the base site URL from a feed URL.

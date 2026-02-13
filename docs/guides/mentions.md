@@ -11,10 +11,11 @@ tags:
 
 # @Mentions
 
-The mentions plugin transforms `@handle` syntax in your markdown content into HTML links. It resolves handles from two sources:
+The mentions plugin transforms `@handle` syntax in your markdown content into HTML links. It resolves handles from three sources:
 
 1. **Blogroll feeds** - External RSS/Atom feeds from your blogroll configuration
-2. **Internal posts** - Posts in your site matching filter expressions (like contact pages)
+2. **Authors** - Authors defined in your site configuration (automatically registered)
+3. **Internal posts** - Posts in your site matching filter expressions (like contact pages)
 
 ## Basic Usage
 
@@ -44,13 +45,19 @@ css_class = "mention"  # CSS class for links (default: "mention")
 That's it for most use cases! By default, mentions resolves handles from:
 
 1. **Blogroll feeds** (if blogroll is enabled)
-2. **Contact posts** - any post with `template: contact` in frontmatter
+2. **Authors** from your site configuration (if they have a `url`)
+3. **Contact posts** - any post with `template: contact` in frontmatter
+4. **Author posts** - any post with `template: author` in frontmatter
 
-The default `from_posts` source is equivalent to:
+The default `from_posts` sources are equivalent to:
 
 ```toml
 [[markata-go.mentions.from_posts]]
 filter = "template == 'contact'"
+handle_field = "handle"
+
+[[markata-go.mentions.from_posts]]
+filter = "template == 'author'"
 handle_field = "handle"
 ```
 
@@ -167,12 +174,134 @@ aliases = ["dave", "davatron"]
 
 Now `@daverupert`, `@dave`, and `@davatron` all link to `https://daverupert.com`.
 
+## Authors as Contacts
+
+Authors defined in your site configuration are automatically registered as mentionable contacts. If an author has a `url` field, they become a valid `@handle` target.
+
+```toml
+[markata-go.authors.authors.waylon]
+name = "Waylon Walker"
+url = "https://waylonwalker.com"
+avatar = "/images/waylon.jpg"
+bio = "Python and Go developer"
+```
+
+With this configuration, `@waylon` becomes a valid mention that links to `https://waylonwalker.com`. The author's avatar, name, and bio are used for hovercards.
+
+Authors are registered after blogroll feeds but before `from_posts` sources. If a blogroll feed already registered the same handle, the blogroll entry wins (first registration wins).
+
+**No extra configuration needed** -- as long as your authors have a `url` field, they are automatically available as mentions.
+
+## Authors in from_posts
+
+By default, the mentions plugin includes posts with `template: author` as a post source, in addition to `template: contact`:
+
+```toml
+# These are the defaults (you don't need to add them):
+[[markata-go.mentions.from_posts]]
+filter = "template == 'contact'"
+handle_field = "handle"
+
+[[markata-go.mentions.from_posts]]
+filter = "template == 'author'"
+handle_field = "handle"
+```
+
+This means if you have author profile pages with `template: author`, they are automatically included as mention sources.
+
+## Trailing Punctuation
+
+Mentions handle trailing punctuation gracefully. When you write `@alice.` or `@bob,` at the end of a sentence, the plugin strips the punctuation and resolves the handle correctly:
+
+```markdown
+I was talking to @alice.
+Check out @bob, they have great content.
+Thanks @charlie!
+```
+
+Produces:
+
+```html
+I was talking to <a class="mention" href="...">@alice</a>.
+Check out <a class="mention" href="...">@bob</a>, they have great content.
+Thanks <a class="mention" href="...">@charlie</a>!
+```
+
+The following trailing punctuation characters are stripped: `. , ; : ! ?`
+
+**Domain-style handles are preserved:** If the exact handle (including dots) matches a known contact, it is used as-is. For example, `@simonwillison.net` resolves to the domain handle without stripping the `.net`. Only when the exact handle fails to match does the plugin try stripping trailing punctuation.
+
+## Chat Admonitions
+
+The mentions plugin enriches chat admonition titles with contact information. When you use `!!! chat` or `!!! chat-reply` with an `@handle`, the title is replaced with the contact's avatar and a linked mention.
+
+Both quoted and unquoted forms work:
+
+```markdown
+!!! chat @alice
+
+    Hey, have you seen the new release?
+
+!!! chat-reply @bob
+
+    Yes! It looks great.
+
+!!! chat "@alice"
+
+    Quoted form works too.
+```
+
+This renders with avatar images and linked names in the admonition title, creating a conversation-style display.
+
+Collapsible chat admonitions work too:
+
+```markdown
+??? chat @alice
+
+    This content is collapsible.
+```
+
+If the handle is not found in the contact map, the title is left unchanged.
+
+### Admonition Header Protection
+
+The mentions plugin automatically protects `@handles` on admonition header lines from being transformed into links. This applies to all admonition types (`!!!`, `???`, `???+`), not just chat. Mentions in the body text and outside admonitions are still processed normally.
+
+```markdown
+!!! note @alice
+    This note title is preserved as-is.
+
+But @alice in regular text is still linked.
+```
+
+### Styling Chat Admonitions
+
+Chat admonitions include CSS classes for styling:
+
+```css
+.chat-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.chat-contact-avatar {
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+```
+
+These styles are included in the default theme. Customize them to match your site's design.
+
 ## Handle Resolution Priority
 
 When building the handle map, sources are processed in this order:
 
 1. **Blogroll feeds** (if enabled) - First registered wins
-2. **From posts** sources - Processed in order they appear in config
+2. **Authors** (from site config) - Authors with a `url` field
+3. **From posts** sources - Processed in order they appear in config
 
 If the same handle is registered multiple times, the first registration wins and subsequent duplicates are logged as warnings.
 
@@ -223,7 +352,7 @@ Follow @example on social       <!-- Transformed -->
 |--------|------|---------|-------------|
 | `enabled` | bool | `true` | Enable/disable mentions processing |
 | `css_class` | string | `"mention"` | CSS class for mention links |
-| `from_posts` | array | see below | List of internal post sources. Default: one source with `filter = "template == 'contact'"` and `handle_field = "handle"` |
+| `from_posts` | array | see below | List of internal post sources. Default: two sources with `filter = "template == 'contact'"` and `filter = "template == 'author'"`, both with `handle_field = "handle"` |
 
 ### from_posts Options
 
