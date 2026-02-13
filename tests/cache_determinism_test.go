@@ -336,6 +336,11 @@ func collectFiles(t *testing.T, dir string) map[string][]byte {
 			return nil
 		}
 
+		// Skip Pagefind artifacts (generated during search indexing)
+		if strings.HasPrefix(relPath, "_pagefind"+string(filepath.Separator)) || relPath == "_pagefind" {
+			return nil
+		}
+
 		content, err := os.ReadFile(path)
 		if err != nil {
 			return err
