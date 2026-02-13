@@ -918,13 +918,23 @@ The extended frontmatter format supports key aliases for convenience (`name`/`ha
 **Stage:** Render  
 **Purpose:** Converts markdown content to HTML using goldmark with extensions.
 
-**Configuration:** None (extensions enabled by default)
+**Configuration (TOML):**
+
+```toml
+[markdown.extensions]
+typographer = true       # Smart quotes, dashes, ellipses (default: true)
+definition_list = true   # PHP Markdown Extra definition lists (default: true)
+footnote = true          # PHP Markdown Extra footnotes (default: true)
+```
 
 **Enabled extensions:**
 - **GFM** - GitHub Flavored Markdown (tables, strikethrough, autolinks, task lists)
-- **Syntax Highlighting** - Code block highlighting with Chroma (monokai theme)
+- **Syntax Highlighting** - Code block highlighting with Chroma
 - **Admonitions** - Note/warning blocks
 - **Auto Heading IDs** - Generates IDs for headings
+- **Typographer** - Smart quotes, dashes, ellipses
+- **Definition Lists** - PHP Markdown Extra style definition lists
+- **Footnotes** - PHP Markdown Extra style footnotes
 
 **Behavior:**
 1. Takes `post.Content` (raw markdown)
@@ -961,6 +971,31 @@ func main() {
 Here's a sentence with a footnote.[^1]
 
 [^1]: This is the footnote content.
+
+## Smart Quotes
+"Straight quotes" become curly.
+
+## Definition Lists
+Term
+:   Definition of the term.
+```
+
+**Disabling extensions:**
+
+All extensions are enabled by default. To disable any:
+
+```toml
+# Disable specific extensions
+[markdown.extensions]
+typographer = false       # Use straight quotes instead
+definition_list = false   # Disable definition lists
+footnote = false          # Disable footnotes
+
+# Or disable all three
+[markdown.extensions]
+typographer = false
+definition_list = false
+footnote = false
 ```
 
 ---

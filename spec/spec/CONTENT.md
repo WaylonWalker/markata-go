@@ -227,6 +227,8 @@ Implementations SHOULD support:
 | Footnotes | `[^1]` | Footnote |
 | Heading IDs | `## Title {#custom-id}` | `<h2 id="custom-id">` |
 | Attributes | `{.class}`, `{#id}` | Element with class/id |
+| Smart Quotes | `"text"` | `"text"` (curly) |
+| Definition Lists | `Term\n:   Def` | `<dl>`, `<dt>`, `<dd>` |
 
 ### Attribute Syntax
 
@@ -306,6 +308,86 @@ Output:
     </tr>
   </tbody>
 </table>
+```
+
+### Smart Quotes (Typographer)
+
+Automatically converts straight quotes to typographic (curly) quotes and other punctuation:
+
+| Input | Output | Description |
+|-------|--------|-------------|
+| `"text"` | `"text"` | Double curly quotes |
+| `'text'` | `'text'` | Single curly quotes |
+| `It's` | `It's` | Apostrophe |
+| `9--5` | `9–5` | En dash |
+| `hello---world` | `hello—world` | Em dash |
+| `wait...` | `wait…` | Ellipsis |
+
+**Note:** These are HTML entities (`&ldquo;`, `&rdquo;`, etc.) that render as proper typographic characters.
+
+**Configuration:**
+```toml
+[markdown.extensions]
+typographer = true  # Enable smart quotes (default: true)
+```
+
+### Definition Lists
+
+PHP Markdown Extra style definition lists:
+
+```markdown
+Term 1
+:   Definition 1
+
+Term 2
+:   Definition 2a
+:   Definition 2b
+```
+
+Output:
+```html
+<dl>
+  <dt>Term 1</dt>
+  <dd>Definition 1</dd>
+  <dt>Term 2</dt>
+  <dd>Definition 2a</dd>
+  <dd>Definition 2b</dd>
+</dl>
+```
+
+**Configuration:**
+```toml
+[markdown.extensions]
+definition_list = true  # Enable definition lists (default: true)
+```
+
+### Footnotes
+
+PHP Markdown Extra style footnotes:
+
+```markdown
+Here's a sentence with a footnote.[^1]
+
+[^1]: This is the footnote content.
+```
+
+Output:
+```html
+<p>Here's a sentence with a footnote.<sup><a href="#fn:1">1</a></sup></p>
+<!-- ... later in document ... -->
+<section class="footnotes">
+  <ol>
+    <li id="fn:1">
+      <p>This is the footnote content. <a href="#fnref:1">↩</a></p>
+    </li>
+  </ol>
+</section>
+```
+
+**Configuration:**
+```toml
+[markdown.extensions]
+footnote = true  # Enable footnotes (default: true)
 ```
 
 ### Code Blocks
@@ -663,6 +745,28 @@ symbol = "#"
 [tool-name.markdown.admonitions]
 enabled = true
 collapsible = true
+
+# Extension configuration (markata-go specific)
+[markdown.extensions]
+typographer = true       # Smart quotes, dashes, ellipses (default: true)
+definition_list = true   # PHP Markdown Extra definition lists (default: true)
+footnote = true          # PHP Markdown Extra footnotes (default: true)
+```
+
+### Disabling Extensions
+
+Individual extensions can be disabled if needed:
+
+```toml
+# Disable all optional extensions
+[markdown.extensions]
+typographer = false
+definition_list = false
+footnote = false
+
+# Or disable just one
+[markdown.extensions]
+typographer = false  # Keep straight quotes
 ```
 
 ---
