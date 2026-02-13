@@ -176,48 +176,22 @@ func (p *AdmonitionParser) Open(_ ast.Node, reader text.Reader, _ parser.Context
 
 // Continue checks if the admonition block continues.
 // Admonition content is indented with at least 4 spaces.
-// Blank lines are allowed within admonitions if followed by indented content.
+// Blank lines are allowed within admonitions; the block closes when a
+// non-blank line with fewer than 4 spaces of indentation is encountered.
 func (p *AdmonitionParser) Continue(_ ast.Node, reader text.Reader, _ parser.Context) parser.State {
-	line, segment := reader.PeekLine()
+	line, _ := reader.PeekLine()
 
-	// Check for blank line - need to look ahead to decide if we continue
+	// Blank lines are allowed inside admonitions (paragraph separators).
+	// We let them through without advancing the reader; goldmark handles
+	// them as part of the block's child content.
 	if util.IsBlank(line) {
-		// Save current position
-		savedLine := segment
-
-		// Skip this blank line
-		reader.Advance(segment.Stop - segment.Start)
-
-		// Skip any additional blank lines
-		nextLine, nextSeg := reader.PeekLine()
-		for util.IsBlank(nextLine) && nextSeg.Len() > 0 {
-			reader.Advance(nextSeg.Stop - nextSeg.Start)
-			nextLine, nextSeg = reader.PeekLine()
-		}
-
-		// Check if next non-blank line is properly indented
-		if nextSeg.Len() > 0 {
-			nextIndent, _ := util.IndentWidth(nextLine, reader.LineOffset())
-			if nextIndent >= 4 {
-				// Content continues - process the indented line
-				pos, padding := util.IndentPosition(nextLine, reader.LineOffset(), 4)
-				if pos >= 0 {
-					reader.AdvanceAndSetPadding(pos, padding)
-					return parser.Continue | parser.HasChildren
-				}
-			}
-		}
-
-		// Content doesn't continue - but we've already advanced past blank lines
-		// We need to close but the reader is already past the blank line
-		_ = savedLine // Note: we can't easily reset the reader position
-		return parser.Close
+		return parser.Continue | parser.HasChildren
 	}
 
-	// Check for proper indentation (at least 4 spaces)
+	// Non-blank line: check for proper indentation (at least 4 spaces).
 	indent, _ := util.IndentWidth(line, reader.LineOffset())
 	if indent < 4 {
-		// Not indented enough - close the admonition
+		// Not indented enough - close the admonition.
 		return parser.Close
 	}
 
@@ -226,7 +200,7 @@ func (p *AdmonitionParser) Continue(_ ast.Node, reader text.Reader, _ parser.Con
 		return parser.Close
 	}
 
-	// Advance to content start so child parsers can consume it
+	// Advance past the 4-space indent so child parsers see unindented content.
 	reader.AdvanceAndSetPadding(pos, padding)
 	return parser.Continue | parser.HasChildren
 }
