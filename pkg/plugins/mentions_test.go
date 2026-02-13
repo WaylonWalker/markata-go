@@ -1407,9 +1407,9 @@ func TestMentionsPlugin_ChatAdmonitionTitles_Unquoted(t *testing.T) {
 				if !strings.Contains(result, `@alice`) {
 					t.Error("should contain @alice text")
 				}
-				// Should wrap in quotes for goldmark
-				if !strings.Contains(result, `!!! chat "`) {
-					t.Error("should add quotes around enriched title")
+				// Enriched title should NOT be wrapped in quotes (quotes break goldmark parsing)
+				if strings.Contains(result, `!!! chat "`) {
+					t.Error("enriched title should not be wrapped in quotes")
 				}
 			},
 		},

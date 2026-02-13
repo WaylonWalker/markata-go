@@ -780,8 +780,9 @@ var chatAdmonitionTitleRegex = regexp.MustCompile(`(?m)^((?:\?\?\?\+?|!!!)\s+(?:
 // processChatAdmonitionTitles finds chat/chat-reply admonition lines with @handle
 // titles and replaces the title with enriched HTML containing the contact's avatar
 // and a linked mention. Supports both quoted ("@handle") and unquoted (@handle)
-// forms. This runs before the general mention pass so the enriched title
-// is captured by the admonition parser and rendered as raw HTML.
+// forms. The enriched title is always emitted unquoted so the admonition parser
+// captures it via its unquoted-title group; wrapping in quotes would break because
+// the HTML attributes contain internal double-quote characters.
 func (p *MentionsPlugin) processChatAdmonitionTitles(content string, handleMap map[string]*mentionEntry) string {
 	return chatAdmonitionTitleRegex.ReplaceAllStringFunc(content, func(match string) string {
 		groups := chatAdmonitionTitleRegex.FindStringSubmatch(match)
@@ -794,22 +795,17 @@ func (p *MentionsPlugin) processChatAdmonitionTitles(content string, handleMap m
 		// Determine quoted vs unquoted form:
 		// Quoted:   groups[2]=`"`, groups[3]=handle, groups[4]=`"...`
 		// Unquoted: groups[5]=handle, groups[6]=rest
-		var handle, openQuote, closeQuote string
+		var handle, suffix string
 		if groups[2] != "" {
 			// Quoted form: !!! chat "@alice"
-			openQuote = groups[2]
 			handle = groups[3]
-			closeQuote = groups[4]
+			// Drop the quotes; any trailing content after the closing quote is kept
+			rest := strings.TrimPrefix(groups[4], `"`)
+			suffix = strings.TrimSpace(rest)
 		} else {
 			// Unquoted form: !!! chat @alice
-			// Wrap the enriched title in quotes so goldmark's admonition parser
-			// treats it as the title (unquoted titles with HTML would break).
 			handle = groups[5]
-			openQuote = `"`
-			closeQuote = `"`
-			if rest := strings.TrimSpace(groups[6]); rest != "" {
-				closeQuote = `"` + " " + rest
-			}
+			suffix = strings.TrimSpace(groups[6])
 		}
 
 		normalizedHandle := strings.ToLower(handle)
@@ -818,10 +814,14 @@ func (p *MentionsPlugin) processChatAdmonitionTitles(content string, handleMap m
 			return match
 		}
 
-		// Build enriched title HTML with avatar and mention link
+		// Build enriched title HTML with avatar and mention link.
+		// Emit as unquoted title so the admonition parser captures it via (.*)
 		enrichedTitle := p.buildChatEnrichedTitle(entry)
 
-		return prefix + openQuote + enrichedTitle + closeQuote
+		if suffix != "" {
+			return prefix + enrichedTitle + " " + suffix
+		}
+		return prefix + enrichedTitle
 	})
 }
 
