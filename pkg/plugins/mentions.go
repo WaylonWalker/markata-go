@@ -599,6 +599,14 @@ var mentionTrailingPunctRegex = regexp.MustCompile(`[.,;:!?]+$`)
 // mentionsCodeBlockRegex matches fenced code blocks to avoid transforming mentions inside them.
 var mentionsCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
 
+// admonitionHeaderRegex matches admonition header lines (!!!, ???, ???+).
+// These lines must be skipped during general mention processing because
+// @handles in admonition titles are either:
+// 1. Already enriched by processChatAdmonitionTitles (for chat/chat-reply), or
+// 2. Part of the admonition title syntax that goldmark needs to parse intact.
+// Transforming @handles on these lines into <a> tags would break the admonition parser.
+var admonitionHeaderRegex = regexp.MustCompile(`(?m)^(?:\?{3}\+?|!!!)\s+\S`)
+
 // processMentionsWithMetadata replaces @handle syntax with HTML anchor tags including metadata.
 func (p *MentionsPlugin) processMentionsWithMetadata(content string, handleMap map[string]*mentionEntry) string {
 	// Split content by fenced code blocks to avoid transforming mentions inside them
@@ -636,7 +644,63 @@ func (p *MentionsPlugin) processMentionsWithMetadata(content string, handleMap m
 }
 
 // processMentionsInText processes @mentions in a text segment (not inside code blocks).
+// Admonition header lines are skipped to avoid breaking admonition title parsing.
 func (p *MentionsPlugin) processMentionsInText(text string, handleMap map[string]*mentionEntry) string {
+	// Find admonition header lines to skip
+	admonitionLines := admonitionHeaderRegex.FindAllStringIndex(text, -1)
+
+	// If there are admonition lines, process text in segments
+	if len(admonitionLines) > 0 {
+		return p.processMentionsSkippingAdmonitions(text, handleMap, admonitionLines)
+	}
+
+	return p.replaceMentionsInText(text, handleMap)
+}
+
+// processMentionsSkippingAdmonitions processes mentions while skipping admonition header lines.
+func (p *MentionsPlugin) processMentionsSkippingAdmonitions(text string, handleMap map[string]*mentionEntry, admonitionLines [][]int) string {
+	// Expand each admonition match to cover the full line
+	skipRanges := make([][]int, 0, len(admonitionLines))
+	for _, loc := range admonitionLines {
+		lineStart := loc[0]
+		// Find end of line
+		lineEnd := strings.Index(text[lineStart:], "\n")
+		if lineEnd == -1 {
+			lineEnd = len(text)
+		} else {
+			lineEnd = lineStart + lineEnd
+		}
+		skipRanges = append(skipRanges, []int{lineStart, lineEnd})
+	}
+
+	var result strings.Builder
+	lastEnd := 0
+
+	for _, r := range skipRanges {
+		start, end := r[0], r[1]
+
+		// Process text before this admonition line
+		if start > lastEnd {
+			processed := p.replaceMentionsInText(text[lastEnd:start], handleMap)
+			result.WriteString(processed)
+		}
+
+		// Keep admonition line unchanged
+		result.WriteString(text[start:end])
+		lastEnd = end
+	}
+
+	// Process any remaining text
+	if lastEnd < len(text) {
+		processed := p.replaceMentionsInText(text[lastEnd:], handleMap)
+		result.WriteString(processed)
+	}
+
+	return result.String()
+}
+
+// replaceMentionsInText replaces @mentions with HTML links in a text segment.
+func (p *MentionsPlugin) replaceMentionsInText(text string, handleMap map[string]*mentionEntry) string {
 	return mentionRegex.ReplaceAllStringFunc(text, func(match string) string {
 		// Extract the handle from the match
 		// Groups: [0]=full match, [1]=prefix+@handle, [2]=handle, [3]=suffix
@@ -702,28 +766,51 @@ func (p *MentionsPlugin) processMentionsInText(text string, handleMap map[string
 }
 
 // chatAdmonitionTitleRegex matches chat/chat-reply admonition lines whose title
-// starts with @handle. Captures:
+// starts with @handle. Supports both quoted and unquoted forms:
+//   - !!! chat "@alice"   (quoted)
+//   - !!! chat @alice     (unquoted)
+//
+// Captures:
 // Group 1: marker and type prefix (e.g., '!!! chat ')
-// Group 2: opening quote (")
+// Group 2: opening quote ("") or empty string
 // Group 3: handle (e.g., 'alice')
-// Group 4: closing quote and anything after
-var chatAdmonitionTitleRegex = regexp.MustCompile(`(?m)^((?:\?\?\?\+?|!!!)\s+(?:chat|chat-reply)\s+)(")@([a-zA-Z][a-zA-Z0-9_.-]*)(".*)$`)
+// Group 4: closing quote and anything after, or end-of-line remainder
+var chatAdmonitionTitleRegex = regexp.MustCompile(`(?m)^((?:\?\?\?\+?|!!!)\s+(?:chat|chat-reply)\s+)(?:(")@([a-zA-Z][a-zA-Z0-9_.-]*)(".*)|@([a-zA-Z][a-zA-Z0-9_.-]*)(.*))$`)
 
 // processChatAdmonitionTitles finds chat/chat-reply admonition lines with @handle
 // titles and replaces the title with enriched HTML containing the contact's avatar
-// and a linked mention. This runs before goldmark parsing so the enriched title
+// and a linked mention. Supports both quoted ("@handle") and unquoted (@handle)
+// forms. This runs before the general mention pass so the enriched title
 // is captured by the admonition parser and rendered as raw HTML.
 func (p *MentionsPlugin) processChatAdmonitionTitles(content string, handleMap map[string]*mentionEntry) string {
 	return chatAdmonitionTitleRegex.ReplaceAllStringFunc(content, func(match string) string {
 		groups := chatAdmonitionTitleRegex.FindStringSubmatch(match)
-		if len(groups) < 5 {
+		if len(groups) < 7 {
 			return match
 		}
 
-		prefix := groups[1]     // e.g., "!!! chat "
-		openQuote := groups[2]  // "
-		handle := groups[3]     // e.g., "alice"
-		closeQuote := groups[4] // e.g., `"`
+		prefix := groups[1] // e.g., "!!! chat "
+
+		// Determine quoted vs unquoted form:
+		// Quoted:   groups[2]=`"`, groups[3]=handle, groups[4]=`"...`
+		// Unquoted: groups[5]=handle, groups[6]=rest
+		var handle, openQuote, closeQuote string
+		if groups[2] != "" {
+			// Quoted form: !!! chat "@alice"
+			openQuote = groups[2]
+			handle = groups[3]
+			closeQuote = groups[4]
+		} else {
+			// Unquoted form: !!! chat @alice
+			// Wrap the enriched title in quotes so goldmark's admonition parser
+			// treats it as the title (unquoted titles with HTML would break).
+			handle = groups[5]
+			openQuote = `"`
+			closeQuote = `"`
+			if rest := strings.TrimSpace(groups[6]); rest != "" {
+				closeQuote = `"` + " " + rest
+			}
+		}
 
 		normalizedHandle := strings.ToLower(handle)
 		entry, found := handleMap[normalizedHandle]
@@ -732,40 +819,45 @@ func (p *MentionsPlugin) processChatAdmonitionTitles(content string, handleMap m
 		}
 
 		// Build enriched title HTML with avatar and mention link
-		var titleHTML strings.Builder
-
-		// Avatar image
-		if entry.Metadata != nil && entry.Metadata.Avatar != "" {
-			titleHTML.WriteString(fmt.Sprintf(`<img class="chat-contact-avatar" src=%q alt=%q />`,
-				html.EscapeString(entry.Metadata.Avatar),
-				html.EscapeString(entry.Metadata.Name)))
-		}
-
-		// Build data attributes for hovercard
-		dataAttrs := ""
-		if entry.Metadata != nil && entry.Metadata.IsValid() {
-			dataAttrs += fmt.Sprintf(` data-name=%q`, html.EscapeString(entry.Metadata.Name))
-			if entry.Metadata.Bio != "" {
-				dataAttrs += fmt.Sprintf(` data-bio=%q`, html.EscapeString(entry.Metadata.Bio))
-			}
-			if entry.Metadata.Avatar != "" {
-				dataAttrs += fmt.Sprintf(` data-avatar=%q`, html.EscapeString(entry.Metadata.Avatar))
-			}
-			dataAttrs += fmt.Sprintf(` data-handle=%q`, html.EscapeString("@"+entry.Handle))
-		}
-
-		// Mention link
-		titleHTML.WriteString(fmt.Sprintf(` <a href=%q class=%q%s>@%s</a>`,
-			html.EscapeString(entry.SiteURL),
-			html.EscapeString(p.cssClass),
-			dataAttrs,
-			html.EscapeString(entry.Handle)))
-
-		// Wrap in a span for styling
-		enrichedTitle := fmt.Sprintf(`<span class="chat-contact">%s</span>`, titleHTML.String())
+		enrichedTitle := p.buildChatEnrichedTitle(entry)
 
 		return prefix + openQuote + enrichedTitle + closeQuote
 	})
+}
+
+// buildChatEnrichedTitle builds the enriched HTML for a chat admonition title.
+func (p *MentionsPlugin) buildChatEnrichedTitle(entry *mentionEntry) string {
+	var titleHTML strings.Builder
+
+	// Avatar image
+	if entry.Metadata != nil && entry.Metadata.Avatar != "" {
+		titleHTML.WriteString(fmt.Sprintf(`<img class="chat-contact-avatar" src=%q alt=%q />`,
+			html.EscapeString(entry.Metadata.Avatar),
+			html.EscapeString(entry.Metadata.Name)))
+	}
+
+	// Build data attributes for hovercard
+	dataAttrs := ""
+	if entry.Metadata != nil && entry.Metadata.IsValid() {
+		dataAttrs += fmt.Sprintf(` data-name=%q`, html.EscapeString(entry.Metadata.Name))
+		if entry.Metadata.Bio != "" {
+			dataAttrs += fmt.Sprintf(` data-bio=%q`, html.EscapeString(entry.Metadata.Bio))
+		}
+		if entry.Metadata.Avatar != "" {
+			dataAttrs += fmt.Sprintf(` data-avatar=%q`, html.EscapeString(entry.Metadata.Avatar))
+		}
+		dataAttrs += fmt.Sprintf(` data-handle=%q`, html.EscapeString("@"+entry.Handle))
+	}
+
+	// Mention link
+	titleHTML.WriteString(fmt.Sprintf(` <a href=%q class=%q%s>@%s</a>`,
+		html.EscapeString(entry.SiteURL),
+		html.EscapeString(p.cssClass),
+		dataAttrs,
+		html.EscapeString(entry.Handle)))
+
+	// Wrap in a span for styling
+	return fmt.Sprintf(`<span class="chat-contact">%s</span>`, titleHTML.String())
 }
 
 // extractSiteURL extracts the base site URL from a feed URL.

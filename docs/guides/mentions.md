@@ -233,16 +233,22 @@ The following trailing punctuation characters are stripped: `. , ; : ! ?`
 
 ## Chat Admonitions
 
-The mentions plugin enriches chat admonition titles with contact information. When you use `!!! chat` or `!!! chat-reply` with an `@handle`, the title is replaced with the contact's avatar and a linked mention:
+The mentions plugin enriches chat admonition titles with contact information. When you use `!!! chat` or `!!! chat-reply` with an `@handle`, the title is replaced with the contact's avatar and a linked mention.
+
+Both quoted and unquoted forms work:
 
 ```markdown
-!!! chat "@alice"
+!!! chat @alice
 
     Hey, have you seen the new release?
 
-!!! chat-reply "@bob"
+!!! chat-reply @bob
 
     Yes! It looks great.
+
+!!! chat "@alice"
+
+    Quoted form works too.
 ```
 
 This renders with avatar images and linked names in the admonition title, creating a conversation-style display.
@@ -250,12 +256,23 @@ This renders with avatar images and linked names in the admonition title, creati
 Collapsible chat admonitions work too:
 
 ```markdown
-??? chat "@alice"
+??? chat @alice
 
     This content is collapsible.
 ```
 
 If the handle is not found in the contact map, the title is left unchanged.
+
+### Admonition Header Protection
+
+The mentions plugin automatically protects `@handles` on admonition header lines from being transformed into links. This applies to all admonition types (`!!!`, `???`, `???+`), not just chat. Mentions in the body text and outside admonitions are still processed normally.
+
+```markdown
+!!! note @alice
+    This note title is preserved as-is.
+
+But @alice in regular text is still linked.
+```
 
 ### Styling Chat Admonitions
 

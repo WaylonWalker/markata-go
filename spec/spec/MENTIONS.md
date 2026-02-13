@@ -340,16 +340,24 @@ When a `chat` or `chat-reply` admonition title starts with `@handle`, the mentio
 
 ### Syntax
 
+Both quoted and unquoted forms are supported:
+
 ```markdown
-!!! chat "@alice"
+!!! chat @alice
     Hey, have you seen the new release?
 
-!!! chat-reply "@bob"
+!!! chat-reply @bob
     Yes! The new features look great.
 
 !!! chat "@alice"
-    Let me show you how the mentions work.
+    Quoted form also works.
 ```
+
+When an unquoted `@handle` is used and resolves, the plugin wraps the enriched title in quotes so the admonition parser treats it correctly. When the handle does not resolve, the line is left unchanged.
+
+### Admonition Header Protection
+
+The general `@mention` pass skips all admonition header lines (`!!!`, `???`, `???+`). This prevents `@handles` in admonition titles from being transformed into `<a>` tags, which would break the admonition parser. This protection applies to **all** admonition types, not just `chat`/`chat-reply`.
 
 ### Rendered HTML
 
