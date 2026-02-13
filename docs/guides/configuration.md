@@ -1598,6 +1598,37 @@ contribution = "Technical review"
 
 **Related:** See the [Frontmatter Guide](frontmatter.md) for details on the `authors` and `author` fields.
 
+## Encryption Settings
+
+Encryption protects private post content with AES-256-GCM client-side encryption. It is **enabled by default**.
+
+```toml
+[encryption]
+enabled = true                             # default: true
+default_key = "default"                    # default: "default"
+decryption_hint = "DM me for access"       # optional hint shown to visitors
+
+[encryption.private_tags]
+diary = "personal"                         # tag "diary" auto-encrypts with key "personal"
+draft-ideas = "default"                    # tag "draft-ideas" encrypts with default key
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | bool | `true` | Enable/disable encryption processing |
+| `default_key` | string | `"default"` | Key name when post doesn't specify one |
+| `decryption_hint` | string | `""` | Help text shown next to password prompt |
+| `private_tags` | map | `{}` | Maps tag names to encryption key names |
+
+Encryption keys are loaded from environment variables:
+
+```bash
+MARKATA_GO_ENCRYPTION_KEY_DEFAULT=my-password
+MARKATA_GO_ENCRYPTION_KEY_PERSONAL=another-password
+```
+
+**Related:** See the [Encryption Guide](encryption.md) for complete documentation on making posts private.
+
 ---
 
 ## Complete Configuration Example

@@ -24,7 +24,8 @@ func DefaultConfig() *models.Config {
 				RSS:  true,
 			},
 		},
-		WellKnown: models.NewWellKnownConfig(),
-		WebSub:    models.NewWebSubConfig(),
+		WellKnown:  models.NewWellKnownConfig(),
+		WebSub:     models.NewWebSubConfig(),
+		Encryption: models.NewEncryptionConfig(),
 	}
 }
