@@ -882,6 +882,7 @@ type CachedPostData struct {
 	Draft          bool              `json:"draft"`
 	Private        bool              `json:"private"`
 	Skip           bool              `json:"skip"`
+	SecretKey      string            `json:"secret_key,omitempty"`
 	Tags           []string          `json:"tags,omitempty"`
 	Description    *string           `json:"description,omitempty"`
 	Template       string            `json:"template"`

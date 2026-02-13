@@ -78,6 +78,11 @@ func (p *ErrorPagesPlugin) generatePostsIndex(m *lifecycle.Manager, cfg *models.
 			continue
 		}
 
+		// Skip private posts to prevent leaking titles and descriptions
+		if post.Private {
+			continue
+		}
+
 		entry := postIndexEntry{
 			Slug: post.Slug,
 			URL:  "/" + post.Slug + "/",

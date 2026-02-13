@@ -57,6 +57,13 @@ func (p *DescriptionPlugin) Transform(m *lifecycle.Manager) error {
 		if post.Skip {
 			return false
 		}
+		// Skip private posts - the encryption plugin will set a generic
+		// description after encrypting. Generating a description from
+		// private content would be wasteful and could leak if encryption
+		// fails to run for any reason.
+		if post.Private {
+			return false
+		}
 		if post.Description != nil && *post.Description != "" {
 			return true
 		}

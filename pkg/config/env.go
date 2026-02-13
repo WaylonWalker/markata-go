@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bufio"
 	"os"
 	"reflect"
 	"strconv"
@@ -152,6 +153,13 @@ func applyEnvOverride(config *models.Config, key, value string) {
 			searchConfig.Pagefind.Verbose = &verbose
 			config.Extra["search"] = searchConfig
 		}
+	// Encryption settings
+	case "encryption_enabled":
+		config.Encryption.Enabled = parseBool(value)
+	case "encryption_default_key":
+		config.Encryption.DefaultKey = value
+	case "encryption_decryption_hint":
+		config.Encryption.DecryptionHint = value
 	}
 }
 
@@ -266,4 +274,66 @@ func structToEnvKeysRecursive(prefix string, t reflect.Type, result map[string]s
 			// Other types (uint, float, complex, etc.) are not currently supported for env vars
 		}
 	}
+}
+
+// LoadDotEnv loads environment variables from a .env file in the current directory.
+// Lines starting with '#' are treated as comments. Empty lines are skipped.
+// Values can optionally be quoted with single or double quotes.
+// Variables are set into the process environment so they are available to
+// os.Environ() and os.Getenv() calls (including encryption key lookups).
+//
+// This function is safe to call even if no .env file exists - it will silently
+// return nil in that case.
+func LoadDotEnv() error {
+	return LoadDotEnvFile(".env")
+}
+
+// LoadDotEnvFile loads environment variables from the specified file path.
+// Returns nil if the file does not exist.
+func LoadDotEnvFile(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // No .env file is fine
+		}
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Split on first '='
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		// Strip surrounding quotes (single or double)
+		if len(value) >= 2 {
+			if (value[0] == '"' && value[len(value)-1] == '"') ||
+				(value[0] == '\'' && value[len(value)-1] == '\'') {
+				value = value[1 : len(value)-1]
+			}
+		}
+
+		// Only set if not already set in the environment
+		// (real env vars take precedence over .env)
+		if _, exists := os.LookupEnv(key); !exists {
+			if err := os.Setenv(key, value); err != nil {
+				return err
+			}
+		}
+	}
+
+	return scanner.Err()
 }

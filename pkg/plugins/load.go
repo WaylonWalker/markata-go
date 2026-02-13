@@ -202,6 +202,7 @@ func (p *LoadPlugin) restorePostFromCache(data *buildcache.CachedPostData) *mode
 	post.InputHash = data.InputHash
 	post.Authors = data.Authors
 	post.Author = data.Author
+	post.SecretKey = data.SecretKey // pragma: allowlist secret
 	if data.Extra != nil {
 		for k, v := range data.Extra {
 			post.Set(k, v)
@@ -231,6 +232,7 @@ func (p *LoadPlugin) postToCachedData(post *models.Post) *buildcache.CachedPostD
 		InputHash:      post.InputHash,
 		Authors:        post.Authors,
 		Author:         post.Author,
+		SecretKey:      post.SecretKey, // pragma: allowlist secret
 		Extra:          post.Extra,
 	}
 }
@@ -286,22 +288,24 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interface{}) error {
 	// Known fields to extract
 	knownFields := map[string]bool{
-		"title":       true,
-		"date":        true,
-		"published":   true,
-		"draft":       true,
-		"private":     true,
-		"skip":        true,
-		"tags":        true,
-		"description": true,
-		"template":    true,
-		"templates":   true,
-		"slug":        true,
-		"secret_key":  true,
-		"author":      true,
-		"authors":     true,
-		"by":          true,
-		"writer":      true,
+		"title":          true,
+		"date":           true,
+		"published":      true,
+		"draft":          true,
+		"private":        true,
+		"skip":           true,
+		"tags":           true,
+		"description":    true,
+		"template":       true,
+		"templates":      true,
+		"slug":           true,
+		"secret_key":     true,
+		"private_key":    true,
+		"encryption_key": true,
+		"author":         true,
+		"authors":        true,
+		"by":             true,
+		"writer":         true,
 	}
 
 	// Title
@@ -362,8 +366,13 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 	}
 
 	// SecretKey - for encrypted posts  // pragma: allowlist secret
+	// Supports aliases: secret_key, private_key, encryption_key (first non-empty wins)
 	if secretKey := GetString(metadata, "secret_key"); secretKey != "" {
 		post.SecretKey = secretKey // pragma: allowlist secret
+	} else if privateKey := GetString(metadata, "private_key"); privateKey != "" {
+		post.SecretKey = privateKey // pragma: allowlist secret
+	} else if encryptionKey := GetString(metadata, "encryption_key"); encryptionKey != "" {
+		post.SecretKey = encryptionKey // pragma: allowlist secret
 	}
 
 	// Author fields - support both legacy 'author' and new 'authors' arrays

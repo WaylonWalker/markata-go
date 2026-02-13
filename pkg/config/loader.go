@@ -33,7 +33,14 @@ var ErrConfigNotFound = errors.New("no configuration file found")
 // Load loads configuration from the specified file path.
 // If configPath is empty, it will attempt to discover a config file.
 // Environment variable overrides are applied after loading the file.
+// A .env file in the current directory is loaded first (if present)
+// so that encryption keys and other settings can be stored there.
 func Load(configPath string) (*models.Config, error) {
+	// Load .env file before anything else so env vars are available
+	// for both config parsing and encryption key lookups.
+	// Errors loading .env are non-fatal (file may not exist).
+	_ = LoadDotEnv() //nolint:errcheck // .env loading is best-effort
+
 	var config *models.Config
 	var err error
 

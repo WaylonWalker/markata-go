@@ -470,18 +470,29 @@ func mergeAuthorsConfig(base, override models.AuthorsConfig) models.AuthorsConfi
 }
 
 // mergeEncryptionConfig merges EncryptionConfig values.
+// Since parser converters now apply defaults (from NewEncryptionConfig()),
+// the override always has valid values. We merge each field independently.
 func mergeEncryptionConfig(base, override models.EncryptionConfig) models.EncryptionConfig {
 	result := base
 
-	// Override enabled if explicitly set (even if false)
-	// We check if the override has any non-default values to determine if it was explicitly configured
-	if override.Enabled || override.DefaultKey != "" || override.DecryptionHint != "" {
-		result.Enabled = override.Enabled
-		if override.DefaultKey != "" {
-			result.DefaultKey = override.DefaultKey
+	// Always use override's Enabled value - the parser converters ensure
+	// it defaults to true when not explicitly set by the user
+	result.Enabled = override.Enabled
+
+	if override.DefaultKey != "" {
+		result.DefaultKey = override.DefaultKey
+	}
+	if override.DecryptionHint != "" {
+		result.DecryptionHint = override.DecryptionHint
+	}
+
+	// Merge private_tags: override entries take precedence over base
+	if len(override.PrivateTags) > 0 {
+		if result.PrivateTags == nil {
+			result.PrivateTags = make(map[string]string)
 		}
-		if override.DecryptionHint != "" {
-			result.DecryptionHint = override.DecryptionHint
+		for tag, key := range override.PrivateTags {
+			result.PrivateTags[tag] = key
 		}
 	}
 

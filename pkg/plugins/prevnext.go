@@ -80,13 +80,19 @@ func (p *PrevNextPlugin) processPost(
 		return
 	}
 
-	// Set prev/next
+	// Set prev/next, skipping private posts to avoid linking to encrypted content
 	var prev, next *models.Post
-	if position > 0 {
-		prev = feed.Posts[position-1]
+	for i := position - 1; i >= 0; i-- {
+		if !feed.Posts[i].Private {
+			prev = feed.Posts[i]
+			break
+		}
 	}
-	if position < len(feed.Posts)-1 {
-		next = feed.Posts[position+1]
+	for i := position + 1; i < len(feed.Posts); i++ {
+		if !feed.Posts[i].Private {
+			next = feed.Posts[i]
+			break
+		}
 	}
 
 	// Update post fields

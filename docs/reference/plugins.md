@@ -2061,6 +2061,56 @@ This adds a `data-preview-screenshot` attribute for external screenshot generati
 
 ---
 
+### encryption
+
+**Name:** `encryption`  
+**Stage:** Render (priority 50 -- after markdown rendering, before templates)  
+**Purpose:** Encrypts content for private posts using AES-256-GCM client-side encryption.
+
+**Status:** Enabled by default with `default_key = "default"`.
+
+**Configuration (TOML):**
+
+```toml
+[encryption]
+enabled = true
+default_key = "default"
+decryption_hint = "Contact me for access"
+
+[encryption.private_tags]
+diary = "personal"
+```
+
+**Behavior:**
+
+1. Applies `private_tags` config -- posts with matching tags are marked `private: true`
+2. Validates that every private post has an available encryption key
+3. If any private post has no key, returns a **CriticalError** that halts the build
+4. Encrypts `ArticleHTML` of each private post with the resolved key
+5. Replaces content with an encrypted wrapper containing a password prompt
+
+**Encryption keys** are loaded from environment variables:
+
+```bash
+MARKATA_GO_ENCRYPTION_KEY_DEFAULT=password
+MARKATA_GO_ENCRYPTION_KEY_PERSONAL=another-password
+```
+
+**Post fields read:**
+- `Private` -- whether the post is private
+- `SecretKey` -- which encryption key to use (set via `secret_key`, `private_key`, or `encryption_key` frontmatter)
+- `Tags` -- checked against `private_tags` config
+- `ArticleHTML` -- the content to encrypt
+
+**Post fields set:**
+- `ArticleHTML` -- replaced with encrypted wrapper HTML
+- `Extra["has_encrypted_content"]` -- `true` (for template script inclusion)
+- `Extra["encryption_key_name"]` -- the key name used
+
+**Related:** See the [Encryption Guide](/docs/guides/encryption/) for complete usage documentation.
+
+---
+
 ## Collect Stage
 
 ### overwrite_check
