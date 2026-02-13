@@ -1072,3 +1072,293 @@ func TestGetStringField(t *testing.T) {
 		})
 	}
 }
+
+func TestMentionsPlugin_TrailingPunctuation(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	handleMap := map[string]*mentionEntry{
+		"alice": {
+			Handle:  "alice",
+			SiteURL: "https://alice.dev",
+			Title:   "Alice",
+			Metadata: &models.MentionMetadata{
+				Name: "Alice",
+			},
+		},
+		"simonwillison.net": {
+			Handle:  "simonwillison.net",
+			SiteURL: "https://simonwillison.net",
+			Title:   "Simon Willison",
+			Metadata: &models.MentionMetadata{
+				Name: "Simon Willison",
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{
+			name:    "handle with trailing period",
+			content: "Talk to @alice.",
+			want:    `Talk to <a href="https://alice.dev" class="mention" data-name="Alice" data-handle="@alice">@alice</a>.`,
+		},
+		{
+			name:    "handle with trailing comma",
+			content: "Hey @alice, welcome!",
+			want:    `Hey <a href="https://alice.dev" class="mention" data-name="Alice" data-handle="@alice">@alice</a>, welcome!`,
+		},
+		{
+			name:    "domain handle exact match preserved",
+			content: "Check @simonwillison.net for more",
+			want:    `Check <a href="https://simonwillison.net" class="mention" data-name="Simon Willison" data-handle="@simonwillison.net">@simonwillison.net</a> for more`,
+		},
+		{
+			name:    "domain handle with trailing period",
+			content: "Visit @simonwillison.net.",
+			want:    `Visit <a href="https://simonwillison.net" class="mention" data-name="Simon Willison" data-handle="@simonwillison.net">@simonwillison.net</a>.`,
+		},
+		{
+			name:    "handle without punctuation unchanged",
+			content: "Follow @alice on social",
+			want:    `Follow <a href="https://alice.dev" class="mention" data-name="Alice" data-handle="@alice">@alice</a> on social`,
+		},
+		{
+			name:    "unknown handle with punctuation stays plain",
+			content: "Hello @unknown.",
+			want:    "Hello @unknown.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := p.processMentionsWithMetadata(tt.content, handleMap)
+			if got != tt.want {
+				t.Errorf("processMentionsWithMetadata() =\n  %q\nwant:\n  %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMentionsPlugin_RegisterAuthors(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	bio := "Go developer"
+	avatar := "/images/waylon.jpg"
+	url := "https://waylonwalker.com"
+
+	config := &lifecycle.Config{
+		Extra: map[string]interface{}{
+			"models_config": &models.Config{
+				Authors: models.AuthorsConfig{
+					Authors: map[string]models.Author{
+						"waylon": {
+							ID:     "waylon",
+							Name:   "Waylon Walker",
+							Bio:    &bio,
+							Avatar: &avatar,
+							URL:    &url,
+						},
+						"guest": {
+							ID:   "guest",
+							Name: "Guest Writer",
+							// No URL — should not be registered
+						},
+					},
+				},
+			},
+		},
+	}
+
+	handleMap := make(map[string]*mentionEntry)
+	p.registerAuthors(config, handleMap)
+
+	// Waylon should be registered (has URL)
+	if entry, exists := handleMap["waylon"]; !exists {
+		t.Error("waylon should be registered in handleMap")
+	} else {
+		if entry.SiteURL != url {
+			t.Errorf("waylon SiteURL = %q, want %q", entry.SiteURL, url)
+		}
+		if entry.Metadata == nil {
+			t.Fatal("waylon metadata should not be nil")
+		}
+		if entry.Metadata.Name != "Waylon Walker" {
+			t.Errorf("waylon metadata.Name = %q, want %q", entry.Metadata.Name, "Waylon Walker")
+		}
+		if entry.Metadata.Bio != bio {
+			t.Errorf("waylon metadata.Bio = %q, want %q", entry.Metadata.Bio, bio)
+		}
+		if entry.Metadata.Avatar != avatar {
+			t.Errorf("waylon metadata.Avatar = %q, want %q", entry.Metadata.Avatar, avatar)
+		}
+	}
+
+	// Guest should not be registered (no URL)
+	if _, exists := handleMap["guest"]; exists {
+		t.Error("guest should not be registered (no URL)")
+	}
+}
+
+func TestMentionsPlugin_RegisterAuthors_FirstEntryWins(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	url := "https://waylonwalker.com"
+
+	config := &lifecycle.Config{
+		Extra: map[string]interface{}{
+			"models_config": &models.Config{
+				Authors: models.AuthorsConfig{
+					Authors: map[string]models.Author{
+						"alice": {
+							ID:   "alice",
+							Name: "Alice Author",
+							URL:  &url,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Pre-populate handleMap with existing entry
+	handleMap := map[string]*mentionEntry{
+		"alice": {Handle: "alice", SiteURL: "https://existing.com", Title: "Existing"},
+	}
+
+	p.registerAuthors(config, handleMap)
+
+	// Existing entry should win
+	if entry := handleMap["alice"]; entry.SiteURL != "https://existing.com" {
+		t.Errorf("first entry should win, got SiteURL = %q", entry.SiteURL)
+	}
+}
+
+func TestMentionsPlugin_ChatAdmonitionTitles(t *testing.T) {
+	p := NewMentionsPlugin()
+
+	handleMap := map[string]*mentionEntry{
+		"alice": {
+			Handle:  "alice",
+			SiteURL: "/contact/alice/",
+			Title:   "Alice Smith",
+			Metadata: &models.MentionMetadata{
+				Name:   "Alice Smith",
+				Avatar: "/images/alice.jpg",
+				Bio:    "Software engineer",
+			},
+		},
+		"bob": {
+			Handle:  "bob",
+			SiteURL: "/contact/bob/",
+			Title:   "Bob Jones",
+			Metadata: &models.MentionMetadata{
+				Name:   "Bob Jones",
+				Avatar: "/images/bob.jpg",
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		content string
+		check   func(t *testing.T, result string)
+	}{
+		{
+			name:    "chat with @handle gets enriched",
+			content: `!!! chat "@alice"` + "\n    Hello there!",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if !strings.Contains(result, `chat-contact-avatar`) {
+					t.Error("should contain avatar img")
+				}
+				if !strings.Contains(result, `class="mention"`) {
+					t.Error("should contain mention link")
+				}
+				if !strings.Contains(result, `@alice`) {
+					t.Error("should contain @alice text")
+				}
+				if !strings.Contains(result, `/contact/alice/`) {
+					t.Error("should contain alice's URL")
+				}
+			},
+		},
+		{
+			name:    "chat-reply with @handle gets enriched",
+			content: `!!! chat-reply "@bob"` + "\n    Great, thanks!",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if !strings.Contains(result, `chat-contact-avatar`) {
+					t.Error("should contain avatar img for bob")
+				}
+				if !strings.Contains(result, `@bob`) {
+					t.Error("should contain @bob text")
+				}
+			},
+		},
+		{
+			name:    "chat with unknown handle stays unchanged",
+			content: `!!! chat "@unknown"` + "\n    Some message",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if strings.Contains(result, `chat-contact`) {
+					t.Error("unknown handle should not be enriched")
+				}
+				if !strings.Contains(result, `@unknown`) {
+					t.Error("should preserve original @unknown")
+				}
+			},
+		},
+		{
+			name:    "non-chat admonition not affected",
+			content: `!!! note "@alice"` + "\n    This is a note",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if strings.Contains(result, `chat-contact`) {
+					t.Error("note admonition should not be affected")
+				}
+			},
+		},
+		{
+			name:    "collapsible chat admonition with handle",
+			content: `??? chat "@alice"` + "\n    Collapsible chat",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if !strings.Contains(result, `chat-contact-avatar`) {
+					t.Error("collapsible chat should also get enriched")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := p.processChatAdmonitionTitles(tt.content, handleMap)
+			tt.check(t, result)
+		})
+	}
+}
+
+func TestNewMentionsConfig_IncludesAuthorTemplate(t *testing.T) {
+	config := models.NewMentionsConfig()
+
+	foundContact := false
+	foundAuthor := false
+	for _, source := range config.FromPosts {
+		if source.Filter == "template == 'contact'" {
+			foundContact = true
+		}
+		if source.Filter == "template == 'author'" {
+			foundAuthor = true
+		}
+	}
+
+	if !foundContact {
+		t.Error("default from_posts should include template == 'contact'")
+	}
+	if !foundAuthor {
+		t.Error("default from_posts should include template == 'author'")
+	}
+}

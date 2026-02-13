@@ -1,13 +1,14 @@
 # Mentions Plugin Specification
 
-The mentions plugin transforms `@handle` syntax in markdown content into HTML links, resolving handles from blogroll feeds and internal posts.
+The mentions plugin transforms `@handle` syntax in markdown content into HTML links, resolving handles from blogroll feeds, internal posts, and configured authors.
 
 ## Overview
 
-The mentions plugin processes `@handle` patterns in post content and replaces them with HTML anchor links. Handles are resolved from two sources:
+The mentions plugin processes `@handle` patterns in post content and replaces them with HTML anchor links. Handles are resolved from three sources:
 
 1. **Blogroll feeds** - External RSS/Atom feed entries with handles
-2. **Internal posts** - Posts matching filter expressions (e.g., contact pages, team pages)
+2. **Internal posts** - Posts matching filter expressions (e.g., contact pages, team pages, author pages)
+3. **Authors** - Authors defined in the site configuration are automatically registered as mentionable contacts
 
 ## Syntax
 
@@ -17,7 +18,17 @@ The mentions plugin processes `@handle` patterns in post content and replaces th
 @alice123         # Handle with numbers
 ```
 
-Handle pattern: `@[a-zA-Z][a-zA-Z0-9_-]*`
+Handle pattern: `@[a-zA-Z][a-zA-Z0-9_.-]*`
+
+### Trailing Punctuation
+
+When a handle includes trailing punctuation (e.g., `@alice.` at end of a sentence), the plugin first tries an exact match. If the exact match fails, trailing punctuation characters (`.,;:!?`) are stripped and the lookup is retried. This preserves domain-style handles like `@simonwillison.net` (which match exactly) while correctly resolving `@alice.` → `@alice` + `.`.
+
+```markdown
+Talk to @alice.      <!-- Resolves to @alice, period is preserved as text -->
+Visit @simonwillison.net  <!-- Resolves to @simonwillison.net (exact match) -->
+Hey @bob, welcome!   <!-- Resolves to @bob, comma is preserved as text -->
+```
 
 ## Configuration
 
@@ -70,7 +81,8 @@ This means any post with `template: contact` in its frontmatter is automatically
 Handles are registered in this order (first registration wins):
 
 1. **Blogroll feeds** - If blogroll is enabled, handles from feeds are registered first
-2. **from_posts sources** - Processed in the order they appear in configuration
+2. **Authors** - Authors from site configuration are registered (using author ID as handle)
+3. **from_posts sources** - Processed in the order they appear in configuration
 
 If a handle or alias is already registered, subsequent registrations are ignored with a warning.
 
@@ -88,6 +100,22 @@ aliases = ["ex", "exblog"]          # Additional handles
 ```
 
 The `site_url` becomes the link target for `@example`, `@ex`, and `@exblog`.
+
+### From Authors
+
+Authors defined in the site configuration (`[markata-go.authors.authors.*]`) are automatically registered as mentionable contacts. Each author is registered using their config key (ID) as the handle. The author's URL (if set) is used as the link target; if no URL is set, the author is not registered.
+
+```toml
+[markata-go.authors.authors.waylon]
+name = "Waylon Walker"
+url = "https://waylonwalker.com"
+avatar = "/images/waylon.jpg"
+bio = "Python and Go developer"
+```
+
+This automatically registers `@waylon` as a mention handle pointing to `https://waylonwalker.com`, with name, avatar, and bio metadata for hovercards.
+
+**Author posts**: Posts with `template: author` are also automatically included as a default `from_posts` source, similar to `template: contact`. This allows author profiles to be defined as regular posts.
 
 ### From Internal Posts
 
@@ -305,6 +333,43 @@ enabled = true
 ```
 
 This uses the default `from_posts` source (`template == 'contact'` filter with `handle` field), so any post with `template: contact` frontmatter is automatically mentionable.
+
+## Chat Admonition Integration
+
+When a `chat` or `chat-reply` admonition title starts with `@handle`, the mentions plugin enriches the title with the contact's avatar and a linked name. This creates a conversation-like display where each chat bubble shows who is speaking.
+
+### Syntax
+
+```markdown
+!!! chat "@alice"
+    Hey, have you seen the new release?
+
+!!! chat-reply "@bob"
+    Yes! The new features look great.
+
+!!! chat "@alice"
+    Let me show you how the mentions work.
+```
+
+### Rendered HTML
+
+When the title starts with `@handle` and the handle resolves in the mention map, the admonition title is replaced with:
+
+```html
+<span class="chat-contact">
+  <img class="chat-contact-avatar" src="/images/alice.jpg" alt="Alice Smith" />
+  <a href="/contact/alice/" class="mention" data-name="Alice Smith" data-bio="..." data-avatar="/images/alice.jpg" data-handle="@alice">@alice</a>
+</span>
+```
+
+If the handle does not resolve, the title remains as plain text (e.g., `@alice`).
+
+### CSS Classes
+
+| Class | Purpose |
+|-------|---------|
+| `.chat-contact` | Wrapper for avatar + mention link in chat title |
+| `.chat-contact-avatar` | Avatar image in chat title (32x32, rounded) |
 
 ## Related Features
 

@@ -368,6 +368,8 @@ Templates are looked up in:
 | `skip` | bool | `false` | No | Skip this file during processing entirely |
 | `authors` | []string | `[]` | No | List of author IDs (multi-author support) |
 | `author` | string | None | No | Legacy single-author name or ID |
+| `by` | string | None | No | Alias for `author` |
+| `writer` | string | None | No | Alias for `author` |
 
 ### Field Details
 
@@ -465,7 +467,25 @@ author: "Jane Doe"
 ---
 ```
 
-**Priority:** If both `authors` and `author` are set on the same post, `authors` takes precedence.
+**Aliases:** The `by` and `writer` frontmatter fields are aliases for `author`. This allows more natural frontmatter syntax:
+
+```yaml
+---
+title: "Solo Post"
+by: "Jane Doe"
+---
+```
+
+```yaml
+---
+title: "Solo Post"
+writer: "Jane Doe"
+---
+```
+
+All three (`author`, `by`, `writer`) set the same author field. Priority order: `authors` > `author` > `by` > `writer`. Only the first match is used.
+
+**Priority:** If both `authors` and `author` (or its aliases) are set on the same post, `authors` takes precedence.
 
 **Related:** See [Authors Configuration](configuration.md#authors-configuration) for defining author profiles.
 
