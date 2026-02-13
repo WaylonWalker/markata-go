@@ -31,6 +31,9 @@ var (
 
 	// newList lists available templates.
 	newList bool
+
+	// newPlain uses plain text prompts instead of the huh TUI wizard.
+	newPlain bool
 )
 
 // ContentTemplate represents a content template with its configuration.
@@ -79,7 +82,7 @@ func builtinTemplates() map[string]ContentTemplate {
 	return map[string]ContentTemplate{
 		"post": {
 			Name:      "post",
-			Directory: "posts",
+			Directory: "pages/post",
 			Frontmatter: map[string]interface{}{
 				"template": "post",
 			},
@@ -136,8 +139,10 @@ func builtinTemplates() map[string]ContentTemplate {
 			Name:      "video",
 			Directory: "pages/video",
 			Frontmatter: map[string]interface{}{
-				"template":  "video",
-				"video_url": "",
+				"template": "video",
+				"video":    "",
+				"image":    "",
+				"duration": "",
 			},
 			Body:   "Video description...",
 			Source: "builtin",
@@ -148,6 +153,7 @@ func builtinTemplates() map[string]ContentTemplate {
 			Frontmatter: map[string]interface{}{
 				"template": "link",
 				"url":      "",
+				"image":    "",
 			},
 			Body:   "Why I'm sharing this link...",
 			Source: "builtin",
@@ -156,10 +162,11 @@ func builtinTemplates() map[string]ContentTemplate {
 			Name:      "quote",
 			Directory: "pages/quote",
 			Frontmatter: map[string]interface{}{
-				"template":     "quote",
-				"quote_author": "",
+				"template": "quote",
+				"quote":    "",
+				"source":   "",
 			},
-			Body:   "> The quote goes here...",
+			Body:   "Additional commentary on this quote...",
 			Source: "builtin",
 		},
 		"guide": {
@@ -178,6 +185,37 @@ func builtinTemplates() map[string]ContentTemplate {
 				"template": "inline",
 			},
 			Body:   "Inline content...",
+			Source: "builtin",
+		},
+		"contact": {
+			Name:      "contact",
+			Directory: "pages/contact",
+			Frontmatter: map[string]interface{}{
+				"template": "contact",
+				"handle":   "",
+				"aliases":  []string{},
+				"avatar":   "",
+				"url":      "",
+			},
+			Body:   "Bio or contact details...",
+			Source: "builtin",
+		},
+		"author": {
+			Name:      "author",
+			Directory: "pages/author",
+			Frontmatter: map[string]interface{}{
+				"template": "author",
+				"name":     "",
+				"bio":      "",
+				"role":     "",
+				"avatar":   "",
+				"url":      "",
+				"email":    "",
+				"social":   map[string]string{},
+				"active":   true,
+				"guest":    false,
+			},
+			Body:   "Extended author bio...",
 			Source: "builtin",
 		},
 	}
@@ -199,7 +237,7 @@ The command generates a new markdown file with:
 
 Template System:
   Templates control the default frontmatter and output directory for new content.
-  Built-in templates: post, page, docs, article, note, photo, video, link, quote, guide, inline
+  Built-in templates: post, page, docs, article, note, photo, video, link, quote, guide, inline, contact, author
 
   Custom templates can be defined:
   1. In markata-go.toml under [content_templates]
@@ -220,10 +258,11 @@ func init() {
 	rootCmd.AddCommand(newCmd)
 
 	newCmd.Flags().StringVar(&newDir, "dir", "", "directory for new content (overrides template placement)")
-	newCmd.Flags().BoolVar(&newDraft, "draft", true, "create as draft")
+	newCmd.Flags().BoolVar(&newDraft, "draft", false, "create as draft (default: false, posts are published by default)")
 	newCmd.Flags().StringVar(&newTags, "tags", "", "comma-separated list of tags")
 	newCmd.Flags().StringVarP(&newTemplate, "template", "t", "post", "content template to use")
 	newCmd.Flags().BoolVarP(&newList, "list", "l", false, "list available templates")
+	newCmd.Flags().BoolVar(&newPlain, "plain", false, "use plain text prompts (for non-TTY environments)")
 }
 
 // loadTemplates discovers and loads all available content templates.
@@ -525,13 +564,26 @@ func runNewCommand(cmd *cobra.Command, args []string) error {
 
 	// If no title provided, run interactive mode
 	if len(args) == 0 {
-		input, err := runInteractiveMode(cmd, templates)
-		if err != nil {
-			return err
+		// Determine if we should use the huh TUI wizard
+		usePlain := newPlain || !isStdinTerminal()
+
+		if usePlain {
+			// Use legacy plain text interactive mode
+			input, err := runInteractiveMode(cmd, templates)
+			if err != nil {
+				return err
+			}
+			title = input.title
+			template = input.template
+			tags = input.tags
+		} else {
+			// Use huh TUI wizard
+			state, err := runHuhNewWizard(templates)
+			if err != nil {
+				return err
+			}
+			return applyNewWizardState(state, templates)
 		}
-		title = input.title
-		template = input.template
-		tags = input.tags
 	} else {
 		title = args[0]
 		if newTags != "" {

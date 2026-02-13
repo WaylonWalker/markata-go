@@ -352,26 +352,39 @@ Create a new content file with frontmatter template.
 
 ## Flags
 
-    --dir      Directory to create post in (default: posts)
-    --draft    Create as draft (default: true)
-    --tags     Comma-separated list of tags
+    --template, -t   Content template to use (default: post)
+    --list, -l       List available templates
+    --dir            Directory to create post in (default: template's default)
+    --draft          Create as draft (default: false)
+    --tags           Comma-separated list of tags
+    --plain          Use plain text prompts instead of TUI wizard
+
+## Interactive Wizard
+
+When called without arguments, launches a TUI wizard (charmbracelet/huh) that
+guides you through template selection, title, directory, tags, privacy, and
+author configuration. Falls back to plain text prompts when stdin is not a TTY
+or when --plain is passed.
 
 ## Examples
 
-    # Create new post (prompts for title)
+    # Launch interactive TUI wizard
     markata-go new
 
-    # Create with title
+    # Create with title (skips wizard)
     markata-go new "My First Post"
 
     # Create in specific directory
     markata-go new "Hello World" --dir blog
 
-    # Create as published (not draft)
-    markata-go new "Ready to Publish" --draft=false
+    # Create as a draft
+    markata-go new "Work in Progress" --draft
 
     # Create with tags
     markata-go new "Go Tutorial" --tags "go,tutorial,programming"
+
+    # Use plain text prompts instead of TUI
+    markata-go new --plain
 
 ## Generated File
 
@@ -381,8 +394,8 @@ The command creates a markdown file with this template:
     title: "My First Post"
     slug: "my-first-post"
     date: 2024-01-15
-    draft: true
-    published: false
+    draft: false
+    published: true
     tags: []
     description: ""
     ---
@@ -405,19 +418,23 @@ Examples:
 
 ## Key Source Files
 
-    cmd/markata-go/cmd/new.go    # New command implementation
+    cmd/markata-go/cmd/new.go      # New command implementation
+    cmd/markata-go/cmd/new_huh.go  # TUI wizard implementation
 
 ## Related Configuration
 
     [markata-go.glob]
     patterns = ["posts/**/*.md"]  # Ensure new posts match patterns
 
+    [content_templates.placement]
+    post = "blog"     # Override default directory per template type
+
 ## Common Issues
 
 1. **Post not appearing in build**
-   - Check draft: true (drafts excluded by default)
+   - New posts default to draft: false, published: true
    - Verify file matches glob patterns
-   - Ensure published: true for non-drafts
+   - If created with --draft, set draft: false when ready
 
 2. **Date format errors**
    - Use YYYY-MM-DD format

@@ -109,7 +109,7 @@ func TestBuiltinTemplates(t *testing.T) {
 	templates := builtinTemplates()
 
 	// Check that all expected templates exist
-	expectedTemplates := []string{"post", "page", "docs"}
+	expectedTemplates := []string{"post", "page", "docs", "article", "note", "photo", "video", "link", "quote", "guide", "inline", "contact", "author"}
 	for _, name := range expectedTemplates {
 		if _, exists := templates[name]; !exists {
 			t.Errorf("expected builtin template %q not found", name)
@@ -118,8 +118,8 @@ func TestBuiltinTemplates(t *testing.T) {
 
 	// Check post template
 	post := templates["post"]
-	if post.Directory != "posts" {
-		t.Errorf("post template directory = %q, want %q", post.Directory, "posts")
+	if post.Directory != "pages/post" {
+		t.Errorf("post template directory = %q, want %q", post.Directory, "pages/post")
 	}
 	if post.Source != "builtin" {
 		t.Errorf("post template source = %q, want %q", post.Source, "builtin")
@@ -135,6 +135,45 @@ func TestBuiltinTemplates(t *testing.T) {
 	docs := templates["docs"]
 	if docs.Directory != "docs" {
 		t.Errorf("docs template directory = %q, want %q", docs.Directory, "docs")
+	}
+
+	// Check contact template
+	contact := templates["contact"]
+	if contact.Directory != "pages/contact" {
+		t.Errorf("contact template directory = %q, want %q", contact.Directory, "pages/contact")
+	}
+	if contact.Frontmatter["handle"] != "" {
+		t.Errorf("contact template should have empty handle field")
+	}
+
+	// Check author template
+	author := templates["author"]
+	if author.Directory != "pages/author" {
+		t.Errorf("author template directory = %q, want %q", author.Directory, "pages/author")
+	}
+	if author.Frontmatter["role"] != "" {
+		t.Errorf("author template should have empty role field")
+	}
+
+	// Check video template has correct field name
+	video := templates["video"]
+	if _, ok := video.Frontmatter["video"]; !ok {
+		t.Error("video template should have 'video' field, not 'video_url'")
+	}
+	if _, ok := video.Frontmatter["video_url"]; ok {
+		t.Error("video template should not have 'video_url' field (renamed to 'video')")
+	}
+
+	// Check quote template has correct field names
+	quote := templates["quote"]
+	if _, ok := quote.Frontmatter["quote"]; !ok {
+		t.Error("quote template should have 'quote' field")
+	}
+	if _, ok := quote.Frontmatter["source"]; !ok {
+		t.Error("quote template should have 'source' field")
+	}
+	if _, ok := quote.Frontmatter["quote_author"]; ok {
+		t.Error("quote template should not have 'quote_author' field (use post.author instead)")
 	}
 }
 
