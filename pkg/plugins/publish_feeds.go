@@ -12,7 +12,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 
@@ -226,25 +225,53 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	return nil
 }
 
-// computeFeedHash computes a hash of the feed's content (post slugs and dates).
+// computeFeedHash computes a hash of the feed's content and configuration.
+// It includes post slugs (in feed order to detect sort changes), and all
+// configuration fields that affect feed output.
 func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
 	h := sha256.New()
 
-	// Hash the sorted post slugs to detect membership changes
-	slugs := make([]string, 0, len(fc.Posts))
+	// Hash post slugs in their current (sorted) order, not alphabetically.
+	// This ensures sort order changes are detected.
 	for _, post := range fc.Posts {
-		slugs = append(slugs, post.Slug)
-	}
-	sort.Strings(slugs)
-	for _, slug := range slugs {
-		h.Write([]byte(slug))
+		h.Write([]byte(post.Slug))
 		h.Write([]byte{0}) // separator
 	}
 
-	// Also hash the feed config that affects output
+	// Hash all feed config fields that affect output
 	h.Write([]byte(fc.Slug))
 	h.Write([]byte(fc.Title))
+	h.Write([]byte(fc.Description))
+	h.Write([]byte(string(fc.Type)))
+	h.Write([]byte(fc.Filter))
+	h.Write([]byte(fc.Sort))
+	fmt.Fprintf(h, "%t", fc.Reverse)
 	fmt.Fprintf(h, "%d", fc.ItemsPerPage)
+	fmt.Fprintf(h, "%d", fc.OrphanThreshold)
+	h.Write([]byte(string(fc.PaginationType)))
+	fmt.Fprintf(h, "%t", fc.IncludePrivate)
+
+	// Hash sidebar config
+	fmt.Fprintf(h, "%t", fc.Sidebar)
+	h.Write([]byte(fc.SidebarTitle))
+	fmt.Fprintf(h, "%d", fc.SidebarOrder)
+	h.Write([]byte(fc.SidebarGroupBy))
+
+	// Hash format flags
+	fmt.Fprintf(h, "%t%t%t%t%t%t%t%t",
+		fc.Formats.HTML, fc.Formats.SimpleHTML,
+		fc.Formats.RSS, fc.Formats.Atom,
+		fc.Formats.JSON, fc.Formats.Markdown,
+		fc.Formats.Text, fc.Formats.Sitemap)
+
+	// Hash template overrides
+	h.Write([]byte(fc.Templates.HTML))
+	h.Write([]byte(fc.Templates.SimpleHTML))
+	h.Write([]byte(fc.Templates.RSS))
+	h.Write([]byte(fc.Templates.Atom))
+	h.Write([]byte(fc.Templates.JSON))
+	h.Write([]byte(fc.Templates.Card))
+	h.Write([]byte(fc.Templates.Sitemap))
 
 	return hex.EncodeToString(h.Sum(nil))
 }
