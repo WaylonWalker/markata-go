@@ -1083,9 +1083,10 @@ type tomlBlogrollTemplates struct {
 }
 
 type tomlEncryptionConfig struct {
-	Enabled        bool   `toml:"enabled"`
-	DefaultKey     string `toml:"default_key"`
-	DecryptionHint string `toml:"decryption_hint"`
+	Enabled        bool              `toml:"enabled"`
+	DefaultKey     string            `toml:"default_key"`
+	DecryptionHint string            `toml:"decryption_hint"`
+	PrivateTags    map[string]string `toml:"private_tags"`
 }
 
 func (e *tomlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
@@ -1093,6 +1094,7 @@ func (e *tomlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 		Enabled:        e.Enabled,
 		DefaultKey:     e.DefaultKey,
 		DecryptionHint: e.DecryptionHint,
+		PrivateTags:    e.PrivateTags,
 	}
 }
 
@@ -1681,9 +1683,10 @@ func (t *yamlTagsConfig) toTagsConfig() models.TagsConfig {
 }
 
 type yamlEncryptionConfig struct {
-	Enabled        bool   `yaml:"enabled"`
-	DefaultKey     string `yaml:"default_key"`
-	DecryptionHint string `yaml:"decryption_hint"`
+	Enabled        bool              `yaml:"enabled"`
+	DefaultKey     string            `yaml:"default_key"`
+	DecryptionHint string            `yaml:"decryption_hint"`
+	PrivateTags    map[string]string `yaml:"private_tags"`
 }
 
 func (e *yamlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
@@ -1691,6 +1694,7 @@ func (e *yamlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 		Enabled:        e.Enabled,
 		DefaultKey:     e.DefaultKey,
 		DecryptionHint: e.DecryptionHint,
+		PrivateTags:    e.PrivateTags,
 	}
 }
 
@@ -2838,9 +2842,10 @@ func (t *jsonTagsConfig) toTagsConfig() models.TagsConfig {
 }
 
 type jsonEncryptionConfig struct {
-	Enabled        bool   `json:"enabled"`
-	DefaultKey     string `json:"default_key"`
-	DecryptionHint string `json:"decryption_hint"`
+	Enabled        bool              `json:"enabled"`
+	DefaultKey     string            `json:"default_key"`
+	DecryptionHint string            `json:"decryption_hint"`
+	PrivateTags    map[string]string `json:"private_tags"`
 }
 
 func (e *jsonEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
@@ -2848,6 +2853,7 @@ func (e *jsonEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 		Enabled:        e.Enabled,
 		DefaultKey:     e.DefaultKey,
 		DecryptionHint: e.DecryptionHint,
+		PrivateTags:    e.PrivateTags,
 	}
 }
 

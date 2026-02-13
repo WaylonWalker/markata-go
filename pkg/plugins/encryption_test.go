@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -276,16 +277,19 @@ func TestEncryptionPlugin_EncryptPost_MissingKey(t *testing.T) {
 	}
 
 	err := plugin.encryptPost(post)
-	if err != nil {
-		t.Fatalf("encryptPost() should not return error, got: %v", err)
+	if err == nil {
+		t.Fatal("encryptPost() should return error when key is missing")
 	}
 
-	// Check that an error was stored in Extra
-	if _, ok := post.Extra["encryption_error"]; !ok {
-		t.Error("Post should have encryption_error in Extra when key is missing")
+	// Should be a CriticalError (EncryptionBuildError)
+	var buildErr *EncryptionBuildError
+	if !errors.As(err, &buildErr) {
+		t.Errorf("error should be *EncryptionBuildError, got %T", err)
+	} else if !buildErr.IsCritical() {
+		t.Error("EncryptionBuildError.IsCritical() should return true")
 	}
 
-	// Content should remain unchanged
+	// Content should remain unchanged (encryption didn't happen)
 	if post.ArticleHTML != "<p>Content</p>" {
 		t.Error("Content should remain unchanged when key is missing")
 	}
@@ -336,4 +340,118 @@ func TestEncryptionPlugin_Interfaces(_ *testing.T) {
 	var _ lifecycle.ConfigurePlugin = (*EncryptionPlugin)(nil)
 	var _ lifecycle.RenderPlugin = (*EncryptionPlugin)(nil)
 	var _ lifecycle.PriorityPlugin = (*EncryptionPlugin)(nil)
+}
+
+func TestEncryptionBuildError(t *testing.T) {
+	err := &EncryptionBuildError{
+		Posts: []string{"secret.md", "diary.md"},
+		Msg:   "missing encryption keys",
+	}
+
+	if !err.IsCritical() {
+		t.Error("EncryptionBuildError.IsCritical() should return true")
+	}
+
+	errStr := err.Error()
+	if !strings.Contains(errStr, "secret.md") || !strings.Contains(errStr, "diary.md") {
+		t.Errorf("Error() should list affected posts, got: %s", errStr)
+	}
+	if !strings.Contains(errStr, "missing encryption keys") {
+		t.Errorf("Error() should include message, got: %s", errStr)
+	}
+}
+
+func TestEncryptionPlugin_ApplyPrivateTags(t *testing.T) {
+	plugin := NewEncryptionPlugin()
+	plugin.privateTags = map[string]string{
+		"diary":   "personal",
+		"journal": "default",
+	}
+
+	tests := []struct {
+		name          string
+		post          *models.Post
+		wantPrivate   bool
+		wantSecretKey string
+	}{
+		{
+			name: "matching tag marks post private",
+			post: &models.Post{
+				Tags: []string{"diary", "reflection"},
+			},
+			wantPrivate:   true,
+			wantSecretKey: "personal",
+		},
+		{
+			name: "no matching tag leaves post unchanged",
+			post: &models.Post{
+				Tags: []string{"golang", "tutorial"},
+			},
+			wantPrivate:   false,
+			wantSecretKey: "",
+		},
+		{
+			name: "frontmatter key takes precedence over tag key",
+			post: &models.Post{
+				Tags:      []string{"diary"},
+				SecretKey: "custom",
+			},
+			wantPrivate:   true,
+			wantSecretKey: "custom",
+		},
+		{
+			name: "case insensitive tag matching",
+			post: &models.Post{
+				Tags: []string{"DIARY"},
+			},
+			wantPrivate:   true,
+			wantSecretKey: "personal",
+		},
+		{
+			name: "draft posts are skipped",
+			post: &models.Post{
+				Tags:  []string{"diary"},
+				Draft: true,
+			},
+			wantPrivate:   false,
+			wantSecretKey: "",
+		},
+		{
+			name: "skipped posts are skipped",
+			post: &models.Post{
+				Tags: []string{"diary"},
+				Skip: true,
+			},
+			wantPrivate:   false,
+			wantSecretKey: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Reset post state for each test (applyPrivateTags mutates posts)
+			plugin.applyPrivateTags([]*models.Post{tt.post})
+			if tt.post.Private != tt.wantPrivate {
+				t.Errorf("Private = %v, want %v", tt.post.Private, tt.wantPrivate)
+			}
+			if tt.post.SecretKey != tt.wantSecretKey {
+				t.Errorf("SecretKey = %q, want %q", tt.post.SecretKey, tt.wantSecretKey)
+			}
+		})
+	}
+}
+
+func TestEncryptionPlugin_ApplyPrivateTags_Empty(t *testing.T) {
+	plugin := NewEncryptionPlugin()
+	// No private tags configured
+
+	post := &models.Post{
+		Tags: []string{"diary"},
+	}
+
+	plugin.applyPrivateTags([]*models.Post{post})
+
+	if post.Private {
+		t.Error("Post should not be marked private when no private tags are configured")
+	}
 }

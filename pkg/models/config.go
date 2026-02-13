@@ -1932,27 +1932,41 @@ func NewEmbedsConfig() EmbedsConfig {
 }
 
 // EncryptionConfig configures content encryption for private posts.
-// When enabled and a post has private: true with secret_key set, the post content
-// will be encrypted using AES-256-GCM and require client-side decryption.
+// When enabled and a post has private: true, the post content will be encrypted
+// using AES-256-GCM and require client-side decryption.
+//
+// Encryption is enabled by default with default_key="default". To use it,
+// set MARKATA_GO_ENCRYPTION_KEY_DEFAULT in your environment or .env file.
 type EncryptionConfig struct {
-	// Enabled controls whether encryption processing is active (default: false)
+	// Enabled controls whether encryption processing is active (default: true)
 	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
 
 	// DefaultKey is the default encryption key name to use when a post doesn't specify one.
 	// Maps to environment variable MARKATA_GO_ENCRYPTION_KEY_{DefaultKey}
 	// Example: default_key: "blog" reads from MARKATA_GO_ENCRYPTION_KEY_BLOG
+	// Default: "default" (reads from MARKATA_GO_ENCRYPTION_KEY_DEFAULT)
 	DefaultKey string `json:"default_key,omitempty" yaml:"default_key,omitempty" toml:"default_key,omitempty"`
 
 	// DecryptionHint is a hint shown to users about how to get the decryption password
 	// Example: "Contact me on Twitter @user to get access"
 	DecryptionHint string `json:"decryption_hint,omitempty" yaml:"decryption_hint,omitempty" toml:"decryption_hint,omitempty"`
+
+	// PrivateTags maps tag names to encryption key names.
+	// Any post with a matching tag is automatically treated as private and encrypted
+	// with the specified key. Frontmatter secret_key overrides the tag-level key.
+	// Example: {"diary": "personal", "draft-ideas": "default"}
+	// This means any post tagged "diary" is encrypted with MARKATA_GO_ENCRYPTION_KEY_PERSONAL
+	PrivateTags map[string]string `json:"private_tags,omitempty" yaml:"private_tags,omitempty" toml:"private_tags,omitempty"`
 }
 
 // NewEncryptionConfig creates a new EncryptionConfig with default values.
+// Encryption is enabled by default with default_key="default" so that
+// any post with private: true is automatically encrypted. Users only need
+// to set MARKATA_GO_ENCRYPTION_KEY_DEFAULT in their environment or .env file.
 func NewEncryptionConfig() EncryptionConfig {
 	return EncryptionConfig{
-		Enabled:    false,
-		DefaultKey: "",
+		Enabled:    true,
+		DefaultKey: "default",
 	}
 }
 

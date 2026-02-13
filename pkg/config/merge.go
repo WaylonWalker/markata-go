@@ -485,6 +485,16 @@ func mergeEncryptionConfig(base, override models.EncryptionConfig) models.Encryp
 		}
 	}
 
+	// Merge private_tags: override entries take precedence over base
+	if len(override.PrivateTags) > 0 {
+		if result.PrivateTags == nil {
+			result.PrivateTags = make(map[string]string)
+		}
+		for tag, key := range override.PrivateTags {
+			result.PrivateTags[tag] = key
+		}
+	}
+
 	return result
 }
 

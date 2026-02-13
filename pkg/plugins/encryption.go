@@ -15,34 +15,50 @@ import (
 // EncryptionEnvPrefix is the prefix for encryption key environment variables.
 const EncryptionEnvPrefix = "MARKATA_GO_ENCRYPTION_KEY_"
 
-// EncryptionPlugin encrypts content for private posts that have a secret_key specified.
+// EncryptionBuildError is returned when a private post cannot be encrypted.
+// It implements lifecycle.CriticalError to halt the build and prevent
+// exposing unencrypted private content.
+type EncryptionBuildError struct {
+	Posts []string
+	Msg   string
+}
+
+func (e *EncryptionBuildError) Error() string {
+	return fmt.Sprintf("encryption error: %s (posts: %s)", e.Msg, strings.Join(e.Posts, ", "))
+}
+
+// IsCritical marks this error as a build-halting error.
+// Private posts must never be published without encryption.
+func (e *EncryptionBuildError) IsCritical() bool {
+	return true
+}
+
+// EncryptionPlugin encrypts content for private posts.
 // It runs during the Render stage (after markdown is converted to HTML) to encrypt
 // the ArticleHTML content.
 //
+// # Encryption is enabled by default
+//
+// The plugin is enabled by default with default_key="default". Users only need to
+// set MARKATA_GO_ENCRYPTION_KEY_DEFAULT in their environment or .env file.
+//
 // # How It Works
 //
-// 1. Checks if encryption is enabled in config
-// 2. For posts with private: true and secret_key: "key_name":
-//   - Looks up the encryption password from MARKATA_GO_ENCRYPTION_KEY_{KEY_NAME}
-//   - Encrypts post.ArticleHTML using AES-256-GCM
-//   - Replaces ArticleHTML with a wrapper div containing the encrypted content
-//   - Marks the post for client-side decryption script inclusion
+//  1. Posts with private: true are automatically encrypted
+//  2. Posts with tags matching [encryption.private_tags] are treated as private
+//  3. Frontmatter secret_key (or aliases: private_key, encryption_key) specifies which key to use
+//  4. If no key is specified, the default_key is used
+//  5. The build FAILS if a private post has no available encryption key
 //
 // # Client-Side Decryption
 //
-// The encrypted content is wrapped in a div with data attributes:
-//
-//	<div class="encrypted-content" data-encrypted="base64..." data-hint="...">
-//	  <p>This content is encrypted. Enter the password to view.</p>
-//	  <input type="password" placeholder="Password">
-//	  <button>Decrypt</button>
-//	</div>
-//
+// The encrypted content is wrapped in a div with data attributes.
 // The client-side JavaScript uses Web Crypto API with matching PBKDF2 parameters.
 type EncryptionPlugin struct {
 	enabled        bool
 	defaultKey     string
 	decryptionHint string
+	privateTags    map[string]string // tag -> key name
 	// keys maps key names to passwords (loaded from env vars)
 	keys map[string]string
 }
@@ -50,7 +66,8 @@ type EncryptionPlugin struct {
 // NewEncryptionPlugin creates a new EncryptionPlugin.
 func NewEncryptionPlugin() *EncryptionPlugin {
 	return &EncryptionPlugin{
-		keys: make(map[string]string),
+		keys:        make(map[string]string),
+		privateTags: make(map[string]string),
 	}
 }
 
@@ -68,6 +85,11 @@ func (p *EncryptionPlugin) Configure(m *lifecycle.Manager) error {
 		p.enabled = modelsConfig.Encryption.Enabled
 		p.defaultKey = modelsConfig.Encryption.DefaultKey
 		p.decryptionHint = modelsConfig.Encryption.DecryptionHint
+		if modelsConfig.Encryption.PrivateTags != nil {
+			for tag, key := range modelsConfig.Encryption.PrivateTags {
+				p.privateTags[strings.ToLower(tag)] = key
+			}
+		}
 	}
 
 	// Also check Extra for backward compatibility
@@ -142,31 +164,88 @@ func (p *EncryptionPlugin) Priority(stage lifecycle.Stage) int {
 	return lifecycle.PriorityDefault
 }
 
+// applyPrivateTags marks posts as private based on configured private_tags.
+// If a post has a tag matching a private_tags entry, it is marked Private=true
+// and assigned the tag's key (unless the post already has a frontmatter secret_key).
+func (p *EncryptionPlugin) applyPrivateTags(posts []*models.Post) {
+	if len(p.privateTags) == 0 {
+		return
+	}
+
+	for _, post := range posts {
+		if post.Skip || post.Draft {
+			continue
+		}
+		for _, tag := range post.Tags {
+			tagLower := strings.ToLower(tag)
+			if keyName, ok := p.privateTags[tagLower]; ok {
+				post.Private = true
+				// Only set key from tag if frontmatter didn't specify one
+				if post.SecretKey == "" {
+					post.SecretKey = keyName // pragma: allowlist secret
+				}
+				break // one matching tag is enough
+			}
+		}
+	}
+}
+
 // Render encrypts content for private posts with encryption keys.
+// Returns a CriticalError if any private post cannot be encrypted,
+// preventing unencrypted private content from being published.
 func (p *EncryptionPlugin) Render(m *lifecycle.Manager) error {
 	if !p.enabled {
 		return nil
 	}
 
-	// Find posts that need encryption
-	posts := m.FilterPosts(func(post *models.Post) bool {
+	// Apply private tags to mark posts as private based on their tags
+	p.applyPrivateTags(m.Posts())
+
+	// Find all private posts (whether they need encryption or not)
+	privatePosts := m.FilterPosts(func(post *models.Post) bool {
+		return !post.Skip && !post.Draft && post.Private
+	})
+
+	if len(privatePosts) == 0 {
+		return nil
+	}
+
+	// Check that every private post can be encrypted.
+	// This is a safety check: we must NEVER expose private content unencrypted.
+	var failedPosts []string
+	for _, post := range privatePosts {
+		keyName := post.SecretKey
+		if keyName == "" {
+			keyName = p.defaultKey
+		}
+		if keyName == "" {
+			// No key name at all - no way to encrypt
+			failedPosts = append(failedPosts, fmt.Sprintf("%s (no encryption key specified and no default key configured)", post.Path))
+			continue
+		}
+		if _, err := p.getKeyPassword(keyName); err != nil {
+			failedPosts = append(failedPosts, fmt.Sprintf("%s (key %q: set %s%s in environment or .env)",
+				post.Path, keyName, EncryptionEnvPrefix, strings.ToUpper(keyName)))
+		}
+	}
+
+	if len(failedPosts) > 0 {
+		return &EncryptionBuildError{
+			Posts: failedPosts,
+			Msg:   "private posts found without available encryption keys. Build halted to prevent exposing private content",
+		}
+	}
+
+	// Filter to posts that actually have content to encrypt
+	postsToEncrypt := m.FilterPosts(func(post *models.Post) bool {
 		return p.shouldEncrypt(post)
 	})
 
-	if len(posts) == 0 {
+	if len(postsToEncrypt) == 0 {
 		return nil
 	}
 
-	// Check if we have any keys loaded
-	if len(p.keys) == 0 {
-		// Warn but don't fail - user may have forgotten to set env vars
-		for _, post := range posts {
-			post.Set("encryption_warning", "Post marked for encryption but no encryption keys found in environment")
-		}
-		return nil
-	}
-
-	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
+	return m.ProcessPostsSliceConcurrently(postsToEncrypt, func(post *models.Post) error {
 		return p.encryptPost(post)
 	})
 }
@@ -204,9 +283,12 @@ func (p *EncryptionPlugin) encryptPost(post *models.Post) error {
 
 	password, err := p.getKeyPassword(keyName)
 	if err != nil {
-		// Store warning and skip encryption for this post
-		post.Set("encryption_error", err.Error())
-		return nil
+		// This should not happen because we already validated all keys in Render(),
+		// but if it does, fail hard to protect private content.
+		return &EncryptionBuildError{
+			Posts: []string{post.Path},
+			Msg:   fmt.Sprintf("encryption key %q not found", keyName),
+		}
 	}
 
 	// Encrypt the article HTML
