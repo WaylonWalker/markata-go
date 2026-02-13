@@ -808,3 +808,131 @@ func TestRenderMarkdownPlugin_DetectCSSRequirements(t *testing.T) {
 		})
 	}
 }
+
+func TestRenderMarkdownPlugin_Typographer(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "smart double quotes",
+			input:    `"hello world"`,
+			expected: "&ldquo;", // left double quotation mark
+		},
+		{
+			name:     "smart single quotes/apostrophe",
+			input:    `It's a nice day`,
+			expected: "&rsquo;", // right single quotation mark (apostrophe)
+		},
+		{
+			name:     "en dash",
+			input:    `9--5`,
+			expected: "&ndash;",
+		},
+		{
+			name:     "em dash",
+			input:    `hello---world`,
+			expected: "&mdash;",
+		},
+		{
+			name:     "ellipsis",
+			input:    `wait...`,
+			expected: "&hellip;",
+		},
+	}
+
+	p := NewRenderMarkdownPlugin()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			post := &models.Post{Content: tt.input}
+			err := p.renderPost(post)
+			if err != nil {
+				t.Fatalf("renderPost error: %v", err)
+			}
+			if !strings.Contains(post.ArticleHTML, tt.expected) {
+				t.Errorf("expected %q in output, got %q", tt.expected, post.ArticleHTML)
+			}
+		})
+	}
+}
+
+func TestRenderMarkdownPlugin_DefinitionList(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	content := `Term 1
+:   Definition 1
+
+Term 2
+:   Definition 2a
+:   Definition 2b`
+
+	post := &models.Post{Content: content}
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "<dl>") {
+		t.Errorf("expected <dl> in output, got %q", post.ArticleHTML)
+	}
+	if !strings.Contains(post.ArticleHTML, "<dt>") {
+		t.Errorf("expected <dt> in output, got %q", post.ArticleHTML)
+	}
+	if !strings.Contains(post.ArticleHTML, "<dd>") {
+		t.Errorf("expected <dd> in output, got %q", post.ArticleHTML)
+	}
+}
+
+func TestRenderMarkdownPlugin_Footnote(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+	content := `Here's a sentence with a footnote.[^1]
+
+[^1]: This is the footnote content.`
+
+	post := &models.Post{Content: content}
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, "footnote") {
+		t.Errorf("expected 'footnote' class in output, got %q", post.ArticleHTML)
+	}
+}
+
+func TestRenderMarkdownPlugin_ExtensionConfig_Disabled(t *testing.T) {
+	// Test that extensions can be disabled via config
+	config := MarkdownExtensionConfig{
+		TypographerEnabled:    false,
+		DefinitionListEnabled: false,
+		FootnoteEnabled:       false,
+	}
+
+	p := &RenderMarkdownPlugin{
+		md: createMarkdownRenderer("github", false, config),
+	}
+
+	// Test typographer is disabled - straight quotes should remain
+	post := &models.Post{Content: `"hello"`}
+	err := p.renderPost(post)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+	// With typographer disabled, quotes should remain as straight quotes
+	// Check that typographic quotes are NOT present
+	if strings.Contains(post.ArticleHTML, "&ldquo;") || strings.Contains(post.ArticleHTML, "&rdquo;") {
+		t.Error("Typographer should be disabled but smart quotes found in output")
+	}
+
+	// Test definition list is disabled - should render as paragraphs
+	post2 := &models.Post{Content: "Term\n:   Definition"}
+	err = p.renderPost(post2)
+	if err != nil {
+		t.Fatalf("renderPost error: %v", err)
+	}
+	// Without definition list extension, should not have <dl>
+	if strings.Contains(post2.ArticleHTML, "<dl>") {
+		t.Error("Definition list should be disabled but <dl> found in output")
+	}
+}

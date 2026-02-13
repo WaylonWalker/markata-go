@@ -596,6 +596,144 @@ www.example.com also works.
 
 ---
 
+## Smart Quotes (Typographer)
+
+markata-go automatically converts straight quotes and punctuation to their typographic (curly) equivalents:
+
+| Input | Output | Description |
+|-------|--------|-------------|
+| `"Hello"` | `"Hello"` | Double curly quotes |
+| `'Hello'` | `'Hello'` | Single curly quotes |
+| `It's` | `It's` | Apostrophe |
+| `9--5` | `9–5` | En dash |
+| `hello---world` | `hello—world` | Em dash |
+| `wait...` | `wait…` | Ellipsis |
+
+**Live example:**
+
+"This sentence uses smart quotes." It's automatic—you don't need to do anything special. Just write normally and markata-go handles the conversion.
+
+Use en dashes for ranges like 9–5, and em dashes for breaks in thought—like this. Ellipses work too…
+
+**Disabling:**
+
+To disable smart quotes (use straight quotes instead):
+
+```toml
+[markdown.extensions]
+typographer = false
+```
+
+---
+
+## Definition Lists
+
+Create definition lists (glossary-style terms and definitions) using PHP Markdown Extra syntax:
+
+**Input:**
+
+```markdown
+Term 1
+:   Definition of the first term.
+
+Term 2
+:   First definition of the second term.
+:   Second definition of the second term.
+```
+
+**Live example:**
+
+HTML
+:   HyperText Markup Language - the standard markup language for documents designed to be displayed in a web browser.
+
+CSS
+:   Cascading Style Sheets - a style sheet language used for describing the presentation of a document.
+:   Can also refer to Content Scramble System (in different contexts).
+
+**Output:**
+
+```html
+<dl>
+  <dt>Term 1</dt>
+  <dd>Definition of the first term.</dd>
+  
+  <dt>Term 2</dt>
+  <dd>First definition of the second term.</dd>
+  <dd>Second definition of the second term.</dd>
+</dl>
+```
+
+**Use cases:**
+- Glossaries and terminology lists
+- FAQ sections (question as term, answer as definition)
+- Key-value documentation
+- API parameter descriptions
+
+**Disabling:**
+
+```toml
+[markdown.extensions]
+definition_list = false
+```
+
+---
+
+## Footnotes
+
+Add footnotes to your content using PHP Markdown Extra syntax:
+
+**Input:**
+
+```markdown
+Here's a sentence that needs a citation.[^1]
+
+[^1]: This is the footnote content that appears at the bottom of the document.
+```
+
+**Live example:**
+
+markata-go supports footnotes for academic writing and citations.[^footnote-demo]
+
+[^footnote-demo]: Footnotes are automatically collected and placed at the end of the document with backlinks for easy navigation.
+
+**Output:**
+
+```html
+<p>Here's a sentence that needs a citation.<sup><a href="#fn:1">1</a></sup></p>
+
+<!-- Later in the document -->
+<section class="footnotes">
+  <ol>
+    <li id="fn:1">
+      <p>This is the footnote content. <a href="#fnref:1">↩</a></p>
+    </li>
+  </ol>
+</section>
+```
+
+**Multiple footnotes:**
+
+```markdown
+First citation.[^1] Second citation.[^2] Reuse first.[^1]
+
+[^1]: First footnote content.
+[^2]: Second footnote content.
+```
+
+**Best practices:**
+- Keep footnotes brief and focused
+- Use descriptive reference labels (e.g., `[^smith-2020]` instead of `[^1]`) for maintainability
+- Place all footnote definitions at the end of your document
+
+**Disabling:**
+
+```toml
+[markdown.extensions]
+footnote = false
+```
+
+---
+
 ## Code Blocks
 
 Fenced code blocks support syntax highlighting for many languages.

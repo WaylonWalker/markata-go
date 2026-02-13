@@ -51,12 +51,30 @@ type RenderMarkdownPlugin struct {
 // site's palette configuration.
 func NewRenderMarkdownPlugin() *RenderMarkdownPlugin {
 	return &RenderMarkdownPlugin{
-		md: createMarkdownRenderer(palettes.DefaultChromaThemeDark, false),
+		md: createMarkdownRenderer(palettes.DefaultChromaThemeDark, false, DefaultMarkdownExtensionConfig()),
+	}
+}
+
+// MarkdownExtensionConfig holds configuration for optional markdown extensions.
+type MarkdownExtensionConfig struct {
+	TypographerEnabled       bool
+	DefinitionListEnabled    bool
+	FootnoteEnabled          bool
+	TypographerSubstitutions map[extension.TypographicPunctuation]string
+}
+
+// DefaultMarkdownExtensionConfig returns the default configuration with all extensions enabled.
+func DefaultMarkdownExtensionConfig() MarkdownExtensionConfig {
+	return MarkdownExtensionConfig{
+		TypographerEnabled:       true,
+		DefinitionListEnabled:    true,
+		FootnoteEnabled:          true,
+		TypographerSubstitutions: nil, // nil means use goldmark defaults
 	}
 }
 
 // createMarkdownRenderer creates a goldmark instance with the specified highlighting options.
-func createMarkdownRenderer(chromaTheme string, lineNumbers bool) goldmark.Markdown {
+func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig MarkdownExtensionConfig) goldmark.Markdown {
 	// Use CSS classes instead of inline styles for syntax highlighting.
 	// This enables theme customization via external CSS files.
 	formatOptions := []chromahtml.Option{
@@ -73,27 +91,50 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool) goldmark.Markd
 		highlighting.WithFormatOptions(formatOptions...),
 	}
 
+	extensions := []goldmark.Extender{
+		// GFM extensions
+		extension.GFM,
+		extension.Table,
+		extension.Strikethrough,
+		extension.Linkify,
+		extension.TaskList,
+		// Syntax highlighting with chroma
+		highlighting.NewHighlighting(highlightOpts...),
+		// Custom admonition extension
+		&AdmonitionExtension{},
+		// Mark extension for ==highlighted text==
+		&MarkExtension{},
+		// Keys extension for ++Ctrl+Alt+Del++
+		&KeysExtension{},
+		// Container extension for ::: class
+		&ContainerExtension{},
+		// Emoji extension for :smile: syntax
+		emoji.Emoji,
+	}
+
+	// Add Typographer extension (smart quotes, dashes, ellipses)
+	if extConfig.TypographerEnabled {
+		if extConfig.TypographerSubstitutions != nil {
+			extensions = append(extensions, extension.NewTypographer(
+				extension.WithTypographicSubstitutions(extConfig.TypographerSubstitutions),
+			))
+		} else {
+			extensions = append(extensions, extension.Typographer)
+		}
+	}
+
+	// Add DefinitionList extension (PHP Markdown Extra style definition lists)
+	if extConfig.DefinitionListEnabled {
+		extensions = append(extensions, extension.DefinitionList)
+	}
+
+	// Add Footnote extension (PHP Markdown Extra style footnotes)
+	if extConfig.FootnoteEnabled {
+		extensions = append(extensions, extension.Footnote)
+	}
+
 	return goldmark.New(
-		goldmark.WithExtensions(
-			// GFM extensions
-			extension.GFM,
-			extension.Table,
-			extension.Strikethrough,
-			extension.Linkify,
-			extension.TaskList,
-			// Syntax highlighting with chroma
-			highlighting.NewHighlighting(highlightOpts...),
-			// Custom admonition extension
-			&AdmonitionExtension{},
-			// Mark extension for ==highlighted text==
-			&MarkExtension{},
-			// Keys extension for ++Ctrl+Alt+Del++
-			&KeysExtension{},
-			// Container extension for ::: class
-			&ContainerExtension{},
-			// Emoji extension for :smile: syntax
-			emoji.Emoji,
-		),
+		goldmark.WithExtensions(extensions...),
 		goldmark.WithParserOptions(
 			parser.WithAutoHeadingID(),
 			// Enable attribute syntax for {.class}, {#id}, {key=value} on block elements
@@ -123,11 +164,17 @@ func (p *RenderMarkdownPlugin) Name() string {
 // 1. markdown.highlight.theme in config (explicit override)
 // 2. Theme derived from theme.palette (automatic matching)
 // 3. Default theme based on palette variant (github/github-dark)
+//
+// Markdown extension configuration:
+// 1. markdown.extensions.typographer - Enable smart quotes (default: true)
+// 2. markdown.extensions.definition_list - Enable definition lists (default: true)
+// 3. markdown.extensions.footnote - Enable footnotes (default: true)
 func (p *RenderMarkdownPlugin) Configure(m *lifecycle.Manager) error {
 	chromaTheme, lineNumbers := p.resolveHighlightConfig(m.Config().Extra)
+	extConfig := p.resolveExtensionConfig(m.Config().Extra)
 
-	// Reconfigure the markdown renderer with the resolved theme
-	p.md = createMarkdownRenderer(chromaTheme, lineNumbers)
+	// Reconfigure the markdown renderer with the resolved theme and extensions
+	p.md = createMarkdownRenderer(chromaTheme, lineNumbers, extConfig)
 
 	return nil
 }
@@ -203,6 +250,35 @@ func (p *RenderMarkdownPlugin) getPaletteVariant(paletteName string) palettes.Va
 		}
 	}
 	return palettes.VariantDark
+}
+
+// resolveExtensionConfig extracts markdown extension configuration from config.Extra map.
+// Returns a MarkdownExtensionConfig with settings for typographer, definition lists, and footnotes.
+// All extensions are enabled by default unless explicitly disabled in config.
+func (p *RenderMarkdownPlugin) resolveExtensionConfig(extra map[string]interface{}) MarkdownExtensionConfig {
+	config := DefaultMarkdownExtensionConfig()
+
+	// Try to get extension config from markdown.extensions
+	if markdown, ok := extra["markdown"].(map[string]interface{}); ok {
+		if extensions, ok := markdown["extensions"].(map[string]interface{}); ok {
+			// Typographer (smart quotes)
+			if enabled, ok := extensions["typographer"].(bool); ok {
+				config.TypographerEnabled = enabled
+			}
+
+			// Definition lists
+			if enabled, ok := extensions["definition_list"].(bool); ok {
+				config.DefinitionListEnabled = enabled
+			}
+
+			// Footnotes
+			if enabled, ok := extensions["footnote"].(bool); ok {
+				config.FootnoteEnabled = enabled
+			}
+		}
+	}
+
+	return config
 }
 
 // Render converts markdown content to HTML for all posts.
