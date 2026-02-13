@@ -913,3 +913,174 @@ func TestAdmonitionIntegration_InvalidTypeNotRendered(t *testing.T) {
 		t.Errorf("invalid type should not create admonition, got %q", post.ArticleHTML)
 	}
 }
+
+// =============================================================================
+// Content Leak Regression Tests (issue #745)
+//
+// Admonitions with multiple indented paragraphs must close properly when
+// followed by unindented content. Previously, the blank-line look-ahead in
+// Continue() advanced the reader past blank lines and returned Close, causing
+// goldmark's paragraph parser to merge unindented text into the admonition.
+// =============================================================================
+
+func TestAdmonitionRender_ContentLeakRegression(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantInside  []string // content that should appear before the closing tag
+		wantOutside []string // content that should appear after the closing tag
+		closeTag    string   // the expected closing tag
+	}{
+		{
+			name:        "single paragraph then outside",
+			input:       "!!! note\n    Inside.\n\nOutside.\n",
+			wantInside:  []string{"Inside."},
+			wantOutside: []string{"Outside."},
+			closeTag:    "</div>",
+		},
+		{
+			name:        "multi paragraph then outside",
+			input:       "!!! note\n    Para 1.\n\n    Para 2.\n\nOutside.\n",
+			wantInside:  []string{"Para 1.", "Para 2."},
+			wantOutside: []string{"Outside."},
+			closeTag:    "</div>",
+		},
+		{
+			name:        "three paragraphs then outside",
+			input:       "!!! note\n    Para 1.\n\n    Para 2.\n\n    Para 3.\n\nOutside.\n",
+			wantInside:  []string{"Para 1.", "Para 2.", "Para 3."},
+			wantOutside: []string{"Outside."},
+			closeTag:    "</div>",
+		},
+		{
+			name:        "multi paragraph then multiple outside",
+			input:       "!!! note\n    In 1.\n\n    In 2.\n\nOut 1.\n\nOut 2.\n",
+			wantInside:  []string{"In 1.", "In 2."},
+			wantOutside: []string{"Out 1.", "Out 2."},
+			closeTag:    "</div>",
+		},
+		{
+			name:        "multi paragraph then heading",
+			input:       "!!! note\n    In 1.\n\n    In 2.\n\n## Heading\n\nAfter.\n",
+			wantInside:  []string{"In 1.", "In 2."},
+			wantOutside: []string{"Heading", "After."},
+			closeTag:    "</div>",
+		},
+		{
+			name:        "chat multi paragraph then outside",
+			input:       "!!! chat @user\n    Msg 1.\n\n    Msg 2.\n\nOutside.\n",
+			wantInside:  []string{"Msg 1.", "Msg 2."},
+			wantOutside: []string{"Outside."},
+			closeTag:    "</div>",
+		},
+		{
+			name:        "chat-reply multi paragraph then outside",
+			input:       "!!! chat-reply @other\n    Reply 1.\n\n    Reply 2.\n\nOutside.\n",
+			wantInside:  []string{"Reply 1.", "Reply 2."},
+			wantOutside: []string{"Outside."},
+			closeTag:    "</div>",
+		},
+		{
+			name:        "collapsible multi paragraph then outside",
+			input:       "??? note\n    In 1.\n\n    In 2.\n\nOutside.\n",
+			wantInside:  []string{"In 1.", "In 2."},
+			wantOutside: []string{"Outside."},
+			closeTag:    "</details>",
+		},
+		{
+			name:        "aside multi paragraph then outside",
+			input:       "!!! aside\n    In 1.\n\n    In 2.\n\nOutside.\n",
+			wantInside:  []string{"In 1.", "In 2."},
+			wantOutside: []string{"Outside."},
+			closeTag:    "</aside>",
+		},
+		{
+			name:        "double blank line then outside",
+			input:       "!!! note\n    In 1.\n\n    In 2.\n\n\nOutside.\n",
+			wantInside:  []string{"In 1.", "In 2."},
+			wantOutside: []string{"Outside."},
+			closeTag:    "</div>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output := renderAdmonitionMarkdown(tt.input)
+
+			closeIdx := strings.Index(output, tt.closeTag)
+			if closeIdx < 0 {
+				t.Fatalf("no %s found in output:\n%s", tt.closeTag, output)
+			}
+
+			insidePart := output[:closeIdx]
+			outsidePart := output[closeIdx+len(tt.closeTag):]
+
+			for _, want := range tt.wantInside {
+				if !strings.Contains(insidePart, want) {
+					t.Errorf("expected %q INSIDE admonition, not found.\nInside:\n%s\nFull:\n%s", want, insidePart, output)
+				}
+			}
+
+			for _, want := range tt.wantOutside {
+				if !strings.Contains(outsidePart, want) {
+					t.Errorf("expected %q OUTSIDE admonition (after %s), not found.\nOutside:\n%s\nFull:\n%s", want, tt.closeTag, outsidePart, output)
+				}
+			}
+		})
+	}
+}
+
+func TestAdmonitionIntegration_ContentLeakRegression(t *testing.T) {
+	p := NewRenderMarkdownPlugin()
+
+	tests := []struct {
+		name        string
+		content     string
+		wantInside  []string
+		wantOutside []string
+	}{
+		{
+			name:        "multi paragraph then outside",
+			content:     "!!! note\n    Para 1.\n\n    Para 2.\n\nOutside.\n",
+			wantInside:  []string{"Para 1.", "Para 2."},
+			wantOutside: []string{"Outside."},
+		},
+		{
+			name:        "chat conversation then outside",
+			content:     "!!! chat @alice\n    Hello!\n\n    How are you?\n\nThis is not part of the chat.\n",
+			wantInside:  []string{"Hello!", "How are you?"},
+			wantOutside: []string{"This is not part of the chat."},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			post := &models.Post{Content: tt.content}
+
+			err := p.renderPost(post)
+			if err != nil {
+				t.Fatalf("renderPost error: %v", err)
+			}
+
+			closeIdx := strings.Index(post.ArticleHTML, "</div>")
+			if closeIdx < 0 {
+				t.Fatalf("no </div> found in output:\n%s", post.ArticleHTML)
+			}
+
+			insidePart := post.ArticleHTML[:closeIdx]
+			outsidePart := post.ArticleHTML[closeIdx+len("</div>"):]
+
+			for _, want := range tt.wantInside {
+				if !strings.Contains(insidePart, want) {
+					t.Errorf("expected %q INSIDE admonition, not found.\nOutput:\n%s", want, post.ArticleHTML)
+				}
+			}
+
+			for _, want := range tt.wantOutside {
+				if !strings.Contains(outsidePart, want) {
+					t.Errorf("expected %q OUTSIDE admonition, not found.\nOutput:\n%s", want, post.ArticleHTML)
+				}
+			}
+		})
+	}
+}
