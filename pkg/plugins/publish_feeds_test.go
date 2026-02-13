@@ -300,3 +300,140 @@ func TestPublishFeedsPlugin_writeFeedFormatRedirect(t *testing.T) {
 		})
 	}
 }
+
+// TestComputeFeedHash_SortChangeProducesDifferentHash verifies that changing
+// the sort or reverse config fields produces a different feed hash, preventing
+// stale cache hits.
+func TestComputeFeedHash_SortChangeProducesDifferentHash(t *testing.T) {
+	p := NewPublishFeedsPlugin()
+
+	baseFeed := &models.FeedConfig{
+		Slug:         "archive",
+		Title:        "Archive",
+		Description:  "All posts",
+		Sort:         "date",
+		Reverse:      false,
+		ItemsPerPage: 10,
+		Filter:       `published == true`,
+		Posts: []*models.Post{
+			{Slug: "post-a"},
+			{Slug: "post-b"},
+		},
+	}
+
+	tests := []struct {
+		name   string
+		modify func(fc *models.FeedConfig)
+	}{
+		{
+			name: "sort field change",
+			modify: func(fc *models.FeedConfig) {
+				fc.Sort = "title"
+			},
+		},
+		{
+			name: "reverse change",
+			modify: func(fc *models.FeedConfig) {
+				fc.Reverse = true
+			},
+		},
+		{
+			name: "filter change",
+			modify: func(fc *models.FeedConfig) {
+				fc.Filter = `tags contains "go"`
+			},
+		},
+		{
+			name: "description change",
+			modify: func(fc *models.FeedConfig) {
+				fc.Description = "Updated description"
+			},
+		},
+		{
+			name: "items per page change",
+			modify: func(fc *models.FeedConfig) {
+				fc.ItemsPerPage = 20
+			},
+		},
+		{
+			name: "format change",
+			modify: func(fc *models.FeedConfig) {
+				fc.Formats.RSS = true
+			},
+		},
+		{
+			name: "template change",
+			modify: func(fc *models.FeedConfig) {
+				fc.Templates.HTML = "custom.html"
+			},
+		},
+		{
+			name: "post order change",
+			modify: func(fc *models.FeedConfig) {
+				fc.Posts = []*models.Post{
+					{Slug: "post-b"},
+					{Slug: "post-a"},
+				}
+			},
+		},
+		{
+			name: "include private change",
+			modify: func(fc *models.FeedConfig) {
+				fc.IncludePrivate = true
+			},
+		},
+	}
+
+	baseHash := p.computeFeedHash(baseFeed)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a copy and modify it
+			modified := *baseFeed
+			modified.Formats = baseFeed.Formats
+			modified.Templates = baseFeed.Templates
+			// Deep copy posts slice
+			modified.Posts = make([]*models.Post, len(baseFeed.Posts))
+			for i, post := range baseFeed.Posts {
+				p := *post
+				modified.Posts[i] = &p
+			}
+			tt.modify(&modified)
+
+			modifiedHash := p.computeFeedHash(&modified)
+			if modifiedHash == baseHash {
+				t.Errorf("hash should change when %s, but both are %s", tt.name, baseHash)
+			}
+		})
+	}
+}
+
+// TestComputeFeedHash_IdenticalConfigsProduceSameHash verifies determinism.
+func TestComputeFeedHash_IdenticalConfigsProduceSameHash(t *testing.T) {
+	p := NewPublishFeedsPlugin()
+
+	fc := &models.FeedConfig{
+		Slug:         "archive",
+		Title:        "Archive",
+		Description:  "All posts",
+		Sort:         "date",
+		Reverse:      true,
+		ItemsPerPage: 10,
+		Filter:       `published == true`,
+		Posts: []*models.Post{
+			{Slug: "post-a"},
+			{Slug: "post-b"},
+		},
+		Formats: models.FeedFormats{
+			HTML: true,
+			RSS:  true,
+		},
+	}
+
+	hash1 := p.computeFeedHash(fc)
+	hash2 := p.computeFeedHash(fc)
+
+	if hash1 != hash2 {
+		t.Errorf("identical configs should produce same hash: %s != %s", hash1, hash2)
+	}
+}
