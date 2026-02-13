@@ -495,6 +495,35 @@ Use this palette in your config:
   palette = "sweetie-16"
 ```
 
+### Pick Palette Interactively
+
+Browse all available palettes in a full-screen interactive TUI with live color previews:
+
+```bash
+# Pick a palette and set it in your config (default)
+markata-go palette pick
+
+# Only print the name without updating config
+markata-go palette pick --no-set
+```
+
+The picker shows a two-panel layout:
+
+- **Left panel** -- Fuzzy-filterable list of all palettes with variant badges (`[dark]`/`[light]`). Type to filter, use arrow keys to navigate.
+- **Right panel** -- Live preview of the highlighted palette showing color swatches, semantic roles, and a contrast preview block.
+
+Press **Enter** to select a palette and set it in your config, or **Esc** to cancel.
+
+**Compose with other commands:**
+
+```bash
+# View detailed info for the palette you pick (without setting it)
+markata-go palette info "$(markata-go palette pick --no-set)"
+
+# Pick, set, and rebuild
+markata-go palette pick && markata-go build
+```
+
 ---
 
 ## Creating Custom Palettes
