@@ -734,6 +734,99 @@ footnote = false
 
 ---
 
+## CJK Line Breaks
+
+Enable proper line breaking for Chinese, Japanese, and Korean (CJK) text. Without this extension, CJK characters may wrap awkwardly in the middle of words.
+
+**Input:**
+
+```markdown
+これはテストです。これはテストです。
+这是一段中文测试文本。
+```
+
+**Output:**
+
+```html
+<p>これはテストです。<br>これはテストです。</p>
+<p>这是一段中文测试文本。</p>
+```
+
+**Configuration:**
+
+```toml
+[markdown.extensions]
+cjk = true  # default: true
+```
+
+---
+
+## Figures
+
+Automatically convert images with following paragraphs into HTML `<figure>` elements with `<figcaption>`.
+
+**Input:**
+
+```markdown
+![Alt text](image.jpg)
+This is the caption for the figure.
+```
+
+**Output:**
+
+```html
+<figure>
+  <img src="image.jpg" alt="Alt text">
+  <figcaption>This is the caption for the figure.</figcaption>
+</figure>
+```
+
+**Use cases:**
+- Image galleries with captions
+- Charts and diagrams with descriptions
+- Photos with credits or descriptions
+
+**Configuration:**
+
+```toml
+[markdown.extensions]
+figure = true  # default: true
+```
+
+---
+
+## Heading Anchors
+
+Add clickable permalink anchors to all headings for easy deep-linking.
+
+**Input:**
+
+```markdown
+## My Heading
+```
+
+**Output:**
+
+```html
+<h2 id="my-heading">My Heading <a class="anchor" href="#my-heading">¶</a></h2>
+```
+
+The anchor appears on hover and uses your theme's color scheme.
+
+**Use cases:**
+- Documentation sites needing deep links
+- Easy sharing of specific sections
+- Table of contents linking
+
+**Configuration:**
+
+```toml
+[markdown.extensions]
+anchor = true  # default: true
+```
+
+---
+
 ## Code Blocks
 
 Fenced code blocks support syntax highlighting for many languages.
