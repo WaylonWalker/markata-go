@@ -626,10 +626,9 @@ main.content-bg {
 }
 
 .site-header .container {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  flex-wrap: wrap;
-  justify-content: space-between;
   gap: var(--space-4);
   max-width: var(--page-width);
   margin: 0 auto;
@@ -655,7 +654,7 @@ main.content-bg {
   align-items: center;
   gap: var(--space-3);
   flex-shrink: 0;
-  margin-left: auto;
+  justify-self: end;
 }
 
 
@@ -1429,6 +1428,7 @@ a.wikilink.wikilink-missing {
   }
 
   .site-header .container {
+    display: flex;
     gap: var(--space-3);
     justify-content: space-between;
   }
@@ -1451,6 +1451,7 @@ a.wikilink.wikilink-missing {
   /* Header controls wrap with nav */
   .header-controls {
     margin-left: 0;
+    justify-self: auto;
   }
 
   /* Nav wrapping for small screens */
