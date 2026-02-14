@@ -42,7 +42,9 @@ This document specifies all built-in plugins that ship with the static site gene
 │    ├─ random_post        Write /random/ redirect page               │
 │    ├─ well_known         Generate .well-known endpoints             │
 │    ├─ copy_assets        Copy static files                           │
-│    └─ redirects          Generate HTML redirect pages                │
+│    ├─ redirects          Generate HTML redirect pages                │
+│    ├─ css_minify         Minify CSS files (PriorityLast)             │
+│    └─ js_minify          Minify JS files (PriorityLast)              │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1383,6 +1385,122 @@ redirect_template = "templates/redirect.html"
 
 ---
 
+### `css_minify`
+
+**Stage:** `write` (with `PriorityLast`)
+
+**Purpose:** Minify all CSS files in the output directory to reduce file sizes and improve Lighthouse performance scores.
+
+**Configuration:**
+
+```toml
+[markata-go.css_minify]
+enabled = true                    # Enable CSS minification (default: true)
+exclude = ["variables.css"]       # Files to skip (exact names or glob patterns)
+preserve_comments = ["Copyright"] # Strings that mark comments to preserve
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | boolean | `true` | Enable/disable CSS minification |
+| `exclude` | list of strings | `[]` | File patterns to skip (exact or glob) |
+| `preserve_comments` | list of strings | `[]` | Substrings that mark comments to keep |
+
+**Behavior:**
+
+1. Skip if `enabled` is `false`
+2. Walk the output directory recursively to find all `.css` files
+3. For each file, check exclusion patterns (exact match and glob)
+4. Read file content, extract comments matching `preserve_comments` patterns
+5. Minify using `tdewolff/minify/v2/css`
+6. Prepend preserved comments, write back to same path
+7. Log statistics: files processed, skipped, total size reduction
+
+**Hook behavior:**
+
+```
+if not config.enabled:
+    return
+
+css_files = find_files(output_dir, "*.css")
+for file in css_files:
+    if is_excluded(file, config.exclude):
+        skip
+    preserved = extract_comments(file, config.preserve_comments)
+    minified = tdewolff_minify(file, "text/css")
+    write(file, preserved + minified)
+
+log_stats(total_original, total_minified)
+```
+
+**Interface requirements:**
+- `Plugin` (Name)
+- `ConfigurePlugin` (read config from Extra)
+- `WritePlugin` (minify files)
+- `PriorityPlugin` (return `PriorityLast` for Write stage)
+
+---
+
+### `js_minify`
+
+**Stage:** `write` (with `PriorityLast`)
+
+**Purpose:** Minify all JavaScript files in the output directory to reduce file sizes and improve Lighthouse performance scores.
+
+**Configuration:**
+
+```toml
+[markata-go.js_minify]
+enabled = true                    # Enable JS minification (default: true)
+exclude = ["pagefind-ui.js"]      # Files to skip (exact names or glob patterns)
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | boolean | `true` | Enable/disable JS minification |
+| `exclude` | list of strings | `[]` | File patterns to skip (exact or glob) |
+
+**Behavior:**
+
+1. Skip if `enabled` is `false`
+2. Walk the output directory recursively to find all `.js` files
+3. Skip `.min.js` files (already minified)
+4. For each file, check exclusion patterns (exact match and glob)
+5. Read file content
+6. Minify using `tdewolff/minify/v2/js`
+7. Write back to same path
+8. Log statistics: files processed, skipped, total size reduction
+
+**Hook behavior:**
+
+```
+if not config.enabled:
+    return
+
+js_files = find_files(output_dir, "*.js", exclude="*.min.js")
+for file in js_files:
+    if is_excluded(file, config.exclude):
+        skip
+    minified = tdewolff_minify(file, "application/javascript")
+    write(file, minified)
+
+log_stats(total_original, total_minified)
+```
+
+**Interface requirements:**
+- `Plugin` (Name)
+- `ConfigurePlugin` (read config from Extra)
+- `WritePlugin` (minify files)
+- `PriorityPlugin` (return `PriorityLast` for Write stage)
+
+**Shared infrastructure:**
+
+Both `css_minify` and `js_minify` use shared helper functions in `minify_helpers.go`:
+- `runMinification(pluginName, files, isExcluded, minifyFunc)` - Processes files with logging
+- `isExcludedByPatterns(filename, excludeMap)` - Checks exact and glob exclusion patterns
+
+---
+
 ## Plugin Load Order
 
 When `hooks = ["default"]`, plugins load in this order:
@@ -1406,6 +1524,8 @@ DEFAULT_PLUGINS = [
     "publish_html",         # Write post files
     "copy_assets",          # Copy static files
     "redirects",            # Generate redirect pages
+    "css_minify",           # Minify CSS files (PriorityLast)
+    "js_minify",            # Minify JS files (PriorityLast)
 ]
 ```
 

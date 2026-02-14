@@ -4124,7 +4124,102 @@ enabled = false
 - If search is disabled, no index is generated
 - Site functions normally without search functionality
 
+**Lazy loading:**
+Pagefind CSS and JS are loaded on user interaction (hover on search, press `/`, press `Ctrl+K`) rather than eagerly on page load. This saves ~30-50KB on initial page load for pages where search is not used.
+
 See [[search|Search Guide]] for detailed usage and customization.
+
+---
+
+### css_minify
+
+**Name:** `css_minify`
+**Stage:** Write (PriorityLast)
+**Purpose:** Minifies all CSS files in the output directory to reduce file sizes and improve performance scores.
+
+**Configuration (TOML):**
+```toml
+[markata-go.css_minify]
+enabled = true                      # Enable CSS minification (default: true)
+exclude = ["variables.css"]         # Files to skip (exact names or glob patterns)
+preserve_comments = ["Copyright"]   # Strings that mark comments to preserve
+```
+
+**Options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `true` | Enable/disable CSS minification |
+| `exclude` | `[]` | File patterns to skip (supports `*`, `?`, `[` glob syntax) |
+| `preserve_comments` | `[]` | Substrings identifying comments to keep in output |
+
+**Behavior:**
+1. Runs with `PriorityLast` in Write stage (after all CSS-generating plugins: `palette_css`, `chroma_css`, `css_bundle`)
+2. Walks the output directory recursively for `.css` files
+3. Skips files matching exclusion patterns (exact match or glob)
+4. Extracts comments containing `preserve_comments` substrings
+5. Minifies content using `tdewolff/minify/v2` CSS minifier
+6. Prepends preserved comments to minified output
+7. Writes minified content back to the same file
+8. Logs statistics: files processed, files skipped, total size reduction percentage
+
+**Example output:**
+```
+[css_minify] Starting minification
+[css_minify] Completed: 8 files processed, 1 skipped
+[css_minify] Size reduction: 45230 -> 28940 bytes (36.0% smaller)
+```
+
+**Related plugins:**
+- [[#palette_css|palette_css]] - Generates palette CSS (minified by this plugin)
+- [[#chroma_css|chroma_css]] - Generates syntax highlighting CSS (minified by this plugin)
+- [[#js_minify|js_minify]] - Companion JS minification plugin
+
+---
+
+### js_minify
+
+**Name:** `js_minify`
+**Stage:** Write (PriorityLast)
+**Purpose:** Minifies all JavaScript files in the output directory to reduce file sizes and improve performance scores.
+
+**Configuration (TOML):**
+```toml
+[markata-go.js_minify]
+enabled = true                      # Enable JS minification (default: true)
+exclude = ["pagefind-ui.js"]        # Files to skip (exact names or glob patterns)
+```
+
+**Options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `true` | Enable/disable JS minification |
+| `exclude` | `[]` | File patterns to skip (supports `*`, `?`, `[` glob syntax) |
+
+**Behavior:**
+1. Runs with `PriorityLast` in Write stage (after all JS-generating plugins)
+2. Walks the output directory recursively for `.js` files
+3. Automatically skips `.min.js` files (already minified)
+4. Skips files matching exclusion patterns (exact match or glob)
+5. Minifies content using `tdewolff/minify/v2` JS minifier
+6. Writes minified content back to the same file
+7. Logs statistics: files processed, files skipped, total size reduction percentage
+
+**Example output:**
+```
+[js_minify] Starting minification
+[js_minify] Completed: 12 files processed, 2 skipped
+[js_minify] Size reduction: 145337 -> 72100 bytes (50.4% smaller)
+```
+
+**Typical reduction by file:**
+| File | Original | Minified | Reduction |
+|------|----------|----------|-----------|
+| `view-transitions.js` | 13.3KB | ~6.5KB | ~51% |
+| `conditional-css.js` | ~3KB | ~1.5KB | ~50% |
+| `copy-code.js` | ~2KB | ~1KB | ~50% |
+
+**Related plugins:**
+- [[#css_minify|css_minify]] - Companion CSS minification plugin
 
 ---
 

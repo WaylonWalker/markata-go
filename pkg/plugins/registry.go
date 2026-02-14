@@ -91,6 +91,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["critical_css"] = func() lifecycle.Plugin { return NewCriticalCSSPlugin() }
 	pluginRegistry.constructors["css_purge"] = func() lifecycle.Plugin { return NewCSSPurgePlugin() }
 	pluginRegistry.constructors["css_minify"] = func() lifecycle.Plugin { return NewCSSMinifyPlugin() }
+	pluginRegistry.constructors["js_minify"] = func() lifecycle.Plugin { return NewJSMinifyPlugin() }
 	pluginRegistry.constructors["cdn_assets"] = func() lifecycle.Plugin { return NewCDNAssetsPlugin() }
 	pluginRegistry.constructors["tags_listing"] = func() lifecycle.Plugin { return NewTagsListingPlugin() }
 	pluginRegistry.constructors["theme_calendar"] = func() lifecycle.Plugin { return NewThemeCalendarPlugin() }
@@ -214,6 +215,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 
 		// Cleanup stage plugins
 		NewCSSMinifyPlugin(), // Minify CSS files (before purge for optimal results)
+		NewJSMinifyPlugin(),  // Minify JS files (reduces ~50% file size)
 		NewCSSPurgePlugin(),  // Remove unused CSS (before search index)
 		NewPagefindPlugin(),  // Generate search index (requires all HTML written first)
 	}

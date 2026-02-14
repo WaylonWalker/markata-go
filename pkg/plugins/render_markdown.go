@@ -402,6 +402,16 @@ func (p *RenderMarkdownPlugin) detectCSSRequirements(post *models.Post) {
 		strings.Contains(post.ArticleHTML, `<code class="language-`) {
 		post.Extra["needs_code_css"] = true
 	}
+
+	// Detect images that will get GLightbox treatment (image_zoom plugin
+	// runs after this, but we can detect existing glightbox markers or
+	// images that will be processed).
+	if strings.Contains(post.ArticleHTML, `class="glightbox"`) ||
+		strings.Contains(post.ArticleHTML, `data-glightbox`) ||
+		strings.Contains(post.ArticleHTML, `{data-zoomable}`) ||
+		strings.Contains(post.ArticleHTML, `{.zoomable}`) {
+		post.Extra["needs_image_zoom"] = true
+	}
 }
 
 // Ensure RenderMarkdownPlugin implements the required interfaces.
