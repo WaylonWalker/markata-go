@@ -27,10 +27,21 @@
   flex-shrink: 0;
 }
 
-.search-container--navbar .pagefind-ui__search-input,
-.search--navbar .pagefind-ui__search-input {
+.header-controls .search-container--navbar {
   width: 16rem;
   max-width: 100%;
+  margin-left: 0;
+}
+
+.header-controls .search-container--navbar #pagefind-search,
+.header-controls .search-container--navbar .pagefind-ui {
+  width: 100%;
+}
+
+.search-container--navbar .pagefind-ui__search-input,
+.search--navbar .pagefind-ui__search-input {
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 /* Ensure search results dropdown can overflow the header */

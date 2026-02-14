@@ -627,7 +627,7 @@ main.content-bg {
 
 .site-header .container {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-4);
   max-width: var(--page-width);
@@ -640,6 +640,8 @@ main.content-bg {
   color: var(--color-text);
   text-decoration: none;
   flex-shrink: 0;
+  grid-column: 1;
+  justify-self: start;
 }
 
 .site-title:hover {
@@ -654,6 +656,7 @@ main.content-bg {
   align-items: center;
   gap: var(--space-3);
   flex-shrink: 0;
+  grid-column: 3;
   justify-self: end;
 }
 
