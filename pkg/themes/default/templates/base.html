@@ -361,8 +361,11 @@
       var loaded = false;
       var bundleDir = '/{{ config.search.pagefind.bundle_dir | default:"_pagefind" }}';
 
-      function loadPagefind() {
-        if (loaded) return;
+      function loadPagefind(callback) {
+        if (loaded) {
+          if (callback) callback();
+          return;
+        }
         loaded = true;
 
         // Inject pagefind CSS
@@ -378,35 +381,26 @@
           if (window.initPagefindSearch) {
             window.initPagefindSearch();
           }
+          if (callback) callback();
         };
         document.body.appendChild(script);
       }
 
-      // Trigger on: hover over search area, focus on search input, keyboard shortcuts
+      // Trigger on: hover over search area, focus on search input
       var searchEl = document.getElementById('pagefind-search');
       if (searchEl) {
-        searchEl.addEventListener('mouseenter', loadPagefind, { once: true });
-        searchEl.addEventListener('focusin', loadPagefind, { once: true });
+        searchEl.addEventListener('mouseenter', function() { loadPagefind(); }, { once: true });
+        searchEl.addEventListener('focusin', function() { loadPagefind(); }, { once: true });
       }
 
       // Also trigger from any search input/button in the header
       var searchControls = document.querySelectorAll('[type="search"], .search-toggle, .search-trigger');
       for (var i = 0; i < searchControls.length; i++) {
-        searchControls[i].addEventListener('mouseenter', loadPagefind, { once: true });
-        searchControls[i].addEventListener('focus', loadPagefind, { once: true });
+        searchControls[i].addEventListener('mouseenter', function() { loadPagefind(); }, { once: true });
+        searchControls[i].addEventListener('focus', function() { loadPagefind(); }, { once: true });
       }
 
-      // Keyboard shortcuts: / or Ctrl+K / Cmd+K
-      document.addEventListener('keydown', function handler(e) {
-        var tag = document.activeElement ? document.activeElement.tagName : '';
-        var isInput = (tag === 'INPUT' || tag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable));
-        if ((e.key === '/' && !isInput) || (e.key === 'k' && (e.ctrlKey || e.metaKey))) {
-          loadPagefind();
-          document.removeEventListener('keydown', handler);
-        }
-      });
-
-      // Expose for view transitions re-initialization
+      // Expose for view transitions re-initialization and search-shortcuts.js
       window.loadPagefind = loadPagefind;
     })();
   </script>

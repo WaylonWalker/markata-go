@@ -32,7 +32,8 @@
   }
 
   /**
-   * Focus the search input (Pagefind)
+   * Focus the search input (Pagefind).
+   * If pagefind hasn't loaded yet, trigger lazy-load and focus after init.
    */
   function focusSearch() {
     // Try Pagefind's input first
@@ -46,6 +47,15 @@
     var searchInput = document.querySelector('#pagefind-search input, #search input, [type="search"]');
     if (searchInput) {
       searchInput.focus();
+      return true;
+    }
+
+    // Pagefind not loaded yet -- trigger lazy-load and focus after init
+    if (window.loadPagefind) {
+      window.loadPagefind(function() {
+        var input = document.querySelector('.pagefind-ui__search-input');
+        if (input) input.focus();
+      });
       return true;
     }
 
