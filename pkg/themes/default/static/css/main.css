@@ -1497,6 +1497,10 @@ a.wikilink.wikilink-missing {
     overflow-x: hidden;
   }
 
+  .post {
+    max-width: 100%;
+  }
+
   /* Reduce article padding on mobile */
   article.post {
     padding: var(--space-4) 0;
@@ -1549,6 +1553,10 @@ a.wikilink.wikilink-missing {
     gap: var(--space-4);
   }
 
+  .post {
+    max-width: 100%;
+  }
+
   article.post {
     padding: var(--space-3) 0;
   }
@@ -1582,6 +1590,10 @@ a.wikilink.wikilink-missing {
 
   .card {
     padding: var(--space-2);
+  }
+
+  .post {
+    max-width: 100%;
   }
 
   /* Smaller typography */
