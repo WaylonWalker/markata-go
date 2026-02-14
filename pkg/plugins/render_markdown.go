@@ -19,6 +19,9 @@ import (
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/util"
+
+	figure "github.com/mangoumbrella/goldmark-figure"
+	"go.abhg.dev/goldmark/anchor"
 )
 
 // markdownBufferPool is a sync.Pool for reusing bytes.Buffer instances
@@ -98,6 +101,8 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig Mark
 		extension.Strikethrough,
 		extension.Linkify,
 		extension.TaskList,
+		// CJK (Chinese/Japanese/Korean) line break support
+		extension.NewCJK(),
 		// Syntax highlighting with chroma
 		highlighting.NewHighlighting(highlightOpts...),
 		// Custom admonition extension
@@ -110,6 +115,10 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig Mark
 		&ContainerExtension{},
 		// Emoji extension for :smile: syntax
 		emoji.Emoji,
+		// Figure extension for <figure> elements from images with captions
+		figure.Figure,
+		// Anchor extension for heading permalinks
+		&anchor.Extender{},
 	}
 
 	// Add Typographer extension (smart quotes, dashes, ellipses)
@@ -418,6 +427,16 @@ func (p *RenderMarkdownPlugin) detectCSSRequirements(post *models.Post) {
 		strings.Contains(post.ArticleHTML, `<pre class="mermaid"`) ||
 		strings.Contains(post.ArticleHTML, `<div class="mermaid"`) {
 		post.Extra["has_mermaid"] = true
+	}
+
+	// Detect figure elements - check for figure tag (goldmark-figure extension)
+	if strings.Contains(post.ArticleHTML, "<figure") {
+		post.Extra["has_figure"] = true
+	}
+
+	// Detect anchor links - check for anchor class (goldmark-anchor extension)
+	if strings.Contains(post.ArticleHTML, `class="anchor"`) {
+		post.Extra["has_anchor_links"] = true
 	}
 }
 
