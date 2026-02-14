@@ -1,6 +1,19 @@
 /* Search Component Styles */
 /* Customizes Pagefind UI to match the site theme */
 
+/* ---- Pre-load placeholder ----
+   Before pagefind-ui.js loads, #pagefind-search is an empty div.
+   Render it as a search-input lookalike so the navbar isn't bare.
+   :empty stops matching the moment PagefindUI injects its markup. */
+#pagefind-search:empty {
+  height: 2rem;
+  min-width: 12rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-background);
+  cursor: text;
+}
+
 /* Container positioning */
 .search-container {
   position: relative;
@@ -145,7 +158,8 @@
 }
 
 /* Keyboard shortcut hint */
-.search-container--navbar::after {
+.search-container--navbar::after,
+.search--navbar::after {
   content: '/';
   position: absolute;
   right: 0.75rem;
@@ -162,7 +176,8 @@
 }
 
 /* Hide hint when input is focused */
-.search-container--navbar:focus-within::after {
+.search-container--navbar:focus-within::after,
+.search--navbar:focus-within::after {
   display: none;
 }
 
