@@ -19,6 +19,9 @@ import (
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/util"
+
+	figure "github.com/mangoumbrella/goldmark-figure"
+	"go.abhg.dev/goldmark/anchor"
 )
 
 // markdownBufferPool is a sync.Pool for reusing bytes.Buffer instances
@@ -60,6 +63,9 @@ type MarkdownExtensionConfig struct {
 	TypographerEnabled       bool
 	DefinitionListEnabled    bool
 	FootnoteEnabled          bool
+	CJKEnabled               bool
+	FigureEnabled            bool
+	AnchorEnabled            bool
 	TypographerSubstitutions map[extension.TypographicPunctuation]string
 }
 
@@ -69,6 +75,9 @@ func DefaultMarkdownExtensionConfig() MarkdownExtensionConfig {
 		TypographerEnabled:       true,
 		DefinitionListEnabled:    true,
 		FootnoteEnabled:          true,
+		CJKEnabled:               true,
+		FigureEnabled:            true,
+		AnchorEnabled:            true,
 		TypographerSubstitutions: nil, // nil means use goldmark defaults
 	}
 }
@@ -110,6 +119,21 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig Mark
 		&ContainerExtension{},
 		// Emoji extension for :smile: syntax
 		emoji.Emoji,
+	}
+
+	// Add CJK extension (Chinese/Japanese/Korean line break support)
+	if extConfig.CJKEnabled {
+		extensions = append(extensions, extension.NewCJK())
+	}
+
+	// Add Figure extension for <figure> elements from images with captions
+	if extConfig.FigureEnabled {
+		extensions = append(extensions, figure.Figure)
+	}
+
+	// Add Anchor extension for heading permalinks
+	if extConfig.AnchorEnabled {
+		extensions = append(extensions, &anchor.Extender{})
 	}
 
 	// Add Typographer extension (smart quotes, dashes, ellipses)
@@ -169,6 +193,9 @@ func (p *RenderMarkdownPlugin) Name() string {
 // 1. markdown.extensions.typographer - Enable smart quotes (default: true)
 // 2. markdown.extensions.definition_list - Enable definition lists (default: true)
 // 3. markdown.extensions.footnote - Enable footnotes (default: true)
+// 4. markdown.extensions.cjk - Enable CJK line breaks (default: true)
+// 5. markdown.extensions.figure - Enable figure from images with captions (default: true)
+// 6. markdown.extensions.anchor - Enable heading permalinks (default: true)
 func (p *RenderMarkdownPlugin) Configure(m *lifecycle.Manager) error {
 	chromaTheme, lineNumbers := p.resolveHighlightConfig(m.Config().Extra)
 	extConfig := p.resolveExtensionConfig(m.Config().Extra)
@@ -274,6 +301,21 @@ func (p *RenderMarkdownPlugin) resolveExtensionConfig(extra map[string]interface
 			// Footnotes
 			if enabled, ok := extensions["footnote"].(bool); ok {
 				config.FootnoteEnabled = enabled
+			}
+
+			// CJK (Chinese/Japanese/Korean line breaks)
+			if enabled, ok := extensions["cjk"].(bool); ok {
+				config.CJKEnabled = enabled
+			}
+
+			// Figure (images with captions to <figure>)
+			if enabled, ok := extensions["figure"].(bool); ok {
+				config.FigureEnabled = enabled
+			}
+
+			// Anchor (heading permalinks)
+			if enabled, ok := extensions["anchor"].(bool); ok {
+				config.AnchorEnabled = enabled
 			}
 		}
 	}
@@ -418,6 +460,16 @@ func (p *RenderMarkdownPlugin) detectCSSRequirements(post *models.Post) {
 		strings.Contains(post.ArticleHTML, `<pre class="mermaid"`) ||
 		strings.Contains(post.ArticleHTML, `<div class="mermaid"`) {
 		post.Extra["has_mermaid"] = true
+	}
+
+	// Detect figure elements - check for figure tag (goldmark-figure extension)
+	if strings.Contains(post.ArticleHTML, "<figure") {
+		post.Extra["has_figure"] = true
+	}
+
+	// Detect anchor links - check for anchor class (goldmark-anchor extension)
+	if strings.Contains(post.ArticleHTML, `class="anchor"`) {
+		post.Extra["has_anchor_links"] = true
 	}
 }
 

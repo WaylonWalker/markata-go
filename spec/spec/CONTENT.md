@@ -390,6 +390,67 @@ Output:
 footnote = true  # Enable footnotes (default: true)
 ```
 
+### CJK Line Breaks
+
+Enable proper line breaking for Chinese, Japanese, and Korean text.
+
+```markdown
+これはテストです。これはテストです。
+```
+
+Output:
+```html
+<p>これはテストです。<br>これはテストです。</p>
+```
+
+**Configuration:**
+```toml
+[markdown.extensions]
+cjk = true  # Enable CJK line breaks (default: true)
+```
+
+### Figures
+
+Convert images with following paragraphs into `<figure>` elements with `<figcaption>`.
+
+```markdown
+![Alt text](image.jpg)
+This is the caption.
+```
+
+Output:
+```html
+<figure>
+  <img src="image.jpg" alt="Alt text">
+  <figcaption>This is the caption.</figcaption>
+</figure>
+```
+
+**Configuration:**
+```toml
+[markdown.extensions]
+figure = true  # Enable figures (default: true)
+```
+
+### Heading Anchors
+
+Add clickable permalink anchors to headings.
+
+```markdown
+## My Heading
+```
+
+Output:
+```html
+<h2 id="my-heading">My Heading <a class="anchor" href="#my-heading">¶</a></h2>
+```
+
+**Configuration:**
+```toml
+[markdown.extensions]
+anchor = true  # Enable heading anchors (default: true)
+```
+
 ### Code Blocks
 
 ````markdown
