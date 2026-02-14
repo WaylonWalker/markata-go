@@ -151,6 +151,47 @@ func TestPaletteCSSPlugin_Write_AppliesThemeVariables(t *testing.T) {
 	}
 }
 
+func TestPaletteCSSPlugin_Write_AppliesThemeVariablesFromModelsConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	modelsConfig := &models.Config{}
+	modelsConfig.Theme = models.ThemeConfig{
+		Name:    "default",
+		Palette: "catppuccin-mocha",
+		Variables: map[string]string{
+			"--text-base":     "1.5rem",
+			"--content-width": "72ch",
+		},
+	}
+
+	p := NewPaletteCSSPlugin()
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{
+		OutputDir: tmpDir,
+		Extra: map[string]interface{}{
+			"models_config": modelsConfig,
+		},
+	})
+
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write error: %v", err)
+	}
+
+	cssPath := filepath.Join(tmpDir, "css", "variables.css")
+	content, err := os.ReadFile(cssPath)
+	if err != nil {
+		t.Fatalf("failed to read variables.css: %v", err)
+	}
+
+	css := string(content)
+	if !strings.Contains(css, "--text-base: 1.5rem;") {
+		t.Error("expected theme variable override from models_config for --text-base")
+	}
+	if !strings.Contains(css, "--content-width: 72ch;") {
+		t.Error("expected theme variable override from models_config for --content-width")
+	}
+}
+
 func TestPaletteCSSPlugin_Write_NoPaletteSkips(t *testing.T) {
 	tmpDir := t.TempDir()
 

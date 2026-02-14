@@ -704,6 +704,12 @@ func (p *PaletteCSSPlugin) getPaletteConfig(extra map[string]interface{}) (palet
 		return "", "", ""
 	}
 
+	if modelsConfig, ok := extra["models_config"].(*models.Config); ok {
+		if modelsConfig.Theme.Palette != "" || modelsConfig.Theme.PaletteLight != "" || modelsConfig.Theme.PaletteDark != "" {
+			return modelsConfig.Theme.Palette, modelsConfig.Theme.PaletteLight, modelsConfig.Theme.PaletteDark
+		}
+	}
+
 	// Check if theme is a models.ThemeConfig (from core.go)
 	if themeConfig, ok := extra["theme"].(models.ThemeConfig); ok {
 		return themeConfig.Palette, themeConfig.PaletteLight, themeConfig.PaletteDark
@@ -736,6 +742,12 @@ func (p *PaletteCSSPlugin) getPaletteConfig(extra map[string]interface{}) (palet
 func (p *PaletteCSSPlugin) getThemeVariables(extra map[string]interface{}) map[string]string {
 	if extra == nil {
 		return nil
+	}
+
+	if modelsConfig, ok := extra["models_config"].(*models.Config); ok {
+		if len(modelsConfig.Theme.Variables) > 0 {
+			return normalizeThemeVariables(modelsConfig.Theme.Variables)
+		}
 	}
 
 	if themeConfig, ok := extra["theme"].(models.ThemeConfig); ok {
