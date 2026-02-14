@@ -74,6 +74,16 @@
   <link rel="stylesheet" href="{% if config.Extra.asset_urls.glightbox-css %}{{ config.Extra.asset_urls.glightbox-css }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/css/glightbox.min.css{% endif %}">
   {% endif %}
 
+  <!-- GLightbox Theme CSS (only when images need zoom) -->
+  {% if post.Extra.needs_image_zoom %}
+  <link rel="stylesheet" href="{{ 'css/glightbox.css' | theme_asset_hashed }}">
+  {% endif %}
+
+  <!-- Mermaid Diagram CSS (only when content has mermaid diagrams) -->
+  {% if post.Extra.has_mermaid %}
+  <link rel="stylesheet" href="{{ 'css/mermaid.css' | theme_asset_hashed }}">
+  {% endif %}
+
   <!-- CSS variable overrides from theme config -->
   {% if config.theme.variables %}
   <style>:root { {% for k, v in config.theme.variables.items() %}{{ k }}: {{ v }}; {% endfor %} }</style>

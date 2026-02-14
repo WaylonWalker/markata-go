@@ -412,6 +412,13 @@ func (p *RenderMarkdownPlugin) detectCSSRequirements(post *models.Post) {
 		strings.Contains(post.ArticleHTML, `{.zoomable}`) {
 		post.Extra["needs_image_zoom"] = true
 	}
+
+	// Detect Mermaid diagrams - check for mermaid class or pre tags
+	if strings.Contains(post.ArticleHTML, `class="mermaid"`) ||
+		strings.Contains(post.ArticleHTML, `<pre class="mermaid"`) ||
+		strings.Contains(post.ArticleHTML, `<div class="mermaid"`) {
+		post.Extra["has_mermaid"] = true
+	}
 }
 
 // Ensure RenderMarkdownPlugin implements the required interfaces.
