@@ -47,14 +47,41 @@
   <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset_hashed }}">
   {% endif %}
 
-  <!-- Pagefind Search CSS (when enabled) -->
+  <!-- Pagefind Search CSS (lazy loaded when search is enabled) -->
   {% if config.search.enabled %}
-  <link rel="stylesheet" href="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.css">
+  <link rel="stylesheet" href="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.css" media="(prefers-reduced-data: no-preference)">
+  <script>
+    // Lazy load pagefind CSS when search becomes visible or focused
+    document.addEventListener('DOMContentLoaded', function() {
+      const searchElement = document.getElementById('pagefind-search');
+      if (!searchElement) return;
+
+      const link = document.querySelector('link[href*="pagefind-ui.css"]');
+      if (!link) return;
+
+      const loadCSS = () => {
+        link.media = '';
+      };
+
+      searchElement.addEventListener('focus', loadCSS, { once: true });
+      searchElement.addEventListener('mouseenter', loadCSS, { once: true });
+    });
+  </script>
   <link rel="stylesheet" href="{{ 'css/search.css' | theme_asset_hashed }}">
   {% endif %}
 
   {% if config.Extra.glightbox_enabled %}
   <link rel="stylesheet" href="{% if config.Extra.asset_urls.glightbox-css %}{{ config.Extra.asset_urls.glightbox-css }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/css/glightbox.min.css{% endif %}">
+  {% endif %}
+
+  <!-- GLightbox Theme CSS (only when images need zoom) -->
+  {% if post.Extra.needs_image_zoom %}
+  <link rel="stylesheet" href="{{ 'css/glightbox.css' | theme_asset_hashed }}">
+  {% endif %}
+
+  <!-- Mermaid Diagram CSS (only when content has mermaid diagrams) -->
+  {% if post.Extra.has_mermaid %}
+  <link rel="stylesheet" href="{{ 'css/mermaid.css' | theme_asset_hashed }}">
   {% endif %}
 
   <!-- CSS variable overrides from theme config -->
@@ -383,8 +410,10 @@
   <script src="{{ 'js/view-transitions.js' | theme_asset_hashed }}" defer></script>
   {% endif %}
 
-  <!-- Decryption JS (always loaded for encrypted posts) -->
+   <!-- Decryption JS (only for encrypted/private posts) -->
+  {% if post.Extra.has_encrypted_content %}
   <script src="{{ 'js/decryption.js' | theme_asset_hashed }}" defer></script>
+  {% endif %}
 
    {% include "partials/background-scripts.html" %}
 </body>
