@@ -872,6 +872,9 @@ Configure the table of contents component for document navigation.
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Show TOC |
+| `auto_enable` | bool | `false` | Auto-show based on thresholds |
+| `min_toc_links` | int | `3` | Min headings for auto-show |
+| `min_word_count` | int | `500` | Min words for auto-show |
 | `position` | string | `"right"` | Position: `"left"` or `"right"` |
 | `width` | string | `"220px"` | TOC width |
 | `min_depth` | int | `2` | Minimum heading level (h2 = 2) |
@@ -884,6 +887,9 @@ Configure the table of contents component for document navigation.
 ```toml
 [markata-go.toc]
 enabled = true
+auto_enable = true          # Auto-show TOC for long posts
+min_toc_links = 3           # Show if 3+ headings
+min_word_count = 500        # Show if 500+ words
 position = "right"
 width = "220px"
 title = "On this page"
