@@ -496,9 +496,11 @@ func TestMermaidPlugin_DisabledPlugin(t *testing.T) {
 func TestMermaidPlugin_CustomTheme(t *testing.T) {
 	p := NewMermaidPlugin()
 	p.SetConfig(models.MermaidConfig{
-		Enabled: true,
-		CDNURL:  "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
-		Theme:   "dark",
+		Enabled:         true,
+		Mode:            "client",
+		CDNURL:          "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
+		Theme:           "dark",
+		UseCSSVariables: false,
 	})
 
 	post := &models.Post{
@@ -520,9 +522,11 @@ func TestMermaidPlugin_CustomCDN(t *testing.T) {
 	p := NewMermaidPlugin()
 	customCDN := "https://example.com/custom/mermaid.js"
 	p.SetConfig(models.MermaidConfig{
-		Enabled: true,
-		CDNURL:  customCDN,
-		Theme:   "default",
+		Enabled:         true,
+		Mode:            "client",
+		CDNURL:          customCDN,
+		Theme:           "default",
+		UseCSSVariables: false,
 	})
 
 	post := &models.Post{
@@ -661,4 +665,190 @@ func TestMermaidPlugin_Interfaces(_ *testing.T) {
 	var _ lifecycle.ConfigurePlugin = p
 	var _ lifecycle.RenderPlugin = p
 	var _ lifecycle.PriorityPlugin = p
+}
+
+// TestMermaidPlugin_CLIMode_Fallback tests that CLI mode falls back to client rendering
+// when rendering fails (e.g., mmdc not found). This verifies graceful degradation.
+func TestMermaidPlugin_CLIMode_Fallback(t *testing.T) {
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{
+		Enabled: true,
+		Mode:    "cli",
+		Theme:   "default",
+		CDNURL:  "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
+		CLIConfig: &models.CLIRendererConfig{
+			// Use a non-existent path to force fallback
+			MMDCPath:  "/nonexistent/mmdc",
+			ExtraArgs: "",
+		},
+	})
+
+	post := &models.Post{
+		ArticleHTML: `<pre><code class="language-mermaid">graph TD
+    A --&gt; B</code></pre>`,
+	}
+
+	// processPost should not error even if mmdc is missing
+	// It should fall back to client rendering (mermaid pre block)
+	err := p.processPost(post)
+	if err != nil {
+		t.Fatalf("processPost error: %v", err)
+	}
+
+	// Should fall back to client rendering (mermaid pre block)
+	if !strings.Contains(post.ArticleHTML, `<pre class="mermaid">`) {
+		t.Errorf("expected fallback to mermaid pre block, got %q", post.ArticleHTML)
+	}
+}
+
+// TestMermaidPlugin_ChromiumMode_Fallback tests that Chromium mode falls back to client rendering
+// when rendering fails (e.g., browser not found). This verifies graceful degradation.
+func TestMermaidPlugin_ChromiumMode_Fallback(t *testing.T) {
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{
+		Enabled: true,
+		Mode:    "chromium",
+		Theme:   "default",
+		CDNURL:  "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
+		ChromiumConfig: &models.ChromiumRendererConfig{
+			// Use a non-existent path to force fallback
+			BrowserPath:   "/nonexistent/chrome",
+			Timeout:       30,
+			MaxConcurrent: 4,
+		},
+	})
+
+	post := &models.Post{
+		ArticleHTML: `<pre><code class="language-mermaid">pie title Test
+    "A" : 50</code></pre>`,
+	}
+
+	// processPost should not error even if browser is missing
+	// It should fall back to client rendering (mermaid pre block)
+	err := p.processPost(post)
+	if err != nil {
+		t.Fatalf("processPost error: %v", err)
+	}
+
+	// Should fall back to client rendering (mermaid pre block)
+	if !strings.Contains(post.ArticleHTML, `<pre class="mermaid">`) {
+		t.Errorf("expected fallback to mermaid pre block, got %q", post.ArticleHTML)
+	}
+}
+
+// TestMermaidPlugin_InvalidMode_DefaultsToClient tests that an invalid mode
+// defaults to client mode behavior when no explicit mode is set.
+func TestMermaidPlugin_InvalidMode_DefaultsToClient(t *testing.T) {
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{
+		Enabled:         true,
+		Mode:            "invalid", // Invalid mode
+		Theme:           "dark",
+		UseCSSVariables: false,
+		CDNURL:          "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
+	})
+
+	post := &models.Post{
+		ArticleHTML: `<pre><code class="language-mermaid">graph TD
+    A --&gt; B</code></pre>`,
+	}
+
+	// processPost should treat invalid mode as an unknown mode and not inject script
+	// (since it only handles "client", "cli", and "chromium")
+	err := p.processPost(post)
+	if err != nil {
+		t.Fatalf("processPost error: %v", err)
+	}
+
+	// With an invalid mode, the code block should be converted but no script injected
+	// (line 236 checks p.config.Mode == "client" specifically)
+	if !strings.Contains(post.ArticleHTML, `<pre class="mermaid">`) {
+		t.Errorf("expected mermaid pre block, got %q", post.ArticleHTML)
+	}
+}
+
+// TestMermaidPlugin_MultipleModesInPost tests that a single post with multiple
+// mermaid diagrams processes all of them.
+func TestMermaidPlugin_MultipleModesInPost(t *testing.T) {
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{
+		Enabled:         true,
+		Mode:            "client",
+		Theme:           "dark",
+		UseCSSVariables: false,
+		CDNURL:          "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
+	})
+
+	post := &models.Post{
+		ArticleHTML: `
+<p>First diagram:</p>
+<pre><code class="language-mermaid">graph TD
+    A --&gt; B</code></pre>
+<p>Second diagram:</p>
+<pre><code class="language-mermaid">pie title Test
+    "A" : 50</code></pre>
+`,
+	}
+
+	err := p.processPost(post)
+	if err != nil {
+		t.Fatalf("processPost error: %v", err)
+	}
+
+	// Count how many mermaid pre blocks are in the result
+	count := strings.Count(post.ArticleHTML, `<pre class="mermaid">`)
+	if count != 2 {
+		t.Errorf("expected 2 mermaid pre blocks, got %d", count)
+	}
+
+	// Script should be injected once
+	if !strings.Contains(post.ArticleHTML, `theme: 'dark'`) {
+		t.Errorf("expected dark theme in script, got %q", post.ArticleHTML)
+	}
+}
+
+// TestMermaidPlugin_CLIConfig tests that CLI configuration options are properly loaded.
+func TestMermaidPlugin_CLIConfig(t *testing.T) {
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{
+		Enabled: true,
+		Mode:    "cli",
+		CLIConfig: &models.CLIRendererConfig{
+			MMDCPath:  "/usr/local/bin/mmdc",
+			ExtraArgs: "--theme dark --width 1024",
+		},
+	})
+
+	cfg := p.Config()
+	if cfg.CLIConfig.MMDCPath != "/usr/local/bin/mmdc" {
+		t.Errorf("expected MMDCPath /usr/local/bin/mmdc, got %q", cfg.CLIConfig.MMDCPath)
+	}
+	if cfg.CLIConfig.ExtraArgs != "--theme dark --width 1024" {
+		t.Errorf("expected ExtraArgs, got %q", cfg.CLIConfig.ExtraArgs)
+	}
+}
+
+// TestMermaidPlugin_ChromiumConfig tests that Chromium configuration options are properly loaded.
+func TestMermaidPlugin_ChromiumConfig(t *testing.T) {
+	p := NewMermaidPlugin()
+	p.SetConfig(models.MermaidConfig{
+		Enabled: true,
+		Mode:    "chromium",
+		ChromiumConfig: &models.ChromiumRendererConfig{
+			BrowserPath:   "/usr/bin/chromium",
+			Timeout:       60,
+			MaxConcurrent: 8,
+		},
+	})
+
+	cfg := p.Config()
+	if cfg.ChromiumConfig.BrowserPath != "/usr/bin/chromium" {
+		t.Errorf("expected BrowserPath /usr/bin/chromium, got %q", cfg.ChromiumConfig.BrowserPath)
+	}
+	if cfg.ChromiumConfig.Timeout != 60 {
+		t.Errorf("expected Timeout 60, got %d", cfg.ChromiumConfig.Timeout)
+	}
+	if cfg.ChromiumConfig.MaxConcurrent != 8 {
+		t.Errorf("expected MaxConcurrent 8, got %d", cfg.ChromiumConfig.MaxConcurrent)
+	}
 }

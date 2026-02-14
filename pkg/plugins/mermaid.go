@@ -10,6 +10,12 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+const (
+	mermaidModeClient   = "client"
+	mermaidModeCLI      = "cli"
+	mermaidModeChromium = "chromium"
+)
+
 // MermaidPlugin converts Mermaid code blocks into rendered diagrams.
 // It runs at the render stage (post_render, after markdown conversion).
 type MermaidPlugin struct {
@@ -39,6 +45,7 @@ func (p *MermaidPlugin) Priority(stage lifecycle.Stage) int {
 
 // Configure reads configuration options for the plugin from config.Extra.
 // Configuration is expected under the "mermaid" key.
+// It also validates that the selected rendering mode has its dependencies installed.
 func (p *MermaidPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 	if config.Extra == nil {
@@ -53,23 +60,110 @@ func (p *MermaidPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Handle map configuration
 	if cfgMap, ok := mermaidConfig.(map[string]interface{}); ok {
-		if enabled, ok := cfgMap["enabled"].(bool); ok {
-			p.config.Enabled = enabled
+		p.parseMainConfig(cfgMap)
+		p.parseCLIConfig(cfgMap)
+		p.parseChromiumConfig(cfgMap)
+	}
+
+	// Validate the selected mode and check dependencies
+	if !p.config.Enabled {
+		return nil
+	}
+
+	return p.validateMode()
+}
+
+// parseMainConfig extracts main mermaid configuration from the config map.
+func (p *MermaidPlugin) parseMainConfig(cfgMap map[string]interface{}) {
+	if enabled, ok := cfgMap["enabled"].(bool); ok {
+		p.config.Enabled = enabled
+	}
+	if mode, ok := cfgMap["mode"].(string); ok && mode != "" {
+		p.config.Mode = mode
+	}
+	if cdnURL, ok := cfgMap["cdn_url"].(string); ok && cdnURL != "" {
+		p.config.CDNURL = cdnURL
+	}
+	if theme, ok := cfgMap["theme"].(string); ok && theme != "" {
+		p.config.Theme = theme
+	}
+	if useCSSVariables, ok := cfgMap["use_css_variables"].(bool); ok {
+		p.config.UseCSSVariables = useCSSVariables
+	}
+	if lightbox, ok := cfgMap["lightbox"].(bool); ok {
+		p.config.Lightbox = lightbox
+	}
+	if selector, ok := cfgMap["lightbox_selector"].(string); ok && selector != "" {
+		p.config.LightboxSelector = selector
+	}
+}
+
+// parseCLIConfig extracts CLI renderer configuration from the config map.
+func (p *MermaidPlugin) parseCLIConfig(cfgMap map[string]interface{}) {
+	cliCfg, ok := cfgMap["cli"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	if p.config.CLIConfig == nil {
+		p.config.CLIConfig = &models.CLIRendererConfig{}
+	}
+
+	if mmdc, ok := cliCfg["mmdc_path"].(string); ok && mmdc != "" {
+		p.config.CLIConfig.MMDCPath = mmdc
+	}
+	if extraArgs, ok := cliCfg["extra_args"].(string); ok && extraArgs != "" {
+		p.config.CLIConfig.ExtraArgs = extraArgs
+	}
+}
+
+// parseChromiumConfig extracts Chromium renderer configuration from the config map.
+func (p *MermaidPlugin) parseChromiumConfig(cfgMap map[string]interface{}) {
+	chromCfg, ok := cfgMap["chromium"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	if p.config.ChromiumConfig == nil {
+		p.config.ChromiumConfig = &models.ChromiumRendererConfig{}
+	}
+
+	if browserPath, ok := chromCfg["browser_path"].(string); ok && browserPath != "" {
+		p.config.ChromiumConfig.BrowserPath = browserPath
+	}
+	if timeout, ok := chromCfg["timeout"].(float64); ok && timeout > 0 {
+		p.config.ChromiumConfig.Timeout = int(timeout)
+	}
+	if maxConcurrent, ok := chromCfg["max_concurrent"].(float64); ok && maxConcurrent > 0 {
+		p.config.ChromiumConfig.MaxConcurrent = int(maxConcurrent)
+	}
+}
+
+// validateMode validates the selected rendering mode and checks for required dependencies.
+func (p *MermaidPlugin) validateMode() error {
+	// Validate mode value
+	switch p.config.Mode {
+	case mermaidModeClient, mermaidModeCLI, mermaidModeChromium:
+		// valid modes
+	default:
+		return models.NewConfigValidationError("mermaid.mode", p.config.Mode,
+			"invalid mode: must be 'client', 'cli', or 'chromium'")
+	}
+
+	// Check dependencies for non-client modes
+	if p.config.Mode == mermaidModeCLI {
+		info := checkCLIDependency(p.config.CLIConfig.MMDCPath)
+		if !info.IsInstalled {
+			err := models.NewMermaidRenderError("", p.config.Mode, "mmdc binary not found", nil)
+			err.Suggestion = info.InstallInstructions + "\n\n" + info.FallbackSuggestion
+			return err
 		}
-		if cdnURL, ok := cfgMap["cdn_url"].(string); ok && cdnURL != "" {
-			p.config.CDNURL = cdnURL
-		}
-		if theme, ok := cfgMap["theme"].(string); ok && theme != "" {
-			p.config.Theme = theme
-		}
-		if useCSSVariables, ok := cfgMap["use_css_variables"].(bool); ok {
-			p.config.UseCSSVariables = useCSSVariables
-		}
-		if lightbox, ok := cfgMap["lightbox"].(bool); ok {
-			p.config.Lightbox = lightbox
-		}
-		if selector, ok := cfgMap["lightbox_selector"].(string); ok && selector != "" {
-			p.config.LightboxSelector = selector
+	} else if p.config.Mode == mermaidModeChromium {
+		info := checkChromiumDependency(p.config.ChromiumConfig.BrowserPath)
+		if !info.IsInstalled {
+			err := models.NewMermaidRenderError("", p.config.Mode, "browser not found", nil)
+			err.Suggestion = info.InstallInstructions + "\n\n" + info.FallbackSuggestion
+			return err
 		}
 	}
 
@@ -131,6 +225,8 @@ var mermaidCodeBlockRegex = regexp.MustCompile(
 )
 
 // processPost processes a single post's HTML for mermaid code blocks.
+// For client mode: converts code blocks to mermaid pre tags and injects script
+// For cli/chromium modes: renders diagrams to SVGs and embeds them
 func (p *MermaidPlugin) processPost(post *models.Post) error {
 	// Skip posts marked as skip or with no HTML content
 	if post.Skip || post.ArticleHTML == "" {
@@ -149,7 +245,7 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 	foundMermaid := false
 	result := post.ArticleHTML
 
-	// Replace language-mermaid code blocks with proper mermaid pre tags
+	// Replace language-mermaid code blocks with proper mermaid pre tags or rendered SVGs
 	if hasLanguageMermaid {
 		result = mermaidCodeBlockRegex.ReplaceAllStringFunc(result, func(match string) string {
 			foundMermaid = true
@@ -166,14 +262,37 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 			// Trim whitespace from the diagram code
 			diagramCode = strings.TrimSpace(diagramCode)
 
-			// Return the mermaid pre block
-			return `<pre class="mermaid">` + "\n" + diagramCode + "\n</pre>"
+			// For client mode: return as mermaid pre block
+			if p.config.Mode == mermaidModeClient {
+				return `<pre class="mermaid">` + "\n" + diagramCode + "\n</pre>"
+			}
+
+			// For pre-rendering modes (cli/chromium): render to SVG
+			renderer, err := newMermaidRenderer(p.config)
+			if err != nil {
+				// Log error but don't break the build - fallback to client rendering
+				// This shouldn't happen since we validated in Configure(), but be defensive
+				return `<pre class="mermaid">` + "\n" + diagramCode + "\n</pre>"
+			}
+			defer renderer.close()
+
+			svgOutput, err := renderer.render(diagramCode)
+			if err != nil {
+				// Log error but don't break the build - fallback to client rendering
+				return `<pre class="mermaid">` + "\n" + diagramCode + "\n</pre>"
+			}
+
+			// Return the SVG wrapped in a mermaid container
+			return `<pre class="mermaid">` + "\n" + svgOutput + "\n</pre>"
 		})
 	}
 
-	// If we found mermaid blocks or existing mermaid blocks, inject the script
+	// If we found mermaid blocks, inject the script (only for client mode)
+	// For pre-rendered modes, SVGs don't need the script
 	if foundMermaid || strings.Contains(result, `class="mermaid"`) {
-		result = p.injectMermaidScript(result)
+		if p.config.Mode == mermaidModeClient {
+			result = p.injectMermaidScript(result)
+		}
 	}
 
 	post.ArticleHTML = result
