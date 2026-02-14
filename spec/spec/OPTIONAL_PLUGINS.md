@@ -154,20 +154,35 @@ The plugin MUST implement:
 
 **Stage:** `render` (late priority, after markdown conversion)
 
-**Purpose:** Convert Mermaid code blocks into rendered diagrams.
+**Purpose:** Convert Mermaid code blocks into rendered diagrams. Supports three rendering modes: client-side (browser), CLI-based (mmdc), or Chromium-based.
 
-**Dependencies:** None (client-side rendering via CDN)
+**Dependencies:**
+- Client mode: None (uses CDN)
+- CLI mode: `mmdc` binary from `@mermaid-js/mermaid-cli`
+- Chromium mode: Chrome, Chromium, or compatible browser
 
 **Configuration:**
 
 ```toml
 [markata-go.mermaid]
 enabled = true
+mode = "client"                         # "client", "cli", or "chromium"
 cdn_url = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs"
-theme = "default"                  # default, dark, forest, neutral
-use_css_variables = true           # Use site palette CSS variables for diagram theming
-lightbox = true                    # Click diagrams to open in full-screen lightbox with pan/zoom
-lightbox_selector = ".glightbox-mermaid"  # CSS selector for mermaid lightbox links
+theme = "default"                       # default, dark, forest, neutral
+use_css_variables = true                # Use site palette CSS variables for diagram theming
+lightbox = true                         # Click diagrams to open in full-screen lightbox with pan/zoom
+lightbox_selector = ".glightbox-mermaid" # CSS selector for mermaid lightbox links
+
+# CLI mode configuration (when mode = "cli")
+[markata-go.mermaid.cli]
+mmdc_path = ""                          # Path to mmdc binary (auto-detect if empty)
+extra_args = ""                         # Extra arguments to pass to mmdc
+
+# Chromium mode configuration (when mode = "chromium")
+[markata-go.mermaid.chromium]
+browser_path = ""                       # Path to browser (auto-detect if empty)
+timeout = 30                            # Timeout in seconds for rendering each diagram
+max_concurrent = 4                      # Maximum concurrent diagram renderings
 ```
 
 **Configuration Fields:**
@@ -175,11 +190,54 @@ lightbox_selector = ".glightbox-mermaid"  # CSS selector for mermaid lightbox li
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Whether the plugin is active |
-| `cdn_url` | string | `"https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs"` | URL for Mermaid.js library |
+| `mode` | string | `"client"` | Rendering mode: `"client"` (browser), `"cli"` (mmdc), or `"chromium"` (Chrome DevTools Protocol) |
+| `cdn_url` | string | `"https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs"` | URL for Mermaid.js library (client mode only) |
 | `theme` | string | `"default"` | Mermaid theme (default, dark, forest, neutral) |
 | `use_css_variables` | bool | `true` | Derive diagram colors from site CSS custom properties (`--color-background`, `--color-text`, `--color-primary`, etc.) with hardcoded fallbacks. When enabled, the `theme` field is ignored. |
 | `lightbox` | bool | `true` | Enable click-to-zoom lightbox overlay for rendered diagrams. Uses a programmatic GLightbox instance with svg-pan-zoom for interactive pan and zoom. |
 | `lightbox_selector` | string | `".glightbox-mermaid"` | CSS selector for mermaid lightbox links (retained for backward compatibility; programmatic API does not use it). |
+| `cli.mmdc_path` | string | `""` | Path to mmdc binary (CLI mode). If empty, searches PATH. |
+| `cli.extra_args` | string | `""` | Extra command-line arguments for mmdc. |
+| `chromium.browser_path` | string | `""` | Path to browser executable (Chromium mode). If empty, searches common installation paths. |
+| `chromium.timeout` | int | `30` | Timeout in seconds for rendering each diagram. |
+| `chromium.max_concurrent` | int | `4` | Maximum number of diagrams to render concurrently. |
+
+**Rendering Modes:**
+
+| Mode | Rendering | Best For | Dependencies |
+|------|-----------|----------|--------------|
+| `client` | Browser-side (Mermaid.js) | Simple diagrams, faster builds, no server resources | None (CDN) |
+| `cli` | Build-time (mmdc binary) | Complex diagrams, static sites, SEO | `@mermaid-js/mermaid-cli` |
+| `chromium` | Build-time (Chrome DevTools Protocol) | Complex diagrams, better performance than CLI, reuses browser instance | Chrome/Chromium |
+
+**Installation Instructions by Mode:**
+
+**Client mode:** No installation required. Uses Mermaid.js from CDN.
+
+**CLI mode:** Install `@mermaid-js/mermaid-cli`:
+```bash
+npm install -g @mermaid-js/mermaid-cli
+# or
+sudo apt-get install mermaid-cli  # Debian/Ubuntu
+brew install mermaid-cli           # macOS
+```
+
+**Chromium mode:** Ensure Chrome/Chromium is installed:
+```bash
+# macOS
+brew install chromium
+
+# Linux (Debian/Ubuntu)
+sudo apt-get install chromium-browser
+
+# Linux (Fedora)
+sudo dnf install chromium
+
+# Windows
+# Download from https://www.chromium.org/getting-involved/download-chromium or use scoop/chocolatey
+scoop install chromium
+choco install chromium
+```
 
 **Syntax:**
 
@@ -194,20 +252,21 @@ graph TD
 
 **Behavior:**
 
+*Client mode:*
 1. Find all `<pre><code class="language-mermaid">` blocks
 2. Replace with `<pre class="mermaid">{diagram code}</pre>`
 3. Inject Mermaid.js initialization script (once per post with mermaid content)
-4. When `use_css_variables` is true, inject a script that reads CSS custom properties (`--color-background`, `--color-text`, `--color-primary`, `--color-code-bg`, `--color-surface`) and passes them to `mermaid.initialize()` with hardcoded fallbacks for each
-5. When `lightbox` is true:
-   a. Attach click handlers to each rendered SVG diagram
-   b. On first click, lazy-load svg-pan-zoom (~29KB, BSD-2) from CDN
-   c. Open a separate programmatic GLightbox instance (`selector: false`, `draggable: false`) with the SVG as `content`
-   d. On `slide_after_load` event, use `requestAnimationFrame` to `resize()` + `fit()` + `center()` the svg-pan-zoom instance
-   e. Render a toolbar overlay (Fit / + / - buttons) positioned top-right
-   f. Destroy the svg-pan-zoom instance on lightbox close to prevent memory leaks
-   g. SVG `viewBox` is synthesized from width/height attributes if missing; fixed dimensions are stripped so CSS controls sizing
+4. When `use_css_variables` is true, inject a script that reads CSS custom properties and passes them to `mermaid.initialize()`
+5. When `lightbox` is true, attach click handlers to render SVG diagrams in a full-screen lightbox with pan/zoom
 
-**Output (basic, without lightbox):**
+*CLI and Chromium modes:*
+1. Find all `<pre><code class="language-mermaid">` blocks
+2. Render each diagram to SVG at build time
+3. Replace code blocks with embedded SVG HTML
+4. If rendering fails (dependency missing), gracefully fall back to client-side rendering
+5. When `lightbox` is true, attach click handlers to open SVGs in a full-screen lightbox with pan/zoom
+
+**Output (client mode):**
 
 ```html
 <pre class="mermaid">
@@ -221,6 +280,16 @@ graph TD
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
   mermaid.initialize({ startOnLoad: true, theme: 'default' });
 </script>
+```
+
+**Output (pre-rendering modes - CLI/Chromium):**
+
+```html
+<pre class="mermaid">
+<svg viewBox="0 0 800 600" ...>
+  <!-- Pre-rendered SVG content -->
+</svg>
+</pre>
 ```
 
 **Lightbox interaction:**
