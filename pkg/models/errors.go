@@ -184,3 +184,35 @@ func NewPostProcessingError(path, stage, message string, err error) *PostProcess
 		Err:     err,
 	}
 }
+
+// MermaidRenderError indicates an error rendering a Mermaid diagram.
+type MermaidRenderError struct {
+	Path       string
+	DiagramID  string
+	Mode       string
+	Message    string
+	Err        error
+	Suggestion string
+}
+
+func (e *MermaidRenderError) Error() string {
+	msg := fmt.Sprintf("mermaid render error in %s (%s mode): %s", e.Path, e.Mode, e.Message)
+	if e.Suggestion != "" {
+		msg += fmt.Sprintf("\n\nSuggestion:\n%s", e.Suggestion)
+	}
+	return msg
+}
+
+func (e *MermaidRenderError) Unwrap() error {
+	return e.Err
+}
+
+// NewMermaidRenderError creates a new MermaidRenderError.
+func NewMermaidRenderError(path, mode, message string, err error) *MermaidRenderError {
+	return &MermaidRenderError{
+		Path:    path,
+		Mode:    mode,
+		Message: message,
+		Err:     err,
+	}
+}
