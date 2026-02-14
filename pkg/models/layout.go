@@ -542,6 +542,19 @@ type TocConfig struct {
 	// Enabled controls whether the TOC is displayed (default: true for docs layout)
 	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
 
+	// AutoEnable enables automatic TOC display based on content thresholds.
+	// When true, TOC will show automatically if min_toc_links or min_word_count
+	// thresholds are met, unless explicitly disabled in frontmatter.
+	AutoEnable *bool `json:"auto_enable,omitempty" yaml:"auto_enable,omitempty" toml:"auto_enable,omitempty"`
+
+	// MinTocLinks is the minimum number of TOC entries required to auto-show.
+	// Only used when AutoEnable is true. Default: 3
+	MinTocLinks int `json:"min_toc_links,omitempty" yaml:"min_toc_links,omitempty" toml:"min_toc_links,omitempty"`
+
+	// MinWordCount is the minimum word count required to auto-show.
+	// Only used when AutoEnable is true. Default: 500
+	MinWordCount int `json:"min_word_count,omitempty" yaml:"min_word_count,omitempty" toml:"min_word_count,omitempty"`
+
 	// Position controls TOC placement: "left" or "right" (default: "right")
 	Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
 
@@ -552,7 +565,7 @@ type TocConfig struct {
 	MinDepth int `json:"min_depth,omitempty" yaml:"min_depth,omitempty" toml:"min_depth,omitempty"`
 
 	// MaxDepth is the maximum heading level to include (default: 4)
-	MaxDepth int `json:"max_depth,omitempty" yaml:"max_depth,omitempty" toml:"max_depth,omitempty"`
+	MaxDepth int `json:"max_depth,omitempty" yaml:"min_depth,omitempty" toml:"max_depth,omitempty"`
 
 	// Title is the TOC section title (default: "On this page")
 	Title string `json:"title,omitempty" yaml:"title,omitempty" toml:"title,omitempty"`
@@ -597,6 +610,44 @@ func (t *TocConfig) IsScrollSpy() bool {
 		return true
 	}
 	return *t.ScrollSpy
+}
+
+// IsAutoEnable returns whether automatic TOC display based on thresholds is enabled.
+func (t *TocConfig) IsAutoEnable() bool {
+	if t.AutoEnable == nil {
+		return false
+	}
+	return *t.AutoEnable
+}
+
+// GetMinTocLinks returns the minimum number of TOC links for auto-show.
+func (t *TocConfig) GetMinTocLinks() int {
+	if t.MinTocLinks <= 0 {
+		return 3
+	}
+	return t.MinTocLinks
+}
+
+// GetMinWordCount returns the minimum word count for auto-show.
+func (t *TocConfig) GetMinWordCount() int {
+	if t.MinWordCount <= 0 {
+		return 500
+	}
+	return t.MinWordCount
+}
+
+// ShouldAutoShow returns true if TOC should automatically show based on content thresholds.
+func (t *TocConfig) ShouldAutoShow(tocLinkCount, wordCount int) bool {
+	if !t.IsAutoEnable() {
+		return false
+	}
+	if tocLinkCount >= t.GetMinTocLinks() {
+		return true
+	}
+	if wordCount >= t.GetMinWordCount() {
+		return true
+	}
+	return false
 }
 
 // HeaderLayoutConfig configures the header component for layouts.

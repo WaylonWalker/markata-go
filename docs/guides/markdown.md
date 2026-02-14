@@ -1566,26 +1566,76 @@ markata-go can automatically generate a table of contents from your headings.
 
 ### Enabling TOC
 
-Add `toc: true` to your frontmatter:
+There are three ways to control TOC display, in order of priority:
+
+1. **`[[toc]]` placeholder** - Insert TOC inline in your content
+2. **Frontmatter** - `toc: true` or `toc: false` per-post override
+3. **Global config** - Auto-enable based on content length
+
+### TOC Placeholder
+
+Insert `[[toc]]` anywhere in your markdown to render the TOC at that position:
+
+```markdown
+---
+title: "My Article"
+---
+
+# Table of Contents
+[[toc]]
+
+## Introduction
+
+Content starts here...
+```
+
+### Frontmatter Override
+
+Control TOC per-post in frontmatter:
 
 ```yaml
 ---
 title: "My Long Article"
-toc: true
+toc: true        # Force enable TOC
 ---
 
 # Introduction
 
 ## Getting Started
-
-### Prerequisites
-
-### Installation
-
-## Core Concepts
-
-## Advanced Topics
 ```
+
+Or disable TOC for a specific post:
+
+```yaml
+---
+title: "Short Post"
+toc: false       # Disable TOC even if global config enables it
+---
+
+# Introduction
+```
+
+### Global Auto-Enable
+
+Configure automatic TOC display based on content thresholds:
+
+```toml
+[markata-go.toc]
+enabled = true
+auto_enable = true
+min_toc_links = 3     # Show if 3+ headings
+min_word_count = 500  # Show if 500+ words
+```
+
+### Priority Order
+
+TOC display is determined by the following priority:
+
+1. **`[[toc]]` placeholder** → Always shows TOC at placeholder position
+2. **Frontmatter `toc: false`** → Disables TOC for this post
+3. **Frontmatter `toc: true`** → Forces TOC for this post
+4. **Global `auto_enable: true`** → Auto-shows if thresholds met
+5. **Global `enabled: true`** → Default TOC behavior
 
 ### TOC Options
 

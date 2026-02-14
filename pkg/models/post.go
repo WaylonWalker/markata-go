@@ -105,6 +105,16 @@ type Post struct {
 	Authors []string `json:"authors,omitempty" yaml:"authors,omitempty" toml:"authors,omitempty"`
 	Author  *string  `json:"author,omitempty" yaml:"author,omitempty" toml:"author,omitempty"` // Backward compatibility
 
+	// Toc controls table of contents display for this post.
+	// - nil: use global auto-enable logic or default
+	// - true: force enable TOC for this post
+	// - false: disable TOC for this post
+	Toc *bool `json:"toc,omitempty" yaml:"toc,omitempty" toml:"toc,omitempty"`
+
+	// TocPlaceholder indicates whether [[toc]] markdown placeholder was used.
+	// When true, TOC will be rendered inline at the placeholder position.
+	TocPlaceholder bool `json:"toc_placeholder,omitempty" yaml:"toc_placeholder,omitempty" toml:"toc_placeholder,omitempty"`
+
 	// AuthorRoleOverrides stores per-post role overrides keyed by author ID.
 	// Populated when frontmatter uses extended format: authors: [{id: waylon, role: editor}]
 	// Not serialized; rebuilt from frontmatter on each load.
@@ -385,4 +395,36 @@ func firstString(m map[string]interface{}, keys ...string) string {
 		}
 	}
 	return ""
+}
+
+// HasTocOverride returns true if the post has an explicit TOC setting in frontmatter.
+func (p *Post) HasTocOverride() bool {
+	return p.Toc != nil
+}
+
+// IsTocEnabled returns true if TOC should be displayed for this post.
+// The tocConfig is the global configuration to use for auto-enable logic.
+func (p *Post) IsTocEnabled(tocConfig *TocConfig, tocLinkCount, wordCount int) bool {
+	// Priority 1: [[toc]] placeholder always enables TOC
+	if p.TocPlaceholder {
+		return true
+	}
+
+	// Priority 2: Frontmatter explicit override
+	if p.Toc != nil {
+		return *p.Toc
+	}
+
+	// Priority 3: Global auto-enable with thresholds
+	if tocConfig != nil && tocConfig.IsAutoEnable() {
+		return tocConfig.ShouldAutoShow(tocLinkCount, wordCount)
+	}
+
+	// Priority 4: Global enabled (default to true if config exists)
+	if tocConfig != nil {
+		return tocConfig.IsEnabled()
+	}
+
+	// Default (no global config): show TOC if there are headings
+	return tocLinkCount > 0
 }

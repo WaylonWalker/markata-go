@@ -4,6 +4,7 @@ package plugins
 import (
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -17,6 +18,9 @@ type TocPlugin struct {
 
 	// maxLevel is the maximum heading level to include (default: 4)
 	maxLevel int
+
+	// globalTocConfig is the global TOC configuration
+	globalTocConfig *models.TocConfig
 }
 
 // NewTocPlugin creates a new TocPlugin with default settings.
@@ -42,9 +46,20 @@ func (p *TocPlugin) Configure(m *lifecycle.Manager) error {
 		if maxLevel, ok := config.Extra["toc_max_level"].(int); ok && maxLevel >= 1 && maxLevel <= 6 {
 			p.maxLevel = maxLevel
 		}
+
+		// Get global TOC config from Extra
+		if toc, ok := config.Extra["toc"].(models.TocConfig); ok {
+			if toc.IsEnabled() || toc.IsAutoEnable() {
+				p.globalTocConfig = &toc
+			}
+		}
 	}
+
 	return nil
 }
+
+// tocPlaceholderRegex matches [[toc]] markdown placeholder
+var tocPlaceholderRegex = regexp.MustCompile(`(?i)\[\[toc\]\]`)
 
 // Transform extracts headings from markdown and builds a TOC for each post.
 func (p *TocPlugin) Transform(m *lifecycle.Manager) error {
@@ -53,13 +68,56 @@ func (p *TocPlugin) Transform(m *lifecycle.Manager) error {
 	})
 
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
+		// Check for [[toc]] placeholder
+		hasPlaceholder := tocPlaceholderRegex.MatchString(post.Content)
+		post.TocPlaceholder = hasPlaceholder
+
+		// Extract TOC from content
 		toc := p.extractTOC(post.Content)
-		if len(toc) > 0 {
+		tocLinkCount := countTOCLinks(toc)
+
+		// Count words in content
+		wordCount := countWords(post.Content)
+
+		// Determine if TOC should be enabled using priority logic
+		shouldShow := post.IsTocEnabled(p.globalTocConfig, tocLinkCount, wordCount)
+
+		if shouldShow && len(toc) > 0 {
 			post.Set("toc", toc)
+		}
+
+		// If placeholder exists, replace it with a marker for later rendering
+		if hasPlaceholder {
+			// Replace [[toc]] with a marker that templates can detect
+			post.Set("toc_placeholder_present", true)
 		}
 
 		return nil
 	})
+}
+
+// countTOCLinks counts the total number of TOC entries (including nested)
+func countTOCLinks(entries []*TocEntry) int {
+	count := 0
+	for _, entry := range entries {
+		count += 1 + countTOCLinks(entry.Children)
+	}
+	return count
+}
+
+// countWords counts the number of words in text
+func countWords(s string) int {
+	words := 0
+	inWord := false
+	for _, r := range s {
+		if unicode.IsSpace(r) {
+			inWord = false
+		} else if !inWord {
+			words++
+			inWord = true
+		}
+	}
+	return words
 }
 
 // TocEntry represents a single entry in the table of contents.

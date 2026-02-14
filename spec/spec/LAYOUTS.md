@@ -62,6 +62,13 @@ toc_width = "220px"
 content_max_width = "800px"
 header_style = "minimal"
 footer_style = "minimal"
+
+# TOC Configuration (new in v0.x.x)
+[markata-go.layout.docs.toc]
+enabled = true                              # Enable TOC display
+auto_enable = true                          # Auto-show based on thresholds
+min_toc_links = 3                           # Min headings for auto-show
+min_word_count = 500                        # Min words for auto-show
 ```
 
 ### `blog` Layout
