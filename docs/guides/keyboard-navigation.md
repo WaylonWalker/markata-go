@@ -111,7 +111,12 @@ This preference is saved in your browser and persists across visits.
 
 Keyboard shortcuts are part of the default theme. If you need to customize or extend them:
 
-1. **Override the JavaScript:** Copy `shortcuts.js` from the theme to your `static/js/` directory and modify as needed.
+1. **Override the JavaScript:** Copy the shortcut modules from `pkg/themes/default/static/js/` to your `static/js/` directory and modify as needed. The main files are:
+   - `search-shortcuts.js` - Search and modal shortcuts
+   - `navigation-shortcuts.js` - Feed navigation shortcuts
+   - `scrolling-shortcuts.js` - Scrolling shortcuts
+   - `history-shortcuts.js` - Browser history shortcuts
+   - `shortcuts-registry.js` - Core registry system
 
 2. **Add to the modal:** Override the `partials/shortcuts-modal.html` template to add your custom shortcuts.
 
