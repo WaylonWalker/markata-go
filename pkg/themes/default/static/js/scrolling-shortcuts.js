@@ -84,13 +84,24 @@
     });
   }
 
-  /**
-   * Check if we're on a post/article page
-   */
-  function isPostPage() {
-    // Check for article element or post-specific classes/data attributes
-    return document.querySelector('article, [data-type="post"], .post-content') !== null;
-  }
+   /**
+    * Check if we're on a post/article page
+    * Post pages have a single <article> element, not a feed
+    */
+   function isPostPage() {
+     // Check for article element (only on individual post pages)
+     // Feed pages don't have article tags
+     return document.querySelector('article.post') !== null;
+   }
+
+   /**
+    * Check if we're on a feed page
+    * Feed pages have a <div class="feed"> wrapper
+    */
+   function isFeedPage() {
+     // All feed pages (rich feed, simple feed, etc.) have this structure
+     return document.querySelector('div.feed') !== null;
+   }
 
   /**
    * Continuous scroll loop - runs while keys are held
@@ -208,6 +219,11 @@
       if (window.shortcutsRegistry.isInputElement(e.target)) return;
 
       var key = e.key.toLowerCase();
+
+      // Skip j/k on feed pages - let navigation module handle them
+      if ((key === 'j' || key === 'k') && isFeedPage()) {
+        return;
+      }
 
       // Track if scroll keys are pressed (for held key detection)
       if (isPostPage() && (key === 'j' || key === 'k')) {
