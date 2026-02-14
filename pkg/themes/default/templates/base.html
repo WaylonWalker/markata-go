@@ -47,30 +47,12 @@
   <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset_hashed }}">
   {% endif %}
 
-  <!-- Pagefind Search CSS (lazy loaded when search is enabled) -->
+  <!-- Search CSS: layout styles load eagerly, pagefind UI loads on interaction -->
   {% if config.search.enabled %}
-  <link rel="stylesheet" href="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.css" media="(prefers-reduced-data: no-preference)">
-  <script>
-    // Lazy load pagefind CSS when search becomes visible or focused
-    document.addEventListener('DOMContentLoaded', function() {
-      const searchElement = document.getElementById('pagefind-search');
-      if (!searchElement) return;
-
-      const link = document.querySelector('link[href*="pagefind-ui.css"]');
-      if (!link) return;
-
-      const loadCSS = () => {
-        link.media = '';
-      };
-
-      searchElement.addEventListener('focus', loadCSS, { once: true });
-      searchElement.addEventListener('mouseenter', loadCSS, { once: true });
-    });
-  </script>
   <link rel="stylesheet" href="{{ 'css/search.css' | theme_asset_hashed }}">
   {% endif %}
 
-  {% if config.Extra.glightbox_enabled %}
+  {% if config.Extra.glightbox_enabled and needs_image_zoom %}
   <link rel="stylesheet" href="{% if config.Extra.asset_urls.glightbox-css %}{{ config.Extra.asset_urls.glightbox-css }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/css/glightbox.min.css{% endif %}">
   {% endif %}
 
@@ -319,8 +301,8 @@
       document.body.appendChild(paginationScript);
     }
 
-    // GLightbox - load when enabled
-    {% if config.Extra.glightbox_enabled %}
+    // GLightbox - load when page has zoomable images
+    {% if config.Extra.glightbox_enabled and needs_image_zoom %}
     const glightboxScript = document.createElement('script');
     glightboxScript.src = '{% if config.Extra.asset_urls.glightbox-js %}{{ config.Extra.asset_urls.glightbox-js }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js{% else %}/js/glightbox.min.js{% endif %}';
     glightboxScript.onload = function() {
@@ -342,12 +324,12 @@
     {% endif %}
   </script>
 
-  <!-- Pagefind Search JS (when enabled) -->
+  <!-- Pagefind Search JS: lazy-loaded on user interaction -->
   {% if config.search.enabled %}
   <script>
     // Expose globally so view transitions can re-initialize after DOM swap.
     window.initPagefindSearch = function initPagefindSearch() {
-      const root = document.getElementById('pagefind-search');
+      var root = document.getElementById('pagefind-search');
       if (!root) return;
       if (typeof PagefindUI === 'undefined') return;
 
@@ -373,8 +355,61 @@
         }
       });
     };
+
+    // Lazy-load pagefind: only fetch CSS + JS on first interaction
+    (function() {
+      var loaded = false;
+      var bundleDir = '/{{ config.search.pagefind.bundle_dir | default:"_pagefind" }}';
+
+      function loadPagefind() {
+        if (loaded) return;
+        loaded = true;
+
+        // Inject pagefind CSS
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = bundleDir + '/pagefind-ui.css';
+        document.head.appendChild(link);
+
+        // Inject pagefind JS
+        var script = document.createElement('script');
+        script.src = bundleDir + '/pagefind-ui.js';
+        script.onload = function() {
+          if (window.initPagefindSearch) {
+            window.initPagefindSearch();
+          }
+        };
+        document.body.appendChild(script);
+      }
+
+      // Trigger on: hover over search area, focus on search input, keyboard shortcuts
+      var searchEl = document.getElementById('pagefind-search');
+      if (searchEl) {
+        searchEl.addEventListener('mouseenter', loadPagefind, { once: true });
+        searchEl.addEventListener('focusin', loadPagefind, { once: true });
+      }
+
+      // Also trigger from any search input/button in the header
+      var searchControls = document.querySelectorAll('[type="search"], .search-toggle, .search-trigger');
+      for (var i = 0; i < searchControls.length; i++) {
+        searchControls[i].addEventListener('mouseenter', loadPagefind, { once: true });
+        searchControls[i].addEventListener('focus', loadPagefind, { once: true });
+      }
+
+      // Keyboard shortcuts: / or Ctrl+K / Cmd+K
+      document.addEventListener('keydown', function handler(e) {
+        var tag = document.activeElement ? document.activeElement.tagName : '';
+        var isInput = (tag === 'INPUT' || tag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable));
+        if ((e.key === '/' && !isInput) || (e.key === 'k' && (e.ctrlKey || e.metaKey))) {
+          loadPagefind();
+          document.removeEventListener('keydown', handler);
+        }
+      });
+
+      // Expose for view transitions re-initialization
+      window.loadPagefind = loadPagefind;
+    })();
   </script>
-  <script src="/{{ config.search.pagefind.bundle_dir | default:'_pagefind' }}/pagefind-ui.js" onload="window.initPagefindSearch()"></script>
   {% endif %}
 
    <!-- Palette Switcher JS (when enabled) -->
