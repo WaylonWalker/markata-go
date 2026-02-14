@@ -11,18 +11,36 @@
   {% endblock %}
 
   {% block head %}
-  <!-- Theme CSS -->
+  <!-- Core CSS (always loaded) -->
   <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset_hashed }}">
   <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset_hashed }}">
   <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset_hashed }}">
-  <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset_hashed }}">
-  <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset_hashed }}">
-  <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset_hashed }}">
-  <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset_hashed }}">
-  <link rel="stylesheet" href="{{ 'css/chroma.css' | theme_asset_hashed }}">
 
-  <!-- Encryption CSS (always loaded for encrypted posts) -->
+  <!-- Cards CSS (only on feed/index pages) -->
+  {% if needs_cards_css %}
+  <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset_hashed }}">
+  {% endif %}
+
+  <!-- Admonitions CSS (only when content uses admonitions) -->
+  {% if needs_admonitions_css %}
+  <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset_hashed }}">
+  {% endif %}
+
+  <!-- Code CSS (only when content has code blocks) -->
+  {% if needs_code_css %}
+  <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset_hashed }}">
+  <link rel="stylesheet" href="{{ 'css/chroma.css' | theme_asset_hashed }}">
+  {% endif %}
+
+  <!-- Webmentions CSS (only when post has webmentions) -->
+  {% if needs_webmentions_css or post.Extra.webmentions %}
+  <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset_hashed }}">
+  {% endif %}
+
+  <!-- Encryption CSS (only for encrypted/private posts) -->
+  {% if post.Extra.has_encrypted_content %}
   <link rel="stylesheet" href="{{ 'css/encryption.css' | theme_asset_hashed }}">
+  {% endif %}
 
   <!-- Palette Switcher CSS (when enabled) -->
   {% if config.theme.switcher.enabled %}
@@ -174,6 +192,9 @@
 
   {# Shortcuts Modal - must be before conditional script loading so #shortcuts-modal exists when checked #}
   {% include "partials/shortcuts-modal.html" %}
+
+  <!-- Conditional CSS Runtime Loader (for view transitions) -->
+  <script src="{{ 'js/conditional-css.js' | theme_asset_hashed }}" defer></script>
 
   <!-- Conditional Script Loading: Only load when needed -->
   <script>
