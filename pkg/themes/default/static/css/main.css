@@ -658,6 +658,8 @@ main.content-bg {
   flex-shrink: 0;
   grid-column: 3;
   justify-self: end;
+  position: relative;
+  z-index: 30;
 }
 
 
@@ -1431,24 +1433,28 @@ a.wikilink.wikilink-missing {
   }
 
   .site-header .container {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "title controls"
+      "nav nav";
     gap: var(--space-3);
-    justify-content: space-between;
   }
 
   /* Mobile header stacking: title + controls, then nav full-width */
   .site-title {
-    order: 1;
+    grid-area: title;
   }
 
   .header-controls {
-    order: 2;
+    grid-area: controls;
+    justify-self: end;
   }
 
   .site-header .site-nav {
-    order: 3;
-    flex: 0 0 100%;
-    justify-content: flex-start;
+    grid-area: nav;
+    justify-content: center;
+    width: 100%;
   }
 
   /* Header controls wrap with nav */

@@ -31,6 +31,8 @@
   width: 16rem;
   max-width: 100%;
   margin-left: 0;
+  position: relative;
+  z-index: 40;
 }
 
 .header-controls .search-container--navbar #pagefind-search,
@@ -42,6 +44,8 @@
 .search--navbar .pagefind-ui__search-input {
   width: 100% !important;
   max-width: 100% !important;
+  color: var(--color-text) !important;
+  background: var(--color-background) !important;
 }
 
 /* Ensure search results dropdown can overflow the header */
@@ -125,7 +129,7 @@
   border: 1px solid var(--color-border) !important;
   border-radius: 0.5rem !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.15) !important;
-  z-index: 100 !important;
+  z-index: 200 !important;
   max-height: 70vh !important;
   overflow-y: auto !important;
   overscroll-behavior: contain;
