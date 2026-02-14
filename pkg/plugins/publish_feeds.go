@@ -583,6 +583,9 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 		modelsConfig := ToModelsConfig(config)
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
 
+		// Feed pages always need cards CSS
+		ctx.Set("needs_cards_css", true)
+
 		htmlContent, err := engine.Render(templateName, ctx)
 		if err != nil {
 			log.Printf("[publish_feeds] Warning: template rendering failed for %s: %v (falling back to built-in template)", templateName, err)
@@ -633,6 +636,9 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 
 		// Create feed context
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
+
+		// Feed pages always need cards CSS
+		ctx.Set("needs_cards_css", true)
 
 		// Render with pongo2 template
 		html, err := engine.Render("feed.html", ctx)

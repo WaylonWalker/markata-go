@@ -202,26 +202,53 @@ The search component is included via template:
 ```html
 {# Search component template #}
 {# Requires: config.search (SearchConfig) #}
+{# Pagefind CSS/JS are lazy-loaded on user interaction, not eagerly #}
 
 {% with search = config.search %}
 {% if search.enabled %}
 <div id="search" class="search search--{{ search.position | default:'navbar' }}">
-    <div id="pagefind-search"></div>
+    <div id="pagefind-search">
+        <input type="text" class="pagefind-ui__search-input"
+               placeholder="{{ search.placeholder | default:'Search... ( / )' }}" readonly>
+    </div>
 </div>
 
-<link href="/_pagefind/pagefind-ui.css" rel="stylesheet">
-<script src="/_pagefind/pagefind-ui.js" defer></script>
 <script>
-    window.addEventListener('DOMContentLoaded', (event) => {
-        new PagefindUI({
-            element: "#pagefind-search",
-            showImages: {{ search.show_images | default:true | lower }},
-            excerptLength: {{ search.excerpt_length | default:200 }},
-            translations: {
-                placeholder: "{{ search.placeholder | default:'Search...' }}"
-            }
-        });
+(function() {
+    var loaded = false;
+    function loadPagefind() {
+        if (loaded) return;
+        loaded = true;
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '/{{ search.pagefind.bundle_dir | default:"_pagefind" }}/pagefind-ui.css';
+        document.head.appendChild(link);
+        var script = document.createElement('script');
+        script.src = '/{{ search.pagefind.bundle_dir | default:"_pagefind" }}/pagefind-ui.js';
+        script.onload = function() {
+            new PagefindUI({
+                element: "#pagefind-search",
+                showImages: {{ search.show_images | default:true | lower }},
+                excerptLength: {{ search.excerpt_length | default:200 }},
+                translations: {
+                    placeholder: "{{ search.placeholder | default:'Search...' }}"
+                }
+            });
+        };
+        document.head.appendChild(script);
+    }
+    var searchEl = document.getElementById('search');
+    if (searchEl) {
+        searchEl.addEventListener('mouseenter', loadPagefind, {once: true});
+        searchEl.addEventListener('focusin', loadPagefind, {once: true});
+    }
+    document.addEventListener('keydown', function(e) {
+        var tag = (e.target || {}).tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (e.key === '/') { e.preventDefault(); loadPagefind(); }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); loadPagefind(); }
     });
+})();
 </script>
 {% endif %}
 {% endwith %}
@@ -340,8 +367,70 @@ Pagefind automatically optimizes the search index:
 
 ### Loading Strategy
 
-- Pagefind JS/CSS loaded with `defer` attribute
-- Search index loaded lazily on first interaction
+Pagefind resources are **lazy-loaded on user interaction** to avoid blocking page load:
+
+- **CSS**: Injected as a `<link>` tag on first interaction
+- **JS**: Injected as a `<script>` tag on first interaction
+- **Search index**: Loaded lazily by Pagefind on first query
+
+**Trigger events** (any of these loads Pagefind):
+1. `mouseenter` or `focusin` on the search container
+2. Pressing `/` (slash) key anywhere on the page
+3. Pressing `Ctrl+K` (or `Cmd+K` on macOS)
+
+**Implementation:**
+
+```html
+<div id="search" class="search">
+    <div id="pagefind-search">
+        <input type="text" placeholder="Search... ( / )" readonly>
+    </div>
+</div>
+
+<script>
+(function() {
+    var loaded = false;
+    function loadPagefind() {
+        if (loaded) return;
+        loaded = true;
+
+        // Inject CSS
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '/_pagefind/pagefind-ui.css';
+        document.head.appendChild(link);
+
+        // Inject JS and initialize
+        var script = document.createElement('script');
+        script.src = '/_pagefind/pagefind-ui.js';
+        script.onload = function() {
+            new PagefindUI({
+                element: "#pagefind-search",
+                showImages: true
+            });
+        };
+        document.head.appendChild(script);
+    }
+
+    // Load on interaction with search area
+    var search = document.getElementById('search');
+    if (search) {
+        search.addEventListener('mouseenter', loadPagefind, { once: true });
+        search.addEventListener('focusin', loadPagefind, { once: true });
+    }
+
+    // Load on keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.key === '/' && !isInputFocused()) loadPagefind();
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') loadPagefind();
+    });
+})();
+</script>
+```
+
+**Benefits:**
+- Saves ~30-50KB of JS and ~5KB of CSS on initial page load
+- Search index chunks load only when a query is made
 - Results cached for repeated queries
 
 ## Error Handling

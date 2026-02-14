@@ -4,7 +4,6 @@ package plugins
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -110,58 +109,19 @@ func (p *CSSMinifyPlugin) parseConfigFromMap(m map[string]interface{}) models.CS
 
 // Write performs CSS minification in the output directory.
 func (p *CSSMinifyPlugin) Write(m *lifecycle.Manager) error {
-	// Skip if not enabled
 	if !p.config.Enabled {
 		return nil
 	}
 
-	config := m.Config()
-	outputDir := config.OutputDir
-
-	log.Printf("[css_minify] Starting CSS minification")
-
-	// Find all CSS files in output directory
+	outputDir := m.Config().OutputDir
 	cssFiles, err := p.findCSSFiles(outputDir)
 	if err != nil {
 		return fmt.Errorf("finding CSS files: %w", err)
 	}
 
-	if len(cssFiles) == 0 {
-		log.Printf("[css_minify] No CSS files found")
-		return nil
-	}
-
-	// Track statistics
-	var totalOriginal, totalMinified int64
-	var filesProcessed, filesSkipped int
-
-	// Process each CSS file
-	for _, cssFile := range cssFiles {
-		// Check if file should be excluded
-		if p.isExcluded(cssFile) {
-			log.Printf("[css_minify] Skipping excluded file: %s", filepath.Base(cssFile))
-			filesSkipped++
-			continue
-		}
-
-		original, minifiedSize, err := p.minifyFile(cssFile)
-		if err != nil {
-			log.Printf("[css_minify] Warning: failed to minify %s: %v", filepath.Base(cssFile), err)
-			continue
-		}
-
-		totalOriginal += original
-		totalMinified += minifiedSize
-		filesProcessed++
-	}
-
-	// Calculate and log statistics
-	if totalOriginal > 0 {
-		reduction := float64(totalOriginal-totalMinified) / float64(totalOriginal) * 100
-		log.Printf("[css_minify] Completed: %d files processed, %d skipped", filesProcessed, filesSkipped)
-		log.Printf("[css_minify] Size reduction: %d -> %d bytes (%.1f%% smaller)",
-			totalOriginal, totalMinified, reduction)
-	}
+	runMinification("css_minify", cssFiles, p.isExcluded, func(path string) (int64, int64, error) {
+		return p.minifyFile(path)
+	})
 
 	return nil
 }
@@ -194,23 +154,7 @@ func (p *CSSMinifyPlugin) findCSSFiles(dir string) ([]string, error) {
 // isExcluded checks if a file should be excluded from minification.
 func (p *CSSMinifyPlugin) isExcluded(filePath string) bool {
 	filename := filepath.Base(filePath)
-
-	// Check exact match
-	if p.exclude[filename] {
-		return true
-	}
-
-	// Check pattern match
-	for pattern := range p.exclude {
-		if strings.ContainsAny(pattern, "*?[") {
-			matched, err := filepath.Match(pattern, filename)
-			if err == nil && matched {
-				return true
-			}
-		}
-	}
-
-	return false
+	return isExcludedByPatterns(filename, p.exclude)
 }
 
 // minifyFile minifies a single CSS file in place.

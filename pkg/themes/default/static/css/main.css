@@ -1,5 +1,5 @@
 /* Main Styles - Default Theme */
-@import url('variables.css');
+/* Note: variables.css is loaded via <link> in base.html - no @import needed */
 
 /* Reset */
 *, *::before, *::after {

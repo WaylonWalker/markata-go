@@ -1126,6 +1126,18 @@ The `render_markdown` plugin scans rendered HTML content and sets flags in `post
 |------|---------------|
 | `needs_admonitions_css` | HTML contains `class="admonition` |
 | `needs_code_css` | HTML contains `class="chroma"`, `class="highlight"`, `<pre><code`, or `<code class="language-` |
+| `needs_image_zoom` | HTML contains `data-zoomable` or `class="glightbox"` (set by `image_zoom` plugin) |
+
+### Other Plugin Detection
+
+Other plugins set their own flags in `post.Extra`:
+
+| Flag | Set By | Detected When |
+|------|--------|---------------|
+| `has_encrypted_content` | `encryption` plugin | Post has `private: true` frontmatter |
+| `glightbox_enabled` | `image_zoom` plugin | GLightbox is configured and post has zoomable images |
+| `needs_cards_css` | `publish_feeds` plugin | Page is a feed/index page that renders post cards |
+| `needs_webmentions_css` | `webmentions` plugin | Post has webmentions or webmentions are enabled globally |
 
 ### Template Implementation
 
@@ -1137,51 +1149,80 @@ The base template (`base.html`) uses these flags to conditionally load CSS:
 <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset }}">
 <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset }}">
 
-<!-- Cards CSS (only on feed pages) -->
-{% if feed or page %}
+<!-- Cards CSS (only on feed/index pages) -->
+{% if needs_cards_css %}
 <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset }}">
 {% endif %}
 
 <!-- Admonitions CSS (only when content uses admonitions) -->
-{% if post.Extra.needs_admonitions_css %}
+{% if needs_admonitions_css %}
 <link rel="stylesheet" href="{{ 'css/admonitions.css' | theme_asset }}">
 {% endif %}
 
 <!-- Code CSS (only when content has code blocks) -->
-{% if post.Extra.needs_code_css %}
+{% if needs_code_css %}
 <link rel="stylesheet" href="{{ 'css/code.css' | theme_asset }}">
 <link rel="stylesheet" href="/css/chroma.css">
 {% endif %}
 
-<!-- Feature-based CSS -->
-{% if config.Webmention.Enabled %}
+<!-- Webmentions CSS (only when post has webmentions) -->
+{% if post.webmentions or needs_webmentions_css %}
 <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset }}">
 {% endif %}
 
+<!-- Encryption CSS (only for encrypted/private posts) -->
+{% if has_encrypted_content %}
+<link rel="stylesheet" href="{{ 'css/encryption.css' | theme_asset }}">
+{% endif %}
+
+<!-- GLightbox CSS (only when images need zoom) -->
+{% if glightbox_enabled and needs_image_zoom %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
+{% endif %}
+
+<!-- Feature-based CSS -->
 {% if config.theme.switcher.enabled %}
 <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset }}">
 {% endif %}
-
-{% if config.search.enabled %}
-<link rel="stylesheet" href="/{{ config.search.pagefind.bundle_dir }}/pagefind-ui.css">
-<link rel="stylesheet" href="{{ 'css/search.css' | theme_asset }}">
-{% endif %}
 ```
+
+### View-Transition Safety Net
+
+Because view transitions (SPA-like navigation) only swap `document.body.innerHTML` and NOT `<head>`, CSS `<link>` tags persist from the original page. When navigating from a page without conditional CSS (e.g., a plain text post) to a page that needs it (e.g., a post with code blocks), the CSS would be missing.
+
+The `conditional-css.js` script solves this by:
+1. Listening for `view-transition-complete` events dispatched by `view-transitions.js`
+2. Scanning the new page's body for content markers (admonition classes, chroma classes, etc.)
+3. Injecting the needed `<link>` tags into `<head>` if not already present
+4. Removing conditional CSS that is no longer needed
 
 ### CSS File Categories
 
 | Category | Files | Loading Condition |
 |----------|-------|-------------------|
 | Core | `variables.css`, `main.css`, `components.css` | Always |
-| Layout | `cards.css` | Feed/index pages |
-| Content | `admonitions.css`, `code.css`, `chroma.css` | Content detection |
-| Features | `webmentions.css`, `palette-switcher.css`, `search.css` | Config flags |
+| Layout | `cards.css` | `needs_cards_css` (feed/index pages) |
+| Content | `admonitions.css` | `needs_admonitions_css` (content detection) |
+| Content | `code.css`, `chroma.css` | `needs_code_css` (content detection) |
+| Features | `webmentions.css` | `post.webmentions` or `needs_webmentions_css` |
+| Features | `encryption.css` | `has_encrypted_content` |
+| Features | `glightbox.min.css` | `glightbox_enabled` and `needs_image_zoom` |
+| Features | `palette-switcher.css` | `config.theme.switcher.enabled` |
+
+### Estimated Savings
+
+| Page Type | CSS Skipped | Approx. Savings |
+|-----------|-------------|-----------------|
+| Plain text post (no code, no admonitions) | code.css, chroma.css, admonitions.css, cards.css | ~92KB |
+| Post with code blocks only | admonitions.css, cards.css | ~84KB |
+| Feed/index page | code.css, chroma.css, admonitions.css | ~75KB |
 
 ### Benefits
 
 1. **Reduced page size**: Pages without code blocks skip ~15KB of syntax highlighting CSS
 2. **Faster initial render**: Less CSS to parse before first paint
 3. **Better caching**: Shared core CSS files are cached across all pages
+4. **View-transition safe**: Runtime script ensures CSS correctness during SPA navigation
 
 ---
 

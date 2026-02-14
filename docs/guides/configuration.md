@@ -1742,6 +1742,17 @@ role = "author"
 url = "https://janedoe.com"
 active = true
 default = true
+
+# CSS minification
+[markata-go.css_minify]
+enabled = true
+exclude = []
+preserve_comments = ["Copyright"]
+
+# JS minification
+[markata-go.js_minify]
+enabled = true
+exclude = []
 ```
 
 ## Common Configuration Patterns
@@ -1856,6 +1867,44 @@ Then in CI:
 ```bash
 MARKATA_GO_URL=https://example.com markata-go build
 ```
+
+## CSS and JS Minification
+
+markata-go automatically minifies CSS and JS files in the output directory to reduce file sizes.
+
+### CSS Minification
+
+```toml
+[markata-go.css_minify]
+enabled = true                      # Enable CSS minification (default: true)
+exclude = ["variables.css"]         # Files to skip
+preserve_comments = ["Copyright"]   # Comment substrings to preserve
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `true` | Enable/disable CSS minification |
+| `exclude` | `[]` | File names or glob patterns to skip (e.g., `"vendor-*.css"`) |
+| `preserve_comments` | `[]` | Substrings that identify comments to keep |
+
+### JS Minification
+
+```toml
+[markata-go.js_minify]
+enabled = true                      # Enable JS minification (default: true)
+exclude = ["pagefind-ui.js"]        # Files to skip
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `true` | Enable/disable JS minification |
+| `exclude` | `[]` | File names or glob patterns to skip (e.g., `"vendor-*.js"`) |
+
+Files with `.min.js` extension are automatically skipped (already minified).
+
+Both plugins run at the very end of the Write stage (`PriorityLast`), after all CSS/JS-generating plugins have finished.
+
+---
 
 ## Validation
 

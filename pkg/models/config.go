@@ -2263,6 +2263,84 @@ func NewCSSMinifyConfig() CSSMinifyConfig {
 	}
 }
 
+// JSMinifyConfig configures the js_minify plugin for minifying JavaScript files.
+// JS minification reduces file sizes by 40-60%, improving page load performance
+// and Lighthouse scores. Already-minified files (*.min.js) are automatically skipped.
+type JSMinifyConfig struct {
+	// Enabled controls whether JS minification is active (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// Exclude is a list of JS file patterns to skip during minification.
+	// Useful for files that should not be modified (e.g., vendor scripts).
+	// Files ending in .min.js are always excluded automatically.
+	// Example: ["pagefind-ui.js", "vendor/*.js"]
+	Exclude []string `json:"exclude" yaml:"exclude" toml:"exclude"`
+}
+
+// NewJSMinifyConfig creates a new JSMinifyConfig with default values.
+func NewJSMinifyConfig() JSMinifyConfig {
+	return JSMinifyConfig{
+		Enabled: true, // Enabled by default for performance
+		Exclude: []string{},
+	}
+}
+
+// ResourcesConfig configures conditional resource loading behavior.
+// By default, CSS and JS resources are loaded conditionally based on page content
+// detection (e.g., admonitions.css only loads when a page has admonitions).
+// This config allows overriding that behavior.
+type ResourcesConfig struct {
+	// Strategy controls the overall resource loading approach:
+	// - "conditional" (default): Load resources only when page content requires them
+	// - "eager": Load all resources on every page (legacy behavior, simpler but slower)
+	Strategy string `json:"strategy,omitempty" yaml:"strategy,omitempty" toml:"strategy,omitempty"`
+
+	// ForceLoad is a list of resource base names to always load regardless of content.
+	// Useful when custom templates use CSS classes that build-time detection can't see.
+	// Example: ["admonitions", "code", "cards"]
+	// Valid names: admonitions, code, chroma, cards, webmentions, encryption
+	ForceLoad []string `json:"force_load,omitempty" yaml:"force_load,omitempty" toml:"force_load,omitempty"`
+
+	// Search configures search resource loading behavior.
+	Search ResourceLoadingMode `json:"search,omitempty" yaml:"search,omitempty" toml:"search,omitempty"`
+
+	// GLightbox configures GLightbox resource loading behavior.
+	GLightbox ResourceLoadingMode `json:"glightbox,omitempty" yaml:"glightbox,omitempty" toml:"glightbox,omitempty"`
+}
+
+// ResourceLoadingMode configures when a specific resource is loaded.
+type ResourceLoadingMode struct {
+	// Loading controls when the resource is fetched:
+	// - "lazy" (default): Load on first user interaction (hover, focus, keyboard shortcut)
+	// - "eager": Load immediately on page load
+	Loading string `json:"loading,omitempty" yaml:"loading,omitempty" toml:"loading,omitempty"`
+}
+
+// NewResourcesConfig creates a new ResourcesConfig with default values.
+func NewResourcesConfig() ResourcesConfig {
+	return ResourcesConfig{
+		Strategy:  "conditional",
+		ForceLoad: []string{},
+		Search:    ResourceLoadingMode{Loading: "lazy"},
+		GLightbox: ResourceLoadingMode{Loading: "lazy"},
+	}
+}
+
+// IsConditional returns true if resources should be loaded conditionally.
+func (r *ResourcesConfig) IsConditional() bool {
+	return r.Strategy != "eager"
+}
+
+// IsForceLoaded returns true if a resource should always be loaded.
+func (r *ResourcesConfig) IsForceLoaded(name string) bool {
+	for _, n := range r.ForceLoad {
+		if n == name {
+			return true
+		}
+	}
+	return false
+}
+
 // AssetsConfig configures external CDN asset handling for self-hosting.
 // When mode is "self-hosted", external assets (GLightbox, HTMX, Mermaid, etc.)
 // are downloaded at build time and served from the site itself.
