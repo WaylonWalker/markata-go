@@ -33,6 +33,7 @@ This document specifies all built-in plugins that ship with the static site gene
 │    └─ feeds              Generate feed collections                   │
 │                                                                      │
 │  COLLECT                                                             │
+│    ├─ series             Auto-generate series feeds (PriorityEarly)  │
 │    ├─ overwrite_check    Detect conflicting output paths             │
 │    └─ prevnext           Calculate prev/next from feeds/series       │
 │                                                                      │
@@ -270,6 +271,56 @@ for post in core.filter(filter_expr):
 ---
 
 ## Collect Phase
+
+### `series`
+
+**Stage:** `collect` (with early priority, PriorityEarly = -100)
+
+**Purpose:** Scan posts for `series` frontmatter and auto-generate series feed configs with prev/next navigation for guided sequential reading.
+
+**Configuration:**
+```toml
+[markata-go.series]
+slug_prefix = "series"     # URL prefix for series feeds (default: "series")
+auto_sidebar = true        # Auto-enable feed sidebar on series posts (default: true)
+
+[markata-go.series.defaults]
+items_per_page = 0         # No pagination by default
+sidebar = true             # Show sidebar on series posts
+
+[markata-go.series.defaults.formats]
+html = true
+rss = true
+atom = false
+json = false
+
+# Per-series overrides (keyed by slugified series name)
+[markata-go.series.overrides."building-a-cli-in-go"]
+title = "Building a CLI in Go"
+description = "A step-by-step guide"
+```
+
+**Frontmatter:**
+```yaml
+series: "Building a CLI in Go"   # Series name (becomes slug)
+series_order: 1                   # Optional explicit ordering
+```
+
+**Behavior:**
+1. Scan all posts for `series` frontmatter
+2. Group posts by series name (slugified)
+3. Sort posts within each series by `series_order` (if set) or by date ascending
+4. Set guide navigation (Prev/Next pointers) on each post
+5. Set `PrevNextContext` with position info (part X of Y)
+6. Build `FeedConfig` entries with `FeedTypeSeries` type
+7. Inject configs into `config.Extra["feeds"]` for the `feeds` plugin to process
+
+**Constraints:**
+- Posts can only belong to one series
+- A series must have at least one post to generate a feed
+- Runs before `feeds` and `overwrite_check` in the collect stage
+
+---
 
 ### `overwrite_check`
 
@@ -1517,6 +1568,7 @@ DEFAULT_PLUGINS = [
     "heading_anchors",      # Add heading anchors
     "toc",                  # Generate TOC
     "link_collector",       # Track inlinks/outlinks
+    "series",               # Auto-generate series feeds (PriorityEarly)
     "feeds",                # Create feed collections
     "overwrite_check",      # Detect conflicting output paths
     "prevnext",             # Calculate prev/next from feeds/series

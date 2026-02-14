@@ -97,6 +97,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["theme_calendar"] = func() lifecycle.Plugin { return NewThemeCalendarPlugin() }
 	pluginRegistry.constructors["link_avatars"] = func() lifecycle.Plugin { return NewLinkAvatarsPlugin() }
 	pluginRegistry.constructors["authors"] = func() lifecycle.Plugin { return NewAuthorsPlugin() }
+	pluginRegistry.constructors["series"] = func() lifecycle.Plugin { return NewSeriesPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -188,6 +189,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 
 		// Collect stage plugins
 		NewSlugConflictsPlugin(),     // Detect slug conflicts (runs first in Collect)
+		NewSeriesPlugin(),            // Auto-generate series feeds from frontmatter (before FeedsPlugin)
 		NewSubscriptionFeedsPlugin(), // Inject root/archive subscription feeds (before FeedsPlugin)
 		NewFeedsPlugin(),
 		NewAutoFeedsPlugin(),
