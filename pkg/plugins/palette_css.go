@@ -89,6 +89,14 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 		return fmt.Errorf("writing palette CSS: %w", err)
 	}
 
+	if hash := m.GetAssetHash("css/variables.css"); hash != "" {
+		base := strings.TrimSuffix("variables.css", filepath.Ext(cssPath))
+		hashedPath := filepath.Join(cssDir, fmt.Sprintf("%s.%s.css", base, hash))
+		if err := os.WriteFile(hashedPath, []byte(css), 0o644); err != nil {
+			return fmt.Errorf("writing hashed palette CSS: %w", err)
+		}
+	}
+
 	log.Printf("[palette_css] Wrote %d bytes to %s", len(css), cssPath)
 
 	return nil
