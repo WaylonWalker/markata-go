@@ -257,7 +257,7 @@ palette = "catppuccin-mocha"
 # Optional: different palette for dark mode
 palette_dark = "catppuccin-mocha"
 
-# Optional: override specific CSS variables
+# Optional: override specific CSS variables (applies to generated variables.css)
 [markata-go.theme.variables]
 "--color-primary" = "#8b5cf6"
 "--content-width" = "800px"

@@ -1,6 +1,8 @@
 /* Search Component Styles */
 /* Customizes Pagefind UI to match the site theme */
 
+@layer components {
+
 /* ---- Pre-load placeholder ----
    Before pagefind-ui.js loads, #pagefind-search is an empty div.
    Render it as a search-input lookalike so the navbar isn't bare.
@@ -219,4 +221,6 @@
 
 .site-header .site-nav {
   flex-grow: 1;
+}
+
 }

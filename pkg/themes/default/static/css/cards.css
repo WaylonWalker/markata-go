@@ -9,6 +9,8 @@
    - All cards same width for visual consistency
    ========================================================================== */
 
+@layer components {
+
 /* ==========================================================================
    Feed Container - Constrain the feed, not individual cards
    ========================================================================== */
@@ -1012,4 +1014,6 @@
   .card-video:hover .card-play-icon {
     transform: translate(-50%, -50%);
   }
+}
+
 }

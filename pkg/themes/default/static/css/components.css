@@ -2,6 +2,8 @@
    Component Styles - Layout Components System
    ========================================================================== */
 
+@layer components {
+
 /* ==========================================================================
    Page Layout Wrapper
    ========================================================================== */
@@ -31,6 +33,15 @@
   gap: 1rem;
 }
 
+.site-header .site-nav {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: center;
+}
+
 /* Horizontal navigation (default, for header) */
 .site-nav--header,
 .site-nav--horizontal {
@@ -53,9 +64,20 @@
   transition: background-color 0.2s, color 0.2s;
 }
 
+.site-nav a {
+  color: var(--color-text-muted);
+  font-weight: 500;
+  text-decoration: none;
+}
+
 .nav-link:hover {
   color: var(--color-primary);
   background-color: var(--color-surface);
+}
+
+.site-nav a:hover {
+  color: var(--color-link, var(--color-primary));
+  text-decoration: none;
 }
 
 /* ==========================================================================
@@ -93,9 +115,17 @@
 
 .site-footer {
   margin-top: auto;
-  padding: 2rem 0;
+  padding: var(--space-6) var(--space-4);
   background-color: var(--color-surface);
   border-top: 1px solid var(--color-border);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.site-footer .container {
+  max-width: var(--page-width);
+  margin: 0 auto;
 }
 
 .footer-text {
@@ -104,9 +134,10 @@
 
 .footer-links {
   display: flex;
+  justify-content: center;
   gap: 1rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin: var(--space-4) 0;
 }
 
 .footer-links a {
@@ -115,7 +146,7 @@
 }
 
 .footer-links a:hover {
-  color: var(--color-primary);
+  color: var(--color-link, var(--color-primary));
 }
 
 .footer-copyright {
@@ -192,6 +223,7 @@
 }
 
 .toc {
+  margin: var(--space-6) 0;
   padding: 1rem;
   background-color: var(--color-surface);
   border-radius: 8px;
@@ -370,7 +402,7 @@
 /* Mobile: ensure page-wrapper doesn't overflow */
 @media (max-width: 768px) {
   .page-wrapper {
-    padding: 0 var(--space-3, 0.75rem);
+    padding: 0;
     max-width: 100%;
     overflow-x: hidden;
   }
@@ -378,13 +410,13 @@
 
 @media (max-width: 480px) {
   .page-wrapper {
-    padding: 0 var(--space-2, 0.5rem);
+    padding: 0;
   }
 }
 
 @media (max-width: 375px) {
   .page-wrapper {
-    padding: 0 var(--space-1, 0.25rem);
+    padding: 0;
   }
 }
 
@@ -2482,4 +2514,6 @@ figcaption {
   .hidden-print {
     display: none !important;
   }
+}
+
 }

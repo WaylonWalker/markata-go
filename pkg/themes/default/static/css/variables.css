@@ -1,4 +1,7 @@
+@layer reset, tokens, base, components, utilities, overrides;
+
 /* CSS Custom Properties - Default Theme */
+@layer tokens {
 :root {
   /* Primary brand color */
   --color-primary: #3b82f6;
@@ -74,4 +77,5 @@
     /* Darker article shadow for dark mode */
     --article-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   }
+}
 }

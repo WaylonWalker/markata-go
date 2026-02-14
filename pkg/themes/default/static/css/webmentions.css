@@ -2,6 +2,8 @@
    Webmentions - Display received webmentions (likes, reposts, replies, mentions)
    ========================================================================== */
 
+@layer components {
+
 .webmentions {
   margin-top: var(--space-12);
   padding-top: var(--space-8);
@@ -416,4 +418,6 @@
 
 .leaderboard-table tbody tr:hover {
   background: var(--color-surface);
+}
+
 }

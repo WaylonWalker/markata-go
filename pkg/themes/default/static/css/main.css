@@ -1,6 +1,7 @@
 /* Main Styles - Default Theme */
 /* Note: variables.css is loaded via <link> in base.html - no @import needed */
 
+@layer reset {
 /* Reset */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -13,7 +14,12 @@
 /* Prevent font scaling in landscape on mobile */
 html {
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
+
+}
+
+@layer base {
 
 /* ==========================================================================
    Skip Link (Accessibility)
@@ -40,8 +46,14 @@ html {
 }
 
 .skip-link:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 30%, #fff);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+@supports (color: color-mix(in srgb, #000 50%, #fff)) {
+  .skip-link:focus-visible {
+    outline-color: color-mix(in srgb, var(--color-primary) 30%, #fff);
+  }
 }
 
 /* Inherit fonts for form elements */
@@ -211,6 +223,11 @@ body {
   flex-direction: column;
 }
 
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
@@ -259,13 +276,17 @@ p {
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--color-link, var(--color-primary));
   text-decoration: none;
   transition: color 0.2s;
 }
 
+a:visited {
+  color: var(--color-link-visited, var(--color-link, var(--color-primary)));
+}
+
 a:hover {
-  color: var(--color-primary-dark);
+  color: var(--color-link-hover, var(--color-primary-dark));
   text-decoration: underline;
 }
 
@@ -627,24 +648,6 @@ main.content-bg {
   text-decoration: none;
 }
 
-.site-header .site-nav {
-  display: flex;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-  flex: 1 1 auto;
-  min-width: 0;
-  justify-content: center;
-}
-
-.site-nav a {
-  color: var(--color-text-muted);
-  font-weight: 500;
-}
-
-.site-nav a:hover {
-  color: var(--color-primary);
-  text-decoration: none;
-}
 
 /* Header controls: search + theme switcher - pushed to right on wide, centered when wrapped */
 .header-controls {
@@ -655,36 +658,6 @@ main.content-bg {
   margin-left: auto;
 }
 
-/* Footer */
-.site-footer {
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
-  padding: var(--space-6) var(--space-4);
-  text-align: center;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-
-.site-footer .container {
-  max-width: var(--page-width);
-  margin: 0 auto;
-}
-
-.footer-links {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  margin: var(--space-4) 0;
-}
-
-.footer-links a {
-  color: var(--color-text-muted);
-}
-
-.footer-links a:hover {
-  color: var(--color-primary);
-}
 
 /* Post Styles */
 .post {
@@ -1306,51 +1279,6 @@ body:has(.background-decoration) div.feed {
    Plugin Styles
    ========================================================================== */
 
-/* Table of Contents (toc plugin) */
-.toc {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  margin: var(--space-6) 0;
-}
-
-.toc-title {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-3);
-}
-
-.toc ul {
-  list-style: none;
-  padding-left: 0;
-  margin: 0;
-}
-
-.toc ul ul {
-  padding-left: var(--space-4);
-  margin-top: var(--space-1);
-}
-
-.toc li {
-  margin-bottom: var(--space-1);
-}
-
-.toc a {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  text-decoration: none;
-  display: block;
-  padding: var(--space-1) 0;
-  transition: color 0.2s;
-}
-
-.toc a:hover {
-  color: var(--color-primary);
-}
 
 /* CSV Tables (csv_fence plugin) */
 .csv-table {
@@ -1386,7 +1314,7 @@ body:has(.background-decoration) div.feed {
 
 /* Glossary Terms (glossary plugin) */
 .glossary-term {
-  color: var(--color-primary);
+  color: var(--color-link, var(--color-primary));
   text-decoration: underline;
   text-decoration-style: dotted;
   text-underline-offset: 3px;
@@ -1396,7 +1324,7 @@ body:has(.background-decoration) div.feed {
 
 .glossary-term:hover {
   text-decoration-style: solid;
-  text-decoration-color: var(--color-primary);
+  text-decoration-color: var(--color-link-hover, var(--color-primary));
 }
 
 /* Mermaid Diagrams (mermaid plugin) */
@@ -1411,7 +1339,7 @@ body:has(.background-decoration) div.feed {
 
 /* Wikilinks (wikilinks plugin) */
 a.wikilink {
-  color: var(--color-primary);
+  color: var(--color-link, var(--color-primary));
 }
 
 a.wikilink.wikilink-missing {
@@ -1664,4 +1592,6 @@ a.wikilink.wikilink-missing {
   article.post {
     padding: var(--space-2) var(--space-1);
   }
+}
+
 }
