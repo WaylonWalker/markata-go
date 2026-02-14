@@ -2307,8 +2307,8 @@ div[class]:not([class=""]) {
   /* Container divs get their styling from their classes */
 }
 
-/* Common container patterns */
-.container {
+/* Common container patterns (content only) */
+main .container {
   padding: 1rem;
   margin: 1rem 0;
 }
