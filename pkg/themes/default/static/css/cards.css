@@ -28,6 +28,13 @@
 
 .card {
   width: 100%;
+  background: var(--color-surface);
+}
+
+.card-article .card-header,
+.card-article .card-excerpt,
+.card-article .card-meta {
+  background: transparent;
 }
 
 /* Card title links */

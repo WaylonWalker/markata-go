@@ -1070,6 +1070,7 @@ body:has(.background-decoration) div.feed {
 /* Card */
 .card {
   padding: var(--space-6);
+  background: var(--color-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
   transition: border-color 0.2s, box-shadow 0.2s;
