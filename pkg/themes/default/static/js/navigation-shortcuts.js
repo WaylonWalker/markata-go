@@ -32,26 +32,34 @@
     }
   }
 
-  var state = {
-    selectedCard: null,
-    cards: [],
-    lastKeyTime: 0,
-    lastKey: null,
-    keySequenceTimeout: 500, // ms
-    jKeyDown: false,
-    kKeyDown: false,
-    navRepeatTimer: null,
-    navRepeatDelay: 80, // ms between navigations when key held (faster)
-    initialized: false,  // Track if already initialized
-    jkRegistered: false  // Track if j/k shortcuts are registered
-  };
+   var state = {
+     selectedCard: null,
+     cards: [],
+     lastKeyTime: 0,
+     lastKey: null,
+     keySequenceTimeout: 500, // ms
+     jKeyDown: false,
+     kKeyDown: false,
+     navRepeatTimer: null,
+     navRepeatDelay: 80, // ms between navigations when key held (faster)
+     initialized: false,  // Track if already initialized
+     jkRegistered: false  // Track if j/k shortcuts are registered
+   };
 
-  /**
-   * Get all post cards on the page
-   */
-  function getCards() {
-    return Array.from(document.querySelectorAll('.card, [data-card]'));
-  }
+   /**
+    * Check if we're on a feed page
+    * Feed pages have a <div class="feed"> wrapper
+    */
+   function isFeedPage() {
+     return document.querySelector('div.feed') !== null;
+   }
+
+   /**
+    * Get all post cards on the page
+    */
+   function getCards() {
+     return Array.from(document.querySelectorAll('.card, [data-card]'));
+   }
 
   /**
    * Highlight a card
@@ -164,41 +172,41 @@
     }
   }
 
-  /**
-   * Toggle between simple and rich feed views.
-   * On simple feed pages (URL contains /simple/), navigates to the rich feed.
-   * On rich feed pages, navigates to the simple feed variant.
-   * Only works on feed pages (elements with .feed class).
-   */
-  function toggleFeedView() {
-    var feedEl = document.querySelector('.feed');
-    if (!feedEl) return;
+   /**
+    * Toggle between simple and rich feed views.
+    * On simple feed pages (URL contains /simple/), navigates to the rich feed.
+    * On rich feed pages, navigates to the simple feed variant.
+    * Only works on feed pages (div.feed element).
+    */
+   function toggleFeedView() {
+     if (!isFeedPage()) return;
 
-    var path = window.location.pathname;
-    var isSimple = feedEl.classList.contains('feed-simple');
+     var path = window.location.pathname;
+     var feedEl = document.querySelector('div.feed');
+     var isSimple = feedEl.classList.contains('feed-simple');
 
-    if (isSimple) {
-      // On simple feed -> go to rich feed: remove /simple/ from path
-      var richPath = path.replace(/\/simple\/(page\/\d+\/)?$/, '/');
-      // Preserve page number if present
-      var pageMatch = path.match(/\/simple\/page\/(\d+)\//);
-      if (pageMatch) {
-        richPath = path.replace(/\/simple\/page\/(\d+)\//, '/page/' + pageMatch[1] + '/');
-      }
-      window.location.href = richPath;
-    } else {
-      // On rich feed -> go to simple feed: insert /simple/ before any /page/ or at end
-      var simplePath;
-      var richPageMatch = path.match(/\/page\/(\d+)\/$/);
-      if (richPageMatch) {
-        simplePath = path.replace(/\/page\/(\d+)\/$/, '/simple/page/' + richPageMatch[1] + '/');
-      } else {
-        // Ensure trailing slash
-        simplePath = path.replace(/\/?$/, '/') + 'simple/';
-      }
-      window.location.href = simplePath;
-    }
-  }
+     if (isSimple) {
+       // On simple feed -> go to rich feed: remove /simple/ from path
+       var richPath = path.replace(/\/simple\/(page\/\d+\/)?$/, '/');
+       // Preserve page number if present
+       var pageMatch = path.match(/\/simple\/page\/(\d+)\//);
+       if (pageMatch) {
+         richPath = path.replace(/\/simple\/page\/(\d+)\//, '/page/' + pageMatch[1] + '/');
+       }
+       window.location.href = richPath;
+     } else {
+       // On rich feed -> go to simple feed: insert /simple/ before any /page/ or at end
+       var simplePath;
+       var richPageMatch = path.match(/\/page\/(\d+)\/$/);
+       if (richPageMatch) {
+         simplePath = path.replace(/\/page\/(\d+)\/$/, '/simple/page/' + richPageMatch[1] + '/');
+       } else {
+         // Ensure trailing slash
+         simplePath = path.replace(/\/?$/, '/') + 'simple/';
+       }
+       window.location.href = simplePath;
+     }
+   }
 
   /**
    * Navigate to next page.
@@ -417,14 +425,14 @@
           focusSearch();
           state.lastKey = null;
           state.lastKeyTime = 0;
-        } else if (e.key === 's' && state.lastKey !== 'g') {
-          // Standalone s - toggle simple/rich feed view (only on feed pages)
-          if (document.querySelector('.feed')) {
-            e.preventDefault();
-            toggleFeedView();
-          }
-          state.lastKey = null;
-          state.lastKeyTime = 0;
+         } else if (e.key === 's' && state.lastKey !== 'g') {
+           // Standalone s - toggle simple/rich feed view (only on feed pages)
+           if (isFeedPage()) {
+             e.preventDefault();
+             toggleFeedView();
+           }
+           state.lastKey = null;
+           state.lastKeyTime = 0;
         } else {
           state.lastKey = null;
           state.lastKeyTime = 0;
