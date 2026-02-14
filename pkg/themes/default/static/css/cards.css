@@ -28,8 +28,6 @@
 
 .card {
   width: 100%;
-  /* Ensure solid background to prevent pattern bleed-through */
-  background: var(--color-surface);
 }
 
 /* Card title links */
