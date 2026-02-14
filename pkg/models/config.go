@@ -1789,7 +1789,7 @@ func NewImageZoomConfig() ImageZoomConfig {
 	return ImageZoomConfig{
 		Enabled:         false, // Disabled by default
 		Library:         "glightbox",
-		Selector:        ".glightbox",
+		Selector:        ".post-content .glightbox",
 		CDN:             true,
 		AutoAllImages:   false,
 		OpenEffect:      "zoom",

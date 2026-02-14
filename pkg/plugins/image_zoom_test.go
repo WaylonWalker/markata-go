@@ -23,8 +23,8 @@ func TestImageZoomPlugin_DefaultConfig(t *testing.T) {
 	if cfg.Library != "glightbox" {
 		t.Errorf("default Library = %q, want %q", cfg.Library, "glightbox")
 	}
-	if cfg.Selector != ".glightbox" {
-		t.Errorf("default Selector = %q, want %q", cfg.Selector, ".glightbox")
+	if cfg.Selector != ".post-content .glightbox" {
+		t.Errorf("default Selector = %q, want %q", cfg.Selector, ".post-content .glightbox")
 	}
 	if cfg.CDN != true {
 		t.Errorf("default CDN = %v, want true", cfg.CDN)
