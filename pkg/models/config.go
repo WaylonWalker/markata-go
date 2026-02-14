@@ -1022,7 +1022,11 @@ type MermaidConfig struct {
 	// Enabled controls whether mermaid processing is active (default: true)
 	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
 
-	// CDNURL is the URL for the Mermaid.js library
+	// Mode specifies how to render diagrams: "client" (browser), "cli" (mmdc), or "chromium" (Chrome/Chromium)
+	// Default: "client"
+	Mode string `json:"mode" yaml:"mode" toml:"mode"`
+
+	// CDNURL is the URL for the Mermaid.js library (client mode only)
 	CDNURL string `json:"cdn_url" yaml:"cdn_url" toml:"cdn_url"`
 
 	// Theme is the Mermaid theme to use (default, dark, forest, neutral)
@@ -1036,17 +1040,54 @@ type MermaidConfig struct {
 
 	// LightboxSelector is the CSS selector used for Mermaid lightbox links.
 	LightboxSelector string `json:"lightbox_selector" yaml:"lightbox_selector" toml:"lightbox_selector"`
+
+	// CLIConfig contains settings for CLI mode (npm mmdc)
+	CLIConfig *CLIRendererConfig `json:"cli" yaml:"cli" toml:"cli"`
+
+	// ChromiumConfig contains settings for Chromium mode (mermaidcdp)
+	ChromiumConfig *ChromiumRendererConfig `json:"chromium" yaml:"chromium" toml:"chromium"`
+}
+
+// CLIRendererConfig configures the CLI-based renderer (npm mmdc)
+type CLIRendererConfig struct {
+	// MMDCPath is the path to the mmdc binary. If empty, looks for it in PATH.
+	MMDCPath string `json:"mmdc_path" yaml:"mmdc_path" toml:"mmdc_path"`
+
+	// ExtraArgs are additional command-line arguments passed to mmdc
+	ExtraArgs string `json:"extra_args" yaml:"extra_args" toml:"extra_args"`
+}
+
+// ChromiumRendererConfig configures the Chromium-based renderer (mermaidcdp)
+type ChromiumRendererConfig struct {
+	// BrowserPath is the path to the Chrome/Chromium binary. If empty, auto-detects.
+	BrowserPath string `json:"browser_path" yaml:"browser_path" toml:"browser_path"`
+
+	// Timeout is the maximum time (in seconds) to wait for a diagram to render
+	Timeout int `json:"timeout" yaml:"timeout" toml:"timeout"`
+
+	// MaxConcurrent is the maximum number of concurrent diagram renders
+	MaxConcurrent int `json:"max_concurrent" yaml:"max_concurrent" toml:"max_concurrent"`
 }
 
 // NewMermaidConfig creates a new MermaidConfig with default values.
 func NewMermaidConfig() MermaidConfig {
 	return MermaidConfig{
 		Enabled:          true,
+		Mode:             "client",
 		CDNURL:           "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
 		Theme:            "default",
 		UseCSSVariables:  true,
 		Lightbox:         true,
 		LightboxSelector: ".glightbox-mermaid",
+		CLIConfig: &CLIRendererConfig{
+			MMDCPath:  "",
+			ExtraArgs: "",
+		},
+		ChromiumConfig: &ChromiumRendererConfig{
+			BrowserPath:   "",
+			Timeout:       30,
+			MaxConcurrent: 4,
+		},
 	}
 }
 
