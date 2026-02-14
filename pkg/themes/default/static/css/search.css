@@ -27,6 +27,12 @@
   flex-shrink: 0;
 }
 
+.search-container--navbar .pagefind-ui__search-input,
+.search--navbar .pagefind-ui__search-input {
+  width: 16rem;
+  max-width: 100%;
+}
+
 /* Ensure search results dropdown can overflow the header */
 .site-header {
   overflow: visible !important;
@@ -98,18 +104,19 @@
 /* In navbar: position results as dropdown */
 .search-container--navbar .pagefind-ui__drawer,
 .search--navbar .pagefind-ui__drawer {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  width: 600px;
-  max-width: 90vw;
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
-  z-index: 100;
-  max-height: 70vh;
-  overflow-y: auto;
+  position: absolute !important;
+  top: calc(100% + 0.5rem) !important;
+  right: 0 !important;
+  left: auto !important;
+  width: min(36rem, 90vw) !important;
+  max-width: 90vw !important;
+  background: var(--color-background) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.15) !important;
+  z-index: 100 !important;
+  max-height: 70vh !important;
+  overflow-y: auto !important;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 
@@ -193,14 +200,15 @@
 
   .search-container--navbar .pagefind-ui__drawer,
   .search--navbar .pagefind-ui__drawer {
-    position: absolute;
-    top: calc(100% + 0.5rem);
-    left: 0;
-    right: 0;
-    width: 100%;
-    max-width: 100%;
-    max-height: 60vh;
-    border-radius: 0.5rem;
+    position: absolute !important;
+    top: calc(100% + 0.5rem) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 60vh !important;
+    border-radius: 0.5rem !important;
+    bottom: auto !important;
   }
 
   .search-container--navbar::after,

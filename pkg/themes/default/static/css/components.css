@@ -40,6 +40,8 @@
   flex: 1 1 auto;
   min-width: 0;
   justify-content: center;
+  justify-self: center;
+  width: 100%;
 }
 
 /* Horizontal navigation (default, for header) */
@@ -47,6 +49,8 @@
 .site-nav--horizontal {
   flex-direction: row;
   align-items: center;
+  width: 100%;
+  justify-content: center;
 }
 
 /* Vertical navigation (for sidebar) */
