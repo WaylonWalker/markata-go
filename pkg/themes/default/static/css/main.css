@@ -1499,7 +1499,7 @@ a.wikilink.wikilink-missing {
 
   /* Reduce article padding on mobile */
   article.post {
-    padding: var(--space-4) var(--space-3);
+    padding: var(--space-4) 0;
   }
 
   .post-nav {
@@ -1550,7 +1550,7 @@ a.wikilink.wikilink-missing {
   }
 
   article.post {
-    padding: var(--space-3) var(--space-2);
+    padding: var(--space-3) 0;
   }
 }
 
@@ -1590,7 +1590,7 @@ a.wikilink.wikilink-missing {
   }
 
   article.post {
-    padding: var(--space-2) var(--space-1);
+    padding: var(--space-2) 0;
   }
 }
 
