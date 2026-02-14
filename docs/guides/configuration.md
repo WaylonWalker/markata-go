@@ -261,6 +261,7 @@ palette_dark = "catppuccin-mocha"
 [markata-go.theme.variables]
 "--color-primary" = "#8b5cf6"
 "--content-width" = "800px"
+"--content-max-width" = "900px"
 
 # Optional: add custom CSS file
 custom_css = "my-styles.css"

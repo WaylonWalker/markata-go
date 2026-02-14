@@ -499,6 +499,7 @@ func (p *PaletteCSSPlugin) writeNonColorVariables(buf *bytes.Buffer, indent stri
 	// Layout
 	fmt.Fprintf(buf, "\n%s/* Layout */\n", indent)
 	fmt.Fprintf(buf, "%s--content-width: 65ch;\n", indent)
+	fmt.Fprintf(buf, "%s--content-max-width: var(--content-width);\n", indent)
 	fmt.Fprintf(buf, "%s--page-width: 1200px;\n", indent)
 	fmt.Fprintf(buf, "%s--radius: 0.375rem;\n", indent)
 	fmt.Fprintf(buf, "%s--radius-lg: 0.5rem;\n", indent)
