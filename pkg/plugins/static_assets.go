@@ -102,7 +102,7 @@ func (p *StaticAssetsPlugin) Configure(m *lifecycle.Manager) error {
 // 1. Embedded theme static files (lowest priority, base layer)
 // 2. Filesystem theme static files (can override embedded)
 // 3. Project static files (highest priority, can override all)
-// After copying, it creates hashed copies of JS/CSS files for cache busting.
+// Hashed copies are created in Cleanup stage after all transformations.
 func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
@@ -145,7 +145,15 @@ func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Create hashed copies of JS/CSS files for cache busting
+	return nil
+}
+
+// Cleanup creates hashed copies of JS/CSS files after all Write plugins have run.
+// This ensures the hashes match the final transformed content (after palette_css, minifiers, etc.)
+func (p *StaticAssetsPlugin) Cleanup(m *lifecycle.Manager) error {
+	config := m.Config()
+	outputDir := config.OutputDir
+
 	if err := p.createHashedCopies(m, outputDir); err != nil {
 		return fmt.Errorf("creating hashed asset copies: %w", err)
 	}
@@ -361,10 +369,12 @@ func (p *StaticAssetsPlugin) hashDirectoryAssets(dir, prefix string, hashes map[
 
 // createHashedCopies creates hashed copies of JS/CSS files in the output directory.
 // For each file with a hash, creates a copy like main.js -> main.abc12345.js
+// It re-computes hashes from output files to ensure the hash matches the actual content
+// (which may have been transformed by palette_css, minifiers, etc.)
 func (p *StaticAssetsPlugin) createHashedCopies(m *lifecycle.Manager, outputDir string) error {
 	assetHashes := m.AssetHashes()
 
-	for path, hash := range assetHashes {
+	for path := range assetHashes {
 		// Original file location in output
 		origPath := filepath.Join(outputDir, path)
 
@@ -372,6 +382,13 @@ func (p *StaticAssetsPlugin) createHashedCopies(m *lifecycle.Manager, outputDir 
 		if _, err := os.Stat(origPath); os.IsNotExist(err) {
 			continue
 		}
+
+		// Re-compute hash from output file content (may have been transformed)
+		content, err := os.ReadFile(origPath)
+		if err != nil {
+			return fmt.Errorf("reading output file %s: %w", origPath, err)
+		}
+		hash := fmt.Sprintf("%x", sha256.Sum256(content))[:8]
 
 		// Compute hashed filename: main.js -> main.abc12345.js
 		ext := filepath.Ext(path)
@@ -389,15 +406,10 @@ func (p *StaticAssetsPlugin) createHashedCopies(m *lifecycle.Manager, outputDir 
 }
 
 // Priority returns the plugin priority for the write stage.
-// Static assets should be written early so that other plugins can reference them.
 func (p *StaticAssetsPlugin) Priority(stage lifecycle.Stage) int {
 	// Run early in Configure to register asset hashes before other plugins
 	// (e.g., chroma_css) that also register hashes
 	if stage == lifecycle.StageConfigure {
-		return lifecycle.PriorityEarly
-	}
-	// Run early in Write to copy assets before other plugins generate files
-	if stage == lifecycle.StageWrite {
 		return lifecycle.PriorityEarly
 	}
 	return lifecycle.PriorityDefault
@@ -408,5 +420,6 @@ var (
 	_ lifecycle.Plugin          = (*StaticAssetsPlugin)(nil)
 	_ lifecycle.ConfigurePlugin = (*StaticAssetsPlugin)(nil)
 	_ lifecycle.WritePlugin     = (*StaticAssetsPlugin)(nil)
+	_ lifecycle.CleanupPlugin   = (*StaticAssetsPlugin)(nil)
 	_ lifecycle.PriorityPlugin  = (*StaticAssetsPlugin)(nil)
 )
