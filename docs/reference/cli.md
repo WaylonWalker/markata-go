@@ -173,6 +173,9 @@ markata-go serve -p 8080 --host 0.0.0.0 -v
 - **Live reload**: Connected browsers refresh when content changes
 - **Static file serving**: Serves the output directory
 - **MIME type detection**: Correct content types for all file types
+- **Immediate serve**: Server starts before the initial build completes
+- **Build status banner**: Shows build progress and errors during serve
+- **Early 404**: Minimal 404 is served until the generated 404.html exists
 
 #### Development Workflow
 
@@ -181,8 +184,8 @@ markata-go serve -p 8080 --host 0.0.0.0 -v
 markata-go serve -v
 
 # The server will:
-# - Build your site
-# - Start serving at http://localhost:8000
+# - Start serving at http://localhost:8000 immediately
+# - Build your site in the background
 # - Watch for file changes
 # - Rebuild and reload on changes
 ```

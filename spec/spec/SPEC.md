@@ -574,6 +574,9 @@ Flags:
 - HTTP server for previewing the built site
 - File watching for automatic rebuilds
 - Live reload for browser refresh
+- Server starts immediately while the initial build runs in the background
+- Build status banner appears during builds and hides on success
+- Fallback 404 page is served until the generated 404.html is available
 
 ### Configuration
 

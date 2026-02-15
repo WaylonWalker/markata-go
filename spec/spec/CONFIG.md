@@ -628,6 +628,10 @@ open_browser = false
 debounce_ms = 100
 ```
 
+Serve mode starts the HTTP server immediately while the initial build runs in the background.
+During builds, a status banner is injected into HTML responses, and a minimal 404 page is
+served until the generated 404.html is available.
+
 ### Assets (`[my-ssg.assets]`)
 
 ```toml
