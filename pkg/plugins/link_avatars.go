@@ -103,9 +103,10 @@ func defaultLinkAvatarsConfig() LinkAvatarsConfig {
 // It generates client-side JavaScript and CSS assets that enhance links
 // at runtime in the browser.
 type LinkAvatarsPlugin struct {
-	config     LinkAvatarsConfig
-	siteOrigin string
-	client     *http.Client
+	config      LinkAvatarsConfig
+	siteOrigin  string
+	siteURLPath string
+	client      *http.Client
 }
 
 // NewLinkAvatarsPlugin creates a new LinkAvatarsPlugin.
@@ -129,6 +130,7 @@ func (p *LinkAvatarsPlugin) Configure(m *lifecycle.Manager) error {
 	}
 
 	p.siteOrigin = getSiteOrigin(m.Config())
+	p.siteURLPath = getSiteURLPath(m.Config())
 
 	// If enabled, inject head tags during Configure so they're available for templates
 	if p.config.Enabled {
@@ -469,16 +471,22 @@ func (p *LinkAvatarsPlugin) injectHeadTags(cfg *lifecycle.Config) {
 		return
 	}
 
+	// Build asset path prefix from site URL path
+	assetPrefix := p.siteURLPath
+	if assetPrefix != "" {
+		assetPrefix += "/"
+	}
+
 	// Add CSS link
 	modelsConfig.Head.Link = append(modelsConfig.Head.Link, models.LinkTag{
 		Rel:  "stylesheet",
-		Href: "/assets/markata/link-avatars.css",
+		Href: assetPrefix + "assets/markata/link-avatars.css",
 	})
 
 	if p.config.Mode == linkAvatarModeJS {
 		// Add JS script
 		modelsConfig.Head.Script = append(modelsConfig.Head.Script, models.ScriptTag{
-			Src: "/assets/markata/link-avatars.js",
+			Src: assetPrefix + "assets/markata/link-avatars.js",
 		})
 	}
 
@@ -654,10 +662,38 @@ func normalizeOrigin(raw string) string {
 	return parsed.Scheme + "://" + parsed.Host
 }
 
+func getSiteURLPath(cfg *lifecycle.Config) string {
+	if cfg == nil || cfg.Extra == nil {
+		return ""
+	}
+
+	if modelsConfig, ok := cfg.Extra["models_config"].(*models.Config); ok && modelsConfig != nil {
+		return extractURLPath(modelsConfig.URL)
+	}
+
+	if urlValue, ok := cfg.Extra["url"].(string); ok {
+		return extractURLPath(urlValue)
+	}
+
+	return ""
+}
+
+func extractURLPath(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.Path == "" {
+		return ""
+	}
+	return strings.TrimSuffix(parsed.Path, "/")
+}
+
 func (p *LinkAvatarsPlugin) iconBaseURL() (string, error) {
 	switch p.config.Mode {
 	case linkAvatarModeLocal:
-		return "/assets/markata/link-avatars", nil
+		assetPrefix := p.siteURLPath
+		if assetPrefix != "" {
+			assetPrefix += "/"
+		}
+		return assetPrefix + "assets/markata/link-avatars", nil
 	case linkAvatarModeHosted:
 		base := strings.TrimRight(p.config.HostedBaseURL, "/")
 		if base == "" {
