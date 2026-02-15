@@ -80,6 +80,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["webmentions_leaderboard"] = func() lifecycle.Plugin { return NewWebmentionsLeaderboardPlugin() }
 	pluginRegistry.constructors["background"] = func() lifecycle.Plugin { return NewBackgroundPlugin() }
 	pluginRegistry.constructors["image_zoom"] = func() lifecycle.Plugin { return NewImageZoomPlugin() }
+	pluginRegistry.constructors["image_optimization"] = func() lifecycle.Plugin { return NewImageOptimizationPlugin() }
 	pluginRegistry.constructors["static_file_conflicts"] = func() lifecycle.Plugin { return NewStaticFileConflictsPlugin() }
 	pluginRegistry.constructors["slug_conflicts"] = func() lifecycle.Plugin { return NewSlugConflictsPlugin() }
 	pluginRegistry.constructors["error_pages"] = func() lifecycle.Plugin { return NewErrorPagesPlugin() }

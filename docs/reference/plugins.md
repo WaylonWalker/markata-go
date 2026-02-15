@@ -1397,6 +1397,62 @@ The base template automatically includes GLightbox when needed:
 | Swipe left/right | Navigate images |
 | Pinch | Zoom in/out |
 | Drag | Pan zoomed image |
+
+---
+
+### image_optimization
+
+**Name:** `image_optimization`  
+**Stage:** Render (post_render), Write  
+**Purpose:** Generates AVIF/WebP variants for local images and rewrites HTML to use `<picture>` with stable fallbacks.
+
+**Configuration (TOML):**
+```toml
+[markata-go.image_optimization]
+enabled = true
+formats = ["avif", "webp"]
+quality = 80
+avif_quality = 80
+webp_quality = 80
+cache_dir = ".markata/image-cache"
+avifenc_path = ""
+cwebp_path = ""
+```
+
+**Configuration fields:**
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Whether the plugin is active |
+| `formats` | []string | `["avif","webp"]` | Formats to generate |
+| `quality` | int | `80` | Default quality for all formats |
+| `avif_quality` | int | `80` | AVIF quality override |
+| `webp_quality` | int | `80` | WebP quality override |
+| `cache_dir` | string | `.markata/image-cache` | Cache directory for encode metadata |
+| `avifenc_path` | string | `""` | Path to `avifenc` (auto-detect if empty) |
+| `cwebp_path` | string | `""` | Path to `cwebp` (auto-detect if empty) |
+
+**Behavior:**
+1. Scans `ArticleHTML` for local `<img>` tags and skips external URLs or data URIs.
+2. Wraps each local image in `<picture>` with AVIF/WebP sources.
+3. Writes optimized variants next to the original output file.
+4. Uses a cache key (path, mod time, size, quality, encoder) to skip re-encoding.
+5. Missing encoders emit warnings and skip the format without failing the build.
+
+**HTML output:**
+
+Input:
+```markdown
+![Cat](/images/cat.jpg)
+```
+
+Output:
+```html
+<picture>
+  <source type="image/avif" srcset="/images/cat.avif">
+  <source type="image/webp" srcset="/images/cat.webp">
+  <img src="/images/cat.jpg" alt="Cat">
+</picture>
+```
 | Tap outside | Close lightbox |
 
 **CSS customization:**

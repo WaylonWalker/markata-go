@@ -1,0 +1,695 @@
+package plugins
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
+
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
+)
+
+// ImageOptimizationPlugin generates modern image formats for local images.
+// It rewrites HTML to use <picture> with AVIF/WebP sources and caches encodes.
+type ImageOptimizationPlugin struct {
+	config           ImageOptimizationConfig
+	availableFormats []string
+	avifencPath      string
+	cwebpPath        string
+	warnedEncoders   map[string]bool
+}
+
+// ImageOptimizationConfig holds configuration for image optimization.
+type ImageOptimizationConfig struct {
+	Enabled     bool
+	Formats     []string
+	Quality     int
+	AvifQuality int
+	WebpQuality int
+	CacheDir    string
+	AvifencPath string
+	CwebpPath   string
+}
+
+type imageOptimizationTarget struct {
+	Src      string
+	PostSlug string
+}
+
+type imageOptimizationCacheEntry struct {
+	SourcePath    string `json:"source_path"`
+	SourceSize    int64  `json:"source_size"`
+	SourceModTime int64  `json:"source_mod_time"`
+	Format        string `json:"format"`
+	Quality       int    `json:"quality"`
+	Encoder       string `json:"encoder"`
+}
+
+func NewImageOptimizationPlugin() *ImageOptimizationPlugin {
+	return &ImageOptimizationPlugin{
+		config:         defaultImageOptimizationConfig(),
+		warnedEncoders: make(map[string]bool),
+	}
+}
+
+func (p *ImageOptimizationPlugin) Name() string {
+	return "image_optimization"
+}
+
+func (p *ImageOptimizationPlugin) Priority(stage lifecycle.Stage) int {
+	switch stage {
+	case lifecycle.StageRender:
+		return 75
+	case lifecycle.StageWrite:
+		return lifecycle.PriorityLate
+	default:
+		return lifecycle.PriorityDefault
+	}
+}
+
+func (p *ImageOptimizationPlugin) Configure(m *lifecycle.Manager) error {
+	p.config = parseImageOptimizationConfig(m.Config())
+	p.detectAvailableFormats()
+	return nil
+}
+
+func (p *ImageOptimizationPlugin) Render(m *lifecycle.Manager) error {
+	if !p.config.Enabled || len(p.availableFormats) == 0 {
+		return nil
+	}
+
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		if post.Skip || post.ArticleHTML == "" {
+			return false
+		}
+		return strings.Contains(post.ArticleHTML, "<img")
+	})
+
+	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
+		return p.processPost(post)
+	})
+}
+
+func (p *ImageOptimizationPlugin) Write(m *lifecycle.Manager) error {
+	if !p.config.Enabled || len(p.availableFormats) == 0 {
+		return nil
+	}
+
+	targets := p.collectTargets(m)
+	if len(targets) == 0 {
+		return nil
+	}
+
+	cacheDir := p.config.CacheDir
+	if cacheDir == "" {
+		cacheDir = ".markata/image-cache"
+	}
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return fmt.Errorf("create image cache dir: %w", err)
+	}
+
+	outputDir := m.Config().OutputDir
+	for _, target := range targets {
+		outputPath, err := resolveImageOutputPath(outputDir, target)
+		if err != nil {
+			fmt.Printf("[image_optimization] WARNING: %v\n", err)
+			continue
+		}
+
+		info, err := os.Stat(outputPath)
+		if err != nil {
+			fmt.Printf("[image_optimization] WARNING: source image not found: %s\n", outputPath)
+			continue
+		}
+
+		for _, format := range p.availableFormats {
+			if shouldSkipFormat(outputPath, format) {
+				continue
+			}
+			quality := p.qualityForFormat(format)
+			encoder := p.encoderPathForFormat(format)
+			if encoder == "" {
+				p.warnMissingEncoder(format)
+				continue
+			}
+
+			destPath := replaceImageExtension(outputPath, format)
+			if destPath == "" {
+				continue
+			}
+			if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+				return fmt.Errorf("create output dir: %w", err)
+			}
+
+			cachePath := imageOptimizationCachePath(cacheDir, outputPath, format, quality, encoder)
+			if isImageCacheValid(cachePath, outputPath, info, format, quality, encoder, destPath) {
+				continue
+			}
+
+			if err := p.encodeImage(outputPath, destPath, format, quality, encoder); err != nil {
+				fmt.Printf("[image_optimization] WARNING: %v\n", err)
+				continue
+			}
+
+			if err := writeImageCache(cachePath, outputPath, info, format, quality, encoder); err != nil {
+				fmt.Printf("[image_optimization] WARNING: cache write failed: %v\n", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func defaultImageOptimizationConfig() ImageOptimizationConfig {
+	return ImageOptimizationConfig{
+		Enabled:     true,
+		Formats:     []string{"avif", "webp"},
+		Quality:     80,
+		AvifQuality: 80,
+		WebpQuality: 80,
+		CacheDir:    ".markata/image-cache",
+	}
+}
+
+func parseImageOptimizationConfig(cfg *lifecycle.Config) ImageOptimizationConfig {
+	result := defaultImageOptimizationConfig()
+	if cfg == nil || cfg.Extra == nil {
+		return result
+	}
+	raw, ok := cfg.Extra["image_optimization"]
+	if !ok {
+		return result
+	}
+
+	if typed, ok := raw.(ImageOptimizationConfig); ok {
+		return mergeImageOptimizationConfig(result, typed)
+	}
+
+	m, ok := raw.(map[string]any)
+	if !ok {
+		return result
+	}
+
+	if enabled, ok := m["enabled"].(bool); ok {
+		result.Enabled = enabled
+	}
+	if formats, ok := m["formats"].([]any); ok {
+		result.Formats = parseImageOptimizationFormats(formats)
+	}
+	if quality, ok := intFromAny(m["quality"]); ok {
+		result.Quality = quality
+	}
+	if quality, ok := intFromAny(m["avif_quality"]); ok {
+		result.AvifQuality = quality
+	}
+	if quality, ok := intFromAny(m["webp_quality"]); ok {
+		result.WebpQuality = quality
+	}
+	if cacheDir, ok := m["cache_dir"].(string); ok && cacheDir != "" {
+		result.CacheDir = cacheDir
+	}
+	if path, ok := m["avifenc_path"].(string); ok {
+		result.AvifencPath = path
+	}
+	if path, ok := m["cwebp_path"].(string); ok {
+		result.CwebpPath = path
+	}
+
+	return result
+}
+
+func mergeImageOptimizationConfig(base, override ImageOptimizationConfig) ImageOptimizationConfig {
+	result := base
+	result.Enabled = override.Enabled
+	if len(override.Formats) > 0 {
+		result.Formats = override.Formats
+	}
+	if override.Quality > 0 {
+		result.Quality = override.Quality
+	}
+	if override.AvifQuality > 0 {
+		result.AvifQuality = override.AvifQuality
+	}
+	if override.WebpQuality > 0 {
+		result.WebpQuality = override.WebpQuality
+	}
+	if override.CacheDir != "" {
+		result.CacheDir = override.CacheDir
+	}
+	if override.AvifencPath != "" {
+		result.AvifencPath = override.AvifencPath
+	}
+	if override.CwebpPath != "" {
+		result.CwebpPath = override.CwebpPath
+	}
+
+	return result
+}
+
+func parseImageOptimizationFormats(values []any) []string {
+	result := make([]string, 0, len(values))
+	for _, raw := range values {
+		value, ok := raw.(string)
+		if !ok {
+			continue
+		}
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		result = append(result, value)
+	}
+	return result
+}
+
+func intFromAny(value any) (int, bool) {
+	switch v := value.(type) {
+	case int:
+		return v, true
+	case int64:
+		return int(v), true
+	case float64:
+		return int(v), true
+	case float32:
+		return int(v), true
+	case int32:
+		return int(v), true
+	default:
+		return 0, false
+	}
+}
+
+func (p *ImageOptimizationPlugin) detectAvailableFormats() {
+	formats := make([]string, 0, len(p.config.Formats))
+	seen := make(map[string]bool)
+
+	for _, format := range p.config.Formats {
+		normalized := strings.ToLower(strings.TrimSpace(format))
+		if normalized == "" || seen[normalized] {
+			continue
+		}
+		seen[normalized] = true
+
+		switch normalized {
+		case "avif":
+			path := p.config.AvifencPath
+			if path == "" {
+				if found, err := exec.LookPath("avifenc"); err == nil {
+					path = found
+				}
+			}
+			if path != "" {
+				p.avifencPath = path
+				formats = append(formats, normalized)
+			} else {
+				p.warnMissingEncoder(normalized)
+			}
+		case "webp":
+			path := p.config.CwebpPath
+			if path == "" {
+				if found, err := exec.LookPath("cwebp"); err == nil {
+					path = found
+				}
+			}
+			if path != "" {
+				p.cwebpPath = path
+				formats = append(formats, normalized)
+			} else {
+				p.warnMissingEncoder(normalized)
+			}
+		}
+	}
+
+	p.availableFormats = formats
+}
+
+func (p *ImageOptimizationPlugin) warnMissingEncoder(format string) {
+	if p.warnedEncoders[format] {
+		return
+	}
+	p.warnedEncoders[format] = true
+	switch format {
+	case "avif":
+		fmt.Printf("[image_optimization] WARNING: avifenc not found; skipping AVIF output\n")
+	case "webp":
+		fmt.Printf("[image_optimization] WARNING: cwebp not found; skipping WebP output\n")
+	}
+}
+
+func (p *ImageOptimizationPlugin) encoderPathForFormat(format string) string {
+	switch format {
+	case "avif":
+		return p.avifencPath
+	case "webp":
+		return p.cwebpPath
+	default:
+		return ""
+	}
+}
+
+func (p *ImageOptimizationPlugin) qualityForFormat(format string) int {
+	quality := p.config.Quality
+	switch format {
+	case "avif":
+		if p.config.AvifQuality > 0 {
+			quality = p.config.AvifQuality
+		}
+	case "webp":
+		if p.config.WebpQuality > 0 {
+			quality = p.config.WebpQuality
+		}
+	}
+	if quality <= 0 {
+		quality = 80
+	}
+	if quality > 100 {
+		quality = 100
+	}
+	return quality
+}
+
+func (p *ImageOptimizationPlugin) processPost(post *models.Post) error {
+	context := &html.Node{Type: html.ElementNode, Data: "div", DataAtom: atom.Div}
+	fragment, err := html.ParseFragment(strings.NewReader(post.ArticleHTML), context)
+	if err != nil {
+		return err
+	}
+	if len(fragment) == 0 {
+		return nil
+	}
+
+	root := &html.Node{Type: html.ElementNode, Data: "div", DataAtom: atom.Div}
+	for _, node := range fragment {
+		root.AppendChild(node)
+	}
+
+	targets := make([]imageOptimizationTarget, 0)
+	var walk func(*html.Node)
+	walk = func(node *html.Node) {
+		for child := node.FirstChild; child != nil; {
+			next := child.NextSibling
+			if child.Type == html.ElementNode && child.Data == "img" {
+				if node.Type == html.ElementNode && node.Data == "picture" {
+					child = next
+					continue
+				}
+				src := strings.TrimSpace(getAttr(child, "src"))
+				if src == "" || !isLocalImageSrc(src) || !isOptimizableImageSrc(src) {
+					child = next
+					continue
+				}
+				sources := buildPictureSources(src, p.availableFormats)
+				if len(sources) == 0 {
+					child = next
+					continue
+				}
+
+				picture := &html.Node{Type: html.ElementNode, Data: "picture"}
+				for _, source := range sources {
+					sourceNode, parseErr := parseSingleNode(source)
+					if parseErr == nil {
+						picture.AppendChild(sourceNode)
+					}
+				}
+
+				node.InsertBefore(picture, child)
+				node.RemoveChild(child)
+				picture.AppendChild(child)
+
+				if post.Slug == "" {
+					post.GenerateSlug()
+				}
+				targets = append(targets, imageOptimizationTarget{
+					Src:      src,
+					PostSlug: post.Slug,
+				})
+				child = next
+				continue
+			}
+			walk(child)
+			child = next
+		}
+	}
+	walk(root)
+
+	if len(targets) == 0 {
+		return nil
+	}
+
+	updated, err := renderFragment(root)
+	if err != nil {
+		return err
+	}
+	post.ArticleHTML = updated
+
+	if post.Extra == nil {
+		post.Extra = make(map[string]any)
+	}
+	post.Extra["image_optimization"] = targets
+
+	return nil
+}
+
+func (p *ImageOptimizationPlugin) collectTargets(m *lifecycle.Manager) []imageOptimizationTarget {
+	targets := make([]imageOptimizationTarget, 0)
+	for _, post := range m.Posts() {
+		if post.Extra == nil {
+			continue
+		}
+		raw, ok := post.Extra["image_optimization"]
+		if !ok {
+			continue
+		}
+		if items, ok := raw.([]imageOptimizationTarget); ok {
+			targets = append(targets, items...)
+			continue
+		}
+		if items, ok := raw.([]any); ok {
+			for _, item := range items {
+				if target, ok := item.(imageOptimizationTarget); ok {
+					targets = append(targets, target)
+				}
+			}
+		}
+	}
+	return targets
+}
+
+func isLocalImageSrc(src string) bool {
+	if strings.HasPrefix(src, "//") || strings.HasPrefix(src, "data:") {
+		return false
+	}
+	parsed, err := url.Parse(src)
+	if err != nil {
+		return false
+	}
+	if parsed.Scheme != "" || parsed.Host != "" {
+		return false
+	}
+	return true
+}
+
+func isOptimizableImageSrc(src string) bool {
+	parsed, err := url.Parse(src)
+	if err != nil {
+		return false
+	}
+	ext := strings.ToLower(filepath.Ext(parsed.Path))
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".webp":
+		return true
+	default:
+		return false
+	}
+}
+
+func buildPictureSources(src string, formats []string) []string {
+	sources := make([]string, 0, len(formats))
+	for _, format := range formats {
+		srcset := replaceImageExtension(src, format)
+		if srcset == "" {
+			continue
+		}
+		mime := formatToMime(format)
+		sources = append(sources, fmt.Sprintf(`<source type="%s" srcset="%s">`, mime, srcset))
+	}
+	return sources
+}
+
+func renderFragment(root *html.Node) (string, error) {
+	var buf bytes.Buffer
+	for node := root.FirstChild; node != nil; node = node.NextSibling {
+		if err := html.Render(&buf, node); err != nil {
+			return "", err
+		}
+	}
+	return buf.String(), nil
+}
+
+func parseSingleNode(fragment string) (*html.Node, error) {
+	context := &html.Node{Type: html.ElementNode, Data: "div", DataAtom: atom.Div}
+	nodes, err := html.ParseFragment(strings.NewReader(fragment), context)
+	if err != nil {
+		return nil, err
+	}
+	if len(nodes) == 0 {
+		return nil, fmt.Errorf("empty fragment")
+	}
+	return nodes[0], nil
+}
+
+func getAttr(node *html.Node, key string) string {
+	for _, attr := range node.Attr {
+		if attr.Key == key {
+			return attr.Val
+		}
+	}
+	return ""
+}
+
+func formatToMime(format string) string {
+	switch format {
+	case "avif":
+		return "image/avif"
+	case "webp":
+		return "image/webp"
+	default:
+		return "application/octet-stream"
+	}
+}
+
+func replaceImageExtension(src, format string) string {
+	parsed, err := url.Parse(src)
+	if err != nil {
+		return ""
+	}
+	ext := filepath.Ext(parsed.Path)
+	if ext == "" {
+		return ""
+	}
+	parsed.Path = strings.TrimSuffix(parsed.Path, ext) + "." + format
+	return parsed.String()
+}
+
+func shouldSkipFormat(sourcePath, format string) bool {
+	ext := strings.ToLower(filepath.Ext(sourcePath))
+	switch format {
+	case "avif":
+		return ext == ".avif"
+	case "webp":
+		return ext == ".webp"
+	default:
+		return true
+	}
+}
+
+func resolveImageOutputPath(outputDir string, target imageOptimizationTarget) (string, error) {
+	parsed, err := url.Parse(target.Src)
+	if err != nil {
+		return "", fmt.Errorf("invalid image src %q", target.Src)
+	}
+	srcPath := filepath.FromSlash(parsed.Path)
+	if srcPath == "" {
+		return "", fmt.Errorf("empty image path for %q", target.Src)
+	}
+
+	var fullPath string
+	if strings.HasPrefix(parsed.Path, "/") {
+		fullPath = filepath.Join(outputDir, strings.TrimPrefix(srcPath, string(filepath.Separator)))
+	} else {
+		fullPath = filepath.Join(outputDir, target.PostSlug, srcPath)
+	}
+
+	cleaned := filepath.Clean(fullPath)
+	outputDir = filepath.Clean(outputDir)
+	if !isWithinDir(outputDir, cleaned) {
+		return "", fmt.Errorf("image path escapes output dir: %s", cleaned)
+	}
+
+	return cleaned, nil
+}
+
+func isWithinDir(base, target string) bool {
+	baseWithSep := base + string(filepath.Separator)
+	targetWithSep := target + string(filepath.Separator)
+	return strings.HasPrefix(targetWithSep, baseWithSep)
+}
+
+func imageOptimizationCachePath(cacheDir, sourcePath, format string, quality int, encoder string) string {
+	hasher := sha256.New()
+	hasher.Write([]byte(sourcePath))
+	hasher.Write([]byte("|"))
+	hasher.Write([]byte(format))
+	hasher.Write([]byte("|"))
+	hasher.Write([]byte(fmt.Sprintf("%d", quality)))
+	hasher.Write([]byte("|"))
+	hasher.Write([]byte(encoder))
+	return filepath.Join(cacheDir, hex.EncodeToString(hasher.Sum(nil))+".json")
+}
+
+func isImageCacheValid(cachePath, sourcePath string, info os.FileInfo, format string, quality int, encoder, destPath string) bool {
+	if _, err := os.Stat(destPath); err != nil {
+		return false
+	}
+
+	data, err := os.ReadFile(cachePath)
+	if err != nil {
+		return false
+	}
+	var entry imageOptimizationCacheEntry
+	if err := json.Unmarshal(data, &entry); err != nil {
+		return false
+	}
+	if entry.SourcePath != sourcePath || entry.Format != format || entry.Quality != quality || entry.Encoder != encoder {
+		return false
+	}
+	if entry.SourceSize != info.Size() || entry.SourceModTime != info.ModTime().UnixNano() {
+		return false
+	}
+	return true
+}
+
+func writeImageCache(cachePath, sourcePath string, info os.FileInfo, format string, quality int, encoder string) error {
+	entry := imageOptimizationCacheEntry{
+		SourcePath:    sourcePath,
+		SourceSize:    info.Size(),
+		SourceModTime: info.ModTime().UnixNano(),
+		Format:        format,
+		Quality:       quality,
+		Encoder:       encoder,
+	}
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(cachePath, data, 0o600)
+}
+
+func (p *ImageOptimizationPlugin) encodeImage(sourcePath, destPath, format string, quality int, encoder string) error {
+	switch format {
+	case "avif":
+		cmd := exec.Command(encoder, "--quality", fmt.Sprintf("%d", quality), sourcePath, destPath)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("avifenc failed for %s: %w (output: %s)", sourcePath, err, string(output))
+		}
+		return nil
+	case "webp":
+		cmd := exec.Command(encoder, "-q", fmt.Sprintf("%d", quality), sourcePath, "-o", destPath)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("cwebp failed for %s: %w (output: %s)", sourcePath, err, string(output))
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported image format: %s", format)
+	}
+}
