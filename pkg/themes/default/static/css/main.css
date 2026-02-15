@@ -668,7 +668,8 @@ main.content-bg {
 
   .site-title {
     order: 1;
-    align-self: flex-start;
+    margin: 0 auto;
+    text-align: center;
   }
 
   .site-header .site-nav {

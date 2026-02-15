@@ -207,10 +207,21 @@
 
 /* Mobile responsive */
 @media (max-width: 768px) {
+  .header-controls .search-container--navbar {
+    width: 100%;
+  }
+
   .search-container--navbar,
   .search--navbar {
     width: 100%;
     margin-top: 0.5rem;
+  }
+
+  .search-container--navbar #pagefind-search,
+  .search--navbar #pagefind-search,
+  .search-container--navbar .pagefind-ui,
+  .search--navbar .pagefind-ui {
+    width: 100%;
   }
 
   .search-container--navbar .pagefind-ui__drawer,
@@ -233,10 +244,10 @@
 
   .pagefind-ui__result,
   .pagefind-ui__result[class*="svelte-"] {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-2);
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: var(--space-2) !important;
   }
 
   .pagefind-ui__result-thumb,
@@ -253,6 +264,11 @@
     height: 48px;
     object-fit: cover;
     border-radius: 999px;
+  }
+
+  .pagefind-ui__result-inner,
+  .pagefind-ui__result-inner[class*="svelte-"] {
+    width: 100%;
   }
 }
 
