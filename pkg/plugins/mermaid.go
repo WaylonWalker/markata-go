@@ -180,14 +180,15 @@ func (p *MermaidPlugin) Render(m *lifecycle.Manager) (err error) {
 	if p.config.Mode != mermaidModeClient {
 		renderer, createErr := newMermaidRenderer(p.config)
 		if createErr != nil {
-			return createErr
+			p.config.Mode = mermaidModeClient
+		} else {
+			p.renderer = renderer
+			defer func() {
+				if closeErr := renderer.close(); closeErr != nil && err == nil {
+					err = closeErr
+				}
+			}()
 		}
-		p.renderer = renderer
-		defer func() {
-			if closeErr := renderer.close(); closeErr != nil && err == nil {
-				err = closeErr
-			}
-		}()
 	}
 
 	posts := m.FilterPosts(func(post *models.Post) bool {
@@ -261,8 +262,9 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 
 	// Replace language-mermaid code blocks with proper mermaid pre tags or rendered SVGs
 	renderer := p.renderer
-	if p.config.Mode != mermaidModeClient && renderer == nil {
-		return models.NewMermaidRenderError(post.Path, p.config.Mode, "renderer not initialized", nil)
+	mode := p.config.Mode
+	if mode != mermaidModeClient && renderer == nil {
+		mode = mermaidModeClient
 	}
 	var renderErr error
 	if hasLanguageMermaid {
@@ -285,7 +287,7 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 			diagramCode = strings.TrimSpace(diagramCode)
 
 			// For client mode: return as mermaid pre block
-			if p.config.Mode == mermaidModeClient {
+			if mode == mermaidModeClient {
 				return `<pre class="mermaid">` + "\n" + diagramCode + "\n</pre>"
 			}
 
@@ -308,7 +310,7 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 	// If we found mermaid blocks, inject the script (only for client mode)
 	// For pre-rendered modes, SVGs don't need the script
 	if foundMermaid || strings.Contains(result, `class="mermaid"`) {
-		if p.config.Mode == mermaidModeClient {
+		if mode == mermaidModeClient {
 			result = p.injectMermaidScript(result)
 		}
 	}
