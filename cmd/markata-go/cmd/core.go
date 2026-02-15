@@ -21,37 +21,15 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 		// If cfgPath is empty, discover the base config
 		basePath := cfgPath
 		if basePath == "" {
-			basePath, err = config.Discover()
-			if err != nil {
-				// No base config found, use defaults with just the overrides
-				cfg, err = config.LoadWithDefaults()
-				if err != nil {
-					return nil, fmt.Errorf("loading default config: %w", err)
-				}
-				// Merge override configs into defaults
-				for _, mergePath := range mergeConfigFiles {
-					if mergePath == "" {
-						continue
-					}
-					overrideCfg, err := config.LoadSingleConfig(mergePath)
-					if err != nil {
-						return nil, fmt.Errorf("loading merge config %s: %w", mergePath, err)
-					}
-					cfg = config.MergeConfigs(cfg, overrideCfg)
-				}
-				// Apply env overrides after merging
-				if err := config.ApplyEnvOverrides(cfg); err != nil {
-					return nil, fmt.Errorf("applying environment overrides: %w", err)
-				}
+			discovered, discoverErr := config.Discover()
+			if discoverErr == nil {
+				basePath = discovered
 			}
 		}
 
-		if err == nil {
-			// We have a base path, load with merge
-			cfg, err = config.LoadWithMerge(basePath, mergeConfigFiles...)
-			if err != nil {
-				return nil, fmt.Errorf("loading merged config: %w", err)
-			}
+		cfg, err = config.LoadWithMerge(basePath, mergeConfigFiles...)
+		if err != nil {
+			return nil, fmt.Errorf("loading merged config: %w", err)
 		}
 	} else {
 		// Standard load (single config or auto-discover)

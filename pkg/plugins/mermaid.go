@@ -19,7 +19,8 @@ const (
 // MermaidPlugin converts Mermaid code blocks into rendered diagrams.
 // It runs at the render stage (post_render, after markdown conversion).
 type MermaidPlugin struct {
-	config models.MermaidConfig
+	config   models.MermaidConfig
+	renderer mermaidRenderer
 }
 
 // NewMermaidPlugin creates a new MermaidPlugin with default settings.
@@ -171,9 +172,22 @@ func (p *MermaidPlugin) validateMode() error {
 }
 
 // Render processes mermaid code blocks in the rendered HTML for all posts.
-func (p *MermaidPlugin) Render(m *lifecycle.Manager) error {
+func (p *MermaidPlugin) Render(m *lifecycle.Manager) (err error) {
 	if !p.config.Enabled {
 		return nil
+	}
+
+	if p.config.Mode != mermaidModeClient {
+		renderer, createErr := newMermaidRenderer(p.config)
+		if createErr != nil {
+			return createErr
+		}
+		p.renderer = renderer
+		defer func() {
+			if closeErr := renderer.close(); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}()
 	}
 
 	posts := m.FilterPosts(func(post *models.Post) bool {
@@ -246,9 +260,17 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 	result := post.ArticleHTML
 
 	// Replace language-mermaid code blocks with proper mermaid pre tags or rendered SVGs
+	renderer := p.renderer
+	if p.config.Mode != mermaidModeClient && renderer == nil {
+		return models.NewMermaidRenderError(post.Path, p.config.Mode, "renderer not initialized", nil)
+	}
+	var renderErr error
 	if hasLanguageMermaid {
 		result = mermaidCodeBlockRegex.ReplaceAllStringFunc(result, func(match string) string {
 			foundMermaid = true
+			if renderErr != nil {
+				return match
+			}
 
 			// Extract the diagram code
 			submatches := mermaidCodeBlockRegex.FindStringSubmatch(match)
@@ -268,23 +290,19 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 			}
 
 			// For pre-rendering modes (cli/chromium): render to SVG
-			renderer, err := newMermaidRenderer(p.config)
-			if err != nil {
-				// Log error but don't break the build - fallback to client rendering
-				// This shouldn't happen since we validated in Configure(), but be defensive
-				return `<pre class="mermaid">` + "\n" + diagramCode + "\n</pre>"
-			}
-			defer renderer.close()
-
 			svgOutput, err := renderer.render(diagramCode)
 			if err != nil {
-				// Log error but don't break the build - fallback to client rendering
-				return `<pre class="mermaid">` + "\n" + diagramCode + "\n</pre>"
+				renderErr = models.NewMermaidRenderError(post.Path, p.config.Mode, "failed to render diagram", err)
+				return match
 			}
 
 			// Return the SVG wrapped in a mermaid container
 			return `<pre class="mermaid">` + "\n" + svgOutput + "\n</pre>"
 		})
+	}
+
+	if renderErr != nil {
+		return renderErr
 	}
 
 	// If we found mermaid blocks, inject the script (only for client mode)
