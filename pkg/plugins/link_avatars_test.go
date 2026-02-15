@@ -126,8 +126,8 @@ func TestLinkAvatars_LocalMode_WithURLPathPrefix(t *testing.T) {
 	if !strings.Contains(post.ArticleHTML, "has-avatar") {
 		t.Errorf("expected injected avatar class, got %s", post.ArticleHTML)
 	}
-	if !strings.Contains(post.ArticleHTML, `data-favicon="/blog/assets/markata/link-avatars/`) {
-		t.Errorf("expected data-favicon with path prefix, got %s", post.ArticleHTML)
+	if !strings.Contains(post.ArticleHTML, `data-favicon="/assets/markata/link-avatars/`) {
+		t.Errorf("expected data-favicon with absolute path, got %s", post.ArticleHTML)
 	}
 
 	iconPath := filepath.Join(outputDir, "assets", "markata", "link-avatars", "example.com.png")
