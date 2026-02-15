@@ -855,7 +855,7 @@ func (p *LinkAvatarsPlugin) ensureIconForHost(assetsDir, host, origin string) (s
 		return "", err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, faviconURL, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, faviconURL, http.NoBody)
 	if err != nil {
 		return "", err
 	}
