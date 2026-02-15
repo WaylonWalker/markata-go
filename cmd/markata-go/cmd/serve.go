@@ -196,7 +196,7 @@ func setupServeSignals(cancel context.CancelFunc) {
 	}()
 }
 
-func resolveServeOutputPath(m *lifecycle.Manager) (outputPath string, absOutputPath string) {
+func resolveServeOutputPath(m *lifecycle.Manager) (outputPath, absOutputPath string) {
 	outputPath = m.Config().OutputDir
 	if outputPath == "" {
 		outputPath = "output"
