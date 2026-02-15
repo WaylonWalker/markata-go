@@ -58,7 +58,51 @@ var (
 
 	// rebuildPending tracks whether changes happened during a rebuild.
 	rebuildPending atomic.Bool
+
+	// buildStatus holds the current build state for serve mode.
+	buildStatus atomic.Value
 )
+
+const (
+	buildStatusBuilding = "building"
+	buildStatusSuccess  = "success"
+	buildStatusError    = "error"
+
+	buildStatusEventPrefix = "status:"
+)
+
+type BuildStatus struct {
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+}
+
+func setBuildStatus(status, message string) {
+	buildStatus.Store(BuildStatus{Status: status, Message: message})
+}
+
+func getBuildStatus() BuildStatus {
+	if status, ok := buildStatus.Load().(BuildStatus); ok {
+		return status
+	}
+	return BuildStatus{Status: buildStatusBuilding}
+}
+
+func buildStatusPayload(status BuildStatus) string {
+	payload := struct {
+		Status  string `json:"status"`
+		Message string `json:"message,omitempty"`
+	}{
+		Status:  status.Status,
+		Message: status.Message,
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return `{"status":"building"}`
+	}
+
+	return string(data)
+}
 
 // serveCmd represents the serve command.
 var serveCmd = &cobra.Command{
@@ -110,19 +154,11 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 		cancel()
 	}()
 
-	// Initial build
-	fmt.Println("Running initial build...")
+	// Create manager (config and plugin setup)
 	m, err := createManager(cfgFile)
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
 	}
-
-	result, err := runBuild(m)
-	if err != nil {
-		return fmt.Errorf("initial build failed: %w", err)
-	}
-
-	fmt.Printf("Built %d posts, %d feeds\n", result.PostsProcessed, result.FeedsGenerated)
 
 	// Determine output directory
 	outputPath := m.Config().OutputDir
@@ -200,6 +236,41 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 	// Wait for server to start before entering select
 	<-serverStarted
 
+	// Start initial build in background
+	setBuildStatus(buildStatusBuilding, "")
+	notifyBuildStatus()
+	if verbose {
+		fmt.Println("Running initial build...")
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		isRebuilding.Store(true)
+		defer func() {
+			isRebuilding.Store(false)
+			if rebuildPending.Swap(false) && rebuildCh != nil {
+				select {
+				case rebuildCh <- struct{}{}:
+				default:
+				}
+			}
+		}()
+
+		result, buildErr := runBuild(m)
+		if buildErr != nil {
+			setBuildStatus(buildStatusError, buildErr.Error())
+			notifyBuildStatus()
+			fmt.Printf("Initial build failed: %v\n", buildErr)
+			return
+		}
+
+		setBuildStatus(buildStatusSuccess, "")
+		notifyBuildStatus()
+		fmt.Printf("Built %d posts, %d feeds\n", result.PostsProcessed, result.FeedsGenerated)
+		notifyLiveReload()
+	}()
+
 	// Wait for shutdown or error
 	select {
 	case <-ctx.Done():
@@ -260,6 +331,7 @@ func createHandler(outputDir string) http.Handler {
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		status := getBuildStatus()
 		// Log requests in verbose mode
 		if verbose {
 			fmt.Printf("[%s] %s %s\n", time.Now().Format("15:04:05"), r.Method, r.URL.Path)
@@ -280,7 +352,7 @@ func createHandler(outputDir string) http.Handler {
 		// Determine the file path
 		fullPath, requestPath, resolveErr := resolveRequestPath(absOutputDir, r.URL.Path)
 		if resolveErr != nil {
-			serve404Page(w, outputDir)
+			serve404Page(w, outputDir, status)
 			return
 		}
 
@@ -297,13 +369,13 @@ func createHandler(outputDir string) http.Handler {
 
 		// Check if file exists - if not, serve 404 page
 		if err != nil && os.IsNotExist(err) {
-			serve404Page(w, outputDir)
+			serve404Page(w, outputDir, status)
 			return
 		}
 
 		// Check if it's an HTML file and inject live reload script
 		if strings.HasSuffix(requestPath, ".html") || (info != nil && !info.IsDir() && strings.HasSuffix(fullPath, ".html")) {
-			serveHTMLWithLiveReload(w, fullPath, outputDir)
+			serveHTMLWithLiveReload(w, fullPath, outputDir, status)
 			return
 		}
 
@@ -314,41 +386,15 @@ func createHandler(outputDir string) http.Handler {
 }
 
 // serveHTMLWithLiveReload reads an HTML file and injects the live reload script.
-func serveHTMLWithLiveReload(w http.ResponseWriter, path, outputDir string) {
+func serveHTMLWithLiveReload(w http.ResponseWriter, path, outputDir string, status BuildStatus) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		// File not found - serve 404 page
-		serve404Page(w, outputDir)
+		serve404Page(w, outputDir, status)
 		return
 	}
 
-	// Inject live reload script before </body>
-	liveReloadScript := `<script>
-(function() {
-    var source = new EventSource('/__livereload');
-    source.onmessage = function(e) {
-        if (e.data === 'reload') {
-            location.reload();
-        }
-    };
-    source.onerror = function() {
-        source.close();
-        setTimeout(function() {
-            location.reload();
-        }, 1000);
-    };
-})();
-</script>`
-
-	html := string(content)
-	switch {
-	case strings.Contains(html, "</body>"):
-		html = strings.Replace(html, "</body>", liveReloadScript+"</body>", 1)
-	case strings.Contains(html, "</html>"):
-		html = strings.Replace(html, "</html>", liveReloadScript+"</html>", 1)
-	default:
-		html += liveReloadScript
-	}
+	html := injectDevScripts(string(content), status)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if _, err := w.Write([]byte(html)); err != nil && verbose {
@@ -359,7 +405,7 @@ func serveHTMLWithLiveReload(w http.ResponseWriter, path, outputDir string) {
 // serve404Page serves the static 404.html page with live reload injection.
 // The 404 page uses client-side JavaScript for fuzzy search suggestions,
 // so it works the same in dev server as in production.
-func serve404Page(w http.ResponseWriter, outputDir string) {
+func serve404Page(w http.ResponseWriter, outputDir string, status BuildStatus) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)
 
@@ -368,8 +414,21 @@ func serve404Page(w http.ResponseWriter, outputDir string) {
 	content, err := os.ReadFile(notFoundPath)
 	if err != nil {
 		// Fallback to simple error message if 404.html doesn't exist
+		fallback := fallback404HTML()
+		fallback = injectDevScripts(fallback, status)
 		//nolint:errcheck // Best effort write to HTTP response
-		w.Write([]byte(`<!DOCTYPE html>
+		w.Write([]byte(fallback))
+		return
+	}
+
+	html := injectDevScripts(string(content), status)
+
+	//nolint:errcheck // Best effort write to HTTP response
+	w.Write([]byte(html))
+}
+
+func fallback404HTML() string {
+	return `<!DOCTYPE html>
 <html>
 <head><title>404 - Page Not Found</title></head>
 <body>
@@ -377,17 +436,104 @@ func serve404Page(w http.ResponseWriter, outputDir string) {
 <p>The requested page could not be found.</p>
 <p><a href="/">Go to home page</a></p>
 </body>
-</html>`))
-		return
-	}
+</html>`
+}
 
-	// Inject live reload script
-	liveReloadScript := `<script>
+func injectDevScripts(html string, status BuildStatus) string {
+	devScript := buildDevScript(status)
+
+	switch {
+	case strings.Contains(html, "</body>"):
+		return strings.Replace(html, "</body>", devScript+"</body>", 1)
+	case strings.Contains(html, "</html>"):
+		return strings.Replace(html, "</html>", devScript+"</html>", 1)
+	default:
+		return html + devScript
+	}
+}
+
+func buildDevScript(status BuildStatus) string {
+	payload := buildStatusPayload(status)
+
+	return fmt.Sprintf(`<script>
 (function() {
+    var initialStatus = %s;
+    var bannerId = 'markata-build-banner';
+    var styleId = 'markata-build-banner-style';
+
+    function ensureStyle() {
+        if (document.getElementById(styleId)) {
+            return;
+        }
+
+        var style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = '#'+bannerId+'{position:fixed;top:0;left:0;right:0;z-index:9999;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;font-size:14px;padding:8px 12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.12);display:none;}'+
+            '#'+bannerId+'[data-status="building"]{background:#f59e0b;color:#111827;}'+
+            '#'+bannerId+'[data-status="error"]{background:#dc2626;color:#ffffff;}';
+        document.head.appendChild(style);
+    }
+
+    function ensureBanner() {
+        var banner = document.getElementById(bannerId);
+        if (banner) {
+            return banner;
+        }
+
+        banner = document.createElement('div');
+        banner.id = bannerId;
+        document.body.appendChild(banner);
+        return banner;
+    }
+
+    function applyStatus(state) {
+        if (!state || !state.status) {
+            return;
+        }
+
+        ensureStyle();
+        var banner = ensureBanner();
+        banner.setAttribute('data-status', state.status);
+
+        if (state.status === '%s') {
+            banner.style.display = 'none';
+            return;
+        }
+
+        var text = 'Building...';
+        if (state.status === '%s') {
+            text = 'Build failed';
+            if (state.message) {
+                text += ': ' + state.message;
+            }
+        }
+
+        banner.textContent = text;
+        banner.style.display = 'block';
+    }
+
+    function parseStatusPayload(raw) {
+        try {
+            return JSON.parse(raw);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    applyStatus(initialStatus);
+
     var source = new EventSource('/__livereload');
     source.onmessage = function(e) {
         if (e.data === 'reload') {
             location.reload();
+            return;
+        }
+        if (e.data.indexOf('%s') === 0) {
+            var payload = e.data.slice(%d);
+            var state = parseStatusPayload(payload);
+            if (state) {
+                applyStatus(state);
+            }
         }
     };
     source.onerror = function() {
@@ -397,20 +543,7 @@ func serve404Page(w http.ResponseWriter, outputDir string) {
         }, 1000);
     };
 })();
-</script>`
-
-	html := string(content)
-	switch {
-	case strings.Contains(html, "</body>"):
-		html = strings.Replace(html, "</body>", liveReloadScript+"</body>", 1)
-	case strings.Contains(html, "</html>"):
-		html = strings.Replace(html, "</html>", liveReloadScript+"</html>", 1)
-	default:
-		html += liveReloadScript
-	}
-
-	//nolint:errcheck // Best effort write to HTTP response
-	w.Write([]byte(html))
+</script>`, payload, buildStatusSuccess, buildStatusError, buildStatusEventPrefix, len(buildStatusEventPrefix))
 }
 
 // handleSearchFallback handles POST requests to /_search for no-JS fallback search.
@@ -669,6 +802,8 @@ func handleLiveReload(w http.ResponseWriter, r *http.Request) {
 
 	// Send initial connection message
 	fmt.Fprintf(w, "data: connected\n\n")
+	status := getBuildStatus()
+	fmt.Fprintf(w, "data: %s%s\n\n", buildStatusEventPrefix, buildStatusPayload(status))
 	flusher.Flush()
 
 	// Wait for messages or disconnect
@@ -694,12 +829,22 @@ func handleLiveReload(w http.ResponseWriter, r *http.Request) {
 
 // notifyLiveReload sends a reload message to all connected clients.
 func notifyLiveReload() {
+	notifyLiveReloadMessage("reload")
+}
+
+func notifyBuildStatus() {
+	status := getBuildStatus()
+	payload := buildStatusPayload(status)
+	notifyLiveReloadMessage(buildStatusEventPrefix + payload)
+}
+
+func notifyLiveReloadMessage(message string) {
 	liveReloadClientsMu.RLock()
 	defer liveReloadClientsMu.RUnlock()
 
 	for ch := range liveReloadClients {
 		select {
-		case ch <- "reload":
+		case ch <- message:
 		case <-ch:
 			// Channel closed, skip
 		default:
@@ -896,6 +1041,8 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	}()
 
 	fmt.Println("\nRebuilding...")
+	setBuildStatus(buildStatusBuilding, "")
+	notifyBuildStatus()
 	startTime := time.Now()
 
 	// Check if context is canceled before starting rebuild
@@ -908,6 +1055,8 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 
 	m, err := createManager(cfgFile)
 	if err != nil {
+		setBuildStatus(buildStatusError, err.Error())
+		notifyBuildStatus()
 		fmt.Printf("Rebuild failed: %v\n", err)
 		return
 	}
@@ -922,6 +1071,8 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 
 	result, err := runBuild(m)
 	if err != nil {
+		setBuildStatus(buildStatusError, err.Error())
+		notifyBuildStatus()
 		fmt.Printf("Rebuild failed: %v\n", err)
 		return
 	}
@@ -935,6 +1086,8 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	}
 
 	duration := time.Since(startTime)
+	setBuildStatus(buildStatusSuccess, "")
+	notifyBuildStatus()
 	fmt.Printf("Rebuilt in %.2fs (%d posts, %d feeds)\n",
 		duration.Seconds(), result.PostsProcessed, result.FeedsGenerated)
 
