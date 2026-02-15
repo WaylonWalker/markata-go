@@ -34,7 +34,7 @@ func checkCLIDependency(mmdc string) *MermaidDependencyInfo {
 			return info
 		}
 		// Provided path doesn't exist
-		info.InstallInstructions = fmt.Sprintf(`Browser not found at specified path: %s
+		info.InstallInstructions = fmt.Sprintf(`mmdc not found at specified path: %s
 
 Check the path and try again, or omit 'mmdc_path' to auto-detect.`, mmdc)
 		return info
