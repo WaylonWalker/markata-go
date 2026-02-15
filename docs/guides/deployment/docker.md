@@ -24,7 +24,7 @@ Docker provides a consistent, reproducible environment for building and serving 
 markata-go publishes two official container images for different workflows:
 
 - `ghcr.io/waylonwalker/markata-go:<version>`: Minimal runtime image (scratch) that runs the `markata-go` binary directly.
-- `ghcr.io/waylonwalker/markata-go-builder:<version>`: Builder image with `/bin/sh`, core utilities, `rsync`, and image encoders (`avifenc`, `cwebp`) for CI and publish scripts.
+- `ghcr.io/waylonwalker/markata-go-builder:<version>`: Builder image with `/bin/sh`, core utilities, `rsync`, image encoders (`avifenc`, `cwebp`), Pagefind, and Mermaid CLI dependencies (`nodejs`, `npm`, `chromium`, `mmdc`).
 
 ### Builder Image Quick Start
 
