@@ -27,15 +27,13 @@ This will add a 16x16 pixel favicon icon before each external link using DuckDuc
 
 ## How It Works
 
-The plugin generates client-side JavaScript and CSS that:
+The plugin supports three modes:
 
-1. Finds all external links (URLs starting with `http`)
-2. Skips same-origin links automatically
-3. Applies configured ignore rules
-4. Fetches the favicon URL from the configured service
-5. Displays the favicon as a pseudo-element next to the link
+- **js** (default): client-side enhancement with runtime favicon fetch
+- **local**: build-time caching, HTML points to site-relative icon URLs
+- **hosted**: build-time caching, HTML points to a hosted base URL (CDN)
 
-All processing happens in the browser, so there's no build-time overhead.
+In all modes, the plugin applies the same ignore rules and uses the same CSS for sizing and positioning.
 
 ## Configuration
 
@@ -53,6 +51,12 @@ size = 16
 
 # Position: "before" or "after" the link text (default: "before")
 position = "before"
+
+# Mode: "js", "local", or "hosted" (default: "js")
+mode = "js"
+
+# Hosted base URL for mode = "hosted"
+# hosted_base_url = "https://cdn.example.com/markata/link-avatars"
 ```
 
 ### Service Selection
@@ -193,10 +197,9 @@ Or use inline HTML:
 
 The plugin is designed for minimal performance impact:
 
-- **Zero build-time overhead** - All processing is client-side
-- **Lazy loading** - Uses Intersection Observer to load favicons only when visible
-- **No network requests at build time** - Favicon fetching happens in the browser
-- **Deterministic builds** - Generated JS/CSS is stable between builds
+- **js mode**: client-side, lazy favicon loading via Intersection Observer
+- **local/hosted modes**: build-time caching, no runtime JS or external requests
+- **Deterministic builds** - Generated assets are stable between builds
 
 ## Generated Files
 
@@ -206,8 +209,10 @@ When enabled, the plugin creates:
 output/
 └── assets/
     └── markata/
-        ├── link-avatars.js   # Client-side JavaScript
-        └── link-avatars.css  # Styling
+        ├── link-avatars.css  # Styling
+        ├── link-avatars.js   # Client-side JavaScript (js mode only)
+        └── link-avatars/     # Cached icons (local/hosted modes)
+            └── example.com.ico
 ```
 
 These are automatically included in your page's `<head>`.
@@ -250,3 +255,21 @@ a.has-avatar::before {
 - [Configuration Reference](/docs/guides/configuration/)
 - [Plugin Development](/docs/guides/plugin-development/)
 - [Themes and Styling](/docs/guides/themes/)
+### Build-Time Modes
+
+Use build-time caching to avoid runtime JavaScript and third-party fetches:
+
+```toml
+[markata-go.link_avatars]
+enabled = true
+mode = "local"
+```
+
+Hosted mode uploads the cached icons to your CDN and points HTML to that base URL:
+
+```toml
+[markata-go.link_avatars]
+enabled = true
+mode = "hosted"
+hosted_base_url = "https://cdn.example.com/markata/link-avatars"
+```
