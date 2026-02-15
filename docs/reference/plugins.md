@@ -1452,8 +1452,8 @@ include_index = false  # Include index page in inlinks (default: false)
 | Field | Type | Description |
 |-------|------|-------------|
 | `hrefs` | []string | All href values found in the post |
-| `inlinks` | []*Link | Links from other posts pointing to this post |
-| `outlinks` | []*Link | Links from this post to other pages |
+| `inlinks` | []map | Links from other posts pointing to this post (template-friendly) |
+| `outlinks` | []map | Links from this post to other pages (template-friendly) |
 
 **Link structure:**
 ```go
@@ -1473,27 +1473,27 @@ type Link struct {
 
 **Template usage:**
 ```html
-{% if post.Inlinks %}
+{% if post.inlinks %}
 <aside class="backlinks">
     <h3>Pages that link here</h3>
     <ul>
-    {% for link in post.Inlinks %}
-        <li><a href="{{ link.SourcePost.Href }}">{{ link.SourcePost.Title }}</a></li>
+    {% for link in post.inlinks %}
+        <li><a href="{{ link.source_post.href }}">{{ link.source_post.title }}</a></li>
     {% endfor %}
     </ul>
 </aside>
 {% endif %}
 
-{% if post.Outlinks %}
+{% if post.outlinks %}
 <aside class="outlinks">
     <h3>Links from this page</h3>
     <ul>
-    {% for link in post.Outlinks %}
+    {% for link in post.outlinks %}
         <li>
-            <a href="{{ link.TargetURL }}">
-                {% if link.IsInternal %}{{ link.TargetText }}{% else %}{{ link.TargetDomain }}{% endif %}
+            <a href="{{ link.target_url }}">
+                {% if link.is_internal %}{{ link.target_text }}{% else %}{{ link.target_domain }}{% endif %}
             </a>
-            {% if not link.IsInternal %}<span class="external">↗</span>{% endif %}
+            {% if not link.is_internal %}<span class="external">↗</span>{% endif %}
         </li>
     {% endfor %}
     </ul>
