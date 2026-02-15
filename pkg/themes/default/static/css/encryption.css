@@ -5,6 +5,8 @@
  * Provides a clean UI for the decryption password prompt.
  */
 
+@layer components {
+
 .encrypted-content {
   margin: 4rem 0;
   padding: 2rem 0;
@@ -187,4 +189,6 @@
 .encrypted-content__remember:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
 }

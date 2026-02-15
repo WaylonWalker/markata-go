@@ -4,6 +4,8 @@
    CSS Grid-based layout system for docs, blog, landing, and bare layouts.
    ========================================================================== */
 
+@layer tokens {
+
 /* ==========================================================================
    CSS Custom Properties for Layout
    ========================================================================== */
@@ -24,6 +26,10 @@
   /* Transitions */
   --layout-transition: 0.2s ease;
 }
+
+}
+
+@layer components {
 
 /* ==========================================================================
    Base Layout Classes
@@ -772,4 +778,6 @@
     max-width: 100%;
     padding: 0;
   }
+}
+
 }
