@@ -181,6 +181,19 @@ Template for index/listing pages:
 | `config` | Config | Site configuration |
 | `core` | Core | Core instance |
 
+**Link graph fields (from link_collector):**
+
+- `post.hrefs` - list of href strings found in the post
+- `post.inlinks` - list of link maps pointing to this post
+- `post.outlinks` - list of link maps pointing from this post
+
+Each link map includes:
+
+- `source_url`, `source_text`
+- `target_url`, `target_domain`, `target_text`
+- `is_internal`, `is_self`, `raw_target`
+- `source_post`, `target_post` (maps with `href`, `slug`, `title`)
+
 ### OG Templates
 
 OpenGraph card pages use dedicated templates. The template name is derived from the
