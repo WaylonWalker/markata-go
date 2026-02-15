@@ -79,6 +79,89 @@ func extractYouTubeThumbnail(content string) string {
 	return ""
 }
 
+// extractEntryImage extracts an image URL from feed entry metadata.
+// Priority: media:thumbnail -> media:content -> enclosure -> YouTube -> HTML img
+func extractEntryImage(item *rss2Item) string {
+	// Try media:thumbnail first (most specific for images)
+	for _, thumb := range item.MediaThumb {
+		if thumb.URL != "" {
+			return thumb.URL
+		}
+	}
+
+	// Try media:content with medium=image
+	for _, mc := range item.MediaContent {
+		if mc.URL != "" && mc.Medium == "image" {
+			return mc.URL
+		}
+	}
+
+	// Try enclosure if it's an image
+	if item.Enclosure.URL != "" && strings.HasPrefix(item.Enclosure.Type, "image/") {
+		return item.Enclosure.URL
+	}
+
+	// Combine content and description for YouTube/HTML extraction
+	combined := item.Content
+	if combined == "" {
+		combined = item.Description
+	}
+
+	// Try YouTube thumbnail from combined content
+	if thumbnail := extractYouTubeThumbnail(combined); thumbnail != "" {
+		return thumbnail
+	}
+
+	// Fall back to HTML img extraction
+	return extractFirstImageFromHTML(combined)
+}
+
+// getAtomEnclosureURL extracts enclosure URL from Atom entry links.
+func getAtomEnclosureURL(links []atomLink) string {
+	for _, link := range links {
+		if link.Rel == "enclosure" && strings.HasPrefix(link.Type, "image/") {
+			return link.Href
+		}
+	}
+	return ""
+}
+
+// extractAtomEntryImage extracts an image URL from Atom feed entry metadata.
+func extractAtomEntryImage(entry *atomEntry) string {
+	// Try media:thumbnail first
+	for _, thumb := range entry.MediaThumb {
+		if thumb.URL != "" {
+			return thumb.URL
+		}
+	}
+
+	// Try media:content with medium=image
+	for _, mc := range entry.MediaContent {
+		if mc.URL != "" && mc.Medium == "image" {
+			return mc.URL
+		}
+	}
+
+	// Try enclosure from links
+	if enclosureURL := getAtomEnclosureURL(entry.Link); enclosureURL != "" {
+		return enclosureURL
+	}
+
+	// Combine content and summary for YouTube/HTML extraction
+	combined := entry.Content.Body
+	if combined == "" {
+		combined = entry.Summary
+	}
+
+	// Try YouTube thumbnail
+	if thumbnail := extractYouTubeThumbnail(combined); thumbnail != "" {
+		return thumbnail
+	}
+
+	// Fall back to HTML img extraction
+	return extractFirstImageFromHTML(combined)
+}
+
 // blogrollParsedFeed represents a parsed feed response for blogroll plugin.
 type blogrollParsedFeed struct {
 	Title        string     `json:"title"`
@@ -111,15 +194,32 @@ type rss2Image struct {
 }
 
 type rss2Item struct {
-	Title       string   `xml:"title"`
-	Link        string   `xml:"link"`
-	Description string   `xml:"description"`
-	Content     string   `xml:"http://purl.org/rss/1.0/modules/content/ encoded"`
-	PubDate     string   `xml:"pubDate"`
-	GUID        string   `xml:"guid"`
-	Author      string   `xml:"author"`
-	Creator     string   `xml:"http://purl.org/dc/elements/1.1/ creator"`
-	Categories  []string `xml:"category"`
+	Title        string               `xml:"title"`
+	Link         string               `xml:"link"`
+	Description  string               `xml:"description"`
+	Content      string               `xml:"http://purl.org/rss/1.0/modules/content/ encoded"`
+	PubDate      string               `xml:"pubDate"`
+	GUID         string               `xml:"guid"`
+	Author       string               `xml:"author"`
+	Creator      string               `xml:"http://purl.org/dc/elements/1.1/ creator"`
+	Categories   []string             `xml:"category"`
+	Enclosure    rss2Enclosure        `xml:"enclosure"`
+	MediaThumb   []rss2MediaThumbnail `xml:"http://search.yahoo.com/mrss/ thumbnail"`
+	MediaContent []rss2MediaContent   `xml:"http://search.yahoo.com/mrss/ content"`
+}
+
+type rss2Enclosure struct {
+	URL  string `xml:"url,attr"`
+	Type string `xml:"type,attr"`
+}
+
+type rss2MediaThumbnail struct {
+	URL string `xml:"url,attr"`
+}
+
+type rss2MediaContent struct {
+	URL    string `xml:"url,attr"`
+	Medium string `xml:"medium,attr"`
 }
 
 // Atom structures for feed parsing.
@@ -140,15 +240,17 @@ type atomLink struct {
 }
 
 type atomEntry struct {
-	Title     string     `xml:"title"`
-	Link      []atomLink `xml:"link"`
-	ID        string     `xml:"id"`
-	Updated   string     `xml:"updated"`
-	Published string     `xml:"published"`
-	Summary   string     `xml:"summary"`
-	Content   atomText   `xml:"content"`
-	Author    atomAuthor `xml:"author"`
-	Category  []atomCat  `xml:"category"`
+	Title        string               `xml:"title"`
+	Link         []atomLink           `xml:"link"`
+	ID           string               `xml:"id"`
+	Updated      string               `xml:"updated"`
+	Published    string               `xml:"published"`
+	Summary      string               `xml:"summary"`
+	Content      atomText             `xml:"content"`
+	Author       atomAuthor           `xml:"author"`
+	Category     []atomCat            `xml:"category"`
+	MediaThumb   []atomMediaThumbnail `xml:"http://search.yahoo.com/mrss/ thumbnail"`
+	MediaContent []atomMediaContent   `xml:"http://search.yahoo.com/mrss/ content"`
 }
 
 type atomText struct {
@@ -162,6 +264,15 @@ type atomAuthor struct {
 
 type atomCat struct {
 	Term string `xml:"term,attr"`
+}
+
+type atomMediaThumbnail struct {
+	URL string `xml:"url,attr"`
+}
+
+type atomMediaContent struct {
+	URL    string `xml:"url,attr"`
+	Medium string `xml:"medium,attr"`
 }
 
 // parseBlogrollFeedResponse parses an HTTP response into a feed structure for blogroll plugin.
@@ -241,8 +352,8 @@ func parseRSS2Feed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 			id = item.Link
 		}
 
-		// Extract first image from content
-		imageURL := extractFirstImageFromHTML(content)
+		// Extract image from various sources (priority order)
+		imageURL := extractEntryImage(item)
 
 		// Create entry
 		entry := &models.ExternalEntry{
@@ -338,7 +449,7 @@ func parseAtomFeed(data []byte) (*blogrollParsedFeed, []*models.ExternalEntry, e
 		}
 
 		// Extract first image from content
-		imageURL := extractFirstImageFromHTML(content)
+		imageURL := extractAtomEntryImage(entry)
 
 		// Create entry
 		extEntry := &models.ExternalEntry{
