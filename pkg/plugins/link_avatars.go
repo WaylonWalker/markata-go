@@ -3,6 +3,7 @@ package plugins
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -107,6 +108,8 @@ type LinkAvatarsPlugin struct {
 	siteOrigin  string
 	siteURLPath string
 	client      *http.Client
+	cssHash     string
+	jsHash      string
 }
 
 // NewLinkAvatarsPlugin creates a new LinkAvatarsPlugin.
@@ -132,12 +135,23 @@ func (p *LinkAvatarsPlugin) Configure(m *lifecycle.Manager) error {
 	p.siteOrigin = getSiteOrigin(m.Config())
 	p.siteURLPath = getSiteURLPath(m.Config())
 
-	// If enabled, inject head tags during Configure so they're available for templates
 	if p.config.Enabled {
+		p.computeHashes()
 		p.injectHeadTags(m.Config())
 	}
 
 	return nil
+}
+
+// computeHashes computes content hashes for CSS and JS assets.
+func (p *LinkAvatarsPlugin) computeHashes() {
+	cssContent := p.generateCSS()
+	p.cssHash = fmt.Sprintf("%x", sha256.Sum256([]byte(cssContent)))[:8]
+
+	if p.config.Mode == linkAvatarModeJS {
+		jsContent := p.generateJavaScript()
+		p.jsHash = fmt.Sprintf("%x", sha256.Sum256([]byte(jsContent)))[:8]
+	}
 }
 
 // Write generates the JavaScript and CSS assets.
@@ -152,26 +166,43 @@ func (p *LinkAvatarsPlugin) Write(m *lifecycle.Manager) error {
 		outputDir = defaultOutputDir
 	}
 
-	// Create assets directory
 	assetsDir := filepath.Join(outputDir, "assets", "markata")
 	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
 		return fmt.Errorf("creating link_avatars assets directory: %w", err)
 	}
 
-	// Generate CSS
 	cssContent := p.generateCSS()
+	cssHash := fmt.Sprintf("%x", sha256.Sum256([]byte(cssContent)))[:8]
+	p.cssHash = cssHash
+
 	cssPath := filepath.Join(assetsDir, "link-avatars.css")
 	if err := os.WriteFile(cssPath, []byte(cssContent), 0o644); err != nil { //nolint:gosec // static CSS needs world-readable permissions
 		return fmt.Errorf("writing link-avatars.css: %w", err)
 	}
 
+	hashedCSSPath := filepath.Join(assetsDir, fmt.Sprintf("link-avatars.%s.css", cssHash))
+	if err := os.WriteFile(hashedCSSPath, []byte(cssContent), 0o644); err != nil { //nolint:gosec // static CSS needs world-readable permissions
+		return fmt.Errorf("writing hashed link-avatars.css: %w", err)
+	}
+
+	m.SetAssetHash("assets/markata/link-avatars.css", cssHash)
+
 	if p.config.Mode == linkAvatarModeJS {
-		// Generate JavaScript
 		jsContent := p.generateJavaScript()
+		jsHash := fmt.Sprintf("%x", sha256.Sum256([]byte(jsContent)))[:8]
+		p.jsHash = jsHash
+
 		jsPath := filepath.Join(assetsDir, "link-avatars.js")
 		if err := os.WriteFile(jsPath, []byte(jsContent), 0o644); err != nil { //nolint:gosec // static JS needs world-readable permissions
 			return fmt.Errorf("writing link-avatars.js: %w", err)
 		}
+
+		hashedJSPath := filepath.Join(assetsDir, fmt.Sprintf("link-avatars.%s.js", jsHash))
+		if err := os.WriteFile(hashedJSPath, []byte(jsContent), 0o644); err != nil { //nolint:gosec // static JS needs world-readable permissions
+			return fmt.Errorf("writing hashed link-avatars.js: %w", err)
+		}
+
+		m.SetAssetHash("assets/markata/link-avatars.js", jsHash)
 	}
 
 	return nil
@@ -465,33 +496,32 @@ func (p *LinkAvatarsPlugin) injectHeadTags(cfg *lifecycle.Config) {
 		return
 	}
 
-	// Get the models.Config from Extra (set by createManager in core.go)
 	modelsConfig, ok := cfg.Extra["models_config"].(*models.Config)
 	if !ok {
 		return
 	}
 
-	// Build asset path prefix from site URL path
-	assetPrefix := p.siteURLPath
-	if assetPrefix != "" {
-		assetPrefix += "/"
+	cssPath := "/assets/markata/link-avatars.css"
+	if p.cssHash != "" {
+		cssPath = fmt.Sprintf("/assets/markata/link-avatars.%s.css", p.cssHash)
 	}
 
-	// Add CSS link
 	modelsConfig.Head.Link = append(modelsConfig.Head.Link, models.LinkTag{
 		Rel:  "stylesheet",
-		Href: assetPrefix + "assets/markata/link-avatars.css",
+		Href: cssPath,
 	})
 
 	if p.config.Mode == linkAvatarModeJS {
-		// Add JS script
+		jsPath := "/assets/markata/link-avatars.js"
+		if p.jsHash != "" {
+			jsPath = fmt.Sprintf("/assets/markata/link-avatars.%s.js", p.jsHash)
+		}
+
 		modelsConfig.Head.Script = append(modelsConfig.Head.Script, models.ScriptTag{
-			Src: assetPrefix + "assets/markata/link-avatars.js",
+			Src: jsPath,
 		})
 	}
 
-	// Also update the head in Extra since ToModelsConfig reads from there
-	// (cfg.Extra["head"] is a copy of modelsConfig.Head made at initialization)
 	cfg.Extra["head"] = modelsConfig.Head
 }
 
@@ -689,11 +719,7 @@ func extractURLPath(raw string) string {
 func (p *LinkAvatarsPlugin) iconBaseURL() (string, error) {
 	switch p.config.Mode {
 	case linkAvatarModeLocal:
-		assetPrefix := p.siteURLPath
-		if assetPrefix != "" {
-			assetPrefix += "/"
-		}
-		return assetPrefix + "assets/markata/link-avatars", nil
+		return "/assets/markata/link-avatars", nil
 	case linkAvatarModeHosted:
 		base := strings.TrimRight(p.config.HostedBaseURL, "/")
 		if base == "" {
@@ -754,12 +780,12 @@ func (p *LinkAvatarsPlugin) processHTML(html, publicBase, assetsDir string, icon
 			if fetchErr != nil {
 				return
 			}
-			iconURL = publicBase + "/" + fileName
+			iconURL = strings.TrimRight(publicBase, "/") + "/" + fileName
 			iconCache[host] = iconURL
 		}
 
 		style, _ := link.Attr("style")
-		style = updateStyleAttribute(style, "--favicon-url", fmt.Sprintf(`url(\"%s\")`, iconURL))
+		style = updateStyleAttribute(style, "--favicon-url", fmt.Sprintf("url('%s')", iconURL))
 		link.SetAttr("style", style)
 		link.SetAttr("data-favicon", iconURL)
 		link.AddClass("has-avatar")
