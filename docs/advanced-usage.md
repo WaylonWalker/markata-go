@@ -1327,16 +1327,16 @@ strict_wikilinks = true    # Fail build on broken links
 
 ### Backlinks
 
-The wikilinks plugin can generate backlinks (posts that link to the current post):
+The link collector provides backlinks (posts that link to the current post):
 
 ```html
 {# In post.html template #}
-{% if post.Extra.backlinks %}
+{% if post.inlinks %}
 <aside class="backlinks">
     <h3>Linked from</h3>
     <ul>
-    {% for link in post.Extra.backlinks %}
-        <li><a href="{{ link.Href }}">{{ link.Title }}</a></li>
+    {% for link in post.inlinks %}
+        <li><a href="{{ link.source_post.href }}">{{ link.source_post.title }}</a></li>
     {% endfor %}
     </ul>
 </aside>

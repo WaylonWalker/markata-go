@@ -115,6 +115,9 @@ func postToMapUncached(p *models.Post) map[string]interface{} {
 		"content":      p.Content,
 		"slug":         p.Slug,
 		"href":         p.Href,
+		"hrefs":        p.Hrefs,
+		"inlinks":      linksToMaps(p.Inlinks),
+		"outlinks":     linksToMaps(p.Outlinks),
 		"published":    p.Published,
 		"draft":        p.Draft,
 		"private":      p.Private,
@@ -194,6 +197,56 @@ func postToMapUncached(p *models.Post) map[string]interface{} {
 	}
 
 	return m
+}
+
+func linksToMaps(links []*models.Link) []map[string]interface{} {
+	if len(links) == 0 {
+		return nil
+	}
+	result := make([]map[string]interface{}, 0, len(links))
+	for _, link := range links {
+		if link == nil {
+			continue
+		}
+		result = append(result, linkToMap(link))
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+func linkToMap(link *models.Link) map[string]interface{} {
+	return map[string]interface{}{
+		"source_url":    link.SourceURL,
+		"source_text":   link.SourceText,
+		"target_url":    link.TargetURL,
+		"target_domain": link.TargetDomain,
+		"is_internal":   link.IsInternal,
+		"is_self":       link.IsSelf,
+		"raw_target":    link.RawTarget,
+		"target_text":   link.TargetText,
+		"source_post":   postSummaryToMap(link.SourcePost),
+		"target_post":   postSummaryToMap(link.TargetPost),
+	}
+}
+
+func postSummaryToMap(post *models.Post) map[string]interface{} {
+	if post == nil {
+		return nil
+	}
+
+	result := map[string]interface{}{
+		"href": post.Href,
+		"slug": post.Slug,
+	}
+	if post.Title != nil {
+		result["title"] = *post.Title
+	} else {
+		result["title"] = nil
+	}
+
+	return result
 }
 
 // authorToMap converts an Author to a map for template access.
