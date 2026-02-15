@@ -12,6 +12,8 @@ func TestImageOptimization_Render_WrapsLocalImages(t *testing.T) {
 	plugin := NewImageOptimizationPlugin()
 	plugin.config = defaultImageOptimizationConfig()
 	plugin.availableFormats = []string{"avif", "webp"}
+	plugin.config.Widths = []int{480, 960}
+	plugin.config.Sizes = "(max-width: 960px) 100vw, 960px"
 
 	post := &models.Post{
 		ArticleHTML: `<p><img src="/images/cat.jpg" alt="Cat"></p><p><img src="https://example.com/dog.jpg" alt="Dog"></p>`,
@@ -24,7 +26,7 @@ func TestImageOptimization_Render_WrapsLocalImages(t *testing.T) {
 	if !isOptimizableImageSrc("/images/cat.jpg") {
 		t.Fatalf("expected optimizable image src to be recognized")
 	}
-	if sources := buildPictureSources("/images/cat.jpg", plugin.availableFormats); len(sources) == 0 {
+	if sources := buildPictureSources("/images/cat.jpg", plugin.availableFormats, plugin.config.Widths, plugin.config.Sizes); len(sources) == 0 {
 		t.Fatalf("expected picture sources to be generated")
 	}
 
@@ -35,10 +37,10 @@ func TestImageOptimization_Render_WrapsLocalImages(t *testing.T) {
 	if !strings.Contains(post.ArticleHTML, "<picture>") {
 		t.Fatalf("expected picture wrapper, got: %s", post.ArticleHTML)
 	}
-	if !strings.Contains(post.ArticleHTML, `srcset="/images/cat.avif"`) {
+	if !strings.Contains(post.ArticleHTML, `srcset="/images/cat-480w.avif 480w, /images/cat-960w.avif 960w"`) {
 		t.Fatalf("expected AVIF source, got: %s", post.ArticleHTML)
 	}
-	if !strings.Contains(post.ArticleHTML, `srcset="/images/cat.webp"`) {
+	if !strings.Contains(post.ArticleHTML, `srcset="/images/cat-480w.webp 480w, /images/cat-960w.webp 960w"`) {
 		t.Fatalf("expected WebP source, got: %s", post.ArticleHTML)
 	}
 	if strings.Contains(post.ArticleHTML, "example.com/dog") && strings.Contains(post.ArticleHTML, "<picture>") {
