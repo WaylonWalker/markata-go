@@ -90,8 +90,9 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	if hash := m.GetAssetHash("css/variables.css"); hash != "" {
-		base := strings.TrimSuffix("variables.css", filepath.Ext(cssPath))
+		base := strings.TrimSuffix(filepath.Base(cssPath), filepath.Ext(cssPath))
 		hashedPath := filepath.Join(cssDir, fmt.Sprintf("%s.%s.css", base, hash))
+		//nolint:gosec // G306: hashed variables.css is a public CSS file, 0644 is appropriate
 		if err := os.WriteFile(hashedPath, []byte(css), 0o644); err != nil {
 			return fmt.Errorf("writing hashed palette CSS: %w", err)
 		}
