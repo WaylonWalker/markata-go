@@ -100,6 +100,7 @@ position = "before"
    - Link matches any `ignore_selectors`
    - Link has any class in `ignore_classes`
    - Link is inside an element with ID in `ignore_ids`
+   - Link contains an `img` or `picture` element
 
 4. **Avatar Injection**:
    - **js mode**: client-side JavaScript sets `data-favicon`, `--favicon-url`, and `has-avatar` classes at runtime.

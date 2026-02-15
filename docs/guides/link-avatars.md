@@ -94,7 +94,7 @@ Template placeholders:
 
 ### Ignore Rules
 
-Exclude specific links from getting avatars:
+Exclude specific links from getting avatars. Links that wrap images are always skipped.
 
 ```toml
 [markata-go.link_avatars]

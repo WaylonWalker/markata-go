@@ -347,6 +347,11 @@ func (p *LinkAvatarsPlugin) generateJavaScript() string {
       }
     }
 
+    // Skip links that wrap images
+    if (link.querySelector('img, picture')) {
+      return true;
+    }
+
     // Check ignore selectors
     for (var m = 0; m < config.ignoreSelectors.length; m++) {
       try {
@@ -823,6 +828,10 @@ func parseIgnoreSelectors(selectors []string) []cascadia.Sel {
 
 func shouldIgnoreLink(link *goquery.Selection, host, origin, siteOrigin string, selectors []cascadia.Sel, cfg LinkAvatarsConfig) bool {
 	if siteOrigin != "" && origin == siteOrigin {
+		return true
+	}
+
+	if link.Find("img, picture").Length() > 0 {
 		return true
 	}
 
