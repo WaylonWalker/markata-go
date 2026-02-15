@@ -181,6 +181,17 @@ Template for index/listing pages:
 | `config` | Config | Site configuration |
 | `core` | Core | Core instance |
 
+### OG Templates
+
+OpenGraph card pages use dedicated templates. The template name is derived from the
+post template when possible:
+
+- `post.html` -> `post-og.html`
+- If no post template exists, fall back to `og-card.html`
+
+The default theme ships both `post-og.html` and `og-card.html` so OG cards match the
+site palette and background styling.
+
 ### Feed Templates
 
 | Variable | Type | Description |

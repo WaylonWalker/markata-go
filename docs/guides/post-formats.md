@@ -130,12 +130,12 @@ await page.screenshot({ path: 'og-image.png' });
 
 The default OG card template includes:
 - Post title (large, prominent)
-- Post description (if available)
-- Up to 3 tags
-- Site title
+- Author name and site URL
 - Publication date
+- Theme palette and background styling
 
-You can customize the OG card appearance by providing your own `og.html` template.
+You can customize the OG card appearance by providing your own `post-og.html` template.
+If no post-specific OG template exists, `og-card.html` is used as a fallback.
 
 ## Standard Web Txt Files
 
