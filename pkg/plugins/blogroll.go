@@ -54,6 +54,28 @@ func extractFirstImageFromHTML(htmlContent string) string {
 	if len(matches) > 1 {
 		return matches[1]
 	}
+
+	// Try to extract YouTube thumbnail if no img tag found
+	if thumbnail := extractYouTubeThumbnail(decoded); thumbnail != "" {
+		return thumbnail
+	}
+
+	return ""
+}
+
+// youtubeThumbnailRegex matches YouTube URLs and extracts the video ID.
+var youtubeThumbnailRegex = regexp.MustCompile(
+	`https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})(?:[^\s<]*)`,
+)
+
+// extractYouTubeThumbnail extracts a YouTube thumbnail URL from content.
+// Returns the maxresdefault.jpg thumbnail URL if a YouTube URL is found.
+func extractYouTubeThumbnail(content string) string {
+	matches := youtubeThumbnailRegex.FindStringSubmatch(content)
+	if len(matches) > 1 {
+		videoID := matches[1]
+		return "https://img.youtube.com/vi/" + videoID + "/maxresdefault.jpg"
+	}
 	return ""
 }
 
