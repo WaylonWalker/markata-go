@@ -31,11 +31,18 @@
   background: var(--color-surface);
 }
 
-.card-article .card-header,
-.card-article .card-excerpt,
-.card-article .card-meta {
-  background: transparent;
+/* Ensure card sections don't paint their own bands */
+.card .card-header,
+.card .card-body,
+.card .card-content,
+.card .card-excerpt,
+.card .card-meta,
+.card footer {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
 }
+
 
 /* Card title links */
 .card .card-title {

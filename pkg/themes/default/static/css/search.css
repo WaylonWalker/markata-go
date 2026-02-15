@@ -230,6 +230,30 @@
   .search--navbar::after {
     display: none;
   }
+
+  .pagefind-ui__result,
+  .pagefind-ui__result[class*="svelte-"] {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .pagefind-ui__result-thumb,
+  .pagefind-ui__result-thumb[class*="svelte-"] {
+    width: 48px;
+    height: 48px;
+    margin: 0;
+    flex: 0 0 auto;
+  }
+
+  .pagefind-ui__result-image,
+  .pagefind-ui__result-image[class*="svelte-"] {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 999px;
+  }
 }
 
 /* Header layout adjustment to accommodate search */
@@ -242,6 +266,4 @@
 
 .site-header .site-nav {
   flex-grow: 1;
-}
-
 }
