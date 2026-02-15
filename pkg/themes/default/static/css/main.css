@@ -1496,34 +1496,40 @@ a.wikilink.wikilink-missing {
   }
 
   .site-header .container {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "title controls"
-      "nav nav";
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     gap: var(--space-3);
   }
 
-  /* Mobile header stacking: title + controls, then nav full-width */
+  /* Mobile header stacking: title, nav, then controls (search last) */
   .site-title {
-    grid-area: title;
-  }
-
-  .header-controls {
-    grid-area: controls;
-    justify-self: end;
+    order: 1;
+    align-self: flex-start;
   }
 
   .site-header .site-nav {
-    grid-area: nav;
-    justify-content: center;
+    order: 2;
+    justify-content: flex-start;
     width: 100%;
   }
 
-  /* Header controls wrap with nav */
   .header-controls {
+    order: 3;
+    width: 100%;
     margin-left: 0;
-    justify-self: auto;
+    justify-content: flex-start;
+  }
+
+  .header-controls .theme-switcher {
+    order: 1;
+  }
+
+  .header-controls .search-container--navbar,
+  .header-controls .search--navbar {
+    order: 2;
+    width: 100%;
+    margin-left: 0;
   }
 
   /* Nav wrapping for small screens */
