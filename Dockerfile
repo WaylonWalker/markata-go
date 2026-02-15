@@ -57,9 +57,19 @@ RUN apk add --no-cache \
     findutils \
     gawk \
     git \
+    libavif-apps \
+    libwebp-tools \
+    chromium \
+    nodejs \
+    npm \
     openssh-client \
     rsync \
     tzdata
+
+# Install build-time tools for optional plugins
+ENV PUPPETEER_SKIP_DOWNLOAD=1
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+RUN npm install -g @mermaid-js/mermaid-cli pagefind
 
 # Copy the binary
 COPY --from=builder /app/markata-go /usr/local/bin/markata-go

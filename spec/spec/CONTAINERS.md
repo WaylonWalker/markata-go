@@ -42,7 +42,13 @@ The builder image MUST include:
 
 The builder image MAY include:
 
+- `chromium` (for Mermaid Chromium rendering)
 - `git`
+- `libavif-apps` (provides `avifenc`)
+- `libwebp-tools` (provides `cwebp`)
+- `nodejs` and `npm`
+- `pagefind` (for search index generation)
+- `@mermaid-js/mermaid-cli` (provides `mmdc`)
 - `openssh-client` (for rsync over SSH)
 - `tzdata`
 
