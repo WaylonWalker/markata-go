@@ -795,6 +795,8 @@ formats = ["avif", "webp"]
 quality = 80
 avif_quality = 80
 webp_quality = 80
+widths = [480, 768, 1200]
+sizes = "100vw"
 cache_dir = ".markata/image-cache"
 avifenc_path = ""                 # Optional explicit path
 cwebp_path = ""                   # Optional explicit path
@@ -809,6 +811,8 @@ cwebp_path = ""                   # Optional explicit path
 | `quality` | int | `80` | Default quality for all formats |
 | `avif_quality` | int | `80` | AVIF quality override |
 | `webp_quality` | int | `80` | WebP quality override |
+| `widths` | []int | `[480,768,1200]` | Responsive widths to generate |
+| `sizes` | string | `"100vw"` | Sizes attribute for responsive sources |
 | `cache_dir` | string | `.markata/image-cache` | Cache directory for encode metadata |
 | `avifenc_path` | string | `""` | Path to `avifenc` (auto-detect if empty) |
 | `cwebp_path` | string | `""` | Path to `cwebp` (auto-detect if empty) |
@@ -817,8 +821,8 @@ cwebp_path = ""                   # Optional explicit path
 
 1. Scan rendered HTML for `<img>` tags with local `src` values.
 2. Skip external URLs, protocol-relative URLs, and data URIs.
-3. Rewrite each qualifying `<img>` into a `<picture>` element with `source` tags for available formats, keeping the original `<img>` as fallback.
-4. During write, generate requested formats next to the original output image.
+3. Rewrite each qualifying `<img>` into a `<picture>` element with `source` tags, using `srcset` and `sizes` when widths are configured.
+4. During write, generate requested formats and responsive width variants next to the original output image.
 5. Use cache metadata to skip re-encoding unchanged inputs.
 6. If an encoder is missing, warn and skip that format without failing the build.
 
@@ -828,16 +832,20 @@ cwebp_path = ""                   # Optional explicit path
 output/
   images/
     sample.jpg
-    sample.avif
-    sample.webp
+    sample-480w.avif
+    sample-480w.webp
+    sample-768w.avif
+    sample-768w.webp
+    sample-1200w.avif
+    sample-1200w.webp
 ```
 
 **HTML Output:**
 
 ```html
 <picture>
-  <source type="image/avif" srcset="/images/sample.avif">
-  <source type="image/webp" srcset="/images/sample.webp">
+  <source type="image/avif" srcset="/images/sample-480w.avif 480w, /images/sample-768w.avif 768w" sizes="100vw">
+  <source type="image/webp" srcset="/images/sample-480w.webp 480w, /images/sample-768w.webp 768w" sizes="100vw">
   <img src="/images/sample.jpg" alt="Sample">
 </picture>
 ```
