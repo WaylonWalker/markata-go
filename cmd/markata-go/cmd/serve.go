@@ -196,8 +196,8 @@ func setupServeSignals(cancel context.CancelFunc) {
 	}()
 }
 
-func resolveServeOutputPath(m *lifecycle.Manager) (string, string) {
-	outputPath := m.Config().OutputDir
+func resolveServeOutputPath(m *lifecycle.Manager) (outputPath string, absOutputPath string) {
+	outputPath = m.Config().OutputDir
 	if outputPath == "" {
 		outputPath = "output"
 	}
@@ -210,7 +210,7 @@ func resolveServeOutputPath(m *lifecycle.Manager) (string, string) {
 	return outputPath, absOutputPath
 }
 
-func setupWatcher(ctx context.Context, m *lifecycle.Manager, wg *sync.WaitGroup) (chan struct{}, func(), error) {
+func setupWatcher(ctx context.Context, m *lifecycle.Manager, wg *sync.WaitGroup) (rebuildCh chan struct{}, closeWatcher func(), err error) {
 	// Watch is enabled if: --watch is true (default) AND --no-watch is false
 	// --no-watch takes precedence for backward compatibility
 	shouldWatch := serveWatch && !serveNoWatch
@@ -223,7 +223,7 @@ func setupWatcher(ctx context.Context, m *lifecycle.Manager, wg *sync.WaitGroup)
 		return nil, func() {}, fmt.Errorf("failed to create file watcher: %w", err)
 	}
 
-	rebuildCh := make(chan struct{}, 1)
+	rebuildCh = make(chan struct{}, 1)
 
 	// Start watcher goroutine
 	wg.Add(1)
@@ -250,26 +250,26 @@ func setupWatcher(ctx context.Context, m *lifecycle.Manager, wg *sync.WaitGroup)
 	return rebuildCh, func() { _ = watcher.Close() }, nil
 }
 
-func startHTTPServer(addr string, handler http.Handler) (*http.Server, <-chan error, <-chan struct{}) {
-	server := &http.Server{
+func startHTTPServer(addr string, handler http.Handler) (server *http.Server, serverErr <-chan error, serverStarted <-chan struct{}) {
+	server = &http.Server{
 		Addr:              addr,
 		Handler:           handler,
 		ReadHeaderTimeout: serverReadHeaderTimeout,
 	}
 
 	// Start server in goroutine
-	serverErr := make(chan error, 1)
-	serverStarted := make(chan struct{})
+	serverErrCh := make(chan error, 1)
+	serverStartedCh := make(chan struct{})
 	go func() {
 		fmt.Printf("\nServing at http://%s\n", addr)
 		fmt.Println("Press Ctrl+C to stop")
-		close(serverStarted) // Signal that server is ready
+		close(serverStartedCh) // Signal that server is ready
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			serverErr <- err
+			serverErrCh <- err
 		}
 	}()
 
-	return server, serverErr, serverStarted
+	return server, serverErrCh, serverStartedCh
 }
 
 func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.WaitGroup) {
