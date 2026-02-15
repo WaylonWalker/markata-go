@@ -29,6 +29,7 @@ These flags are available for all commands:
 | Flag | Short | Description | Default |
 |------|-------|-------------|---------|
 | `--config` | `-c` | Path to configuration file | Auto-discovered |
+| `--merge-config` | `-m` | Additional config file(s) to merge (can be used multiple times) | None |
 | `--output` | `-o` | Output directory (overrides config) | `public` |
 | `--verbose` | `-v` | Enable verbose output | `false` |
 

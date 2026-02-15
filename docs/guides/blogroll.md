@@ -769,6 +769,63 @@ max_entries = 50              # Override global max_entries_per_feed
 
 ---
 
+## Fast Builds During Development
+
+When working on large sites with many blogroll feeds, fetching external feeds on every build can significantly slow down development. You can use environment variables to temporarily disable the blogroll for faster builds:
+
+### Disable Blogroll via Environment Variable
+
+```bash
+# Build without fetching blogroll feeds
+MARKATA_GO_BLOGROLL_ENABLED=false markata-go build
+
+# Or combine with glob patterns to build just one post
+MARKATA_GO_GLOB_PATTERNS="posts/my-draft.md" MARKATA_GO_BLOGROLL_ENABLED=false markata-go build
+```
+
+### Using a Local .env File
+
+Create a `.env.local` file (and add it to `.gitignore`):
+
+```bash
+# .env.local
+MARKATA_GO_BLOGROLL_ENABLED=false
+```
+
+Then source it before building:
+
+```bash
+source .env.local && markata-go build
+```
+
+### When to Use Fast Builds
+
+**Use fast builds when:**
+- Writing or editing posts (blogroll content doesn't affect your writing)
+- Testing template changes
+- Running local development server
+- Debugging build issues
+
+**Use full builds when:**
+- Deploying to production
+- Testing blogroll template changes
+- Verifying complete site output
+
+### Build Time Impact
+
+Blogroll fetch times depend on:
+- Number of feeds configured
+- Feed response times
+- `concurrent_requests` setting (default: 5 parallel)
+- Cache hit rate
+
+For a blogroll with 20 feeds, expect:
+- **First build:** 5-15 seconds (fetching all feeds)
+- **Cached build:** 0.5-2 seconds (using cached feeds)
+- **Disabled:** 0 seconds (blogroll plugin skipped entirely)
+
+---
+
 ## Next Steps
 
 - [Feeds Guide](/docs/guides/feeds/) - Create feeds from your own content

@@ -257,11 +257,10 @@ palette = "catppuccin-mocha"
 # Optional: different palette for dark mode
 palette_dark = "catppuccin-mocha"
 
-# Optional: override specific CSS variables (applies to generated variables.css)
+# Optional: override specific CSS variables
 [markata-go.theme.variables]
 "--color-primary" = "#8b5cf6"
 "--content-width" = "800px"
-"--content-max-width" = "900px"
 
 # Optional: add custom CSS file
 custom_css = "my-styles.css"
@@ -1321,6 +1320,9 @@ export MARKATA_GO_FEED_DEFAULTS_FORMATS_HTML=true
 export MARKATA_GO_FEED_DEFAULTS_FORMATS_RSS=true
 export MARKATA_GO_FEED_DEFAULTS_SYNDICATION_MAX_ITEMS=50
 export MARKATA_GO_FEED_DEFAULTS_SYNDICATION_INCLUDE_CONTENT=false
+
+# Blogroll settings
+export MARKATA_GO_BLOGROLL_ENABLED=false
 ```
 
 ### Value Formats
@@ -1344,6 +1346,91 @@ MARKATA_GO_URL=https://staging.example.com markata-go build
 # Increase concurrency
 MARKATA_GO_CONCURRENCY=8 markata-go build
 ```
+
+## Multiple Config Files (Config Merging)
+
+You can merge multiple configuration files together using the `--merge-config` (or `-m`) flag. This is useful for:
+
+- **Environment-specific overrides** (e.g., `markata-go.local.toml`)
+- **Fast build configurations** (e.g., `fast-markata-go.toml`)
+- **Temporary overrides** without modifying your main config
+
+### How Config Merging Works
+
+Configs are merged in order, with later configs taking precedence:
+
+1. **Defaults** - Built-in default values
+2. **Base config** - Your main config file (`markata-go.toml`)
+3. **Merge configs** - Each `--merge-config` file, in order
+4. **Environment variables** - `MARKATA_GO_*` vars (highest precedence)
+
+### Example: Fast Build Config
+
+Create a `fast-markata-go.toml` for quick development builds:
+
+```toml
+[markata-go]
+# Only process specific files for fast builds
+glob_patterns = ["posts/draft-*.md"]
+
+[markata-go.blogroll]
+# Disable blogroll for faster builds
+enabled = false
+```
+
+Use it with:
+
+```bash
+# Merge fast config with base config
+markata-go build --merge-config fast-markata-go.toml
+
+# Or use the short flag
+markata-go build -m fast-markata-go.toml
+```
+
+### Example: Multiple Merge Configs
+
+You can specify multiple merge configs. They are applied in order:
+
+```bash
+# Base config + local overrides + debug settings
+markata-go build -m markata-go.local.toml -m debug.toml
+```
+
+### Example: No Base Config
+
+You can use merge configs without a base config (uses defaults as base):
+
+```bash
+# Just use defaults + your override file
+markata-go build -c "" -m fast-markata-go.toml
+```
+
+### Common Merge Config Patterns
+
+**Local Development** (`markata-go.local.toml` - add to `.gitignore`):
+
+```toml
+[markata-go]
+url = "http://localhost:8080"
+concurrency = 2
+
+[markata-go.blogroll]
+enabled = false
+```
+
+**Fast Build** (`fast.toml`):
+
+```toml
+[markata-go]
+# Limit to specific files
+glob_patterns = ["posts/current/**/*.md"]
+
+[markata-go.blogroll]
+enabled = false
+```
+
+**Note on Boolean Fields**: Merging `enabled = false` into a base config with `enabled = true` requires environment variables. Use `MARKATA_GO_BLOGROLL_ENABLED=false` instead.
 
 ## Configuration CLI Commands
 

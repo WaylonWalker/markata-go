@@ -180,6 +180,39 @@ func TestApplyEnvOverrides_NestedFields(t *testing.T) {
 	}
 }
 
+func TestApplyEnvOverrides_BlogrollEnabled(t *testing.T) {
+	tests := []struct {
+		name     string
+		envValue string
+		want     bool
+	}{
+		{"enable blogroll", "true", true},
+		{"disable blogroll", "false", false},
+		{"enable with 1", "1", true},
+		{"disable with 0", "0", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cleanup := setEnvVars(t, map[string]string{
+				"MARKATA_GO_BLOGROLL_ENABLED": tt.envValue,
+			})
+			defer cleanup()
+
+			config := DefaultConfig()
+			// Set to opposite to ensure env var overrides
+			config.Blogroll.Enabled = !tt.want
+			if err := ApplyEnvOverrides(config); err != nil {
+				t.Fatalf("ApplyEnvOverrides() error = %v", err)
+			}
+
+			if config.Blogroll.Enabled != tt.want {
+				t.Errorf("Blogroll.Enabled = %v, want %v for env value %q", config.Blogroll.Enabled, tt.want, tt.envValue)
+			}
+		})
+	}
+}
+
 func TestApplyEnvOverrides_CaseInsensitive(t *testing.T) {
 	// Test that keys are case-insensitive
 	cleanup := setEnvVars(t, map[string]string{
