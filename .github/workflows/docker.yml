@@ -54,7 +54,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata for Docker
+      - name: Extract metadata for Docker (minimal)
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -73,7 +73,26 @@ jobs:
             # Tag with commit SHA
             type=sha,prefix=sha-
 
-      - name: Build and push
+      - name: Extract metadata for Docker (builder)
+        id: meta_builder
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-builder
+          tags: |
+            # Set latest tag for default branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Tag with branch name
+            type=ref,event=branch
+            # Tag with PR number
+            type=ref,event=pr
+            # Tag with semver
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+            # Tag with commit SHA
+            type=sha,prefix=sha-
+
+      - name: Build and push (minimal)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -88,7 +107,23 @@ jobs:
             COMMIT=${{ github.sha }}
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
 
-      - name: Run Trivy vulnerability scanner
+      - name: Build and push (builder)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: builder-runtime
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta_builder.outputs.tags }}
+          labels: ${{ steps.meta_builder.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+
+      - name: Run Trivy vulnerability scanner (minimal)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
@@ -97,10 +132,25 @@ jobs:
           severity: "CRITICAL,HIGH"
         if: github.event_name != 'pull_request'
 
-      - name: Upload Trivy scan results
+      - name: Upload Trivy scan results (minimal)
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: "trivy-results.sarif"
+        if: github.event_name != 'pull_request'
+
+      - name: Run Trivy vulnerability scanner (builder)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-builder:${{ steps.meta_builder.outputs.version }}
+          format: "sarif"
+          output: "trivy-results-builder.sarif"
+          severity: "CRITICAL,HIGH"
+        if: github.event_name != 'pull_request'
+
+      - name: Upload Trivy scan results (builder)
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: "trivy-results-builder.sarif"
         if: github.event_name != 'pull_request'
 
   # Separate job for PR builds - build only, don't push
@@ -116,7 +166,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build image
+      - name: Build image (minimal)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -131,7 +181,23 @@ jobs:
             BUILD_DATE=${{ github.event.pull_request.updated_at }}
           load: true
 
-      - name: Test image
+      - name: Build image (builder)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: builder-runtime
+          platforms: linux/amd64
+          push: false
+          tags: markata-go-builder:pr-${{ github.event.number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=pr-${{ github.event.number }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.pull_request.updated_at }}
+          load: true
+
+      - name: Test image (minimal)
         run: |
           # Test basic functionality
           docker run --rm markata-go:pr-${{ github.event.number }} version
@@ -151,6 +217,11 @@ jobs:
             echo "Error: Image size ${SIZE_MB}MB exceeds 100MB limit"
             exit 1
           fi
+
+      - name: Test image (builder)
+        run: |
+          docker run --rm markata-go-builder:pr-${{ github.event.number }} sh -c "markata-go --help"
+          docker run --rm markata-go-builder:pr-${{ github.event.number }} sh -c "rsync --version"
 
       - name: Run Trivy vulnerability scanner (PR)
         uses: aquasecurity/trivy-action@master

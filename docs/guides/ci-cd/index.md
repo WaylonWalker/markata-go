@@ -42,7 +42,17 @@ The basic CI/CD workflow for markata-go is:
 
 ### Installing markata-go in CI
 
-The recommended way to install markata-go in CI environments is to download the pre-built binary from GitHub releases:
+For container-based CI pipelines, the easiest option is the builder image:
+
+```bash
+docker run --rm \
+  -v "$PWD":/site \
+  -w /site \
+  ghcr.io/waylonwalker/markata-go-builder:latest \
+  sh -c 'markata-go build --clean'
+```
+
+If you prefer installing a binary directly, download the pre-built release:
 
 ```bash
 # Download latest release (Linux x86_64)
