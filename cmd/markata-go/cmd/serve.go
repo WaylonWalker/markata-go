@@ -142,6 +142,47 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	setupServeSignals(cancel)
+
+	// Create manager (config and plugin setup)
+	m, err := createManager(cfgFile)
+	if err != nil {
+		return fmt.Errorf("initialization failed: %w", err)
+	}
+
+	// Determine output directory
+	outputPath, absOutputPath := resolveServeOutputPath(m)
+	serveOutputPath = absOutputPath
+
+	var wg sync.WaitGroup
+	rebuildCh, closeWatcher, err := setupWatcher(ctx, m, &wg)
+	if err != nil {
+		return err
+	}
+	defer closeWatcher()
+
+	// Create HTTP server
+	addr := fmt.Sprintf("%s:%d", serveHost, servePort)
+	handler := createHandler(outputPath)
+
+	server, serverErr, serverStarted := startHTTPServer(addr, handler)
+
+	// Wait for server to start before entering select
+	<-serverStarted
+
+	startInitialBuild(m, rebuildCh, &wg)
+
+	if err := waitForShutdown(ctx, server, serverErr); err != nil {
+		return err
+	}
+
+	waitForGoroutines(&wg)
+
+	fmt.Println("Server stopped")
+	return nil
+}
+
+func setupServeSignals(cancel context.CancelFunc) {
 	// Handle interrupt signals
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
@@ -153,68 +194,63 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 		}
 		cancel()
 	}()
+}
 
-	// Create manager (config and plugin setup)
-	m, err := createManager(cfgFile)
-	if err != nil {
-		return fmt.Errorf("initialization failed: %w", err)
-	}
-
-	// Determine output directory
+func resolveServeOutputPath(m *lifecycle.Manager) (string, string) {
 	outputPath := m.Config().OutputDir
 	if outputPath == "" {
 		outputPath = "output"
 	}
-	// Store the absolute output path for watch filtering
+
 	absOutputPath, err := filepath.Abs(outputPath)
 	if err != nil {
 		absOutputPath = outputPath
 	}
-	serveOutputPath = absOutputPath
 
-	// Start file watcher if enabled
+	return outputPath, absOutputPath
+}
+
+func setupWatcher(ctx context.Context, m *lifecycle.Manager, wg *sync.WaitGroup) (chan struct{}, func(), error) {
 	// Watch is enabled if: --watch is true (default) AND --no-watch is false
 	// --no-watch takes precedence for backward compatibility
 	shouldWatch := serveWatch && !serveNoWatch
-	var watcher *fsnotify.Watcher
-	var rebuildCh chan struct{}
-	var wg sync.WaitGroup
-
-	if shouldWatch {
-		watcher, err = fsnotify.NewWatcher()
-		if err != nil {
-			return fmt.Errorf("failed to create file watcher: %w", err)
-		}
-		defer watcher.Close()
-
-		rebuildCh = make(chan struct{}, 1)
-
-		// Start watcher goroutine
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			watchFiles(ctx, watcher, rebuildCh)
-		}()
-
-		// Start rebuild goroutine
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			handleRebuilds(ctx, rebuildCh)
-		}()
-
-		// Add paths to watch
-		if err := addWatchPaths(watcher, m); err != nil {
-			return fmt.Errorf("failed to setup file watching: %w", err)
-		}
-
-		fmt.Println("Watching for file changes...")
+	if !shouldWatch {
+		return nil, func() {}, nil
 	}
 
-	// Create HTTP server
-	addr := fmt.Sprintf("%s:%d", serveHost, servePort)
-	handler := createHandler(outputPath)
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("failed to create file watcher: %w", err)
+	}
 
+	rebuildCh := make(chan struct{}, 1)
+
+	// Start watcher goroutine
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		watchFiles(ctx, watcher, rebuildCh)
+	}()
+
+	// Start rebuild goroutine
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		handleRebuilds(ctx, rebuildCh)
+	}()
+
+	// Add paths to watch
+	if err := addWatchPaths(watcher, m); err != nil {
+		watcher.Close()
+		return nil, func() {}, fmt.Errorf("failed to setup file watching: %w", err)
+	}
+
+	fmt.Println("Watching for file changes...")
+
+	return rebuildCh, func() { _ = watcher.Close() }, nil
+}
+
+func startHTTPServer(addr string, handler http.Handler) (*http.Server, <-chan error, <-chan struct{}) {
 	server := &http.Server{
 		Addr:              addr,
 		Handler:           handler,
@@ -233,10 +269,10 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 		}
 	}()
 
-	// Wait for server to start before entering select
-	<-serverStarted
+	return server, serverErr, serverStarted
+}
 
-	// Start initial build in background
+func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.WaitGroup) {
 	setBuildStatus(buildStatusBuilding, "")
 	notifyBuildStatus()
 	if verbose {
@@ -270,8 +306,9 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 		fmt.Printf("Built %d posts, %d feeds\n", result.PostsProcessed, result.FeedsGenerated)
 		notifyLiveReload()
 	}()
+}
 
-	// Wait for shutdown or error
+func waitForShutdown(ctx context.Context, server *http.Server, serverErr <-chan error) error {
 	select {
 	case <-ctx.Done():
 		// Graceful shutdown
@@ -294,6 +331,10 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("server error: %w", err)
 	}
 
+	return nil
+}
+
+func waitForGoroutines(wg *sync.WaitGroup) {
 	// Wait for goroutines to finish with timeout
 	activeConnections := liveReloadCount.Load()
 	if verbose || activeConnections > 0 {
@@ -317,9 +358,6 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 			fmt.Printf("Note: Had %d active SSE connections that may not have closed cleanly\n", activeConnections)
 		}
 	}
-
-	fmt.Println("Server stopped")
-	return nil
 }
 
 // createHandler creates an HTTP handler that serves files with live reload injection.
