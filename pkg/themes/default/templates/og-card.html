@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <title>{{ post.title }}</title>
+    <style>
+        /* CSS Custom Properties - Theme Colors */
+        :root {
+            /* Default colors - can be overridden by theme */
+            --og-bg: var(--color-background, #191724);
+            --og-text: var(--color-text, #e0def4);
+            --og-muted: var(--color-text-muted, #908caa);
+            --og-border: var(--color-border, #403d52);
+            --og-surface: var(--color-surface, #1f1d2e);
+
+            /* Gradient colors - themed to match popular palettes */
+            --og-gradient-start: var(--color-error, #eb6f92);
+            --og-gradient-mid: var(--color-accent, #c4a7e7);
+            --og-gradient-end: var(--color-warning, #f6c177);
+
+            /* Font */
+            --og-font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 1200px;
+            height: 630px;
+            overflow: hidden;
+            font-family: var(--og-font);
+        }
+
+        body {
+            background: var(--og-bg);
+            color: var(--og-text);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Main content area */
+        .og-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 48px 64px;
+            padding-bottom: 160px; /* Space for larger footer */
+            overflow: hidden;
+        }
+
+        /* Title with gradient */
+        .og-title {
+            font-weight: 700;
+            line-height: 1.1;
+            background: linear-gradient(to right, var(--og-gradient-start), var(--og-gradient-mid), var(--og-gradient-end));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            max-width: 100%;
+            word-wrap: break-word;
+            hyphens: auto;
+        }
+
+        /* Footer bar - use !important to override any background CSS */
+        .og-footer {
+            position: absolute !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 42px 64px;
+            background: var(--og-surface) !important;
+            border-top: 1px solid var(--og-border);
+            z-index: 100 !important;
+            box-sizing: border-box;
+        }
+
+        .og-author {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .og-avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: var(--og-border);
+        }
+
+        .og-author-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .og-author-name {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--og-text);
+        }
+
+        .og-author-url {
+            font-size: 26px;
+            color: var(--og-muted);
+        }
+
+        .og-date {
+            font-size: 28px;
+            color: var(--og-muted);
+        }
+
+        /* Responsive title sizing based on character count */
+        /* Short titles (< 20 chars) - very large */
+        .title-xs .og-title { font-size: 10rem; }
+        /* Medium titles (20-40 chars) */
+        .title-sm .og-title { font-size: 7rem; }
+        /* Long titles (40-60 chars) */
+        .title-md .og-title { font-size: 5rem; }
+        /* Very long titles (60-100 chars) */
+        .title-lg .og-title { font-size: 3.5rem; }
+        /* Extra long titles (100+ chars) */
+        .title-xl .og-title { font-size: 2.5rem; }
+
+        /* Background decoration styles */
+        {% if config.theme.background.css %}
+        {{ config.theme.background.css | safe }}
+        {% endif %}
+    </style>
+    <!-- Include palette CSS for theme colors -->
+    <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset }}">
+    {% if config.theme.palette %}
+    <link rel="stylesheet" href="/css/palette.css">
+    {% endif %}
+</head>
+<body class="{% if post.title|length < 20 %}title-xs{% elif post.title|length < 40 %}title-sm{% elif post.title|length < 60 %}title-md{% elif post.title|length < 100 %}title-lg{% else %}title-xl{% endif %}">
+    <!-- Background Decorations -->
+    {% if config.theme.background.enabled %}
+    {% for bg in config.theme.background.backgrounds %}
+    {{ bg.html | safe }}
+    {% endfor %}
+    {% endif %}
+
+    <div class="og-container">
+        <h1 class="og-title">{{ post.title }}</h1>
+    </div>
+
+    <footer class="og-footer">
+        <div class="og-author">
+            {% if config.seo.author_image %}
+            <img src="{{ config.seo.author_image }}" alt="{{ config.author }}" class="og-avatar">
+            {% elif config.seo.logo_url %}
+            <img src="{{ config.seo.logo_url }}" alt="{{ config.author }}" class="og-avatar">
+            {% endif %}
+            <div class="og-author-info">
+                <span class="og-author-name">{{ config.author | default:config.title }}</span>
+                <span class="og-author-url">{{ config.url | replace:"https://" | replace:"http://" }}</span>
+            </div>
+        </div>
+        {% if post.date %}
+        <span class="og-date">{{ post.date | date:"January 2, 2006" }}</span>
+        {% endif %}
+    </footer>
+</body>
+</html>
