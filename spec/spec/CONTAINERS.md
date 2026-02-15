@@ -43,6 +43,8 @@ The builder image MUST include:
 The builder image MAY include:
 
 - `git`
+- `libavif-apps` (provides `avifenc`)
+- `libwebp-tools` (provides `cwebp`)
 - `openssh-client` (for rsync over SSH)
 - `tzdata`
 

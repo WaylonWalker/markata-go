@@ -57,6 +57,8 @@ RUN apk add --no-cache \
     findutils \
     gawk \
     git \
+    libavif-apps \
+    libwebp-tools \
     openssh-client \
     rsync \
     tzdata
