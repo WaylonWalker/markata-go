@@ -2,6 +2,7 @@
 package plugins
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -71,11 +72,19 @@ type LinkAvatarsConfig struct {
 	HostedBaseURL string
 }
 
+const (
+	linkAvatarModeJS     = "js"
+	linkAvatarModeLocal  = "local"
+	linkAvatarModeHosted = "hosted"
+
+	linkAvatarIconExtICO = ".ico"
+)
+
 // defaultLinkAvatarsConfig returns the default configuration.
 func defaultLinkAvatarsConfig() LinkAvatarsConfig {
 	return LinkAvatarsConfig{
 		Enabled:         true,
-		Mode:            "js",
+		Mode:            linkAvatarModeJS,
 		Selector:        "a[href^='http']",
 		Service:         "duckduckgo",
 		Template:        "",
@@ -154,7 +163,7 @@ func (p *LinkAvatarsPlugin) Write(m *lifecycle.Manager) error {
 		return fmt.Errorf("writing link-avatars.css: %w", err)
 	}
 
-	if p.config.Mode == "js" {
+	if p.config.Mode == linkAvatarModeJS {
 		// Generate JavaScript
 		jsContent := p.generateJavaScript()
 		jsPath := filepath.Join(assetsDir, "link-avatars.js")
@@ -168,7 +177,7 @@ func (p *LinkAvatarsPlugin) Write(m *lifecycle.Manager) error {
 
 // Render injects build-time avatars for local/hosted modes.
 func (p *LinkAvatarsPlugin) Render(m *lifecycle.Manager) error {
-	if !p.config.Enabled || p.config.Mode == "js" {
+	if !p.config.Enabled || p.config.Mode == linkAvatarModeJS {
 		return nil
 	}
 
@@ -223,6 +232,8 @@ func (p *LinkAvatarsPlugin) generateJavaScript() string {
 		configJSON = []byte("{}")
 	}
 
+	duckduckgoTemplate := "https://icons.duckduckgo.com/ip3/{host}" + linkAvatarIconExtICO
+
 	return `/**
  * Link Avatars - markata-go
  * Adds favicon icons next to external links
@@ -234,7 +245,7 @@ func (p *LinkAvatarsPlugin) generateJavaScript() string {
 
   // Service URL templates
   var serviceTemplates = {
-    'duckduckgo': 'https://icons.duckduckgo.com/ip3/{host}.ico',
+    'duckduckgo': '` + duckduckgoTemplate + `',
     'google': 'https://www.google.com/s2/favicons?domain={host}&sz=' + config.size
   };
 
@@ -464,7 +475,7 @@ func (p *LinkAvatarsPlugin) injectHeadTags(cfg *lifecycle.Config) {
 		Href: "/assets/markata/link-avatars.css",
 	})
 
-	if p.config.Mode == "js" {
+	if p.config.Mode == linkAvatarModeJS {
 		// Add JS script
 		modelsConfig.Head.Script = append(modelsConfig.Head.Script, models.ScriptTag{
 			Src: "/assets/markata/link-avatars.js",
@@ -596,16 +607,16 @@ func (p *LinkAvatarsPlugin) validateConfig() error {
 		return nil
 	}
 	if p.config.Mode == "" {
-		p.config.Mode = "js"
+		p.config.Mode = linkAvatarModeJS
 	}
 
 	switch p.config.Mode {
-	case "js", "local", "hosted":
+	case linkAvatarModeJS, linkAvatarModeLocal, linkAvatarModeHosted:
 	default:
 		return fmt.Errorf("link_avatars mode must be \"js\", \"local\", or \"hosted\"")
 	}
 
-	if p.config.Mode == "hosted" && strings.TrimSpace(p.config.HostedBaseURL) == "" {
+	if p.config.Mode == linkAvatarModeHosted && strings.TrimSpace(p.config.HostedBaseURL) == "" {
 		return fmt.Errorf("link_avatars hosted_base_url is required when mode = \"hosted\"")
 	}
 
@@ -645,9 +656,9 @@ func normalizeOrigin(raw string) string {
 
 func (p *LinkAvatarsPlugin) iconBaseURL() (string, error) {
 	switch p.config.Mode {
-	case "local":
+	case linkAvatarModeLocal:
 		return "/assets/markata/link-avatars", nil
-	case "hosted":
+	case linkAvatarModeHosted:
 		base := strings.TrimRight(p.config.HostedBaseURL, "/")
 		if base == "" {
 			return "", fmt.Errorf("link_avatars hosted_base_url is required when mode = \"hosted\"")
@@ -844,7 +855,11 @@ func (p *LinkAvatarsPlugin) ensureIconForHost(assetsDir, host, origin string) (s
 		return "", err
 	}
 
-	resp, err := p.client.Get(faviconURL)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, faviconURL, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := p.client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -879,7 +894,7 @@ func (p *LinkAvatarsPlugin) faviconURL(host, origin string) (string, error) {
 	case "google":
 		return fmt.Sprintf("https://www.google.com/s2/favicons?domain=%s&sz=%d", host, p.config.Size), nil
 	case "duckduckgo", "":
-		return fmt.Sprintf("https://icons.duckduckgo.com/ip3/%s.ico", host), nil
+		return fmt.Sprintf("https://icons.duckduckgo.com/ip3/%s%s", host, linkAvatarIconExtICO), nil
 	default:
 		return "", fmt.Errorf("unknown link_avatars service %q", service)
 	}
@@ -894,7 +909,7 @@ func replaceTemplatePlaceholders(template, host, origin string) string {
 }
 
 func findCachedIcon(assetsDir, safeHost string) (string, bool) {
-	for _, ext := range []string{".ico", ".png", ".jpg", ".jpeg", ".svg"} {
+	for _, ext := range []string{linkAvatarIconExtICO, ".png", ".jpg", ".jpeg", ".svg"} {
 		fileName := safeHost + ext
 		if _, err := os.Stat(filepath.Join(assetsDir, fileName)); err == nil {
 			return fileName, true
@@ -915,7 +930,7 @@ func iconExtension(contentType, faviconURL string) string {
 			case "image/svg+xml":
 				return ".svg"
 			case "image/x-icon", "image/vnd.microsoft.icon":
-				return ".ico"
+				return linkAvatarIconExtICO
 			}
 		}
 	}
@@ -924,12 +939,12 @@ func iconExtension(contentType, faviconURL string) string {
 	if err == nil {
 		ext := strings.ToLower(path.Ext(parsed.Path))
 		switch ext {
-		case ".png", ".jpg", ".jpeg", ".svg", ".ico":
+		case ".png", ".jpg", ".jpeg", ".svg", linkAvatarIconExtICO:
 			return ext
 		}
 	}
 
-	return ".ico"
+	return linkAvatarIconExtICO
 }
 
 func sanitizeHost(host string) string {
