@@ -76,6 +76,7 @@ Features:
 Example usage:
   markata-go serve              # Serve on localhost:8000 with file watching
   markata-go serve -p 3000      # Serve on localhost:3000
+  markata-go serve -m fast.toml # Serve with merged config overrides
   markata-go serve --watch      # Explicitly enable file watching (default)
   markata-go serve --watch=false # Disable file watching
   markata-go serve --no-watch   # Serve without file watching (legacy flag)

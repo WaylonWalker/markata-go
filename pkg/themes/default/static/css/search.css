@@ -1,6 +1,8 @@
 /* Search Component Styles */
 /* Customizes Pagefind UI to match the site theme */
 
+@layer components {
+
 /* ---- Pre-load placeholder ----
    Before pagefind-ui.js loads, #pagefind-search is an empty div.
    Render it as a search-input lookalike so the navbar isn't bare.
@@ -23,6 +25,27 @@
 .search--navbar {
   margin-left: auto;
   flex-shrink: 0;
+}
+
+.header-controls .search-container--navbar {
+  width: 16rem;
+  max-width: 100%;
+  margin-left: 0;
+  position: relative;
+  z-index: 40;
+}
+
+.header-controls .search-container--navbar #pagefind-search,
+.header-controls .search-container--navbar .pagefind-ui {
+  width: 100%;
+}
+
+.search-container--navbar .pagefind-ui__search-input,
+.search--navbar .pagefind-ui__search-input {
+  width: 100% !important;
+  max-width: 100% !important;
+  color: var(--color-text) !important;
+  background: var(--color-background) !important;
 }
 
 /* Ensure search results dropdown can overflow the header */
@@ -96,18 +119,19 @@
 /* In navbar: position results as dropdown */
 .search-container--navbar .pagefind-ui__drawer,
 .search--navbar .pagefind-ui__drawer {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  width: 600px;
-  max-width: 90vw;
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.15);
-  z-index: 100;
-  max-height: 70vh;
-  overflow-y: auto;
+  position: absolute !important;
+  top: calc(100% + 0.5rem) !important;
+  right: 0 !important;
+  left: auto !important;
+  width: min(36rem, 90vw) !important;
+  max-width: 90vw !important;
+  background: var(--color-background) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.15) !important;
+  z-index: 200 !important;
+  max-height: 70vh !important;
+  overflow-y: auto !important;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 
@@ -183,24 +207,34 @@
 
 /* Mobile responsive */
 @media (max-width: 768px) {
+  .header-controls .search-container--navbar {
+    width: 100%;
+  }
+
   .search-container--navbar,
   .search--navbar {
     width: 100%;
     margin-top: 0.5rem;
   }
 
+  .search-container--navbar #pagefind-search,
+  .search--navbar #pagefind-search,
+  .search-container--navbar .pagefind-ui,
+  .search--navbar .pagefind-ui {
+    width: 100%;
+  }
+
   .search-container--navbar .pagefind-ui__drawer,
   .search--navbar .pagefind-ui__drawer {
-    width: 100%;
-    position: fixed;
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-width: 100%;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
+    position: absolute !important;
+    top: calc(100% + 0.5rem) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 60vh !important;
+    border-radius: 0.5rem !important;
+    bottom: auto !important;
   }
 
   .search-container--navbar::after,
@@ -210,10 +244,10 @@
 
   .pagefind-ui__result,
   .pagefind-ui__result[class*="svelte-"] {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-2);
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: var(--space-2) !important;
   }
 
   .pagefind-ui__result-thumb,
@@ -230,6 +264,11 @@
     height: 48px;
     object-fit: cover;
     border-radius: 999px;
+  }
+
+  .pagefind-ui__result-inner,
+  .pagefind-ui__result-inner[class*="svelte-"] {
+    width: 100%;
   }
 }
 

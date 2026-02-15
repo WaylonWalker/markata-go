@@ -3,6 +3,8 @@
  * Family selector with separate dark/light toggle
  */
 
+@layer components {
+
 .palette-switcher,
 .theme-switcher {
   display: inline-flex !important;
@@ -320,4 +322,6 @@
 .palette-mode-toggle:hover::after,
 .palette-family-btn:hover::after {
   opacity: 1;
+}
+
 }

@@ -2,6 +2,8 @@
    GLightbox Styles
    ========================================================================== */
 
+@layer components {
+
 /* Overlay backdrop -- dark semi-transparent background */
 .goverlay {
   background: rgba(0, 0, 0, 0.92) !important;
@@ -69,6 +71,7 @@
 }
 
 /* Description area */
+
 .glightbox-clean .gslide-description {
   background: var(--color-surface);
   color: var(--color-text);
@@ -96,4 +99,6 @@
 /* Image slides -- no white background behind images */
 .glightbox-clean .gslide-image img {
   background: transparent;
+}
+
 }

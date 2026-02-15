@@ -291,6 +291,9 @@ Start a development server with live reload support.
     # Serve on custom port
     markata-go serve -p 3000
 
+    # Serve with merged config overrides
+    markata-go serve -m fast.toml
+
     # Bind to all interfaces (accessible from network)
     markata-go serve --host 0.0.0.0
 

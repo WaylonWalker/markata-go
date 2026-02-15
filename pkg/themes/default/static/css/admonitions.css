@@ -1,5 +1,7 @@
 /* Admonition Styles - Default Theme */
 
+@layer components {
+
 /* Base admonition styles */
 .admonition {
   margin: var(--space-4) 0;
@@ -581,4 +583,6 @@ details.admonition[open] > summary::before {
     width: 28px;
     height: 28px;
   }
+}
+
 }

@@ -1,6 +1,7 @@
 /* Main Styles - Default Theme */
 /* Note: variables.css is loaded via <link> in base.html - no @import needed */
 
+@layer reset {
 /* Reset */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -13,7 +14,12 @@
 /* Prevent font scaling in landscape on mobile */
 html {
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
+
+}
+
+@layer base {
 
 /* ==========================================================================
    Skip Link (Accessibility)
@@ -40,8 +46,14 @@ html {
 }
 
 .skip-link:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-primary) 30%, #fff);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+@supports (color: color-mix(in srgb, #000 50%, #fff)) {
+  .skip-link:focus-visible {
+    outline-color: color-mix(in srgb, var(--color-primary) 30%, #fff);
+  }
 }
 
 /* Inherit fonts for form elements */
@@ -211,6 +223,11 @@ body {
   flex-direction: column;
 }
 
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
@@ -259,13 +276,13 @@ p {
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--color-link, var(--color-primary));
   text-decoration: none;
   transition: color 0.2s;
 }
 
 a:hover {
-  color: var(--color-primary-dark);
+  color: var(--color-link-hover, var(--color-primary-dark));
   text-decoration: underline;
 }
 
@@ -606,10 +623,9 @@ main.content-bg {
 }
 
 .site-header .container {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  flex-wrap: wrap;
-  justify-content: space-between;
   gap: var(--space-4);
   max-width: var(--page-width);
   margin: 0 auto;
@@ -621,6 +637,8 @@ main.content-bg {
   color: var(--color-text);
   text-decoration: none;
   flex-shrink: 0;
+  grid-column: 1;
+  justify-self: start;
 }
 
 .site-title:hover {
@@ -628,24 +646,6 @@ main.content-bg {
   text-decoration: none;
 }
 
-.site-header .site-nav {
-  display: flex;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-  flex: 1 1 auto;
-  min-width: 0;
-  justify-content: center;
-}
-
-.site-nav a {
-  color: var(--color-text-muted);
-  font-weight: 500;
-}
-
-.site-nav a:hover {
-  color: var(--color-primary);
-  text-decoration: none;
-}
 
 /* Header controls: search + theme switcher - pushed to right on wide, centered when wrapped */
 .header-controls {
@@ -653,43 +653,10 @@ main.content-bg {
   align-items: center;
   gap: var(--space-3);
   flex-shrink: 0;
-  margin-left: auto;
-}
-
-@media (max-width: 768px) {
-  .site-header .container {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .site-title {
-    order: 1;
-    align-self: flex-start;
-  }
-
-  .site-header .site-nav {
-    order: 2;
-    justify-content: flex-start;
-  }
-
-  .header-controls {
-    order: 3;
-    width: 100%;
-    margin-left: 0;
-    justify-content: flex-start;
-  }
-
-  .header-controls .theme-switcher {
-    order: 1;
-  }
-
-  .header-controls .search-container--navbar,
-  .header-controls .search--navbar {
-    order: 2;
-    width: 100%;
-    margin-left: 0;
-  }
+  grid-column: 3;
+  justify-self: end;
+  position: relative;
+  z-index: 30;
 }
 
 /* Footer */
@@ -1343,51 +1310,6 @@ body:has(.background-decoration) div.feed {
    Plugin Styles
    ========================================================================== */
 
-/* Table of Contents (toc plugin) */
-.toc {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  margin: var(--space-6) 0;
-}
-
-.toc-title {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
-  margin-bottom: var(--space-3);
-}
-
-.toc ul {
-  list-style: none;
-  padding-left: 0;
-  margin: 0;
-}
-
-.toc ul ul {
-  padding-left: var(--space-4);
-  margin-top: var(--space-1);
-}
-
-.toc li {
-  margin-bottom: var(--space-1);
-}
-
-.toc a {
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  text-decoration: none;
-  display: block;
-  padding: var(--space-1) 0;
-  transition: color 0.2s;
-}
-
-.toc a:hover {
-  color: var(--color-primary);
-}
 
 /* CSV Tables (csv_fence plugin) */
 .csv-table {
@@ -1423,7 +1345,7 @@ body:has(.background-decoration) div.feed {
 
 /* Glossary Terms (glossary plugin) */
 .glossary-term {
-  color: var(--color-primary);
+  color: var(--color-link, var(--color-primary));
   text-decoration: underline;
   text-decoration-style: dotted;
   text-underline-offset: 3px;
@@ -1433,7 +1355,7 @@ body:has(.background-decoration) div.feed {
 
 .glossary-term:hover {
   text-decoration-style: solid;
-  text-decoration-color: var(--color-primary);
+  text-decoration-color: var(--color-link-hover, var(--color-primary));
 }
 
 /* Mermaid Diagrams (mermaid plugin) */
@@ -1448,7 +1370,7 @@ body:has(.background-decoration) div.feed {
 
 /* Wikilinks (wikilinks plugin) */
 a.wikilink {
-  color: var(--color-primary);
+  color: var(--color-link, var(--color-primary));
 }
 
 a.wikilink.wikilink-missing {
@@ -1538,27 +1460,41 @@ a.wikilink.wikilink-missing {
   }
 
   .site-header .container {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     gap: var(--space-3);
-    justify-content: space-between;
   }
 
-  /* Mobile header stacking: title + controls, then nav full-width */
+  /* Mobile header stacking: title, nav, then controls (search last) */
   .site-title {
     order: 1;
-  }
-
-  .header-controls {
-    order: 2;
+    align-self: center;
+    margin: 0 auto;
+    text-align: center;
   }
 
   .site-header .site-nav {
+    order: 2;
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .header-controls {
     order: 3;
-    flex: 0 0 100%;
+    width: 100%;
+    margin-left: 0;
     justify-content: flex-start;
   }
 
-  /* Header controls wrap with nav */
-  .header-controls {
+  .header-controls .theme-switcher {
+    order: 1;
+  }
+
+  .header-controls .search-container--navbar,
+  .header-controls .search--navbar {
+    order: 2;
+    width: 100%;
     margin-left: 0;
   }
 
@@ -1606,9 +1542,13 @@ a.wikilink.wikilink-missing {
     overflow-x: hidden;
   }
 
+  .post {
+    max-width: 100%;
+  }
+
   /* Reduce article padding on mobile */
   article.post {
-    padding: var(--space-4) var(--space-3);
+    padding: var(--space-4) 0;
   }
 
   .post-nav {
@@ -1658,8 +1598,12 @@ a.wikilink.wikilink-missing {
     gap: var(--space-4);
   }
 
+  .post {
+    max-width: 100%;
+  }
+
   article.post {
-    padding: var(--space-3) var(--space-2);
+    padding: var(--space-3) 0;
   }
 }
 
@@ -1693,12 +1637,18 @@ a.wikilink.wikilink-missing {
     padding: var(--space-2);
   }
 
+  .post {
+    max-width: 100%;
+  }
+
   /* Smaller typography */
   .feed-header h1 {
     font-size: var(--text-xl);
   }
 
   article.post {
-    padding: var(--space-2) var(--space-1);
+    padding: var(--space-2) 0;
   }
+}
+
 }

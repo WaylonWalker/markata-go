@@ -384,6 +384,8 @@ Themes provide the base visual identity. For additional customization, see [HEAD
 
 **Resolution order:** Theme defaults → Theme variables → Head/Style config → Post overrides
 
+Theme variables are applied at build time to the generated `variables.css` and override palette-generated values. This means overrides work consistently even when a palette is enabled.
+
 ---
 
 ## Theme Structure
