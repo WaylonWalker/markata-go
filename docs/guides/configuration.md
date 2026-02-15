@@ -946,6 +946,36 @@ show_social_links = true
 show_nav_links = true
 ```
 
+### Link Avatars (`[markata-go.link_avatars]`)
+
+Add favicon icons next to external links.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Enable link avatars |
+| `mode` | string | `"js"` | `"js"`, `"local"`, or `"hosted"` |
+| `selector` | string | `"a[href^='http']"` | CSS selector for links to enhance |
+| `service` | string | `"duckduckgo"` | Favicon service (`duckduckgo`, `google`, `custom`) |
+| `template` | string | `""` | Custom service template (used when `service = "custom"`) |
+| `size` | int | `16` | Icon size in pixels |
+| `position` | string | `"before"` | `"before"` or `"after"` |
+| `ignore_domains` | string[] | `[]` | Domains to skip |
+| `ignore_origins` | string[] | `[]` | Full origins to skip |
+| `ignore_selectors` | string[] | `[]` | CSS selectors to skip |
+| `ignore_classes` | string[] | `[]` | CSS classes to skip |
+| `ignore_ids` | string[] | `[]` | Element IDs to skip |
+| `hosted_base_url` | string | `""` | Base URL for hosted mode assets |
+
+```toml
+[markata-go.link_avatars]
+enabled = true
+mode = "local"
+service = "duckduckgo"
+size = 16
+position = "before"
+ignore_domains = ["localhost", "127.0.0.1"]
+```
+
 ### Blogroll Configuration (`[markata-go.blogroll]`)
 
 Configure the blogroll and RSS reader functionality to display feeds from blogs you follow.

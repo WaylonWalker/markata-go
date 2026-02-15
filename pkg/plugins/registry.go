@@ -185,6 +185,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewWikilinkHoverPlugin(),     // Add hover data to wikilinks (runs after wikilinks)
 		NewLinkCollectorPlugin(),     // Collect links after markdown rendering
 		NewEncryptionPlugin(),        // Encrypt content for private posts (runs late in Render)
+		NewLinkAvatarsPlugin(),       // Add favicon icons to external links (build-time modes)
 		NewTemplatesPlugin(),
 
 		// Collect stage plugins
@@ -208,7 +209,6 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewWellKnownPlugin(),
 		NewPublishHTMLPlugin(),
 		NewRandomPostPlugin(),  // Generate /random/ client-side redirect endpoint
-		NewLinkAvatarsPlugin(), // Add favicon icons to external links
 		NewRedirectsPlugin(),   // Generate redirect pages
 		NewErrorPagesPlugin(),  // Generate static 404 page
 		NewTagsListingPlugin(), // Generate /tags listing page
