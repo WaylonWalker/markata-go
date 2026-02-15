@@ -13,6 +13,10 @@ var (
 	// cfgFile is the path to the config file specified via --config flag.
 	cfgFile string
 
+	// mergeConfigFiles is a list of additional config files to merge with the base config.
+	// These are applied in order, with later files taking precedence over earlier ones.
+	mergeConfigFiles []string
+
 	// outputDir is the output directory specified via --output flag.
 	outputDir string
 
@@ -114,6 +118,7 @@ func init() {
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file path (default: auto-discover)")
+	rootCmd.PersistentFlags().StringSliceVarP(&mergeConfigFiles, "merge-config", "m", nil, "additional config file(s) to merge with base config (can be specified multiple times)")
 	rootCmd.PersistentFlags().StringVarP(&outputDir, "output", "o", "", "output directory (overrides config)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 

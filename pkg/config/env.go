@@ -160,6 +160,9 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.Encryption.DefaultKey = value
 	case "encryption_decryption_hint":
 		config.Encryption.DecryptionHint = value
+	// Blogroll settings
+	case "blogroll_enabled":
+		config.Blogroll.Enabled = parseBool(value)
 	}
 }
 
