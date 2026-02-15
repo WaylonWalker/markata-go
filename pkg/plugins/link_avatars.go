@@ -2,14 +2,24 @@
 package plugins
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime"
+	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/andybalholm/cascadia"
 )
 
 // LinkAvatarsConfig holds configuration for the link_avatars plugin.
@@ -17,6 +27,10 @@ type LinkAvatarsConfig struct {
 	// Enabled controls whether the plugin is active.
 	// Default: false
 	Enabled bool
+
+	// Mode controls how avatars are applied: "js", "local", or "hosted".
+	// Default: "js"
+	Mode string
 
 	// Selector is the CSS selector for links to enhance.
 	// Default: "a[href^='http']"
@@ -52,12 +66,25 @@ type LinkAvatarsConfig struct {
 	// Position is where to place the avatar: "before" or "after" link text.
 	// Default: "before"
 	Position string
+
+	// HostedBaseURL is the base URL for hosted mode assets.
+	// Used when Mode = "hosted".
+	HostedBaseURL string
 }
+
+const (
+	linkAvatarModeJS     = "js"
+	linkAvatarModeLocal  = "local"
+	linkAvatarModeHosted = "hosted"
+
+	linkAvatarIconExtICO = ".ico"
+)
 
 // defaultLinkAvatarsConfig returns the default configuration.
 func defaultLinkAvatarsConfig() LinkAvatarsConfig {
 	return LinkAvatarsConfig{
 		Enabled:         true,
+		Mode:            linkAvatarModeJS,
 		Selector:        "a[href^='http']",
 		Service:         "duckduckgo",
 		Template:        "",
@@ -68,6 +95,7 @@ func defaultLinkAvatarsConfig() LinkAvatarsConfig {
 		IgnoreIDs:       []string{},
 		Size:            16,
 		Position:        "before",
+		HostedBaseURL:   "",
 	}
 }
 
@@ -75,12 +103,17 @@ func defaultLinkAvatarsConfig() LinkAvatarsConfig {
 // It generates client-side JavaScript and CSS assets that enhance links
 // at runtime in the browser.
 type LinkAvatarsPlugin struct {
-	config LinkAvatarsConfig
+	config     LinkAvatarsConfig
+	siteOrigin string
+	client     *http.Client
 }
 
 // NewLinkAvatarsPlugin creates a new LinkAvatarsPlugin.
 func NewLinkAvatarsPlugin() *LinkAvatarsPlugin {
-	return &LinkAvatarsPlugin{config: defaultLinkAvatarsConfig()}
+	return &LinkAvatarsPlugin{
+		config: defaultLinkAvatarsConfig(),
+		client: &http.Client{Timeout: 10 * time.Second},
+	}
 }
 
 // Name returns the unique name of the plugin.
@@ -91,6 +124,11 @@ func (p *LinkAvatarsPlugin) Name() string {
 // Configure loads plugin configuration from the manager.
 func (p *LinkAvatarsPlugin) Configure(m *lifecycle.Manager) error {
 	p.config = parseLinkAvatarsConfig(m.Config())
+	if err := p.validateConfig(); err != nil {
+		return err
+	}
+
+	p.siteOrigin = getSiteOrigin(m.Config())
 
 	// If enabled, inject head tags during Configure so they're available for templates
 	if p.config.Enabled {
@@ -118,18 +156,57 @@ func (p *LinkAvatarsPlugin) Write(m *lifecycle.Manager) error {
 		return fmt.Errorf("creating link_avatars assets directory: %w", err)
 	}
 
-	// Generate JavaScript
-	jsContent := p.generateJavaScript()
-	jsPath := filepath.Join(assetsDir, "link-avatars.js")
-	if err := os.WriteFile(jsPath, []byte(jsContent), 0o644); err != nil { //nolint:gosec // static JS needs world-readable permissions
-		return fmt.Errorf("writing link-avatars.js: %w", err)
-	}
-
 	// Generate CSS
 	cssContent := p.generateCSS()
 	cssPath := filepath.Join(assetsDir, "link-avatars.css")
 	if err := os.WriteFile(cssPath, []byte(cssContent), 0o644); err != nil { //nolint:gosec // static CSS needs world-readable permissions
 		return fmt.Errorf("writing link-avatars.css: %w", err)
+	}
+
+	if p.config.Mode == linkAvatarModeJS {
+		// Generate JavaScript
+		jsContent := p.generateJavaScript()
+		jsPath := filepath.Join(assetsDir, "link-avatars.js")
+		if err := os.WriteFile(jsPath, []byte(jsContent), 0o644); err != nil { //nolint:gosec // static JS needs world-readable permissions
+			return fmt.Errorf("writing link-avatars.js: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// Render injects build-time avatars for local/hosted modes.
+func (p *LinkAvatarsPlugin) Render(m *lifecycle.Manager) error {
+	if !p.config.Enabled || p.config.Mode == linkAvatarModeJS {
+		return nil
+	}
+
+	outputDir := resolveOutputDir(m.Config())
+	assetsDir := filepath.Join(outputDir, "assets", "markata", "link-avatars")
+	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
+		return fmt.Errorf("creating link_avatars icon directory: %w", err)
+	}
+
+	publicBase, err := p.iconBaseURL()
+	if err != nil {
+		return err
+	}
+
+	iconCache := make(map[string]string)
+
+	posts := m.FilterPosts(func(post *models.Post) bool {
+		if post.Skip || post.ArticleHTML == "" {
+			return false
+		}
+		return true
+	})
+
+	for _, post := range posts {
+		updated, err := p.processHTML(post.ArticleHTML, publicBase, assetsDir, iconCache)
+		if err != nil {
+			return fmt.Errorf("link_avatars render %q: %w", post.Path, err)
+		}
+		post.ArticleHTML = updated
 	}
 
 	return nil
@@ -155,6 +232,8 @@ func (p *LinkAvatarsPlugin) generateJavaScript() string {
 		configJSON = []byte("{}")
 	}
 
+	duckduckgoTemplate := "https://icons.duckduckgo.com/ip3/{host}" + linkAvatarIconExtICO
+
 	return `/**
  * Link Avatars - markata-go
  * Adds favicon icons next to external links
@@ -166,7 +245,7 @@ func (p *LinkAvatarsPlugin) generateJavaScript() string {
 
   // Service URL templates
   var serviceTemplates = {
-    'duckduckgo': 'https://icons.duckduckgo.com/ip3/{host}.ico',
+    'duckduckgo': '` + duckduckgoTemplate + `',
     'google': 'https://www.google.com/s2/favicons?domain={host}&sz=' + config.size
   };
 
@@ -396,10 +475,12 @@ func (p *LinkAvatarsPlugin) injectHeadTags(cfg *lifecycle.Config) {
 		Href: "/assets/markata/link-avatars.css",
 	})
 
-	// Add JS script
-	modelsConfig.Head.Script = append(modelsConfig.Head.Script, models.ScriptTag{
-		Src: "/assets/markata/link-avatars.js",
-	})
+	if p.config.Mode == linkAvatarModeJS {
+		// Add JS script
+		modelsConfig.Head.Script = append(modelsConfig.Head.Script, models.ScriptTag{
+			Src: "/assets/markata/link-avatars.js",
+		})
+	}
 
 	// Also update the head in Extra since ToModelsConfig reads from there
 	// (cfg.Extra["head"] is a copy of modelsConfig.Head made at initialization)
@@ -466,6 +547,9 @@ func applyLinkAvatarsBasicFields(dst *LinkAvatarsConfig, m map[string]any) {
 	if v, ok := m["enabled"].(bool); ok {
 		dst.Enabled = v
 	}
+	if v, ok := m["mode"].(string); ok && strings.TrimSpace(v) != "" {
+		dst.Mode = strings.ToLower(strings.TrimSpace(v))
+	}
 	if v, ok := m["selector"].(string); ok && strings.TrimSpace(v) != "" {
 		dst.Selector = v
 	}
@@ -474,6 +558,9 @@ func applyLinkAvatarsBasicFields(dst *LinkAvatarsConfig, m map[string]any) {
 	}
 	if v, ok := m["template"].(string); ok {
 		dst.Template = v
+	}
+	if v, ok := m["hosted_base_url"].(string); ok {
+		dst.HostedBaseURL = strings.TrimSpace(v)
 	}
 }
 
@@ -515,6 +602,395 @@ func applyLinkAvatarsSizeAndPosition(dst *LinkAvatarsConfig, m map[string]any) {
 	}
 }
 
+func (p *LinkAvatarsPlugin) validateConfig() error {
+	if !p.config.Enabled {
+		return nil
+	}
+	if p.config.Mode == "" {
+		p.config.Mode = linkAvatarModeJS
+	}
+
+	switch p.config.Mode {
+	case linkAvatarModeJS, linkAvatarModeLocal, linkAvatarModeHosted:
+	default:
+		return fmt.Errorf("link_avatars mode must be \"js\", \"local\", or \"hosted\"")
+	}
+
+	if p.config.Mode == linkAvatarModeHosted && strings.TrimSpace(p.config.HostedBaseURL) == "" {
+		return fmt.Errorf("link_avatars hosted_base_url is required when mode = \"hosted\"")
+	}
+
+	return nil
+}
+
+func resolveOutputDir(cfg *lifecycle.Config) string {
+	if cfg == nil || cfg.OutputDir == "" {
+		return defaultOutputDir
+	}
+	return cfg.OutputDir
+}
+
+func getSiteOrigin(cfg *lifecycle.Config) string {
+	if cfg == nil || cfg.Extra == nil {
+		return ""
+	}
+
+	if modelsConfig, ok := cfg.Extra["models_config"].(*models.Config); ok && modelsConfig != nil {
+		return normalizeOrigin(modelsConfig.URL)
+	}
+
+	if urlValue, ok := cfg.Extra["url"].(string); ok {
+		return normalizeOrigin(urlValue)
+	}
+
+	return ""
+}
+
+func normalizeOrigin(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return ""
+	}
+	return parsed.Scheme + "://" + parsed.Host
+}
+
+func (p *LinkAvatarsPlugin) iconBaseURL() (string, error) {
+	switch p.config.Mode {
+	case linkAvatarModeLocal:
+		return "/assets/markata/link-avatars", nil
+	case linkAvatarModeHosted:
+		base := strings.TrimRight(p.config.HostedBaseURL, "/")
+		if base == "" {
+			return "", fmt.Errorf("link_avatars hosted_base_url is required when mode = \"hosted\"")
+		}
+		return base, nil
+	default:
+		return "", fmt.Errorf("link_avatars mode must be \"local\" or \"hosted\" for build-time injection")
+	}
+}
+
+func (p *LinkAvatarsPlugin) processHTML(html, publicBase, assetsDir string, iconCache map[string]string) (string, error) {
+	wrapped := `<div id="__link-avatars-root">` + html + `</div>`
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(wrapped))
+	if err != nil {
+		return html, err
+	}
+
+	root := doc.Find("#__link-avatars-root")
+	if root.Length() == 0 {
+		return html, nil
+	}
+
+	selectors := parseIgnoreSelectors(p.config.IgnoreSelectors)
+	positionClass := "has-avatar-" + p.config.Position
+
+	root.Find(p.config.Selector).Each(func(_ int, link *goquery.Selection) {
+		if link.HasClass("has-avatar") {
+			return
+		}
+
+		href, ok := link.Attr("href")
+		if !ok {
+			return
+		}
+
+		parsed, err := url.Parse(strings.TrimSpace(href))
+		if err != nil || !parsed.IsAbs() {
+			return
+		}
+		if parsed.Scheme != "http" && parsed.Scheme != "https" {
+			return
+		}
+
+		origin := parsed.Scheme + "://" + parsed.Host
+		host := parsed.Hostname()
+		if host == "" {
+			return
+		}
+
+		if shouldIgnoreLink(link, host, origin, p.siteOrigin, selectors, p.config) {
+			return
+		}
+
+		iconURL, ok := iconCache[host]
+		if !ok {
+			fileName, fetchErr := p.ensureIconForHost(assetsDir, host, origin)
+			if fetchErr != nil {
+				return
+			}
+			iconURL = publicBase + "/" + fileName
+			iconCache[host] = iconURL
+		}
+
+		style, _ := link.Attr("style")
+		style = updateStyleAttribute(style, "--favicon-url", fmt.Sprintf(`url(\"%s\")`, iconURL))
+		link.SetAttr("style", style)
+		link.SetAttr("data-favicon", iconURL)
+		link.AddClass("has-avatar")
+		link.AddClass(positionClass)
+	})
+
+	updated, err := root.Html()
+	if err != nil {
+		return html, err
+	}
+
+	return updated, nil
+}
+
+func parseIgnoreSelectors(selectors []string) []cascadia.Sel {
+	if len(selectors) == 0 {
+		return nil
+	}
+
+	parsed := make([]cascadia.Sel, 0, len(selectors))
+	for _, raw := range selectors {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			continue
+		}
+		sel, err := cascadia.Parse(value)
+		if err != nil {
+			continue
+		}
+		parsed = append(parsed, sel)
+	}
+
+	return parsed
+}
+
+func shouldIgnoreLink(link *goquery.Selection, host, origin, siteOrigin string, selectors []cascadia.Sel, cfg LinkAvatarsConfig) bool {
+	if siteOrigin != "" && origin == siteOrigin {
+		return true
+	}
+
+	lowerHost := strings.ToLower(host)
+	for _, domain := range cfg.IgnoreDomains {
+		domain = strings.ToLower(strings.TrimSpace(domain))
+		if domain == "" {
+			continue
+		}
+		if lowerHost == domain || strings.HasSuffix(lowerHost, "."+domain) {
+			return true
+		}
+	}
+
+	for _, ignoredOrigin := range cfg.IgnoreOrigins {
+		ignoredOrigin = strings.TrimSpace(ignoredOrigin)
+		if ignoredOrigin == "" {
+			continue
+		}
+		if origin == ignoredOrigin {
+			return true
+		}
+	}
+
+	for _, className := range cfg.IgnoreClasses {
+		className = strings.TrimSpace(className)
+		if className == "" {
+			continue
+		}
+		if link.HasClass(className) {
+			return true
+		}
+	}
+
+	if hasIgnoredID(link, cfg.IgnoreIDs) {
+		return true
+	}
+
+	if matchesIgnoreSelector(link, selectors) {
+		return true
+	}
+
+	return false
+}
+
+func hasIgnoredID(link *goquery.Selection, ids []string) bool {
+	if len(ids) == 0 {
+		return false
+	}
+	for _, id := range ids {
+		value := strings.TrimSpace(id)
+		if value == "" {
+			continue
+		}
+		selector := "#" + value
+		if link.Is(selector) {
+			return true
+		}
+		if link.ParentsFiltered(selector).Length() > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func matchesIgnoreSelector(link *goquery.Selection, selectors []cascadia.Sel) bool {
+	if len(selectors) == 0 {
+		return false
+	}
+	for _, sel := range selectors {
+		for _, node := range link.Nodes {
+			if sel.Match(node) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (p *LinkAvatarsPlugin) ensureIconForHost(assetsDir, host, origin string) (string, error) {
+	safeHost := sanitizeHost(host)
+	if safeHost == "" {
+		return "", fmt.Errorf("invalid host")
+	}
+
+	if cached, ok := findCachedIcon(assetsDir, safeHost); ok {
+		return cached, nil
+	}
+
+	faviconURL, err := p.faviconURL(host, origin)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, faviconURL, http.NoBody)
+	if err != nil {
+		return "", err
+	}
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("favicon request failed: %s", resp.Status)
+	}
+
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return "", err
+	}
+
+	ext := iconExtension(resp.Header.Get("Content-Type"), faviconURL)
+	fileName := safeHost + ext
+	outputPath := filepath.Join(assetsDir, fileName)
+	if err := os.WriteFile(outputPath, data, 0o644); err != nil { //nolint:gosec // static assets need world-readable permissions
+		return "", err
+	}
+
+	return fileName, nil
+}
+
+func (p *LinkAvatarsPlugin) faviconURL(host, origin string) (string, error) {
+	service := p.config.Service
+	if service == "custom" && strings.TrimSpace(p.config.Template) != "" {
+		return replaceTemplatePlaceholders(p.config.Template, host, origin), nil
+	}
+
+	switch service {
+	case "google":
+		return fmt.Sprintf("https://www.google.com/s2/favicons?domain=%s&sz=%d", host, p.config.Size), nil
+	case "duckduckgo", "":
+		return fmt.Sprintf("https://icons.duckduckgo.com/ip3/%s%s", host, linkAvatarIconExtICO), nil
+	default:
+		return "", fmt.Errorf("unknown link_avatars service %q", service)
+	}
+}
+
+func replaceTemplatePlaceholders(template, host, origin string) string {
+	encodedOrigin := url.QueryEscape(origin)
+	return strings.NewReplacer(
+		"{host}", host,
+		"{origin}", encodedOrigin,
+	).Replace(template)
+}
+
+func findCachedIcon(assetsDir, safeHost string) (string, bool) {
+	for _, ext := range []string{linkAvatarIconExtICO, ".png", ".jpg", ".jpeg", ".svg"} {
+		fileName := safeHost + ext
+		if _, err := os.Stat(filepath.Join(assetsDir, fileName)); err == nil {
+			return fileName, true
+		}
+	}
+	return "", false
+}
+
+func iconExtension(contentType, faviconURL string) string {
+	if contentType != "" {
+		mediaType, _, err := mime.ParseMediaType(contentType)
+		if err == nil {
+			switch mediaType {
+			case "image/png":
+				return ".png"
+			case "image/jpeg":
+				return ".jpg"
+			case "image/svg+xml":
+				return ".svg"
+			case "image/x-icon", "image/vnd.microsoft.icon":
+				return linkAvatarIconExtICO
+			}
+		}
+	}
+
+	parsed, err := url.Parse(faviconURL)
+	if err == nil {
+		ext := strings.ToLower(path.Ext(parsed.Path))
+		switch ext {
+		case ".png", ".jpg", ".jpeg", ".svg", linkAvatarIconExtICO:
+			return ext
+		}
+	}
+
+	return linkAvatarIconExtICO
+}
+
+func sanitizeHost(host string) string {
+	value := strings.ToLower(strings.TrimSpace(host))
+	if value == "" {
+		return ""
+	}
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z':
+			return r
+		case r >= '0' && r <= '9':
+			return r
+		case r == '.' || r == '-':
+			return r
+		default:
+			return '-'
+		}
+	}, value)
+}
+
+func updateStyleAttribute(style, varName, value string) string {
+	style = strings.TrimSpace(style)
+	if strings.Contains(style, varName) {
+		parts := strings.Split(style, ";")
+		filtered := make([]string, 0, len(parts))
+		for _, part := range parts {
+			trimmed := strings.TrimSpace(part)
+			if trimmed == "" {
+				continue
+			}
+			if strings.HasPrefix(trimmed, varName) {
+				continue
+			}
+			filtered = append(filtered, trimmed)
+		}
+		style = strings.Join(filtered, ";")
+	}
+
+	if style != "" && !strings.HasSuffix(style, ";") {
+		style += ";"
+	}
+
+	return style + fmt.Sprintf("%s: %s;", varName, value)
+}
+
 // SetConfig sets the link avatars configuration directly (for testing).
 func (p *LinkAvatarsPlugin) SetConfig(config LinkAvatarsConfig) {
 	p.config = config
@@ -529,5 +1005,6 @@ func (p *LinkAvatarsPlugin) Config() LinkAvatarsConfig {
 var (
 	_ lifecycle.Plugin          = (*LinkAvatarsPlugin)(nil)
 	_ lifecycle.ConfigurePlugin = (*LinkAvatarsPlugin)(nil)
+	_ lifecycle.RenderPlugin    = (*LinkAvatarsPlugin)(nil)
 	_ lifecycle.WritePlugin     = (*LinkAvatarsPlugin)(nil)
 )

@@ -4,12 +4,12 @@ This document specifies the built-in `link_avatars` plugin.
 
 ## Goal
 
-Add small favicon/avatar icons next to external links to improve visual identification of link destinations. The feature is implemented entirely client-side for zero build-time overhead.
+Add small favicon/avatar icons next to external links to improve visual identification of link destinations. The feature supports both client-side and build-time modes.
 
 ## Lifecycle
 
-- **Stage:** `configure` (reads config), `write` (generates assets, injects head tags)
-- **Determinism:** Build output is deterministic; favicon loading happens at runtime in the browser.
+- **Stage:** `configure` (reads config, injects head tags), `render` (build-time injection), `write` (generates assets)
+- **Determinism:** Build output is deterministic; build-time modes cache icons and reuse them across builds.
 
 ## Configuration
 
@@ -18,6 +18,12 @@ Configuration is namespaced under the top-level `markata-go` section.
 ```toml
 [markata-go.link_avatars]
 enabled = true
+
+# Mode: "js" (default), "local", or "hosted"
+# js: client-side enhancement with runtime favicon fetch
+# local: build-time caching, HTML points to site-relative icons
+# hosted: build-time caching, HTML points to hosted_base_url
+mode = "js"
 
 # CSS selector for links to enhance (default: "a[href^='http']")
 selector = "a[href^='http']"
@@ -51,6 +57,9 @@ size = 16
 # Position of the avatar relative to link text (default: "before")
 # Options: "before", "after"
 position = "before"
+
+# Hosted base URL for mode = "hosted"
+# hosted_base_url = "https://cdn.example.com/markata/link-avatars"
 ```
 
 ### Fields
@@ -58,6 +67,7 @@ position = "before"
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Enable/disable the plugin |
+| `mode` | string | `"js"` | Avatar mode: "js", "local", or "hosted" |
 | `selector` | string | `"a[href^='http']"` | CSS selector for links to enhance |
 | `service` | string | `"duckduckgo"` | Avatar service: "duckduckgo", "google", "custom" |
 | `template` | string | `""` | Custom URL template (when service="custom") |
@@ -68,6 +78,7 @@ position = "before"
 | `ignore_ids` | []string | `[]` | Element IDs to skip |
 | `size` | int | `16` | Avatar icon size in pixels |
 | `position` | string | `"before"` | Position: "before" or "after" link text |
+| `hosted_base_url` | string | `""` | Base URL for hosted mode assets |
 
 ### Service Templates
 
@@ -79,9 +90,9 @@ position = "before"
 
 ## Behavior
 
-1. **Link Selection**: The JavaScript finds all links matching the `selector` (default: external links starting with `http`).
+1. **Link Selection**: Links matching the `selector` (default: external links starting with `http`).
 
-2. **Same-Origin Skip**: Links pointing to the same origin as the current page are automatically skipped.
+2. **Same-Origin Skip**: Links pointing to the same origin as the configured site URL are skipped. If no site URL is configured, only the explicit ignore rules apply.
 
 3. **Ignore Rules Applied**: Links are filtered out based on:
    - Domain matches `ignore_domains`
@@ -90,28 +101,32 @@ position = "before"
    - Link has any class in `ignore_classes`
    - Link is inside an element with ID in `ignore_ids`
 
-4. **Avatar Injection**: For qualifying links:
-   - A `data-favicon` attribute is set with the favicon URL
-   - A CSS custom property `--favicon-url` is set for styling
-   - The link gets a `has-avatar` class for CSS targeting
+4. **Avatar Injection**:
+   - **js mode**: client-side JavaScript sets `data-favicon`, `--favicon-url`, and `has-avatar` classes at runtime.
+   - **local/hosted mode**: build-time HTML injection sets `data-favicon`, `--favicon-url`, and `has-avatar` classes.
 
 5. **CSS Styling**: The generated CSS uses `::before` or `::after` pseudo-elements to display the favicon using `background-image`.
+
+6. **Build-Time Caching** (local/hosted): Favicons are downloaded once per host, stored under `assets/markata/link-avatars/`, and reused on subsequent builds.
 
 ## Generated Output
 
 When enabled, the plugin generates:
 
-- `{output_dir}/assets/markata/link-avatars.js` - Client-side JavaScript
 - `{output_dir}/assets/markata/link-avatars.css` - Minimal CSS styles
+- `{output_dir}/assets/markata/link-avatars.js` - Client-side JavaScript (js mode only)
+- `{output_dir}/assets/markata/link-avatars/{host}.ico` - Cached icons (local/hosted modes)
 
-And injects into the HTML `<head>`:
+And injects into the HTML `<head>` (js mode):
 
 ```html
 <link rel="stylesheet" href="/assets/markata/link-avatars.css">
 <script src="/assets/markata/link-avatars.js" defer></script>
 ```
 
-### JavaScript Behavior
+For local/hosted modes, only the CSS link is injected.
+
+### JavaScript Behavior (js mode)
 
 The JavaScript:
 - Runs on `DOMContentLoaded`
@@ -134,7 +149,7 @@ The CSS:
 - If the plugin is disabled (default), it does nothing.
 - If output directories cannot be created or files cannot be written, the plugin returns an error.
 - Invalid favicon URLs gracefully fail (favicon simply doesn't display).
-- Network errors for favicons don't break the page.
+- Network errors for favicon fetches do not stop the build; affected links render without avatars.
 
 ## Example Usage
 
@@ -156,6 +171,24 @@ position = "after"
 ignore_domains = ["localhost", "127.0.0.1"]
 ignore_classes = ["no-favicon", "plain-link"]
 ignore_selectors = ["nav a", ".footer a"]
+```
+
+### Build-Time Local Mode
+
+```toml
+[markata-go.link_avatars]
+enabled = true
+mode = "local"
+service = "duckduckgo"
+```
+
+### Build-Time Hosted Mode
+
+```toml
+[markata-go.link_avatars]
+enabled = true
+mode = "hosted"
+hosted_base_url = "https://cdn.example.com/markata/link-avatars"
 ```
 
 ### Custom Service
