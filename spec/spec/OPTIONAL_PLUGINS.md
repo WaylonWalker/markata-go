@@ -21,6 +21,7 @@ This document specifies optional plugins that extend the static site generator w
 │    └─ wikilink_hover      Hover previews for wikilinks             │
 │                                                                      │
 │  OUTPUT GENERATION                                                   │
+│    ├─ image_optimization  Generate AVIF/WebP images               │
 │    └─ qrcode              Generate QR codes for posts              │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -776,6 +777,70 @@ Output:
 ---
 
 ## Output Generation Plugins
+
+### `image_optimization`
+
+**Stage:** `render` (late, after markdown conversion) + `write`
+
+**Purpose:** Generate AVIF/WebP variants for local images and rewrite HTML to use `<picture>` with stable fallbacks.
+
+**Dependencies:** Optional external encoders (`avifenc`, `cwebp`). Missing encoders should not fail builds.
+
+**Configuration:**
+
+```toml
+[markata-go.image_optimization]
+enabled = true
+formats = ["avif", "webp"]
+quality = 80
+avif_quality = 80
+webp_quality = 80
+cache_dir = ".markata/image-cache"
+avifenc_path = ""                 # Optional explicit path
+cwebp_path = ""                   # Optional explicit path
+```
+
+**Configuration Fields:**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Whether the plugin is active |
+| `formats` | []string | `["avif","webp"]` | Output formats to generate |
+| `quality` | int | `80` | Default quality for all formats |
+| `avif_quality` | int | `80` | AVIF quality override |
+| `webp_quality` | int | `80` | WebP quality override |
+| `cache_dir` | string | `.markata/image-cache` | Cache directory for encode metadata |
+| `avifenc_path` | string | `""` | Path to `avifenc` (auto-detect if empty) |
+| `cwebp_path` | string | `""` | Path to `cwebp` (auto-detect if empty) |
+
+**Behavior:**
+
+1. Scan rendered HTML for `<img>` tags with local `src` values.
+2. Skip external URLs, protocol-relative URLs, and data URIs.
+3. Rewrite each qualifying `<img>` into a `<picture>` element with `source` tags for available formats, keeping the original `<img>` as fallback.
+4. During write, generate requested formats next to the original output image.
+5. Use cache metadata to skip re-encoding unchanged inputs.
+6. If an encoder is missing, warn and skip that format without failing the build.
+
+**Output Files:**
+
+```
+output/
+  images/
+    sample.jpg
+    sample.avif
+    sample.webp
+```
+
+**HTML Output:**
+
+```html
+<picture>
+  <source type="image/avif" srcset="/images/sample.avif">
+  <source type="image/webp" srcset="/images/sample.webp">
+  <img src="/images/sample.jpg" alt="Sample">
+</picture>
+```
 
 ### `qrcode`
 

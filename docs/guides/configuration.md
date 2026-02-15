@@ -680,6 +680,28 @@ theme = "dark"
 
 See the [plugin reference](../reference/plugins.md#mermaid) for full details on lightbox interaction, CSS classes, and theming.
 
+### Image Optimization Settings (`[markata-go.image_optimization]`)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Enable image optimization |
+| `formats` | string[] | `"avif", "webp"` | Output formats to generate |
+| `quality` | int | `80` | Default quality for all formats |
+| `avif_quality` | int | `80` | AVIF quality override |
+| `webp_quality` | int | `80` | WebP quality override |
+| `cache_dir` | string | `.markata/image-cache` | Cache directory for encode metadata |
+| `avifenc_path` | string | `""` | Path to `avifenc` (auto-detect if empty) |
+| `cwebp_path` | string | `""` | Path to `cwebp` (auto-detect if empty) |
+
+```toml
+[markata-go.image_optimization]
+enabled = true
+formats = ["avif", "webp"]
+quality = 80
+```
+
+The plugin only processes local images and skips external URLs or data URIs. Missing encoders do not fail the build.
+
 ### Layout System (`[markata-go.layout]`)
 
 The layout system controls page structure including sidebars, table of contents, headers, and footers. Different layouts can be assigned to different content types.
