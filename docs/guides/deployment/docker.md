@@ -19,6 +19,34 @@ Docker provides a consistent, reproducible environment for building and serving 
 - Docker Compose (optional, for multi-container setups)
 - Your markata-go site ready to build
 
+## Official markata-go Images
+
+markata-go publishes two official container images for different workflows:
+
+- `ghcr.io/waylonwalker/markata-go:<version>`: Minimal runtime image (scratch) that runs the `markata-go` binary directly.
+- `ghcr.io/waylonwalker/markata-go-builder:<version>`: Builder image with `/bin/sh`, core utilities, and `rsync` for CI and publish scripts.
+
+### Builder Image Quick Start
+
+```bash
+docker run --rm \
+  -v "$PWD":/site \
+  -w /site \
+  ghcr.io/waylonwalker/markata-go-builder:latest \
+  sh -c 'markata-go build --clean'
+```
+
+### Builder Image Publish Script
+
+```bash
+docker run --rm \
+  -v "$PWD":/site \
+  -v /webroot:/webroot \
+  -w /site \
+  ghcr.io/waylonwalker/markata-go-builder:latest \
+  sh -c 'set -eu; ts=$(date -u +%Y%m%d%H%M%S); markata-go build --clean; rsync -a --delete public/ /webroot/releases/$ts/; ln -sfn releases/$ts /webroot/current'
+```
+
 ## Cost
 
 | Setup | Cost | Best For |

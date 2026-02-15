@@ -34,6 +34,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | `CONTENT.md` | `docs/guides/markdown.md`, `docs/guides/frontmatter.md` |
 | `PLUGINS.md` | `docs/guides/plugin-development.md`, `docs/reference/plugins.md` |
 | `SPEC.md` (CLI) | `docs/reference/cli.md` |
+| `CONTAINERS.md` | `docs/guides/deployment/docker.md` |
 
 **Documentation lives in `docs/` and is built as part of the site itself.**
 
@@ -43,6 +44,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 |------|-------------|
 | [INSTALL.md](./spec/INSTALL.md) | Entry point with language/library choices |
 | [SPEC.md](./spec/SPEC.md) | Core architecture, CLI, concurrency |
+| [CONTAINERS.md](./spec/CONTAINERS.md) | Container images and runtime environments |
 | [CONFIG.md](./spec/CONFIG.md) | Configuration system, file discovery, env vars, CLI |
 | [THEMES.md](./spec/THEMES.md) | **Theming system, customization, built-in styles** |
 | [LIFECYCLE.md](./spec/LIFECYCLE.md) | 13 build stages, incremental builds |
