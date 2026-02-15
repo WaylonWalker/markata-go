@@ -38,6 +38,39 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 RUN ./markata-go version
 
 # =============================================================================
+# Builder Runtime Stage
+# =============================================================================
+FROM alpine:3.20 AS builder-runtime
+
+# Labels for container registry metadata
+LABEL org.opencontainers.image.title="markata-go-builder"
+LABEL org.opencontainers.image.description="Builder image for markata-go with shell and publish tooling"
+LABEL org.opencontainers.image.url="https://github.com/WaylonWalker/markata-go"
+LABEL org.opencontainers.image.source="https://github.com/WaylonWalker/markata-go"
+LABEL org.opencontainers.image.vendor="Waylon Walker"
+LABEL org.opencontainers.image.licenses="MIT"
+
+# Install shell, TLS roots, and build/publish tooling
+RUN apk add --no-cache \
+    ca-certificates \
+    coreutils \
+    findutils \
+    gawk \
+    git \
+    openssh-client \
+    rsync \
+    tzdata
+
+# Copy the binary
+COPY --from=builder /app/markata-go /usr/local/bin/markata-go
+
+# Set working directory for user content
+WORKDIR /site
+
+# Default command opens a shell for scripts
+CMD ["sh"]
+
+# =============================================================================
 # Runtime Stage
 # =============================================================================
 # Use scratch for the smallest possible runtime image
