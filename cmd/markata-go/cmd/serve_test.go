@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -252,5 +255,41 @@ func TestIsPathWithinDir(t *testing.T) {
 					tt.pathname, tt.dir, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestInjectDevScripts_AddsBannerScript(t *testing.T) {
+	html := "<html><body><h1>Hi</h1></body></html>"
+	status := BuildStatus{Status: buildStatusBuilding}
+
+	updated := injectDevScripts(html, status)
+
+	if !strings.Contains(updated, "markata-build-banner") {
+		t.Error("expected build banner script injection")
+	}
+	if !strings.Contains(updated, "/__livereload") {
+		t.Error("expected live reload EventSource")
+	}
+	if !strings.Contains(updated, `"status":"building"`) {
+		t.Error("expected build status payload")
+	}
+}
+
+func TestServe404Page_FallbackIncludesBanner(t *testing.T) {
+	outputDir := t.TempDir()
+	recorder := httptest.NewRecorder()
+
+	serve404Page(recorder, outputDir, BuildStatus{Status: buildStatusBuilding})
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 status, got %d", recorder.Code)
+	}
+
+	body := recorder.Body.String()
+	if !strings.Contains(body, "Page Not Found") {
+		t.Error("expected fallback 404 content")
+	}
+	if !strings.Contains(body, "markata-build-banner") {
+		t.Error("expected build banner in fallback 404")
 	}
 }
