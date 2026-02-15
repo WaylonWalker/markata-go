@@ -269,6 +269,7 @@ a:hover {
   text-decoration: underline;
 }
 
+
 /* Lists */
 ul, ol {
   margin-bottom: var(--space-4);
@@ -653,6 +654,42 @@ main.content-bg {
   gap: var(--space-3);
   flex-shrink: 0;
   margin-left: auto;
+}
+
+@media (max-width: 768px) {
+  .site-header .container {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .site-title {
+    order: 1;
+    align-self: flex-start;
+  }
+
+  .site-header .site-nav {
+    order: 2;
+    justify-content: flex-start;
+  }
+
+  .header-controls {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .header-controls .theme-switcher {
+    order: 1;
+  }
+
+  .header-controls .search-container--navbar,
+  .header-controls .search--navbar {
+    order: 2;
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 /* Footer */
