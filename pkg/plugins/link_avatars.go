@@ -474,7 +474,7 @@ func (p *LinkAvatarsPlugin) injectHeadTags(cfg *lifecycle.Config) {
 	// Build asset path prefix from site URL path
 	assetPrefix := p.siteURLPath
 	if assetPrefix != "" {
-		assetPrefix = assetPrefix + "/"
+		assetPrefix += "/"
 	}
 
 	// Add CSS link
@@ -691,7 +691,7 @@ func (p *LinkAvatarsPlugin) iconBaseURL() (string, error) {
 	case linkAvatarModeLocal:
 		assetPrefix := p.siteURLPath
 		if assetPrefix != "" {
-			assetPrefix = assetPrefix + "/"
+			assetPrefix += "/"
 		}
 		return assetPrefix + "assets/markata/link-avatars", nil
 	case linkAvatarModeHosted:
