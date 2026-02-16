@@ -92,22 +92,13 @@ func LoadOrRefresh(ctx context.Context, m *lifecycle.Manager, opts Options) erro
 		return err
 	}
 
-	cacheDir := opts.CacheDir
-	if cacheDir == "" {
-		cacheDir = DefaultCacheDir
-	}
-
-	cachePath := filepath.Join(cacheDir, CacheFileName)
+	cachePath := cacheFilePath(opts.CacheDir)
 	cache, err := loadCache(cachePath)
 	if err != nil {
 		return err
 	}
 
-	contentDir := m.Config().ContentDir
-	if contentDir == "" {
-		contentDir = "."
-	}
-
+	contentDir := contentDirFromConfig(m.Config())
 	files, err := discoverFiles(m)
 	if err != nil {
 		return err
@@ -122,52 +113,95 @@ func LoadOrRefresh(ctx context.Context, m *lifecycle.Manager, opts Options) erro
 		return err
 	}
 
+	postsByPath, err := buildPostsFromCache(contentDir, files, changedFiles, cache.Posts, m.Config())
+	if err != nil {
+		return err
+	}
+
+	posts := orderedPosts(files, postsByPath)
+	m.SetPosts(posts)
+
+	if err := setFeeds(m, cache, postsByPath, len(changedFiles) == 0); err != nil {
+		return err
+	}
+
+	refreshCache(&cache, currentFiles, posts, m.Feeds(), contentDir, m.Config().GlobPatterns)
+	return saveCache(cachePath, cache)
+}
+
+func cacheFilePath(cacheDir string) string {
+	if cacheDir == "" {
+		cacheDir = DefaultCacheDir
+	}
+	return filepath.Join(cacheDir, CacheFileName)
+}
+
+func contentDirFromConfig(cfg *lifecycle.Config) string {
+	if cfg == nil || cfg.ContentDir == "" {
+		return "."
+	}
+	return cfg.ContentDir
+}
+
+func buildPostsFromCache(
+	contentDir string,
+	files []string,
+	changed map[string]bool,
+	cached map[string]CachedPost,
+	cfg *lifecycle.Config,
+) (map[string]*models.Post, error) {
 	postsByPath := make(map[string]*models.Post, len(files))
 	for _, file := range files {
-		if cached, ok := cache.Posts[file]; ok && !changedFiles[file] {
-			postsByPath[file] = cachedPostToModel(cached)
+		if cachedPost, ok := cached[file]; ok && !changed[file] {
+			postsByPath[file] = cachedPostToModel(cachedPost)
 		}
 	}
 
-	if len(changedFiles) > 0 {
-		updated, err := loadChangedPosts(contentDir, changedFiles)
-		if err != nil {
-			return err
-		}
-		applyTransforms(m.Config(), updated)
-		for _, post := range updated {
-			postsByPath[post.Path] = post
-		}
+	if len(changed) == 0 {
+		return postsByPath, nil
 	}
 
+	updated, err := loadChangedPosts(contentDir, changed)
+	if err != nil {
+		return nil, err
+	}
+	if err := applyTransforms(cfg, updated); err != nil {
+		return nil, err
+	}
+	for _, post := range updated {
+		postsByPath[post.Path] = post
+	}
+	return postsByPath, nil
+}
+
+func orderedPosts(files []string, postsByPath map[string]*models.Post) []*models.Post {
 	posts := make([]*models.Post, 0, len(files))
 	for _, file := range files {
 		if post, ok := postsByPath[file]; ok {
 			posts = append(posts, post)
 		}
 	}
+	return posts
+}
 
-	m.SetPosts(posts)
-	useCachedFeeds := len(changedFiles) == 0 && cache.ConfigHash == opts.ConfigHash && len(cache.Feeds) > 0
-	if useCachedFeeds {
+func setFeeds(m *lifecycle.Manager, cache Cache, postsByPath map[string]*models.Post, useCached bool) error {
+	if useCached && len(cache.Feeds) > 0 {
 		m.SetFeeds(cachedFeedsToModel(cache.Feeds, postsByPath))
-	} else {
-		if err := rebuildFeeds(m); err != nil {
-			return err
-		}
+		return nil
 	}
+	return rebuildFeeds(m)
+}
 
-	cache.Files = currentFiles
+func refreshCache(cache *Cache, files map[string]FileInfo, posts []*models.Post, feeds []*lifecycle.Feed, contentDir string, patterns []string) {
+	cache.Files = files
 	cache.Posts = make(map[string]CachedPost, len(posts))
 	for _, post := range posts {
 		cache.Posts[post.Path] = modelToCachedPost(post)
 	}
-	cache.Feeds = modelToCachedFeeds(m.Feeds())
+	cache.Feeds = modelToCachedFeeds(feeds)
 	cache.GeneratedAt = time.Now()
 	cache.ContentDir = contentDir
-	cache.GlobPatterns = append([]string{}, m.Config().GlobPatterns...)
-
-	return saveCache(cachePath, cache)
+	cache.GlobPatterns = append([]string{}, patterns...)
 }
 
 func newCache(configHash, contentDir string, patterns []string) Cache {
@@ -244,15 +278,15 @@ func discoverFiles(m *lifecycle.Manager) ([]string, error) {
 	return m.Files(), nil
 }
 
-func diffFiles(files []string, contentDir string, cached map[string]FileInfo) (map[string]FileInfo, map[string]bool, error) {
-	current := make(map[string]FileInfo, len(files))
-	changed := make(map[string]bool)
+func diffFiles(files []string, contentDir string, cached map[string]FileInfo) (current map[string]FileInfo, changed map[string]bool, err error) {
+	current = make(map[string]FileInfo, len(files))
+	changed = make(map[string]bool)
 
 	for _, file := range files {
 		fullPath := filepath.Join(contentDir, file)
-		stat, err := os.Stat(fullPath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("stat %s: %w", file, err)
+		stat, statErr := os.Stat(fullPath)
+		if statErr != nil {
+			return nil, nil, fmt.Errorf("stat %s: %w", file, statErr)
 		}
 
 		info := FileInfo{ModTime: stat.ModTime().UnixNano(), Size: stat.Size()}
@@ -282,9 +316,9 @@ func loadChangedPosts(contentDir string, changed map[string]bool) ([]*models.Pos
 	return posts, nil
 }
 
-func applyTransforms(cfg *lifecycle.Config, posts []*models.Post) {
+func applyTransforms(cfg *lifecycle.Config, posts []*models.Post) error {
 	if len(posts) == 0 {
-		return
+		return nil
 	}
 
 	m := lifecycle.NewManager()
@@ -292,15 +326,27 @@ func applyTransforms(cfg *lifecycle.Config, posts []*models.Post) {
 	m.SetPosts(posts)
 
 	autoTitle := plugins.NewAutoTitlePlugin()
-	_ = autoTitle.Transform(m)
+	if err := autoTitle.Transform(m); err != nil {
+		return err
+	}
 
 	description := plugins.NewDescriptionPlugin()
-	_ = description.Configure(m)
-	_ = description.Transform(m)
+	if err := description.Configure(m); err != nil {
+		return err
+	}
+	if err := description.Transform(m); err != nil {
+		return err
+	}
 
 	stats := plugins.NewStatsPlugin()
-	_ = stats.Configure(m)
-	_ = stats.Transform(m)
+	if err := stats.Configure(m); err != nil {
+		return err
+	}
+	if err := stats.Transform(m); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func rebuildFeeds(m *lifecycle.Manager) error {
@@ -315,10 +361,7 @@ func rebuildFeeds(m *lifecycle.Manager) error {
 	if err := plugins.NewAutoFeedsPlugin().Collect(m); err != nil {
 		return err
 	}
-	if err := plugins.NewFeedsPlugin().Collect(m); err != nil {
-		return err
-	}
-	return nil
+	return plugins.NewFeedsPlugin().Collect(m)
 }
 
 func baseFeedConfigs(m *lifecycle.Manager) []models.FeedConfig {
@@ -342,9 +385,7 @@ func cloneFeedConfigs(feeds []models.FeedConfig) []models.FeedConfig {
 		return nil
 	}
 	clone := make([]models.FeedConfig, len(feeds))
-	for i := range feeds {
-		clone[i] = feeds[i]
-	}
+	copy(clone, feeds)
 	return clone
 }
 

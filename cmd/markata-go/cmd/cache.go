@@ -11,10 +11,7 @@ import (
 )
 
 func configFilesHash(cfgPath string, mergeFiles []string) (string, error) {
-	paths, err := resolveConfigPaths(cfgPath, mergeFiles)
-	if err != nil {
-		return "", err
-	}
+	paths := resolveConfigPaths(cfgPath, mergeFiles)
 	if len(paths) == 0 {
 		return "", nil
 	}
@@ -29,7 +26,7 @@ func configFilesHash(cfgPath string, mergeFiles []string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func resolveConfigPaths(cfgPath string, mergeFiles []string) ([]string, error) {
+func resolveConfigPaths(cfgPath string, mergeFiles []string) []string {
 	paths := make([]string, 0, 1+len(mergeFiles))
 	basePath := cfgPath
 	if basePath == "" {
@@ -42,7 +39,7 @@ func resolveConfigPaths(cfgPath string, mergeFiles []string) ([]string, error) {
 		paths = append(paths, basePath)
 	}
 	paths = append(paths, mergeFiles...)
-	return paths, nil
+	return paths
 }
 
 func hashFile(w io.Writer, path string) error {
