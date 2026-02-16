@@ -572,6 +572,177 @@ func TestEmbedsPlugin_Interfaces(_ *testing.T) {
 	var _ lifecycle.PriorityPlugin = p
 }
 
+func TestEmbedsPlugin_AttachmentEmbed(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	m.SetPosts([]*models.Post{
+		{
+			Path:    "test.md",
+			Slug:    "test",
+			Content: "Here is my photo: ![[photo.jpg]]",
+		},
+	})
+
+	p := NewEmbedsPlugin()
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	posts := m.Posts()
+	if posts[0].Content != "Here is my photo: ![photo.jpg](/static/photo.jpg)" {
+		t.Errorf("expected attachment embed converted, got: %s", posts[0].Content)
+	}
+}
+
+func TestEmbedsPlugin_AttachmentEmbed_WithAltText(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	m.SetPosts([]*models.Post{
+		{
+			Path:    "test.md",
+			Slug:    "test",
+			Content: "Here is my photo: ![[photo.jpg|Custom Alt Text]]",
+		},
+	})
+
+	p := NewEmbedsPlugin()
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	posts := m.Posts()
+	if posts[0].Content != "Here is my photo: ![Custom Alt Text](/static/photo.jpg)" {
+		t.Errorf("expected attachment embed with alt text, got: %s", posts[0].Content)
+	}
+}
+
+func TestEmbedsPlugin_AttachmentEmbed_NotInternalEmbed(t *testing.T) {
+	targetTitle := "Target Post"
+	targetPost := &models.Post{
+		Path:        "target.md",
+		Slug:        "target-post",
+		Title:       &targetTitle,
+		Description: strPtr("A target post"),
+	}
+
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{
+		{
+			Path:    "test.md",
+			Slug:    "test",
+			Content: "Link to ![[target-post]]",
+		},
+		targetPost,
+	})
+
+	p := NewEmbedsPlugin()
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	posts := m.Posts()
+	for _, post := range posts {
+		if post.Slug == "test" {
+			if !containsString(post.Content, "embed-card") {
+				t.Errorf("expected internal embed card, got: %s", post.Content)
+			}
+		}
+	}
+}
+
+func TestEmbedsPlugin_AttachmentEmbed_InCodeBlock(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	m.SetPosts([]*models.Post{
+		{
+			Path:    "test.md",
+			Slug:    "test",
+			Content: "Text\n\n```\n![[photo.jpg]]\n```\n\nMore text",
+		},
+	})
+
+	p := NewEmbedsPlugin()
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	posts := m.Posts()
+	if !containsString(posts[0].Content, "![[photo.jpg]]") {
+		t.Errorf("expected attachment embed NOT processed in code block, got: %s", posts[0].Content)
+	}
+}
+
+func TestEmbedsPlugin_AttachmentEmbed_CustomPrefix(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	m.SetPosts([]*models.Post{
+		{
+			Path:    "test.md",
+			Slug:    "test",
+			Content: "Photo: ![[image.png]]",
+		},
+	})
+
+	p := NewEmbedsPlugin()
+	p.SetConfig(models.EmbedsConfig{
+		Enabled:           true,
+		AttachmentsPrefix: "/attachments/",
+	})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	posts := m.Posts()
+	if !containsString(posts[0].Content, "/attachments/image.png") {
+		t.Errorf("expected custom prefix, got: %s", posts[0].Content)
+	}
+}
+
+func TestEmbedsPlugin_AttachmentEmbed_OtherExtensions(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"png", "![[image.png]]", "![image.png](/static/image.png)"},
+		{"gif", "![[animation.gif]]", "![animation.gif](/static/animation.gif)"},
+		{"svg", "![[diagram.svg]]", "![diagram.svg](/static/diagram.svg)"},
+		{"pdf", "![[document.pdf]]", "![document.pdf](/static/document.pdf)"},
+		{"jpeg", "![[photo.jpeg]]", "![photo.jpeg](/static/photo.jpeg)"},
+		{"webp", "![[image.webp]]", "![image.webp](/static/image.webp)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := lifecycle.NewManager()
+			m.SetPosts([]*models.Post{
+				{
+					Path:    "test.md",
+					Slug:    "test",
+					Content: tt.input,
+				},
+			})
+
+			p := NewEmbedsPlugin()
+			err := p.Transform(m)
+			if err != nil {
+				t.Fatalf("Transform failed: %v", err)
+			}
+
+			posts := m.Posts()
+			if posts[0].Content != tt.expected {
+				t.Errorf("expected %s, got: %s", tt.expected, posts[0].Content)
+			}
+		})
+	}
+}
+
 // Helper function
 func containsString(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || s != "" && containsStringHelper(s, substr))
