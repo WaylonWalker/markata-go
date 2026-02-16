@@ -167,6 +167,30 @@ These CSS custom properties can be overridden:
 | `--content-width` | Max content width | `720px` |
 | `--font-family` | Body font | System fonts |
 | `--font-family-mono` | Code font | Monospace fonts |
+| `--article-progress-height` | Sticky article progress bar height | `4px` |
+| `--article-progress-track` | Background for the empty progress track | `color-mix(in srgb, var(--color-text) 90%, transparent 60%)` |
+| `--article-progress-start` | Gradient start color for the filled portion | `var(--color-primary)` |
+| `--article-progress-end` | Gradient end color for the filled portion | `color-mix(in srgb, var(--color-primary) 40%, var(--color-primary-light, var(--color-primary)) 60%)` |
+| `--article-progress-glow` | Glow color around the indicator | `color-mix(in srgb, var(--color-primary) 70%, transparent 50%)` |
+
+---
+
+## Article Reading Progress Indicator
+
+Each article page renders a slim, sticky progress track (`.article-progress`) that follows the reader as they scroll. The indicator is powered by the `initArticleProgressIndicator` script, which throttles scroll events with `requestAnimationFrame` and updates the fill amount by transforming `.article-progress__indicator`. The track is hidden on non-post pages and honors `prefers-reduced-motion` via CSS.
+
+Override the CSS variables above to tune the look. Example:
+
+```toml
+[markata-go.theme.variables]
+"--article-progress-height" = "5px"
+"--article-progress-track" = "rgba(255, 255, 255, 0.35)"
+"--article-progress-start" = "#facc15"
+"--article-progress-end" = "#fb923c"
+"--article-progress-glow" = "rgba(250, 204, 21, 0.8)"
+```
+
+Because the indicator is just another element in the post template, you can also restyle it by targeting `.article-progress` and `.article-progress__indicator` from a custom CSS file loaded via `markata-go.theme.custom_css`.
 
 ---
 
