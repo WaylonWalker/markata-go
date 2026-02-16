@@ -917,18 +917,20 @@ orphan_threshold = 3
 
 [feed_defaults.formats]
 html = true
+simple_html = true
 rss = true
 atom = true
 json = true
 sitemap = true
 
-# Define custom feeds
-# [[feeds]]
-# slug = "blog"
-# title = "Blog Posts"
-# filter = "published == true"
-# sort = "date"
-# reverse = true
+# Default feed
+[[feeds]]
+slug = "archive"
+title = "Archive"
+description = "All posts"
+filter = "published == true"
+sort = "date"
+reverse = true
 `
 
 const defaultConfigYAML = `# Markata-go configuration file
@@ -964,18 +966,20 @@ feed_defaults:
   orphan_threshold: 3
   formats:
     html: true
+    simple_html: true
     rss: true
     atom: true
     json: true
     sitemap: true
 
-# Define custom feeds
-# feeds:
-#   - slug: blog
-#     title: Blog Posts
-#     filter: "published == true"
-#     sort: date
-#     reverse: true
+# Default feed
+feeds:
+  - slug: archive
+    title: Archive
+    description: All posts
+    filter: "published == true"
+    sort: date
+    reverse: true
 `
 
 const defaultConfigJSON = `{
@@ -1001,12 +1005,22 @@ const defaultConfigJSON = `{
     "orphan_threshold": 3,
     "formats": {
       "html": true,
+      "simple_html": true,
       "rss": true,
       "atom": true,
       "json": true,
       "sitemap": true
     }
   },
-  "feeds": []
+  "feeds": [
+    {
+      "slug": "archive",
+      "title": "Archive",
+      "description": "All posts",
+      "filter": "published == true",
+      "sort": "date",
+      "reverse": true
+    }
+  ]
 }
 `
