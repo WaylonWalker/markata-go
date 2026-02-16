@@ -346,6 +346,30 @@ Content for post %d`, i, i, i)
 	}
 }
 
+func TestPostIncludesArticleProgressIndicator(t *testing.T) {
+	site := newTestSite(t)
+	site.addPost("progress.md", `---
+title: Progress Indicator
+slug: progress
+published: true
+---
+# Reading Progress
+
+This post is long enough to trigger the reading progress indicator.
+
+`)
+
+	site.build()
+
+	content := site.readFile("progress/index.html")
+	if !strings.Contains(content, "article-progress__indicator") {
+		t.Errorf("expected article progress markup in post output")
+	}
+	if !strings.Contains(content, "initArticleProgressIndicator") {
+		t.Errorf("expected progress initializer script to be rendered")
+	}
+}
+
 // =============================================================================
 // Feed Format Tests (from tests.yaml feed_formats)
 // =============================================================================

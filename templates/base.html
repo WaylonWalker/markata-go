@@ -425,6 +425,56 @@
   <script src="{{ 'js/decryption.js' | theme_asset_hashed }}" defer></script>
   {% endif %}
 
+  <script>
+    (function initArticleProgressIndicator() {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      var indicator = document.querySelector('.article-progress__indicator');
+      var article = document.querySelector('article.post');
+      if (!indicator || !article) {
+        return;
+      }
+
+      var raf = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (cb) { return window.setTimeout(cb, 16); };
+      var scheduled = false;
+      var lastValue = -1;
+
+      function clamp(value, min, max) {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+      }
+
+      function refresh() {
+        scheduled = false;
+        var rect = article.getBoundingClientRect();
+        var articleTop = window.scrollY + rect.top;
+        var articleHeight = Math.max(rect.height, 1);
+        var viewportBottom = window.scrollY + window.innerHeight;
+        var ratio = clamp((viewportBottom - articleTop) / articleHeight, 0, 1);
+        if (Math.abs(ratio - lastValue) < 0.001) {
+          return;
+        }
+        lastValue = ratio;
+        indicator.style.transform = 'scaleX(' + ratio + ')';
+      }
+
+      function schedule() {
+        if (scheduled) {
+          return;
+        }
+        scheduled = true;
+        raf(refresh);
+      }
+
+      window.addEventListener('scroll', schedule, { passive: true });
+      window.addEventListener('resize', schedule);
+      schedule();
+    })();
+  </script>
+
    {% include "partials/background-scripts.html" %}
 </body>
 </html>

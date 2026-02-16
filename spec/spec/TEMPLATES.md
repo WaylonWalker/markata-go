@@ -852,10 +852,37 @@ Single post templates MUST include `h-entry` markup:
   {% for tag in post.tags %}
   <a class="p-category" href="/tags/{{ tag | slugify }}/">{{ tag }}</a>
   {% endfor %}
-  <span class="p-author h-card" hidden>
+<span class="p-author h-card" hidden>
     <a class="u-url p-name" href="{{ config.url }}">{{ config.author }}</a>
-  </span>
+</span>
 </article>
+
+### Article Reading Progress Indicator
+
+To reinforce long-form reading flows, the default blog layout renders a sticky progress track before the `<article>` content. This indicator updates smoothly as the visitor scrolls and only appears on article pages (`article.post`). The markup looks like:
+
+```html
+<div class="article-progress" role="presentation" aria-hidden="true">
+  <span class="article-progress__indicator"></span>
+</div>
+```
+
+The CSS uses the following variables to control appearance (these default to palette-aware values defined in `variables.css`, but they can be overridden at `[markata-go.theme.variables]`):
+
+| Variable | Purpose |
+|----------|---------|
+| `--article-progress-height` | Track thickness (default `4px`). |
+| `--article-progress-track` | Background for the empty track. |
+| `--article-progress-start` / `--article-progress-end` | Gradient for the filled portion. |
+| `--article-progress-glow` | Subtle glow applied to the indicator for depth. |
+
+JavaScript (the `initArticleProgressIndicator` initializer) keeps the indicator in sync with the viewport. It:
+
+1. Locates `.article-progress__indicator` and `article.post`; aborts early when either is missing.
+2. Computes progress as `clamp((window.innerHeight + scrollY - articleTop) / articleHeight, 0, 1)` so the indicator is full once the viewport reaches the bottom of the article.
+3. Uses `requestAnimationFrame` to throttle updates and avoids redundant DOM writes when the ratio is unchanged.
+4. Attaches `scroll` and `resize` listeners with `{ passive: true }`.
+5. Respects `prefers-reduced-motion` by delegating transition control to CSS (`@media (prefers-reduced-motion: reduce)` disables the transform animation). 
 ```
 
 ### Feed Pages (h-feed)
