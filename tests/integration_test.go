@@ -201,6 +201,83 @@ Content here`)
 	}
 }
 
+func TestLinkAvatars_RootAbsoluteAssetsOnNestedPage(t *testing.T) {
+	site := newTestSite(t)
+	site.addPost("instant-pot-chicken-teriyaki.md", `---
+title: Instant Pot Chicken Teriyaki
+slug: instant-pot-chicken-teriyaki
+published: true
+---
+Content here`)
+
+	m := lifecycle.NewManager()
+	cfg := &lifecycle.Config{
+		ContentDir:   site.contentDir,
+		OutputDir:    site.outputDir,
+		GlobPatterns: []string{"**/*.md"},
+		Extra:        make(map[string]interface{}),
+	}
+	cfg.Extra["models_config"] = &models.Config{URL: "https://recipes.waylonwalker.com"}
+	cfg.Extra["link_avatars"] = map[string]any{
+		"enabled": true,
+		"mode":    "js",
+	}
+	m.SetConfig(cfg)
+
+	templatesPlugin := plugins.NewTemplatesPlugin()
+	if err := templatesPlugin.Configure(m); err != nil {
+		t.Fatalf("templates configure failed: %v", err)
+	}
+
+	m.RegisterPlugin(plugins.NewStaticAssetsPlugin())
+	m.RegisterPlugin(plugins.NewLinkAvatarsPlugin())
+	m.RegisterPlugin(plugins.NewGlobPlugin())
+	m.RegisterPlugin(plugins.NewLoadPlugin())
+	m.RegisterPlugin(plugins.NewRenderMarkdownPlugin())
+	m.RegisterPlugin(templatesPlugin)
+	m.RegisterPlugin(plugins.NewPublishHTMLPlugin())
+
+	if err := m.Run(); err != nil {
+		t.Fatalf("build failed: %v", err)
+	}
+
+	html := site.readFile("instant-pot-chicken-teriyaki/index.html")
+	if strings.Contains(html, `href="css/`) || strings.Contains(html, `src="js/`) {
+		t.Fatalf("expected root-absolute asset links, got %s", html)
+	}
+	if !strings.Contains(html, `href="/css/link-avatars.`) {
+		t.Fatalf("expected hashed link-avatars css href, got %s", html)
+	}
+	if !strings.Contains(html, `src="/js/link-avatars.`) {
+		t.Fatalf("expected hashed link-avatars js src, got %s", html)
+	}
+	if strings.Contains(html, "/assets/markata/link-avatars.css") || strings.Contains(html, "/assets/markata/link-avatars.js") {
+		t.Fatalf("unexpected link-avatars asset paths in html: %s", html)
+	}
+
+	if !site.fileExists("css/link-avatars.css") {
+		t.Fatalf("expected css asset at output/css/link-avatars.css")
+	}
+	if !site.fileExists("js/link-avatars.js") {
+		t.Fatalf("expected js asset at output/js/link-avatars.js")
+	}
+
+	cssMatches, err := filepath.Glob(filepath.Join(site.outputDir, "css", "link-avatars.*.css"))
+	if err != nil {
+		t.Fatalf("glob css hashes: %v", err)
+	}
+	if len(cssMatches) == 0 {
+		t.Fatalf("expected hashed css copy to exist")
+	}
+	jsMatches, err := filepath.Glob(filepath.Join(site.outputDir, "js", "link-avatars.*.js"))
+	if err != nil {
+		t.Fatalf("glob js hashes: %v", err)
+	}
+	if len(jsMatches) == 0 {
+		t.Fatalf("expected hashed js copy to exist")
+	}
+}
+
 func TestOutputStructure_FeedOutputPath(t *testing.T) {
 	// Test case: "feed output path"
 	// Feed with slug "archive" should output to output/archive/index.html
