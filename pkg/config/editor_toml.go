@@ -1,6 +1,9 @@
+//go:build cgo
+
 package config
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -44,7 +47,10 @@ func setTomlValue(data []byte, path []KeySegment, value any) ([]byte, error) {
 func findTomlValueNode(data []byte, path []KeySegment) (*sitter.Node, error) {
 	parser := sitter.NewParser()
 	parser.SetLanguage(tstoml.GetLanguage())
-	tree := parser.Parse(nil, data)
+	tree, err := parser.ParseCtx(context.Background(), nil, data)
+	if err != nil {
+		return nil, err
+	}
 	root := tree.RootNode()
 
 	currentTable := []KeySegment{}
@@ -74,10 +80,13 @@ func findTomlValueNode(data []byte, path []KeySegment) (*sitter.Node, error) {
 func findTomlInsertPosition(data []byte, tablePath []KeySegment) (int, []KeySegment, bool) {
 	parser := sitter.NewParser()
 	parser.SetLanguage(tstoml.GetLanguage())
-	tree := parser.Parse(nil, data)
+	tree, err := parser.ParseCtx(context.Background(), nil, data)
+	if err != nil {
+		return len(data), tablePath, len(tablePath) == 0
+	}
 	root := tree.RootNode()
 
-	currentTable := []KeySegment{}
+	var currentTable []KeySegment
 	arrayIndices := make(map[string]int)
 	insertPos := len(data)
 	found := len(tablePath) == 0

@@ -96,10 +96,7 @@ func runPalettePickCommand(_ *cobra.Command, _ []string) error {
 }
 
 func setPaletteInConfig(configPath, paletteName string) error {
-	if err := config.SetValueInFile(configPath, "theme.palette", paletteName); err != nil {
-		return err
-	}
-	return nil
+	return config.SetValueInFile(configPath, "theme.palette", paletteName)
 }
 
 // --------------------------------------------------------------------
