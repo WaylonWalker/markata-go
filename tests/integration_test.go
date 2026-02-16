@@ -94,7 +94,6 @@ func (s *testSite) build() *lifecycle.Manager {
 	m.RegisterPlugin(plugins.NewGlobPlugin())
 	m.RegisterPlugin(plugins.NewLoadPlugin())
 	m.RegisterPlugin(plugins.NewRenderMarkdownPlugin())
-	m.RegisterPlugin(plugins.NewTemplatesPlugin())
 	m.RegisterPlugin(plugins.NewPublishHTMLPlugin())
 
 	// Run build
