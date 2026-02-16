@@ -114,15 +114,15 @@ position = "before"
 
 When enabled, the plugin generates:
 
-- `{output_dir}/assets/markata/link-avatars.css` - Minimal CSS styles
-- `{output_dir}/assets/markata/link-avatars.js` - Client-side JavaScript (js mode only)
+- `{output_dir}/css/link-avatars.css` - Minimal CSS styles
+- `{output_dir}/js/link-avatars.js` - Client-side JavaScript (js mode only)
 - `{output_dir}/assets/markata/link-avatars/{host}.ico` - Cached icons (local/hosted modes)
 
 And injects into the HTML `<head>` (js mode):
 
 ```html
-<link rel="stylesheet" href="/assets/markata/link-avatars.css">
-<script src="/assets/markata/link-avatars.js" defer></script>
+<link rel="stylesheet" href="/css/link-avatars.css">
+<script src="/js/link-avatars.js" defer></script>
 ```
 
 For local/hosted modes, only the CSS link is injected.
