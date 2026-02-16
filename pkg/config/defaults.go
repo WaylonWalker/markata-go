@@ -13,19 +13,22 @@ func DefaultConfig() *models.Config {
 		AssetsDir:    "static",
 		Hooks:        []string{"default"},
 		GlobConfig: models.GlobConfig{
-			Patterns:     []string{"**/*.md"},
+			Patterns:     []string{"pages/**/*.md", "posts/**/*.md"},
 			UseGitignore: true,
 		},
-		FeedDefaults: models.FeedDefaults{
-			ItemsPerPage:    10,
-			OrphanThreshold: 3,
-			Formats: models.FeedFormats{
-				HTML: true,
-				RSS:  true,
+		Feeds: []models.FeedConfig{
+			{
+				Slug:        "archive",
+				Title:       "Archive",
+				Description: "All posts",
+				Filter:      "published == true",
+				Sort:        "date",
+				Reverse:     true,
 			},
 		},
-		WellKnown:  models.NewWellKnownConfig(),
-		WebSub:     models.NewWebSubConfig(),
-		Encryption: models.NewEncryptionConfig(),
+		FeedDefaults: models.NewFeedDefaults(),
+		WellKnown:    models.NewWellKnownConfig(),
+		WebSub:       models.NewWebSubConfig(),
+		Encryption:   models.NewEncryptionConfig(),
 	}
 }

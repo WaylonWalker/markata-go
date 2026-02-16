@@ -589,7 +589,7 @@ concurrency = 0                   # Worker threads (0 = auto)
 
 ```toml
 [my-ssg.glob]
-patterns = ["**/*.md"]            # File patterns to match
+patterns = ["pages/**/*.md", "posts/**/*.md"] # File patterns to match
 use_gitignore = true              # Respect .gitignore
 exclude = ["node_modules/**"]     # Patterns to exclude
 ```
@@ -616,17 +616,20 @@ orphan_threshold = 3
 
 [my-ssg.feeds.defaults.formats]
 html = true
+simple_html = true
 rss = true
-atom = false
-json = false
+atom = true
+json = true
+sitemap = true
 
 [my-ssg.feeds.syndication]
 max_items = 20
 include_content = false
 
 [[my-ssg.feeds]]
-slug = "blog"
-title = "Blog"
+slug = "archive"
+title = "Archive"
+description = "All posts"
 filter = "published == True"
 sort = "date"
 reverse = true
