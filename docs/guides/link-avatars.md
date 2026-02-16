@@ -207,10 +207,12 @@ When enabled, the plugin creates:
 
 ```
 output/
+├── css/
+│   └── link-avatars.css  # Styling
+├── js/
+│   └── link-avatars.js   # Client-side JavaScript (js mode only)
 └── assets/
     └── markata/
-        ├── link-avatars.css  # Styling
-        ├── link-avatars.js   # Client-side JavaScript (js mode only)
         └── link-avatars/     # Cached icons (local/hosted modes)
             └── example.com.ico
 ```
