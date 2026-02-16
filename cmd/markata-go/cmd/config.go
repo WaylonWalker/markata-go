@@ -405,14 +405,16 @@ func isKeyInMap(m map[string]interface{}, key string) bool {
 func runConfigGetCommand(_ *cobra.Command, args []string) error {
 	key := args[0]
 
-	// Load configuration
-	cfg, err := config.Load(cfgFile)
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+	configPath := cfgFile
+	if configPath == "" {
+		var err error
+		configPath, err = config.Discover()
+		if err != nil {
+			return fmt.Errorf("no config file found (use -c to specify one or run 'config init' first): %w", err)
+		}
 	}
 
-	// Get value by key (supports dot notation)
-	value, err := getConfigValue(cfg, key)
+	value, err := config.GetValueFromFile(configPath, key)
 	if err != nil {
 		return err
 	}
@@ -616,31 +618,10 @@ func runConfigSetCommand(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	// Read existing config file
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read config file %s: %w", configPath, err)
-	}
-
-	// Determine format from extension
-	format := formatFromPath(configPath)
-
-	// Parse to generic map for modification
-	configMap, err := parseConfigToMap(data, format)
-	if err != nil {
-		return fmt.Errorf("failed to parse config file: %w", err)
-	}
-
 	// Parse the value with automatic type detection
 	parsedValue := parseValue(value)
 
-	// Get the old value for display
-	oldValue := getMapValue(configMap, key)
-
-	// Set the value in the map
-	if err := setMapValue(configMap, key, parsedValue); err != nil {
-		return fmt.Errorf("failed to set value: %w", err)
-	}
+	oldValue, _ := config.GetValueFromFile(configPath, key)
 
 	// If dry-run, just show what would change
 	if configSetDryRun {
@@ -659,15 +640,8 @@ func runConfigSetCommand(_ *cobra.Command, args []string) error {
 		fmt.Printf("Created backup: %s\n", backupPath)
 	}
 
-	// Marshal back to the original format
-	newData, err := marshalConfigMap(configMap, format)
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	// Write the updated config
-	if err := os.WriteFile(configPath, newData, 0o644); err != nil { //nolint:gosec // config files should be readable
-		return fmt.Errorf("failed to write config file: %w", err)
+	if err := config.SetValueInFile(configPath, key, parsedValue); err != nil {
+		return fmt.Errorf("failed to set value: %w", err)
 	}
 
 	fmt.Printf("Updated %s in %s\n", key, configPath)

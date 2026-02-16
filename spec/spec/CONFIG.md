@@ -475,6 +475,13 @@ $ my-ssg config get glob.patterns
 ["**/*.md"]
 
 $ my-ssg config get glob.patterns --json
+
+Behavior:
+
+- Reads values directly from the config file to preserve source-of-truth behavior.
+- Supports TOML, YAML, and JSON.
+- Uses tree-sitter parsing for TOML/YAML to locate byte ranges without reformatting.
+- JSON output may be re-emitted for structured values.
 ["**/*.md"]
 ```
 
@@ -486,6 +493,12 @@ Set a value (writes to local config file):
 $ my-ssg config set output_dir public
 $ my-ssg config set feeds.defaults.items_per_page 20
 $ my-ssg config set glob.patterns '["posts/*.md", "pages/*.md"]'
+
+Behavior:
+
+- TOML/YAML are updated with byte-range edits to preserve formatting and comments.
+- JSON is re-emitted with stable indentation.
+- File permissions are preserved.
 ```
 
 ### `config init`
