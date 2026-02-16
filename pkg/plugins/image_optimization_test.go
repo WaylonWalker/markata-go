@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -87,7 +88,8 @@ func TestImageOptimization_ResolveOutputPath_Relative(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveImageOutputPath error: %v", err)
 	}
-	if !strings.HasSuffix(path, "output/post/images/cat.jpg") {
+	normalized := filepath.ToSlash(path)
+	if !strings.HasSuffix(normalized, "output/post/images/cat.jpg") {
 		t.Fatalf("unexpected output path: %s", path)
 	}
 }
