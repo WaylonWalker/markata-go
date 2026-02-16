@@ -44,8 +44,8 @@ Output HTML:
 
 ```html
 <picture>
-  <source type="image/avif" srcset="/images/cat.avif">
-  <source type="image/webp" srcset="/images/cat.webp">
+  <source type="image/avif" srcset="/images/cat-480w.avif 480w, /images/cat-960w.avif 960w" sizes="100vw">
+  <source type="image/webp" srcset="/images/cat-480w.webp 480w, /images/cat-960w.webp 960w" sizes="100vw">
   <img src="/images/cat.jpg" alt="Cat">
 </picture>
 ```
@@ -61,6 +61,8 @@ formats = ["avif", "webp"]
 quality = 80
 avif_quality = 80
 webp_quality = 80
+widths = [480, 960]
+sizes = "100vw"
 cache_dir = ".markata/image-cache"
 avifenc_path = ""
 cwebp_path = ""
