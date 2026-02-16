@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -96,30 +95,10 @@ func runPalettePickCommand(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-// paletteLineRe matches an uncommented palette = "..." line in TOML config,
-// capturing the leading whitespace and quoting style so only the value is replaced.
-var paletteLineRe = regexp.MustCompile(`(?m)^(\s*palette\s*=\s*)"[^"]*"(.*)$`)
-
-// setPaletteInConfig surgically replaces the palette value in a config file
-// without reformatting or removing comments.
 func setPaletteInConfig(configPath, paletteName string) error {
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read config %s: %w", configPath, err)
+	if err := config.SetValueInFile(configPath, "theme.palette", paletteName); err != nil {
+		return err
 	}
-
-	content := string(data)
-
-	if !paletteLineRe.MatchString(content) {
-		return fmt.Errorf("no uncommented palette = \"...\" line found in %s", configPath)
-	}
-
-	updated := paletteLineRe.ReplaceAllString(content, `${1}"`+paletteName+`"${2}`)
-
-	if err := os.WriteFile(configPath, []byte(updated), 0o644); err != nil { //nolint:gosec // config files should be readable
-		return fmt.Errorf("failed to write config %s: %w", configPath, err)
-	}
-
 	return nil
 }
 

@@ -757,6 +757,39 @@ markata-go config get url -c production.toml
 # Output: https://example.com
 ```
 
+Notes:
+
+- Values are read directly from the config file.
+- TOML/YAML are parsed with tree-sitter to preserve formatting.
+- JSON values may be re-emitted for structured output.
+
+##### set
+
+Set a configuration value using dot notation for nested keys.
+
+```bash
+markata-go config set <key> <value>
+```
+
+**Examples:**
+
+```bash
+# Set a string value
+markata-go config set url "https://example.com"
+
+# Set an integer value
+markata-go config set concurrency 4
+
+# Set an array value (JSON syntax)
+markata-go config set glob.patterns '["posts/**/*.md", "pages/*.md"]'
+```
+
+Notes:
+
+- TOML/YAML are updated with byte-range edits to preserve formatting and comments.
+- JSON is re-emitted with stable indentation.
+- File permissions are preserved.
+
 ##### validate
 
 Validate the configuration file and report any errors or warnings.
