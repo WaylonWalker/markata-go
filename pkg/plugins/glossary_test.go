@@ -530,6 +530,9 @@ func TestGlossaryPlugin_ProcessPost_SkipExcludedTags(t *testing.T) {
 }
 
 func TestGlossaryPlugin_Render_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	p := NewGlossaryPlugin()
 	m := lifecycle.NewManager()
 
