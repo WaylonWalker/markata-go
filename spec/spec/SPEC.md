@@ -567,6 +567,19 @@ Flags:
 
 ---
 
+### `list`
+
+List posts, tags, or feeds for quick inspection and scripting.
+
+```bash
+[name] list posts [flags]
+[name] list tags [flags]
+[name] list feeds [flags]
+[name] list feeds posts <feed-name>
+```
+
+See `CLI_LIST.md` for full behavior, formats, and sorting rules.
+
 ## Development Server
 
 ### Features

@@ -307,6 +307,65 @@ markata-go tui
 
 ---
 
+### list
+
+List posts, tags, or feeds in table, JSON, CSV, or path-only formats.
+
+#### Usage
+
+```bash
+markata-go list posts [flags]
+markata-go list tags [flags]
+markata-go list feeds [flags]
+markata-go list feeds posts <feed>
+```
+
+#### Shared Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--format` | Output format: `table`, `json`, `csv`, `path` | `table` |
+| `--sort` | Sort field (varies by subcommand) | posts: `date`, tags: `count`, feeds: `name` |
+| `--order` | Sort order: `asc` or `desc` | posts/tags: `desc`, feeds: `asc` |
+
+#### Posts Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--filter` | Filter expression for posts | none |
+| `--feed` | Limit posts to a feed by name | none |
+
+#### Examples
+
+```bash
+# List posts as a table
+markata-go list posts
+
+# Path-only output for piping
+markata-go list posts --format path
+
+# List tags as JSON
+markata-go list tags --format json
+
+# List feeds as CSV
+markata-go list feeds --format csv
+
+# List posts for a feed
+markata-go list posts --feed blog
+
+# List posts for a feed
+markata-go list feeds posts blog
+
+# List post paths for a feed
+markata-go list feeds posts blog --format path
+```
+
+#### Cache
+
+`list` and `tui` use a persistent cache at `.markata/cache/list.json`. Delete this file to force a full refresh.
+
+---
+
 ### init
 
 Initialize a new markata-go project with interactive setup.

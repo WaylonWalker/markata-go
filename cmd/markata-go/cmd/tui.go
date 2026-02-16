@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
+	"github.com/WaylonWalker/markata-go/pkg/listcache"
 	"github.com/WaylonWalker/markata-go/pkg/services"
 	"github.com/WaylonWalker/markata-go/pkg/tui"
 )
@@ -44,6 +45,14 @@ func runTUI(cmd *cobra.Command, _ []string) error {
 
 	// Create services app
 	app := services.NewApp(manager)
+	configHash, err := configFilesHash(cfgFile, mergeConfigFiles)
+	if err != nil {
+		return err
+	}
+	listcache.SetOptions(manager, listcache.Options{
+		CacheDir:   listcache.DefaultCacheDir,
+		ConfigHash: configHash,
+	})
 
 	// Load posts through Collect stage for full TUI functionality
 	// This runs Transform (for stats, auto-titles) and Collect (for feeds)
