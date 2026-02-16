@@ -310,7 +310,7 @@ series_order: 1                   # Optional explicit ordering
 1. Scan all posts for `series` frontmatter
 2. Group posts by series name (slugified)
 3. Sort posts within each series by `series_order` (if set) or by date ascending
-4. Set guide navigation (Prev/Next pointers) on each post
+4. Set guide navigation (Prev/Next pointers) on published posts
 5. Set `PrevNextContext` with position info (part X of Y)
 6. Build `FeedConfig` entries with `FeedTypeSeries` type
 7. Inject configs into `config.Extra["feeds"]` for the `feeds` plugin to process

@@ -1315,6 +1315,42 @@ sort = "date"
 reverse = true
 ```
 
+### Series Settings (`[markata-go.series]`)
+
+Series automatically generate ordered feed pages and navigation from `series` frontmatter.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `slug_prefix` | string | `"series"` | URL prefix for series feeds (e.g., `/series/<name>/`) |
+| `auto_sidebar` | bool | `true` | Auto-enable the series sidebar on series posts |
+| `defaults` | object | see below | Default settings for all series feeds |
+| `overrides` | map[string]object | `{}` | Per-series overrides (keyed by series slug or name) |
+
+```toml
+[markata-go.series]
+slug_prefix = "series"
+auto_sidebar = true
+
+[markata-go.series.defaults]
+items_per_page = 0
+sidebar = true
+
+[markata-go.series.defaults.formats]
+html = true
+simple_html = true
+rss = true
+atom = true
+json = true
+sitemap = true
+
+[markata-go.series.overrides."building-a-rest-api"]
+title = "Building a REST API with Go"
+description = "A complete guide from zero to production"
+
+[markata-go.series.overrides."building-a-rest-api".formats]
+markdown = true
+```
+
 ## Environment Variable Overrides
 
 All configuration options can be overridden via environment variables using the `MARKATA_GO_` prefix.

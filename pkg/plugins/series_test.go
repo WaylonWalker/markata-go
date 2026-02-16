@@ -81,15 +81,18 @@ func TestSeriesPlugin_BasicSeries(t *testing.T) {
 
 	post1 := &models.Post{
 		Path: "part1.md", Slug: "part1", Title: strPtr("Part 1"), Date: &date1,
-		Extra: map[string]interface{}{"series": "building-rest-api"},
+		Published: true,
+		Extra:     map[string]interface{}{"series": "building-rest-api"},
 	}
 	post2 := &models.Post{
 		Path: "part2.md", Slug: "part2", Title: strPtr("Part 2"), Date: &date2,
-		Extra: map[string]interface{}{"series": "building-rest-api"},
+		Published: true,
+		Extra:     map[string]interface{}{"series": "building-rest-api"},
 	}
 	post3 := &models.Post{
 		Path: "part3.md", Slug: "part3", Title: strPtr("Part 3"), Date: &date3,
-		Extra: map[string]interface{}{"series": "building-rest-api"},
+		Published: true,
+		Extra:     map[string]interface{}{"series": "building-rest-api"},
 	}
 
 	m.SetPosts([]*models.Post{post3, post1, post2}) // out of order
@@ -202,15 +205,18 @@ func TestSeriesPlugin_ExplicitOrder(t *testing.T) {
 	// Posts with explicit order, reversed from date order
 	post1 := &models.Post{
 		Path: "setup.md", Slug: "setup", Title: strPtr("Setup"), Date: &date3,
-		Extra: map[string]interface{}{"series": "tutorial", "series_order": 1},
+		Published: true,
+		Extra:     map[string]interface{}{"series": "tutorial", "series_order": 1},
 	}
 	post2 := &models.Post{
 		Path: "basics.md", Slug: "basics", Title: strPtr("Basics"), Date: &date1,
-		Extra: map[string]interface{}{"series": "tutorial", "series_order": 2},
+		Published: true,
+		Extra:     map[string]interface{}{"series": "tutorial", "series_order": 2},
 	}
 	post3 := &models.Post{
 		Path: "advanced.md", Slug: "advanced", Title: strPtr("Advanced"), Date: &date2,
-		Extra: map[string]interface{}{"series": "tutorial", "series_order": 3},
+		Published: true,
+		Extra:     map[string]interface{}{"series": "tutorial", "series_order": 3},
 	}
 
 	m.SetPosts([]*models.Post{post3, post2, post1}) // random order
@@ -253,16 +259,19 @@ func TestSeriesPlugin_MixedOrder(t *testing.T) {
 	// Some posts have explicit order, others don't
 	post1 := &models.Post{
 		Path: "intro.md", Slug: "intro", Title: strPtr("Intro"), Date: &date3,
-		Extra: map[string]interface{}{"series": "guide", "series_order": 1},
+		Published: true,
+		Extra:     map[string]interface{}{"series": "guide", "series_order": 1},
 	}
 	post2 := &models.Post{
 		Path: "setup.md", Slug: "setup", Title: strPtr("Setup"), Date: &date1,
-		Extra: map[string]interface{}{"series": "guide", "series_order": 2},
+		Published: true,
+		Extra:     map[string]interface{}{"series": "guide", "series_order": 2},
 	}
 	// No series_order - should come after ordered posts, sorted by date
 	post3 := &models.Post{
 		Path: "extra.md", Slug: "extra", Title: strPtr("Extra"), Date: &date2,
-		Extra: map[string]interface{}{"series": "guide"},
+		Published: true,
+		Extra:     map[string]interface{}{"series": "guide"},
 	}
 
 	m.SetPosts([]*models.Post{post3, post1, post2})
@@ -301,13 +310,13 @@ func TestSeriesPlugin_MultipleSeries(t *testing.T) {
 	date2 := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
 
 	m.SetPosts([]*models.Post{
-		{Path: "go1.md", Slug: "go1", Title: strPtr("Go Part 1"), Date: &date1,
+		{Path: "go1.md", Slug: "go1", Title: strPtr("Go Part 1"), Date: &date1, Published: true,
 			Extra: map[string]interface{}{"series": "learn-go"}},
-		{Path: "go2.md", Slug: "go2", Title: strPtr("Go Part 2"), Date: &date2,
+		{Path: "go2.md", Slug: "go2", Title: strPtr("Go Part 2"), Date: &date2, Published: true,
 			Extra: map[string]interface{}{"series": "learn-go"}},
-		{Path: "py1.md", Slug: "py1", Title: strPtr("Python Part 1"), Date: &date2,
+		{Path: "py1.md", Slug: "py1", Title: strPtr("Python Part 1"), Date: &date2, Published: true,
 			Extra: map[string]interface{}{"series": "learn-python"}},
-		{Path: "py2.md", Slug: "py2", Title: strPtr("Python Part 2"), Date: &date1,
+		{Path: "py2.md", Slug: "py2", Title: strPtr("Python Part 2"), Date: &date1, Published: true,
 			Extra: map[string]interface{}{"series": "learn-python"}},
 	})
 
@@ -359,7 +368,8 @@ func TestSeriesPlugin_SinglePost(t *testing.T) {
 	date := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	post := &models.Post{
 		Path: "solo.md", Slug: "solo", Title: strPtr("Solo Post"), Date: &date,
-		Extra: map[string]interface{}{"series": "one-part"},
+		Published: true,
+		Extra:     map[string]interface{}{"series": "one-part"},
 	}
 	m.SetPosts([]*models.Post{post})
 
@@ -402,7 +412,8 @@ func TestSeriesPlugin_ConfigOverride(t *testing.T) {
 	date := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	m.SetPosts([]*models.Post{
 		{Path: "p1.md", Slug: "p1", Title: strPtr("P1"), Date: &date,
-			Extra: map[string]interface{}{"series": "my-series"}},
+			Published: true,
+			Extra:     map[string]interface{}{"series": "my-series"}},
 	})
 
 	config := lifecycle.NewConfig()
@@ -444,7 +455,8 @@ func TestSeriesPlugin_CustomSlugPrefix(t *testing.T) {
 	date := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	m.SetPosts([]*models.Post{
 		{Path: "p1.md", Slug: "p1", Title: strPtr("P1"), Date: &date,
-			Extra: map[string]interface{}{"series": "my-series"}},
+			Published: true,
+			Extra:     map[string]interface{}{"series": "my-series"}},
 	})
 
 	config := lifecycle.NewConfig()
@@ -477,7 +489,8 @@ func TestSeriesPlugin_DefaultsConfig(t *testing.T) {
 	date := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	m.SetPosts([]*models.Post{
 		{Path: "p1.md", Slug: "p1", Title: strPtr("P1"), Date: &date,
-			Extra: map[string]interface{}{"series": "test"}},
+			Published: true,
+			Extra:     map[string]interface{}{"series": "test"}},
 	})
 
 	config := lifecycle.NewConfig()
@@ -517,7 +530,8 @@ func TestSeriesPlugin_PreservesExistingFeeds(t *testing.T) {
 	date := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	m.SetPosts([]*models.Post{
 		{Path: "p1.md", Slug: "p1", Title: strPtr("P1"), Date: &date,
-			Extra: map[string]interface{}{"series": "test"}},
+			Published: true,
+			Extra:     map[string]interface{}{"series": "test"}},
 		{Path: "p2.md", Slug: "p2", Title: strPtr("P2"), Date: &date, Tags: []string{"go"}},
 	})
 
@@ -563,9 +577,11 @@ func TestSeriesPlugin_NameNormalization(t *testing.T) {
 	// Different posts use different casings of the same series name
 	m.SetPosts([]*models.Post{
 		{Path: "p1.md", Slug: "p1", Title: strPtr("P1"), Date: &date,
-			Extra: map[string]interface{}{"series": "My Series"}},
+			Published: true,
+			Extra:     map[string]interface{}{"series": "My Series"}},
 		{Path: "p2.md", Slug: "p2", Title: strPtr("P2"), Date: &date,
-			Extra: map[string]interface{}{"series": "my-series"}},
+			Published: true,
+			Extra:     map[string]interface{}{"series": "my-series"}},
 	})
 
 	plugin := NewSeriesPlugin()

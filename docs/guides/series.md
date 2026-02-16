@@ -277,6 +277,8 @@ When a post belongs to a series:
 
 Posts with `published: false` are excluded from the series feed output but still count for ordering purposes. Prev/next links skip unpublished posts.
 
+Private posts are treated as unpublished for series navigation and output.
+
 ### Single-Post Series
 
 A series with one post is valid. No prev/next navigation is generated, but the sidebar and index page are still created.
