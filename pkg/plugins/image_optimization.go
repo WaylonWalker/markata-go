@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -36,6 +37,8 @@ type ImageOptimizationConfig struct {
 	Quality     int
 	AvifQuality int
 	WebpQuality int
+	Widths      []int
+	Sizes       string
 	CacheDir    string
 	AvifencPath string
 	CwebpPath   string
@@ -46,11 +49,17 @@ type imageOptimizationTarget struct {
 	PostSlug string
 }
 
+type imageOptimizationVariant struct {
+	Width int
+	Path  string
+}
+
 type imageOptimizationCacheEntry struct {
 	SourcePath    string `json:"source_path"`
 	SourceSize    int64  `json:"source_size"`
 	SourceModTime int64  `json:"source_mod_time"`
 	Format        string `json:"format"`
+	Width         int    `json:"width"`
 	Quality       int    `json:"quality"`
 	Encoder       string `json:"encoder"`
 }
@@ -154,26 +163,28 @@ func (p *ImageOptimizationPlugin) Write(m *lifecycle.Manager) error {
 				continue
 			}
 
-			destPath := replaceImageExtension(outputPath, format)
-			if destPath == "" {
-				continue
-			}
-			if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
-				return fmt.Errorf("create output dir: %w", err)
-			}
+			variants := buildImageVariants(outputPath, format, p.config.Widths)
+			for _, variant := range variants {
+				if variant.Path == "" {
+					continue
+				}
+				if err := os.MkdirAll(filepath.Dir(variant.Path), 0o755); err != nil {
+					return fmt.Errorf("create output dir: %w", err)
+				}
 
-			cachePath := imageOptimizationCachePath(cacheDir, outputPath, format, quality, encoder)
-			if isImageCacheValid(cachePath, outputPath, info, format, quality, encoder, destPath) {
-				continue
-			}
+				cachePath := imageOptimizationCachePath(cacheDir, outputPath, format, variant.Width, quality, encoder)
+				if isImageCacheValid(cachePath, outputPath, info, format, variant.Width, quality, encoder, variant.Path) {
+					continue
+				}
 
-			if err := p.encodeImage(outputPath, destPath, format, quality, encoder); err != nil {
-				fmt.Printf("[image_optimization] WARNING: %v\n", err)
-				continue
-			}
+				if err := p.encodeImage(outputPath, variant.Path, format, quality, encoder, variant.Width); err != nil {
+					fmt.Printf("[image_optimization] WARNING: %v\n", err)
+					continue
+				}
 
-			if err := writeImageCache(cachePath, outputPath, info, format, quality, encoder); err != nil {
-				fmt.Printf("[image_optimization] WARNING: cache write failed: %v\n", err)
+				if err := writeImageCache(cachePath, outputPath, info, format, variant.Width, quality, encoder); err != nil {
+					fmt.Printf("[image_optimization] WARNING: cache write failed: %v\n", err)
+				}
 			}
 		}
 	}
@@ -188,6 +199,8 @@ func defaultImageOptimizationConfig() ImageOptimizationConfig {
 		Quality:     80,
 		AvifQuality: 80,
 		WebpQuality: 80,
+		Widths:      []int{480, 768, 1200},
+		Sizes:       "100vw",
 		CacheDir:    ".markata/image-cache",
 	}
 }
@@ -226,6 +239,12 @@ func parseImageOptimizationConfig(cfg *lifecycle.Config) ImageOptimizationConfig
 	if quality, ok := intFromAny(m["webp_quality"]); ok {
 		result.WebpQuality = quality
 	}
+	if widths, ok := m["widths"].([]any); ok {
+		result.Widths = parseIntSlice(widths)
+	}
+	if sizes, ok := m["sizes"].(string); ok && strings.TrimSpace(sizes) != "" {
+		result.Sizes = strings.TrimSpace(sizes)
+	}
 	if cacheDir, ok := m["cache_dir"].(string); ok && cacheDir != "" {
 		result.CacheDir = cacheDir
 	}
@@ -234,6 +253,11 @@ func parseImageOptimizationConfig(cfg *lifecycle.Config) ImageOptimizationConfig
 	}
 	if path, ok := m["cwebp_path"].(string); ok {
 		result.CwebpPath = path
+	}
+
+	result.Widths = normalizeWidths(result.Widths)
+	if strings.TrimSpace(result.Sizes) == "" {
+		result.Sizes = "100vw"
 	}
 
 	return result
@@ -254,6 +278,12 @@ func mergeImageOptimizationConfig(base, override ImageOptimizationConfig) ImageO
 	if override.WebpQuality > 0 {
 		result.WebpQuality = override.WebpQuality
 	}
+	if len(override.Widths) > 0 {
+		result.Widths = override.Widths
+	}
+	if strings.TrimSpace(override.Sizes) != "" {
+		result.Sizes = strings.TrimSpace(override.Sizes)
+	}
 	if override.CacheDir != "" {
 		result.CacheDir = override.CacheDir
 	}
@@ -262,6 +292,11 @@ func mergeImageOptimizationConfig(base, override ImageOptimizationConfig) ImageO
 	}
 	if override.CwebpPath != "" {
 		result.CwebpPath = override.CwebpPath
+	}
+
+	result.Widths = normalizeWidths(result.Widths)
+	if strings.TrimSpace(result.Sizes) == "" {
+		result.Sizes = "100vw"
 	}
 
 	return result
@@ -298,6 +333,16 @@ func intFromAny(value any) (int, bool) {
 	default:
 		return 0, false
 	}
+}
+
+func parseIntSlice(values []any) []int {
+	result := make([]int, 0, len(values))
+	for _, raw := range values {
+		if value, ok := intFromAny(raw); ok {
+			result = append(result, value)
+		}
+	}
+	return result
 }
 
 func (p *ImageOptimizationPlugin) detectAvailableFormats() {
@@ -419,7 +464,7 @@ func (p *ImageOptimizationPlugin) processPost(post *models.Post) error {
 					child = next
 					continue
 				}
-				sources := buildPictureSources(src, p.availableFormats)
+				sources := buildPictureSources(src, p.availableFormats, p.config.Widths, p.config.Sizes)
 				if len(sources) == 0 {
 					child = next
 					continue
@@ -524,15 +569,36 @@ func isOptimizableImageSrc(src string) bool {
 	}
 }
 
-func buildPictureSources(src string, formats []string) []string {
+func buildPictureSources(src string, formats []string, widths []int, sizes string) []string {
+	widths = normalizeWidths(widths)
 	sources := make([]string, 0, len(formats))
 	for _, format := range formats {
-		srcset := replaceImageExtension(src, format)
-		if srcset == "" {
+		mime := formatToMime(format)
+		if len(widths) == 0 {
+			srcset := replaceImageExtension(src, format)
+			if srcset == "" {
+				continue
+			}
+			sources = append(sources, fmt.Sprintf(`<source type=%q srcset=%q>`, mime, srcset))
 			continue
 		}
-		mime := formatToMime(format)
-		sources = append(sources, fmt.Sprintf(`<source type=%q srcset=%q>`, mime, srcset))
+		items := make([]string, 0, len(widths))
+		for _, width := range widths {
+			srcset := replaceImageExtensionWithWidth(src, width, format)
+			if srcset == "" {
+				continue
+			}
+			items = append(items, fmt.Sprintf("%s %dw", srcset, width))
+		}
+		if len(items) == 0 {
+			continue
+		}
+		sizes = strings.TrimSpace(sizes)
+		if sizes == "" {
+			sources = append(sources, fmt.Sprintf(`<source type=%q srcset=%q>`, mime, strings.Join(items, ", ")))
+			continue
+		}
+		sources = append(sources, fmt.Sprintf(`<source type=%q srcset=%q sizes=%q>`, mime, strings.Join(items, ", "), sizes))
 	}
 	return sources
 }
@@ -579,6 +645,26 @@ func formatToMime(format string) string {
 	}
 }
 
+func normalizeWidths(widths []int) []int {
+	if len(widths) == 0 {
+		return nil
+	}
+	seen := make(map[int]bool)
+	filtered := make([]int, 0, len(widths))
+	for _, width := range widths {
+		if width <= 0 || seen[width] {
+			continue
+		}
+		seen[width] = true
+		filtered = append(filtered, width)
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+	sort.Ints(filtered)
+	return filtered
+}
+
 func replaceImageExtension(src, format string) string {
 	parsed, err := url.Parse(src)
 	if err != nil {
@@ -592,6 +678,37 @@ func replaceImageExtension(src, format string) string {
 	return parsed.String()
 }
 
+func replaceImageExtensionWithWidth(src string, width int, format string) string {
+	parsed, err := url.Parse(src)
+	if err != nil {
+		return ""
+	}
+	ext := filepath.Ext(parsed.Path)
+	if ext == "" {
+		return ""
+	}
+	base := strings.TrimSuffix(parsed.Path, ext)
+	parsed.Path = fmt.Sprintf("%s-%dw.%s", base, width, format)
+	return parsed.String()
+}
+
+func replaceImageFileExtension(path, format string) string {
+	ext := filepath.Ext(path)
+	if ext == "" {
+		return ""
+	}
+	return strings.TrimSuffix(path, ext) + "." + format
+}
+
+func replaceImageFileExtensionWithWidth(path string, width int, format string) string {
+	ext := filepath.Ext(path)
+	if ext == "" {
+		return ""
+	}
+	base := strings.TrimSuffix(path, ext)
+	return fmt.Sprintf("%s-%dw.%s", base, width, format)
+}
+
 func shouldSkipFormat(sourcePath, format string) bool {
 	ext := strings.ToLower(filepath.Ext(sourcePath))
 	switch format {
@@ -602,6 +719,21 @@ func shouldSkipFormat(sourcePath, format string) bool {
 	default:
 		return true
 	}
+}
+
+func buildImageVariants(outputPath, format string, widths []int) []imageOptimizationVariant {
+	widths = normalizeWidths(widths)
+	if len(widths) == 0 {
+		return []imageOptimizationVariant{{Width: 0, Path: replaceImageFileExtension(outputPath, format)}}
+	}
+	variants := make([]imageOptimizationVariant, 0, len(widths))
+	for _, width := range widths {
+		variants = append(variants, imageOptimizationVariant{
+			Width: width,
+			Path:  replaceImageFileExtensionWithWidth(outputPath, width, format),
+		})
+	}
+	return variants
 }
 
 func resolveImageOutputPath(outputDir string, target imageOptimizationTarget) (string, error) {
@@ -636,11 +768,13 @@ func isWithinDir(base, target string) bool {
 	return strings.HasPrefix(targetWithSep, baseWithSep)
 }
 
-func imageOptimizationCachePath(cacheDir, sourcePath, format string, quality int, encoder string) string {
+func imageOptimizationCachePath(cacheDir, sourcePath, format string, width, quality int, encoder string) string {
 	hasher := sha256.New()
 	hasher.Write([]byte(sourcePath))
 	hasher.Write([]byte("|"))
 	hasher.Write([]byte(format))
+	hasher.Write([]byte("|"))
+	fmt.Fprintf(hasher, "%d", width)
 	hasher.Write([]byte("|"))
 	fmt.Fprintf(hasher, "%d", quality)
 	hasher.Write([]byte("|"))
@@ -648,7 +782,7 @@ func imageOptimizationCachePath(cacheDir, sourcePath, format string, quality int
 	return filepath.Join(cacheDir, hex.EncodeToString(hasher.Sum(nil))+".json")
 }
 
-func isImageCacheValid(cachePath, sourcePath string, info os.FileInfo, format string, quality int, encoder, destPath string) bool {
+func isImageCacheValid(cachePath, sourcePath string, info os.FileInfo, format string, width, quality int, encoder, destPath string) bool {
 	if _, err := os.Stat(destPath); err != nil {
 		return false
 	}
@@ -661,7 +795,7 @@ func isImageCacheValid(cachePath, sourcePath string, info os.FileInfo, format st
 	if err := json.Unmarshal(data, &entry); err != nil {
 		return false
 	}
-	if entry.SourcePath != sourcePath || entry.Format != format || entry.Quality != quality || entry.Encoder != encoder {
+	if entry.SourcePath != sourcePath || entry.Format != format || entry.Width != width || entry.Quality != quality || entry.Encoder != encoder {
 		return false
 	}
 	if entry.SourceSize != info.Size() || entry.SourceModTime != info.ModTime().UnixNano() {
@@ -670,12 +804,13 @@ func isImageCacheValid(cachePath, sourcePath string, info os.FileInfo, format st
 	return true
 }
 
-func writeImageCache(cachePath, sourcePath string, info os.FileInfo, format string, quality int, encoder string) error {
+func writeImageCache(cachePath, sourcePath string, info os.FileInfo, format string, width, quality int, encoder string) error {
 	entry := imageOptimizationCacheEntry{
 		SourcePath:    sourcePath,
 		SourceSize:    info.Size(),
 		SourceModTime: info.ModTime().UnixNano(),
 		Format:        format,
+		Width:         width,
 		Quality:       quality,
 		Encoder:       encoder,
 	}
@@ -686,21 +821,31 @@ func writeImageCache(cachePath, sourcePath string, info os.FileInfo, format stri
 	return os.WriteFile(cachePath, data, 0o600)
 }
 
-func (p *ImageOptimizationPlugin) encodeImage(sourcePath, destPath, format string, quality int, encoder string) error {
+func (p *ImageOptimizationPlugin) encodeImage(sourcePath, destPath, format string, quality int, encoder string, width int) error {
 	if encoder == "" {
 		return fmt.Errorf("missing encoder for format %s", format)
 	}
 	switch format {
 	case formatAVIF:
+		args := []string{"--quality", fmt.Sprintf("%d", quality)}
+		if width > 0 {
+			args = append(args, "--resize", fmt.Sprintf("%d", width), "0")
+		}
+		args = append(args, sourcePath, destPath)
 		// #nosec G204 -- encoder comes from config or LookPath and is validated.
-		cmd := exec.Command(encoder, "--quality", fmt.Sprintf("%d", quality), sourcePath, destPath)
+		cmd := exec.Command(encoder, args...)
 		if output, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("avifenc failed for %s: %w (output: %s)", sourcePath, err, string(output))
 		}
 		return nil
 	case formatWebP:
+		args := []string{"-q", fmt.Sprintf("%d", quality)}
+		if width > 0 {
+			args = append(args, "-resize", fmt.Sprintf("%d", width), "0")
+		}
+		args = append(args, sourcePath, "-o", destPath)
 		// #nosec G204 -- encoder comes from config or LookPath and is validated.
-		cmd := exec.Command(encoder, "-q", fmt.Sprintf("%d", quality), sourcePath, "-o", destPath)
+		cmd := exec.Command(encoder, args...)
 		if output, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("cwebp failed for %s: %w (output: %s)", sourcePath, err, string(output))
 		}

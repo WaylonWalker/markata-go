@@ -719,6 +719,8 @@ See the [plugin reference](../reference/plugins.md#mermaid) for full details on 
 | `quality` | int | `80` | Default quality for all formats |
 | `avif_quality` | int | `80` | AVIF quality override |
 | `webp_quality` | int | `80` | WebP quality override |
+| `widths` | int[] | `[480, 768, 1200]` | Responsive widths to generate |
+| `sizes` | string | `"100vw"` | Sizes attribute for responsive sources |
 | `cache_dir` | string | `.markata/image-cache` | Cache directory for encode metadata |
 | `avifenc_path` | string | `""` | Path to `avifenc` (auto-detect if empty) |
 | `cwebp_path` | string | `""` | Path to `cwebp` (auto-detect if empty) |
@@ -728,6 +730,8 @@ See the [plugin reference](../reference/plugins.md#mermaid) for full details on 
 enabled = true
 formats = ["avif", "webp"]
 quality = 80
+widths = [480, 768, 1200]
+sizes = "100vw"
 ```
 
 The plugin only processes local images and skips external URLs or data URIs. Missing encoders do not fail the build.

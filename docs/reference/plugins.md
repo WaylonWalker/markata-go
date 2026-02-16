@@ -1414,6 +1414,8 @@ formats = ["avif", "webp"]
 quality = 80
 avif_quality = 80
 webp_quality = 80
+widths = [480, 768, 1200]
+sizes = "100vw"
 cache_dir = ".markata/image-cache"
 avifenc_path = ""
 cwebp_path = ""
@@ -1427,14 +1429,16 @@ cwebp_path = ""
 | `quality` | int | `80` | Default quality for all formats |
 | `avif_quality` | int | `80` | AVIF quality override |
 | `webp_quality` | int | `80` | WebP quality override |
+| `widths` | []int | `[480,768,1200]` | Responsive widths to generate |
+| `sizes` | string | `"100vw"` | Sizes attribute for responsive sources |
 | `cache_dir` | string | `.markata/image-cache` | Cache directory for encode metadata |
 | `avifenc_path` | string | `""` | Path to `avifenc` (auto-detect if empty) |
 | `cwebp_path` | string | `""` | Path to `cwebp` (auto-detect if empty) |
 
 **Behavior:**
 1. Scans `ArticleHTML` for local `<img>` tags and skips external URLs or data URIs.
-2. Wraps each local image in `<picture>` with AVIF/WebP sources.
-3. Writes optimized variants next to the original output file.
+2. Wraps each local image in `<picture>` with AVIF/WebP sources and `srcset` widths.
+3. Writes optimized variants next to the original output file using width suffixes.
 4. Uses a cache key (path, mod time, size, quality, encoder) to skip re-encoding.
 5. Missing encoders emit warnings and skip the format without failing the build.
 
@@ -1448,8 +1452,8 @@ Input:
 Output:
 ```html
 <picture>
-  <source type="image/avif" srcset="/images/cat.avif">
-  <source type="image/webp" srcset="/images/cat.webp">
+  <source type="image/avif" srcset="/images/cat-480w.avif 480w, /images/cat-768w.avif 768w" sizes="100vw">
+  <source type="image/webp" srcset="/images/cat-480w.webp 480w, /images/cat-768w.webp 768w" sizes="100vw">
   <img src="/images/cat.jpg" alt="Cat">
 </picture>
 ```
