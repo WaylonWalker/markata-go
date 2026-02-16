@@ -463,6 +463,11 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 // The function directly computes feed membership from tags since feed_configs may not be
 // available during the Render stage (feeds are built during Collect stage, which runs after Render).
 func (p *TemplatesPlugin) getFeedSidebarPosts(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
+	seriesPosts, seriesFeed := p.getSeriesSidebarPosts(post, config, m)
+	if seriesPosts != nil {
+		return seriesPosts, seriesFeed
+	}
+
 	// Get components config
 	components, ok := config.Extra["components"].(models.ComponentsConfig)
 	if !ok {
@@ -529,6 +534,66 @@ func (p *TemplatesPlugin) getFeedSidebarPosts(post *models.Post, config *lifecyc
 	}
 
 	return nil, nil
+}
+
+func (p *TemplatesPlugin) getSeriesSidebarPosts(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
+	if post == nil || config == nil || m == nil {
+		return nil, nil
+	}
+
+	seriesName := getStringFromExtra(post.Extra, seriesKey)
+	if seriesName == "" {
+		return nil, nil
+	}
+
+	seriesCfg := parseSeriesConfig(config)
+	if !seriesCfg.AutoSidebar {
+		return nil, nil
+	}
+
+	seriesSlug := buildSeriesFeedSlug(seriesCfg.SlugPrefix, slugify(seriesName))
+
+	allPosts := m.Posts()
+	seriesPosts := make([]*models.Post, 0)
+	for _, feedPost := range allPosts {
+		postSeries := getStringFromExtra(feedPost.Extra, seriesKey)
+		if postSeries == "" {
+			continue
+		}
+		postSeriesSlug := buildSeriesFeedSlug(seriesCfg.SlugPrefix, slugify(postSeries))
+		if postSeriesSlug == seriesSlug {
+			seriesPosts = append(seriesPosts, feedPost)
+		}
+	}
+
+	if len(seriesPosts) == 0 {
+		return nil, nil
+	}
+
+	seriesSlugValue := slugify(seriesName)
+	group := &seriesGroup{
+		name:  seriesName,
+		slug:  seriesSlugValue,
+		posts: seriesPosts,
+		cfg:   resolveSeriesOverride(seriesCfg, seriesName, seriesSlugValue),
+	}
+
+	sortSeriesPosts(group, false)
+	publishedPosts := filterSeriesOutputPosts(group.posts)
+	if len(publishedPosts) == 0 {
+		return nil, nil
+	}
+
+	feedConfig := &models.FeedConfig{
+		Slug:  seriesSlug,
+		Title: seriesDisplayTitle(group.name, group.cfg),
+		Posts: publishedPosts,
+	}
+	if group.cfg != nil && group.cfg.Description != "" {
+		feedConfig.Description = group.cfg.Description
+	}
+
+	return publishedPosts, feedConfig
 }
 
 // getSidebarPrevNext finds the previous and next posts relative to the current post
