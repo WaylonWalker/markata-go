@@ -250,6 +250,14 @@ func (p *LoadPlugin) loadSequential(m *lifecycle.Manager, files []string, baseDi
 	return nil
 }
 
+// ParsePostFromContent parses a markdown file content into a Post.
+// This is a lightweight helper for cache-backed workflows that need
+// frontmatter parsing and slug generation without running the full lifecycle.
+func ParsePostFromContent(path, content string) (*models.Post, error) {
+	loader := &LoadPlugin{}
+	return loader.parseFile(path, content)
+}
+
 // parseFile parses a markdown file's content into a Post object.
 func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 	// Parse frontmatter and get raw frontmatter for hashing

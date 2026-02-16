@@ -1650,6 +1650,10 @@ func (m Model) refreshData() tea.Cmd {
 			return refreshStartedMsg{}
 		},
 		func() tea.Msg {
+			if err := m.app.Build.LoadForTUI(context.Background()); err != nil {
+				return errMsg{err}
+			}
+
 			// Load all data in parallel
 			opts := services.ListOptions{
 				SortBy:    m.sortBy,
