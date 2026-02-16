@@ -431,6 +431,36 @@ feeds = ["tutorials", "guides"]
 
 **Responsive behavior:** Sidebars are hidden on mobile (< 768px) and shown inline on tablets (768px - 1024px).
 
+#### Share Component (`[markata-go.components.share]`)
+
+Add a "Share this post" grid to the end of every article so readers can send your content to social platforms or copy the link.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Show the component. |
+| `title` | string | `"Share this post"` | Heading text above the buttons. |
+| `position` | string | `"bottom"` | Modifier used by CSS (applied as `share-panel--<position>`). |
+| `platforms` | array | `["twitter","facebook","linkedin","reddit","hacker_news","email","copy"]` | Ordered list of platform keys to render. Omit entries to hide them. |
+| `custom` | table | `{}` | Custom platform definitions (`name`, `icon`, `url`). Icon paths without `/`, `http`, or `data:` are resolved via `theme_asset_hashed` (e.g., `icons/share/mastodon.svg`). |
+
+```toml
+[markata-go.components.share]
+enabled = true
+title = "Share this post"
+platforms = ["twitter", "mastodon", "linkedin", "copy"]
+
+[markata-go.components.share.custom]
+mastodon = { name = "Mastodon", icon = "mastodon.svg", url = "https://mastodon.social/share?text={{title}}&url={{url}}" }
+```
+
+Supported placeholders for share URLs:
+
+- `{{title}}` → URL-encoded post title (falls back to site title or slug).
+- `{{url}}` → URL-encoded absolute post URL (`config.url` + `post.href`).
+- `{{excerpt}}` → URL-encoded post description or excerpt when provided.
+
+Copying uses the Clipboard API with a DOM fallback and updates the button label/tooltip to "Link copied" for 2 seconds. Built-in platforms include Twitter, Facebook, LinkedIn, Reddit, Hacker News, Email, and Copy Link, each with a coordinated icon from `pkg/themes/default/static/icons/share/`.
+
 ### IndieAuth Settings (`[markata-go.indieauth]`)
 
 [IndieAuth](https://indieauth.net/) is a decentralized identity protocol that allows you to use your own domain to sign in to websites. markata-go can add the necessary `<link>` tags to your site's HTML head.

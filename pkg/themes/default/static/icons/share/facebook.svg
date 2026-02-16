@@ -1,0 +1,4 @@
+<svg width="48" height="48" viewBox="0 0 24 24" role="presentation" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="11" fill="currentColor"/>
+  <text x="12" y="15" text-anchor="middle" dominant-baseline="middle" font-family="'Inter', 'Segoe UI', sans-serif" font-weight="700" font-size="12" fill="var(--color-background, #fff)">f</text>
+</svg>
