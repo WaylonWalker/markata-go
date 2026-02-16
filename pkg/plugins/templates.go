@@ -424,6 +424,12 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	ctx = ctx.WithCore(m)
 	ctx.Set("private_paths", privatePaths)
 
+	// Share buttons at the end of posts
+	shareButtons := models.BuildShareButtons(modelsConfig.Components.Share, modelsConfig.URL, modelsConfig.Title, post)
+	if len(shareButtons) > 0 {
+		ctx.Set("share_buttons", shareButtons)
+	}
+
 	// Inject feed sidebar posts if configured
 	sidebarPosts, sidebarFeed := p.getFeedSidebarPosts(post, config, m)
 	if sidebarPosts != nil {
