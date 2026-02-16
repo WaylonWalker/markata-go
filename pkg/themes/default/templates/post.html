@@ -81,6 +81,8 @@
     {{ body | safe }}
   </div>
 
+  {% include "components/share.html" %}
+
   {% if post.tags %}
   <footer class="post-footer">
     <div class="tags">

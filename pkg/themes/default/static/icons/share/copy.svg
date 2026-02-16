@@ -1,0 +1,4 @@
+<svg width="48" height="48" viewBox="0 0 24 24" role="presentation" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>
+  <rect x="8" y="8" width="12" height="12" rx="2" fill="var(--color-background, #fff)"/>
+</svg>
