@@ -55,6 +55,17 @@ type imageOptimizationCacheEntry struct {
 	Encoder       string `json:"encoder"`
 }
 
+const (
+	formatAVIF = "avif"
+	formatWebP = "webp"
+
+	extAVIF = ".avif"
+	extJPG  = ".jpg"
+	extJPEG = ".jpeg"
+	extPNG  = ".png"
+	extWebP = ".webp"
+)
+
 func NewImageOptimizationPlugin() *ImageOptimizationPlugin {
 	return &ImageOptimizationPlugin{
 		config:         defaultImageOptimizationConfig(),
@@ -173,7 +184,7 @@ func (p *ImageOptimizationPlugin) Write(m *lifecycle.Manager) error {
 func defaultImageOptimizationConfig() ImageOptimizationConfig {
 	return ImageOptimizationConfig{
 		Enabled:     true,
-		Formats:     []string{"avif", "webp"},
+		Formats:     []string{formatAVIF, formatWebP},
 		Quality:     80,
 		AvifQuality: 80,
 		WebpQuality: 80,
@@ -301,7 +312,7 @@ func (p *ImageOptimizationPlugin) detectAvailableFormats() {
 		seen[normalized] = true
 
 		switch normalized {
-		case "avif":
+		case formatAVIF:
 			path := p.config.AvifencPath
 			if path == "" {
 				if found, err := exec.LookPath("avifenc"); err == nil {
@@ -314,7 +325,7 @@ func (p *ImageOptimizationPlugin) detectAvailableFormats() {
 			} else {
 				p.warnMissingEncoder(normalized)
 			}
-		case "webp":
+		case formatWebP:
 			path := p.config.CwebpPath
 			if path == "" {
 				if found, err := exec.LookPath("cwebp"); err == nil {
@@ -339,18 +350,18 @@ func (p *ImageOptimizationPlugin) warnMissingEncoder(format string) {
 	}
 	p.warnedEncoders[format] = true
 	switch format {
-	case "avif":
+	case formatAVIF:
 		fmt.Printf("[image_optimization] WARNING: avifenc not found; skipping AVIF output\n")
-	case "webp":
+	case formatWebP:
 		fmt.Printf("[image_optimization] WARNING: cwebp not found; skipping WebP output\n")
 	}
 }
 
 func (p *ImageOptimizationPlugin) encoderPathForFormat(format string) string {
 	switch format {
-	case "avif":
+	case formatAVIF:
 		return p.avifencPath
-	case "webp":
+	case formatWebP:
 		return p.cwebpPath
 	default:
 		return ""
@@ -360,11 +371,11 @@ func (p *ImageOptimizationPlugin) encoderPathForFormat(format string) string {
 func (p *ImageOptimizationPlugin) qualityForFormat(format string) int {
 	quality := p.config.Quality
 	switch format {
-	case "avif":
+	case formatAVIF:
 		if p.config.AvifQuality > 0 {
 			quality = p.config.AvifQuality
 		}
-	case "webp":
+	case formatWebP:
 		if p.config.WebpQuality > 0 {
 			quality = p.config.WebpQuality
 		}
@@ -506,7 +517,7 @@ func isOptimizableImageSrc(src string) bool {
 	}
 	ext := strings.ToLower(filepath.Ext(parsed.Path))
 	switch ext {
-	case ".jpg", ".jpeg", ".png", ".webp":
+	case extJPG, extJPEG, extPNG, extWebP:
 		return true
 	default:
 		return false
@@ -521,7 +532,7 @@ func buildPictureSources(src string, formats []string) []string {
 			continue
 		}
 		mime := formatToMime(format)
-		sources = append(sources, fmt.Sprintf(`<source type="%s" srcset="%s">`, mime, srcset))
+		sources = append(sources, fmt.Sprintf(`<source type=%q srcset=%q>`, mime, srcset))
 	}
 	return sources
 }
@@ -559,9 +570,9 @@ func getAttr(node *html.Node, key string) string {
 
 func formatToMime(format string) string {
 	switch format {
-	case "avif":
+	case formatAVIF:
 		return "image/avif"
-	case "webp":
+	case formatWebP:
 		return "image/webp"
 	default:
 		return "application/octet-stream"
@@ -584,10 +595,10 @@ func replaceImageExtension(src, format string) string {
 func shouldSkipFormat(sourcePath, format string) bool {
 	ext := strings.ToLower(filepath.Ext(sourcePath))
 	switch format {
-	case "avif":
-		return ext == ".avif"
-	case "webp":
-		return ext == ".webp"
+	case formatAVIF:
+		return ext == extAVIF
+	case formatWebP:
+		return ext == extWebP
 	default:
 		return true
 	}
@@ -631,7 +642,7 @@ func imageOptimizationCachePath(cacheDir, sourcePath, format string, quality int
 	hasher.Write([]byte("|"))
 	hasher.Write([]byte(format))
 	hasher.Write([]byte("|"))
-	hasher.Write([]byte(fmt.Sprintf("%d", quality)))
+	fmt.Fprintf(hasher, "%d", quality)
 	hasher.Write([]byte("|"))
 	hasher.Write([]byte(encoder))
 	return filepath.Join(cacheDir, hex.EncodeToString(hasher.Sum(nil))+".json")
@@ -676,14 +687,19 @@ func writeImageCache(cachePath, sourcePath string, info os.FileInfo, format stri
 }
 
 func (p *ImageOptimizationPlugin) encodeImage(sourcePath, destPath, format string, quality int, encoder string) error {
+	if encoder == "" {
+		return fmt.Errorf("missing encoder for format %s", format)
+	}
 	switch format {
-	case "avif":
+	case formatAVIF:
+		// #nosec G204 -- encoder comes from config or LookPath and is validated.
 		cmd := exec.Command(encoder, "--quality", fmt.Sprintf("%d", quality), sourcePath, destPath)
 		if output, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("avifenc failed for %s: %w (output: %s)", sourcePath, err, string(output))
 		}
 		return nil
-	case "webp":
+	case formatWebP:
+		// #nosec G204 -- encoder comes from config or LookPath and is validated.
 		cmd := exec.Command(encoder, "-q", fmt.Sprintf("%d", quality), sourcePath, "-o", destPath)
 		if output, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("cwebp failed for %s: %w (output: %s)", sourcePath, err, string(output))
