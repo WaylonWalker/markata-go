@@ -85,7 +85,7 @@ The `series` plugin scans all posts during the **Collect** stage (before feeds).
 
 3. Sorts them according to ordering rules above
 
-4. Sets guide navigation (Prev/Next) on each post in the series
+4. Sets guide navigation (Prev/Next) on published posts in the series
 
 5. Injects the feed config into the feed config list (before the feeds plugin runs)
 
@@ -296,7 +296,7 @@ The series plugin runs early in the Collect stage so that:
 │     - Set position metadata on each post                             │
 │                                                                      │
 │  4. NAVIGATE                                                         │
-│     - Set Prev/Next pointers on each post                            │
+│     - Set Prev/Next pointers on published posts                      │
 │     - Set PrevNextFeed to series slug                                │
 │     - Set PrevNextContext with position info                         │
 │                                                                      │
@@ -380,6 +380,7 @@ markdown = true                    # Also generate markdown for this series
 - Post is included in series ordering for context
 - Post is **excluded** from series feed output (not in HTML/RSS/etc.)
 - Prev/Next skip unpublished posts (link to next published post)
+- Private posts are treated as unpublished for navigation and output
 
 ### Empty Series
 

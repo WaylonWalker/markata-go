@@ -2,6 +2,7 @@
 package plugins
 
 import (
+	"fmt"
 	"log"
 	"sort"
 	"strings"
@@ -12,6 +13,14 @@ import (
 
 // seriesKey is the frontmatter and config key for series.
 const seriesKey = "series"
+
+func buildSeriesFeedSlug(prefix, seriesSlug string) string {
+	trimmed := strings.Trim(prefix, "/")
+	if trimmed == "" {
+		return seriesSlug
+	}
+	return trimmed + "/" + seriesSlug
+}
 
 // SeriesPlugin scans posts for `series` frontmatter and auto-generates
 // series feed configs. It runs early in the Collect stage so that the
@@ -101,19 +110,29 @@ func (p *SeriesPlugin) Collect(m *lifecycle.Manager) error {
 		}
 
 		// Sort posts within the series
-		p.sortSeriesPosts(group)
+		sortSeriesPosts(group, true)
 
 		// Build feed slug
-		feedSlug := seriesCfg.SlugPrefix + "/" + group.slug
+		feedSlug := buildSeriesFeedSlug(seriesCfg.SlugPrefix, group.slug)
 
-		// Set guide navigation (Prev/Next) on posts
-		setGuideNavigation(group.posts, feedSlug)
+		// Build ordered list of published posts for output/navigation
+		publishedPosts := filterSeriesOutputPosts(group.posts)
+		setSeriesMetadata(group.posts, feedSlug, len(publishedPosts))
+
+		if len(publishedPosts) == 0 {
+			log.Printf("[series] warning: no published posts in series %q", group.name)
+			continue
+		}
+
+		// Set guide navigation (Prev/Next) on published posts
+		setGuideNavigation(publishedPosts, feedSlug)
 
 		// Set PrevNextContext with position info
-		p.setPrevNextContext(group, feedSlug)
+		seriesTitle := p.seriesTitle(group)
+		p.setPrevNextContext(publishedPosts, feedSlug, seriesTitle)
 
 		// Build the FeedConfig
-		fc := p.buildFeedConfig(group, feedSlug, seriesCfg)
+		fc := p.buildFeedConfig(group, feedSlug, seriesCfg, publishedPosts)
 
 		feedConfigs = append(feedConfigs, fc)
 	}
@@ -146,15 +165,7 @@ func (p *SeriesPlugin) groupPostsBySeries(posts []*models.Post, cfg seriesConfig
 				name: seriesName,
 				slug: slug,
 			}
-			if override, exists := cfg.Overrides[slug]; exists {
-				group.cfg = override
-			}
-			// Also check with raw name for override lookup
-			if group.cfg == nil {
-				if override, exists := cfg.Overrides[seriesName]; exists {
-					group.cfg = override
-				}
-			}
+			group.cfg = resolveSeriesOverride(cfg, seriesName, slug)
 			groupMap[slug] = group
 			groupOrder = append(groupOrder, slug)
 		}
@@ -171,12 +182,22 @@ func (p *SeriesPlugin) groupPostsBySeries(posts []*models.Post, cfg seriesConfig
 	return groups
 }
 
+func resolveSeriesOverride(cfg seriesConfig, seriesName, seriesSlug string) *seriesOverride {
+	if override, exists := cfg.Overrides[seriesSlug]; exists {
+		return override
+	}
+	if override, exists := cfg.Overrides[seriesName]; exists {
+		return override
+	}
+	return nil
+}
+
 // sortSeriesPosts sorts posts within a series according to ordering rules:
 //  1. If any post has series_order, sort by series_order ascending
 //  2. Posts without series_order are placed after ordered posts, sorted by date
 //  3. If no post has series_order, sort by date ascending
 //  4. Ties broken by file path
-func (p *SeriesPlugin) sortSeriesPosts(group *seriesGroup) {
+func sortSeriesPosts(group *seriesGroup, logDuplicates bool) {
 	// Check if any post has series_order
 	hasExplicitOrder := false
 	for _, post := range group.posts {
@@ -186,7 +207,7 @@ func (p *SeriesPlugin) sortSeriesPosts(group *seriesGroup) {
 		}
 	}
 
-	if hasExplicitOrder {
+	if hasExplicitOrder && logDuplicates {
 		// Check for duplicate series_order values
 		orderSeen := make(map[int]string) // order -> first post path
 		for _, post := range group.posts {
@@ -254,6 +275,30 @@ func tieBreakByDateThenPath(a, b *models.Post) bool {
 	return a.Path < b.Path
 }
 
+func filterSeriesOutputPosts(posts []*models.Post) []*models.Post {
+	if len(posts) == 0 {
+		return nil
+	}
+	result := make([]*models.Post, 0, len(posts))
+	for _, post := range posts {
+		if !post.Published || post.Draft || post.Skip || post.Private {
+			continue
+		}
+		result = append(result, post)
+	}
+	return result
+}
+
+func setSeriesMetadata(posts []*models.Post, feedSlug string, total int) {
+	for _, post := range posts {
+		if post.Extra == nil {
+			post.Extra = make(map[string]interface{})
+		}
+		post.Extra["series_slug"] = feedSlug
+		post.Extra["series_total"] = total
+	}
+}
+
 // getSeriesOrder extracts the series_order from a post's Extra map.
 func getSeriesOrder(post *models.Post) (int, bool) {
 	if post.Extra == nil {
@@ -267,11 +312,10 @@ func getSeriesOrder(post *models.Post) (int, bool) {
 }
 
 // setPrevNextContext sets PrevNextContext on each post in a series group.
-func (p *SeriesPlugin) setPrevNextContext(group *seriesGroup, feedSlug string) {
-	total := len(group.posts)
-	title := p.seriesTitle(group)
+func (p *SeriesPlugin) setPrevNextContext(posts []*models.Post, feedSlug, title string) {
+	total := len(posts)
 
-	for i, post := range group.posts {
+	for i, post := range posts {
 		post.PrevNextContext = &models.PrevNextContext{
 			FeedSlug:  feedSlug,
 			FeedTitle: title,
@@ -280,40 +324,38 @@ func (p *SeriesPlugin) setPrevNextContext(group *seriesGroup, feedSlug string) {
 			Prev:      post.Prev,
 			Next:      post.Next,
 		}
-
-		// Set series metadata in Extra for template access
-		if post.Extra == nil {
-			post.Extra = make(map[string]interface{})
-		}
-		post.Extra["series_slug"] = feedSlug
-		post.Extra["series_total"] = total
 	}
 }
 
 // seriesTitle returns the display title for a series.
 // Uses override title if set, otherwise derives from the series name.
 func (p *SeriesPlugin) seriesTitle(group *seriesGroup) string {
-	if group.cfg != nil && group.cfg.Title != "" {
-		return group.cfg.Title
+	return seriesDisplayTitle(group.name, group.cfg)
+}
+
+func seriesDisplayTitle(seriesName string, override *seriesOverride) string {
+	if override != nil && override.Title != "" {
+		return override.Title
 	}
 
 	// Derive title from series name: replace hyphens with spaces and title-case
-	title := strings.ReplaceAll(group.name, "-", " ")
+	title := strings.ReplaceAll(seriesName, "-", " ")
 	return toTitleCase(title)
 }
 
 // buildFeedConfig creates a FeedConfig for a series group.
-func (p *SeriesPlugin) buildFeedConfig(group *seriesGroup, feedSlug string, cfg seriesConfig) models.FeedConfig {
+func (p *SeriesPlugin) buildFeedConfig(group *seriesGroup, feedSlug string, cfg seriesConfig, posts []*models.Post) models.FeedConfig {
 	title := p.seriesTitle(group)
 
 	fc := models.FeedConfig{
 		Slug:    feedSlug,
 		Title:   title,
 		Type:    models.FeedTypeSeries,
+		Filter:  fmt.Sprintf("series_slug == %q and published == true and draft == false and skip == false", feedSlug),
 		Sort:    "series_order",
 		Reverse: false, // ascending order
 		Sidebar: cfg.Defaults.Sidebar,
-		Posts:   group.posts,
+		Posts:   posts,
 	}
 
 	// Apply description from override

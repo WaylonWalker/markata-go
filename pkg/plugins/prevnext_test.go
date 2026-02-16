@@ -214,7 +214,7 @@ func TestPrevNextPlugin_Collect_SeriesStrategy(t *testing.T) {
 			Posts: []*models.Post{post1, post2, post3},
 		},
 		{
-			Name:  "tutorial",
+			Name:  "series/tutorial",
 			Title: "Tutorial Series",
 			Posts: []*models.Post{post3, post2}, // post2 is last in tutorial
 		},
@@ -240,8 +240,8 @@ func TestPrevNextPlugin_Collect_SeriesStrategy(t *testing.T) {
 	}
 
 	// post2 uses tutorial series
-	if post2.PrevNextFeed != "tutorial" {
-		t.Errorf("post2.PrevNextFeed = %q, want %q (from series)", post2.PrevNextFeed, "tutorial")
+	if post2.PrevNextFeed != "series/tutorial" {
+		t.Errorf("post2.PrevNextFeed = %q, want %q (from series)", post2.PrevNextFeed, "series/tutorial")
 	}
 	if post2.Prev != post3 {
 		t.Errorf("post2.Prev = %v, want post3 (in tutorial)", post2.Prev)

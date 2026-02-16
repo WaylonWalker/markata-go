@@ -2,7 +2,6 @@
 package plugins
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -276,6 +275,8 @@ func GetFeedBySlug(slug string, feedConfigs []models.FeedConfig) *models.FeedCon
 // It checks if the post belongs to any feed configured for sidebar display.
 // Returns the feed config and a boolean indicating if a match was found.
 func FindPostSidebarFeed(post *models.Post, config *lifecycle.Config, feedConfigs []models.FeedConfig) *models.FeedConfig {
+	seriesCfg := parseSeriesConfig(config)
+
 	// Get components config
 	components, ok := config.Extra["components"].(models.ComponentsConfig)
 	if !ok {
@@ -316,7 +317,10 @@ func FindPostSidebarFeed(post *models.Post, config *lifecycle.Config, feedConfig
 
 		// Handle series-based feeds
 		if series, ok := post.Extra["series"].(string); ok {
-			seriesSlug := fmt.Sprintf("series/%s", models.Slugify(series))
+			seriesSlug := getStringFromExtra(post.Extra, "series_slug")
+			if seriesSlug == "" {
+				seriesSlug = buildSeriesFeedSlug(seriesCfg.SlugPrefix, models.Slugify(series))
+			}
 			if feedSlug == seriesSlug {
 				return GetFeedBySlug(feedSlug, feedConfigs)
 			}
