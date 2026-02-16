@@ -135,3 +135,97 @@ func TestLinkAvatars_LocalMode_WithURLPathPrefix(t *testing.T) {
 		t.Fatalf("expected cached icon at %s: %v", iconPath, err)
 	}
 }
+
+func TestLinkAvatars_Configure_InsertsRootAbsoluteAssets(t *testing.T) {
+	config := &lifecycle.Config{
+		Extra: map[string]interface{}{
+			"models_config": &models.Config{URL: "https://mysite.test/blog"},
+			"link_avatars": map[string]any{
+				"enabled": true,
+				"mode":    "js",
+			},
+		},
+	}
+
+	m := lifecycle.NewManager()
+	m.SetConfig(config)
+
+	plugin := NewLinkAvatarsPlugin()
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("configure error: %v", err)
+	}
+
+	modelsConfig := config.Extra["models_config"].(*models.Config)
+	if len(modelsConfig.Head.Link) == 0 {
+		t.Fatalf("expected head link tags to be injected")
+	}
+
+	var cssHref string
+	for _, link := range modelsConfig.Head.Link {
+		if link.Rel == "stylesheet" && strings.Contains(link.Href, "link-avatars") {
+			cssHref = link.Href
+			break
+		}
+	}
+	if cssHref == "" {
+		t.Fatalf("expected link-avatars stylesheet link")
+	}
+	if !strings.HasPrefix(cssHref, "/css/") {
+		t.Fatalf("expected root-absolute css href, got %q", cssHref)
+	}
+
+	var jsSrc string
+	for _, script := range modelsConfig.Head.Script {
+		if strings.Contains(script.Src, "link-avatars") {
+			jsSrc = script.Src
+			break
+		}
+	}
+	if jsSrc == "" {
+		t.Fatalf("expected link-avatars script tag")
+	}
+	if !strings.HasPrefix(jsSrc, "/js/") {
+		t.Fatalf("expected root-absolute js src, got %q", jsSrc)
+	}
+}
+
+func TestLinkAvatars_Write_JSMode_WritesAssetsToCssAndJs(t *testing.T) {
+	outputDir := t.TempDir()
+	config := &lifecycle.Config{
+		OutputDir: outputDir,
+		Extra: map[string]interface{}{
+			"models_config": &models.Config{URL: "https://mysite.test"},
+			"link_avatars": map[string]any{
+				"enabled": true,
+				"mode":    "js",
+			},
+		},
+	}
+
+	m := lifecycle.NewManager()
+	m.SetConfig(config)
+
+	plugin := NewLinkAvatarsPlugin()
+	if err := plugin.Configure(m); err != nil {
+		t.Fatalf("configure error: %v", err)
+	}
+	if err := plugin.Write(m); err != nil {
+		t.Fatalf("write error: %v", err)
+	}
+
+	cssPath := filepath.Join(outputDir, "css", "link-avatars.css")
+	if _, err := os.Stat(cssPath); err != nil {
+		t.Fatalf("expected css asset at %s: %v", cssPath, err)
+	}
+	jsPath := filepath.Join(outputDir, "js", "link-avatars.js")
+	if _, err := os.Stat(jsPath); err != nil {
+		t.Fatalf("expected js asset at %s: %v", jsPath, err)
+	}
+
+	if hash := m.GetAssetHash("css/link-avatars.css"); hash == "" {
+		t.Fatalf("expected css hash to be registered")
+	}
+	if hash := m.GetAssetHash("js/link-avatars.js"); hash == "" {
+		t.Fatalf("expected js hash to be registered")
+	}
+}
