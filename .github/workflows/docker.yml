@@ -33,15 +33,15 @@ jobs:
       contents: read
       packages: write
       security-events: write
-    env:
-      TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Set lowercase image name
         run: echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
+      - name: Set Trivy cache directory
+        run: echo "TRIVY_CACHE_DIR=${{ runner.temp }}/trivy-cache" >> $GITHUB_ENV
 
       - name: Set build platforms (default)
         run: echo "DOCKER_PLATFORMS=linux/amd64" >> $GITHUB_ENV
@@ -129,15 +129,15 @@ jobs:
       contents: read
       packages: write
       security-events: write
-    env:
-      TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Set lowercase image name
         run: echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
+      - name: Set Trivy cache directory
+        run: echo "TRIVY_CACHE_DIR=${{ runner.temp }}/trivy-cache" >> $GITHUB_ENV
 
       - name: Set build platforms (default)
         run: echo "DOCKER_PLATFORMS=linux/amd64" >> $GITHUB_ENV
