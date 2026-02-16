@@ -27,6 +27,7 @@ const (
 	listSortName    = "name"
 	listSortCount   = "count"
 	listSortWords   = "words"
+	listSortReading = "reading_time"
 )
 
 var listCmd = &cobra.Command{
@@ -305,7 +306,7 @@ func parseSortOrder(order string) (services.SortOrder, error) {
 
 func isValidPostSort(field string) bool {
 	switch strings.ToLower(field) {
-	case "date", "title", listSortWords, "path", "reading_time", "tags":
+	case "date", "title", listSortWords, "path", listSortReading, "tags":
 		return true
 	default:
 		return false
@@ -314,7 +315,7 @@ func isValidPostSort(field string) bool {
 
 func isValidTagSort(field string) bool {
 	switch strings.ToLower(field) {
-	case listSortName, listSortCount, listSortWords, "reading_time":
+	case listSortName, listSortCount, listSortWords, listSortReading:
 		return true
 	default:
 		return false
@@ -323,7 +324,7 @@ func isValidTagSort(field string) bool {
 
 func isValidFeedSort(field string) bool {
 	switch strings.ToLower(field) {
-	case listSortName, "posts", listSortWords, "reading_time", "avg_reading_time":
+	case listSortName, "posts", listSortWords, listSortReading, "avg_reading_time":
 		return true
 	default:
 		return false
@@ -467,7 +468,7 @@ func sortTagRows(rows []tagRow, field string, order services.SortOrder) {
 			cmp = compareInts(rows[i].Count, rows[j].Count)
 		case listSortWords:
 			cmp = compareInts(rows[i].Words, rows[j].Words)
-		case "reading_time":
+		case listSortReading:
 			cmp = compareInts(rows[i].ReadingTime, rows[j].ReadingTime)
 		case listSortName:
 			cmp = strings.Compare(strings.ToLower(rows[i].Name), strings.ToLower(rows[j].Name))
@@ -579,7 +580,7 @@ func sortFeedRows(rows []feedRow, field string, order services.SortOrder) {
 			cmp = compareInts(rows[i].Posts, rows[j].Posts)
 		case listSortWords:
 			cmp = compareInts(rows[i].Words, rows[j].Words)
-		case "reading_time":
+		case listSortReading:
 			cmp = compareInts(rows[i].ReadingTime, rows[j].ReadingTime)
 		case "avg_reading_time":
 			cmp = compareInts(rows[i].AvgReadingTime, rows[j].AvgReadingTime)
@@ -732,7 +733,7 @@ func formatReadingTime(minutes int) string {
 	return fmt.Sprintf("%dh%dm", hours, mins)
 }
 
-func calculateFeedStats(posts []*models.Post) (totalWords int, totalReadingTime int) {
+func calculateFeedStats(posts []*models.Post) (totalWords, totalReadingTime int) {
 	for _, post := range posts {
 		totalWords += postWordCount(post)
 		totalReadingTime += postReadingTime(post)

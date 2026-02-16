@@ -342,11 +342,7 @@ func applyTransforms(cfg *lifecycle.Config, posts []*models.Post) error {
 	if err := stats.Configure(m); err != nil {
 		return err
 	}
-	if err := stats.Transform(m); err != nil {
-		return err
-	}
-
-	return nil
+	return stats.Transform(m)
 }
 
 func rebuildFeeds(m *lifecycle.Manager) error {
