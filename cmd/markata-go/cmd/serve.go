@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )
@@ -72,12 +73,13 @@ const (
 )
 
 type BuildStatus struct {
-	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
+	Status         string `json:"status"`
+	Message        string `json:"message,omitempty"`
+	LicenseWarning string `json:"license_warning,omitempty"`
 }
 
-func setBuildStatus(status, message string) {
-	buildStatus.Store(BuildStatus{Status: status, Message: message})
+func setBuildStatus(status, message, licenseWarning string) {
+	buildStatus.Store(BuildStatus{Status: status, Message: message, LicenseWarning: licenseWarning})
 }
 
 func getBuildStatus() BuildStatus {
@@ -89,11 +91,13 @@ func getBuildStatus() BuildStatus {
 
 func buildStatusPayload(status BuildStatus) string {
 	payload := struct {
-		Status  string `json:"status"`
-		Message string `json:"message,omitempty"`
+		Status         string `json:"status"`
+		Message        string `json:"message,omitempty"`
+		LicenseWarning string `json:"license_warning,omitempty"`
 	}{
-		Status:  status.Status,
-		Message: status.Message,
+		Status:         status.Status,
+		Message:        status.Message,
+		LicenseWarning: status.LicenseWarning,
 	}
 
 	data, err := json.Marshal(payload)
@@ -102,6 +106,21 @@ func buildStatusPayload(status BuildStatus) string {
 	}
 
 	return string(data)
+}
+
+func getModelsConfig(m *lifecycle.Manager) *models.Config {
+	if m == nil || m.Config() == nil || m.Config().Extra == nil {
+		return nil
+	}
+	raw, ok := m.Config().Extra["models_config"]
+	if !ok {
+		return nil
+	}
+	cfg, ok := raw.(*models.Config)
+	if !ok {
+		return nil
+	}
+	return cfg
 }
 
 // serveCmd represents the serve command.
@@ -273,7 +292,7 @@ func startHTTPServer(addr string, handler http.Handler) (server *http.Server, se
 }
 
 func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.WaitGroup) {
-	setBuildStatus(buildStatusBuilding, "")
+	setBuildStatus(buildStatusBuilding, "", "")
 	notifyBuildStatus()
 	if verbose {
 		fmt.Println("Running initial build...")
@@ -295,13 +314,13 @@ func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.W
 
 		result, buildErr := runBuild(m)
 		if buildErr != nil {
-			setBuildStatus(buildStatusError, buildErr.Error())
+			setBuildStatus(buildStatusError, buildErr.Error(), "")
 			notifyBuildStatus()
 			fmt.Printf("Initial build failed: %v\n", buildErr)
 			return
 		}
 
-		setBuildStatus(buildStatusSuccess, "")
+		setBuildStatus(buildStatusSuccess, "", licenseWarningMessage(getModelsConfig(m)))
 		notifyBuildStatus()
 		fmt.Printf("Built %d posts, %d feeds\n", result.PostsProcessed, result.FeedsGenerated)
 		notifyLiveReload()
@@ -497,6 +516,7 @@ func buildDevScript(status BuildStatus) string {
 (function() {
     var initialStatus = %s;
     var bannerId = 'markata-build-banner';
+    var toastId = 'markata-license-toast';
     var styleId = 'markata-build-banner-style';
 
     function ensureStyle() {
@@ -508,7 +528,8 @@ func buildDevScript(status BuildStatus) string {
         style.id = styleId;
         style.textContent = '#'+bannerId+'{position:fixed;top:0;left:0;right:0;z-index:9999;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;font-size:14px;padding:8px 12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.12);display:none;}'+
             '#'+bannerId+'[data-status="building"]{background:#f59e0b;color:#111827;}'+
-            '#'+bannerId+'[data-status="error"]{background:#dc2626;color:#ffffff;}';
+            '#'+bannerId+'[data-status="error"]{background:#dc2626;color:#ffffff;}'+
+            '#'+toastId+'{position:fixed;right:16px;bottom:16px;z-index:10000;max-width:420px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;font-size:14px;line-height:1.35;background:#111827;color:#f9fafb;padding:10px 14px;border-radius:8px;box-shadow:0 10px 24px rgba(0,0,0,0.25);display:none;}';
         document.head.appendChild(style);
     }
 
@@ -524,6 +545,38 @@ func buildDevScript(status BuildStatus) string {
         return banner;
     }
 
+    function ensureToast() {
+        var toast = document.getElementById(toastId);
+        if (toast) {
+            return toast;
+        }
+
+        toast = document.createElement('div');
+        toast.id = toastId;
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        document.body.appendChild(toast);
+        return toast;
+    }
+
+    function hideLicenseToast() {
+        var toast = document.getElementById(toastId);
+        if (!toast) {
+            return;
+        }
+        toast.style.display = 'none';
+    }
+
+    function showLicenseToast(message) {
+        if (!message) {
+            hideLicenseToast();
+            return;
+        }
+        var toast = ensureToast();
+        toast.textContent = message;
+        toast.style.display = 'block';
+    }
+
     function applyStatus(state) {
         if (!state || !state.status) {
             return;
@@ -535,8 +588,11 @@ func buildDevScript(status BuildStatus) string {
 
         if (state.status === '%s') {
             banner.style.display = 'none';
+            showLicenseToast(state.license_warning || '');
             return;
         }
+
+        hideLicenseToast();
 
         var text = 'Building...';
         if (state.status === '%s') {
@@ -1079,7 +1135,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	}()
 
 	fmt.Println("\nRebuilding...")
-	setBuildStatus(buildStatusBuilding, "")
+	setBuildStatus(buildStatusBuilding, "", "")
 	notifyBuildStatus()
 	startTime := time.Now()
 
@@ -1093,7 +1149,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 
 	m, err := createManager(cfgFile)
 	if err != nil {
-		setBuildStatus(buildStatusError, err.Error())
+		setBuildStatus(buildStatusError, err.Error(), "")
 		notifyBuildStatus()
 		fmt.Printf("Rebuild failed: %v\n", err)
 		return
@@ -1109,7 +1165,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 
 	result, err := runBuild(m)
 	if err != nil {
-		setBuildStatus(buildStatusError, err.Error())
+		setBuildStatus(buildStatusError, err.Error(), "")
 		notifyBuildStatus()
 		fmt.Printf("Rebuild failed: %v\n", err)
 		return
@@ -1124,7 +1180,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	}
 
 	duration := time.Since(startTime)
-	setBuildStatus(buildStatusSuccess, "")
+	setBuildStatus(buildStatusSuccess, "", licenseWarningMessage(getModelsConfig(m)))
 	notifyBuildStatus()
 	fmt.Printf("Rebuilt in %.2fs (%d posts, %d feeds)\n",
 		duration.Seconds(), result.PostsProcessed, result.FeedsGenerated)

@@ -403,6 +403,19 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert authors to map
 	authorsMap := authorsToMap(&c.Authors)
 
+	var licenseValue interface{}
+	if c.License.IsDisabled() {
+		licenseValue = false
+	} else if license, ok := c.LicenseOption(); ok {
+		licenseValue = map[string]interface{}{
+			"key":         license.Key,
+			"name":        license.Name,
+			"url":         license.URL,
+			"description": license.Description,
+			"recommended": license.Recommended,
+		}
+	}
+
 	result := map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
@@ -427,6 +440,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"header":        headerMap,
 		"theme":         themeMap,
 		"authors":       authorsMap,
+		"license":       licenseValue,
 	}
 
 	// Add Extra map for plugin configs (e.g., glightbox_enabled, glightbox_options)

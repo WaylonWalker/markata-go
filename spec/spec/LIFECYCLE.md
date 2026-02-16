@@ -490,6 +490,7 @@ def configure(core):
 - Validate plugin-specific configuration
 - Check for required fields
 - Emit warnings for deprecated options
+- Warn when the root `license` key is missing so that local builds remind authors to declare or opt out.
 - Raise errors for invalid configurations
 
 **Core actions:**
@@ -507,6 +508,10 @@ def validate_config(core):
 
 **After this stage:**
 - Configuration is validated and ready to use
+
+## Live Serve Feedback
+
+The development server injects the validate stage status into every HTML page via `build_status`. When the root `license` field remains unset (and is not explicitly `false`), the validation warning is propagated as a `license_warning` payload so the live reload banner can show a toast reminding you to set a license key or opt out. Once a license string is configured the toast disappears, keeping the warning scoped to the local workflow until metadata is complete.
 
 ---
 

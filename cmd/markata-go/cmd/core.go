@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -50,7 +51,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 
 	// Print warnings
 	for _, w := range warnings {
-		if verbose {
+		if verbose || isLicenseWarning(w) {
 			fmt.Printf("Warning: %v\n", w)
 		}
 	}
@@ -144,6 +145,21 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	registerDefaultPlugins(m)
 
 	return m, nil
+}
+
+func licenseWarningMessage(cfg *models.Config) string {
+	if cfg == nil || !cfg.NeedsLicenseWarning() {
+		return ""
+	}
+	return fmt.Sprintf("License not configured. Set license = %q (recommended) or license = false.", models.DefaultLicenseKey)
+}
+
+func isLicenseWarning(err error) bool {
+	var vErr config.ValidationError
+	if !errors.As(err, &vErr) {
+		return false
+	}
+	return vErr.IsWarn && vErr.Field == "license"
 }
 
 // registerDefaultPlugins registers all default plugins to the manager.

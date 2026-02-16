@@ -128,11 +128,30 @@ Only essential, cross-cutting concerns live at the root:
 | `title` | string? | null | Site title |
 | `description` | string? | null | Site description |
 | `author` | string? | null | Default author |
+| `license` | string `\|` bool | `(unset)` | Select from the supported license keys below or set to `false` to disable the footer attribution and associated warning. |
 | `lang` | string | `"en"` | Site language |
 | `hooks` | string[] | `["default"]` | Plugins to load |
 | `disabled_hooks` | string[] | `[]` | Plugins to exclude |
 
 Everything else goes in a plugin namespace.
+
+### License configuration
+
+The root `license` key lets you declare how visitors may reuse your content. It accepts either a string key or the literal `false` value:
+
+- **String keys** register a license that is rendered in the footer and made available to templates via `config.license`. Use one of the supported values:
+  - `all-rights-reserved` – All rights reserved (no reuse allowed).
+  - `cc-by-4.0` (recommended) – Creative Commons Attribution 4.0 International (`https://creativecommons.org/licenses/by/4.0/`).
+  - `cc-by-sa-4.0` – Creative Commons Attribution-ShareAlike 4.0 International (`https://creativecommons.org/licenses/by-sa/4.0/`).
+  - `cc-by-nc-4.0` – Creative Commons Attribution-NonCommercial 4.0 International (`https://creativecommons.org/licenses/by-nc/4.0/`).
+  - `cc-by-nd-4.0` – Creative Commons Attribution-NoDerivatives 4.0 International (`https://creativecommons.org/licenses/by-nd/4.0/`).
+  - `cc-by-nc-sa-4.0` – Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (`https://creativecommons.org/licenses/by-nc-sa/4.0/`).
+  - `mit` – MIT License (`https://opensource.org/licenses/MIT`).
+
+- **Boolean `false`** suppresses the license footer and prevents the validation warning (useful for sites that intentionally publish without an explicit license).
+- **Omitted key** (default) triggers a validation warning and the serve banner/toast reminder until a license string is configured or `false` is set.
+
+The default scaffolding details from `markata-go config init` include `license = "cc-by-4.0"`, so new sites ship with the recommended Creative Commons attribution out of the box.
 
 ---
 

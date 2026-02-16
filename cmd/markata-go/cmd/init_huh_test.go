@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 )
 
@@ -153,4 +154,26 @@ func TestResolveColor_NotFound(t *testing.T) {
 // from a Palette without going through the loader (which needs files).
 func createHuhThemeFromPalette(palette *palettes.Palette) *huh.Theme {
 	return buildThemeFromPalette(palette)
+}
+
+func TestResolveWizardLicenseValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		selected string
+		want     interface{}
+	}{
+		{name: "recommended default", selected: "", want: models.DefaultLicenseKey},
+		{name: "explicit false", selected: "false", want: false},
+		{name: "valid key", selected: "mit", want: "mit"},
+		{name: "invalid key falls back", selected: "invalid", want: models.DefaultLicenseKey},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := resolveWizardLicenseValue(tt.selected)
+			if got != tt.want {
+				t.Fatalf("resolveWizardLicenseValue(%q) = %v, want %v", tt.selected, got, tt.want)
+			}
+		})
+	}
 }
