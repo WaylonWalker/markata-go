@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // PaletteCSSPlugin generates CSS variables from the configured color palette.
@@ -36,6 +38,44 @@ func NewPaletteCSSPlugin() *PaletteCSSPlugin {
 // Name returns the unique name of the plugin.
 func (p *PaletteCSSPlugin) Name() string {
 	return "palette_css"
+}
+
+// Configure generates CSS from the configured palette and registers its hash
+// so templates can use the correct hashed filename. This runs in Configure stage
+// before templates are rendered in Render stage.
+func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
+	config := m.Config()
+
+	// Get palette configuration from config.Extra["theme"]
+	paletteName, paletteLight, paletteDark := p.getPaletteConfig(config.Extra)
+	userVariables := p.getThemeVariables(config.Extra)
+	if paletteName == "" {
+		return nil
+	}
+
+	// Load palettes
+	loader := palettes.NewLoader()
+
+	// Check if theme switcher is enabled
+	switcherEnabled := p.isSwitcherEnabled(config.Extra)
+
+	var css string
+	if switcherEnabled {
+		css = p.generateMultiPaletteCSS(loader, config.Extra, paletteName, paletteLight, paletteDark, userVariables)
+	} else {
+		css = p.generateSinglePaletteCSS(loader, paletteName, paletteLight, paletteDark, userVariables)
+	}
+
+	// Compute hash of generated CSS
+	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(css)))[:8]
+
+	// Register hash so templates can use it
+	m.SetAssetHash("css/variables.css", hash)
+	templates.SetAssetHashes(map[string]string{"css/variables.css": hash})
+
+	log.Printf("[palette_css] Registered hash %s for variables.css", hash)
+
+	return nil
 }
 
 // Write generates CSS from the configured palette and writes it to the output directory.
@@ -845,7 +885,8 @@ func (p *PaletteCSSPlugin) Priority(stage lifecycle.Stage) int {
 
 // Ensure PaletteCSSPlugin implements the required interfaces.
 var (
-	_ lifecycle.Plugin         = (*PaletteCSSPlugin)(nil)
-	_ lifecycle.WritePlugin    = (*PaletteCSSPlugin)(nil)
-	_ lifecycle.PriorityPlugin = (*PaletteCSSPlugin)(nil)
+	_ lifecycle.Plugin          = (*PaletteCSSPlugin)(nil)
+	_ lifecycle.ConfigurePlugin = (*PaletteCSSPlugin)(nil)
+	_ lifecycle.WritePlugin     = (*PaletteCSSPlugin)(nil)
+	_ lifecycle.PriorityPlugin  = (*PaletteCSSPlugin)(nil)
 )
