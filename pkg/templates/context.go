@@ -518,12 +518,34 @@ func componentsToMap(c *models.ComponentsConfig) map[string]interface{} {
 		"mappings": c.CardRouter.MergedMappings(),
 	}
 
+	shareEnabled := true
+	if c.Share.Enabled != nil {
+		shareEnabled = *c.Share.Enabled
+	}
+	sharePlatforms := append([]string{}, c.Share.Platforms...)
+	shareCustom := make(map[string]map[string]interface{})
+	for key, custom := range c.Share.Custom {
+		shareCustom[key] = map[string]interface{}{
+			"name": custom.Name,
+			"icon": custom.Icon,
+			"url":  custom.URL,
+		}
+	}
+	shareMap := map[string]interface{}{
+		"enabled":   shareEnabled,
+		"title":     c.Share.Title,
+		"position":  c.Share.Position,
+		"platforms": sharePlatforms,
+		"custom":    shareCustom,
+	}
+
 	return map[string]interface{}{
 		"nav":          navMap,
 		"footer":       footerMap,
 		"doc_sidebar":  docSidebarMap,
 		"feed_sidebar": feedSidebarMap,
 		"card_router":  cardRouterMap,
+		"share":        shareMap,
 	}
 }
 

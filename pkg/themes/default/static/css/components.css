@@ -1833,6 +1833,102 @@ article.post {
    animation: fade-in 180ms ease both, slide-down 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+/* ==========================================================================
+   Share Component
+   ========================================================================== */
+
+.share-panel {
+   margin: var(--space-8) 0;
+   padding: var(--space-6);
+   border-radius: 1rem;
+   background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 20%, transparent), color-mix(in srgb, var(--color-surface) 90%, transparent));
+   border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+}
+
+.share-panel__header {
+   display: flex;
+   flex-direction: column;
+   gap: 0.25rem;
+   margin-bottom: var(--space-5);
+}
+
+.share-panel__title {
+   font-size: 1.25rem;
+   font-weight: 600;
+   margin: 0;
+}
+
+.share-panel__description {
+   margin: 0;
+   font-size: var(--text-sm);
+   color: var(--color-text-muted);
+}
+
+.share-panel__grid {
+   display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+   gap: 0.75rem;
+}
+
+.share-button {
+   display: flex;
+   align-items: center;
+   gap: 0.75rem;
+   padding: 0.75rem 1rem;
+   background: color-mix(in srgb, var(--color-background) 80%, var(--color-surface));
+   border-radius: 0.85rem;
+   border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+   color: var(--color-text);
+   font-weight: 500;
+   text-decoration: none;
+   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.share-button__icon {
+   width: 2rem;
+   height: 2rem;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   border-radius: 0.65rem;
+   background-color: color-mix(in srgb, var(--color-surface) 90%, var(--color-primary));
+}
+
+.share-button__icon img {
+   width: 1.25rem;
+   height: 1.25rem;
+   display: block;
+}
+
+.share-button__name {
+   flex: 1;
+}
+
+.share-button__hint {
+   font-size: 0.75rem;
+   color: var(--color-text-muted);
+}
+
+.share-button:hover,
+.share-button:focus-visible {
+   transform: translateY(-2px);
+   border-color: var(--color-primary);
+   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+}
+
+.share-button--copied {
+   border-color: var(--color-primary);
+   background-color: color-mix(in srgb, var(--color-primary) 15%, var(--color-surface));
+   color: var(--color-text);
+}
+
+@media (max-width: 768px) {
+   .share-panel__grid {
+     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+   }
+}
+
 /* Keep global chrome stable (no morphing). */
 ::view-transition-old(site-nav),
 ::view-transition-new(site-nav),

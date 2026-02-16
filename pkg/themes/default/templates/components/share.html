@@ -1,0 +1,100 @@
+{% if share_buttons %}
+<section class="share-panel share-panel--{{ config.components.share.position | default:'bottom' }}" aria-label="Share this post">
+    <div class="share-panel__header">
+        <h2 class="share-panel__title">{{ config.components.share.title | default:'Share this post' }}</h2>
+        <p class="share-panel__description">Help readers send this post to their favorite platforms.</p>
+    </div>
+    <div class="share-panel__grid">
+        {% for platform in share_buttons %}
+        {% if platform.Action == 'share' %}
+        <a href="{{ platform.Link }}" class="share-button" target="_blank" rel="noopener noreferrer" aria-label="{{ platform.AriaLabel }}">
+            <span class="share-button__icon" aria-hidden="true">
+                {% if platform.IconIsThemeAsset %}
+                <img src="{{ platform.Icon | theme_asset_hashed }}" alt="" aria-hidden="true">
+                {% else %}
+                <img src="{{ platform.Icon }}" alt="" aria-hidden="true">
+                {% endif %}
+            </span>
+            <span class="share-button__name">{{ platform.Name }}</span>
+            <span class="share-button__hint" aria-live="polite"></span>
+        </a>
+        {% else %}
+        <button type="button" class="share-button" data-share-action="copy" data-share-copy="{{ platform.CopyText }}" data-share-label="{{ platform.AriaLabel }}" data-share-feedback="{{ platform.CopyFeedback }}" aria-label="{{ platform.AriaLabel }}">
+            <span class="share-button__icon" aria-hidden="true">
+                {% if platform.IconIsThemeAsset %}
+                <img src="{{ platform.Icon | theme_asset_hashed }}" alt="" aria-hidden="true">
+                {% else %}
+                <img src="{{ platform.Icon }}" alt="" aria-hidden="true">
+                {% endif %}
+            </span>
+            <span class="share-button__name">{{ platform.Name }}</span>
+            <span class="share-button__hint" aria-live="polite"></span>
+        </button>
+        {% endif %}
+        {% endfor %}
+    </div>
+</section>
+
+<script>
+(function() {
+    if (window.__markataShareCopyBound) {
+        return;
+    }
+    window.__markataShareCopyBound = true;
+
+    function copyToClipboard(text) {
+        if (!text) {
+            return Promise.reject();
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text);
+        }
+        var textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+        var result = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return result ? Promise.resolve() : Promise.reject();
+    }
+
+    document.addEventListener('click', function(event) {
+        var button = event.target.closest('[data-share-action="copy"]');
+        if (!button) {
+            return;
+        }
+        event.preventDefault();
+        var payload = button.dataset.shareCopy;
+        if (!payload) {
+            return;
+        }
+        var hint = button.querySelector('.share-button__hint');
+        var defaultLabel = button.dataset.shareLabel || button.getAttribute('aria-label') || 'Copy link';
+        var feedback = button.dataset.shareFeedback || 'Link copied to clipboard';
+
+        copyToClipboard(payload).then(function() {
+            if (hint) {
+                hint.textContent = feedback;
+            }
+            button.setAttribute('aria-label', feedback);
+            button.classList.add('share-button--copied');
+            window.setTimeout(function() {
+                if (hint) {
+                    hint.textContent = '';
+                }
+                button.setAttribute('aria-label', defaultLabel);
+                button.classList.remove('share-button--copied');
+            }, 1800);
+        }).catch(function() {
+            if (hint) {
+                hint.textContent = 'Unable to copy';
+            }
+        });
+    });
+})();
+</script>
+{% endif %}

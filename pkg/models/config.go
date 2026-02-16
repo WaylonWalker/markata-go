@@ -53,6 +53,9 @@ type ComponentsConfig struct {
 
 	// CardRouter configures the card template routing for feeds
 	CardRouter CardRouterConfig `json:"card_router" yaml:"card_router" toml:"card_router"`
+
+	// Share configures the per-post share component
+	Share ShareComponentConfig `json:"share" yaml:"share" toml:"share"`
 }
 
 // NavComponentConfig configures the navigation component.
@@ -131,6 +134,56 @@ type CardRouterConfig struct {
 	// User mappings are merged with defaults, allowing overrides.
 	// Example: {"daily": "article", "meeting": "note"}
 	Mappings map[string]string `json:"mappings,omitempty" yaml:"mappings,omitempty" toml:"mappings,omitempty"`
+}
+
+// SharePlatformConfig defines a custom share button  entry.
+type SharePlatformConfig struct {
+	// Name is the accessible label for the platform button
+	Name string `json:"name,omitempty" yaml:"name,omitempty" toml:"name,omitempty"`
+
+	// Icon is the path to an icon file (relative to theme assets by default)
+	Icon string `json:"icon,omitempty" yaml:"icon,omitempty" toml:"icon,omitempty"`
+
+	// URL is the share URL template (supports {{title}}, {{url}}, {{excerpt}})
+	URL string `json:"url,omitempty" yaml:"url,omitempty" toml:"url,omitempty"`
+}
+
+// ShareComponentConfig configures the share buttons that appear at the end of posts.
+type ShareComponentConfig struct {
+	// Enabled toggles the entire component (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Platforms controls which platform keys render and in what order
+	Platforms []string `json:"platforms,omitempty" yaml:"platforms,omitempty" toml:"platforms,omitempty"`
+
+	// Position adds `share-panel--<position>` modifier for CSS hooks
+	Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
+
+	// Title is the heading text displayed above the buttons
+	Title string `json:"title,omitempty" yaml:"title,omitempty" toml:"title,omitempty"`
+
+	// Custom maps platform keys to bespoke definitions
+	Custom map[string]SharePlatformConfig `json:"custom,omitempty" yaml:"custom,omitempty" toml:"custom,omitempty"`
+}
+
+// NewShareComponentConfig returns the default share component configuration.
+func NewShareComponentConfig() ShareComponentConfig {
+	enabled := true
+	return ShareComponentConfig{
+		Enabled:   &enabled,
+		Platforms: append([]string{}, DefaultSharePlatformOrder...),
+		Position:  "bottom",
+		Title:     "Share this post",
+		Custom:    map[string]SharePlatformConfig{},
+	}
+}
+
+// IsEnabled reports whether the share component is enabled.
+func (c ShareComponentConfig) IsEnabled() bool {
+	if c.Enabled == nil {
+		return true
+	}
+	return *c.Enabled
 }
 
 // DefaultCardMappings returns the default template-to-card mappings.
@@ -258,6 +311,7 @@ func NewComponentsConfig() ComponentsConfig {
 			Position: "left",
 			Width:    "250px",
 		},
+		Share: NewShareComponentConfig(),
 	}
 }
 
