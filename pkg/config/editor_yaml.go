@@ -1,7 +1,10 @@
+//go:build cgo
+
 package config
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 
@@ -26,7 +29,10 @@ func getYamlValue(data []byte, path []KeySegment) (any, error) {
 func setYamlValue(data []byte, path []KeySegment, value any) ([]byte, error) {
 	parser := sitter.NewParser()
 	parser.SetLanguage(tsyaml.GetLanguage())
-	tree := parser.Parse(nil, data)
+	tree, err := parser.ParseCtx(context.Background(), nil, data)
+	if err != nil {
+		return nil, err
+	}
 	root := tree.RootNode()
 
 	if valueNode, err := findYamlValueNodeWithRoot(data, root, path); err == nil {
@@ -64,7 +70,10 @@ func setYamlValue(data []byte, path []KeySegment, value any) ([]byte, error) {
 func findYamlValueNode(data []byte, path []KeySegment) (*sitter.Node, error) {
 	parser := sitter.NewParser()
 	parser.SetLanguage(tsyaml.GetLanguage())
-	tree := parser.Parse(nil, data)
+	tree, err := parser.ParseCtx(context.Background(), nil, data)
+	if err != nil {
+		return nil, err
+	}
 	root := tree.RootNode()
 	return findYamlValueNodeWithRoot(data, root, path)
 }

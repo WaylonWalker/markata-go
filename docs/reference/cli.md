@@ -760,7 +760,8 @@ markata-go config get url -c production.toml
 Notes:
 
 - Values are read directly from the config file.
-- TOML/YAML are parsed with tree-sitter to preserve formatting.
+- TOML/YAML are parsed with tree-sitter in CGO-enabled builds to preserve formatting.
+- CGO-disabled builds parse TOML/YAML via full decode.
 - JSON values may be re-emitted for structured output.
 
 ##### set
@@ -786,7 +787,8 @@ markata-go config set glob.patterns '["posts/**/*.md", "pages/*.md"]'
 
 Notes:
 
-- TOML/YAML are updated with byte-range edits to preserve formatting and comments.
+- TOML/YAML are updated with byte-range edits to preserve formatting and comments in CGO-enabled builds.
+- CGO-disabled builds re-emit TOML/YAML with standard encoders.
 - JSON is re-emitted with stable indentation.
 - File permissions are preserved.
 

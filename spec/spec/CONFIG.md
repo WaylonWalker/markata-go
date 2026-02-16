@@ -480,7 +480,8 @@ Behavior:
 
 - Reads values directly from the config file to preserve source-of-truth behavior.
 - Supports TOML, YAML, and JSON.
-- Uses tree-sitter parsing for TOML/YAML to locate byte ranges without reformatting.
+- Uses tree-sitter parsing for TOML/YAML in CGO-enabled builds to locate byte ranges without reformatting.
+- CGO-disabled builds parse TOML/YAML via full decode.
 - JSON output may be re-emitted for structured values.
 ["**/*.md"]
 ```
@@ -496,7 +497,8 @@ $ my-ssg config set glob.patterns '["posts/*.md", "pages/*.md"]'
 
 Behavior:
 
-- TOML/YAML are updated with byte-range edits to preserve formatting and comments.
+- TOML/YAML are updated with byte-range edits to preserve formatting and comments in CGO-enabled builds.
+- CGO-disabled builds re-emit TOML/YAML with standard encoders.
 - JSON is re-emitted with stable indentation.
 - File permissions are preserved.
 ```

@@ -70,7 +70,10 @@ func setValueByPath(doc any, path []KeySegment, value any) (any, error) {
 				current[segment.Key] = value
 				return root, nil
 			}
-			arr, _ := current[segment.Key].([]any)
+			arr, ok := current[segment.Key].([]any)
+			if !ok {
+				arr = []any{}
+			}
 			if *segment.Index < 0 {
 				return nil, fmt.Errorf("index out of range")
 			}
