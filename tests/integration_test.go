@@ -687,6 +687,9 @@ Content`)
 }
 
 func TestIntegration_ConcurrentProcessing(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	// Test case: "concurrent post processing" from tests.yaml
 	site := newTestSite(t)
 
@@ -976,6 +979,9 @@ Content`)
 // This simulates the bug reported in issue #492 where palette changes
 // would revert to default during serve mode.
 func TestIntegration_PaletteChangeOnRebuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	site := newTestSite(t)
 
 	// Add a simple post
@@ -1050,6 +1056,9 @@ Content`)
 // TestIntegration_PaletteChangeWithConfigFile tests palette changes using actual
 // config file loading, more closely simulating the serve mode scenario.
 func TestIntegration_PaletteChangeWithConfigFile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	site := newTestSite(t)
 
 	// Add a simple post
@@ -1161,6 +1170,9 @@ palette = "dracula"
 // TestIntegration_PaletteChangeWithBuildCache tests that palette changes work correctly
 // when the build cache is involved. This more closely simulates the serve mode scenario.
 func TestIntegration_PaletteChangeWithBuildCache(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	site := newTestSite(t)
 
 	// Create the .markata cache directory
