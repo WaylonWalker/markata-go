@@ -1956,6 +1956,10 @@ type EmbedsConfig struct {
 
 	// ShowImage controls whether to display OG images in external embeds (default: true)
 	ShowImage bool `json:"show_image" yaml:"show_image" toml:"show_image"`
+
+	// AttachmentsPrefix is the URL prefix for attachment embeds (default: "/static/")
+	// Used for Obsidian-style ![[image.jpg]] syntax
+	AttachmentsPrefix string `json:"attachments_prefix" yaml:"attachments_prefix" toml:"attachments_prefix"`
 }
 
 // NewEmbedsConfig creates a new EmbedsConfig with default values.
@@ -1969,6 +1973,7 @@ func NewEmbedsConfig() EmbedsConfig {
 		Timeout:           10,
 		FallbackTitle:     "External Link",
 		ShowImage:         true,
+		AttachmentsPrefix: "/static/",
 	}
 }
 
