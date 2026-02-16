@@ -2756,7 +2756,7 @@ markata-go palette pick && markata-go build
 - Uses Lipgloss for styled color swatch rendering
 - Pre-loads all palettes at startup for instant preview switching
 - Fuzzy matching checks that all characters in the query appear in the palette name in order
-- Config writing reuses the `config set` infrastructure (`parseConfigToMap`, `setMapValue`, `marshalConfigMap`)
+- Config writing reuses the `config set` infrastructure (`parseConfigToMap`)
 - Palette discovery via `palettes.NewLoader().Discover()`, loading via `loader.Load(name)`
 
 ---

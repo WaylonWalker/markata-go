@@ -618,25 +618,6 @@ func parseConfigToMap(data []byte, format string) (map[string]interface{}, error
 	return wrapper, nil
 }
 
-// marshalConfigMap marshals a config map back to the specified format.
-func marshalConfigMap(configMap map[string]interface{}, format string) ([]byte, error) {
-	switch format {
-	case formatTOML:
-		var buf strings.Builder
-		encoder := toml.NewEncoder(&buf)
-		if err := encoder.Encode(configMap); err != nil {
-			return nil, err
-		}
-		return []byte(buf.String()), nil
-	case formatYAML:
-		return yaml.Marshal(configMap)
-	case formatJSON:
-		return json.MarshalIndent(configMap, "", "  ")
-	default:
-		return nil, fmt.Errorf("unsupported format: %s", format)
-	}
-}
-
 // parseValue parses a string value with automatic type detection.
 func parseValue(value string) interface{} {
 	// Check for boolean
