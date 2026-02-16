@@ -416,6 +416,9 @@ func TestWebMentionsPlugin_ResolveURL(t *testing.T) {
 }
 
 func TestWebMentionsPlugin_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	// Create a mock target server with webmention endpoint
 	targetServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Link", fmt.Sprintf(`<%s/webmention>; rel="webmention"`, r.Host))
