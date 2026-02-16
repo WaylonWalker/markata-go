@@ -63,60 +63,6 @@ func TestParseValue(t *testing.T) {
 	}
 }
 
-func TestSetMapValue(t *testing.T) {
-	tests := []struct {
-		name     string
-		key      string
-		value    interface{}
-		wantErr  bool
-		checkKey string
-		checkVal interface{}
-	}{
-		{
-			name:     "top-level key",
-			key:      "title",
-			value:    "New Title",
-			checkKey: "title",
-			checkVal: "New Title",
-		},
-		{
-			name:     "nested key",
-			key:      "glob.patterns",
-			value:    []interface{}{"**/*.md"},
-			checkKey: "glob.patterns",
-			checkVal: []interface{}{"**/*.md"},
-		},
-		{
-			name:     "deep nested key",
-			key:      "feed_defaults.formats.html",
-			value:    true,
-			checkKey: "feed_defaults.formats.html",
-			checkVal: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			m := map[string]interface{}{
-				"markata-go": map[string]interface{}{},
-			}
-
-			err := setMapValue(m, tt.key, tt.value)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("setMapValue() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if !tt.wantErr {
-				got := getMapValue(m, tt.checkKey)
-				if got == nil {
-					t.Errorf("getMapValue(%q) = nil, want %v", tt.checkKey, tt.checkVal)
-				}
-			}
-		})
-	}
-}
-
 func TestFormatFromPath(t *testing.T) {
 	tests := []struct {
 		path   string
@@ -252,32 +198,9 @@ concurrency = 2
 				t.Fatalf("Failed to create test file: %v", err)
 			}
 
-			// Read and parse
-			data, err := os.ReadFile(configPath)
-			if err != nil {
-				t.Fatalf("Failed to read config: %v", err)
-			}
-
-			configMap, err := parseConfigToMap(data, tt.format)
-			if err != nil {
-				t.Fatalf("Failed to parse config: %v", err)
-			}
-
-			// Set value
 			parsedValue := parseValue(tt.value)
-			if err := setMapValue(configMap, tt.key, parsedValue); err != nil {
+			if err := config.SetValueInFile(configPath, tt.key, parsedValue); err != nil {
 				t.Fatalf("Failed to set value: %v", err)
-			}
-
-			// Marshal back
-			newData, err := marshalConfigMap(configMap, tt.format)
-			if err != nil {
-				t.Fatalf("Failed to marshal config: %v", err)
-			}
-
-			// Write and verify
-			if err := os.WriteFile(configPath, newData, 0o600); err != nil {
-				t.Fatalf("Failed to write config: %v", err)
 			}
 
 			result, err := os.ReadFile(configPath)

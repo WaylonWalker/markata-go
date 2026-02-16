@@ -79,6 +79,7 @@ require (
 	github.com/nsf/termbox-go v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/tdewolff/parse/v2 v2.8.5 // indirect
 	github.com/tetratelabs/wazero v1.2.1 // indirect

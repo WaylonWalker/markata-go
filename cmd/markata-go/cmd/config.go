@@ -405,14 +405,16 @@ func isKeyInMap(m map[string]interface{}, key string) bool {
 func runConfigGetCommand(_ *cobra.Command, args []string) error {
 	key := args[0]
 
-	// Load configuration
-	cfg, err := config.Load(cfgFile)
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
+	configPath := cfgFile
+	if configPath == "" {
+		var err error
+		configPath, err = config.Discover()
+		if err != nil {
+			return fmt.Errorf("no config file found (use -c to specify one or run 'config init' first): %w", err)
+		}
 	}
 
-	// Get value by key (supports dot notation)
-	value, err := getConfigValue(cfg, key)
+	value, err := config.GetValueFromFile(configPath, key)
 	if err != nil {
 		return err
 	}
@@ -435,84 +437,6 @@ func runConfigGetCommand(_ *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-// getConfigValue retrieves a configuration value by key with dot notation support.
-func getConfigValue(cfg *models.Config, key string) (interface{}, error) {
-	// Map of top-level keys to their values
-	lowKey := strings.ToLower(key)
-	if val, err := getTopLevelConfigValue(cfg, lowKey); err == nil {
-		return val, nil
-	}
-
-	// Handle nested keys
-	return getNestedConfigValue(cfg, lowKey)
-}
-
-// getTopLevelConfigValue returns top-level config values.
-func getTopLevelConfigValue(cfg *models.Config, key string) (interface{}, error) {
-	switch key {
-	case "output_dir":
-		return cfg.OutputDir, nil
-	case "url":
-		return cfg.URL, nil
-	case "title":
-		return cfg.Title, nil
-	case "description":
-		return cfg.Description, nil
-	case "author":
-		return cfg.Author, nil
-	case "assets_dir":
-		return cfg.AssetsDir, nil
-	case "templates_dir":
-		return cfg.TemplatesDir, nil
-	case "hooks":
-		return cfg.Hooks, nil
-	case "disabled_hooks":
-		return cfg.DisabledHooks, nil
-	case "concurrency":
-		return cfg.Concurrency, nil
-	default:
-		return nil, fmt.Errorf("not a top-level key")
-	}
-}
-
-// getNestedConfigValue returns nested config values (with dot notation).
-func getNestedConfigValue(cfg *models.Config, key string) (interface{}, error) {
-	parts := strings.SplitN(key, ".", 2)
-	switch strings.ToLower(parts[0]) {
-	case "glob":
-		if len(parts) == 1 {
-			return cfg.GlobConfig, nil
-		}
-		if strings.EqualFold(parts[1], "patterns") {
-			return cfg.GlobConfig.Patterns, nil
-		}
-		if strings.EqualFold(parts[1], "use_gitignore") {
-			return cfg.GlobConfig.UseGitignore, nil
-		}
-	case "markdown":
-		if len(parts) == 1 {
-			return cfg.MarkdownConfig, nil
-		}
-		if strings.EqualFold(parts[1], "extensions") {
-			return cfg.MarkdownConfig.Extensions, nil
-		}
-	case "feed_defaults":
-		if len(parts) == 1 {
-			return cfg.FeedDefaults, nil
-		}
-		if strings.EqualFold(parts[1], "items_per_page") {
-			return cfg.FeedDefaults.ItemsPerPage, nil
-		}
-		if strings.EqualFold(parts[1], "orphan_threshold") {
-			return cfg.FeedDefaults.OrphanThreshold, nil
-		}
-	case "feeds":
-		return cfg.Feeds, nil
-	}
-
-	return nil, fmt.Errorf("unknown config key: %s", key)
 }
 
 func runConfigValidateCommand(_ *cobra.Command, _ []string) error {
@@ -616,30 +540,12 @@ func runConfigSetCommand(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	// Read existing config file
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read config file %s: %w", configPath, err)
-	}
-
-	// Determine format from extension
-	format := formatFromPath(configPath)
-
-	// Parse to generic map for modification
-	configMap, err := parseConfigToMap(data, format)
-	if err != nil {
-		return fmt.Errorf("failed to parse config file: %w", err)
-	}
-
 	// Parse the value with automatic type detection
 	parsedValue := parseValue(value)
 
-	// Get the old value for display
-	oldValue := getMapValue(configMap, key)
-
-	// Set the value in the map
-	if err := setMapValue(configMap, key, parsedValue); err != nil {
-		return fmt.Errorf("failed to set value: %w", err)
+	oldValue, err := config.GetValueFromFile(configPath, key)
+	if err != nil {
+		oldValue = nil
 	}
 
 	// If dry-run, just show what would change
@@ -659,15 +565,8 @@ func runConfigSetCommand(_ *cobra.Command, args []string) error {
 		fmt.Printf("Created backup: %s\n", backupPath)
 	}
 
-	// Marshal back to the original format
-	newData, err := marshalConfigMap(configMap, format)
-	if err != nil {
-		return fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	// Write the updated config
-	if err := os.WriteFile(configPath, newData, 0o644); err != nil { //nolint:gosec // config files should be readable
-		return fmt.Errorf("failed to write config file: %w", err)
+	if err := config.SetValueInFile(configPath, key, parsedValue); err != nil {
+		return fmt.Errorf("failed to set value: %w", err)
 	}
 
 	fmt.Printf("Updated %s in %s\n", key, configPath)
@@ -719,25 +618,6 @@ func parseConfigToMap(data []byte, format string) (map[string]interface{}, error
 	return wrapper, nil
 }
 
-// marshalConfigMap marshals a config map back to the specified format.
-func marshalConfigMap(configMap map[string]interface{}, format string) ([]byte, error) {
-	switch format {
-	case formatTOML:
-		var buf strings.Builder
-		encoder := toml.NewEncoder(&buf)
-		if err := encoder.Encode(configMap); err != nil {
-			return nil, err
-		}
-		return []byte(buf.String()), nil
-	case formatYAML:
-		return yaml.Marshal(configMap)
-	case formatJSON:
-		return json.MarshalIndent(configMap, "", "  ")
-	default:
-		return nil, fmt.Errorf("unsupported format: %s", format)
-	}
-}
-
 // parseValue parses a string value with automatic type detection.
 func parseValue(value string) interface{} {
 	// Check for boolean
@@ -772,73 +652,6 @@ func parseValue(value string) interface{} {
 
 	// Default to string
 	return value
-}
-
-// getMapValue retrieves a value from a nested map using dot notation.
-func getMapValue(m map[string]interface{}, key string) interface{} {
-	// First, look inside markata-go wrapper
-	inner, ok := m["markata-go"].(map[string]interface{})
-	if !ok {
-		return nil
-	}
-
-	parts := strings.Split(key, ".")
-	current := inner
-
-	for i, part := range parts {
-		val, ok := current[part]
-		if !ok {
-			return nil
-		}
-
-		if i == len(parts)-1 {
-			return val
-		}
-
-		current, ok = val.(map[string]interface{})
-		if !ok {
-			return nil
-		}
-	}
-
-	return nil
-}
-
-// setMapValue sets a value in a nested map using dot notation.
-func setMapValue(m map[string]interface{}, key string, value interface{}) error {
-	// Get or create the markata-go wrapper
-	inner, ok := m["markata-go"].(map[string]interface{})
-	if !ok {
-		inner = make(map[string]interface{})
-		m["markata-go"] = inner
-	}
-
-	parts := strings.Split(key, ".")
-	current := inner
-
-	for i, part := range parts {
-		if i == len(parts)-1 {
-			// Last part - set the value
-			current[part] = value
-			return nil
-		}
-
-		// Navigate or create intermediate maps
-		next, ok := current[part]
-		if !ok {
-			// Create the intermediate map
-			newMap := make(map[string]interface{})
-			current[part] = newMap
-			current = newMap
-		} else {
-			current, ok = next.(map[string]interface{})
-			if !ok {
-				return fmt.Errorf("cannot set nested key %s: %s is not a map", key, part)
-			}
-		}
-	}
-
-	return nil
 }
 
 // formatValueForDisplay formats a value for human-readable display.
