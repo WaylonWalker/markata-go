@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/listcache"
 )
 
 // buildService implements BuildService using lifecycle.Manager.
@@ -74,7 +75,10 @@ func (s *buildService) LoadOnly(_ context.Context) error {
 
 // LoadForTUI runs through Collect stage for TUI browsing.
 // This includes Transform (for stats, auto-titles) and Collect (for feeds).
-func (s *buildService) LoadForTUI(_ context.Context) error {
+func (s *buildService) LoadForTUI(ctx context.Context) error {
+	if opts, ok := listcache.OptionsFromManager(s.manager); ok {
+		return listcache.LoadOrRefresh(ctx, s.manager, opts)
+	}
 	return s.manager.RunTo(lifecycle.StageCollect)
 }
 
