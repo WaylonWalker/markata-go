@@ -30,6 +30,7 @@ func (p *PrevNextPlugin) Priority(stage lifecycle.Stage) int {
 // Collect calculates prev/next links for all posts based on the configured strategy.
 func (p *PrevNextPlugin) Collect(m *lifecycle.Manager) error {
 	config := getPrevNextConfig(m.Config())
+	seriesCfg := parseSeriesConfig(m.Config())
 
 	// Check if enabled
 	if !config.Enabled {
@@ -46,7 +47,7 @@ func (p *PrevNextPlugin) Collect(m *lifecycle.Manager) error {
 	// Process each post
 	posts := m.Posts()
 	for _, post := range posts {
-		p.processPost(post, config, feeds, postToFeeds)
+		p.processPost(post, config, seriesCfg, feeds, postToFeeds)
 	}
 
 	return nil
@@ -56,11 +57,16 @@ func (p *PrevNextPlugin) Collect(m *lifecycle.Manager) error {
 func (p *PrevNextPlugin) processPost(
 	post *models.Post,
 	config models.PrevNextConfig,
+	seriesCfg seriesConfig,
 	feeds []*lifecycle.Feed,
 	postToFeeds map[string][]*lifecycle.Feed,
 ) {
+	if post.PrevNextFeed != "" || post.PrevNextContext != nil {
+		return
+	}
+
 	// Determine which feed to use for navigation
-	feed := p.resolveFeed(post, config, feeds, postToFeeds)
+	feed := p.resolveFeed(post, config, seriesCfg, feeds, postToFeeds)
 	if feed == nil {
 		// Post is not in any feed, no prev/next navigation
 		return
@@ -113,6 +119,7 @@ func (p *PrevNextPlugin) processPost(
 func (p *PrevNextPlugin) resolveFeed(
 	post *models.Post,
 	config models.PrevNextConfig,
+	seriesCfg seriesConfig,
 	feeds []*lifecycle.Feed,
 	postToFeeds map[string][]*lifecycle.Feed,
 ) *lifecycle.Feed {
@@ -122,8 +129,14 @@ func (p *PrevNextPlugin) resolveFeed(
 
 	case models.StrategySeries:
 		// Check for series in frontmatter
-		if series := getStringFromExtra(post.Extra, "series"); series != "" {
-			if feed := findFeedBySlug(feeds, series); feed != nil {
+		seriesSlug := getStringFromExtra(post.Extra, "series_slug")
+		if seriesSlug == "" {
+			if series := getStringFromExtra(post.Extra, "series"); series != "" {
+				seriesSlug = buildSeriesFeedSlug(seriesCfg.SlugPrefix, slugify(series))
+			}
+		}
+		if seriesSlug != "" {
+			if feed := findFeedBySlug(feeds, seriesSlug); feed != nil {
 				return feed
 			}
 		}

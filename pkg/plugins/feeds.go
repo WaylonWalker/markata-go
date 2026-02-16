@@ -45,36 +45,46 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 		// Apply defaults
 		fc.ApplyDefaults(feedDefaults)
 
-		// Filter posts
-		filteredPosts, err := filterCache.FilterPosts(fc.Filter, fc.IncludePrivate)
-		if err != nil {
-			return fmt.Errorf("feed %q: %w", fc.Slug, err)
-		}
-		filteredPosts = cloneFeedPosts(filteredPosts)
+		usePresetPosts := fc.Type == models.FeedTypeSeries && len(fc.Posts) > 0
 
-		// Determine sort field and direction based on feed type
-		sortField := fc.Sort
-		reverse := fc.Reverse
-
-		// For guide-type feeds, default to sorting by guide_order (ascending)
-		if fc.Type == models.FeedTypeGuide {
-			if sortField == "" {
-				sortField = "guide_order"
-				reverse = false // Guides should be in ascending order by default
-			}
+		var filteredPosts []*models.Post
+		if usePresetPosts {
+			filteredPosts = cloneFeedPosts(fc.Posts)
 		} else {
-			// Default to date sorting for non-guide feeds
-			if sortField == "" {
-				sortField = "date"
-				reverse = true // Newest first by default
+			// Filter posts
+			var err error
+			filteredPosts, err = filterCache.FilterPosts(fc.Filter, fc.IncludePrivate)
+			if err != nil {
+				return fmt.Errorf("feed %q: %w", fc.Slug, err)
 			}
+			filteredPosts = cloneFeedPosts(filteredPosts)
 		}
 
-		sortPosts(filteredPosts, sortField, reverse)
+		if !usePresetPosts {
+			// Determine sort field and direction based on feed type
+			sortField := fc.Sort
+			reverse := fc.Reverse
 
-		// For guide-type feeds, set up prev/next navigation on each post
-		if fc.Type == models.FeedTypeGuide || fc.Type == models.FeedTypeSeries {
-			setGuideNavigation(filteredPosts, fc.Slug)
+			// For guide-type feeds, default to sorting by guide_order (ascending)
+			if fc.Type == models.FeedTypeGuide {
+				if sortField == "" {
+					sortField = "guide_order"
+					reverse = false // Guides should be in ascending order by default
+				}
+			} else {
+				// Default to date sorting for non-guide feeds
+				if sortField == "" {
+					sortField = "date"
+					reverse = true // Newest first by default
+				}
+			}
+
+			sortPosts(filteredPosts, sortField, reverse)
+
+			// For guide-type feeds, set up prev/next navigation on each post
+			if fc.Type == models.FeedTypeGuide || fc.Type == models.FeedTypeSeries {
+				setGuideNavigation(filteredPosts, fc.Slug)
+			}
 		}
 
 		// Store posts in feed config
