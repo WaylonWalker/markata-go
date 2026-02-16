@@ -24,6 +24,9 @@ const (
 	listFormatJSON  = "json"
 	listFormatCSV   = "csv"
 	listFormatPath  = "path"
+	listSortName    = "name"
+	listSortCount   = "count"
+	listSortWords   = "words"
 )
 
 var listCmd = &cobra.Command{
@@ -135,7 +138,7 @@ func listTagsCmd() *cobra.Command {
 
 			sortBy := opts.sortBy
 			if sortBy == "" {
-				sortBy = "count"
+				sortBy = listSortCount
 			}
 
 			order, err := parseSortOrder(opts.order)
@@ -187,7 +190,7 @@ func listFeedsCmd() *cobra.Command {
 
 			sortBy := opts.sortBy
 			if sortBy == "" {
-				sortBy = "name"
+				sortBy = listSortName
 			}
 
 			order, err := parseSortOrder(opts.order)
@@ -302,7 +305,7 @@ func parseSortOrder(order string) (services.SortOrder, error) {
 
 func isValidPostSort(field string) bool {
 	switch strings.ToLower(field) {
-	case "date", "title", "words", "path", "reading_time", "tags":
+	case "date", "title", listSortWords, "path", "reading_time", "tags":
 		return true
 	default:
 		return false
@@ -311,7 +314,7 @@ func isValidPostSort(field string) bool {
 
 func isValidTagSort(field string) bool {
 	switch strings.ToLower(field) {
-	case "name", "count", "words", "reading_time":
+	case listSortName, listSortCount, listSortWords, "reading_time":
 		return true
 	default:
 		return false
@@ -320,7 +323,7 @@ func isValidTagSort(field string) bool {
 
 func isValidFeedSort(field string) bool {
 	switch strings.ToLower(field) {
-	case "name", "posts", "words", "reading_time", "avg_reading_time":
+	case listSortName, "posts", listSortWords, "reading_time", "avg_reading_time":
 		return true
 	default:
 		return false
@@ -460,13 +463,13 @@ func sortTagRows(rows []tagRow, field string, order services.SortOrder) {
 	sort.SliceStable(rows, func(i, j int) bool {
 		var cmp int
 		switch strings.ToLower(field) {
-		case "count":
+		case listSortCount:
 			cmp = compareInts(rows[i].Count, rows[j].Count)
-		case "words":
+		case listSortWords:
 			cmp = compareInts(rows[i].Words, rows[j].Words)
 		case "reading_time":
 			cmp = compareInts(rows[i].ReadingTime, rows[j].ReadingTime)
-		case "name":
+		case listSortName:
 			cmp = strings.Compare(strings.ToLower(rows[i].Name), strings.ToLower(rows[j].Name))
 		default:
 			cmp = 0
@@ -574,13 +577,13 @@ func sortFeedRows(rows []feedRow, field string, order services.SortOrder) {
 		switch strings.ToLower(field) {
 		case "posts":
 			cmp = compareInts(rows[i].Posts, rows[j].Posts)
-		case "words":
+		case listSortWords:
 			cmp = compareInts(rows[i].Words, rows[j].Words)
 		case "reading_time":
 			cmp = compareInts(rows[i].ReadingTime, rows[j].ReadingTime)
 		case "avg_reading_time":
 			cmp = compareInts(rows[i].AvgReadingTime, rows[j].AvgReadingTime)
-		case "name":
+		case listSortName:
 			cmp = strings.Compare(strings.ToLower(rows[i].Name), strings.ToLower(rows[j].Name))
 		default:
 			cmp = 0
@@ -729,9 +732,7 @@ func formatReadingTime(minutes int) string {
 	return fmt.Sprintf("%dh%dm", hours, mins)
 }
 
-func calculateFeedStats(posts []*models.Post) (int, int) {
-	totalWords := 0
-	totalReadingTime := 0
+func calculateFeedStats(posts []*models.Post) (totalWords int, totalReadingTime int) {
 	for _, post := range posts {
 		totalWords += postWordCount(post)
 		totalReadingTime += postReadingTime(post)
@@ -784,25 +785,25 @@ func resolveFeed(ctx context.Context, app *services.App, feedName string) (*life
 		return nil, err
 	}
 
-	needle := strings.ToLower(strings.TrimSpace(feedName))
+	needle := strings.TrimSpace(feedName)
 	if needle == "" {
 		return nil, nil
 	}
 
 	for _, feed := range feeds {
-		if strings.ToLower(feed.Name) == needle {
+		if strings.EqualFold(feed.Name, needle) {
 			return feed, nil
 		}
 	}
 
 	for _, feed := range feeds {
-		if strings.ToLower(feed.Path) == needle {
+		if strings.EqualFold(feed.Path, needle) {
 			return feed, nil
 		}
 	}
 
 	for _, feed := range feeds {
-		if strings.ToLower(feed.Title) == needle {
+		if strings.EqualFold(feed.Title, needle) {
 			return feed, nil
 		}
 	}
