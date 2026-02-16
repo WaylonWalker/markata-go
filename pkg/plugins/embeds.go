@@ -97,6 +97,9 @@ func (p *EmbedsPlugin) Configure(m *lifecycle.Manager) error {
 		if showImage, ok := cfgMap["show_image"].(bool); ok {
 			p.config.ShowImage = showImage
 		}
+		if attachmentsPrefix, ok := cfgMap["attachments_prefix"].(string); ok && attachmentsPrefix != "" {
+			p.config.AttachmentsPrefix = attachmentsPrefix
+		}
 	}
 
 	return nil
@@ -116,7 +119,8 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 	})
 
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
-		content, dependencies := p.processInternalEmbeds(post.Content, idx, post)
+		content := p.processAttachmentEmbeds(post.Content)
+		content, dependencies := p.processInternalEmbeds(content, idx, post)
 		content = p.processExternalEmbeds(content, post)
 		post.Content = content
 
@@ -139,6 +143,10 @@ var externalEmbedRegex = regexp.MustCompile(`!\[embed\]\(([^)]+)\)`)
 
 // embedsCodeBlockRegex matches fenced code blocks to avoid transforming content inside them.
 var embedsCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
+
+// attachmentEmbedRegex matches Obsidian-style attachment embeds like ![[file.jpg]] or ![[file.jpg|alt text]].
+// Only matches files with extensions (images, PDFs, etc.) to avoid conflicting with post embeds.
+var attachmentEmbedRegex = regexp.MustCompile(`!\[\[([^\]|]+\.[a-zA-Z0-9]+)(?:\|([^\]]+))?\]\]`)
 
 // htmlTitleRegex matches the <title> tag in HTML.
 var htmlTitleRegex = regexp.MustCompile(`<title[^>]*>([^<]+)</title>`)
@@ -173,6 +181,66 @@ func getMetaPatterns(property string) [4]*regexp.Regexp {
 	metaPatternCache.Unlock()
 
 	return patterns
+}
+
+// processAttachmentEmbeds replaces Obsidian-style attachment embeds ![[file.jpg]]
+// with standard markdown image syntax ![alt](prefix/file.jpg).
+// This runs before internal embeds to avoid conflicts - if a post with the
+// same slug exists, internal embed takes precedence.
+func (p *EmbedsPlugin) processAttachmentEmbeds(content string) string {
+	codeBlocks := embedsCodeBlockRegex.FindAllStringIndex(content, -1)
+
+	if len(codeBlocks) == 0 {
+		return p.processAttachmentEmbedsInText(content)
+	}
+
+	var result strings.Builder
+	lastEnd := 0
+
+	for _, block := range codeBlocks {
+		start, end := block[0], block[1]
+
+		if start > lastEnd {
+			processed := p.processAttachmentEmbedsInText(content[lastEnd:start])
+			result.WriteString(processed)
+		}
+
+		result.WriteString(content[start:end])
+		lastEnd = end
+	}
+
+	if lastEnd < len(content) {
+		processed := p.processAttachmentEmbedsInText(content[lastEnd:])
+		result.WriteString(processed)
+	}
+
+	return result.String()
+}
+
+// processAttachmentEmbedsInText processes attachment embeds in a text segment.
+func (p *EmbedsPlugin) processAttachmentEmbedsInText(text string) string {
+	return attachmentEmbedRegex.ReplaceAllStringFunc(text, func(match string) string {
+		groups := attachmentEmbedRegex.FindStringSubmatch(match)
+		if len(groups) < 2 {
+			return match
+		}
+
+		filename := strings.TrimSpace(groups[1])
+		altText := filename
+		if len(groups) >= 3 && groups[2] != "" {
+			altText = strings.TrimSpace(groups[2])
+		}
+
+		if filename == "" {
+			return match
+		}
+
+		src := p.config.AttachmentsPrefix + filename
+		alt := html.EscapeString(altText)
+		srcEscaped := html.EscapeString(src)
+
+		return fmt.Sprintf("![%s](%s)", alt, srcEscaped)
+	})
 }
 
 // processInternalEmbeds replaces ![[slug]] syntax with embed cards.
