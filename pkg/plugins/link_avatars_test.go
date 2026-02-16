@@ -155,7 +155,10 @@ func TestLinkAvatars_Configure_InsertsRootAbsoluteAssets(t *testing.T) {
 		t.Fatalf("configure error: %v", err)
 	}
 
-	modelsConfig := config.Extra["models_config"].(*models.Config)
+	modelsConfig, ok := config.Extra["models_config"].(*models.Config)
+	if !ok || modelsConfig == nil {
+		t.Fatalf("expected models_config to be set")
+	}
 	if len(modelsConfig.Head.Link) == 0 {
 		t.Fatalf("expected head link tags to be injected")
 	}
