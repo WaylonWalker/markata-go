@@ -369,12 +369,10 @@ func (p *StaticAssetsPlugin) hashDirectoryAssets(dir, prefix string, hashes map[
 
 // createHashedCopies creates hashed copies of JS/CSS files in the output directory.
 // For each file with a hash, creates a copy like main.js -> main.abc12345.js
-// It re-computes hashes from output files to ensure the hash matches the actual content
-// (which may have been transformed by palette_css, minifiers, etc.)
 func (p *StaticAssetsPlugin) createHashedCopies(m *lifecycle.Manager, outputDir string) error {
 	assetHashes := m.AssetHashes()
 
-	for path := range assetHashes {
+	for path, hash := range assetHashes {
 		// Original file location in output
 		origPath := filepath.Join(outputDir, path)
 
@@ -382,13 +380,6 @@ func (p *StaticAssetsPlugin) createHashedCopies(m *lifecycle.Manager, outputDir 
 		if _, err := os.Stat(origPath); os.IsNotExist(err) {
 			continue
 		}
-
-		// Re-compute hash from output file content (may have been transformed)
-		content, err := os.ReadFile(origPath)
-		if err != nil {
-			return fmt.Errorf("reading output file %s: %w", origPath, err)
-		}
-		hash := fmt.Sprintf("%x", sha256.Sum256(content))[:8]
 
 		// Compute hashed filename: main.js -> main.abc12345.js
 		ext := filepath.Ext(path)
