@@ -56,6 +56,10 @@
 {% endblock %}
 
 {% block content %}
+<div class="article-progress" role="presentation" aria-hidden="true">
+  <span class="article-progress__indicator"></span>
+</div>
+
 <article class="post h-entry" data-pagefind-body>
   {# Hidden canonical URL for microformats parsers #}
   <a class="u-url" href="{{ config.url }}{{ post.href }}" hidden></a>

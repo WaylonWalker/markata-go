@@ -880,7 +880,8 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
         </nav>
     </header>
     <main>
-        <article>
+        <div class="article-progress" role="presentation" aria-hidden="true"><span class="article-progress__indicator"></span></div>
+        <article class="post">
             <header>
                 <h1>{{.Title}}</h1>
                 {{if .DateStr}}<time datetime="{{.DateISO}}">{{.DateStr}}</time>{{end}}
@@ -899,6 +900,51 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
             {{end}}
         </article>
     </main>
+    <script>
+      (function initArticleProgressIndicator() {
+        var indicator = document.querySelector('.article-progress__indicator');
+        var article = document.querySelector('article.post');
+        if (!indicator || !article) {
+          return;
+        }
+
+        var raf = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function(cb) { return window.setTimeout(cb, 16); };
+        var scheduled = false;
+        var lastValue = -1;
+
+        function clamp(value, min, max) {
+          if (value < min) return min;
+          if (value > max) return max;
+          return value;
+        }
+
+        function refresh() {
+          scheduled = false;
+          var rect = article.getBoundingClientRect();
+          var articleTop = window.scrollY + rect.top;
+          var articleHeight = Math.max(rect.height, 1);
+          var viewportBottom = window.scrollY + window.innerHeight;
+          var ratio = clamp((viewportBottom - articleTop) / articleHeight, 0, 1);
+          if (Math.abs(ratio - lastValue) < 0.001) {
+            return;
+          }
+          lastValue = ratio;
+          indicator.style.transform = 'scaleX(' + ratio + ')';
+        }
+
+        function schedule() {
+          if (scheduled) {
+            return;
+          }
+          scheduled = true;
+          raf(refresh);
+        }
+
+        window.addEventListener('scroll', schedule, { passive: true });
+        window.addEventListener('resize', schedule);
+        schedule();
+      })();
+    </script>
     <footer>
         <p><a href="{{.SiteURL}}">{{.SiteTitle}}</a></p>
     </footer>
