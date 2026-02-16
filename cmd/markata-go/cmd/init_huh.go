@@ -23,6 +23,7 @@ type initWizardState struct {
 	Description string
 	Author      string
 	URL         string
+	LicenseKey  string
 
 	// Feature selections
 	ConfigureFeatures bool
@@ -304,6 +305,7 @@ func runHuhNewProjectWizard(theme *huh.Theme) (*initWizardState, error) {
 		Title:             "My Site",
 		Description:       "A site built with markata-go",
 		URL:               "https://example.com",
+		LicenseKey:        models.DefaultLicenseKey,
 		Palette:           "default-light",
 		EnableHTML:        defaults.PostFormats.IsHTMLEnabled(),
 		EnableMarkdown:    defaults.PostFormats.Markdown,
@@ -341,6 +343,12 @@ func runHuhNewProjectWizard(theme *huh.Theme) (*initWizardState, error) {
 			Description("Your site's URL (used for RSS feeds and sitemaps)").
 			Value(&state.URL).
 			Placeholder("https://example.com"),
+		huh.NewSelect[string]().
+			Title("Content license").
+			Description("Recommended: CC BY 4.0. Choose false to disable footer attribution and warnings.").
+			Options(licensePickerOptions()...).
+			Value(&state.LicenseKey).
+			Height(10),
 	)
 
 	// Group 2: Feature configuration
@@ -587,6 +595,7 @@ func applyWizardState(state *initWizardState, force bool) error {
 	cfg.Description = state.Description
 	cfg.Author = state.Author
 	cfg.URL = state.URL
+	cfg.License = models.LicenseValue{Raw: resolveWizardLicenseValue(state.LicenseKey)}
 
 	// Apply feature configurations
 	for _, feature := range state.SelectedFeatures {
@@ -639,6 +648,33 @@ func applyWizardState(state *initWizardState, force bool) error {
 	fmt.Println()
 
 	return nil
+}
+
+func licensePickerOptions() []huh.Option[string] {
+	options := make([]huh.Option[string], 0, len(models.LicenseOptions)+1)
+	for _, opt := range models.LicenseOptions {
+		label := fmt.Sprintf("%s - %s", opt.Name, opt.Description)
+		if opt.Recommended {
+			label += " (Recommended)"
+		}
+		options = append(options, huh.NewOption(label, opt.Key))
+	}
+	options = append(options, huh.NewOption("No footer license (false)", "false"))
+	return options
+}
+
+func resolveWizardLicenseValue(selected string) interface{} {
+	key := strings.TrimSpace(strings.ToLower(selected))
+	if key == "" {
+		return models.DefaultLicenseKey
+	}
+	if key == "false" {
+		return false
+	}
+	if _, ok := models.GetLicenseOption(key); ok {
+		return key
+	}
+	return models.DefaultLicenseKey
 }
 
 // runHuhExistingProjectWizard runs the wizard for existing projects using huh.

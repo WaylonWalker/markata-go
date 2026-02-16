@@ -310,6 +310,9 @@ type Config struct {
 	// Author is the site author
 	Author string `json:"author" yaml:"author" toml:"author"`
 
+	// License controls the footer attribution (string key or false)
+	License LicenseValue `json:"license,omitempty" yaml:"license,omitempty" toml:"license,omitempty"`
+
 	// AssetsDir is the directory containing static assets (default: "static")
 	AssetsDir string `json:"assets_dir" yaml:"assets_dir" toml:"assets_dir"`
 
@@ -2492,6 +2495,31 @@ func NewConfig() *Config {
 		Tags:             NewTagsConfig(),
 		Assets:           NewAssetsConfig(),
 	}
+}
+
+// LicenseOption returns the configured license metadata when a valid key is present.
+func (c *Config) LicenseOption() (LicenseOption, bool) {
+	if c == nil {
+		return LicenseOption{}, false
+	}
+	if key, ok := c.License.Key(); ok {
+		return GetLicenseOption(key)
+	}
+	return LicenseOption{}, false
+}
+
+// NeedsLicenseWarning reports whether the license reminder should be shown to users.
+func (c *Config) NeedsLicenseWarning() bool {
+	if c == nil {
+		return false
+	}
+	if c.License.IsDisabled() {
+		return false
+	}
+	if _, ok := c.License.Key(); ok {
+		return false
+	}
+	return !c.License.HasValue()
 }
 
 // NewThemeConfig creates a new ThemeConfig with default values.

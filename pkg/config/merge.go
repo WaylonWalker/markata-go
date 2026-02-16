@@ -41,6 +41,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	if override.TemplatesDir != "" {
 		result.TemplatesDir = override.TemplatesDir
 	}
+	if override.License.Raw != nil {
+		result.License = override.License
+	}
 
 	// Slice fields - replace if non-nil and non-empty
 	if len(override.Hooks) > 0 {

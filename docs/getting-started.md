@@ -130,6 +130,8 @@ use_gitignore = true
 extensions = ["tables", "strikethrough", "autolinks", "tasklist"]
 ```
 
+The interactive `markata-go init` wizard now asks for a license and writes `license = "cc-by-4.0"` by default. Pick any of the supported keys (all-rights-reserved, `cc-by-*`, or `mit`) or enter `false` to opt out of the attribution and suppress the build warning that `markata-go serve` would otherwise show.
+
 ### Key Configuration Options
 
 | Option | Default | Description |
