@@ -293,3 +293,25 @@ func TestServe404Page_FallbackIncludesBanner(t *testing.T) {
 		t.Error("expected build banner in fallback 404")
 	}
 }
+
+func TestBuildStatusPayload_IncludesLicenseWarning(t *testing.T) {
+	payload := buildStatusPayload(BuildStatus{
+		Status:         buildStatusSuccess,
+		LicenseWarning: "set license in config",
+	})
+
+	if !strings.Contains(payload, "license_warning") {
+		t.Fatalf("expected license_warning field in payload, got %s", payload)
+	}
+}
+
+func TestBuildDevScript_IncludesLicenseToast(t *testing.T) {
+	script := buildDevScript(BuildStatus{Status: buildStatusSuccess})
+
+	if !strings.Contains(script, "markata-license-toast") {
+		t.Fatalf("expected license toast id in dev script")
+	}
+	if !strings.Contains(script, "license_warning") {
+		t.Fatalf("expected license_warning handling in dev script")
+	}
+}
