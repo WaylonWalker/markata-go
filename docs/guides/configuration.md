@@ -1252,18 +1252,22 @@ orphan_threshold = 3
 
 [markata-go.feed_defaults.formats]
 html = true
+simple_html = true
 rss = true
-atom = false
-json = false
+atom = true
+json = true
+sitemap = true
 markdown = false
 text = false
 
 [markata-go.feed_defaults.templates]
 html = "feed.html"
+simple_html = "simple-feed.html"
 rss = "feed.xml"
 atom = "atom.xml"
 json = "feed.json"
 card = "card.html"
+sitemap = "sitemap.xml"
 
 [markata-go.feed_defaults.syndication]
 max_items = 20
@@ -1275,15 +1279,17 @@ include_content = true
 | Format | Output Path | Description |
 |--------|-------------|-------------|
 | `html` | `/{slug}/index.html` | Paginated HTML pages |
+| `simple_html` | `/{slug}/simple/index.html` | Compact HTML list |
 | `rss` | `/{slug}/rss.xml` | RSS 2.0 feed |
 | `atom` | `/{slug}/atom.xml` | Atom 1.0 feed |
 | `json` | `/{slug}/feed.json` | JSON Feed |
+| `sitemap` | `/{slug}/sitemap.xml` | Sitemap XML |
 | `markdown` | `/{slug}.md` | Markdown output |
 | `text` | `/{slug}.txt` | Plain text output |
 
 ### Feed Configuration (`[[markata-go.feeds]]`)
 
-Each feed is defined as an array item:
+Each feed is defined as an array item. The default config ships with an archive feed at `/archive/`.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|

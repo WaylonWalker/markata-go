@@ -59,7 +59,7 @@ reverse = true
 This creates a feed at `/blog/` with:
 - All published posts
 - Sorted by date (newest first)
-- HTML, RSS, Atom, JSON, and sitemap output (default formats)
+- HTML, simple HTML, RSS, Atom, JSON, and sitemap output (default formats)
 
 ### Minimal Example
 
@@ -69,6 +69,8 @@ slug = "posts"
 title = "All Posts"
 filter = "published == True"
 ```
+
+If you use the default config, markata-go already includes an archive feed at `/archive/`.
 
 ### Full Configuration Example
 
@@ -96,6 +98,7 @@ simple_html = true                 # /blog/simple/index.html
 rss = true                         # /blog/rss.xml
 atom = true                        # /blog/atom.xml
 json = true                        # /blog/feed.json
+sitemap = true                     # /blog/sitemap.xml
 markdown = false                   # /blog.md
 text = false                       # /blog.txt
 
