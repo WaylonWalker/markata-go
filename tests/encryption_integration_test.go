@@ -59,6 +59,9 @@ func buildWithEncryption(t *testing.T, site *testSite, modelsConfig *models.Conf
 // TestIntegration_Encryption_PrivateContentNeverPlaintext verifies that private
 // content is encrypted and the marker text never appears in plaintext output.
 func TestIntegration_Encryption_PrivateContentNeverPlaintext(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	// Set encryption key
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "test-password-xyz") // pragma: allowlist secret
 
@@ -178,6 +181,9 @@ Another private post with `+privateMarker+` inside it.`)
 // TestIntegration_Encryption_BuildFailsWithoutKey verifies the build fails with
 // a CriticalError when private posts exist but no encryption key is available.
 func TestIntegration_Encryption_BuildFailsWithoutKey(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	// Ensure NO encryption keys are set
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "") // pragma: allowlist secret
 
@@ -216,6 +222,9 @@ This must not be published without encryption.`)
 // TestIntegration_Encryption_PrivateTags verifies that posts are automatically
 // marked private based on configured private_tags.
 func TestIntegration_Encryption_PrivateTags(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "test-password-xyz") // pragma: allowlist secret
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_PERSONAL", "personal-pass")    // pragma: allowlist secret
 
@@ -289,6 +298,9 @@ This is a public blog post.`)
 // TestIntegration_Encryption_FrontmatterAliases verifies that private_key and
 // encryption_key frontmatter fields work as aliases for secret_key.
 func TestIntegration_Encryption_FrontmatterAliases(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "test-password-xyz") // pragma: allowlist secret
 
 	site := newTestSite(t)
@@ -347,6 +359,9 @@ Secret content C `+privateMarker)
 // TestIntegration_Encryption_FrontmatterKeyOverridesTagKey verifies that
 // a frontmatter secret_key takes precedence over a tag-level key.
 func TestIntegration_Encryption_FrontmatterKeyOverridesTagKey(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "default-pass")   // pragma: allowlist secret
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_PERSONAL", "personal-pass") // pragma: allowlist secret
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_CUSTOM", "custom-pass")     // pragma: allowlist secret
@@ -414,6 +429,9 @@ Override content `+privateMarker)
 // TestIntegration_Encryption_DisabledSkipsEncryption verifies that when
 // encryption is disabled, private posts pass through unmodified.
 func TestIntegration_Encryption_DisabledSkipsEncryption(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	site := newTestSite(t)
 
 	site.addPost("secret.md", `---
@@ -442,6 +460,9 @@ Content here.`)
 // TestIntegration_Encryption_DraftAndSkippedPostsIgnored verifies that
 // draft and skipped posts are not subject to encryption requirements.
 func TestIntegration_Encryption_DraftAndSkippedPostsIgnored(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	// No encryption key -- normally this would fail if private posts exist
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "") // pragma: allowlist secret
 
@@ -490,6 +511,9 @@ Public content.`)
 //   - Search index (pagefind, if present)
 //   - Any other file written to the output directory
 func TestIntegration_Encryption_TracerScan(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	// Set encryption key
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "tracer-test-password-xyz") // pragma: allowlist secret
 
@@ -733,6 +757,9 @@ Another public post for navigation testing.
 // is handled correctly after encryption: title and explicit description are preserved,
 // raw content is scrubbed, and structured data is kept.
 func TestIntegration_Encryption_MetadataScrubbing(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "scrub-test-password") // pragma: allowlist secret
 
 	site := newTestSite(t)

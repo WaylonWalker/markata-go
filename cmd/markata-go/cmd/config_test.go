@@ -135,6 +135,9 @@ title = "Test"
 }
 
 func TestConfigSetIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	// Create a temporary directory for test files
 	tmpDir := t.TempDir()
 
@@ -360,6 +363,9 @@ func TestShowDiffConfig(t *testing.T) {
 }
 
 func TestConfigShowAnnotateIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
 	// Create a temporary directory with a config file
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "markata-go.toml")
