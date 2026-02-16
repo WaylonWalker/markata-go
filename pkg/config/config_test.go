@@ -79,8 +79,8 @@ func TestConfig_DefaultGlobPatterns(t *testing.T) {
 	// Test case: "default glob patterns"
 	config := DefaultConfig()
 
-	expectedPatterns := []string{"**/*.md"}
-	if len(config.GlobConfig.Patterns) != 1 || config.GlobConfig.Patterns[0] != "**/*.md" {
+	expectedPatterns := []string{"pages/**/*.md", "posts/**/*.md"}
+	if len(config.GlobConfig.Patterns) != len(expectedPatterns) || config.GlobConfig.Patterns[0] != expectedPatterns[0] || config.GlobConfig.Patterns[1] != expectedPatterns[1] {
 		t.Errorf("glob.patterns: got %v, want %v", config.GlobConfig.Patterns, expectedPatterns)
 	}
 }

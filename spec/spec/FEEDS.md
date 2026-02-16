@@ -1132,16 +1132,16 @@ When overriding formats, you can:
 
 **1. Override specific formats (merge with defaults):**
 ```toml
-# Defaults: html=true, rss=true, atom=false, json=false
+# Defaults: html=true, simple_html=true, rss=true, atom=true, json=true, sitemap=true
 formats = { atom = true }
-# Result: html=true, rss=true, atom=true, json=false
+# Result: html=true, simple_html=true, rss=true, atom=true, json=true, sitemap=true
 ```
 
 **2. Disable specific formats:**
 ```toml
-# Defaults: html=true, rss=true
+# Defaults: html=true, simple_html=true, rss=true, atom=true, json=true, sitemap=true
 formats = { rss = false }
-# Result: html=true, rss=false
+# Result: html=true, simple_html=true, rss=false, atom=true, json=true, sitemap=true
 ```
 
 **3. Completely replace formats (explicit all):**
@@ -1184,11 +1184,11 @@ orphan_threshold = 3
 html = true
 simple_html = true
 rss = true
-atom = false
-json = false
+atom = true
+json = true
 markdown = false
 text = false
-sitemap = false
+sitemap = true
 
 # Templates used by default
 [markata-go.feeds.defaults.templates]
@@ -1205,7 +1205,7 @@ sitemap = "sitemap.xml"
 # Syndication settings (RSS/Atom/JSON)
 [markata-go.feeds.syndication]
 max_items = 20                     # Max items in RSS/Atom feeds
-include_content = false            # Include full content or just summary
+include_content = true             # Include full content or just summary
 ```
 
 ### Built-in Defaults
@@ -1225,7 +1225,7 @@ If no `[markata-go.feeds.defaults]` is specified, these built-in values apply:
 | `formats.text` | false |
 | `formats.sitemap` | true |
 | `syndication.max_items` | 20 |
-| `syndication.include_content` | false |
+| `syndication.include_content` | true |
 
 ### Feed Item Limits
 
@@ -1260,9 +1260,11 @@ orphan_threshold = 3
 
 [markata-go.feeds.defaults.formats]
 html = true
+simple_html = true
 rss = true
 atom = true
 json = true
+sitemap = true
 
 [markata-go.feeds.defaults.templates]
 html = "feed.html"
@@ -1270,7 +1272,7 @@ card = "partials/card.html"
 
 [markata-go.feeds.syndication]
 max_items = 20
-include_content = false
+include_content = true
 
 # =============================================================================
 # INDIVIDUAL FEEDS
