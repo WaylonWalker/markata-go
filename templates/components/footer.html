@@ -18,6 +18,17 @@
         </nav>
         {% endif %}
 
+        {% if config.license and config.license.name %}
+        <p class="footer-license">
+            Content licensed under
+            {% if config.license.url %}
+            <a href="{{ config.license.url }}" target="_blank" rel="noopener noreferrer">{{ config.license.name }}</a>
+            {% else %}
+            {{ config.license.name }}
+            {% endif %}
+        </p>
+        {% endif %}
+
         {# Format links for alternate views/formats #}
         {% if post or feed %}
         {% include "components/format-links.html" %}

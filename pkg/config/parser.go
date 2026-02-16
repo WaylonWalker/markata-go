@@ -43,6 +43,7 @@ type baseConfigData struct {
 	Title         string
 	Description   string
 	Author        string
+	License       interface{}
 	AssetsDir     string
 	TemplatesDir  string
 	Hooks         []string
@@ -167,6 +168,7 @@ func buildConfig(src configSource) *models.Config {
 		Theme:       base.Theme,
 		Footer:      base.Footer,
 	}
+	config.License = models.LicenseValue{Raw: base.License}
 
 	if base.UseGitignore != nil {
 		config.GlobConfig.UseGitignore = *base.UseGitignore
@@ -274,7 +276,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 		// List of known top-level keys that are already parsed into struct fields
 		knownKeys := map[string]bool{
 			"output_dir": true, "url": true, "title": true, "description": true,
-			"author": true, "assets_dir": true, "templates_dir": true,
+			"author": true, "license": true, "assets_dir": true, "templates_dir": true,
 			"nav": true, "footer": true, "hooks": true, "disabled_hooks": true,
 			"glob": true, "markdown": true, "feeds": true, "feed_defaults": true,
 			"concurrency": true, "theme": true, "post_formats": true, "well_known": true,
@@ -337,6 +339,7 @@ type tomlConfig struct {
 	Title         string                  `toml:"title"`
 	Description   string                  `toml:"description"`
 	Author        string                  `toml:"author"`
+	License       interface{}             `toml:"license"`
 	AssetsDir     string                  `toml:"assets_dir"`
 	TemplatesDir  string                  `toml:"templates_dir"`
 	Nav           []tomlNavItem           `toml:"nav"`
@@ -1320,6 +1323,7 @@ func (c *tomlConfig) getBaseConfig() baseConfigData {
 		Title:         c.Title,
 		Description:   c.Description,
 		Author:        c.Author,
+		License:       c.License,
 		AssetsDir:     c.AssetsDir,
 		TemplatesDir:  c.TemplatesDir,
 		Hooks:         c.Hooks,
@@ -1520,6 +1524,7 @@ type yamlConfig struct {
 	Title         string                  `yaml:"title"`
 	Description   string                  `yaml:"description"`
 	Author        string                  `yaml:"author"`
+	License       interface{}             `yaml:"license"`
 	AssetsDir     string                  `yaml:"assets_dir"`
 	TemplatesDir  string                  `yaml:"templates_dir"`
 	Nav           []yamlNavItem           `yaml:"nav"`
@@ -2554,6 +2559,7 @@ func (c *yamlConfig) getBaseConfig() baseConfigData {
 		Title:         c.Title,
 		Description:   c.Description,
 		Author:        c.Author,
+		License:       c.License,
 		AssetsDir:     c.AssetsDir,
 		TemplatesDir:  c.TemplatesDir,
 		Hooks:         c.Hooks,
@@ -2692,6 +2698,7 @@ type jsonConfig struct {
 	Title         string                  `json:"title"`
 	Description   string                  `json:"description"`
 	Author        string                  `json:"author"`
+	License       interface{}             `json:"license"`
 	AssetsDir     string                  `json:"assets_dir"`
 	TemplatesDir  string                  `json:"templates_dir"`
 	Nav           []jsonNavItem           `json:"nav"`
@@ -3726,6 +3733,7 @@ func (c *jsonConfig) getBaseConfig() baseConfigData {
 		Title:         c.Title,
 		Description:   c.Description,
 		Author:        c.Author,
+		License:       c.License,
 		AssetsDir:     c.AssetsDir,
 		TemplatesDir:  c.TemplatesDir,
 		Hooks:         c.Hooks,

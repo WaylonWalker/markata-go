@@ -131,6 +131,7 @@ extensions = ["tables"]
 | `title` | string | `""` | Site title |
 | `description` | string | `""` | Site description |
 | `author` | string | `""` | Default author |
+| `license` | string `\|` bool | (unset) | Select a license key (see below). Set to `false` to skip the attribution and warning. |
 | `assets_dir` | string | `"static"` | Static assets directory |
 | `templates_dir` | string | `"templates"` | Templates directory |
 | `hooks` | string[] | `["default"]` | Plugins to load |
@@ -150,6 +151,22 @@ hooks = ["default"]
 disabled_hooks = ["sitemap"]
 concurrency = 4
 ```
+
+### License configuration
+
+The `license` key controls the attribution shown in the footer and whether the dev server reminds you to pick a license. It accepts either a string key (selects the attribution) or the literal `false` (hides the line and silences the warning).
+
+Supported license keys:
+
+- `all-rights-reserved` – All rights reserved.
+- `cc-by-4.0` (recommended) – Creative Commons Attribution 4.0 International (`https://creativecommons.org/licenses/by/4.0/`). The default when running `markata-go config init` or picking the recommended option in the init wizard.
+- `cc-by-sa-4.0` – Creative Commons Attribution-ShareAlike 4.0 International (`https://creativecommons.org/licenses/by-sa/4.0/`).
+- `cc-by-nc-4.0` – Creative Commons Attribution-NonCommercial 4.0 International (`https://creativecommons.org/licenses/by-nc/4.0/`).
+- `cc-by-nd-4.0` – Creative Commons Attribution-NoDerivatives 4.0 International (`https://creativecommons.org/licenses/by-nd/4.0/`).
+- `cc-by-nc-sa-4.0` – Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (`https://creativecommons.org/licenses/by-nc-sa/4.0/`).
+- `mit` – MIT License (`https://opensource.org/licenses/MIT`).
+
+Leaving the key absent (the default in older configs) triggers a validation warning and the serve banner/toast until you choose one of the supported strings or set `license = false`.
 
 ### Navigation Links (`[[markata-go.nav]]`)
 

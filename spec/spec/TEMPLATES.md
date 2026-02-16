@@ -552,6 +552,25 @@ Small reusable template fragments:
 </article>
 ```
 
+## Footer License Display
+
+When `config.license` contains a string key the default footer renders a license line that links to the canonical text. Custom footers should honor the same guard to avoid losing attribution:
+
+```jinja
+{% if config.license and config.license.name %}
+<p class="footer-license">
+  Content licensed under
+  {% if config.license.url %}
+  <a href="{{ config.license.url }}" target="_blank" rel="noopener">{{ config.license.name }}</a>
+  {% else %}
+  {{ config.license.name }}
+  {% endif %}
+</p>
+{% endif %}
+```
+
+The `config.license` object is intentionally empty when `license = false` so the paragraph is skipped, and is `nil` when the value is omitted (which triggers the live serve warning until an explicit string is configured).
+
 ---
 
 ## Error Handling
