@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -47,7 +48,7 @@ func TestStaticAssets_CreateHashedCopies_UsesRegistryHash(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read hashed file: %v", err)
 	}
-	if string(data) != string(content) {
+	if !bytes.Equal(data, content) {
 		t.Errorf("hashed content = %q, want %q", string(data), string(content))
 	}
 
