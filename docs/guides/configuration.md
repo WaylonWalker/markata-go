@@ -696,11 +696,28 @@ line_numbers = false
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Whether mermaid diagram processing is active |
+| `mode` | string | `"client"` | Rendering mode: `client` (browser-side), `cli` (mmdc), or `chromium` (headless Chrome) |
 | `cdn_url` | string | mermaid CDN URL | URL for the Mermaid.js library |
 | `theme` | string | `"default"` | Mermaid theme: `default`, `dark`, `forest`, `neutral`. Ignored when `use_css_variables` is true. |
 | `use_css_variables` | bool | `true` | Derive diagram colors from site CSS custom properties. Reads `--color-background`, `--color-text`, `--color-primary`, `--color-code-bg`, and `--color-surface` with hardcoded fallbacks. |
 | `lightbox` | bool | `true` | Enable click-to-zoom lightbox overlay with interactive pan and zoom via svg-pan-zoom. |
 | `lightbox_selector` | string | `".glightbox-mermaid"` | CSS selector for lightbox links (backward compatibility; programmatic API does not use it). |
+
+#### CLI Mode Settings (`[markata-go.mermaid.cli]`)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `mmdc_path` | string | `""` | Path to the mmdc binary. Auto-detected if empty. |
+| `extra_args` | string | `""` | Additional command-line arguments passed to mmdc. |
+
+#### Chromium Mode Settings (`[markata-go.mermaid.chromium]`)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `browser_path` | string | `""` | Path to Chrome/Chromium binary. Auto-detected if empty. |
+| `timeout` | int | `30` | Maximum seconds to wait for a diagram to render. |
+| `max_concurrent` | int | `4` | Maximum number of parallel diagram renders. |
+| `no_sandbox` | bool | `false` | Disable Chromium sandbox. Required in containers (Docker, Distrobox, etc.). |
 
 ```toml
 [markata-go.mermaid]
@@ -708,6 +725,68 @@ enabled = true
 theme = "default"
 use_css_variables = true    # Diagrams automatically match your site palette
 lightbox = true             # Click any diagram to zoom, pan, and explore
+```
+
+To pre-render diagrams to static SVGs using Chromium (no client-side JS needed):
+
+```toml
+[markata-go.mermaid]
+mode = "chromium"
+
+[markata-go.mermaid.chromium]
+timeout = 30
+max_concurrent = 4
+# no_sandbox = true         # Required inside Docker or other containers
+```
+
+#### Chromium in Containers (Docker, Distrobox, Podman)
+
+Chromium's sandbox requires kernel capabilities that most containers restrict.
+Set `no_sandbox = true` when running inside Docker, Distrobox, Podman, or
+similar environments:
+
+```toml
+[markata-go.mermaid.chromium]
+no_sandbox = true
+```
+
+**Installing Chrome without sudo:** If your container does not have Chrome or
+Chromium installed, download `chrome-headless-shell` from
+[Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/).
+This is a lightweight headless binary (~180 MB) that requires no GUI
+dependencies and no root access:
+
+```bash
+# Download and extract (adjust version as needed)
+cd /tmp
+curl -fsSL https://storage.googleapis.com/chrome-for-testing-public/LATEST_RELEASE_STABLE -o version.txt
+VERSION=$(cat version.txt)
+curl -fsSL "https://storage.googleapis.com/chrome-for-testing-public/${VERSION}/linux64/chrome-headless-shell-linux64.zip" -o headless.zip
+unzip headless.zip
+
+# Install to ~/.local (no sudo needed)
+mkdir -p ~/.local/lib/chrome-headless-shell
+mv chrome-headless-shell-linux64/* ~/.local/lib/chrome-headless-shell/
+
+# Create a wrapper script so markata-go auto-detects it
+mkdir -p ~/.local/bin
+cat > ~/.local/bin/headless-shell << 'EOF'
+#!/bin/sh
+exec "$HOME/.local/lib/chrome-headless-shell/chrome-headless-shell" "$@"
+EOF
+chmod +x ~/.local/bin/headless-shell
+
+# Verify
+headless-shell --version
+```
+
+markata-go auto-detects `headless-shell` in your `PATH`. You can also set the
+path explicitly:
+
+```toml
+[markata-go.mermaid.chromium]
+browser_path = "/home/you/.local/lib/chrome-headless-shell/chrome-headless-shell"
+no_sandbox = true
 ```
 
 To disable the lightbox overlay (diagrams render inline only):

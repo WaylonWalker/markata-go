@@ -1124,6 +1124,9 @@ type ChromiumRendererConfig struct {
 
 	// MaxConcurrent is the maximum number of concurrent diagram renders
 	MaxConcurrent int `json:"max_concurrent" yaml:"max_concurrent" toml:"max_concurrent"`
+
+	// NoSandbox disables the Chromium sandbox. Required in containers (Docker, Distrobox, etc.)
+	NoSandbox bool `json:"no_sandbox" yaml:"no_sandbox" toml:"no_sandbox"`
 }
 
 // NewMermaidConfig creates a new MermaidConfig with default values.
