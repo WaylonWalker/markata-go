@@ -208,15 +208,16 @@
 }
 
 .article-progress {
-  position: sticky;
-  top: calc(var(--layout-header-height, 64px) + var(--space-2, 0.5rem));
-  z-index: 10;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
   display: block;
-  width: min(100%, var(--content-max-width, 65ch));
+  width: 100%;
   height: var(--article-progress-height, 4px);
-  margin: 0 auto var(--space-5, 1.25rem);
-  background: var(--article-progress-track, color-mix(in srgb, var(--color-text) 90%, transparent));
-  border-radius: var(--article-progress-height, 4px);
+  margin: 0;
+  background: var(--article-progress-track, color-mix(in srgb, var(--color-text) 15%, var(--color-background) 85%));
+  border-radius: 0;
   overflow: hidden;
   pointer-events: none;
   isolation: isolate;
@@ -230,7 +231,7 @@
   transform: scaleX(0);
   background: linear-gradient(90deg, var(--article-progress-start, var(--color-primary)), var(--article-progress-end, var(--color-primary-light, var(--color-primary))));
   box-shadow: 0 0 18px var(--article-progress-glow, color-mix(in srgb, var(--color-primary) 60%, transparent));
-  opacity: 0.9;
+  opacity: 1;
   transition: transform 0.24s ease, opacity 0.24s ease;
   will-change: transform;
 }

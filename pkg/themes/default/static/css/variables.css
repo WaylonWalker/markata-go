@@ -84,7 +84,7 @@
 
     /* Darker article shadow for dark mode */
     --article-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-    --article-progress-track: color-mix(in srgb, var(--color-surface) 85%, transparent);
+    --article-progress-track: color-mix(in srgb, var(--color-background) 65%, white 35%);
     --article-progress-glow: color-mix(in srgb, var(--color-primary) 50%, transparent 60%);
   }
 }
