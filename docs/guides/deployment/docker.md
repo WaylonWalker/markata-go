@@ -47,6 +47,25 @@ docker run --rm \
   sh -c 'set -eu; ts=$(date -u +%Y%m%d%H%M%S); markata-go build --clean; rsync -a --delete public/ /webroot/releases/$ts/; ln -sfn releases/$ts /webroot/current'
 ```
 
+### Chromium Mermaid Rendering in Containers
+
+If your site uses `mode = "chromium"` for pre-rendered Mermaid diagrams, set
+`no_sandbox = true` in your config. The Chromium sandbox requires kernel
+capabilities that Docker restricts by default:
+
+```toml
+[markata-go.mermaid]
+mode = "chromium"
+
+[markata-go.mermaid.chromium]
+no_sandbox = true
+```
+
+The builder image includes Chromium. For custom images, see
+[Chromium in Containers](../configuration.md#chromium-in-containers-docker-distrobox-podman)
+in the configuration guide for installation options including the lightweight
+`chrome-headless-shell` binary that requires no root access.
+
 ## Cost
 
 | Setup | Cost | Best For |
