@@ -544,6 +544,14 @@ func (p *PaletteCSSPlugin) writeNonColorVariables(buf *bytes.Buffer, indent stri
 	fmt.Fprintf(buf, "%s--page-width: 1200px;\n", indent)
 	fmt.Fprintf(buf, "%s--radius: 0.375rem;\n", indent)
 	fmt.Fprintf(buf, "%s--radius-lg: 0.5rem;\n", indent)
+
+	// Article reading progress indicator
+	fmt.Fprintf(buf, "\n%s/* Article reading progress indicator */\n", indent)
+	fmt.Fprintf(buf, "%s--article-progress-height: 4px;\n", indent)
+	fmt.Fprintf(buf, "%s--article-progress-track: color-mix(in srgb, var(--color-text) 15%%, var(--color-background) 85%%);\n", indent)
+	fmt.Fprintf(buf, "%s--article-progress-start: var(--color-primary);\n", indent)
+	fmt.Fprintf(buf, "%s--article-progress-end: color-mix(in srgb, var(--color-primary) 40%%, var(--color-primary-light, var(--color-primary)) 60%%);\n", indent)
+	fmt.Fprintf(buf, "%s--article-progress-glow: color-mix(in srgb, var(--color-primary) 60%%, transparent);\n", indent)
 }
 
 // writePaletteVariablesIndented writes CSS custom properties with custom indentation.
