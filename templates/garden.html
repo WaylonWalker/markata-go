@@ -22,21 +22,25 @@
   {% if tag_clusters %}
   <section class="garden-clusters">
     <h2>Tag Clusters</h2>
-    <div class="garden-cluster-grid">
+    <div class="garden-controls">
+      <button class="sort-btn" type="button" data-sort="alpha" aria-pressed="false">A&#8211;Z</button>
+      <button class="sort-btn" type="button" data-sort="count" aria-pressed="false">By Count</button>
+    </div>
+    <div class="garden-cluster-grid" id="garden-clusters">
       {% for cluster in tag_clusters %}
-      <div class="garden-cluster">
-        <h3 class="garden-cluster-name">
-          <a href="{{ cluster.Href }}">{{ cluster.Name }}</a>
+      <a href="{{ cluster.Href }}" class="garden-cluster" data-count="{{ cluster.Count }}" data-name="{{ cluster.Name }}">
+        <span class="garden-cluster-name">
+          {{ cluster.Name }}
           <span class="garden-cluster-count">({{ cluster.Count }})</span>
-        </h3>
+        </span>
         {% if cluster.Related %}
-        <ul class="garden-cluster-related">
+        <span class="garden-cluster-related">
           {% for related in cluster.Related %}
-          <li>{{ related }}</li>
+          <span class="garden-related-tag">{{ related }}</span>
           {% endfor %}
-        </ul>
+        </span>
         {% endif %}
-      </div>
+      </a>
       {% endfor %}
     </div>
   </section>
@@ -44,7 +48,6 @@
 
   {% if graph_json %}
   <section class="garden-graph-link">
-    <h2>Graph Data</h2>
     <p>
       The full knowledge graph is available as
       <a href="{{ graph_json }}">graph.json</a>
@@ -56,92 +59,233 @@
 
 <style>
 .garden {
-  max-width: var(--content-width, 48rem);
+  max-width: var(--content-width, 65ch);
   margin: 0 auto;
-  padding: 1rem;
+  padding: var(--space-4, 1rem);
 }
 
 .garden-header {
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-8, 2rem);
+  text-align: center;
 }
 
 .garden-header h1 {
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--space-2, 0.5rem);
 }
 
 .garden-description {
-  color: var(--text-muted, #666);
-  margin-bottom: 0.5rem;
+  color: var(--color-text-muted, #999);
+  margin-bottom: var(--space-2, 0.5rem);
 }
 
 .garden-stats {
-  font-size: 0.875rem;
-  color: var(--text-muted, #666);
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--color-text-muted, #999);
 }
 
 .garden-stat-sep {
-  margin: 0 0.25rem;
+  margin: 0 var(--space-1, 0.25rem);
 }
 
 .garden-clusters {
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-8, 2rem);
+}
+
+.garden-clusters h2 {
+  text-align: center;
+  margin-bottom: var(--space-2, 0.5rem);
+}
+
+.garden-controls {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  justify-content: center;
+  margin-bottom: var(--space-6, 1.5rem);
+  flex-wrap: wrap;
+}
+
+.sort-btn {
+  padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+  border: 1px solid var(--color-border, #444);
+  background: var(--color-background, #1a1a1a);
+  color: var(--color-text, #e0e0e0);
+  border-radius: var(--radius, 0.375rem);
+  cursor: pointer;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 500;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.sort-btn:hover {
+  border-color: var(--color-primary, #ffcd11);
+  color: var(--color-primary, #ffcd11);
+}
+
+.sort-btn[aria-pressed="true"] {
+  background: var(--color-primary, #ffcd11);
+  border-color: var(--color-primary, #ffcd11);
+  color: var(--color-background, #1a1a1a);
+}
+
+.sort-btn[aria-pressed="true"]::after {
+  content: " \2193";
+}
+
+.sort-btn[data-reversed="true"]::after {
+  content: " \2191" !important;
 }
 
 .garden-cluster-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: var(--space-3, 0.75rem);
 }
 
 .garden-cluster {
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 0.5rem;
-  padding: 1rem;
+  display: block;
+  border: 1px solid var(--color-border, #444);
+  border-radius: var(--radius-lg, 0.5rem);
+  padding: var(--space-4, 1rem);
+  text-decoration: none;
+  color: var(--color-text, #e0e0e0);
+  background: var(--color-background, #1a1a1a);
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.garden-cluster:hover {
+  border-color: var(--color-primary, #ffcd11);
+  background: var(--color-surface, #222);
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .garden-cluster-name {
-  font-size: 1rem;
-  margin: 0 0 0.5rem 0;
+  display: block;
+  font-size: var(--text-base, 1rem);
+  font-weight: 600;
+  margin-bottom: var(--space-2, 0.5rem);
 }
 
-.garden-cluster-name a {
-  text-decoration: none;
-  color: var(--link-color, inherit);
-}
-
-.garden-cluster-name a:hover {
-  text-decoration: underline;
+.garden-cluster:hover .garden-cluster-name {
+  color: var(--color-primary, #ffcd11);
 }
 
 .garden-cluster-count {
   font-weight: normal;
-  color: var(--text-muted, #666);
-  font-size: 0.875rem;
+  color: var(--color-text-muted, #999);
+  font-size: var(--text-sm, 0.875rem);
 }
 
 .garden-cluster-related {
-  list-style: none;
-  padding: 0;
-  margin: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: var(--space-1, 0.25rem);
 }
 
-.garden-cluster-related li {
-  font-size: 0.75rem;
-  color: var(--text-muted, #666);
-  background: var(--surface-color, #f5f5f5);
-  padding: 0.125rem 0.5rem;
+.garden-related-tag {
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--color-text-muted, #999);
+  background: var(--color-surface, #222);
+  padding: 0.125rem var(--space-2, 0.5rem);
   border-radius: 1rem;
 }
 
 .garden-graph-link {
-  margin-top: 2rem;
-  padding: 1rem;
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 0.5rem;
+  margin-top: var(--space-8, 2rem);
+  padding: var(--space-4, 1rem);
+  border: 1px solid var(--color-border, #444);
+  border-radius: var(--radius-lg, 0.5rem);
+  text-align: center;
+  color: var(--color-text-muted, #999);
+  font-size: var(--text-sm, 0.875rem);
+}
+
+.garden-graph-link a {
+  color: var(--color-link, #ffcd11);
+}
+
+.garden-graph-link a:hover {
+  color: var(--color-link-hover, #ffe066);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .garden {
+    padding: var(--space-3, 0.75rem);
+  }
+
+  .garden-cluster-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .garden-controls {
+    gap: var(--space-1, 0.25rem);
+  }
+
+  .sort-btn {
+    padding: var(--space-1, 0.25rem);
+    font-size: var(--text-xs, 0.75rem);
+  }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var grid = document.getElementById('garden-clusters');
+  if (!grid) return;
+
+  var buttons = document.querySelectorAll('.sort-btn');
+  var currentSort = null;
+  var isReversed = false;
+
+  buttons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var sortType = this.dataset.sort;
+
+      if (currentSort === sortType) {
+        isReversed = !isReversed;
+      } else {
+        currentSort = sortType;
+        isReversed = false;
+        buttons.forEach(function(b) {
+          b.setAttribute('aria-pressed', 'false');
+          b.removeAttribute('data-reversed');
+        });
+        this.setAttribute('aria-pressed', 'true');
+      }
+
+      if (isReversed) {
+        this.setAttribute('data-reversed', 'true');
+      } else {
+        this.removeAttribute('data-reversed');
+      }
+
+      sortClusters(sortType, isReversed);
+    });
+  });
+
+  function sortClusters(sortType, reverse) {
+    var items = Array.from(grid.querySelectorAll('.garden-cluster'));
+
+    items.sort(function(a, b) {
+      if (sortType === 'alpha') {
+        var aName = a.dataset.name.toLowerCase();
+        var bName = b.dataset.name.toLowerCase();
+        return reverse
+          ? bName.localeCompare(aName)
+          : aName.localeCompare(bName);
+      } else if (sortType === 'count') {
+        var aCount = parseInt(a.dataset.count, 10);
+        var bCount = parseInt(b.dataset.count, 10);
+        return reverse
+          ? aCount - bCount
+          : bCount - aCount;
+      }
+      return 0;
+    });
+
+    items.forEach(function(item) { grid.appendChild(item); });
+  }
+});
+</script>
 {% endblock %}
