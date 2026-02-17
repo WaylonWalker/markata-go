@@ -128,11 +128,26 @@ Only essential, cross-cutting concerns live at the root:
 | `title` | string? | null | Site title |
 | `description` | string? | null | Site description |
 | `author` | string? | null | Default author |
+| `license` | string `\|` bool | `(unset)` | Declare the license used for the footer. Strings map to supported licenses (see below); set `false` to skip the attribution and warning. |
 | `lang` | string | `"en"` | Site language |
 | `hooks` | string[] | `["default"]` | Plugins to load |
 | `disabled_hooks` | string[] | `[]` | Plugins to exclude |
 
 Everything else goes in a plugin namespace.
+
+### License key (`[markata-go].license`)
+
+The root `license` key controls the footer attribution (available as `config.license`) and whether the validation stage complains about missing reuse metadata. Acceptable values:
+
+- `all-rights-reserved` – All rights reserved (no reuse without permission).
+- `cc-by-4.0` (recommended) – Creative Commons Attribution 4.0 International (`https://creativecommons.org/licenses/by/4.0/`).
+- `cc-by-sa-4.0` – Creative Commons Attribution-ShareAlike 4.0 International (`https://creativecommons.org/licenses/by-sa/4.0/`).
+- `cc-by-nc-4.0` – Creative Commons Attribution-NonCommercial 4.0 International (`https://creativecommons.org/licenses/by-nc/4.0/`).
+- `cc-by-nd-4.0` – Creative Commons Attribution-NoDerivatives 4.0 International (`https://creativecommons.org/licenses/by-nd/4.0/`).
+- `cc-by-nc-sa-4.0` – Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (`https://creativecommons.org/licenses/by-nc-sa/4.0/`).
+- `mit` – MIT License (`https://opensource.org/licenses/MIT`).
+
+Setting `license = false` explicitly hides the footer line and silences the warning. Leaving the key unset triggers the warning (and the serve-time toast) until a supported string or `false` is configured. The scaffolding created by `markata-go init` / `markata-go config init` writes `license = "cc-by-4.0"` so the warning is satisfied by default.
 
 ---
 

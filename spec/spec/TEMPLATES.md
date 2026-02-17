@@ -61,14 +61,33 @@ The foundation template that others extend:
         {% block content %}{% endblock %}
     </main>
 
-    {% block footer %}
-    {% include "partials/footer.html" %}
-    {% endblock %}
+{% block footer %}
+{% include "partials/footer.html" %}
+{% endblock %}
 
-    {% block scripts %}{% endblock %}
+{% block scripts %}{% endblock %}
 </body>
 </html>
 ```
+
+### Footer license line
+
+The default footer renders a license attribution when `config.license.name` is set. Custom footers should mimic the guard below to avoid showing stale objects when the user opts out via `license = false`.
+
+```html
+{% if config.license and config.license.name %}
+<p class="footer-license">
+  Content licensed under
+  {% if config.license.url %}
+  <a href="{{ config.license.url }}" target="_blank" rel="noopener">{{ config.license.name }}</a>
+  {% else %}
+  {{ config.license.name }}
+  {% endif %}
+</p>
+{% endif %}
+```
+
+`config.license` is `nil` when the root `license` key is omitted (triggering the validation warning/serve toast) and an empty object when `license = false`, so the paragraph naturally stays hidden in either case.
 
 ---
 

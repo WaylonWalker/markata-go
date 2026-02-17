@@ -23,6 +23,7 @@ type initWizardState struct {
 	Description string
 	Author      string
 	URL         string
+	LicenseKey  string
 
 	// Feature selections
 	ConfigureFeatures bool
@@ -304,6 +305,7 @@ func runHuhNewProjectWizard(theme *huh.Theme) (*initWizardState, error) {
 		Title:             "My Site",
 		Description:       "A site built with markata-go",
 		URL:               "https://example.com",
+		LicenseKey:        models.DefaultLicenseKey,
 		Palette:           "default-light",
 		EnableHTML:        defaults.PostFormats.IsHTMLEnabled(),
 		EnableMarkdown:    defaults.PostFormats.Markdown,
@@ -314,6 +316,16 @@ func runHuhNewProjectWizard(theme *huh.Theme) (*initWizardState, error) {
 		EnableFeedAtom:    defaults.FeedDefaults.Formats.Atom,
 		EnableFeedJSON:    defaults.FeedDefaults.Formats.JSON,
 		EnableFeedSitemap: defaults.FeedDefaults.Formats.Sitemap,
+	}
+
+	licenseOptions := licenseChoices()
+	licenseSelectOptions := make([]huh.Option[string], len(licenseOptions))
+	for i, choice := range licenseOptions {
+		display := choice.Label
+		if choice.Description != "" {
+			display = fmt.Sprintf("%s – %s", display, choice.Description)
+		}
+		licenseSelectOptions[i] = huh.NewOption(display, choice.Key)
 	}
 
 	// Group 1: Basic site information
@@ -341,6 +353,11 @@ func runHuhNewProjectWizard(theme *huh.Theme) (*initWizardState, error) {
 			Description("Your site's URL (used for RSS feeds and sitemaps)").
 			Value(&state.URL).
 			Placeholder("https://example.com"),
+		huh.NewSelect[string]().
+			Title("License").
+			Description("Select how visitors may reuse your content. Set to \"false\" to opt out.").
+			Options(licenseSelectOptions...).
+			Value(&state.LicenseKey),
 	)
 
 	// Group 2: Feature configuration
@@ -587,6 +604,7 @@ func applyWizardState(state *initWizardState, force bool) error {
 	cfg.Description = state.Description
 	cfg.Author = state.Author
 	cfg.URL = state.URL
+	cfg.License = licenseValueFromKey(state.LicenseKey)
 
 	// Apply feature configurations
 	for _, feature := range state.SelectedFeatures {

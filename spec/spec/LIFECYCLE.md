@@ -490,6 +490,7 @@ def configure(core):
 - Validate plugin-specific configuration
 - Check for required fields
 - Emit warnings for deprecated options
+- Emit a warning when `[markata-go].license` is missing so authors declare reuse rights
 - Raise errors for invalid configurations
 
 **Core actions:**

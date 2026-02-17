@@ -25,9 +25,19 @@
         {% include "components/format-links.html" %}
         {% endif %}
 
-         {% if footer.show_copyright %}
-         <p class="footer-copyright">&copy; {{ "now" | date:"2006" }} {{ config.author | default:config.title | default:"" }}.{% if footer.show_built_with %} Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a> using {{ config.theme.name | default:"default" }} theme.{% endif %}</p>
-         {% endif %}
+        {% if footer.show_copyright %}
+        <p class="footer-copyright">&copy; {{ "now" | date:"2006" }} {{ config.author | default:config.title | default:"" }}.{% if footer.show_built_with %} Built with <a href="https://github.com/WaylonWalker/markata-go">markata-go</a> using {{ config.theme.name | default:"default" }} theme.{% endif %}</p>
+        {% endif %}
+        {% if config.license and config.license.name %}
+        <p class="footer-license">
+          Content licensed under
+          {% if config.license.url %}
+          <a href="{{ config.license.url }}" target="_blank" rel="noopener">{{ config.license.name }}</a>
+          {% else %}
+          {{ config.license.name }}
+          {% endif %}
+        </p>
+        {% endif %}
     </div>
 
     {# Site-wide h-card for IndieWeb identity #}

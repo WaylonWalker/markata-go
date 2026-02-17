@@ -235,6 +235,24 @@ func promptFeatureSelection(reader *bufio.Reader, features []featureInfo) []stri
 	return selected
 }
 
+func promptLicenseChoice(reader *bufio.Reader) string {
+	choices := licenseChoices()
+	displays := licenseDisplayStrings(choices)
+	defaultIndex := defaultLicenseIndex(choices)
+	choice := promptMenuChoiceDefault(reader, "Select a content license", displays, defaultIndex)
+	if choice < 0 || choice >= len(choices) {
+		return models.DefaultLicenseKey
+	}
+	return choices[choice].Key
+}
+
+func licenseValueFromKey(key string) models.LicenseValue {
+	if key == "false" {
+		return models.LicenseValue{Raw: false}
+	}
+	return models.LicenseValue{Raw: key}
+}
+
 // backupConfig creates a backup of the existing config file.
 func backupConfig(path string) error {
 	backupPath := path + ".backup"
@@ -1222,6 +1240,7 @@ func runPlainNewProjectWizard() error {
 	description := prompt(reader, "Description", "A site built with markata-go")
 	author := prompt(reader, "Author", "")
 	url := prompt(reader, "URL", "https://example.com")
+	licenseKey := promptLicenseChoice(reader)
 
 	fmt.Println()
 	fmt.Println("Creating project structure...")
@@ -1242,6 +1261,7 @@ func runPlainNewProjectWizard() error {
 	cfg.Author = author
 	cfg.URL = url
 	cfg.GlobConfig.UseGitignore = true
+	cfg.License = licenseValueFromKey(licenseKey)
 
 	// Ask about optional features for new projects
 	fmt.Println()

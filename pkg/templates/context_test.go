@@ -70,3 +70,23 @@ func TestPostToMap_InlinksOutlinks(t *testing.T) {
 		t.Errorf("unexpected source_post title: %#v", sourceMap["title"])
 	}
 }
+
+func TestConfigToMap_IncludesLicense(t *testing.T) {
+	cfg := &models.Config{
+		License: models.LicenseValue{Raw: models.DefaultLicenseKey},
+	}
+	mapped := configToMap(cfg)
+	license, ok := mapped["license"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected license map, got %T", mapped["license"])
+	}
+	if license["name"] != "Creative Commons Attribution 4.0" {
+		t.Errorf("unexpected license name %q", license["name"])
+	}
+	if license["url"] == "" {
+		t.Error("expected license url to be set")
+	}
+	if license["key"] != models.DefaultLicenseKey {
+		t.Errorf("unexpected license key %q", license["key"])
+	}
+}

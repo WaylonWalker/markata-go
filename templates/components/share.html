@@ -1,38 +1,135 @@
 {% if share_buttons %}
+{% set reply_email = "" %}
+{% set reply_name = config.author | default:"the author" %}
+{% set reply_twitter = "" %}
+{% set reply_bluesky = "" %}
+{% set reply_linkedin = "" %}
+{% set reply_github = "" %}
+{% set reply_mastodon = "" %}
+
+{# Check config.authors for default author - handle nil safely #}
+{% set authors = config.authors | default({}) %}
+{% set authors_map = authors.authors | default({}) %}
+{% if authors_map.waylon %}
+    {% set author = authors_map.waylon %}
+    {% if author.default %}
+        {% if author.name %}{% set reply_name = author.name %}{% endif %}
+        {% if author.email %}{% set reply_email = author.email %}{% endif %}
+        {% if author.social %}
+            {% if author.social.twitter %}{% set reply_twitter = author.social.twitter %}{% endif %}
+            {% if author.social.bluesky %}{% set reply_bluesky = author.social.bluesky %}{% endif %}
+            {% if author.social.linkedin %}{% set reply_linkedin = author.social.linkedin %}{% endif %}
+            {% if author.social.github %}{% set reply_github = author.social.github %}{% endif %}
+            {% if author.social.mastodon %}{% set reply_mastodon = author.social.mastodon %}{% endif %}
+        {% endif %}
+    {% endif %}
+{% endif %}
+
+{# Per-post overrides #}
+{% if post.reply_name %}{% set reply_name = post.reply_name %}{% endif %}
+{% if post.reply_email %}{% set reply_email = post.reply_email %}{% endif %}
+{% if post.email %}{% set reply_email = post.email %}{% endif %}
+{% if post.reply_twitter %}{% set reply_twitter = post.reply_twitter %}{% endif %}
+{% if post.reply_bluesky %}{% set reply_bluesky = post.reply_bluesky %}{% endif %}
+{% if post.reply_linkedin %}{% set reply_linkedin = post.reply_linkedin %}{% endif %}
+{% if post.reply_github %}{% set reply_github = post.reply_github %}{% endif %}
+{% if post.reply_mastodon %}{% set reply_mastodon = post.reply_mastodon %}{% endif %}
+
+{% if post.social %}
+    {% if post.social.twitter and not reply_twitter %}{% set reply_twitter = post.social.twitter %}{% endif %}
+    {% if post.social.bluesky and not reply_bluesky %}{% set reply_bluesky = post.social.bluesky %}{% endif %}
+    {% if post.social.linkedin and not reply_linkedin %}{% set reply_linkedin = post.social.linkedin %}{% endif %}
+    {% if post.social.github and not reply_github %}{% set reply_github = post.social.github %}{% endif %}
+    {% if post.social.mastodon and not reply_mastodon %}{% set reply_mastodon = post.social.mastodon %}{% endif %}
+{% endif %}
+
+{% if post.author_objects %}
+    {% for author_obj in post.author_objects %}
+        {% if forloop.first %}
+            {% if author_obj.name and reply_name == config.author %}{% set reply_name = author_obj.name %}{% endif %}
+            {% if author_obj.email and not reply_email %}{% set reply_email = author_obj.email %}{% endif %}
+            {% if author_obj.social %}
+                {% if author_obj.social.twitter and not reply_twitter %}{% set reply_twitter = author_obj.social.twitter %}{% endif %}
+                {% if author_obj.social.bluesky and not reply_bluesky %}{% set reply_bluesky = author_obj.social.bluesky %}{% endif %}
+                {% if author_obj.social.linkedin and not reply_linkedin %}{% set reply_linkedin = author_obj.social.linkedin %}{% endif %}
+                {% if author_obj.social.github and not reply_github %}{% set reply_github = author_obj.social.github %}{% endif %}
+                {% if author_obj.social.mastodon and not reply_mastodon %}{% set reply_mastodon = author_obj.social.mastodon %}{% endif %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
 <section class="share-panel share-panel--{{ config.components.share.position | default:'bottom' }}" aria-label="Share this post">
     <div class="share-panel__header">
         <h2 class="share-panel__title">{{ config.components.share.title | default:'Share this post' }}</h2>
-        <p class="share-panel__description">Help readers send this post to their favorite platforms.</p>
     </div>
     <div class="share-panel__grid">
         {% for platform in share_buttons %}
         {% if platform.Action == 'share' %}
-        <a href="{{ platform.Link }}" class="share-button" target="_blank" rel="noopener noreferrer" aria-label="{{ platform.AriaLabel }}">
-            <span class="share-button__icon" aria-hidden="true">
-                {% if platform.IconIsThemeAsset %}
-                <img src="{{ platform.Icon | theme_asset_hashed }}" alt="" aria-hidden="true">
-                {% else %}
-                <img src="{{ platform.Icon }}" alt="" aria-hidden="true">
-                {% endif %}
-            </span>
+        <a href="{{ platform.Link }}" class="share-button no-avatar" target="_blank" rel="noopener noreferrer" aria-label="{{ platform.AriaLabel }}" title="{{ platform.AriaLabel }}">
+            <span class="share-button__icon" aria-hidden="true" {% if platform.IconIsThemeAsset %}style="--share-icon: url('{{ platform.Icon | theme_asset_hashed }}');"{% else %}style="--share-icon: url('{{ platform.Icon }}');"{% endif %}></span>
             <span class="share-button__name">{{ platform.Name }}</span>
             <span class="share-button__hint" aria-live="polite"></span>
         </a>
         {% else %}
-        <button type="button" class="share-button" data-share-action="copy" data-share-copy="{{ platform.CopyText }}" data-share-label="{{ platform.AriaLabel }}" data-share-feedback="{{ platform.CopyFeedback }}" aria-label="{{ platform.AriaLabel }}">
-            <span class="share-button__icon" aria-hidden="true">
-                {% if platform.IconIsThemeAsset %}
-                <img src="{{ platform.Icon | theme_asset_hashed }}" alt="" aria-hidden="true">
-                {% else %}
-                <img src="{{ platform.Icon }}" alt="" aria-hidden="true">
-                {% endif %}
-            </span>
+        <button type="button" class="share-button" data-share-action="copy" data-share-copy="{{ platform.CopyText }}" data-share-label="{{ platform.AriaLabel }}" data-share-feedback="{{ platform.CopyFeedback }}" aria-label="{{ platform.AriaLabel }}" title="{{ platform.AriaLabel }}">
+            <span class="share-button__icon" aria-hidden="true" {% if platform.IconIsThemeAsset %}style="--share-icon: url('{{ platform.Icon | theme_asset_hashed }}');"{% else %}style="--share-icon: url('{{ platform.Icon }}');"{% endif %}></span>
             <span class="share-button__name">{{ platform.Name }}</span>
             <span class="share-button__hint" aria-live="polite"></span>
         </button>
         {% endif %}
         {% endfor %}
     </div>
+
+    {% if reply_email or reply_twitter or reply_bluesky or reply_linkedin or reply_github or reply_mastodon %}
+    <div class="reply-panel" aria-label="Reply to the author">
+        {% if reply_email %}
+        <a class="reply-link reply-link--email no-avatar" href="mailto:{{ reply_email }}?subject=Re:{{ post.href }}&body=I%20was%20reading%20{{ config.url }}{{ post.href }}">
+            Reply by email
+        </a>
+        {% endif %}
+
+        {% if reply_twitter or reply_bluesky or reply_linkedin or reply_github or reply_mastodon %}
+        <span class="reply-panel__label">DM {{ reply_name }}:</span>
+        {% endif %}
+
+        {% if reply_twitter %}
+            {% if reply_twitter | startswith:'http' %}
+        <a class="reply-link no-avatar" href="{{ reply_twitter }}" target="_blank" rel="noopener noreferrer">X</a>
+            {% else %}
+        <a class="reply-link no-avatar" href="https://x.com/{{ reply_twitter }}" target="_blank" rel="noopener noreferrer">X</a>
+            {% endif %}
+        {% endif %}
+        {% if reply_bluesky %}
+            {% if reply_bluesky | startswith:'http' %}
+        <a class="reply-link no-avatar" href="{{ reply_bluesky }}" target="_blank" rel="noopener noreferrer">Bluesky</a>
+            {% else %}
+        <a class="reply-link no-avatar" href="https://bsky.app/profile/{{ reply_bluesky }}" target="_blank" rel="noopener noreferrer">Bluesky</a>
+            {% endif %}
+        {% endif %}
+        {% if reply_linkedin %}
+            {% if reply_linkedin | startswith:'http' %}
+        <a class="reply-link no-avatar" href="{{ reply_linkedin }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            {% else %}
+        <a class="reply-link no-avatar" href="https://linkedin.com/in/{{ reply_linkedin }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            {% endif %}
+        {% endif %}
+        {% if reply_github %}
+            {% if reply_github | startswith:'http' %}
+        <a class="reply-link no-avatar" href="{{ reply_github }}" target="_blank" rel="noopener noreferrer">GitHub</a>
+            {% else %}
+        <a class="reply-link no-avatar" href="https://github.com/{{ reply_github }}" target="_blank" rel="noopener noreferrer">GitHub</a>
+            {% endif %}
+        {% endif %}
+        {% if reply_mastodon %}
+            {% if reply_mastodon | startswith:'http' %}
+        <a class="reply-link no-avatar" href="{{ reply_mastodon }}" target="_blank" rel="noopener noreferrer">Mastodon</a>
+            {% else %}
+        <a class="reply-link no-avatar" href="https://mastodon.social/@{{ reply_mastodon }}" target="_blank" rel="noopener noreferrer">Mastodon</a>
+            {% endif %}
+        {% endif %}
+    </div>
+    {% endif %}
 </section>
 
 <script>

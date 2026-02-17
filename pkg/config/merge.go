@@ -38,6 +38,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	if override.AssetsDir != "" {
 		result.AssetsDir = override.AssetsDir
 	}
+	if override.License.Raw != nil {
+		result.License = override.License
+	}
 	if override.TemplatesDir != "" {
 		result.TemplatesDir = override.TemplatesDir
 	}

@@ -705,6 +705,7 @@ title = "My Site"
 url = "https://example.com"
 description = "A site built with markata-go"
 author = "Your Name"
+license = "cc-by-4.0"
 
 # Output settings
 output_dir = "output"
@@ -753,6 +754,7 @@ title: My Site
 url: https://example.com
 description: A site built with markata-go
 author: Your Name
+license: cc-by-4.0
 
 # Output settings
 output_dir: output
@@ -800,6 +802,7 @@ const defaultConfigJSON = `{
   "url": "https://example.com",
   "description": "A site built with markata-go",
   "author": "Your Name",
+  "license": "cc-by-4.0",
   "output_dir": "output",
   "templates_dir": "templates",
   "assets_dir": "static",

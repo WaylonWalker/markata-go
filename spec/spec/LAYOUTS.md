@@ -571,17 +571,18 @@ When `scroll_spy: true`, the TOC highlights the currently visible section:
 
 ### Share Component
 
-The share component provides a configurable "Share this post" experience at the end of article templates. It renders icon buttons for each platform, exposes hover labels, and keeps copy-to-clipboard functionality accessible via keyboard and screen readers.
+The share component provides a configurable "Share this post" experience at the end of article templates. It renders a compact row of icon buttons for each platform and keeps copy-to-clipboard functionality accessible via keyboard and screen readers.
 
 **Placement**: Injected into `post.html` (and theme equivalents) between the article body and ancillary sections (guide navigation, webmentions) so it appears at the end of every article before comments/footers.
 
 **Behavior**:
 
-1. Displays icon buttons in a responsive grid. Mobile stacks vertically, desktop shows multi-column layout.
-2. Hover or focus reveals the platform name via visible text and `aria-label` attributes.
+1. Displays icon buttons in a compact inline row that wraps as needed on smaller viewports.
+2. Hover or focus reveals the platform name via tooltip text and `aria-label` attributes.
 3. Clicks open the platform share dialog in a new tab (or copy the link when `copy` is enabled).
 4. Copy button uses the Clipboard API with a DOM fallback and provides live feedback.
-5. Uses CSS variables for colors, spacing, and border radius so palettes can theme the component.
+5. Renders a reply row below sharing when the primary author has contact metadata (email and/or supported social handles).
+6. Uses CSS variables for colors, spacing, and border radius so palettes can theme the component.
 
 #### Configuration
 
@@ -589,8 +590,8 @@ The share component provides a configurable "Share this post" experience at the 
 [markata-go.components.share]
 enabled = true
 position = "bottom"            # Controls the style hook (CSS adds `share-panel--bottom`).
-title = "Share this post"     # Heading above the buttons.
-platforms = ["twitter", "facebook", "linkedin", "reddit", "hacker_news", "email", "copy"]
+title = "Share this post"     # Label shown before the icon row.
+platforms = ["twitter", "bluesky", "linkedin", "whatsapp", "facebook", "telegram", "pinterest", "reddit", "hacker_news", "email", "copy"]
 
 [markata-go.components.share.custom]
 mastodon = { name = "Mastodon", icon = "mastodon.svg", url = "https://mastodon.social/share?text={{title}}&url={{url}}" }
@@ -600,9 +601,9 @@ mastodon = { name = "Mastodon", icon = "mastodon.svg", url = "https://mastodon.s
 | --- | --- | --- |
 | `enabled` | `bool` | Flip the entire component. Defaults to `true`. |
 | `position` | `string` | Adds a modifier class `share-panel--<position>` (default `bottom`). |
-| `title` | `string` | Heading text shown above the buttons.
+| `title` | `string` | Label shown before the icon row. |
 | `platforms` | `[]string` | Ordered list of platform keys to render. Missing list falls back to the built-in order. |
-| `custom` | `table` | Keyed definitions (`name`, `icon`, `url`). Icon paths are resolved via `theme_asset_hashed` when they do not start with `/`, `http`, or `data:`.
+| `custom` | `table` | Keyed definitions (`name`, `icon`, `url`). Icon paths are resolved via `theme_asset_hashed` when they do not start with `/`, `http`, or `data:`. SVGs from open icon sets are supported. |
 
 Valid placeholders in share URLs:
 
@@ -610,15 +611,19 @@ Valid placeholders in share URLs:
 | --- | --- |
 | `{{title}}` | URL-encoded post title (falls back to site title). |
 | `{{url}}` | URL-encoded absolute post URL (`config.url` + `post.href`). |
-| `{{excerpt}}` | URL-encoded post description/excerpt when provided.
+| `{{excerpt}}` | URL-encoded post description/excerpt when provided. |
 
 The component ships with these built-in platforms:
 
 | Key | Template | Notes |
 | --- | --- | --- |
 | `twitter` | `https://twitter.com/intent/tweet?text={{title}}&url={{url}}` | Icon: `icons/share/twitter.svg`. |
+| `bluesky` | `https://bsky.app/intent/compose?text={{url}}` | Icon: `icons/share/bluesky.svg`. |
 | `facebook` | `https://www.facebook.com/sharer/sharer.php?u={{url}}` | Icon: `icons/share/facebook.svg`. |
 | `linkedin` | `https://www.linkedin.com/sharing/share-offsite/?url={{url}}` | Icon: `icons/share/linkedin.svg`. |
+| `whatsapp` | `https://wa.me/?text={{url}}` | Icon: `icons/share/whatsapp.svg`. |
+| `telegram` | `https://t.me/share/url?url={{url}}` | Icon: `icons/share/telegram.svg`. |
+| `pinterest` | `https://pinterest.com/pin/create/button/?url={{url}}` | Icon: `icons/share/pinterest.svg`. |
 | `reddit` | `https://reddit.com/submit?url={{url}}&title={{title}}` | Icon: `icons/share/reddit.svg`. |
 | `hacker_news` | `https://news.ycombinator.com/submitlink?u={{url}}&t={{title}}` | Icon: `icons/share/hacker_news.svg`. |
 | `email` | `mailto:?subject={{title}}&body={{url}}` | Icon: `icons/share/email.svg`. |
@@ -630,7 +635,19 @@ Custom entries can reuse the built-in keys (e.g., override the icon for `copy`) 
 
 - Buttons are focusable, provide `aria-label`s like "Share on Twitter" (copy button reads "Copy link to clipboard"), and update their label to "Link copied" after copying.
 - The component loads a tiny Clipboard helper script only once.
-- Responsive states stack items on narrow viewports and transition with `transform`/`opacity` to feel deliberate.
+- Responsive states keep buttons compact across desktop and mobile so sharing does not dominate the article layout.
+- Reply links are keyboard-focusable and only render when author metadata exists, avoiding empty call-to-action areas.
+
+#### Reply Row
+
+When the first entry in `post.author_objects` contains contact data, a compact reply row is rendered directly below share buttons:
+
+- `email` -> `Reply by email` mailto link (`subject` prefilled with `Re:<post href>` and body with the post URL).
+- `social.twitter` -> `X` profile link (`https://x.com/<handle>`).
+- `social.bluesky` -> `Bluesky` profile link (`https://bsky.app/profile/<handle>`).
+- `social.linkedin` -> `LinkedIn` profile link (`https://linkedin.com/in/<handle>`).
+- `social.github` -> `GitHub` profile link (`https://github.com/<handle>`).
+- `social.mastodon` -> `Mastodon` link (uses value directly if it starts with `http`, otherwise `https://mastodon.social/@<handle>`).
 
 
 ---

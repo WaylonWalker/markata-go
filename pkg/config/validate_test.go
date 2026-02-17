@@ -37,6 +37,57 @@ func TestValidateConfig_ValidConfig(t *testing.T) {
 	}
 }
 
+func TestValidateConfig_LicenseMissingWarning(t *testing.T) {
+	config := &models.Config{
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{"**/*.md"},
+		},
+	}
+
+	errs := ValidateConfig(config)
+	if !HasWarnings(errs) {
+		t.Fatal("ValidateConfig() should warn when license is not configured")
+	}
+
+	found := false
+	for _, err := range errs {
+		var ve ValidationError
+		if errors.As(err, &ve) && ve.Field == "license" && ve.IsWarn {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected license warning when license is missing")
+	}
+}
+
+func TestValidateConfig_InvalidLicense(t *testing.T) {
+	config := &models.Config{
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{"**/*.md"},
+		},
+		License: models.LicenseValue{Raw: "no-such"},
+	}
+
+	errs := ValidateConfig(config)
+	if !HasErrors(errs) {
+		t.Fatal("ValidateConfig() should error for unsupported license key")
+	}
+
+	found := false
+	for _, err := range errs {
+		var ve ValidationError
+		if errors.As(err, &ve) && ve.Field == "license" && !ve.IsWarn {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected license error when key is unsupported")
+	}
+}
+
 func TestValidateConfig_InvalidURL(t *testing.T) {
 	tests := []struct {
 		name string

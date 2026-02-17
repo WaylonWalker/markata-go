@@ -56,6 +56,38 @@ func TestBuildShareButtonsCustomPlatform(t *testing.T) {
 	}
 }
 
+func TestBuildShareButtonsPetePlatforms(t *testing.T) {
+	post := &Post{Slug: "hello", Href: "/hello/", Title: stringPtr("Hello")}
+	config := NewShareComponentConfig()
+	config.Platforms = []string{"twitter", "bluesky", "linkedin", "whatsapp", "facebook", "telegram", "pinterest", "email"}
+
+	buttons := BuildShareButtons(config, "https://example.com", "Site", post)
+	if len(buttons) != len(config.Platforms) {
+		t.Fatalf("expected %d buttons, got %d", len(config.Platforms), len(buttons))
+	}
+
+	checks := map[string]string{
+		"twitter":   "twitter.com/intent/tweet",
+		"bluesky":   "bsky.app/intent/compose",
+		"linkedin":  "linkedin.com/sharing/share-offsite",
+		"whatsapp":  "wa.me/?text=",
+		"facebook":  "facebook.com/sharer/sharer.php",
+		"telegram":  "t.me/share/url",
+		"pinterest": "pinterest.com/pin/create/button",
+		"email":     "mailto:",
+	}
+
+	for _, button := range buttons {
+		want, ok := checks[button.Key]
+		if !ok {
+			continue
+		}
+		if !strings.Contains(button.Link, want) {
+			t.Fatalf("unexpected %s link: %s", button.Key, button.Link)
+		}
+	}
+}
+
 func TestBuildShareButtonsDisabled(t *testing.T) {
 	post := &Post{Slug: "nothing", Href: "/nothing/"}
 	config := NewShareComponentConfig()

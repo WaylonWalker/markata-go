@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )
@@ -61,6 +62,9 @@ var (
 
 	// buildStatus holds the current build state for serve mode.
 	buildStatus atomic.Value
+
+	// licenseWarningPayload holds the current license warning state for injection.
+	licenseWarningPayload atomic.Value
 )
 
 const (
@@ -68,11 +72,17 @@ const (
 	buildStatusSuccess  = "success"
 	buildStatusError    = "error"
 
-	buildStatusEventPrefix = "status:"
+	buildStatusEventPrefix    = "status:"
+	licenseWarningEventPrefix = "license_warning:"
 )
 
 type BuildStatus struct {
 	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+}
+
+type licenseWarningState struct {
+	Active  bool   `json:"active"`
 	Message string `json:"message,omitempty"`
 }
 
@@ -85,6 +95,48 @@ func getBuildStatus() BuildStatus {
 		return status
 	}
 	return BuildStatus{Status: buildStatusBuilding}
+}
+
+func setLicenseWarningState(state licenseWarningState) string {
+	data, err := json.Marshal(state)
+	payload := `{"active":false}`
+	if err == nil {
+		payload = string(data)
+	}
+	licenseWarningPayload.Store(payload)
+	return payload
+}
+
+func getLicenseWarningPayload() string {
+	if payload, ok := licenseWarningPayload.Load().(string); ok && payload != "" {
+		return payload
+	}
+	return `{"active":false}`
+}
+
+func notifyLicenseWarning(state licenseWarningState) {
+	payload := setLicenseWarningState(state)
+	notifyLiveReloadMessage(licenseWarningEventPrefix + payload)
+}
+
+func updateLicenseWarning(cfg *models.Config) {
+	state := licenseWarningState{}
+	if cfg != nil && cfg.NeedsLicenseWarning() {
+		state.Active = true
+		supported := strings.Join(models.LicenseKeys(), ", ")
+		state.Message = fmt.Sprintf("license not configured (supported: %s). Set license = \"%s\" or license = false to skip the footer.", supported, models.DefaultLicenseKey)
+	}
+	notifyLicenseWarning(state)
+}
+
+func getModelsConfigFromManager(m *lifecycle.Manager) *models.Config {
+	if m == nil || m.Config() == nil || m.Config().Extra == nil {
+		return nil
+	}
+	if cfg, ok := m.Config().Extra["models_config"].(*models.Config); ok {
+		return cfg
+	}
+	return nil
 }
 
 func buildStatusPayload(status BuildStatus) string {
@@ -149,6 +201,7 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
 	}
+	updateLicenseWarning(getModelsConfigFromManager(m))
 
 	// Determine output directory
 	outputPath, absOutputPath := resolveServeOutputPath(m)
@@ -273,6 +326,7 @@ func startHTTPServer(addr string, handler http.Handler) (server *http.Server, se
 }
 
 func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.WaitGroup) {
+	updateLicenseWarning(getModelsConfigFromManager(m))
 	setBuildStatus(buildStatusBuilding, "")
 	notifyBuildStatus()
 	if verbose {
@@ -478,7 +532,7 @@ func fallback404HTML() string {
 }
 
 func injectDevScripts(html string, status BuildStatus) string {
-	devScript := buildDevScript(status)
+	devScript := buildDevScript(status, getLicenseWarningPayload())
 
 	switch {
 	case strings.Contains(html, "</body>"):
@@ -490,14 +544,17 @@ func injectDevScripts(html string, status BuildStatus) string {
 	}
 }
 
-func buildDevScript(status BuildStatus) string {
+func buildDevScript(status BuildStatus, licensePayload string) string {
 	payload := buildStatusPayload(status)
 
 	return fmt.Sprintf(`<script>
 (function() {
     var initialStatus = %s;
+    var initialLicense = %s;
     var bannerId = 'markata-build-banner';
     var styleId = 'markata-build-banner-style';
+    var licenseToastId = 'markata-license-toast';
+    var licenseStyleId = 'markata-license-toast-style';
 
     function ensureStyle() {
         if (document.getElementById(styleId)) {
@@ -550,6 +607,46 @@ func buildDevScript(status BuildStatus) string {
         banner.style.display = 'block';
     }
 
+    function ensureLicenseStyle() {
+        if (document.getElementById(licenseStyleId)) {
+            return;
+        }
+
+        var style = document.createElement('style');
+        style.id = licenseStyleId;
+        style.textContent = '#'+licenseToastId+'{position:fixed;bottom:1rem;right:1rem;z-index:9999;max-width:320px;padding:0.75rem 1rem;background:rgba(15,23,42,0.95);color:#fff;font-size:0.875rem;border-radius:0.75rem;box-shadow:0 12px 30px rgba(15,23,42,0.35);display:none;}';
+        document.head.appendChild(style);
+    }
+
+    function ensureLicenseToast() {
+        var toast = document.getElementById(licenseToastId);
+        if (toast) {
+            return toast;
+        }
+
+        toast = document.createElement('div');
+        toast.id = licenseToastId;
+        document.body.appendChild(toast);
+        return toast;
+    }
+
+    function applyLicenseWarning(state) {
+        if (!state) {
+            return;
+        }
+
+        ensureLicenseStyle();
+        var toast = ensureLicenseToast();
+        if (!state.active) {
+            toast.style.display = 'none';
+            return;
+        }
+
+        var message = state.message || 'Set license = "cc-by-4.0" or license = false to skip the footer.';
+        toast.textContent = message;
+        toast.style.display = 'block';
+    }
+
     function parseStatusPayload(raw) {
         try {
             return JSON.parse(raw);
@@ -559,6 +656,7 @@ func buildDevScript(status BuildStatus) string {
     }
 
     applyStatus(initialStatus);
+    applyLicenseWarning(parseStatusPayload(initialLicense));
 
     var source = new EventSource('/__livereload');
     source.onmessage = function(e) {
@@ -572,6 +670,15 @@ func buildDevScript(status BuildStatus) string {
             if (state) {
                 applyStatus(state);
             }
+            return;
+        }
+        if (e.data.indexOf('%s') === 0) {
+            var payload = e.data.slice(%d);
+            var state = parseStatusPayload(payload);
+            if (state) {
+                applyLicenseWarning(state);
+            }
+            return;
         }
     };
     source.onerror = function() {
@@ -581,7 +688,7 @@ func buildDevScript(status BuildStatus) string {
         }, 1000);
     };
 })();
-</script>`, payload, buildStatusSuccess, buildStatusError, buildStatusEventPrefix, len(buildStatusEventPrefix))
+</script>`, payload, licensePayload, buildStatusSuccess, buildStatusError, buildStatusEventPrefix, len(buildStatusEventPrefix), licenseWarningEventPrefix, len(licenseWarningEventPrefix))
 }
 
 // handleSearchFallback handles POST requests to /_search for no-JS fallback search.
@@ -1098,6 +1205,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		fmt.Printf("Rebuild failed: %v\n", err)
 		return
 	}
+	updateLicenseWarning(getModelsConfigFromManager(m))
 
 	// Check for cancellation after creating manager
 	select {

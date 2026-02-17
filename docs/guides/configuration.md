@@ -131,6 +131,7 @@ extensions = ["tables"]
 | `title` | string | `""` | Site title |
 | `description` | string | `""` | Site description |
 | `author` | string | `""` | Default author |
+| `license` | string `\|` bool | `(unset)` | Select a license key for the footer (or `false` to hide the attribution and warning) |
 | `assets_dir` | string | `"static"` | Static assets directory |
 | `templates_dir` | string | `"templates"` | Templates directory |
 | `hooks` | string[] | `["default"]` | Plugins to load |
@@ -150,6 +151,24 @@ hooks = ["default"]
 disabled_hooks = ["sitemap"]
 concurrency = 4
 ```
+
+### License key (`[markata-go].license`)
+
+| Type | Default | Description |
+|------|---------|-------------|
+| string `\|` bool | `(unset)` | Declare the license that governs your content. Strings map to supported licenses shown below; set `false` to opt out of the footer and warning.
+
+Supported license keys:
+
+- `all-rights-reserved` – All rights reserved (no reuse without permission).
+- `cc-by-4.0` (recommended) – Creative Commons Attribution 4.0 International (`https://creativecommons.org/licenses/by/4.0/`).
+- `cc-by-sa-4.0` – Creative Commons Attribution-ShareAlike 4.0 International (`https://creativecommons.org/licenses/by-sa/4.0/`).
+- `cc-by-nc-4.0` – Creative Commons Attribution-NonCommercial 4.0 International (`https://creativecommons.org/licenses/by-nc/4.0/`).
+- `cc-by-nd-4.0` – Creative Commons Attribution-NoDerivatives 4.0 International (`https://creativecommons.org/licenses/by-nd/4.0/`).
+- `cc-by-nc-sa-4.0` – Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (`https://creativecommons.org/licenses/by-nc-sa/4.0/`).
+- `mit` – MIT License (`https://opensource.org/licenses/MIT`).
+
+Leaving the key unset triggers a warning (and `markata-go serve` shows a toast) until you choose one of the strings or set `license = false`. `markata-go init` and `markata-go config init` both write `license = "cc-by-4.0"` by default.
 
 ### Navigation Links (`[[markata-go.nav]]`)
 
@@ -433,15 +452,15 @@ feeds = ["tutorials", "guides"]
 
 #### Share Component (`[markata-go.components.share]`)
 
-Add a "Share this post" grid to the end of every article so readers can send your content to social platforms or copy the link.
+Add a compact "Share this post" row to the end of every article so readers can send your content to social platforms or copy the link.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Show the component. |
-| `title` | string | `"Share this post"` | Heading text above the buttons. |
+| `title` | string | `"Share this post"` | Label shown before the icon buttons. |
 | `position` | string | `"bottom"` | Modifier used by CSS (applied as `share-panel--<position>`). |
-| `platforms` | array | `["twitter","facebook","linkedin","reddit","hacker_news","email","copy"]` | Ordered list of platform keys to render. Omit entries to hide them. |
-| `custom` | table | `{}` | Custom platform definitions (`name`, `icon`, `url`). Icon paths without `/`, `http`, or `data:` are resolved via `theme_asset_hashed` (e.g., `icons/share/mastodon.svg`). |
+| `platforms` | array | `["twitter","bluesky","linkedin","whatsapp","facebook","telegram","pinterest","reddit","hacker_news","email","copy"]` | Ordered list of platform keys to render. Omit entries to hide them. |
+| `custom` | table | `{}` | Custom platform definitions (`name`, `icon`, `url`). Icon paths without `/`, `http`, or `data:` are resolved via `theme_asset_hashed` (e.g., `icons/share/mastodon.svg`). SVGs from open sets like Simple Icons work well here. |
 
 ```toml
 [markata-go.components.share]
@@ -459,7 +478,12 @@ Supported placeholders for share URLs:
 - `{{url}}` → URL-encoded absolute post URL (`config.url` + `post.href`).
 - `{{excerpt}}` → URL-encoded post description or excerpt when provided.
 
-Copying uses the Clipboard API with a DOM fallback and updates the button label/tooltip to "Link copied" for 2 seconds. Built-in platforms include Twitter, Facebook, LinkedIn, Reddit, Hacker News, Email, and Copy Link, each with a coordinated icon from `pkg/themes/default/static/icons/share/`.
+Copying uses the Clipboard API with a DOM fallback and updates the button label/tooltip to "Link copied" for 2 seconds. Built-in platforms include Twitter/X, Bluesky, LinkedIn, WhatsApp, Facebook, Telegram, Pinterest, Reddit, Hacker News, Email, and Copy Link, each with monochrome SVG icons from `pkg/themes/default/static/icons/share/`.
+
+When the primary post author (`post.author_objects[0]`) has contact metadata, a reply row appears below the share buttons:
+
+- `email` renders `Reply by email` with prefilled subject/body.
+- Supported social keys (`twitter`, `bluesky`, `linkedin`, `github`, `mastodon`) render DM/profile shortcuts.
 
 ### IndieAuth Settings (`[markata-go.indieauth]`)
 

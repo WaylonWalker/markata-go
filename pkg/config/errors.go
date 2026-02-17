@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // ConfigError represents a detailed configuration error with file position
@@ -273,6 +275,12 @@ var fixSuggestions = map[string]func(field, value string) string{
 	},
 	"empty_patterns": func(_, _ string) string {
 		return "patterns = [\"**/*.md\"]"
+	},
+	"license_invalid": func(_, _ string) string {
+		return fmt.Sprintf("license = %q", models.DefaultLicenseKey)
+	},
+	"license_missing": func(_, _ string) string {
+		return fmt.Sprintf("license = %q", models.DefaultLicenseKey)
 	},
 	"no_formats": func(_, _ string) string {
 		return "[formats]\nhtml = true"

@@ -161,6 +161,22 @@ Available author properties:
 - `contributions` - CReDiT taxonomy roles
 - `details` - Per-post contribution details
 
+## Reply Row on Posts
+
+The share component can render a reply row under social sharing links when the first author has contact data.
+
+- Set `email` to enable a `Reply by email` link.
+- Set social keys (`twitter`, `bluesky`, `linkedin`, `github`, `mastodon`) to show quick DM/profile links.
+
+Example:
+
+```toml
+[markata-go.authors.authors.waylon]
+name = "Waylon Walker"
+email = "hello@waylonwalker.com"
+social = { twitter = "waylonwalker", bluesky = "waylonwalker.com", github = "WaylonWalker" }
+```
+
 ## Role System
 
 ### Simple Roles

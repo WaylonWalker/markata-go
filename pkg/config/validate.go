@@ -62,6 +62,26 @@ func ValidateConfig(config *models.Config) []error {
 		})
 	}
 
+	// Validate license configuration
+	if !config.License.IsDisabled() {
+		if key, ok := config.License.Key(); ok {
+			if _, valid := models.GetLicenseOption(key); !valid {
+				supported := strings.Join(models.LicenseKeys(), ", ")
+				errs = append(errs, ValidationError{
+					Field:   "license",
+					Message: fmt.Sprintf("unsupported license key %q (supported: %s)", key, supported),
+				})
+			}
+		} else if !config.License.HasValue() {
+			supported := strings.Join(models.LicenseKeys(), ", ")
+			errs = append(errs, ValidationError{
+				Field:   "license",
+				Message: fmt.Sprintf("license not configured (supported: %s). Set license = \"%s\" or license = false to skip the footer.", supported, models.DefaultLicenseKey),
+				IsWarn:  true,
+			})
+		}
+	}
+
 	// Validate feed configurations
 	// Apply feed defaults before validation so we can check effective values
 	for i := range config.Feeds {
@@ -132,6 +152,33 @@ func ValidateConfigWithPositions(config *models.Config, tracker *PositionTracker
 			GetFixSuggestion("empty_patterns", "", ""),
 			true,
 		))
+	}
+
+	// Validate license configuration
+	if !config.License.IsDisabled() {
+		if key, ok := config.License.Key(); ok {
+			if _, valid := models.GetLicenseOption(key); !valid {
+				supported := strings.Join(models.LicenseKeys(), ", ")
+				configErrors.Add(NewConfigErrorWithFix(
+					tracker,
+					"license",
+					key,
+					fmt.Sprintf("unsupported license key %q (supported: %s)", key, supported),
+					GetFixSuggestion("license_invalid", "", ""),
+					false,
+				))
+			}
+		} else if !config.License.HasValue() {
+			supported := strings.Join(models.LicenseKeys(), ", ")
+			configErrors.Add(NewConfigErrorWithFix(
+				tracker,
+				"license",
+				"",
+				fmt.Sprintf("license not configured (supported: %s). Set license = \"%s\" or license = false to skip the footer.", supported, models.DefaultLicenseKey),
+				GetFixSuggestion("license_missing", "", ""),
+				true,
+			))
+		}
 	}
 
 	// Validate feed configurations
