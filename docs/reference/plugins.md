@@ -4179,7 +4179,7 @@ exclude_selectors = []      # CSS selectors to exclude from indexing
 | `pagefind.exclude_selectors` | `[]` | Elements to exclude from indexing |
 
 **Requirements:**
-- Pagefind CLI must be installed: `npm install -g pagefind`
+- Pagefind CLI must be installed (standalone binary from [GitHub releases](https://github.com/Pagefind/pagefind/releases), or via `auto_install = true` in config)
 - If not installed, the plugin logs a warning but does not fail the build
 
 **Behavior:**
