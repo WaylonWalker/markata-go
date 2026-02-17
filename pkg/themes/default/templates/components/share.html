@@ -1,100 +1,113 @@
 {% if share_buttons %}
-<section class="share-panel share-panel--{{ config.components.share.position | default:'bottom' }}" aria-label="Share this post">
-    <div class="share-panel__header">
-        <h2 class="share-panel__title">{{ config.components.share.title | default:'Share this post' }}</h2>
-        <p class="share-panel__description">Help readers send this post to their favorite platforms.</p>
-    </div>
-    <div class="share-panel__grid">
+{% set reply_email = "" %}
+{% set reply_name = config.author | default:"the author" %}
+{% set reply_twitter = "" %}
+{% set reply_bluesky = "" %}
+{% set reply_linkedin = "" %}
+{% set reply_github = "" %}
+{% set reply_mastodon = "" %}
+
+{# Check config.authors for default author #}
+{% if config.authors %}
+{% if config.authors.authors %}
+{% if config.authors.authors.waylon %}
+{% set author = config.authors.authors.waylon %}
+{% if author.default %}
+{% if author.name %}{% set reply_name = author.name %}{% endif %}
+{% if author.email %}{% set reply_email = author.email %}{% endif %}
+{% if author.social.twitter %}{% set reply_twitter = author.social.twitter %}{% endif %}
+{% if author.social.bluesky %}{% set reply_bluesky = author.social.bluesky %}{% endif %}
+{% if author.social.linkedin %}{% set reply_linkedin = author.social.linkedin %}{% endif %}
+{% if author.social.github %}{% set reply_github = author.social.github %}{% endif %}
+{% if author.social.mastodon %}{% set reply_mastodon = author.social.mastodon %}{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+
+{# Per-post overrides #}
+{% if post.reply_name %}{% set reply_name = post.reply_name %}{% endif %}
+{% if post.reply_email %}{% set reply_email = post.reply_email %}{% endif %}
+{% if post.email %}{% set reply_email = post.email %}{% endif %}
+{% if post.reply_twitter %}{% set reply_twitter = post.reply_twitter %}{% endif %}
+{% if post.reply_bluesky %}{% set reply_bluesky = post.reply_bluesky %}{% endif %}
+{% if post.reply_linkedin %}{% set reply_linkedin = post.reply_linkedin %}{% endif %}
+{% if post.reply_github %}{% set reply_github = post.reply_github %}{% endif %}
+{% if post.reply_mastodon %}{% set reply_mastodon = post.reply_mastodon %}{% endif %}
+
+<section class="share-panel share-panel--{{ config.components.share.position | default:"bottom" }}" aria-label="Share this post">
+    <h2 class="share-panel__title">{{ config.components.share.title | default:"Share this post" }}</h2>
+    <div class="share-buttons">
         {% for platform in share_buttons %}
-        {% if platform.Action == 'share' %}
-        <a href="{{ platform.Link }}" class="share-button" target="_blank" rel="noopener noreferrer" aria-label="{{ platform.AriaLabel }}">
-            <span class="share-button__icon" aria-hidden="true">
-                {% if platform.IconIsThemeAsset %}
-                <img src="{{ platform.Icon | theme_asset_hashed }}" alt="" aria-hidden="true">
-                {% else %}
-                <img src="{{ platform.Icon }}" alt="" aria-hidden="true">
-                {% endif %}
+        <a href="{{ platform.Link }}" class="share-button share-button--{{ platform.Key | lower }}" target="_blank" rel="noopener noreferrer" aria-label="{{ platform.AriaLabel }}">
+            <span class="share-button__icon" aria-hidden="true" style="color: inherit;">
+{% if platform.Key == "twitter" %}
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"/></svg>
+{% elif platform.Key == "bluesky" %}
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12.186 6.608c2.336 0 4.892.87 6.606 2.383-2.042.793-4.318 1.722-6.562 2.813-2.2-1.795-4.406-3.592-6.64-5.375 1.676-1.026 3.656-1.821 5.908-1.821.19 0 .376.008.562.017-.188-.584-.29-1.21-.29-1.854 0-3.964 3.222-7.182 7.198-7.182 3.978 0 7.199 3.218 7.199 7.182 0 3.964-3.22 7.182-7.199 7.182-1.105 0-2.144-.29-3.072-.783.153 1.823 1.185 3.432 2.917 4.265-2.052.767-4.362 1.523-6.695 2.308-1.105-2.116-2.336-4.03-3.596-5.838 1.797-.928 3.924-1.49 6.182-1.49z"/></svg>
+{% elif platform.Key == "linkedin" %}
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+{% elif platform.Key == "whatsapp" %}
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+{% elif platform.Key == "signal" %}
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12.003 2.002a9.998 9.998 0 00-9.052 14.393c-.046-.033-.091-.067-.136-.103l-.048-.035a2.453 2.453 0 00.104-3.263 2.444 2.444 0 00-1.968-1.02c-1.33-.1-2.548.324-3.501.907a2.43 2.43 0 00-1.399 2.452c0 .38.09.74.253 1.063a9.971 9.971 0 006.435 5.404l.21.08a2.447 2.447 0 001.233.094 2.453 2.453 0 002.416-2.14c.144-.006.287-.018.428-.037l.044-.006a9.983 9.983 0 006.436-5.406 9.987 9.987 0 00-2.206-7.518zM9.455 16.764a.979.979 0 01-.949-.67.976.976 0 01.188-1.053c.384-.47.955-.737 1.563-.727.597.01 1.15.283 1.525.748.13.16.228.337.295.524a.976.976 0 01-.295.89.981.981 0 01-.523.299.974.974 0 01-.755-.011zM10.91 14.92c-.198-.246-.49-.393-.808-.406-.317-.012-.62.11-.836.336a.976.976 0 01-.806.407.97.97 0 01-.523-.89c.124-.334.387-.62.724-.788.336-.168.722-.154 1.06.038.17.096.314.225.426.38a.979.979 0 01-.237.943zm1.185-1.077c-.123.327-.378.605-.707.773-.33.169-.714.16-1.058.028-.345-.133-.638-.365-.813-.643a.98.98 0 01.226-.946c.22-.21.5-.332.796-.338a.98.98 0 01.806.405c.163.218.26.476.294.745a.982.982 0 01-.544.976z"/></svg>
+{% elif platform.Key == "facebook" %}
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+{% elif platform.Key == "telegram" %}
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M11.944 0A12 12 0 00 0 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.5 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+{% elif platform.Key == "pinterest" %}
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.607 0 11.985-5.365 11.985-11.987C23.97 5.39 18.592.026 11.985.026L12.017 0z"/></svg>
+{% elif platform.Key == "reddit" %}
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 01-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 01.042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 014.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 01.14-.197.35.35 0 01.238-.042l2.906.617a1.214 1.214 0 011.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 00-.231.094.33.33 0 000 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 00.029-.463.33.33 0 00-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 00-.232-.095z"/></svg>
+{% elif platform.Key == "hacker_news" %}
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 17.703l-6.894-4.615V6.308l6.894 4.615v.78z"/></svg>
+{% elif platform.Key == "email" %}
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+{% elif platform.Key == "copy" %}
+<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+{% endif %}
             </span>
-            <span class="share-button__name">{{ platform.Name }}</span>
-            <span class="share-button__hint" aria-live="polite"></span>
+            <span class="share-button__label">{{ platform.Name }}</span>
         </a>
-        {% else %}
-        <button type="button" class="share-button" data-share-action="copy" data-share-copy="{{ platform.CopyText }}" data-share-label="{{ platform.AriaLabel }}" data-share-feedback="{{ platform.CopyFeedback }}" aria-label="{{ platform.AriaLabel }}">
-            <span class="share-button__icon" aria-hidden="true">
-                {% if platform.IconIsThemeAsset %}
-                <img src="{{ platform.Icon | theme_asset_hashed }}" alt="" aria-hidden="true">
-                {% else %}
-                <img src="{{ platform.Icon }}" alt="" aria-hidden="true">
-                {% endif %}
-            </span>
-            <span class="share-button__name">{{ platform.Name }}</span>
-            <span class="share-button__hint" aria-live="polite"></span>
-        </button>
-        {% endif %}
         {% endfor %}
     </div>
+    {% if reply_email or reply_twitter or reply_bluesky or reply_linkedin or reply_github or reply_mastodon %}
+    <div class="reply-section">
+        <h3 class="reply-section__title">Reply via</h3>
+        <div class="reply-links">
+            {% if reply_email %}
+            <a href="mailto:{{ reply_email }}?subject=Re: {{ post.title | urlencode }}" class="reply-link reply-link--email" aria-label="Reply via email">
+                <span class="reply-link__icon">✉️</span>
+                <span class="reply-link__label">{{ reply_name }}</span>
+            </a>
+            {% endif %}
+            {% if reply_bluesky %}
+            <a href="{{ reply_bluesky }}" class="reply-link reply-link--bluesky" target="_blank" rel="me noreferrer noopener" aria-label="Reply on Bluesky">
+                <span class="reply-link__label">Bluesky</span>
+            </a>
+            {% endif %}
+            {% if reply_twitter %}
+            <a href="https://twitter.com/{{ reply_twitter }}" class="reply-link reply-link--twitter" target="_blank" rel="me noreferrer noopener" aria-label="Reply on Twitter">
+                <span class="reply-link__label">Twitter</span>
+            </a>
+            {% endif %}
+            {% if reply_mastodon %}
+            <a href="{{ reply_mastodon }}" class="reply-link reply-link--mastodon" target="_blank" rel="me noreferrer noopener" aria-label="Reply on Mastodon">
+                <span class="reply-link__label">Mastodon</span>
+            </a>
+            {% endif %}
+            {% if reply_github %}
+            <a href="https://github.com/{{ reply_github }}" class="reply-link reply-link--github" target="_blank" rel="me noreferrer noopener" aria-label="Reply on GitHub">
+                <span class="reply-link__label">GitHub</span>
+            </a>
+            {% endif %}
+            {% if reply_linkedin %}
+            <a href="https://linkedin.com/in/{{ reply_linkedin }}" class="reply-link reply-link--linkedin" target="_blank" rel="me noreferrer noopener" aria-label="Reply on LinkedIn">
+                <span class="reply-link__label">LinkedIn</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 </section>
-
-<script>
-(function() {
-    if (window.__markataShareCopyBound) {
-        return;
-    }
-    window.__markataShareCopyBound = true;
-
-    function copyToClipboard(text) {
-        if (!text) {
-            return Promise.reject();
-        }
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            return navigator.clipboard.writeText(text);
-        }
-        var textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.setAttribute('readonly', '');
-        textarea.style.position = 'absolute';
-        textarea.style.left = '-9999px';
-        document.body.appendChild(textarea);
-        textarea.select();
-        textarea.setSelectionRange(0, textarea.value.length);
-        var result = document.execCommand('copy');
-        document.body.removeChild(textarea);
-        return result ? Promise.resolve() : Promise.reject();
-    }
-
-    document.addEventListener('click', function(event) {
-        var button = event.target.closest('[data-share-action="copy"]');
-        if (!button) {
-            return;
-        }
-        event.preventDefault();
-        var payload = button.dataset.shareCopy;
-        if (!payload) {
-            return;
-        }
-        var hint = button.querySelector('.share-button__hint');
-        var defaultLabel = button.dataset.shareLabel || button.getAttribute('aria-label') || 'Copy link';
-        var feedback = button.dataset.shareFeedback || 'Link copied to clipboard';
-
-        copyToClipboard(payload).then(function() {
-            if (hint) {
-                hint.textContent = feedback;
-            }
-            button.setAttribute('aria-label', feedback);
-            button.classList.add('share-button--copied');
-            window.setTimeout(function() {
-                if (hint) {
-                    hint.textContent = '';
-                }
-                button.setAttribute('aria-label', defaultLabel);
-                button.classList.remove('share-button--copied');
-            }, 1800);
-        }).catch(function() {
-            if (hint) {
-                hint.textContent = 'Unable to copy';
-            }
-        });
-    });
-})();
-</script>
 {% endif %}

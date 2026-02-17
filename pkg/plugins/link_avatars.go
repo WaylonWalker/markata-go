@@ -313,6 +313,13 @@ func (p *LinkAvatarsPlugin) generateJavaScript() string {
       return true;
     }
 
+    // Always allow explicit opt-out utility classes.
+    if (link.classList.contains('no-avatar') ||
+        link.classList.contains('share-button') ||
+        link.classList.contains('reply-link')) {
+      return true;
+    }
+
     // Check ignore domains
     for (var i = 0; i < config.ignoreDomains.length; i++) {
       if (url.hostname === config.ignoreDomains[i] ||
@@ -832,6 +839,10 @@ func parseIgnoreSelectors(selectors []string) []cascadia.Sel {
 
 func shouldIgnoreLink(link *goquery.Selection, host, origin, siteOrigin string, selectors []cascadia.Sel, cfg LinkAvatarsConfig) bool {
 	if siteOrigin != "" && origin == siteOrigin {
+		return true
+	}
+
+	if link.HasClass("no-avatar") || link.HasClass("share-button") || link.HasClass("reply-link") {
 		return true
 	}
 

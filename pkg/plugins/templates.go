@@ -294,6 +294,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		if err != nil {
 			return err
 		}
+
 		post.HTML = html
 
 		// Cache the full HTML for future incremental builds

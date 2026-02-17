@@ -403,12 +403,15 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert authors to map
 	authorsMap := authorsToMap(&c.Authors)
 
+	licenseMap := licenseToMap(c)
+
 	result := map[string]interface{}{
 		"output_dir":    c.OutputDir,
 		"url":           c.URL,
 		"title":         c.Title,
 		"description":   c.Description,
 		"author":        c.Author,
+		"license":       licenseMap,
 		"assets_dir":    c.AssetsDir,
 		"templates_dir": c.TemplatesDir,
 		"nav":           navItems,
@@ -435,6 +438,28 @@ func configToMap(c *models.Config) map[string]interface{} {
 	}
 
 	return result
+}
+
+func licenseToMap(c *models.Config) map[string]interface{} {
+	if c == nil {
+		return nil
+	}
+	if c.License.IsDisabled() {
+		return map[string]interface{}{}
+	}
+	if opt, ok := c.LicenseOption(); ok {
+		result := map[string]interface{}{
+			"key":         opt.Key,
+			"name":        opt.Name,
+			"url":         opt.URL,
+			"description": opt.Description,
+		}
+		return result
+	}
+	if c.License.HasValue() {
+		return map[string]interface{}{}
+	}
+	return nil
 }
 
 // componentsToMap converts a ComponentsConfig to a map for template access.
@@ -1167,6 +1192,27 @@ func PostsToMaps(posts []*models.Post) []map[string]interface{} {
 	return result
 }
 
+func shareButtonsToMaps(buttons []models.ShareButton) []map[string]interface{} {
+	if buttons == nil {
+		return nil
+	}
+	result := make([]map[string]interface{}, len(buttons))
+	for i, b := range buttons {
+		result[i] = map[string]interface{}{
+			"Key":              b.Key,
+			"Name":             b.Name,
+			"Icon":             b.Icon,
+			"IconIsThemeAsset": b.IconIsThemeAsset,
+			"Action":           b.Action,
+			"Link":             b.Link,
+			"CopyText":         b.CopyText,
+			"AriaLabel":        b.AriaLabel,
+			"CopyFeedback":     b.CopyFeedback,
+		}
+	}
+	return result
+}
+
 // sidebarItemsToMaps converts a slice of SidebarNavItems to a slice of maps.
 func sidebarItemsToMaps(items []models.SidebarNavItem) []map[string]interface{} {
 	if items == nil {
@@ -1265,6 +1311,8 @@ func (c Context) ToPongo2() pongo2.Context {
 					ctx[k] = PostsToMaps(typed)
 				case *models.Post:
 					ctx[k] = postToMap(typed)
+				case []models.ShareButton:
+					ctx[k] = shareButtonsToMaps(typed)
 				default:
 					ctx[k] = v
 				}
