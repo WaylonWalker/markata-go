@@ -115,6 +115,12 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	lcConfig.Extra["toc"] = cfg.Toc
 	lcConfig.Extra["header"] = cfg.Header
 
+	// Pass tags configuration
+	lcConfig.Extra["tags"] = cfg.Tags
+
+	// Pass garden configuration
+	lcConfig.Extra["garden"] = cfg.Garden
+
 	// Pass search configuration with verbose flag override from CLI
 	searchConfig := cfg.Search
 	if verbose {
