@@ -23,6 +23,12 @@ func TestBuildShareButtonsDefaults(t *testing.T) {
 	if !strings.Contains(buttons[0].Link, "twitter.com/intent/tweet") {
 		t.Fatalf("unexpected twitter link: %s", buttons[0].Link)
 	}
+	if buttons[1].Key != "bluesky" {
+		t.Fatalf("expected second button to be bluesky, got %s", buttons[1].Key)
+	}
+	if !strings.Contains(buttons[1].Link, "bsky.app/intent/compose") {
+		t.Fatalf("unexpected bluesky link: %s", buttons[1].Link)
+	}
 	last := buttons[len(buttons)-1]
 	if last.Action != "copy" || last.CopyText != "https://example.com/hello-world/" {
 		t.Fatalf("copy button malformed: %+v", last)
