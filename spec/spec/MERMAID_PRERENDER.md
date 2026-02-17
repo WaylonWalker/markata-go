@@ -34,6 +34,7 @@ mmdc_path = ""                     # Auto-detect if empty
 browser_path = ""                  # Auto-detect if empty
 timeout = 30                       # Seconds per diagram
 max_concurrent = 4                 # Parallel diagram renderers
+no_sandbox = false                 # Disable Chromium sandbox (required in containers)
 ```
 
 ## Mode Details
@@ -146,7 +147,29 @@ mode = "chromium"
 # browser_path = "/usr/bin/chromium"  # Optional: specify path
 timeout = 30
 max_concurrent = 4
+# no_sandbox = true                   # Required in containers (Docker, Distrobox, etc.)
 ```
+
+**Container setup:**
+
+When running inside Docker, Distrobox, or other containerized environments, you must
+set `no_sandbox = true` because Chromium's sandbox requires kernel features
+typically unavailable in containers.
+
+```toml
+[markata-go.mermaid.chromium]
+no_sandbox = true
+```
+
+**Browser auto-detection:** The plugin searches for browser binaries in this order:
+`headless-shell`, `headless_shell`, `google-chrome`, `chromium-browser`, `chromium`,
+`google-chrome-stable`. It also verifies the binary is functional by running
+`--version`, which catches Ubuntu snap stubs that are not real browsers.
+
+**MermaidJS source caching:** The MermaidJS library (~3.3 MB) is downloaded once
+and cached at `~/.cache/markata-go/mermaid/mermaid-v{version}.min.js` following
+XDG conventions. Subsequent builds load from cache, eliminating the network
+download. The cache persists across projects and `--clean` / `--clean-all`.
 
 **Setup:**
 
@@ -164,6 +187,11 @@ brew install chromium
 choco install chromium
 
 # Or download from: https://www.chromium.org/getting-involved/download-chromium
+
+# Lightweight alternative (no GUI dependencies):
+# Download chrome-headless-shell from Chrome for Testing
+# https://googlechromelabs.github.io/chrome-for-testing/
+# Place the binary in your PATH as "headless-shell"
 ```
 
 **Behavior:**
@@ -323,6 +351,7 @@ type ChromiumRendererConfig struct {
     BrowserPath   string
     Timeout       time.Duration
     MaxConcurrent int
+    NoSandbox     bool
 }
 ```
 

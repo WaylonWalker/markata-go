@@ -696,11 +696,28 @@ line_numbers = false
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Whether mermaid diagram processing is active |
+| `mode` | string | `"client"` | Rendering mode: `client` (browser-side), `cli` (mmdc), or `chromium` (headless Chrome) |
 | `cdn_url` | string | mermaid CDN URL | URL for the Mermaid.js library |
 | `theme` | string | `"default"` | Mermaid theme: `default`, `dark`, `forest`, `neutral`. Ignored when `use_css_variables` is true. |
 | `use_css_variables` | bool | `true` | Derive diagram colors from site CSS custom properties. Reads `--color-background`, `--color-text`, `--color-primary`, `--color-code-bg`, and `--color-surface` with hardcoded fallbacks. |
 | `lightbox` | bool | `true` | Enable click-to-zoom lightbox overlay with interactive pan and zoom via svg-pan-zoom. |
 | `lightbox_selector` | string | `".glightbox-mermaid"` | CSS selector for lightbox links (backward compatibility; programmatic API does not use it). |
+
+#### CLI Mode Settings (`[markata-go.mermaid.cli]`)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `mmdc_path` | string | `""` | Path to the mmdc binary. Auto-detected if empty. |
+| `extra_args` | string | `""` | Additional command-line arguments passed to mmdc. |
+
+#### Chromium Mode Settings (`[markata-go.mermaid.chromium]`)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `browser_path` | string | `""` | Path to Chrome/Chromium binary. Auto-detected if empty. |
+| `timeout` | int | `30` | Maximum seconds to wait for a diagram to render. |
+| `max_concurrent` | int | `4` | Maximum number of parallel diagram renders. |
+| `no_sandbox` | bool | `false` | Disable Chromium sandbox. Required in containers (Docker, Distrobox, etc.). |
 
 ```toml
 [markata-go.mermaid]
@@ -708,6 +725,18 @@ enabled = true
 theme = "default"
 use_css_variables = true    # Diagrams automatically match your site palette
 lightbox = true             # Click any diagram to zoom, pan, and explore
+```
+
+To pre-render diagrams to static SVGs using Chromium (no client-side JS needed):
+
+```toml
+[markata-go.mermaid]
+mode = "chromium"
+
+[markata-go.mermaid.chromium]
+timeout = 30
+max_concurrent = 4
+# no_sandbox = true         # Required inside Docker or other containers
 ```
 
 To disable the lightbox overlay (diagrams render inline only):
