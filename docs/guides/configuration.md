@@ -739,6 +739,56 @@ max_concurrent = 4
 # no_sandbox = true         # Required inside Docker or other containers
 ```
 
+#### Chromium in Containers (Docker, Distrobox, Podman)
+
+Chromium's sandbox requires kernel capabilities that most containers restrict.
+Set `no_sandbox = true` when running inside Docker, Distrobox, Podman, or
+similar environments:
+
+```toml
+[markata-go.mermaid.chromium]
+no_sandbox = true
+```
+
+**Installing Chrome without sudo:** If your container does not have Chrome or
+Chromium installed, download `chrome-headless-shell` from
+[Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/).
+This is a lightweight headless binary (~180 MB) that requires no GUI
+dependencies and no root access:
+
+```bash
+# Download and extract (adjust version as needed)
+cd /tmp
+curl -fsSL https://storage.googleapis.com/chrome-for-testing-public/LATEST_RELEASE_STABLE -o version.txt
+VERSION=$(cat version.txt)
+curl -fsSL "https://storage.googleapis.com/chrome-for-testing-public/${VERSION}/linux64/chrome-headless-shell-linux64.zip" -o headless.zip
+unzip headless.zip
+
+# Install to ~/.local (no sudo needed)
+mkdir -p ~/.local/lib/chrome-headless-shell
+mv chrome-headless-shell-linux64/* ~/.local/lib/chrome-headless-shell/
+
+# Create a wrapper script so markata-go auto-detects it
+mkdir -p ~/.local/bin
+cat > ~/.local/bin/headless-shell << 'EOF'
+#!/bin/sh
+exec "$HOME/.local/lib/chrome-headless-shell/chrome-headless-shell" "$@"
+EOF
+chmod +x ~/.local/bin/headless-shell
+
+# Verify
+headless-shell --version
+```
+
+markata-go auto-detects `headless-shell` in your `PATH`. You can also set the
+path explicitly:
+
+```toml
+[markata-go.mermaid.chromium]
+browser_path = "/home/you/.local/lib/chrome-headless-shell/chrome-headless-shell"
+no_sandbox = true
+```
+
 To disable the lightbox overlay (diagrams render inline only):
 
 ```toml
