@@ -3,6 +3,7 @@ package plugins
 
 import (
 	"html"
+	"log"
 	"regexp"
 	"strings"
 
@@ -19,8 +20,9 @@ const (
 // MermaidPlugin converts Mermaid code blocks into rendered diagrams.
 // It runs at the render stage (post_render, after markdown conversion).
 type MermaidPlugin struct {
-	config   models.MermaidConfig
-	renderer mermaidRenderer
+	config        models.MermaidConfig
+	renderer      mermaidRenderer
+	paletteColors *mermaidPaletteColors // resolved at configure time, nil if no palette
 }
 
 // NewMermaidPlugin creates a new MermaidPlugin with default settings.
@@ -69,6 +71,12 @@ func (p *MermaidPlugin) Configure(m *lifecycle.Manager) error {
 	// Validate the selected mode and check dependencies
 	if !p.config.Enabled {
 		return nil
+	}
+
+	// For pre-render modes, resolve palette colors at build time so
+	// mermaid diagrams use the site's color scheme instead of defaults.
+	if p.config.Mode != mermaidModeClient && p.config.UseCSSVariables {
+		p.paletteColors = resolvePaletteColors(config.Extra)
 	}
 
 	return p.validateMode()
@@ -138,6 +146,9 @@ func (p *MermaidPlugin) parseChromiumConfig(cfgMap map[string]interface{}) {
 	if maxConcurrent, ok := chromCfg["max_concurrent"].(float64); ok && maxConcurrent > 0 {
 		p.config.ChromiumConfig.MaxConcurrent = int(maxConcurrent)
 	}
+	if noSandbox, ok := chromCfg["no_sandbox"].(bool); ok {
+		p.config.ChromiumConfig.NoSandbox = noSandbox
+	}
 }
 
 // validateMode validates the selected rendering mode and checks for required dependencies.
@@ -178,7 +189,7 @@ func (p *MermaidPlugin) Render(m *lifecycle.Manager) (err error) {
 	}
 
 	if p.config.Mode != mermaidModeClient {
-		renderer, createErr := newMermaidRenderer(p.config)
+		renderer, createErr := newMermaidRenderer(p.config, p.paletteColors)
 		if createErr != nil {
 			p.config.Mode = mermaidModeClient
 		} else {
@@ -294,6 +305,7 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 			// For pre-rendering modes (cli/chromium): render to SVG
 			svgOutput, err := renderer.render(diagramCode)
 			if err != nil {
+				log.Printf("[mermaid] render error for %s: %v", post.Path, err)
 				renderErr = models.NewMermaidRenderError(post.Path, p.config.Mode, "failed to render diagram", err)
 				return match
 			}
@@ -307,16 +319,50 @@ func (p *MermaidPlugin) processPost(post *models.Post) error {
 		return renderErr
 	}
 
-	// If we found mermaid blocks, inject the script (only for client mode)
-	// For pre-rendered modes, SVGs don't need the script
+	// If we found mermaid blocks, inject appropriate scripts
 	if foundMermaid || strings.Contains(result, `class="mermaid"`) {
 		if mode == mermaidModeClient {
 			result = p.injectMermaidScript(result)
+		} else if p.config.Lightbox {
+			// Pre-rendered modes (cli/chromium): SVGs are already in the HTML,
+			// but we need the lightbox JS to wire up click-to-zoom.
+			result = p.injectPrerenderedLightboxScript(result)
+		}
+
+		// Signal that this post needs GLightbox so the base template
+		// loads the GLightbox JS/CSS. The template condition is:
+		//   config.Extra.glightbox_enabled AND needs_image_zoom
+		// image_zoom sets this for zoomable images; we reuse the same
+		// flag for mermaid diagrams that also need lightbox zoom.
+		if p.config.Lightbox {
+			if post.Extra == nil {
+				post.Extra = make(map[string]interface{})
+			}
+			post.Extra["needs_image_zoom"] = true
 		}
 	}
 
 	post.ArticleHTML = result
 	return nil
+}
+
+// injectPrerenderedLightboxScript adds click-to-lightbox behavior for
+// pre-rendered (cli/chromium) SVG diagrams. Unlike the client-mode script,
+// this does NOT import or initialize MermaidJS -- the SVGs are already
+// rendered into the HTML at build time.
+func (p *MermaidPlugin) injectPrerenderedLightboxScript(htmlContent string) string {
+	script := `
+<script>
+(function() {
+` + p.mermaidLightboxJS() + `
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => ensureMermaidLightbox());
+  } else {
+    ensureMermaidLightbox();
+  }
+})();
+</script>`
+	return htmlContent + script
 }
 
 // injectMermaidScript adds the Mermaid.js initialization script to the HTML.
@@ -416,6 +462,83 @@ func (p *MermaidPlugin) mermaidLightboxJS() string {
   let mermaidLightbox = null;
   let activePanZoom = null;
 
+  // Inject lightbox styles once
+  const injectLightboxStyles = () => {
+    if (document.getElementById('mermaid-lightbox-css')) return;
+    const style = document.createElement('style');
+    style.id = 'mermaid-lightbox-css';
+    style.textContent = ` + "`" + `
+      /* Container fills the GLightbox slide */
+      .mermaid-lightbox-wrap {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        position: relative;
+      }
+      .mermaid-lightbox-wrap svg {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100%;
+        max-height: 100%;
+      }
+      /* Hide GLightbox prev/next arrows (single-slide lightbox) */
+      .glightbox-container .gprev,
+      .glightbox-container .gnext {
+        display: none !important;
+      }
+      /* Hide description area that renders as a white box */
+      .glightbox-container .gslide-description,
+      .glightbox-container .gslide-title,
+      .glightbox-container .gdesc-inner,
+      .glightbox-container .gslide-desc {
+        display: none !important;
+      }
+      /* Remove white background from inline slide content */
+      .glightbox-container .gslide-inline {
+        background: transparent !important;
+      }
+      /* Make the inline content area fill the slide */
+      .glightbox-container .ginlined-content {
+        max-width: none !important;
+        max-height: none !important;
+        width: 100%;
+        height: 100%;
+        padding: 0 !important;
+      }
+      /* Remove box-shadow from the media container */
+      .glightbox-container .gslide-media {
+        box-shadow: none !important;
+      }
+      /* Toolbar styling */
+      .mermaid-lightbox-toolbar {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 10;
+        display: flex;
+        gap: 4px;
+      }
+      .mermaid-pz-btn {
+        background: rgba(0,0,0,0.6);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 4px;
+        padding: 4px 10px;
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+      }
+      .mermaid-pz-btn:hover {
+        background: rgba(0,0,0,0.8);
+        border-color: rgba(255,255,255,0.6);
+      }
+    ` + "`" + `;
+    document.head.appendChild(style);
+  };
+
   // Lazy-load svg-pan-zoom from CDN, returns a promise
   const loadSvgPanZoom = () => {
     if (typeof svgPanZoom !== 'undefined') return Promise.resolve();
@@ -429,63 +552,62 @@ func (p *MermaidPlugin) mermaidLightboxJS() string {
   };
 
   // Initialize svg-pan-zoom on the SVG inside the lightbox.
-  // Called after the container has its final layout dimensions.
-  // Retries a few times because GLightbox animation or sequence diagram
-  // layout may not be settled when slide_after_load fires.
+  // Retries until the lightbox container has settled dimensions.
   let _pzRetries = 0;
   const initPanZoom = () => {
-    if (activePanZoom) return; // already initialized
+    if (activePanZoom) return;
     const container = document.querySelector('.glightbox-container .gslide.current .mermaid-lightbox-wrap');
     if (!container) return;
     const svgEl = container.querySelector('svg');
     if (!svgEl) return;
 
-    // svg-pan-zoom needs a viewBox to calculate zoom/pan transforms.
-    // Mermaid sets width/height attrs but not always a viewBox.
+    // Ensure the container has layout dimensions before initializing.
+    const cRect = container.getBoundingClientRect();
+    if (cRect.width < 10 || cRect.height < 10) {
+      if (_pzRetries < 20) { _pzRetries++; setTimeout(initPanZoom, 50); }
+      return;
+    }
+
+    // svg-pan-zoom needs a viewBox. Pre-rendered SVGs from mermaid
+    // usually have one; browser-rendered ones may not.
     if (!svgEl.getAttribute('viewBox')) {
-      // Try width/height attributes first (flowcharts, pie, etc.)
       let w = parseFloat(svgEl.getAttribute('width'));
       let h = parseFloat(svgEl.getAttribute('height'));
-      // Sequence diagrams: mermaid sets style="max-width: Npx;" with no width/height attrs.
       if (!w && svgEl.style.maxWidth) w = parseFloat(svgEl.style.maxWidth);
-      // Last resort: bounding rect (needs layout to be settled)
       if (!w || !h) {
-        const rect = svgEl.getBoundingClientRect();
-        if (!w) w = rect.width;
-        if (!h) h = rect.height;
+        const r = svgEl.getBoundingClientRect();
+        if (!w) w = r.width;
+        if (!h) h = r.height;
       }
       if (w > 0 && h > 0) {
         svgEl.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
-      } else if (_pzRetries < 10) {
-        // SVG has no dimensions yet (lightbox still animating) -- retry
-        _pzRetries++;
-        setTimeout(initPanZoom, 80);
-        return;
+      } else if (_pzRetries < 20) {
+        _pzRetries++; setTimeout(initPanZoom, 50); return;
       }
     }
     _pzRetries = 0;
 
-    // Remove fixed width/height so SVG fills the container via CSS (100%)
+    // Clear inline dimensions so SVG can be sized by the container
+    // and svg-pan-zoom can manage transforms.
     svgEl.removeAttribute('width');
     svgEl.removeAttribute('height');
-    svgEl.removeAttribute('style');
+    svgEl.style.cssText = 'width:100%;height:100%;';
 
     try {
-      // Initialize WITHOUT fit/center -- container may still be animating.
       activePanZoom = svgPanZoom(svgEl, {
         zoomEnabled: true,
         panEnabled: true,
         controlIconsEnabled: false,
-        fit: false,
-        center: false,
+        fit: true,
+        center: true,
+        contain: false,
         minZoom: 0.3,
         maxZoom: 10,
         zoomScaleSensitivity: 0.3,
         mouseWheelZoomEnabled: true,
         preventMouseEventsDefault: true,
       });
-      // Force a resize + fit + center once the container has settled.
-      // requestAnimationFrame ensures we run after the current paint.
+      // Double-check fit after a frame in case dimensions shifted
       requestAnimationFrame(() => {
         if (!activePanZoom) return;
         activePanZoom.resize();
@@ -536,6 +658,7 @@ func (p *MermaidPlugin) mermaidLightboxJS() string {
       return;
     }
     _lbRetries = 0;
+    injectLightboxStyles();
     diagrams.forEach((svg) => {
       if (svg.dataset.lightboxBound) return;
       svg.dataset.lightboxBound = 'true';
@@ -552,6 +675,7 @@ func (p *MermaidPlugin) mermaidLightboxJS() string {
               closeEffect: 'fade',
               zoomable: false,
               draggable: false,
+              skin: 'clean',
             });
             mermaidLightbox.on('slide_after_load', () => {
               destroyPanZoom();
@@ -566,8 +690,6 @@ func (p *MermaidPlugin) mermaidLightboxJS() string {
             height: '90vh'
           }]);
           mermaidLightbox.open();
-          // Pan-zoom init is handled by the slide_after_load event above.
-          // Pre-load the script so it's ready when the event fires.
           loadSvgPanZoom();
         };
         if (typeof GLightbox !== 'undefined') {
