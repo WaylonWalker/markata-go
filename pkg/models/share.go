@@ -12,7 +12,7 @@ const (
 )
 
 // DefaultSharePlatformOrder defines the built-in share buttons in the default order.
-var DefaultSharePlatformOrder = []string{"twitter", "facebook", "linkedin", "reddit", "hacker_news", "email", "copy"}
+var DefaultSharePlatformOrder = []string{"twitter", "bluesky", "linkedin", "whatsapp", "signal", "facebook", "telegram", "pinterest", "reddit", "hacker_news", "email", "copy"}
 
 type sharePlatformDefinition struct {
 	Name     string
@@ -32,10 +32,35 @@ var sharePlatformDefinitions = map[string]sharePlatformDefinition{
 		Icon:     "icons/share/facebook.svg",
 		Template: "https://www.facebook.com/sharer/sharer.php?u={{url}}",
 	},
+	"bluesky": {
+		Name:     "Bluesky",
+		Icon:     "icons/share/bluesky.svg",
+		Template: "https://bsky.app/intent/compose?text={{url}}",
+	},
 	"linkedin": {
 		Name:     "LinkedIn",
 		Icon:     "icons/share/linkedin.svg",
 		Template: "https://www.linkedin.com/sharing/share-offsite/?url={{url}}",
+	},
+	"whatsapp": {
+		Name:     "WhatsApp",
+		Icon:     "icons/share/whatsapp.svg",
+		Template: "https://wa.me/?text={{url}}",
+	},
+	"signal": {
+		Name:     "Signal",
+		Icon:     "icons/share/signal.svg",
+		Template: "https://signal.me/?text={{url}}",
+	},
+	"telegram": {
+		Name:     "Telegram",
+		Icon:     "icons/share/telegram.svg",
+		Template: "https://t.me/share/url?url={{url}}",
+	},
+	"pinterest": {
+		Name:     "Pinterest",
+		Icon:     "icons/share/pinterest.svg",
+		Template: "https://pinterest.com/pin/create/button/?url={{url}}",
 	},
 	"reddit": {
 		Name:     "Reddit",

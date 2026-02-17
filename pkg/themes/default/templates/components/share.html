@@ -2,31 +2,18 @@
 <section class="share-panel share-panel--{{ config.components.share.position | default:'bottom' }}" aria-label="Share this post">
     <div class="share-panel__header">
         <h2 class="share-panel__title">{{ config.components.share.title | default:'Share this post' }}</h2>
-        <p class="share-panel__description">Help readers send this post to their favorite platforms.</p>
     </div>
     <div class="share-panel__grid">
         {% for platform in share_buttons %}
         {% if platform.Action == 'share' %}
-        <a href="{{ platform.Link }}" class="share-button" target="_blank" rel="noopener noreferrer" aria-label="{{ platform.AriaLabel }}">
-            <span class="share-button__icon" aria-hidden="true">
-                {% if platform.IconIsThemeAsset %}
-                <img src="{{ platform.Icon | theme_asset_hashed }}" alt="" aria-hidden="true">
-                {% else %}
-                <img src="{{ platform.Icon }}" alt="" aria-hidden="true">
-                {% endif %}
-            </span>
+        <a href="{{ platform.Link }}" class="share-button no-avatar" target="_blank" rel="noopener noreferrer" aria-label="{{ platform.AriaLabel }}" title="{{ platform.AriaLabel }}">
+            <span class="share-button__icon" aria-hidden="true" {% if platform.IconIsThemeAsset %}style="--share-icon: url('{{ platform.Icon | theme_asset_hashed }}');"{% else %}style="--share-icon: url('{{ platform.Icon }}');"{% endif %}></span>
             <span class="share-button__name">{{ platform.Name }}</span>
             <span class="share-button__hint" aria-live="polite"></span>
         </a>
         {% else %}
-        <button type="button" class="share-button" data-share-action="copy" data-share-copy="{{ platform.CopyText }}" data-share-label="{{ platform.AriaLabel }}" data-share-feedback="{{ platform.CopyFeedback }}" aria-label="{{ platform.AriaLabel }}">
-            <span class="share-button__icon" aria-hidden="true">
-                {% if platform.IconIsThemeAsset %}
-                <img src="{{ platform.Icon | theme_asset_hashed }}" alt="" aria-hidden="true">
-                {% else %}
-                <img src="{{ platform.Icon }}" alt="" aria-hidden="true">
-                {% endif %}
-            </span>
+        <button type="button" class="share-button" data-share-action="copy" data-share-copy="{{ platform.CopyText }}" data-share-label="{{ platform.AriaLabel }}" data-share-feedback="{{ platform.CopyFeedback }}" aria-label="{{ platform.AriaLabel }}" title="{{ platform.AriaLabel }}">
+            <span class="share-button__icon" aria-hidden="true" {% if platform.IconIsThemeAsset %}style="--share-icon: url('{{ platform.Icon | theme_asset_hashed }}');"{% else %}style="--share-icon: url('{{ platform.Icon }}');"{% endif %}></span>
             <span class="share-button__name">{{ platform.Name }}</span>
             <span class="share-button__hint" aria-live="polite"></span>
         </button>
