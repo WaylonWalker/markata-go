@@ -879,8 +879,8 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
             <a href="{{.SiteURL}}">{{.SiteTitle}}</a>
         </nav>
     </header>
+    <div class="article-progress" role="presentation" aria-hidden="true"><span class="article-progress__indicator"></span></div>
     <main>
-        <div class="article-progress" role="presentation" aria-hidden="true"><span class="article-progress__indicator"></span></div>
         <article class="post">
             <header>
                 <h1>{{.Title}}</h1>
@@ -922,9 +922,15 @@ func (p *PublishHTMLPlugin) wrapInTemplate(post *models.Post, config *lifecycle.
           scheduled = false;
           var rect = article.getBoundingClientRect();
           var articleTop = window.scrollY + rect.top;
-          var articleHeight = Math.max(rect.height, 1);
-          var viewportBottom = window.scrollY + window.innerHeight;
-          var ratio = clamp((viewportBottom - articleTop) / articleHeight, 0, 1);
+          var articleHeight = rect.height;
+          var viewportHeight = window.innerHeight;
+          var scrollableDistance = articleHeight - viewportHeight;
+          var ratio;
+          if (scrollableDistance <= 0) {
+            ratio = 1;
+          } else {
+            ratio = clamp((window.scrollY - articleTop) / scrollableDistance, 0, 1);
+          }
           if (Math.abs(ratio - lastValue) < 0.001) {
             return;
           }

@@ -55,11 +55,14 @@
 {% endif %}
 {% endblock %}
 
+{% block progress %}
+<div class="article-progress" role="presentation" aria-hidden="true">
+    <span class="article-progress__indicator"></span>
+</div>
+{% endblock %}
+
 {% block content %}
 <div class="content-wrapper{% if config.components.doc_sidebar.enabled and post.toc %} content-wrapper--with-sidebar content-wrapper--sidebar-{{ config.components.doc_sidebar.position | default:'right' }}{% endif %}">
-    <div class="article-progress" role="presentation" aria-hidden="true">
-        <span class="article-progress__indicator"></span>
-    </div>
     <article class="post h-entry" data-pagefind-body>
         {# Hidden canonical URL for microformats parsers #}
         <a class="u-url" href="{{ config.url }}{{ post.href }}" hidden></a>
