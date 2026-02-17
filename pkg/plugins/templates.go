@@ -791,6 +791,23 @@ func toModelsConfigUncached(config *lifecycle.Config) *models.Config {
 		modelsConfig.Search = models.NewSearchConfig()
 	}
 
+	// Copy remaining plugin configs
+	copyPluginConfigs(config, modelsConfig)
+
+	// Copy the entire Extra map so templates can access dynamic plugin config
+	// (e.g., glightbox_enabled, glightbox_options set by image_zoom plugin)
+	if config.Extra != nil {
+		modelsConfig.Extra = make(map[string]any)
+		for k, v := range config.Extra {
+			modelsConfig.Extra[k] = v
+		}
+	}
+
+	return modelsConfig
+}
+
+// copyPluginConfigs copies plugin-specific config sections from lifecycle.Config to models.Config.
+func copyPluginConfigs(config *lifecycle.Config, modelsConfig *models.Config) {
 	// Copy Components config if available
 	if components, ok := config.Extra["components"].(models.ComponentsConfig); ok {
 		modelsConfig.Components = components
@@ -823,16 +840,12 @@ func toModelsConfigUncached(config *lifecycle.Config) *models.Config {
 		modelsConfig.Tags = models.NewTagsConfig()
 	}
 
-	// Copy the entire Extra map so templates can access dynamic plugin config
-	// (e.g., glightbox_enabled, glightbox_options set by image_zoom plugin)
-	if config.Extra != nil {
-		modelsConfig.Extra = make(map[string]any)
-		for k, v := range config.Extra {
-			modelsConfig.Extra[k] = v
-		}
+	// Copy Garden config if available
+	if garden, ok := config.Extra["garden"].(models.GardenConfig); ok {
+		modelsConfig.Garden = garden
+	} else {
+		modelsConfig.Garden = models.NewGardenConfig()
 	}
-
-	return modelsConfig
 }
 
 // getStringFromExtra safely gets a string value from the Extra map.

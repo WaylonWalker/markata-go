@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title | default:"Garden" }}{% endblock %}
+{% block description %}{{ description | default:"Explore content by tags and relationships" }}{% endblock %}
+
+{% block content %}
+<div class="garden">
+  <header class="garden-header">
+    <h1>{{ title | default:"Garden" }}</h1>
+    {% if description %}
+    <p class="garden-description">{{ description }}</p>
+    {% endif %}
+    <div class="garden-stats">
+      <span class="garden-stat">{{ total_posts }} posts</span>
+      <span class="garden-stat-sep" aria-hidden="true">&middot;</span>
+      <span class="garden-stat">{{ total_tags }} tags</span>
+      <span class="garden-stat-sep" aria-hidden="true">&middot;</span>
+      <span class="garden-stat">{{ total_edges }} connections</span>
+    </div>
+  </header>
+
+  {% if tag_clusters %}
+  <section class="garden-clusters">
+    <h2>Tag Clusters</h2>
+    <div class="garden-cluster-grid">
+      {% for cluster in tag_clusters %}
+      <div class="garden-cluster">
+        <h3 class="garden-cluster-name">
+          <a href="{{ cluster.Href }}">{{ cluster.Name }}</a>
+          <span class="garden-cluster-count">({{ cluster.Count }})</span>
+        </h3>
+        {% if cluster.Related %}
+        <ul class="garden-cluster-related">
+          {% for related in cluster.Related %}
+          <li>{{ related }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if graph_json %}
+  <section class="garden-graph-link">
+    <h2>Graph Data</h2>
+    <p>
+      The full knowledge graph is available as
+      <a href="{{ graph_json }}">graph.json</a>
+      for use with visualization tools.
+    </p>
+  </section>
+  {% endif %}
+</div>
+
+<style>
+.garden {
+  max-width: var(--content-width, 48rem);
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.garden-header {
+  margin-bottom: 2rem;
+}
+
+.garden-header h1 {
+  margin-bottom: 0.25rem;
+}
+
+.garden-description {
+  color: var(--text-muted, #666);
+  margin-bottom: 0.5rem;
+}
+
+.garden-stats {
+  font-size: 0.875rem;
+  color: var(--text-muted, #666);
+}
+
+.garden-stat-sep {
+  margin: 0 0.25rem;
+}
+
+.garden-clusters {
+  margin-bottom: 2rem;
+}
+
+.garden-cluster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.garden-cluster {
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.garden-cluster-name {
+  font-size: 1rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.garden-cluster-name a {
+  text-decoration: none;
+  color: var(--link-color, inherit);
+}
+
+.garden-cluster-name a:hover {
+  text-decoration: underline;
+}
+
+.garden-cluster-count {
+  font-weight: normal;
+  color: var(--text-muted, #666);
+  font-size: 0.875rem;
+}
+
+.garden-cluster-related {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.garden-cluster-related li {
+  font-size: 0.75rem;
+  color: var(--text-muted, #666);
+  background: var(--surface-color, #f5f5f5);
+  padding: 0.125rem 0.5rem;
+  border-radius: 1rem;
+}
+
+.garden-graph-link {
+  margin-top: 2rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 0.5rem;
+}
+</style>
+{% endblock %}
