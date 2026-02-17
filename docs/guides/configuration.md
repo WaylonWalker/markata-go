@@ -1687,6 +1687,20 @@ markata-go config get feed_defaults.items_per_page
 markata-go config get feed_defaults.formats.html
 ```
 
+### `config set`
+
+Update a specific configuration value in-place:
+
+```bash
+# Set top-level value
+markata-go config set url "https://example.com"
+
+# Set nested value
+markata-go config set glob.patterns '["posts/**/*.md", "pages/**/*.md"]'
+```
+
+`config set` preserves file permissions for TOML, YAML, and JSON files. In CGO-enabled builds, TOML/YAML edits use tree-sitter byte ranges so existing comments, ordering, and formatting stay intact.
+
 ### `config validate`
 
 Validate the configuration file:
