@@ -590,7 +590,7 @@ The share component provides a configurable "Share this post" experience at the 
 enabled = true
 position = "bottom"            # Controls the style hook (CSS adds `share-panel--bottom`).
 title = "Share this post"     # Heading above the buttons.
-platforms = ["twitter", "facebook", "linkedin", "reddit", "hacker_news", "email", "copy"]
+platforms = ["twitter", "bluesky", "linkedin", "whatsapp", "signal", "facebook", "telegram", "pinterest", "reddit", "hacker_news", "email", "copy"]
 
 [markata-go.components.share.custom]
 mastodon = { name = "Mastodon", icon = "mastodon.svg", url = "https://mastodon.social/share?text={{title}}&url={{url}}" }
@@ -617,8 +617,13 @@ The component ships with these built-in platforms:
 | Key | Template | Notes |
 | --- | --- | --- |
 | `twitter` | `https://twitter.com/intent/tweet?text={{title}}&url={{url}}` | Icon: `icons/share/twitter.svg`. |
-| `facebook` | `https://www.facebook.com/sharer/sharer.php?u={{url}}` | Icon: `icons/share/facebook.svg`. |
+| `bluesky` | `https://bsky.app/intent/compose?text={{url}}` | Icon: `icons/share/bluesky.svg`. |
 | `linkedin` | `https://www.linkedin.com/sharing/share-offsite/?url={{url}}` | Icon: `icons/share/linkedin.svg`. |
+| `whatsapp` | `https://wa.me/?text={{url}}` | Icon: `icons/share/whatsapp.svg`. |
+| `signal` | `https://signal.me/?text={{url}}` | Icon: `icons/share/signal.svg`. |
+| `facebook` | `https://www.facebook.com/sharer/sharer.php?u={{url}}` | Icon: `icons/share/facebook.svg`. |
+| `telegram` | `https://t.me/share/url?url={{url}}` | Icon: `icons/share/telegram.svg`. |
+| `pinterest` | `https://pinterest.com/pin/create/button/?url={{url}}` | Icon: `icons/share/pinterest.svg`. |
 | `reddit` | `https://reddit.com/submit?url={{url}}&title={{title}}` | Icon: `icons/share/reddit.svg`. |
 | `hacker_news` | `https://news.ycombinator.com/submitlink?u={{url}}&t={{title}}` | Icon: `icons/share/hacker_news.svg`. |
 | `email` | `mailto:?subject={{title}}&body={{url}}` | Icon: `icons/share/email.svg`. |
