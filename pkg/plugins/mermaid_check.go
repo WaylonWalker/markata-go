@@ -83,13 +83,13 @@ func checkChromiumDependency(browserPath string) *MermaidDependencyInfo {
 
 	// Check provided path
 	if browserPath != "" {
-		if _, err := os.Stat(browserPath); err == nil {
+		if verifyBrowser(browserPath) {
 			info.IsInstalled = true
 			info.BinaryPath = browserPath
 			return info
 		}
-		// Provided path doesn't exist
-		info.InstallInstructions = fmt.Sprintf(`Browser not found at specified path: %s
+		// Provided path doesn't work
+		info.InstallInstructions = fmt.Sprintf(`Browser not found or not functional at specified path: %s
 
 Check the path and try again, or omit 'browser_path' to auto-detect.`, browserPath)
 		return info
@@ -98,6 +98,8 @@ Check the path and try again, or omit 'browser_path' to auto-detect.`, browserPa
 	// Try common locations for different OSes
 	commonPaths := []string{
 		// Linux
+		"headless-shell",
+		"headless_shell",
 		"/usr/bin/chromium",
 		"/usr/bin/chromium-browser",
 		"/usr/bin/google-chrome",
@@ -111,7 +113,7 @@ Check the path and try again, or omit 'browser_path' to auto-detect.`, browserPa
 	}
 
 	for _, path := range commonPaths {
-		if _, err := os.Stat(path); err == nil {
+		if verifyBrowser(path) {
 			info.IsInstalled = true
 			info.BinaryPath = path
 			return info
@@ -142,6 +144,36 @@ Specify the path in your config:
   browser_path = "/path/to/chromium"`
 
 	return info
+}
+
+// verifyBrowser checks that a browser binary exists and is actually executable
+// (not just a stub script like Ubuntu's snap redirect).
+func verifyBrowser(path string) bool {
+	// For relative names (e.g., "headless-shell"), resolve via PATH
+	resolved := path
+	if !strings.Contains(path, string(os.PathSeparator)) {
+		var err error
+		resolved, err = exec.LookPath(path)
+		if err != nil {
+			return false
+		}
+	}
+	fi, err := os.Stat(resolved)
+	if err != nil {
+		return false
+	}
+	if fi.IsDir() {
+		return false
+	}
+	// Try running --version to verify it's a real browser, not a stub
+	cmd := exec.Command(resolved, "--version")
+	out, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	// Should contain "Chromium", "Chrome", or "HeadlessChrome" in version output
+	outStr := strings.ToLower(string(out))
+	return strings.Contains(outStr, "chrom")
 }
 
 // ValidateMermaidMode validates the mermaid rendering mode and checks dependencies
