@@ -95,6 +95,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["js_minify"] = func() lifecycle.Plugin { return NewJSMinifyPlugin() }
 	pluginRegistry.constructors["cdn_assets"] = func() lifecycle.Plugin { return NewCDNAssetsPlugin() }
 	pluginRegistry.constructors["tags_listing"] = func() lifecycle.Plugin { return NewTagsListingPlugin() }
+	pluginRegistry.constructors["garden_view"] = func() lifecycle.Plugin { return NewGardenViewPlugin() }
 	pluginRegistry.constructors["theme_calendar"] = func() lifecycle.Plugin { return NewThemeCalendarPlugin() }
 	pluginRegistry.constructors["link_avatars"] = func() lifecycle.Plugin { return NewLinkAvatarsPlugin() }
 	pluginRegistry.constructors["authors"] = func() lifecycle.Plugin { return NewAuthorsPlugin() }
@@ -213,6 +214,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewRedirectsPlugin(),   // Generate redirect pages
 		NewErrorPagesPlugin(),  // Generate static 404 page
 		NewTagsListingPlugin(), // Generate /tags listing page
+		NewGardenViewPlugin(),  // Generate knowledge graph + garden page
 		// NewResourceHintsPlugin(), // Inject resource hints (after HTML written) // DISABLED: Performance issue on large sites
 		NewSitemapPlugin(),
 

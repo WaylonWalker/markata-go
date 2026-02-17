@@ -472,6 +472,9 @@ type Config struct {
 	// Tags configures the tags listing page at /tags
 	Tags TagsConfig `json:"tags" yaml:"tags" toml:"tags"`
 
+	// Garden configures the garden view plugin for knowledge graph export and visualization
+	Garden GardenConfig `json:"garden" yaml:"garden" toml:"garden"`
+
 	// TagAggregator configures tag normalization and hierarchical expansion
 	TagAggregator TagAggregatorConfig `json:"tag_aggregator" yaml:"tag_aggregator" toml:"tag_aggregator"`
 
@@ -2289,6 +2292,146 @@ func (t *TagAggregatorConfig) IsEnabled() bool {
 	return *t.Enabled
 }
 
+// GardenConfig configures the garden view plugin for knowledge graph export and visualization.
+// The garden provides a way to explore content by relationships (tags, links) rather than
+// chronology. It exports a graph.json file and optionally renders an interactive garden page.
+type GardenConfig struct {
+	// Enabled controls whether the garden view is generated (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Path is the output path prefix for garden files (default: "garden")
+	Path string `json:"path,omitempty" yaml:"path,omitempty" toml:"path,omitempty"`
+
+	// ExportJSON enables emitting graph.json with the relationship graph (default: true)
+	ExportJSON *bool `json:"export_json,omitempty" yaml:"export_json,omitempty" toml:"export_json,omitempty"`
+
+	// RenderPage enables generating garden/index.html (default: true)
+	RenderPage *bool `json:"render_page,omitempty" yaml:"render_page,omitempty" toml:"render_page,omitempty"`
+
+	// IncludeTags includes tag nodes in the graph (default: true)
+	IncludeTags *bool `json:"include_tags,omitempty" yaml:"include_tags,omitempty" toml:"include_tags,omitempty"`
+
+	// IncludePosts includes post nodes in the graph (default: true)
+	IncludePosts *bool `json:"include_posts,omitempty" yaml:"include_posts,omitempty" toml:"include_posts,omitempty"`
+
+	// MaxNodes is the maximum number of nodes in the graph (default: 2000)
+	// When exceeded, least-used tags are removed first
+	MaxNodes int `json:"max_nodes,omitempty" yaml:"max_nodes,omitempty" toml:"max_nodes,omitempty"`
+
+	// ExcludeTags is a list of tag names to exclude from the graph
+	ExcludeTags []string `json:"exclude_tags,omitempty" yaml:"exclude_tags,omitempty" toml:"exclude_tags,omitempty"`
+
+	// Template is the template file to use for the garden page (default: "garden.html")
+	Template string `json:"template,omitempty" yaml:"template,omitempty" toml:"template,omitempty"`
+
+	// Title is the title for the garden page (default: "Garden")
+	Title string `json:"title,omitempty" yaml:"title,omitempty" toml:"title,omitempty"`
+
+	// Description is the description for the garden page
+	Description string `json:"description,omitempty" yaml:"description,omitempty" toml:"description,omitempty"`
+}
+
+// NewGardenConfig creates a new GardenConfig with default values.
+func NewGardenConfig() GardenConfig {
+	enabled := true
+	exportJSON := true
+	renderPage := true
+	includeTags := true
+	includePosts := true
+	return GardenConfig{
+		Enabled:      &enabled,
+		Path:         "garden",
+		ExportJSON:   &exportJSON,
+		RenderPage:   &renderPage,
+		IncludeTags:  &includeTags,
+		IncludePosts: &includePosts,
+		MaxNodes:     2000,
+		ExcludeTags:  []string{},
+		Template:     "garden.html",
+		Title:        "Garden",
+		Description:  "",
+	}
+}
+
+// IsEnabled returns whether the garden view is enabled.
+// Defaults to true if not explicitly set.
+func (g *GardenConfig) IsEnabled() bool {
+	if g.Enabled == nil {
+		return true
+	}
+	return *g.Enabled
+}
+
+// IsExportJSON returns whether graph.json export is enabled.
+// Defaults to true if not explicitly set.
+func (g *GardenConfig) IsExportJSON() bool {
+	if g.ExportJSON == nil {
+		return true
+	}
+	return *g.ExportJSON
+}
+
+// IsRenderPage returns whether the garden HTML page should be rendered.
+// Defaults to true if not explicitly set.
+func (g *GardenConfig) IsRenderPage() bool {
+	if g.RenderPage == nil {
+		return true
+	}
+	return *g.RenderPage
+}
+
+// IsIncludeTags returns whether tag nodes should be included in the graph.
+// Defaults to true if not explicitly set.
+func (g *GardenConfig) IsIncludeTags() bool {
+	if g.IncludeTags == nil {
+		return true
+	}
+	return *g.IncludeTags
+}
+
+// IsIncludePosts returns whether post nodes should be included in the graph.
+// Defaults to true if not explicitly set.
+func (g *GardenConfig) IsIncludePosts() bool {
+	if g.IncludePosts == nil {
+		return true
+	}
+	return *g.IncludePosts
+}
+
+// IsTagExcluded returns whether a tag is in the exclude list.
+func (g *GardenConfig) IsTagExcluded(tag string) bool {
+	for _, t := range g.ExcludeTags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
+}
+
+// GetPath returns the output path, with default if not set.
+func (g *GardenConfig) GetPath() string {
+	if g.Path == "" {
+		return "garden"
+	}
+	return g.Path
+}
+
+// GetTemplate returns the template name, with default if not set.
+func (g *GardenConfig) GetTemplate() string {
+	if g.Template == "" {
+		return "garden.html"
+	}
+	return g.Template
+}
+
+// GetMaxNodes returns the max nodes, with default if not set.
+func (g *GardenConfig) GetMaxNodes() int {
+	if g.MaxNodes <= 0 {
+		return 2000
+	}
+	return g.MaxNodes
+}
+
 // CSSBundleConfig configures css_bundle plugin for combining CSS files.
 type CSSBundleConfig struct {
 	// Enabled controls whether CSS bundling is active (default: false)
@@ -2555,6 +2698,7 @@ func NewConfig() *Config {
 		Encryption:       NewEncryptionConfig(),
 		Shortcuts:        NewShortcutsConfig(),
 		Tags:             NewTagsConfig(),
+		Garden:           NewGardenConfig(),
 		Assets:           NewAssetsConfig(),
 	}
 }
