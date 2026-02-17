@@ -42,15 +42,15 @@ The builder image MUST include:
 
 The builder image MAY include:
 
-- `chromium` (for Mermaid Chromium rendering)
+- `chromium` (for Mermaid Chromium rendering via Go-native chromedp)
 - `git`
 - `libavif-apps` (provides `avifenc`)
 - `libwebp-tools` (provides `cwebp`)
-- `nodejs` and `npm`
-- `pagefind` (for search index generation)
-- `@mermaid-js/mermaid-cli` (provides `mmdc`)
+- `pagefind` (standalone binary for search index generation)
 - `openssh-client` (for rsync over SSH)
 - `tzdata`
+
+Note: `nodejs`, `npm`, and `@mermaid-js/mermaid-cli` are NOT required. Mermaid rendering uses chromedp (Go CDP) directly, and pagefind is installed as a standalone musl-static binary.
 
 ### Behavior
 

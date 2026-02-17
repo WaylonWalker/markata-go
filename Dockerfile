@@ -51,6 +51,9 @@ LABEL org.opencontainers.image.vendor="Waylon Walker"
 LABEL org.opencontainers.image.licenses="MIT"
 
 # Install shell, TLS roots, and build/publish tooling
+# Note: nodejs/npm/@mermaid-js/mermaid-cli are NOT needed here because
+# markata-go's "chromium" mode uses chromedp (Go-native CDP) directly,
+# and pagefind is installed as a standalone binary below.
 RUN apk add --no-cache \
     ca-certificates \
     coreutils \
@@ -60,16 +63,17 @@ RUN apk add --no-cache \
     libavif-apps \
     libwebp-tools \
     chromium \
-    nodejs \
-    npm \
     openssh-client \
     rsync \
     tzdata
 
-# Install build-time tools for optional plugins
-ENV PUPPETEER_SKIP_DOWNLOAD=1
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-RUN npm install -g @mermaid-js/mermaid-cli pagefind
+# Install pagefind as a standalone binary (musl-static, no Node.js needed)
+ARG PAGEFIND_VERSION=v1.4.0
+RUN wget -q "https://github.com/Pagefind/pagefind/releases/download/${PAGEFIND_VERSION}/pagefind-${PAGEFIND_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+        -O /tmp/pagefind.tar.gz \
+    && tar xzf /tmp/pagefind.tar.gz -C /usr/local/bin/ pagefind \
+    && chmod +x /usr/local/bin/pagefind \
+    && rm /tmp/pagefind.tar.gz
 
 # Copy the binary
 COPY --from=builder /app/markata-go /usr/local/bin/markata-go
