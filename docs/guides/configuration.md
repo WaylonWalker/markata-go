@@ -1364,7 +1364,7 @@ root_selector = "main"       # CSS selector for searchable content
 exclude_selectors = [".no-search", "nav", "footer"]  # Elements to exclude
 ```
 
-**Requirements:** Pagefind CLI must be installed (`npm install -g pagefind`). If not installed, search is skipped with a warning.
+**Requirements:** Pagefind CLI must be installed. Install the standalone binary from [GitHub releases](https://github.com/Pagefind/pagefind/releases), or enable `auto_install = true` under `[search.pagefind]` to let markata-go download it automatically. If not installed, search is skipped with a warning.
 
 See the [[search|Search Guide]] for detailed usage and customization.
 
