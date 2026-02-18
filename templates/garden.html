@@ -700,7 +700,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
     var script = document.createElement('script');
-    script.src = 'https://d3js.org/d3.v7.min.js';
+    script.src = '{% if config.Extra.asset_urls.d3 %}{{ config.Extra.asset_urls.d3 }}{% else %}https://d3js.org/d3.v7.min.js{% endif %}';
     script.onload = callback;
     document.body.appendChild(script);
   }
