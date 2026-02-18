@@ -31,16 +31,19 @@ import (
 type EmbedsPlugin struct {
 	config     models.EmbedsConfig
 	httpClient *http.Client
+	oembed     *oembedResolver
 }
 
 // NewEmbedsPlugin creates a new EmbedsPlugin with default settings.
 func NewEmbedsPlugin() *EmbedsPlugin {
 	config := models.NewEmbedsConfig()
+	client := &http.Client{
+		Timeout: time.Duration(config.Timeout) * time.Second,
+	}
 	return &EmbedsPlugin{
-		config: config,
-		httpClient: &http.Client{
-			Timeout: time.Duration(config.Timeout) * time.Second,
-		},
+		config:     config,
+		httpClient: client,
+		oembed:     newOEmbedResolver(config, client),
 	}
 }
 
@@ -71,38 +74,105 @@ func (p *EmbedsPlugin) Configure(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	if cfgMap, ok := pluginConfig.(map[string]interface{}); ok {
-		if enabled, ok := cfgMap["enabled"].(bool); ok {
-			p.config.Enabled = enabled
-		}
-		if internalCardClass, ok := cfgMap["internal_card_class"].(string); ok && internalCardClass != "" {
-			p.config.InternalCardClass = internalCardClass
-		}
-		if externalCardClass, ok := cfgMap["external_card_class"].(string); ok && externalCardClass != "" {
-			p.config.ExternalCardClass = externalCardClass
-		}
-		if fetchExternal, ok := cfgMap["fetch_external"].(bool); ok {
-			p.config.FetchExternal = fetchExternal
-		}
-		if cacheDir, ok := cfgMap["cache_dir"].(string); ok && cacheDir != "" {
-			p.config.CacheDir = cacheDir
-		}
-		if timeout, ok := cfgMap["timeout"].(int); ok && timeout > 0 {
-			p.config.Timeout = timeout
-			p.httpClient.Timeout = time.Duration(timeout) * time.Second
-		}
-		if fallbackTitle, ok := cfgMap["fallback_title"].(string); ok && fallbackTitle != "" {
-			p.config.FallbackTitle = fallbackTitle
-		}
-		if showImage, ok := cfgMap["show_image"].(bool); ok {
-			p.config.ShowImage = showImage
-		}
-		if attachmentsPrefix, ok := cfgMap["attachments_prefix"].(string); ok && attachmentsPrefix != "" {
-			p.config.AttachmentsPrefix = attachmentsPrefix
-		}
+	cfgMap, ok := pluginConfig.(map[string]interface{})
+	if !ok {
+		return nil
 	}
 
+	p.applyEmbedsConfig(cfgMap)
 	return nil
+}
+
+func (p *EmbedsPlugin) applyEmbedsConfig(cfgMap map[string]interface{}) {
+	p.config = models.NewEmbedsConfig()
+	applyBool(cfgMap, "enabled", &p.config.Enabled)
+	applyString(cfgMap, "internal_card_class", &p.config.InternalCardClass)
+	applyString(cfgMap, "external_card_class", &p.config.ExternalCardClass)
+	applyBool(cfgMap, "fetch_external", &p.config.FetchExternal)
+	applyBool(cfgMap, "oembed_enabled", &p.config.OEmbedEnabled)
+	applyString(cfgMap, "resolution_strategy", &p.config.ResolutionStrategy)
+	applyString(cfgMap, "cache_dir", &p.config.CacheDir)
+	applyInt(cfgMap, "timeout", &p.config.Timeout)
+	applyInt(cfgMap, "cache_ttl", &p.config.CacheTTL)
+	applyString(cfgMap, "fallback_title", &p.config.FallbackTitle)
+	applyBool(cfgMap, "show_image", &p.config.ShowImage)
+	applyString(cfgMap, "attachments_prefix", &p.config.AttachmentsPrefix)
+
+	if p.config.Timeout > 0 {
+		p.httpClient.Timeout = time.Duration(p.config.Timeout) * time.Second
+	}
+
+	p.configureOEmbedProviders(cfgMap)
+	if p.oembed == nil {
+		p.oembed = newOEmbedResolver(p.config, p.httpClient)
+	} else {
+		p.oembed.updateConfig(p.config)
+	}
+	p.validateResolutionStrategy()
+}
+
+func applyBool(cfgMap map[string]interface{}, key string, target *bool) {
+	if target == nil {
+		return
+	}
+	if value, ok := cfgMap[key].(bool); ok {
+		*target = value
+	}
+}
+
+func applyString(cfgMap map[string]interface{}, key string, target *string) {
+	if target == nil {
+		return
+	}
+	if value, ok := cfgMap[key].(string); ok && value != "" {
+		*target = value
+	}
+}
+
+func applyInt(cfgMap map[string]interface{}, key string, target *int) {
+	if target == nil {
+		return
+	}
+	if value, ok := cfgMap[key].(int); ok && value > 0 {
+		*target = value
+	}
+}
+
+func (p *EmbedsPlugin) validateResolutionStrategy() {
+	strategy := strings.ToLower(p.config.ResolutionStrategy)
+	if strategy == "" {
+		strategy = strategyOEmbedFirst
+	}
+
+	switch strategy {
+	case strategyOEmbedFirst, strategyOGFirst, strategyOEmbedOnly:
+		p.config.ResolutionStrategy = strategy
+	default:
+		p.config.ResolutionStrategy = strategyOEmbedFirst
+	}
+}
+
+func (p *EmbedsPlugin) configureOEmbedProviders(cfgMap map[string]interface{}) {
+	providersRaw, ok := cfgMap["providers"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	if p.config.OEmbedProviders == nil {
+		p.config.OEmbedProviders = make(map[string]models.OEmbedProviderConfig)
+	}
+
+	for name, raw := range providersRaw {
+		key := strings.ToLower(name)
+		switch value := raw.(type) {
+		case bool:
+			p.config.OEmbedProviders[key] = models.OEmbedProviderConfig{Enabled: value}
+		case map[string]interface{}:
+			if enabled, ok := value["enabled"].(bool); ok {
+				p.config.OEmbedProviders[key] = models.OEmbedProviderConfig{Enabled: enabled}
+			}
+		}
+	}
 }
 
 // Transform processes embed syntax in all post content.
@@ -156,6 +226,15 @@ var metaPatternCache = struct {
 	sync.RWMutex
 	m map[string][4]*regexp.Regexp // [propertyFirst, contentFirst, nameFirst, contentFirstName]
 }{m: make(map[string][4]*regexp.Regexp)}
+
+const (
+	strategyOEmbedFirst = "oembed_first"
+	strategyOGFirst     = "og_first"
+	strategyOEmbedOnly  = "oembed_only"
+
+	schemeHTTP  = "http"
+	schemeHTTPS = "https"
+)
 
 // getMetaPatterns returns cached regex patterns for a given property.
 func getMetaPatterns(property string) [4]*regexp.Regexp {
@@ -425,12 +504,11 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 
 		// Validate URL
 		parsedURL, err := url.Parse(rawURL)
-		if err != nil || (parsedURL.Scheme != "http" && parsedURL.Scheme != "https") {
+		if err != nil || (parsedURL.Scheme != schemeHTTP && parsedURL.Scheme != schemeHTTPS) {
 			return match
 		}
 
-		// Fetch OG metadata
-		metadata := p.fetchOGMetadata(rawURL)
+		metadata := p.fetchExternalMetadata(rawURL)
 
 		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata)
 	})
@@ -444,6 +522,7 @@ type OGMetadata struct {
 	SiteName    string `json:"site_name"`
 	Type        string `json:"type"`
 	FetchedAt   int64  `json:"fetched_at"`
+	Source      string `json:"source"`
 }
 
 // fetchOGMetadata fetches Open Graph metadata from a URL.
@@ -452,27 +531,139 @@ func (p *EmbedsPlugin) fetchOGMetadata(rawURL string) *OGMetadata {
 		return &OGMetadata{Title: p.config.FallbackTitle}
 	}
 
-	// Check cache first
-	if cached := p.loadCachedMetadata(rawURL); cached != nil {
-		return cached
+	metadata := p.fetchCachedMetadata(rawURL, "og")
+	if metadata != nil {
+		return metadata
 	}
 
 	// Fetch from URL
-	metadata := p.fetchMetadataFromURL(rawURL)
+	metadata = p.fetchMetadataFromURL(rawURL)
 
 	// Cache the result
-	p.cacheMetadata(rawURL, metadata)
+	p.cacheMetadata(rawURL, "og", metadata)
 
 	return metadata
 }
 
+// fetchExternalMetadata resolves external metadata using the configured strategy.
+func (p *EmbedsPlugin) fetchExternalMetadata(rawURL string) *OGMetadata {
+	strategy := strings.ToLower(p.config.ResolutionStrategy)
+	if strategy == "" {
+		strategy = strategyOEmbedFirst
+	}
+
+	if strategy == strategyOEmbedFirst || strategy == strategyOEmbedOnly {
+		if !p.config.OEmbedEnabled {
+			strategy = strategyOGFirst
+		}
+	}
+
+	tryOEmbed := func() (*OGMetadata, bool) {
+		return p.resolveOEmbedMetadata(rawURL)
+	}
+
+	tryCached := func() *OGMetadata {
+		if cached := p.fetchCachedMetadata(rawURL, "oembed"); cached != nil {
+			return cached
+		}
+		return p.fetchCachedMetadata(rawURL, "og")
+	}
+
+	tryOG := func() *OGMetadata {
+		return p.fetchOGMetadata(rawURL)
+	}
+
+	switch strategy {
+	case strategyOEmbedOnly:
+		if metadata, _ := tryOEmbed(); metadata != nil {
+			return metadata
+		}
+		if cached := tryCached(); cached != nil {
+			return cached
+		}
+		return &OGMetadata{Title: p.config.FallbackTitle}
+	case strategyOGFirst:
+		metadata := tryOG()
+		if metadata != nil && metadata.Title != p.config.FallbackTitle {
+			return metadata
+		}
+		if oembed, _ := tryOEmbed(); oembed != nil {
+			return oembed
+		}
+		if cached := tryCached(); cached != nil {
+			return cached
+		}
+		return metadata
+	default:
+		if oembed, matched := tryOEmbed(); oembed != nil {
+			return oembed
+		} else if matched {
+			// Provider matched but failed; fall back if allowed
+			if p.config.FetchExternal {
+				return tryOG()
+			}
+			return &OGMetadata{Title: p.config.FallbackTitle}
+		}
+
+		metadata := tryOG()
+		if metadata != nil && metadata.Title != p.config.FallbackTitle {
+			return metadata
+		}
+		if cached := tryCached(); cached != nil {
+			return cached
+		}
+		return metadata
+	}
+}
+
+func (p *EmbedsPlugin) resolveOEmbedMetadata(rawURL string) (*OGMetadata, bool) {
+	if !p.config.OEmbedEnabled || p.oembed == nil {
+		return nil, false
+	}
+
+	if cached := p.fetchCachedMetadata(rawURL, "oembed"); cached != nil {
+		return cached, true
+	}
+
+	response, matched, err := p.oembed.Resolve(rawURL)
+	if err != nil || !matched || response == nil {
+		return nil, matched
+	}
+
+	metadata := &OGMetadata{
+		Title:     response.Title,
+		Image:     response.ThumbnailURL,
+		SiteName:  response.ProviderName,
+		Type:      response.Type,
+		FetchedAt: time.Now().Unix(),
+		Source:    "oembed",
+	}
+
+	if metadata.Title == "" {
+		metadata.Title = p.config.FallbackTitle
+	}
+
+	p.cacheMetadata(rawURL, "oembed", metadata)
+
+	return metadata, true
+}
+
 // loadCachedMetadata loads metadata from cache if available and not expired.
-func (p *EmbedsPlugin) loadCachedMetadata(rawURL string) *OGMetadata {
-	cacheFile := p.getCacheFilePath(rawURL)
+func (p *EmbedsPlugin) fetchCachedMetadata(rawURL, suffix string) *OGMetadata {
+	cacheFile := p.getCacheFilePath(rawURL, suffix)
 
 	data, err := os.ReadFile(cacheFile)
 	if err != nil {
-		return nil
+		if suffix == "og" {
+			legacyFile := p.getLegacyCacheFilePath(rawURL)
+			if legacyData, legacyErr := os.ReadFile(legacyFile); legacyErr == nil {
+				data = legacyData
+			} else {
+				return nil
+			}
+		} else {
+			return nil
+		}
 	}
 
 	var metadata OGMetadata
@@ -480,8 +671,13 @@ func (p *EmbedsPlugin) loadCachedMetadata(rawURL string) *OGMetadata {
 		return nil
 	}
 
-	// Check if cache is expired (7 days)
-	if time.Now().Unix()-metadata.FetchedAt > 7*24*60*60 {
+	cacheTTL := p.config.CacheTTL
+	if cacheTTL <= 0 {
+		cacheTTL = 7 * 24 * 60 * 60
+	}
+
+	// Check if cache is expired
+	if time.Now().Unix()-metadata.FetchedAt > int64(cacheTTL) {
 		return nil
 	}
 
@@ -489,14 +685,14 @@ func (p *EmbedsPlugin) loadCachedMetadata(rawURL string) *OGMetadata {
 }
 
 // cacheMetadata saves metadata to cache.
-func (p *EmbedsPlugin) cacheMetadata(rawURL string, metadata *OGMetadata) {
+func (p *EmbedsPlugin) cacheMetadata(rawURL, suffix string, metadata *OGMetadata) {
 	if p.config.CacheDir == "" {
 		return
 	}
 
 	metadata.FetchedAt = time.Now().Unix()
 
-	cacheFile := p.getCacheFilePath(rawURL)
+	cacheFile := p.getCacheFilePath(rawURL, suffix)
 	cacheDir := filepath.Dir(cacheFile)
 
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
@@ -512,7 +708,18 @@ func (p *EmbedsPlugin) cacheMetadata(rawURL string, metadata *OGMetadata) {
 }
 
 // getCacheFilePath returns the cache file path for a URL.
-func (p *EmbedsPlugin) getCacheFilePath(rawURL string) string {
+func (p *EmbedsPlugin) getCacheFilePath(rawURL, suffix string) string {
+	hash := sha256.Sum256([]byte(rawURL))
+	hashStr := hex.EncodeToString(hash[:8])
+
+	if suffix == "" {
+		suffix = "og"
+	}
+
+	return filepath.Join(p.config.CacheDir, hashStr+"-"+suffix+".json")
+}
+
+func (p *EmbedsPlugin) getLegacyCacheFilePath(rawURL string) string {
 	hash := sha256.Sum256([]byte(rawURL))
 	hashStr := hex.EncodeToString(hash[:8])
 	return filepath.Join(p.config.CacheDir, hashStr+".json")
@@ -551,6 +758,7 @@ func (p *EmbedsPlugin) fetchMetadataFromURL(rawURL string) *OGMetadata {
 	htmlContent := string(body)
 
 	// Extract OG metadata using simple regex
+	metadata.Source = "og"
 	metadata.Title = p.extractMetaContent(htmlContent, "og:title")
 	if metadata.Title == "" {
 		metadata.Title = p.extractHTMLTitle(htmlContent)
@@ -677,6 +885,12 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 func (p *EmbedsPlugin) SetConfig(config models.EmbedsConfig) {
 	p.config = config
 	p.httpClient.Timeout = time.Duration(config.Timeout) * time.Second
+	if p.oembed == nil {
+		p.oembed = newOEmbedResolver(config, p.httpClient)
+	} else {
+		p.oembed.updateConfig(config)
+	}
+	p.validateResolutionStrategy()
 }
 
 // Config returns the current plugin configuration.

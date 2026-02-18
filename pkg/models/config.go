@@ -2008,11 +2008,23 @@ type EmbedsConfig struct {
 	// FetchExternal enables fetching OG metadata for external embeds (default: true)
 	FetchExternal bool `json:"fetch_external" yaml:"fetch_external" toml:"fetch_external"`
 
+	// OEmbedEnabled enables oEmbed resolution for external embeds (default: true)
+	OEmbedEnabled bool `json:"oembed_enabled" yaml:"oembed_enabled" toml:"oembed_enabled"`
+
+	// ResolutionStrategy controls how external embeds are resolved (default: "oembed_first")
+	ResolutionStrategy string `json:"resolution_strategy" yaml:"resolution_strategy" toml:"resolution_strategy"`
+
+	// OEmbedProviders configures provider-specific overrides (default: empty)
+	OEmbedProviders map[string]OEmbedProviderConfig `json:"providers" yaml:"providers" toml:"providers"`
+
 	// CacheDir is the directory for caching external embed metadata (default: ".cache/embeds")
 	CacheDir string `json:"cache_dir" yaml:"cache_dir" toml:"cache_dir"`
 
 	// Timeout is the HTTP request timeout in seconds for external fetches (default: 10)
 	Timeout int `json:"timeout" yaml:"timeout" toml:"timeout"`
+
+	// CacheTTL is the cache time-to-live in seconds for external metadata (default: 604800)
+	CacheTTL int `json:"cache_ttl" yaml:"cache_ttl" toml:"cache_ttl"`
 
 	// FallbackTitle is used when OG title cannot be fetched (default: "External Link")
 	FallbackTitle string `json:"fallback_title" yaml:"fallback_title" toml:"fallback_title"`
@@ -2025,18 +2037,28 @@ type EmbedsConfig struct {
 	AttachmentsPrefix string `json:"attachments_prefix" yaml:"attachments_prefix" toml:"attachments_prefix"`
 }
 
+// OEmbedProviderConfig configures a single oEmbed provider.
+type OEmbedProviderConfig struct {
+	// Enabled controls whether the provider is used (default: true)
+	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+}
+
 // NewEmbedsConfig creates a new EmbedsConfig with default values.
 func NewEmbedsConfig() EmbedsConfig {
 	return EmbedsConfig{
-		Enabled:           true,
-		InternalCardClass: "embed-card",
-		ExternalCardClass: "embed-card embed-card-external",
-		FetchExternal:     true,
-		CacheDir:          ".cache/embeds",
-		Timeout:           10,
-		FallbackTitle:     "External Link",
-		ShowImage:         true,
-		AttachmentsPrefix: "/static/",
+		Enabled:            true,
+		InternalCardClass:  "embed-card",
+		ExternalCardClass:  "embed-card embed-card-external",
+		FetchExternal:      true,
+		OEmbedEnabled:      true,
+		ResolutionStrategy: "oembed_first",
+		OEmbedProviders:    map[string]OEmbedProviderConfig{},
+		CacheDir:           ".cache/embeds",
+		Timeout:            10,
+		CacheTTL:           7 * 24 * 60 * 60,
+		FallbackTitle:      "External Link",
+		ShowImage:          true,
+		AttachmentsPrefix:  "/static/",
 	}
 }
 
