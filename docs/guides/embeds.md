@@ -40,7 +40,7 @@ Here's a great resource:
 ![[https://example.com/article|Custom Title]]
 ```
 
-This fetches metadata and displays a card with the title, description, and image.
+This resolves metadata via oEmbed (when available), then falls back to Open Graph, and displays a card with the title, description, and image.
 
 > **Note:** Obsidian-style external embeds like `![[https://example.com]]` are not supported yet. Track progress in issue #837.
 
@@ -96,7 +96,7 @@ This helps you spot broken embeds without breaking your build.
 
 > **Note:** The alt text must be exactly `embed`. Regular images are not affected. The Obsidian-style form is only recognized for full URLs (`http`/`https`).
 
-### Open Graph Metadata
+### Metadata Resolution
 
 External embeds fetch and display (in order based on strategy):
 - **oEmbed** - Title, provider name, thumbnail image (if available)
@@ -128,14 +128,15 @@ external_card_class = "embed-card embed-card-external"
 # External fetch settings
 fetch_external = true        # Set false to skip HTTP requests
 oembed_enabled = true        # Enable oEmbed resolution
+oembed_auto_discover = false # Use HTML auto-discovery when no provider matches
 resolution_strategy = "oembed_first"  # oembed_first | og_first | oembed_only
 cache_dir = ".cache/embeds"  # Where to store cached metadata
 cache_ttl = 604800           # Cache TTL in seconds (default 7 days)
 timeout = 10                 # HTTP timeout in seconds
 
 # Display settings
-fallback_title = "External Link"  # Title when OG is unavailable
-show_image = true                 # Show OG images
+fallback_title = "External Link"  # Title when metadata is unavailable
+show_image = true                 # Show images
 
 [embeds.providers]
 youtube = { enabled = true }
@@ -144,6 +145,22 @@ tiktok = { enabled = true }
 flickr = { enabled = true }
 spotify = { enabled = true }
 soundcloud = { enabled = true }
+codepen = { enabled = true }
+codesandbox = { enabled = true }
+jsfiddle = { enabled = true }
+observable = { enabled = true }
+github = { enabled = true }
+slideshare = { enabled = true }
+prezi = { enabled = true }
+speakerdeck = { enabled = true }
+issuu = { enabled = true }
+datawrapper = { enabled = true }
+flourish = { enabled = true }
+infogram = { enabled = true }
+reddit = { enabled = true }
+dailymotion = { enabled = true }
+wistia = { enabled = true }
+giphy = { enabled = true }
 ```
 
 ### Disabling External Fetching
@@ -166,6 +183,15 @@ resolution_strategy = "og_first"
 ```
 
 This skips oEmbed providers and falls back to Open Graph metadata only.
+
+### Enabling oEmbed Auto-Discovery
+
+```toml
+[embeds]
+oembed_auto_discover = true
+```
+
+When enabled, markata-go looks for oEmbed link tags in HTML pages and uses the discovered endpoint if no provider matches.
 
 ## Styling
 

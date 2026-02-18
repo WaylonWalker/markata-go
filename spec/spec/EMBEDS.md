@@ -37,6 +37,7 @@ internal_card_class = "embed-card"               # CSS class for internal cards
 external_card_class = "embed-card embed-card-external"  # CSS class for external cards
 fetch_external = true                            # Fetch OG metadata from external URLs
 oembed_enabled = true                            # Enable oEmbed resolution
+oembed_auto_discover = false                     # Discover oEmbed endpoints from HTML link tags
 resolution_strategy = "oembed_first"             # oembed_first | og_first | oembed_only
 cache_dir = ".cache/embeds"                      # Cache directory for external metadata
 cache_ttl = 604800                               # Cache TTL in seconds
@@ -51,6 +52,22 @@ tiktok = { enabled = true }
 flickr = { enabled = true }
 spotify = { enabled = true }
 soundcloud = { enabled = true }
+codepen = { enabled = true }
+codesandbox = { enabled = true }
+jsfiddle = { enabled = true }
+observable = { enabled = true }
+github = { enabled = true }
+slideshare = { enabled = true }
+prezi = { enabled = true }
+speakerdeck = { enabled = true }
+issuu = { enabled = true }
+datawrapper = { enabled = true }
+flourish = { enabled = true }
+infogram = { enabled = true }
+reddit = { enabled = true }
+dailymotion = { enabled = true }
+wistia = { enabled = true }
+giphy = { enabled = true }
 ```
 
 ## Internal Embeds
@@ -103,15 +120,15 @@ A post cannot embed itself. Attempting to do so adds a warning comment:
    - OG description (truncated)
    - Site name and domain
 
-### Open Graph Metadata Extraction
+### Metadata Resolution
 
 The plugin extracts:
 - **oEmbed**: title, provider name, thumbnail URL (if available)
 - **Open Graph**: `og:title`, `og:description`, `og:image`, `og:site_name`
 
-### oEmbed Providers (Phase 1)
+### oEmbed Providers (Phase 2)
 
-Supported providers for the initial implementation:
+Supported providers include Phase 1 plus additional Phase 2 providers:
 
 - YouTube (`https://www.youtube.com/oembed`)
 - Vimeo (`https://vimeo.com/api/oembed.json`)
@@ -119,6 +136,22 @@ Supported providers for the initial implementation:
 - Flickr (`https://www.flickr.com/services/oembed/`)
 - Spotify (`https://open.spotify.com/oembed`)
 - SoundCloud (`https://soundcloud.com/oembed`)
+- CodePen (`https://codepen.io/api/oembed`)
+- CodeSandbox (`https://codesandbox.io/oembed`)
+- JSFiddle (`https://jsfiddle.net/services/oembed/`)
+- Observable (`https://api.observablehq.com/oembed`)
+- GitHub Gist (`https://github.com/services/oembed`)
+- SlideShare (`https://www.slideshare.net/api/oembed/2`)
+- Prezi (`https://prezi.com/services/oembed/`)
+- Speaker Deck (`https://speakerdeck.com/oembed.json`)
+- Issuu (`https://issuu.com/oembed`)
+- Datawrapper (`https://api.datawrapper.de/v3/oembed/`)
+- Flourish (`https://app.flourish.studio/api/v1/oembed`)
+- Infogram (`https://infogram.com/oembed`)
+- Reddit (`https://www.reddit.com/oembed`)
+- Dailymotion (`https://www.dailymotion.com/services/oembed`)
+- Wistia (`https://fast.wistia.com/oembed.json`)
+- GIPHY (`https://giphy.com/services/oembed`)
 
 Falls back to `<title>` and `<meta name="description">` if OG tags are missing.
 
@@ -188,6 +221,7 @@ The embeds plugin runs in the **Transform** stage with `PriorityEarly` (-100), e
 | Obsidian external URL invalid | Original syntax preserved |
 | External fetch fails | Uses fallback title, no image |
 | oEmbed provider disabled | Treat as matched, fall back if allowed |
+| oEmbed discovery disabled | Treat as not matched |
 | External timeout | Uses fallback title, no image |
 
 ## CSS Classes
@@ -211,6 +245,7 @@ The embeds plugin runs in the **Transform** stage with `PriorityEarly` (-100), e
 4. **Body Limit** - External pages are limited to 1MB to prevent memory issues
 5. **Disable Fetching** - Set `fetch_external = false` to skip OG HTTP requests entirely
 6. **Disable oEmbed** - Set `oembed_enabled = false` or use `oembed_only` to avoid OG fallback
+7. **Auto-Discovery** - Set `oembed_auto_discover = true` to discover endpoints via HTML link tags
 
 ## Related Features
 
