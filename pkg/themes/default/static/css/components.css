@@ -223,6 +223,11 @@
   isolation: isolate;
 }
 
+.article-progress--hidden {
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
 .article-progress__indicator {
   display: block;
   width: 100%;
@@ -249,6 +254,8 @@
   max-height: calc(100vh - 2rem);
   overflow-y: auto;
   flex-shrink: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
 }
 
 .doc-sidebar--left {
@@ -259,6 +266,23 @@
 .doc-sidebar--right {
   order: 1;
   margin-left: 2rem;
+}
+
+.doc-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.doc-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.doc-sidebar::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 3px;
+}
+
+.doc-sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-muted);
 }
 
 .toc {
