@@ -55,47 +55,55 @@ var assetRegistry = []Asset{
 
 	// Mermaid - diagram/chart library
 	{
-		Name:      "mermaid",
-		URL:       "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
+		Name:      "mermaid-esm",
+		URL:       "https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.esm.min.mjs",
 		LocalPath: "mermaid/mermaid.esm.min.mjs",
-		Integrity: "", // ES modules don't typically use SRI
-		Version:   "10",
+		Integrity: "",
+		Version:   "10.9.5",
+		Type:      "js",
+	},
+	{
+		Name:      "mermaid-chunk",
+		URL:       "https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid-b92f6f74.js",
+		LocalPath: "mermaid/mermaid-b92f6f74.js",
+		Integrity: "",
+		Version:   "10.9.5",
 		Type:      "js",
 	},
 
 	// Chart.js - chart library
 	{
 		Name:      "chartjs",
-		URL:       "https://cdn.jsdelivr.net/npm/chart.js",
+		URL:       "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js",
 		LocalPath: "chartjs/chart.min.js",
 		Integrity: "", // Version can vary
-		Version:   "latest",
+		Version:   "4.4.1",
 		Type:      "js",
 	},
 
 	// Cal-Heatmap - calendar heatmap (contribution graph)
 	{
 		Name:      "cal-heatmap-css",
-		URL:       "https://unpkg.com/cal-heatmap/dist/cal-heatmap.css",
+		URL:       "https://unpkg.com/cal-heatmap@4.2.4/dist/cal-heatmap.css",
 		LocalPath: "cal-heatmap/cal-heatmap.css",
 		Integrity: "",
-		Version:   "latest",
+		Version:   "4.2.4",
 		Type:      "css",
 	},
 	{
 		Name:      "cal-heatmap-js",
-		URL:       "https://unpkg.com/cal-heatmap/dist/cal-heatmap.min.js",
+		URL:       "https://unpkg.com/cal-heatmap@4.2.4/dist/cal-heatmap.min.js",
 		LocalPath: "cal-heatmap/cal-heatmap.min.js",
 		Integrity: "",
-		Version:   "latest",
+		Version:   "4.2.4",
 		Type:      "js",
 	},
 	{
 		Name:      "cal-heatmap-tooltip",
-		URL:       "https://unpkg.com/cal-heatmap/dist/plugins/Tooltip.min.js",
+		URL:       "https://unpkg.com/cal-heatmap@4.2.4/dist/plugins/Tooltip.min.js",
 		LocalPath: "cal-heatmap/plugins/Tooltip.min.js",
 		Integrity: "",
-		Version:   "latest",
+		Version:   "4.2.4",
 		Type:      "js",
 	},
 
@@ -112,10 +120,10 @@ var assetRegistry = []Asset{
 	// Popper.js - tooltip positioning (dependency of Cal-Heatmap Tooltip)
 	{
 		Name:      "popper",
-		URL:       "https://unpkg.com/@popperjs/core@2",
+		URL:       "https://unpkg.com/@popperjs/core@2.11.8/dist/umd/popper.min.js",
 		LocalPath: "popper/popper.min.js",
 		Integrity: "",
-		Version:   "2",
+		Version:   "2.11.8",
 		Type:      "js",
 	},
 

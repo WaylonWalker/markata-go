@@ -1137,7 +1137,7 @@ func NewMermaidConfig() MermaidConfig {
 	return MermaidConfig{
 		Enabled:          true,
 		Mode:             "client",
-		CDNURL:           "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs",
+		CDNURL:           "/assets/vendor/mermaid/mermaid.esm.min.mjs",
 		Theme:            "default",
 		UseCSSVariables:  true,
 		Lightbox:         true,
@@ -1216,7 +1216,7 @@ type ChartJSConfig struct {
 func NewChartJSConfig() ChartJSConfig {
 	return ChartJSConfig{
 		Enabled:        true,
-		CDNURL:         "https://cdn.jsdelivr.net/npm/chart.js",
+		CDNURL:         "/assets/vendor/chartjs/chart.min.js",
 		ContainerClass: "chartjs-container",
 	}
 }
@@ -1240,7 +1240,7 @@ type ContributionGraphConfig struct {
 func NewContributionGraphConfig() ContributionGraphConfig {
 	return ContributionGraphConfig{
 		Enabled:        true,
-		CDNURL:         "https://unpkg.com/cal-heatmap/dist",
+		CDNURL:         "/assets/vendor/cal-heatmap",
 		ContainerClass: "contribution-graph-container",
 		Theme:          "light",
 	}
@@ -2640,7 +2640,7 @@ type AssetsConfig struct {
 func NewAssetsConfig() AssetsConfig {
 	verifyIntegrity := true
 	return AssetsConfig{
-		Mode:            "cdn",
+		Mode:            "self-hosted",
 		CacheDir:        ".markata/assets-cache",
 		VerifyIntegrity: &verifyIntegrity,
 		OutputDir:       "assets/vendor",

@@ -27,7 +27,7 @@ func TestGetAsset(t *testing.T) {
 		{"existing asset", "glightbox-js", false},
 		{"existing css", "glightbox-css", false},
 		{"htmx", "htmx", false},
-		{"mermaid", "mermaid", false},
+		{"mermaid", "mermaid-esm", false},
 		{"non-existent", "non-existent-asset", true},
 	}
 
@@ -76,7 +76,7 @@ func TestAssetGroups(t *testing.T) {
 	}
 
 	// Check for expected groups
-	expectedGroups := []string{"glightbox", "htmx", "mermaid", "chartjs", "cal-heatmap", "d3", "popper"}
+	expectedGroups := []string{"glightbox", "htmx", "mermaid", "chartjs", "cal-heatmap", "d3", "popper", "svg-pan-zoom"}
 	for _, name := range expectedGroups {
 		if _, ok := groups[name]; !ok {
 			t.Errorf("expected group %s to exist", name)
@@ -98,11 +98,16 @@ func TestAssetNames(t *testing.T) {
 
 	// Check for expected names
 	expectedNames := map[string]bool{
-		"glightbox-js":  true,
-		"glightbox-css": true,
-		"htmx":          true,
-		"mermaid":       true,
-		"chartjs":       true,
+		"glightbox-js":   true,
+		"glightbox-css":  true,
+		"htmx":           true,
+		"mermaid-esm":    true,
+		"mermaid-chunk":  true,
+		"chartjs":        true,
+		"svg-pan-zoom":   true,
+		"d3":             true,
+		"popper":         true,
+		"cal-heatmap-js": true,
 	}
 
 	for _, name := range names {

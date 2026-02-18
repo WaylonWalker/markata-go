@@ -20,6 +20,7 @@ import (
 type ContributionGraphPlugin struct {
 	config    models.ContributionGraphConfig
 	idCounter uint64
+	assetURLs map[string]string
 }
 
 // NewContributionGraphPlugin creates a new ContributionGraphPlugin with default settings.
@@ -49,6 +50,13 @@ func (p *ContributionGraphPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 	if config.Extra == nil {
 		return nil
+	}
+
+	if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
+		p.assetURLs = assetURLs
+		if url, ok := assetURLs["cal-heatmap-css"]; ok && url != "" {
+			p.config.CDNURL = strings.TrimSuffix(url, "/cal-heatmap.css")
+		}
 	}
 
 	// Check for contribution_graph config in Extra
@@ -328,8 +336,8 @@ func (p *ContributionGraphPlugin) injectCalHeatmapScripts(htmlContent string, in
 }
 </style>
 <link rel="stylesheet" href="%s/cal-heatmap.css">
-<script src="https://d3js.org/d3.v7.min.js"></script>
-<script src="https://unpkg.com/@popperjs/core@2"></script>
+<script src="%s"></script>
+<script src="%s"></script>
 <script src="%s/cal-heatmap.min.js"></script>
 <script src="%s/plugins/Tooltip.min.js"></script>
 <script>
@@ -356,10 +364,20 @@ document.addEventListener('DOMContentLoaded', function() {
   observer.observe(document.documentElement, { attributes: true });
   observer.observe(document.body, { attributes: true });
 });
-</script>`, p.config.CDNURL, p.config.CDNURL, p.config.CDNURL, strings.Join(initScripts, "\n"))
+</script>`, p.config.CDNURL, p.resolveAssetURL("d3", "https://d3js.org/d3.v7.min.js"), p.resolveAssetURL("popper", "https://unpkg.com/@popperjs/core@2"), p.config.CDNURL, p.config.CDNURL, strings.Join(initScripts, "\n"))
 
 	// Append the script to the end of the content
 	return htmlContent + script
+}
+
+func (p *ContributionGraphPlugin) resolveAssetURL(name, fallback string) string {
+	if p.assetURLs == nil {
+		return fallback
+	}
+	if url, ok := p.assetURLs[name]; ok && url != "" {
+		return url
+	}
+	return fallback
 }
 
 // SetConfig sets the contribution graph configuration directly.
