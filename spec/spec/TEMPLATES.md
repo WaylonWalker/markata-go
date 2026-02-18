@@ -554,14 +554,26 @@ Small reusable template fragments:
 
 ## Footer License Display
 
-When `config.license` contains a string key the default footer renders a license line that links to the canonical text. Custom footers should honor the same guard to avoid losing attribution:
+When `config.license` contains a string key the default footer appends the license attribution to the copyright line (next to the copyright symbol). Custom footers should honor the same guard to avoid losing attribution:
 
 ```jinja
-{% if config.license and config.license.name %}
+{% if footer.show_copyright %}
+<p class="footer-copyright">
+  &copy; {{ "now" | date:"2006" }} {{ config.author | default:"" }}.
+  {% if config.license and config.license.name %}
+  Content licensed under
+  {% if config.license.url %}
+  <a href="{{ config.license.url }}" target="_blank" rel="noopener noreferrer">{{ config.license.name }}</a>.
+  {% else %}
+  {{ config.license.name }}.
+  {% endif %}
+  {% endif %}
+</p>
+{% elif config.license and config.license.name %}
 <p class="footer-license">
   Content licensed under
   {% if config.license.url %}
-  <a href="{{ config.license.url }}" target="_blank" rel="noopener">{{ config.license.name }}</a>
+  <a href="{{ config.license.url }}" target="_blank" rel="noopener noreferrer">{{ config.license.name }}</a>
   {% else %}
   {{ config.license.name }}
   {% endif %}
@@ -901,7 +913,7 @@ JavaScript (the `initArticleProgressIndicator` initializer) keeps the indicator 
 2. Computes progress as `clamp((window.innerHeight + scrollY - articleTop) / articleHeight, 0, 1)` so the indicator is full once the viewport reaches the bottom of the article.
 3. Uses `requestAnimationFrame` to throttle updates and avoids redundant DOM writes when the ratio is unchanged.
 4. Attaches `scroll` and `resize` listeners with `{ passive: true }`.
-5. Respects `prefers-reduced-motion` by delegating transition control to CSS (`@media (prefers-reduced-motion: reduce)` disables the transform animation). 
+5. Respects `prefers-reduced-motion` by delegating transition control to CSS (`@media (prefers-reduced-motion: reduce)` disables the transform animation).
 ```
 
 ### Feed Pages (h-feed)
