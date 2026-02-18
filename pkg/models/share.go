@@ -12,7 +12,7 @@ const (
 )
 
 // DefaultSharePlatformOrder defines the built-in share buttons in the default order.
-var DefaultSharePlatformOrder = []string{"twitter", "bluesky", "linkedin", "whatsapp", "signal", "facebook", "telegram", "pinterest", "reddit", "hacker_news", "email", "copy"}
+var DefaultSharePlatformOrder = []string{"twitter", "bluesky", "linkedin", "whatsapp", "facebook", "telegram", "pinterest", "reddit", "hacker_news", "email", "copy"}
 
 type sharePlatformDefinition struct {
 	Name     string
@@ -46,11 +46,6 @@ var sharePlatformDefinitions = map[string]sharePlatformDefinition{
 		Name:     "WhatsApp",
 		Icon:     "icons/share/whatsapp.svg",
 		Template: "https://wa.me/?text={{url}}",
-	},
-	"signal": {
-		Name:     "Signal",
-		Icon:     "icons/share/signal.svg",
-		Template: "https://signal.me/?text={{url}}",
 	},
 	"telegram": {
 		Name:     "Telegram",

@@ -457,7 +457,7 @@ Add a "Share this post" grid to the end of every article so readers can send you
 | `enabled` | bool | `true` | Show the component. |
 | `title` | string | `"Share this post"` | Heading text above the buttons. |
 | `position` | string | `"bottom"` | Modifier used by CSS (applied as `share-panel--<position>`). |
-| `platforms` | array | `["twitter","bluesky","linkedin","whatsapp","signal","facebook","telegram","pinterest","reddit","hacker_news","email","copy"]` | Ordered list of platform keys to render. Omit entries to hide them. |
+| `platforms` | array | `["twitter","bluesky","linkedin","whatsapp","facebook","telegram","pinterest","reddit","hacker_news","email","copy"]` | Ordered list of platform keys to render. Omit entries to hide them. |
 | `custom` | table | `{}` | Custom platform definitions (`name`, `icon`, `url`). Icon paths without `/`, `http`, or `data:` are resolved via `theme_asset_hashed` (e.g., `icons/share/mastodon.svg`). |
 
 ```toml
@@ -476,7 +476,7 @@ Supported placeholders for share URLs:
 - `{{url}}` → URL-encoded absolute post URL (`config.url` + `post.href`).
 - `{{excerpt}}` → URL-encoded post description or excerpt when provided.
 
-Copying uses the Clipboard API with a DOM fallback and updates the button label/tooltip to "Link copied" for 2 seconds. Built-in platforms include Twitter, Bluesky, LinkedIn, WhatsApp, Signal, Facebook, Telegram, Pinterest, Reddit, Hacker News, Email, and Copy Link, each with a coordinated icon from `pkg/themes/default/static/icons/share/`.
+Copying uses the Clipboard API with a DOM fallback, updates the button label/tooltip to "Link copied" for 2 seconds, and shows a small desktop-only toast. Built-in platforms include Twitter, Bluesky, LinkedIn, WhatsApp, Facebook, Telegram, Pinterest, Reddit, Hacker News, Email, and Copy Link, each with a coordinated icon from `pkg/themes/default/static/icons/share/`.
 
 ### IndieAuth Settings (`[markata-go.indieauth]`)
 

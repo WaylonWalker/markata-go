@@ -580,7 +580,7 @@ The share component provides a configurable "Share this post" experience at the 
 1. Displays icon buttons in a responsive grid. Mobile stacks vertically, desktop shows multi-column layout.
 2. Hover or focus reveals the platform name via visible text and `aria-label` attributes.
 3. Clicks open the platform share dialog in a new tab (or copy the link when `copy` is enabled).
-4. Copy button uses the Clipboard API with a DOM fallback and provides live feedback.
+4. Copy button uses the Clipboard API with a DOM fallback and provides live feedback (including a desktop-only toast).
 5. Uses CSS variables for colors, spacing, and border radius so palettes can theme the component.
 
 #### Configuration
@@ -590,7 +590,7 @@ The share component provides a configurable "Share this post" experience at the 
 enabled = true
 position = "bottom"            # Controls the style hook (CSS adds `share-panel--bottom`).
 title = "Share this post"     # Heading above the buttons.
-platforms = ["twitter", "bluesky", "linkedin", "whatsapp", "signal", "facebook", "telegram", "pinterest", "reddit", "hacker_news", "email", "copy"]
+platforms = ["twitter", "bluesky", "linkedin", "whatsapp", "facebook", "telegram", "pinterest", "reddit", "hacker_news", "email", "copy"]
 
 [markata-go.components.share.custom]
 mastodon = { name = "Mastodon", icon = "mastodon.svg", url = "https://mastodon.social/share?text={{title}}&url={{url}}" }
@@ -620,7 +620,6 @@ The component ships with these built-in platforms:
 | `bluesky` | `https://bsky.app/intent/compose?text={{url}}` | Icon: `icons/share/bluesky.svg`. |
 | `linkedin` | `https://www.linkedin.com/sharing/share-offsite/?url={{url}}` | Icon: `icons/share/linkedin.svg`. |
 | `whatsapp` | `https://wa.me/?text={{url}}` | Icon: `icons/share/whatsapp.svg`. |
-| `signal` | `https://signal.me/?text={{url}}` | Icon: `icons/share/signal.svg`. |
 | `facebook` | `https://www.facebook.com/sharer/sharer.php?u={{url}}` | Icon: `icons/share/facebook.svg`. |
 | `telegram` | `https://t.me/share/url?url={{url}}` | Icon: `icons/share/telegram.svg`. |
 | `pinterest` | `https://pinterest.com/pin/create/button/?url={{url}}` | Icon: `icons/share/pinterest.svg`. |
