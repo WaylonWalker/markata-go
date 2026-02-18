@@ -117,6 +117,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Authors - merge
 	result.Authors = mergeAuthorsConfig(base.Authors, override.Authors)
 
+	// Garden - merge
+	result.Garden = mergeGardenConfig(base.Garden, override.Garden)
+
 	// Extra (plugin configs) - merge
 	result.Extra = mergeExtra(base.Extra, override.Extra)
 
@@ -634,6 +637,34 @@ func mergeComponentsConfig(base, override models.ComponentsConfig) models.Compon
 		}
 	}
 
+	// Merge Share component
+	if override.Share.Enabled != nil {
+		result.Share.Enabled = override.Share.Enabled
+	}
+	if override.Share.Position != "" {
+		result.Share.Position = override.Share.Position
+	}
+	if override.Share.Title != "" {
+		result.Share.Title = override.Share.Title
+	}
+	if len(override.Share.Platforms) > 0 {
+		result.Share.Platforms = override.Share.Platforms
+	}
+	if override.Share.Platforms != nil && len(override.Share.Platforms) == 0 {
+		result.Share.Platforms = nil
+	}
+	if len(override.Share.Custom) > 0 {
+		if result.Share.Custom == nil {
+			result.Share.Custom = make(map[string]models.SharePlatformConfig)
+		}
+		for k, v := range override.Share.Custom {
+			result.Share.Custom[k] = v
+		}
+	}
+	if override.Share.Custom != nil && len(override.Share.Custom) == 0 {
+		result.Share.Custom = nil
+	}
+
 	return result
 }
 
@@ -1051,6 +1082,56 @@ func mergeMentionsConfig(base, override models.MentionsConfig) models.MentionsCo
 	// ConcurrentRequests - override if set
 	if override.ConcurrentRequests > 0 {
 		result.ConcurrentRequests = override.ConcurrentRequests
+	}
+
+	return result
+}
+
+// mergeGardenConfig merges GardenConfig values.
+// Since parser converters apply defaults (from NewGardenConfig()),
+// the override always has valid values for pointer fields.
+func mergeGardenConfig(base, override models.GardenConfig) models.GardenConfig {
+	result := base
+
+	// Pointer fields - always use override (parser converters ensure defaults)
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+	if override.ExportJSON != nil {
+		result.ExportJSON = override.ExportJSON
+	}
+	if override.RenderPage != nil {
+		result.RenderPage = override.RenderPage
+	}
+	if override.IncludeTags != nil {
+		result.IncludeTags = override.IncludeTags
+	}
+	if override.IncludePosts != nil {
+		result.IncludePosts = override.IncludePosts
+	}
+
+	// String fields - override if non-empty
+	if override.Path != "" {
+		result.Path = override.Path
+	}
+	if override.Template != "" {
+		result.Template = override.Template
+	}
+	if override.Title != "" {
+		result.Title = override.Title
+	}
+	if override.Description != "" {
+		result.Description = override.Description
+	}
+
+	// Int fields - override if non-zero
+	if override.MaxNodes > 0 {
+		result.MaxNodes = override.MaxNodes
+	}
+
+	// Slice fields - replace if non-empty
+	if len(override.ExcludeTags) > 0 {
+		result.ExcludeTags = override.ExcludeTags
 	}
 
 	return result

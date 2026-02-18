@@ -113,7 +113,11 @@
             {{ body | safe }}
         </div>
 
+        {% include "components/post_graph.html" %}
+
+        {% if config.components.share.enabled %}
         {% include "components/share.html" %}
+        {% endif %}
 
         {# Guide series navigation #}
         {% include "partials/guide-navigation.html" %}

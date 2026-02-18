@@ -34,6 +34,7 @@ type configSource interface {
 	getWebSub() webSubConverter
 	getShortcuts() shortcutsConverter
 	getAuthors() authorsConverter
+	getGarden() gardenConverter
 }
 
 // baseConfigData holds the basic config fields that are directly assignable.
@@ -144,6 +145,10 @@ type authorsConverter interface {
 	toAuthorsConfig() models.AuthorsConfig
 }
 
+type gardenConverter interface {
+	toGardenConfig() models.GardenConfig
+}
+
 // buildConfig constructs a models.Config from a configSource.
 // This helper eliminates code duplication across TOML, YAML, and JSON config converters.
 func buildConfig(src configSource) *models.Config {
@@ -243,6 +248,9 @@ func buildConfig(src configSource) *models.Config {
 	// Convert Authors config
 	config.Authors = src.getAuthors().toAuthorsConfig()
 
+	// Convert Garden config
+	config.Garden = src.getGarden().toGardenConfig()
+
 	return config
 }
 
@@ -288,7 +296,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"content_templates": true, "footer_layout": true, "search": true,
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
 			"tag_aggregator": true, "websub": true, "shortcuts": true, "encryption": true,
-			"authors": true,
+			"authors": true, "garden": true,
 		}
 
 		// Copy unknown sections to Extra
@@ -370,6 +378,7 @@ type tomlConfig struct {
 	WebSub        tomlWebSubConfig        `toml:"websub"`
 	Shortcuts     tomlShortcutsConfig     `toml:"shortcuts"`
 	Authors       tomlAuthorsConfig       `toml:"authors"`
+	Garden        tomlGardenConfig        `toml:"garden"`
 	UnknownFields map[string]any          `toml:"-"`
 }
 
@@ -696,6 +705,66 @@ func (a *tomlAuthorsConfig) toAuthorsConfig() models.AuthorsConfig {
 	return config
 }
 
+type tomlGardenConfig struct {
+	Enabled      *bool    `toml:"enabled"`
+	Path         string   `toml:"path"`
+	ExportJSON   *bool    `toml:"export_json"`
+	RenderPage   *bool    `toml:"render_page"`
+	IncludeTags  *bool    `toml:"include_tags"`
+	IncludePosts *bool    `toml:"include_posts"`
+	MaxNodes     int      `toml:"max_nodes"`
+	ExcludeTags  []string `toml:"exclude_tags"`
+	Template     string   `toml:"template"`
+	Title        string   `toml:"title"`
+	Description  string   `toml:"description"`
+}
+
+func (g *tomlGardenConfig) toGardenConfig() models.GardenConfig {
+	defaults := models.NewGardenConfig()
+
+	config := models.GardenConfig{
+		Enabled:      g.Enabled,
+		Path:         g.Path,
+		ExportJSON:   g.ExportJSON,
+		RenderPage:   g.RenderPage,
+		IncludeTags:  g.IncludeTags,
+		IncludePosts: g.IncludePosts,
+		MaxNodes:     g.MaxNodes,
+		ExcludeTags:  g.ExcludeTags,
+		Template:     g.Template,
+		Title:        g.Title,
+		Description:  g.Description,
+	}
+
+	// Apply defaults for unset fields
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.ExportJSON == nil {
+		config.ExportJSON = defaults.ExportJSON
+	}
+	if config.RenderPage == nil {
+		config.RenderPage = defaults.RenderPage
+	}
+	if config.IncludeTags == nil {
+		config.IncludeTags = defaults.IncludeTags
+	}
+	if config.IncludePosts == nil {
+		config.IncludePosts = defaults.IncludePosts
+	}
+	if config.Path == "" {
+		config.Path = defaults.Path
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.Title == "" {
+		config.Title = defaults.Title
+	}
+
+	return config
+}
+
 func (s *tomlSEOConfig) toSEOConfig() models.SEOConfig {
 	return models.SEOConfig{
 		TwitterHandle:  s.TwitterHandle,
@@ -728,6 +797,7 @@ type tomlComponentsConfig struct {
 	DocSidebar  tomlDocSidebarConfig      `toml:"doc_sidebar"`
 	FeedSidebar tomlFeedSidebarConfig     `toml:"feed_sidebar"`
 	CardRouter  tomlCardRouterConfig      `toml:"card_router"`
+	Share       tomlShareComponentConfig  `toml:"share"`
 }
 
 type tomlNavComponentConfig struct {
@@ -762,6 +832,20 @@ type tomlFeedSidebarConfig struct {
 
 type tomlCardRouterConfig struct {
 	Mappings map[string]string `toml:"mappings"`
+}
+
+type tomlShareComponentConfig struct {
+	Enabled   *bool                             `toml:"enabled"`
+	Platforms []string                          `toml:"platforms"`
+	Position  string                            `toml:"position"`
+	Title     string                            `toml:"title"`
+	Custom    map[string]tomlSharePlatformEntry `toml:"custom"`
+}
+
+type tomlSharePlatformEntry struct {
+	Name string `toml:"name"`
+	Icon string `toml:"icon"`
+	URL  string `toml:"url"`
 }
 
 // Layout-related TOML structs
@@ -1264,6 +1348,56 @@ func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 		CardRouter: models.CardRouterConfig{
 			Mappings: c.CardRouter.Mappings,
 		},
+		Share: models.ShareComponentConfig{
+			Enabled:   c.Share.Enabled,
+			Platforms: append([]string{}, c.Share.Platforms...),
+			Position:  c.Share.Position,
+			Title:     c.Share.Title,
+			Custom:    map[string]models.SharePlatformConfig{},
+		},
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	for key, custom := range c.Share.Custom {
+		config.Share.Custom[key] = models.SharePlatformConfig{
+			Name: custom.Name,
+			Icon: custom.Icon,
+			URL:  custom.URL,
+		}
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
 	}
 
 	// Convert nav items
@@ -1372,6 +1506,7 @@ func (c *tomlConfig) getWebSub() webSubConverter               { return &c.WebSu
 func (c *tomlConfig) getMentions() mentionsConverter           { return &c.Mentions }
 func (c *tomlConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
 func (c *tomlConfig) getAuthors() authorsConverter             { return &c.Authors }
+func (c *tomlConfig) getGarden() gardenConverter               { return &c.Garden }
 
 func (c *tomlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -1555,6 +1690,7 @@ type yamlConfig struct {
 	WebSub        yamlWebSubConfig        `yaml:"websub"`
 	Shortcuts     yamlShortcutsConfig     `yaml:"shortcuts"`
 	Authors       yamlAuthorsConfig       `yaml:"authors"`
+	Garden        yamlGardenConfig        `yaml:"garden"`
 }
 
 type yamlNavItem struct {
@@ -1930,6 +2066,66 @@ func (a *yamlAuthorsConfig) toAuthorsConfig() models.AuthorsConfig {
 	return config
 }
 
+type yamlGardenConfig struct {
+	Enabled      *bool    `yaml:"enabled"`
+	Path         string   `yaml:"path"`
+	ExportJSON   *bool    `yaml:"export_json"`
+	RenderPage   *bool    `yaml:"render_page"`
+	IncludeTags  *bool    `yaml:"include_tags"`
+	IncludePosts *bool    `yaml:"include_posts"`
+	MaxNodes     int      `yaml:"max_nodes"`
+	ExcludeTags  []string `yaml:"exclude_tags"`
+	Template     string   `yaml:"template"`
+	Title        string   `yaml:"title"`
+	Description  string   `yaml:"description"`
+}
+
+func (g *yamlGardenConfig) toGardenConfig() models.GardenConfig {
+	defaults := models.NewGardenConfig()
+
+	config := models.GardenConfig{
+		Enabled:      g.Enabled,
+		Path:         g.Path,
+		ExportJSON:   g.ExportJSON,
+		RenderPage:   g.RenderPage,
+		IncludeTags:  g.IncludeTags,
+		IncludePosts: g.IncludePosts,
+		MaxNodes:     g.MaxNodes,
+		ExcludeTags:  g.ExcludeTags,
+		Template:     g.Template,
+		Title:        g.Title,
+		Description:  g.Description,
+	}
+
+	// Apply defaults for unset fields
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.ExportJSON == nil {
+		config.ExportJSON = defaults.ExportJSON
+	}
+	if config.RenderPage == nil {
+		config.RenderPage = defaults.RenderPage
+	}
+	if config.IncludeTags == nil {
+		config.IncludeTags = defaults.IncludeTags
+	}
+	if config.IncludePosts == nil {
+		config.IncludePosts = defaults.IncludePosts
+	}
+	if config.Path == "" {
+		config.Path = defaults.Path
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.Title == "" {
+		config.Title = defaults.Title
+	}
+
+	return config
+}
+
 type yamlThemeConfig struct {
 	Name         string                  `yaml:"name"`
 	Palette      string                  `yaml:"palette"`
@@ -2072,6 +2268,7 @@ type yamlComponentsConfig struct {
 	DocSidebar  yamlDocSidebarConfig      `yaml:"doc_sidebar"`
 	FeedSidebar yamlFeedSidebarConfig     `yaml:"feed_sidebar"`
 	CardRouter  yamlCardRouterConfig      `yaml:"card_router"`
+	Share       yamlShareComponentConfig  `yaml:"share"`
 }
 
 type yamlNavComponentConfig struct {
@@ -2106,6 +2303,20 @@ type yamlFeedSidebarConfig struct {
 
 type yamlCardRouterConfig struct {
 	Mappings map[string]string `yaml:"mappings"`
+}
+
+type yamlShareComponentConfig struct {
+	Enabled   *bool                            `yaml:"enabled"`
+	Platforms []string                         `yaml:"platforms"`
+	Position  string                           `yaml:"position"`
+	Title     string                           `yaml:"title"`
+	Custom    map[string]yamlSharePlatformItem `yaml:"custom"`
+}
+
+type yamlSharePlatformItem struct {
+	Name string `yaml:"name"`
+	Icon string `yaml:"icon"`
+	URL  string `yaml:"url"`
 }
 
 // Layout-related YAML structs
@@ -2500,6 +2711,28 @@ func (c *yamlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			MinDepth: c.DocSidebar.MinDepth,
 			MaxDepth: c.DocSidebar.MaxDepth,
 		},
+		Share: models.ShareComponentConfig{
+			Enabled:   c.Share.Enabled,
+			Platforms: append([]string{}, c.Share.Platforms...),
+			Position:  c.Share.Position,
+			Title:     c.Share.Title,
+			Custom:    map[string]models.SharePlatformConfig{},
+		},
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	for key, custom := range c.Share.Custom {
+		config.Share.Custom[key] = models.SharePlatformConfig{
+			Name: custom.Name,
+			Icon: custom.Icon,
+			URL:  custom.URL,
+		}
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
 	}
 
 	// Convert nav items
@@ -2608,6 +2841,7 @@ func (c *yamlConfig) getWebSub() webSubConverter               { return &c.WebSu
 func (c *yamlConfig) getMentions() mentionsConverter           { return &c.Mentions }
 func (c *yamlConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
 func (c *yamlConfig) getAuthors() authorsConverter             { return &c.Authors }
+func (c *yamlConfig) getGarden() gardenConverter               { return &c.Garden }
 
 func (c *yamlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -2729,6 +2963,7 @@ type jsonConfig struct {
 	WebSub        jsonWebSubConfig        `json:"websub"`
 	Shortcuts     jsonShortcutsConfig     `json:"shortcuts"`
 	Authors       jsonAuthorsConfig       `json:"authors"`
+	Garden        jsonGardenConfig        `json:"garden"`
 }
 
 type jsonNavItem struct {
@@ -3104,6 +3339,66 @@ func (a *jsonAuthorsConfig) toAuthorsConfig() models.AuthorsConfig {
 	return config
 }
 
+type jsonGardenConfig struct {
+	Enabled      *bool    `json:"enabled"`
+	Path         string   `json:"path"`
+	ExportJSON   *bool    `json:"export_json"`
+	RenderPage   *bool    `json:"render_page"`
+	IncludeTags  *bool    `json:"include_tags"`
+	IncludePosts *bool    `json:"include_posts"`
+	MaxNodes     int      `json:"max_nodes"`
+	ExcludeTags  []string `json:"exclude_tags"`
+	Template     string   `json:"template"`
+	Title        string   `json:"title"`
+	Description  string   `json:"description"`
+}
+
+func (g *jsonGardenConfig) toGardenConfig() models.GardenConfig {
+	defaults := models.NewGardenConfig()
+
+	config := models.GardenConfig{
+		Enabled:      g.Enabled,
+		Path:         g.Path,
+		ExportJSON:   g.ExportJSON,
+		RenderPage:   g.RenderPage,
+		IncludeTags:  g.IncludeTags,
+		IncludePosts: g.IncludePosts,
+		MaxNodes:     g.MaxNodes,
+		ExcludeTags:  g.ExcludeTags,
+		Template:     g.Template,
+		Title:        g.Title,
+		Description:  g.Description,
+	}
+
+	// Apply defaults for unset fields
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.ExportJSON == nil {
+		config.ExportJSON = defaults.ExportJSON
+	}
+	if config.RenderPage == nil {
+		config.RenderPage = defaults.RenderPage
+	}
+	if config.IncludeTags == nil {
+		config.IncludeTags = defaults.IncludeTags
+	}
+	if config.IncludePosts == nil {
+		config.IncludePosts = defaults.IncludePosts
+	}
+	if config.Path == "" {
+		config.Path = defaults.Path
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.Title == "" {
+		config.Title = defaults.Title
+	}
+
+	return config
+}
+
 type jsonThemeConfig struct {
 	Name         string                  `json:"name"`
 	Palette      string                  `json:"palette"`
@@ -3246,6 +3541,7 @@ type jsonComponentsConfig struct {
 	DocSidebar  jsonDocSidebarConfig      `json:"doc_sidebar"`
 	FeedSidebar jsonFeedSidebarConfig     `json:"feed_sidebar"`
 	CardRouter  jsonCardRouterConfig      `json:"card_router"`
+	Share       jsonShareComponentConfig  `json:"share"`
 }
 
 type jsonNavComponentConfig struct {
@@ -3280,6 +3576,20 @@ type jsonFeedSidebarConfig struct {
 
 type jsonCardRouterConfig struct {
 	Mappings map[string]string `json:"mappings"`
+}
+
+type jsonShareComponentConfig struct {
+	Enabled   *bool                            `json:"enabled"`
+	Platforms []string                         `json:"platforms"`
+	Position  string                           `json:"position"`
+	Title     string                           `json:"title"`
+	Custom    map[string]jsonSharePlatformItem `json:"custom"`
+}
+
+type jsonSharePlatformItem struct {
+	Name string `json:"name"`
+	Icon string `json:"icon"`
+	URL  string `json:"url"`
 }
 
 // Layout-related JSON structs
@@ -3674,6 +3984,28 @@ func (c *jsonComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			MinDepth: c.DocSidebar.MinDepth,
 			MaxDepth: c.DocSidebar.MaxDepth,
 		},
+		Share: models.ShareComponentConfig{
+			Enabled:   c.Share.Enabled,
+			Platforms: append([]string{}, c.Share.Platforms...),
+			Position:  c.Share.Position,
+			Title:     c.Share.Title,
+			Custom:    map[string]models.SharePlatformConfig{},
+		},
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	for key, custom := range c.Share.Custom {
+		config.Share.Custom[key] = models.SharePlatformConfig{
+			Name: custom.Name,
+			Icon: custom.Icon,
+			URL:  custom.URL,
+		}
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
 	}
 
 	// Convert nav items
@@ -3782,6 +4114,7 @@ func (c *jsonConfig) getMentions() mentionsConverter           { return &c.Menti
 func (c *jsonConfig) getWebSub() webSubConverter               { return &c.WebSub }
 func (c *jsonConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
 func (c *jsonConfig) getAuthors() authorsConverter             { return &c.Authors }
+func (c *jsonConfig) getGarden() gardenConverter               { return &c.Garden }
 
 func (c *jsonConfig) toConfig() *models.Config {
 	return buildConfig(c)
