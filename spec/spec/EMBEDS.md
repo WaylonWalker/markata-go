@@ -7,7 +7,7 @@ The embeds plugin enables rich embedding of both internal posts and external URL
 The embeds plugin processes two types of embed syntax:
 
 1. **Internal embeds** (`![[slug]]`) - Embed another post from the same site as a preview card
-2. **External embeds** (`![embed](url)` or `![[https://url]]`) - Embed external URLs with Open Graph metadata
+2. **External embeds** (`![embed](url)` or `![[https://url]]`) - Embed external URLs with rich metadata (oEmbed + Open Graph)
 
 ## Syntax
 
@@ -36,10 +36,21 @@ enabled = true                                    # Enable/disable the plugin
 internal_card_class = "embed-card"               # CSS class for internal cards
 external_card_class = "embed-card embed-card-external"  # CSS class for external cards
 fetch_external = true                            # Fetch OG metadata from external URLs
+oembed_enabled = true                            # Enable oEmbed resolution
+resolution_strategy = "oembed_first"             # oembed_first | og_first | oembed_only
 cache_dir = ".cache/embeds"                      # Cache directory for external metadata
+cache_ttl = 604800                               # Cache TTL in seconds
 timeout = 10                                     # HTTP timeout in seconds
 fallback_title = "External Link"                 # Title when OG title is unavailable
 show_image = true                                # Show OG images in external embeds
+
+[embeds.providers]
+youtube = { enabled = true }
+vimeo = { enabled = true }
+tiktok = { enabled = true }
+flickr = { enabled = true }
+spotify = { enabled = true }
+soundcloud = { enabled = true }
 ```
 
 ## Internal Embeds
@@ -81,8 +92,11 @@ A post cannot embed itself. Attempting to do so adds a warning comment:
 ### Behavior
 
 1. Validates the URL (must be http or https)
-2. Fetches Open Graph metadata from the URL (if enabled)
-3. Caches metadata for 7 days
+2. Resolves metadata using the configured strategy:
+   - **oembed_first** (default): try oEmbed providers, fall back to OG
+   - **og_first**: try OG, fall back to oEmbed providers
+   - **oembed_only**: only use oEmbed (no OG fallback)
+3. Caches metadata (configurable TTL)
 4. Generates an embed card with:
    - OG image (if available and enabled)
    - OG title (or fallback)
@@ -92,10 +106,19 @@ A post cannot embed itself. Attempting to do so adds a warning comment:
 ### Open Graph Metadata Extraction
 
 The plugin extracts:
-- `og:title` - Page title
-- `og:description` - Page description
-- `og:image` - Preview image URL
-- `og:site_name` - Website name
+- **oEmbed**: title, provider name, thumbnail URL (if available)
+- **Open Graph**: `og:title`, `og:description`, `og:image`, `og:site_name`
+
+### oEmbed Providers (Phase 1)
+
+Supported providers for the initial implementation:
+
+- YouTube (`https://www.youtube.com/oembed`)
+- Vimeo (`https://vimeo.com/api/oembed.json`)
+- TikTok (`https://www.tiktok.com/oembed`)
+- Flickr (`https://www.flickr.com/services/oembed/`)
+- Spotify (`https://open.spotify.com/oembed`)
+- SoundCloud (`https://soundcloud.com/oembed`)
 
 Falls back to `<title>` and `<meta name="description">` if OG tags are missing.
 
@@ -103,8 +126,8 @@ Falls back to `<title>` and `<meta name="description">` if OG tags are missing.
 
 External metadata is cached as JSON files:
 - Location: `.cache/embeds/` (configurable)
-- File name: SHA-256 hash of URL (first 8 bytes)
-- Expiration: 7 days
+- File name: SHA-256 hash of URL (first 8 bytes) + source suffix (`-oembed` or `-og`)
+- Expiration: configurable via `cache_ttl` (default 7 days)
 
 Example cache file:
 ```json
@@ -114,7 +137,8 @@ Example cache file:
   "image": "https://example.com/og-image.jpg",
   "site_name": "Example Site",
   "type": "article",
-  "fetched_at": 1705350000
+  "fetched_at": 1705350000,
+  "source": "oembed"
 }
 ```
 
@@ -163,6 +187,7 @@ The embeds plugin runs in the **Transform** stage with `PriorityEarly` (-100), e
 | External URL invalid | Original syntax preserved |
 | Obsidian external URL invalid | Original syntax preserved |
 | External fetch fails | Uses fallback title, no image |
+| oEmbed provider disabled | Treat as matched, fall back if allowed |
 | External timeout | Uses fallback title, no image |
 
 ## CSS Classes
@@ -184,7 +209,8 @@ The embeds plugin runs in the **Transform** stage with `PriorityEarly` (-100), e
 2. **Timeout** - Configurable HTTP timeout (default 10s) prevents slow builds
 3. **Concurrent Processing** - Posts are processed concurrently
 4. **Body Limit** - External pages are limited to 1MB to prevent memory issues
-5. **Disable Fetching** - Set `fetch_external = false` to skip HTTP requests entirely
+5. **Disable Fetching** - Set `fetch_external = false` to skip OG HTTP requests entirely
+6. **Disable oEmbed** - Set `oembed_enabled = false` or use `oembed_only` to avoid OG fallback
 
 ## Related Features
 

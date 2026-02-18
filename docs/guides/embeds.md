@@ -40,7 +40,9 @@ Here's a great resource:
 ![[https://example.com/article|Custom Title]]
 ```
 
-This fetches the page's Open Graph metadata and displays a card with the title, description, and image.
+This fetches metadata and displays a card with the title, description, and image.
+
+> **Note:** Obsidian-style external embeds like `![[https://example.com]]` are not supported yet. Track progress in issue #837.
 
 ## Internal Embeds
 
@@ -96,15 +98,13 @@ This helps you spot broken embeds without breaking your build.
 
 ### Open Graph Metadata
 
-External embeds fetch and display:
-- **Title** - `og:title` or `<title>`
-- **Description** - `og:description` or meta description
-- **Image** - `og:image` (optional)
-- **Site name** - `og:site_name`
+External embeds fetch and display (in order based on strategy):
+- **oEmbed** - Title, provider name, thumbnail image (if available)
+- **Open Graph** - `og:title`, `og:description`, `og:image`, `og:site_name`
 
 ### Caching
 
-Metadata is cached for 7 days to avoid repeated HTTP requests. Cache files are stored in `.cache/embeds/` by default.
+Metadata is cached for 7 days by default (configurable) to avoid repeated HTTP requests. Cache files are stored in `.cache/embeds/` by default.
 
 ### Fallback Behavior
 
@@ -127,12 +127,23 @@ external_card_class = "embed-card embed-card-external"
 
 # External fetch settings
 fetch_external = true        # Set false to skip HTTP requests
+oembed_enabled = true        # Enable oEmbed resolution
+resolution_strategy = "oembed_first"  # oembed_first | og_first | oembed_only
 cache_dir = ".cache/embeds"  # Where to store cached metadata
+cache_ttl = 604800           # Cache TTL in seconds (default 7 days)
 timeout = 10                 # HTTP timeout in seconds
 
 # Display settings
 fallback_title = "External Link"  # Title when OG is unavailable
 show_image = true                 # Show OG images
+
+[embeds.providers]
+youtube = { enabled = true }
+vimeo = { enabled = true }
+tiktok = { enabled = true }
+flickr = { enabled = true }
+spotify = { enabled = true }
+soundcloud = { enabled = true }
 ```
 
 ### Disabling External Fetching
@@ -145,6 +156,16 @@ fetch_external = false
 ```
 
 External embeds will use the fallback title and show no image.
+
+### Disabling oEmbed
+
+```toml
+[embeds]
+oembed_enabled = false
+resolution_strategy = "og_first"
+```
+
+This skips oEmbed providers and falls back to Open Graph metadata only.
 
 ## Styling
 
