@@ -106,7 +106,21 @@ The `graph.json` file contains the full knowledge graph with nodes and edges:
 
 The garden page shows tags grouped with their related tags. Two tags are "related" when they appear on the same post (co-occurrence). The more posts they share, the stronger the relationship.
 
-Tags are sorted by post count (most used first), and related tags are listed alphabetically within each cluster.
+Tags are sorted by post count (most used first), and related tags are listed by co-occurrence weight (highest first).
+
+The default garden page also includes a graph preview that uses `graph.json` to show top tags, their strongest relationships, and (optionally) recent posts. Post templates can add a compact preview that focuses on a single post and its connections.
+
+### Post Graph Preview
+
+Add the post-level graph component to show a small connections graph for the current entry. The component uses `graph_json` plus `post.href` to fetch and filter the node set down to direct connections (the post itself and its related tags/posts).
+
+In your post template, include:
+
+```html
+{% include "components/post_graph.html" %}
+```
+
+The preview automatically hides when the post is not present in `graph.json` or has no connections.
 
 ## Filtering
 
@@ -147,12 +161,20 @@ Override the garden page by creating a `garden.html` in your templates directory
 
 Each `TagCluster` has:
 
-| Field     | Type     | Description                  |
-|-----------|----------|------------------------------|
-| `Name`    | string   | Tag name                     |
-| `Count`   | int      | Number of posts with this tag|
-| `Href`    | string   | URL to the tag listing page  |
-| `Related` | []string | Names of co-occurring tags   |
+| Field     | Type          | Description                         |
+|-----------|---------------|-------------------------------------|
+| `Name`    | string        | Tag name                            |
+| `Count`   | int           | Number of posts with this tag       |
+| `Href`    | string        | URL to the tag listing page         |
+| `Related` | []TagRelation | Related tags with co-occurrence     |
+
+Each `TagRelation` has:
+
+| Field   | Type   | Description                                |
+|---------|--------|--------------------------------------------|
+| `Name`  | string | Related tag name                            |
+| `Count` | int    | Number of shared posts (edge weight)       |
+| `Href`  | string | URL to the related tag listing page        |
 
 ## Using graph.json with Visualization Libraries
 
