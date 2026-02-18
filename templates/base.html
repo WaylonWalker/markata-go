@@ -427,60 +427,96 @@
   <script src="{{ 'js/decryption.js' | theme_asset_hashed }}" defer></script>
   {% endif %}
 
-  <script>
-    (function initArticleProgressIndicator() {
+    <script>
+    (function() {
       if (typeof window === 'undefined') {
         return;
       }
 
-      var indicator = document.querySelector('.article-progress__indicator');
-      var article = document.querySelector('article.post');
-      if (!indicator || !article) {
-        return;
-      }
+      var MIN_VIEWPORT_MULTIPLIER = 1.75;
 
-      var raf = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function (cb) { return window.setTimeout(cb, 16); };
-      var scheduled = false;
-      var lastValue = -1;
-
-      function clamp(value, min, max) {
-        if (value < min) return min;
-        if (value > max) return max;
-        return value;
-      }
-
-      function refresh() {
-        scheduled = false;
-        var rect = article.getBoundingClientRect();
-        var articleTop = window.scrollY + rect.top;
-        var articleHeight = rect.height;
-        var viewportHeight = window.innerHeight;
-        var scrollableDistance = articleHeight - viewportHeight;
-        var ratio;
-        if (scrollableDistance <= 0) {
-          // Article fits entirely within the viewport
-          ratio = 1;
-        } else {
-          ratio = clamp((window.scrollY - articleTop) / scrollableDistance, 0, 1);
+      function initArticleProgressIndicator() {
+        if (window.__articleProgressCleanup) {
+          window.__articleProgressCleanup();
+          window.__articleProgressCleanup = null;
         }
-        if (Math.abs(ratio - lastValue) < 0.001) {
+
+        var container = document.querySelector('.article-progress');
+        var indicator = document.querySelector('.article-progress__indicator');
+        var article = document.querySelector('article.post');
+        if (!container || !indicator || !article) {
           return;
         }
-        lastValue = ratio;
-        indicator.style.transform = 'scaleX(' + ratio + ')';
-      }
 
-      function schedule() {
-        if (scheduled) {
-          return;
+        var raf = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function(cb) { return window.setTimeout(cb, 16); };
+        var scheduled = false;
+        var lastValue = -1;
+        var lastVisibility = null;
+
+        function clamp(value, min, max) {
+          if (value < min) return min;
+          if (value > max) return max;
+          return value;
         }
-        scheduled = true;
-        raf(refresh);
+
+        function refresh() {
+          scheduled = false;
+          var rect = article.getBoundingClientRect();
+          var articleTop = window.scrollY + rect.top;
+          var articleHeight = rect.height;
+          var viewportHeight = window.innerHeight || 1;
+          var minHeight = viewportHeight * MIN_VIEWPORT_MULTIPLIER;
+          var shouldShow = articleHeight >= minHeight;
+
+          if (shouldShow !== lastVisibility) {
+            container.classList.toggle('article-progress--hidden', !shouldShow);
+            lastVisibility = shouldShow;
+          }
+
+          if (!shouldShow) {
+            if (lastValue !== 0) {
+              lastValue = 0;
+              indicator.style.transform = 'scaleX(0)';
+            }
+            return;
+          }
+
+          var scrollableDistance = articleHeight - viewportHeight;
+          var ratio;
+          if (scrollableDistance <= 0) {
+            ratio = 1;
+          } else {
+            ratio = clamp((window.scrollY - articleTop) / scrollableDistance, 0, 1);
+          }
+
+          if (Math.abs(ratio - lastValue) < 0.001) {
+            return;
+          }
+          lastValue = ratio;
+          indicator.style.transform = 'scaleX(' + ratio + ')';
+        }
+
+        function schedule() {
+          if (scheduled) {
+            return;
+          }
+          scheduled = true;
+          raf(refresh);
+        }
+
+        window.addEventListener('scroll', schedule, { passive: true });
+        window.addEventListener('resize', schedule);
+        window.__articleProgressCleanup = function() {
+          window.removeEventListener('scroll', schedule);
+          window.removeEventListener('resize', schedule);
+        };
+
+        schedule();
       }
 
-      window.addEventListener('scroll', schedule, { passive: true });
-      window.addEventListener('resize', schedule);
-      schedule();
+      window.initArticleProgressIndicator = initArticleProgressIndicator;
+      window.addEventListener('view-transition-complete', initArticleProgressIndicator);
+      initArticleProgressIndicator();
     })();
   </script>
 
