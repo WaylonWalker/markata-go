@@ -152,6 +152,47 @@ disabled_hooks = ["sitemap"]
 concurrency = 4
 ```
 
+### Embeds (`[embeds]`)
+
+Controls internal and external embed behavior, including oEmbed resolution and Open Graph fallback.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Enable/disable embeds plugin |
+| `internal_card_class` | string | `"embed-card"` | CSS class for internal embed cards |
+| `external_card_class` | string | `"embed-card embed-card-external"` | CSS class for external embed cards |
+| `fetch_external` | bool | `true` | Fetch Open Graph metadata for external embeds |
+| `oembed_enabled` | bool | `true` | Enable oEmbed resolution |
+| `resolution_strategy` | string | `"oembed_first"` | `oembed_first`, `og_first`, `oembed_only` |
+| `cache_dir` | string | `".cache/embeds"` | Cache directory for metadata |
+| `cache_ttl` | int | `604800` | Cache TTL (seconds) |
+| `timeout` | int | `10` | HTTP timeout (seconds) |
+| `fallback_title` | string | `"External Link"` | Title when metadata unavailable |
+| `show_image` | bool | `true` | Show images for external embeds |
+
+```toml
+[embeds]
+enabled = true
+internal_card_class = "embed-card"
+external_card_class = "embed-card embed-card-external"
+fetch_external = true
+oembed_enabled = true
+resolution_strategy = "oembed_first"
+cache_dir = ".cache/embeds"
+cache_ttl = 604800
+timeout = 10
+fallback_title = "External Link"
+show_image = true
+
+[embeds.providers]
+youtube = { enabled = true }
+vimeo = { enabled = true }
+tiktok = { enabled = true }
+flickr = { enabled = true }
+spotify = { enabled = true }
+soundcloud = { enabled = true }
+```
+
 ### License configuration
 
 The `license` key controls the attribution shown in the footer and whether the dev server reminds you to pick a license. It accepts either a string key (selects the attribution) or the literal `false` (hides the line and silences the warning). When the footer shows the copyright line, the license appears on the same line next to the copyright symbol; if copyright is disabled, the license renders as its own line.

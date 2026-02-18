@@ -271,6 +271,7 @@ func TestEmbedsPlugin_ExternalEmbed(t *testing.T) {
 	defer server.Close()
 
 	p := NewEmbedsPlugin()
+	p.config.OEmbedEnabled = false
 	// Use temp cache dir
 	tmpDir := t.TempDir()
 	p.config.CacheDir = filepath.Join(tmpDir, "cache")
@@ -421,6 +422,7 @@ func TestEmbedsPlugin_ExternalEmbed_Caching(t *testing.T) {
 
 	// First request
 	p1 := NewEmbedsPlugin()
+	p1.config.OEmbedEnabled = false
 	p1.config.CacheDir = filepath.Join(tmpDir, "cache")
 
 	m1 := lifecycle.NewManager()
@@ -440,6 +442,7 @@ func TestEmbedsPlugin_ExternalEmbed_Caching(t *testing.T) {
 
 	// Second request should use cache
 	p2 := NewEmbedsPlugin()
+	p2.config.OEmbedEnabled = false
 	p2.config.CacheDir = filepath.Join(tmpDir, "cache")
 
 	m2 := lifecycle.NewManager()
@@ -477,6 +480,7 @@ func TestEmbedsPlugin_ExternalEmbed_FetchDisabled(t *testing.T) {
 
 	p := NewEmbedsPlugin()
 	p.config.FetchExternal = false
+	p.config.OEmbedEnabled = false
 	p.config.FallbackTitle = "Fallback"
 
 	m := lifecycle.NewManager()
@@ -501,6 +505,7 @@ func TestEmbedsPlugin_ExternalEmbed_FetchDisabled(t *testing.T) {
 func TestEmbedsPlugin_ExternalEmbed_InCodeBlock(t *testing.T) {
 	p := NewEmbedsPlugin()
 	p.config.FetchExternal = false
+	p.config.OEmbedEnabled = false
 
 	m := lifecycle.NewManager()
 
@@ -546,10 +551,19 @@ func TestEmbedsPlugin_Configure(t *testing.T) {
 			"internal_card_class": "custom-internal",
 			"external_card_class": "custom-external",
 			"fetch_external":      false,
+			"oembed_enabled":      false,
+			"resolution_strategy": "og_first",
 			"cache_dir":           "custom-cache",
+			"cache_ttl":           3600,
 			"timeout":             30,
 			"fallback_title":      "Custom Fallback",
 			"show_image":          false,
+			"providers": map[string]interface{}{
+				"youtube": map[string]interface{}{
+					"enabled": false,
+				},
+				"vimeo": true,
+			},
 		},
 	}
 
@@ -570,8 +584,17 @@ func TestEmbedsPlugin_Configure(t *testing.T) {
 	if p.config.FetchExternal {
 		t.Error("expected fetch_external to be false")
 	}
+	if p.config.OEmbedEnabled {
+		t.Error("expected oembed_enabled to be false")
+	}
+	if p.config.ResolutionStrategy != "og_first" {
+		t.Errorf("expected resolution_strategy 'og_first', got '%s'", p.config.ResolutionStrategy)
+	}
 	if p.config.CacheDir != "custom-cache" {
 		t.Errorf("expected cache_dir 'custom-cache', got '%s'", p.config.CacheDir)
+	}
+	if p.config.CacheTTL != 3600 {
+		t.Errorf("expected cache_ttl 3600, got %d", p.config.CacheTTL)
 	}
 	if p.config.Timeout != 30 {
 		t.Errorf("expected timeout 30, got %d", p.config.Timeout)
@@ -581,6 +604,15 @@ func TestEmbedsPlugin_Configure(t *testing.T) {
 	}
 	if p.config.ShowImage {
 		t.Error("expected show_image to be false")
+	}
+	if p.config.OEmbedProviders == nil {
+		t.Fatal("expected oembed providers to be configured")
+	}
+	if p.config.OEmbedProviders["youtube"].Enabled {
+		t.Error("expected youtube provider to be disabled")
+	}
+	if !p.config.OEmbedProviders["vimeo"].Enabled {
+		t.Error("expected vimeo provider to be enabled")
 	}
 }
 
