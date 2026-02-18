@@ -154,7 +154,7 @@ concurrency = 4
 
 ### License configuration
 
-The `license` key controls the attribution shown in the footer and whether the dev server reminds you to pick a license. It accepts either a string key (selects the attribution) or the literal `false` (hides the line and silences the warning).
+The `license` key controls the attribution shown in the footer and whether the dev server reminds you to pick a license. It accepts either a string key (selects the attribution) or the literal `false` (hides the line and silences the warning). When the footer shows the copyright line, the license appears on the same line next to the copyright symbol; if copyright is disabled, the license renders as its own line.
 
 Supported license keys:
 
