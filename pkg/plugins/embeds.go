@@ -97,6 +97,7 @@ func (p *EmbedsPlugin) applyEmbedsConfig(cfgMap map[string]interface{}) {
 	applyString(cfgMap, "fallback_title", &p.config.FallbackTitle)
 	applyBool(cfgMap, "show_image", &p.config.ShowImage)
 	applyString(cfgMap, "attachments_prefix", &p.config.AttachmentsPrefix)
+	applyBool(cfgMap, "oembed_auto_discover", &p.config.OEmbedAutoDiscover)
 
 	if p.config.Timeout > 0 {
 		p.httpClient.Timeout = time.Duration(p.config.Timeout) * time.Second

@@ -99,3 +99,31 @@ func TestOEmbedResolver_BuildEndpointAddsFormat(t *testing.T) {
 		t.Errorf("expected encoded url param, got %s", endpoint)
 	}
 }
+
+func TestOEmbedResolver_DiscoverEndpoint(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		//nolint:errcheck // test helper
+		w.Write([]byte(`<!doctype html>
+<html>
+<head>
+  <link rel="alternate" type="application/json+oembed" href="https://example.com/oembed?url=https%3A%2F%2Fexample.com%2Fpost">
+</head>
+<body></body>
+</html>`))
+	}))
+	defer server.Close()
+
+	config := models.NewEmbedsConfig()
+	config.OEmbedAutoDiscover = true
+
+	resolver := newOEmbedResolverWithProviders(config, server.Client(), []oembedProvider{})
+
+	endpoint, err := resolver.discoverEndpoint(server.URL)
+	if err != nil {
+		t.Fatalf("discoverEndpoint failed: %v", err)
+	}
+	if endpoint == "" {
+		t.Fatal("expected endpoint")
+	}
+}

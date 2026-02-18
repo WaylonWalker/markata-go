@@ -2017,6 +2017,9 @@ type EmbedsConfig struct {
 	// OEmbedProviders configures provider-specific overrides (default: empty)
 	OEmbedProviders map[string]OEmbedProviderConfig `json:"providers" yaml:"providers" toml:"providers"`
 
+	// OEmbedAutoDiscover enables auto-discovery via HTML link tags (default: false)
+	OEmbedAutoDiscover bool `json:"oembed_auto_discover" yaml:"oembed_auto_discover" toml:"oembed_auto_discover"`
+
 	// CacheDir is the directory for caching external embed metadata (default: ".cache/embeds")
 	CacheDir string `json:"cache_dir" yaml:"cache_dir" toml:"cache_dir"`
 
@@ -2053,6 +2056,7 @@ func NewEmbedsConfig() EmbedsConfig {
 		OEmbedEnabled:      true,
 		ResolutionStrategy: "oembed_first",
 		OEmbedProviders:    map[string]OEmbedProviderConfig{},
+		OEmbedAutoDiscover: false,
 		CacheDir:           ".cache/embeds",
 		Timeout:            10,
 		CacheTTL:           7 * 24 * 60 * 60,
