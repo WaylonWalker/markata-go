@@ -83,7 +83,11 @@
     {{ body | safe }}
   </div>
 
+  {% include "components/post_graph.html" %}
+
+  {% if config.components.share.enabled %}
   {% include "components/share.html" %}
+  {% endif %}
 
   {% if post.tags %}
   <footer class="post-footer">

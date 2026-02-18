@@ -29,12 +29,15 @@ This creates a preview card showing the embedded post's title, description, and 
 
 ### External URL Embeds
 
-Embed external URLs using `![embed](url)`:
+Embed external URLs using either `![embed](url)` or Obsidian-style `![[https://url]]`:
 
 ```markdown
 Here's a great resource:
 
 ![embed](https://example.com/article)
+
+![[https://example.com/article]]
+![[https://example.com/article|Custom Title]]
 ```
 
 This fetches metadata and displays a card with the title, description, and image.
@@ -87,9 +90,11 @@ This helps you spot broken embeds without breaking your build.
 
 ```markdown
 ![embed](https://example.com/article)
+![[https://example.com/article]]
+![[https://example.com/article|Custom Title]]
 ```
 
-> **Note:** The alt text must be exactly `embed`. Regular images are not affected.
+> **Note:** The alt text must be exactly `embed`. Regular images are not affected. The Obsidian-style form is only recognized for full URLs (`http`/`https`).
 
 ### Open Graph Metadata
 

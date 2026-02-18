@@ -211,6 +211,10 @@ var internalEmbedRegex = regexp.MustCompile(`!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 // The alt text must be exactly "embed" to trigger embedding.
 var externalEmbedRegex = regexp.MustCompile(`!\[embed\]\(([^)]+)\)`)
 
+// externalObsidianEmbedRegex matches Obsidian-style external embeds like ![[https://example.com]]
+// with optional display text: ![[https://example.com|Title]].
+var externalObsidianEmbedRegex = regexp.MustCompile(`!\[\[(https?://[^\]|]+)(?:\|([^\]]+))?\]\]`)
+
 // embedsCodeBlockRegex matches fenced code blocks to avoid transforming content inside them.
 var embedsCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
 
@@ -366,6 +370,9 @@ func (p *EmbedsPlugin) processInternalEmbedsInText(text string, idx *lifecycle.P
 		}
 
 		slug := strings.TrimSpace(groups[1])
+		if isExternalEmbedURL(slug) {
+			return match
+		}
 		displayText := ""
 		if len(groups) >= 3 && groups[2] != "" {
 			displayText = strings.TrimSpace(groups[2])
@@ -494,7 +501,7 @@ func (p *EmbedsPlugin) processExternalEmbeds(content string, currentPost *models
 
 // processExternalEmbedsInText processes external embeds in a text segment.
 func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) string {
-	return externalEmbedRegex.ReplaceAllStringFunc(text, func(match string) string {
+	processed := externalEmbedRegex.ReplaceAllStringFunc(text, func(match string) string {
 		groups := externalEmbedRegex.FindStringSubmatch(match)
 		if len(groups) < 2 {
 			return match
@@ -509,6 +516,28 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 		}
 
 		metadata := p.fetchExternalMetadata(rawURL)
+		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata)
+	})
+
+	return externalObsidianEmbedRegex.ReplaceAllStringFunc(processed, func(match string) string {
+		groups := externalObsidianEmbedRegex.FindStringSubmatch(match)
+		if len(groups) < 2 {
+			return match
+		}
+
+		rawURL := strings.TrimSpace(groups[1])
+		override := ""
+		if len(groups) >= 3 && groups[2] != "" {
+			override = strings.TrimSpace(groups[2])
+		}
+
+		parsedURL, err := url.Parse(rawURL)
+		if err != nil || (parsedURL.Scheme != schemeHTTP && parsedURL.Scheme != schemeHTTPS) {
+			return match
+		}
+
+		metadata := p.fetchExternalMetadata(rawURL)
+		metadata = p.applyExternalTitleOverride(metadata, override)
 
 		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata)
 	})
@@ -879,6 +908,26 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 	sb.WriteString("\n")
 
 	return sb.String()
+}
+
+func (p *EmbedsPlugin) applyExternalTitleOverride(metadata *OGMetadata, override string) *OGMetadata {
+	if override == "" || metadata == nil {
+		return metadata
+	}
+
+	cloned := *metadata
+	cloned.Title = override
+
+	return &cloned
+}
+
+func isExternalEmbedURL(value string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(value))
+	if err != nil {
+		return false
+	}
+
+	return parsed.Scheme == schemeHTTP || parsed.Scheme == schemeHTTPS
 }
 
 // SetConfig sets the plugin configuration directly.

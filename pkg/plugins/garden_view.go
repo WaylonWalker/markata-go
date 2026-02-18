@@ -91,8 +91,20 @@ type TagCluster struct {
 	// Href is the URL to the tag page
 	Href string
 
-	// Related is the list of related tag names (by co-occurrence)
-	Related []string
+	// Related is the list of related tags (by co-occurrence)
+	Related []TagRelation
+}
+
+// TagRelation represents a related tag with co-occurrence weight.
+type TagRelation struct {
+	// Name is the related tag name
+	Name string
+
+	// Count is the number of posts shared with the tag
+	Count int
+
+	// Href is the URL to the related tag page
+	Href string
 }
 
 // GardenViewPlugin generates a knowledge graph JSON file and optional garden page.
@@ -513,14 +525,16 @@ func (p *GardenViewPlugin) renderGardenPage(config *lifecycle.Config, gardenConf
 func (p *GardenViewPlugin) buildTagClusters(graph *GardenGraph) []TagCluster {
 	// Build tag info map
 	tagInfo := make(map[string]*TagCluster)
+	tagHref := make(map[string]string)
 	for i := range graph.Nodes {
 		if graph.Nodes[i].Type == gardenNodeTypeTag {
 			tagInfo[graph.Nodes[i].ID] = &TagCluster{
 				Name:    graph.Nodes[i].Label,
 				Count:   graph.Nodes[i].Count,
 				Href:    graph.Nodes[i].Href,
-				Related: []string{},
+				Related: []TagRelation{},
 			}
+			tagHref[graph.Nodes[i].ID] = graph.Nodes[i].Href
 		}
 	}
 
@@ -530,18 +544,31 @@ func (p *GardenViewPlugin) buildTagClusters(graph *GardenGraph) []TagCluster {
 			if cluster, ok := tagInfo[graph.Edges[i].Source]; ok {
 				// Extract tag name from ID (format: "tag:name")
 				targetTag := strings.TrimPrefix(graph.Edges[i].Target, "tag:")
-				cluster.Related = append(cluster.Related, targetTag)
+				cluster.Related = append(cluster.Related, TagRelation{
+					Name:  targetTag,
+					Count: graph.Edges[i].Weight,
+					Href:  tagHref[graph.Edges[i].Target],
+				})
 			}
 			if cluster, ok := tagInfo[graph.Edges[i].Target]; ok {
 				sourceTag := strings.TrimPrefix(graph.Edges[i].Source, "tag:")
-				cluster.Related = append(cluster.Related, sourceTag)
+				cluster.Related = append(cluster.Related, TagRelation{
+					Name:  sourceTag,
+					Count: graph.Edges[i].Weight,
+					Href:  tagHref[graph.Edges[i].Source],
+				})
 			}
 		}
 	}
 
-	// Sort related tags alphabetically within each cluster
+	// Sort related tags by weight (desc), then name (asc)
 	for _, cluster := range tagInfo {
-		sort.Strings(cluster.Related)
+		sort.Slice(cluster.Related, func(i, j int) bool {
+			if cluster.Related[i].Count != cluster.Related[j].Count {
+				return cluster.Related[i].Count > cluster.Related[j].Count
+			}
+			return cluster.Related[i].Name < cluster.Related[j].Name
+		})
 	}
 
 	// Convert to sorted slice

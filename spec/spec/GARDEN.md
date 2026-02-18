@@ -17,7 +17,7 @@ The garden view plugin provides a digital garden / knowledge graph experience fo
 │  Phase 2: Render garden/index.html                                   │
 │  ┌───────────────────────────────────────────────────────────────┐   │
 │  │  Interactive page from garden.html template                    │   │
-│  │  Tag clusters with related tags                                │   │
+│  │  Tag clusters with weighted related tags                       │   │
 │  │  Related posts per post                                        │   │
 │  └───────────────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────────┘
@@ -131,7 +131,7 @@ The `graph.json` file must be deterministic (same input produces same output). N
 
 ## Template
 
-The garden page uses the `garden.html` template with the following context variables:
+The garden page uses the `garden.html` template with the following context variables. The default template renders a graph preview from `graph_json` and tag clusters from `tag_clusters`.
 
 | Variable      | Type       | Description                        |
 |---------------|------------|------------------------------------|
@@ -143,14 +143,28 @@ The garden page uses the `garden.html` template with the following context varia
 | `total_tags`  | int        | Number of tags in the graph        |
 | `total_edges` | int        | Number of edges in the graph       |
 
+### Post Graph Component
+
+The post template can include a compact graph preview for the current post, using `graph_json` for data and `post.href` to scope the graph client-side. The component renders a reduced node count and smaller canvas to surface direct connections without requiring the full garden page.
+
+The preview filters down to the current post plus its directly connected tags and posts. If the post is not present in the graph or has no connections, the preview should not render.
+
 ### TagCluster
 
-| Field        | Type     | Description                       |
-|--------------|----------|-----------------------------------|
-| `name`       | string   | Tag name                          |
-| `count`      | int      | Number of posts with this tag     |
-| `href`       | string   | URL to the tag page               |
-| `related`    | []string | Names of co-occurring tags        |
+| Field        | Type           | Description                             |
+|--------------|----------------|-----------------------------------------|
+| `name`       | string         | Tag name                                |
+| `count`      | int            | Number of posts with this tag           |
+| `href`       | string         | URL to the tag page                     |
+| `related`    | []TagRelation  | Related tags with co-occurrence weights |
+
+### TagRelation
+
+| Field     | Type   | Description                                |
+|-----------|--------|--------------------------------------------|
+| `name`    | string | Related tag name                            |
+| `count`   | int    | Number of shared posts (edge weight)       |
+| `href`    | string | URL to the related tag page                |
 
 ## Dependencies
 

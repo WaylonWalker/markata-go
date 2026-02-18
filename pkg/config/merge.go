@@ -637,6 +637,34 @@ func mergeComponentsConfig(base, override models.ComponentsConfig) models.Compon
 		}
 	}
 
+	// Merge Share component
+	if override.Share.Enabled != nil {
+		result.Share.Enabled = override.Share.Enabled
+	}
+	if override.Share.Position != "" {
+		result.Share.Position = override.Share.Position
+	}
+	if override.Share.Title != "" {
+		result.Share.Title = override.Share.Title
+	}
+	if len(override.Share.Platforms) > 0 {
+		result.Share.Platforms = override.Share.Platforms
+	}
+	if override.Share.Platforms != nil && len(override.Share.Platforms) == 0 {
+		result.Share.Platforms = nil
+	}
+	if len(override.Share.Custom) > 0 {
+		if result.Share.Custom == nil {
+			result.Share.Custom = make(map[string]models.SharePlatformConfig)
+		}
+		for k, v := range override.Share.Custom {
+			result.Share.Custom[k] = v
+		}
+	}
+	if override.Share.Custom != nil && len(override.Share.Custom) == 0 {
+		result.Share.Custom = nil
+	}
+
 	return result
 }
 

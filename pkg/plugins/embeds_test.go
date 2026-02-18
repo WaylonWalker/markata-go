@@ -312,6 +312,97 @@ func TestEmbedsPlugin_ExternalEmbed(t *testing.T) {
 	}
 }
 
+func TestEmbedsPlugin_ExternalEmbed_ObsidianStyle(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		//nolint:errcheck // test helper
+		w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+	<title>Test Page</title>
+	<meta property="og:title" content="OG Test Title">
+	<meta property="og:description" content="OG Test Description">
+	<meta property="og:image" content="https://example.com/image.jpg">
+	<meta property="og:site_name" content="Test Site">
+</head>
+<body></body>
+</html>`))
+	}))
+	defer server.Close()
+
+	p := NewEmbedsPlugin()
+	// Use temp cache dir
+	tmpDir := t.TempDir()
+	p.config.CacheDir = filepath.Join(tmpDir, "cache")
+
+	m := lifecycle.NewManager()
+
+	sourcePost := &models.Post{
+		Path:    "source.md",
+		Slug:    "source-post",
+		Content: "Here is an external embed: ![[" + server.URL + "]]",
+	}
+
+	m.SetPosts([]*models.Post{sourcePost})
+
+	if err := p.Transform(m); err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	posts := m.Posts()
+	result := posts[0]
+
+	if !containsString(result.Content, `class="embed-card embed-card-external"`) {
+		t.Errorf("expected external embed card class, got: %s", result.Content)
+	}
+
+	if !containsString(result.Content, "OG Test Title") {
+		t.Errorf("expected OG title in content")
+	}
+}
+
+func TestEmbedsPlugin_ExternalEmbed_ObsidianStyle_WithTitle(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		//nolint:errcheck // test helper
+		w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+	<title>Test Page</title>
+	<meta property="og:title" content="OG Test Title">
+</head>
+<body></body>
+</html>`))
+	}))
+	defer server.Close()
+
+	p := NewEmbedsPlugin()
+	// Use temp cache dir
+	tmpDir := t.TempDir()
+	p.config.CacheDir = filepath.Join(tmpDir, "cache")
+
+	m := lifecycle.NewManager()
+
+	sourcePost := &models.Post{
+		Path:    "source.md",
+		Slug:    "source-post",
+		Content: "Here is an external embed: ![[" + server.URL + "|Custom Title]]",
+	}
+
+	m.SetPosts([]*models.Post{sourcePost})
+
+	if err := p.Transform(m); err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	posts := m.Posts()
+	result := posts[0]
+
+	if !containsString(result.Content, "Custom Title") {
+		t.Errorf("expected custom title in content")
+	}
+}
+
 func TestEmbedsPlugin_ExternalEmbed_Caching(t *testing.T) {
 	callCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

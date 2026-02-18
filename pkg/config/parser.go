@@ -797,6 +797,7 @@ type tomlComponentsConfig struct {
 	DocSidebar  tomlDocSidebarConfig      `toml:"doc_sidebar"`
 	FeedSidebar tomlFeedSidebarConfig     `toml:"feed_sidebar"`
 	CardRouter  tomlCardRouterConfig      `toml:"card_router"`
+	Share       tomlShareComponentConfig  `toml:"share"`
 }
 
 type tomlNavComponentConfig struct {
@@ -831,6 +832,20 @@ type tomlFeedSidebarConfig struct {
 
 type tomlCardRouterConfig struct {
 	Mappings map[string]string `toml:"mappings"`
+}
+
+type tomlShareComponentConfig struct {
+	Enabled   *bool                             `toml:"enabled"`
+	Platforms []string                          `toml:"platforms"`
+	Position  string                            `toml:"position"`
+	Title     string                            `toml:"title"`
+	Custom    map[string]tomlSharePlatformEntry `toml:"custom"`
+}
+
+type tomlSharePlatformEntry struct {
+	Name string `toml:"name"`
+	Icon string `toml:"icon"`
+	URL  string `toml:"url"`
 }
 
 // Layout-related TOML structs
@@ -1333,6 +1348,56 @@ func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 		CardRouter: models.CardRouterConfig{
 			Mappings: c.CardRouter.Mappings,
 		},
+		Share: models.ShareComponentConfig{
+			Enabled:   c.Share.Enabled,
+			Platforms: append([]string{}, c.Share.Platforms...),
+			Position:  c.Share.Position,
+			Title:     c.Share.Title,
+			Custom:    map[string]models.SharePlatformConfig{},
+		},
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	for key, custom := range c.Share.Custom {
+		config.Share.Custom[key] = models.SharePlatformConfig{
+			Name: custom.Name,
+			Icon: custom.Icon,
+			URL:  custom.URL,
+		}
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
 	}
 
 	// Convert nav items
@@ -2203,6 +2268,7 @@ type yamlComponentsConfig struct {
 	DocSidebar  yamlDocSidebarConfig      `yaml:"doc_sidebar"`
 	FeedSidebar yamlFeedSidebarConfig     `yaml:"feed_sidebar"`
 	CardRouter  yamlCardRouterConfig      `yaml:"card_router"`
+	Share       yamlShareComponentConfig  `yaml:"share"`
 }
 
 type yamlNavComponentConfig struct {
@@ -2237,6 +2303,20 @@ type yamlFeedSidebarConfig struct {
 
 type yamlCardRouterConfig struct {
 	Mappings map[string]string `yaml:"mappings"`
+}
+
+type yamlShareComponentConfig struct {
+	Enabled   *bool                            `yaml:"enabled"`
+	Platforms []string                         `yaml:"platforms"`
+	Position  string                           `yaml:"position"`
+	Title     string                           `yaml:"title"`
+	Custom    map[string]yamlSharePlatformItem `yaml:"custom"`
+}
+
+type yamlSharePlatformItem struct {
+	Name string `yaml:"name"`
+	Icon string `yaml:"icon"`
+	URL  string `yaml:"url"`
 }
 
 // Layout-related YAML structs
@@ -2631,6 +2711,28 @@ func (c *yamlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			MinDepth: c.DocSidebar.MinDepth,
 			MaxDepth: c.DocSidebar.MaxDepth,
 		},
+		Share: models.ShareComponentConfig{
+			Enabled:   c.Share.Enabled,
+			Platforms: append([]string{}, c.Share.Platforms...),
+			Position:  c.Share.Position,
+			Title:     c.Share.Title,
+			Custom:    map[string]models.SharePlatformConfig{},
+		},
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	for key, custom := range c.Share.Custom {
+		config.Share.Custom[key] = models.SharePlatformConfig{
+			Name: custom.Name,
+			Icon: custom.Icon,
+			URL:  custom.URL,
+		}
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
 	}
 
 	// Convert nav items
@@ -3439,6 +3541,7 @@ type jsonComponentsConfig struct {
 	DocSidebar  jsonDocSidebarConfig      `json:"doc_sidebar"`
 	FeedSidebar jsonFeedSidebarConfig     `json:"feed_sidebar"`
 	CardRouter  jsonCardRouterConfig      `json:"card_router"`
+	Share       jsonShareComponentConfig  `json:"share"`
 }
 
 type jsonNavComponentConfig struct {
@@ -3473,6 +3576,20 @@ type jsonFeedSidebarConfig struct {
 
 type jsonCardRouterConfig struct {
 	Mappings map[string]string `json:"mappings"`
+}
+
+type jsonShareComponentConfig struct {
+	Enabled   *bool                            `json:"enabled"`
+	Platforms []string                         `json:"platforms"`
+	Position  string                           `json:"position"`
+	Title     string                           `json:"title"`
+	Custom    map[string]jsonSharePlatformItem `json:"custom"`
+}
+
+type jsonSharePlatformItem struct {
+	Name string `json:"name"`
+	Icon string `json:"icon"`
+	URL  string `json:"url"`
 }
 
 // Layout-related JSON structs
@@ -3867,6 +3984,28 @@ func (c *jsonComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			MinDepth: c.DocSidebar.MinDepth,
 			MaxDepth: c.DocSidebar.MaxDepth,
 		},
+		Share: models.ShareComponentConfig{
+			Enabled:   c.Share.Enabled,
+			Platforms: append([]string{}, c.Share.Platforms...),
+			Position:  c.Share.Position,
+			Title:     c.Share.Title,
+			Custom:    map[string]models.SharePlatformConfig{},
+		},
+	}
+
+	if len(c.Share.Platforms) == 0 {
+		config.Share.Platforms = nil
+	}
+
+	for key, custom := range c.Share.Custom {
+		config.Share.Custom[key] = models.SharePlatformConfig{
+			Name: custom.Name,
+			Icon: custom.Icon,
+			URL:  custom.URL,
+		}
+	}
+	if len(c.Share.Custom) == 0 {
+		config.Share.Custom = nil
 	}
 
 	// Convert nav items

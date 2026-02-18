@@ -601,8 +601,11 @@ func TestGardenViewPlugin_BuildTagClusters(t *testing.T) {
 	}
 
 	// "go" should have "tutorial" as related
-	if len(clusters[0].Related) != 1 || clusters[0].Related[0] != "tutorial" {
+	if len(clusters[0].Related) != 1 || clusters[0].Related[0].Name != "tutorial" {
 		t.Errorf("clusters[0].Related = %v, want [tutorial]", clusters[0].Related)
+	}
+	if clusters[0].Related[0].Count != 2 {
+		t.Errorf("clusters[0].Related[0].Count = %d, want %d", clusters[0].Related[0].Count, 2)
 	}
 
 	// "tutorial" should have both "go" and "python" as related
@@ -618,6 +621,9 @@ func TestGardenViewPlugin_BuildTagClusters(t *testing.T) {
 	}
 	if len(tutorialCluster.Related) != 2 {
 		t.Errorf("tutorial.Related = %v, want 2 related tags", tutorialCluster.Related)
+	}
+	if tutorialCluster.Related[0].Count < tutorialCluster.Related[1].Count {
+		t.Errorf("tutorial.Related not sorted by count desc: %v", tutorialCluster.Related)
 	}
 }
 
