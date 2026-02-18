@@ -11,6 +11,15 @@ output_dir = "public"
 url = "https://example.com"
 title = "Test Site"
 
+[markata-go.components.share]
+enabled = false
+title = "Share this"
+position = "bottom"
+platforms = ["twitter", "copy"]
+
+[markata-go.components.share.custom]
+mastodon = { name = "Mastodon", icon = "mastodon.svg", url = "https://mastodon.social/share?text={{title}}&url={{url}}" }
+
 [markata-go.glob]
 patterns = ["**/*.md"]
 use_gitignore = true
@@ -34,6 +43,21 @@ filter = "published == True"
 	}
 	if len(config.Feeds) != 1 {
 		t.Errorf("len(Feeds) = %d, want 1", len(config.Feeds))
+	}
+	if config.Components.Share.Enabled == nil || *config.Components.Share.Enabled != false {
+		t.Errorf("Components.Share.Enabled = %v, want false", config.Components.Share.Enabled)
+	}
+	if config.Components.Share.Title != "Share this" {
+		t.Errorf("Components.Share.Title = %q, want %q", config.Components.Share.Title, "Share this")
+	}
+	if config.Components.Share.Position != "bottom" {
+		t.Errorf("Components.Share.Position = %q, want %q", config.Components.Share.Position, "bottom")
+	}
+	if len(config.Components.Share.Platforms) != 2 || config.Components.Share.Platforms[0] != "twitter" || config.Components.Share.Platforms[1] != "copy" {
+		t.Errorf("Components.Share.Platforms = %v, want [twitter copy]", config.Components.Share.Platforms)
+	}
+	if config.Components.Share.Custom["mastodon"].Name != "Mastodon" {
+		t.Errorf("Components.Share.Custom[mastodon].Name = %q, want %q", config.Components.Share.Custom["mastodon"].Name, "Mastodon")
 	}
 }
 
@@ -122,6 +146,19 @@ markata-go:
   output_dir: public
   url: https://example.com
   title: Test Site
+  components:
+    share:
+      enabled: false
+      title: Share this
+      position: bottom
+      platforms:
+        - twitter
+        - copy
+      custom:
+        mastodon:
+          name: Mastodon
+          icon: mastodon.svg
+          url: "https://mastodon.social/share?text={{title}}&url={{url}}"
   glob:
     patterns:
       - "**/*.md"
@@ -145,6 +182,21 @@ markata-go:
 	}
 	if len(config.Feeds) != 1 {
 		t.Errorf("len(Feeds) = %d, want 1", len(config.Feeds))
+	}
+	if config.Components.Share.Enabled == nil || *config.Components.Share.Enabled != false {
+		t.Errorf("Components.Share.Enabled = %v, want false", config.Components.Share.Enabled)
+	}
+	if config.Components.Share.Title != "Share this" {
+		t.Errorf("Components.Share.Title = %q, want %q", config.Components.Share.Title, "Share this")
+	}
+	if config.Components.Share.Position != "bottom" {
+		t.Errorf("Components.Share.Position = %q, want %q", config.Components.Share.Position, "bottom")
+	}
+	if len(config.Components.Share.Platforms) != 2 || config.Components.Share.Platforms[0] != "twitter" || config.Components.Share.Platforms[1] != "copy" {
+		t.Errorf("Components.Share.Platforms = %v, want [twitter copy]", config.Components.Share.Platforms)
+	}
+	if config.Components.Share.Custom["mastodon"].Icon != "mastodon.svg" {
+		t.Errorf("Components.Share.Custom[mastodon].Icon = %q, want %q", config.Components.Share.Custom["mastodon"].Icon, "mastodon.svg")
 	}
 }
 
@@ -183,6 +235,21 @@ func TestParseJSON(t *testing.T) {
     "output_dir": "public",
     "url": "https://example.com",
     "title": "Test Site",
+    "components": {
+      "share": {
+        "enabled": false,
+        "title": "Share this",
+        "position": "bottom",
+        "platforms": ["twitter", "copy"],
+        "custom": {
+          "mastodon": {
+            "name": "Mastodon",
+            "icon": "mastodon.svg",
+            "url": "https://mastodon.social/share?text={{title}}&url={{url}}"
+          }
+        }
+      }
+    },
     "glob": {
       "patterns": ["**/*.md"],
       "use_gitignore": true
@@ -210,6 +277,21 @@ func TestParseJSON(t *testing.T) {
 	}
 	if len(config.Feeds) != 1 {
 		t.Errorf("len(Feeds) = %d, want 1", len(config.Feeds))
+	}
+	if config.Components.Share.Enabled == nil || *config.Components.Share.Enabled != false {
+		t.Errorf("Components.Share.Enabled = %v, want false", config.Components.Share.Enabled)
+	}
+	if config.Components.Share.Title != "Share this" {
+		t.Errorf("Components.Share.Title = %q, want %q", config.Components.Share.Title, "Share this")
+	}
+	if config.Components.Share.Position != "bottom" {
+		t.Errorf("Components.Share.Position = %q, want %q", config.Components.Share.Position, "bottom")
+	}
+	if len(config.Components.Share.Platforms) != 2 || config.Components.Share.Platforms[0] != "twitter" || config.Components.Share.Platforms[1] != "copy" {
+		t.Errorf("Components.Share.Platforms = %v, want [twitter copy]", config.Components.Share.Platforms)
+	}
+	if config.Components.Share.Custom["mastodon"].URL == "" {
+		t.Error("Components.Share.Custom[mastodon].URL should be set")
 	}
 }
 
