@@ -423,11 +423,16 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	ctx := templates.NewContext(post, post.ArticleHTML, modelsConfig)
 	ctx = ctx.WithCore(m)
 	ctx.Set("private_paths", privatePaths)
+	if modelsConfig.Garden.IsExportJSON() {
+		ctx.Set("graph_json", "/"+modelsConfig.Garden.GetPath()+"/graph.json")
+	}
 
 	// Share buttons at the end of posts
-	shareButtons := models.BuildShareButtons(modelsConfig.Components.Share, modelsConfig.URL, modelsConfig.Title, post)
-	if len(shareButtons) > 0 {
-		ctx.Set("share_buttons", shareButtons)
+	if modelsConfig.Components.Share.IsEnabled() {
+		shareButtons := models.BuildShareButtons(modelsConfig.Components.Share, modelsConfig.URL, modelsConfig.Title, post)
+		if len(shareButtons) > 0 {
+			ctx.Set("share_buttons", shareButtons)
+		}
 	}
 
 	// Inject feed sidebar posts if configured

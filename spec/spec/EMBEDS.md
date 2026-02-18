@@ -7,7 +7,7 @@ The embeds plugin enables rich embedding of both internal posts and external URL
 The embeds plugin processes two types of embed syntax:
 
 1. **Internal embeds** (`![[slug]]`) - Embed another post from the same site as a preview card
-2. **External embeds** (`![embed](url)`) - Embed external URLs with rich metadata (oEmbed + Open Graph)
+2. **External embeds** (`![embed](url)` or `![[https://url]]`) - Embed external URLs with rich metadata (oEmbed + Open Graph)
 
 ## Syntax
 
@@ -22,6 +22,8 @@ The embeds plugin processes two types of embed syntax:
 
 ```markdown
 ![embed](https://example.com/article)  # External embed with OG metadata
+![[https://example.com/article]]       # Obsidian-style external embed
+![[https://example.com/article|Title]] # Obsidian-style with custom title
 ```
 
 Note: The alt text must be exactly `embed` to trigger external embedding. Regular images with other alt text are not affected.
@@ -183,6 +185,7 @@ The embeds plugin runs in the **Transform** stage with `PriorityEarly` (-100), e
 | Internal embed not found | Warning comment + original syntax preserved |
 | Self-reference | Warning comment + original syntax preserved |
 | External URL invalid | Original syntax preserved |
+| Obsidian external URL invalid | Original syntax preserved |
 | External fetch fails | Uses fallback title, no image |
 | oEmbed provider disabled | Treat as matched, fall back if allowed |
 | External timeout | Uses fallback title, no image |

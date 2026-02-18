@@ -19,16 +19,95 @@
     </div>
   </header>
 
+  {% if graph_json %}
+  <section class="garden-graph" data-graph="{{ graph_json }}">
+    <div class="garden-graph-header">
+      <div>
+        <h2>Graph Preview</h2>
+        <p class="garden-graph-description">Explore tag relationships at a glance. Click a node to open its tag page.</p>
+      </div>
+      <div class="garden-graph-controls">
+        <label class="garden-graph-control">
+          <span>Nodes</span>
+          <input type="range" class="garden-graph-limit" min="20" max="200" step="10" value="100" />
+          <span class="garden-graph-limit-value">100</span>
+        </label>
+        <button class="garden-graph-btn garden-graph-advanced-toggle" type="button" aria-expanded="false">Advanced</button>
+        <div class="garden-graph-advanced" hidden>
+          <label class="garden-graph-control">
+            <span>Spacing</span>
+            <input type="range" class="garden-graph-spacing" min="120" max="400" step="10" value="400" />
+            <span class="garden-graph-spacing-value">400</span>
+          </label>
+          <label class="garden-graph-control">
+            <span>Repulsion</span>
+            <input type="range" class="garden-graph-charge" min="80" max="600" step="20" value="280" />
+            <span class="garden-graph-charge-value">280</span>
+          </label>
+          <label class="garden-graph-control">
+            <span>Tag size</span>
+            <input type="range" class="garden-graph-tag-size" min="0.5" max="1.2" step="0.1" value="0.6" />
+            <span class="garden-graph-tag-size-value">0.6</span>
+          </label>
+          <label class="garden-graph-control">
+            <span>Tag lines</span>
+            <input type="range" class="garden-graph-tag-lines" min="0" max="0.6" step="0.05" value="0.6" />
+            <span class="garden-graph-tag-lines-value">0.60</span>
+          </label>
+        </div>
+        <label class="garden-toggle">
+          <input type="checkbox" class="garden-graph-animate" checked />
+          <span>Animate</span>
+        </label>
+        <label class="garden-toggle">
+          <input type="checkbox" class="garden-graph-labels" />
+          <span>Labels</span>
+        </label>
+        <label class="garden-toggle">
+          <input type="checkbox" class="garden-graph-tags" checked />
+          <span>Tags</span>
+        </label>
+        <label class="garden-toggle">
+          <input type="checkbox" class="garden-graph-posts" checked />
+          <span>Posts</span>
+        </label>
+        <button class="garden-graph-btn garden-graph-reset" type="button">Reset</button>
+        <button class="garden-graph-btn garden-graph-fullscreen" type="button" aria-pressed="false" hidden>Full screen</button>
+      </div>
+    </div>
+    <div class="garden-graph-canvas">
+      <canvas class="garden-graph-canvas-el" aria-label="Garden graph preview"></canvas>
+      <div class="garden-graph-tooltip" aria-live="polite"></div>
+    </div>
+    <div class="garden-graph-meta">Showing top tags by usage and strongest connections.</div>
+    <div class="garden-graph-legend">
+      <span class="garden-legend-tag">Tag</span>
+      <span class="garden-legend-post">Post</span>
+    </div>
+  </section>
+  {% endif %}
+
   {% if tag_clusters %}
   <section class="garden-clusters">
     <h2>Tag Clusters</h2>
     <div class="garden-controls">
-      <button class="sort-btn" type="button" data-sort="alpha" aria-pressed="false">A&#8211;Z</button>
-      <button class="sort-btn" type="button" data-sort="count" aria-pressed="false">By Count</button>
+      <label class="garden-search" aria-label="Search tags">
+        <span class="garden-search-label">Search</span>
+        <input type="search" id="garden-search" placeholder="Filter tags or related" autocomplete="off" />
+      </label>
+      <div class="garden-toggles" role="group" aria-label="Cluster controls">
+        <button class="sort-btn" type="button" data-sort="alpha" aria-pressed="false">A&#8211;Z</button>
+        <button class="sort-btn" type="button" data-sort="count" aria-pressed="false">By Count</button>
+        <button class="sort-btn" type="button" data-sort="related" aria-pressed="false">By Related</button>
+        <label class="garden-toggle">
+          <input type="checkbox" id="garden-focus" />
+          <span>Focus tag</span>
+        </label>
+      </div>
     </div>
     <div class="garden-cluster-grid" id="garden-clusters">
       {% for cluster in tag_clusters %}
-      <a href="{{ cluster.Href }}" class="garden-cluster" data-count="{{ cluster.Count }}" data-name="{{ cluster.Name }}">
+      <a href="{{ cluster.Href }}" class="garden-cluster" data-count="{{ cluster.Count }}" data-related-count="{{ cluster.Related | length }}" data-name="{{ cluster.Name }}" data-related="{% for related in cluster.Related %}{{ related.Name | lower }} {% endfor %}">
         <span class="garden-cluster-name">
           {{ cluster.Name }}
           <span class="garden-cluster-count">({{ cluster.Count }})</span>
@@ -36,7 +115,10 @@
         {% if cluster.Related %}
         <span class="garden-cluster-related">
           {% for related in cluster.Related %}
-          <span class="garden-related-tag">{{ related }}</span>
+          <a class="garden-related-tag" href="{{ related.Href }}" data-name="{{ related.Name }}" data-count="{{ related.Count }}">
+            <span class="garden-related-name">{{ related.Name }}</span>
+            <span class="garden-related-count">{{ related.Count }}</span>
+          </a>
           {% endfor %}
         </span>
         {% endif %}
@@ -59,9 +141,19 @@
 
 <style>
 .garden {
-  max-width: var(--content-width, 65ch);
+  --garden-accent: var(--color-primary, #ffcd11);
+  --garden-surface: var(--color-surface, #222);
+  --garden-background: var(--color-background, #1a1a1a);
+  --garden-text: var(--color-text, #e0e0e0);
+  --garden-muted: var(--color-text-muted, #999);
+  --garden-border: var(--color-border, #444);
+  max-width: min(1200px, 92vw);
   margin: 0 auto;
   padding: var(--space-4, 1rem);
+}
+
+.garden {
+  position: relative;
 }
 
 .garden-header {
@@ -74,13 +166,13 @@
 }
 
 .garden-description {
-  color: var(--color-text-muted, #999);
+  color: var(--garden-muted);
   margin-bottom: var(--space-2, 0.5rem);
 }
 
 .garden-stats {
   font-size: var(--text-sm, 0.875rem);
-  color: var(--color-text-muted, #999);
+  color: var(--garden-muted);
 }
 
 .garden-stat-sep {
@@ -91,24 +183,317 @@
   margin-bottom: var(--space-8, 2rem);
 }
 
+.garden-graph {
+  margin: var(--space-6, 1.5rem) calc(var(--content-width, 65ch) * -0.25) var(--space-10, 2.5rem);
+  padding: var(--space-4, 1rem);
+  border: 1px solid var(--garden-border);
+  border-radius: var(--radius-lg, 0.5rem);
+  background: var(--garden-background);
+}
+
+.garden-graph-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4, 1rem);
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4, 1rem);
+}
+
+.garden-graph-header h2 {
+  margin-bottom: var(--space-1, 0.25rem);
+}
+
+.garden-graph-description {
+  color: var(--garden-muted);
+  font-size: var(--text-sm, 0.875rem);
+  max-width: 40ch;
+}
+
+.garden-graph-controls {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.garden-graph-btn {
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--garden-border);
+  background: var(--garden-background);
+  color: var(--garden-text);
+  font-size: var(--text-xs, 0.75rem);
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.garden-graph-btn:hover {
+  border-color: var(--garden-accent);
+  color: var(--garden-accent);
+}
+
+.garden-graph-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--garden-muted);
+  border: 1px solid var(--garden-border);
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  background: var(--garden-background);
+}
+
+.garden-graph-control input[type="range"] {
+  accent-color: var(--garden-accent);
+}
+
+.garden-graph-advanced {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.garden-graph-canvas {
+  position: relative;
+  height: clamp(520px, 75vw, 1020px);
+  width: min(92vw, 1120px);
+  border-radius: 28px;
+  border: 1px solid var(--garden-border);
+  background: var(--garden-background);
+  overflow: hidden;
+}
+
+.garden-graph-canvas::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+
+.garden-graph-canvas canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.garden-graph-tooltip {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.35rem;
+  transform: translate(-50%, -120%);
+  transition: opacity 0.1s ease;
+  white-space: nowrap;
+}
+
+.garden-graph-meta {
+  margin-top: var(--space-3, 0.75rem);
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--garden-muted);
+}
+
+.garden-graph-legend {
+  margin-top: var(--space-2, 0.5rem);
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  flex-wrap: wrap;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--garden-muted);
+}
+
+.garden-legend-tag,
+.garden-legend-post {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--garden-border);
+  background: var(--garden-background);
+}
+
+.garden-legend-tag::before {
+  content: "";
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--garden-accent);
+  display: inline-block;
+}
+
+.garden-legend-post::before {
+  content: "";
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 0.2rem;
+  border: 1px solid var(--garden-accent);
+  display: inline-block;
+}
+
+.garden-graph {
+  margin: var(--space-6, 1.5rem) 0 var(--space-10, 2.5rem);
+  padding: var(--space-4, 1rem);
+  border: 1px solid var(--garden-border);
+  border-radius: var(--radius-lg, 0.5rem);
+  background: linear-gradient(135deg, rgba(34, 34, 34, 0.7), rgba(26, 26, 26, 0.9));
+}
+
+.garden-graph-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4, 1rem);
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4, 1rem);
+}
+
+.garden-graph-header h2 {
+  margin-bottom: var(--space-1, 0.25rem);
+}
+
+.garden-graph-description {
+  color: var(--garden-muted);
+  font-size: var(--text-sm, 0.875rem);
+  max-width: 40ch;
+}
+
+.garden-graph-controls {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.garden-graph-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--garden-muted);
+  border: 1px solid var(--garden-border);
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  background: var(--garden-background);
+}
+
+.garden-graph-control input[type="range"] {
+  accent-color: var(--garden-accent);
+}
+
+.garden-graph-canvas {
+  position: relative;
+  border-radius: var(--radius-lg, 0.5rem);
+  border: 1px solid var(--garden-border);
+  /* background: radial-gradient(circle at top, rgba(255, 205, 17, 0.05), transparent 55%); */
+  overflow: hidden;
+}
+
+.garden-graph-canvas canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.garden-graph-tooltip {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.35rem;
+  transform: translate(-50%, -120%);
+  transition: opacity 0.1s ease;
+  white-space: nowrap;
+}
+
+.garden-graph-meta {
+  margin-top: var(--space-3, 0.75rem);
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--garden-muted);
+}
+
 .garden-clusters h2 {
   text-align: center;
   margin-bottom: var(--space-2, 0.5rem);
 }
 
 .garden-controls {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  gap: var(--space-3, 0.75rem);
+  align-items: center;
+  margin-bottom: var(--space-6, 1.5rem);
+}
+
+.garden-search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+  text-align: left;
+}
+
+.garden-search-label {
+  font-size: var(--text-xs, 0.75rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--garden-muted);
+}
+
+.garden-search input {
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border-radius: var(--radius, 0.375rem);
+  border: 1px solid var(--garden-border);
+  background: var(--garden-background);
+  color: var(--garden-text);
+  font-size: var(--text-sm, 0.875rem);
+}
+
+.garden-search input:focus {
+  outline: 2px solid transparent;
+  border-color: var(--garden-accent);
+  box-shadow: 0 0 0 3px rgba(255, 205, 17, 0.2);
+}
+
+.garden-toggles {
   display: flex;
   gap: var(--space-2, 0.5rem);
-  justify-content: center;
-  margin-bottom: var(--space-6, 1.5rem);
+  justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+.garden-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--garden-muted);
+  border: 1px solid var(--garden-border);
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  background: var(--garden-background);
+}
+
+.garden-toggle input {
+  accent-color: var(--garden-accent);
 }
 
 .sort-btn {
   padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
-  border: 1px solid var(--color-border, #444);
-  background: var(--color-background, #1a1a1a);
-  color: var(--color-text, #e0e0e0);
+  border: 1px solid var(--garden-border);
+  background: var(--garden-background);
+  color: var(--garden-text);
   border-radius: var(--radius, 0.375rem);
   cursor: pointer;
   font-size: var(--text-sm, 0.875rem);
@@ -117,14 +502,14 @@
 }
 
 .sort-btn:hover {
-  border-color: var(--color-primary, #ffcd11);
-  color: var(--color-primary, #ffcd11);
+  border-color: var(--garden-accent);
+  color: var(--garden-accent);
 }
 
 .sort-btn[aria-pressed="true"] {
-  background: var(--color-primary, #ffcd11);
-  border-color: var(--color-primary, #ffcd11);
-  color: var(--color-background, #1a1a1a);
+  background: var(--garden-accent);
+  border-color: var(--garden-accent);
+  color: var(--garden-background);
 }
 
 .sort-btn[aria-pressed="true"]::after {
@@ -143,18 +528,18 @@
 
 .garden-cluster {
   display: block;
-  border: 1px solid var(--color-border, #444);
+  border: 1px solid var(--garden-border);
   border-radius: var(--radius-lg, 0.5rem);
   padding: var(--space-4, 1rem);
   text-decoration: none;
-  color: var(--color-text, #e0e0e0);
-  background: var(--color-background, #1a1a1a);
+  color: var(--garden-text);
+  background: var(--garden-background);
   transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .garden-cluster:hover {
-  border-color: var(--color-primary, #ffcd11);
-  background: var(--color-surface, #222);
+  border-color: var(--garden-accent);
+  background: var(--garden-surface);
   transform: translateY(-2px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
@@ -167,12 +552,12 @@
 }
 
 .garden-cluster:hover .garden-cluster-name {
-  color: var(--color-primary, #ffcd11);
+  color: var(--garden-accent);
 }
 
 .garden-cluster-count {
   font-weight: normal;
-  color: var(--color-text-muted, #999);
+  color: var(--garden-muted);
   font-size: var(--text-sm, 0.875rem);
 }
 
@@ -184,19 +569,34 @@
 
 .garden-related-tag {
   font-size: var(--text-xs, 0.75rem);
-  color: var(--color-text-muted, #999);
-  background: var(--color-surface, #222);
+  color: var(--garden-muted);
+  background: var(--garden-surface);
   padding: 0.125rem var(--space-2, 0.5rem);
   border-radius: 1rem;
+  display: inline-flex;
+  gap: var(--space-1, 0.25rem);
+  text-decoration: none;
+}
+
+.garden-related-tag:hover {
+  color: var(--garden-accent);
+}
+
+.garden-related-count {
+  font-size: 0.65rem;
+  color: var(--garden-muted);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 999px;
+  padding: 0 0.35rem;
 }
 
 .garden-graph-link {
   margin-top: var(--space-8, 2rem);
   padding: var(--space-4, 1rem);
-  border: 1px solid var(--color-border, #444);
+  border: 1px solid var(--garden-border);
   border-radius: var(--radius-lg, 0.5rem);
   text-align: center;
-  color: var(--color-text-muted, #999);
+  color: var(--garden-muted);
   font-size: var(--text-sm, 0.875rem);
 }
 
@@ -214,6 +614,14 @@
     padding: var(--space-3, 0.75rem);
   }
 
+  .garden-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .garden-toggles {
+    justify-content: center;
+  }
+
   .garden-cluster-grid {
     grid-template-columns: 1fr;
   }
@@ -226,6 +634,15 @@
     padding: var(--space-1, 0.25rem);
     font-size: var(--text-xs, 0.75rem);
   }
+
+  .garden-graph {
+    margin: var(--space-6, 1.5rem) 0 var(--space-10, 2.5rem);
+  }
+
+  .garden-graph-canvas {
+    width: 92vw;
+    height: 80vw;
+  }
 }
 </style>
 
@@ -235,8 +652,11 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!grid) return;
 
   var buttons = document.querySelectorAll('.sort-btn');
+  var searchInput = document.getElementById('garden-search');
+  var focusToggle = document.getElementById('garden-focus');
   var currentSort = null;
   var isReversed = false;
+  var focusedTag = null;
 
   buttons.forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -264,6 +684,51 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      filterClusters(this.value);
+    });
+  }
+
+  if (focusToggle) {
+    focusToggle.addEventListener('change', function() {
+      if (!this.checked) {
+        focusedTag = null;
+      }
+      filterClusters(searchInput ? searchInput.value : '');
+    });
+  }
+
+  grid.addEventListener('click', function(event) {
+    var related = event.target.closest('.garden-related-tag');
+    if (!related) return;
+    var name = related.dataset.name;
+    if (!name) return;
+    event.preventDefault();
+    focusedTag = name.toLowerCase();
+    if (searchInput) {
+      searchInput.value = name;
+    }
+    if (focusToggle) {
+      focusToggle.checked = true;
+    }
+    filterClusters(name);
+  });
+
+  grid.addEventListener('click', function(event) {
+    var cluster = event.target.closest('.garden-cluster');
+    if (!cluster) return;
+    if (event.defaultPrevented) return;
+    if (focusToggle && focusToggle.checked) {
+      event.preventDefault();
+      focusedTag = cluster.dataset.name.toLowerCase();
+      if (searchInput) {
+        searchInput.value = cluster.dataset.name;
+      }
+      filterClusters(cluster.dataset.name);
+    }
+  });
+
   function sortClusters(sortType, reverse) {
     var items = Array.from(grid.querySelectorAll('.garden-cluster'));
 
@@ -280,11 +745,576 @@ document.addEventListener('DOMContentLoaded', function() {
         return reverse
           ? aCount - bCount
           : bCount - aCount;
+      } else if (sortType === 'related') {
+        var aRelated = parseInt(a.dataset.relatedCount, 10) || 0;
+        var bRelated = parseInt(b.dataset.relatedCount, 10) || 0;
+        return reverse
+          ? aRelated - bRelated
+          : bRelated - aRelated;
       }
       return 0;
     });
 
     items.forEach(function(item) { grid.appendChild(item); });
+  }
+
+  function filterClusters(query) {
+    var items = Array.from(grid.querySelectorAll('.garden-cluster'));
+    var needle = (query || '').trim().toLowerCase();
+
+    items.forEach(function(item) {
+      var name = item.dataset.name.toLowerCase();
+      var related = item.dataset.related || '';
+      var matchesSearch = !needle || name.indexOf(needle) !== -1 || related.indexOf(needle) !== -1;
+      var matchesFocus = !focusedTag || name === focusedTag || related.indexOf(focusedTag) !== -1;
+      item.style.display = (matchesSearch && matchesFocus) ? '' : 'none';
+    });
+  }
+
+  function loadD3(callback) {
+    if (window.d3) {
+      callback();
+      return;
+    }
+    var script = document.createElement('script');
+    script.src = 'https://d3js.org/d3.v7.min.js';
+    script.onload = callback;
+    document.body.appendChild(script);
+  }
+
+  function initGardenGraphView(graphSection) {
+    var graphUrl = graphSection.dataset.graph;
+    var canvas = graphSection.querySelector('.garden-graph-canvas-el');
+    var canvasWrap = graphSection.querySelector('.garden-graph-canvas');
+    var tooltip = graphSection.querySelector('.garden-graph-tooltip');
+    var limitInput = graphSection.querySelector('.garden-graph-limit');
+    var limitValue = graphSection.querySelector('.garden-graph-limit-value');
+    var spacingInput = graphSection.querySelector('.garden-graph-spacing');
+    var spacingValue = graphSection.querySelector('.garden-graph-spacing-value');
+    var chargeInput = graphSection.querySelector('.garden-graph-charge');
+    var chargeValue = graphSection.querySelector('.garden-graph-charge-value');
+    var tagSizeInput = graphSection.querySelector('.garden-graph-tag-size');
+    var tagSizeValue = graphSection.querySelector('.garden-graph-tag-size-value');
+    var tagLinesInput = graphSection.querySelector('.garden-graph-tag-lines');
+    var tagLinesValue = graphSection.querySelector('.garden-graph-tag-lines-value');
+    var advancedToggle = graphSection.querySelector('.garden-graph-advanced-toggle');
+    var advancedPanel = graphSection.querySelector('.garden-graph-advanced');
+    var animateToggle = graphSection.querySelector('.garden-graph-animate');
+    var labelsToggle = graphSection.querySelector('.garden-graph-labels');
+    var postsToggle = graphSection.querySelector('.garden-graph-posts');
+    var tagsToggle = graphSection.querySelector('.garden-graph-tags');
+    var resetButton = graphSection.querySelector('.garden-graph-reset');
+    var fullscreenButton = graphSection.querySelector('.garden-graph-fullscreen');
+    var ctx = canvas ? canvas.getContext('2d') : null;
+    var graphData = null;
+    var nodes = [];
+    var edges = [];
+    var nodeMap = new Map();
+    var simulation = null;
+    var width = 0;
+    var height = 0;
+    var hoveredNode = null;
+    var rebuildTimer = null;
+    var dragNode = null;
+    var panX = 0;
+    var panY = 0;
+    var zoom = 1;
+    var styles = getComputedStyle(graphSection);
+    var accentColor = styles.getPropertyValue('--garden-accent').trim() || '#ffcd11';
+    var mutedColor = styles.getPropertyValue('--garden-muted').trim() || '#999';
+    var backdrop = null;
+
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if (animateToggle) animateToggle.checked = false;
+    }
+
+    function resizeCanvas() {
+      if (!canvas || !ctx) return;
+      var rect = canvasWrap.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+      var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      canvas.width = Math.max(1, Math.floor(width * dpr));
+      canvas.height = Math.max(1, Math.floor(height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+
+    function buildPreview(limit) {
+      if (!graphData) return;
+      var includePosts = postsToggle && postsToggle.checked;
+      var centerX = width / 2;
+      var centerY = height / 2;
+      var tagRadius = Math.min(width, height) * 0.3;
+      var postRadius = Math.min(width, height) * 0.18;
+
+      function randomInCircle(radius) {
+        var angle = Math.random() * Math.PI * 2;
+        var distance = Math.sqrt(Math.random()) * radius;
+        return {
+          x: centerX + Math.cos(angle) * distance,
+          y: centerY + Math.sin(angle) * distance
+        };
+      }
+      var tagNodes = graphData.nodes.filter(function(node) { return node.type === 'tag'; });
+      tagNodes.sort(function(a, b) { return b.count - a.count; });
+      tagNodes = tagNodes.slice(0, limit);
+      var postNodes = [];
+      if (includePosts) {
+        postNodes = graphData.nodes.filter(function(node) { return node.type === 'post'; });
+        postNodes.sort(function(a, b) {
+          var aDate = Date.parse(a.date || '') || 0;
+          var bDate = Date.parse(b.date || '') || 0;
+          return bDate - aDate;
+        });
+      postNodes = postNodes.slice(0, Math.max(20, Math.round(limit * 0.5)));
+      }
+
+      nodeMap = new Map();
+      nodes = tagNodes.map(function(node) {
+        var position = randomInCircle(tagRadius);
+        var item = {
+          id: node.id,
+          label: node.label,
+          count: node.count,
+          href: node.href,
+          type: 'tag',
+          x: position.x,
+          y: position.y,
+          vx: 0,
+          vy: 0,
+          r: (2 + Math.min(5, Math.sqrt(node.count || 1))) * getTagSize()
+        };
+        nodeMap.set(node.id, item);
+        return item;
+      });
+
+      var filteredNodes = nodes.slice();
+
+      postNodes.forEach(function(node) {
+        var position = randomInCircle(postRadius);
+        var item = {
+          id: node.id,
+          label: node.label,
+          count: 1,
+          href: node.href,
+          type: 'post',
+          x: position.x,
+          y: position.y,
+          vx: 0,
+          vy: 0,
+          r: 3
+        };
+        nodeMap.set(node.id, item);
+        filteredNodes.push(item);
+      });
+
+      nodes = filteredNodes.filter(function(node) {
+        if (node.type === 'tag' && tagsToggle && !tagsToggle.checked) return false;
+        if (node.type === 'post' && postsToggle && !postsToggle.checked) return false;
+        return true;
+      });
+
+      nodeMap = new Map();
+      nodes.forEach(function(node) {
+        nodeMap.set(node.id, node);
+      });
+
+      if (limitInput) {
+        var totalTags = graphData.nodes.filter(function(node) { return node.type === 'tag'; }).length;
+        limitInput.max = String(Math.max(parseInt(limitInput.min, 10), totalTags));
+      }
+
+      applyTagSizing();
+
+      edges = graphData.edges.filter(function(edge) {
+        if (!nodeMap.has(edge.source) || !nodeMap.has(edge.target)) return false;
+        if (edge.type === 'co-occurrence') return true;
+        if (edge.type === 'tag') return includePosts;
+        return false;
+      }).map(function(edge) {
+        return {
+          source: edge.source,
+          target: edge.target,
+          weight: edge.weight || 1,
+          type: edge.type
+        };
+      });
+
+      startSimulation();
+    }
+
+    function startSimulation() {
+      if (!window.d3) return;
+      if (simulation) {
+        simulation.stop();
+      }
+      var spacing = getSpacing();
+      var charge = getCharge();
+      applyTagSizing();
+      simulation = window.d3.forceSimulation(nodes)
+        .force('link', window.d3.forceLink(edges)
+          .id(function(d) { return d.id; })
+          .distance(function(d) { return d.type === 'tag' ? spacing : spacing * 0.8; })
+          .strength(function(d) { return d.type === 'tag' ? 0.2 : 0.35; }))
+        .force('charge', window.d3.forceManyBody().strength(-charge).distanceMax(spacing * 2.4))
+        .force('center', window.d3.forceCenter(width / 2, height / 2))
+        .force('collision', window.d3.forceCollide().radius(function(d) { return d.r + spacing * 0.08; }));
+
+      if (animateToggle && animateToggle.checked) {
+        simulation.on('tick', draw);
+        simulation.alpha(1).restart();
+      } else {
+        simulation.on('tick', null);
+        simulation.alpha(1);
+        for (var i = 0; i < 240; i++) {
+          simulation.tick();
+        }
+        simulation.stop();
+        draw();
+      }
+    }
+
+    function draw() {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, width, height);
+      ctx.save();
+      ctx.translate(panX, panY);
+      ctx.scale(zoom, zoom);
+
+      edges.forEach(function(edge) {
+        if (!shouldRenderEdge(edge)) return;
+        var weight = Math.min(3, Math.max(0.6, edge.weight / 3));
+        if (edge.type === 'co-occurrence') {
+          ctx.lineWidth = getTagLineWeight();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        } else {
+          ctx.lineWidth = weight * 0.8;
+          ctx.strokeStyle = 'rgba(255, 205, 17, ' + (0.06 + edge.weight * 0.015) + ')';
+        }
+        ctx.beginPath();
+        ctx.moveTo(edge.source.x, edge.source.y);
+        ctx.lineTo(edge.target.x, edge.target.y);
+        ctx.stroke();
+      });
+
+      nodes.forEach(function(node) {
+        if (!shouldRenderNode(node)) return;
+        ctx.beginPath();
+        if (node.type === 'post') {
+          ctx.strokeStyle = accentColor;
+          ctx.lineWidth = 1.2;
+          ctx.globalAlpha = 0.75;
+          var size = node.r + 3;
+          ctx.rect(node.x - size / 2, node.y - size / 2, size, size);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = accentColor;
+          ctx.globalAlpha = 0.5;
+          ctx.arc(node.x, node.y, node.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      });
+
+      if (labelsToggle && labelsToggle.checked) {
+        ctx.fillStyle = mutedColor;
+        ctx.font = '11px var(--font-display, "Space Grotesk"), ui-sans-serif, system-ui';
+        nodes.forEach(function(node) {
+          if (!shouldRenderNode(node)) return;
+          ctx.fillText(node.label, node.x + node.r + 4, node.y + 3);
+        });
+      }
+
+      if (hoveredNode) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        if (hoveredNode.type === 'post') {
+          var size = hoveredNode.r + 6;
+          ctx.rect(hoveredNode.x - size / 2, hoveredNode.y - size / 2, size, size);
+          ctx.stroke();
+        } else {
+          ctx.arc(hoveredNode.x, hoveredNode.y, hoveredNode.r + 3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    function shouldRenderNode(node) {
+      var showTags = !graphSection.querySelector('.garden-graph-tags') || graphSection.querySelector('.garden-graph-tags').checked;
+      var showPosts = !postsToggle || postsToggle.checked;
+      if (node.type === 'tag') return showTags;
+      if (node.type === 'post') return showPosts;
+      return true;
+    }
+
+    function shouldRenderEdge(edge) {
+      var showTags = !graphSection.querySelector('.garden-graph-tags') || graphSection.querySelector('.garden-graph-tags').checked;
+      var showPosts = !postsToggle || postsToggle.checked;
+      if (edge.type === 'co-occurrence') return showTags;
+      if (edge.type === 'tag') return showPosts && showTags;
+      return true;
+    }
+
+    function applyTagSizing() {
+      var tagScale = getTagSize();
+      nodes.forEach(function(node) {
+        if (node.type !== 'tag') return;
+        node.r = (2 + Math.min(5, Math.sqrt(node.count || 1))) * tagScale;
+      });
+    }
+
+    function getSpacing() {
+      if (!spacingInput) return 190;
+      return parseFloat(spacingInput.value || '190');
+    }
+
+    function getCharge() {
+      if (!chargeInput) return 280;
+      return parseFloat(chargeInput.value || '280');
+    }
+
+    function getTagSize() {
+      if (!tagSizeInput) return 1;
+      return parseFloat(tagSizeInput.value || '1');
+    }
+
+    function getTagLineWeight() {
+      if (!tagLinesInput) return 0.3;
+      return parseFloat(tagLinesInput.value || '0.3');
+    }
+
+    function restartAnimation() {
+      startSimulation();
+    }
+
+    function rebuild() {
+      if (!graphData) return;
+      var limit = parseInt(limitInput ? limitInput.value : '100', 10);
+      if (limitValue) limitValue.textContent = String(limit);
+      buildPreview(limit);
+    }
+
+    function setTooltip(node, x, y) {
+      if (!tooltip) return;
+      if (!node) {
+        tooltip.style.opacity = '0';
+        tooltip.textContent = '';
+        return;
+      }
+      var typeLabel = node.type === 'post' ? 'post' : 'tag';
+      tooltip.textContent = node.label + ' (' + typeLabel + ')';
+      tooltip.style.left = x + 'px';
+      tooltip.style.top = y + 'px';
+      tooltip.style.opacity = '1';
+    }
+
+    function findNodeAt(x, y) {
+      for (var i = nodes.length - 1; i >= 0; i--) {
+        var node = nodes[i];
+        var dx = x - node.x;
+        var dy = y - node.y;
+        var radius = node.type === 'post' ? node.r + 4 : node.r + 4;
+        if (Math.sqrt(dx * dx + dy * dy) <= radius) {
+          return node;
+        }
+      }
+      return null;
+    }
+
+    function onPointerMove(event) {
+      var rect = canvas.getBoundingClientRect();
+      var x = (event.clientX - rect.left - panX) / zoom;
+      var y = (event.clientY - rect.top - panY) / zoom;
+      hoveredNode = findNodeAt(x, y);
+      setTooltip(hoveredNode, event.clientX - rect.left, event.clientY - rect.top);
+      draw();
+    }
+
+    function onPointerLeave() {
+      hoveredNode = null;
+      setTooltip(null);
+      draw();
+    }
+
+    function onClick() {
+      if (hoveredNode && hoveredNode.href) {
+        window.location.href = hoveredNode.href;
+      }
+    }
+
+    function onWheel(event) {
+      event.preventDefault();
+      var rect = canvas.getBoundingClientRect();
+      var mx = event.clientX - rect.left;
+      var my = event.clientY - rect.top;
+      var delta = event.deltaY > 0 ? 0.92 : 1.08;
+      var nextZoom = Math.max(0.25, Math.min(8, zoom * delta));
+      panX = mx - (mx - panX) * (nextZoom / zoom);
+      panY = my - (my - panY) * (nextZoom / zoom);
+      zoom = nextZoom;
+      draw();
+    }
+
+    function onPointerDown(event) {
+      var rect = canvas.getBoundingClientRect();
+      var x = (event.clientX - rect.left - panX) / zoom;
+      var y = (event.clientY - rect.top - panY) / zoom;
+      dragNode = findNodeAt(x, y);
+      if (dragNode) {
+        dragNode.vx = 0;
+        dragNode.vy = 0;
+        dragNode.fx = dragNode.x;
+        dragNode.fy = dragNode.y;
+        if (simulation) {
+          simulation.alphaTarget(0.2).restart();
+        }
+      } else {
+        dragNode = { pan: true, startX: event.clientX, startY: event.clientY, baseX: panX, baseY: panY };
+        canvasWrap.classList.add('is-dragging');
+      }
+    }
+
+    function onPointerMoveDrag(event) {
+      if (!dragNode) return;
+      if (dragNode.pan) {
+        panX = dragNode.baseX + (event.clientX - dragNode.startX);
+        panY = dragNode.baseY + (event.clientY - dragNode.startY);
+      } else {
+        var rect = canvas.getBoundingClientRect();
+        dragNode.fx = (event.clientX - rect.left - panX) / zoom;
+        dragNode.fy = (event.clientY - rect.top - panY) / zoom;
+      }
+      draw();
+    }
+
+    function onPointerUp() {
+      if (dragNode && !dragNode.pan) {
+        dragNode.fx = null;
+        dragNode.fy = null;
+        if (simulation) {
+          simulation.alphaTarget(0);
+        }
+      }
+      dragNode = null;
+      canvasWrap.classList.remove('is-dragging');
+    }
+
+    if (canvas) {
+      canvas.addEventListener('mousemove', onPointerMove);
+      canvas.addEventListener('mouseleave', onPointerLeave);
+      canvas.addEventListener('click', onClick);
+      canvas.addEventListener('wheel', onWheel, { passive: false });
+      canvas.addEventListener('mousedown', onPointerDown);
+      window.addEventListener('mousemove', onPointerMoveDrag);
+      window.addEventListener('mouseup', onPointerUp);
+    }
+
+    if (limitInput) {
+      limitInput.addEventListener('input', function() {
+        if (limitValue) limitValue.textContent = limitInput.value;
+        if (rebuildTimer) window.clearTimeout(rebuildTimer);
+        rebuildTimer = window.setTimeout(rebuild, 150);
+      });
+    }
+
+    if (animateToggle) {
+      animateToggle.addEventListener('change', function() {
+        restartAnimation();
+      });
+    }
+
+    if (postsToggle) {
+      postsToggle.addEventListener('change', function() {
+        rebuild();
+      });
+    }
+
+    if (tagsToggle) {
+      tagsToggle.addEventListener('change', function() {
+        rebuild();
+      });
+    }
+
+    if (advancedToggle && advancedPanel) {
+      advancedToggle.addEventListener('click', function() {
+        var isOpen = advancedToggle.getAttribute('aria-expanded') === 'true';
+        advancedToggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        advancedPanel.hidden = isOpen;
+      });
+    }
+
+    function bindSlider(input, output, format, onChange) {
+      if (!input || !output) return;
+      var update = function() {
+        output.textContent = format ? format(input.value) : input.value;
+        if (onChange) onChange();
+      };
+      input.addEventListener('input', function() {
+        update();
+        restartAnimation();
+      });
+      update();
+    }
+
+    bindSlider(spacingInput, spacingValue);
+    bindSlider(chargeInput, chargeValue);
+    bindSlider(tagSizeInput, tagSizeValue, function(value) {
+      return Number(value).toFixed(1);
+    }, function() {
+      applyTagSizing();
+      draw();
+    });
+    bindSlider(tagLinesInput, tagLinesValue, function(value) {
+      return Number(value).toFixed(2);
+    }, function() {
+      draw();
+    });
+
+    if (resetButton) {
+      resetButton.addEventListener('click', function() {
+        panX = 0;
+        panY = 0;
+        zoom = 1;
+        rebuild();
+      });
+    }
+
+    var prevAnimate = null;
+
+    window.addEventListener('resize', function() {
+      resizeCanvas();
+      rebuild();
+    });
+
+    resizeCanvas();
+
+    if (graphUrl) {
+      fetch(graphUrl)
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+          graphData = data;
+          rebuild();
+        })
+        .catch(function() {
+          graphSection.style.display = 'none';
+        });
+    }
+  }
+
+  var graphSections = document.querySelectorAll('.garden-graph');
+  if (graphSections.length) {
+    loadD3(function() {
+      graphSections.forEach(function(section, index) {
+        if (index > 0) {
+          section.remove();
+          return;
+        }
+        initGardenGraphView(section);
+      });
+    });
   }
 });
 </script>
