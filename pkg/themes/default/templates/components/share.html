@@ -1,4 +1,4 @@
-{% if share_buttons %}
+{% if share_buttons and config.components.share.enabled and config.components.share.enabled == true %}
 <section class="share-panel share-panel--{{ config.components.share.position | default:'bottom' }}" aria-label="Share this post">
     <div class="share-panel__header">
         <h2 class="share-panel__title">{{ config.components.share.title | default:'Share this post' }}</h2>
