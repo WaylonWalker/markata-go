@@ -99,7 +99,7 @@ func (p *MentionsPlugin) Transform(m *lifecycle.Manager) error {
 	log.Printf("mentions: processing %d posts", len(posts))
 
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
-		content := p.processChatAdmonitionTitles(post.Content, handleMap)
+		content := p.processChatAdmonitionTitles(post, handleMap)
 		content = p.processMentionsWithMetadata(content, handleMap)
 		post.Content = content
 		return nil
@@ -777,14 +777,29 @@ func (p *MentionsPlugin) replaceMentionsInText(text string, handleMap map[string
 // Group 4: closing quote and anything after, or end-of-line remainder
 var chatAdmonitionTitleRegex = regexp.MustCompile(`(?m)^((?:\?\?\?\+?|!!!)\s+(?:chat|chat-reply)\s+)(?:(")@([a-zA-Z][a-zA-Z0-9_.-]*)(".*)|@([a-zA-Z][a-zA-Z0-9_.-]*)(.*))$`)
 
+// chatReplyAdmonitionRegex matches chat-reply lines without explicit titles.
+// Example: !!! chat-reply
+var chatReplyAdmonitionRegex = regexp.MustCompile(`(?m)^((?:\?{3}\+?|!!!)\s+chat-reply)\s*$`)
+
 // processChatAdmonitionTitles finds chat/chat-reply admonition lines with @handle
 // titles and replaces the title with enriched HTML containing the contact's avatar
 // and a linked mention. Supports both quoted ("@handle") and unquoted (@handle)
 // forms. The enriched title is always emitted unquoted so the admonition parser
 // captures it via its unquoted-title group; wrapping in quotes would break because
 // the HTML attributes contain internal double-quote characters.
-func (p *MentionsPlugin) processChatAdmonitionTitles(content string, handleMap map[string]*mentionEntry) string {
-	return chatAdmonitionTitleRegex.ReplaceAllStringFunc(content, func(match string) string {
+
+func (p *MentionsPlugin) processChatAdmonitionTitles(post *models.Post, handleMap map[string]*mentionEntry) string {
+	if post == nil {
+		return ""
+	}
+
+	content := post.Content
+	if content == "" {
+		return content
+	}
+
+	authorName, authorAvatar := getPrimaryAuthorDisplay(post)
+	content = chatAdmonitionTitleRegex.ReplaceAllStringFunc(content, func(match string) string {
 		groups := chatAdmonitionTitleRegex.FindStringSubmatch(match)
 		if len(groups) < 7 {
 			return match
@@ -810,19 +825,75 @@ func (p *MentionsPlugin) processChatAdmonitionTitles(content string, handleMap m
 
 		normalizedHandle := strings.ToLower(handle)
 		entry, found := handleMap[normalizedHandle]
-		if !found {
+		var enrichedTitle string
+		switch {
+		case found:
+			// Build enriched title HTML with avatar and mention link.
+			// Emit as unquoted title so the admonition parser captures it via (.*)
+			enrichedTitle = p.buildChatEnrichedTitle(entry)
+		case isChatReplyPrefix(prefix) && authorName != "":
+			enrichedTitle = p.buildChatReplyTitle(authorName, authorAvatar)
+		default:
 			return match
 		}
 
-		// Build enriched title HTML with avatar and mention link.
-		// Emit as unquoted title so the admonition parser captures it via (.*)
-		enrichedTitle := p.buildChatEnrichedTitle(entry)
-
 		if suffix != "" {
-			return prefix + enrichedTitle + " " + suffix
+			return prefix + enrichedTitle + "\n" + suffix
 		}
-		return prefix + enrichedTitle
+		return prefix + enrichedTitle + "\n"
 	})
+
+	if authorName == "" {
+		return content
+	}
+
+	return chatReplyAdmonitionRegex.ReplaceAllStringFunc(content, func(match string) string {
+		groups := chatReplyAdmonitionRegex.FindStringSubmatch(match)
+		if len(groups) < 2 {
+			return match
+		}
+		prefix := groups[1]
+		enrichedTitle := p.buildChatReplyTitle(authorName, authorAvatar)
+		return prefix + " " + enrichedTitle + "\n"
+	})
+}
+
+func (p *MentionsPlugin) buildChatReplyTitle(name, avatar string) string {
+	var titleHTML strings.Builder
+
+	if avatar != "" {
+		titleHTML.WriteString(fmt.Sprintf(`<img class="chat-contact-avatar" src=%q alt=%q />`,
+			html.EscapeString(avatar),
+			html.EscapeString(name)))
+	}
+
+	titleHTML.WriteString(fmt.Sprintf(`<span class="chat-contact-name">%s</span>`, html.EscapeString(name)))
+
+	return fmt.Sprintf(`<span class="chat-contact">%s</span>`, titleHTML.String())
+}
+
+func isChatReplyPrefix(prefix string) bool {
+	normalized := strings.TrimSpace(prefix)
+	return strings.Contains(normalized, "chat-reply")
+}
+
+func getPrimaryAuthorDisplay(post *models.Post) (name, avatar string) {
+	if post == nil {
+		return "", ""
+	}
+	if len(post.AuthorObjects) > 0 {
+		author := post.AuthorObjects[0]
+		name := author.Name
+		avatar := ""
+		if author.Avatar != nil {
+			avatar = *author.Avatar
+		}
+		return name, avatar
+	}
+	if post.Author != nil && *post.Author != "" {
+		return *post.Author, ""
+	}
+	return "", ""
 }
 
 // buildChatEnrichedTitle builds the enriched HTML for a chat admonition title.

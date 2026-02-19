@@ -1001,6 +1001,13 @@ func TestAdmonitionRender_ContentLeakRegression(t *testing.T) {
 			wantOutside: []string{"Outside."},
 			closeTag:    "</div>",
 		},
+		{
+			name:        "blank line after header",
+			input:       "!!! note\n\n    Para 1.\n\n    Para 2.\n\nOutside.\n",
+			wantInside:  []string{"Para 1.", "Para 2."},
+			wantOutside: []string{"Outside."},
+			closeTag:    "</div>",
+		},
 	}
 
 	for _, tt := range tests {
