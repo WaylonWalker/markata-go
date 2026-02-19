@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -20,6 +22,7 @@ type OEmbedResponse struct {
 	Type            string `json:"type"`
 	Version         string `json:"version"`
 	Title           string `json:"title"`
+	URL             string `json:"url"`
 	AuthorName      string `json:"author_name"`
 	ProviderName    string `json:"provider_name"`
 	ProviderURL     string `json:"provider_url"`
@@ -32,6 +35,18 @@ type OEmbedResponse struct {
 	CacheAge        int    `json:"cache_age"`
 }
 
+// oembedProviderJSON represents a provider from providers.json
+type oembedProviderJSON struct {
+	ProviderName string `json:"provider_name"`
+	ProviderURL  string `json:"provider_url"`
+	Endpoints    []struct {
+		Schemes   []string `json:"schemes"`
+		URL       string   `json:"url"`
+		Discovery bool     `json:"discovery"`
+		Formats   []string `json:"formats"`
+	} `json:"endpoints"`
+}
+
 // oembedProvider describes a single oEmbed provider.
 type oembedProvider struct {
 	Name             string
@@ -40,14 +55,22 @@ type oembedProvider struct {
 	RequiresAuth     bool
 	SupportsFormat   bool
 	SupportsDiscover bool
+	CustomFetch      func(client *http.Client, rawURL string) (*OEmbedResponse, error)
+	// IsCustom indicates this is a hardcoded provider that should be tried before providers.json
+	IsCustom bool
 }
 
 // oembedResolver resolves oEmbed data for URLs.
 type oembedResolver struct {
-	client    *http.Client
-	config    models.EmbedsConfig
-	providers []oembedProvider
+	client          *http.Client
+	config          models.EmbedsConfig
+	providers       []oembedProvider
+	jsonProviders   []oembedProvider
+	jsonProvidersMu sync.RWMutex
+	jsonFetchedAt   time.Time
 }
+
+const jsonProvidersCacheDuration = 24 * time.Hour
 
 func newOEmbedResolver(config models.EmbedsConfig, client *http.Client) *oembedResolver {
 	return &oembedResolver{
@@ -69,27 +92,124 @@ func (r *oembedResolver) updateConfig(config models.EmbedsConfig) {
 	r.config = config
 }
 
+// fetchProvidersJSON fetches and parses the providers.json file.
+// This is called lazily on first resolve attempt.
+func (r *oembedResolver) fetchProvidersJSON() error {
+	providersURL := r.config.OEmbedProvidersURL
+	if providersURL == "" {
+		return nil // Disabled by user
+	}
+
+	// Check if we already have cached providers
+	r.jsonProvidersMu.RLock()
+	if len(r.jsonProviders) > 0 && time.Since(r.jsonFetchedAt) < jsonProvidersCacheDuration {
+		r.jsonProvidersMu.RUnlock()
+		return nil
+	}
+	r.jsonProvidersMu.RUnlock()
+
+	// Fetch providers.json
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, providersURL, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("failed to create request for providers.json: %w", err)
+	}
+	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
+
+	resp, err := r.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to fetch providers.json: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("providers.json returned status %s", resp.Status)
+	}
+
+	var jsonProviders []oembedProviderJSON
+	if err := json.NewDecoder(resp.Body).Decode(&jsonProviders); err != nil {
+		return fmt.Errorf("failed to parse providers.json: %w", err)
+	}
+
+	// Convert to internal format
+	providers := make([]oembedProvider, 0, len(jsonProviders))
+	for _, jp := range jsonProviders {
+		for _, ep := range jp.Endpoints {
+			if ep.URL == "" {
+				continue
+			}
+			provider := oembedProvider{
+				Name:             jp.ProviderName,
+				URLPrefixes:      ep.Schemes,
+				Endpoint:         ep.URL,
+				SupportsDiscover: ep.Discovery,
+			}
+			// Check if format=json is required
+			for _, f := range ep.Formats {
+				if f == "json" {
+					provider.SupportsFormat = true
+					break
+				}
+			}
+			providers = append(providers, provider)
+		}
+	}
+
+	r.jsonProvidersMu.Lock()
+	r.jsonProviders = providers
+	r.jsonFetchedAt = time.Now()
+	r.jsonProvidersMu.Unlock()
+
+	return nil
+}
+
 func (r *oembedResolver) Resolve(rawURL string) (*OEmbedResponse, bool, error) {
-	provider := r.matchProvider(rawURL)
-	if provider == nil {
-		if !r.config.OEmbedAutoDiscover {
+	// First, try custom (hardcoded) providers - these have priority
+	provider := r.matchCustomProvider(rawURL)
+	if provider != nil {
+		return r.resolveWithProvider(provider, rawURL)
+	}
+
+	// Try providers.json if available
+	if r.config.OEmbedProvidersURL != "" {
+		if err := r.fetchProvidersJSON(); err == nil {
+			provider = r.matchJSONProvider(rawURL)
+			if provider != nil {
+				return r.resolveWithProvider(provider, rawURL)
+			}
+		}
+	}
+
+	// Fall back to trying non-custom hardcoded providers (for backwards compatibility)
+	provider = r.matchProvider(rawURL)
+	if provider != nil {
+		return r.resolveWithProvider(provider, rawURL)
+	}
+
+	// Fall back to auto-discovery if enabled
+	if !r.config.OEmbedAutoDiscover {
+		return nil, false, nil
+	}
+
+	endpoint, err := r.discoverEndpoint(rawURL)
+	if err != nil {
+		if errors.Is(err, errOEmbedDiscoveryDisabled) {
 			return nil, false, nil
 		}
+		return nil, false, err
+	}
 
-		endpoint, err := r.discoverEndpoint(rawURL)
-		if err != nil {
-			if errors.Is(err, errOEmbedDiscoveryDisabled) {
-				return nil, false, nil
-			}
-			return nil, false, err
-		}
+	payload, err := r.fetchOEmbedResponse(endpoint)
+	if err != nil {
+		return nil, false, err
+	}
 
-		payload, err := r.fetchOEmbedResponse(endpoint)
-		if err != nil {
-			return nil, false, err
-		}
+	return payload, true, nil
+}
 
-		return payload, true, nil
+// resolveWithProvider handles the actual resolution given a matched provider
+func (r *oembedResolver) resolveWithProvider(provider *oembedProvider, rawURL string) (*OEmbedResponse, bool, error) {
+	if !r.isProviderEnabled(provider.Name) {
+		return nil, true, nil
 	}
 
 	if provider.SupportsDiscover {
@@ -109,8 +229,12 @@ func (r *oembedResolver) Resolve(rawURL string) (*OEmbedResponse, bool, error) {
 		return payload, true, nil
 	}
 
-	if !r.isProviderEnabled(provider.Name) {
-		return nil, true, nil
+	if provider.CustomFetch != nil {
+		payload, err := provider.CustomFetch(r.client, rawURL)
+		if err != nil {
+			return nil, true, err
+		}
+		return payload, true, nil
 	}
 
 	endpoint, err := r.buildEndpoint(provider, rawURL)
@@ -132,6 +256,44 @@ func (r *oembedResolver) Resolve(rawURL string) (*OEmbedResponse, bool, error) {
 	}
 
 	return payload, true, nil
+}
+
+// matchCustomProvider only matches hardcoded providers (IsCustom=true)
+func (r *oembedResolver) matchCustomProvider(rawURL string) *oembedProvider {
+	for _, provider := range r.providers {
+		if !provider.IsCustom {
+			continue
+		}
+		for _, prefix := range provider.URLPrefixes {
+			if strings.HasPrefix(rawURL, prefix) {
+				return &provider
+			}
+		}
+	}
+	return nil
+}
+
+// matchJSONProvider matches providers loaded from providers.json
+func (r *oembedResolver) matchJSONProvider(rawURL string) *oembedProvider {
+	r.jsonProvidersMu.RLock()
+	defer r.jsonProvidersMu.RUnlock()
+
+	for _, provider := range r.jsonProviders {
+		for _, prefix := range provider.URLPrefixes {
+			// Support wildcards in schemes
+			if strings.Contains(prefix, "*") {
+				pattern := strings.ReplaceAll(prefix, "*", ".*")
+				matched, err := regexp.MatchString(pattern, rawURL)
+				if err == nil && matched {
+					return &provider
+				}
+			}
+			if strings.HasPrefix(rawURL, prefix) {
+				return &provider
+			}
+		}
+	}
+	return nil
 }
 
 func (r *oembedResolver) matchProvider(rawURL string) *oembedProvider {
@@ -290,6 +452,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://www.youtube.com/", "https://youtu.be/"},
 			RequiresAuth:   false,
 			SupportsFormat: true,
+			IsCustom:       true,
 		},
 		{
 			Name:           "vimeo",
@@ -297,13 +460,16 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://vimeo.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "tiktok",
 			Endpoint:       "https://www.tiktok.com/oembed",
-			URLPrefixes:    []string{"https://www.tiktok.com/", "https://vm.tiktok.com/"},
+			URLPrefixes:    []string{"https://www.tiktok.com/", "https://tiktok.com/", "https://vm.tiktok.com/", "https://vt.tiktok.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			CustomFetch:    fetchTikTokEmbed,
+			IsCustom:       true,
 		},
 		{
 			Name:           "flickr",
@@ -311,6 +477,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://www.flickr.com/", "https://flickr.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: true,
+			IsCustom:       true,
 		},
 		{
 			Name:           "spotify",
@@ -318,6 +485,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://open.spotify.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "soundcloud",
@@ -325,6 +493,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://soundcloud.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "codepen",
@@ -332,6 +501,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://codepen.io/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "codesandbox",
@@ -339,6 +509,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://codesandbox.io/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "jsfiddle",
@@ -346,6 +517,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://jsfiddle.net/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "observable",
@@ -353,6 +525,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://observablehq.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "github",
@@ -360,6 +533,8 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://gist.github.com/", "https://github.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			CustomFetch:    fetchGitHubGistEmbed,
+			IsCustom:       true,
 		},
 		{
 			Name:           "slideshare",
@@ -367,6 +542,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://www.slideshare.net/", "https://slideshare.net/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "prezi",
@@ -374,6 +550,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://prezi.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "speakerdeck",
@@ -381,6 +558,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://speakerdeck.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "issuu",
@@ -388,6 +566,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://issuu.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "datawrapper",
@@ -395,6 +574,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://datawrapper.de/", "https://www.datawrapper.de/", "https://app.datawrapper.de/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "flourish",
@@ -402,6 +582,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://public.flourish.studio/", "https://app.flourish.studio/", "https://flourish.studio/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "infogram",
@@ -409,6 +590,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://infogram.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "reddit",
@@ -416,6 +598,8 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://www.reddit.com/", "https://reddit.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			CustomFetch:    fetchRedditImage,
+			IsCustom:       true,
 		},
 		{
 			Name:           "dailymotion",
@@ -423,6 +607,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://www.dailymotion.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "wistia",
@@ -430,6 +615,7 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://wistia.com/", "https://fast.wistia.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			IsCustom:       true,
 		},
 		{
 			Name:           "giphy",
@@ -437,6 +623,8 @@ func defaultOEmbedProviders() []oembedProvider {
 			URLPrefixes:    []string{"https://giphy.com/"},
 			RequiresAuth:   false,
 			SupportsFormat: false,
+			CustomFetch:    fetchGiphyEmbed,
+			IsCustom:       true,
 		},
 		{
 			Name:             "oembed",
@@ -447,4 +635,274 @@ func defaultOEmbedProviders() []oembedProvider {
 			SupportsDiscover: true,
 		},
 	}
+}
+
+type redditPostData struct {
+	Title    string `json:"title"`
+	URL      string `json:"url"`
+	PostHint string `json:"post_hint"`
+	Preview  struct {
+		Images []struct {
+			Source struct {
+				URL    string `json:"url"`
+				Width  int    `json:"width"`
+				Height int    `json:"height"`
+			} `json:"source"`
+		} `json:"images"`
+	} `json:"preview"`
+	Thumbnail json.RawMessage `json:"thumbnail"`
+}
+
+type redditAPIResponse struct {
+	Data struct {
+		Children []struct {
+			Data redditPostData `json:"data"`
+		} `json:"children"`
+	} `json:"data"`
+}
+
+func fetchRedditImage(client *http.Client, rawURL string) (*OEmbedResponse, error) {
+	jsonURL := rawURL + "/.json"
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, jsonURL, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("reddit fetch: %w", err)
+	}
+
+	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("reddit fetch: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("reddit fetch failed: %s", resp.Status)
+	}
+
+	var apiResp []redditAPIResponse
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&apiResp); err != nil {
+		return nil, fmt.Errorf("reddit parse: %w", err)
+	}
+
+	if len(apiResp) == 0 || len(apiResp[0].Data.Children) == 0 {
+		return nil, fmt.Errorf("reddit: no post data found")
+	}
+
+	post := apiResp[0].Data.Children[0].Data
+
+	var thumbnailURL string
+	var thumbnailWidth, thumbnailHeight int
+
+	switch {
+	case len(post.Preview.Images) > 0:
+		thumbnailURL = post.Preview.Images[0].Source.URL
+		thumbnailWidth = post.Preview.Images[0].Source.Width
+		thumbnailHeight = post.Preview.Images[0].Source.Height
+	case post.PostHint == "image":
+		thumbnailURL = post.URL
+	case len(post.Thumbnail) > 0 && !strings.HasPrefix(string(post.Thumbnail), `"`):
+		var thumb struct {
+			Source struct {
+				URL    string `json:"url"`
+				Width  int    `json:"width"`
+				Height int    `json:"height"`
+			} `json:"source"`
+		}
+		if err := json.Unmarshal(post.Thumbnail, &thumb); err == nil {
+			thumbnailURL = thumb.Source.URL
+			thumbnailWidth = thumb.Source.Width
+			thumbnailHeight = thumb.Source.Height
+		}
+	}
+
+	thumbnailURL = strings.ReplaceAll(thumbnailURL, "&amp;", "&")
+
+	return &OEmbedResponse{
+		Type:            "rich",
+		Version:         "1.0",
+		Title:           post.Title,
+		ThumbnailURL:    thumbnailURL,
+		ThumbnailWidth:  thumbnailWidth,
+		ThumbnailHeight: thumbnailHeight,
+		ProviderName:    "Reddit",
+		ProviderURL:     "https://reddit.com",
+	}, nil
+}
+
+func fetchTikTokEmbed(client *http.Client, rawURL string) (*OEmbedResponse, error) {
+	endpoint := "https://www.tiktok.com/oembed"
+
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("tiktok: parse endpoint: %w", err)
+	}
+
+	query := parsed.Query()
+	query.Set("url", rawURL)
+	parsed.RawQuery = query.Encode()
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, parsed.String(), http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("tiktok: create request: %w", err)
+	}
+
+	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("tiktok: request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("tiktok: status %s", resp.Status)
+	}
+
+	var payload OEmbedResponse
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&payload); err != nil {
+		return nil, fmt.Errorf("tiktok: decode: %w", err)
+	}
+
+	return &payload, nil
+}
+
+// fetchGitHubGistEmbed fetches embed HTML for GitHub Gists.
+// GitHub doesn't have a working oEmbed endpoint, so we fetch the gist page
+// and extract the embed script from it.
+func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, error) {
+	// Ensure we're getting a gist URL
+	if !strings.Contains(rawURL, "gist.github.com") {
+		return nil, fmt.Errorf("not a gist URL")
+	}
+
+	// Add .json suffix to get the gist data
+	jsonURL := rawURL
+	if !strings.HasSuffix(rawURL, ".json") {
+		jsonURL = rawURL + ".json"
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, jsonURL, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("gist: create request: %w", err)
+	}
+
+	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("gist: request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("gist: status %s", resp.Status)
+	}
+
+	var gistData struct {
+		Files map[string]struct {
+			Filename string `json:"filename"`
+			Content  string `json:"content"`
+			Type     string `json:"type"`
+			Language string `json:"language"`
+			Size     int    `json:"size"`
+			RawURL   string `json:"raw_url"`
+		} `json:"files"`
+		Description string `json:"description"`
+		Owner       struct {
+			Login string `json:"login"`
+		} `json:"owner"`
+	}
+
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&gistData); err != nil {
+		return nil, fmt.Errorf("gist: decode: %w", err)
+	}
+
+	// Get the first file
+	var firstFile struct {
+		Filename string
+		Content  string
+		Language string
+		RawURL   string
+	}
+	for _, f := range gistData.Files {
+		firstFile = struct {
+			Filename string
+			Content  string
+			Language string
+			RawURL   string
+		}{
+			Filename: f.Filename,
+			Content:  f.Content,
+			Language: f.Language,
+			RawURL:   f.RawURL,
+		}
+		break
+	}
+
+	description := gistData.Description
+	if description == "" {
+		description = firstFile.Filename
+	}
+
+	// Generate embed HTML
+	embedHTML := fmt.Sprintf(`<script src="https://gist.github.com/%s.js?file=%s"></script>`,
+		strings.TrimSuffix(strings.TrimPrefix(rawURL, "https://gist.github.com/"), ".json"),
+		firstFile.Filename)
+
+	return &OEmbedResponse{
+		Type:         "rich",
+		Version:      "1.0",
+		Title:        description,
+		HTML:         embedHTML,
+		ProviderName: "GitHub",
+		ProviderURL:  "https://github.com",
+	}, nil
+}
+
+// fetchGiphyEmbed fetches GIPHY embed data.
+// GIPHY's oEmbed endpoint returns 404, so we construct the image URL from the GIF URL.
+func fetchGiphyEmbed(_ *http.Client, rawURL string) (*OEmbedResponse, error) {
+	// Extract the GIF ID from the URL
+	// GIPHY URLs: https://giphy.com/gifs/cat-Y0Pmx0NpVomy66nCGU
+	// or media.giphy.com/media/Y0Pmx0NpVomy66nCGU/giphy.gif
+	var gifID string
+
+	// Try to match giphy.com/gifs/{id}
+	re := regexp.MustCompile(`giphy\.com/gifs/[\w-]+-(\w+)`)
+	matches := re.FindStringSubmatch(rawURL)
+	if len(matches) > 1 {
+		gifID = matches[1]
+	} else {
+		// Try media.giphy.com/media/{id}/giphy.gif
+		re2 := regexp.MustCompile(`media\.giphy\.com/media/(\w+)/`)
+		matches2 := re2.FindStringSubmatch(rawURL)
+		if len(matches2) > 1 {
+			gifID = matches2[1]
+		}
+	}
+
+	if gifID == "" {
+		return nil, fmt.Errorf("giphy: could not extract GIF ID from URL")
+	}
+
+	// Build the image URL (use fixed width for consistency)
+	imageURL := fmt.Sprintf("https://media.giphy.com/media/%s/giphy.gif", gifID)
+
+	return &OEmbedResponse{
+		Type:         "photo",
+		Version:      "1.0",
+		Title:        "GIPHY Image",
+		URL:          imageURL,
+		ThumbnailURL: imageURL,
+		ProviderName: "GIPHY",
+		ProviderURL:  "https://giphy.com",
+	}, nil
 }

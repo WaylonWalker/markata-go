@@ -2020,6 +2020,14 @@ type EmbedsConfig struct {
 	// OEmbedAutoDiscover enables auto-discovery via HTML link tags (default: false)
 	OEmbedAutoDiscover bool `json:"oembed_auto_discover" yaml:"oembed_auto_discover" toml:"oembed_auto_discover"`
 
+	// DefaultEmbedMode is the default mode for embeds when not specified (default: "card")
+	// Options: rich, card, performance, hover
+	DefaultEmbedMode string `json:"default_mode" yaml:"default_mode" toml:"default_mode"`
+
+	// OEmbedProvidersURL is the URL to fetch oEmbed providers from (default: "https://oembed.com/providers.json")
+	// Set to empty string to disable fetching from providers.json
+	OEmbedProvidersURL string `json:"oembed_providers_url" yaml:"oembed_providers_url" toml:"oembed_providers_url"`
+
 	// CacheDir is the directory for caching external embed metadata (default: ".cache/embeds")
 	CacheDir string `json:"cache_dir" yaml:"cache_dir" toml:"cache_dir"`
 
@@ -2044,6 +2052,15 @@ type EmbedsConfig struct {
 type OEmbedProviderConfig struct {
 	// Enabled controls whether the provider is used (default: true)
 	Enabled bool `json:"enabled" yaml:"enabled" toml:"enabled"`
+
+	// Mode overrides the default embed mode for this provider.
+	// Options: rich, card, performance, hover, image_only
+	// When not set, the default is determined by the provider's oEmbed type:
+	//   - photo: image_only
+	//   - video: rich
+	//   - rich: rich
+	//   - link: card
+	Mode string `json:"mode" yaml:"mode" toml:"mode"`
 }
 
 // NewEmbedsConfig creates a new EmbedsConfig with default values.
@@ -2057,6 +2074,8 @@ func NewEmbedsConfig() EmbedsConfig {
 		ResolutionStrategy: "oembed_first",
 		OEmbedProviders:    map[string]OEmbedProviderConfig{},
 		OEmbedAutoDiscover: false,
+		DefaultEmbedMode:   "card",
+		OEmbedProvidersURL: "https://oembed.com/providers.json",
 		CacheDir:           ".cache/embeds",
 		Timeout:            10,
 		CacheTTL:           7 * 24 * 60 * 60,

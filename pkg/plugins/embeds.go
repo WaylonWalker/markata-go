@@ -98,6 +98,25 @@ func (p *EmbedsPlugin) applyEmbedsConfig(cfgMap map[string]interface{}) {
 	applyBool(cfgMap, "show_image", &p.config.ShowImage)
 	applyString(cfgMap, "attachments_prefix", &p.config.AttachmentsPrefix)
 	applyBool(cfgMap, "oembed_auto_discover", &p.config.OEmbedAutoDiscover)
+	applyString(cfgMap, "default_mode", &p.config.DefaultEmbedMode)
+	applyString(cfgMap, "oembed_providers_url", &p.config.OEmbedProvidersURL)
+
+	// Parse providers sub-config
+	if providersMap, ok := cfgMap["providers"].(map[string]interface{}); ok {
+		p.config.OEmbedProviders = make(map[string]models.OEmbedProviderConfig)
+		for name, providerCfg := range providersMap {
+			if pm, ok := providerCfg.(map[string]interface{}); ok {
+				pc := models.OEmbedProviderConfig{Enabled: true}
+				if enabled, ok := pm["enabled"].(bool); ok {
+					pc.Enabled = enabled
+				}
+				if mode, ok := pm["mode"].(string); ok {
+					pc.Mode = mode
+				}
+				p.config.OEmbedProviders[name] = pc
+			}
+		}
+	}
 
 	if p.config.Timeout > 0 {
 		p.httpClient.Timeout = time.Duration(p.config.Timeout) * time.Second
@@ -212,9 +231,20 @@ var internalEmbedRegex = regexp.MustCompile(`!\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
 // The alt text must be exactly "embed" to trigger embedding.
 var externalEmbedRegex = regexp.MustCompile(`!\[embed\]\(([^)]+)\)`)
 
+// embedBracketRegex matches [!embed](url) Obsidian-style embed syntax.
+// This is an alternative to ![embed](url) syntax.
+// Supports optional options: [!embed](url|class1 class2)
+var embedBracketRegex = regexp.MustCompile(`\[!embed\]\(([^)|]+)(?:\|([^)]+))?\)`)
+
+// externalEmbedWithOptionsRegex matches ![embed](url|options) pattern with options.
+// Options include: no_title, no_description, no_meta, image_only, center,
+// full_width, video, link, rich, hover, card, performance
+var externalEmbedWithOptionsRegex = regexp.MustCompile(`!\[embed\]\(([^)|]+)\|([^)]+)\)`)
+
 // externalObsidianEmbedRegex matches Obsidian-style external embeds like ![[https://example.com]]
 // with optional display text: ![[https://example.com|Title]].
-var externalObsidianEmbedRegex = regexp.MustCompile(`!\[\[(https?://[^\]|]+)(?:\|([^\]]+))?\]\]`)
+// Supports optional classes after a second pipe: ![[https://example.com|Title|class1 class2]]
+var externalObsidianEmbedRegex = regexp.MustCompile(`!\[\[(https?://[^\]|]+)(?:\|([^\]|]+))?(?:\|([^\]]+))?\]\]`)
 
 // embedsCodeBlockRegex matches fenced code blocks to avoid transforming content inside them.
 var embedsCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
@@ -239,6 +269,12 @@ const (
 
 	schemeHTTP  = "http"
 	schemeHTTPS = "https"
+
+	embedModeRich        = "rich"
+	embedModeCard        = "card"
+	embedModePerformance = "performance"
+	embedModeHover       = "hover"
+	embedModeImageOnly   = "image_only"
 )
 
 // getMetaPatterns returns cached regex patterns for a given property.
@@ -501,8 +537,49 @@ func (p *EmbedsPlugin) processExternalEmbeds(content string, currentPost *models
 }
 
 // processExternalEmbedsInText processes external embeds in a text segment.
+//
+//nolint:gocyclo // multiple regex replacements required, complexity is unavoidable
 func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) string {
-	processed := externalEmbedRegex.ReplaceAllStringFunc(text, func(match string) string {
+	// Process [!embed](url|options) syntax first
+	processed := embedBracketRegex.ReplaceAllStringFunc(text, func(match string) string {
+		groups := embedBracketRegex.FindStringSubmatch(match)
+		if len(groups) < 2 {
+			return match
+		}
+
+		rawURL := strings.TrimSpace(groups[1])
+		options := parseEmbedOptions(groups[2])
+
+		parsedURL, err := url.Parse(rawURL)
+		if err != nil || (parsedURL.Scheme != schemeHTTP && parsedURL.Scheme != schemeHTTPS) {
+			return match
+		}
+
+		metadata := p.fetchExternalMetadata(rawURL)
+		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata, options)
+	})
+
+	// Process ![embed](url|options) with options
+	processed = externalEmbedWithOptionsRegex.ReplaceAllStringFunc(processed, func(match string) string {
+		groups := externalEmbedWithOptionsRegex.FindStringSubmatch(match)
+		if len(groups) < 3 {
+			return match
+		}
+
+		rawURL := strings.TrimSpace(groups[1])
+		options := parseEmbedOptions(groups[2])
+
+		parsedURL, err := url.Parse(rawURL)
+		if err != nil || (parsedURL.Scheme != schemeHTTP && parsedURL.Scheme != schemeHTTPS) {
+			return match
+		}
+
+		metadata := p.fetchExternalMetadata(rawURL)
+		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata, options)
+	})
+
+	// Process ![embed](url) basic syntax
+	processed = externalEmbedRegex.ReplaceAllStringFunc(processed, func(match string) string {
 		groups := externalEmbedRegex.FindStringSubmatch(match)
 		if len(groups) < 2 {
 			return match
@@ -517,7 +594,7 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 		}
 
 		metadata := p.fetchExternalMetadata(rawURL)
-		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata)
+		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata, EmbedOptions{})
 	})
 
 	return externalObsidianEmbedRegex.ReplaceAllStringFunc(processed, func(match string) string {
@@ -528,8 +605,13 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 
 		rawURL := strings.TrimSpace(groups[1])
 		override := ""
+		var options EmbedOptions
 		if len(groups) >= 3 && groups[2] != "" {
 			override = strings.TrimSpace(groups[2])
+		}
+		// Check for classes (4th group)
+		if len(groups) >= 4 && groups[3] != "" {
+			options = parseEmbedOptions(groups[3])
 		}
 
 		parsedURL, err := url.Parse(rawURL)
@@ -540,7 +622,7 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 		metadata := p.fetchExternalMetadata(rawURL)
 		metadata = p.applyExternalTitleOverride(metadata, override)
 
-		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata)
+		return p.buildExternalEmbedCard(rawURL, parsedURL, metadata, options)
 	})
 }
 
@@ -553,6 +635,72 @@ type OGMetadata struct {
 	Type        string `json:"type"`
 	FetchedAt   int64  `json:"fetched_at"`
 	Source      string `json:"source"`
+
+	// Provider info for mode selection
+	ProviderName string `json:"provider_name"`
+	HTML         string `json:"html"` // oEmbed HTML for rich embeds
+}
+
+// EmbedOptions holds parsing options for embed syntax.
+// Supports: no_title, no_description, no_meta, image_only, center,
+// full_width, video, link, rich, hover, card, performance
+type EmbedOptions struct {
+	NoTitle       bool
+	NoDescription bool
+	NoMeta        bool
+	ImageOnly     bool
+	Center        bool
+	FullWidth     bool
+	Video         bool
+	Link          bool
+	Rich          bool
+	Hover         bool
+	Card          bool
+	Performance   bool
+	TitleOverride string
+	Classes       []string
+}
+
+// parseEmbedOptions parses space-separated classes from embed syntax.
+func parseEmbedOptions(optionsStr string) EmbedOptions {
+	opts := EmbedOptions{}
+	if optionsStr == "" {
+		return opts
+	}
+
+	parts := strings.Fields(optionsStr)
+	opts.Classes = parts
+
+	for _, part := range parts {
+		switch strings.ToLower(part) {
+		case "no_title":
+			opts.NoTitle = true
+		case "no_description":
+			opts.NoDescription = true
+		case "no_meta":
+			opts.NoMeta = true
+		case embedModeImageOnly:
+			opts.ImageOnly = true
+		case "center":
+			opts.Center = true
+		case "full_width":
+			opts.FullWidth = true
+		case "video":
+			opts.Video = true
+		case "link":
+			opts.Link = true
+		case embedModeRich:
+			opts.Rich = true
+		case embedModeHover:
+			opts.Hover = true
+		case embedModeCard:
+			opts.Card = true
+		case embedModePerformance:
+			opts.Performance = true
+		}
+	}
+
+	return opts
 }
 
 // fetchOGMetadata fetches Open Graph metadata from a URL.
@@ -661,12 +809,18 @@ func (p *EmbedsPlugin) resolveOEmbedMetadata(rawURL string) (*OGMetadata, bool) 
 	}
 
 	metadata := &OGMetadata{
-		Title:     response.Title,
-		Image:     response.ThumbnailURL,
-		SiteName:  response.ProviderName,
-		Type:      response.Type,
-		FetchedAt: time.Now().Unix(),
-		Source:    "oembed",
+		Title:        response.Title,
+		Image:        response.ThumbnailURL,
+		SiteName:     response.ProviderName,
+		ProviderName: response.ProviderName,
+		Type:         response.Type,
+		HTML:         response.HTML,
+		FetchedAt:    time.Now().Unix(),
+		Source:       "oembed",
+	}
+
+	if metadata.Image == "" {
+		metadata.Image = response.URL
 	}
 
 	if metadata.Title == "" {
@@ -844,25 +998,210 @@ func (p *EmbedsPlugin) extractHTMLTitle(htmlContent string) string {
 	return ""
 }
 
+// defaultModeByType returns the default mode for an oEmbed type.
+func defaultModeByType(oembedType string) string {
+	switch strings.ToLower(oembedType) {
+	case "photo":
+		return embedModeImageOnly
+	case "video":
+		return embedModeRich
+	case "rich":
+		return embedModeRich
+	default:
+		return embedModeCard
+	}
+}
+
+// effectiveEmbedMode determines the effective embed mode considering:
+// 1. Explicit options from embed syntax
+// 2. Provider-specific config
+// 3. Default mode based on oEmbed type
+// 4. Global default mode
+func (p *EmbedsPlugin) effectiveEmbedMode(opts EmbedOptions, metadata *OGMetadata) EmbedOptions {
+	// If explicit mode is set via options, use that
+	if opts.Rich || opts.Performance || opts.Hover || opts.Card || opts.ImageOnly {
+		return opts
+	}
+
+	// Check provider-specific config
+	providerName := strings.ToLower(metadata.ProviderName)
+	if providerName != "" {
+		if providerCfg, ok := p.config.OEmbedProviders[providerName]; ok && providerCfg.Mode != "" {
+			mode := strings.ToLower(providerCfg.Mode)
+			switch mode {
+			case embedModeRich:
+				opts.Rich = true
+			case embedModeCard:
+				opts.Card = true
+			case embedModePerformance:
+				opts.Performance = true
+			case embedModeHover:
+				opts.Hover = true
+			case embedModeImageOnly:
+				opts.ImageOnly = true
+			}
+			return opts
+		}
+	}
+
+	// Fall back to default mode based on oEmbed type or global default
+	oembedType := strings.ToLower(metadata.Type)
+	defaultMode := p.config.DefaultEmbedMode
+	if defaultMode == "" {
+		defaultMode = defaultModeByType(oembedType)
+	}
+
+	switch defaultMode {
+	case embedModeRich:
+		opts.Rich = true
+	case embedModePerformance:
+		opts.Performance = true
+	case embedModeHover:
+		opts.Hover = true
+	case embedModeImageOnly:
+		opts.ImageOnly = true
+	}
+
+	return opts
+}
+
 // buildExternalEmbedCard creates HTML for an external embed card.
-func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL, metadata *OGMetadata) string {
+// It respects the EmbedOptions to control what elements are displayed.
+//
+//nolint:gocyclo // multiple rendering modes require conditional branches
+func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL, metadata *OGMetadata, opts EmbedOptions) string {
+	// Determine effective mode based on config and oEmbed type
+	opts = p.effectiveEmbedMode(opts, metadata)
+
 	var sb strings.Builder
 
 	domain := parsedURL.Host
 	domain = strings.TrimPrefix(domain, "www.")
 
+	// Build class list
+	classes := []string{p.config.ExternalCardClass}
+	if opts.Center {
+		classes = append(classes, "embed-card-center")
+	}
+	if opts.FullWidth {
+		classes = append(classes, "embed-card-full-width")
+	}
+	if opts.ImageOnly {
+		classes = append(classes, "embed-card-image-only")
+	}
+	if opts.Hover {
+		classes = append(classes, "embed-card-hover")
+	}
+	if metadata.ProviderName != "" {
+		classes = append(classes, "embed-card-provider-"+strings.ToLower(metadata.ProviderName))
+	}
+	classes = append(classes, opts.Classes...)
+
 	sb.WriteString(`<div class="`)
-	sb.WriteString(html.EscapeString(p.config.ExternalCardClass))
+	sb.WriteString(html.EscapeString(strings.Join(classes, " ")))
 	sb.WriteString(`">`)
 	sb.WriteString("\n")
 
+	// Handle rich embed (iframe) mode
+	if opts.Rich && metadata.HTML != "" {
+		sb.WriteString(`  <div class="embed-card-rich">`)
+		sb.WriteString("\n")
+		sb.WriteString(metadata.HTML)
+		sb.WriteString("\n")
+		sb.WriteString(`  </div>`)
+		sb.WriteString("\n")
+		sb.WriteString(`</div>`)
+		sb.WriteString("\n")
+		return sb.String()
+	}
+
+	// Handle hover mode - shows image, swaps to embed on hover
+	if opts.Hover && metadata.HTML != "" {
+		sb.WriteString(`  <a href="`)
+		sb.WriteString(html.EscapeString(rawURL))
+		sb.WriteString(`" class="embed-card-link" target="_blank" rel="noopener noreferrer">`)
+		sb.WriteString("\n")
+		if p.config.ShowImage && metadata.Image != "" {
+			sb.WriteString(`    <div class="embed-card-image embed-card-lazy">`)
+			sb.WriteString("\n")
+			sb.WriteString(`      <img src="`)
+			sb.WriteString(html.EscapeString(metadata.Image))
+			sb.WriteString(`" alt="" loading="lazy">`)
+			sb.WriteString("\n")
+			sb.WriteString(`      <div class="embed-card-hover-overlay">`)
+			sb.WriteString("\n")
+			sb.WriteString(`        <span class="embed-card-hover-text">Click to load embed</span>`)
+			sb.WriteString("\n")
+			sb.WriteString(`      </div>`)
+			sb.WriteString("\n")
+			sb.WriteString(`    </div>`)
+			sb.WriteString("\n")
+		}
+		if !opts.NoTitle && metadata.Title != "" {
+			sb.WriteString(`    <div class="embed-card-title">`)
+			sb.WriteString(html.EscapeString(metadata.Title))
+			sb.WriteString(`</div>`)
+			sb.WriteString("\n")
+		}
+		sb.WriteString(`  </a>`)
+		sb.WriteString("\n")
+		sb.WriteString(`  <div class="embed-card-hover-embed" data-embed-html="`)
+		sb.WriteString(html.EscapeString(metadata.HTML))
+		sb.WriteString(`">`)
+		sb.WriteString("\n")
+		sb.WriteString(`  </div>`)
+		sb.WriteString("\n")
+		sb.WriteString(`</div>`)
+		sb.WriteString("\n")
+		return sb.String()
+	}
+
+	// Handle link-only mode
+	if opts.Link {
+		sb.WriteString(`  <a href="`)
+		sb.WriteString(html.EscapeString(rawURL))
+		sb.WriteString(`" class="embed-card-link-only" target="_blank" rel="noopener noreferrer">`)
+		sb.WriteString(html.EscapeString(metadata.Title))
+		sb.WriteString(`</a>`)
+		sb.WriteString("\n")
+		sb.WriteString(`</div>`)
+		sb.WriteString("\n")
+		return sb.String()
+	}
+
+	// Handle performance/image_only mode - just show image, no text
+	if opts.Performance || opts.ImageOnly {
+		if metadata.Image != "" {
+			sb.WriteString(`  <a href="`)
+			sb.WriteString(html.EscapeString(rawURL))
+			sb.WriteString(`" target="_blank" rel="noopener noreferrer">`)
+			sb.WriteString("\n")
+			sb.WriteString(`    <img src="`)
+			sb.WriteString(html.EscapeString(metadata.Image))
+			sb.WriteString(`" alt="`)
+			if metadata.Title != "" {
+				sb.WriteString(html.EscapeString(metadata.Title))
+			} else {
+				sb.WriteString(html.EscapeString(domain))
+			}
+			sb.WriteString(`" loading="lazy" class="embed-card-img">`)
+			sb.WriteString("\n")
+			sb.WriteString(`  </a>`)
+			sb.WriteString("\n")
+		}
+		sb.WriteString(`</div>`)
+		sb.WriteString("\n")
+		return sb.String()
+	}
+
+	// Standard card mode (default)
 	sb.WriteString(`  <a href="`)
 	sb.WriteString(html.EscapeString(rawURL))
 	sb.WriteString(`" class="embed-card-link" target="_blank" rel="noopener noreferrer">`)
 	sb.WriteString("\n")
 
 	// Show image if available and enabled
-	if p.config.ShowImage && metadata.Image != "" {
+	if p.config.ShowImage && metadata.Image != "" && !opts.NoTitle && !opts.NoDescription {
 		sb.WriteString(`    <div class="embed-card-image">`)
 		sb.WriteString("\n")
 		sb.WriteString(`      <img src="`)
@@ -876,12 +1215,16 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 	sb.WriteString(`    <div class="embed-card-content">`)
 	sb.WriteString("\n")
 
-	sb.WriteString(`      <div class="embed-card-title">`)
-	sb.WriteString(html.EscapeString(metadata.Title))
-	sb.WriteString(`</div>`)
-	sb.WriteString("\n")
+	// Show title unless disabled
+	if !opts.NoTitle && metadata.Title != "" {
+		sb.WriteString(`      <div class="embed-card-title">`)
+		sb.WriteString(html.EscapeString(metadata.Title))
+		sb.WriteString(`</div>`)
+		sb.WriteString("\n")
+	}
 
-	if metadata.Description != "" {
+	// Show description unless disabled
+	if !opts.NoDescription && metadata.Description != "" {
 		description := metadata.Description
 		if len(description) > 200 {
 			description = description[:197] + "..."
@@ -892,14 +1235,17 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 		sb.WriteString("\n")
 	}
 
-	sb.WriteString(`      <div class="embed-card-meta">`)
-	if metadata.SiteName != "" {
-		sb.WriteString(html.EscapeString(metadata.SiteName))
-		sb.WriteString(` &middot; `)
+	// Show meta (site name + domain) unless disabled
+	if !opts.NoMeta {
+		sb.WriteString(`      <div class="embed-card-meta">`)
+		if metadata.SiteName != "" {
+			sb.WriteString(html.EscapeString(metadata.SiteName))
+			sb.WriteString(` &middot; `)
+		}
+		sb.WriteString(html.EscapeString(domain))
+		sb.WriteString(`</div>`)
+		sb.WriteString("\n")
 	}
-	sb.WriteString(html.EscapeString(domain))
-	sb.WriteString(`</div>`)
-	sb.WriteString("\n")
 
 	sb.WriteString(`    </div>`)
 	sb.WriteString("\n")

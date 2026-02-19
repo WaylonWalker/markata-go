@@ -41,6 +41,7 @@ const (
 const (
 	defaultOutputDir  = "output"
 	blogrollBundleDir = "blogroll"
+	mediumImage       = "image"
 )
 
 // extractFirstImageFromHTML extracts the first image URL from HTML content.
@@ -91,7 +92,7 @@ func extractEntryImage(item *rss2Item) string {
 
 	// Try media:content with medium=image
 	for _, mc := range item.MediaContent {
-		if mc.URL != "" && mc.Medium == "image" {
+		if mc.URL != "" && mc.Medium == mediumImage {
 			return mc.URL
 		}
 	}
