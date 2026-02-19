@@ -1261,6 +1261,18 @@ func TestMentionsPlugin_ChatAdmonitionTitles(t *testing.T) {
 		},
 	}
 
+	avatar := "/images/waylon.jpg"
+	post := &models.Post{
+		Content: "",
+		AuthorObjects: []models.Author{
+			{
+				ID:     "waylon",
+				Name:   "Waylon Walker",
+				Avatar: &avatar,
+			},
+		},
+	}
+
 	tests := []struct {
 		name    string
 		content string
@@ -1283,6 +1295,9 @@ func TestMentionsPlugin_ChatAdmonitionTitles(t *testing.T) {
 				if !strings.Contains(result, `/contact/alice/`) {
 					t.Error("should contain alice's URL")
 				}
+				if !strings.Contains(result, "\n    Hello there!") {
+					t.Error("expected content to start on new line")
+				}
 			},
 		},
 		{
@@ -1295,6 +1310,28 @@ func TestMentionsPlugin_ChatAdmonitionTitles(t *testing.T) {
 				}
 				if !strings.Contains(result, `@bob`) {
 					t.Error("should contain @bob text")
+				}
+				if !strings.Contains(result, "\n    Great, thanks!") {
+					t.Error("expected content to start on new line")
+				}
+			},
+		},
+		{
+			name:    "chat-reply without handle uses author",
+			content: "!!! chat-reply\n    Thanks!",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if !strings.Contains(result, `chat-contact-name`) {
+					t.Error("should contain author name span")
+				}
+				if !strings.Contains(result, `Waylon Walker`) {
+					t.Error("should contain author name")
+				}
+				if !strings.Contains(result, `chat-contact-avatar`) {
+					t.Error("should contain author avatar")
+				}
+				if !strings.Contains(result, "\n    Thanks!") {
+					t.Error("expected content to start on new line")
 				}
 			},
 		},
@@ -1335,7 +1372,8 @@ func TestMentionsPlugin_ChatAdmonitionTitles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := p.processChatAdmonitionTitles(tt.content, handleMap)
+			post.Content = tt.content
+			result := p.processChatAdmonitionTitles(post, handleMap)
 			tt.check(t, result)
 		})
 	}
@@ -1388,6 +1426,18 @@ func TestMentionsPlugin_ChatAdmonitionTitles_Unquoted(t *testing.T) {
 		},
 	}
 
+	avatar := "/images/waylon.jpg"
+	post := &models.Post{
+		Content: "",
+		AuthorObjects: []models.Author{
+			{
+				ID:     "waylon",
+				Name:   "Waylon Walker",
+				Avatar: &avatar,
+			},
+		},
+	}
+
 	tests := []struct {
 		name    string
 		content string
@@ -1411,6 +1461,9 @@ func TestMentionsPlugin_ChatAdmonitionTitles_Unquoted(t *testing.T) {
 				if strings.Contains(result, `!!! chat "`) {
 					t.Error("enriched title should not be wrapped in quotes")
 				}
+				if !strings.Contains(result, "\n    Hello there!") {
+					t.Error("expected content to start on new line")
+				}
 			},
 		},
 		{
@@ -1423,6 +1476,28 @@ func TestMentionsPlugin_ChatAdmonitionTitles_Unquoted(t *testing.T) {
 				}
 				if !strings.Contains(result, `@bob`) {
 					t.Error("should contain @bob text")
+				}
+				if !strings.Contains(result, "\n    Thanks!") {
+					t.Error("expected content to start on new line")
+				}
+			},
+		},
+		{
+			name:    "unquoted chat-reply without handle uses author",
+			content: "!!! chat-reply\n    Thanks!",
+			check: func(t *testing.T, result string) {
+				t.Helper()
+				if !strings.Contains(result, `chat-contact-name`) {
+					t.Error("should contain author name span")
+				}
+				if !strings.Contains(result, `Waylon Walker`) {
+					t.Error("should contain author name")
+				}
+				if !strings.Contains(result, `chat-contact-avatar`) {
+					t.Error("should contain author avatar")
+				}
+				if !strings.Contains(result, "\n    Thanks!") {
+					t.Error("expected content to start on new line")
 				}
 			},
 		},
@@ -1473,7 +1548,8 @@ func TestMentionsPlugin_ChatAdmonitionTitles_Unquoted(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := p.processChatAdmonitionTitles(tt.content, handleMap)
+			post.Content = tt.content
+			result := p.processChatAdmonitionTitles(post, handleMap)
 			tt.check(t, result)
 		})
 	}
@@ -1602,7 +1678,7 @@ func TestMentionsPlugin_NoDoubleTransformation(t *testing.T) {
 			check: func(t *testing.T, result string) {
 				t.Helper()
 				// First, enrich the chat title
-				enriched := p.processChatAdmonitionTitles(result, handleMap)
+				enriched := p.processChatAdmonitionTitles(&models.Post{Content: result}, handleMap)
 				// Then run the general mention pass
 				final := p.processMentionsWithMetadata(enriched, handleMap)
 
@@ -1626,7 +1702,7 @@ func TestMentionsPlugin_NoDoubleTransformation(t *testing.T) {
 			content: "!!! chat @alice\n    Hello there!\n\nSome text mentioning @alice.",
 			check: func(t *testing.T, result string) {
 				t.Helper()
-				enriched := p.processChatAdmonitionTitles(result, handleMap)
+				enriched := p.processChatAdmonitionTitles(&models.Post{Content: result}, handleMap)
 				final := p.processMentionsWithMetadata(enriched, handleMap)
 
 				// The chat title line should NOT have nested <a> tags

@@ -151,6 +151,33 @@ Content only`
 	}
 }
 
+func TestParseFrontmatter_NormalizeAliases(t *testing.T) {
+	content := `---
+aliases:
+  - alpha
+alias: beta
+handles:
+  - gamma
+handle: delta
+---
+Content`
+
+	metadata, body, err := ParseFrontmatter(content)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if body != "Content" {
+		t.Errorf("body: got %q, want 'Content'", body)
+	}
+
+	aliases := GetStringSlice(metadata, "aliases")
+	expected := []string{"alpha", "beta", "gamma", "delta"}
+	if !reflect.DeepEqual(aliases, expected) {
+		t.Errorf("aliases: got %v, want %v", aliases, expected)
+	}
+}
+
 func TestParseFrontmatter_BooleanValues(t *testing.T) {
 	// Test case: "frontmatter boolean values"
 	content := `---

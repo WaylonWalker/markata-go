@@ -1251,10 +1251,14 @@ func (m *tomlMentionsConfig) toMentionsConfig() models.MentionsConfig {
 
 	// Convert from_posts sources
 	for _, src := range m.FromPosts {
+		aliasesField := src.AliasesField
+		if aliasesField == "" {
+			aliasesField = defaultAliasesField
+		}
 		config.FromPosts = append(config.FromPosts, models.MentionPostSource{
 			Filter:       src.Filter,
 			HandleField:  src.HandleField,
-			AliasesField: src.AliasesField,
+			AliasesField: aliasesField,
 			AvatarField:  src.AvatarField,
 		})
 	}
@@ -1266,6 +1270,8 @@ func (m *tomlMentionsConfig) toMentionsConfig() models.MentionsConfig {
 
 	return config
 }
+
+const defaultAliasesField = "aliases"
 
 func (b *tomlBlogrollConfig) toBlogrollConfig() models.BlogrollConfig {
 	// Get default values
@@ -1943,10 +1949,14 @@ func (m *yamlMentionsConfig) toMentionsConfig() models.MentionsConfig {
 
 	// Convert from_posts sources
 	for _, src := range m.FromPosts {
+		aliasesField := src.AliasesField
+		if aliasesField == "" {
+			aliasesField = defaultAliasesField
+		}
 		config.FromPosts = append(config.FromPosts, models.MentionPostSource{
 			Filter:       src.Filter,
 			HandleField:  src.HandleField,
-			AliasesField: src.AliasesField,
+			AliasesField: aliasesField,
 			AvatarField:  src.AvatarField,
 		})
 	}
@@ -3216,10 +3226,14 @@ func (m *jsonMentionsConfig) toMentionsConfig() models.MentionsConfig {
 
 	// Convert from_posts sources
 	for _, src := range m.FromPosts {
+		aliasesField := src.AliasesField
+		if aliasesField == "" {
+			aliasesField = defaultAliasesField
+		}
 		config.FromPosts = append(config.FromPosts, models.MentionPostSource{
 			Filter:       src.Filter,
 			HandleField:  src.HandleField,
-			AliasesField: src.AliasesField,
+			AliasesField: aliasesField,
 			AvatarField:  src.AvatarField,
 		})
 	}

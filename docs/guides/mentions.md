@@ -55,10 +55,12 @@ The default `from_posts` sources are equivalent to:
 [[markata-go.mentions.from_posts]]
 filter = "template == 'contact'"
 handle_field = "handle"
+aliases_field = "aliases"
 
 [[markata-go.mentions.from_posts]]
 filter = "template == 'author'"
 handle_field = "handle"
+aliases_field = "aliases"
 ```
 
 You can override this by specifying your own `from_posts` sources:
@@ -205,6 +207,7 @@ handle_field = "handle"
 [[markata-go.mentions.from_posts]]
 filter = "template == 'author'"
 handle_field = "handle"
+aliases_field = "aliases"
 ```
 
 This means if you have author profile pages with `template: author`, they are automatically included as mention sources.
@@ -251,6 +254,14 @@ Both quoted and unquoted forms work:
     Quoted form works too.
 ```
 
+`chat-reply` can also omit a handle to render as the post author:
+
+```markdown
+!!! chat-reply
+
+    Thanks for the update!
+```
+
 This renders with avatar images and linked names in the admonition title, creating a conversation-style display.
 
 Collapsible chat admonitions work too:
@@ -290,6 +301,10 @@ Chat admonitions include CSS classes for styling:
   height: 1.5em;
   border-radius: 50%;
   vertical-align: middle;
+}
+
+.chat-contact-name {
+  font-weight: 600;
 }
 ```
 
