@@ -29,20 +29,31 @@ This creates a preview card showing the embedded post's title, description, and 
 
 ### External URL Embeds
 
-Embed external URLs using either `![embed](url)` or Obsidian-style `![[https://url]]`:
+Embed external URLs using `![embed](url)`, `[!embed](url)`, or Obsidian-style `![[https://url]]`:
 
 ```markdown
 Here's a great resource:
 
 ![embed](https://example.com/article)
 
+![embed](https://example.com/article|card)
+![embed](https://example.com/article|no_title center)
+
+[!embed](https://example.com/article)
+[!embed](https://example.com/article|hover)
+
 ![[https://example.com/article]]
 ![[https://example.com/article|Custom Title]]
+![[https://example.com/article|Custom Title|center full_width]]
 ```
 
 This resolves metadata via oEmbed (when available), then falls back to Open Graph, and displays a card with the title, description, and image.
 
-> **Note:** Obsidian-style external embeds like `![[https://example.com]]` are not supported yet. Track progress in issue #837.
+Supported options (space-separated):
+
+- `no_title`, `no_description`, `no_meta`
+- `image_only`, `performance`, `hover`, `card`, `rich`
+- `center`, `full_width`, `link`
 
 ## Internal Embeds
 
@@ -90,8 +101,12 @@ This helps you spot broken embeds without breaking your build.
 
 ```markdown
 ![embed](https://example.com/article)
+![embed](https://example.com/article|card)
+![embed](https://example.com/article|no_description)
+[!embed](https://example.com/article|hover)
 ![[https://example.com/article]]
 ![[https://example.com/article|Custom Title]]
+![[https://example.com/article|Custom Title|center full_width]]
 ```
 
 > **Note:** The alt text must be exactly `embed`. Regular images are not affected. The Obsidian-style form is only recognized for full URLs (`http`/`https`).
@@ -101,6 +116,16 @@ This helps you spot broken embeds without breaking your build.
 External embeds fetch and display (in order based on strategy):
 - **oEmbed** - Title, provider name, thumbnail image (if available)
 - **Open Graph** - `og:title`, `og:description`, `og:image`, `og:site_name`
+
+### Embed Modes
+
+Embed modes control how external content is rendered:
+
+- `card` (default): image + title + description + domain
+- `rich`: full oEmbed HTML (iframes, scripts)
+- `performance`: image only, no text
+- `hover`: image preview, loads embed HTML on hover
+- `image_only`: image-only rendering (useful for photo providers)
 
 ### Caching
 
@@ -129,6 +154,8 @@ external_card_class = "embed-card embed-card-external"
 fetch_external = true        # Set false to skip HTTP requests
 oembed_enabled = true        # Enable oEmbed resolution
 oembed_auto_discover = false # Use HTML auto-discovery when no provider matches
+default_mode = "card"        # Default embed mode
+oembed_providers_url = "https://oembed.com/providers.json" # Providers list URL (empty disables)
 resolution_strategy = "oembed_first"  # oembed_first | og_first | oembed_only
 cache_dir = ".cache/embeds"  # Where to store cached metadata
 cache_ttl = 604800           # Cache TTL in seconds (default 7 days)
@@ -139,7 +166,7 @@ fallback_title = "External Link"  # Title when metadata is unavailable
 show_image = true                 # Show images
 
 [embeds.providers]
-youtube = { enabled = true }
+youtube = { enabled = true, mode = "rich" }
 vimeo = { enabled = true }
 tiktok = { enabled = true }
 flickr = { enabled = true }
@@ -193,6 +220,21 @@ oembed_auto_discover = true
 
 When enabled, markata-go looks for oEmbed link tags in HTML pages and uses the discovered endpoint if no provider matches.
 
+### Provider Mode Overrides
+
+You can set a default mode for all embeds and override it per provider:
+
+```toml
+[embeds]
+default_mode = "card"
+
+[embeds.providers.youtube]
+mode = "rich"
+
+[embeds.providers.giphy]
+mode = "image_only"
+```
+
 ## Styling
 
 Embed cards use these CSS classes:
@@ -203,6 +245,9 @@ Embed cards use these CSS classes:
 | `.embed-card-external` | Added for external embeds |
 | `.embed-card-link` | The clickable anchor |
 | `.embed-card-image` | Image wrapper (external only) |
+| `.embed-card-rich` | Rich HTML container |
+| `.embed-card-hover` | Hover-mode container |
+| `.embed-card-hover-embed` | Hover-mode embed HTML container |
 | `.embed-card-content` | Text content area |
 | `.embed-card-title` | Title |
 | `.embed-card-description` | Description |

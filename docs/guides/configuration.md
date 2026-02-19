@@ -164,12 +164,15 @@ Controls internal and external embed behavior, including oEmbed resolution and O
 | `fetch_external` | bool | `true` | Fetch Open Graph metadata for external embeds |
 | `oembed_enabled` | bool | `true` | Enable oEmbed resolution |
 | `oembed_auto_discover` | bool | `false` | Discover oEmbed endpoints from HTML link tags |
+| `default_mode` | string | `"card"` | Default embed mode (`card`, `rich`, `performance`, `hover`, `image_only`) |
+| `oembed_providers_url` | string | `"https://oembed.com/providers.json"` | providers.json URL (empty disables) |
 | `resolution_strategy` | string | `"oembed_first"` | `oembed_first`, `og_first`, `oembed_only` |
 | `cache_dir` | string | `".cache/embeds"` | Cache directory for metadata |
 | `cache_ttl` | int | `604800` | Cache TTL (seconds) |
 | `timeout` | int | `10` | HTTP timeout (seconds) |
 | `fallback_title` | string | `"External Link"` | Title when metadata unavailable |
 | `show_image` | bool | `true` | Show images for external embeds |
+| `providers.<name>.mode` | string | (unset) | Provider mode override (`card`, `rich`, `performance`, `hover`, `image_only`) |
 
 ```toml
 [embeds]
@@ -179,6 +182,8 @@ external_card_class = "embed-card embed-card-external"
 fetch_external = true
 oembed_enabled = true
 oembed_auto_discover = false
+default_mode = "card"
+oembed_providers_url = "https://oembed.com/providers.json"
 resolution_strategy = "oembed_first"
 cache_dir = ".cache/embeds"
 cache_ttl = 604800
@@ -187,7 +192,7 @@ fallback_title = "External Link"
 show_image = true
 
 [embeds.providers]
-youtube = { enabled = true }
+youtube = { enabled = true, mode = "rich" }
 vimeo = { enabled = true }
 tiktok = { enabled = true }
 flickr = { enabled = true }
