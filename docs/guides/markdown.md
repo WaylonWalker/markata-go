@@ -656,7 +656,7 @@ CSS
 <dl>
   <dt>Term 1</dt>
   <dd>Definition of the first term.</dd>
-  
+
   <dt>Term 2</dt>
   <dd>First definition of the second term.</dd>
   <dd>Second definition of the second term.</dd>
@@ -1437,6 +1437,11 @@ Admonitions can contain any Markdown content:
 
     - Works with Python 3.6+
     - Requires no dependencies
+
+!!! note
+
+    A blank line after the admonition header is allowed.
+    Content must still be indented.
 ```
 
 **Live example:**

@@ -633,6 +633,8 @@ With these aliases, any of the following wikilinks will resolve to this post:
     that post (slug match) rather than the post with the alias. Slugs always take
     precedence over aliases.
 
+**Alias field synonyms:** The frontmatter loader also accepts `alias`, `handle`, and `handles` and normalizes them into `aliases`.
+
 ---
 
 ## Examples

@@ -76,7 +76,7 @@ type MentionPostSource struct {
 	// Example: "handle" for frontmatter like `handle: alice`
 	HandleField string `json:"handle_field,omitempty" yaml:"handle_field,omitempty" toml:"handle_field,omitempty"`
 
-	// AliasesField is the frontmatter field containing handle aliases (optional)
+	// AliasesField is the frontmatter field containing handle aliases (defaults to "aliases")
 	// Example: "aliases" for frontmatter like `aliases: [alices, asmith]`
 	AliasesField string `json:"aliases_field,omitempty" yaml:"aliases_field,omitempty" toml:"aliases_field,omitempty"`
 
@@ -94,12 +94,14 @@ func NewMentionsConfig() MentionsConfig {
 		CSSClass: "mention",
 		FromPosts: []MentionPostSource{
 			{
-				Filter:      "template == 'contact'",
-				HandleField: "handle",
+				Filter:       "template == 'contact'",
+				HandleField:  "handle",
+				AliasesField: "aliases",
 			},
 			{
-				Filter:      "template == 'author'",
-				HandleField: "handle",
+				Filter:       "template == 'author'",
+				HandleField:  "handle",
+				AliasesField: "aliases",
 			},
 		},
 		CacheDir:           "cache/mentions",

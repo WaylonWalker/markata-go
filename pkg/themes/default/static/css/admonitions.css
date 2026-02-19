@@ -381,6 +381,10 @@ details.admonition[open] > summary::before {
   font-weight: 600;
 }
 
+.chat-contact-name {
+  font-weight: 600;
+}
+
 .chat-contact .mention:hover {
   text-decoration: underline;
 }
