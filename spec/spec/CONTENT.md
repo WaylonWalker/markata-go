@@ -46,6 +46,16 @@ Content starts here...
 3. Parse content between as YAML
 4. Everything after closing `---` is content
 
+### Frontmatter Aliases
+
+The frontmatter loader normalizes alias fields for compatibility:
+
+| Canonical | Accepted Aliases |
+|-----------|------------------|
+| `aliases` | `alias`, `handle`, `handles` |
+
+All values are merged into the canonical `aliases` key as a list of strings. Existing keys are preserved.
+
 ### YAML Features Supported
 
 | Feature | Example | Support |
@@ -485,6 +495,11 @@ With syntax highlighting (optional):
 !!! note "Optional Title"
     Admonition content here.
     Can span multiple lines.
+
+!!! note
+
+    A blank line after the admonition header is allowed.
+    Content must still be indented.
 
 !!! warning
     Warning without custom title uses type as title.

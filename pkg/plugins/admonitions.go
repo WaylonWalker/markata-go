@@ -182,10 +182,10 @@ func (p *AdmonitionParser) Continue(_ ast.Node, reader text.Reader, _ parser.Con
 	line, _ := reader.PeekLine()
 
 	// Blank lines are allowed inside admonitions (paragraph separators).
-	// We let them through without advancing the reader; goldmark handles
-	// them as part of the block's child content.
+	// Consume the blank line and continue without allowing child block parsing.
 	if util.IsBlank(line) {
-		return parser.Continue | parser.HasChildren
+		reader.AdvanceToEOL()
+		return parser.Continue
 	}
 
 	// Non-blank line: check for proper indentation (at least 4 spaces).

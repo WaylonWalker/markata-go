@@ -123,6 +123,8 @@ func ParseFrontmatter(content string) (metadata map[string]interface{}, body str
 		metadata = make(map[string]interface{})
 	}
 
+	normalizeAliases(metadata)
+
 	return metadata, body, nil
 }
 
@@ -150,7 +152,68 @@ func ParseFrontmatterWithRaw(content string) (metadata map[string]interface{}, b
 		metadata = make(map[string]interface{})
 	}
 
+	normalizeAliases(metadata)
+
 	return metadata, body, rawFrontmatter, nil
+}
+
+// normalizeAliases normalizes frontmatter alias keys into "aliases".
+// It merges values from: aliases, alias, handles, handle.
+// Existing keys are preserved; "aliases" is populated if any aliases are found.
+func normalizeAliases(metadata map[string]interface{}) {
+	if metadata == nil {
+		return
+	}
+
+	keys := []string{"aliases", "alias", "handles", "handle"}
+	aliases := make([]string, 0)
+	seen := make(map[string]bool)
+
+	for _, key := range keys {
+		value, ok := metadata[key]
+		if !ok {
+			continue
+		}
+		for _, alias := range normalizeAliasValue(value) {
+			if alias == "" {
+				continue
+			}
+			lower := strings.ToLower(alias)
+			if seen[lower] {
+				continue
+			}
+			seen[lower] = true
+			aliases = append(aliases, alias)
+		}
+	}
+
+	if len(aliases) == 0 {
+		return
+	}
+
+	metadata["aliases"] = aliases
+}
+
+func normalizeAliasValue(value interface{}) []string {
+	switch v := value.(type) {
+	case string:
+		if v == "" {
+			return nil
+		}
+		return []string{v}
+	case []string:
+		return v
+	case []interface{}:
+		result := make([]string, 0, len(v))
+		for _, item := range v {
+			if str, ok := item.(string); ok && str != "" {
+				result = append(result, str)
+			}
+		}
+		return result
+	default:
+		return nil
+	}
 }
 
 // GetString extracts a string value from metadata, returning empty string if not found or wrong type.

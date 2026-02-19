@@ -61,6 +61,7 @@ When no `from_posts` sources are configured (or when a `[markata-go.mentions]` s
 [[markata-go.mentions.from_posts]]
 filter = "template == 'contact'"
 handle_field = "handle"
+aliases_field = "aliases"
 ```
 
 This means any post with `template: contact` in its frontmatter is automatically available as a mentionable contact. To disable this default, set `from_posts` to an explicit source with a different filter.
@@ -332,7 +333,7 @@ filter = "'project' in tags"
 enabled = true
 ```
 
-This uses the default `from_posts` source (`template == 'contact'` filter with `handle` field), so any post with `template: contact` frontmatter is automatically mentionable.
+This uses the default `from_posts` source (`template == 'contact'` filter with `handle` and `aliases` fields), so any post with `template: contact` frontmatter is automatically mentionable.
 
 ## Chat Admonition Integration
 
@@ -351,6 +352,13 @@ Both quoted and unquoted forms are supported:
 
 !!! chat "@alice"
     Quoted form also works.
+```
+
+`chat-reply` can also omit a handle to render as the post author:
+
+```markdown
+!!! chat-reply
+    Thanks for the update!
 ```
 
 When an unquoted `@handle` is used and resolves, the plugin wraps the enriched title in quotes so the admonition parser treats it correctly. When the handle does not resolve, the line is left unchanged.
