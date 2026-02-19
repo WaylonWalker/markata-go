@@ -537,9 +537,10 @@ var blogrollHTMLTagRegex = regexp.MustCompile(`<[^>]*>`)
 // in the Collect stage to gather external feed entries,
 // and in the Write stage to generate blogroll and reader pages.
 type BlogrollPlugin struct {
-	feeds   []*models.ExternalFeed
-	entries []*models.ExternalEntry
-	mu      sync.RWMutex
+	feeds     []*models.ExternalFeed
+	entries   []*models.ExternalEntry
+	mu        sync.RWMutex
+	assetURLs map[string]string
 }
 
 // NewBlogrollPlugin creates a new BlogrollPlugin.
@@ -576,6 +577,11 @@ func (p *BlogrollPlugin) Priority(stage lifecycle.Stage) int {
 // so they can be resolved by wikilinks during the Transform stage.
 func (p *BlogrollPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
+	if config.Extra != nil {
+		if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
+			p.assetURLs = assetURLs
+		}
+	}
 	blogrollConfig := getBlogrollConfig(config)
 
 	if !blogrollConfig.Enabled {
@@ -586,6 +592,16 @@ func (p *BlogrollPlugin) Configure(m *lifecycle.Manager) error {
 	p.registerSyntheticPosts(m, blogrollConfig)
 
 	return nil
+}
+
+func (p *BlogrollPlugin) resolveAssetURL(name, fallback string) string {
+	if p.assetURLs == nil {
+		return fallback
+	}
+	if url, ok := p.assetURLs[name]; ok && url != "" {
+		return url
+	}
+	return fallback
 }
 
 // Collect fetches and parses configured external feeds.
@@ -2214,8 +2230,8 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, p
 `)
 	// Add HTMX if using that pagination type
 	if page.PaginationType == models.PaginationHTMX {
-		sb.WriteString(`  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-`)
+		htmxURL := p.resolveAssetURL("htmx", "https://unpkg.com/htmx.org@1.9.10")
+		sb.WriteString(fmt.Sprintf("  <script src=%q></script>\n", htmxURL))
 	}
 	sb.WriteString(`</head>
 <body>

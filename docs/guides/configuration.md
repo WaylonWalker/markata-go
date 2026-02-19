@@ -216,6 +216,18 @@ wistia = { enabled = true }
 giphy = { enabled = true }
 ```
 
+### Vendor Assets (`[markata-go.assets]`)
+
+markata-go can self-host common third-party JS/CSS dependencies (HTMX, GLightbox, Mermaid, Chart.js, Cal-Heatmap, D3). When enabled, assets are downloaded into a cache directory and copied to `/assets/vendor` in the output. Templates use the `asset_urls` mapping injected by the CDN assets plugin.
+
+```toml
+[markata-go.assets]
+mode = "self-hosted"           # "self-hosted" (default), "cdn", or "auto"
+cache_dir = ".markata/assets-cache"
+output_dir = "assets/vendor"
+verify_integrity = true
+```
+
 ### License configuration
 
 The `license` key controls the attribution shown in the footer and whether the dev server reminds you to pick a license. It accepts either a string key (selects the attribution) or the literal `false` (hides the line and silences the warning). When the footer shows the copyright line, the license appears on the same line next to the copyright symbol; if copyright is disabled, the license renders as its own line.
@@ -761,7 +773,7 @@ line_numbers = false
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Whether mermaid diagram processing is active |
 | `mode` | string | `"client"` | Rendering mode: `client` (browser-side), `cli` (mmdc), or `chromium` (headless Chrome) |
-| `cdn_url` | string | mermaid CDN URL | URL for the Mermaid.js library |
+| `cdn_url` | string | `/assets/vendor/mermaid/mermaid.esm.min.mjs` | Mermaid JS URL (local by default) |
 | `theme` | string | `"default"` | Mermaid theme: `default`, `dark`, `forest`, `neutral`. Ignored when `use_css_variables` is true. |
 | `use_css_variables` | bool | `true` | Derive diagram colors from site CSS custom properties. Reads `--color-background`, `--color-text`, `--color-primary`, `--color-code-bg`, and `--color-surface` with hardcoded fallbacks. |
 | `lightbox` | bool | `true` | Enable click-to-zoom lightbox overlay with interactive pan and zoom via svg-pan-zoom. |

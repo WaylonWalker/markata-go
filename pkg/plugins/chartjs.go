@@ -49,6 +49,12 @@ func (p *ChartJSPlugin) Configure(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
+		if url, ok := assetURLs["chartjs"]; ok && url != "" {
+			p.config.CDNURL = url
+		}
+	}
+
 	// Check for chartjs config in Extra
 	chartjsConfig, ok := config.Extra["chartjs"]
 	if !ok {
@@ -159,12 +165,17 @@ func (p *ChartJSPlugin) processPost(post *models.Post) error {
 // injectChartJSScripts adds the Chart.js library and initialization scripts to the HTML.
 func (p *ChartJSPlugin) injectChartJSScripts(htmlContent string, initScripts []string) string {
 	// Build the combined script
+	chartURL := p.config.CDNURL
+	if strings.HasSuffix(chartURL, "/") {
+		chartURL = strings.TrimRight(chartURL, "/") + "/chart.min.js"
+	}
+
 	script := fmt.Sprintf(`
 <script src="%s"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {%s
 });
-</script>`, p.config.CDNURL, strings.Join(initScripts, ""))
+</script>`, chartURL, strings.Join(initScripts, ""))
 
 	// Append the script to the end of the content
 	return htmlContent + script

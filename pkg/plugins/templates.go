@@ -838,6 +838,14 @@ func copyPluginConfigs(config *lifecycle.Config, modelsConfig *models.Config) {
 		modelsConfig.Theme = theme
 	}
 
+	// Copy Assets config if available
+	if assetsConfig, ok := config.Extra["assets"].(models.AssetsConfig); ok {
+		modelsConfig.Assets = assetsConfig
+	}
+	if assetsConfig, ok := config.Extra["assets"].(*models.AssetsConfig); ok && assetsConfig != nil {
+		modelsConfig.Assets = *assetsConfig
+	}
+
 	// Copy Tags config if available
 	if tags, ok := config.Extra["tags"].(models.TagsConfig); ok {
 		modelsConfig.Tags = tags
