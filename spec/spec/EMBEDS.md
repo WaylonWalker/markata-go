@@ -7,7 +7,7 @@ The embeds plugin enables rich embedding of both internal posts and external URL
 The embeds plugin processes two types of embed syntax:
 
 1. **Internal embeds** (`![[slug]]`) - Embed another post from the same site as a preview card
-2. **External embeds** (`![embed](url)` or `![[https://url]]`) - Embed external URLs with rich metadata (oEmbed + Open Graph)
+2. **External embeds** (`![embed](url)`, `[!embed](url)`, or `![[https://url]]`) - Embed external URLs with rich metadata (oEmbed + Open Graph)
 
 ## Syntax
 
@@ -21,12 +21,21 @@ The embeds plugin processes two types of embed syntax:
 ### External Embeds
 
 ```markdown
-![embed](https://example.com/article)  # External embed with OG metadata
-![[https://example.com/article]]       # Obsidian-style external embed
-![[https://example.com/article|Title]] # Obsidian-style with custom title
+![embed](https://example.com/article)         # External embed with OG metadata
+![embed](https://example.com/article|card)    # External embed with mode/class options
+[!embed](https://example.com/article)         # Bracket-style external embed
+[!embed](https://example.com/article|hover)   # Bracket-style with options
+![[https://example.com/article]]              # Obsidian-style external embed
+![[https://example.com/article|Title]]        # Obsidian-style with custom title
+![[https://example.com/article|Title|center]] # Obsidian-style with classes
 ```
 
 Note: The alt text must be exactly `embed` to trigger external embedding. Regular images with other alt text are not affected.
+
+Supported options (space-separated):
+- `no_title`, `no_description`, `no_meta`
+- `image_only`, `performance`, `hover`, `card`, `rich`
+- `center`, `full_width`, `link`
 
 ## Configuration
 
@@ -38,6 +47,8 @@ external_card_class = "embed-card embed-card-external"  # CSS class for external
 fetch_external = true                            # Fetch OG metadata from external URLs
 oembed_enabled = true                            # Enable oEmbed resolution
 oembed_auto_discover = false                     # Discover oEmbed endpoints from HTML link tags
+default_mode = "card"                            # Default embed mode
+oembed_providers_url = "https://oembed.com/providers.json" # Providers list URL (empty disables)
 resolution_strategy = "oembed_first"             # oembed_first | og_first | oembed_only
 cache_dir = ".cache/embeds"                      # Cache directory for external metadata
 cache_ttl = 604800                               # Cache TTL in seconds
@@ -46,7 +57,7 @@ fallback_title = "External Link"                 # Title when OG title is unavai
 show_image = true                                # Show OG images in external embeds
 
 [embeds.providers]
-youtube = { enabled = true }
+youtube = { enabled = true, mode = "rich" }
 vimeo = { enabled = true }
 tiktok = { enabled = true }
 flickr = { enabled = true }
@@ -114,7 +125,8 @@ A post cannot embed itself. Attempting to do so adds a warning comment:
    - **og_first**: try OG, fall back to oEmbed providers
    - **oembed_only**: only use oEmbed (no OG fallback)
 3. Caches metadata (configurable TTL)
-4. Generates an embed card with:
+4. Selects a mode (explicit option, provider override, oEmbed type default, or global default)
+5. Generates an embed card with:
    - OG image (if available and enabled)
    - OG title (or fallback)
    - OG description (truncated)
@@ -125,6 +137,16 @@ A post cannot embed itself. Attempting to do so adds a warning comment:
 The plugin extracts:
 - **oEmbed**: title, provider name, thumbnail URL (if available)
 - **Open Graph**: `og:title`, `og:description`, `og:image`, `og:site_name`
+
+### Modes
+
+Embed modes control how external content is rendered:
+
+- `card` (default): image + title + description + domain
+- `rich`: full oEmbed HTML (iframes, scripts)
+- `performance`: image only, no text
+- `hover`: image preview, loads embed HTML on hover
+- `image_only`: image-only rendering (useful for photo providers)
 
 ### oEmbed Providers (Phase 2)
 
