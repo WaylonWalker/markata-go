@@ -1158,10 +1158,18 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 
 	// Handle link-only mode
 	if opts.Link {
+		linkTitle := metadata.Title
+		if linkTitle == "" {
+			linkTitle = p.config.FallbackTitle
+		}
+		if linkTitle == "" {
+			linkTitle = domain
+		}
+
 		sb.WriteString(`  <a href="`)
 		sb.WriteString(html.EscapeString(rawURL))
 		sb.WriteString(`" class="embed-card-link-only" target="_blank" rel="noopener noreferrer">`)
-		sb.WriteString(html.EscapeString(metadata.Title))
+		sb.WriteString(html.EscapeString(linkTitle))
 		sb.WriteString(`</a>`)
 		sb.WriteString("\n")
 		sb.WriteString(`</div>`)
@@ -1201,7 +1209,7 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 	sb.WriteString("\n")
 
 	// Show image if available and enabled
-	if p.config.ShowImage && metadata.Image != "" && !opts.NoTitle && !opts.NoDescription {
+	if p.config.ShowImage && metadata.Image != "" {
 		sb.WriteString(`    <div class="embed-card-image">`)
 		sb.WriteString("\n")
 		sb.WriteString(`      <img src="`)
