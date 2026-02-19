@@ -295,7 +295,7 @@ func TestEmbedsPlugin_ExternalEmbed(t *testing.T) {
 	result := posts[0]
 
 	// Check embed card was created
-	if !containsString(result.Content, `class="embed-card embed-card-external"`) {
+	if !containsString(result.Content, "embed-card-external") {
 		t.Errorf("expected external embed card class, got: %s", result.Content)
 	}
 
@@ -352,7 +352,7 @@ func TestEmbedsPlugin_ExternalEmbed_ObsidianStyle(t *testing.T) {
 	posts := m.Posts()
 	result := posts[0]
 
-	if !containsString(result.Content, `class="embed-card embed-card-external"`) {
+	if !containsString(result.Content, "embed-card-external") {
 		t.Errorf("expected external embed card class, got: %s", result.Content)
 	}
 
@@ -400,6 +400,219 @@ func TestEmbedsPlugin_ExternalEmbed_ObsidianStyle_WithTitle(t *testing.T) {
 
 	if !containsString(result.Content, "Custom Title") {
 		t.Errorf("expected custom title in content")
+	}
+}
+
+func TestEmbedsPlugin_ExternalEmbed_BracketSyntax(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		//nolint:errcheck // test helper
+		w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+	<meta property="og:title" content="Bracket Title">
+	<meta property="og:description" content="Bracket Description">
+	<meta property="og:image" content="https://example.com/bracket.jpg">
+</head>
+<body></body>
+</html>`))
+	}))
+	defer server.Close()
+
+	p := NewEmbedsPlugin()
+	tmpDir := t.TempDir()
+	p.config.CacheDir = filepath.Join(tmpDir, "cache")
+
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{{
+		Path:    "source.md",
+		Slug:    "source-post",
+		Content: "Here is an external embed: [!embed](" + server.URL + ")",
+	}})
+
+	if err := p.Transform(m); err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	result := m.Posts()[0]
+	if !containsString(result.Content, "embed-card-external") {
+		t.Errorf("expected external embed card class, got: %s", result.Content)
+	}
+	if !containsString(result.Content, "Bracket Title") {
+		t.Errorf("expected title in content")
+	}
+	if !containsString(result.Content, "Bracket Description") {
+		t.Errorf("expected description in content")
+	}
+}
+
+func TestEmbedsPlugin_ExternalEmbed_OptionsInMarkdown(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		//nolint:errcheck // test helper
+		w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+	<meta property="og:title" content="Options Title">
+	<meta property="og:description" content="Options Description">
+	<meta property="og:image" content="https://example.com/options.jpg">
+</head>
+<body></body>
+</html>`))
+	}))
+	defer server.Close()
+
+	p := NewEmbedsPlugin()
+	p.config.OEmbedEnabled = false
+	tmpDir := t.TempDir()
+	p.config.CacheDir = filepath.Join(tmpDir, "cache")
+
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{{
+		Path:    "source.md",
+		Slug:    "source-post",
+		Content: "![embed](" + server.URL + "|no_title)",
+	}})
+
+	if err := p.Transform(m); err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	result := m.Posts()[0]
+	if !containsString(result.Content, "embed-card-external") {
+		t.Errorf("expected external embed card class, got: %s", result.Content)
+	}
+	if containsString(result.Content, "Options Title") {
+		t.Errorf("expected title to be suppressed")
+	}
+	if !containsString(result.Content, `src="https://example.com/options.jpg"`) {
+		t.Errorf("expected image to still render with no_title option")
+	}
+}
+
+func TestEmbedsPlugin_ExternalEmbed_ObsidianStyle_WithClasses(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		//nolint:errcheck // test helper
+		w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+	<meta property="og:title" content="Classy Title">
+</head>
+<body></body>
+</html>`))
+	}))
+	defer server.Close()
+
+	p := NewEmbedsPlugin()
+	tmpDir := t.TempDir()
+	p.config.CacheDir = filepath.Join(tmpDir, "cache")
+
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{{
+		Path:    "source.md",
+		Slug:    "source-post",
+		Content: "![[" + server.URL + "|Custom Title|center full_width]]",
+	}})
+
+	if err := p.Transform(m); err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	result := m.Posts()[0]
+	if !containsString(result.Content, `class="embed-card embed-card-external embed-card-center embed-card-full-width center full_width"`) {
+		t.Errorf("expected classes to be applied, got: %s", result.Content)
+	}
+}
+
+func TestEmbedsPlugin_ExternalEmbed_DefaultModeFromConfig(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		//nolint:errcheck // test helper
+		w.Write([]byte(`{"type":"link","version":"1.0","title":"Rich Title","provider_name":"Test Provider","html":"<iframe src=\"https://example.com/embed\"></iframe>"}`))
+	}))
+	defer server.Close()
+
+	provider := oembedProvider{
+		Name:           "test provider",
+		Endpoint:       server.URL,
+		URLPrefixes:    []string{"https://example.com/"},
+		SupportsFormat: false,
+	}
+
+	config := models.NewEmbedsConfig()
+	config.DefaultEmbedMode = "rich"
+	config.CacheDir = t.TempDir()
+	config.OEmbedProviders = map[string]models.OEmbedProviderConfig{
+		"test provider": {Enabled: true},
+	}
+
+	client := server.Client()
+	p := NewEmbedsPlugin()
+	p.SetConfig(config)
+	p.oembed = newOEmbedResolverWithProviders(config, client, []oembedProvider{provider})
+
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{{
+		Path:    "source.md",
+		Slug:    "source-post",
+		Content: "![embed](https://example.com/rich-post)",
+	}})
+
+	if err := p.Transform(m); err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	result := m.Posts()[0]
+	if !containsString(result.Content, "embed-card-rich") {
+		t.Errorf("expected rich embed rendering, got: %s", result.Content)
+	}
+}
+
+func TestEmbedsPlugin_ExternalEmbed_ProviderModeOverride(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		//nolint:errcheck // test helper
+		w.Write([]byte(`{"type":"link","version":"1.0","title":"Performance Title","provider_name":"Test Provider","thumbnail_url":"https://example.com/image.jpg","url":"https://example.com/image.jpg"}`))
+	}))
+	defer server.Close()
+
+	provider := oembedProvider{
+		Name:           "test",
+		Endpoint:       server.URL,
+		URLPrefixes:    []string{"https://example.com/"},
+		SupportsFormat: false,
+	}
+
+	config := models.NewEmbedsConfig()
+	config.OEmbedEnabled = true
+	config.CacheDir = t.TempDir()
+	config.OEmbedProviders = map[string]models.OEmbedProviderConfig{
+		"test provider": {Enabled: true, Mode: "performance"},
+	}
+
+	client := server.Client()
+	p := NewEmbedsPlugin()
+	p.SetConfig(config)
+	p.oembed = newOEmbedResolverWithProviders(config, client, []oembedProvider{provider})
+
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{{
+		Path:    "source.md",
+		Slug:    "source-post",
+		Content: "![embed](https://example.com/perf-post)",
+	}})
+
+	if err := p.Transform(m); err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	result := m.Posts()[0]
+	if !containsString(result.Content, "embed-card-img") {
+		t.Errorf("expected performance/image-only rendering, got: %s", result.Content)
+	}
+	if containsString(result.Content, "embed-card-content") {
+		t.Errorf("expected card content to be omitted in performance mode")
 	}
 }
 
