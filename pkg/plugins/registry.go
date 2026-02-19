@@ -75,6 +75,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["embeds"] = func() lifecycle.Plugin { return NewEmbedsPlugin() }
 	pluginRegistry.constructors["blogroll"] = func() lifecycle.Plugin { return NewBlogrollPlugin() }
 	pluginRegistry.constructors["mentions"] = func() lifecycle.Plugin { return NewMentionsPlugin() }
+	pluginRegistry.constructors["hashtag_tags"] = func() lifecycle.Plugin { return NewHashtagTagsPlugin() }
 	pluginRegistry.constructors["webmentions"] = func() lifecycle.Plugin { return NewWebMentionsPlugin() }
 	pluginRegistry.constructors["webmentions_fetch"] = func() lifecycle.Plugin { return NewWebmentionsFetchPlugin() }
 	pluginRegistry.constructors["webmentions_leaderboard"] = func() lifecycle.Plugin { return NewWebmentionsLeaderboardPlugin() }
@@ -168,6 +169,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewEmbedsPlugin(),                 // Process embed syntax (before wikilinks)
 		NewWikilinksPlugin(),              // Process wikilinks before rendering
 		NewMentionsPlugin(),               // Process @mentions (after blogroll config is loaded)
+		NewHashtagTagsPlugin(),            // Process #tag hashtag references (after tags are finalized)
 		NewWebmentionsFetchPlugin(),       // Load cached webmentions and attach to posts
 		NewWebmentionsLeaderboardPlugin(), // Calculate top posts by webmentions (after fetch)
 		NewTocPlugin(),                    // Extract TOC before rendering
@@ -250,6 +252,7 @@ func TransformPlugins() []lifecycle.Plugin {
 		NewEmbedsPlugin(),
 		NewWikilinksPlugin(),
 		NewMentionsPlugin(),
+		NewHashtagTagsPlugin(),
 		NewTocPlugin(),
 		NewJinjaMdPlugin(),
 	}
