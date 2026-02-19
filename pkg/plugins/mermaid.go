@@ -23,6 +23,7 @@ type MermaidPlugin struct {
 	config        models.MermaidConfig
 	renderer      mermaidRenderer
 	paletteColors *mermaidPaletteColors // resolved at configure time, nil if no palette
+	assetURLs     map[string]string
 }
 
 // NewMermaidPlugin creates a new MermaidPlugin with default settings.
@@ -53,6 +54,10 @@ func (p *MermaidPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 	if config.Extra == nil {
 		return nil
+	}
+
+	if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
+		p.assetURLs = assetURLs
 	}
 
 	// Check for mermaid config in Extra
@@ -237,7 +242,7 @@ func (p *MermaidPlugin) Render(m *lifecycle.Manager) (err error) {
 			// shared instance. Overwriting glightbox_options would clobber
 			// settings from image_zoom or other plugins.
 			config.Extra["glightbox_enabled"] = true
-			config.Extra["glightbox_cdn"] = true
+			config.Extra["glightbox_cdn"] = false
 		}
 	}
 
@@ -374,7 +379,7 @@ func (p *MermaidPlugin) injectMermaidScript(htmlContent string) string {
 	} else {
 		script = `
 <script type="module">
-  import mermaid from '` + p.config.CDNURL + `';
+  import mermaid from '` + p.resolveAssetURL("mermaid-esm", p.config.CDNURL) + `';
 ` + p.mermaidLightboxJS() + `
   mermaid.initialize({ startOnLoad: false, theme: '` + p.config.Theme + `' });
   window.initMermaid = async () => {
@@ -400,7 +405,7 @@ func (p *MermaidPlugin) injectMermaidScript(htmlContent string) string {
 func (p *MermaidPlugin) cssVariablesScript() string {
 	return `
 <script type="module">
-  import mermaid from '` + p.config.CDNURL + `';
+  import mermaid from '` + p.resolveAssetURL("mermaid-esm", p.config.CDNURL) + `';
   const rootStyle = getComputedStyle(document.documentElement);
   const css = (name, fallback) => (rootStyle.getPropertyValue(name) || fallback).trim();
   const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches ||
@@ -457,8 +462,9 @@ func (p *MermaidPlugin) cssVariablesScript() string {
 // with svg-pan-zoom support. This is used by both the standard and CSS variables
 // code paths.
 func (p *MermaidPlugin) mermaidLightboxJS() string {
+	svgPanZoomURL := p.resolveAssetURL("svg-pan-zoom", "https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.2/dist/svg-pan-zoom.min.js")
 	return `
-  const SVG_PAN_ZOOM_CDN = 'https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.2/dist/svg-pan-zoom.min.js';
+  const SVG_PAN_ZOOM_CDN = '` + svgPanZoomURL + `';
   let mermaidLightbox = null;
   let activePanZoom = null;
 
@@ -704,6 +710,16 @@ func (p *MermaidPlugin) mermaidLightboxJS() string {
     });
   };
 `
+}
+
+func (p *MermaidPlugin) resolveAssetURL(name, fallback string) string {
+	if p.assetURLs == nil {
+		return fallback
+	}
+	if url, ok := p.assetURLs[name]; ok && url != "" {
+		return url
+	}
+	return fallback
 }
 
 // SetConfig sets the mermaid configuration directly.

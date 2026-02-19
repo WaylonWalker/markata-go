@@ -29,7 +29,7 @@ hooks = ["default", "contribution_graph"]
 
 [markata-go.contribution_graph]
 enabled = true
-cdn_url = "https://cdn.jsdelivr.net/npm/cal-heatmap@4"
+cdn_url = "/assets/vendor/cal-heatmap"                # Cal-Heatmap base URL (local by default)
 container_class = "contribution-graph-container"
 theme = "light"
 ```
@@ -39,7 +39,7 @@ theme = "light"
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enabled` | bool | `true` | Enable/disable the plugin |
-| `cdn_url` | string | `https://cdn.jsdelivr.net/npm/cal-heatmap@4` | Cal-Heatmap CDN URL |
+| `cdn_url` | string | `/assets/vendor/cal-heatmap` | Cal-Heatmap base URL (local by default) |
 | `container_class` | string | `contribution-graph-container` | CSS class for the container |
 | `theme` | string | `light` | Color theme (`light` or `dark`) |
 
@@ -185,7 +185,7 @@ hooks = ["default", "chartjs"]
 
 [markata-go.chartjs]
 enabled = true
-cdn_url = "https://cdn.jsdelivr.net/npm/chart.js"
+cdn_url = "/assets/vendor/chartjs/chart.min.js"
 container_class = "chartjs-container"
 ```
 

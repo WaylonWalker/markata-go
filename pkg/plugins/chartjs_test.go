@@ -60,9 +60,9 @@ func TestChartJSPlugin_ProcessPost_ValidChart(t *testing.T) {
 		t.Error("Expected canvas element in output")
 	}
 
-	// Should contain Chart.js CDN script
-	if !strings.Contains(post.ArticleHTML, "cdn.jsdelivr.net/npm/chart.js") {
-		t.Error("Expected Chart.js CDN script")
+	// Should contain Chart.js script
+	if !strings.Contains(post.ArticleHTML, "chart.min.js") {
+		t.Error("Expected Chart.js script")
 	}
 
 	// Should have the container class
@@ -117,10 +117,10 @@ func TestChartJSPlugin_ProcessPost_MultipleCharts(t *testing.T) {
 		t.Errorf("Expected 2 canvas elements, got %d", count)
 	}
 
-	// CDN should only be included once
-	cdnCount := strings.Count(post.ArticleHTML, "cdn.jsdelivr.net/npm/chart.js")
-	if cdnCount != 1 {
-		t.Errorf("Expected 1 CDN script inclusion, got %d", cdnCount)
+	// Script should only be included once
+	scriptCount := strings.Count(post.ArticleHTML, "chart.min.js")
+	if scriptCount != 1 {
+		t.Errorf("Expected 1 chart script inclusion, got %d", scriptCount)
 	}
 }
 

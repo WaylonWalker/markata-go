@@ -52,9 +52,9 @@
   <link rel="stylesheet" href="{{ 'css/search.css' | theme_asset_hashed }}">
   {% endif %}
 
-  {% if config.Extra.glightbox_enabled and needs_image_zoom %}
-  <link rel="stylesheet" href="{% if config.Extra.asset_urls.glightbox-css %}{{ config.Extra.asset_urls.glightbox-css }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/css/glightbox.min.css{% endif %}">
-  {% endif %}
+{% if config.Extra.glightbox_enabled and needs_image_zoom %}
+  <link rel="stylesheet" href="{% if config.Extra.asset_urls.glightbox-css %}{{ config.Extra.asset_urls.glightbox-css }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/assets/vendor/glightbox/glightbox.min.css{% endif %}">
+{% endif %}
 
   <!-- GLightbox Theme CSS (only when images need zoom) -->
   {% if post.Extra.needs_image_zoom %}
@@ -306,7 +306,7 @@
     // GLightbox - load when page has zoomable images
     {% if config.Extra.glightbox_enabled and needs_image_zoom %}
     const glightboxScript = document.createElement('script');
-    glightboxScript.src = '{% if config.Extra.asset_urls.glightbox-js %}{{ config.Extra.asset_urls.glightbox-js }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js{% else %}/js/glightbox.min.js{% endif %}';
+    glightboxScript.src = '{% if config.Extra.asset_urls.glightbox-js %}{{ config.Extra.asset_urls.glightbox-js }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js{% else %}/assets/vendor/glightbox/glightbox.min.js{% endif %}';
     glightboxScript.onload = function() {
       window.initGLightbox = function initGLightbox() {
         window.__glightboxInstance = GLightbox({

@@ -1574,16 +1574,16 @@ type Link struct {
 **Configuration (TOML):**
 ```toml
 [markata-go.chartjs]
-enabled = true                                     # Enabled by default; set to false to disable
-cdn_url = "https://cdn.jsdelivr.net/npm/chart.js"  # Chart.js CDN URL
-container_class = "chartjs-container"              # CSS class for wrapper div
+enabled = true                                         # Enabled by default; set to false to disable
+cdn_url = "/assets/vendor/chartjs/chart.min.js"        # Chart.js URL (local by default)
+container_class = "chartjs-container"                  # CSS class for wrapper div
 ```
 
 **Options:**
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enabled` | `true` | Enable/disable the plugin |
-| `cdn_url` | `https://cdn.jsdelivr.net/npm/chart.js` | Chart.js CDN URL |
+| `cdn_url` | `/assets/vendor/chartjs/chart.min.js` | Chart.js URL (local by default) |
 | `container_class` | `chartjs-container` | CSS class for wrapper div |
 
 **Markdown syntax:**
@@ -1622,7 +1622,7 @@ container_class = "chartjs-container"              # CSS class for wrapper div
 **Template requirements:**
 Include Chart.js in your base template:
 ```html
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/assets/vendor/chartjs/chart.min.js"></script>
 ```
 
 ### Examples
@@ -1809,7 +1809,7 @@ A doughnut chart is useful for showing a primary metric with breakdown:
 ```toml
 [markata-go.contribution_graph]
 enabled = true
-cdn_url = "https://cdn.jsdelivr.net/npm/cal-heatmap@4"
+cdn_url = "/assets/vendor/cal-heatmap"                # Cal-Heatmap base URL (local by default)
 container_class = "contribution-graph-container"
 theme = "light"
 ```
@@ -1818,7 +1818,7 @@ theme = "light"
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enabled` | `true` | Enable/disable the plugin |
-| `cdn_url` | `https://cdn.jsdelivr.net/npm/cal-heatmap@4` | Cal-Heatmap CDN URL |
+| `cdn_url` | `/assets/vendor/cal-heatmap` | Cal-Heatmap base URL (local by default) |
 | `container_class` | `contribution-graph-container` | CSS class for wrapper div |
 | `theme` | `light` | Color theme (light, dark) |
 
@@ -1846,8 +1846,8 @@ theme = "light"
   <div id="contribution-graph-1"></div>
 </div>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap@4/cal-heatmap.css">
-<script src="https://cdn.jsdelivr.net/npm/cal-heatmap@4/cal-heatmap.min.js"></script>
+<link rel="stylesheet" href="/assets/vendor/cal-heatmap/cal-heatmap.css">
+<script src="/assets/vendor/cal-heatmap/cal-heatmap.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const cal = new CalHeatmap();
@@ -3540,7 +3540,7 @@ jinja: true
 [markata-go.mermaid]
 enabled = true                                              # Enabled by default; set to false to disable
 mode = "client"                                             # "client", "cli", or "chromium"
-cdn_url = "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs"  # Mermaid CDN URL (client mode)
+cdn_url = "/assets/vendor/mermaid/mermaid.esm.min.mjs"      # Mermaid URL (client mode, local by default)
 theme = "default"                                           # Mermaid theme (default, dark, forest, neutral)
 use_css_variables = true                                    # Derive diagram colors from site CSS palette (default: true)
 lightbox = true                                             # Click diagrams to open in lightbox with pan/zoom (default: true)
@@ -3563,7 +3563,7 @@ no_sandbox = false                                          # Required in contai
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Whether mermaid processing is active |
 | `mode` | string | `"client"` | Rendering mode: `client` (browser-side JS), `cli` (mmdc), or `chromium` (headless Chrome) |
-| `cdn_url` | string | mermaid CDN | URL for the Mermaid.js library (client mode only) |
+| `cdn_url` | string | `/assets/vendor/mermaid/mermaid.esm.min.mjs` | Mermaid URL (client mode, local by default) |
 | `theme` | string | `"default"` | Mermaid theme: default, dark, forest, neutral. Ignored when `use_css_variables` is true. |
 | `use_css_variables` | bool | `true` | Read site CSS custom properties (`--color-background`, `--color-text`, `--color-primary`, `--color-code-bg`, `--color-surface`) and pass them to Mermaid's theming. Hardcoded fallbacks are used if variables are not defined. |
 | `lightbox` | bool | `true` | Enable click-to-zoom lightbox overlay with interactive pan and zoom via svg-pan-zoom. |
@@ -3578,7 +3578,7 @@ no_sandbox = false                                          # Required in contai
 3. In **cli/chromium** modes: pre-renders diagrams to static SVGs embedded directly in HTML
 4. Only injects the script once per post (even with multiple diagrams)
 5. When `use_css_variables` is true, reads site CSS custom properties and passes them to `mermaid.initialize()` so diagrams match the site palette automatically
-6. When `lightbox` is true, attaches click handlers to each rendered SVG. Clicking opens a programmatic GLightbox overlay with svg-pan-zoom for interactive pan and zoom. svg-pan-zoom (~29KB) is lazy-loaded from CDN on first click.
+6. When `lightbox` is true, attaches click handlers to each rendered SVG. Clicking opens a programmatic GLightbox overlay with svg-pan-zoom for interactive pan and zoom. svg-pan-zoom (~29KB) is lazy-loaded from vendor assets by default.
 7. In chromium mode, the MermaidJS library is cached at `~/.cache/markata-go/mermaid/` to avoid re-downloading on each build
 
 **Markdown usage:**
