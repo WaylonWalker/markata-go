@@ -296,7 +296,7 @@ When a post is marked private (by any method), markata-go suppresses it across a
 | `.md` / `.txt` alternates | Not generated for private posts |
 | OG image cards | Not generated for private posts |
 | RSS / Atom / JSON feeds | Private posts excluded entirely |
-| Feed pages | Private posts excluded from HTML feed listings |
+| Feed pages | Private-tag feeds show encrypted cards with password prompts; other feeds exclude private posts |
 | Embed cards (`![[slug]]`) | Shows a "Private Content" card with no title, description, or date |
 | Wikilinks (`[[slug]]`) | Link text is rendered but `data-title`, `data-description`, `data-date` attributes are omitted |
 | Wikilink hover previews | No hover preview is shown for private posts |
@@ -307,6 +307,12 @@ When a post is marked private (by any method), markata-go suppresses it across a
 Privacy marking happens at the very start of the Transform stage -- before any other plugin processes the post. This ensures that every downstream plugin (description generation, embed cards, wikilinks, feeds, etc.) sees `private: true` and acts accordingly.
 
 The encrypted article HTML is the **only** representation of your private content in the built site.
+
+### Feed pages for private tags
+
+When you configure `private_tags`, the corresponding auto-generated tag feed pages include your private posts as encrypted cards. Visitors see a grid of cards where each private card shows a lock icon and password prompt. Entering the password for one card decrypts all cards on the page that use the same key.
+
+Subscription feeds (RSS, Atom, JSON Feed) still exclude private posts entirely -- encrypted content in an RSS reader would not be useful.
 
 ## Security Notes
 
