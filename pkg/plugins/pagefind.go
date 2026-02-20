@@ -48,12 +48,24 @@ func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	// Skip in fast mode - search indexing is unnecessary during development
+	if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
+		return nil
+	}
+
 	// Check if this is an incremental build with few changes
 	// If so, skip Pagefind to save time (search index is still valid)
 	cache := GetBuildCache(m)
 	if cache != nil {
 		stats := cache.GetStats()
 		total := stats.Skipped + stats.Rebuilt
+
+		// Skip when no posts were rebuilt (all cached)
+		if total > 0 && stats.Rebuilt == 0 {
+			fmt.Printf("[pagefind] Skipping search index update (no posts changed)\n")
+			return nil
+		}
+
 		// Skip Pagefind if we rebuilt less than 5% of posts
 		// or fewer than 50 posts (whichever is smaller)
 		threshold := total / 20 // 5%
