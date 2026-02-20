@@ -634,7 +634,13 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 		override := ""
 		var options EmbedOptions
 		if len(groups) >= 3 && groups[2] != "" {
-			override = strings.TrimSpace(groups[2])
+			potentialOverride := strings.TrimSpace(groups[2])
+			// If the second group looks like an option (not a title), treat it as options
+			if isKnownEmbedOption(potentialOverride) {
+				options = parseEmbedOptions(potentialOverride)
+			} else {
+				override = potentialOverride
+			}
 		}
 		// Check for classes (4th group)
 		if len(groups) >= 4 && groups[3] != "" {
@@ -666,6 +672,10 @@ type OGMetadata struct {
 	// Provider info for mode selection
 	ProviderName string `json:"provider_name"`
 	HTML         string `json:"html"` // oEmbed HTML for rich embeds
+
+	// Author info from oEmbed
+	AuthorName string `json:"author_name"`
+	AuthorURL  string `json:"author_url"`
 }
 
 // EmbedOptions holds parsing options for embed syntax.
@@ -728,6 +738,16 @@ func parseEmbedOptions(optionsStr string) EmbedOptions {
 	}
 
 	return opts
+}
+
+// isKnownEmbedOption checks if a string matches a known embed option name.
+func isKnownEmbedOption(s string) bool {
+	switch strings.ToLower(s) {
+	case "no_title", "no_description", "no_meta", "center", "full_width",
+		"video", "link", "image_only", "rich", "hover", "card", "performance":
+		return true
+	}
+	return false
 }
 
 // fetchOGMetadata fetches Open Graph metadata from a URL.
@@ -844,6 +864,12 @@ func (p *EmbedsPlugin) resolveOEmbedMetadata(rawURL string) (*OGMetadata, bool) 
 		HTML:         response.HTML,
 		FetchedAt:    time.Now().Unix(),
 		Source:       "oembed",
+		AuthorName:   response.AuthorName,
+		AuthorURL:    response.AuthorURL,
+	}
+
+	if response.AuthorName != "" {
+		metadata.Description = response.AuthorName
 	}
 
 	if metadata.Image == "" {

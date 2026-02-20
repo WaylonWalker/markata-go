@@ -24,14 +24,15 @@ type OEmbedResponse struct {
 	Title           string `json:"title"`
 	URL             string `json:"url"`
 	AuthorName      string `json:"author_name"`
+	AuthorURL       string `json:"author_url"`
 	ProviderName    string `json:"provider_name"`
 	ProviderURL     string `json:"provider_url"`
 	ThumbnailURL    string `json:"thumbnail_url"`
 	ThumbnailWidth  int    `json:"thumbnail_width"`
 	ThumbnailHeight int    `json:"thumbnail_height"`
 	HTML            string `json:"html"`
-	Width           int    `json:"width"`
-	Height          int    `json:"height"`
+	Width           string `json:"width"`
+	Height          string `json:"height"`
 	CacheAge        int    `json:"cache_age"`
 }
 
@@ -880,40 +881,47 @@ var (
 	giphyMediaRe = regexp.MustCompile(`media\.giphy\.com/media/(\w+)/`)
 )
 
-// fetchGiphyEmbed fetches GIPHY embed data.
-// GIPHY's oEmbed endpoint returns 404, so we construct the image URL from the GIF URL.
-func fetchGiphyEmbed(_ *http.Client, rawURL string) (*OEmbedResponse, error) {
-	// Extract the GIF ID from the URL
-	// GIPHY URLs: https://giphy.com/gifs/cat-Y0Pmx0NpVomy66nCGU
-	// or media.giphy.com/media/Y0Pmx0NpVomy66nCGU/giphy.gif
-	var gifID string
+// fetchGiphyEmbed fetches GIPHY embed data using the oEmbed API.
+func fetchGiphyEmbed(client *http.Client, rawURL string) (*OEmbedResponse, error) {
+	endpoint := "https://giphy.com/services/oembed"
 
-	// Try to match giphy.com/gifs/{id}
-	matches := giphyGifsRe.FindStringSubmatch(rawURL)
-	if len(matches) > 1 {
-		gifID = matches[1]
-	} else {
-		// Try media.giphy.com/media/{id}/giphy.gif
-		matches2 := giphyMediaRe.FindStringSubmatch(rawURL)
-		if len(matches2) > 1 {
-			gifID = matches2[1]
-		}
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("giphy: parse endpoint: %w", err)
 	}
 
-	if gifID == "" {
-		return nil, fmt.Errorf("giphy: could not extract GIF ID from URL")
+	query := parsed.Query()
+	query.Set("url", rawURL)
+	parsed.RawQuery = query.Encode()
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, parsed.String(), http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("giphy: create request: %w", err)
 	}
 
-	// Build the image URL (use fixed width for consistency)
-	imageURL := fmt.Sprintf("https://media.giphy.com/media/%s/giphy.gif", gifID)
+	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
+	req.Header.Set("Accept", "application/json")
 
-	return &OEmbedResponse{
-		Type:         "photo",
-		Version:      "1.0",
-		Title:        "GIPHY Image",
-		URL:          imageURL,
-		ThumbnailURL: imageURL,
-		ProviderName: "GIPHY",
-		ProviderURL:  "https://giphy.com",
-	}, nil
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("giphy: request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("giphy: status %s", resp.Status)
+	}
+
+	var payload OEmbedResponse
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&payload); err != nil {
+		return nil, fmt.Errorf("giphy: decode: %w", err)
+	}
+
+	// Ensure we have a thumbnail URL for image embeds
+	if payload.ThumbnailURL == "" {
+		payload.ThumbnailURL = payload.URL
+	}
+
+	return &payload, nil
 }
