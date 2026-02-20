@@ -128,19 +128,17 @@ func TestOEmbedResolver_DiscoverEndpoint(t *testing.T) {
 	}
 }
 
-func TestRenderGistCodeEmbedHTML(t *testing.T) {
-	html := renderGistCodeEmbedHTML("https://gist.github.com/user/abcd", "example.go", "go", "package main")
-	if !containsString(html, `class="embed-gist"`) {
-		t.Fatalf("expected embed-gist wrapper, got: %s", html)
+func TestRenderGistCodeMarkdown(t *testing.T) {
+	md := newEmbedMarkdownRenderer(map[string]interface{}{})
+	resolver := newOEmbedResolver(models.NewEmbedsConfig(), http.DefaultClient)
+	resolver.setMarkdownRenderer(md)
+
+	html, err := renderGistCodeMarkdown(resolver, "go", "package main\n")
+	if err != nil {
+		t.Fatalf("renderGistCodeMarkdown failed: %v", err)
 	}
-	if !containsString(html, `class="highlight"`) {
-		t.Fatalf("expected highlight wrapper, got: %s", html)
-	}
-	if !containsString(html, `example.go`) {
-		t.Fatalf("expected filename, got: %s", html)
-	}
-	if !containsString(html, `package`) {
-		t.Fatalf("expected highlighted code content, got: %s", html)
+	if !containsString(html, `class="highlight"`) && !containsString(html, `class="chroma"`) {
+		t.Fatalf("expected highlight/chroma wrapper, got: %s", html)
 	}
 }
 
