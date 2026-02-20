@@ -433,11 +433,11 @@ func (p *MentionsPlugin) extractMetadataFromHTML(resp *http.Response, metadata *
 	htmlContent := string(body)
 
 	// Extract title/name
-	if name := p.extractMetaContent(htmlContent, []string{
-		`<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']`,
-		`<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']`,
-		`<meta[^>]+name=["']author["'][^>]+content=["']([^"']+)["']`,
-		`<title>([^<]+)</title>`,
+	if name := p.extractMetaContent(htmlContent, []*regexp.Regexp{
+		metaOGSiteNameRe,
+		metaOGTitleRe,
+		metaAuthorRe,
+		metaTitleRe,
 	}); name != "" {
 		metadata.Name = name
 	} else {
@@ -445,18 +445,18 @@ func (p *MentionsPlugin) extractMetadataFromHTML(resp *http.Response, metadata *
 	}
 
 	// Extract description/bio
-	if bio := p.extractMetaContent(htmlContent, []string{
-		`<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']`,
-		`<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']`,
+	if bio := p.extractMetaContent(htmlContent, []*regexp.Regexp{
+		metaOGDescriptionRe,
+		metaDescriptionRe,
 	}); bio != "" {
 		metadata.Bio = bio
 	}
 
 	// Extract avatar/image
-	if avatar := p.extractMetaContent(htmlContent, []string{
-		`<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']`,
-		`<link[^>]+rel=["']icon["'][^>]+href=["']([^"']+)["']`,
-		`<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)["']`,
+	if avatar := p.extractMetaContent(htmlContent, []*regexp.Regexp{
+		metaOGImageRe,
+		metaIconRe,
+		metaAppleTouchIconRe,
 	}); avatar != "" {
 		metadata.Avatar = p.resolveURL(avatar, metadata.URL)
 	}
@@ -464,11 +464,10 @@ func (p *MentionsPlugin) extractMetadataFromHTML(resp *http.Response, metadata *
 	return nil
 }
 
-// extractMetaContent extracts content from HTML using multiple regex patterns.
+// extractMetaContent extracts content from HTML using multiple pre-compiled regex patterns.
 // Returns the first match from the patterns list.
-func (p *MentionsPlugin) extractMetaContent(htmlContent string, patterns []string) string {
-	for _, pattern := range patterns {
-		re := regexp.MustCompile(pattern)
+func (p *MentionsPlugin) extractMetaContent(htmlContent string, patterns []*regexp.Regexp) string {
+	for _, re := range patterns {
 		matches := re.FindStringSubmatch(htmlContent)
 		if len(matches) > 1 {
 			return strings.TrimSpace(matches[1])
@@ -581,6 +580,19 @@ func (p *MentionsPlugin) attachMetadataToEntries(handleMap map[string]*mentionEn
 		}
 	}
 }
+
+// Pre-compiled regexes for HTML metadata extraction.
+var (
+	metaOGSiteNameRe     = regexp.MustCompile(`<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']`)
+	metaOGTitleRe        = regexp.MustCompile(`<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']`)
+	metaAuthorRe         = regexp.MustCompile(`<meta[^>]+name=["']author["'][^>]+content=["']([^"']+)["']`)
+	metaTitleRe          = regexp.MustCompile(`<title>([^<]+)</title>`)
+	metaOGDescriptionRe  = regexp.MustCompile(`<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']`)
+	metaDescriptionRe    = regexp.MustCompile(`<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']`)
+	metaOGImageRe        = regexp.MustCompile(`<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']`)
+	metaIconRe           = regexp.MustCompile(`<link[^>]+rel=["']icon["'][^>]+href=["']([^"']+)["']`)
+	metaAppleTouchIconRe = regexp.MustCompile(`<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)["']`)
+)
 
 // mentionRegex matches @handle patterns.
 // Handles can contain alphanumeric characters, underscores, hyphens, and dots.

@@ -427,9 +427,9 @@ func (r *oembedResolver) discoverEndpoint(rawURL string) (string, error) {
 
 func findOEmbedLink(html string) string {
 	patterns := []*regexp.Regexp{
-		regexp.MustCompile(`<link[^>]*rel=["']alternate["'][^>]*type=["']application/json\+oembed["'][^>]*href=["']([^"']+)["']`),
-		regexp.MustCompile(`<link[^>]*type=["']application/json\+oembed["'][^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["']`),
-		regexp.MustCompile(`<link[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["'][^>]*type=["']application/json\+oembed["']`),
+		oembedLinkRelFirstRe,
+		oembedLinkTypeFirstRe,
+		oembedLinkHrefMidRe,
 	}
 
 	for _, pattern := range patterns {
@@ -441,6 +441,13 @@ func findOEmbedLink(html string) string {
 
 	return ""
 }
+
+// Pre-compiled regexes for oEmbed link discovery.
+var (
+	oembedLinkRelFirstRe  = regexp.MustCompile(`<link[^>]*rel=["']alternate["'][^>]*type=["']application/json\+oembed["'][^>]*href=["']([^"']+)["']`)
+	oembedLinkTypeFirstRe = regexp.MustCompile(`<link[^>]*type=["']application/json\+oembed["'][^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["']`)
+	oembedLinkHrefMidRe   = regexp.MustCompile(`<link[^>]*rel=["']alternate["'][^>]*href=["']([^"']+)["'][^>]*type=["']application/json\+oembed["']`)
+)
 
 var errOEmbedDiscoveryDisabled = errors.New("oembed discovery disabled")
 
@@ -867,6 +874,12 @@ func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, 
 	}, nil
 }
 
+// Pre-compiled regexes for Giphy URL parsing.
+var (
+	giphyGifsRe  = regexp.MustCompile(`giphy\.com/gifs/[\w-]+-(\w+)`)
+	giphyMediaRe = regexp.MustCompile(`media\.giphy\.com/media/(\w+)/`)
+)
+
 // fetchGiphyEmbed fetches GIPHY embed data.
 // GIPHY's oEmbed endpoint returns 404, so we construct the image URL from the GIF URL.
 func fetchGiphyEmbed(_ *http.Client, rawURL string) (*OEmbedResponse, error) {
@@ -876,14 +889,12 @@ func fetchGiphyEmbed(_ *http.Client, rawURL string) (*OEmbedResponse, error) {
 	var gifID string
 
 	// Try to match giphy.com/gifs/{id}
-	re := regexp.MustCompile(`giphy\.com/gifs/[\w-]+-(\w+)`)
-	matches := re.FindStringSubmatch(rawURL)
+	matches := giphyGifsRe.FindStringSubmatch(rawURL)
 	if len(matches) > 1 {
 		gifID = matches[1]
 	} else {
 		// Try media.giphy.com/media/{id}/giphy.gif
-		re2 := regexp.MustCompile(`media\.giphy\.com/media/(\w+)/`)
-		matches2 := re2.FindStringSubmatch(rawURL)
+		matches2 := giphyMediaRe.FindStringSubmatch(rawURL)
 		if len(matches2) > 1 {
 			gifID = matches2[1]
 		}

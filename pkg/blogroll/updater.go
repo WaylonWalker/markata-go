@@ -9,8 +9,36 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
+
+// Pre-compiled regex patterns for HTML metadata extraction.
+var (
+	// parseHTMLMetadata patterns
+	htmlTitleRe = regexp.MustCompile(`(?i)<title[^>]*>([^<]*)</title>`)
+	htmlMetaRe  = regexp.MustCompile(`(?i)<meta\s+[^>]*(?:property|name)=["']([^"']+)["'][^>]*content=["']([^"']*)["'][^>]*>`)
+	htmlMetaRe2 = regexp.MustCompile(`(?i)<meta\s+[^>]*content=["']([^"']*)["'][^>]*(?:property|name)=["']([^"']+)["'][^>]*>`)
+	htmlIconRe  = regexp.MustCompile(`(?i)<link\s+[^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)[^"']*["'][^>]*href=["']([^"']+)["'][^>]*>`)
+	htmlIconRe2 = regexp.MustCompile(`(?i)<link\s+[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)[^"']*["'][^>]*>`)
+)
+
+// xmlTagCache caches compiled regex patterns for XML tag extraction.
+// The tag set is finite (~13 known tags), so this is bounded.
+var xmlTagCache sync.Map // map[string][]*regexp.Regexp
+
+// getXMLTagPatterns returns pre-compiled regex patterns for the given XML tag name.
+func getXMLTagPatterns(tag string) []*regexp.Regexp {
+	if cached, ok := xmlTagCache.Load(tag); ok {
+		return cached.([]*regexp.Regexp) //nolint:errcheck // type is guaranteed by xmlTagCache.Store
+	}
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(fmt.Sprintf("<%s[^>]*>([^<]*)</%s>", tag, tag)),
+		regexp.MustCompile(fmt.Sprintf("<%s[^>]*>(.*?)</%s>", tag, tag)),
+	}
+	xmlTagCache.Store(tag, patterns)
+	return patterns
+}
 
 // Updater handles fetching and extracting metadata from external sites.
 type Updater struct {
@@ -170,27 +198,23 @@ func parseHTMLMetadata(htmlContent, baseURL string) *Metadata {
 	metadata := &Metadata{}
 
 	// Extract <title> tag
-	titleRe := regexp.MustCompile(`(?i)<title[^>]*>([^<]*)</title>`)
-	if matches := titleRe.FindStringSubmatch(htmlContent); len(matches) > 1 {
+	if matches := htmlTitleRe.FindStringSubmatch(htmlContent); len(matches) > 1 {
 		metadata.Title = strings.TrimSpace(matches[1])
 	}
 
 	// Extract meta tags with pattern: <meta property="..." content="..."> or <meta name="..." content="...">
-	metaRe := regexp.MustCompile(`(?i)<meta\s+[^>]*(?:property|name)=["']([^"']+)["'][^>]*content=["']([^"']*)["'][^>]*>`)
-	metaRe2 := regexp.MustCompile(`(?i)<meta\s+[^>]*content=["']([^"']*)["'][^>]*(?:property|name)=["']([^"']+)["'][^>]*>`)
-
 	processMetaMatch := func(prop, content string) {
 		processOpenGraphMeta(prop, content, metadata, baseURL)
 		processHTMLMeta(prop, content, metadata, baseURL)
 	}
 
-	for _, matches := range metaRe.FindAllStringSubmatch(htmlContent, -1) {
+	for _, matches := range htmlMetaRe.FindAllStringSubmatch(htmlContent, -1) {
 		if len(matches) > 2 {
 			processMetaMatch(matches[1], matches[2])
 		}
 	}
 
-	for _, matches := range metaRe2.FindAllStringSubmatch(htmlContent, -1) {
+	for _, matches := range htmlMetaRe2.FindAllStringSubmatch(htmlContent, -1) {
 		if len(matches) > 2 {
 			processMetaMatch(matches[2], matches[1])
 		}
@@ -198,12 +222,9 @@ func parseHTMLMetadata(htmlContent, baseURL string) *Metadata {
 
 	// Extract link rel="icon" for favicon
 	if metadata.ImageURL == "" {
-		iconRe := regexp.MustCompile(`(?i)<link\s+[^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)[^"']*["'][^>]*href=["']([^"']+)["'][^>]*>`)
-		iconRe2 := regexp.MustCompile(`(?i)<link\s+[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)[^"']*["'][^>]*>`)
-
-		if matches := iconRe.FindStringSubmatch(htmlContent); len(matches) > 1 {
+		if matches := htmlIconRe.FindStringSubmatch(htmlContent); len(matches) > 1 {
 			metadata.ImageURL = resolveURL(matches[1], baseURL)
-		} else if matches := iconRe2.FindStringSubmatch(htmlContent); len(matches) > 1 {
+		} else if matches := htmlIconRe2.FindStringSubmatch(htmlContent); len(matches) > 1 {
 			metadata.ImageURL = resolveURL(matches[1], baseURL)
 		}
 	}
@@ -380,15 +401,9 @@ func extractChannelTag(channel, tag string) string {
 }
 
 // extractXMLTag extracts the content of an XML tag.
+// Patterns are cached per tag name via xmlTagCache.
 func extractXMLTag(content, tag string) string {
-	// Try both with and without namespace prefix
-	patterns := []string{
-		fmt.Sprintf("<%s[^>]*>([^<]*)</%s>", tag, tag),
-		fmt.Sprintf("<%s[^>]*>(.*?)</%s>", tag, tag),
-	}
-
-	for _, pattern := range patterns {
-		re := regexp.MustCompile(pattern)
+	for _, re := range getXMLTagPatterns(tag) {
 		matches := re.FindStringSubmatch(content)
 		if len(matches) > 1 {
 			return strings.TrimSpace(matches[1])
@@ -399,11 +414,14 @@ func extractXMLTag(content, tag string) string {
 }
 
 // extractNestedXMLTag extracts a nested tag value.
+// Uses cached patterns via getXMLTagPatterns.
 func extractNestedXMLTag(content, parent, child string) string {
-	// Find parent tag
-	parentPattern := fmt.Sprintf("<%s[^>]*>(.*?)</%s>", parent, parent)
-	re := regexp.MustCompile(parentPattern)
-	matches := re.FindStringSubmatch(content)
+	// Find parent tag using cached pattern (second pattern: greedy inner match)
+	patterns := getXMLTagPatterns(parent)
+	if len(patterns) < 2 {
+		return ""
+	}
+	matches := patterns[1].FindStringSubmatch(content)
 	if len(matches) > 1 {
 		return extractXMLTag(matches[1], child)
 	}

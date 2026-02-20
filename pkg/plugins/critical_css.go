@@ -15,6 +15,12 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
+// Pre-compiled regexes for critical CSS processing.
+var (
+	criticalCSSLinkRe = regexp.MustCompile(`<link\s+[^>]*rel=["']stylesheet["'][^>]*>`)
+	criticalCSSHrefRe = regexp.MustCompile(`href=["']([^"']+)["']`)
+)
+
 // CriticalCSSPlugin extracts critical CSS and inlines it in HTML files.
 // It runs during the Write stage after publish_html to process generated HTML.
 //
@@ -261,10 +267,7 @@ func (p *CriticalCSSPlugin) processHTML(html, criticalCSS string) (string, bool)
 	modified := false
 
 	// Find all CSS link tags
-	linkRe := regexp.MustCompile(`<link\s+[^>]*rel=["']stylesheet["'][^>]*>`)
-
-	// Find the position to insert critical CSS (before first stylesheet link)
-	matches := linkRe.FindAllStringIndex(html, -1)
+	matches := criticalCSSLinkRe.FindAllStringIndex(html, -1)
 	if len(matches) == 0 {
 		return html, false
 	}
@@ -307,8 +310,7 @@ func (p *CriticalCSSPlugin) processHTML(html, criticalCSS string) (string, bool)
 // convertToPreload converts a stylesheet link to a preload link with async loading.
 func (p *CriticalCSSPlugin) convertToPreload(linkTag string) string {
 	// Extract href from the link tag
-	hrefRe := regexp.MustCompile(`href=["']([^"']+)["']`)
-	hrefMatch := hrefRe.FindStringSubmatch(linkTag)
+	hrefMatch := criticalCSSHrefRe.FindStringSubmatch(linkTag)
 	if len(hrefMatch) < 2 {
 		return linkTag // Can't parse, return as-is
 	}
