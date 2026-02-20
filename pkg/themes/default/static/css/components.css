@@ -944,6 +944,29 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
+/* Image-only embeds should look like regular images */
+.embed-card-image-only {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.embed-card-image-only:hover {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.embed-card-image-only .embed-card-link {
+  display: inline-block;
+}
+
+.embed-card-image-only .embed-card-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
+}
+
 .embed-card-link {
   display: flex;
   flex-direction: column;
