@@ -44,14 +44,16 @@ const (
 	mediumImage       = "image"
 )
 
+// extractFirstImageRegex matches the first img src attribute in HTML.
+var extractFirstImageRegex = regexp.MustCompile(`<img[^>]+src\s*=\s*["']([^"']+)["']`)
+
 // extractFirstImageFromHTML extracts the first image URL from HTML content.
 func extractFirstImageFromHTML(htmlContent string) string {
 	// Decode HTML entities first
 	decoded := html.UnescapeString(htmlContent)
 
 	// Simple regex to find first img src attribute
-	re := regexp.MustCompile(`<img[^>]+src\s*=\s*["']([^"']+)["']`)
-	matches := re.FindStringSubmatch(decoded)
+	matches := extractFirstImageRegex.FindStringSubmatch(decoded)
 	if len(matches) > 1 {
 		return matches[1]
 	}
@@ -1122,6 +1124,7 @@ func (p *BlogrollPlugin) writeBlogrollPage(m *lifecycle.Manager, outputDir strin
 }
 
 // writeReaderPage generates the paginated /reader pages.
+// Pages are written concurrently for better I/O throughput.
 func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string, entries []*models.ExternalEntry, config models.BlogrollConfig) error {
 	// Use configured slug or default to "reader"
 	slug := config.ReaderSlug
@@ -1151,12 +1154,27 @@ func (p *BlogrollPlugin) writeReaderPage(m *lifecycle.Manager, outputDir string,
 		}, true)
 	}
 
-	// Generate each page
+	// Generate pages concurrently
+	var wg sync.WaitGroup
+	errCh := make(chan error, len(pages))
+
 	for i := range pages {
-		isFirstPage := i == 0
-		if err := p.writeReaderPageFile(m, readerDir, config, pages[i], isFirstPage); err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			isFirstPage := idx == 0
+			if err := p.writeReaderPageFile(m, readerDir, config, pages[idx], isFirstPage); err != nil {
+				errCh <- err
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	// Return first error if any
+	for err := range errCh {
+		return err
 	}
 
 	return nil
