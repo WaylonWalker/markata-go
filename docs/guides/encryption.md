@@ -259,6 +259,30 @@ When the correct password is entered, JavaScript decrypts the content in-browser
 
 If "Remember for this session" is checked, the password is stored in sessionStorage (cleared when the browser tab closes). This allows navigating between encrypted posts without re-entering the password for posts using the same key.
 
+## Privacy Protection
+
+When a post is marked private (by any method), markata-go suppresses it across all output types -- not just the HTML article page. This prevents content from leaking through alternate channels.
+
+### What is protected
+
+| Output | Behavior |
+|--------|----------|
+| HTML page | Content encrypted with password prompt |
+| `.md` / `.txt` alternates | Not generated for private posts |
+| OG image cards | Not generated for private posts |
+| RSS / Atom / JSON feeds | Private posts excluded entirely |
+| Feed pages | Private posts excluded from HTML feed listings |
+| Embed cards (`![[slug]]`) | Shows a "Private Content" card with no title, description, or date |
+| Wikilinks (`[[slug]]`) | Link text is rendered but `data-title`, `data-description`, `data-date` attributes are omitted |
+| Wikilink hover previews | No hover preview is shown for private posts |
+| Auto-generated descriptions | Not generated from private post content |
+
+### How it works
+
+Privacy marking happens at the very start of the Transform stage -- before any other plugin processes the post. This ensures that every downstream plugin (description generation, embed cards, wikilinks, feeds, etc.) sees `private: true` and acts accordingly.
+
+The encrypted article HTML is the **only** representation of your private content in the built site.
+
 ## Security Notes
 
 - **AES-256-GCM** encryption with random IVs
