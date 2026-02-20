@@ -165,8 +165,11 @@ func (p *EncryptionPlugin) Priority(stage lifecycle.Stage) int {
 }
 
 // applyPrivateTags marks posts as private based on configured private_tags.
-// If a post has a tag matching a private_tags entry, it is marked Private=true
-// and assigned the tag's key (unless the post already has a frontmatter secret_key).
+// If a post has a tag or templateKey matching a private_tags entry, it is marked
+// Private=true and assigned the tag's key (unless the post already has a
+// frontmatter secret_key). This also checks the post's Template field (set from
+// the templateKey frontmatter) to handle posts that use templateKey as their
+// primary categorization without explicit tags.
 func (p *EncryptionPlugin) applyPrivateTags(posts []*models.Post) {
 	if len(p.privateTags) == 0 {
 		return
@@ -176,6 +179,9 @@ func (p *EncryptionPlugin) applyPrivateTags(posts []*models.Post) {
 		if post.Skip || post.Draft {
 			continue
 		}
+
+		// Check tags
+		matched := false
 		for _, tag := range post.Tags {
 			tagLower := strings.ToLower(tag)
 			if keyName, ok := p.privateTags[tagLower]; ok {
@@ -184,7 +190,21 @@ func (p *EncryptionPlugin) applyPrivateTags(posts []*models.Post) {
 				if post.SecretKey == "" {
 					post.SecretKey = keyName // pragma: allowlist secret
 				}
+				matched = true
 				break // one matching tag is enough
+			}
+		}
+
+		// Also check templateKey (stored as post.Template) if tags didn't match.
+		// Some posts use templateKey as their primary categorization without
+		// including it in their tags list.
+		if !matched && post.Template != "" {
+			templateKeyLower := strings.ToLower(post.Template)
+			if keyName, ok := p.privateTags[templateKeyLower]; ok {
+				post.Private = true
+				if post.SecretKey == "" {
+					post.SecretKey = keyName // pragma: allowlist secret
+				}
 			}
 		}
 	}

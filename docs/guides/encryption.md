@@ -165,7 +165,17 @@ journal = "personal"
 
 Any post tagged `diary` or `journal` is automatically treated as private and encrypted with the `personal` key. You don't need to set `private: true` in the frontmatter.
 
-**Frontmatter key overrides tag key:** If a post has both a private tag and a frontmatter `secret_key`, the frontmatter key is used.
+The `private_tags` check matches against both the post's `tags` list and its `templateKey` (or `template`) frontmatter field. This is useful for content that uses `templateKey` as its primary categorization, such as gratitude journals or diary entries that may not have explicit tags.
+
+```toml
+[encryption.private_tags]
+gratitude = "default"    # Matches posts with tag "gratitude" OR templateKey "gratitude"
+```
+
+**Priority rules:**
+- If a tag matches, the tag's key is used
+- If only `templateKey` matches, its key is used
+- **Frontmatter key overrides both:** If a post has a frontmatter `secret_key`, it takes priority over any tag or templateKey match
 
 ## Build Behavior
 
