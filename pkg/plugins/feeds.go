@@ -31,6 +31,12 @@ func (p *FeedsPlugin) Name() string {
 func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 	posts := m.Posts()
 	config := m.Config()
+	useIncremental := false
+	if config.Extra != nil {
+		if enabled, ok := config.Extra["feeds_incremental"].(bool); ok && enabled {
+			useIncremental = true
+		}
+	}
 	filterCache := newFeedFilterCache(posts)
 
 	// Get feed configs from manager's extra config
@@ -41,6 +47,9 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
+		if useIncremental && p.shouldSkipFeedCollect(fc, m) {
+			continue
+		}
 
 		// Apply defaults
 		fc.ApplyDefaults(feedDefaults)
@@ -116,6 +125,26 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 	m.Cache().Set("feed_configs", feedConfigs)
 
 	return nil
+}
+
+func (p *FeedsPlugin) shouldSkipFeedCollect(fc *models.FeedConfig, m *lifecycle.Manager) bool {
+	cache := GetBuildCache(m)
+	if cache == nil {
+		return false
+	}
+	if len(fc.Posts) == 0 {
+		return true
+	}
+
+	for _, post := range fc.Posts {
+		currentHash := computePostFeedItemHash(post)
+		cachedHash, _, _ := cache.GetPostSemanticHashes(post.Path)
+		if cachedHash != currentHash {
+			return false
+		}
+	}
+
+	return true
 }
 
 type feedFilterKey struct {

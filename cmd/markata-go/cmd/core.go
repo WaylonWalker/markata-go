@@ -181,8 +181,12 @@ func applyFastMode(m *lifecycle.Manager) {
 		m.Config().Extra = make(map[string]any)
 	}
 	m.Config().Extra["fast_mode"] = true
+	m.Config().Extra["blogroll_disabled"] = true
+	m.Config().Extra["mentions_disabled"] = true
+	m.Config().Extra["feeds_incremental"] = true
+	m.Config().Extra["cache_cleanup_async"] = true
 	if verbose {
-		fmt.Println("Fast mode: skipping minification and CSS purging")
+		fmt.Println("Fast mode: skipping minification, CSS purging, blogroll, and mentions")
 	}
 }
 

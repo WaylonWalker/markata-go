@@ -138,6 +138,7 @@ markata-go serve [flags]
 | `--host` | | Host address to bind to | `localhost` |
 | `--watch` | | Enable file watching and auto-rebuild | `true` |
 | `--no-watch` | | Disable file watching (legacy, overrides --watch) | `false` |
+| `--fast` | | Skip minification/CSS purge and disable blogroll/mentions for faster rebuilds | `false` |
 | `--verbose` | `-v` | Enable verbose logging | `false` |
 
 #### Examples
@@ -176,6 +177,7 @@ markata-go serve -p 8080 --host 0.0.0.0 -v
 - **Immediate serve**: Server starts before the initial build completes
 - **Build status banner**: Shows build progress and errors during serve
 - **Early 404**: Minimal 404 is served until the generated 404.html exists
+- **Incremental in fast mode**: `serve --fast` rebuilds only changed posts and dependents, skipping blogroll/mentions and avoiding feed recomputation when unchanged
 
 #### Development Workflow
 
