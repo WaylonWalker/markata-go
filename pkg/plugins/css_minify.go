@@ -135,7 +135,7 @@ func (p *CSSMinifyPlugin) Write(m *lifecycle.Manager) error {
 
 	runMinification("css_minify", cssFiles, p.isExcluded, func(path string) (int64, int64, error) {
 		return p.minifyFile(path)
-	})
+	}, m.Concurrency())
 
 	return nil
 }

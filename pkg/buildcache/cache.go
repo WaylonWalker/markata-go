@@ -96,9 +96,9 @@ type Cache struct {
 	// GlobPatternHash detects when glob patterns change
 	GlobPatternHash string `json:"glob_pattern_hash,omitempty"`
 
-	// In-memory caches to avoid per-post disk reads during hot builds.
-	// These are populated during Load() by preloadCaches() and updated
-	// by CacheFullHTML/CacheArticleHTML/CachePostData on writes.
+	// In-memory caches to avoid repeated per-post disk reads during hot builds.
+	// These are populated lazily on first access (backfilled from disk on cache
+	// hit) and updated by CacheFullHTML/CacheArticleHTML/CachePostData on writes.
 	// Using sync.Map for lock-free concurrent reads from worker pools.
 
 	// fullHTMLMemory maps FullHTMLPath -> HTML string

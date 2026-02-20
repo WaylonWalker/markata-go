@@ -93,6 +93,9 @@ func runBuildCommand(_ *cobra.Command, _ []string) error {
 
 	// Pass fast mode flag to plugins via config
 	if buildFast {
+		if m.Config().Extra == nil {
+			m.Config().Extra = make(map[string]any)
+		}
 		m.Config().Extra["fast_mode"] = true
 		if verbose {
 			fmt.Println("Fast mode: skipping minification and CSS purging")

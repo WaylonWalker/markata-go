@@ -124,7 +124,7 @@ func (p *JSMinifyPlugin) Write(m *lifecycle.Manager) error {
 
 	runMinification("js_minify", jsFiles, p.isExcluded, func(path string) (int64, int64, error) {
 		return p.minifyFile(path)
-	})
+	}, m.Concurrency())
 
 	return nil
 }
