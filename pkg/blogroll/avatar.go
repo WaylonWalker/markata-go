@@ -10,6 +10,16 @@ import (
 	"strings"
 )
 
+// Pre-compiled regex patterns for avatar extraction.
+var (
+	hcardRe       = regexp.MustCompile(`(?is)<(?:div|article|section|span)[^>]*class="[^"]*\bh-card\b[^"]*"[^>]*>(.*?)</(?:div|article|section|span)>`)
+	uPhotoImgRe   = regexp.MustCompile(`(?i)<img[^>]*class="[^"]*\bu-photo\b[^"]*"[^>]*src="([^"]+)"`)
+	uPhotoImg2Re  = regexp.MustCompile(`(?i)<img[^>]*src="([^"]+)"[^>]*class="[^"]*\bu-photo\b[^"]*"`)
+	uPhotoLinkRe  = regexp.MustCompile(`(?i)<a[^>]*class="[^"]*\bu-photo\b[^"]*"[^>]*href="([^"]+)"`)
+	uPhotoLink2Re = regexp.MustCompile(`(?i)<a[^>]*href="([^"]+)"[^>]*class="[^"]*\bu-photo\b[^"]*"`)
+	uPhotoDataRe  = regexp.MustCompile(`(?i)data-u-photo="([^"]+)"`)
+)
+
 // AvatarSource indicates where an avatar URL was discovered.
 type AvatarSource string
 
@@ -181,14 +191,8 @@ func extractHCardPhoto(htmlContent, baseURL string) string {
 	// 2. Within each h-card, look for u-photo
 	// 3. Prefer h-cards that appear to be "representative" (first one, or one with rel="me")
 
-	// Simple regex-based extraction
-	// Look for patterns like:
-	// <div class="h-card">...<img class="u-photo" src="...">...</div>
-	// <div class="h-card">...<img class="... u-photo ..." src="...">...</div>
-
 	// First, try to find h-card elements
-	hcardPattern := regexp.MustCompile(`(?is)<(?:div|article|section|span)[^>]*class="[^"]*\bh-card\b[^"]*"[^>]*>(.*?)</(?:div|article|section|span)>`)
-	hcards := hcardPattern.FindAllStringSubmatch(htmlContent, -1)
+	hcards := hcardRe.FindAllStringSubmatch(htmlContent, -1)
 
 	for _, match := range hcards {
 		if len(match) > 1 {
@@ -209,32 +213,27 @@ func extractHCardPhoto(htmlContent, baseURL string) string {
 // extractUPhoto extracts a u-photo URL from HTML content.
 func extractUPhoto(content, baseURL string) string {
 	// Pattern 1: <img class="u-photo" src="...">
-	imgPattern := regexp.MustCompile(`(?i)<img[^>]*class="[^"]*\bu-photo\b[^"]*"[^>]*src="([^"]+)"`)
-	if matches := imgPattern.FindStringSubmatch(content); len(matches) > 1 {
+	if matches := uPhotoImgRe.FindStringSubmatch(content); len(matches) > 1 {
 		return resolveURL(matches[1], baseURL)
 	}
 
 	// Pattern 1b: <img src="..." class="u-photo">
-	imgPattern2 := regexp.MustCompile(`(?i)<img[^>]*src="([^"]+)"[^>]*class="[^"]*\bu-photo\b[^"]*"`)
-	if matches := imgPattern2.FindStringSubmatch(content); len(matches) > 1 {
+	if matches := uPhotoImg2Re.FindStringSubmatch(content); len(matches) > 1 {
 		return resolveURL(matches[1], baseURL)
 	}
 
 	// Pattern 2: <a class="u-photo" href="...">
-	linkPattern := regexp.MustCompile(`(?i)<a[^>]*class="[^"]*\bu-photo\b[^"]*"[^>]*href="([^"]+)"`)
-	if matches := linkPattern.FindStringSubmatch(content); len(matches) > 1 {
+	if matches := uPhotoLinkRe.FindStringSubmatch(content); len(matches) > 1 {
 		return resolveURL(matches[1], baseURL)
 	}
 
 	// Pattern 2b: <a href="..." class="u-photo">
-	linkPattern2 := regexp.MustCompile(`(?i)<a[^>]*href="([^"]+)"[^>]*class="[^"]*\bu-photo\b[^"]*"`)
-	if matches := linkPattern2.FindStringSubmatch(content); len(matches) > 1 {
+	if matches := uPhotoLink2Re.FindStringSubmatch(content); len(matches) > 1 {
 		return resolveURL(matches[1], baseURL)
 	}
 
 	// Pattern 3: data-u-photo attribute
-	dataPattern := regexp.MustCompile(`(?i)data-u-photo="([^"]+)"`)
-	if matches := dataPattern.FindStringSubmatch(content); len(matches) > 1 {
+	if matches := uPhotoDataRe.FindStringSubmatch(content); len(matches) > 1 {
 		return resolveURL(matches[1], baseURL)
 	}
 

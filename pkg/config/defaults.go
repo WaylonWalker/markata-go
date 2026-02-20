@@ -12,6 +12,7 @@ func DefaultConfig() *models.Config {
 		TemplatesDir: "templates",
 		AssetsDir:    "static",
 		Hooks:        []string{"default"},
+		Extra:        make(map[string]any),
 		GlobConfig: models.GlobConfig{
 			Patterns:     []string{"pages/**/*.md", "posts/**/*.md"},
 			UseGitignore: true,

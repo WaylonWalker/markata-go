@@ -37,6 +37,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -80,11 +81,11 @@ type Cache struct {
 	// dirty tracks whether cache needs saving
 	dirty bool
 
-	// skippedCount tracks how many posts were skipped this build
-	skippedCount int
+	// skippedCount tracks how many posts were skipped this build (lock-free)
+	skippedCount atomic.Int64
 
-	// rebuiltCount tracks how many posts were rebuilt this build
-	rebuiltCount int
+	// rebuiltCount tracks how many posts were rebuilt this build (lock-free)
+	rebuiltCount atomic.Int64
 
 	// changedSlugs tracks slugs that changed this build (for dependency invalidation)
 	changedSlugs map[string]bool
@@ -94,6 +95,18 @@ type Cache struct {
 
 	// GlobPatternHash detects when glob patterns change
 	GlobPatternHash string `json:"glob_pattern_hash,omitempty"`
+
+	// In-memory caches to avoid repeated per-post disk reads during hot builds.
+	// These are populated lazily on first access (backfilled from disk on cache
+	// hit) and updated by CacheFullHTML/CacheArticleHTML/CachePostData on writes.
+	// Using sync.Map for lock-free concurrent reads from worker pools.
+
+	// fullHTMLMemory maps FullHTMLPath -> HTML string
+	fullHTMLMemory sync.Map
+	// articleHTMLMemory maps ArticleHTMLPath -> HTML string
+	articleHTMLMemory sync.Map
+	// postDataMemory maps post cache file path -> *CachedPostData
+	postDataMemory sync.Map
 }
 
 // PostCache stores cached metadata for a single post.
@@ -135,6 +148,26 @@ type PostCache struct {
 	// When feed membership changes (posts added/removed from a tag), this hash
 	// changes and the post is rebuilt with the updated sidebar.
 	FeedMembershipHash string `json:"feed_membership_hash,omitempty"`
+
+	// LinkAvatarsHash is a hash of the ArticleHTML input used for link_avatars caching.
+	// When ArticleHTML changes, this hash changes and the post is re-processed.
+	LinkAvatarsHash string `json:"link_avatars_hash,omitempty"`
+
+	// LinkAvatarsHTML is the cached ArticleHTML output after link_avatars processing.
+	LinkAvatarsHTML string `json:"link_avatars_html,omitempty"`
+
+	// EmbedsHash is a hash of the post Content input used for embeds transform caching.
+	// When Content changes, this hash changes and the post is re-processed.
+	EmbedsHash string `json:"embeds_hash,omitempty"`
+
+	// EmbedsContent is the cached Content output after embeds transform processing.
+	EmbedsContent string `json:"embeds_content,omitempty"`
+
+	// GlossaryHash is a hash of the ArticleHTML input + glossary terms state used for caching.
+	GlossaryHash string `json:"glossary_hash,omitempty"`
+
+	// GlossaryHTML is the cached ArticleHTML output after glossary processing.
+	GlossaryHTML string `json:"glossary_html,omitempty"`
 }
 
 // FeedCache stores cached metadata for a single feed.
@@ -284,6 +317,12 @@ func (c *Cache) ShouldRebuild(sourcePath, inputHash, template string) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
+	return c.shouldRebuildLocked(sourcePath, inputHash, template)
+}
+
+// shouldRebuildLocked is the lock-free inner implementation of ShouldRebuild.
+// Caller must hold at least c.mu.RLock().
+func (c *Cache) shouldRebuildLocked(sourcePath, inputHash, template string) bool {
 	cached, ok := c.Posts[sourcePath]
 	if !ok {
 		return true // Not in cache
@@ -295,6 +334,24 @@ func (c *Cache) ShouldRebuild(sourcePath, inputHash, template string) bool {
 	}
 
 	return false
+}
+
+// ShouldRebuildBatch checks multiple posts against the cache in a single lock acquisition.
+// Returns a map of sourcePath -> true for posts that need rebuilding.
+// This is more efficient than calling ShouldRebuild in a loop.
+func (c *Cache) ShouldRebuildBatch(posts []struct {
+	Path, InputHash, Template string
+}) map[string]bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	result := make(map[string]bool, len(posts)/10) // expect ~10% changed
+	for _, p := range posts {
+		if c.shouldRebuildLocked(p.Path, p.InputHash, p.Template) {
+			result[p.Path] = true
+		}
+	}
+	return result
 }
 
 // ShouldRebuildWithSlug checks if a post needs rebuilding based on input hash
@@ -338,7 +395,7 @@ func (c *Cache) MarkRebuilt(sourcePath, inputHash, outputPath, template string) 
 		Template:   template,
 	}
 	c.dirty = true
-	c.rebuiltCount++
+	c.rebuiltCount.Add(1)
 }
 
 // MarkRebuiltWithSlug records that a post was rebuilt with the given hash.
@@ -353,7 +410,7 @@ func (c *Cache) MarkRebuiltWithSlug(sourcePath, slug, inputHash, outputPath, tem
 		Template:   template,
 	}
 	c.dirty = true
-	c.rebuiltCount++
+	c.rebuiltCount.Add(1)
 
 	// Track that this slug changed (for dependency invalidation)
 	if slug != "" {
@@ -362,10 +419,9 @@ func (c *Cache) MarkRebuiltWithSlug(sourcePath, slug, inputHash, outputPath, tem
 }
 
 // MarkSkipped records that a post was skipped (already up to date).
+// Uses atomic increment -- no mutex needed.
 func (c *Cache) MarkSkipped() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.skippedCount++
+	c.skippedCount.Add(1)
 }
 
 // IsFileUnchanged checks if a file's ModTime matches the cached value.
@@ -454,6 +510,117 @@ func (c *Cache) CacheLinkHrefs(sourcePath, articleHash string, hrefs []string) {
 	c.dirty = true
 }
 
+// GetCachedLinkAvatarsHTML returns cached link_avatars output if the article hash matches.
+// Returns the cached HTML and true if valid, empty string and false otherwise.
+func (c *Cache) GetCachedLinkAvatarsHTML(sourcePath, articleHash string) (string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	cached, ok := c.Posts[sourcePath]
+	if !ok {
+		return "", false
+	}
+	if cached.LinkAvatarsHash == "" || cached.LinkAvatarsHash != articleHash {
+		return "", false
+	}
+	return cached.LinkAvatarsHTML, true
+}
+
+// CacheLinkAvatarsHTML stores the link_avatars processed HTML keyed by article hash.
+func (c *Cache) CacheLinkAvatarsHTML(sourcePath, articleHash, html string) {
+	if sourcePath == "" || articleHash == "" {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.LinkAvatarsHash = articleHash
+		cached.LinkAvatarsHTML = html
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			LinkAvatarsHash: articleHash,
+			LinkAvatarsHTML: html,
+		}
+	}
+	c.dirty = true
+}
+
+// GetCachedEmbedsContent returns cached embeds transform output if the content hash matches.
+// Returns the cached content and true if valid, empty string and false otherwise.
+func (c *Cache) GetCachedEmbedsContent(sourcePath, contentHash string) (string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	cached, ok := c.Posts[sourcePath]
+	if !ok {
+		return "", false
+	}
+	if cached.EmbedsHash == "" || cached.EmbedsHash != contentHash {
+		return "", false
+	}
+	return cached.EmbedsContent, true
+}
+
+// CacheEmbedsContent stores the embeds transform output keyed by content hash.
+func (c *Cache) CacheEmbedsContent(sourcePath, contentHash, content string) {
+	if sourcePath == "" || contentHash == "" {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.EmbedsHash = contentHash
+		cached.EmbedsContent = content
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			EmbedsHash:    contentHash,
+			EmbedsContent: content,
+		}
+	}
+	c.dirty = true
+}
+
+// GetCachedGlossaryHTML returns cached glossary output if the combined hash matches.
+// Returns the cached HTML and true if valid, empty string and false otherwise.
+func (c *Cache) GetCachedGlossaryHTML(sourcePath, combinedHash string) (string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	cached, ok := c.Posts[sourcePath]
+	if !ok {
+		return "", false
+	}
+	if cached.GlossaryHash == "" || cached.GlossaryHash != combinedHash {
+		return "", false
+	}
+	return cached.GlossaryHTML, true
+}
+
+// CacheGlossaryHTML stores the glossary processed HTML keyed by combined hash.
+func (c *Cache) CacheGlossaryHTML(sourcePath, combinedHash, html string) {
+	if sourcePath == "" || combinedHash == "" {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.GlossaryHash = combinedHash
+		cached.GlossaryHTML = html
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			GlossaryHash: combinedHash,
+			GlossaryHTML: html,
+		}
+	}
+	c.dirty = true
+}
+
 // SetFeedMembershipHash stores the feed membership hash for a post.
 func (c *Cache) SetFeedMembershipHash(sourcePath, hash string) {
 	c.mu.Lock()
@@ -488,9 +655,7 @@ func ComputeFeedMembershipHash(slugs []string) string {
 
 // Stats returns build statistics.
 func (c *Cache) Stats() (skipped, rebuilt int) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.skippedCount, c.rebuiltCount
+	return int(c.skippedCount.Load()), int(c.rebuiltCount.Load())
 }
 
 // CacheStats holds build statistics.
@@ -501,20 +666,18 @@ type CacheStats struct {
 
 // GetStats returns build statistics as a struct.
 func (c *Cache) GetStats() CacheStats {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
 	return CacheStats{
-		Skipped: c.skippedCount,
-		Rebuilt: c.rebuiltCount,
+		Skipped: int(c.skippedCount.Load()),
+		Rebuilt: int(c.rebuiltCount.Load()),
 	}
 }
 
 // ResetStats resets the build statistics for a new build.
 func (c *Cache) ResetStats() {
+	c.skippedCount.Store(0)
+	c.rebuiltCount.Store(0)
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.skippedCount = 0
-	c.rebuiltCount = 0
 	c.changedSlugs = make(map[string]bool)
 }
 
@@ -719,13 +882,23 @@ func (c *Cache) GetCachedArticleHTML(sourcePath, contentHash string) string {
 		return ""
 	}
 
-	// Read cached HTML file
+	// Check in-memory cache first (populated by preloadCaches)
+	if val, ok := c.articleHTMLMemory.Load(cached.ArticleHTMLPath); ok {
+		if html, ok := val.(string); ok {
+			return html
+		}
+	}
+
+	// Fallback to disk read
 	data, err := os.ReadFile(cached.ArticleHTMLPath)
 	if err != nil {
 		return ""
 	}
 
-	return string(data)
+	html := string(data)
+	// Store in memory for future calls
+	c.articleHTMLMemory.Store(cached.ArticleHTMLPath, html)
+	return html
 }
 
 // CacheArticleHTML stores rendered HTML for a post.
@@ -751,6 +924,9 @@ func (c *Cache) CacheArticleHTML(sourcePath, contentHash, articleHTML string) er
 	if err := os.WriteFile(htmlPath, []byte(articleHTML), 0o644); err != nil {
 		return fmt.Errorf("writing html cache: %w", err)
 	}
+
+	// Store in memory cache for future reads within this build
+	c.articleHTMLMemory.Store(htmlPath, articleHTML)
 
 	// Update cache metadata
 	c.mu.Lock()
@@ -810,12 +986,23 @@ func (c *Cache) GetCachedFullHTML(sourcePath string) string {
 		return ""
 	}
 
+	// Check in-memory cache first (populated by preloadCaches)
+	if val, ok := c.fullHTMLMemory.Load(cached.FullHTMLPath); ok {
+		if html, ok := val.(string); ok {
+			return html
+		}
+	}
+
+	// Fallback to disk read (shouldn't happen in normal hot builds)
 	data, err := os.ReadFile(cached.FullHTMLPath)
 	if err != nil {
 		return ""
 	}
 
-	return string(data)
+	html := string(data)
+	// Store in memory for future calls
+	c.fullHTMLMemory.Store(cached.FullHTMLPath, html)
+	return html
 }
 
 // CacheFullHTML stores the full page HTML for a post.
@@ -850,6 +1037,9 @@ func (c *Cache) CacheFullHTML(sourcePath, fullHTML string) error {
 	if err := os.WriteFile(htmlPath, []byte(fullHTML), 0o644); err != nil {
 		return fmt.Errorf("writing fullhtml cache: %w", err)
 	}
+
+	// Store in memory cache for future reads within this build
+	c.fullHTMLMemory.Store(htmlPath, fullHTML)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -905,15 +1095,21 @@ func (c *Cache) GetCachedPostData(sourcePath string, modTime int64) *CachedPostD
 		return nil
 	}
 
-	// Try to load from disk cache
+	// Compute the post cache file path
 	cacheDir := filepath.Dir(c.path)
 	postCacheDir := filepath.Join(cacheDir, PostCacheDir)
-
-	// Use path hash as filename
 	h := sha256.Sum256([]byte(sourcePath))
 	hashPrefix := hex.EncodeToString(h[:])[:16]
 	postPath := filepath.Join(postCacheDir, hashPrefix+".json")
 
+	// Check in-memory cache first (populated by preloadCaches)
+	if val, ok := c.postDataMemory.Load(postPath); ok {
+		if pd, ok := val.(*CachedPostData); ok {
+			return pd
+		}
+	}
+
+	// Fallback to disk read
 	data, err := os.ReadFile(postPath)
 	if err != nil {
 		return nil
@@ -924,6 +1120,8 @@ func (c *Cache) GetCachedPostData(sourcePath string, modTime int64) *CachedPostD
 		return nil
 	}
 
+	// Store in memory for future calls
+	c.postDataMemory.Store(postPath, &postData)
 	return &postData
 }
 
@@ -949,6 +1147,9 @@ func (c *Cache) CachePostData(sourcePath string, modTime int64, postData *Cached
 	if err := os.WriteFile(postPath, data, 0o644); err != nil {
 		return fmt.Errorf("writing post cache: %w", err)
 	}
+
+	// Store in memory cache for future reads within this build
+	c.postDataMemory.Store(postPath, postData)
 
 	// Update ModTime in cache
 	c.mu.Lock()

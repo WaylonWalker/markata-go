@@ -34,8 +34,15 @@ func (p *CSSPurgePlugin) Name() string {
 
 // Cleanup scans HTML files and removes unused CSS rules.
 // This runs after all content has been written to the output directory.
+// Skipped in fast mode (--fast flag) for faster development builds.
 func (p *CSSPurgePlugin) Cleanup(m *lifecycle.Manager) error {
 	config := m.Config()
+
+	// Skip in fast mode
+	if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
+		return nil
+	}
+
 	purgeConfig := getCSSPurgeConfig(config)
 
 	// Skip if disabled
