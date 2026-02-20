@@ -59,24 +59,48 @@ A `.env` file in the project root is loaded automatically during config loading 
 
 ## Plugin Behavior
 
-### Stage: Render (Priority 50)
+### Two-Phase Lifecycle
 
-The encryption plugin runs during the Render stage at priority 50 -- after markdown rendering (default priority) but before templates (priority 100).
+The encryption plugin participates in two lifecycle stages to ensure complete privacy protection:
 
-### Processing Steps
+#### Phase 1: Transform Stage (PriorityFirst / -1000)
 
-1. **Apply private tags**: For each non-draft, non-skipped post, check if any of its tags match a `private_tags` entry. If no tag matches, also check the post's `Template` field (set from the `templateKey` or `template` frontmatter). If either matches, set `Private = true` and assign the matching key name (unless `SecretKey` is already set from frontmatter). Tag matches take priority over `templateKey` matches for key assignment.
+Privacy marking runs at `PriorityFirst` (-1000) in the Transform stage -- before any other Transform or Render plugin. This ensures all downstream plugins see `post.Private == true` and can act accordingly.
 
-2. **Validate keys**: Find all private, non-draft, non-skipped posts. For each, resolve the key name (post's `SecretKey`, falling back to `default_key`). If no key name resolves, or the key's password is not found in the environment, record a failure.
+**Processing:** Apply private tags. For each non-draft, non-skipped post, check if any of its tags match a `private_tags` entry. If no tag matches, also check the post's `Template` field (set from the `templateKey` or `template` frontmatter). If either matches, set `Private = true` and assign the matching key name (unless `SecretKey` is already set from frontmatter). Tag matches take priority over `templateKey` matches for key assignment.
 
-3. **Fail on missing keys**: If any private posts failed validation, return an `EncryptionBuildError` (implements `CriticalError`). The error message lists all affected posts and the expected environment variable names.
+**Rationale:** If privacy marking ran later (e.g., during Render), Transform-stage plugins like Description would auto-generate descriptions from private content before the post was marked private -- leaking plaintext into metadata.
 
-4. **Encrypt content**: For each private post with non-empty `ArticleHTML`, encrypt the HTML using AES-256-GCM. Replace `ArticleHTML` with an encrypted wrapper containing:
+#### Phase 2: Render Stage (Priority 50)
+
+Encryption runs during the Render stage at priority 50 -- after markdown rendering (default priority) but before templates (priority 100).
+
+**Processing:**
+
+1. **Validate keys**: Find all private, non-draft, non-skipped posts. For each, resolve the key name (post's `SecretKey`, falling back to `default_key`). If no key name resolves, or the key's password is not found in the environment, record a failure.
+
+2. **Fail on missing keys**: If any private posts failed validation, return an `EncryptionBuildError` (implements `CriticalError`). The error message lists all affected posts and the expected environment variable names.
+
+3. **Encrypt content**: For each private post with non-empty `ArticleHTML`, encrypt the HTML using AES-256-GCM. Replace `ArticleHTML` with an encrypted wrapper containing:
    - The encrypted content as a base64 string in a `data-encrypted` attribute
    - The key name in a `data-key-name` attribute
    - A password input form with ARIA labels
    - The decryption hint (if configured)
    - A "Remember for this session" checkbox
+
+### Cross-Plugin Privacy Protection
+
+The following plugins respect `post.Private` to prevent leaking private content through non-article output:
+
+| Plugin | Protection | Details |
+|--------|-----------|---------|
+| `publish_html` | Alternate formats suppressed | `.md`, `.txt`, and OG card outputs are skipped for private posts |
+| `description` | Auto-generation skipped | Does not generate descriptions from private content |
+| `embeds` | Private embed card | Shows a "Private Content" card instead of title/description/date |
+| `wikilinks` | Metadata attributes suppressed | `data-title`, `data-description`, `data-date` attributes are omitted for private targets |
+| `wikilink_hover` | Hover preview suppressed | No preview text or metadata shown for private targets |
+| `feeds` / `atom` / `rss` / `jsonfeed` | Excluded from feeds | Private posts are filtered out of all subscription feeds |
+| `publish_feeds` | Excluded from feed pages | Private posts are filtered from HTML feed pages |
 
 ### Error Handling
 
