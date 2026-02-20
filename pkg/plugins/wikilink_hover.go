@@ -149,6 +149,11 @@ func (p *WikilinkHoverPlugin) enhanceWikilink(match string) string {
 		return match
 	}
 
+	// Skip hover data for private posts to prevent metadata leaks
+	if targetPost.Private {
+		return match
+	}
+
 	// Build data attributes
 	attrs := p.buildDataAttributes(targetPost)
 	if attrs == "" {

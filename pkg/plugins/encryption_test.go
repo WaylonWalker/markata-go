@@ -304,10 +304,17 @@ func TestEncryptionPlugin_Priority(t *testing.T) {
 		t.Errorf("Priority(StageRender) = %d, want %d", priority, 50)
 	}
 
-	// Default priority for other stages
+	// Transform stage: PriorityFirst (-1000) to mark posts private
+	// before Description plugin (PriorityEarly = -100)
 	priority = plugin.Priority(lifecycle.StageTransform)
+	if priority != lifecycle.PriorityFirst {
+		t.Errorf("Priority(StageTransform) = %d, want %d", priority, lifecycle.PriorityFirst)
+	}
+
+	// Default priority for other stages
+	priority = plugin.Priority(lifecycle.StageWrite)
 	if priority != lifecycle.PriorityDefault {
-		t.Errorf("Priority(StageTransform) = %d, want %d", priority, lifecycle.PriorityDefault)
+		t.Errorf("Priority(StageWrite) = %d, want %d", priority, lifecycle.PriorityDefault)
 	}
 }
 
@@ -338,6 +345,7 @@ func TestEncryptionPlugin_EscapeHTML(t *testing.T) {
 func TestEncryptionPlugin_Interfaces(_ *testing.T) {
 	var _ lifecycle.Plugin = (*EncryptionPlugin)(nil)
 	var _ lifecycle.ConfigurePlugin = (*EncryptionPlugin)(nil)
+	var _ lifecycle.TransformPlugin = (*EncryptionPlugin)(nil)
 	var _ lifecycle.RenderPlugin = (*EncryptionPlugin)(nil)
 	var _ lifecycle.PriorityPlugin = (*EncryptionPlugin)(nil)
 }
