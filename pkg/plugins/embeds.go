@@ -1054,42 +1054,53 @@ func (p *EmbedsPlugin) effectiveEmbedMode(opts EmbedOptions, metadata *OGMetadat
 	providerName := strings.ToLower(metadata.ProviderName)
 	if providerName != "" {
 		if providerCfg, ok := p.config.OEmbedProviders[providerName]; ok && providerCfg.Mode != "" {
-			mode := strings.ToLower(providerCfg.Mode)
-			switch mode {
-			case embedModeRich:
-				opts.Rich = true
-			case embedModeCard:
-				opts.Card = true
-			case embedModePerformance:
-				opts.Performance = true
-			case embedModeHover:
-				opts.Hover = true
-			case embedModeImageOnly:
-				opts.ImageOnly = true
+			if applyEmbedMode(&opts, strings.ToLower(providerCfg.Mode)) {
+				return opts
 			}
-			return opts
 		}
 	}
 
-	// Fall back to default mode based on oEmbed type or global default
+	// Prefer oEmbed type defaults for photo/rich/video
 	oembedType := strings.ToLower(metadata.Type)
-	defaultMode := p.config.DefaultEmbedMode
-	if defaultMode == "" {
-		defaultMode = defaultModeByType(oembedType)
+	if oembedType != "" {
+		typeMode := defaultModeByType(oembedType)
+		if typeMode != embedModeCard {
+			if applyEmbedMode(&opts, typeMode) {
+				return opts
+			}
+		}
 	}
 
-	switch defaultMode {
-	case embedModeRich:
-		opts.Rich = true
-	case embedModePerformance:
-		opts.Performance = true
-	case embedModeHover:
-		opts.Hover = true
-	case embedModeImageOnly:
-		opts.ImageOnly = true
+	// Fall back to global default mode
+	defaultMode := strings.ToLower(p.config.DefaultEmbedMode)
+	if defaultMode == "" {
+		defaultMode = embedModeCard
 	}
+	applyEmbedMode(&opts, defaultMode)
 
 	return opts
+}
+
+func applyEmbedMode(opts *EmbedOptions, mode string) bool {
+	switch mode {
+	case embedModeRich:
+		opts.Rich = true
+		return true
+	case embedModeCard:
+		opts.Card = true
+		return true
+	case embedModePerformance:
+		opts.Performance = true
+		return true
+	case embedModeHover:
+		opts.Hover = true
+		return true
+	case embedModeImageOnly:
+		opts.ImageOnly = true
+		return true
+	default:
+		return false
+	}
 }
 
 // buildExternalEmbedCard creates HTML for an external embed card.
@@ -1114,6 +1125,9 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 		classes = append(classes, "embed-card-full-width")
 	}
 	if opts.ImageOnly {
+		classes = append(classes, "embed-card-image-only")
+	}
+	if opts.Performance {
 		classes = append(classes, "embed-card-image-only")
 	}
 	if opts.Hover {
@@ -1207,18 +1221,28 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 	// Handle performance/image_only mode - just show image, no text
 	if opts.Performance || opts.ImageOnly {
 		if metadata.Image != "" {
+			label := metadata.Title
+			if label == "" {
+				label = domain
+			}
+			if metadata.Description != "" {
+				label = label + " — " + metadata.Description
+			}
+			labelEscaped := html.EscapeString(label)
 			sb.WriteString(`  <a href="`)
 			sb.WriteString(html.EscapeString(rawURL))
-			sb.WriteString(`" target="_blank" rel="noopener noreferrer">`)
+			sb.WriteString(`" target="_blank" rel="noopener noreferrer"`)
+			if label != "" {
+				sb.WriteString(` title="`)
+				sb.WriteString(labelEscaped)
+				sb.WriteString(`"`)
+			}
+			sb.WriteString(`>`)
 			sb.WriteString("\n")
 			sb.WriteString(`    <img src="`)
 			sb.WriteString(html.EscapeString(metadata.Image))
 			sb.WriteString(`" alt="`)
-			if metadata.Title != "" {
-				sb.WriteString(html.EscapeString(metadata.Title))
-			} else {
-				sb.WriteString(html.EscapeString(domain))
-			}
+			sb.WriteString(labelEscaped)
 			sb.WriteString(`" loading="lazy" class="embed-card-img">`)
 			sb.WriteString("\n")
 			sb.WriteString(`  </a>`)
