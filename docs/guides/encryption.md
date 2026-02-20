@@ -165,7 +165,17 @@ journal = "personal"
 
 Any post tagged `diary` or `journal` is automatically treated as private and encrypted with the `personal` key. You don't need to set `private: true` in the frontmatter.
 
-**Frontmatter key overrides tag key:** If a post has both a private tag and a frontmatter `secret_key`, the frontmatter key is used.
+The `private_tags` check matches against both the post's `tags` list and its `templateKey` (or `template`) frontmatter field. This is useful for content that uses `templateKey` as its primary categorization, such as gratitude journals or diary entries that may not have explicit tags.
+
+```toml
+[encryption.private_tags]
+gratitude = "default"    # Matches posts with tag "gratitude" OR templateKey "gratitude"
+```
+
+**Priority rules:**
+- If a tag matches, the tag's key is used
+- If only `templateKey` matches, its key is used
+- **Frontmatter key overrides both:** If a post has a frontmatter `secret_key`, it takes priority over any tag or templateKey match
 
 ## Build Behavior
 
@@ -248,6 +258,61 @@ The encrypted content includes:
 When the correct password is entered, JavaScript decrypts the content in-browser using the Web Crypto API with matching PBKDF2 parameters. The decrypted HTML replaces the password form.
 
 If "Remember for this session" is checked, the password is stored in sessionStorage (cleared when the browser tab closes). This allows navigating between encrypted posts without re-entering the password for posts using the same key.
+
+## Privacy Boundary
+
+Encryption protects the **post body**, not metadata. Frontmatter fields like title, description, tags, and dates remain in cleartext by design.
+
+### What stays public
+
+| Field | Why |
+|-------|-----|
+| Title | Shown in page cards, feed listings, navigation, and HTML `<title>` |
+| Description | Only if explicitly set in frontmatter -- you chose to make it public |
+| Tags and dates | Used for site structure, filtering, and feed membership |
+| Slug / URL | The page needs to be routable and linkable |
+| Avatar | Shown in mentions and author cards |
+
+### What is private
+
+| Field | Protection |
+|-------|-----------|
+| Post body (Markdown) | Cleared from output; never written to any file |
+| Article HTML | Encrypted with AES-256-GCM; only the ciphertext is published |
+| Auto-generated descriptions | Suppressed entirely for private posts |
+| Inlinks / outlinks text | Cleared during metadata scrubbing |
+
+If you put sensitive information in your title or description frontmatter, it **will** be visible in the built site. Keep sensitive content in the post body.
+
+## Privacy Protection
+
+When a post is marked private (by any method), markata-go suppresses it across all output types -- not just the HTML article page. This prevents content from leaking through alternate channels.
+
+### What is protected
+
+| Output | Behavior |
+|--------|----------|
+| HTML page | Content encrypted with password prompt |
+| `.md` / `.txt` alternates | Not generated for private posts |
+| OG image cards | Not generated for private posts |
+| RSS / Atom / JSON feeds | Private posts excluded entirely |
+| Feed pages | Private-tag feeds show encrypted cards with password prompts; other feeds exclude private posts |
+| Embed cards (`![[slug]]`) | Shows a "Private Content" card with no title, description, or date |
+| Wikilinks (`[[slug]]`) | Link text is rendered but `data-title`, `data-description`, `data-date` attributes are omitted |
+| Wikilink hover previews | No hover preview is shown for private posts |
+| Auto-generated descriptions | Not generated from private post content |
+
+### How it works
+
+Privacy marking happens at the very start of the Transform stage -- before any other plugin processes the post. This ensures that every downstream plugin (description generation, embed cards, wikilinks, feeds, etc.) sees `private: true` and acts accordingly.
+
+The encrypted article HTML is the **only** representation of your private content in the built site.
+
+### Feed pages for private tags
+
+When you configure `private_tags`, the corresponding auto-generated tag feed pages include your private posts as encrypted cards. Visitors see a grid of cards where each private card shows a lock icon and password prompt. Entering the password for one card decrypts all cards on the page that use the same key.
+
+Subscription feeds (RSS, Atom, JSON Feed) still exclude private posts entirely -- encrypted content in an RSS reader would not be useful.
 
 ## Security Notes
 

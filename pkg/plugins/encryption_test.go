@@ -304,10 +304,17 @@ func TestEncryptionPlugin_Priority(t *testing.T) {
 		t.Errorf("Priority(StageRender) = %d, want %d", priority, 50)
 	}
 
-	// Default priority for other stages
+	// Transform stage: PriorityFirst (-1000) to mark posts private
+	// before Description plugin (PriorityEarly = -100)
 	priority = plugin.Priority(lifecycle.StageTransform)
+	if priority != lifecycle.PriorityFirst {
+		t.Errorf("Priority(StageTransform) = %d, want %d", priority, lifecycle.PriorityFirst)
+	}
+
+	// Default priority for other stages
+	priority = plugin.Priority(lifecycle.StageWrite)
 	if priority != lifecycle.PriorityDefault {
-		t.Errorf("Priority(StageTransform) = %d, want %d", priority, lifecycle.PriorityDefault)
+		t.Errorf("Priority(StageWrite) = %d, want %d", priority, lifecycle.PriorityDefault)
 	}
 }
 
@@ -338,6 +345,7 @@ func TestEncryptionPlugin_EscapeHTML(t *testing.T) {
 func TestEncryptionPlugin_Interfaces(_ *testing.T) {
 	var _ lifecycle.Plugin = (*EncryptionPlugin)(nil)
 	var _ lifecycle.ConfigurePlugin = (*EncryptionPlugin)(nil)
+	var _ lifecycle.TransformPlugin = (*EncryptionPlugin)(nil)
 	var _ lifecycle.RenderPlugin = (*EncryptionPlugin)(nil)
 	var _ lifecycle.PriorityPlugin = (*EncryptionPlugin)(nil)
 }
@@ -421,6 +429,48 @@ func TestEncryptionPlugin_ApplyPrivateTags(t *testing.T) {
 			post: &models.Post{
 				Tags: []string{"diary"},
 				Skip: true,
+			},
+			wantPrivate:   false,
+			wantSecretKey: "",
+		},
+		{
+			name: "templateKey matches private_tags",
+			post: &models.Post{
+				Template: "diary",
+			},
+			wantPrivate:   true,
+			wantSecretKey: "personal",
+		},
+		{
+			name: "templateKey case insensitive",
+			post: &models.Post{
+				Template: "JOURNAL",
+			},
+			wantPrivate:   true,
+			wantSecretKey: "default",
+		},
+		{
+			name: "templateKey does not override tag match",
+			post: &models.Post{
+				Tags:     []string{"diary"},
+				Template: "journal",
+			},
+			wantPrivate:   true,
+			wantSecretKey: "personal", // from tag "diary", not templateKey "journal"
+		},
+		{
+			name: "templateKey with frontmatter key preserves it",
+			post: &models.Post{
+				Template:  "diary",
+				SecretKey: "custom",
+			},
+			wantPrivate:   true,
+			wantSecretKey: "custom",
+		},
+		{
+			name: "non-matching templateKey leaves post unchanged",
+			post: &models.Post{
+				Template: "blog-post",
 			},
 			wantPrivate:   false,
 			wantSecretKey: "",

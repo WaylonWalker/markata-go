@@ -640,6 +640,14 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 		// Feed pages always need cards CSS
 		ctx.Set("needs_cards_css", true)
 
+		// If any post on this page has encrypted content, load decryption JS/CSS
+		for _, post := range page.Posts {
+			if v, ok := post.Extra["has_encrypted_content"].(bool); ok && v {
+				ctx.Set("has_encrypted_content", true)
+				break
+			}
+		}
+
 		// Render with pongo2 template
 		html, err := engine.Render("feed.html", ctx)
 		if err != nil {

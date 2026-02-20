@@ -181,7 +181,8 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	// Write Markdown format (raw source)
 	// Uses reversed redirect: content at /slug.md, redirect at /slug/index.html
 	// Skip redirect if HTML is enabled (index.html already has main content)
-	if postFormats.Markdown {
+	// Skip for private posts to prevent plaintext content leaks
+	if postFormats.Markdown && !post.Private {
 		mdContent := p.buildFormatContent(post, config, m, "markdown")
 		skipRedirect := postFormats.IsHTMLEnabled()
 		if err := p.writeReversedFormatOutput(post.Slug, "md", mdContent, config.OutputDir, skipRedirect); err != nil {
@@ -192,7 +193,8 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	// Write Text format (plain text)
 	// Uses reversed redirect: content at /slug.txt, redirect at /slug/index.html
 	// Skip redirect if HTML is enabled (index.html already has main content)
-	if postFormats.Text {
+	// Skip for private posts to prevent plaintext content leaks
+	if postFormats.Text && !post.Private {
 		// Use renderTextContent for txt format to leverage main's sophisticated template resolution
 		txtContent := p.renderTextContent(post, config, engine)
 		skipRedirect := postFormats.IsHTMLEnabled()
@@ -202,7 +204,8 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	}
 
 	// Write OG format (social card HTML)
-	if postFormats.OG {
+	// Skip for private posts to prevent metadata leaks in OG cards
+	if postFormats.OG && !post.Private {
 		if err := p.writeOGFormat(post, config, postDir, engine); err != nil {
 			return err
 		}
