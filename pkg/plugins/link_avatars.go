@@ -14,8 +14,10 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 
@@ -220,7 +222,10 @@ func (p *LinkAvatarsPlugin) Render(m *lifecycle.Manager) error {
 		return err
 	}
 
-	iconCache := make(map[string]string)
+	cache := GetBuildCache(m)
+
+	// Thread-safe icon cache for concurrent access
+	var iconCache sync.Map
 
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		if post.Skip || post.ArticleHTML == "" {
@@ -229,15 +234,38 @@ func (p *LinkAvatarsPlugin) Render(m *lifecycle.Manager) error {
 		return true
 	})
 
-	for _, post := range posts {
-		updated, err := p.processHTML(post.ArticleHTML, publicBase, assetsDir, iconCache)
-		if err != nil {
-			return fmt.Errorf("link_avatars render %q: %w", post.Path, err)
+	// Phase 1: Restore cached results for unchanged posts
+	var needProcessing []*models.Post
+	if cache != nil {
+		for _, post := range posts {
+			articleHash := buildcache.ContentHash(post.ArticleHTML)
+			if cached, ok := cache.GetCachedLinkAvatarsHTML(post.Path, articleHash); ok {
+				post.ArticleHTML = cached
+			} else {
+				needProcessing = append(needProcessing, post)
+			}
 		}
-		post.ArticleHTML = updated
+	} else {
+		needProcessing = posts
 	}
 
-	return nil
+	if len(needProcessing) == 0 {
+		return nil
+	}
+
+	// Phase 2: Process posts that need updating, concurrently
+	return m.ProcessPostsSliceConcurrently(needProcessing, func(post *models.Post) error {
+		articleHash := buildcache.ContentHash(post.ArticleHTML)
+		updated, processErr := p.processHTMLConcurrent(post.ArticleHTML, publicBase, assetsDir, &iconCache)
+		if processErr != nil {
+			return fmt.Errorf("link_avatars render %q: %w", post.Path, processErr)
+		}
+		post.ArticleHTML = updated
+		if cache != nil {
+			cache.CacheLinkAvatarsHTML(post.Path, articleHash, updated)
+		}
+		return nil
+	})
 }
 
 // generateJavaScript generates the client-side JavaScript.
@@ -740,16 +768,16 @@ func (p *LinkAvatarsPlugin) iconBaseURL() (string, error) {
 	}
 }
 
-func (p *LinkAvatarsPlugin) processHTML(html, publicBase, assetsDir string, iconCache map[string]string) (string, error) {
-	wrapped := `<div id="__link-avatars-root">` + html + `</div>`
+func (p *LinkAvatarsPlugin) processHTMLConcurrent(htmlContent, publicBase, assetsDir string, iconCache *sync.Map) (string, error) {
+	wrapped := `<div id="__link-avatars-root">` + htmlContent + `</div>`
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(wrapped))
 	if err != nil {
-		return html, err
+		return htmlContent, err
 	}
 
 	root := doc.Find("#__link-avatars-root")
 	if root.Length() == 0 {
-		return html, nil
+		return htmlContent, nil
 	}
 
 	selectors := parseIgnoreSelectors(p.config.IgnoreSelectors)
@@ -765,8 +793,8 @@ func (p *LinkAvatarsPlugin) processHTML(html, publicBase, assetsDir string, icon
 			return
 		}
 
-		parsed, err := url.Parse(strings.TrimSpace(href))
-		if err != nil || !parsed.IsAbs() {
+		parsed, parseErr := url.Parse(strings.TrimSpace(href))
+		if parseErr != nil || !parsed.IsAbs() {
 			return
 		}
 		if parsed.Scheme != "http" && parsed.Scheme != "https" {
@@ -783,14 +811,18 @@ func (p *LinkAvatarsPlugin) processHTML(html, publicBase, assetsDir string, icon
 			return
 		}
 
-		iconURL, ok := iconCache[host]
-		if !ok {
+		var iconURL string
+		if cached, loaded := iconCache.Load(host); loaded {
+			if s, ok := cached.(string); ok {
+				iconURL = s
+			}
+		} else {
 			fileName, fetchErr := p.ensureIconForHost(assetsDir, host, origin)
 			if fetchErr != nil {
 				return
 			}
 			iconURL = strings.TrimRight(publicBase, "/") + "/" + fileName
-			iconCache[host] = iconURL
+			iconCache.Store(host, iconURL)
 		}
 
 		style, _ := link.Attr("style")
@@ -803,7 +835,7 @@ func (p *LinkAvatarsPlugin) processHTML(html, publicBase, assetsDir string, icon
 
 	updated, err := root.Html()
 	if err != nil {
-		return html, err
+		return htmlContent, err
 	}
 
 	return updated, nil

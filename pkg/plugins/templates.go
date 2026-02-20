@@ -2,9 +2,12 @@ package plugins
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -252,9 +255,10 @@ func getDefaultTemplates(config *lifecycle.Config) map[string]string {
 // This runs after markdown rendering, using post.ArticleHTML as the body.
 // Skips posts that don't need rebuilding (incremental builds).
 //
-// Uses two-phase processing for incremental optimization:
-// Phase 1: Quick single-threaded pass to restore cached HTML (no worker overhead)
-// Phase 2: Concurrent processing only for posts that need rendering
+// Uses three-phase processing for incremental optimization:
+// Phase 1a: Quick single-threaded pass to classify posts (no disk I/O)
+// Phase 1b: Concurrent batch read of cached HTML files for unchanged posts
+// Phase 2: Concurrent rendering only for posts that need it
 func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	if p.engine == nil {
 		return fmt.Errorf("template engine not initialized")
@@ -270,25 +274,42 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	// Collect private paths for robots.txt template variable
 	privatePaths := collectPrivatePaths(m.Posts())
 
-	// Phase 1: Quick pass to restore cached HTML for unchanged posts
-	// This avoids worker pool overhead for the ~98% of posts that are cached
-	postsNeedingRender := m.FilterPosts(func(post *models.Post) bool {
+	// Pre-compute feed membership hashes once (O(N)) instead of per-post (O(N^2))
+	feedMembershipHashes := precomputeFeedMembershipHashes(config, m)
+
+	// Phase 1a: Classify posts into "cacheable" vs "needs rendering" without disk I/O.
+	// For cacheable posts, we collect the source path so we can batch-read HTML later.
+	t0 := time.Now()
+	var cacheablePosts []cacheablePost
+	var postsNeedingRender []*models.Post
+
+	for _, post := range m.Posts() {
 		// Skip posts marked to skip or without article HTML
 		if post.Skip || post.ArticleHTML == "" {
-			return false
+			continue
 		}
 
-		// Try to use cached HTML for unchanged posts
-		if cachedHTML := p.tryGetCachedHTML(post, cache, changedSlugs, config, m); cachedHTML != "" {
-			post.HTML = cachedHTML
-			return false // Already handled, no concurrent processing needed
+		// Check if we can use cached HTML (no disk I/O -- just map lookups)
+		if canUseCachedHTML(post, cache, changedSlugs, feedMembershipHashes) {
+			cacheablePosts = append(cacheablePosts, cacheablePost{post: post, path: post.Path})
+		} else {
+			postsNeedingRender = append(postsNeedingRender, post)
 		}
+	}
+	t1 := time.Now()
+	log.Printf("[templates] Phase 1a classify: %d cacheable, %d need render (took %v)", len(cacheablePosts), len(postsNeedingRender), t1.Sub(t0))
 
-		return true // Needs rendering
-	})
+	// Phase 1b: Batch-read all cached HTML files concurrently.
+	// This converts ~2900 sequential os.ReadFile calls into a parallel batch,
+	// significantly reducing wall-clock time for the cache restore phase.
+	if len(cacheablePosts) > 0 && cache != nil {
+		p.batchRestoreCachedHTML(cacheablePosts, cache, &postsNeedingRender)
+	}
+	t2 := time.Now()
+	log.Printf("[templates] Phase 1b batch restore: took %v, %d now need render", t2.Sub(t1), len(postsNeedingRender))
 
 	// Phase 2: Process only posts that need rendering concurrently
-	return m.ProcessPostsSliceConcurrently(postsNeedingRender, func(post *models.Post) error {
+	err := m.ProcessPostsSliceConcurrently(postsNeedingRender, func(post *models.Post) error {
 		// Render the template
 		html, err := p.renderPost(post, config, m, privatePaths)
 		if err != nil {
@@ -301,13 +322,115 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 			//nolint:errcheck // caching is best-effort, failures are non-fatal
 			cache.CacheFullHTML(post.Path, html)
 			// Store feed membership hash for future builds
-			if membershipHash := p.computeFeedMembershipHash(post, config, m); membershipHash != "" {
+			if membershipHash := lookupFeedMembershipHash(post, feedMembershipHashes); membershipHash != "" {
 				cache.SetFeedMembershipHash(post.Path, membershipHash)
 			}
 		}
 
 		return nil
 	})
+	t3 := time.Now()
+	log.Printf("[templates] Phase 2 render: took %v", t3.Sub(t2))
+	return err
+}
+
+// cacheablePost pairs a post with its source path for batch cache operations.
+type cacheablePost struct {
+	post *models.Post
+	path string // source path for cache lookup
+}
+
+// batchRestoreCachedHTML reads cached HTML files concurrently and assigns them to posts.
+// Posts whose cache files are missing or unreadable are moved to postsNeedingRender.
+func (p *TemplatesPlugin) batchRestoreCachedHTML(
+	posts []cacheablePost,
+	cache *buildcache.Cache,
+	postsNeedingRender *[]*models.Post,
+) {
+	type result struct {
+		idx  int
+		html string
+	}
+
+	results := make([]result, 0, len(posts))
+	resultCh := make(chan result, len(posts))
+
+	// Use a worker pool with bounded concurrency for parallel file reads
+	const numWorkers = 32
+	jobs := make(chan int, len(posts))
+	var wg sync.WaitGroup
+
+	for w := 0; w < numWorkers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for idx := range jobs {
+				html := cache.GetCachedFullHTML(posts[idx].path)
+				resultCh <- result{idx: idx, html: html}
+			}
+		}()
+	}
+
+	// Send all jobs
+	for i := range posts {
+		jobs <- i
+	}
+	close(jobs)
+
+	// Collect results in background
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	for r := range resultCh {
+		results = append(results, r)
+	}
+
+	// Assign HTML to posts, moving cache misses to postsNeedingRender
+	for _, r := range results {
+		if r.html != "" {
+			posts[r.idx].post.HTML = r.html
+		} else {
+			*postsNeedingRender = append(*postsNeedingRender, posts[r.idx].post)
+		}
+	}
+}
+
+// canUseCachedHTML checks if a post can use cached HTML without doing any disk I/O.
+// This is the "decision" phase that determines cache eligibility.
+func canUseCachedHTML(post *models.Post, cache *buildcache.Cache, changedSlugs map[string]bool, feedMembershipHashes map[string]string) bool {
+	if cache == nil || post.InputHash == "" {
+		return false
+	}
+
+	// Check if post itself changed
+	if cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
+		return false
+	}
+
+	// Check if any dependency changed
+	if len(changedSlugs) > 0 {
+		for _, dep := range post.Dependencies {
+			if changedSlugs[dep] {
+				return false
+			}
+		}
+		// Check if this post's slug is in changedSlugs
+		if changedSlugs[post.Slug] {
+			return false
+		}
+	}
+
+	// Check if feed membership changed (for sidebar invalidation)
+	if currentHash := lookupFeedMembershipHash(post, feedMembershipHashes); currentHash != "" {
+		cachedHash := cache.GetFeedMembershipHash(post.Path)
+		if cachedHash != currentHash {
+			return false
+		}
+	}
+
+	return true
 }
 
 // getChangedSlugsMap returns a map of slugs that changed in this build.
@@ -322,85 +445,63 @@ func getChangedSlugsMap(cache *buildcache.Cache) map[string]bool {
 	return changedSlugs
 }
 
-// tryGetCachedHTML checks if a post can use cached HTML.
-// Returns cached HTML if available and valid, empty string otherwise.
-func (p *TemplatesPlugin) tryGetCachedHTML(post *models.Post, cache *buildcache.Cache, changedSlugs map[string]bool, config *lifecycle.Config, m *lifecycle.Manager) string {
-	if cache == nil || post.InputHash == "" {
-		return ""
-	}
-
-	// Check if post itself changed
-	if cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
-		return ""
-	}
-
-	// Check if any dependency changed
-	if len(changedSlugs) > 0 {
-		for _, dep := range post.Dependencies {
-			if changedSlugs[dep] {
-				return ""
-			}
-		}
-		// Check if this post's slug is in changedSlugs
-		if changedSlugs[post.Slug] {
-			return ""
-		}
-	}
-
-	// Check if feed membership changed (for sidebar invalidation)
-	if currentHash := p.computeFeedMembershipHash(post, config, m); currentHash != "" {
-		cachedHash := cache.GetFeedMembershipHash(post.Path)
-		if cachedHash != currentHash {
-			return ""
-		}
-	}
-
-	// Try to load cached HTML
-	return cache.GetCachedFullHTML(post.Path)
-}
-
-// computeFeedMembershipHash computes a hash of the feed membership for sidebar invalidation.
-// Returns empty string if the post doesn't belong to any configured feed sidebar.
-func (p *TemplatesPlugin) computeFeedMembershipHash(post *models.Post, config *lifecycle.Config, m *lifecycle.Manager) string {
+// precomputeFeedMembershipHashes builds a map of tag -> membership hash in O(N) time.
+// This replaces the per-post O(N) scan that previously made the overall complexity O(N^2).
+func precomputeFeedMembershipHashes(config *lifecycle.Config, m *lifecycle.Manager) map[string]string {
 	components, ok := config.Extra["components"].(models.ComponentsConfig)
 	if !ok {
-		return ""
+		return nil
 	}
 	if components.FeedSidebar.Enabled == nil || !*components.FeedSidebar.Enabled {
-		return ""
+		return nil
 	}
 	feedSlugs := components.FeedSidebar.Feeds
 	if len(feedSlugs) == 0 {
-		return ""
+		return nil
 	}
 
+	// Collect the tag names we care about
+	tagNames := make(map[string]bool, len(feedSlugs))
 	for _, feedSlug := range feedSlugs {
-		if !strings.HasPrefix(feedSlug, "tags/") {
-			continue
+		if strings.HasPrefix(feedSlug, "tags/") {
+			tagNames[strings.TrimPrefix(feedSlug, "tags/")] = true
 		}
-		tagName := strings.TrimPrefix(feedSlug, "tags/")
-		hasTag := false
-		for _, postTag := range post.Tags {
-			if postTag == tagName {
-				hasTag = true
-				break
-			}
-		}
-		if !hasTag {
-			continue
-		}
+	}
+	if len(tagNames) == 0 {
+		return nil
+	}
 
-		// Collect slugs of all posts in this feed
-		var memberSlugs []string
-		for _, feedPost := range m.Posts() {
-			for _, t := range feedPost.Tags {
-				if t == tagName && feedPost.Published && !feedPost.Draft && !feedPost.Skip {
-					memberSlugs = append(memberSlugs, feedPost.Slug)
-					break
-				}
+	// Single pass over all posts: group member slugs by tag
+	tagMembers := make(map[string][]string, len(tagNames))
+	for _, post := range m.Posts() {
+		if !post.Published || post.Draft || post.Skip {
+			continue
+		}
+		for _, t := range post.Tags {
+			if tagNames[t] {
+				tagMembers[t] = append(tagMembers[t], post.Slug)
 			}
 		}
-		return buildcache.ComputeFeedMembershipHash(memberSlugs)
+	}
+
+	// Compute hash per tag
+	result := make(map[string]string, len(tagMembers))
+	for tag, slugs := range tagMembers {
+		result[tag] = buildcache.ComputeFeedMembershipHash(slugs)
+	}
+	return result
+}
+
+// lookupFeedMembershipHash finds the feed membership hash for a post using the pre-computed map.
+// Returns the hash of the first matching tag's membership, or empty string.
+func lookupFeedMembershipHash(post *models.Post, feedMembershipHashes map[string]string) string {
+	if len(feedMembershipHashes) == 0 {
+		return ""
+	}
+	for _, tag := range post.Tags {
+		if h, ok := feedMembershipHashes[tag]; ok {
+			return h
+		}
 	}
 	return ""
 }

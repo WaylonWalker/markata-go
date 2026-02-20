@@ -103,23 +103,26 @@ func (p *LinkCollectorPlugin) Render(m *lifecycle.Manager) error {
 		baseURL := p.buildBaseURL(post)
 
 		var hrefs []string
+		var hrefTextMap map[string]string
 		if useCache {
 			articleHash := buildcache.ContentHash(post.ArticleHTML)
 			if cached := cache.GetCachedLinkHrefs(post.Path, articleHash); cached != nil {
 				hrefs = cached
+				// When restoring from cache we only have hrefs; build text map from HTML
+				hrefTextMap = extractHrefTextMap(post.ArticleHTML)
 			} else {
-				hrefs = extractHrefs(post.ArticleHTML)
+				hrefs, hrefTextMap = extractHrefsAndText(post.ArticleHTML)
 				cache.CacheLinkHrefs(post.Path, articleHash, hrefs)
 			}
 		} else {
-			hrefs = extractHrefs(post.ArticleHTML)
+			hrefs, hrefTextMap = extractHrefsAndText(post.ArticleHTML)
 		}
 		post.Hrefs = hrefs
 
 		// Create Link objects for each href
 		var postLinks []*models.Link
 		for _, href := range hrefs {
-			link := p.createLink(post, baseURL, href, idx)
+			link := p.createLink(post, baseURL, href, idx, hrefTextMap)
 			if link != nil {
 				postLinks = append(postLinks, link)
 			}
@@ -154,68 +157,65 @@ func (p *LinkCollectorPlugin) buildBaseURL(post *models.Post) string {
 }
 
 // hrefRegex matches <a href="..."> elements in HTML.
-// Captures the href value in group 1.
+// Captures the href value in group 1 and anchor text in group 2.
 var hrefRegex = regexp.MustCompile(`<a\s+[^>]*href=["']([^"']+)["'][^>]*>([^<]*)</a>`)
 
-// linkTextCache caches compiled regexes for extractLinkText to avoid repeated compilation.
-// Key is the escaped href pattern, value is the compiled regex.
-var linkTextCache = struct {
-	sync.RWMutex
-	m map[string]*regexp.Regexp
-}{m: make(map[string]*regexp.Regexp)}
-
-// extractHrefs extracts all href values from HTML content.
-func extractHrefs(html string) []string {
+// extractHrefsAndText extracts all href values and their associated link text
+// from HTML content in a single pass, avoiding the need for a separate
+// extractLinkText call per href.
+func extractHrefsAndText(html string) (hrefs []string, textMap map[string]string) {
 	matches := hrefRegex.FindAllStringSubmatch(html, -1)
-	hrefs := make([]string, 0, len(matches))
+	hrefs = make([]string, 0, len(matches))
+	textMap = make(map[string]string, len(matches))
 	seen := make(map[string]bool)
 
 	for _, match := range matches {
-		if len(match) >= 2 {
+		if len(match) >= 3 {
 			href := match[1]
 			// Skip empty hrefs and anchors-only links
 			if href == "" || href == "#" {
 				continue
 			}
-			// Deduplicate
+			// Keep first occurrence text for each unique href
 			if !seen[href] {
 				seen[href] = true
 				hrefs = append(hrefs, href)
+				textMap[href] = strings.TrimSpace(match[2])
 			}
 		}
 	}
 
+	return hrefs, textMap
+}
+
+// extractHrefTextMap builds a map from href to link text by scanning HTML.
+// Used when hrefs are restored from cache but link text is not cached.
+func extractHrefTextMap(html string) map[string]string {
+	matches := hrefRegex.FindAllStringSubmatch(html, -1)
+	textMap := make(map[string]string, len(matches))
+	for _, match := range matches {
+		if len(match) >= 3 {
+			href := match[1]
+			if href == "" || href == "#" {
+				continue
+			}
+			// Keep first occurrence
+			if _, exists := textMap[href]; !exists {
+				textMap[href] = strings.TrimSpace(match[2])
+			}
+		}
+	}
+	return textMap
+}
+
+// extractHrefs extracts all href values from HTML content.
+func extractHrefs(html string) []string {
+	hrefs, _ := extractHrefsAndText(html)
 	return hrefs
 }
 
-// extractLinkText extracts the text content from an anchor tag match.
-func extractLinkText(html, href string) string {
-	// Build pattern key using quoted href
-	escapedHref := regexp.QuoteMeta(href)
-
-	// Check cache first
-	linkTextCache.RLock()
-	re, ok := linkTextCache.m[escapedHref]
-	linkTextCache.RUnlock()
-
-	if !ok {
-		// Compile and cache the regex
-		pattern := `<a\s+[^>]*href=["']` + escapedHref + `["'][^>]*>([^<]*)</a>`
-		re = regexp.MustCompile(pattern)
-		linkTextCache.Lock()
-		linkTextCache.m[escapedHref] = re
-		linkTextCache.Unlock()
-	}
-
-	match := re.FindStringSubmatch(html)
-	if len(match) >= 2 {
-		return strings.TrimSpace(match[1])
-	}
-	return ""
-}
-
 // createLink creates a Link object from an href found in a post.
-func (p *LinkCollectorPlugin) createLink(sourcePost *models.Post, baseURL, href string, idx *lifecycle.PostIndex) *models.Link {
+func (p *LinkCollectorPlugin) createLink(sourcePost *models.Post, baseURL, href string, idx *lifecycle.PostIndex, hrefTextMap map[string]string) *models.Link {
 	// Resolve the href against the base URL
 	targetURL := resolveURL(baseURL, href)
 	if targetURL == "" {
@@ -242,8 +242,8 @@ func (p *LinkCollectorPlugin) createLink(sourcePost *models.Post, baseURL, href 
 	// Determine if self-link
 	isSelf := targetPost != nil && targetPost.Slug == sourcePost.Slug
 
-	// Extract link text from source
-	sourceText := extractLinkText(sourcePost.ArticleHTML, href)
+	// Look up link text from pre-extracted map (avoids re-scanning HTML per href)
+	sourceText := hrefTextMap[href]
 
 	link := &models.Link{
 		SourceURL:    baseURL,
