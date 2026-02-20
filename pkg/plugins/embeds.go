@@ -666,6 +666,10 @@ type OGMetadata struct {
 	// Provider info for mode selection
 	ProviderName string `json:"provider_name"`
 	HTML         string `json:"html"` // oEmbed HTML for rich embeds
+
+	// Author info from oEmbed
+	AuthorName string `json:"author_name"`
+	AuthorURL  string `json:"author_url"`
 }
 
 // EmbedOptions holds parsing options for embed syntax.
@@ -844,6 +848,12 @@ func (p *EmbedsPlugin) resolveOEmbedMetadata(rawURL string) (*OGMetadata, bool) 
 		HTML:         response.HTML,
 		FetchedAt:    time.Now().Unix(),
 		Source:       "oembed",
+		AuthorName:   response.AuthorName,
+		AuthorURL:    response.AuthorURL,
+	}
+
+	if response.AuthorName != "" {
+		metadata.Description = response.AuthorName
 	}
 
 	if metadata.Image == "" {
