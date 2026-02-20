@@ -24,14 +24,15 @@ type OEmbedResponse struct {
 	Title           string `json:"title"`
 	URL             string `json:"url"`
 	AuthorName      string `json:"author_name"`
+	AuthorURL       string `json:"author_url"`
 	ProviderName    string `json:"provider_name"`
 	ProviderURL     string `json:"provider_url"`
 	ThumbnailURL    string `json:"thumbnail_url"`
 	ThumbnailWidth  int    `json:"thumbnail_width"`
 	ThumbnailHeight int    `json:"thumbnail_height"`
 	HTML            string `json:"html"`
-	Width           int    `json:"width"`
-	Height          int    `json:"height"`
+	Width           string `json:"width"`
+	Height          string `json:"height"`
 	CacheAge        int    `json:"cache_age"`
 }
 
