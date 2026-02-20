@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +36,10 @@ type OEmbedResponse struct {
 	Width           string `json:"width"`
 	Height          string `json:"height"`
 	CacheAge        int    `json:"cache_age"`
+
+	// Extra holds provider-specific metadata for rendering.
+	// This field is not part of the oEmbed spec and is not serialized.
+	Extra map[string]string `json:"-"`
 }
 
 // oembedProviderJSON represents a provider from providers.json
@@ -789,19 +795,20 @@ func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, 
 		return nil, fmt.Errorf("not a gist URL")
 	}
 
-	// Add .json suffix to get the gist data
-	jsonURL := rawURL
-	if !strings.HasSuffix(rawURL, ".json") {
-		jsonURL = rawURL + ".json"
+	gistID, err := extractGistID(rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("gist: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, jsonURL, http.NoBody)
+	apiURL := fmt.Sprintf("https://api.github.com/gists/%s", gistID)
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, apiURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("gist: create request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", "application/vnd.github+json")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -815,14 +822,16 @@ func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, 
 
 	var gistData struct {
 		Files map[string]struct {
-			Filename string `json:"filename"`
-			Content  string `json:"content"`
-			Type     string `json:"type"`
-			Language string `json:"language"`
-			Size     int    `json:"size"`
-			RawURL   string `json:"raw_url"`
+			Filename  string `json:"filename"`
+			Content   string `json:"content"`
+			Type      string `json:"type"`
+			Language  string `json:"language"`
+			Size      int    `json:"size"`
+			RawURL    string `json:"raw_url"`
+			Truncated bool   `json:"truncated"`
 		} `json:"files"`
 		Description string `json:"description"`
+		HTMLURL     string `json:"html_url"`
 		Owner       struct {
 			Login string `json:"login"`
 		} `json:"owner"`
@@ -833,26 +842,37 @@ func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, 
 		return nil, fmt.Errorf("gist: decode: %w", err)
 	}
 
-	// Get the first file
+	// Pick the first file by name for deterministic output
 	var firstFile struct {
-		Filename string
-		Content  string
-		Language string
-		RawURL   string
+		Filename  string
+		Content   string
+		Language  string
+		RawURL    string
+		Size      int
+		Truncated bool
 	}
-	for _, f := range gistData.Files {
-		firstFile = struct {
-			Filename string
-			Content  string
-			Language string
-			RawURL   string
-		}{
-			Filename: f.Filename,
-			Content:  f.Content,
-			Language: f.Language,
-			RawURL:   f.RawURL,
+	if len(gistData.Files) > 0 {
+		filenames := make([]string, 0, len(gistData.Files))
+		for name := range gistData.Files {
+			filenames = append(filenames, name)
 		}
-		break
+		sort.Strings(filenames)
+		file := gistData.Files[filenames[0]]
+		firstFile = struct {
+			Filename  string
+			Content   string
+			Language  string
+			RawURL    string
+			Size      int
+			Truncated bool
+		}{
+			Filename:  file.Filename,
+			Content:   file.Content,
+			Language:  file.Language,
+			RawURL:    file.RawURL,
+			Size:      file.Size,
+			Truncated: file.Truncated,
+		}
 	}
 
 	description := gistData.Description
@@ -861,9 +881,24 @@ func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, 
 	}
 
 	// Generate embed HTML
-	embedHTML := fmt.Sprintf(`<script src="https://gist.github.com/%s.js?file=%s"></script>`,
-		strings.TrimSuffix(strings.TrimPrefix(rawURL, "https://gist.github.com/"), ".json"),
-		firstFile.Filename)
+	gistURL := gistData.HTMLURL
+	if gistURL == "" {
+		gistURL = strings.TrimSuffix(rawURL, ".json")
+	}
+
+	content := firstFile.Content
+	if content == "" && firstFile.RawURL != "" && firstFile.Size > 0 {
+		fetched, fetchErr := fetchRawGistContent(client, firstFile.RawURL, firstFile.Size)
+		if fetchErr == nil {
+			content = fetched
+		}
+	}
+	content = strings.TrimRight(content, "\n")
+
+	embedHTML := renderGistCodeEmbedHTML(gistURL, firstFile.Filename, content)
+	if content == "" {
+		embedHTML = renderGistScriptEmbedHTML(gistURL, firstFile.Filename)
+	}
 
 	return &OEmbedResponse{
 		Type:         "rich",
@@ -872,7 +907,105 @@ func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, 
 		HTML:         embedHTML,
 		ProviderName: "GitHub",
 		ProviderURL:  "https://github.com",
+		Extra: map[string]string{
+			"needs_code_css": BoolTrue,
+		},
 	}, nil
+}
+
+func extractGistID(rawURL string) (string, error) {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("parse url: %w", err)
+	}
+
+	path := strings.TrimSuffix(parsed.Path, "/")
+	parts := strings.Split(path, "/")
+	for i := len(parts) - 1; i >= 0; i-- {
+		part := strings.TrimSpace(parts[i])
+		if part == "" {
+			continue
+		}
+		part = strings.TrimSuffix(part, ".json")
+		if part != "" {
+			return part, nil
+		}
+	}
+
+	return "", fmt.Errorf("missing gist id")
+}
+
+func fetchRawGistContent(client *http.Client, rawURL string, size int) (string, error) {
+	const maxBytes = 512 * 1024
+	limit := maxBytes
+	if size > 0 && size < maxBytes {
+		limit = size
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, rawURL, http.NoBody)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("raw fetch status %s", resp.Status)
+	}
+
+	data, err := io.ReadAll(io.LimitReader(resp.Body, int64(limit)))
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}
+
+func renderGistScriptEmbedHTML(gistURL, filename string) string {
+	if filename == "" {
+		filename = "gist"
+	}
+
+	return fmt.Sprintf(`<script src="%s.js?file=%s"></script>`,
+		strings.TrimSuffix(gistURL, ".json"),
+		url.QueryEscape(filename))
+}
+
+func renderGistCodeEmbedHTML(gistURL, filename, content string) string {
+	if filename == "" {
+		filename = "gist"
+	}
+
+	var sb strings.Builder
+	sb.WriteString(`<div class="embed-gist">`)
+	sb.WriteString("\n")
+	sb.WriteString(`  <div class="embed-gist-header">`)
+	sb.WriteString("\n")
+	sb.WriteString(`    <a href="`)
+	sb.WriteString(html.EscapeString(gistURL))
+	sb.WriteString(`" target="_blank" rel="noopener noreferrer">`)
+	sb.WriteString(html.EscapeString(filename))
+	sb.WriteString(`</a>`)
+	sb.WriteString("\n")
+	sb.WriteString(`  </div>`)
+	sb.WriteString("\n")
+	sb.WriteString(`  <div class="highlight">`)
+	sb.WriteString("\n")
+	sb.WriteString(`    <pre><code>`)
+	sb.WriteString(html.EscapeString(content))
+	sb.WriteString(`</code></pre>`)
+	sb.WriteString("\n")
+	sb.WriteString(`  </div>`)
+	sb.WriteString("\n")
+	sb.WriteString(`</div>`)
+	sb.WriteString("\n")
+
+	return sb.String()
 }
 
 // Pre-compiled regexes for Giphy URL parsing.

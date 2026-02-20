@@ -127,3 +127,36 @@ func TestOEmbedResolver_DiscoverEndpoint(t *testing.T) {
 		t.Fatal("expected endpoint")
 	}
 }
+
+func TestRenderGistCodeEmbedHTML(t *testing.T) {
+	html := renderGistCodeEmbedHTML("https://gist.github.com/user/abcd", "example.go", "package main")
+	if !containsString(html, `class="embed-gist"`) {
+		t.Fatalf("expected embed-gist wrapper, got: %s", html)
+	}
+	if !containsString(html, `class="highlight"`) {
+		t.Fatalf("expected highlight wrapper, got: %s", html)
+	}
+	if !containsString(html, `example.go`) {
+		t.Fatalf("expected filename, got: %s", html)
+	}
+	if !containsString(html, `package main`) {
+		t.Fatalf("expected code content, got: %s", html)
+	}
+}
+
+func TestExtractGistID(t *testing.T) {
+	got, err := extractGistID("https://gist.github.com/user/abcd1234")
+	if err != nil {
+		t.Fatalf("extractGistID failed: %v", err)
+	}
+	if got != "abcd1234" {
+		t.Fatalf("expected gist id, got %s", got)
+	}
+}
+
+func TestRenderGistScriptEmbedHTML(t *testing.T) {
+	html := renderGistScriptEmbedHTML("https://gist.github.com/user/abcd", "example.go")
+	if !containsString(html, `gist.github.com/user/abcd.js?file=example.go`) {
+		t.Fatalf("expected gist script embed, got: %s", html)
+	}
+}

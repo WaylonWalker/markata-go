@@ -138,6 +138,11 @@ The plugin extracts:
 - **oEmbed**: title, provider name, thumbnail URL (if available)
 - **Open Graph**: `og:title`, `og:description`, `og:image`, `og:site_name`
 
+For GitHub Gist, the oEmbed resolver fetches the gist JSON and renders the
+first file as a code block using the site's code theme. The HTML includes
+the gist filename and links back to the gist. Code content is escaped and
+rendered as a plain code block (not a script embed).
+
 ### Modes
 
 Embed modes control how external content is rendered:
