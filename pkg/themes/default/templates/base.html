@@ -37,8 +37,8 @@
   <link rel="stylesheet" href="{{ 'css/webmentions.css' | theme_asset_hashed }}">
   {% endif %}
 
-  <!-- Encryption CSS (only for encrypted/private posts) -->
-  {% if post.Extra.has_encrypted_content %}
+  <!-- Encryption CSS (only for encrypted/private posts or feed pages with encrypted cards) -->
+  {% if post.Extra.has_encrypted_content or has_encrypted_content %}
   <link rel="stylesheet" href="{{ 'css/encryption.css' | theme_asset_hashed }}">
   {% endif %}
 
@@ -441,8 +441,8 @@
   <script src="{{ 'js/view-transitions.js' | theme_asset_hashed }}" defer></script>
   {% endif %}
 
-   <!-- Decryption JS (only for encrypted/private posts) -->
-  {% if post.Extra.has_encrypted_content %}
+   <!-- Decryption JS (only for encrypted/private posts or feed pages with encrypted cards) -->
+  {% if post.Extra.has_encrypted_content or has_encrypted_content %}
   <script src="{{ 'js/decryption.js' | theme_asset_hashed }}" defer></script>
   {% endif %}
 
