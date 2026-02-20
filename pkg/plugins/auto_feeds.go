@@ -4,6 +4,7 @@ package plugins
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -289,12 +290,16 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 
 	autoConfig := getAutoFeedsConfig(config)
 
+	// Get private tags from encryption config so that tag feeds for
+	// private tags include encrypted posts on their feed pages.
+	privateTags := getPrivateTagsConfig(config)
+
 	// Collect only auto-generated feed configs
 	var autoFeedConfigs []models.FeedConfig
 
 	// Generate tag feeds
 	if autoConfig.Tags.Enabled {
-		tagFeeds := p.generateTagFeeds(posts, autoConfig.Tags)
+		tagFeeds := p.generateTagFeeds(posts, autoConfig.Tags, privateTags)
 		autoFeedConfigs = append(autoFeedConfigs, tagFeeds...)
 	}
 
@@ -375,7 +380,9 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 }
 
 // generateTagFeeds creates feed configurations for each unique tag.
-func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeedTypeConfig) []models.FeedConfig {
+// privateTags maps lowercased tag names to encryption key names; feeds for
+// these tags include private posts so their encrypted content appears on the page.
+func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeedTypeConfig, privateTags map[string]string) []models.FeedConfig {
 	// Collect all unique tags
 	tagCounts := make(map[string]int)
 	for _, post := range posts {
@@ -400,14 +407,16 @@ func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeed
 
 	for _, tag := range tags {
 		slug := prefix + "/" + slugify(tag)
+		_, isPrivateTag := privateTags[strings.ToLower(tag)]
 		feeds = append(feeds, models.FeedConfig{
-			Slug:        slug,
-			Title:       fmt.Sprintf("Posts tagged: %s", tag),
-			Description: fmt.Sprintf("All posts with the tag %q", tag),
-			Filter:      fmt.Sprintf("%q in tags", tag),
-			Sort:        "date",
-			Reverse:     true,
-			Formats:     config.Formats,
+			Slug:           slug,
+			Title:          fmt.Sprintf("Posts tagged: %s", tag),
+			Description:    fmt.Sprintf("All posts with the tag %q", tag),
+			Filter:         fmt.Sprintf("%q in tags", tag),
+			Sort:           "date",
+			Reverse:        true,
+			Formats:        config.Formats,
+			IncludePrivate: isPrivateTag,
 		})
 	}
 
@@ -591,6 +600,22 @@ func getAutoFeedsConfig(config *lifecycle.Config) AutoFeedsConfig {
 // This is a convenience wrapper around models.Slugify for internal use.
 func slugify(s string) string {
 	return models.Slugify(s)
+}
+
+// getPrivateTagsConfig returns the lowercased private_tags map from the
+// encryption configuration.  Returns an empty (non-nil) map when encryption
+// is not configured or has no private tags.
+func getPrivateTagsConfig(config *lifecycle.Config) map[string]string {
+	modelsConfig, ok := getModelsConfig(config)
+	if !ok || modelsConfig.Encryption.PrivateTags == nil {
+		return map[string]string{}
+	}
+	// Return a lowercased copy so callers can do case-insensitive lookups.
+	result := make(map[string]string, len(modelsConfig.Encryption.PrivateTags))
+	for tag, key := range modelsConfig.Encryption.PrivateTags {
+		result[strings.ToLower(tag)] = key
+	}
+	return result
 }
 
 // Ensure AutoFeedsPlugin implements the required interfaces.
