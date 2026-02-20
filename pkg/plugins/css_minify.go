@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
@@ -14,6 +15,13 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+// cssBufPool reuses bytes.Buffer instances across CSS minification calls to reduce allocations.
+var cssBufPool = sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
+}
 
 // CSSMinifyPlugin minifies CSS files to reduce file sizes and improve
 // Lighthouse performance scores. It runs during the Write stage, after
@@ -108,8 +116,14 @@ func (p *CSSMinifyPlugin) parseConfigFromMap(m map[string]interface{}) models.CS
 }
 
 // Write performs CSS minification in the output directory.
+// Skipped in fast mode (--fast flag) for faster development builds.
 func (p *CSSMinifyPlugin) Write(m *lifecycle.Manager) error {
 	if !p.config.Enabled {
+		return nil
+	}
+
+	// Skip minification in fast mode
+	if fast, ok := m.Config().Extra["fast_mode"].(bool); ok && fast {
 		return nil
 	}
 
@@ -159,6 +173,7 @@ func (p *CSSMinifyPlugin) isExcluded(filePath string) bool {
 
 // minifyFile minifies a single CSS file in place.
 // Returns the original size and minified size.
+// Uses a sync.Pool for buffer reuse to reduce allocations under concurrent workloads.
 func (p *CSSMinifyPlugin) minifyFile(filePath string) (original, minified int64, err error) {
 	// Read the original file
 	content, err := os.ReadFile(filePath)
@@ -171,14 +186,21 @@ func (p *CSSMinifyPlugin) minifyFile(filePath string) (original, minified int64,
 	// Preserve specified comments
 	preservedComments := p.extractPreservedComments(string(content))
 
-	// Minify the content
-	var buf bytes.Buffer
-	if err := p.minifier.Minify("text/css", &buf, bytes.NewReader(content)); err != nil {
+	// Minify the content using a pooled buffer
+	buf := cssBufPool.Get().(*bytes.Buffer) //nolint:errcheck // type is guaranteed by pool's New func
+	buf.Reset()
+	defer cssBufPool.Put(buf)
+
+	if err := p.minifier.Minify("text/css", buf, bytes.NewReader(content)); err != nil {
 		return original, 0, fmt.Errorf("minifying: %w", err)
 	}
 
-	// Prepend preserved comments
-	var result bytes.Buffer
+	// Build result: prepend preserved comments + minified content
+	// Use a single pooled buffer for the result to avoid a second allocation
+	result := cssBufPool.Get().(*bytes.Buffer) //nolint:errcheck // type is guaranteed by pool's New func
+	result.Reset()
+	defer cssBufPool.Put(result)
+
 	for _, comment := range preservedComments {
 		result.WriteString(comment)
 		result.WriteByte('\n')
