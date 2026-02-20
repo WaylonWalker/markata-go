@@ -98,6 +98,11 @@ func (p *RedirectsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
 
+	// Skip redirect generation in fast mode - redirects don't change during content editing
+	if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
+		return nil
+	}
+
 	// Read the redirects file
 	redirectsContent, err := os.ReadFile(p.config.RedirectsFile)
 	if err != nil {
