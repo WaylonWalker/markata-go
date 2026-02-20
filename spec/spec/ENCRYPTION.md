@@ -6,6 +6,19 @@ The encryption system protects private post content using AES-256-GCM client-sid
 
 **Core invariant:** Private posts must never be published with plaintext content. If a private post cannot be encrypted, the build must fail.
 
+## Privacy Boundary
+
+**Encryption protects content, not metadata.** The post body (`Content`, `ArticleHTML`) is private and encrypted. Frontmatter metadata -- title, description, tags, dates, slug, avatar -- is public and remains in cleartext.
+
+This is by design:
+
+- **Title** is preserved for page cards, feed listings, HTML `<title>`, navigation, and SEO.
+- **Description** is preserved if explicitly set in frontmatter (the author chose to make it public). Auto-generated descriptions are suppressed for private posts.
+- **Tags and dates** are preserved for site structure, filtering, and feed membership.
+- **Slug and URL** are preserved so the page is routable and linkable.
+
+Plugins that generate output from post data follow this boundary: they may use frontmatter fields freely but must not expose body content. The `scrubPrivateMetadata` function enforces this by clearing `Content` and content-derived fields (inlinks/outlinks text) while preserving frontmatter-provided fields.
+
 ## Configuration
 
 ### `[encryption]` Table
