@@ -54,6 +54,17 @@ func (p *HashtagTagsPlugin) Priority(stage lifecycle.Stage) int {
 
 // Transform processes #tag references in all post content.
 func (p *HashtagTagsPlugin) Transform(m *lifecycle.Manager) error {
+	// Fast incremental mode: skip when no feed-relevant changes
+	if config := m.Config(); config.Extra != nil {
+		if incremental, ok := config.Extra["feeds_incremental"].(bool); ok && incremental {
+			if cache := GetBuildCache(m); cache != nil {
+				if len(cache.GetChangedFeedSlugs()) == 0 {
+					return nil
+				}
+			}
+		}
+	}
+
 	// Build tag statistics map from all published posts
 	tagStats := p.buildTagStats(m)
 
@@ -71,6 +82,18 @@ func (p *HashtagTagsPlugin) Transform(m *lifecycle.Manager) error {
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		return !post.Skip && post.Content != ""
 	})
+
+	if lifecycle.IsServeFastMode(m) {
+		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
+			filtered := posts[:0]
+			for _, post := range posts {
+				if affected[post.Path] {
+					filtered = append(filtered, post)
+				}
+			}
+			posts = filtered
+		}
+	}
 
 	log.Printf("hashtag_tags: processing %d posts", len(posts))
 

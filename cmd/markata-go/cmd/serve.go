@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/fsnotify/fsnotify"
@@ -66,6 +67,15 @@ var (
 
 	// buildStatus holds the current build state for serve mode.
 	buildStatus atomic.Value
+
+	// serveChangedPaths tracks changed paths between rebuilds.
+	serveChangedPathsMu   sync.Mutex
+	serveChangedPaths     = make(map[string]fsnotify.Op)
+	serveForceFullRebuild bool
+	serveCacheMu          sync.Mutex
+	serveCache            *buildcache.Cache
+	servePostsMu          sync.Mutex
+	servePosts            map[string]*models.Post
 )
 
 const (
@@ -182,6 +192,11 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 	// Apply fast mode if requested
 	if serveFast {
 		applyFastMode(m)
+	}
+
+	if !serveFast {
+		lifecycle.SetServeFullRebuild(m, true)
+		lifecycle.SetServeChangedPaths(m, nil)
 	}
 
 	// Determine output directory
@@ -313,6 +328,12 @@ func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.W
 		fmt.Println("Running initial build...")
 	}
 
+	if serveFast {
+		lifecycle.SetServeFullRebuild(m, false)
+	} else {
+		lifecycle.SetServeFullRebuild(m, true)
+	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -339,6 +360,14 @@ func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.W
 		notifyBuildStatus()
 		fmt.Printf("Built %d posts, %d feeds\n", result.PostsProcessed, result.FeedsGenerated)
 		notifyLiveReload()
+		if serveFast {
+			if cached, ok := m.Cache().Get("build_cache"); ok {
+				if bc, ok := cached.(*buildcache.Cache); ok {
+					setServeCache(bc)
+				}
+			}
+			setServePosts(m.Posts())
+		}
 	}()
 }
 
@@ -1071,6 +1100,8 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 					fmt.Printf("File changed: %s (%s)\n", event.Name, event.Op.String())
 				}
 
+				recordServeChangedPath(event)
+
 				if isRebuilding.Load() {
 					rebuildPending.Store(true)
 					continue
@@ -1089,6 +1120,139 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 			fmt.Printf("Watcher error: %v\n", err)
 		}
 	}
+}
+
+func recordServeChangedPath(event fsnotify.Event) {
+	if event.Name == "" {
+		return
+	}
+
+	absPath, err := filepath.Abs(event.Name)
+	if err != nil {
+		absPath = event.Name
+	}
+
+	serveChangedPathsMu.Lock()
+	serveChangedPaths[absPath] |= event.Op
+	if event.Op&(fsnotify.Remove) != 0 {
+		serveForceFullRebuild = true
+	}
+	serveChangedPathsMu.Unlock()
+}
+
+func consumeServeChanges() (paths []string, forceFull bool) {
+	serveChangedPathsMu.Lock()
+	defer serveChangedPathsMu.Unlock()
+
+	if len(serveChangedPaths) == 0 {
+		forceFull = serveForceFullRebuild
+		serveForceFullRebuild = false
+		return nil, forceFull
+	}
+
+	paths = make([]string, 0, len(serveChangedPaths))
+	for path := range serveChangedPaths {
+		paths = append(paths, path)
+	}
+
+	forceFull = false
+	for path, ops := range serveChangedPaths {
+		if ops&fsnotify.Remove == 0 {
+			continue
+		}
+		if ops&(fsnotify.Create|fsnotify.Rename) != 0 {
+			continue
+		}
+		if _, err := os.Stat(path); err != nil {
+			if os.IsNotExist(err) {
+				forceFull = true
+				break
+			}
+		}
+	}
+	if serveForceFullRebuild {
+		forceFull = true
+	}
+
+	serveChangedPaths = make(map[string]fsnotify.Op)
+	serveForceFullRebuild = false
+	return paths, forceFull
+}
+
+func getServeCache() *buildcache.Cache {
+	serveCacheMu.Lock()
+	defer serveCacheMu.Unlock()
+	return serveCache
+}
+
+func setServeCache(cache *buildcache.Cache) {
+	serveCacheMu.Lock()
+	defer serveCacheMu.Unlock()
+	serveCache = cache
+}
+
+func getServePosts() map[string]*models.Post {
+	servePostsMu.Lock()
+	defer servePostsMu.Unlock()
+	return servePosts
+}
+
+func setServePosts(posts []*models.Post) {
+	servePostsMu.Lock()
+	defer servePostsMu.Unlock()
+	if len(posts) == 0 {
+		servePosts = nil
+		return
+	}
+	newMap := make(map[string]*models.Post, len(posts))
+	for _, post := range posts {
+		if post != nil && post.Path != "" {
+			newMap[post.Path] = post
+		}
+	}
+	servePosts = newMap
+}
+
+func normalizeServeChangedPaths(paths []string, contentDir string) (normalized []string, outside bool) {
+	if len(paths) == 0 {
+		return nil, false
+	}
+
+	absContentDir, err := filepath.Abs(contentDir)
+	if err != nil {
+		absContentDir = contentDir
+	}
+
+	seen := make(map[string]struct{}, len(paths))
+	for _, p := range paths {
+		if p == "" {
+			continue
+		}
+		absPath, err := filepath.Abs(p)
+		if err != nil {
+			absPath = p
+		}
+		if !isPathWithinDir(absPath, absContentDir) {
+			outside = true
+			continue
+		}
+		rel, err := filepath.Rel(absContentDir, absPath)
+		if err != nil {
+			outside = true
+			continue
+		}
+		rel = filepath.Clean(rel)
+		if rel == "." {
+			continue
+		}
+		if _, ok := seen[rel]; ok {
+			continue
+		}
+		seen[rel] = struct{}{}
+		normalized = append(normalized, rel)
+	}
+
+	return normalized, outside
 }
 
 // handleRebuilds processes rebuild requests with debouncing.
@@ -1170,10 +1334,28 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		return
 	}
 
+	changedPaths, forceFull := consumeServeChanges()
+	configureServeIncremental(m, changedPaths, forceFull)
+
 	// Apply fast mode if requested (must re-apply on each rebuild since
 	// doRebuild creates a fresh manager via createManager)
 	if serveFast {
+		if m.Config().Extra == nil {
+			m.Config().Extra = make(map[string]any)
+		}
+		m.Config().Extra["feeds_async"] = true
 		applyFastMode(m)
+	}
+
+	if serveFast {
+		if cached := getServeCache(); cached != nil {
+			m.Cache().Set("build_cache", cached)
+		}
+		if lifecycle.IsServeFullRebuild(m) {
+			setServePosts(nil)
+		} else if cachedPosts := getServePosts(); len(cachedPosts) > 0 {
+			lifecycle.SetServeCachedPosts(m, cachedPosts)
+		}
 	}
 
 	// Check for cancellation after creating manager
@@ -1190,6 +1372,14 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		notifyBuildStatus()
 		fmt.Printf("Rebuild failed: %v\n", err)
 		return
+	}
+	if serveFast {
+		if cached, ok := m.Cache().Get("build_cache"); ok {
+			if bc, ok := cached.(*buildcache.Cache); ok {
+				setServeCache(bc)
+			}
+		}
+		setServePosts(m.Posts())
 	}
 
 	// Check for cancellation after build
@@ -1208,6 +1398,32 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 
 	// Notify live reload clients
 	notifyLiveReload()
+}
+
+func configureServeIncremental(m *lifecycle.Manager, changedPaths []string, forceFull bool) {
+	if !serveFast {
+		lifecycle.SetServeFullRebuild(m, true)
+		lifecycle.SetServeChangedPaths(m, nil)
+		return
+	}
+	contentDir := m.Config().ContentDir
+	if contentDir == "" {
+		contentDir = "."
+	}
+	normalized, outside := normalizeServeChangedPaths(changedPaths, contentDir)
+	if len(normalized) == 0 || forceFull || outside {
+		lifecycle.SetServeFullRebuild(m, true)
+		lifecycle.SetServeChangedPaths(m, nil)
+		if verbose {
+			fmt.Printf("[serve] incremental disabled: normalized=%d force_full=%t outside=%t content_dir=%s\n", len(normalized), forceFull, outside, contentDir)
+		}
+		return
+	}
+	lifecycle.SetServeFullRebuild(m, false)
+	lifecycle.SetServeChangedPaths(m, normalized)
+	if verbose {
+		fmt.Printf("[serve] incremental enabled: changed=%d content_dir=%s\n", len(normalized), contentDir)
+	}
 }
 
 // addWatchPaths adds paths to the file watcher.

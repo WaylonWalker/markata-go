@@ -97,6 +97,18 @@ func (p *LinkCollectorPlugin) Render(m *lifecycle.Manager) error {
 		return !post.Skip && post.ArticleHTML != ""
 	})
 
+	if lifecycle.IsServeFastMode(m) {
+		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
+			filtered := postsToProcess[:0]
+			for _, post := range postsToProcess {
+				if affected[post.Path] {
+					filtered = append(filtered, post)
+				}
+			}
+			postsToProcess = filtered
+		}
+	}
+
 	// Process each post to extract hrefs and create Link objects
 	err := m.ProcessPostsSliceConcurrently(postsToProcess, func(post *models.Post) error {
 		// Build base URL for this post

@@ -48,6 +48,18 @@ func (p *ReadingTimePlugin) Transform(m *lifecycle.Manager) error {
 		return !post.Skip && post.Content != ""
 	})
 
+	if lifecycle.IsServeFastMode(m) {
+		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
+			filtered := posts[:0]
+			for _, post := range posts {
+				if affected[post.Path] {
+					filtered = append(filtered, post)
+				}
+			}
+			posts = filtered
+		}
+	}
+
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		// Count words
 		wordCount := p.countWords(post.Content)

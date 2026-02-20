@@ -234,6 +234,18 @@ func (p *LinkAvatarsPlugin) Render(m *lifecycle.Manager) error {
 		return true
 	})
 
+	if lifecycle.IsServeFastMode(m) {
+		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
+			filtered := posts[:0]
+			for _, post := range posts {
+				if affected[post.Path] {
+					filtered = append(filtered, post)
+				}
+			}
+			posts = filtered
+		}
+	}
+
 	// Phase 1: Restore cached results for unchanged posts
 	var needProcessing []*models.Post
 	if cache != nil {

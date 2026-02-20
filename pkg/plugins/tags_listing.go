@@ -7,8 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -92,11 +94,23 @@ func (p *TagsListingPlugin) getOrCreateEngine(templatesDir, themeName string) (*
 // Write generates the tags listing page.
 func (p *TagsListingPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
+	cache := GetBuildCache(m)
 
 	// Get tags config
 	tagsConfig := getTagsConfig(config)
 	if !tagsConfig.IsEnabled() {
 		return nil
+	}
+
+	if cache != nil {
+		if !cache.TagsDirty() {
+			return nil
+		}
+		tagsHash := computeTagsListingHash(m.Posts(), &tagsConfig)
+		if cached := cache.GetTagsListingHash(); cached != "" && cached == tagsHash {
+			return nil
+		}
+		cache.SetTagsListingHash(tagsHash)
 	}
 
 	// Collect and filter tags
@@ -157,6 +171,45 @@ func (p *TagsListingPlugin) collectTags(posts []*models.Post, tagsConfig *models
 	}
 
 	return tagInfos
+}
+
+func computeTagsListingHash(posts []*models.Post, tagsConfig *models.TagsConfig) string {
+	if tagsConfig == nil {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(tagsConfig.SlugPrefix)
+	b.WriteByte('\x00')
+	b.WriteString(tagsConfig.Title)
+	b.WriteByte('\x00')
+	b.WriteString(tagsConfig.Description)
+	b.WriteByte('\x00')
+	b.WriteString(tagsConfig.Template)
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", tagsConfig.IsEnabled()))
+	b.WriteByte('\x00')
+
+	for _, post := range posts {
+		if post.Skip || post.Draft || !post.Published || post.Private {
+			continue
+		}
+		b.WriteString(post.Slug)
+		b.WriteByte('\x00')
+		if len(post.Tags) > 0 {
+			tags := append([]string(nil), post.Tags...)
+			sort.Strings(tags)
+			for _, tag := range tags {
+				if tagsConfig.IsBlacklisted(tag) || tagsConfig.IsPrivate(tag) {
+					continue
+				}
+				b.WriteString(tag)
+				b.WriteByte('\x01')
+			}
+		}
+		b.WriteByte('\x00')
+	}
+
+	return buildcache.ContentHash(b.String())
 }
 
 // renderTagsPage renders and writes the tags listing HTML page.

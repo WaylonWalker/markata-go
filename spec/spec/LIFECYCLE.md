@@ -891,6 +891,25 @@ The system detects changes using multiple signals:
 | Config modified | Config file mtime or hash | Full rebuild |
 | Plugin changed | Plugin file mtime | Full rebuild |
 
+### Serve Incremental Rebuilds
+
+The development server (`serve`) prioritizes deterministic rebuilds by default and a faster
+incremental mode when `--fast` is enabled.
+
+**Default (safe) mode:**
+- Rebuilds are full and deterministic on every change event.
+- Build cache still skips expensive per-post work (render/write) when inputs are unchanged.
+
+**Fast mode (`serve --fast`):**
+- File watcher events are normalized to content-relative paths.
+- Only changed posts are reloaded from disk; the rest are restored from cache.
+- The dependency graph expands the rebuild set to include transitive dependents.
+- If dependency changes are detected (links, embeds), a second pass reprocesses affected posts.
+- Changes outside the content directory (templates, config, assets) force a full rebuild.
+
+This ensures `serve` remains accurate by default, while `serve --fast` provides a
+quick iteration loop without requiring config hacks.
+
 ### Cache Keys
 
 Each post's cache entry includes:

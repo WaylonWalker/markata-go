@@ -363,6 +363,18 @@ func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 		return true // Needs rendering
 	})
 
+	if lifecycle.IsServeFastMode(m) {
+		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
+			filtered := postsNeedingRender[:0]
+			for _, post := range postsNeedingRender {
+				if affected[post.Path] {
+					filtered = append(filtered, post)
+				}
+			}
+			postsNeedingRender = filtered
+		}
+	}
+
 	// Phase 2: Process only posts that need rendering concurrently
 	return m.ProcessPostsSliceConcurrently(postsNeedingRender, p.renderPost)
 }
