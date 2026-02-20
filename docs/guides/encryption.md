@@ -259,6 +259,31 @@ When the correct password is entered, JavaScript decrypts the content in-browser
 
 If "Remember for this session" is checked, the password is stored in sessionStorage (cleared when the browser tab closes). This allows navigating between encrypted posts without re-entering the password for posts using the same key.
 
+## Privacy Boundary
+
+Encryption protects the **post body**, not metadata. Frontmatter fields like title, description, tags, and dates remain in cleartext by design.
+
+### What stays public
+
+| Field | Why |
+|-------|-----|
+| Title | Shown in page cards, feed listings, navigation, and HTML `<title>` |
+| Description | Only if explicitly set in frontmatter -- you chose to make it public |
+| Tags and dates | Used for site structure, filtering, and feed membership |
+| Slug / URL | The page needs to be routable and linkable |
+| Avatar | Shown in mentions and author cards |
+
+### What is private
+
+| Field | Protection |
+|-------|-----------|
+| Post body (Markdown) | Cleared from output; never written to any file |
+| Article HTML | Encrypted with AES-256-GCM; only the ciphertext is published |
+| Auto-generated descriptions | Suppressed entirely for private posts |
+| Inlinks / outlinks text | Cleared during metadata scrubbing |
+
+If you put sensitive information in your title or description frontmatter, it **will** be visible in the built site. Keep sensitive content in the post body.
+
 ## Privacy Protection
 
 When a post is marked private (by any method), markata-go suppresses it across all output types -- not just the HTML article page. This prevents content from leaking through alternate channels.
