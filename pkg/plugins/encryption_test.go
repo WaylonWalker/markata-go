@@ -425,6 +425,48 @@ func TestEncryptionPlugin_ApplyPrivateTags(t *testing.T) {
 			wantPrivate:   false,
 			wantSecretKey: "",
 		},
+		{
+			name: "templateKey matches private_tags",
+			post: &models.Post{
+				Template: "diary",
+			},
+			wantPrivate:   true,
+			wantSecretKey: "personal",
+		},
+		{
+			name: "templateKey case insensitive",
+			post: &models.Post{
+				Template: "JOURNAL",
+			},
+			wantPrivate:   true,
+			wantSecretKey: "default",
+		},
+		{
+			name: "templateKey does not override tag match",
+			post: &models.Post{
+				Tags:     []string{"diary"},
+				Template: "journal",
+			},
+			wantPrivate:   true,
+			wantSecretKey: "personal", // from tag "diary", not templateKey "journal"
+		},
+		{
+			name: "templateKey with frontmatter key preserves it",
+			post: &models.Post{
+				Template:  "diary",
+				SecretKey: "custom",
+			},
+			wantPrivate:   true,
+			wantSecretKey: "custom",
+		},
+		{
+			name: "non-matching templateKey leaves post unchanged",
+			post: &models.Post{
+				Template: "blog-post",
+			},
+			wantPrivate:   false,
+			wantSecretKey: "",
+		},
 	}
 
 	for _, tt := range tests {

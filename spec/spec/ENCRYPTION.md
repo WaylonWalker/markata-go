@@ -15,7 +15,7 @@ The encryption system protects private post content using AES-256-GCM client-sid
 | `enabled` | `bool` | `true` | Whether encryption processing is active |
 | `default_key` | `string` | `"default"` | Key name used when a post has no explicit key |
 | `decryption_hint` | `string` | `""` | Help text shown to visitors next to the password prompt |
-| `private_tags` | `map[string]string` | `{}` | Maps tag names to encryption key names |
+| `private_tags` | `map[string]string` | `{}` | Maps tag names (or templateKey values) to encryption key names |
 
 ### Environment Variables
 
@@ -65,7 +65,7 @@ The encryption plugin runs during the Render stage at priority 50 -- after markd
 
 ### Processing Steps
 
-1. **Apply private tags**: For each non-draft, non-skipped post, check if any of its tags match a `private_tags` entry. If so, set `Private = true` and assign the tag's key name (unless `SecretKey` is already set from frontmatter).
+1. **Apply private tags**: For each non-draft, non-skipped post, check if any of its tags match a `private_tags` entry. If no tag matches, also check the post's `Template` field (set from the `templateKey` or `template` frontmatter). If either matches, set `Private = true` and assign the matching key name (unless `SecretKey` is already set from frontmatter). Tag matches take priority over `templateKey` matches for key assignment.
 
 2. **Validate keys**: Find all private, non-draft, non-skipped posts. For each, resolve the key name (post's `SecretKey`, falling back to `default_key`). If no key name resolves, or the key's password is not found in the environment, record a failure.
 
