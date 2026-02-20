@@ -749,3 +749,136 @@ func TestPublishHTMLPlugin_RawTxtForSpecialFiles(t *testing.T) {
 		t.Error("robots/index.txt/index.html should be an HTML redirect")
 	}
 }
+
+// TestPublishHTMLPlugin_PrivatePostsNoAlternateFormats tests that private posts
+// only get HTML output (with encrypted content) and do NOT get .md, .txt, or OG
+// output files, which would leak plaintext content.
+func TestPublishHTMLPlugin_PrivatePostsNoAlternateFormats(t *testing.T) {
+	tempDir := t.TempDir()
+
+	htmlEnabled := true
+
+	// Enable all output formats
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"url":   "https://example.com",
+			"title": "Test Site",
+			"post_formats": models.PostFormatsConfig{
+				HTML:     &htmlEnabled,
+				Markdown: true,
+				Text:     true,
+				OG:       true,
+			},
+		},
+	}
+
+	plugin := NewPublishHTMLPlugin()
+	m := createTestManager(t, config)
+
+	title := "My Private Post"
+
+	// Private post with encrypted ArticleHTML (simulating what encryption plugin does)
+	privatePost := &models.Post{
+		Path:        "secret.md",
+		Slug:        "secret-post",
+		Title:       &title,
+		Content:     "", // scrubbed by encryption plugin
+		HTML:        "<html><body><div class=\"encrypted-content\" data-encrypted=\"abc123\">Encrypted</div></body></html>",
+		Published:   true,
+		Draft:       false,
+		Skip:        false,
+		Private:     true,
+		ArticleHTML: "<div class=\"encrypted-content\" data-encrypted=\"abc123\">Encrypted</div>",
+	}
+
+	if err := plugin.writePost(privatePost, config, nil, m); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+
+	// HTML should be written (contains encrypted content)
+	htmlPath := filepath.Join(tempDir, "secret-post", "index.html")
+	if _, err := os.Stat(htmlPath); os.IsNotExist(err) {
+		t.Error("Private post HTML should be written (contains encrypted content)")
+	}
+
+	// .md should NOT be written
+	mdPath := filepath.Join(tempDir, "secret-post.md")
+	if _, err := os.Stat(mdPath); !os.IsNotExist(err) {
+		t.Error("Private post .md file should NOT be written (would leak plaintext)")
+	}
+
+	// .txt should NOT be written
+	txtPath := filepath.Join(tempDir, "secret-post.txt")
+	if _, err := os.Stat(txtPath); !os.IsNotExist(err) {
+		t.Error("Private post .txt file should NOT be written (would leak plaintext)")
+	}
+
+	// OG card should NOT be written
+	ogPath := filepath.Join(tempDir, "secret-post", "og", "index.html")
+	if _, err := os.Stat(ogPath); !os.IsNotExist(err) {
+		t.Error("Private post OG card should NOT be written (would leak metadata)")
+	}
+}
+
+// TestPublishHTMLPlugin_NonPrivatePostGetsAllFormats verifies that non-private posts
+// still get all enabled output formats (regression test for the private post fix).
+func TestPublishHTMLPlugin_NonPrivatePostGetsAllFormats(t *testing.T) {
+	tempDir := t.TempDir()
+
+	htmlEnabled := true
+
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"url":   "https://example.com",
+			"title": "Test Site",
+			"post_formats": models.PostFormatsConfig{
+				HTML:     &htmlEnabled,
+				Markdown: true,
+				Text:     true,
+				OG:       false, // OG requires template engine, skip for simplicity
+			},
+		},
+	}
+
+	plugin := NewPublishHTMLPlugin()
+	m := createTestManager(t, config)
+
+	title := "Public Post"
+
+	publicPost := &models.Post{
+		Path:        "public.md",
+		Slug:        "public-post",
+		Title:       &title,
+		Content:     "Hello world, this is public content.",
+		HTML:        "<html><body><p>Hello world</p></body></html>",
+		Published:   true,
+		Draft:       false,
+		Skip:        false,
+		Private:     false,
+		ArticleHTML: "<p>Hello world</p>",
+	}
+
+	if err := plugin.writePost(publicPost, config, nil, m); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+
+	// HTML should be written
+	htmlPath := filepath.Join(tempDir, "public-post", "index.html")
+	if _, err := os.Stat(htmlPath); os.IsNotExist(err) {
+		t.Error("Public post HTML should be written")
+	}
+
+	// .md should be written
+	mdPath := filepath.Join(tempDir, "public-post.md")
+	if _, err := os.Stat(mdPath); os.IsNotExist(err) {
+		t.Error("Public post .md file should be written")
+	}
+
+	// .txt should be written
+	txtPath := filepath.Join(tempDir, "public-post.txt")
+	if _, err := os.Stat(txtPath); os.IsNotExist(err) {
+		t.Error("Public post .txt file should be written")
+	}
+}

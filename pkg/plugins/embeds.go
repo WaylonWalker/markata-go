@@ -458,6 +458,11 @@ func (p *EmbedsPlugin) processInternalEmbedsInText(text string, idx *lifecycle.P
 		// Record this as a dependency for incremental builds
 		*dependencies = append(*dependencies, targetPost.Slug)
 
+		// Don't expose content from private posts — show a minimal card
+		if targetPost.Private {
+			return p.buildPrivateEmbedCard(targetPost)
+		}
+
 		return p.buildInternalEmbedCard(targetPost, displayText)
 	})
 }
@@ -521,6 +526,40 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 		sb.WriteString("\n")
 	}
 
+	sb.WriteString(`    </div>`)
+	sb.WriteString("\n")
+	sb.WriteString(`  </a>`)
+	sb.WriteString("\n")
+	sb.WriteString(`</div>`)
+	sb.WriteString("\n")
+
+	return sb.String()
+}
+
+// buildPrivateEmbedCard creates a minimal HTML card for a private post embed.
+// It only shows a link with a "Private Content" notice, without exposing
+// any content-derived metadata (title, description, date).
+func (p *EmbedsPlugin) buildPrivateEmbedCard(post *models.Post) string {
+	href := post.Href
+	if href == "" {
+		href = "/" + post.Slug + "/"
+	}
+
+	var sb strings.Builder
+	sb.WriteString(`<div class="`)
+	sb.WriteString(html.EscapeString(p.config.InternalCardClass))
+	sb.WriteString(` embed-card--private">`)
+	sb.WriteString("\n")
+	sb.WriteString(`  <a href="`)
+	sb.WriteString(html.EscapeString(href))
+	sb.WriteString(`" class="embed-card-link">`)
+	sb.WriteString("\n")
+	sb.WriteString(`    <div class="embed-card-content">`)
+	sb.WriteString("\n")
+	sb.WriteString(`      <div class="embed-card-title">Private Content</div>`)
+	sb.WriteString("\n")
+	sb.WriteString(`      <div class="embed-card-description">This content is encrypted and requires a password to view.</div>`)
+	sb.WriteString("\n")
 	sb.WriteString(`    </div>`)
 	sb.WriteString("\n")
 	sb.WriteString(`  </a>`)

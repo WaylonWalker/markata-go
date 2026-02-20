@@ -169,15 +169,18 @@ func (p *WikilinksPlugin) processWikilinksInText(text string, postIndex *lifecyc
 		}
 
 		// Build data attributes for tooltip
+		// Skip metadata for private posts to prevent content leaks
 		dataAttrs := ""
-		if targetPost.Title != nil && *targetPost.Title != "" {
-			dataAttrs += fmt.Sprintf(` data-title=%q`, html.EscapeString(*targetPost.Title))
-		}
-		if targetPost.Description != nil && *targetPost.Description != "" {
-			dataAttrs += fmt.Sprintf(` data-description=%q`, html.EscapeString(*targetPost.Description))
-		}
-		if targetPost.Date != nil {
-			dataAttrs += fmt.Sprintf(` data-date=%q`, targetPost.Date.Format("2006-01-02"))
+		if !targetPost.Private {
+			if targetPost.Title != nil && *targetPost.Title != "" {
+				dataAttrs += fmt.Sprintf(` data-title=%q`, html.EscapeString(*targetPost.Title))
+			}
+			if targetPost.Description != nil && *targetPost.Description != "" {
+				dataAttrs += fmt.Sprintf(` data-description=%q`, html.EscapeString(*targetPost.Description))
+			}
+			if targetPost.Date != nil {
+				dataAttrs += fmt.Sprintf(` data-date=%q`, targetPost.Date.Format("2006-01-02"))
+			}
 		}
 
 		return fmt.Sprintf(`<a href=%q class="wikilink"%s>%s</a>`,
