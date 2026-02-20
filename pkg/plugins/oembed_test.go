@@ -129,7 +129,7 @@ func TestOEmbedResolver_DiscoverEndpoint(t *testing.T) {
 }
 
 func TestRenderGistCodeEmbedHTML(t *testing.T) {
-	html := renderGistCodeEmbedHTML("https://gist.github.com/user/abcd", "example.go", "package main")
+	html := renderGistCodeEmbedHTML("https://gist.github.com/user/abcd", "example.go", "go", "package main")
 	if !containsString(html, `class="embed-gist"`) {
 		t.Fatalf("expected embed-gist wrapper, got: %s", html)
 	}
@@ -139,8 +139,8 @@ func TestRenderGistCodeEmbedHTML(t *testing.T) {
 	if !containsString(html, `example.go`) {
 		t.Fatalf("expected filename, got: %s", html)
 	}
-	if !containsString(html, `package main`) {
-		t.Fatalf("expected code content, got: %s", html)
+	if !containsString(html, `package`) {
+		t.Fatalf("expected highlighted code content, got: %s", html)
 	}
 }
 

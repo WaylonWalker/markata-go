@@ -15,6 +15,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alecthomas/chroma/v2"
+	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
+	"github.com/alecthomas/chroma/v2/lexers"
+	"github.com/alecthomas/chroma/v2/styles"
+
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
@@ -895,7 +900,7 @@ func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, 
 	}
 	content = strings.TrimRight(content, "\n")
 
-	embedHTML := renderGistCodeEmbedHTML(gistURL, firstFile.Filename, content)
+	embedHTML := renderGistCodeEmbedHTML(gistURL, firstFile.Filename, firstFile.Language, content)
 	if content == "" {
 		embedHTML = renderGistScriptEmbedHTML(gistURL, firstFile.Filename)
 	}
@@ -976,11 +981,63 @@ func renderGistScriptEmbedHTML(gistURL, filename string) string {
 		url.QueryEscape(filename))
 }
 
-func renderGistCodeEmbedHTML(gistURL, filename, content string) string {
+func renderGistCodeEmbedHTML(gistURL, filename, language, content string) string {
 	if filename == "" {
 		filename = "gist"
 	}
+	if language == "" {
+		language = "text"
+	}
 
+	lexer := lexers.Get(language)
+	if lexer == nil {
+		lexer = lexers.Analyse(content) //nolint:misspell // chroma uses Analyse spelling
+	}
+	if lexer == nil {
+		lexer = lexers.Fallback
+	}
+	lexer = chroma.Coalesce(lexer)
+
+	iterator, err := lexer.Tokenise(nil, content)
+	if err != nil {
+		return renderPlainGistHTML(gistURL, filename, content)
+	}
+
+	formatter := chromahtml.New(chromahtml.WithClasses(true), chromahtml.WithAllClasses(true))
+	style := styles.Fallback
+
+	var sb strings.Builder
+	sb.WriteString(`<div class="embed-gist">`)
+	sb.WriteString("\n")
+	sb.WriteString(`  <div class="embed-gist-header">`)
+	sb.WriteString("\n")
+	sb.WriteString(`    <a href="`)
+	sb.WriteString(html.EscapeString(gistURL))
+	sb.WriteString(`" target="_blank" rel="noopener noreferrer">`)
+	sb.WriteString(html.EscapeString(filename))
+	sb.WriteString(`</a>`)
+	sb.WriteString("\n")
+	sb.WriteString(`    <span class="embed-gist-language">`)
+	sb.WriteString(html.EscapeString(strings.ToLower(language)))
+	sb.WriteString(`</span>`)
+	sb.WriteString("\n")
+	sb.WriteString(`  </div>`)
+	sb.WriteString("\n")
+	sb.WriteString(`  <div class="highlight">`)
+	sb.WriteString("\n")
+	if err := formatter.Format(&sb, style, iterator); err != nil {
+		return renderPlainGistHTML(gistURL, filename, content)
+	}
+	sb.WriteString("\n")
+	sb.WriteString(`  </div>`)
+	sb.WriteString("\n")
+	sb.WriteString(`</div>`)
+	sb.WriteString("\n")
+
+	return sb.String()
+}
+
+func renderPlainGistHTML(gistURL, filename, content string) string {
 	var sb strings.Builder
 	sb.WriteString(`<div class="embed-gist">`)
 	sb.WriteString("\n")

@@ -987,6 +987,10 @@
 .embed-gist-header {
   font-size: 0.875rem;
   color: var(--color-text-muted);
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .embed-gist-header a {
@@ -997,6 +1001,13 @@
 .embed-gist-header a:hover {
   color: var(--color-primary);
   text-decoration: underline;
+}
+
+.embed-gist-language {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
 }
 
 .embed-gist .highlight {
