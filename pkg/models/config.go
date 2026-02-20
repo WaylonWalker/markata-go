@@ -2072,7 +2072,9 @@ func NewEmbedsConfig() EmbedsConfig {
 		FetchExternal:      true,
 		OEmbedEnabled:      true,
 		ResolutionStrategy: "oembed_first",
-		OEmbedProviders:    map[string]OEmbedProviderConfig{},
+		OEmbedProviders: map[string]OEmbedProviderConfig{
+			"tiktok": {Enabled: true, Mode: "card"},
+		},
 		OEmbedAutoDiscover: false,
 		DefaultEmbedMode:   "card",
 		OEmbedProvidersURL: "https://oembed.com/providers.json",
