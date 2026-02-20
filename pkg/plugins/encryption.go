@@ -152,21 +152,36 @@ func (p *EncryptionPlugin) getKeyPassword(keyName string) (string, error) {
 }
 
 // Priority returns the plugin priority for the given stage.
-// Encryption should run in the middle of the Render stage:
-// - After markdown is rendered to HTML (PriorityDefault/PriorityEarly)
-// - Before templates wrap the HTML (PriorityLate)
+//
+// Transform stage: PriorityFirst (-1000)
+//
+//	Privacy marking (applyPrivateTags) must run before ALL other transform
+//	plugins so that downstream plugins like Description (PriorityEarly = -100)
+//	already see post.Private == true and skip private posts.
+//
+// Render stage: priority 50
+//
+//	Encryption of ArticleHTML runs after markdown rendering (PriorityDefault)
+//	but before templates wrap the HTML (PriorityLate = 100).
 func (p *EncryptionPlugin) Priority(stage lifecycle.Stage) int {
-	if stage == lifecycle.StageRender {
+	switch stage {
+	case lifecycle.StageTransform:
+		// Must run before Description plugin (PriorityEarly = -100)
+		return lifecycle.PriorityFirst
+	case lifecycle.StageRender:
 		// Run after markdown rendering but before templates
-		// Templates run at PriorityLate (100), so we run at 50
 		return 50
+	default:
+		return lifecycle.PriorityDefault
 	}
-	return lifecycle.PriorityDefault
 }
 
 // applyPrivateTags marks posts as private based on configured private_tags.
-// If a post has a tag matching a private_tags entry, it is marked Private=true
-// and assigned the tag's key (unless the post already has a frontmatter secret_key).
+// If a post has a tag or templateKey matching a private_tags entry, it is marked
+// Private=true and assigned the tag's key (unless the post already has a
+// frontmatter secret_key). This also checks the post's Template field (set from
+// the templateKey frontmatter) to handle posts that use templateKey as their
+// primary categorization without explicit tags.
 func (p *EncryptionPlugin) applyPrivateTags(posts []*models.Post) {
 	if len(p.privateTags) == 0 {
 		return
@@ -176,6 +191,9 @@ func (p *EncryptionPlugin) applyPrivateTags(posts []*models.Post) {
 		if post.Skip || post.Draft {
 			continue
 		}
+
+		// Check tags
+		matched := false
 		for _, tag := range post.Tags {
 			tagLower := strings.ToLower(tag)
 			if keyName, ok := p.privateTags[tagLower]; ok {
@@ -184,10 +202,37 @@ func (p *EncryptionPlugin) applyPrivateTags(posts []*models.Post) {
 				if post.SecretKey == "" {
 					post.SecretKey = keyName // pragma: allowlist secret
 				}
+				matched = true
 				break // one matching tag is enough
 			}
 		}
+
+		// Also check templateKey (stored as post.Template) if tags didn't match.
+		// Some posts use templateKey as their primary categorization without
+		// including it in their tags list.
+		if !matched && post.Template != "" {
+			templateKeyLower := strings.ToLower(post.Template)
+			if keyName, ok := p.privateTags[templateKeyLower]; ok {
+				post.Private = true
+				if post.SecretKey == "" {
+					post.SecretKey = keyName // pragma: allowlist secret
+				}
+			}
+		}
 	}
+}
+
+// Transform marks posts as private based on configured private_tags.
+// This runs at PriorityFirst (-1000) so that all subsequent transform plugins
+// (e.g., Description at PriorityEarly) already see post.Private == true and
+// can skip private posts, preventing content-derived metadata leaks.
+func (p *EncryptionPlugin) Transform(m *lifecycle.Manager) error {
+	if !p.enabled {
+		return nil
+	}
+
+	p.applyPrivateTags(m.Posts())
+	return nil
 }
 
 // Render encrypts content for private posts with encryption keys.
@@ -197,9 +242,6 @@ func (p *EncryptionPlugin) Render(m *lifecycle.Manager) error {
 	if !p.enabled {
 		return nil
 	}
-
-	// Apply private tags to mark posts as private based on their tags
-	p.applyPrivateTags(m.Posts())
 
 	// Find all private posts (whether they need encryption or not)
 	privatePosts := m.FilterPosts(func(post *models.Post) bool {
@@ -441,6 +483,7 @@ func getModelsConfig(config *lifecycle.Config) (*models.Config, bool) {
 var (
 	_ lifecycle.Plugin          = (*EncryptionPlugin)(nil)
 	_ lifecycle.ConfigurePlugin = (*EncryptionPlugin)(nil)
+	_ lifecycle.TransformPlugin = (*EncryptionPlugin)(nil)
 	_ lifecycle.RenderPlugin    = (*EncryptionPlugin)(nil)
 	_ lifecycle.PriorityPlugin  = (*EncryptionPlugin)(nil)
 )

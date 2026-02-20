@@ -840,6 +840,258 @@ func TestAutoFeedsPlugin_TagFeedFilterExpression(t *testing.T) {
 }
 
 // =============================================================================
+// Private Tag Feed Tests
+// =============================================================================
+
+func TestAutoFeedsPlugin_PrivateTagIncludesPrivate(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Public Post"), Tags: []string{"python"}, Date: &date},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("Gratitude Entry"), Tags: []string{"gratitude"}, Date: &date, Private: true},
+		{Path: "post3.md", Slug: "post3", Title: strPtr("Tutorial"), Tags: []string{"python", "tutorial"}, Date: &date},
+	})
+
+	// Configure auto feeds for tags with encryption private_tags
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{
+				Enabled:    true,
+				SlugPrefix: "tags",
+			},
+		},
+		"models_config": &models.Config{
+			Encryption: models.EncryptionConfig{
+				Enabled:     true,
+				PrivateTags: map[string]string{"gratitude": "default"},
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	// Extract feed configs from cache to check IncludePrivate
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		t.Fatal("feed_configs not found in cache")
+	}
+
+	feedConfigs, ok := cached.([]models.FeedConfig)
+	if !ok {
+		t.Fatalf("feed_configs has wrong type: %T", cached)
+	}
+
+	// Build map of feed configs by slug
+	configMap := make(map[string]models.FeedConfig)
+	for _, fc := range feedConfigs {
+		configMap[fc.Slug] = fc
+	}
+
+	// Gratitude feed should have IncludePrivate: true
+	gratitudeFeed, ok := configMap["tags/gratitude"]
+	if !ok {
+		t.Fatal("tags/gratitude feed config not found")
+	}
+	if !gratitudeFeed.IncludePrivate {
+		t.Error("tags/gratitude feed should have IncludePrivate=true, got false")
+	}
+
+	// Python feed should NOT have IncludePrivate
+	pythonFeed, ok := configMap["tags/python"]
+	if !ok {
+		t.Fatal("tags/python feed config not found")
+	}
+	if pythonFeed.IncludePrivate {
+		t.Error("tags/python feed should have IncludePrivate=false, got true")
+	}
+
+	// Tutorial feed should NOT have IncludePrivate
+	tutorialFeed, ok := configMap["tags/tutorial"]
+	if !ok {
+		t.Fatal("tags/tutorial feed config not found")
+	}
+	if tutorialFeed.IncludePrivate {
+		t.Error("tags/tutorial feed should have IncludePrivate=false, got true")
+	}
+}
+
+func TestAutoFeedsPlugin_PrivateTagCaseInsensitive(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Entry"), Tags: []string{"Gratitude"}, Date: &date, Private: true},
+	})
+
+	// Private tag in config is lowercase, tag on post is capitalized
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{
+				Enabled:    true,
+				SlugPrefix: "tags",
+			},
+		},
+		"models_config": &models.Config{
+			Encryption: models.EncryptionConfig{
+				Enabled:     true,
+				PrivateTags: map[string]string{"gratitude": "default"},
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		t.Fatal("feed_configs not found in cache")
+	}
+
+	feedConfigs, ok := cached.([]models.FeedConfig)
+	if !ok {
+		t.Fatalf("feed_configs has wrong type: %T", cached)
+	}
+
+	if len(feedConfigs) != 1 {
+		t.Fatalf("expected 1 feed config, got %d", len(feedConfigs))
+	}
+
+	// Tag "Gratitude" should match private_tags "gratitude" (case-insensitive)
+	if !feedConfigs[0].IncludePrivate {
+		t.Error("feed for tag 'Gratitude' should have IncludePrivate=true (case-insensitive match)")
+	}
+}
+
+func TestAutoFeedsPlugin_NoEncryptionConfig(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post"), Tags: []string{"python"}, Date: &date},
+	})
+
+	// No models_config at all — should not crash, IncludePrivate should be false
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{
+				Enabled:    true,
+				SlugPrefix: "tags",
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	err := plugin.Collect(m)
+	if err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		t.Fatal("feed_configs not found in cache")
+	}
+
+	feedConfigs, ok := cached.([]models.FeedConfig)
+	if !ok {
+		t.Fatalf("feed_configs has wrong type: %T", cached)
+	}
+
+	if len(feedConfigs) != 1 {
+		t.Fatalf("expected 1 feed config, got %d", len(feedConfigs))
+	}
+
+	if feedConfigs[0].IncludePrivate {
+		t.Error("IncludePrivate should be false when no encryption config exists")
+	}
+}
+
+func TestGetPrivateTagsConfig(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *lifecycle.Config
+		want   map[string]string
+	}{
+		{
+			name:   "nil config",
+			config: nil,
+			want:   map[string]string{},
+		},
+		{
+			name: "no models_config",
+			config: func() *lifecycle.Config {
+				c := lifecycle.NewConfig()
+				c.Extra = map[string]interface{}{}
+				return c
+			}(),
+			want: map[string]string{},
+		},
+		{
+			name: "no private_tags",
+			config: func() *lifecycle.Config {
+				c := lifecycle.NewConfig()
+				c.Extra = map[string]interface{}{
+					"models_config": &models.Config{
+						Encryption: models.EncryptionConfig{
+							Enabled: true,
+						},
+					},
+				}
+				return c
+			}(),
+			want: map[string]string{},
+		},
+		{
+			name: "with private_tags lowercased",
+			config: func() *lifecycle.Config {
+				c := lifecycle.NewConfig()
+				c.Extra = map[string]interface{}{
+					"models_config": &models.Config{
+						Encryption: models.EncryptionConfig{
+							Enabled:     true,
+							PrivateTags: map[string]string{"Gratitude": "default", "DIARY": "personal"},
+						},
+					},
+				}
+				return c
+			}(),
+			want: map[string]string{"gratitude": "default", "diary": "personal"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getPrivateTagsConfig(tt.config)
+			if len(got) != len(tt.want) {
+				t.Errorf("getPrivateTagsConfig() returned %d entries, want %d", len(got), len(tt.want))
+				return
+			}
+			for k, v := range tt.want {
+				if got[k] != v {
+					t.Errorf("getPrivateTagsConfig()[%q] = %q, want %q", k, got[k], v)
+				}
+			}
+		})
+	}
+}
+
+// =============================================================================
 // Slugify Tests
 // =============================================================================
 

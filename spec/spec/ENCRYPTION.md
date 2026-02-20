@@ -6,6 +6,19 @@ The encryption system protects private post content using AES-256-GCM client-sid
 
 **Core invariant:** Private posts must never be published with plaintext content. If a private post cannot be encrypted, the build must fail.
 
+## Privacy Boundary
+
+**Encryption protects content, not metadata.** The post body (`Content`, `ArticleHTML`) is private and encrypted. Frontmatter metadata -- title, description, tags, dates, slug, avatar -- is public and remains in cleartext.
+
+This is by design:
+
+- **Title** is preserved for page cards, feed listings, HTML `<title>`, navigation, and SEO.
+- **Description** is preserved if explicitly set in frontmatter (the author chose to make it public). Auto-generated descriptions are suppressed for private posts.
+- **Tags and dates** are preserved for site structure, filtering, and feed membership.
+- **Slug and URL** are preserved so the page is routable and linkable.
+
+Plugins that generate output from post data follow this boundary: they may use frontmatter fields freely but must not expose body content. The `scrubPrivateMetadata` function enforces this by clearing `Content` and content-derived fields (inlinks/outlinks text) while preserving frontmatter-provided fields.
+
 ## Configuration
 
 ### `[encryption]` Table
@@ -15,7 +28,7 @@ The encryption system protects private post content using AES-256-GCM client-sid
 | `enabled` | `bool` | `true` | Whether encryption processing is active |
 | `default_key` | `string` | `"default"` | Key name used when a post has no explicit key |
 | `decryption_hint` | `string` | `""` | Help text shown to visitors next to the password prompt |
-| `private_tags` | `map[string]string` | `{}` | Maps tag names to encryption key names |
+| `private_tags` | `map[string]string` | `{}` | Maps tag names (or templateKey values) to encryption key names |
 
 ### Environment Variables
 
@@ -59,24 +72,48 @@ A `.env` file in the project root is loaded automatically during config loading 
 
 ## Plugin Behavior
 
-### Stage: Render (Priority 50)
+### Two-Phase Lifecycle
 
-The encryption plugin runs during the Render stage at priority 50 -- after markdown rendering (default priority) but before templates (priority 100).
+The encryption plugin participates in two lifecycle stages to ensure complete privacy protection:
 
-### Processing Steps
+#### Phase 1: Transform Stage (PriorityFirst / -1000)
 
-1. **Apply private tags**: For each non-draft, non-skipped post, check if any of its tags match a `private_tags` entry. If so, set `Private = true` and assign the tag's key name (unless `SecretKey` is already set from frontmatter).
+Privacy marking runs at `PriorityFirst` (-1000) in the Transform stage -- before any other Transform or Render plugin. This ensures all downstream plugins see `post.Private == true` and can act accordingly.
 
-2. **Validate keys**: Find all private, non-draft, non-skipped posts. For each, resolve the key name (post's `SecretKey`, falling back to `default_key`). If no key name resolves, or the key's password is not found in the environment, record a failure.
+**Processing:** Apply private tags. For each non-draft, non-skipped post, check if any of its tags match a `private_tags` entry. If no tag matches, also check the post's `Template` field (set from the `templateKey` or `template` frontmatter). If either matches, set `Private = true` and assign the matching key name (unless `SecretKey` is already set from frontmatter). Tag matches take priority over `templateKey` matches for key assignment.
 
-3. **Fail on missing keys**: If any private posts failed validation, return an `EncryptionBuildError` (implements `CriticalError`). The error message lists all affected posts and the expected environment variable names.
+**Rationale:** If privacy marking ran later (e.g., during Render), Transform-stage plugins like Description would auto-generate descriptions from private content before the post was marked private -- leaking plaintext into metadata.
 
-4. **Encrypt content**: For each private post with non-empty `ArticleHTML`, encrypt the HTML using AES-256-GCM. Replace `ArticleHTML` with an encrypted wrapper containing:
+#### Phase 2: Render Stage (Priority 50)
+
+Encryption runs during the Render stage at priority 50 -- after markdown rendering (default priority) but before templates (priority 100).
+
+**Processing:**
+
+1. **Validate keys**: Find all private, non-draft, non-skipped posts. For each, resolve the key name (post's `SecretKey`, falling back to `default_key`). If no key name resolves, or the key's password is not found in the environment, record a failure.
+
+2. **Fail on missing keys**: If any private posts failed validation, return an `EncryptionBuildError` (implements `CriticalError`). The error message lists all affected posts and the expected environment variable names.
+
+3. **Encrypt content**: For each private post with non-empty `ArticleHTML`, encrypt the HTML using AES-256-GCM. Replace `ArticleHTML` with an encrypted wrapper containing:
    - The encrypted content as a base64 string in a `data-encrypted` attribute
    - The key name in a `data-key-name` attribute
    - A password input form with ARIA labels
    - The decryption hint (if configured)
    - A "Remember for this session" checkbox
+
+### Cross-Plugin Privacy Protection
+
+The following plugins respect `post.Private` to prevent leaking private content through non-article output:
+
+| Plugin | Protection | Details |
+|--------|-----------|---------|
+| `publish_html` | Alternate formats suppressed | `.md`, `.txt`, and OG card outputs are skipped for private posts |
+| `description` | Auto-generation skipped | Does not generate descriptions from private content |
+| `embeds` | Private embed card | Shows a "Private Content" card instead of title/description/date |
+| `wikilinks` | Metadata attributes suppressed | `data-title`, `data-description`, `data-date` attributes are omitted for private targets |
+| `wikilink_hover` | Hover preview suppressed | No preview text or metadata shown for private targets |
+| `feeds` / `atom` / `rss` / `jsonfeed` | Excluded from subscription feeds | Private posts are filtered out of RSS, Atom, and JSON Feed outputs |
+| `auto_feeds` | Encrypted cards on feed pages | Tag feeds for `private_tags` set `IncludePrivate=true` so private posts appear as encrypted cards with password prompts. Non-private-tag feeds exclude private posts as usual. |
 
 ### Error Handling
 
