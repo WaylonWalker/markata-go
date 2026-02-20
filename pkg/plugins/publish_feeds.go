@@ -122,11 +122,6 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
 
-	// Skip feed generation in fast mode - feeds are unnecessary during development
-	if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
-		return nil
-	}
-
 	// Get feed configs from cache
 	var feedConfigs []models.FeedConfig
 	if cached, ok := m.Cache().Get("feed_configs"); ok {
