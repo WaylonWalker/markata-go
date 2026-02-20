@@ -80,30 +80,35 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
-	// Pre-pass: Identify all posts that changed (hash mismatch) and mark their slugs
-	// This enables dependency-based invalidation in a single build
+	// Pre-pass: Identify all posts that changed (hash mismatch) and mark their slugs.
+	// This enables dependency-based invalidation in FilterPosts below.
+	// Uses ShouldRebuildBatch to acquire the lock once instead of per-post.
 	cache := GetBuildCache(m)
 	if cache != nil {
 		posts := m.Posts()
-		changedCount := 0
+		// Build batch input, filtering out skip/draft/no-hash posts
+		batch := make([]struct{ Path, InputHash, Template string }, 0, len(posts))
+		slugByPath := make(map[string]string, len(posts))
 		for _, post := range posts {
 			if post.Skip || post.Draft || post.InputHash == "" {
 				continue
 			}
-			// Check if this post's hash changed
-			if cache.ShouldRebuild(post.Path, post.InputHash, post.Template) {
-				// Mark this slug as changed for dependency tracking
-				cache.MarkSlugChanged(post.Slug)
-				changedCount++
-			}
+			batch = append(batch, struct{ Path, InputHash, Template string }{
+				Path:      post.Path,
+				InputHash: post.InputHash,
+				Template:  post.Template,
+			})
+			slugByPath[post.Path] = post.Slug
+		}
+		changed := cache.ShouldRebuildBatch(batch)
+		for path := range changed {
+			cache.MarkSlugChanged(slugByPath[path])
 		}
 	}
 
-	// Two-phase processing for incremental optimization:
-	// Phase 1: Pre-filter to identify posts that need writing
-	// This avoids worker pool overhead for the ~98% of posts that are cached
+	// Single-pass filter: identify posts that need writing.
+	// This replaces the previous two-pass approach (pre-filter + writeHTMLFormat check).
 	postsNeedingWrite := m.FilterPosts(func(post *models.Post) bool {
-		// Skip posts marked as skip or drafts
 		if post.Skip || post.Draft {
 			return false
 		}
@@ -111,17 +116,15 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 		// For incremental builds, check if we can skip this post
 		if cache != nil && post.InputHash != "" {
 			if !cache.ShouldRebuildWithSlug(post.Path, post.Slug, post.InputHash, post.Template) {
-				// Check if output file exists
 				outputPath := filepath.Join(config.OutputDir, post.Slug, "index.html")
 				if _, err := os.Stat(outputPath); err == nil {
 					cache.MarkSkipped()
-					return false // Already up-to-date, skip
+					return false
 				}
-				// Output file missing, need to write
 			}
 		}
 
-		return true // Needs writing
+		return true
 	})
 
 	// Phase 2: Process only posts that need writing concurrently
@@ -227,18 +230,6 @@ func (p *PublishHTMLPlugin) writeHTMLFormat(post *models.Post, config *lifecycle
 
 	// Write index.html
 	outputPath := filepath.Join(postDir, "index.html")
-
-	// Check if we can skip this post (incremental build)
-	if cache != nil && post.InputHash != "" {
-		if !cache.ShouldRebuildWithSlug(post.Path, post.Slug, post.InputHash, post.Template) {
-			// Check if output file exists
-			if _, err := os.Stat(outputPath); err == nil {
-				cache.MarkSkipped()
-				return nil
-			}
-			// Output file missing, need to rebuild
-		}
-	}
 
 	//nolint:gosec // G306: HTML output files need 0644 for web serving
 	if err := os.WriteFile(outputPath, []byte(htmlContent), 0o644); err != nil {

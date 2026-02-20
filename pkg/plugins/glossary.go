@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -206,6 +207,12 @@ func (p *GlossaryPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	// Compute a stable hash of all glossary terms so we can detect when terms change.
+	// This is combined with each post's ArticleHTML hash to form the cache key.
+	termsHash := p.computeTermsHash()
+
+	cache := GetBuildCache(m)
+
 	postsToProcess := m.FilterPosts(func(post *models.Post) bool {
 		if post.Skip {
 			return false
@@ -222,8 +229,58 @@ func (p *GlossaryPlugin) Render(m *lifecycle.Manager) error {
 		return true
 	})
 
-	// Process each non-glossary post to link terms
-	return m.ProcessPostsSliceConcurrently(postsToProcess, p.processPost)
+	// Phase 1: Restore cached results for unchanged posts
+	var needProcessing []*models.Post
+	if cache != nil {
+		for _, post := range postsToProcess {
+			combinedHash := buildcache.ContentHash(post.ArticleHTML + termsHash)
+			if cached, ok := cache.GetCachedGlossaryHTML(post.Path, combinedHash); ok {
+				post.ArticleHTML = cached
+			} else {
+				needProcessing = append(needProcessing, post)
+			}
+		}
+	} else {
+		needProcessing = postsToProcess
+	}
+
+	if len(needProcessing) == 0 {
+		return nil
+	}
+
+	// Phase 2: Process posts that need updating, concurrently
+	return m.ProcessPostsSliceConcurrently(needProcessing, func(post *models.Post) error {
+		combinedHash := buildcache.ContentHash(post.ArticleHTML + termsHash)
+		post.ArticleHTML = p.linkTerms(post.ArticleHTML, post)
+		if cache != nil {
+			cache.CacheGlossaryHTML(post.Path, combinedHash, post.ArticleHTML)
+		}
+		return nil
+	})
+}
+
+// computeTermsHash builds a deterministic hash of all glossary terms and their
+// configuration so that cache entries are invalidated when glossary content changes.
+func (p *GlossaryPlugin) computeTermsHash() string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	// allTerms is already sorted by term name from buildGlossary
+	var b strings.Builder
+	for _, term := range p.allTerms {
+		b.WriteString(term.Term)
+		b.WriteByte('\x00')
+		b.WriteString(term.Href)
+		b.WriteByte('\x00')
+		b.WriteString(term.Description)
+		b.WriteByte('\x00')
+		for _, alias := range term.Aliases {
+			b.WriteString(alias)
+			b.WriteByte('\x01')
+		}
+		b.WriteByte('\x00')
+	}
+	return buildcache.ContentHash(b.String())
 }
 
 // Write exports the glossary JSON file if configured.
@@ -381,6 +438,8 @@ func (p *GlossaryPlugin) extractGlossaryTerm(post *models.Post) *GlossaryTerm {
 }
 
 // processPost links glossary terms in a single post's article_html.
+//
+//nolint:unparam // error return matches PostProcessor signature; kept for test compatibility
 func (p *GlossaryPlugin) processPost(post *models.Post) error {
 	if post.Skip {
 		return nil
