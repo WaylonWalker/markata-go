@@ -22,6 +22,15 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/diagnostics"
 )
 
+// Pre-compiled regex patterns for lint fix operations.
+var (
+	keyRegex          = regexp.MustCompile(`^([a-zA-Z_][a-zA-Z0-9_]*)\s*:`)
+	noAltRegex        = regexp.MustCompile(`!\[\]\(([^)]+)\)`)
+	protocollessRegex = regexp.MustCompile(`(\(|"|\s)//([a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,})`)
+	admonitionRegex   = regexp.MustCompile(`^(\s*)!!!\s+\w+`)
+	fencedCodeRegex   = regexp.MustCompile(`^\s*` + "```")
+)
+
 // Issue represents a linting issue found in a file.
 type Issue struct {
 	File       string   // File path
@@ -193,7 +202,6 @@ func fixDuplicateKeys(content string) string {
 	seen := make(map[string]int) // key -> index in lines
 
 	scanner := bufio.NewScanner(strings.NewReader(frontmatter))
-	keyRegex := regexp.MustCompile(`^([a-zA-Z_][a-zA-Z0-9_]*)\s*:`)
 	var currentKey string
 	var currentLines []string
 
@@ -248,16 +256,11 @@ func fixDateFormats(content string) string {
 
 // fixImageLinks adds placeholder alt text to images without it.
 func fixImageLinks(content string) string {
-	// Replace ![](url) with ![image](url)
-	noAltRegex := regexp.MustCompile(`!\[\]\(([^)]+)\)`)
 	return noAltRegex.ReplaceAllString(content, "![image]($1)")
 }
 
 // fixProtocollessURLs adds https:// to protocol-less URLs.
 func fixProtocollessURLs(content string) string {
-	// Replace (//example.com with (https://example.com
-	// Be careful not to replace // in code or comments
-	protocollessRegex := regexp.MustCompile(`(\(|"|\s)//([a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,})`)
 	return protocollessRegex.ReplaceAllString(content, "${1}https://$2")
 }
 
@@ -266,11 +269,6 @@ func fixProtocollessURLs(content string) string {
 func fixAdmonitionFencedCode(content string) string {
 	lines := strings.Split(content, "\n")
 	var result []string
-
-	// Pattern to match admonition start
-	admonitionRegex := regexp.MustCompile(`^(\s*)!!!\s+\w+`)
-	// Pattern to match fenced code block start
-	fencedCodeRegex := regexp.MustCompile(`^\s*` + "```")
 
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
