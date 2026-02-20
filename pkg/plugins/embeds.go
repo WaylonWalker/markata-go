@@ -302,6 +302,8 @@ const (
 	embedModePerformance = "performance"
 	embedModeHover       = "hover"
 	embedModeImageOnly   = "image_only"
+	embedOptionVideo     = "video"
+	embedOptionLink      = "link"
 )
 
 // getMetaPatterns returns cached regex patterns for a given property.
@@ -634,7 +636,13 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 		override := ""
 		var options EmbedOptions
 		if len(groups) >= 3 && groups[2] != "" {
-			override = strings.TrimSpace(groups[2])
+			potentialOverride := strings.TrimSpace(groups[2])
+			// If the second group looks like an option (not a title), treat it as options
+			if isKnownEmbedOption(potentialOverride) {
+				options = parseEmbedOptions(potentialOverride)
+			} else {
+				override = potentialOverride
+			}
 		}
 		// Check for classes (4th group)
 		if len(groups) >= 4 && groups[3] != "" {
@@ -716,9 +724,9 @@ func parseEmbedOptions(optionsStr string) EmbedOptions {
 			opts.Center = true
 		case "full_width":
 			opts.FullWidth = true
-		case "video":
+		case embedOptionVideo:
 			opts.Video = true
-		case "link":
+		case embedOptionLink:
 			opts.Link = true
 		case embedModeRich:
 			opts.Rich = true
@@ -732,6 +740,17 @@ func parseEmbedOptions(optionsStr string) EmbedOptions {
 	}
 
 	return opts
+}
+
+// isKnownEmbedOption checks if a string matches a known embed option name.
+func isKnownEmbedOption(s string) bool {
+	switch strings.ToLower(s) {
+	case "no_title", "no_description", "no_meta", "center", "full_width",
+		embedOptionVideo, embedOptionLink, embedModeImageOnly, embedModeRich,
+		embedModeHover, embedModeCard, embedModePerformance:
+		return true
+	}
+	return false
 }
 
 // fetchOGMetadata fetches Open Graph metadata from a URL.
