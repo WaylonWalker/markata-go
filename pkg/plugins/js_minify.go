@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/js"
@@ -14,6 +15,13 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+// jsBufPool reuses bytes.Buffer instances across minification calls to reduce allocations.
+var jsBufPool = sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
+}
 
 // JSMinifyPlugin minifies JavaScript files to reduce file sizes and improve
 // Lighthouse performance scores. It runs during the Cleanup stage (after all
@@ -97,8 +105,14 @@ func (p *JSMinifyPlugin) parseConfigFromMap(m map[string]interface{}) models.JSM
 }
 
 // Write performs JS minification in the output directory.
+// Skipped in fast mode (--fast flag) for faster development builds.
 func (p *JSMinifyPlugin) Write(m *lifecycle.Manager) error {
 	if !p.config.Enabled {
+		return nil
+	}
+
+	// Skip minification in fast mode
+	if fast, ok := m.Config().Extra["fast_mode"].(bool); ok && fast {
 		return nil
 	}
 
@@ -110,7 +124,7 @@ func (p *JSMinifyPlugin) Write(m *lifecycle.Manager) error {
 
 	runMinification("js_minify", jsFiles, p.isExcluded, func(path string) (int64, int64, error) {
 		return p.minifyFile(path)
-	})
+	}, m.Concurrency())
 
 	return nil
 }
@@ -155,6 +169,7 @@ func (p *JSMinifyPlugin) isExcluded(filePath string) bool {
 
 // minifyFile minifies a single JS file in place.
 // Returns the original size and minified size.
+// Uses a sync.Pool for buffer reuse to reduce allocations under concurrent workloads.
 func (p *JSMinifyPlugin) minifyFile(filePath string) (original, minified int64, err error) {
 	// Read the original file
 	content, err := os.ReadFile(filePath)
@@ -169,9 +184,12 @@ func (p *JSMinifyPlugin) minifyFile(filePath string) (original, minified int64, 
 		return 0, 0, nil
 	}
 
-	// Minify the content
-	var buf bytes.Buffer
-	if err := p.minifier.Minify("application/javascript", &buf, bytes.NewReader(content)); err != nil {
+	// Minify the content using a pooled buffer
+	buf := jsBufPool.Get().(*bytes.Buffer) //nolint:errcheck // type is guaranteed by pool's New func
+	buf.Reset()
+	defer jsBufPool.Put(buf)
+
+	if err := p.minifier.Minify("application/javascript", buf, bytes.NewReader(content)); err != nil {
 		return original, 0, fmt.Errorf("minifying: %w", err)
 	}
 

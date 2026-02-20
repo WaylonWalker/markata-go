@@ -25,6 +25,10 @@ var (
 
 	// buildDryRun shows what would be built without building.
 	buildDryRun bool
+
+	// buildFast skips expensive non-essential plugins (minification, CSS purging)
+	// for faster development iteration.
+	buildFast bool
 )
 
 // buildCmd represents the build command.
@@ -50,10 +54,16 @@ Clean modes:
                (blogroll feeds, embeds metadata, mentions, webmentions).
                These are expensive to re-fetch from remote servers.
 
+Fast mode:
+  --fast       Skip minification (JS/CSS) and CSS purging for faster builds.
+               Useful during development iteration when you don't need
+               optimized output.
+
 Example usage:
   markata-go build              # Standard build
   markata-go build --clean      # Clean build cache + output
   markata-go build --clean-all  # Also nuke external plugin caches
+  markata-go build --fast       # Skip minification for faster builds
   markata-go build --dry-run    # Show what would be built
   markata-go build -v           # Build with verbose output`,
 	RunE: runBuildCommand,
@@ -65,6 +75,7 @@ func init() {
 	buildCmd.Flags().BoolVar(&buildClean, "clean", false, "clean output directory and build cache before build")
 	buildCmd.Flags().BoolVar(&buildCleanAll, "clean-all", false, "clean everything including external plugin caches (blogroll, embeds, etc.)")
 	buildCmd.Flags().BoolVar(&buildDryRun, "dry-run", false, "show what would be built without building")
+	buildCmd.Flags().BoolVar(&buildFast, "fast", false, "skip minification and CSS purging for faster builds")
 }
 
 func runBuildCommand(_ *cobra.Command, _ []string) error {
@@ -78,6 +89,11 @@ func runBuildCommand(_ *cobra.Command, _ []string) error {
 	m, err := createManager(cfgFile)
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
+	}
+
+	// Pass fast mode flag to plugins via config
+	if buildFast {
+		applyFastMode(m)
 	}
 
 	if verbose {

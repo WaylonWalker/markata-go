@@ -3,7 +3,9 @@ package lifecycle
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sort"
+	"time"
 )
 
 // HookError represents an error that occurred during hook execution.
@@ -141,6 +143,7 @@ func executeHooks[T Plugin](
 
 	for _, p := range sorted {
 		if typed, ok := check(p); ok {
+			start := time.Now()
 			if err := execute(typed); err != nil {
 				// Check if the error itself is marked as critical
 				errIsCritical := critical || isCriticalError(err)
@@ -149,6 +152,10 @@ func executeHooks[T Plugin](
 					// Stop on first critical error
 					return hookErrors
 				}
+			}
+			elapsed := time.Since(start)
+			if elapsed > 50*time.Millisecond {
+				log.Printf("[lifecycle] %s/%s took %v", stage, p.Name(), elapsed)
 			}
 		}
 	}

@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -203,12 +204,34 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 
 	// Use the shared PostIndex from the lifecycle manager
 	idx := m.PostIndex()
+	cache := GetBuildCache(m)
 
 	posts := m.FilterPosts(func(post *models.Post) bool {
 		return !post.Skip && post.Content != ""
 	})
 
-	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
+	// Phase 1: Restore cached results for unchanged posts
+	var needProcessing []*models.Post
+	if cache != nil {
+		for _, post := range posts {
+			contentHash := buildcache.ContentHash(post.Content)
+			if cached, ok := cache.GetCachedEmbedsContent(post.Path, contentHash); ok {
+				post.Content = cached
+			} else {
+				needProcessing = append(needProcessing, post)
+			}
+		}
+	} else {
+		needProcessing = posts
+	}
+
+	if len(needProcessing) == 0 {
+		return nil
+	}
+
+	// Phase 2: Process posts that need updating, concurrently
+	return m.ProcessPostsSliceConcurrently(needProcessing, func(post *models.Post) error {
+		contentHash := buildcache.ContentHash(post.Content)
 		content := p.processAttachmentEmbeds(post.Content)
 		content, dependencies := p.processInternalEmbeds(content, idx, post)
 		content = p.processExternalEmbeds(content, post)
@@ -217,6 +240,10 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 		// Record dependencies for incremental build cache
 		for _, dep := range dependencies {
 			post.AddDependency(dep)
+		}
+
+		if cache != nil {
+			cache.CacheEmbedsContent(post.Path, contentHash, content)
 		}
 
 		return nil
