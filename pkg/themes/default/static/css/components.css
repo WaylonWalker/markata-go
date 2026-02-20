@@ -966,12 +966,13 @@
   height: 150px;
   max-height: 150px;
   overflow: hidden;
-  background-color: var(--color-background);
 }
 
 .embed-card-image img {
+  display: block;
   width: 100%;
   height: 100%;
+  margin: 0;
   object-fit: cover;
   transition: transform 0.2s ease;
 }
