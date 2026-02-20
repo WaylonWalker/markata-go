@@ -856,6 +856,12 @@ func (p *EmbedsPlugin) resolveOEmbedMetadata(rawURL string) (*OGMetadata, bool) 
 		metadata.Description = response.AuthorName
 	}
 
+	if response.Extra != nil {
+		if response.Extra["needs_code_css"] == BoolTrue && metadata.HTML != "" {
+			metadata.HTML = `<div data-needs-code-css="true">` + metadata.HTML + `</div>`
+		}
+	}
+
 	if metadata.Image == "" {
 		metadata.Image = response.URL
 	}
@@ -1126,6 +1132,8 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 	domain := parsedURL.Host
 	domain = strings.TrimPrefix(domain, "www.")
 
+	needsCodeCSS := metadata != nil && strings.Contains(metadata.HTML, `data-needs-code-css="true"`)
+
 	// Build class list
 	classes := []string{p.config.ExternalCardClass}
 	if opts.Center {
@@ -1150,7 +1158,11 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 
 	sb.WriteString(`<div class="`)
 	sb.WriteString(html.EscapeString(strings.Join(classes, " ")))
-	sb.WriteString(`">`)
+	sb.WriteString(`"`)
+	if needsCodeCSS {
+		sb.WriteString(` data-needs-code-css="true"`)
+	}
+	sb.WriteString(`>`)
 	sb.WriteString("\n")
 
 	// Handle rich embed (iframe) mode
