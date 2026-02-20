@@ -174,6 +174,18 @@ func registerDefaultPlugins(m *lifecycle.Manager) {
 	m.RegisterPlugins(plugins.DefaultPlugins()...)
 }
 
+// applyFastMode sets the fast_mode flag in the manager's config Extra map,
+// which tells plugins to skip expensive non-essential work (minification, CSS purging).
+func applyFastMode(m *lifecycle.Manager) {
+	if m.Config().Extra == nil {
+		m.Config().Extra = make(map[string]any)
+	}
+	m.Config().Extra["fast_mode"] = true
+	if verbose {
+		fmt.Println("Fast mode: skipping minification and CSS purging")
+	}
+}
+
 // BuildResult holds the result of a build operation.
 type BuildResult struct {
 	PostsProcessed int

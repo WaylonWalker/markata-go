@@ -51,6 +51,10 @@ var (
 	// serveNoWatch disables file watching (legacy flag for backward compatibility).
 	serveNoWatch bool
 
+	// serveFast skips expensive non-essential plugins (minification, CSS purging)
+	// for faster development iteration during serve.
+	serveFast bool
+
 	// serveOutputPath is the output directory path for filtering watch events.
 	serveOutputPath string
 
@@ -136,8 +140,13 @@ Features:
   - Automatic rebuild on file changes
   - Live reload support (injects reload script into HTML)
 
+Fast mode:
+  --fast       Skip minification (JS/CSS) and CSS purging for faster builds.
+               Applied to both the initial build and all subsequent rebuilds.
+
 Example usage:
   markata-go serve              # Serve on localhost:8000 with file watching
+  markata-go serve --fast       # Serve with fast mode (skip minification)
   markata-go serve -p 3000      # Serve on localhost:3000
   markata-go serve -m fast.toml # Serve with merged config overrides
   markata-go serve --watch      # Explicitly enable file watching (default)
@@ -154,6 +163,7 @@ func init() {
 	serveCmd.Flags().StringVar(&serveHost, "host", "localhost", "host to serve on")
 	serveCmd.Flags().BoolVar(&serveWatch, "watch", true, "enable file watching")
 	serveCmd.Flags().BoolVar(&serveNoWatch, "no-watch", false, "disable file watching (legacy, overrides --watch)")
+	serveCmd.Flags().BoolVar(&serveFast, "fast", false, "skip minification and CSS purging for faster builds")
 }
 
 func runServeCommand(_ *cobra.Command, _ []string) error {
@@ -167,6 +177,11 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 	m, err := createManager(cfgFile)
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
+	}
+
+	// Apply fast mode if requested
+	if serveFast {
+		applyFastMode(m)
 	}
 
 	// Determine output directory
@@ -1153,6 +1168,12 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		notifyBuildStatus()
 		fmt.Printf("Rebuild failed: %v\n", err)
 		return
+	}
+
+	// Apply fast mode if requested (must re-apply on each rebuild since
+	// doRebuild creates a fresh manager via createManager)
+	if serveFast {
+		applyFastMode(m)
 	}
 
 	// Check for cancellation after creating manager
