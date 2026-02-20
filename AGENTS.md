@@ -460,3 +460,105 @@ Implement `lifecycle.Plugin` plus stage interfaces (`ConfigurePlugin`, `RenderPl
 ## Configuration
 
 Primary: TOML (`markata-go.toml`). Also: YAML, JSON. Env override: `MARKATA_GO_` prefix.
+
+## Performance Optimization
+
+### Build Performance Context
+
+The site at `waylonwalker.com-markata-go-migration` (3341 posts, 396 feeds, 100 blogroll feeds) is the primary performance benchmark target. Build types:
+
+- **Cold build** (~105s): No `.markata-cache/` directory. I/O bound (9% CPU utilization). Clear caches with `rm -rf .markata.cache .markata-cache output cache .markata`.
+- **Warm build** (~4s steady-state): Cache populated. CPU bound. The first warm build after a cold build may show cache misses for plugin-level caches due to hash changes from config detection; the **second warm build** is the true steady-state number.
+- **`--fast` build**: Skips JS/CSS minification and CSS purging for faster dev iteration.
+
+### Profiling Methodology
+
+```bash
+# Benchmark warm builds (run build 3 times, use 2nd warm as steady-state):
+rm -rf .markata-cache output
+time go run ./cmd/markata-go build -c /path/to/config   # Cold
+time go run ./cmd/markata-go build -c /path/to/config   # Warm 1 (cache priming)
+time go run ./cmd/markata-go build -c /path/to/config   # Warm 2 (steady-state)
+
+# CPU/memory profiling:
+go tool pprof -http=:8080 /tmp/cpu.prof
+go tool pprof -top /tmp/mem.prof
+```
+
+The lifecycle timing instrumentation in `hooks.go` logs any plugin taking >50ms. This is a permanent feature -- use these logs to identify bottlenecks.
+
+### Plugin Caching Pattern
+
+The build cache (`pkg/buildcache/cache.go`) stores per-post results keyed by content hashes. When optimizing a plugin for warm builds, follow this two-phase pattern:
+
+1. **Add fields to `PostCache` struct** in `cache.go`:
+   - `XxxHash string` -- the content hash used to detect changes
+   - `XxxHTML string` or `XxxContent string` -- the cached output
+
+2. **Add cache methods** to `buildcache.Cache`:
+   - `GetCachedXxx(slug string) (hash, html string, ok bool)` -- reads from in-memory `sync.Map` first, falls back to disk cache
+   - `CacheXxx(slug, hash, html string)` -- writes through to both in-memory `sync.Map` and disk cache
+
+3. **Rewrite the plugin's `Render()`/`Transform()`** with two phases:
+   - **Phase 1 (restore)**: Iterate all posts, compute current hash (e.g., `buildcache.ContentHash(post.ArticleHTML)`), compare to cached hash. If match, restore cached result directly. Track cache hits/misses.
+   - **Phase 2 (process)**: Process only changed posts concurrently using `ProcessPostsSliceConcurrently`. After processing, call `CacheXxx()` to store results.
+
+**Hash inputs** should capture everything that affects the plugin's output. For example:
+- `render_markdown`: raw markdown body
+- `glossary`: `ArticleHTML` + hash of glossary terms (via `computeTermsHash()`)
+- `link_avatars`: `ArticleHTML` (contains links that get avatar icons)
+- `embeds`: raw markdown `Content` (embeds are transformed pre-render)
+
+### Regex Optimization
+
+All regex patterns should be compiled once at package level, not inside functions:
+
+```go
+// Good: compiled once at init
+var headingPattern = regexp.MustCompile(`^#+\s+(.+)$`)
+
+// Bad: recompiled on every call
+func process(s string) {
+    re := regexp.MustCompile(`^#+\s+(.+)$`)
+}
+```
+
+This project has ~30+ hoisted regex patterns across 6 files (`blogroll.go`, `oembed.go`, `critical_css.go`, `mentions.go`, `updater.go`, `avatar.go`, `lint.go`).
+
+### Concurrency in Plugins
+
+- Use `ProcessPostsSliceConcurrently` (worker pool with configurable concurrency) for per-post work
+- Use `sync.Pool` for buffer reuse in minification plugins
+- Use `sync.Map` for concurrent caches (icon lookups, XML tag caches) that don't need eviction
+- Use semaphore pattern (`chan struct{}`) for bounded concurrency in I/O-heavy work
+
+### Performance Anti-Patterns to Avoid
+
+- **O(N^2) feed membership**: Never scan all feeds for every post. Pre-compute a `map[slug][]feedName` index (see `templates.go` `computeFeedMembershipHash`).
+- **Double cache checks**: Don't call `ShouldRebuild()` then separately read from cache. Use `ShouldRebuildBatch()` or combine check+restore in one pass.
+- **Per-item regex scanning**: Don't re-extract data with regex when you already have it. Use single-pass extraction (see `link_collector.go` `extractHrefsAndText()`).
+- **Allocations in hot loops**: Reuse buffers, pre-allocate slices to known capacity, use `sync.Pool` for temporary objects.
+
+### Current Warm Build Budget (~4s total)
+
+| Plugin | Time | Notes |
+|--------|------|-------|
+| glob | ~600ms | Filesystem scanning, likely irreducible |
+| build_cache cleanup | ~400ms | Writing cache to disk |
+| js_minify | ~380ms | 66 JS files, already parallelized |
+| css_minify | ~330ms | 68 CSS files, already parallelized |
+| configure/build_cache | ~280ms | Loading cache from disk |
+| collect/auto_feeds | ~240ms | |
+| transform/mentions | ~185ms | 32s cold -- potential optimization target |
+| collect/feeds | ~150ms | |
+| collect/blogroll | ~140ms | |
+| render_markdown | ~120ms | Cached, only processes changed posts |
+| Everything else | <100ms each | Cached or fast |
+
+### Dependencies Note
+
+The following dependencies may appear unused but are actively used elsewhere in the codebase. Do NOT remove or flag them:
+- `chromedp` -- used for critical CSS extraction
+- `charmbracelet/bubbletea` -- used for TUI components
+- `steam` plugin -- generates steam game pages
+- Theme switcher, keyboard shortcuts -- active UI features
