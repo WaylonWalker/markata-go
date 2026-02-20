@@ -4,7 +4,6 @@ package plugins
 import (
 	"log"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 )
@@ -23,8 +22,8 @@ type minifyResult struct {
 
 // runMinification processes a list of files through a minifier, logging statistics.
 // It is shared between css_minify and js_minify plugins.
-// Files are processed concurrently using a worker pool sized to the number of CPUs.
-func runMinification(pluginName string, files []string, isExcluded excludeFunc, minify minifyFunc) {
+// Files are processed concurrently using a worker pool sized to the given concurrency.
+func runMinification(pluginName string, files []string, isExcluded excludeFunc, minify minifyFunc, concurrency int) {
 	if len(files) == 0 {
 		log.Printf("[%s] No files found", pluginName)
 		return
@@ -50,7 +49,10 @@ func runMinification(pluginName string, files []string, isExcluded excludeFunc, 
 	}
 
 	// Process files concurrently with a worker pool
-	workers := runtime.NumCPU()
+	workers := concurrency
+	if workers < 1 {
+		workers = 1
+	}
 	if workers > len(toProcess) {
 		workers = len(toProcess)
 	}

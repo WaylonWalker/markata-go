@@ -303,7 +303,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 	// This converts ~2900 sequential os.ReadFile calls into a parallel batch,
 	// significantly reducing wall-clock time for the cache restore phase.
 	if len(cacheablePosts) > 0 && cache != nil {
-		p.batchRestoreCachedHTML(cacheablePosts, cache, &postsNeedingRender)
+		p.batchRestoreCachedHTML(cacheablePosts, cache, &postsNeedingRender, m.Concurrency())
 	}
 	t2 := time.Now()
 	log.Printf("[templates] Phase 1b batch restore: took %v, %d now need render", t2.Sub(t1), len(postsNeedingRender))
@@ -346,6 +346,7 @@ func (p *TemplatesPlugin) batchRestoreCachedHTML(
 	posts []cacheablePost,
 	cache *buildcache.Cache,
 	postsNeedingRender *[]*models.Post,
+	concurrency int,
 ) {
 	type result struct {
 		idx  int
@@ -356,7 +357,10 @@ func (p *TemplatesPlugin) batchRestoreCachedHTML(
 	resultCh := make(chan result, len(posts))
 
 	// Use a worker pool with bounded concurrency for parallel file reads
-	const numWorkers = 32
+	numWorkers := concurrency
+	if numWorkers > len(posts) {
+		numWorkers = len(posts)
+	}
 	jobs := make(chan int, len(posts))
 	var wg sync.WaitGroup
 
