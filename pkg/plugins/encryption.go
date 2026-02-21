@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/encryption"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -243,6 +244,8 @@ func (p *EncryptionPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	cache := GetBuildCache(m)
+
 	// Find all private posts (whether they need encryption or not)
 	privatePosts := m.FilterPosts(func(post *models.Post) bool {
 		return !post.Skip && !post.Draft && post.Private
@@ -283,13 +286,78 @@ func (p *EncryptionPlugin) Render(m *lifecycle.Manager) error {
 		return p.shouldEncrypt(post)
 	})
 
+	postsToEncrypt = filterEncryptedPostsForServe(m, postsToEncrypt)
+
 	if len(postsToEncrypt) == 0 {
 		return nil
 	}
 
 	return m.ProcessPostsSliceConcurrently(postsToEncrypt, func(post *models.Post) error {
-		return p.encryptPost(post)
+		return p.encryptPostWithCache(post, cache)
 	})
+}
+
+func filterEncryptedPostsForServe(m *lifecycle.Manager, posts []*models.Post) []*models.Post {
+	if !lifecycle.IsServeFastMode(m) {
+		return posts
+	}
+	affected := lifecycle.GetServeAffectedPaths(m)
+	if len(affected) == 0 {
+		return posts
+	}
+	filtered := posts[:0]
+	for _, post := range posts {
+		if affected[post.Path] {
+			filtered = append(filtered, post)
+		}
+	}
+	return filtered
+}
+
+func (p *EncryptionPlugin) encryptPostWithCache(post *models.Post, cache *buildcache.Cache) error {
+	keyName := post.SecretKey
+	if keyName == "" {
+		keyName = p.defaultKey
+	}
+	password, err := p.getKeyPassword(keyName)
+	if err != nil {
+		return err
+	}
+	encryptedHash := computeEncryptedHash(post.ArticleHTML, keyName, password, p.decryptionHint)
+
+	if cache != nil {
+		if cached := cache.GetCachedEncryptedHTML(post.Path, encryptedHash); cached != "" {
+			post.ArticleHTML = cached
+			post.Set("has_encrypted_content", true)
+			if keyName != "" {
+				post.Set("encryption_key_name", keyName)
+			}
+			templates.InvalidatePost(post)
+			return nil
+		}
+	}
+
+	err = p.encryptPost(post)
+	if err != nil {
+		return err
+	}
+	if cache != nil {
+		//nolint:errcheck // best-effort caching
+		cache.CacheEncryptedHTML(post.Path, encryptedHash, post.ArticleHTML)
+	}
+	return nil
+}
+
+func computeEncryptedHash(articleHTML, keyName, password, hint string) string {
+	var b strings.Builder
+	b.WriteString(articleHTML)
+	b.WriteByte('\x00')
+	b.WriteString(keyName)
+	b.WriteByte('\x00')
+	b.WriteString(password)
+	b.WriteByte('\x00')
+	b.WriteString(hint)
+	return buildcache.ContentHash(b.String())
 }
 
 // shouldEncrypt determines if a post should have its content encrypted.

@@ -121,12 +121,24 @@ func (p *PublishFeedsPlugin) Configure(m *lifecycle.Manager) error {
 func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
-
-	// Get feed configs from cache
+	// ensure we have access to feed configs before potentially async publish
 	var feedConfigs []models.FeedConfig
 	if cached, ok := m.Cache().Get("feed_configs"); ok {
 		if fcs, ok := cached.([]models.FeedConfig); ok {
 			feedConfigs = fcs
+		}
+	}
+	if config.Extra != nil {
+		if async, ok := config.Extra["feeds_async"].(bool); ok && async {
+			if len(feedConfigs) == 0 {
+				return nil
+			}
+			go func() {
+				if err := p.publishFeedsAsync(m, feedConfigs); err != nil {
+					log.Printf("[publish_feeds] async publish failed: %v", err)
+				}
+			}()
+			return nil
 		}
 	}
 
@@ -142,12 +154,6 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	// Get build cache for incremental builds
 	buildCache := GetBuildCache(m)
 	var changedSlugs map[string]bool
-	if buildCache != nil {
-		changedSlugs = make(map[string]bool)
-		for _, slug := range buildCache.GetChangedSlugs() {
-			changedSlugs[slug] = true
-		}
-	}
 
 	// Track skipped feeds
 	var skippedCount int
@@ -225,6 +231,80 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	return nil
 }
 
+func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs []models.FeedConfig) error {
+	config := m.Config()
+	outputDir := config.OutputDir
+	if len(feedConfigs) == 0 {
+		return nil
+	}
+
+	if err := p.copyXSLStylesheets(config, outputDir); err != nil {
+		return fmt.Errorf("copying XSL stylesheets: %w", err)
+	}
+
+	buildCache := GetBuildCache(m)
+	var skippedCount int
+	var rebuiltCount int
+
+	const maxConcurrency = 8
+	numFeeds := len(feedConfigs)
+	if numFeeds <= 2 {
+		for i := range feedConfigs {
+			fc := &feedConfigs[i]
+			skip, hash := p.shouldSkipFeed(fc, buildCache, nil, outputDir)
+			if skip {
+				skippedCount++
+				continue
+			}
+			if err := p.publishFeed(fc, config, outputDir); err != nil {
+				return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
+			}
+			rebuiltCount++
+			p.cacheFeedHash(fc, buildCache, hash)
+		}
+	} else {
+		sem := make(chan struct{}, maxConcurrency)
+		errChan := make(chan error, numFeeds)
+		var wg sync.WaitGroup
+
+		for i := range feedConfigs {
+			fc := &feedConfigs[i]
+			wg.Add(1)
+			go func(fc *models.FeedConfig) {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
+
+				skip, hash := p.shouldSkipFeed(fc, buildCache, nil, outputDir)
+				if skip {
+					skippedCount++
+					return
+				}
+				if err := p.publishFeed(fc, config, outputDir); err != nil {
+					errChan <- fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
+					return
+				}
+				rebuiltCount++
+				p.cacheFeedHash(fc, buildCache, hash)
+			}(fc)
+		}
+
+		wg.Wait()
+		close(errChan)
+		for err := range errChan {
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if skippedCount > 0 || rebuiltCount > 0 {
+		log.Printf("[publish_feeds] Async: %d feeds skipped, %d rebuilt", skippedCount, rebuiltCount)
+	}
+
+	return nil
+}
+
 // computeFeedHash computes a hash of the feed's content and configuration.
 // It includes post slugs (in feed order to detect sort changes), and all
 // configuration fields that affect feed output.
@@ -294,7 +374,7 @@ func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
 // shouldSkipFeed checks if a feed can be skipped (incremental build).
 // Returns (skip bool, hash string) - hash is returned so callers can reuse it
 // for caching without recomputing.
-func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interface{}, changedSlugs map[string]bool, outputDir string) (skip bool, hash string) {
+func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interface{}, _ map[string]bool, outputDir string) (skip bool, hash string) {
 	// Always compute hash since we return it for caching
 	currentHash := p.computeFeedHash(fc)
 
@@ -307,11 +387,13 @@ func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interfa
 		return false, currentHash
 	}
 
-	// Check if any post in this feed has changed
-	if len(changedSlugs) > 0 {
+	// Check if any post in this feed has feed-relevant changes
+	if len(fc.Posts) > 0 {
 		for _, post := range fc.Posts {
-			if changedSlugs[post.Slug] {
-				return false, currentHash // Need to rebuild
+			currentPostHash := computePostFeedItemHash(post)
+			cachedPostHash, _, _ := bc.GetPostSemanticHashes(post.Path)
+			if cachedPostHash != currentPostHash {
+				return false, currentHash
 			}
 		}
 	}
