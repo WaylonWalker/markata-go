@@ -72,6 +72,12 @@ type Cache struct {
 	// Feeds maps feed slug to cached feed metadata
 	Feeds map[string]*FeedCache `json:"feeds,omitempty"`
 
+	// TagsListingHash caches the tags listing output state
+	TagsListingHash string `json:"tags_listing_hash,omitempty"`
+
+	// GardenHash caches the garden view output state
+	GardenHash string `json:"garden_hash,omitempty"`
+
 	// Graph tracks dependencies between posts for transitive invalidation
 	Graph *DependencyGraph `json:"graph,omitempty"`
 
@@ -90,6 +96,15 @@ type Cache struct {
 	// changedSlugs tracks slugs that changed this build (for dependency invalidation)
 	changedSlugs map[string]bool
 
+	// changedFeedSlugs tracks slugs with feed-relevant changes this build
+	changedFeedSlugs map[string]bool
+
+	// tagsDirty marks whether tag outputs should rebuild this build
+	tagsDirty bool
+
+	// gardenDirty marks whether garden outputs should rebuild this build
+	gardenDirty bool
+
 	// GlobFiles caches the list of discovered files from glob stage
 	GlobFiles []string `json:"glob_files,omitempty"`
 
@@ -107,6 +122,8 @@ type Cache struct {
 	articleHTMLMemory sync.Map
 	// postDataMemory maps post cache file path -> *CachedPostData
 	postDataMemory sync.Map
+	// encryptedHTMLMemory maps EncryptedHTMLPath -> HTML string
+	encryptedHTMLMemory sync.Map
 }
 
 // PostCache stores cached metadata for a single post.
@@ -168,6 +185,21 @@ type PostCache struct {
 
 	// GlossaryHTML is the cached ArticleHTML output after glossary processing.
 	GlossaryHTML string `json:"glossary_html,omitempty"`
+
+	// EncryptedHash is a hash of inputs for encrypted HTML caching.
+	EncryptedHash string `json:"encrypted_hash,omitempty"`
+
+	// EncryptedHTMLPath is the path to cached encrypted HTML wrapper.
+	EncryptedHTMLPath string `json:"encrypted_html_path,omitempty"`
+
+	// FeedItemHash is a hash of fields that affect feed output for this post.
+	FeedItemHash string `json:"feed_item_hash,omitempty"`
+
+	// TagIndexHash is a hash of fields that affect tag listings for this post.
+	TagIndexHash string `json:"tag_index_hash,omitempty"`
+
+	// GardenHash is a hash of fields that affect garden view output for this post.
+	GardenHash string `json:"garden_hash,omitempty"`
 }
 
 // FeedCache stores cached metadata for a single feed.
@@ -182,12 +214,13 @@ func New(cacheDir string) *Cache {
 		cacheDir = DefaultCacheDir
 	}
 	return &Cache{
-		Version:      CacheVersion,
-		Posts:        make(map[string]*PostCache),
-		Feeds:        make(map[string]*FeedCache),
-		Graph:        NewDependencyGraph(),
-		path:         filepath.Join(cacheDir, CacheFileName),
-		changedSlugs: make(map[string]bool),
+		Version:          CacheVersion,
+		Posts:            make(map[string]*PostCache),
+		Feeds:            make(map[string]*FeedCache),
+		Graph:            NewDependencyGraph(),
+		path:             filepath.Join(cacheDir, CacheFileName),
+		changedSlugs:     make(map[string]bool),
+		changedFeedSlugs: make(map[string]bool),
 	}
 }
 
@@ -228,6 +261,7 @@ func Load(cacheDir string) (*Cache, error) {
 
 	// Ensure changedSlugs is initialized
 	cache.changedSlugs = make(map[string]bool)
+	cache.changedFeedSlugs = make(map[string]bool)
 
 	return cache, nil
 }
@@ -416,6 +450,110 @@ func (c *Cache) MarkRebuiltWithSlug(sourcePath, slug, inputHash, outputPath, tem
 	if slug != "" {
 		c.changedSlugs[slug] = true
 	}
+}
+
+// UpdatePostSemanticHashes updates cached per-post hashes for feed/tags/garden.
+// Returns which hashes changed compared to cache.
+func (c *Cache) UpdatePostSemanticHashes(sourcePath, feedHash, tagHash, gardenHash string) (feedChanged, tagChanged, gardenChanged bool) {
+	if sourcePath == "" {
+		return false, false, false
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	cacheEntry, ok := c.Posts[sourcePath]
+	if !ok {
+		cacheEntry = &PostCache{}
+		c.Posts[sourcePath] = cacheEntry
+	}
+
+	if cacheEntry.FeedItemHash != feedHash {
+		feedChanged = true
+		cacheEntry.FeedItemHash = feedHash
+	}
+	if cacheEntry.TagIndexHash != tagHash {
+		tagChanged = true
+		cacheEntry.TagIndexHash = tagHash
+	}
+	if cacheEntry.GardenHash != gardenHash {
+		gardenChanged = true
+		cacheEntry.GardenHash = gardenHash
+	}
+	if tagChanged {
+		c.tagsDirty = true
+	}
+	if gardenChanged {
+		c.gardenDirty = true
+	}
+
+	if feedChanged || tagChanged || gardenChanged {
+		c.dirty = true
+	}
+
+	return feedChanged, tagChanged, gardenChanged
+}
+
+// GetPostSemanticHashes returns the cached feed/tag/garden hashes for a post.
+func (c *Cache) GetPostSemanticHashes(sourcePath string) (feedHash, tagHash, gardenHash string) {
+	if sourcePath == "" {
+		return "", "", ""
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if entry, ok := c.Posts[sourcePath]; ok {
+		return entry.FeedItemHash, entry.TagIndexHash, entry.GardenHash
+	}
+	return "", "", ""
+}
+
+// TagsDirty reports whether any tag-relevant fields changed this build.
+func (c *Cache) TagsDirty() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.tagsDirty
+}
+
+// GardenDirty reports whether any garden-relevant fields changed this build.
+func (c *Cache) GardenDirty() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.gardenDirty
+}
+
+// SetTagsListingHash stores the tags listing hash in the cache.
+func (c *Cache) SetTagsListingHash(hash string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.TagsListingHash == hash {
+		return
+	}
+	c.TagsListingHash = hash
+	c.dirty = true
+}
+
+// GetTagsListingHash returns the cached tags listing hash.
+func (c *Cache) GetTagsListingHash() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.TagsListingHash
+}
+
+// SetGardenHash stores the garden view hash in the cache.
+func (c *Cache) SetGardenHash(hash string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.GardenHash == hash {
+		return
+	}
+	c.GardenHash = hash
+	c.dirty = true
+}
+
+// GetGardenHash returns the cached garden view hash.
+func (c *Cache) GetGardenHash() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.GardenHash
 }
 
 // MarkSkipped records that a post was skipped (already up to date).
@@ -679,6 +817,9 @@ func (c *Cache) ResetStats() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.changedSlugs = make(map[string]bool)
+	c.changedFeedSlugs = make(map[string]bool)
+	c.tagsDirty = false
+	c.gardenDirty = false
 }
 
 // RemoveStale removes cache entries for posts that no longer exist.
@@ -837,12 +978,82 @@ func (c *Cache) GetChangedSlugs() []string {
 	return result
 }
 
+// GetChangedFeedSlugs returns slugs that changed in feed-relevant ways this build.
+func (c *Cache) GetChangedFeedSlugs() []string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if len(c.changedFeedSlugs) == 0 {
+		return nil
+	}
+	result := make([]string, 0, len(c.changedFeedSlugs))
+	for slug := range c.changedFeedSlugs {
+		result = append(result, slug)
+	}
+	sort.Strings(result)
+	return result
+}
+
+// ClearChangedFeedSlugs resets the feed change tracking for the current build.
+func (c *Cache) ClearChangedFeedSlugs() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.changedFeedSlugs = make(map[string]bool)
+}
+
 // MarkSlugChanged records that a slug changed this build.
 // Used for dependency invalidation.
 func (c *Cache) MarkSlugChanged(slug string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.changedSlugs[slug] = true
+}
+
+// MarkFeedSlugChanged records that a slug changed in feed-relevant ways.
+func (c *Cache) MarkFeedSlugChanged(slug string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.changedFeedSlugs[slug] = true
+}
+
+// MarkChangedPaths records slugs for the provided source paths if known in the cache.
+// This is used to seed dependency invalidation from filesystem change events.
+func (c *Cache) MarkChangedPaths(paths []string) {
+	if len(paths) == 0 {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		if slug := c.Graph.PathToSlug[path]; slug != "" {
+			c.changedSlugs[slug] = true
+		}
+	}
+}
+
+// MarkAffectedDependents records all dependents (transitive) of changed slugs as changed.
+func (c *Cache) MarkAffectedDependents(changedSlugs []string) {
+	if len(changedSlugs) == 0 {
+		return
+	}
+
+	c.mu.RLock()
+	affectedPaths := c.Graph.GetAffectedPosts(changedSlugs)
+	c.mu.RUnlock()
+	if len(affectedPaths) == 0 {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, path := range affectedPaths {
+		if slug := c.Graph.PathToSlug[path]; slug != "" {
+			c.changedSlugs[slug] = true
+		}
+	}
 }
 
 // GetGlobCache returns the cached glob file list and pattern hash.
@@ -870,6 +1081,9 @@ func (c *Cache) GraphSize() int {
 
 // HTMLCacheDir is the subdirectory for cached rendered HTML files.
 const HTMLCacheDir = "html-cache"
+
+// EncryptedHTMLCacheDir is the subdirectory for cached encrypted HTML files.
+const EncryptedHTMLCacheDir = "encrypted-html-cache"
 
 // GetCachedArticleHTML returns the cached rendered HTML for a post if available.
 // Returns empty string if not cached or cache is stale.
@@ -903,30 +1117,10 @@ func (c *Cache) GetCachedArticleHTML(sourcePath, contentHash string) string {
 
 // CacheArticleHTML stores rendered HTML for a post.
 func (c *Cache) CacheArticleHTML(sourcePath, contentHash, articleHTML string) error {
-	// Get cache directory from path
-	cacheDir := filepath.Dir(c.path)
-	htmlCacheDir := filepath.Join(cacheDir, HTMLCacheDir)
-
-	// Ensure html-cache directory exists
-	if err := os.MkdirAll(htmlCacheDir, 0o755); err != nil {
-		return fmt.Errorf("creating html cache dir: %w", err)
+	htmlPath, err := c.cacheHTMLFile(HTMLCacheDir, contentHash, articleHTML, &c.articleHTMLMemory)
+	if err != nil {
+		return err
 	}
-
-	// Use content hash as filename (first 16 chars for shorter paths)
-	hashPrefix := contentHash
-	if len(hashPrefix) > 16 {
-		hashPrefix = hashPrefix[:16]
-	}
-	htmlPath := filepath.Join(htmlCacheDir, hashPrefix+".html")
-
-	// Write HTML to cache file
-	//nolint:gosec // G306: cache files need 0644 for reading by other processes
-	if err := os.WriteFile(htmlPath, []byte(articleHTML), 0o644); err != nil {
-		return fmt.Errorf("writing html cache: %w", err)
-	}
-
-	// Store in memory cache for future reads within this build
-	c.articleHTMLMemory.Store(htmlPath, articleHTML)
 
 	// Update cache metadata
 	c.mu.Lock()
@@ -1056,6 +1250,78 @@ func (c *Cache) CacheFullHTML(sourcePath, fullHTML string) error {
 	return nil
 }
 
+// GetCachedEncryptedHTML returns cached encrypted HTML if hash matches.
+func (c *Cache) GetCachedEncryptedHTML(sourcePath, encryptedHash string) string {
+	c.mu.RLock()
+	cached, ok := c.Posts[sourcePath]
+	c.mu.RUnlock()
+	if !ok || cached.EncryptedHash != encryptedHash || cached.EncryptedHTMLPath == "" {
+		return ""
+	}
+
+	if val, ok := c.encryptedHTMLMemory.Load(cached.EncryptedHTMLPath); ok {
+		if html, ok := val.(string); ok {
+			return html
+		}
+	}
+
+	data, err := os.ReadFile(cached.EncryptedHTMLPath)
+	if err != nil {
+		return ""
+	}
+
+	html := string(data)
+	c.encryptedHTMLMemory.Store(cached.EncryptedHTMLPath, html)
+	return html
+}
+
+// CacheEncryptedHTML stores encrypted HTML for a post.
+func (c *Cache) CacheEncryptedHTML(sourcePath, encryptedHash, html string) error {
+	htmlPath, err := c.cacheHTMLFile(EncryptedHTMLCacheDir, encryptedHash, html, &c.encryptedHTMLMemory)
+	if err != nil {
+		return err
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.EncryptedHash = encryptedHash
+		cached.EncryptedHTMLPath = htmlPath
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			EncryptedHash:     encryptedHash,
+			EncryptedHTMLPath: htmlPath,
+		}
+	}
+	c.dirty = true
+	return nil
+}
+
+func (c *Cache) cacheHTMLFile(cacheDirName, hash, html string, memory *sync.Map) (string, error) {
+	cacheDir := filepath.Dir(c.path)
+	cacheSubDir := filepath.Join(cacheDir, cacheDirName)
+	if err := os.MkdirAll(cacheSubDir, 0o755); err != nil {
+		return "", fmt.Errorf("creating html cache dir: %w", err)
+	}
+
+	hashPrefix := hash
+	if len(hashPrefix) > 16 {
+		hashPrefix = hashPrefix[:16]
+	}
+	htmlPath := filepath.Join(cacheSubDir, hashPrefix+".html")
+
+	//nolint:gosec // G306: cache files need 0644 for reading by other processes
+	if err := os.WriteFile(htmlPath, []byte(html), 0o644); err != nil {
+		return "", fmt.Errorf("writing html cache: %w", err)
+	}
+
+	if memory != nil {
+		memory.Store(htmlPath, html)
+	}
+
+	return htmlPath, nil
+}
+
 // PostCacheDir is the subdirectory for cached parsed post JSON files.
 const PostCacheDir = "post-cache"
 
@@ -1121,6 +1387,41 @@ func (c *Cache) GetCachedPostData(sourcePath string, modTime int64) *CachedPostD
 	}
 
 	// Store in memory for future calls
+	c.postDataMemory.Store(postPath, &postData)
+	return &postData
+}
+
+// GetCachedPostDataLatest returns cached post data without checking ModTime.
+// Use only when external change detection is trusted.
+func (c *Cache) GetCachedPostDataLatest(sourcePath string) *CachedPostData {
+	if sourcePath == "" {
+		return nil
+	}
+
+	// Compute the post cache file path
+	cacheDir := filepath.Dir(c.path)
+	postCacheDir := filepath.Join(cacheDir, PostCacheDir)
+	h := sha256.Sum256([]byte(sourcePath))
+	hashPrefix := hex.EncodeToString(h[:])[:16]
+	postPath := filepath.Join(postCacheDir, hashPrefix+".json")
+
+	// Check in-memory cache first
+	if val, ok := c.postDataMemory.Load(postPath); ok {
+		if pd, ok := val.(*CachedPostData); ok {
+			return pd
+		}
+	}
+
+	data, err := os.ReadFile(postPath)
+	if err != nil {
+		return nil
+	}
+
+	var postData CachedPostData
+	if err := json.Unmarshal(data, &postData); err != nil {
+		return nil
+	}
+
 	c.postDataMemory.Store(postPath, &postData)
 	return &postData
 }

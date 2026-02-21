@@ -104,6 +104,36 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 	// Reset stats for this build
 	cache.ResetStats()
 
+	if lifecycle.IsServeFullRebuild(m) {
+		lifecycle.SetServeChangedPaths(m, nil)
+		lifecycle.SetServeAffectedPaths(m, nil)
+		return nil
+	}
+
+	return p.configureIncrementalServe(m, cache)
+}
+
+func (p *BuildCachePlugin) configureIncrementalServe(m *lifecycle.Manager, cache *buildcache.Cache) error {
+	changedPaths := lifecycle.GetServeChangedPaths(m)
+	if len(changedPaths) == 0 {
+		lifecycle.SetServeAffectedPaths(m, nil)
+		return nil
+	}
+
+	cache.MarkChangedPaths(changedPaths)
+
+	changedSlugs := cache.GetChangedSlugs()
+	affectedPaths := cache.GetAffectedPosts(changedSlugs)
+	cache.MarkAffectedDependents(changedSlugs)
+
+	affected := make(map[string]bool, len(changedPaths)+len(affectedPaths))
+	for _, path := range changedPaths {
+		affected[path] = true
+	}
+	for _, path := range affectedPaths {
+		affected[path] = true
+	}
+	lifecycle.SetServeAffectedPaths(m, affected)
 	return nil
 }
 
@@ -113,7 +143,31 @@ func (p *BuildCachePlugin) Cleanup(m *lifecycle.Manager) error {
 		return nil
 	}
 
+	if extra := m.Config().Extra; extra != nil {
+		if async, ok := extra["cache_cleanup_async"].(bool); ok && async {
+			go func() {
+				if err := p.cleanupCache(m); err != nil {
+					log.Printf("[build_cache] async cleanup failed: %v", err)
+				}
+			}()
+			return nil
+		}
+	}
+
+	return p.cleanupCache(m)
+}
+
+func (p *BuildCachePlugin) cleanupCache(m *lifecycle.Manager) error {
+	if p.cache == nil {
+		return nil
+	}
+
 	// Remove stale entries (posts that no longer exist)
+	if config := m.Config(); config.Extra != nil {
+		if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
+			return p.saveCache(m)
+		}
+	}
 	posts := m.Posts()
 	currentPaths := make(map[string]bool, len(posts))
 	for _, post := range posts {
@@ -125,6 +179,13 @@ func (p *BuildCachePlugin) Cleanup(m *lifecycle.Manager) error {
 	}
 
 	// Save cache
+	return p.saveCache(m)
+}
+
+func (p *BuildCachePlugin) saveCache(m *lifecycle.Manager) error {
+	if p.cache == nil {
+		return nil
+	}
 	if err := p.cache.Save(); err != nil {
 		log.Printf("[build_cache] Failed to save build cache: %v", err)
 	}

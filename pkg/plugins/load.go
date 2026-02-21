@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
@@ -52,88 +52,229 @@ func (p *LoadPlugin) Load(m *lifecycle.Manager) error {
 		baseDir = "."
 	}
 
-	// Get build cache for ModTime-based skipping
-	cache := GetBuildCache(m)
-
-	// Use manager's concurrency setting for worker pool size
-	numWorkers := m.Concurrency()
-	if numWorkers < 1 {
-		numWorkers = 4
+	if cachedPosts := lifecycle.GetServeCachedPosts(m); len(cachedPosts) > 0 {
+		return p.loadFromCachedPosts(m, files, baseDir, cachedPosts)
 	}
 
-	// For small file counts, don't bother with parallelism overhead
-	if len(files) <= numWorkers {
+	// Get build cache for ModTime-based skipping
+	cache := GetBuildCache(m)
+	if lifecycle.IsServeFullRebuild(m) || cache == nil {
+		return p.loadAllFiles(m, files, baseDir, cache)
+	}
+
+	affected := lifecycle.GetServeAffectedPaths(m)
+	if len(affected) == 0 {
+		return p.loadAllFiles(m, files, baseDir, cache)
+	}
+
+	restored, _, err := p.restoreFromCacheOrLoadChanged(files, baseDir, cache, affected)
+	if err != nil {
+		return err
+	}
+
+	m.SetPosts(restored)
+	return nil
+}
+
+func (p *LoadPlugin) loadFromCachedPosts(
+	m *lifecycle.Manager,
+	files []string,
+	baseDir string,
+	cachedPosts map[string]*models.Post,
+) error {
+	cache := GetBuildCache(m)
+	posts := make([]*models.Post, 0, len(files))
+	useFastCache := false
+	if config := m.Config(); config.Extra != nil {
+		if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
+			useFastCache = true
+		}
+	}
+	affected := lifecycle.GetServeAffectedPaths(m)
+	for _, file := range files {
+		post, err := p.loadCachedPost(file, baseDir, cachedPosts, cache, useFastCache, affected)
+		if err != nil {
+			return err
+		}
+		if post != nil {
+			posts = append(posts, post)
+		}
+	}
+	m.SetPosts(posts)
+	return nil
+}
+
+func (p *LoadPlugin) loadCachedPost(
+	file string,
+	baseDir string,
+	cachedPosts map[string]*models.Post,
+	cache *buildcache.Cache,
+	useFastCache bool,
+	affected map[string]bool,
+) (*models.Post, error) {
+	if existing, ok := cachedPosts[file]; ok && !useFastCache {
+		fullPath := file
+		if !filepath.IsAbs(file) {
+			fullPath = filepath.Join(baseDir, file)
+		}
+		stat, err := os.Stat(fullPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil, nil
+			}
+			return nil, fmt.Errorf("failed to stat %s: %w", file, err)
+		}
+		if cache != nil {
+			if cachedData := cache.GetCachedPostData(file, stat.ModTime().UnixNano()); cachedData != nil {
+				return p.restorePostFromCache(cachedData, cache), nil
+			}
+		}
+		return existing, nil
+	}
+
+	if useFastCache {
+		if len(affected) > 0 && affected[file] {
+			return p.loadFile(file, baseDir, cache)
+		}
+		if cache != nil {
+			if cachedData := cache.GetCachedPostDataLatest(file); cachedData != nil {
+				return p.restorePostFromCache(cachedData, cache), nil
+			}
+		}
+	}
+
+	return p.loadFile(file, baseDir, cache)
+}
+
+func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir string, cache *buildcache.Cache) error {
+	if cache == nil {
 		return p.loadSequential(m, files, baseDir, cache)
 	}
 
-	// Channel for sending file paths to workers
-	jobs := make(chan string, len(files))
-
-	// Result type for collecting posts or errors
-	type loadResult struct {
-		post *models.Post
-		err  error
-		file string
+	posts := make([]*models.Post, 0, len(files))
+	var firstErr error
+	useFastCache := false
+	if config := m.Config(); config.Extra != nil {
+		if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
+			useFastCache = true
+		}
 	}
-	results := make(chan loadResult, len(files))
 
-	// Start worker pool
-	var wg sync.WaitGroup
-	for w := 0; w < numWorkers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for file := range jobs {
+	affected := lifecycle.GetServeAffectedPaths(m)
+
+	for _, file := range files {
+		if useFastCache {
+			if len(affected) > 0 && affected[file] {
 				post, err := p.loadFile(file, baseDir, cache)
 				if err != nil {
-					results <- loadResult{err: err, file: file}
+					if firstErr == nil {
+						firstErr = err
+					}
 					continue
 				}
-				results <- loadResult{post: post, file: file}
+				posts = append(posts, post)
+				continue
 			}
-		}()
-	}
+			cachedData := cache.GetCachedPostDataLatest(file)
+			if cachedData != nil {
+				posts = append(posts, p.restorePostFromCache(cachedData, cache))
+				continue
+			}
+		}
 
-	// Send all files to workers
-	for _, file := range files {
-		jobs <- file
-	}
-	close(jobs)
-
-	// Wait for all workers to finish in a separate goroutine
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	// Collect results, preserving order for deterministic output
-	// We collect all results first, then add them in original file order
-	postMap := make(map[string]*models.Post, len(files))
-	var firstErr error
-
-	for result := range results {
-		if result.err != nil {
+		fullPath := file
+		if !filepath.IsAbs(file) {
+			fullPath = filepath.Join(baseDir, file)
+		}
+		stat, err := os.Stat(fullPath)
+		if err != nil {
 			if firstErr == nil {
-				firstErr = result.err
+				firstErr = fmt.Errorf("failed to stat %s: %w", file, err)
 			}
 			continue
 		}
-		postMap[result.file] = result.post
+		cachedData := cache.GetCachedPostData(file, stat.ModTime().UnixNano())
+		if cachedData != nil {
+			posts = append(posts, p.restorePostFromCache(cachedData, cache))
+			continue
+		}
+		post, err := p.loadFile(file, baseDir, cache)
+		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		posts = append(posts, post)
 	}
-
-	// Return first error encountered
 	if firstErr != nil {
 		return firstErr
 	}
+	for _, post := range posts {
+		m.AddPost(post)
+	}
+	return nil
+}
 
-	// Add posts in original file order for deterministic output
-	for _, file := range files {
-		if post, ok := postMap[file]; ok {
-			m.AddPost(post)
-		}
+func (p *LoadPlugin) restoreFromCacheOrLoadChanged(
+	files []string,
+	baseDir string,
+	cache *buildcache.Cache,
+	affected map[string]bool,
+) (posts, changedPosts []*models.Post, err error) {
+	if cache == nil {
+		return nil, nil, fmt.Errorf("build cache unavailable")
 	}
 
-	return nil
+	posts = make([]*models.Post, 0, len(files))
+	var firstErr error
+
+	for _, file := range files {
+		if affected[file] {
+			post, err := p.loadFile(file, baseDir, cache)
+			if err != nil {
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			posts = append(posts, post)
+			changedPosts = append(changedPosts, post)
+			continue
+		}
+
+		fullPath := file
+		if !filepath.IsAbs(file) {
+			fullPath = filepath.Join(baseDir, file)
+		}
+		stat, err := os.Stat(fullPath)
+		if err != nil {
+			if firstErr == nil {
+				firstErr = fmt.Errorf("failed to stat %s: %w", file, err)
+			}
+			continue
+		}
+		modTime := stat.ModTime().UnixNano()
+		cachedData := cache.GetCachedPostData(file, modTime)
+		if cachedData == nil {
+			post, err := p.loadFile(file, baseDir, cache)
+			if err != nil {
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
+			}
+			posts = append(posts, post)
+			continue
+		}
+		posts = append(posts, p.restorePostFromCache(cachedData, cache))
+	}
+
+	if firstErr != nil {
+		return nil, nil, firstErr
+	}
+
+	return posts, changedPosts, nil
 }
 
 // loadFile loads a single file, using cache if ModTime is unchanged.
@@ -155,7 +296,7 @@ func (p *LoadPlugin) loadFile(file, baseDir string, cache *buildcache.Cache) (*m
 	if cache != nil {
 		if cachedData := cache.GetCachedPostData(file, modTime); cachedData != nil {
 			// Restore Post from cached data
-			post := p.restorePostFromCache(cachedData)
+			post := p.restorePostFromCache(cachedData, cache)
 			return post, nil
 		}
 	}
@@ -177,13 +318,26 @@ func (p *LoadPlugin) loadFile(file, baseDir string, cache *buildcache.Cache) (*m
 		postData := p.postToCachedData(post)
 		//nolint:errcheck // caching is best-effort
 		cache.CachePostData(file, modTime, postData)
+		contentHash := buildcache.ContentHash(post.Content)
+		//nolint:errcheck // caching is best-effort
+		cache.CacheArticleHTML(file, contentHash, post.ArticleHTML)
+	}
+
+	if cache != nil {
+		feedHash := computePostFeedItemHash(post)
+		tagHash := computePostTagIndexHash(post)
+		gardenHash := computePostGardenHash(post)
+		feedChanged, _, _ := cache.UpdatePostSemanticHashes(file, feedHash, tagHash, gardenHash)
+		if feedChanged {
+			cache.MarkFeedSlugChanged(post.Slug)
+		}
 	}
 
 	return post, nil
 }
 
 // restorePostFromCache creates a Post from cached data.
-func (p *LoadPlugin) restorePostFromCache(data *buildcache.CachedPostData) *models.Post {
+func (p *LoadPlugin) restorePostFromCache(data *buildcache.CachedPostData, cache *buildcache.Cache) *models.Post {
 	post := models.NewPost(data.Path)
 	post.Content = data.Content
 	post.Slug = data.Slug
@@ -208,7 +362,138 @@ func (p *LoadPlugin) restorePostFromCache(data *buildcache.CachedPostData) *mode
 			post.Set(k, v)
 		}
 	}
+
+	if cache != nil {
+		contentHash := buildcache.ContentHash(data.Content)
+		if cachedHTML := cache.GetCachedArticleHTML(data.Path, contentHash); cachedHTML != "" {
+			post.ArticleHTML = cachedHTML
+		}
+	}
 	return post
+}
+
+func computePostFeedItemHash(post *models.Post) string {
+	if post == nil {
+		return ""
+	}
+	var b strings.Builder
+	if post.Title != nil {
+		b.WriteString(*post.Title)
+	}
+	b.WriteByte('\x00')
+	b.WriteString(post.Slug)
+	b.WriteByte('\x00')
+	b.WriteString(post.Href)
+	b.WriteByte('\x00')
+	if post.Date != nil {
+		b.WriteString(post.Date.UTC().Format(time.RFC3339Nano))
+	}
+	b.WriteByte('\x00')
+	if post.Description != nil {
+		b.WriteString(*post.Description)
+	}
+	b.WriteByte('\x00')
+	b.WriteString(post.ArticleHTML)
+	b.WriteByte('\x00')
+	if len(post.Tags) > 0 {
+		tags := append([]string(nil), post.Tags...)
+		sort.Strings(tags)
+		for _, tag := range tags {
+			b.WriteString(tag)
+			b.WriteByte('\x01')
+		}
+	}
+	b.WriteByte('\x00')
+	if post.Extra != nil {
+		if img, ok := post.Extra["image"].(string); ok {
+			b.WriteString(img)
+		}
+	}
+	return buildcache.ContentHash(b.String())
+}
+
+func computePostTagIndexHash(post *models.Post) string {
+	if post == nil {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(post.Slug)
+	b.WriteByte('\x00')
+	if post.Title != nil {
+		b.WriteString(*post.Title)
+	}
+	b.WriteByte('\x00')
+	b.WriteString(post.Href)
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", post.Published))
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", post.Draft))
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", post.Private))
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", post.Skip))
+	b.WriteByte('\x00')
+	if len(post.Tags) > 0 {
+		tags := append([]string(nil), post.Tags...)
+		sort.Strings(tags)
+		for _, tag := range tags {
+			b.WriteString(tag)
+			b.WriteByte('\x01')
+		}
+	}
+	return buildcache.ContentHash(b.String())
+}
+
+func computePostGardenHash(post *models.Post) string {
+	if post == nil {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(post.Slug)
+	b.WriteByte('\x00')
+	if post.Title != nil {
+		b.WriteString(*post.Title)
+	}
+	b.WriteByte('\x00')
+	b.WriteString(post.Href)
+	b.WriteByte('\x00')
+	if post.Date != nil {
+		b.WriteString(post.Date.UTC().Format(time.RFC3339Nano))
+	}
+	b.WriteByte('\x00')
+	if post.Description != nil {
+		b.WriteString(*post.Description)
+	}
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", post.Published))
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", post.Draft))
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", post.Private))
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", post.Skip))
+	b.WriteByte('\x00')
+	if len(post.Tags) > 0 {
+		tags := append([]string(nil), post.Tags...)
+		sort.Strings(tags)
+		for _, tag := range tags {
+			b.WriteString(tag)
+			b.WriteByte('\x01')
+		}
+	}
+	b.WriteByte('\x00')
+	if len(post.Outlinks) > 0 {
+		links := make([]string, 0, len(post.Outlinks))
+		for _, link := range post.Outlinks {
+			links = append(links, link.RawTarget)
+		}
+		sort.Strings(links)
+		for _, href := range links {
+			b.WriteString(href)
+			b.WriteByte('\x01')
+		}
+	}
+	return buildcache.ContentHash(b.String())
 }
 
 // postToCachedData converts a Post to cacheable data.

@@ -4,6 +4,7 @@ package plugins
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -288,6 +289,23 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	config := m.Config()
 	filterCache := newFeedFilterCache(posts)
 
+	changedSet := map[string]bool{}
+	useIncremental := false
+	if config.Extra != nil {
+		if incremental, ok := config.Extra["feeds_incremental"].(bool); ok && incremental {
+			if cache := GetBuildCache(m); cache != nil {
+				changed := cache.GetChangedFeedSlugs()
+				if len(changed) == 0 {
+					return nil
+				}
+				useIncremental = true
+				for _, slug := range changed {
+					changedSet[slug] = true
+				}
+			}
+		}
+	}
+
 	autoConfig := getAutoFeedsConfig(config)
 
 	// Get private tags from encryption config so that tag feeds for
@@ -297,22 +315,37 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 	// Collect only auto-generated feed configs
 	var autoFeedConfigs []models.FeedConfig
 
-	// Generate tag feeds
-	if autoConfig.Tags.Enabled {
-		tagFeeds := p.generateTagFeeds(posts, autoConfig.Tags, privateTags)
-		autoFeedConfigs = append(autoFeedConfigs, tagFeeds...)
-	}
+	if useIncremental {
+		if autoConfig.Tags.Enabled {
+			tagFeeds := p.generateTagFeedsForChanged(posts, autoConfig.Tags, privateTags, changedSet)
+			autoFeedConfigs = append(autoFeedConfigs, tagFeeds...)
+		}
+		if autoConfig.Categories.Enabled {
+			categoryFeeds := p.generateCategoryFeedsForChanged(posts, autoConfig.Categories, changedSet)
+			autoFeedConfigs = append(autoFeedConfigs, categoryFeeds...)
+		}
+		if autoConfig.Archives.Enabled {
+			archiveFeeds := p.generateArchiveFeedsForChanged(posts, autoConfig.Archives, changedSet)
+			autoFeedConfigs = append(autoFeedConfigs, archiveFeeds...)
+		}
+	} else {
+		// Generate tag feeds
+		if autoConfig.Tags.Enabled {
+			tagFeeds := p.generateTagFeeds(posts, autoConfig.Tags, privateTags)
+			autoFeedConfigs = append(autoFeedConfigs, tagFeeds...)
+		}
 
-	// Generate category feeds
-	if autoConfig.Categories.Enabled {
-		categoryFeeds := p.generateCategoryFeeds(posts, autoConfig.Categories)
-		autoFeedConfigs = append(autoFeedConfigs, categoryFeeds...)
-	}
+		// Generate category feeds
+		if autoConfig.Categories.Enabled {
+			categoryFeeds := p.generateCategoryFeeds(posts, autoConfig.Categories)
+			autoFeedConfigs = append(autoFeedConfigs, categoryFeeds...)
+		}
 
-	// Generate archive feeds
-	if autoConfig.Archives.Enabled {
-		archiveFeeds := p.generateArchiveFeeds(posts, autoConfig.Archives)
-		autoFeedConfigs = append(autoFeedConfigs, archiveFeeds...)
+		// Generate archive feeds
+		if autoConfig.Archives.Enabled {
+			archiveFeeds := p.generateArchiveFeeds(posts, autoConfig.Archives)
+			autoFeedConfigs = append(autoFeedConfigs, archiveFeeds...)
+		}
 	}
 
 	// If no auto-feeds were generated, nothing to do
@@ -423,6 +456,53 @@ func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeed
 	return feeds
 }
 
+func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, privateTags map[string]string, changedSet map[string]bool) []models.FeedConfig {
+	if len(changedSet) == 0 {
+		return nil
+	}
+	// Collect tags from changed posts only
+	tagCounts := make(map[string]int)
+	for _, post := range posts {
+		if !changedSet[post.Slug] {
+			continue
+		}
+		for _, tag := range post.Tags {
+			tagCounts[tag]++
+		}
+	}
+	if len(tagCounts) == 0 {
+		return nil
+	}
+	// Sort tags alphabetically
+	tags := make([]string, 0, len(tagCounts))
+	for tag := range tagCounts {
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+
+	feeds := make([]models.FeedConfig, 0, len(tags))
+	prefix := config.SlugPrefix
+	if prefix == "" {
+		prefix = defaultTagsPrefix
+	}
+	for _, tag := range tags {
+		slug := prefix + "/" + slugify(tag)
+		_, isPrivateTag := privateTags[strings.ToLower(tag)]
+		feeds = append(feeds, models.FeedConfig{
+			Slug:           slug,
+			Title:          fmt.Sprintf("Posts tagged: %s", tag),
+			Description:    fmt.Sprintf("All posts with the tag %q", tag),
+			Filter:         fmt.Sprintf("%q in tags", tag),
+			Sort:           "date",
+			Reverse:        true,
+			Formats:        config.Formats,
+			IncludePrivate: isPrivateTag,
+		})
+	}
+
+	return feeds
+}
+
 // generateCategoryFeeds creates feed configurations for each unique category.
 func (p *AutoFeedsPlugin) generateCategoryFeeds(posts []*models.Post, config AutoFeedTypeConfig) []models.FeedConfig {
 	// Collect all unique categories from Extra["category"]
@@ -447,6 +527,50 @@ func (p *AutoFeedsPlugin) generateCategoryFeeds(posts []*models.Post, config Aut
 		prefix = defaultCategoriesPrefix
 	}
 
+	for _, cat := range categories {
+		slug := prefix + "/" + slugify(cat)
+		feeds = append(feeds, models.FeedConfig{
+			Slug:        slug,
+			Title:       fmt.Sprintf("Category: %s", cat),
+			Description: fmt.Sprintf("All posts in the %q category", cat),
+			Filter:      fmt.Sprintf("category == %q", cat),
+			Sort:        "date",
+			Reverse:     true,
+			Formats:     config.Formats,
+		})
+	}
+
+	return feeds
+}
+
+func (p *AutoFeedsPlugin) generateCategoryFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, changedSet map[string]bool) []models.FeedConfig {
+	if len(changedSet) == 0 {
+		return nil
+	}
+	categoryCounts := make(map[string]int)
+	for _, post := range posts {
+		if !changedSet[post.Slug] {
+			continue
+		}
+		if cat, ok := post.Extra["category"].(string); ok && cat != "" {
+			categoryCounts[cat]++
+		}
+	}
+	if len(categoryCounts) == 0 {
+		return nil
+	}
+	// Sort categories alphabetically
+	categories := make([]string, 0, len(categoryCounts))
+	for cat := range categoryCounts {
+		categories = append(categories, cat)
+	}
+	sort.Strings(categories)
+
+	feeds := make([]models.FeedConfig, 0, len(categories))
+	prefix := config.SlugPrefix
+	if prefix == "" {
+		prefix = defaultCategoriesPrefix
+	}
 	for _, cat := range categories {
 		slug := prefix + "/" + slugify(cat)
 		feeds = append(feeds, models.FeedConfig{
@@ -533,6 +657,93 @@ func (p *AutoFeedsPlugin) generateArchiveFeeds(posts []*models.Post, config Auto
 				Title:       fmt.Sprintf("Archive: %s %d", monthName, year),
 				Description: fmt.Sprintf("All posts from %s %d", monthName, year),
 				Filter:      fmt.Sprintf("date >= %q and date < %q", startDate.Format(time.RFC3339), endDate.Format(time.RFC3339)),
+				Sort:        "date",
+				Reverse:     true,
+				Formats:     config.Formats,
+			})
+		}
+	}
+
+	return feeds
+}
+
+func (p *AutoFeedsPlugin) generateArchiveFeedsForChanged(posts []*models.Post, config AutoArchiveConfig, changedSet map[string]bool) []models.FeedConfig {
+	if len(changedSet) == 0 {
+		return nil
+	}
+	// Collect year/month combos from changed posts
+	yearMonths := make(map[string]bool)
+	years := make(map[int]bool)
+	for _, post := range posts {
+		if !changedSet[post.Slug] {
+			continue
+		}
+		if post.Date == nil {
+			continue
+		}
+		year := post.Date.Year()
+		month := post.Date.Month()
+		years[year] = true
+		yearMonths[fmt.Sprintf("%d/%02d", year, int(month))] = true
+	}
+	if len(years) == 0 && len(yearMonths) == 0 {
+		return nil
+	}
+
+	feeds := make([]models.FeedConfig, 0)
+	prefix := config.SlugPrefix
+	if prefix == "" {
+		prefix = defaultArchivePrefix
+	}
+
+	// Year feeds
+	yearList := make([]int, 0, len(years))
+	for year := range years {
+		yearList = append(yearList, year)
+	}
+	sort.Ints(yearList)
+	for _, year := range yearList {
+		slug := fmt.Sprintf("%s/%d", prefix, year)
+		title := fmt.Sprintf("Archive: %d", year)
+		feeds = append(feeds, models.FeedConfig{
+			Slug:        slug,
+			Title:       title,
+			Description: fmt.Sprintf("All posts from %d", year),
+			Filter:      fmt.Sprintf("date.year == %d", year),
+			Sort:        "date",
+			Reverse:     true,
+			Formats:     config.Formats,
+		})
+	}
+
+	// Month feeds
+	if len(yearMonths) > 0 {
+		yearMonthsList := make([]string, 0, len(yearMonths))
+		for ym := range yearMonths {
+			yearMonthsList = append(yearMonthsList, ym)
+		}
+		sort.Strings(yearMonthsList)
+		for _, ym := range yearMonthsList {
+			slug := fmt.Sprintf("%s/%s", prefix, ym)
+			parts := strings.Split(ym, "/")
+			if len(parts) != 2 {
+				continue
+			}
+			year, err := strconv.Atoi(parts[0])
+			if err != nil {
+				continue
+			}
+			month, err := strconv.Atoi(parts[1])
+			if err != nil {
+				continue
+			}
+			monthName := time.Month(month).String()
+			title := fmt.Sprintf("Archive: %s %d", monthName, year)
+			feeds = append(feeds, models.FeedConfig{
+				Slug:        slug,
+				Title:       title,
+				Description: fmt.Sprintf("All posts from %s %d", monthName, year),
+				Filter:      fmt.Sprintf("date.year == %d and date.month == %d", year, month),
 				Sort:        "date",
 				Reverse:     true,
 				Formats:     config.Formats,

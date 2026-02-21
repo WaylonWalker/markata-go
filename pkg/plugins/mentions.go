@@ -72,6 +72,13 @@ func (p *MentionsPlugin) Priority(stage lifecycle.Stage) int {
 
 // Transform processes @mentions in all post content.
 func (p *MentionsPlugin) Transform(m *lifecycle.Manager) error {
+	config := m.Config()
+	if config.Extra != nil {
+		if disabled, ok := config.Extra["mentions_disabled"].(bool); ok && disabled {
+			return nil
+		}
+	}
+
 	// Build handle resolution map from blogroll config
 	handleMap := p.buildHandleMap(m)
 

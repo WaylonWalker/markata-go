@@ -162,22 +162,19 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 	cache := GetBuildCache(m)
 	patternHash := buildcache.HashContent(strings.Join(p.patterns, "\n"))
 
+	if lifecycle.IsServeFullRebuild(m) {
+		files := p.scanFiles(absBaseDir)
+		if cache != nil && len(files) > 0 {
+			cache.SetGlobCache(files, patternHash)
+		}
+		m.SetFiles(files)
+		return nil
+	}
+
 	if cache != nil {
 		cachedFiles, cachedHash := cache.GetGlobCache()
-		if cachedHash == patternHash && len(cachedFiles) > 0 {
-			// Patterns unchanged - do a full scan to detect new files,
-			// but use the cached list to verify nothing was removed.
-			// Previously this only checked if cached files still existed,
-			// which meant newly added files were never discovered.
-			freshFiles := p.scanFiles(absBaseDir)
-			if p.fileListsEqual(cachedFiles, freshFiles) {
-				// No changes - use cached list
-				m.SetFiles(cachedFiles)
-				return nil
-			}
-			// File list changed (new or removed files) - update cache
-			cache.SetGlobCache(freshFiles, patternHash)
-			m.SetFiles(freshFiles)
+		if cachedHash == patternHash && len(cachedFiles) > 0 && lifecycle.IsServeFastMode(m) {
+			m.SetFiles(cachedFiles)
 			return nil
 		}
 	}
@@ -234,19 +231,6 @@ func (p *GlobPlugin) scanFiles(absBaseDir string) []string {
 	}
 	sort.Strings(files)
 	return files
-}
-
-// fileListsEqual checks if two sorted file lists are identical.
-func (p *GlobPlugin) fileListsEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // SetPatterns sets the glob patterns to use for file discovery.

@@ -858,7 +858,13 @@ markata-go serve
 markata-go serve --no-watch
 ```
 
-The serve command has file watching enabled by default, tracking file modifications and only reprocessing changed posts for faster iterative development.
+By default, the dev server rebuilds deterministically on every change while still using build cache to skip expensive per-post work. For the fastest loop, use:
+
+```bash
+markata-go serve --fast
+```
+
+Fast mode rebuilds only the changed posts plus any dependents discovered from the dependency graph, and disables blogroll/mentions to keep the loop tight. Feed collection also skips when no changed posts touch a feed. If a change alters dependencies (links, embeds), the server performs a second pass to update the affected posts.
 
 ### Caching Strategies
 

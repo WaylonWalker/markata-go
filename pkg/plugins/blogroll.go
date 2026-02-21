@@ -583,6 +583,9 @@ func (p *BlogrollPlugin) Configure(m *lifecycle.Manager) error {
 		if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
 			p.assetURLs = assetURLs
 		}
+		if disabled, ok := config.Extra["blogroll_disabled"].(bool); ok && disabled {
+			return nil
+		}
 	}
 	blogrollConfig := getBlogrollConfig(config)
 
@@ -609,6 +612,11 @@ func (p *BlogrollPlugin) resolveAssetURL(name, fallback string) string {
 // Collect fetches and parses configured external feeds.
 func (p *BlogrollPlugin) Collect(m *lifecycle.Manager) error {
 	config := m.Config()
+	if config.Extra != nil {
+		if disabled, ok := config.Extra["blogroll_disabled"].(bool); ok && disabled {
+			return nil
+		}
+	}
 	blogrollConfig := getBlogrollConfig(config)
 
 	if !blogrollConfig.Enabled {
@@ -677,6 +685,11 @@ func (p *BlogrollPlugin) registerSyntheticPosts(m *lifecycle.Manager, config mod
 // Write generates the blogroll and reader pages.
 func (p *BlogrollPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
+	if config.Extra != nil {
+		if disabled, ok := config.Extra["blogroll_disabled"].(bool); ok && disabled {
+			return nil
+		}
+	}
 	blogrollConfig := getBlogrollConfig(config)
 
 	if !blogrollConfig.Enabled {

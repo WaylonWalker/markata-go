@@ -102,7 +102,8 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 		}
 		changed := cache.ShouldRebuildBatch(batch)
 		for path := range changed {
-			cache.MarkSlugChanged(slugByPath[path])
+			slug := slugByPath[path]
+			cache.MarkSlugChanged(slug)
 		}
 	}
 

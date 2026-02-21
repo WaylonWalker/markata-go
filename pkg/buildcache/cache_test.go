@@ -133,6 +133,38 @@ func TestCache_MarkRebuiltWithSlug_TracksChange(t *testing.T) {
 	}
 }
 
+func TestCache_MarkChangedPaths(t *testing.T) {
+	cache := New("")
+
+	cache.SetDependencies("pages/post-a.md", "post-a", []string{"post-b"})
+	cache.MarkChangedPaths([]string{"pages/post-a.md"})
+
+	changed := cache.GetChangedSlugs()
+	if len(changed) != 1 || changed[0] != "post-a" {
+		t.Errorf("GetChangedSlugs = %v, want [post-a]", changed)
+	}
+}
+
+func TestCache_MarkAffectedDependents(t *testing.T) {
+	cache := New("")
+
+	cache.SetDependencies("pages/post-a.md", "post-a", []string{"post-b"})
+	cache.SetDependencies("pages/post-b.md", "post-b", []string{"post-c"})
+
+	cache.MarkAffectedDependents([]string{"post-c"})
+
+	changed := cache.GetChangedSlugs()
+	if len(changed) != 2 {
+		t.Fatalf("GetChangedSlugs returned %d slugs, want 2", len(changed))
+	}
+	want := map[string]bool{"post-a": true, "post-b": true}
+	for _, slug := range changed {
+		if !want[slug] {
+			t.Errorf("unexpected changed slug %q", slug)
+		}
+	}
+}
+
 func TestCache_SaveLoad_PreservesGraph(t *testing.T) {
 	dir := t.TempDir()
 	cacheDir := filepath.Join(dir, ".markata")

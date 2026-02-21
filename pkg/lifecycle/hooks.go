@@ -6,6 +6,8 @@ import (
 	"log"
 	"sort"
 	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // HookError represents an error that occurred during hook execution.
@@ -41,6 +43,14 @@ func (e *HookErrors) Error() string {
 		return e.Errors[0].Error()
 	}
 	return fmt.Sprintf("%d errors occurred during hook execution; first: %v", len(e.Errors), e.Errors[0])
+}
+
+// ErrorOrNil returns nil when no errors were collected.
+func (e *HookErrors) ErrorOrNil() error {
+	if e == nil || len(e.Errors) == 0 {
+		return nil
+	}
+	return e
 }
 
 // HasCritical returns true if any error is marked as critical.
@@ -228,6 +238,18 @@ func runTransformHooks(m *Manager) *HookErrors {
 	)
 }
 
+// RunTransformHooksSubset runs transform hooks only for the provided posts.
+// This temporarily filters the manager's posts slice and restores it afterward.
+func RunTransformHooksSubset(m *Manager, posts []*models.Post) error {
+	if m == nil {
+		return nil
+	}
+	original := m.Posts()
+	m.SetPosts(posts)
+	defer m.SetPosts(original)
+	return runTransformHooks(m).ErrorOrNil()
+}
+
 // runRenderHooks executes all RenderPlugin hooks.
 func runRenderHooks(m *Manager) *HookErrors {
 	return executeHooks(m, StageRender, m.plugins,
@@ -239,6 +261,18 @@ func runRenderHooks(m *Manager) *HookErrors {
 			return rp.Render(m)
 		},
 	)
+}
+
+// RunRenderHooksSubset runs render hooks only for the provided posts.
+// This temporarily filters the manager's posts slice and restores it afterward.
+func RunRenderHooksSubset(m *Manager, posts []*models.Post) error {
+	if m == nil {
+		return nil
+	}
+	original := m.Posts()
+	m.SetPosts(posts)
+	defer m.SetPosts(original)
+	return runRenderHooks(m).ErrorOrNil()
 }
 
 // runCollectHooks executes all CollectPlugin hooks.

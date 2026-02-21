@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -141,9 +142,21 @@ func (p *GardenViewPlugin) Priority(stage lifecycle.Stage) int {
 func (p *GardenViewPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	gardenConfig := p.getGardenConfig(config)
+	cache := GetBuildCache(m)
 
 	if !gardenConfig.IsEnabled() {
 		return nil
+	}
+
+	if cache != nil {
+		if !cache.GardenDirty() {
+			return nil
+		}
+		gardenHash := computeGardenHash(m.Posts(), &gardenConfig)
+		if cached := cache.GetGardenHash(); cached != "" && cached == gardenHash {
+			return nil
+		}
+		cache.SetGardenHash(gardenHash)
 	}
 
 	posts := m.Posts()
@@ -218,6 +231,33 @@ func (p *GardenViewPlugin) filterPosts(posts []*models.Post, config *models.Gard
 		filtered = append(filtered, post)
 	}
 	return filtered
+}
+
+func computeGardenHash(posts []*models.Post, config *models.GardenConfig) string {
+	if config == nil {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(config.GetPath())
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", config.IsEnabled()))
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", config.IsExportJSON()))
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%t", config.IsRenderPage()))
+	b.WriteByte('\x00')
+	b.WriteString(fmt.Sprintf("%d", config.GetMaxNodes()))
+	b.WriteByte('\x00')
+	for _, post := range posts {
+		if post.Skip || post.Draft || !post.Published || post.Private {
+			continue
+		}
+		b.WriteString(post.Slug)
+		b.WriteByte('\x00')
+		b.WriteString(computePostGardenHash(post))
+		b.WriteByte('\x00')
+	}
+	return buildcache.ContentHash(b.String())
 }
 
 // buildGraph constructs the full garden graph from filtered posts.

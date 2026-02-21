@@ -104,6 +104,13 @@ func (g *DependencyGraph) GetDependencies(sourcePath string) []string {
 	return nil
 }
 
+// SlugForPath returns the slug associated with a source path, if known.
+func (g *DependencyGraph) SlugForPath(sourcePath string) string {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.PathToSlug[sourcePath]
+}
+
 // GetDirectDependents returns posts that directly link to the given target.
 // The target can be a slug or path.
 func (g *DependencyGraph) GetDirectDependents(target string) []string {

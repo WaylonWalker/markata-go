@@ -52,6 +52,18 @@ func (p *WikilinksPlugin) Transform(m *lifecycle.Manager) error {
 		return !post.Skip && post.Content != ""
 	})
 
+	if lifecycle.IsServeFastMode(m) {
+		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
+			filtered := posts[:0]
+			for _, post := range posts {
+				if affected[post.Path] {
+					filtered = append(filtered, post)
+				}
+			}
+			posts = filtered
+		}
+	}
+
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		content, warnings, dependencies := p.processWikilinks(post.Content, postIndex)
 		post.Content = content

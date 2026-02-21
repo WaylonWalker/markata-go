@@ -229,6 +229,18 @@ func (p *GlossaryPlugin) Render(m *lifecycle.Manager) error {
 		return true
 	})
 
+	if lifecycle.IsServeFastMode(m) {
+		if affected := lifecycle.GetServeAffectedPaths(m); len(affected) > 0 {
+			filtered := postsToProcess[:0]
+			for _, post := range postsToProcess {
+				if affected[post.Path] {
+					filtered = append(filtered, post)
+				}
+			}
+			postsToProcess = filtered
+		}
+	}
+
 	// Phase 1: Restore cached results for unchanged posts
 	var needProcessing []*models.Post
 	if cache != nil {
