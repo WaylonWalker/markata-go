@@ -334,6 +334,7 @@ func (p *LoadPlugin) restorePostFromCache(data *buildcache.CachedPostData, cache
 	post.Href = data.Href
 	post.Title = data.Title
 	post.Date = data.Date
+	post.Modified = data.Modified
 	post.Published = data.Published
 	post.Draft = data.Draft
 	post.Private = data.Private
@@ -495,6 +496,7 @@ func (p *LoadPlugin) postToCachedData(post *models.Post) *buildcache.CachedPostD
 		Href:           post.Href,
 		Title:          post.Title,
 		Date:           post.Date,
+		Modified:       post.Modified,
 		Published:      post.Published,
 		Draft:          post.Draft,
 		Private:        post.Private,
@@ -567,7 +569,15 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 	return post, nil
 }
 
+// Date field aliases for publication date
+var dateFieldAliases = []string{"date", "publishdate", "pubdate"}
+
+// Modified field aliases for last modified date
+var modifiedFieldAliases = []string{"modified", "lastmod", "updated", "last_modified", "updated_at"}
+
 // applyMetadata applies parsed frontmatter metadata to a Post.
+//
+//nolint:gocyclo // applying many fields from metadata is inherently complex
 func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interface{}) error {
 	// Known fields to extract
 	knownFields := map[string]bool{
@@ -589,6 +599,15 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		"authors":        true,
 		"by":             true,
 		"writer":         true,
+		// Modified date aliases
+		"modified":      true,
+		"lastmod":       true,
+		"updated":       true,
+		"last_modified": true,
+		"updated_at":    true,
+		// Publication date aliases
+		"publishdate": true,
+		"pubdate":     true,
 	}
 
 	// Title
@@ -596,13 +615,22 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		post.Title = &title
 	}
 
-	// Date - handle various formats
-	if dateVal, ok := metadata["date"]; ok {
+	// Date - handle various formats and aliases (date, publishdate, pubdate, published)
+	if dateVal := getFirstDateValue(metadata, dateFieldAliases); dateVal != nil {
 		date, err := parseDate(dateVal)
 		if err != nil {
 			return fmt.Errorf("invalid date: %w", err)
 		}
 		post.Date = &date
+	}
+
+	// Modified - handle various formats and aliases (modified, lastmod, updated, last_modified, updated_at)
+	if modVal := getFirstDateValue(metadata, modifiedFieldAliases); modVal != nil {
+		mod, err := parseDate(modVal)
+		if err != nil {
+			return fmt.Errorf("invalid modified date: %w", err)
+		}
+		post.Modified = &mod
 	}
 
 	// Published
@@ -830,4 +858,15 @@ func parseTemplatesMap(val interface{}) map[string]string {
 	}
 
 	return result
+}
+
+// getFirstDateValue returns the first non-nil value from metadata using a list of alias keys.
+// Returns nil if no value is found for any of the keys.
+func getFirstDateValue(metadata map[string]interface{}, aliases []string) interface{} {
+	for _, key := range aliases {
+		if val, ok := metadata[key]; ok && val != nil {
+			return val
+		}
+	}
+	return nil
 }

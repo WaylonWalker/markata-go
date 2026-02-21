@@ -93,13 +93,12 @@ func (p *StructuredDataPlugin) generateJSONLD(post *models.Post, config *lifecyc
 	// Add dates
 	if post.Date != nil {
 		bp.DatePublished = post.Date.Format("2006-01-02T15:04:05Z07:00")
-		bp.DateModified = bp.DatePublished
 
-		// Check for modified date in Extra
-		if modified, ok := post.Extra["modified"]; ok {
-			if modStr, ok := modified.(string); ok {
-				bp.DateModified = modStr
-			}
+		// Use Modified field if set, otherwise fall back to Date
+		if post.Modified != nil {
+			bp.DateModified = post.Modified.Format("2006-01-02T15:04:05Z07:00")
+		} else {
+			bp.DateModified = bp.DatePublished
 		}
 	}
 
@@ -170,11 +169,9 @@ func (p *StructuredDataPlugin) generateOpenGraph(sd *models.StructuredData, post
 	if post.Date != nil {
 		sd.AddOpenGraph("article:published_time", post.Date.Format("2006-01-02T15:04:05Z07:00"))
 
-		// Modified time
-		if modified, ok := post.Extra["modified"]; ok {
-			if modStr, ok := modified.(string); ok {
-				sd.AddOpenGraph("article:modified_time", modStr)
-			}
+		// Modified time - use Modified field if set
+		if post.Modified != nil {
+			sd.AddOpenGraph("article:modified_time", post.Modified.Format("2006-01-02T15:04:05Z07:00"))
 		}
 
 		// Author URL
