@@ -17,6 +17,9 @@ type Loader struct {
 
 	// Cache of loaded palettes
 	cache map[string]*Palette
+
+	// dynamic palettes (added programmatically)
+	dynamic map[string]*Palette
 }
 
 // NewLoader creates a new Loader with default search paths.
@@ -35,17 +38,27 @@ func NewLoader() *Loader {
 	}
 
 	return &Loader{
-		paths: paths,
-		cache: make(map[string]*Palette),
+		paths:   paths,
+		cache:   make(map[string]*Palette),
+		dynamic: make(map[string]*Palette),
 	}
 }
 
 // NewLoaderWithPaths creates a new Loader with custom search paths.
 func NewLoaderWithPaths(paths []string) *Loader {
 	return &Loader{
-		paths: paths,
-		cache: make(map[string]*Palette),
+		paths:   paths,
+		cache:   make(map[string]*Palette),
+		dynamic: make(map[string]*Palette),
 	}
+}
+
+// AddPalette dynamically adds a palette to the loader.
+func (l *Loader) AddPalette(name string, p *Palette) {
+	if l.dynamic == nil {
+		l.dynamic = make(map[string]*Palette)
+	}
+	l.dynamic[name] = p
 }
 
 // AddPath adds a search path to the loader.
@@ -61,6 +74,11 @@ func (l *Loader) AddPath(path string) {
 func (l *Loader) Load(name string) (*Palette, error) {
 	// Check cache first
 	if p, ok := l.cache[name]; ok {
+		return p.Clone(), nil
+	}
+
+	// Check dynamic palettes
+	if p, ok := l.dynamic[name]; ok {
 		return p.Clone(), nil
 	}
 
@@ -150,6 +168,17 @@ func LoadFromFile(path string) (*Palette, error) {
 // Returns palette info sorted by source priority (built-in first, then user, then project).
 func (l *Loader) Discover() ([]PaletteInfo, error) {
 	infos := make(map[string]PaletteInfo)
+
+	// Discover dynamic palettes
+	for name, p := range l.dynamic {
+		infos[name] = PaletteInfo{
+			Name:        p.Name,
+			Variant:     p.Variant,
+			Description: p.Description,
+			Author:      p.Author,
+			Source:      p.Source,
+		}
+	}
 
 	// Discover built-in palettes first
 	builtinInfos := DiscoverBuiltin()

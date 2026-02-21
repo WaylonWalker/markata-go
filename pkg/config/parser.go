@@ -398,6 +398,7 @@ type tomlThemeConfig struct {
 	Palette      string                  `toml:"palette"`
 	PaletteLight string                  `toml:"palette_light"`
 	PaletteDark  string                  `toml:"palette_dark"`
+	SeedColor    string                  `toml:"seed_color"`
 	Variables    map[string]string       `toml:"variables"`
 	CustomCSS    string                  `toml:"custom_css"`
 	Background   tomlBackgroundConfig    `toml:"background"`
@@ -1535,6 +1536,7 @@ func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
 		Palette:      t.Palette,
 		PaletteLight: t.PaletteLight,
 		PaletteDark:  t.PaletteDark,
+		SeedColor:    t.SeedColor,
 		Variables:    variables,
 		CustomCSS:    t.CustomCSS,
 		Background:   t.Background.toBackgroundConfig(),
@@ -2141,6 +2143,7 @@ type yamlThemeConfig struct {
 	Palette      string                  `yaml:"palette"`
 	PaletteLight string                  `yaml:"palette_light"`
 	PaletteDark  string                  `yaml:"palette_dark"`
+	SeedColor    string                  `yaml:"seed_color"`
 	Variables    map[string]string       `yaml:"variables"`
 	CustomCSS    string                  `yaml:"custom_css"`
 	Background   yamlBackgroundConfig    `yaml:"background"`
@@ -2194,6 +2197,7 @@ func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
 		Palette:      t.Palette,
 		PaletteLight: t.PaletteLight,
 		PaletteDark:  t.PaletteDark,
+		SeedColor:    t.SeedColor,
 		Variables:    variables,
 		CustomCSS:    t.CustomCSS,
 		Background:   t.Background.toBackgroundConfig(),
@@ -3418,6 +3422,7 @@ type jsonThemeConfig struct {
 	Palette      string                  `json:"palette"`
 	PaletteLight string                  `json:"palette_light"`
 	PaletteDark  string                  `json:"palette_dark"`
+	SeedColor    string                  `json:"seed_color"`
 	Variables    map[string]string       `json:"variables"`
 	CustomCSS    string                  `json:"custom_css"`
 	Background   jsonBackgroundConfig    `json:"background"`
@@ -3471,6 +3476,7 @@ func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
 		Palette:      t.Palette,
 		PaletteLight: t.PaletteLight,
 		PaletteDark:  t.PaletteDark,
+		SeedColor:    t.SeedColor,
 		Variables:    variables,
 		CustomCSS:    t.CustomCSS,
 		Background:   t.Background.toBackgroundConfig(),

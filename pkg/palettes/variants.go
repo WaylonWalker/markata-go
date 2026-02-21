@@ -144,6 +144,18 @@ func getKnownVariants(name string) *PaletteVariants {
 //   - light: the palette name to use for light mode
 //   - dark: the palette name to use for dark mode
 func GetEffectivePalettes(palette, paletteLight, paletteDark string) (light, dark string) {
+	if palette == "generated" {
+		light = "generated-light"
+		dark = "generated-dark"
+		if paletteLight != "" {
+			light = paletteLight
+		}
+		if paletteDark != "" {
+			dark = paletteDark
+		}
+		return light, dark
+	}
+
 	// If both are explicitly set, use them directly
 	if paletteLight != "" && paletteDark != "" {
 		return paletteLight, paletteDark
