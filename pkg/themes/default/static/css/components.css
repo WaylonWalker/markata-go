@@ -978,6 +978,46 @@
   text-decoration: none;
 }
 
+.embed-gist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.embed-gist-header {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.embed-gist-header a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.embed-gist-header a:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.embed-gist-language {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.embed-gist .highlight {
+  margin: 0;
+}
+
+.embed-card-rich .embed-gist pre {
+  margin: 0;
+}
+
 /* External embed with image - horizontal layout */
 .embed-card-external .embed-card-link {
   flex-direction: row;
