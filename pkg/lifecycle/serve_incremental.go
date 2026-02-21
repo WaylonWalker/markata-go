@@ -12,6 +12,8 @@ const (
 	CacheKeyServeAffectedPath = "serve.affected_paths"
 	CacheKeyServeFullRebuild  = "serve.full_rebuild"
 	CacheKeyServeCachedPosts  = "serve.cached_posts"
+	CacheKeyServeRemovedPaths = "serve.removed_paths"
+	CacheKeyServeGlobDirty    = "serve.glob_dirty"
 )
 
 // SetServeChangedPaths stores normalized, relative content paths that changed.
@@ -98,12 +100,88 @@ func IsServeFullRebuild(m *Manager) bool {
 	return false
 }
 
+// SetServeRemovedPaths stores normalized, relative content paths that were removed.
+func SetServeRemovedPaths(m *Manager, paths []string) {
+	if m == nil {
+		return
+	}
+	if len(paths) == 0 {
+		m.Cache().Delete(CacheKeyServeRemovedPaths)
+		return
+	}
+	clean := make([]string, 0, len(paths))
+	seen := make(map[string]struct{}, len(paths))
+	for _, p := range paths {
+		if p == "" {
+			continue
+		}
+		cp := filepath.Clean(p)
+		if _, ok := seen[cp]; ok {
+			continue
+		}
+		seen[cp] = struct{}{}
+		clean = append(clean, cp)
+	}
+	m.Cache().Set(CacheKeyServeRemovedPaths, clean)
+}
+
+// GetServeRemovedPaths returns removed content paths if present.
+func GetServeRemovedPaths(m *Manager) []string {
+	if m == nil {
+		return nil
+	}
+	if raw, ok := m.Cache().Get(CacheKeyServeRemovedPaths); ok {
+		if paths, ok := raw.([]string); ok {
+			return paths
+		}
+	}
+	return nil
+}
+
+// SetServeGlobDirty stores whether the glob cache should be refreshed.
+func SetServeGlobDirty(m *Manager, dirty bool) {
+	if m == nil {
+		return
+	}
+	if !dirty {
+		m.Cache().Delete(CacheKeyServeGlobDirty)
+		return
+	}
+	m.Cache().Set(CacheKeyServeGlobDirty, true)
+}
+
+// IsServeGlobDirty returns true if glob cache should be refreshed.
+func IsServeGlobDirty(m *Manager) bool {
+	if m == nil {
+		return false
+	}
+	if raw, ok := m.Cache().Get(CacheKeyServeGlobDirty); ok {
+		if dirty, ok := raw.(bool); ok {
+			return dirty
+		}
+	}
+	return false
+}
+
 // IsServeFastMode returns true when fast_mode is enabled in config.
 func IsServeFastMode(m *Manager) bool {
 	if m == nil {
 		return false
 	}
 	if extra := m.Config().Extra; extra != nil {
+		if fast, ok := extra["fast_mode"].(bool); ok {
+			return fast
+		}
+	}
+	return false
+}
+
+// IsServeFastModeFromConfig returns true when fast_mode is enabled on the config.
+func IsServeFastModeFromConfig(config *Config) bool {
+	if config == nil {
+		return false
+	}
+	if extra := config.Extra; extra != nil {
 		if fast, ok := extra["fast_mode"].(bool); ok {
 			return fast
 		}

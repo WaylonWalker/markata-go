@@ -173,7 +173,7 @@ func (p *GlobPlugin) Glob(m *lifecycle.Manager) error {
 
 	if cache != nil {
 		cachedFiles, cachedHash := cache.GetGlobCache()
-		if cachedHash == patternHash && len(cachedFiles) > 0 && lifecycle.IsServeFastMode(m) {
+		if cachedHash == patternHash && len(cachedFiles) > 0 && lifecycle.IsServeFastMode(m) && !lifecycle.IsServeGlobDirty(m) {
 			m.SetFiles(cachedFiles)
 			return nil
 		}
