@@ -761,7 +761,6 @@ func (p *PublishFeedsPlugin) generateFeedPageHTMLFallback(fc *models.FeedConfig,
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}}</title>
     <link rel="stylesheet" href="/css/variables.css">
-  <link rel="stylesheet" href="/css/palette.css">
     <link rel="stylesheet" href="/css/palette.css">
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/admonitions.css">
