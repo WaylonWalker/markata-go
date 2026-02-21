@@ -453,7 +453,8 @@ func (p *RenderMarkdownPlugin) detectCSSRequirements(post *models.Post) {
 	if strings.Contains(post.ArticleHTML, `class="chroma"`) ||
 		strings.Contains(post.ArticleHTML, `class="highlight"`) ||
 		strings.Contains(post.ArticleHTML, "<pre><code") ||
-		strings.Contains(post.ArticleHTML, `<code class="language-`) {
+		strings.Contains(post.ArticleHTML, `<code class="language-`) ||
+		strings.Contains(post.ArticleHTML, `data-needs-code-css="true"`) {
 		post.Extra["needs_code_css"] = true
 	}
 

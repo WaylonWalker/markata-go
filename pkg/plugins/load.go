@@ -578,8 +578,6 @@ var dateFieldAliases = []string{"publishdate", "date", "pubdate"}
 var modifiedFieldAliases = []string{"lastmod", "modified", "updated", "updated_at", "last_modified"}
 
 // applyMetadata applies parsed frontmatter metadata to a Post.
-//
-//nolint:gocyclo // applying many fields from metadata is inherently complex
 func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interface{}) error {
 	// Known fields to extract
 	knownFields := map[string]bool{
@@ -601,15 +599,13 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		"authors":        true,
 		"by":             true,
 		"writer":         true,
-		// Modified date aliases
-		"modified":      true,
-		"lastmod":       true,
-		"updated":       true,
-		"last_modified": true,
-		"updated_at":    true,
-		// Publication date aliases
-		"publishdate": true,
-		"pubdate":     true,
+		"modified":       true,
+		"lastmod":        true,
+		"updated":        true,
+		"last_modified":  true,
+		"updated_at":     true,
+		"publishdate":    true,
+		"pubdate":        true,
 	}
 
 	// Title
@@ -617,22 +613,8 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		post.Title = &title
 	}
 
-	// Date - handle various formats and aliases (publishdate, date, pubdate)
-	if dateVal := getFirstDateValue(metadata, dateFieldAliases); dateVal != nil {
-		date, err := parseDate(dateVal)
-		if err != nil {
-			return fmt.Errorf("invalid date: %w", err)
-		}
-		post.Date = &date
-	}
-
-	// Modified - handle various formats and aliases (modified, lastmod, updated, last_modified, updated_at)
-	if modVal := getFirstDateValue(metadata, modifiedFieldAliases); modVal != nil {
-		mod, err := parseDate(modVal)
-		if err != nil {
-			return fmt.Errorf("invalid modified date: %w", err)
-		}
-		post.Modified = &mod
+	if err := applyDateFields(post, metadata); err != nil {
+		return err
 	}
 
 	// Published
@@ -709,6 +691,26 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		if !knownFields[key] {
 			post.Set(key, value)
 		}
+	}
+
+	return nil
+}
+
+func applyDateFields(post *models.Post, metadata map[string]interface{}) error {
+	if dateVal := getFirstDateValue(metadata, dateFieldAliases); dateVal != nil {
+		date, err := parseDate(dateVal)
+		if err != nil {
+			return fmt.Errorf("invalid date: %w", err)
+		}
+		post.Date = &date
+	}
+
+	if modVal := getFirstDateValue(metadata, modifiedFieldAliases); modVal != nil {
+		modified, err := parseDate(modVal)
+		if err != nil {
+			return fmt.Errorf("invalid modified date: %w", err)
+		}
+		post.Modified = &modified
 	}
 
 	return nil

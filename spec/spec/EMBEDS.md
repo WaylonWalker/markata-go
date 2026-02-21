@@ -57,7 +57,8 @@ fallback_title = "External Link"                 # Title when OG title is unavai
 show_image = true                                # Show OG images in external embeds
 
 [embeds.providers]
-youtube = { enabled = true, mode = "rich" }
+giphy = { enabled = true, mode = "image_only" }
+youtube = { enabled = true, mode = "rich" } # default
 vimeo = { enabled = true }
 tiktok = { enabled = true }
 flickr = { enabled = true }
@@ -138,12 +139,17 @@ The plugin extracts:
 - **oEmbed**: title, provider name, thumbnail URL (if available)
 - **Open Graph**: `og:title`, `og:description`, `og:image`, `og:site_name`
 
+For GitHub Gist, the oEmbed resolver fetches the gist JSON and renders the
+first file as a code block using the site's code theme. The HTML includes
+the gist filename and links back to the gist. Code content is escaped and
+rendered as a plain code block (not a script embed).
+
 ### Modes
 
 Embed modes control how external content is rendered:
 
 - `card` (default): image + title + description + domain
-- `rich`: full oEmbed HTML (iframes, scripts)
+- `rich`: full oEmbed HTML (iframes, scripts). For YouTube providers, rich uses Lite YouTube embeds by default.
 - `performance`: image only, no text
 - `hover`: image preview, loads embed HTML on hover
 - `image_only`: image-only rendering (useful for photo providers)
@@ -213,6 +219,17 @@ Example cache file:
   </a>
 </div>
 ```
+
+### YouTube oEmbed (Lite YouTube)
+
+When a YouTube oEmbed resolves in rich mode, markata-go renders a Lite YouTube embed by default:
+
+```html
+<lite-youtube videoid="VIDEO_ID" title="Video Title" playlabel="Play: Video Title"></lite-youtube>
+```
+
+The Lite YouTube CSS/JS assets are loaded only when needed and follow the vendor assets mode
+(`assets.mode`) for CDN vs self-hosted paths.
 
 ## Code Block Protection
 

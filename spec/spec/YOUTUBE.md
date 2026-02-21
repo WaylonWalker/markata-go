@@ -4,7 +4,7 @@ This document specifies the YouTube embed plugin for markata-go.
 
 ## Overview
 
-The YouTube plugin automatically converts YouTube URLs in markdown content into responsive embedded iframes. It processes URLs that appear on their own line (in a `<p>` tag) and replaces them with privacy-enhanced video embeds.
+The YouTube plugin automatically converts YouTube URLs in markdown content into responsive embedded iframes. It processes URLs that appear on their own line (in a `<p>` tag) and replaces them with privacy-enhanced video embeds. This plugin is separate from the embeds plugin; oEmbed-based YouTube embeds use Lite YouTube by default.
 
 ## Plugin Information
 
@@ -109,6 +109,10 @@ To embed a video, use: `https://youtu.be/VIDEO_ID`
   </iframe>
 </div>
 ```
+
+## Embeds Plugin Note
+
+When using the embeds plugin with oEmbed (for `![embed](https://youtube.com/...)`), YouTube rich embeds render with Lite YouTube by default instead of the raw oEmbed iframe HTML.
 
 ### With Timestamp
 

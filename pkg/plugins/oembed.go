@@ -1,19 +1,29 @@
 package plugins
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	stdhtml "html"
 	"io"
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
+	"github.com/yuin/goldmark"
+	highlighting "github.com/yuin/goldmark-highlighting/v2"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/renderer/html"
+
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/palettes"
 )
 
 // OEmbedResponse represents the JSON oEmbed response fields we care about.
@@ -34,6 +44,10 @@ type OEmbedResponse struct {
 	Width           string `json:"width"`
 	Height          string `json:"height"`
 	CacheAge        int    `json:"cache_age"`
+
+	// Extra holds provider-specific metadata for rendering.
+	// This field is not part of the oEmbed spec and is not serialized.
+	Extra map[string]string `json:"-"`
 }
 
 // oembedProviderJSON represents a provider from providers.json
@@ -56,7 +70,7 @@ type oembedProvider struct {
 	RequiresAuth     bool
 	SupportsFormat   bool
 	SupportsDiscover bool
-	CustomFetch      func(client *http.Client, rawURL string) (*OEmbedResponse, error)
+	CustomFetch      func(resolver *oembedResolver, rawURL string) (*OEmbedResponse, error)
 	// IsCustom indicates this is a hardcoded provider that should be tried before providers.json
 	IsCustom bool
 }
@@ -69,6 +83,7 @@ type oembedResolver struct {
 	jsonProviders   []oembedProvider
 	jsonProvidersMu sync.RWMutex
 	jsonFetchedAt   time.Time
+	markdown        goldmark.Markdown
 }
 
 const jsonProvidersCacheDuration = 24 * time.Hour
@@ -91,6 +106,131 @@ func newOEmbedResolverWithProviders(config models.EmbedsConfig, client *http.Cli
 
 func (r *oembedResolver) updateConfig(config models.EmbedsConfig) {
 	r.config = config
+	r.markdown = nil
+}
+
+func (r *oembedResolver) setMarkdownRenderer(md goldmark.Markdown) {
+	r.markdown = md
+}
+
+func newEmbedMarkdownRenderer(extra map[string]interface{}) goldmark.Markdown {
+	chromaTheme, lineNumbers, enabled := resolveEmbedHighlightConfig(extra)
+	if !enabled {
+		chromaTheme = "monokailight"
+		lineNumbers = false
+	}
+	if chromaTheme == "" {
+		chromaTheme = palettes.DefaultChromaThemeDark
+	}
+
+	formatOptions := []chromahtml.Option{
+		chromahtml.WithClasses(true),
+		chromahtml.WithAllClasses(true),
+	}
+	if lineNumbers {
+		formatOptions = append(formatOptions, chromahtml.WithLineNumbers(true))
+	}
+	options := []highlighting.Option{
+		highlighting.WithStyle(chromaTheme),
+		highlighting.WithFormatOptions(formatOptions...),
+	}
+
+	return goldmark.New(
+		goldmark.WithExtensions(
+			extension.GFM,
+			extension.Table,
+			extension.Strikethrough,
+			extension.Linkify,
+			extension.TaskList,
+			highlighting.NewHighlighting(options...),
+		),
+		goldmark.WithRendererOptions(
+			html.WithUnsafe(),
+		),
+	)
+}
+
+func resolveEmbedHighlightConfig(extra map[string]interface{}) (chromaTheme string, lineNumbers, enabled bool) {
+	enabled = true
+
+	if markdownConfig, ok := extra["markdown"].(map[string]interface{}); ok {
+		if highlight, ok := markdownConfig["highlight"].(map[string]interface{}); ok {
+			if enabledValue, ok := highlight["enabled"].(bool); ok {
+				enabled = enabledValue
+			}
+			if theme, ok := highlight["theme"].(string); ok && theme != "" {
+				chromaTheme = theme
+			}
+			if ln, ok := highlight["line_numbers"].(bool); ok {
+				lineNumbers = ln
+			}
+		}
+	}
+
+	if chromaTheme == "" {
+		if themeExtra, ok := extra["theme"].(map[string]interface{}); ok {
+			if palette, ok := themeExtra["palette"].(string); ok && palette != "" {
+				chromaTheme = palettes.ChromaTheme(palette)
+			}
+		}
+	}
+
+	return chromaTheme, lineNumbers, enabled
+}
+
+func renderGistCodeMarkdown(resolver *oembedResolver, language, content string) (string, error) {
+	if language == "" {
+		language = "text"
+	}
+	md := resolver.markdown
+	if md == nil {
+		md = goldmark.New(
+			goldmark.WithExtensions(
+				extension.GFM,
+				extension.Table,
+				extension.Strikethrough,
+				extension.Linkify,
+				extension.TaskList,
+				highlighting.NewHighlighting(),
+			),
+		)
+	}
+
+	markdown := fmt.Sprintf("```%s\n%s\n```\n", language, content)
+	var buf bytes.Buffer
+	if err := md.Convert([]byte(markdown), &buf); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
+func renderGistMarkdownEmbedHTML(gistURL, filename, language, codeHTML string) string {
+	var sb strings.Builder
+	sb.WriteString(`<div class="embed-gist">`)
+	sb.WriteString("\n")
+	sb.WriteString(`  <div class="embed-gist-header">`)
+	sb.WriteString("\n")
+	sb.WriteString(`    <a href="`)
+	sb.WriteString(stdhtml.EscapeString(gistURL))
+	sb.WriteString(`" target="_blank" rel="noopener noreferrer">`)
+	sb.WriteString(stdhtml.EscapeString(filename))
+	sb.WriteString(`</a>`)
+	sb.WriteString("\n")
+	if language != "" {
+		sb.WriteString(`    <span class="embed-gist-language">`)
+		sb.WriteString(stdhtml.EscapeString(strings.ToLower(language)))
+		sb.WriteString(`</span>`)
+		sb.WriteString("\n")
+	}
+	sb.WriteString(`  </div>`)
+	sb.WriteString("\n")
+	sb.WriteString(codeHTML)
+	sb.WriteString("\n")
+	sb.WriteString(`</div>`)
+	sb.WriteString("\n")
+
+	return sb.String()
 }
 
 // fetchProvidersJSON fetches and parses the providers.json file.
@@ -231,7 +371,7 @@ func (r *oembedResolver) resolveWithProvider(provider *oembedProvider, rawURL st
 	}
 
 	if provider.CustomFetch != nil {
-		payload, err := provider.CustomFetch(r.client, rawURL)
+		payload, err := provider.CustomFetch(r, rawURL)
 		if err != nil {
 			return nil, true, err
 		}
@@ -669,7 +809,7 @@ type redditAPIResponse struct {
 	} `json:"data"`
 }
 
-func fetchRedditImage(client *http.Client, rawURL string) (*OEmbedResponse, error) {
+func fetchRedditImage(resolver *oembedResolver, rawURL string) (*OEmbedResponse, error) {
 	jsonURL := rawURL + "/.json"
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, jsonURL, http.NoBody)
@@ -680,7 +820,7 @@ func fetchRedditImage(client *http.Client, rawURL string) (*OEmbedResponse, erro
 	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := resolver.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("reddit fetch: %w", err)
 	}
@@ -730,9 +870,12 @@ func fetchRedditImage(client *http.Client, rawURL string) (*OEmbedResponse, erro
 	thumbnailURL = strings.ReplaceAll(thumbnailURL, "&amp;", "&")
 
 	return &OEmbedResponse{
-		Type:            "rich",
-		Version:         "1.0",
-		Title:           post.Title,
+		Type:    "rich",
+		Version: "1.0",
+		Title:   post.Title,
+		Extra: map[string]string{
+			"image_alt": post.Title,
+		},
 		ThumbnailURL:    thumbnailURL,
 		ThumbnailWidth:  thumbnailWidth,
 		ThumbnailHeight: thumbnailHeight,
@@ -741,7 +884,7 @@ func fetchRedditImage(client *http.Client, rawURL string) (*OEmbedResponse, erro
 	}, nil
 }
 
-func fetchTikTokEmbed(client *http.Client, rawURL string) (*OEmbedResponse, error) {
+func fetchTikTokEmbed(resolver *oembedResolver, rawURL string) (*OEmbedResponse, error) {
 	endpoint := "https://www.tiktok.com/oembed"
 
 	parsed, err := url.Parse(endpoint)
@@ -761,7 +904,7 @@ func fetchTikTokEmbed(client *http.Client, rawURL string) (*OEmbedResponse, erro
 	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := resolver.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("tiktok: request failed: %w", err)
 	}
@@ -783,27 +926,28 @@ func fetchTikTokEmbed(client *http.Client, rawURL string) (*OEmbedResponse, erro
 // fetchGitHubGistEmbed fetches embed HTML for GitHub Gists.
 // GitHub doesn't have a working oEmbed endpoint, so we fetch the gist page
 // and extract the embed script from it.
-func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, error) {
+func fetchGitHubGistEmbed(resolver *oembedResolver, rawURL string) (*OEmbedResponse, error) {
 	// Ensure we're getting a gist URL
 	if !strings.Contains(rawURL, "gist.github.com") {
 		return nil, fmt.Errorf("not a gist URL")
 	}
 
-	// Add .json suffix to get the gist data
-	jsonURL := rawURL
-	if !strings.HasSuffix(rawURL, ".json") {
-		jsonURL = rawURL + ".json"
+	gistID, err := extractGistID(rawURL)
+	if err != nil {
+		return nil, fmt.Errorf("gist: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, jsonURL, http.NoBody)
+	apiURL := fmt.Sprintf("https://api.github.com/gists/%s", gistID)
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, apiURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("gist: create request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", "application/vnd.github+json")
 
-	resp, err := client.Do(req)
+	resp, err := resolver.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("gist: request failed: %w", err)
 	}
@@ -815,14 +959,16 @@ func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, 
 
 	var gistData struct {
 		Files map[string]struct {
-			Filename string `json:"filename"`
-			Content  string `json:"content"`
-			Type     string `json:"type"`
-			Language string `json:"language"`
-			Size     int    `json:"size"`
-			RawURL   string `json:"raw_url"`
+			Filename  string `json:"filename"`
+			Content   string `json:"content"`
+			Type      string `json:"type"`
+			Language  string `json:"language"`
+			Size      int    `json:"size"`
+			RawURL    string `json:"raw_url"`
+			Truncated bool   `json:"truncated"`
 		} `json:"files"`
 		Description string `json:"description"`
+		HTMLURL     string `json:"html_url"`
 		Owner       struct {
 			Login string `json:"login"`
 		} `json:"owner"`
@@ -833,26 +979,37 @@ func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, 
 		return nil, fmt.Errorf("gist: decode: %w", err)
 	}
 
-	// Get the first file
+	// Pick the first file by name for deterministic output
 	var firstFile struct {
-		Filename string
-		Content  string
-		Language string
-		RawURL   string
+		Filename  string
+		Content   string
+		Language  string
+		RawURL    string
+		Size      int
+		Truncated bool
 	}
-	for _, f := range gistData.Files {
-		firstFile = struct {
-			Filename string
-			Content  string
-			Language string
-			RawURL   string
-		}{
-			Filename: f.Filename,
-			Content:  f.Content,
-			Language: f.Language,
-			RawURL:   f.RawURL,
+	if len(gistData.Files) > 0 {
+		filenames := make([]string, 0, len(gistData.Files))
+		for name := range gistData.Files {
+			filenames = append(filenames, name)
 		}
-		break
+		sort.Strings(filenames)
+		file := gistData.Files[filenames[0]]
+		firstFile = struct {
+			Filename  string
+			Content   string
+			Language  string
+			RawURL    string
+			Size      int
+			Truncated bool
+		}{
+			Filename:  file.Filename,
+			Content:   file.Content,
+			Language:  file.Language,
+			RawURL:    file.RawURL,
+			Size:      file.Size,
+			Truncated: file.Truncated,
+		}
 	}
 
 	description := gistData.Description
@@ -861,9 +1018,33 @@ func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, 
 	}
 
 	// Generate embed HTML
-	embedHTML := fmt.Sprintf(`<script src="https://gist.github.com/%s.js?file=%s"></script>`,
-		strings.TrimSuffix(strings.TrimPrefix(rawURL, "https://gist.github.com/"), ".json"),
-		firstFile.Filename)
+	content := strings.TrimRight(firstFile.Content, "\n")
+	if firstFile.RawURL != "" {
+		fetched, err := fetchRemoteContent(resolver.client, firstFile.RawURL)
+		if err == nil && fetched != "" {
+			content = strings.TrimRight(fetched, "\n")
+		}
+	}
+	codeHTML, err := renderGistCodeMarkdown(resolver, firstFile.Language, content)
+	if err != nil || codeHTML == "" {
+		embedHTML := fmt.Sprintf(`<script src="https://gist.github.com/%s.js?file=%s"></script>`,
+			strings.TrimSuffix(strings.TrimPrefix(rawURL, "https://gist.github.com/"), ".json"),
+			firstFile.Filename)
+		return &OEmbedResponse{
+			Type:         "rich",
+			Version:      "1.0",
+			Title:        description,
+			HTML:         embedHTML,
+			ProviderName: "GitHub",
+			ProviderURL:  "https://github.com",
+		}, nil
+	}
+
+	gistURL := strings.TrimSuffix(rawURL, ".json")
+	if !strings.HasPrefix(gistURL, "https://gist.github.com/") {
+		gistURL = rawURL
+	}
+	embedHTML := renderGistMarkdownEmbedHTML(gistURL, firstFile.Filename, firstFile.Language, codeHTML)
 
 	return &OEmbedResponse{
 		Type:         "rich",
@@ -872,49 +1053,176 @@ func fetchGitHubGistEmbed(client *http.Client, rawURL string) (*OEmbedResponse, 
 		HTML:         embedHTML,
 		ProviderName: "GitHub",
 		ProviderURL:  "https://github.com",
+		Extra: map[string]string{
+			"needs_code_css": BoolTrue,
+		},
 	}, nil
 }
 
-// Pre-compiled regexes for Giphy URL parsing.
+func fetchRemoteContent(client *http.Client, rawURL string) (string, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, rawURL, http.NoBody)
+	if err != nil {
+		return "", fmt.Errorf("fetch content: %w", err)
+	}
+
+	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
+	req.Header.Set("Accept", "text/plain")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("fetch content: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("fetch content: %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("fetch content: %w", err)
+	}
+
+	return string(body), nil
+}
+
+func extractGistID(rawURL string) (string, error) {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("parse url: %w", err)
+	}
+
+	path := strings.TrimSuffix(parsed.Path, "/")
+	parts := strings.Split(path, "/")
+	for i := len(parts) - 1; i >= 0; i-- {
+		part := strings.TrimSpace(parts[i])
+		if part == "" {
+			continue
+		}
+		part = strings.TrimSuffix(part, ".json")
+		if part != "" {
+			return part, nil
+		}
+	}
+
+	return "", fmt.Errorf("missing gist id")
+}
+
+func renderGistScriptEmbedHTML(gistURL, filename string) string {
+	if filename == "" {
+		filename = "gist"
+	}
+
+	return fmt.Sprintf(`<script src="%s.js?file=%s"></script>`,
+		strings.TrimSuffix(gistURL, ".json"),
+		url.QueryEscape(filename))
+}
+
 var (
 	giphyGifsRe  = regexp.MustCompile(`giphy\.com/gifs/[\w-]+-(\w+)`)
 	giphyMediaRe = regexp.MustCompile(`media\.giphy\.com/media/(\w+)/`)
 )
 
-// fetchGiphyEmbed fetches GIPHY embed data.
-// GIPHY's oEmbed endpoint returns 404, so we construct the image URL from the GIF URL.
-func fetchGiphyEmbed(_ *http.Client, rawURL string) (*OEmbedResponse, error) {
-	// Extract the GIF ID from the URL
-	// GIPHY URLs: https://giphy.com/gifs/cat-Y0Pmx0NpVomy66nCGU
-	// or media.giphy.com/media/Y0Pmx0NpVomy66nCGU/giphy.gif
-	var gifID string
+// fetchGiphyEmbed fetches GIPHY embed data using the oEmbed API.
+func fetchGiphyEmbed(resolver *oembedResolver, rawURL string) (*OEmbedResponse, error) {
+	endpoint := "https://giphy.com/services/oembed"
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		if fallback := buildGiphyFallback(rawURL); fallback != nil {
+			return fallback, nil
+		}
+		return nil, fmt.Errorf("giphy: parse endpoint: %w", err)
+	}
 
-	// Try to match giphy.com/gifs/{id}
-	matches := giphyGifsRe.FindStringSubmatch(rawURL)
-	if len(matches) > 1 {
-		gifID = matches[1]
-	} else {
-		// Try media.giphy.com/media/{id}/giphy.gif
-		matches2 := giphyMediaRe.FindStringSubmatch(rawURL)
-		if len(matches2) > 1 {
-			gifID = matches2[1]
+	query := parsed.Query()
+	query.Set("url", rawURL)
+	parsed.RawQuery = query.Encode()
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, parsed.String(), http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("giphy: create request: %w", err)
+	}
+
+	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := resolver.client.Do(req)
+	if err != nil {
+		if fallback := buildGiphyFallback(rawURL); fallback != nil {
+			return fallback, nil
+		}
+		return nil, fmt.Errorf("giphy: request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		if fallback := buildGiphyFallback(rawURL); fallback != nil {
+			return fallback, nil
+		}
+		return nil, fmt.Errorf("giphy: status %s", resp.Status)
+	}
+
+	var payload OEmbedResponse
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&payload); err != nil {
+		return nil, fmt.Errorf("giphy: decode: %w", err)
+	}
+
+	// Ensure we have a thumbnail URL for image embeds
+	if payload.ThumbnailURL == "" {
+		if fallback := buildGiphyFallback(rawURL); fallback != nil {
+			payload.ThumbnailURL = fallback.ThumbnailURL
+			if payload.URL == "" {
+				payload.URL = fallback.URL
+			}
+			if payload.Title == "" {
+				payload.Title = fallback.Title
+			}
+			if payload.ProviderName == "" {
+				payload.ProviderName = fallback.ProviderName
+				payload.ProviderURL = fallback.ProviderURL
+			}
+		} else {
+			payload.ThumbnailURL = payload.URL
 		}
 	}
-
-	if gifID == "" {
-		return nil, fmt.Errorf("giphy: could not extract GIF ID from URL")
+	if payload.Extra == nil {
+		payload.Extra = make(map[string]string)
+	}
+	if payload.Title != "" {
+		payload.Extra["image_alt"] = payload.Title
 	}
 
-	// Build the image URL (use fixed width for consistency)
-	imageURL := fmt.Sprintf("https://media.giphy.com/media/%s/giphy.gif", gifID)
+	return &payload, nil
+}
 
+func buildGiphyFallback(rawURL string) *OEmbedResponse {
+	gifID := extractGiphyIDFromURL(rawURL)
+	if gifID == "" {
+		return nil
+	}
+
+	imageURL := fmt.Sprintf("https://media.giphy.com/media/%s/giphy.gif", gifID)
 	return &OEmbedResponse{
 		Type:         "photo",
 		Version:      "1.0",
-		Title:        "GIPHY Image",
+		Title:        "Giphy GIF",
 		URL:          imageURL,
 		ThumbnailURL: imageURL,
-		ProviderName: "GIPHY",
+		ProviderName: "Giphy",
 		ProviderURL:  "https://giphy.com",
-	}, nil
+		Extra: map[string]string{
+			"image_alt": "Giphy GIF",
+		},
+	}
+}
+
+func extractGiphyIDFromURL(rawURL string) string {
+	if matches := giphyGifsRe.FindStringSubmatch(rawURL); len(matches) > 1 {
+		return matches[1]
+	}
+	if matches := giphyMediaRe.FindStringSubmatch(rawURL); len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
 }

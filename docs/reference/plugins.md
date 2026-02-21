@@ -1279,6 +1279,7 @@ privacy_enhanced = false
 - URLs must be on their own line (in their own `<p>` tag) to be converted
 - Inline URLs like "Check out https://youtube.com/watch?v=xyz" are preserved as text
 - Invalid video IDs (not exactly 11 characters) are ignored
+- oEmbed-based YouTube embeds (via the embeds plugin) render Lite YouTube by default
 
 ---
 

@@ -218,7 +218,7 @@ giphy = { enabled = true }
 
 ### Vendor Assets (`[markata-go.assets]`)
 
-markata-go can self-host common third-party JS/CSS dependencies (HTMX, GLightbox, Mermaid, Chart.js, Cal-Heatmap, D3). When enabled, assets are downloaded into a cache directory and copied to `/assets/vendor` in the output. Templates use the `asset_urls` mapping injected by the CDN assets plugin.
+markata-go can self-host common third-party JS/CSS dependencies (HTMX, GLightbox, Mermaid, Chart.js, Cal-Heatmap, D3, Lite YouTube). When enabled, assets are downloaded into a cache directory and copied to `/assets/vendor` in the output. Templates use the `asset_urls` mapping injected by the CDN assets plugin.
 
 ```toml
 [markata-go.assets]
