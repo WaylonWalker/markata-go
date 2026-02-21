@@ -143,7 +143,7 @@ The plugin extracts:
 Embed modes control how external content is rendered:
 
 - `card` (default): image + title + description + domain
-- `rich`: full oEmbed HTML (iframes, scripts)
+- `rich`: full oEmbed HTML (iframes, scripts). For YouTube providers, rich uses Lite YouTube embeds by default.
 - `performance`: image only, no text
 - `hover`: image preview, loads embed HTML on hover
 - `image_only`: image-only rendering (useful for photo providers)
@@ -213,6 +213,17 @@ Example cache file:
   </a>
 </div>
 ```
+
+### YouTube oEmbed (Lite YouTube)
+
+When a YouTube oEmbed resolves in rich mode, markata-go renders a Lite YouTube embed by default:
+
+```html
+<lite-youtube videoid="VIDEO_ID" title="Video Title" playlabel="Play: Video Title"></lite-youtube>
+```
+
+The Lite YouTube CSS/JS assets are loaded only when needed and follow the vendor assets mode
+(`assets.mode`) for CDN vs self-hosted paths.
 
 ## Code Block Protection
 

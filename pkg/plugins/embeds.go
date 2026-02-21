@@ -212,11 +212,15 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 
 	// Phase 1: Restore cached results for unchanged posts
 	var needProcessing []*models.Post
+	needsLiteYouTube := false
 	if cache != nil {
 		for _, post := range posts {
 			contentHash := buildcache.ContentHash(post.Content)
 			if cached, ok := cache.GetCachedEmbedsContent(post.Path, contentHash); ok {
 				post.Content = cached
+				if !needsLiteYouTube && containsLiteYouTubeEmbed(post.Content) {
+					needsLiteYouTube = true
+				}
 			} else {
 				needProcessing = append(needProcessing, post)
 			}
@@ -226,11 +230,14 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 	}
 
 	if len(needProcessing) == 0 {
+		if needsLiteYouTube {
+			p.enableLiteYouTubeAssets(m)
+		}
 		return nil
 	}
 
 	// Phase 2: Process posts that need updating, concurrently
-	return m.ProcessPostsSliceConcurrently(needProcessing, func(post *models.Post) error {
+	processErr := m.ProcessPostsSliceConcurrently(needProcessing, func(post *models.Post) error {
 		contentHash := buildcache.ContentHash(post.Content)
 		content := p.processAttachmentEmbeds(post.Content)
 		content, dependencies := p.processInternalEmbeds(content, idx, post)
@@ -248,6 +255,49 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 
 		return nil
 	})
+	if processErr != nil {
+		return processErr
+	}
+
+	if !needsLiteYouTube {
+		for _, post := range posts {
+			if containsLiteYouTubeEmbed(post.Content) {
+				needsLiteYouTube = true
+				break
+			}
+		}
+	}
+	if needsLiteYouTube {
+		p.enableLiteYouTubeAssets(m)
+	}
+
+	return nil
+}
+
+func (p *EmbedsPlugin) enableLiteYouTubeAssets(m *lifecycle.Manager) {
+	if m == nil {
+		return
+	}
+
+	config := m.Config()
+	if config == nil {
+		return
+	}
+
+	if config.Extra == nil {
+		config.Extra = make(map[string]interface{})
+	}
+
+	config.Extra["lite_youtube_enabled"] = true
+}
+
+func containsLiteYouTubeEmbed(content string) bool {
+	if content == "" {
+		return false
+	}
+
+	stripped := embedsCodeBlockRegex.ReplaceAllString(content, "")
+	return strings.Contains(stripped, "<lite-youtube") || strings.Contains(stripped, "&lt;lite-youtube")
 }
 
 // internalEmbedRegex matches ![[slug]] and ![[slug|display text]] patterns.
@@ -283,6 +333,8 @@ var attachmentEmbedRegex = regexp.MustCompile(`!\[\[([^\]|]+\.[a-zA-Z0-9]+)(?:\|
 // htmlTitleRegex matches the <title> tag in HTML.
 var htmlTitleRegex = regexp.MustCompile(`<title[^>]*>([^<]+)</title>`)
 
+var youtubeOEmbedIDRegex = regexp.MustCompile(`(?i)(?:youtube(?:-nocookie)?\.com/embed/|youtu\.be/)([a-zA-Z0-9_-]{11})`)
+
 // metaPatternCache caches compiled regexes for meta tag extraction.
 var metaPatternCache = struct {
 	sync.RWMutex
@@ -302,6 +354,8 @@ const (
 	embedModePerformance = "performance"
 	embedModeHover       = "hover"
 	embedModeImageOnly   = "image_only"
+
+	oembedProviderYouTube = "youtube"
 )
 
 // getMetaPatterns returns cached regex patterns for a given property.
@@ -899,6 +953,8 @@ func (p *EmbedsPlugin) resolveOEmbedMetadata(rawURL string) (*OGMetadata, bool) 
 		metadata.Image = response.URL
 	}
 
+	metadata.HTML = p.transformOEmbedHTML(metadata, response)
+
 	if metadata.Title == "" {
 		metadata.Title = p.config.FallbackTitle
 	}
@@ -906,6 +962,65 @@ func (p *EmbedsPlugin) resolveOEmbedMetadata(rawURL string) (*OGMetadata, bool) 
 	p.cacheMetadata(rawURL, "oembed", metadata)
 
 	return metadata, true
+}
+
+func (p *EmbedsPlugin) transformOEmbedHTML(metadata *OGMetadata, response *OEmbedResponse) string {
+	if metadata == nil || response == nil {
+		return ""
+	}
+
+	providerName := strings.ToLower(strings.TrimSpace(metadata.ProviderName))
+	if providerName == oembedProviderYouTube || strings.Contains(providerName, oembedProviderYouTube) {
+		return buildLiteYouTubeHTML(metadata, response)
+	}
+
+	return metadata.HTML
+}
+
+func buildLiteYouTubeHTML(metadata *OGMetadata, response *OEmbedResponse) string {
+	videoID := extractYouTubeVideoID(response.HTML, response.URL, response.ThumbnailURL)
+	if videoID == "" {
+		videoID = extractYouTubeVideoID(metadata.HTML, metadata.Image, "")
+	}
+	if videoID == "" {
+		return metadata.HTML
+	}
+
+	title := strings.TrimSpace(metadata.Title)
+	if title == "" {
+		title = "YouTube video"
+	}
+	playLabel := "Play: " + title
+
+	var sb strings.Builder
+	sb.WriteString(`<lite-youtube videoid="`)
+	sb.WriteString(html.EscapeString(videoID))
+	sb.WriteString(`"`)
+	if title != "" {
+		sb.WriteString(` title="`)
+		sb.WriteString(html.EscapeString(title))
+		sb.WriteString(`"`)
+	}
+	if playLabel != "" {
+		sb.WriteString(` playlabel="`)
+		sb.WriteString(html.EscapeString(playLabel))
+		sb.WriteString(`"`)
+	}
+	sb.WriteString(`></lite-youtube>`)
+
+	return sb.String()
+}
+
+func extractYouTubeVideoID(values ...string) string {
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if matches := youtubeOEmbedIDRegex.FindStringSubmatch(value); len(matches) > 1 {
+			return matches[1]
+		}
+	}
+	return ""
 }
 
 // loadCachedMetadata loads metadata from cache if available and not expired.

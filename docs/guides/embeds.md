@@ -122,7 +122,7 @@ External embeds fetch and display (in order based on strategy):
 Embed modes control how external content is rendered:
 
 - `card` (default): image + title + description + domain
-- `rich`: full oEmbed HTML (iframes, scripts)
+- `rich`: full oEmbed HTML (iframes, scripts). YouTube defaults to Lite YouTube embeds.
 - `performance`: image only, no text
 - `hover`: image preview, loads embed HTML on hover
 - `image_only`: image-only rendering (useful for photo providers)
@@ -234,6 +234,12 @@ mode = "rich"
 [embeds.providers.giphy]
 mode = "image_only"
 ```
+
+### YouTube oEmbed (Lite YouTube)
+
+YouTube oEmbeds in rich mode render as Lite YouTube embeds by default for faster loads.
+Lite YouTube assets are loaded only when needed and follow the vendor assets mode
+(`assets.mode`) for CDN vs self-hosted paths.
 
 ## Styling
 
