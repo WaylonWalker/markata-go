@@ -121,16 +121,24 @@ func (p *BuildCachePlugin) configureIncrementalServe(m *lifecycle.Manager, cache
 	}
 
 	cache.MarkChangedPaths(changedPaths)
+	removedPaths := lifecycle.GetServeRemovedPaths(m)
+	for _, path := range removedPaths {
+		cache.Graph.RemoveSource(path)
+	}
 
 	changedSlugs := cache.GetChangedSlugs()
-	affectedPaths := cache.GetAffectedPosts(changedSlugs)
 	cache.MarkAffectedDependents(changedSlugs)
+	changedSlugs = cache.GetChangedSlugs()
+	affectedPaths := cache.GetAffectedPosts(changedSlugs)
 
 	affected := make(map[string]bool, len(changedPaths)+len(affectedPaths))
 	for _, path := range changedPaths {
 		affected[path] = true
 	}
 	for _, path := range affectedPaths {
+		affected[path] = true
+	}
+	for _, path := range removedPaths {
 		affected[path] = true
 	}
 	lifecycle.SetServeAffectedPaths(m, affected)

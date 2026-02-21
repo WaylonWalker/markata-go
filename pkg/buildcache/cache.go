@@ -832,6 +832,7 @@ func (c *Cache) RemoveStale(currentPaths map[string]bool) int {
 	for path := range c.Posts {
 		if !currentPaths[path] {
 			delete(c.Posts, path)
+			c.Graph.RemoveSource(path)
 			removed++
 			c.dirty = true
 		}
@@ -1013,6 +1014,16 @@ func (c *Cache) MarkFeedSlugChanged(slug string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.changedFeedSlugs[slug] = true
+}
+
+// SetPostSlug records the slug for a source path in the dependency graph.
+func (c *Cache) SetPostSlug(sourcePath, slug string) {
+	if sourcePath == "" || slug == "" {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.Graph.PathToSlug[sourcePath] = slug
 }
 
 // MarkChangedPaths records slugs for the provided source paths if known in the cache.
