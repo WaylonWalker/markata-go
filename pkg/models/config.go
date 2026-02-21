@@ -2073,7 +2073,8 @@ func NewEmbedsConfig() EmbedsConfig {
 		OEmbedEnabled:      true,
 		ResolutionStrategy: "oembed_first",
 		OEmbedProviders: map[string]OEmbedProviderConfig{
-			"tiktok": {Enabled: true, Mode: "card"},
+			"tiktok":  {Enabled: true, Mode: "card"},
+			"youtube": {Enabled: true, Mode: "rich"},
 		},
 		OEmbedAutoDiscover: false,
 		DefaultEmbedMode:   "card",
