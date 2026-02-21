@@ -569,11 +569,13 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 	return post, nil
 }
 
-// Date field aliases for publication date
-var dateFieldAliases = []string{"date", "publishdate", "pubdate"}
+// Date field aliases for publication date (first match wins).
+// Precedence follows common SSG conventions (publishdate first).
+var dateFieldAliases = []string{"publishdate", "date", "pubdate"}
 
-// Modified field aliases for last modified date
-var modifiedFieldAliases = []string{"modified", "lastmod", "updated", "last_modified", "updated_at"}
+// Modified field aliases for last modified date (first match wins).
+// Precedence follows common SSG conventions (lastmod first).
+var modifiedFieldAliases = []string{"lastmod", "modified", "updated", "updated_at", "last_modified"}
 
 // applyMetadata applies parsed frontmatter metadata to a Post.
 //
@@ -615,7 +617,7 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		post.Title = &title
 	}
 
-	// Date - handle various formats and aliases (date, publishdate, pubdate, published)
+	// Date - handle various formats and aliases (publishdate, date, pubdate)
 	if dateVal := getFirstDateValue(metadata, dateFieldAliases); dateVal != nil {
 		date, err := parseDate(dateVal)
 		if err != nil {

@@ -360,7 +360,7 @@ Templates are looked up in:
 | `title` | string | None | No | Display title of the post |
 | `slug` | string | Auto-generated | No | URL path identifier |
 | `date` | date | None | No | Publication date (YYYY-MM-DD) |
-| `modified` | date | `date` | No | Last modified date (YYYY-MM-DD) |
+| `modified` | date | None | No | Last modified date (YYYY-MM-DD) |
 | `published` | bool | `false` | No | Whether to include in public feeds |
 | `draft` | bool | `false` | No | Whether this is a work-in-progress |
 | `tags` | []string | `[]` | No | List of categorization tags |
@@ -376,24 +376,25 @@ Templates are looked up in:
 
 For compatibility with other static site generators, markata-go supports multiple frontmatter keys:
 
-**Publication date aliases:** `date`, `publishdate`, `pubdate`, `published`
+**Publication date aliases:** `publishdate`, `date`, `pubdate`
 
-**Modified date aliases:** `modified`, `lastmod`, `updated`, `last_modified`, `updated_at`
+**Modified date aliases:** `lastmod`, `modified`, `updated`, `updated_at`, `last_modified`
+
+When multiple aliases are provided, the **first listed wins**. This precedence matches common SSG conventions.
 
 ```yaml
 ---
 # All of these set the publication date:
-date: 2024-01-15
 publishdate: 2024-01-15
+date: 2024-01-15
 pubdate: 2024-01-15
-published: 2024-01-15
 
 # All of these set the modified date:
-modified: 2024-02-20
 lastmod: 2024-02-20
+modified: 2024-02-20
 updated: 2024-02-20
-last_modified: 2024-02-20
 updated_at: 2024-02-20
+last_modified: 2024-02-20
 ---
 ```
 
@@ -602,7 +603,7 @@ word_count: 1250
 revision: 3
 ```
 
-**Note:** The `modified` date is now a first-class field (see above). Use `modified`, `lastmod`, or `updated` in frontmatter - they all set the same field.
+**Note:** The `modified` date is now a first-class field (see above). Use `lastmod`, `modified`, or `updated` in frontmatter - they all set the same field. If multiple are present, the first listed alias wins.
 
 #### Categorization
 

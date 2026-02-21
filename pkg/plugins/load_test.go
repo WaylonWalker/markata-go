@@ -272,3 +272,91 @@ func TestApplyMetadata_AuthorAliases(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyMetadata_DateAliases(t *testing.T) {
+	p := &LoadPlugin{}
+
+	tests := []struct {
+		name        string
+		metadata    map[string]interface{}
+		wantDate    time.Time
+		wantMod     time.Time
+		wantErr     bool
+		wantDateSet bool
+		wantModSet  bool
+	}{
+		{
+			name:        "publishdate wins over date and pubdate",
+			metadata:    map[string]interface{}{"date": "2024-01-01", "publishdate": "2024-02-01", "pubdate": "2024-03-01"},
+			wantDate:    time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
+			wantDateSet: true,
+		},
+		{
+			name:        "date used when publishdate absent",
+			metadata:    map[string]interface{}{"date": "2024-01-15"},
+			wantDate:    time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC),
+			wantDateSet: true,
+		},
+		{
+			name:        "pubdate used when others absent",
+			metadata:    map[string]interface{}{"pubdate": "2024-03-10"},
+			wantDate:    time.Date(2024, 3, 10, 0, 0, 0, 0, time.UTC),
+			wantDateSet: true,
+		},
+		{
+			name:       "lastmod wins over modified and updated",
+			metadata:   map[string]interface{}{"modified": "2024-01-01", "lastmod": "2024-02-01", "updated": "2024-03-01"},
+			wantMod:    time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
+			wantModSet: true,
+		},
+		{
+			name:       "updated_at used when higher precedence absent",
+			metadata:   map[string]interface{}{"updated_at": "2024-04-05"},
+			wantMod:    time.Date(2024, 4, 5, 0, 0, 0, 0, time.UTC),
+			wantModSet: true,
+		},
+		{
+			name:     "invalid date returns error",
+			metadata: map[string]interface{}{"date": "not-a-date"},
+			wantErr:  true,
+		},
+		{
+			name:     "invalid modified returns error",
+			metadata: map[string]interface{}{"lastmod": "not-a-date"},
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			post := &models.Post{}
+			err := p.applyMetadata(post, tt.metadata)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("applyMetadata() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if tt.wantDateSet {
+				if post.Date == nil {
+					t.Fatalf("expected Date to be set")
+				}
+				if !post.Date.Equal(tt.wantDate) {
+					t.Errorf("Date = %v, want %v", post.Date, tt.wantDate)
+				}
+			} else if post.Date != nil {
+				t.Errorf("expected Date to be nil")
+			}
+			if tt.wantModSet {
+				if post.Modified == nil {
+					t.Fatalf("expected Modified to be set")
+				}
+				if !post.Modified.Equal(tt.wantMod) {
+					t.Errorf("Modified = %v, want %v", post.Modified, tt.wantMod)
+				}
+			} else if post.Modified != nil {
+				t.Errorf("expected Modified to be nil")
+			}
+		})
+	}
+}
