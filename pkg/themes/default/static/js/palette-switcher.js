@@ -12,53 +12,8 @@
   const MODE_KEY = 'color-mode'; // 'light' or 'dark'
   const AESTHETIC_KEY = 'selected-aesthetic';
 
-  // Available aesthetics for cycling
-  const AESTHETICS = ['brutal', 'precision', 'balanced', 'elevated', 'minimal'];
-
-  // Aesthetic CSS property definitions
-  // Uses --radius and --radius-lg to match the actual CSS variable names
-  const AESTHETIC_STYLES = {
-    brutal: {
-      '--radius': '0',
-      '--radius-lg': '0',
-      '--article-shadow': '4px 4px 0 var(--color-border)',
-      '--font-body': 'var(--font-mono, ui-monospace, monospace)',
-      '--leading-normal': '1.5',
-      '--leading-relaxed': '1.6'
-    },
-    precision: {
-      '--radius': '2px',
-      '--radius-lg': '4px',
-      '--article-shadow': '0 2px 4px rgba(0,0,0,0.06)',
-      '--font-body': 'system-ui, -apple-system, sans-serif',
-      '--leading-normal': '1.5',
-      '--leading-relaxed': '1.625'
-    },
-    balanced: {
-      '--radius': '0.375rem',
-      '--radius-lg': '0.5rem',
-      '--article-shadow': '0 4px 12px rgba(0,0,0,0.1)',
-      '--font-body': 'system-ui, -apple-system, sans-serif',
-      '--leading-normal': '1.5',
-      '--leading-relaxed': '1.625'
-    },
-    elevated: {
-      '--radius': '0.75rem',
-      '--radius-lg': '1rem',
-      '--article-shadow': '0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06)',
-      '--font-body': 'system-ui, -apple-system, sans-serif',
-      '--leading-normal': '1.6',
-      '--leading-relaxed': '1.75'
-    },
-    minimal: {
-      '--radius': '2px',
-      '--radius-lg': '4px',
-      '--article-shadow': 'none',
-      '--font-body': 'system-ui, -apple-system, sans-serif',
-      '--leading-normal': '1.5',
-      '--leading-relaxed': '1.625'
-    }
-  };
+  // Aesthetic list is populated from CSS manifest dynamically
+  let AESTHETICS = [];
 
   // Variant suffixes to strip when computing family names
   const VARIANT_SUFFIXES = [
@@ -685,36 +640,75 @@
   let sortedFamilyNames = [];
 
   /**
+   * Get the aesthetic manifest from CSS custom property
+   */
+  function getAestheticManifest() {
+    const styles = getComputedStyle(document.documentElement);
+    let manifest = styles.getPropertyValue('--aesthetic-manifest').trim();
+
+    if (!manifest || manifest === 'none' || manifest === '') {
+      return [];
+    }
+
+    try {
+      if (manifest.startsWith("'") && manifest.endsWith("'")) {
+        manifest = manifest.slice(1, -1);
+      }
+      if (manifest.startsWith('"') && manifest.endsWith('"')) {
+        manifest = manifest.slice(1, -1);
+      }
+      manifest = manifest.replace(/\\'/g, "'");
+
+      return JSON.parse(manifest);
+    } catch (e) {
+      console.warn('[palette-switcher] Failed to parse aesthetic manifest:', e);
+      return [];
+    }
+  }
+
+  function getDefaultAesthetic() {
+    const styles = getComputedStyle(document.documentElement);
+    let def = styles.getPropertyValue('--aesthetic-default').trim();
+    if (def.startsWith("'") || def.startsWith('"')) {
+      def = def.slice(1, -1);
+    }
+    return def || 'balanced';
+  }
+
+  /**
    * Get the current aesthetic
    */
   function getAesthetic() {
     const stored = localStorage.getItem(AESTHETIC_KEY);
-    if (stored && AESTHETICS.includes(stored)) {
+    const manifest = getAestheticManifest();
+    const manifestNames = manifest.map(m => m.name);
+
+    if (AESTHETICS.length === 0) {
+      AESTHETICS = manifestNames;
+    }
+
+    if (stored && manifestNames.includes(stored)) {
       return stored;
     }
-    return 'balanced'; // default aesthetic
+    return getDefaultAesthetic();
   }
 
   /**
    * Set the aesthetic and apply CSS properties
    */
   function setAesthetic(aesthetic) {
+    if (AESTHETICS.length === 0) {
+      AESTHETICS = getAestheticManifest().map(m => m.name);
+    }
+
     if (!AESTHETICS.includes(aesthetic)) {
       console.warn('[palette-switcher] Unknown aesthetic:', aesthetic);
       return;
     }
 
     const root = document.documentElement;
-    const styles = AESTHETIC_STYLES[aesthetic];
 
-    // Apply all CSS custom properties
-    if (styles) {
-      for (const [prop, value] of Object.entries(styles)) {
-        root.style.setProperty(prop, value);
-      }
-    }
-
-    // Set data attribute for CSS selectors
+    // Set data attribute for CSS selectors (aesthetic.css relies on this)
     root.dataset.aesthetic = aesthetic;
 
     // Persist selection
@@ -736,11 +730,18 @@
    * Cycle to next/previous aesthetic
    */
   function cycleAesthetic(direction) {
+    if (AESTHETICS.length === 0) {
+      AESTHETICS = getAestheticManifest().map(m => m.name);
+    }
+    if (AESTHETICS.length === 0) return;
+
     const currentAesthetic = getAesthetic();
     const currentIndex = AESTHETICS.indexOf(currentAesthetic);
 
     let newIndex;
-    if (direction === 'next') {
+    if (currentIndex === -1) {
+      newIndex = 0;
+    } else if (direction === 'next') {
       newIndex = (currentIndex + 1) % AESTHETICS.length;
     } else {
       newIndex = (currentIndex - 1 + AESTHETICS.length) % AESTHETICS.length;

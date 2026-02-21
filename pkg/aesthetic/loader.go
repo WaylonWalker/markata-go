@@ -144,6 +144,7 @@ type rawTokens struct {
 	Border     map[string]any `toml:"border"`
 	Shadow     map[string]any `toml:"shadow"`
 	Typography map[string]any `toml:"typography"`
+	Effects    map[string]any `toml:"effects"`
 }
 
 // rawAesthetic is an intermediate type for parsing TOML files.
@@ -172,6 +173,7 @@ func parseAesthetic(data []byte, path, source string) (*Aesthetic, error) {
 			Border:     convertToStringMap(raw.Tokens.Border),
 			Shadow:     convertToStringMap(raw.Tokens.Shadow),
 			Typography: convertToStringMap(raw.Tokens.Typography),
+			Effects:    convertToStringMap(raw.Tokens.Effects),
 		},
 	}
 
@@ -187,6 +189,9 @@ func parseAesthetic(data []byte, path, source string) (*Aesthetic, error) {
 	}
 	if a.Tokens.Typography == nil {
 		a.Tokens.Typography = make(map[string]string)
+	}
+	if a.Tokens.Effects == nil {
+		a.Tokens.Effects = make(map[string]string)
 	}
 
 	// Validate the loaded aesthetic
