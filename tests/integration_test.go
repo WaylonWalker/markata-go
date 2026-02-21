@@ -1126,10 +1126,10 @@ Content`)
 	runBuildWithPalette("catppuccin-mocha")
 
 	// Read the CSS
-	cssPath := filepath.Join(site.outputDir, "css", "variables.css")
+	cssPath := filepath.Join(site.outputDir, "css", "palette.css")
 	css1, err := os.ReadFile(cssPath)
 	if err != nil {
-		t.Fatalf("failed to read variables.css after first build: %v", err)
+		t.Fatalf("failed to read palette.css after first build: %v", err)
 	}
 
 	if !strings.Contains(string(css1), "catppuccin-mocha") {
@@ -1141,7 +1141,7 @@ Content`)
 
 	css2, err := os.ReadFile(cssPath)
 	if err != nil {
-		t.Fatalf("failed to read variables.css after second build: %v", err)
+		t.Fatalf("failed to read palette.css after second build: %v", err)
 	}
 
 	if !strings.Contains(string(css2), "dracula") {
@@ -1227,10 +1227,10 @@ palette = "catppuccin-mocha"
 `
 	buildWithConfig(config1)
 
-	cssPath := filepath.Join(site.outputDir, "css", "variables.css")
+	cssPath := filepath.Join(site.outputDir, "css", "palette.css")
 	css1, err := os.ReadFile(cssPath)
 	if err != nil {
-		t.Fatalf("failed to read variables.css after first build: %v", err)
+		t.Fatalf("failed to read palette.css after first build: %v", err)
 	}
 
 	if !strings.Contains(string(css1), "catppuccin-mocha") {
@@ -1255,7 +1255,7 @@ palette = "dracula"
 
 	css2, err := os.ReadFile(cssPath)
 	if err != nil {
-		t.Fatalf("failed to read variables.css after second build: %v", err)
+		t.Fatalf("failed to read palette.css after second build: %v", err)
 	}
 
 	if !strings.Contains(string(css2), "dracula") {
@@ -1348,10 +1348,10 @@ palette = "%s"
 	// First build with catppuccin-mocha
 	buildWithPalette("catppuccin-mocha")
 
-	cssPath := filepath.Join(site.outputDir, "css", "variables.css")
+	cssPath := filepath.Join(site.outputDir, "css", "palette.css")
 	css1, err := os.ReadFile(cssPath)
 	if err != nil {
-		t.Fatalf("failed to read variables.css after first build: %v", err)
+		t.Fatalf("failed to read palette.css after first build: %v", err)
 	}
 
 	if !strings.Contains(string(css1), "catppuccin-mocha") {
@@ -1363,7 +1363,7 @@ palette = "%s"
 
 	css2, err := os.ReadFile(cssPath)
 	if err != nil {
-		t.Fatalf("failed to read variables.css after second build: %v", err)
+		t.Fatalf("failed to read palette.css after second build: %v", err)
 	}
 
 	if !strings.Contains(string(css2), "dracula") {
