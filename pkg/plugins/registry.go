@@ -52,6 +52,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["reading_time"] = func() lifecycle.Plugin { return NewReadingTimePlugin() }
 	pluginRegistry.constructors["static_assets"] = func() lifecycle.Plugin { return NewStaticAssetsPlugin() }
 	pluginRegistry.constructors["palette_css"] = func() lifecycle.Plugin { return NewPaletteCSSPlugin() }
+	pluginRegistry.constructors["aesthetic_css"] = func() lifecycle.Plugin { return NewAestheticCSSPlugin() }
 	pluginRegistry.constructors["prevnext"] = func() lifecycle.Plugin { return NewPrevNextPlugin() }
 	pluginRegistry.constructors["heading_anchors"] = func() lifecycle.Plugin { return NewHeadingAnchorsPlugin() }
 	pluginRegistry.constructors["redirects"] = func() lifecycle.Plugin { return NewRedirectsPlugin() }
@@ -207,6 +208,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		// Write stage plugins
 		NewStaticAssetsPlugin(), // Copy static assets first
 		NewPaletteCSSPlugin(),   // Generate palette CSS (overwrites variables.css)
+		NewAestheticCSSPlugin(), // Generate aesthetic CSS
 		NewChromaCSSPlugin(),    // Generate syntax highlighting CSS
 		NewCSSBundlePlugin(),    // Bundle CSS files (runs after CSS generators)
 		NewPublishFeedsPlugin(),

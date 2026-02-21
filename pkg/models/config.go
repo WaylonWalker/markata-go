@@ -771,6 +771,9 @@ type ThemeConfig struct {
 	// Name is the theme name (default: "default")
 	Name string `json:"name" yaml:"name" toml:"name"`
 
+	// Aesthetic configures the structural token set to use
+	Aesthetic string `json:"aesthetic,omitempty" yaml:"aesthetic,omitempty" toml:"aesthetic,omitempty"`
+
 	// Palette is the base color palette to use (default: "default-light")
 	// When set to a base name like "everforest", the system will auto-detect
 	// light/dark variants (e.g., "everforest-light" and "everforest-dark")
