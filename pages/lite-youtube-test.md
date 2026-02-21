@@ -27,7 +27,7 @@ Use this page to verify oEmbed rendering across providers on localhost:8000.
 
 ![embed](https://open.spotify.com/track/7GhIk7Il098yCjg4BQjzvb)
 
-## CodePen
+## CodePen (fallback card)
 
 ![embed](https://codepen.io/team/codepen/pen/PNaGbb)
 
@@ -38,3 +38,7 @@ Use this page to verify oEmbed rendering across providers on localhost:8000.
 ## Giphy
 
 ![embed](https://giphy.com/gifs/nhl-hockey-goal-3o6Mb9N8J3u3V8JY4O)
+
+## Reddit
+
+![embed](https://www.reddit.com/r/MechanicalKeyboards/comments/1rajv22/so_i_like_red/)

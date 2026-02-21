@@ -2073,6 +2073,7 @@ func NewEmbedsConfig() EmbedsConfig {
 		OEmbedEnabled:      true,
 		ResolutionStrategy: "oembed_first",
 		OEmbedProviders: map[string]OEmbedProviderConfig{
+			"giphy":   {Enabled: true, Mode: "image_only"},
 			"tiktok":  {Enabled: true, Mode: "card"},
 			"youtube": {Enabled: true, Mode: "rich"},
 		},

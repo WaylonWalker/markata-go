@@ -172,6 +172,7 @@ fallback_title = "External Link"  # Title when metadata is unavailable
 show_image = true                 # Show images
 
 [embeds.providers]
+giphy = { enabled = true, mode = "image_only" }
 youtube = { enabled = true, mode = "rich" } # default
 vimeo = { enabled = true }
 tiktok = { enabled = true }

@@ -57,6 +57,7 @@ fallback_title = "External Link"                 # Title when OG title is unavai
 show_image = true                                # Show OG images in external embeds
 
 [embeds.providers]
+giphy = { enabled = true, mode = "image_only" }
 youtube = { enabled = true, mode = "rich" } # default
 vimeo = { enabled = true }
 tiktok = { enabled = true }
