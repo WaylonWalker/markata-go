@@ -127,6 +127,12 @@ Embed modes control how external content is rendered:
 - `hover`: image preview, loads embed HTML on hover
 - `image_only`: image-only rendering (useful for photo providers)
 
+### GitHub Gist Rendering
+
+Gist embeds render the first file as a code block styled by your configured
+code theme. The filename appears above the code block with a link to the
+original gist.
+
 ### Caching
 
 Metadata is cached for 7 days by default (configurable) to avoid repeated HTTP requests. Cache files are stored in `.cache/embeds/` by default.
