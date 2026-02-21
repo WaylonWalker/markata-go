@@ -136,6 +136,15 @@ func mergeThemeConfig(base, override models.ThemeConfig) models.ThemeConfig {
 	if override.Palette != "" {
 		result.Palette = override.Palette
 	}
+	if override.PaletteLight != "" {
+		result.PaletteLight = override.PaletteLight
+	}
+	if override.PaletteDark != "" {
+		result.PaletteDark = override.PaletteDark
+	}
+	if override.SeedColor != "" {
+		result.SeedColor = override.SeedColor
+	}
 	if override.CustomCSS != "" {
 		result.CustomCSS = override.CustomCSS
 	}

@@ -30,7 +30,7 @@ func TestPaletteCSSPlugin_GetPaletteConfig_WithThemeConfig(t *testing.T) {
 		},
 	}
 
-	palette, paletteLight, paletteDark := p.getPaletteConfig(extra)
+	palette, paletteLight, paletteDark, _ := p.getPaletteConfig(extra)
 
 	if palette != "catppuccin-mocha" {
 		t.Errorf("palette = %q, want %q", palette, "catppuccin-mocha")
@@ -56,7 +56,7 @@ func TestPaletteCSSPlugin_GetPaletteConfig_WithMapInterface(t *testing.T) {
 		},
 	}
 
-	palette, paletteLight, paletteDark := p.getPaletteConfig(extra)
+	palette, paletteLight, paletteDark, _ := p.getPaletteConfig(extra)
 
 	if palette != "nord" {
 		t.Errorf("palette = %q, want %q", palette, "nord")
