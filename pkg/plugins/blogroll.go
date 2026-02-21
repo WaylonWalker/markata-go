@@ -1946,7 +1946,6 @@ func (p *BlogrollPlugin) renderBlogrollFallback(feeds []*models.ExternalFeed, ca
   <!-- Theme CSS - uses site's configured palette if available -->
   <link rel="stylesheet" href="/css/variables.css">
   <link rel="stylesheet" href="/css/palette.css">
-    <link rel="stylesheet" href="/css/palette.css">
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="/css/components.css">
   <style>
@@ -2146,7 +2145,6 @@ func (p *BlogrollPlugin) renderReaderFallback(entries []*models.ExternalEntry, p
   <!-- Theme CSS - uses site's configured palette if available -->
   <link rel="stylesheet" href="/css/variables.css">
   <link rel="stylesheet" href="/css/palette.css">
-    <link rel="stylesheet" href="/css/palette.css">
   <link rel="stylesheet" href="/css/main.css">
   <link rel="stylesheet" href="/css/components.css">
   <style>

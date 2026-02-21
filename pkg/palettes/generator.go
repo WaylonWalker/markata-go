@@ -1,6 +1,9 @@
 package palettes
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 // HSL represents a color in Hue, Saturation, Lightness space
 // H is 0-360, S is 0-1, L is 0-1
@@ -195,7 +198,7 @@ func clamp(v float64) float64 {
 }
 
 func mathMod(a, b float64) float64 {
-	m := float64(int(a) % int(b))
+	m := math.Mod(a, b)
 	if m < 0 {
 		m += b
 	}

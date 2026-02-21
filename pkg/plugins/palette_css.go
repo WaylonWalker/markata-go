@@ -56,14 +56,22 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 	// Load palettes
 	loader := palettes.NewLoader()
 
-	if paletteName == "generated" && seedColor != "" {
-		lightP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantLight)
-		if err == nil {
-			loader.AddPalette("generated-light", lightP)
-		}
-		darkP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantDark)
-		if err == nil {
-			loader.AddPalette("generated-dark", darkP)
+	if paletteName == "generated" {
+		if seedColor == "" {
+			log.Printf("[palette_css] Warning: palette is 'generated' but no seed_color provided. Using fallback.")
+		} else {
+			lightP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantLight)
+			if err == nil {
+				loader.AddPalette("generated-light", lightP)
+			} else {
+				log.Printf("[palette_css] Error generating light palette from seed %q: %v", seedColor, err)
+			}
+			darkP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantDark)
+			if err == nil {
+				loader.AddPalette("generated-dark", darkP)
+			} else {
+				log.Printf("[palette_css] Error generating dark palette from seed %q: %v", seedColor, err)
+			}
 		}
 	}
 
@@ -116,14 +124,22 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	// Load palettes
 	loader := palettes.NewLoader()
 
-	if paletteName == "generated" && seedColor != "" {
-		lightP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantLight)
-		if err == nil {
-			loader.AddPalette("generated-light", lightP)
-		}
-		darkP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantDark)
-		if err == nil {
-			loader.AddPalette("generated-dark", darkP)
+	if paletteName == "generated" {
+		if seedColor == "" {
+			log.Printf("[palette_css] Warning: palette is 'generated' but no seed_color provided. Using fallback.")
+		} else {
+			lightP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantLight)
+			if err == nil {
+				loader.AddPalette("generated-light", lightP)
+			} else {
+				log.Printf("[palette_css] Error generating light palette from seed %q: %v", seedColor, err)
+			}
+			darkP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantDark)
+			if err == nil {
+				loader.AddPalette("generated-dark", darkP)
+			} else {
+				log.Printf("[palette_css] Error generating dark palette from seed %q: %v", seedColor, err)
+			}
 		}
 	}
 
