@@ -203,6 +203,7 @@
     const keyName = container.dataset.keyName || 'default';
     const input = container.querySelector('.encrypted-content__input');
     const button = container.querySelector('.encrypted-content__button');
+    const form = container.querySelector('.encrypted-content__form');
     const errorEl = container.querySelector('.encrypted-content__error');
     const lockedEl = container.querySelector('.encrypted-content__locked');
     const decryptedEl = container.querySelector('.encrypted-content__decrypted');
@@ -298,6 +299,13 @@
     button.addEventListener('click', function() {
       attemptDecryption();
     });
+
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        attemptDecryption();
+      });
+    }
 
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
