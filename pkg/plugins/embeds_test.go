@@ -569,6 +569,90 @@ func TestEmbedsPlugin_ExternalEmbed_DefaultModeFromConfig(t *testing.T) {
 	}
 }
 
+func TestEmbedsPlugin_ExternalEmbed_YouTubeLiteEmbed(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		//nolint:errcheck // test helper
+		w.Write([]byte(`{"type":"video","version":"1.0","title":"Video Title","provider_name":"YouTube","html":"<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" width=\"480\" height=\"270\"></iframe>"}`))
+	}))
+	defer server.Close()
+
+	provider := oembedProvider{
+		Name:           "youtube",
+		Endpoint:       server.URL,
+		URLPrefixes:    []string{"https://youtube.com/"},
+		SupportsFormat: false,
+		IsCustom:       true,
+	}
+
+	config := models.NewEmbedsConfig()
+	config.CacheDir = t.TempDir()
+	config.OEmbedProviders = map[string]models.OEmbedProviderConfig{
+		"youtube": {Enabled: true, Mode: "rich"},
+	}
+
+	client := server.Client()
+	p := NewEmbedsPlugin()
+	p.SetConfig(config)
+	p.oembed = newOEmbedResolverWithProviders(config, client, []oembedProvider{provider})
+
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{{
+		Path:    "source.md",
+		Slug:    "source-post",
+		Content: "![embed](https://youtube.com/watch?v=dQw4w9WgXcQ)",
+	}})
+
+	if err := p.Transform(m); err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	result := m.Posts()[0]
+	if !containsString(result.Content, "<lite-youtube") {
+		t.Errorf("expected lite-youtube embed, got: %s", result.Content)
+	}
+	if !containsString(result.Content, "videoid=\"dQw4w9WgXcQ\"") {
+		t.Errorf("expected videoid to be extracted, got: %s", result.Content)
+	}
+
+	configExtra := m.Config().Extra
+	if configExtra == nil || configExtra["lite_youtube_enabled"] != true {
+		t.Errorf("expected lite_youtube_enabled to be set in config.Extra")
+	}
+}
+
+func TestEmbedsPlugin_ExternalEmbed_YouTubeLiteEmbed_FallbackToOG(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		//nolint:errcheck // test helper
+		w.Write([]byte(`<!doctype html><html><head>
+<meta property="og:title" content="Example Video">
+<meta property="og:image" content="https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg">
+<meta property="og:site_name" content="YouTube">
+</head></html>`))
+	}))
+	defer server.Close()
+
+	p := NewEmbedsPlugin()
+	p.config.OEmbedEnabled = false
+
+	m := lifecycle.NewManager()
+	m.SetPosts([]*models.Post{{
+		Path:    "source.md",
+		Slug:    "source-post",
+		Content: "![embed](" + server.URL + "/watch?v=dQw4w9WgXcQ)",
+	}})
+
+	if err := p.Transform(m); err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	result := m.Posts()[0]
+	if !containsString(result.Content, "<lite-youtube") {
+		t.Errorf("expected lite-youtube embed fallback, got: %s", result.Content)
+	}
+}
+
 func TestEmbedsPlugin_ExternalEmbed_ProviderModeOverride(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -823,6 +907,9 @@ func TestEmbedsPlugin_Configure(t *testing.T) {
 	}
 	if p.config.OEmbedProviders["youtube"].Enabled {
 		t.Error("expected youtube provider to be disabled")
+	}
+	if p.config.OEmbedProviders["youtube"].Mode != "rich" {
+		t.Errorf("expected youtube provider mode to be 'rich', got '%s'", p.config.OEmbedProviders["youtube"].Mode)
 	}
 	if !p.config.OEmbedProviders["vimeo"].Enabled {
 		t.Error("expected vimeo provider to be enabled")

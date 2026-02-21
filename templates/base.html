@@ -48,6 +48,10 @@
   <link rel="stylesheet" href="{% if config.Extra.asset_urls.glightbox-css %}{{ config.Extra.asset_urls.glightbox-css }}{% elif config.Extra.glightbox_cdn %}https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css{% else %}/assets/vendor/glightbox/glightbox.min.css{% endif %}">
 {% endif %}
 
+  {% if config.Extra.lite_youtube_enabled %}
+  <link rel="stylesheet" href="{% if config.Extra.asset_urls.lite-youtube-css %}{{ config.Extra.asset_urls.lite-youtube-css }}{% else %}https://cdn.jsdelivr.net/npm/lite-youtube-embed@0.3.4/src/lite-yt-embed.css{% endif %}">
+  {% endif %}
+
   <!-- CSS variable overrides from theme config -->
   {% if config.theme.variables %}
   <style>:root { {% for k, v in config.theme.variables.items() %}{{ k }}: {{ v }}; {% endfor %} }</style>
@@ -302,6 +306,14 @@
       window.dispatchEvent(new CustomEvent('glightbox-ready'));
     };
     document.body.appendChild(glightboxScript);
+    {% endif %}
+
+    // Lite YouTube embeds (oEmbed)
+    {% if config.Extra.lite_youtube_enabled %}
+    const liteYouTubeScript = document.createElement('script');
+    liteYouTubeScript.src = '{% if config.Extra.asset_urls.lite-youtube-js %}{{ config.Extra.asset_urls.lite-youtube-js }}{% else %}https://cdn.jsdelivr.net/npm/lite-youtube-embed@0.3.4/src/lite-yt-embed.js{% endif %}';
+    liteYouTubeScript.defer = true;
+    document.body.appendChild(liteYouTubeScript);
     {% endif %}
   </script>
 
