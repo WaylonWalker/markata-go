@@ -128,22 +128,21 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 			feedConfigs = fcs
 		}
 	}
-	if config.Extra != nil {
-		if async, ok := config.Extra["feeds_async"].(bool); ok && async {
-			if len(feedConfigs) == 0 {
-				return nil
-			}
-			go func() {
-				if err := p.publishFeedsAsync(m, feedConfigs); err != nil {
-					log.Printf("[publish_feeds] async publish failed: %v", err)
-				}
-			}()
-			return nil
-		}
-	}
-
 	if len(feedConfigs) == 0 {
 		return nil
+	}
+
+	if lifecycle.IsServeFastMode(m) {
+		if extra := config.Extra; extra != nil {
+			if async, ok := extra["feeds_async"].(bool); ok && async {
+				go func() {
+					if err := p.publishFeedsAsync(m, feedConfigs); err != nil {
+						log.Printf("[publish_feeds] async publish failed: %v", err)
+					}
+				}()
+				return nil
+			}
+		}
 	}
 
 	// Copy XSL stylesheets to output directory for styled RSS/Atom feeds

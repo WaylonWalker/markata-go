@@ -72,6 +72,7 @@ var (
 	serveChangedPathsMu   sync.Mutex
 	serveChangedPaths     = make(map[string]fsnotify.Op)
 	serveForceFullRebuild bool
+	serveGlobDirty        bool
 	serveCacheMu          sync.Mutex
 	serveCache            *buildcache.Cache
 	servePostsMu          sync.Mutex
@@ -197,6 +198,8 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 	if !serveFast {
 		lifecycle.SetServeFullRebuild(m, true)
 		lifecycle.SetServeChangedPaths(m, nil)
+		lifecycle.SetServeRemovedPaths(m, nil)
+		lifecycle.SetServeGlobDirty(m, true)
 	}
 
 	// Determine output directory
@@ -333,6 +336,9 @@ func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.W
 	} else {
 		lifecycle.SetServeFullRebuild(m, true)
 	}
+	lifecycle.SetServeGlobDirty(m, true)
+	lifecycle.SetServeChangedPaths(m, nil)
+	lifecycle.SetServeRemovedPaths(m, nil)
 
 	wg.Add(1)
 	go func() {
@@ -1134,49 +1140,52 @@ func recordServeChangedPath(event fsnotify.Event) {
 
 	serveChangedPathsMu.Lock()
 	serveChangedPaths[absPath] |= event.Op
-	if event.Op&(fsnotify.Remove) != 0 {
-		serveForceFullRebuild = true
+	if event.Op&(fsnotify.Create|fsnotify.Remove|fsnotify.Rename) != 0 {
+		serveGlobDirty = true
 	}
 	serveChangedPathsMu.Unlock()
 }
 
-func consumeServeChanges() (paths []string, forceFull bool) {
+func consumeServeChanges() (paths, removed []string, forceFull, globDirty bool) {
 	serveChangedPathsMu.Lock()
 	defer serveChangedPathsMu.Unlock()
 
 	if len(serveChangedPaths) == 0 {
 		forceFull = serveForceFullRebuild
+		globDirty = serveGlobDirty
 		serveForceFullRebuild = false
-		return nil, forceFull
+		serveGlobDirty = false
+		return nil, nil, forceFull, globDirty
 	}
 
 	paths = make([]string, 0, len(serveChangedPaths))
+	removed = make([]string, 0)
 	for path := range serveChangedPaths {
 		paths = append(paths, path)
 	}
 
 	forceFull = false
 	for path, ops := range serveChangedPaths {
-		if ops&fsnotify.Remove == 0 {
-			continue
+		if ops&fsnotify.Remove != 0 {
+			removed = append(removed, path)
 		}
-		if ops&(fsnotify.Create|fsnotify.Rename) != 0 {
-			continue
-		}
-		if _, err := os.Stat(path); err != nil {
-			if os.IsNotExist(err) {
-				forceFull = true
-				break
+		if ops&fsnotify.Rename != 0 {
+			if _, err := os.Stat(path); err != nil {
+				if os.IsNotExist(err) {
+					removed = append(removed, path)
+				}
 			}
 		}
 	}
 	if serveForceFullRebuild {
 		forceFull = true
 	}
+	globDirty = serveGlobDirty
 
 	serveChangedPaths = make(map[string]fsnotify.Op)
 	serveForceFullRebuild = false
-	return paths, forceFull
+	serveGlobDirty = false
+	return paths, removed, forceFull, globDirty
 }
 
 func getServeCache() *buildcache.Cache {
@@ -1334,8 +1343,8 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		return
 	}
 
-	changedPaths, forceFull := consumeServeChanges()
-	configureServeIncremental(m, changedPaths, forceFull)
+	changedPaths, removedPaths, forceFull, globDirty := consumeServeChanges()
+	configureServeIncremental(m, changedPaths, removedPaths, forceFull, globDirty)
 
 	// Apply fast mode if requested (must re-apply on each rebuild since
 	// doRebuild creates a fresh manager via createManager)
@@ -1400,10 +1409,12 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	notifyLiveReload()
 }
 
-func configureServeIncremental(m *lifecycle.Manager, changedPaths []string, forceFull bool) {
+func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths []string, forceFull, globDirty bool) {
 	if !serveFast {
 		lifecycle.SetServeFullRebuild(m, true)
 		lifecycle.SetServeChangedPaths(m, nil)
+		lifecycle.SetServeRemovedPaths(m, nil)
+		lifecycle.SetServeGlobDirty(m, true)
 		return
 	}
 	contentDir := m.Config().ContentDir
@@ -1411,18 +1422,45 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths []string, forc
 		contentDir = "."
 	}
 	normalized, outside := normalizeServeChangedPaths(changedPaths, contentDir)
-	if len(normalized) == 0 || forceFull || outside {
+	normalizedRemoved, outsideRemoved := normalizeServeChangedPaths(removedPaths, contentDir)
+	if (len(normalized) == 0 && len(normalizedRemoved) == 0) || forceFull || outside || outsideRemoved {
 		lifecycle.SetServeFullRebuild(m, true)
 		lifecycle.SetServeChangedPaths(m, nil)
+		lifecycle.SetServeRemovedPaths(m, nil)
+		lifecycle.SetServeGlobDirty(m, true)
 		if verbose {
-			fmt.Printf("[serve] incremental disabled: normalized=%d force_full=%t outside=%t content_dir=%s\n", len(normalized), forceFull, outside, contentDir)
+			fmt.Printf("[serve] incremental disabled: normalized=%d removed=%d force_full=%t outside=%t content_dir=%s\n", len(normalized), len(normalizedRemoved), forceFull, outside || outsideRemoved, contentDir)
 		}
 		return
 	}
+
+	if !globDirty {
+		if cached := getServeCache(); cached != nil {
+			cachedFiles, _ := cached.GetGlobCache()
+			if len(cachedFiles) > 0 {
+				seen := make(map[string]struct{}, len(cachedFiles))
+				for _, file := range cachedFiles {
+					seen[file] = struct{}{}
+				}
+				for _, rel := range normalized {
+					if _, ok := seen[rel]; ok {
+						continue
+					}
+					fullPath := filepath.Join(contentDir, rel)
+					if _, err := os.Stat(fullPath); err == nil {
+						globDirty = true
+						break
+					}
+				}
+			}
+		}
+	}
 	lifecycle.SetServeFullRebuild(m, false)
 	lifecycle.SetServeChangedPaths(m, normalized)
+	lifecycle.SetServeRemovedPaths(m, normalizedRemoved)
+	lifecycle.SetServeGlobDirty(m, globDirty)
 	if verbose {
-		fmt.Printf("[serve] incremental enabled: changed=%d content_dir=%s\n", len(normalized), contentDir)
+		fmt.Printf("[serve] incremental enabled: changed=%d removed=%d glob_dirty=%t content_dir=%s\n", len(normalized), len(normalizedRemoved), globDirty, contentDir)
 	}
 }
 

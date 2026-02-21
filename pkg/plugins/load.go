@@ -84,13 +84,8 @@ func (p *LoadPlugin) loadFromCachedPosts(
 ) error {
 	cache := GetBuildCache(m)
 	posts := make([]*models.Post, 0, len(files))
-	useFastCache := false
-	if config := m.Config(); config.Extra != nil {
-		if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
-			useFastCache = true
-		}
-	}
 	affected := lifecycle.GetServeAffectedPaths(m)
+	useFastCache := lifecycle.IsServeFastMode(m) && len(affected) > 0
 	for _, file := range files {
 		post, err := p.loadCachedPost(file, baseDir, cachedPosts, cache, useFastCache, affected)
 		if err != nil {
@@ -153,14 +148,8 @@ func (p *LoadPlugin) loadAllFiles(m *lifecycle.Manager, files []string, baseDir 
 
 	posts := make([]*models.Post, 0, len(files))
 	var firstErr error
-	useFastCache := false
-	if config := m.Config(); config.Extra != nil {
-		if fast, ok := config.Extra["fast_mode"].(bool); ok && fast {
-			useFastCache = true
-		}
-	}
-
 	affected := lifecycle.GetServeAffectedPaths(m)
+	useFastCache := lifecycle.IsServeFastMode(m) && len(affected) > 0
 
 	for _, file := range files {
 		if useFastCache {
@@ -321,6 +310,7 @@ func (p *LoadPlugin) loadFile(file, baseDir string, cache *buildcache.Cache) (*m
 		contentHash := buildcache.ContentHash(post.Content)
 		//nolint:errcheck // caching is best-effort
 		cache.CacheArticleHTML(file, contentHash, post.ArticleHTML)
+		cache.SetPostSlug(file, post.Slug)
 	}
 
 	if cache != nil {

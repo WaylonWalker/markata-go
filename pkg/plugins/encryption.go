@@ -431,13 +431,13 @@ func (p *EncryptionPlugin) encryptPost(post *models.Post) error {
     <h3 class="encrypted-content__title" id="encrypt-title-%d">Encrypted Content</h3>
     <p class="encrypted-content__message">This content is encrypted. Enter the password to decrypt and view.</p>
     %s
-    <div class="encrypted-content__form" role="form" aria-labelledby="encrypt-title-%d">
+    <form class="encrypted-content__form" aria-labelledby="encrypt-title-%d" action="#" method="post" autocomplete="on">
       <label for="%s" class="sr-only">Password</label>
-      <input type="password" id="%s" class="encrypted-content__input" placeholder="Enter password" autocomplete="off" aria-describedby="encrypt-error-%d">
+      <input type="password" id="%s" name="password" class="encrypted-content__input" placeholder="Enter password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" aria-describedby="encrypt-error-%d">
       <button type="button" class="encrypted-content__button" aria-busy="false">Decrypt</button>
-    </div>
+    </form>
     <label class="encrypted-content__remember-label">
-      <input type="checkbox" id="%s" class="encrypted-content__remember" aria-describedby="remember-desc-%d">
+      <input type="checkbox" id="%s" name="remember" class="encrypted-content__remember" aria-describedby="remember-desc-%d">
       <span>Remember for this session</span>
     </label>
     <span id="remember-desc-%d" class="sr-only">If checked, the password will be saved in your browser for this session only. It will be cleared when you close the browser.</span>
