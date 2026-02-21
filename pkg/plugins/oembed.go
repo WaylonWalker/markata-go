@@ -20,6 +20,7 @@ import (
 	"github.com/yuin/goldmark"
 	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/renderer/html"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
@@ -142,6 +143,9 @@ func newEmbedMarkdownRenderer(extra map[string]interface{}) goldmark.Markdown {
 			extension.Linkify,
 			extension.TaskList,
 			highlighting.NewHighlighting(options...),
+		),
+		goldmark.WithRendererOptions(
+			html.WithUnsafe(),
 		),
 	)
 }
@@ -866,9 +870,12 @@ func fetchRedditImage(resolver *oembedResolver, rawURL string) (*OEmbedResponse,
 	thumbnailURL = strings.ReplaceAll(thumbnailURL, "&amp;", "&")
 
 	return &OEmbedResponse{
-		Type:            "rich",
-		Version:         "1.0",
-		Title:           post.Title,
+		Type:    "rich",
+		Version: "1.0",
+		Title:   post.Title,
+		Extra: map[string]string{
+			"image_alt": post.Title,
+		},
 		ThumbnailURL:    thumbnailURL,
 		ThumbnailWidth:  thumbnailWidth,
 		ThumbnailHeight: thumbnailHeight,
@@ -1012,6 +1019,12 @@ func fetchGitHubGistEmbed(resolver *oembedResolver, rawURL string) (*OEmbedRespo
 
 	// Generate embed HTML
 	content := strings.TrimRight(firstFile.Content, "\n")
+	if firstFile.RawURL != "" {
+		fetched, err := fetchRemoteContent(resolver.client, firstFile.RawURL)
+		if err == nil && fetched != "" {
+			content = strings.TrimRight(fetched, "\n")
+		}
+	}
 	codeHTML, err := renderGistCodeMarkdown(resolver, firstFile.Language, content)
 	if err != nil || codeHTML == "" {
 		embedHTML := fmt.Sprintf(`<script src="https://gist.github.com/%s.js?file=%s"></script>`,
@@ -1046,6 +1059,33 @@ func fetchGitHubGistEmbed(resolver *oembedResolver, rawURL string) (*OEmbedRespo
 	}, nil
 }
 
+func fetchRemoteContent(client *http.Client, rawURL string) (string, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, rawURL, http.NoBody)
+	if err != nil {
+		return "", fmt.Errorf("fetch content: %w", err)
+	}
+
+	req.Header.Set("User-Agent", "markata-go/1.0 (+https://github.com/WaylonWalker/markata-go)")
+	req.Header.Set("Accept", "text/plain")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("fetch content: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("fetch content: %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("fetch content: %w", err)
+	}
+
+	return string(body), nil
+}
+
 func extractGistID(rawURL string) (string, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
@@ -1078,11 +1118,19 @@ func renderGistScriptEmbedHTML(gistURL, filename string) string {
 		url.QueryEscape(filename))
 }
 
+var (
+	giphyGifsRe  = regexp.MustCompile(`giphy\.com/gifs/[\w-]+-(\w+)`)
+	giphyMediaRe = regexp.MustCompile(`media\.giphy\.com/media/(\w+)/`)
+)
+
 // fetchGiphyEmbed fetches GIPHY embed data using the oEmbed API.
 func fetchGiphyEmbed(resolver *oembedResolver, rawURL string) (*OEmbedResponse, error) {
 	endpoint := "https://giphy.com/services/oembed"
 	parsed, err := url.Parse(endpoint)
 	if err != nil {
+		if fallback := buildGiphyFallback(rawURL); fallback != nil {
+			return fallback, nil
+		}
 		return nil, fmt.Errorf("giphy: parse endpoint: %w", err)
 	}
 
@@ -1100,11 +1148,17 @@ func fetchGiphyEmbed(resolver *oembedResolver, rawURL string) (*OEmbedResponse, 
 
 	resp, err := resolver.client.Do(req)
 	if err != nil {
+		if fallback := buildGiphyFallback(rawURL); fallback != nil {
+			return fallback, nil
+		}
 		return nil, fmt.Errorf("giphy: request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if fallback := buildGiphyFallback(rawURL); fallback != nil {
+			return fallback, nil
+		}
 		return nil, fmt.Errorf("giphy: status %s", resp.Status)
 	}
 
@@ -1116,8 +1170,59 @@ func fetchGiphyEmbed(resolver *oembedResolver, rawURL string) (*OEmbedResponse, 
 
 	// Ensure we have a thumbnail URL for image embeds
 	if payload.ThumbnailURL == "" {
-		payload.ThumbnailURL = payload.URL
+		if fallback := buildGiphyFallback(rawURL); fallback != nil {
+			payload.ThumbnailURL = fallback.ThumbnailURL
+			if payload.URL == "" {
+				payload.URL = fallback.URL
+			}
+			if payload.Title == "" {
+				payload.Title = fallback.Title
+			}
+			if payload.ProviderName == "" {
+				payload.ProviderName = fallback.ProviderName
+				payload.ProviderURL = fallback.ProviderURL
+			}
+		} else {
+			payload.ThumbnailURL = payload.URL
+		}
+	}
+	if payload.Extra == nil {
+		payload.Extra = make(map[string]string)
+	}
+	if payload.Title != "" {
+		payload.Extra["image_alt"] = payload.Title
 	}
 
 	return &payload, nil
+}
+
+func buildGiphyFallback(rawURL string) *OEmbedResponse {
+	gifID := extractGiphyIDFromURL(rawURL)
+	if gifID == "" {
+		return nil
+	}
+
+	imageURL := fmt.Sprintf("https://media.giphy.com/media/%s/giphy.gif", gifID)
+	return &OEmbedResponse{
+		Type:         "photo",
+		Version:      "1.0",
+		Title:        "Giphy GIF",
+		URL:          imageURL,
+		ThumbnailURL: imageURL,
+		ProviderName: "Giphy",
+		ProviderURL:  "https://giphy.com",
+		Extra: map[string]string{
+			"image_alt": "Giphy GIF",
+		},
+	}
+}
+
+func extractGiphyIDFromURL(rawURL string) string {
+	if matches := giphyGifsRe.FindStringSubmatch(rawURL); len(matches) > 1 {
+		return matches[1]
+	}
+	if matches := giphyMediaRe.FindStringSubmatch(rawURL); len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
 }
