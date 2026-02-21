@@ -683,7 +683,7 @@ length = 8
 exclude = ["robots.txt", "favicon.ico"]
 ```
 
-markata-go also supports self-hosting third-party CDN assets (HTMX, GLightbox, Mermaid, Chart.js, Cal-Heatmap, D3) through the assets config. When enabled, assets are downloaded into a cache directory and copied into the output under the vendor directory. Templates can use the `asset_urls` mapping to reference the local paths.
+markata-go also supports self-hosting third-party CDN assets (HTMX, GLightbox, Mermaid, Chart.js, Cal-Heatmap, D3, Lite YouTube) through the assets config. When enabled, assets are downloaded into a cache directory and copied into the output under the vendor directory. Templates can use the `asset_urls` mapping to reference the local paths.
 
 ```toml
 [markata-go.assets]
