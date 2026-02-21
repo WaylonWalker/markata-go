@@ -255,6 +255,22 @@ Publication date for the content.
 - From filename pattern: `2024-01-15-my-post.md`
 - From path pattern: `posts/2024/01/my-post.md`
 
+#### `modified`
+
+Last modified/updated date for the content.
+
+**Accepted formats:**
+- ISO 8601: `2024-01-15`
+- ISO 8601 with time: `2024-01-15T10:30:00`
+- Common formats: `January 15, 2024`, `15/01/2024`
+
+**Frontmatter aliases:** `modified`, `lastmod`, `updated`, `last_modified`, `updated_at`
+
+**Usage:**
+- Defaults to `date` if not set
+- Used for Schema.org `dateModified` and OpenGraph `article:modified_time`
+- Helps search engines understand when content was last updated
+
 #### `published` vs `draft`
 
 These are related but distinct:

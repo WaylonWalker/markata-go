@@ -1345,6 +1345,7 @@ type CachedPostData struct {
 	Href           string            `json:"href"`
 	Title          *string           `json:"title,omitempty"`
 	Date           *time.Time        `json:"date,omitempty"`
+	Modified       *time.Time        `json:"modified,omitempty"`
 	Published      bool              `json:"published"`
 	Draft          bool              `json:"draft"`
 	Private        bool              `json:"private"`
