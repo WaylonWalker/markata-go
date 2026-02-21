@@ -84,27 +84,8 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 	// This enables dependency-based invalidation in FilterPosts below.
 	// Uses ShouldRebuildBatch to acquire the lock once instead of per-post.
 	cache := GetBuildCache(m)
-	if cache != nil {
-		posts := m.Posts()
-		// Build batch input, filtering out skip/draft/no-hash posts
-		batch := make([]struct{ Path, InputHash, Template string }, 0, len(posts))
-		slugByPath := make(map[string]string, len(posts))
-		for _, post := range posts {
-			if post.Skip || post.Draft || post.InputHash == "" {
-				continue
-			}
-			batch = append(batch, struct{ Path, InputHash, Template string }{
-				Path:      post.Path,
-				InputHash: post.InputHash,
-				Template:  post.Template,
-			})
-			slugByPath[post.Path] = post.Slug
-		}
-		changed := cache.ShouldRebuildBatch(batch)
-		for path := range changed {
-			slug := slugByPath[path]
-			cache.MarkSlugChanged(slug)
-		}
+	if err := p.markChangedPosts(cache, m, config); err != nil {
+		return err
 	}
 
 	// Single-pass filter: identify posts that need writing.
@@ -132,6 +113,45 @@ func (p *PublishHTMLPlugin) Write(m *lifecycle.Manager) error {
 	return m.ProcessPostsSliceConcurrently(postsNeedingWrite, func(post *models.Post) error {
 		return p.writePost(post, config, engine, m)
 	})
+}
+
+func (p *PublishHTMLPlugin) markChangedPosts(cache *buildcache.Cache, m *lifecycle.Manager, config *lifecycle.Config) error {
+	if cache == nil || m == nil || config == nil {
+		return nil
+	}
+
+	posts := m.Posts()
+	removed := lifecycle.GetServeRemovedPaths(m)
+	postFormats := getPostFormatsConfig(config)
+
+	batch := make([]struct{ Path, InputHash, Template string }, 0, len(posts))
+	slugByPath := make(map[string]string, len(posts))
+	for _, post := range posts {
+		if post.Skip || post.Draft || post.InputHash == "" {
+			continue
+		}
+		batch = append(batch, struct{ Path, InputHash, Template string }{
+			Path:      post.Path,
+			InputHash: post.InputHash,
+			Template:  post.Template,
+		})
+		slugByPath[post.Path] = post.Slug
+	}
+	changed := cache.ShouldRebuildBatch(batch)
+	for path := range changed {
+		slug := slugByPath[path]
+		cache.MarkSlugChanged(slug)
+	}
+	for _, removedPath := range removed {
+		if slug := cache.Graph.SlugForPath(removedPath); slug != "" {
+			cache.MarkSlugChanged(slug)
+		}
+		if err := p.removePostOutputs(removedPath, config, postFormats, cache); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // writePost writes a single post to its output location in all enabled formats.
@@ -211,6 +231,44 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 			return err
 		}
 	}
+
+	return nil
+}
+
+func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecycle.Config, postFormats models.PostFormatsConfig, cache *buildcache.Cache) error {
+	if sourcePath == "" || config == nil {
+		return nil
+	}
+	if cache == nil {
+		return nil
+	}
+	if !lifecycle.IsServeFastModeFromConfig(config) {
+		return nil
+	}
+	postCache := cache.GetCachedPost(sourcePath)
+	if postCache == nil || postCache.Slug == "" {
+		return nil
+	}
+
+	slug := postCache.Slug
+	outputDir := config.OutputDir
+	postDir := filepath.Join(outputDir, slug)
+
+	if postFormats.IsHTMLEnabled() {
+		_ = os.RemoveAll(postDir)
+	} else {
+		_ = os.RemoveAll(filepath.Join(postDir, "index.md"))
+		_ = os.RemoveAll(filepath.Join(postDir, "index.txt"))
+		_ = os.RemoveAll(filepath.Join(postDir, "og"))
+		_ = os.Remove(filepath.Join(postDir, "index.html"))
+	}
+	if postFormats.Markdown {
+		_ = os.Remove(filepath.Join(outputDir, slug+".md"))
+	}
+	if postFormats.Text {
+		_ = os.Remove(filepath.Join(outputDir, slug+".txt"))
+	}
+	_ = os.RemoveAll(filepath.Join(postDir, "og"))
 
 	return nil
 }
