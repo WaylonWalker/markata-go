@@ -784,6 +784,9 @@ type ThemeConfig struct {
 	// If not set, auto-detected from base Palette name
 	PaletteDark string `json:"palette_dark,omitempty" yaml:"palette_dark,omitempty" toml:"palette_dark,omitempty"`
 
+	// SeedColor is the hex color used to generate a triadic palette if Palette == "generated"
+	SeedColor string `json:"seed_color,omitempty" yaml:"seed_color,omitempty" toml:"seed_color,omitempty"`
+
 	// Variables allows overriding specific CSS variables
 	Variables map[string]string `json:"variables" yaml:"variables" toml:"variables"`
 

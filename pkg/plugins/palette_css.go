@@ -47,7 +47,7 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 
 	// Get palette configuration from config.Extra["theme"]
-	paletteName, paletteLight, paletteDark := p.getPaletteConfig(config.Extra)
+	paletteName, paletteLight, paletteDark, seedColor := p.getPaletteConfig(config.Extra)
 	userVariables := p.getThemeVariables(config.Extra)
 	if paletteName == "" {
 		return nil
@@ -55,6 +55,17 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Load palettes
 	loader := palettes.NewLoader()
+
+	if paletteName == "generated" && seedColor != "" {
+		lightP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantLight)
+		if err == nil {
+			loader.AddPalette("generated-light", lightP)
+		}
+		darkP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantDark)
+		if err == nil {
+			loader.AddPalette("generated-dark", darkP)
+		}
+	}
 
 	// Check if theme switcher is enabled
 	switcherEnabled := p.isSwitcherEnabled(config.Extra)
@@ -89,7 +100,7 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	// Get palette configuration from config.Extra["theme"]
-	paletteName, paletteLight, paletteDark := p.getPaletteConfig(config.Extra)
+	paletteName, paletteLight, paletteDark, seedColor := p.getPaletteConfig(config.Extra)
 	userVariables := p.getThemeVariables(config.Extra)
 	if paletteName == "" {
 		// No palette configured, skip
@@ -104,6 +115,17 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 
 	// Load palettes
 	loader := palettes.NewLoader()
+
+	if paletteName == "generated" && seedColor != "" {
+		lightP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantLight)
+		if err == nil {
+			loader.AddPalette("generated-light", lightP)
+		}
+		darkP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantDark)
+		if err == nil {
+			loader.AddPalette("generated-dark", darkP)
+		}
+	}
 
 	var css string
 	if switcherEnabled {
@@ -705,26 +727,26 @@ func (p *PaletteCSSPlugin) writeSelectionColors(buf *bytes.Buffer, palette *pale
 
 // getPaletteConfig extracts palette configuration from config.Extra.
 // Returns the base palette name and optional light/dark overrides.
-func (p *PaletteCSSPlugin) getPaletteConfig(extra map[string]interface{}) (palette, paletteLight, paletteDark string) {
+func (p *PaletteCSSPlugin) getPaletteConfig(extra map[string]interface{}) (palette, paletteLight, paletteDark, seedColor string) {
 	if extra == nil {
-		return "", "", ""
+		return "", "", "", ""
 	}
 
 	if modelsConfig, ok := extra["models_config"].(*models.Config); ok {
 		if modelsConfig.Theme.Palette != "" || modelsConfig.Theme.PaletteLight != "" || modelsConfig.Theme.PaletteDark != "" {
-			return modelsConfig.Theme.Palette, modelsConfig.Theme.PaletteLight, modelsConfig.Theme.PaletteDark
+			return modelsConfig.Theme.Palette, modelsConfig.Theme.PaletteLight, modelsConfig.Theme.PaletteDark, modelsConfig.Theme.SeedColor
 		}
 	}
 
 	// Check if theme is a models.ThemeConfig (from core.go)
 	if themeConfig, ok := extra["theme"].(models.ThemeConfig); ok {
-		return themeConfig.Palette, themeConfig.PaletteLight, themeConfig.PaletteDark
+		return themeConfig.Palette, themeConfig.PaletteLight, themeConfig.PaletteDark, themeConfig.SeedColor
 	}
 
 	// Check if theme is a map[string]interface{} (from benchmark.go or raw TOML)
 	theme, ok := extra["theme"].(map[string]interface{})
 	if !ok {
-		return "", "", ""
+		return "", "", "", ""
 	}
 
 	// Get base palette
@@ -742,7 +764,12 @@ func (p *PaletteCSSPlugin) getPaletteConfig(extra map[string]interface{}) (palet
 		paletteDark = pal
 	}
 
-	return palette, paletteLight, paletteDark
+	// Get optional seed color
+	if seed, ok := theme["seed_color"].(string); ok && seed != "" {
+		seedColor = seed
+	}
+
+	return palette, paletteLight, paletteDark, seedColor
 }
 
 func (p *PaletteCSSPlugin) getThemeVariables(extra map[string]interface{}) map[string]string {
