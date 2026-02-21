@@ -264,10 +264,12 @@ Last modified/updated date for the content.
 - ISO 8601 with time: `2024-01-15T10:30:00`
 - Common formats: `January 15, 2024`, `15/01/2024`
 
-**Frontmatter aliases:** `modified`, `lastmod`, `updated`, `last_modified`, `updated_at`
+**Frontmatter aliases:** `lastmod`, `modified`, `updated`, `updated_at`, `last_modified`
+
+**Precedence:** When multiple aliases are set, the first listed wins.
 
 **Usage:**
-- Defaults to `date` if not set
+- If unset, `dateModified` and `article:modified_time` fall back to the `date` value
 - Used for Schema.org `dateModified` and OpenGraph `article:modified_time`
 - Helps search engines understand when content was last updated
 
