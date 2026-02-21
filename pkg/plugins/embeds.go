@@ -66,21 +66,21 @@ func (p *EmbedsPlugin) Priority(stage lifecycle.Stage) int {
 // Configuration is expected under the "embeds" key.
 func (p *EmbedsPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
-	if config.Extra == nil {
-		return nil
+	extra := config.Extra
+	if extra == nil {
+		extra = map[string]interface{}{}
 	}
 
-	pluginConfig, ok := config.Extra["embeds"]
-	if !ok {
-		return nil
+	if pluginConfig, ok := extra["embeds"]; ok {
+		if cfgMap, ok := pluginConfig.(map[string]interface{}); ok {
+			p.applyEmbedsConfig(cfgMap)
+		}
 	}
 
-	cfgMap, ok := pluginConfig.(map[string]interface{})
-	if !ok {
-		return nil
+	if p.oembed != nil {
+		p.oembed.setMarkdownRenderer(newEmbedMarkdownRenderer(extra))
 	}
 
-	p.applyEmbedsConfig(cfgMap)
 	return nil
 }
 
@@ -101,23 +101,6 @@ func (p *EmbedsPlugin) applyEmbedsConfig(cfgMap map[string]interface{}) {
 	applyBool(cfgMap, "oembed_auto_discover", &p.config.OEmbedAutoDiscover)
 	applyString(cfgMap, "default_mode", &p.config.DefaultEmbedMode)
 	applyString(cfgMap, "oembed_providers_url", &p.config.OEmbedProvidersURL)
-
-	// Parse providers sub-config
-	if providersMap, ok := cfgMap["providers"].(map[string]interface{}); ok {
-		p.config.OEmbedProviders = make(map[string]models.OEmbedProviderConfig)
-		for name, providerCfg := range providersMap {
-			if pm, ok := providerCfg.(map[string]interface{}); ok {
-				pc := models.OEmbedProviderConfig{Enabled: true}
-				if enabled, ok := pm["enabled"].(bool); ok {
-					pc.Enabled = enabled
-				}
-				if mode, ok := pm["mode"].(string); ok {
-					pc.Mode = mode
-				}
-				p.config.OEmbedProviders[name] = pc
-			}
-		}
-	}
 
 	if p.config.Timeout > 0 {
 		p.httpClient.Timeout = time.Duration(p.config.Timeout) * time.Second
@@ -185,14 +168,19 @@ func (p *EmbedsPlugin) configureOEmbedProviders(cfgMap map[string]interface{}) {
 
 	for name, raw := range providersRaw {
 		key := strings.ToLower(name)
+		providerCfg := p.config.OEmbedProviders[key]
 		switch value := raw.(type) {
 		case bool:
-			p.config.OEmbedProviders[key] = models.OEmbedProviderConfig{Enabled: value}
+			providerCfg.Enabled = value
 		case map[string]interface{}:
 			if enabled, ok := value["enabled"].(bool); ok {
-				p.config.OEmbedProviders[key] = models.OEmbedProviderConfig{Enabled: enabled}
+				providerCfg.Enabled = enabled
+			}
+			if mode, ok := value["mode"].(string); ok && mode != "" {
+				providerCfg.Mode = mode
 			}
 		}
+		p.config.OEmbedProviders[key] = providerCfg
 	}
 }
 
@@ -212,11 +200,16 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 
 	// Phase 1: Restore cached results for unchanged posts
 	var needProcessing []*models.Post
+	needsLiteYouTube := false
+	cacheSignature := embedsCacheSignature(p.config, m.Config().Extra)
 	if cache != nil {
 		for _, post := range posts {
-			contentHash := buildcache.ContentHash(post.Content)
+			contentHash := buildcache.ContentHash(post.Content + cacheSignature)
 			if cached, ok := cache.GetCachedEmbedsContent(post.Path, contentHash); ok {
 				post.Content = cached
+				if !needsLiteYouTube && containsLiteYouTubeEmbed(post.Content) {
+					needsLiteYouTube = true
+				}
 			} else {
 				needProcessing = append(needProcessing, post)
 			}
@@ -226,12 +219,15 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 	}
 
 	if len(needProcessing) == 0 {
+		if needsLiteYouTube {
+			p.enableLiteYouTubeAssets(m)
+		}
 		return nil
 	}
 
 	// Phase 2: Process posts that need updating, concurrently
-	return m.ProcessPostsSliceConcurrently(needProcessing, func(post *models.Post) error {
-		contentHash := buildcache.ContentHash(post.Content)
+	processErr := m.ProcessPostsSliceConcurrently(needProcessing, func(post *models.Post) error {
+		contentHash := buildcache.ContentHash(post.Content + cacheSignature)
 		content := p.processAttachmentEmbeds(post.Content)
 		content, dependencies := p.processInternalEmbeds(content, idx, post)
 		content = p.processExternalEmbeds(content, post)
@@ -248,6 +244,77 @@ func (p *EmbedsPlugin) Transform(m *lifecycle.Manager) error {
 
 		return nil
 	})
+	if processErr != nil {
+		return processErr
+	}
+
+	if !needsLiteYouTube {
+		for _, post := range posts {
+			if containsLiteYouTubeEmbed(post.Content) {
+				needsLiteYouTube = true
+				break
+			}
+		}
+	}
+	if needsLiteYouTube {
+		p.enableLiteYouTubeAssets(m)
+	}
+
+	return nil
+}
+
+func embedsCacheSignature(config models.EmbedsConfig, extra map[string]interface{}) string {
+	if extra == nil {
+		extra = map[string]interface{}{}
+	}
+
+	chromaTheme, lineNumbers, enabled := resolveEmbedHighlightConfig(extra)
+	cacheSignature := struct {
+		Version              string              `json:"version"`
+		Config               models.EmbedsConfig `json:"config"`
+		HighlightTheme       string              `json:"highlight_theme"`
+		HighlightEnabled     bool                `json:"highlight_enabled"`
+		HighlightLineNumbers bool                `json:"highlight_line_numbers"`
+	}{
+		Version:              embedsCacheVersion,
+		Config:               config,
+		HighlightTheme:       chromaTheme,
+		HighlightEnabled:     enabled,
+		HighlightLineNumbers: lineNumbers,
+	}
+
+	payload, err := json.Marshal(cacheSignature)
+	if err != nil {
+		return embedsCacheVersion
+	}
+
+	return buildcache.ContentHash(string(payload))
+}
+
+func (p *EmbedsPlugin) enableLiteYouTubeAssets(m *lifecycle.Manager) {
+	if m == nil {
+		return
+	}
+
+	config := m.Config()
+	if config == nil {
+		return
+	}
+
+	if config.Extra == nil {
+		config.Extra = make(map[string]interface{})
+	}
+
+	config.Extra["lite_youtube_enabled"] = true
+}
+
+func containsLiteYouTubeEmbed(content string) bool {
+	if content == "" {
+		return false
+	}
+
+	stripped := embedsCodeBlockRegex.ReplaceAllString(content, "")
+	return strings.Contains(stripped, "<lite-youtube") || strings.Contains(stripped, "&lt;lite-youtube")
 }
 
 // internalEmbedRegex matches ![[slug]] and ![[slug|display text]] patterns.
@@ -283,6 +350,11 @@ var attachmentEmbedRegex = regexp.MustCompile(`!\[\[([^\]|]+\.[a-zA-Z0-9]+)(?:\|
 // htmlTitleRegex matches the <title> tag in HTML.
 var htmlTitleRegex = regexp.MustCompile(`<title[^>]*>([^<]+)</title>`)
 
+var youtubeOEmbedIDRegex = regexp.MustCompile(`(?i)(?:youtube(?:-nocookie)?\.com/(?:embed/|watch\?v=)|youtu\.be/)([a-zA-Z0-9_-]{11})`)
+var youtubeImageIDRegex = regexp.MustCompile(`(?i)i\.ytimg\.com/vi/([a-zA-Z0-9_-]{11})/`)
+var giphyIDRegex = regexp.MustCompile(`giphy\.com/gifs/[\w-]+-(\w+)`)
+var codepenIDRegex = regexp.MustCompile(`codepen\.io/([^/]+)/(?:(?:pen|full|details|embed|embed/preview)/)?([a-zA-Z0-9]+)`)
+
 // metaPatternCache caches compiled regexes for meta tag extraction.
 var metaPatternCache = struct {
 	sync.RWMutex
@@ -302,6 +374,13 @@ const (
 	embedModePerformance = "performance"
 	embedModeHover       = "hover"
 	embedModeImageOnly   = "image_only"
+	embedOptionVideo     = "video"
+	embedOptionLink      = "link"
+
+	oembedProviderYouTube = "youtube"
+
+	oembedCacheVersion = "v2"
+	embedsCacheVersion = "v2"
 )
 
 // getMetaPatterns returns cached regex patterns for a given property.
@@ -673,7 +752,13 @@ func (p *EmbedsPlugin) processExternalEmbedsInText(text string, _ *models.Post) 
 		override := ""
 		var options EmbedOptions
 		if len(groups) >= 3 && groups[2] != "" {
-			override = strings.TrimSpace(groups[2])
+			potentialOverride := strings.TrimSpace(groups[2])
+			// If the second group looks like an option (not a title), treat it as options
+			if isKnownEmbedOption(potentialOverride) {
+				options = parseEmbedOptions(potentialOverride)
+			} else {
+				override = potentialOverride
+			}
 		}
 		// Check for classes (4th group)
 		if len(groups) >= 4 && groups[3] != "" {
@@ -755,9 +840,9 @@ func parseEmbedOptions(optionsStr string) EmbedOptions {
 			opts.Center = true
 		case "full_width":
 			opts.FullWidth = true
-		case "video":
+		case embedOptionVideo:
 			opts.Video = true
-		case "link":
+		case embedOptionLink:
 			opts.Link = true
 		case embedModeRich:
 			opts.Rich = true
@@ -771,6 +856,17 @@ func parseEmbedOptions(optionsStr string) EmbedOptions {
 	}
 
 	return opts
+}
+
+// isKnownEmbedOption checks if a string matches a known embed option name.
+func isKnownEmbedOption(s string) bool {
+	switch strings.ToLower(s) {
+	case "no_title", "no_description", "no_meta", "center", "full_width",
+		embedOptionVideo, embedOptionLink, embedModeImageOnly, embedModeRich,
+		embedModeHover, embedModeCard, embedModePerformance:
+		return true
+	}
+	return false
 }
 
 // fetchOGMetadata fetches Open Graph metadata from a URL.
@@ -894,10 +990,20 @@ func (p *EmbedsPlugin) resolveOEmbedMetadata(rawURL string) (*OGMetadata, bool) 
 	if response.AuthorName != "" {
 		metadata.Description = response.AuthorName
 	}
+	if response.Extra != nil {
+		if alt, ok := response.Extra["image_alt"]; ok && alt != "" {
+			metadata.Description = alt
+		}
+		if response.Extra["needs_code_css"] == BoolTrue && metadata.HTML != "" {
+			metadata.HTML = `<div data-needs-code-css="true">` + metadata.HTML + `</div>`
+		}
+	}
 
 	if metadata.Image == "" {
 		metadata.Image = response.URL
 	}
+
+	metadata.HTML = p.transformOEmbedHTML(metadata, response)
 
 	if metadata.Title == "" {
 		metadata.Title = p.config.FallbackTitle
@@ -906,6 +1012,73 @@ func (p *EmbedsPlugin) resolveOEmbedMetadata(rawURL string) (*OGMetadata, bool) 
 	p.cacheMetadata(rawURL, "oembed", metadata)
 
 	return metadata, true
+}
+
+func (p *EmbedsPlugin) transformOEmbedHTML(metadata *OGMetadata, response *OEmbedResponse) string {
+	if metadata == nil || response == nil {
+		return ""
+	}
+
+	providerName := strings.ToLower(strings.TrimSpace(metadata.ProviderName))
+	if providerName == oembedProviderYouTube || strings.Contains(providerName, oembedProviderYouTube) {
+		return buildLiteYouTubeHTML(metadata, response)
+	}
+
+	return metadata.HTML
+}
+
+func buildLiteYouTubeHTML(metadata *OGMetadata, response *OEmbedResponse) string {
+	videoID := extractYouTubeVideoID(response.HTML, response.URL, response.ThumbnailURL)
+	if videoID == "" {
+		videoID = extractYouTubeVideoID(metadata.HTML, metadata.Image, "")
+	}
+	if videoID == "" {
+		return metadata.HTML
+	}
+
+	return buildLiteYouTubeHTMLFromID(videoID, metadata.Title)
+}
+
+func buildLiteYouTubeHTMLFromID(videoID, title string) string {
+	if videoID == "" {
+		return ""
+	}
+
+	title = strings.TrimSpace(title)
+	if title == "" {
+		title = "YouTube video"
+	}
+	playLabel := "Play: " + title
+
+	var sb strings.Builder
+	sb.WriteString(`<lite-youtube videoid="`)
+	sb.WriteString(html.EscapeString(videoID))
+	sb.WriteString(`"`)
+	if title != "" {
+		sb.WriteString(` title="`)
+		sb.WriteString(html.EscapeString(title))
+		sb.WriteString(`"`)
+	}
+	if playLabel != "" {
+		sb.WriteString(` playlabel="`)
+		sb.WriteString(html.EscapeString(playLabel))
+		sb.WriteString(`"`)
+	}
+	sb.WriteString(`></lite-youtube>`)
+
+	return sb.String()
+}
+
+func extractYouTubeVideoID(values ...string) string {
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if matches := youtubeOEmbedIDRegex.FindStringSubmatch(value); len(matches) > 1 {
+			return matches[1]
+		}
+	}
+	return ""
 }
 
 // loadCachedMetadata loads metadata from cache if available and not expired.
@@ -974,6 +1147,9 @@ func (p *EmbedsPlugin) getCacheFilePath(rawURL, suffix string) string {
 
 	if suffix == "" {
 		suffix = "og"
+	}
+	if suffix == "oembed" {
+		suffix = "oembed-" + oembedCacheVersion
 	}
 
 	return filepath.Join(p.config.CacheDir, hashStr+"-"+suffix+".json")
@@ -1081,7 +1257,7 @@ func defaultModeByType(oembedType string) string {
 		return embedModeImageOnly
 	case "video":
 		return embedModeRich
-	case "rich":
+	case embedModeRich:
 		return embedModeRich
 	default:
 		return embedModeCard
@@ -1094,6 +1270,9 @@ func defaultModeByType(oembedType string) string {
 // 3. Default mode based on oEmbed type
 // 4. Global default mode
 func (p *EmbedsPlugin) effectiveEmbedMode(opts EmbedOptions, metadata *OGMetadata) EmbedOptions {
+	if metadata == nil {
+		return opts
+	}
 	// If explicit mode is set via options, use that
 	if opts.Rich || opts.Performance || opts.Hover || opts.Card || opts.ImageOnly {
 		return opts
@@ -1104,6 +1283,11 @@ func (p *EmbedsPlugin) effectiveEmbedMode(opts EmbedOptions, metadata *OGMetadat
 	if providerName != "" {
 		if providerCfg, ok := p.config.OEmbedProviders[providerName]; ok && providerCfg.Mode != "" {
 			if applyEmbedMode(&opts, strings.ToLower(providerCfg.Mode)) {
+				return opts
+			}
+		}
+		if providerName == oembedProviderYouTube && metadata.HTML != "" {
+			if applyEmbedMode(&opts, embedModeRich) {
 				return opts
 			}
 		}
@@ -1157,6 +1341,52 @@ func applyEmbedMode(opts *EmbedOptions, mode string) bool {
 //
 //nolint:gocyclo // multiple rendering modes require conditional branches
 func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL, metadata *OGMetadata, opts EmbedOptions) string {
+	if giphyID := extractGiphyID(rawURL); giphyID != "" {
+		if metadata == nil {
+			metadata = &OGMetadata{}
+		}
+		if metadata.ProviderName == "" {
+			metadata.ProviderName = "giphy"
+		}
+		if metadata.Image == "" {
+			metadata.Image = "https://media.giphy.com/media/" + giphyID + "/giphy.gif"
+		}
+		if metadata.Title == "" || metadata.Title == p.config.FallbackTitle {
+			metadata.Title = "Giphy GIF"
+		}
+	}
+	if codepenUser, codepenID := extractCodePenID(rawURL); codepenID != "" {
+		if metadata == nil {
+			metadata = &OGMetadata{}
+		}
+		if metadata.ProviderName == "" {
+			metadata.ProviderName = "codepen"
+		}
+		if metadata.HTML == "" {
+			metadata.HTML = buildCodePenEmbedHTML(codepenUser, codepenID)
+		}
+		if metadata.Type == "" {
+			metadata.Type = embedModeRich
+		}
+	}
+	if metadata != nil {
+		videoID := extractYouTubeVideoID(rawURL)
+		if videoID == "" {
+			videoID = extractYouTubeVideoIDFromMetadata(metadata)
+		}
+		if videoID != "" {
+			if metadata.ProviderName == "" {
+				metadata.ProviderName = oembedProviderYouTube
+			}
+			if metadata.HTML == "" {
+				title := metadata.Title
+				if title == p.config.FallbackTitle {
+					title = ""
+				}
+				metadata.HTML = buildLiteYouTubeHTMLFromID(videoID, title)
+			}
+		}
+	}
 	// Determine effective mode based on config and oEmbed type
 	opts = p.effectiveEmbedMode(opts, metadata)
 
@@ -1164,6 +1394,8 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 
 	domain := parsedURL.Host
 	domain = strings.TrimPrefix(domain, "www.")
+
+	needsCodeCSS := metadata != nil && strings.Contains(metadata.HTML, `data-needs-code-css="true"`)
 
 	// Build class list
 	classes := []string{p.config.ExternalCardClass}
@@ -1189,7 +1421,11 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 
 	sb.WriteString(`<div class="`)
 	sb.WriteString(html.EscapeString(strings.Join(classes, " ")))
-	sb.WriteString(`">`)
+	sb.WriteString(`"`)
+	if needsCodeCSS {
+		sb.WriteString(` data-needs-code-css="true"`)
+	}
+	sb.WriteString(`>`)
 	sb.WriteString("\n")
 
 	// Handle rich embed (iframe) mode
@@ -1212,11 +1448,14 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 		sb.WriteString(`" class="embed-card-link" target="_blank" rel="noopener noreferrer">`)
 		sb.WriteString("\n")
 		if p.config.ShowImage && metadata.Image != "" {
+			imageAlt := buildExternalImageAlt(metadata, domain, !opts.NoTitle)
 			sb.WriteString(`    <div class="embed-card-image embed-card-lazy">`)
 			sb.WriteString("\n")
 			sb.WriteString(`      <img src="`)
 			sb.WriteString(html.EscapeString(metadata.Image))
-			sb.WriteString(`" alt="" loading="lazy">`)
+			sb.WriteString(`" alt="`)
+			sb.WriteString(html.EscapeString(imageAlt))
+			sb.WriteString(`" loading="lazy">`)
 			sb.WriteString("\n")
 			sb.WriteString(`      <div class="embed-card-hover-overlay">`)
 			sb.WriteString("\n")
@@ -1270,13 +1509,7 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 	// Handle performance/image_only mode - just show image, no text
 	if opts.Performance || opts.ImageOnly {
 		if metadata.Image != "" {
-			label := metadata.Title
-			if label == "" {
-				label = domain
-			}
-			if metadata.Description != "" {
-				label = label + " — " + metadata.Description
-			}
+			label := buildExternalImageAlt(metadata, domain, !opts.NoTitle)
 			labelEscaped := html.EscapeString(label)
 			sb.WriteString(`  <a href="`)
 			sb.WriteString(html.EscapeString(rawURL))
@@ -1310,11 +1543,14 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 
 	// Show image if available and enabled
 	if p.config.ShowImage && metadata.Image != "" {
+		imageAlt := buildExternalImageAlt(metadata, domain, !opts.NoTitle)
 		sb.WriteString(`    <div class="embed-card-image">`)
 		sb.WriteString("\n")
 		sb.WriteString(`      <img src="`)
 		sb.WriteString(html.EscapeString(metadata.Image))
-		sb.WriteString(`" alt="" loading="lazy">`)
+		sb.WriteString(`" alt="`)
+		sb.WriteString(html.EscapeString(imageAlt))
+		sb.WriteString(`" loading="lazy">`)
 		sb.WriteString("\n")
 		sb.WriteString(`    </div>`)
 		sb.WriteString("\n")
@@ -1363,6 +1599,64 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 	sb.WriteString("\n")
 
 	return sb.String()
+}
+
+func extractYouTubeVideoIDFromMetadata(metadata *OGMetadata) string {
+	if metadata == nil {
+		return ""
+	}
+
+	if metadata.Image != "" {
+		if match := youtubeImageIDRegex.FindStringSubmatch(metadata.Image); len(match) > 1 {
+			return match[1]
+		}
+	}
+
+	return ""
+}
+
+func extractGiphyID(rawURL string) string {
+	if matches := giphyIDRegex.FindStringSubmatch(rawURL); len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
+}
+
+func extractCodePenID(rawURL string) (user, penID string) {
+	if matches := codepenIDRegex.FindStringSubmatch(rawURL); len(matches) > 2 {
+		return matches[1], matches[2]
+	}
+	return "", ""
+}
+
+func buildCodePenEmbedHTML(user, penID string) string {
+	if user == "" || penID == "" {
+		return ""
+	}
+	embedURL := fmt.Sprintf("https://codepen.io/%s/embed/%s?default-tab=result", user, penID)
+	return fmt.Sprintf(`<iframe class="embed-codepen" src=%q loading="lazy" allowfullscreen></iframe>`, html.EscapeString(embedURL))
+}
+
+func buildExternalImageAlt(metadata *OGMetadata, domain string, includeTitle bool) string {
+	if metadata == nil {
+		return ""
+	}
+
+	label := ""
+	if includeTitle && metadata.Title != "" {
+		label = metadata.Title
+	}
+	if label == "" && metadata.Description != "" {
+		label = metadata.Description
+	}
+	if label == "" {
+		label = domain
+	}
+	if includeTitle && metadata.Description != "" && metadata.Title != "" {
+		label = label + " — " + metadata.Description
+	}
+
+	return strings.TrimSpace(label)
 }
 
 func (p *EmbedsPlugin) applyExternalTitleOverride(metadata *OGMetadata, override string) *OGMetadata {

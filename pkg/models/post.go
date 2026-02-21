@@ -27,6 +27,9 @@ type Post struct {
 	// Date is the optional publication date
 	Date *time.Time `json:"date,omitempty" yaml:"date,omitempty" toml:"date,omitempty"`
 
+	// Modified is the optional last modified date
+	Modified *time.Time `json:"modified,omitempty" yaml:"modified,omitempty" toml:"modified,omitempty"`
+
 	// Published indicates if the post is published
 	Published bool `json:"published" yaml:"published" toml:"published"`
 

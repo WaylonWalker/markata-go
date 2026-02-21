@@ -136,6 +136,24 @@ var assetRegistry = []Asset{
 		Version:   "3.6.2",
 		Type:      "js",
 	},
+
+	// Lite YouTube Embed - fast YouTube embeds
+	{
+		Name:      "lite-youtube-js",
+		URL:       "https://cdn.jsdelivr.net/npm/lite-youtube-embed@0.3.4/src/lite-yt-embed.js",
+		LocalPath: "lite-youtube-embed/lite-yt-embed.js",
+		Integrity: "",
+		Version:   "0.3.4",
+		Type:      "js",
+	},
+	{
+		Name:      "lite-youtube-css",
+		URL:       "https://cdn.jsdelivr.net/npm/lite-youtube-embed@0.3.4/src/lite-yt-embed.css",
+		LocalPath: "lite-youtube-embed/lite-yt-embed.css",
+		Integrity: "",
+		Version:   "0.3.4",
+		Type:      "css",
+	},
 }
 
 // Registry returns a copy of all registered assets.

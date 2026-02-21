@@ -127,3 +127,34 @@ func TestOEmbedResolver_DiscoverEndpoint(t *testing.T) {
 		t.Fatal("expected endpoint")
 	}
 }
+
+func TestRenderGistCodeMarkdown(t *testing.T) {
+	md := newEmbedMarkdownRenderer(map[string]interface{}{})
+	resolver := newOEmbedResolver(models.NewEmbedsConfig(), http.DefaultClient)
+	resolver.setMarkdownRenderer(md)
+
+	html, err := renderGistCodeMarkdown(resolver, "go", "package main\n")
+	if err != nil {
+		t.Fatalf("renderGistCodeMarkdown failed: %v", err)
+	}
+	if !containsString(html, `class="highlight"`) && !containsString(html, `class="chroma"`) {
+		t.Fatalf("expected highlight/chroma wrapper, got: %s", html)
+	}
+}
+
+func TestExtractGistID(t *testing.T) {
+	got, err := extractGistID("https://gist.github.com/user/abcd1234")
+	if err != nil {
+		t.Fatalf("extractGistID failed: %v", err)
+	}
+	if got != "abcd1234" {
+		t.Fatalf("expected gist id, got %s", got)
+	}
+}
+
+func TestRenderGistScriptEmbedHTML(t *testing.T) {
+	html := renderGistScriptEmbedHTML("https://gist.github.com/user/abcd", "example.go")
+	if !containsString(html, `gist.github.com/user/abcd.js?file=example.go`) {
+		t.Fatalf("expected gist script embed, got: %s", html)
+	}
+}
