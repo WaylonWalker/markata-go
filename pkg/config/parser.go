@@ -395,6 +395,7 @@ type tomlFooterConfig struct {
 
 type tomlThemeConfig struct {
 	Name         string                  `toml:"name"`
+	Aesthetic    string                  `toml:"aesthetic"`
 	Palette      string                  `toml:"palette"`
 	PaletteLight string                  `toml:"palette_light"`
 	PaletteDark  string                  `toml:"palette_dark"`
@@ -1533,6 +1534,7 @@ func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
 	}
 	return models.ThemeConfig{
 		Name:         t.Name,
+		Aesthetic:    t.Aesthetic,
 		Palette:      t.Palette,
 		PaletteLight: t.PaletteLight,
 		PaletteDark:  t.PaletteDark,
@@ -2140,6 +2142,7 @@ func (g *yamlGardenConfig) toGardenConfig() models.GardenConfig {
 
 type yamlThemeConfig struct {
 	Name         string                  `yaml:"name"`
+	Aesthetic    string                  `yaml:"aesthetic"`
 	Palette      string                  `yaml:"palette"`
 	PaletteLight string                  `yaml:"palette_light"`
 	PaletteDark  string                  `yaml:"palette_dark"`
@@ -2194,6 +2197,7 @@ func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
 	}
 	return models.ThemeConfig{
 		Name:         t.Name,
+		Aesthetic:    t.Aesthetic,
 		Palette:      t.Palette,
 		PaletteLight: t.PaletteLight,
 		PaletteDark:  t.PaletteDark,
@@ -3419,6 +3423,7 @@ func (g *jsonGardenConfig) toGardenConfig() models.GardenConfig {
 
 type jsonThemeConfig struct {
 	Name         string                  `json:"name"`
+	Aesthetic    string                  `json:"aesthetic"`
 	Palette      string                  `json:"palette"`
 	PaletteLight string                  `json:"palette_light"`
 	PaletteDark  string                  `json:"palette_dark"`
@@ -3473,6 +3478,7 @@ func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
 	}
 	return models.ThemeConfig{
 		Name:         t.Name,
+		Aesthetic:    t.Aesthetic,
 		Palette:      t.Palette,
 		PaletteLight: t.PaletteLight,
 		PaletteDark:  t.PaletteDark,

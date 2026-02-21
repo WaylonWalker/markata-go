@@ -133,6 +133,9 @@ func mergeThemeConfig(base, override models.ThemeConfig) models.ThemeConfig {
 	if override.Name != "" {
 		result.Name = override.Name
 	}
+	if override.Aesthetic != "" {
+		result.Aesthetic = override.Aesthetic
+	}
 	if override.Palette != "" {
 		result.Palette = override.Palette
 	}

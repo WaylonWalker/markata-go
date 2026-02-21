@@ -12,6 +12,7 @@ type CSSFormat struct {
 	IncludeSpacing    bool   // Include spacing tokens
 	IncludeBorders    bool   // Include border tokens
 	IncludeShadows    bool   // Include shadow tokens
+	IncludeEffects    bool   // Include effects tokens
 	Minify            bool   // Produce minified output
 	Prefix            string // Custom prefix for CSS variables (e.g., "theme" -> "--theme-radius-sm")
 }
@@ -23,6 +24,7 @@ func DefaultCSSFormat() CSSFormat {
 		IncludeSpacing:    true,
 		IncludeBorders:    true,
 		IncludeShadows:    true,
+		IncludeEffects:    true,
 		Minify:            false,
 		Prefix:            "",
 	}
@@ -40,103 +42,36 @@ func (a *Aesthetic) GenerateCSSMinified() string {
 	return a.GenerateCSSWithFormat(format)
 }
 
+// cssSection represents a group of CSS variables.
+type cssSection struct {
+	name string
+	vars map[string]string
+}
+
 // GenerateCSSWithFormat generates CSS with the specified format options.
 func (a *Aesthetic) GenerateCSSWithFormat(format CSSFormat) string {
 	var sb strings.Builder
 
-	// Determine formatting strings
-	indent := "  "
-	newline := "\n"
-	if format.Minify {
-		indent = ""
-		newline = ""
-	}
-
 	// Write header comment (not in minified)
 	if !format.Minify {
-		sb.WriteString(fmt.Sprintf("/* Aesthetic: %s */\n", a.Name))
+		fmt.Fprintf(&sb, "/* Aesthetic: %s */\n", a.Name)
 		if a.Description != "" {
-			sb.WriteString(fmt.Sprintf("/* %s */\n", a.Description))
+			fmt.Fprintf(&sb, "/* %s */\n", a.Description)
 		}
 	}
 
 	// Start :root block
 	sb.WriteString(":root {")
-	sb.WriteString(newline)
-
-	sections := []struct {
-		name    string
-		include bool
-		vars    map[string]string
-	}{}
+	if !format.Minify {
+		sb.WriteString("\n")
+	}
 
 	// Collect sections based on format options
-	// Check for legacy flat maps first (used by css_test.go), then tokens
-	typography := a.getTypographyMap()
-	spacing := a.getSpacingMap()
-	borders := a.getBordersMap()
-	shadows := a.getShadowsMap()
-
-	if format.IncludeTypography && len(typography) > 0 {
-		sections = append(sections, struct {
-			name    string
-			include bool
-			vars    map[string]string
-		}{"Typography", true, typography})
-	}
-
-	if format.IncludeSpacing && len(spacing) > 0 {
-		sections = append(sections, struct {
-			name    string
-			include bool
-			vars    map[string]string
-		}{"Spacing", true, spacing})
-	}
-
-	if format.IncludeBorders && len(borders) > 0 {
-		sections = append(sections, struct {
-			name    string
-			include bool
-			vars    map[string]string
-		}{"Borders", true, borders})
-	}
-
-	if format.IncludeShadows && len(shadows) > 0 {
-		sections = append(sections, struct {
-			name    string
-			include bool
-			vars    map[string]string
-		}{"Shadows", true, shadows})
-	}
+	sections := a.collectSections(format)
 
 	// Write each section
 	for i, section := range sections {
-		if !format.Minify && i > 0 {
-			sb.WriteString(newline)
-		}
-
-		// Section comment (not in minified)
-		if !format.Minify {
-			sb.WriteString(fmt.Sprintf("%s/* %s */\n", indent, section.name))
-		}
-
-		// Sort keys for consistent output
-		keys := make([]string, 0, len(section.vars))
-		for k := range section.vars {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-
-		// Write CSS variables
-		for _, key := range keys {
-			value := section.vars[key]
-			varName := formatVarName(key, format.Prefix)
-			if format.Minify {
-				sb.WriteString(fmt.Sprintf("%s:%s;", varName, value))
-			} else {
-				sb.WriteString(fmt.Sprintf("%s%s: %s;\n", indent, varName, value))
-			}
-		}
+		writeSection(&sb, section, format, i == 0)
 	}
 
 	// Close :root block
@@ -146,6 +81,69 @@ func (a *Aesthetic) GenerateCSSWithFormat(format CSSFormat) string {
 	}
 
 	return sb.String()
+}
+
+func (a *Aesthetic) collectSections(format CSSFormat) []cssSection {
+	var sections []cssSection
+
+	if format.IncludeTypography {
+		if m := a.getTypographyMap(); len(m) > 0 {
+			sections = append(sections, cssSection{"Typography", m})
+		}
+	}
+	if format.IncludeSpacing {
+		if m := a.getSpacingMap(); len(m) > 0 {
+			sections = append(sections, cssSection{"Spacing", m})
+		}
+	}
+	if format.IncludeBorders {
+		if m := a.getBordersMap(); len(m) > 0 {
+			sections = append(sections, cssSection{"Borders", m})
+		}
+	}
+	if format.IncludeShadows {
+		if m := a.getShadowsMap(); len(m) > 0 {
+			sections = append(sections, cssSection{"Shadows", m})
+		}
+	}
+	if format.IncludeEffects {
+		if m := a.getEffectsMap(); len(m) > 0 {
+			sections = append(sections, cssSection{"Effects", m})
+		}
+	}
+
+	return sections
+}
+
+func writeSection(sb *strings.Builder, section cssSection, format CSSFormat, isFirst bool) {
+	indent := "  "
+	if format.Minify {
+		indent = ""
+	}
+
+	if !format.Minify && !isFirst {
+		sb.WriteString("\n")
+	}
+
+	if !format.Minify {
+		fmt.Fprintf(sb, "%s/* %s */\n", indent, section.name)
+	}
+
+	keys := make([]string, 0, len(section.vars))
+	for k := range section.vars {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		value := section.vars[key]
+		varName := formatVarName(key, format.Prefix)
+		if format.Minify {
+			fmt.Fprintf(sb, "%s:%s;", varName, value)
+		} else {
+			fmt.Fprintf(sb, "%s%s: %s;\n", indent, varName, value)
+		}
+	}
 }
 
 // getTypographyMap returns typography tokens as a map for CSS generation.
@@ -215,6 +213,20 @@ func (a *Aesthetic) getShadowsMap() map[string]string {
 		result := make(map[string]string)
 		for k, v := range a.Tokens.Shadow {
 			cssKey := tokenToCSSName(k, "shadow")
+			result[cssKey] = v
+		}
+		return result
+	}
+	return nil
+}
+
+// getEffectsMap returns effects tokens as a map for CSS generation.
+func (a *Aesthetic) getEffectsMap() map[string]string {
+	// Use effects tokens
+	if len(a.Tokens.Effects) > 0 {
+		result := make(map[string]string)
+		for k, v := range a.Tokens.Effects {
+			cssKey := tokenToCSSName(k, "effect")
 			result[cssKey] = v
 		}
 		return result
