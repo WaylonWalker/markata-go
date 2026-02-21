@@ -166,7 +166,7 @@ fallback_title = "External Link"  # Title when metadata is unavailable
 show_image = true                 # Show images
 
 [embeds.providers]
-youtube = { enabled = true, mode = "rich" }
+youtube = { enabled = true, mode = "rich" } # default
 vimeo = { enabled = true }
 tiktok = { enabled = true }
 flickr = { enabled = true }

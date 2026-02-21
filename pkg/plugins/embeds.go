@@ -102,23 +102,6 @@ func (p *EmbedsPlugin) applyEmbedsConfig(cfgMap map[string]interface{}) {
 	applyString(cfgMap, "default_mode", &p.config.DefaultEmbedMode)
 	applyString(cfgMap, "oembed_providers_url", &p.config.OEmbedProvidersURL)
 
-	// Parse providers sub-config
-	if providersMap, ok := cfgMap["providers"].(map[string]interface{}); ok {
-		p.config.OEmbedProviders = make(map[string]models.OEmbedProviderConfig)
-		for name, providerCfg := range providersMap {
-			if pm, ok := providerCfg.(map[string]interface{}); ok {
-				pc := models.OEmbedProviderConfig{Enabled: true}
-				if enabled, ok := pm["enabled"].(bool); ok {
-					pc.Enabled = enabled
-				}
-				if mode, ok := pm["mode"].(string); ok {
-					pc.Mode = mode
-				}
-				p.config.OEmbedProviders[name] = pc
-			}
-		}
-	}
-
 	if p.config.Timeout > 0 {
 		p.httpClient.Timeout = time.Duration(p.config.Timeout) * time.Second
 	}
@@ -185,14 +168,19 @@ func (p *EmbedsPlugin) configureOEmbedProviders(cfgMap map[string]interface{}) {
 
 	for name, raw := range providersRaw {
 		key := strings.ToLower(name)
+		providerCfg := p.config.OEmbedProviders[key]
 		switch value := raw.(type) {
 		case bool:
-			p.config.OEmbedProviders[key] = models.OEmbedProviderConfig{Enabled: value}
+			providerCfg.Enabled = value
 		case map[string]interface{}:
 			if enabled, ok := value["enabled"].(bool); ok {
-				p.config.OEmbedProviders[key] = models.OEmbedProviderConfig{Enabled: enabled}
+				providerCfg.Enabled = enabled
+			}
+			if mode, ok := value["mode"].(string); ok && mode != "" {
+				providerCfg.Mode = mode
 			}
 		}
+		p.config.OEmbedProviders[key] = providerCfg
 	}
 }
 
@@ -333,7 +321,8 @@ var attachmentEmbedRegex = regexp.MustCompile(`!\[\[([^\]|]+\.[a-zA-Z0-9]+)(?:\|
 // htmlTitleRegex matches the <title> tag in HTML.
 var htmlTitleRegex = regexp.MustCompile(`<title[^>]*>([^<]+)</title>`)
 
-var youtubeOEmbedIDRegex = regexp.MustCompile(`(?i)(?:youtube(?:-nocookie)?\.com/embed/|youtu\.be/)([a-zA-Z0-9_-]{11})`)
+var youtubeOEmbedIDRegex = regexp.MustCompile(`(?i)(?:youtube(?:-nocookie)?\.com/(?:embed/|watch\?v=)|youtu\.be/)([a-zA-Z0-9_-]{11})`)
+var youtubeImageIDRegex = regexp.MustCompile(`(?i)i\.ytimg\.com/vi/([a-zA-Z0-9_-]{11})/`)
 
 // metaPatternCache caches compiled regexes for meta tag extraction.
 var metaPatternCache = struct {
@@ -986,7 +975,15 @@ func buildLiteYouTubeHTML(metadata *OGMetadata, response *OEmbedResponse) string
 		return metadata.HTML
 	}
 
-	title := strings.TrimSpace(metadata.Title)
+	return buildLiteYouTubeHTMLFromID(videoID, metadata.Title)
+}
+
+func buildLiteYouTubeHTMLFromID(videoID, title string) string {
+	if videoID == "" {
+		return ""
+	}
+
+	title = strings.TrimSpace(title)
 	if title == "" {
 		title = "YouTube video"
 	}
@@ -1196,7 +1193,7 @@ func defaultModeByType(oembedType string) string {
 		return embedModeImageOnly
 	case "video":
 		return embedModeRich
-	case "rich":
+	case embedModeRich:
 		return embedModeRich
 	default:
 		return embedModeCard
@@ -1209,6 +1206,9 @@ func defaultModeByType(oembedType string) string {
 // 3. Default mode based on oEmbed type
 // 4. Global default mode
 func (p *EmbedsPlugin) effectiveEmbedMode(opts EmbedOptions, metadata *OGMetadata) EmbedOptions {
+	if metadata == nil {
+		return opts
+	}
 	// If explicit mode is set via options, use that
 	if opts.Rich || opts.Performance || opts.Hover || opts.Card || opts.ImageOnly {
 		return opts
@@ -1219,6 +1219,11 @@ func (p *EmbedsPlugin) effectiveEmbedMode(opts EmbedOptions, metadata *OGMetadat
 	if providerName != "" {
 		if providerCfg, ok := p.config.OEmbedProviders[providerName]; ok && providerCfg.Mode != "" {
 			if applyEmbedMode(&opts, strings.ToLower(providerCfg.Mode)) {
+				return opts
+			}
+		}
+		if providerName == oembedProviderYouTube && metadata.HTML != "" {
+			if applyEmbedMode(&opts, embedModeRich) {
 				return opts
 			}
 		}
@@ -1272,6 +1277,24 @@ func applyEmbedMode(opts *EmbedOptions, mode string) bool {
 //
 //nolint:gocyclo // multiple rendering modes require conditional branches
 func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL, metadata *OGMetadata, opts EmbedOptions) string {
+	if metadata != nil {
+		videoID := extractYouTubeVideoID(rawURL)
+		if videoID == "" {
+			videoID = extractYouTubeVideoIDFromMetadata(metadata)
+		}
+		if videoID != "" {
+			if metadata.ProviderName == "" {
+				metadata.ProviderName = oembedProviderYouTube
+			}
+			if metadata.HTML == "" {
+				title := metadata.Title
+				if title == p.config.FallbackTitle {
+					title = ""
+				}
+				metadata.HTML = buildLiteYouTubeHTMLFromID(videoID, title)
+			}
+		}
+	}
 	// Determine effective mode based on config and oEmbed type
 	opts = p.effectiveEmbedMode(opts, metadata)
 
@@ -1478,6 +1501,20 @@ func (p *EmbedsPlugin) buildExternalEmbedCard(rawURL string, parsedURL *url.URL,
 	sb.WriteString("\n")
 
 	return sb.String()
+}
+
+func extractYouTubeVideoIDFromMetadata(metadata *OGMetadata) string {
+	if metadata == nil {
+		return ""
+	}
+
+	if metadata.Image != "" {
+		if match := youtubeImageIDRegex.FindStringSubmatch(metadata.Image); len(match) > 1 {
+			return match[1]
+		}
+	}
+
+	return ""
 }
 
 func (p *EmbedsPlugin) applyExternalTitleOverride(metadata *OGMetadata, override string) *OGMetadata {
