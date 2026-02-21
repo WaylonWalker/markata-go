@@ -1235,10 +1235,10 @@ Content.`)
 		Palette: "catppuccin-mocha",
 	})
 
-	cssPath := filepath.Join(site.outputDir, "css", "variables.css")
+	cssPath := filepath.Join(site.outputDir, "css", "palette.css")
 	css1, err := os.ReadFile(cssPath)
 	if err != nil {
-		t.Fatalf("failed to read variables.css after build 1: %v", err)
+		t.Fatalf("failed to read palette.css after build 1: %v", err)
 	}
 
 	// Build 2 with dracula palette
@@ -1249,7 +1249,7 @@ Content.`)
 
 	css2, err := os.ReadFile(cssPath)
 	if err != nil {
-		t.Fatalf("failed to read variables.css after build 2: %v", err)
+		t.Fatalf("failed to read palette.css after build 2: %v", err)
 	}
 
 	if bytes.Equal(css1, css2) {

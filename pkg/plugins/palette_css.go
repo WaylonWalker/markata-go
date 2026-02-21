@@ -18,9 +18,9 @@ import (
 )
 
 // PaletteCSSPlugin generates CSS variables from the configured color palette.
-// It runs during the Write stage and creates/overwrites css/variables.css
+// It runs during the Write stage and creates/overwrites css/palette.css
 // with the palette's CSS custom properties. It runs after static_assets
-// to overwrite the default variables.css with palette-specific values.
+// to overwrite the default palette.css with palette-specific values.
 //
 // The plugin supports intelligent light/dark palette mapping:
 // - palette = "everforest" will auto-detect everforest-light and everforest-dark
@@ -47,7 +47,7 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 
 	// Get palette configuration from config.Extra["theme"]
-	paletteName, paletteLight, paletteDark := p.getPaletteConfig(config.Extra)
+	paletteName, paletteLight, paletteDark, seedColor := p.getPaletteConfig(config.Extra)
 	userVariables := p.getThemeVariables(config.Extra)
 	if paletteName == "" {
 		return nil
@@ -55,6 +55,25 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Load palettes
 	loader := palettes.NewLoader()
+
+	if paletteName == "generated" {
+		if seedColor == "" {
+			log.Printf("[palette_css] Warning: palette is 'generated' but no seed_color provided. Using fallback.")
+		} else {
+			lightP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantLight)
+			if err == nil {
+				loader.AddPalette("generated-light", lightP)
+			} else {
+				log.Printf("[palette_css] Error generating light palette from seed %q: %v", seedColor, err)
+			}
+			darkP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantDark)
+			if err == nil {
+				loader.AddPalette("generated-dark", darkP)
+			} else {
+				log.Printf("[palette_css] Error generating dark palette from seed %q: %v", seedColor, err)
+			}
+		}
+	}
 
 	// Check if theme switcher is enabled
 	switcherEnabled := p.isSwitcherEnabled(config.Extra)
@@ -70,10 +89,10 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(css)))[:8]
 
 	// Register hash so templates can use it
-	m.SetAssetHash("css/variables.css", hash)
-	templates.SetAssetHashes(map[string]string{"css/variables.css": hash})
+	m.SetAssetHash("css/palette.css", hash)
+	templates.SetAssetHashes(map[string]string{"css/palette.css": hash})
 
-	log.Printf("[palette_css] Registered hash %s for variables.css", hash)
+	log.Printf("[palette_css] Registered hash %s for palette.css", hash)
 
 	return nil
 }
@@ -89,7 +108,7 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	// Get palette configuration from config.Extra["theme"]
-	paletteName, paletteLight, paletteDark := p.getPaletteConfig(config.Extra)
+	paletteName, paletteLight, paletteDark, seedColor := p.getPaletteConfig(config.Extra)
 	userVariables := p.getThemeVariables(config.Extra)
 	if paletteName == "" {
 		// No palette configured, skip
@@ -105,6 +124,25 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	// Load palettes
 	loader := palettes.NewLoader()
 
+	if paletteName == "generated" {
+		if seedColor == "" {
+			log.Printf("[palette_css] Warning: palette is 'generated' but no seed_color provided. Using fallback.")
+		} else {
+			lightP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantLight)
+			if err == nil {
+				loader.AddPalette("generated-light", lightP)
+			} else {
+				log.Printf("[palette_css] Error generating light palette from seed %q: %v", seedColor, err)
+			}
+			darkP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantDark)
+			if err == nil {
+				loader.AddPalette("generated-dark", darkP)
+			} else {
+				log.Printf("[palette_css] Error generating dark palette from seed %q: %v", seedColor, err)
+			}
+		}
+	}
+
 	var css string
 	if switcherEnabled {
 		// Generate CSS for all palettes when switcher is enabled
@@ -116,7 +154,7 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 
 	// Write to output directory
 	cssDir := filepath.Join(outputDir, "css")
-	cssPath := filepath.Join(cssDir, "variables.css")
+	cssPath := filepath.Join(cssDir, "palette.css")
 	if existing, err := os.ReadFile(cssPath); err == nil {
 		if bytes.Equal(existing, []byte(css)) {
 			log.Printf("[palette_css] CSS unchanged, skipping write")
@@ -129,15 +167,15 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	if err := os.MkdirAll(cssDir, 0o755); err != nil {
 		return fmt.Errorf("creating css directory: %w", err)
 	}
-	//nolint:gosec // G306: variables.css is a public CSS file, 0644 is appropriate
+	//nolint:gosec // G306: palette.css is a public CSS file, 0644 is appropriate
 	if err := os.WriteFile(cssPath, []byte(css), 0o644); err != nil {
 		return fmt.Errorf("writing palette CSS: %w", err)
 	}
 
-	if hash := m.GetAssetHash("css/variables.css"); hash != "" {
+	if hash := m.GetAssetHash("css/palette.css"); hash != "" {
 		base := strings.TrimSuffix(filepath.Base(cssPath), filepath.Ext(cssPath))
 		hashedPath := filepath.Join(cssDir, fmt.Sprintf("%s.%s.css", base, hash))
-		//nolint:gosec // G306: hashed variables.css is a public CSS file, 0644 is appropriate
+		//nolint:gosec // G306: hashed palette.css is a public CSS file, 0644 is appropriate
 		if err := os.WriteFile(hashedPath, []byte(css), 0o644); err != nil {
 			return fmt.Errorf("writing hashed palette CSS: %w", err)
 		}
@@ -270,7 +308,7 @@ func (p *PaletteCSSPlugin) generateMultiPaletteCSS(loader *palettes.Loader, extr
 	buf.WriteString(fmt.Sprintf("  --palette-dark: %q;\n", darkName))
 	buf.WriteString(fmt.Sprintf("  --palette-manifest: '%s';\n", escapedManifest))
 	buf.WriteString("  --palette-switcher-enabled: 1;\n")
-	p.writeNonColorVariables(&buf, "  ")
+
 	buf.WriteString("}\n\n")
 
 	// Group palettes by base name for display purposes
@@ -438,7 +476,7 @@ func (p *PaletteCSSPlugin) generateThemeCSSWithVariants(lightPalette, darkPalett
 
 	// Write non-color variables (typography, spacing, layout, gradients)
 	// These are written once in :root and don't change between light/dark modes
-	p.writeNonColorVariables(&buf, "  ")
+
 	buf.WriteString("}\n\n")
 
 	// Generate light mode (default) styles
@@ -477,86 +515,26 @@ func (p *PaletteCSSPlugin) writePaletteVariables(buf *bytes.Buffer, palette *pal
 	p.writePaletteVariablesIndented(buf, palette, "  ")
 }
 
-// writeNonColorVariables writes non-color CSS custom properties (typography, spacing, layout, gradients).
-// These are preserved from the default theme when applying a color palette.
-func (p *PaletteCSSPlugin) writeNonColorVariables(buf *bytes.Buffer, indent string) {
-	// Gradients - used for media borders and highlights
-	fmt.Fprintf(buf, "\n%s/* Accent gradients */\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-accent: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-vibrant: linear-gradient(135deg, #667eea, #764ba2, #f093fb);\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-warm: linear-gradient(135deg, #f093fb, #f5576c, #f8b500);\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-cool: linear-gradient(135deg, #4facfe, #00f2fe);\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-sunset: linear-gradient(135deg, #fa709a, #fee140);\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-ocean: linear-gradient(135deg, #2193b0, #6dd5ed);\n", indent)
+// resolveWithContrast resolves a color from the palette and adjusts it to meet WCAG contrast ratio against a background color.
+func (p *PaletteCSSPlugin) resolveWithContrast(palette *palettes.Palette, fgKey string, minRatio float64) string {
+	fgHex := palette.Resolve(fgKey)
+	if fgHex == "" {
+		return ""
+	}
 
-	// Palette-specific gradients
-	fmt.Fprintf(buf, "\n%s/* Palette-specific gradients */\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-catppuccin: linear-gradient(135deg, #cba6f7, #f5c2e7, #f38ba8);\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-nord: linear-gradient(135deg, #88c0d0, #81a1c1, #5e81ac);\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-dracula: linear-gradient(135deg, #bd93f9, #ff79c6, #8be9fd);\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-gruvbox: linear-gradient(135deg, #fabd2f, #fe8019, #fb4934);\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-rose-pine: linear-gradient(135deg, #c4a7e7, #ebbcba, #f6c177);\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-solarized: linear-gradient(135deg, #268bd2, #2aa198, #859900);\n", indent)
-	fmt.Fprintf(buf, "%s--gradient-tokyo-night: linear-gradient(135deg, #7aa2f7, #bb9af7, #f7768e);\n", indent)
+	bgHex := palette.Resolve("bg-primary")
+	if bgHex == "" {
+		return fgHex
+	}
 
-	// Media border settings
-	fmt.Fprintf(buf, "\n%s/* Media border settings */\n", indent)
-	fmt.Fprintf(buf, "%s--media-border-width: 3px;\n", indent)
-	fmt.Fprintf(buf, "%s--media-border-style: solid;\n", indent)
-	fmt.Fprintf(buf, "%s--media-border-color: var(--color-border);\n", indent)
-	fmt.Fprintf(buf, "%s--media-border-gradient: none;\n", indent)
-	fmt.Fprintf(buf, "%s--media-border-radius: var(--radius-lg);\n", indent)
+	fgColor, errFg := palettes.ParseHexColor(fgHex)
+	bgColor, errBg := palettes.ParseHexColor(bgHex)
+	if errFg != nil || errBg != nil {
+		return fgHex
+	}
 
-	// Font families
-	fmt.Fprintf(buf, "\n%s/* Font families */\n", indent)
-	fmt.Fprintf(buf, "%s--font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n", indent)
-	fmt.Fprintf(buf, "%s--font-heading: var(--font-body);\n", indent)
-	fmt.Fprintf(buf, "%s--font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;\n", indent)
-
-	// Font sizes (modular scale)
-	fmt.Fprintf(buf, "\n%s/* Font sizes */\n", indent)
-	fmt.Fprintf(buf, "%s--text-xs: 0.75rem;\n", indent)
-	fmt.Fprintf(buf, "%s--text-sm: 0.875rem;\n", indent)
-	fmt.Fprintf(buf, "%s--text-base: 1rem;\n", indent)
-	fmt.Fprintf(buf, "%s--text-lg: 1.125rem;\n", indent)
-	fmt.Fprintf(buf, "%s--text-xl: 1.25rem;\n", indent)
-	fmt.Fprintf(buf, "%s--text-2xl: 1.5rem;\n", indent)
-	fmt.Fprintf(buf, "%s--text-3xl: 1.875rem;\n", indent)
-	fmt.Fprintf(buf, "%s--text-4xl: 2.25rem;\n", indent)
-
-	// Line heights
-	fmt.Fprintf(buf, "\n%s/* Line heights */\n", indent)
-	fmt.Fprintf(buf, "%s--leading-tight: 1.25;\n", indent)
-	fmt.Fprintf(buf, "%s--leading-normal: 1.5;\n", indent)
-	fmt.Fprintf(buf, "%s--leading-relaxed: 1.75;\n", indent)
-
-	// Spacing scale
-	fmt.Fprintf(buf, "\n%s/* Spacing scale */\n", indent)
-	fmt.Fprintf(buf, "%s--space-1: 0.25rem;\n", indent)
-	fmt.Fprintf(buf, "%s--space-2: 0.5rem;\n", indent)
-	fmt.Fprintf(buf, "%s--space-3: 0.75rem;\n", indent)
-	fmt.Fprintf(buf, "%s--space-4: 1rem;\n", indent)
-	fmt.Fprintf(buf, "%s--space-5: 1.25rem;\n", indent)
-	fmt.Fprintf(buf, "%s--space-6: 1.5rem;\n", indent)
-	fmt.Fprintf(buf, "%s--space-8: 2rem;\n", indent)
-	fmt.Fprintf(buf, "%s--space-12: 3rem;\n", indent)
-	fmt.Fprintf(buf, "%s--space-16: 4rem;\n", indent)
-
-	// Layout
-	fmt.Fprintf(buf, "\n%s/* Layout */\n", indent)
-	fmt.Fprintf(buf, "%s--content-width: 65ch;\n", indent)
-	fmt.Fprintf(buf, "%s--content-max-width: var(--content-width);\n", indent)
-	fmt.Fprintf(buf, "%s--page-width: 1200px;\n", indent)
-	fmt.Fprintf(buf, "%s--radius: 0.375rem;\n", indent)
-	fmt.Fprintf(buf, "%s--radius-lg: 0.5rem;\n", indent)
-
-	// Article reading progress indicator
-	fmt.Fprintf(buf, "\n%s/* Article reading progress indicator */\n", indent)
-	fmt.Fprintf(buf, "%s--article-progress-height: 4px;\n", indent)
-	fmt.Fprintf(buf, "%s--article-progress-track: color-mix(in srgb, var(--color-text) 15%%, var(--color-background) 85%%);\n", indent)
-	fmt.Fprintf(buf, "%s--article-progress-start: var(--color-primary);\n", indent)
-	fmt.Fprintf(buf, "%s--article-progress-end: color-mix(in srgb, var(--color-primary) 40%%, var(--color-primary-light, var(--color-primary)) 60%%);\n", indent)
-	fmt.Fprintf(buf, "%s--article-progress-glow: color-mix(in srgb, var(--color-primary) 60%%, transparent);\n", indent)
+	adjusted, _ := fgColor.AdjustForContrast(bgColor, minRatio)
+	return adjusted.Hex()
 }
 
 // writePaletteVariablesIndented writes CSS custom properties with custom indentation.
@@ -575,10 +553,13 @@ func (p *PaletteCSSPlugin) writePaletteVariablesIndented(buf *bytes.Buffer, pale
 	fmt.Fprintf(buf, "\n%s/* Semantic colors */\n", indent)
 
 	// Text colors
-	if textPrimary := palette.Resolve("text-primary"); textPrimary != "" {
+	if textPrimary := p.resolveWithContrast(palette, "text-primary", 4.5); textPrimary != "" {
 		fmt.Fprintf(buf, "%s--color-text: %s;\n", indent, textPrimary)
 	}
-	if textMuted := palette.Resolve("text-muted"); textMuted != "" {
+	if textSecondary := p.resolveWithContrast(palette, "text-secondary", 4.5); textSecondary != "" {
+		fmt.Fprintf(buf, "%s--color-text-secondary: %s;\n", indent, textSecondary)
+	}
+	if textMuted := p.resolveWithContrast(palette, "text-muted", 4.5); textMuted != "" {
 		fmt.Fprintf(buf, "%s--color-text-muted: %s;\n", indent, textMuted)
 	}
 
@@ -598,27 +579,27 @@ func (p *PaletteCSSPlugin) writePaletteVariablesIndented(buf *bytes.Buffer, pale
 	fmt.Fprintf(buf, "\n%s/* Status colors */\n", indent)
 
 	// Status colors
-	if success := palette.Resolve("success"); success != "" {
+	if success := p.resolveWithContrast(palette, "success", 3.0); success != "" {
 		fmt.Fprintf(buf, "%s--color-success: %s;\n", indent, success)
 	}
-	if warning := palette.Resolve("warning"); warning != "" {
+	if warning := p.resolveWithContrast(palette, "warning", 3.0); warning != "" {
 		fmt.Fprintf(buf, "%s--color-warning: %s;\n", indent, warning)
 	}
-	if errorColor := palette.Resolve("error"); errorColor != "" {
+	if errorColor := p.resolveWithContrast(palette, "error", 3.0); errorColor != "" {
 		fmt.Fprintf(buf, "%s--color-error: %s;\n", indent, errorColor)
 	}
-	if info := palette.Resolve("info"); info != "" {
+	if info := p.resolveWithContrast(palette, "info", 3.0); info != "" {
 		fmt.Fprintf(buf, "%s--color-info: %s;\n", indent, info)
 	}
 
 	// Add link colors if available
-	if link := palette.Resolve("link"); link != "" {
+	if link := p.resolveWithContrast(palette, "link", 4.5); link != "" {
 		fmt.Fprintf(buf, "\n%s/* Link colors */\n", indent)
 		fmt.Fprintf(buf, "%s--color-link: %s;\n", indent, link)
-		if linkHover := palette.Resolve("link-hover"); linkHover != "" {
+		if linkHover := p.resolveWithContrast(palette, "link-hover", 4.5); linkHover != "" {
 			fmt.Fprintf(buf, "%s--color-link-hover: %s;\n", indent, linkHover)
 		}
-		if linkVisited := palette.Resolve("link-visited"); linkVisited != "" {
+		if linkVisited := p.resolveWithContrast(palette, "link-visited", 4.5); linkVisited != "" {
 			fmt.Fprintf(buf, "%s--color-link-visited: %s;\n", indent, linkVisited)
 		}
 	}
@@ -678,7 +659,7 @@ func (p *PaletteCSSPlugin) writeMarkColors(buf *bytes.Buffer, palette *palettes.
 
 	// If not defined, compute from warning color
 	if markBg == "" {
-		warningHex := palette.Resolve("warning")
+		warningHex := p.resolveWithContrast(palette, "warning", 3.0)
 		if warningHex != "" {
 			warningColor, err := palettes.ParseHexColor(warningHex)
 			if err == nil {
@@ -703,7 +684,7 @@ func (p *PaletteCSSPlugin) writeMarkColors(buf *bytes.Buffer, palette *palettes.
 		bgColor, err := palettes.ParseHexColor(markBg)
 		if err == nil {
 			// Get the text color from the palette
-			textHex := palette.Resolve("text-primary")
+			textHex := p.resolveWithContrast(palette, "text-primary", 4.5)
 			if textHex == "" {
 				// Fallback: use black for light bg, white for dark bg
 				if bgColor.RelativeLuminance() > 0.5 {
@@ -762,26 +743,26 @@ func (p *PaletteCSSPlugin) writeSelectionColors(buf *bytes.Buffer, palette *pale
 
 // getPaletteConfig extracts palette configuration from config.Extra.
 // Returns the base palette name and optional light/dark overrides.
-func (p *PaletteCSSPlugin) getPaletteConfig(extra map[string]interface{}) (palette, paletteLight, paletteDark string) {
+func (p *PaletteCSSPlugin) getPaletteConfig(extra map[string]interface{}) (palette, paletteLight, paletteDark, seedColor string) {
 	if extra == nil {
-		return "", "", ""
+		return "", "", "", ""
 	}
 
 	if modelsConfig, ok := extra["models_config"].(*models.Config); ok {
 		if modelsConfig.Theme.Palette != "" || modelsConfig.Theme.PaletteLight != "" || modelsConfig.Theme.PaletteDark != "" {
-			return modelsConfig.Theme.Palette, modelsConfig.Theme.PaletteLight, modelsConfig.Theme.PaletteDark
+			return modelsConfig.Theme.Palette, modelsConfig.Theme.PaletteLight, modelsConfig.Theme.PaletteDark, modelsConfig.Theme.SeedColor
 		}
 	}
 
 	// Check if theme is a models.ThemeConfig (from core.go)
 	if themeConfig, ok := extra["theme"].(models.ThemeConfig); ok {
-		return themeConfig.Palette, themeConfig.PaletteLight, themeConfig.PaletteDark
+		return themeConfig.Palette, themeConfig.PaletteLight, themeConfig.PaletteDark, themeConfig.SeedColor
 	}
 
 	// Check if theme is a map[string]interface{} (from benchmark.go or raw TOML)
 	theme, ok := extra["theme"].(map[string]interface{})
 	if !ok {
-		return "", "", ""
+		return "", "", "", ""
 	}
 
 	// Get base palette
@@ -799,7 +780,12 @@ func (p *PaletteCSSPlugin) getPaletteConfig(extra map[string]interface{}) (palet
 		paletteDark = pal
 	}
 
-	return palette, paletteLight, paletteDark
+	// Get optional seed color
+	if seed, ok := theme["seed_color"].(string); ok && seed != "" {
+		seedColor = seed
+	}
+
+	return palette, paletteLight, paletteDark, seedColor
 }
 
 func (p *PaletteCSSPlugin) getThemeVariables(extra map[string]interface{}) map[string]string {
@@ -888,7 +874,7 @@ func (p *PaletteCSSPlugin) writeThemeOverrides(buf *bytes.Buffer, overrides map[
 }
 
 // Priority returns the plugin priority for the write stage.
-// Should run after static_assets so it can overwrite the default variables.css
+// Should run after static_assets so it can overwrite the default palette.css
 func (p *PaletteCSSPlugin) Priority(stage lifecycle.Stage) int {
 	if stage == lifecycle.StageWrite {
 		return lifecycle.PriorityDefault // After static_assets (PriorityEarly)
