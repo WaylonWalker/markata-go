@@ -334,6 +334,7 @@ func (p *LoadPlugin) restorePostFromCache(data *buildcache.CachedPostData, cache
 	post.Href = data.Href
 	post.Title = data.Title
 	post.Date = data.Date
+	post.Modified = data.Modified
 	post.Published = data.Published
 	post.Draft = data.Draft
 	post.Private = data.Private
@@ -495,6 +496,7 @@ func (p *LoadPlugin) postToCachedData(post *models.Post) *buildcache.CachedPostD
 		Href:           post.Href,
 		Title:          post.Title,
 		Date:           post.Date,
+		Modified:       post.Modified,
 		Published:      post.Published,
 		Draft:          post.Draft,
 		Private:        post.Private,
@@ -568,10 +570,12 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 }
 
 // Date field aliases for publication date (first match wins).
-var dateFieldAliases = []string{"date", "publishdate", "pubdate"}
+// Precedence follows common SSG conventions (publishdate first).
+var dateFieldAliases = []string{"publishdate", "date", "pubdate"}
 
 // Modified field aliases for last modified date (first match wins).
-var modifiedFieldAliases = []string{"modified", "lastmod", "updated", "last_modified", "updated_at"}
+// Precedence follows common SSG conventions (lastmod first).
+var modifiedFieldAliases = []string{"lastmod", "modified", "updated", "updated_at", "last_modified"}
 
 // applyMetadata applies parsed frontmatter metadata to a Post.
 func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interface{}) error {
@@ -689,17 +693,6 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		}
 	}
 
-	return nil
-}
-
-// getFirstDateValue returns the first non-nil value from metadata using a list of alias keys.
-// Returns nil if no value is found for any of the keys.
-func getFirstDateValue(metadata map[string]interface{}, aliases []string) interface{} {
-	for _, key := range aliases {
-		if val, ok := metadata[key]; ok && val != nil {
-			return val
-		}
-	}
 	return nil
 }
 
@@ -869,4 +862,15 @@ func parseTemplatesMap(val interface{}) map[string]string {
 	}
 
 	return result
+}
+
+// getFirstDateValue returns the first non-nil value from metadata using a list of alias keys.
+// Returns nil if no value is found for any of the keys.
+func getFirstDateValue(metadata map[string]interface{}, aliases []string) interface{} {
+	for _, key := range aliases {
+		if val, ok := metadata[key]; ok && val != nil {
+			return val
+		}
+	}
+	return nil
 }
