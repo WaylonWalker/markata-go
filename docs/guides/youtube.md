@@ -14,6 +14,8 @@ tags:
 
 markata-go automatically converts YouTube URLs into responsive embedded videos. Just paste a YouTube link on its own line, and it becomes a playable video embed.
 
+Note: This guide covers the YouTube plugin (standalone URLs). The embeds plugin's oEmbed-based YouTube renders use Lite YouTube by default.
+
 ## Quick Start
 
 Simply paste a YouTube URL on its own line in your markdown:
