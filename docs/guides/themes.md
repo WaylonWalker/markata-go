@@ -971,6 +971,37 @@ The CSS detection works by analyzing the rendered HTML:
 - **Faster load times**: Less CSS to download and parse
 - **Better caching**: Core CSS files are shared across all pages
 
+---
+
+## Modern Feed Layouts (Masonry + Subgrid)
+
+The default theme uses modern CSS Grid features to make feed cards look cleaner
+and more consistent without any JavaScript:
+
+- **Masonry layout** packs cards of varying heights tightly together.
+- **Subgrid alignment** keeps titles, excerpts, and meta lines aligned across
+  a row.
+
+These enhancements are progressive: browsers that don't support them
+automatically fall back to the standard stacked layout.
+
+### Customizing Feed Layout
+
+If you want to opt out or add your own layout, override the feed container
+classes or CSS:
+
+```css
+/* Disable masonry layout */
+.feed-layout-masonry .posts {
+  grid-template-rows: auto;
+}
+
+/* Customize grid columns */
+.feed-layout-grid .posts {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+}
+```
+
 ### Custom CSS
 
 Your custom CSS (via `theme.custom_css`) is always loaded when configured. If you need conditional loading for custom styles, consider using CSS custom properties or JavaScript-based loading.

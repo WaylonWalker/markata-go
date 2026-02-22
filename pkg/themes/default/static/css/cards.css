@@ -22,6 +22,63 @@
 }
 
 /* ==========================================================================
+   Feed Layouts: Grid & Masonry
+   ========================================================================== */
+
+/* Grid layout with subgrid support */
+.feed-layout-grid .posts,
+.feed-layout-grid .post-list,
+.blogroll-grid.feed-layout-grid {
+  max-width: var(--grid-max-width, 1400px) !important;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.feed-layout-grid .posts,
+.feed-layout-grid .post-list,
+.blogroll-grid.feed-layout-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* Progressive Enhancement: Native Masonry */
+@supports (grid-template-rows: masonry) {
+  .feed-layout-masonry .posts,
+  .feed-layout-masonry .post-list,
+  .blogroll-grid.feed-layout-masonry {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
+    grid-template-rows: masonry;
+    gap: var(--space-6);
+    align-items: start;
+  }
+}
+
+/* CSS Subgrid for Card Alignment across rows */
+@supports (grid-template-rows: subgrid) {
+  /* Only apply subgrid in the grid layout (not masonry as it packs items) */
+  .feed-layout-grid:not(.feed-layout-masonry) .posts > .card,
+  .feed-layout-grid:not(.feed-layout-masonry) .post-list > .card,
+  .blogroll-grid.feed-layout-grid:not(.feed-layout-masonry) > .blogroll-card {
+    grid-row: span 3;
+    display: grid;
+    grid-template-rows: subgrid;
+    gap: 0; /* Align perfectly across rows */
+  }
+
+  /* Card components participate in the subgrid */
+  .card .card-header { grid-row: 1; }
+  .card .card-body,
+  .card .card-content,
+  .card .card-excerpt { grid-row: 2; }
+  .card .card-meta,
+  .card footer { grid-row: 3; }
+}
+
+/* ==========================================================================
    Base Card Styles (shared by all card types)
    Extends the .card class from main.css
    ========================================================================== */

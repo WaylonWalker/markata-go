@@ -113,6 +113,21 @@ Markata-go uses a hierarchical layout system with different templates for differ
 | `page.html` | Static pages | About, contact, custom pages |
 | `card.html` | Post preview in lists | Used inside feed.html |
 
+### Modern Feed Layout Enhancements
+
+Built-in themes MAY use modern CSS Grid features to improve feed layouts without
+adding JavaScript dependencies. The default theme applies these enhancements
+when supported by the browser:
+
+- **Masonry grid** (`grid-template-rows: masonry`): allows cards of varying
+  heights to pack tightly without gaps.
+- **Subgrid alignment** (`grid-template-rows: subgrid`): aligns internal card
+  sections (title, excerpt, meta) across a row for consistent baselines.
+
+These features MUST degrade gracefully to the default stacked layout when
+unsupported. Implementations SHOULD guard advanced features with `@supports`
+blocks and keep the base layout readable in older browsers.
+
 ### Post vs Feed Layouts
 
 **Post Layout (`post.html`)** - Single content item with full content:

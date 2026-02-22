@@ -15,7 +15,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="feed h-feed{% if feed.type == 'guide' %} feed--guide{% elif feed.type == 'series' %} feed--series{% endif %}">
+<div class="feed h-feed feed-layout-grid feed-layout-masonry{% if feed.type == 'guide' %} feed--guide{% elif feed.type == 'series' %} feed--series{% endif %}">
   <header class="feed-header">
     <h1 class="p-name">{{ feed.title | default:"Posts" }}</h1>
     {% if feed.description %}
