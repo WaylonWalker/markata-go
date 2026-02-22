@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
+
+	zxcvbn "github.com/nbutton23/zxcvbn-go"
 )
 
 const (
@@ -17,11 +18,9 @@ const (
 	// DefaultMinPasswordLength is the default minimum password length.
 	DefaultMinPasswordLength = 14
 
-	// defaultGuessRate is the assumed attacker guess rate (guesses per second).
-	defaultGuessRate = 10_000_000_000
-
-	// symbolCharsetSize approximates the number of printable symbols used in passwords.
-	symbolCharsetSize = 32
+	// zxcvbnSecondsPerGuess aligns with zxcvbn-go's offline slow-hash model:
+	// 10ms/guess across 100 parallel attackers => 10,000 guesses/sec.
+	zxcvbnSecondsPerGuess = 0.0001
 )
 
 var (
@@ -36,7 +35,6 @@ var (
 		"d": 24 * 3600,
 		"y": 365 * 24 * 3600,
 	}
-	defaultGuessRateLog2 = math.Log2(defaultGuessRate)
 )
 
 // EstimateCrackTime returns the estimated duration it takes to brute-force the password
@@ -46,13 +44,20 @@ func EstimateCrackTime(password string) time.Duration {
 		return 0
 	}
 
-	charset := charsetSize(password)
-	if charset <= 0 {
+	result := zxcvbn.PasswordStrength(password, nil)
+	seconds := result.CrackTime
+	if seconds <= 0 && !math.IsNaN(result.Entropy) && result.Entropy > 0 {
+		seconds = (0.5 * math.Exp2(result.Entropy)) * zxcvbnSecondsPerGuess
+	}
+	if !math.IsNaN(result.Entropy) && result.Entropy > 0 {
+		entropyUpperBoundSeconds := (0.5 * math.Exp2(result.Entropy)) * zxcvbnSecondsPerGuess
+		if entropyUpperBoundSeconds > 0 && entropyUpperBoundSeconds < seconds {
+			seconds = entropyUpperBoundSeconds
+		}
+	}
+	if seconds <= 0 {
 		return 0
 	}
-
-	entropy := float64(len(password)) * math.Log2(charset)
-	seconds := math.Exp2(entropy - defaultGuessRateLog2)
 	if math.IsInf(seconds, 0) || math.IsNaN(seconds) {
 		return time.Duration(math.MaxInt64)
 	}
@@ -130,45 +135,4 @@ func formatDuration(d time.Duration) string {
 		return "0s"
 	}
 	return d.Round(time.Second).String()
-}
-
-func charsetSize(password string) float64 {
-	var hasLower, hasUpper, hasDigit, hasSymbol bool
-	unique := make(map[rune]struct{})
-	for _, r := range password {
-		unique[r] = struct{}{}
-		switch {
-		case unicode.IsLower(r):
-			hasLower = true
-		case unicode.IsUpper(r):
-			hasUpper = true
-		case unicode.IsDigit(r):
-			hasDigit = true
-		default:
-			hasSymbol = true
-		}
-	}
-	pool := 0
-	if hasLower {
-		pool += 26
-	}
-	if hasUpper {
-		pool += 26
-	}
-	if hasDigit {
-		pool += 10
-	}
-	if hasSymbol {
-		pool += symbolCharsetSize
-	}
-	if pool == 0 {
-		pool = len(unique)
-	}
-	if len(unique) > pool {
-		pool = len(unique)
-	}
-	if pool == 0 {
-		pool = 1
-	}
-	return float64(pool)
 }

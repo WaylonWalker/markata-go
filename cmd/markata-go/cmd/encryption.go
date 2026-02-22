@@ -109,6 +109,9 @@ func formatCrackDurationHuman(d time.Duration) string {
 	if d <= 0 {
 		return "0s"
 	}
+	if d < time.Second {
+		return "<1s"
+	}
 
 	const year = 365 * 24 * time.Hour
 	if d >= year {

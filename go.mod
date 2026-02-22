@@ -22,6 +22,7 @@ require (
 	github.com/ktr0731/go-fuzzyfinder v0.9.0
 	github.com/mangoumbrella/goldmark-figure v1.4.0
 	github.com/markusmobius/go-dateparser v1.2.4
+	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/smacker/go-tree-sitter v0.0.0-20240827094217-dd81d9e9be82
 	github.com/spf13/cobra v1.10.2

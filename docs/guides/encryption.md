@@ -131,6 +131,8 @@ Every encryption key used by a private post must satisfy the configured strength
 - `min_estimated_crack_time = "10y"` (supports `y`, `d`, `h`, `m`, `s` units)
 - `min_password_length = 14`
 
+Strength estimation uses the zxcvbn algorithm (dictionary/pattern-aware), so common passwords like `password12345` are treated as weak even when they include numbers.
+
 If any key violates those thresholds, the build halts with an `EncryptionBuildError` that lists the affected posts and key names. Passwords and hints never appear in the error text.
 
 ### CLI Password Generator

@@ -69,9 +69,9 @@ All encryption keys used by private posts must satisfy the configured strength p
 
 ### Estimator assumptions
 
-- The estimator assumes the attacker can make 10,000,000,000 guesses per second (10¹⁰) using specialized hardware.
-- Entropy is computed as `log₂(charset_sizeᶰ)`, where `n` is the password length and `charset_size` reflects the union of lowercase, uppercase, digits, and symbol characters actually present.
-- The resulting estimate is compared against `min_estimated_crack_time`. Passwords with too-short length or insufficient entropy cause a policy violation.
+- Password strength estimation uses the `zxcvbn` algorithm (`github.com/nbutton23/zxcvbn-go`), which detects common passwords, dictionary words, keyboard walks, repeats, and predictable substitutions.
+- Crack-time estimates follow zxcvbn's offline slow-hash model: 10ms per guess split across 100 attackers (about 10,000 guesses/second).
+- The resulting estimate is compared against `min_estimated_crack_time`. Passwords with too-short length or insufficient estimated crack time cause a policy violation.
 
 ### Enforcement
 

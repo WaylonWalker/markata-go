@@ -41,9 +41,19 @@ func TestValidatePasswordLength(t *testing.T) {
 }
 
 func TestValidatePasswordCrackTime(t *testing.T) {
-	weak := "Password123!" // low entropy relative to default duration
-	if err := ValidatePassword(weak, DefaultMinPasswordLength, DefaultMinEstimatedCrackDuration); err == nil {
+	weak := "password12345"
+	if err := ValidatePassword(weak, 0, 10*365*24*time.Hour); err == nil {
 		t.Error("expected crack time validation error")
+	}
+}
+
+func TestEstimateCrackTime_CommonPasswordIsFast(t *testing.T) {
+	estimated := EstimateCrackTime("password12345")
+	if estimated <= 0 {
+		t.Fatalf("EstimateCrackTime returned %v", estimated)
+	}
+	if estimated > 365*24*time.Hour {
+		t.Fatalf("expected common password to crack in under a year, got %v", estimated)
 	}
 }
 

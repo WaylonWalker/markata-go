@@ -56,7 +56,7 @@ func TestCheckPasswordCommand_Pass(t *testing.T) {
 
 	cfgFile = configPath
 	encryptionCheckKey = ""
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "Safe-Passphrase-2026!")
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "h7Qm!2Vx9#Lp4@Td")
 
 	buf := bytes.NewBuffer(nil)
 	checkPasswordCmd.SetOut(buf)
@@ -130,6 +130,7 @@ func TestFormatCrackDurationHuman(t *testing.T) {
 		{name: "years", in: 10 * 365 * 24 * time.Hour, want: "10.0y"},
 		{name: "days", in: 48 * time.Hour, want: "2.0d"},
 		{name: "hours", in: 90 * time.Minute, want: "1.5h"},
+		{name: "subsecond", in: 250 * time.Millisecond, want: "<1s"},
 		{name: "zero", in: 0, want: "0s"},
 	}
 

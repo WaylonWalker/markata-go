@@ -34,7 +34,7 @@ func TestEvaluateEncryptionKeyPolicy_StrongKey(t *testing.T) {
 	cfg.Encryption.MinPasswordLength = 14
 	cfg.Encryption.MinEstimatedCrackTime = "10y"
 
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "Good-Password-2026!")
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "h7Qm!2Vx9#Lp4@Td")
 
 	results, _, _, err := evaluateEncryptionKeyPolicy(cfg, "")
 	if err != nil {
