@@ -63,7 +63,7 @@ func TestIntegration_Encryption_PrivateContentNeverPlaintext(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 	// Set encryption key
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "test-password-xyz") // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "h7Qm!2Vx9#Lp4@Td") // pragma: allowlist secret
 
 	site := newTestSite(t)
 
@@ -151,7 +151,7 @@ Another private post with `+privateMarker+` inside it.`)
 			continue
 		}
 
-		decrypted, decErr := encryption.Decrypt(encryptedData, "test-password-xyz") // pragma: allowlist secret
+		decrypted, decErr := encryption.Decrypt(encryptedData, "h7Qm!2Vx9#Lp4@Td") // pragma: allowlist secret
 		if decErr != nil {
 			t.Errorf("failed to decrypt private post %q: %v", post.Path, decErr)
 			continue
@@ -225,8 +225,8 @@ func TestIntegration_Encryption_PrivateTags(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "test-password-xyz")   // pragma: allowlist secret
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_PERSONAL", "personal-pass-2026") // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "h7Qm!2Vx9#Lp4@Td")   // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_PERSONAL", "vN3$kP8!tR2@wZ6#q") // pragma: allowlist secret
 
 	site := newTestSite(t)
 
@@ -301,7 +301,7 @@ func TestIntegration_Encryption_FrontmatterAliases(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "test-password-xyz") // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "h7Qm!2Vx9#Lp4@Td") // pragma: allowlist secret
 
 	site := newTestSite(t)
 
@@ -362,9 +362,9 @@ func TestIntegration_Encryption_FrontmatterKeyOverridesTagKey(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "default-pass-2026")   // pragma: allowlist secret
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_PERSONAL", "personal-pass-2026") // pragma: allowlist secret
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_CUSTOM", "custom-pass-2026")     // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "h7Qm!2Vx9#Lp4@Td")       // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_PERSONAL", "vN3$kP8!tR2@wZ6#q")     // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_CUSTOM", "Cobalt-Drift-47!Lantern") // pragma: allowlist secret
 
 	site := newTestSite(t)
 
@@ -417,7 +417,7 @@ Override content `+privateMarker)
 	}
 
 	// Should decrypt with custom-pass, not personal-pass
-	decrypted, decErr := encryption.Decrypt(encryptedData, "custom-pass-2026") // pragma: allowlist secret
+	decrypted, decErr := encryption.Decrypt(encryptedData, "Cobalt-Drift-47!Lantern") // pragma: allowlist secret
 	if decErr != nil {
 		t.Fatalf("should decrypt with custom key password: %v", decErr)
 	}
@@ -515,7 +515,7 @@ func TestIntegration_Encryption_TracerScan(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 	// Set encryption key
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "tracer-test-password-xyz") // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "Maple!Orbit!Harbor!29") // pragma: allowlist secret
 
 	site := newTestSite(t)
 
@@ -728,7 +728,7 @@ Another public post for navigation testing.
 			t.Errorf("private post %q has no encrypted data attribute", post.Path)
 			continue
 		}
-		decrypted, decErr := encryption.Decrypt(encData, "tracer-test-password-xyz") // pragma: allowlist secret
+		decrypted, decErr := encryption.Decrypt(encData, "Maple!Orbit!Harbor!29") // pragma: allowlist secret
 		if decErr != nil {
 			t.Errorf("failed to decrypt private post %q: %v", post.Path, decErr)
 			continue
@@ -760,7 +760,7 @@ func TestIntegration_Encryption_MetadataScrubbing(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "scrub-test-password") // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "7fR@2mL#9pQ!4xT$8k") // pragma: allowlist secret
 
 	site := newTestSite(t)
 
