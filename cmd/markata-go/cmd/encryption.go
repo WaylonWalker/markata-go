@@ -84,7 +84,11 @@ func runCheckPasswordCommand(cmd *cobra.Command, _ []string) error {
 	for _, result := range results {
 		if result.Err != nil {
 			failures++
-			fmt.Fprintf(cmd.OutOrStdout(), "FAIL %s (%s): %s\n", result.KeyName, result.EnvName, result.Err)
+			if result.Configured {
+				fmt.Fprintf(cmd.OutOrStdout(), "FAIL %s (%s): %s (estimated=%s)\n", result.KeyName, result.EnvName, result.Err, formatCrackDurationHuman(result.Estimated))
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "FAIL %s (%s): %s\n", result.KeyName, result.EnvName, result.Err)
+			}
 			continue
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "PASS %s (%s): estimated=%s\n", result.KeyName, result.EnvName, formatCrackDurationHuman(result.Estimated))

@@ -69,13 +69,13 @@ func evaluateEncryptionKeyPolicy(cfg *models.Config, keyFilter string) ([]encryp
 			continue
 		}
 
+		result.Estimated = encryption.EstimateCrackTime(password)
+
 		if err := encryption.ValidatePassword(password, minLength, minDuration); err != nil {
 			result.Err = err
 			results = append(results, result)
 			continue
 		}
-
-		result.Estimated = encryption.EstimateCrackTime(password)
 		results = append(results, result)
 	}
 

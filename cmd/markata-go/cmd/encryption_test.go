@@ -96,6 +96,9 @@ func TestCheckPasswordCommand_Fail(t *testing.T) {
 	if !strings.Contains(output, "FAIL default") {
 		t.Fatalf("expected FAIL output, got %q", output)
 	}
+	if !strings.Contains(output, "estimated=") {
+		t.Fatalf("expected estimated crack time in fail output, got %q", output)
+	}
 }
 
 func writeEncryptionConfigFile(t *testing.T) string {
