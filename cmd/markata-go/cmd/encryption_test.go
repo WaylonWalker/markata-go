@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/encryption"
 )
@@ -115,4 +116,26 @@ min_estimated_crack_time = "10y"
 		t.Fatalf("write config: %v", err)
 	}
 	return path
+}
+
+func TestFormatCrackDurationHuman(t *testing.T) {
+	tests := []struct {
+		name string
+		in   time.Duration
+		want string
+	}{
+		{name: "years", in: 10 * 365 * 24 * time.Hour, want: "10.0y"},
+		{name: "days", in: 48 * time.Hour, want: "2.0d"},
+		{name: "hours", in: 90 * time.Minute, want: "1.5h"},
+		{name: "zero", in: 0, want: "0s"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatCrackDurationHuman(tt.in)
+			if got != tt.want {
+				t.Fatalf("formatCrackDurationHuman(%v) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
 }

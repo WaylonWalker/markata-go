@@ -80,14 +80,14 @@ func runCheckPasswordCommand(cmd *cobra.Command, _ []string) error {
 	}
 
 	failures := 0
-	fmt.Fprintf(cmd.OutOrStdout(), "Policy: min_length=%d, min_estimated_crack_time=%s\n", minLength, minDuration.Round(time.Second))
+	fmt.Fprintf(cmd.OutOrStdout(), "Policy: min_length=%d, min_estimated_crack_time=%s\n", minLength, formatCrackDurationHuman(minDuration))
 	for _, result := range results {
 		if result.Err != nil {
 			failures++
 			fmt.Fprintf(cmd.OutOrStdout(), "FAIL %s (%s): %s\n", result.KeyName, result.EnvName, result.Err)
 			continue
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "PASS %s (%s): estimated=%s\n", result.KeyName, result.EnvName, result.Estimated.Round(time.Second))
+		fmt.Fprintf(cmd.OutOrStdout(), "PASS %s (%s): estimated=%s\n", result.KeyName, result.EnvName, formatCrackDurationHuman(result.Estimated))
 	}
 
 	if failures > 0 {
@@ -99,4 +99,32 @@ func runCheckPasswordCommand(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+func formatCrackDurationHuman(d time.Duration) string {
+	if d <= 0 {
+		return "0s"
+	}
+
+	const year = 365 * 24 * time.Hour
+	if d >= year {
+		years := float64(d) / float64(year)
+		if years >= 100 {
+			return fmt.Sprintf("%.0fy", years)
+		}
+		return fmt.Sprintf("%.1fy", years)
+	}
+
+	const day = 24 * time.Hour
+	if d >= day {
+		days := float64(d) / float64(day)
+		return fmt.Sprintf("%.1fd", days)
+	}
+
+	if d >= time.Hour {
+		hours := float64(d) / float64(time.Hour)
+		return fmt.Sprintf("%.1fh", hours)
+	}
+
+	return d.Round(time.Second).String()
 }
