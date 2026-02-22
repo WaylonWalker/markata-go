@@ -1059,6 +1059,10 @@ body:has(.background-decoration) article.post {
   margin: 0 auto;
 }
 
+.feed.feed-layout-grid {
+  max-width: min(100%, var(--page-width));
+}
+
 /* Feed wrapper styling */
 section.feed,
 div.feed {
@@ -1098,7 +1102,7 @@ body:has(.background-decoration) div.feed {
 .feed-layout-grid .posts,
 .feed-layout-grid .post-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   grid-auto-rows: auto;
   gap: var(--space-6);
   align-items: start;

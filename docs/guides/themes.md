@@ -998,7 +998,7 @@ classes or CSS:
 
 /* Customize grid columns */
 .feed-layout-grid .posts {
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
 }
 ```
 
