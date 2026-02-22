@@ -496,12 +496,19 @@ func mergeEncryptionConfig(base, override models.EncryptionConfig) models.Encryp
 	// Always use override's Enabled value - the parser converters ensure
 	// it defaults to true when not explicitly set by the user
 	result.Enabled = override.Enabled
+	result.EnforceStrength = override.EnforceStrength
 
 	if override.DefaultKey != "" {
 		result.DefaultKey = override.DefaultKey
 	}
 	if override.DecryptionHint != "" {
 		result.DecryptionHint = override.DecryptionHint
+	}
+	if override.MinEstimatedCrackTime != "" {
+		result.MinEstimatedCrackTime = override.MinEstimatedCrackTime
+	}
+	if override.MinPasswordLength != 0 {
+		result.MinPasswordLength = override.MinPasswordLength
 	}
 
 	// Merge private_tags: override entries take precedence over base

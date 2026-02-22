@@ -403,6 +403,30 @@ func TestApplyEnvOverrides_EmptyList(t *testing.T) {
 	}
 }
 
+func TestApplyEnvOverrides_EncryptionPolicy(t *testing.T) {
+	cleanup := setEnvVars(t, map[string]string{
+		"MARKATA_GO_ENCRYPTION_ENFORCE_STRENGTH":         "false",
+		"MARKATA_GO_ENCRYPTION_MIN_ESTIMATED_CRACK_TIME": "5d",
+		"MARKATA_GO_ENCRYPTION_MIN_PASSWORD_LENGTH":      "20",
+	})
+	defer cleanup()
+
+	config := DefaultConfig()
+	if err := ApplyEnvOverrides(config); err != nil {
+		t.Fatalf("ApplyEnvOverrides() error = %v", err)
+	}
+
+	if config.Encryption.EnforceStrength {
+		t.Error("EnforceStrength should be false when overridden")
+	}
+	if config.Encryption.MinEstimatedCrackTime != "5d" {
+		t.Errorf("MinEstimatedCrackTime = %q, want %q", config.Encryption.MinEstimatedCrackTime, "5d")
+	}
+	if config.Encryption.MinPasswordLength != 20 {
+		t.Errorf("MinPasswordLength = %d, want 20", config.Encryption.MinPasswordLength)
+	}
+}
+
 func TestApplyEnvOverrides_AlternateKeyFormats(t *testing.T) {
 	// Test that both feed_defaults and feeds_defaults work
 	cleanup := setEnvVars(t, map[string]string{

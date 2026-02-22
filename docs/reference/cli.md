@@ -674,6 +674,7 @@ The linter checks for these common problems:
 | `invalid-date` | Warning | Yes | Non-ISO 8601 date formats |
 | `missing-alt-text` | Warning | Yes | Image links without alt text `![]()` |
 | `protocol-less-url` | Warning | Yes | URLs starting with `//` instead of `https://` |
+| `encryption-key-policy` | Error | No | Missing or weak encryption keys based on `encryption.*` policy |
 
 #### Examples
 
@@ -1400,8 +1401,56 @@ The `explain` command is particularly useful for:
 
 ---
 
+### encryption
+
+Utilities for managing encryption passwords.
+
+#### Subcommands
+
+##### generate-password
+
+Generate a password that satisfies the default encryption policy (≥ 14 characters, strong entropy).
+
+```
+markata-go encryption generate-password [--length <n>]
+```
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--length` | | Desired password length (must be at least the configured minimum) | `14` |
+
+The command prints only the generated password to stdout, making it easy to pipe into environment files or password managers. The optional `--length` flag requests a longer password; the minimum is always at least the configured `min_password_length`.
+
+#### Examples
+
+```
+# Generate a default length password
+markata-go encryption generate-password
+
+# Generate a longer password for a stricter key
+markata-go encryption generate-password --length 20
+```
+
+##### check
+
+Check configured encryption keys against the active policy.
+
+```
+markata-go encryption check [--key <name>]
+```
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--key` | | Check a specific key name instead of all configured keys | `""` |
+
+By default this command checks all keys referenced by `encryption.default_key` and `encryption.private_tags`.
+It fails with a non-zero exit code if any key is missing from environment variables or too weak for the configured policy.
+
+---
+
 ## See Also
 
 - [[getting-started|Getting Started]] - Quick introduction to markata-go
 - [[configuration-guide|Configuration]] - Detailed configuration reference
 - [[deployment-guide|Deployment]] - Deployment guides for various platforms
+---

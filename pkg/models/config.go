@@ -2121,6 +2121,15 @@ type EncryptionConfig struct {
 	// Example: {"diary": "personal", "draft-ideas": "default"}
 	// This means any post tagged "diary" is encrypted with MARKATA_GO_ENCRYPTION_KEY_PERSONAL
 	PrivateTags map[string]string `json:"private_tags,omitempty" yaml:"private_tags,omitempty" toml:"private_tags,omitempty"`
+
+	// EnforceStrength requires all encryption keys to satisfy the configured strength policy.
+	EnforceStrength bool `json:"enforce_strength" yaml:"enforce_strength" toml:"enforce_strength"`
+
+	// MinEstimatedCrackTime is the minimum allowed crack-time estimate per key (supports y/d/h/m/s).
+	MinEstimatedCrackTime string `json:"min_estimated_crack_time,omitempty" yaml:"min_estimated_crack_time,omitempty" toml:"min_estimated_crack_time,omitempty"`
+
+	// MinPasswordLength is the minimum number of characters for every encryption password.
+	MinPasswordLength int `json:"min_password_length,omitempty" yaml:"min_password_length,omitempty" toml:"min_password_length,omitempty"`
 }
 
 // NewEncryptionConfig creates a new EncryptionConfig with default values.
@@ -2129,8 +2138,11 @@ type EncryptionConfig struct {
 // to set MARKATA_GO_ENCRYPTION_KEY_DEFAULT in their environment or .env file.
 func NewEncryptionConfig() EncryptionConfig {
 	return EncryptionConfig{
-		Enabled:    true,
-		DefaultKey: "default",
+		Enabled:               true,
+		DefaultKey:            "default",
+		EnforceStrength:       true,
+		MinEstimatedCrackTime: "10y",
+		MinPasswordLength:     14,
 	}
 }
 

@@ -1172,19 +1172,24 @@ type tomlBlogrollTemplates struct {
 }
 
 type tomlEncryptionConfig struct {
-	Enabled        *bool             `toml:"enabled"`
-	DefaultKey     string            `toml:"default_key"`
-	DecryptionHint string            `toml:"decryption_hint"`
-	PrivateTags    map[string]string `toml:"private_tags"`
+	Enabled               *bool             `toml:"enabled"`
+	DefaultKey            string            `toml:"default_key"`
+	DecryptionHint        string            `toml:"decryption_hint"`
+	PrivateTags           map[string]string `toml:"private_tags"`
+	EnforceStrength       *bool             `toml:"enforce_strength"`
+	MinEstimatedCrackTime string            `toml:"min_estimated_crack_time"`
+	MinPasswordLength     int               `toml:"min_password_length"`
 }
 
 func (e *tomlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 	defaults := models.NewEncryptionConfig()
 
 	config := models.EncryptionConfig{
-		DefaultKey:     e.DefaultKey,
-		DecryptionHint: e.DecryptionHint,
-		PrivateTags:    e.PrivateTags,
+		DefaultKey:            e.DefaultKey,
+		DecryptionHint:        e.DecryptionHint,
+		PrivateTags:           e.PrivateTags,
+		MinEstimatedCrackTime: e.MinEstimatedCrackTime,
+		MinPasswordLength:     e.MinPasswordLength,
 	}
 
 	// Apply defaults for unset values
@@ -1195,6 +1200,17 @@ func (e *tomlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 	}
 	if config.DefaultKey == "" {
 		config.DefaultKey = defaults.DefaultKey
+	}
+	if e.EnforceStrength != nil {
+		config.EnforceStrength = *e.EnforceStrength
+	} else {
+		config.EnforceStrength = defaults.EnforceStrength
+	}
+	if config.MinEstimatedCrackTime == "" {
+		config.MinEstimatedCrackTime = defaults.MinEstimatedCrackTime
+	}
+	if config.MinPasswordLength == 0 {
+		config.MinPasswordLength = defaults.MinPasswordLength
 	}
 
 	return config
@@ -1847,19 +1863,24 @@ func (t *yamlTagsConfig) toTagsConfig() models.TagsConfig {
 }
 
 type yamlEncryptionConfig struct {
-	Enabled        *bool             `yaml:"enabled"`
-	DefaultKey     string            `yaml:"default_key"`
-	DecryptionHint string            `yaml:"decryption_hint"`
-	PrivateTags    map[string]string `yaml:"private_tags"`
+	Enabled               *bool             `yaml:"enabled"`
+	DefaultKey            string            `yaml:"default_key"`
+	DecryptionHint        string            `yaml:"decryption_hint"`
+	PrivateTags           map[string]string `yaml:"private_tags"`
+	EnforceStrength       *bool             `yaml:"enforce_strength"`
+	MinEstimatedCrackTime string            `yaml:"min_estimated_crack_time"`
+	MinPasswordLength     int               `yaml:"min_password_length"`
 }
 
 func (e *yamlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 	defaults := models.NewEncryptionConfig()
 
 	config := models.EncryptionConfig{
-		DefaultKey:     e.DefaultKey,
-		DecryptionHint: e.DecryptionHint,
-		PrivateTags:    e.PrivateTags,
+		DefaultKey:            e.DefaultKey,
+		DecryptionHint:        e.DecryptionHint,
+		PrivateTags:           e.PrivateTags,
+		MinEstimatedCrackTime: e.MinEstimatedCrackTime,
+		MinPasswordLength:     e.MinPasswordLength,
 	}
 
 	// Apply defaults for unset values
@@ -1870,6 +1891,17 @@ func (e *yamlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 	}
 	if config.DefaultKey == "" {
 		config.DefaultKey = defaults.DefaultKey
+	}
+	if e.EnforceStrength != nil {
+		config.EnforceStrength = *e.EnforceStrength
+	} else {
+		config.EnforceStrength = defaults.EnforceStrength
+	}
+	if config.MinEstimatedCrackTime == "" {
+		config.MinEstimatedCrackTime = defaults.MinEstimatedCrackTime
+	}
+	if config.MinPasswordLength == 0 {
+		config.MinPasswordLength = defaults.MinPasswordLength
 	}
 
 	return config
@@ -3128,19 +3160,24 @@ func (t *jsonTagsConfig) toTagsConfig() models.TagsConfig {
 }
 
 type jsonEncryptionConfig struct {
-	Enabled        *bool             `json:"enabled"`
-	DefaultKey     string            `json:"default_key"`
-	DecryptionHint string            `json:"decryption_hint"`
-	PrivateTags    map[string]string `json:"private_tags"`
+	Enabled               *bool             `json:"enabled"`
+	DefaultKey            string            `json:"default_key"`
+	DecryptionHint        string            `json:"decryption_hint"`
+	PrivateTags           map[string]string `json:"private_tags"`
+	EnforceStrength       *bool             `json:"enforce_strength"`
+	MinEstimatedCrackTime string            `json:"min_estimated_crack_time"`
+	MinPasswordLength     int               `json:"min_password_length"`
 }
 
 func (e *jsonEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 	defaults := models.NewEncryptionConfig()
 
 	config := models.EncryptionConfig{
-		DefaultKey:     e.DefaultKey,
-		DecryptionHint: e.DecryptionHint,
-		PrivateTags:    e.PrivateTags,
+		DefaultKey:            e.DefaultKey,
+		DecryptionHint:        e.DecryptionHint,
+		PrivateTags:           e.PrivateTags,
+		MinEstimatedCrackTime: e.MinEstimatedCrackTime,
+		MinPasswordLength:     e.MinPasswordLength,
 	}
 
 	// Apply defaults for unset values
@@ -3151,6 +3188,17 @@ func (e *jsonEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 	}
 	if config.DefaultKey == "" {
 		config.DefaultKey = defaults.DefaultKey
+	}
+	if e.EnforceStrength != nil {
+		config.EnforceStrength = *e.EnforceStrength
+	} else {
+		config.EnforceStrength = defaults.EnforceStrength
+	}
+	if config.MinEstimatedCrackTime == "" {
+		config.MinEstimatedCrackTime = defaults.MinEstimatedCrackTime
+	}
+	if config.MinPasswordLength == 0 {
+		config.MinPasswordLength = defaults.MinPasswordLength
 	}
 
 	return config

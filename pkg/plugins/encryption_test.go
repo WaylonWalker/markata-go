@@ -369,6 +369,20 @@ func TestEncryptionBuildError(t *testing.T) {
 	}
 }
 
+func TestEncryptionPlugin_ValidatePasswordPolicy(t *testing.T) {
+	plugin := NewEncryptionPlugin()
+	plugin.enforceStrength = true
+	plugin.minPasswordLength = encryption.DefaultMinPasswordLength
+	plugin.minEstimatedCrackDuration = encryption.DefaultMinEstimatedCrackDuration
+	if err := plugin.validatePasswordPolicy("weak"); err == nil {
+		t.Error("expected policy validation to fail for weak password")
+	}
+	plugin.enforceStrength = false
+	if err := plugin.validatePasswordPolicy("weak"); err != nil {
+		t.Errorf("policy should be skipped when enforcement disabled: %v", err)
+	}
+}
+
 func TestEncryptionPlugin_ApplyPrivateTags(t *testing.T) {
 	plugin := NewEncryptionPlugin()
 	plugin.privateTags = map[string]string{

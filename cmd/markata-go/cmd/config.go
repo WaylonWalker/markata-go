@@ -19,12 +19,13 @@ import (
 
 // Common string constants to avoid goconst warnings.
 const (
-	formatJSON  = "json"
-	formatTOML  = "toml"
-	formatYAML  = "yaml"
-	extYAML     = ".yaml"
-	extYML      = ".yml"
-	boolStrTrue = "true"
+	formatJSON    = "json"
+	formatTOML    = "toml"
+	formatYAML    = "yaml"
+	extYAML       = ".yaml"
+	extYML        = ".yml"
+	boolStrTrue   = "true"
+	sourceDefault = "default"
 )
 
 // configCmd represents the config command group.
@@ -360,7 +361,7 @@ func showAnnotatedConfig(merged, user map[string]interface{}, userConfigFile str
 		indent := len(line) - len(trimmed)
 
 		// Determine source based on whether it's in user config
-		source := "default"
+		source := sourceDefault
 		if isKeyInMap(user, key) {
 			if userConfigFile != "" {
 				source = "user: " + filepath.Base(userConfigFile)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/encryption"
@@ -61,14 +62,20 @@ type EncryptionPlugin struct {
 	decryptionHint string
 	privateTags    map[string]string // tag -> key name
 	// keys maps key names to passwords (loaded from env vars)
-	keys map[string]string
+	keys                      map[string]string
+	enforceStrength           bool
+	minPasswordLength         int
+	minEstimatedCrackDuration time.Duration
 }
 
 // NewEncryptionPlugin creates a new EncryptionPlugin.
 func NewEncryptionPlugin() *EncryptionPlugin {
 	return &EncryptionPlugin{
-		keys:        make(map[string]string),
-		privateTags: make(map[string]string),
+		keys:                      make(map[string]string),
+		privateTags:               make(map[string]string),
+		enforceStrength:           true,
+		minPasswordLength:         encryption.DefaultMinPasswordLength,
+		minEstimatedCrackDuration: encryption.DefaultMinEstimatedCrackDuration,
 	}
 }
 
@@ -86,6 +93,20 @@ func (p *EncryptionPlugin) Configure(m *lifecycle.Manager) error {
 		p.enabled = modelsConfig.Encryption.Enabled
 		p.defaultKey = modelsConfig.Encryption.DefaultKey
 		p.decryptionHint = modelsConfig.Encryption.DecryptionHint
+		p.enforceStrength = modelsConfig.Encryption.EnforceStrength
+		p.minPasswordLength = modelsConfig.Encryption.MinPasswordLength
+		if p.minPasswordLength == 0 {
+			p.minPasswordLength = encryption.DefaultMinPasswordLength
+		}
+		durationStr := modelsConfig.Encryption.MinEstimatedCrackTime
+		if durationStr == "" {
+			durationStr = encryption.DefaultMinEstimatedCrackTime
+		}
+		duration, err := encryption.ParseEstimatedCrackDuration(durationStr)
+		if err != nil {
+			return fmt.Errorf("invalid encryption.min_estimated_crack_time: %w", err)
+		}
+		p.minEstimatedCrackDuration = duration
 		if modelsConfig.Encryption.PrivateTags != nil {
 			for tag, key := range modelsConfig.Encryption.PrivateTags {
 				p.privateTags[strings.ToLower(tag)] = key
@@ -258,19 +279,36 @@ func (p *EncryptionPlugin) Render(m *lifecycle.Manager) error {
 	// Check that every private post can be encrypted.
 	// This is a safety check: we must NEVER expose private content unencrypted.
 	var failedPosts []string
+	passwordCache := make(map[string]string)
+	policyCache := make(map[string]error)
 	for _, post := range privatePosts {
 		keyName := post.SecretKey
 		if keyName == "" {
 			keyName = p.defaultKey
 		}
 		if keyName == "" {
-			// No key name at all - no way to encrypt
 			failedPosts = append(failedPosts, fmt.Sprintf("%s (no encryption key specified and no default key configured)", post.Path))
 			continue
 		}
-		if _, err := p.getKeyPassword(keyName); err != nil {
-			failedPosts = append(failedPosts, fmt.Sprintf("%s (key %q: set %s%s in environment or .env)",
-				post.Path, keyName, EncryptionEnvPrefix, strings.ToUpper(keyName)))
+		normalized := strings.ToLower(keyName)
+		if _, cached := passwordCache[normalized]; !cached {
+			var password string
+			var err error
+			password, err = p.getKeyPassword(keyName)
+			if err != nil {
+				failedPosts = append(failedPosts, fmt.Sprintf("%s (key %q: set %s%s in environment or .env)",
+					post.Path, keyName, EncryptionEnvPrefix, strings.ToUpper(keyName)))
+				continue
+			}
+			passwordCache[normalized] = password
+			if p.enforceStrength {
+				policyCache[normalized] = p.validatePasswordPolicy(password)
+			} else {
+				policyCache[normalized] = nil
+			}
+		}
+		if err := policyCache[normalized]; err != nil {
+			failedPosts = append(failedPosts, fmt.Sprintf("%s (key %q: %s)", post.Path, keyName, err.Error()))
 		}
 	}
 
@@ -295,6 +333,13 @@ func (p *EncryptionPlugin) Render(m *lifecycle.Manager) error {
 	return m.ProcessPostsSliceConcurrently(postsToEncrypt, func(post *models.Post) error {
 		return p.encryptPostWithCache(post, cache)
 	})
+}
+
+func (p *EncryptionPlugin) validatePasswordPolicy(password string) error {
+	if !p.enforceStrength {
+		return nil
+	}
+	return encryption.ValidatePassword(password, p.minPasswordLength, p.minEstimatedCrackDuration)
 }
 
 func filterEncryptedPostsForServe(m *lifecycle.Manager, posts []*models.Post) []*models.Post {
