@@ -129,6 +129,70 @@ Template for individual posts:
 
 ---
 
+## Modern Post Templates
+
+Modern post templates provide richer layouts while keeping all existing post fields optional. These templates are opt-in via frontmatter `template` and always extend `base.html`.
+
+### Template Names
+
+- `post--modern.html` - Contemporary article layout with hero media, metadata rail, and structured sections.
+- `post--inspiration.html` - Inspiration board layout with a visual grid of references.
+
+### Frontmatter Usage
+
+```yaml
+---
+title: "Modern Post"
+template: post--modern.html
+description: "Short summary for listings and SEO"
+cover_image: /images/hero.jpg
+tags: [design, inspiration]
+---
+```
+
+```yaml
+---
+title: "Inspiration Board"
+template: post--inspiration.html
+description: "Mood and reference board"
+cover_image: /images/hero.jpg
+inspiration:
+  - title: "Material textures"
+    image: /images/board/texture-01.jpg
+    url: "https://example.com"
+    note: "Warm paper grain"
+  - title: "Typography sample"
+    image: /images/board/type-01.jpg
+    note: "Soft serif pairing"
+---
+```
+
+### Optional Fields
+
+All fields are optional and templates must degrade gracefully:
+
+- `cover_image` - Hero image displayed in the header.
+- `description` - Intro/summary copy.
+- `tags` - Tag chips list.
+- `inspiration` - List of items for inspiration boards.
+
+### Inspiration Item Shape
+
+Each item in `inspiration` may include:
+
+- `image` (string, optional) - Primary image.
+- `title` (string, optional) - Title caption.
+- `url` (string, optional) - External source link.
+- `note` (string, optional) - Short annotation.
+
+### Accessibility and Metadata
+
+- Keep microformats for posts: `h-entry`, `p-name`, `p-summary`, `u-url`, `dt-published`.
+- Provide `data-pagefind-meta` for `title`, `excerpt`, and `image` when available.
+- Maintain canonical and OG/Twitter meta behavior inherited from `post.html`.
+
+---
+
 ## Feed Template
 
 Template for index/listing pages:

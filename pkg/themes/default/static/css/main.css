@@ -696,6 +696,28 @@ main.content-bg {
   margin: 0 auto;
 }
 
+.post-title {
+  font-family: var(--font-heading);
+  font-size: clamp(2.2rem, 4vw, 3.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.post-eyebrow {
+  font-size: var(--text-xs);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.post-dek {
+  font-size: var(--text-lg);
+  color: var(--color-text-muted);
+  margin-top: var(--space-4);
+  max-width: 40rem;
+}
+
 /* Article wrapper styling */
 article.post {
   padding: var(--space-6) var(--space-8);
@@ -713,6 +735,195 @@ body:has(.background-decoration) article.post {
   margin-bottom: var(--space-8);
   padding-bottom: var(--space-4);
   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+}
+
+/* Modern Post Layout */
+.post-modern {
+  max-width: min(1100px, 100%);
+}
+
+.post-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: var(--space-8);
+  align-items: center;
+  margin-bottom: var(--space-10);
+}
+
+.post-hero__meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.post-hero__media {
+  margin: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
+  box-shadow: var(--shadow-lg, 0 20px 40px rgba(0, 0, 0, 0.15));
+}
+
+.post-hero__media img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.post-modern__body {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr);
+  gap: var(--space-10);
+  align-items: start;
+}
+
+.post-rail {
+  position: sticky;
+  top: var(--space-10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.post-rail__card {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
+  background: var(--color-surface);
+}
+
+.post-rail__title {
+  font-size: var(--text-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-3);
+}
+
+.post-rail__meta {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.post-rail__meta dt {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.post-rail__meta dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.post-rail__list {
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--color-text-muted);
+}
+
+.post-tags {
+  margin-top: var(--space-3);
+}
+
+/* Inspiration Board Layout */
+.post-inspiration {
+  max-width: min(1200px, 100%);
+}
+
+.post-inspiration__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: var(--space-8);
+  align-items: center;
+  margin-bottom: var(--space-8);
+}
+
+.post-inspiration__hero {
+  margin: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--color-border) 65%, transparent);
+}
+
+.post-inspiration__hero img {
+  width: 100%;
+  display: block;
+}
+
+.post-inspiration__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.post-inspiration__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: var(--space-10);
+}
+
+.inspiration-board {
+  display: grid;
+  gap: var(--space-6);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.inspiration-card {
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+  background: var(--color-surface);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.inspiration-card__media img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.inspiration-card__body {
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.inspiration-card__title {
+  font-size: var(--text-base);
+  margin: 0;
+}
+
+.inspiration-card__note {
+  color: var(--color-text-muted);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.inspiration-card__link {
+  font-size: var(--text-sm);
+  text-decoration: none;
+  color: var(--color-primary);
+}
+
+@media (max-width: 960px) {
+  .post-hero,
+  .post-modern__body,
+  .post-inspiration__header,
+  .post-inspiration__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .post-rail {
+    position: static;
+  }
 }
 
 .post-header__title-row {
