@@ -1,11 +1,15 @@
 {# Default Card - Fallback for unmapped templateKey values #}
 {# Basic card layout similar to original card.html #}
 <article class="card card-default h-entry">
-  <h2 class="card-title p-name"><a class="u-url" href="{{ post.href }}">{{ post.title | default:post.slug }}</a></h2>
+  <header class="card-header">
+    <h2 class="card-title p-name"><a class="u-url" href="{{ post.href }}">{{ post.title | default:post.slug }}</a></h2>
+  </header>
 
-  {% if post.description %}
-  <p class="card-description p-summary">{{ post.description }}</p>
-  {% endif %}
+  <div class="card-body">
+    {% if post.description %}
+    <p class="card-description p-summary">{{ post.description }}</p>
+    {% endif %}
+  </div>
 
   <footer class="card-meta">
     {% if post.date %}

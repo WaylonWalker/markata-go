@@ -1060,7 +1060,7 @@ body:has(.background-decoration) article.post {
 }
 
 .feed.feed-layout-grid {
-  max-width: min(100%, var(--page-width));
+  max-width: min(100%, var(--grid-max-width));
 }
 
 /* Feed wrapper styling */
