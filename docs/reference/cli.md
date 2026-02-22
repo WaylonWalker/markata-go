@@ -1400,8 +1400,41 @@ The `explain` command is particularly useful for:
 
 ---
 
+### encryption
+
+Utilities for managing encryption passwords.
+
+#### Subcommands
+
+##### generate-password
+
+Generate a password that satisfies the default encryption policy (≥ 14 characters, strong entropy).
+
+```
+markata-go encryption generate-password [--length <n>]
+```
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--length` | | Desired password length (must be at least the configured minimum) | `14` |
+
+The command prints only the generated password to stdout, making it easy to pipe into environment files or password managers. The optional `--length` flag requests a longer password; the minimum is always at least the configured `min_password_length`.
+
+#### Examples
+
+```
+# Generate a default length password
+markata-go encryption generate-password
+
+# Generate a longer password for a stricter key
+markata-go encryption generate-password --length 20
+```
+
+---
+
 ## See Also
 
 - [[getting-started|Getting Started]] - Quick introduction to markata-go
 - [[configuration-guide|Configuration]] - Detailed configuration reference
 - [[deployment-guide|Deployment]] - Deployment guides for various platforms
+---

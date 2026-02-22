@@ -225,8 +225,8 @@ func TestIntegration_Encryption_PrivateTags(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "test-password-xyz") // pragma: allowlist secret
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_PERSONAL", "personal-pass")    // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "test-password-xyz")   // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_PERSONAL", "personal-pass-2026") // pragma: allowlist secret
 
 	site := newTestSite(t)
 
@@ -362,9 +362,9 @@ func TestIntegration_Encryption_FrontmatterKeyOverridesTagKey(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "default-pass")   // pragma: allowlist secret
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_PERSONAL", "personal-pass") // pragma: allowlist secret
-	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_CUSTOM", "custom-pass")     // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "default-pass-2026")   // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_PERSONAL", "personal-pass-2026") // pragma: allowlist secret
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_CUSTOM", "custom-pass-2026")     // pragma: allowlist secret
 
 	site := newTestSite(t)
 
@@ -417,7 +417,7 @@ Override content `+privateMarker)
 	}
 
 	// Should decrypt with custom-pass, not personal-pass
-	decrypted, decErr := encryption.Decrypt(encryptedData, "custom-pass") // pragma: allowlist secret
+	decrypted, decErr := encryption.Decrypt(encryptedData, "custom-pass-2026") // pragma: allowlist secret
 	if decErr != nil {
 		t.Fatalf("should decrypt with custom key password: %v", decErr)
 	}
