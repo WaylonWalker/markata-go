@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -40,4 +42,77 @@ func TestGeneratePasswordCommand_LengthTooShort(t *testing.T) {
 	if err := runGeneratePasswordCommand(generatePasswordCmd, nil); err == nil {
 		t.Error("expected error when requested length < minimum")
 	}
+}
+
+func TestCheckPasswordCommand_Pass(t *testing.T) {
+	configPath := writeEncryptionConfigFile(t)
+	originalCfg := cfgFile
+	originalKey := encryptionCheckKey
+	defer func() {
+		cfgFile = originalCfg
+		encryptionCheckKey = originalKey
+	}()
+
+	cfgFile = configPath
+	encryptionCheckKey = ""
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "Safe-Passphrase-2026!")
+
+	buf := bytes.NewBuffer(nil)
+	checkPasswordCmd.SetOut(buf)
+
+	if err := runCheckPasswordCommand(checkPasswordCmd, nil); err != nil {
+		t.Fatalf("runCheckPasswordCommand() error = %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "PASS default") {
+		t.Fatalf("expected PASS output, got %q", output)
+	}
+}
+
+func TestCheckPasswordCommand_Fail(t *testing.T) {
+	configPath := writeEncryptionConfigFile(t)
+	originalCfg := cfgFile
+	originalKey := encryptionCheckKey
+	defer func() {
+		cfgFile = originalCfg
+		encryptionCheckKey = originalKey
+	}()
+
+	cfgFile = configPath
+	encryptionCheckKey = ""
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "weak")
+
+	buf := bytes.NewBuffer(nil)
+	checkPasswordCmd.SetOut(buf)
+
+	err := runCheckPasswordCommand(checkPasswordCmd, nil)
+	if err == nil {
+		t.Fatal("expected runCheckPasswordCommand() to fail")
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "FAIL default") {
+		t.Fatalf("expected FAIL output, got %q", output)
+	}
+}
+
+func writeEncryptionConfigFile(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "markata-go.toml")
+	content := `[markata-go]
+title = "test"
+
+[markata-go.encryption]
+enabled = true
+default_key = "default"
+enforce_strength = true
+min_password_length = 14
+min_estimated_crack_time = "10y"
+`
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	return path
 }

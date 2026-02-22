@@ -178,6 +178,27 @@ markata-go encryption generate-password --length 20
 - **Output**: password only to stdout (no extra text). Use shell redirection or copy/paste as needed.
 - **Guarantees**: The generated password satisfies both the minimum length and estimated crack time thresholds.
 
+### `encryption check`
+
+Check configured key material against the active encryption policy without running a full build.
+
+```
+markata-go encryption check
+markata-go encryption check --key default
+```
+
+- By default this checks all keys referenced by `default_key` and `private_tags`.
+- The command exits non-zero if a required key is missing or fails policy checks.
+- Output identifies key names and env var names only; plaintext passwords are never printed.
+
+## Lint Integration
+
+The `markata-go lint` command MUST include an encryption policy rule when encryption is enabled:
+
+- report an error if a required encryption key is missing from environment variables,
+- report an error if a required key fails `min_password_length` or `min_estimated_crack_time`,
+- report a warning when `enforce_strength` is disabled, since builds will not enforce policy.
+
 ## Config Merging
 
 When merging encryption configs (e.g., from multiple config files), the following rules apply:

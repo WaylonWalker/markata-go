@@ -674,6 +674,7 @@ The linter checks for these common problems:
 | `invalid-date` | Warning | Yes | Non-ISO 8601 date formats |
 | `missing-alt-text` | Warning | Yes | Image links without alt text `![]()` |
 | `protocol-less-url` | Warning | Yes | URLs starting with `//` instead of `https://` |
+| `encryption-key-policy` | Error | No | Missing or weak encryption keys based on `encryption.*` policy |
 
 #### Examples
 
@@ -1429,6 +1430,21 @@ markata-go encryption generate-password
 # Generate a longer password for a stricter key
 markata-go encryption generate-password --length 20
 ```
+
+##### check
+
+Check configured encryption keys against the active policy.
+
+```
+markata-go encryption check [--key <name>]
+```
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--key` | | Check a specific key name instead of all configured keys | `""` |
+
+By default this command checks all keys referenced by `encryption.default_key` and `encryption.private_tags`.
+It fails with a non-zero exit code if any key is missing from environment variables or too weak for the configured policy.
 
 ---
 

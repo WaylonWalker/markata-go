@@ -140,9 +140,17 @@ Generate a compliant password without running the full build:
 ```
 markata-go encryption generate-password
 markata-go encryption generate-password --length 20
+markata-go encryption check
+markata-go encryption check --key default
 ```
 
 The command prints only the password to stdout, making it easy to pipe into your `.env` file or a password manager. The optional `--length` flag requests a longer password (it must be at least the configured `min_password_length`). The generated password already meets the default crack-time and length thresholds.
+
+`encryption check` validates configured keys against your active policy and exits non-zero when a key is missing or weak. By default it checks every key referenced by `default_key` and `private_tags`.
+
+## Lint Rule
+
+`markata-go lint` now includes an encryption policy check. When encryption is enabled, lint reports an error if configured keys are missing or fail strength thresholds.
 
 ## Making Posts Private
 
