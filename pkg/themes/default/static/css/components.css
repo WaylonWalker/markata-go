@@ -1228,6 +1228,12 @@
   gap: 1rem;
 }
 
+@supports (grid-template-rows: masonry) {
+  .blogroll-grid {
+    grid-template-rows: masonry;
+  }
+}
+
 /* Blogroll card with avatar layout */
 .blogroll-card {
   background-color: var(--color-surface);
