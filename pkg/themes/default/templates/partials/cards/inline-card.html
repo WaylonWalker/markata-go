@@ -1,6 +1,7 @@
 {# Inline Card - Full rendered content for gratitude, micro posts #}
 {# Minimal wrapper, displays full article_html content #}
 <article class="card card-inline h-entry">
+  <header class="card-header"></header>
   <a class="u-url" href="{{ post.href }}" hidden></a>
   <div class="card-content e-content">
     {{ post.article_html | safe }}

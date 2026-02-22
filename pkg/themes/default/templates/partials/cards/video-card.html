@@ -2,41 +2,43 @@
 {# Video thumbnail with play indicator, title below #}
 {# Supports image, video, and thumbnail fields interchangeably #}
 <article class="card card-video h-entry">
-  {% with post.image|media_url:post.video as media_src %}
-  {% if media_src %}
-  <a href="{{ post.href }}" class="card-video-link u-url">
-    {% if media_src|is_video %}
-    <video class="card-thumbnail u-video" autoplay muted loop playsinline>
-      <source src="{{ media_src }}" type="video/{% with media_src|lower as src_lower %}{% if src_lower|endswith:".mp4" or src_lower|endswith:".m4v" %}mp4{% elif src_lower|endswith:".webm" %}webm{% elif src_lower|endswith:".mov" %}quicktime{% else %}ogg{% endif %}{% endwith %}">
-    </video>
-    {% else %}
-    <div class="card-video-container">
-      <img src="{{ media_src }}" alt="{{ post.title | default:'Video thumbnail' }}" class="card-thumbnail u-photo" width="1200" height="675" loading="lazy">
-      <div class="card-play-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48" aria-hidden="true" focusable="false">
-          <path d="M8 5v14l11-7z"/>
-        </svg>
+  <header class="card-header">
+    {% with post.image|media_url:post.video as media_src %}
+    {% if media_src %}
+    <a href="{{ post.href }}" class="card-video-link u-url">
+      {% if media_src|is_video %}
+      <video class="card-thumbnail u-video" autoplay muted loop playsinline>
+        <source src="{{ media_src }}" type="video/{% with media_src|lower as src_lower %}{% if src_lower|endswith:".mp4" or src_lower|endswith:".m4v" %}mp4{% elif src_lower|endswith:".webm" %}webm{% elif src_lower|endswith:".mov" %}quicktime{% else %}ogg{% endif %}{% endwith %}">
+      </video>
+      {% else %}
+      <div class="card-video-container">
+        <img src="{{ media_src }}" alt="{{ post.title | default:'Video thumbnail' }}" class="card-thumbnail u-photo" width="1200" height="675" loading="lazy">
+        <div class="card-play-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48" aria-hidden="true" focusable="false">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </div>
       </div>
-    </div>
+      {% endif %}
+    </a>
     {% endif %}
-  </a>
-  {% endif %}
-  {% endwith %}
+    {% endwith %}
 
-  <div class="card-body">
     {% if post.title %}
     <h3 class="card-title p-name"><a href="{{ post.href }}">{{ post.title }}</a></h3>
     {% endif %}
+  </header>
 
+  <div class="card-body">
     {% if post.description %}
     <p class="card-description p-summary">{{ post.description | truncatechars:150 }}</p>
     {% endif %}
-
-    <footer class="card-meta">
-      {% if post.date %}
-      <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
-      {% endif %}
-      {% if post.duration %}<span class="duration">{{ post.duration }}</span>{% endif %}
-    </footer>
   </div>
+
+  <footer class="card-meta">
+    {% if post.date %}
+    <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+    {% endif %}
+    {% if post.duration %}<span class="duration">{{ post.duration }}</span>{% endif %}
+  </footer>
 </article>

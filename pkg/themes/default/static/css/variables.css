@@ -62,6 +62,7 @@
   --content-width: 65ch;
   --content-max-width: var(--content-width);
   --page-width: 1200px;
+  --grid-max-width: 1400px;
   --radius: 0.375rem;
   --radius-lg: 0.5rem;
 
