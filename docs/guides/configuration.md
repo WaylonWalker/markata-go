@@ -2027,12 +2027,23 @@ draft-ideas = "default"                    # tag "draft-ideas" encrypts with def
 | `default_key` | string | `"default"` | Key name when post doesn't specify one |
 | `decryption_hint` | string | `""` | Help text shown next to password prompt |
 | `private_tags` | map | `{}` | Maps tag names to encryption key names |
+| `enforce_strength` | bool | `true` | Require key passwords to meet the strength policy |
+| `min_estimated_crack_time` | string | `"10y"` | Minimum estimated crack time per key (supports `y`, `d`, `h`, `m`, `s` units) |
+| `min_password_length` | int | `14` | Minimum password length enforced for every encryption key |
 
 Encryption keys are loaded from environment variables:
 
 ```bash
 MARKATA_GO_ENCRYPTION_KEY_DEFAULT=my-password
 MARKATA_GO_ENCRYPTION_KEY_PERSONAL=another-password
+```
+
+You can also override the enforcement policy:
+
+```bash
+MARKATA_GO_ENCRYPTION_ENFORCE_STRENGTH=false
+MARKATA_GO_ENCRYPTION_MIN_ESTIMATED_CRACK_TIME=5d
+MARKATA_GO_ENCRYPTION_MIN_PASSWORD_LENGTH=20
 ```
 
 **Related:** See the [Encryption Guide](encryption.md) for complete documentation on making posts private.

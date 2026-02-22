@@ -112,6 +112,7 @@ func runLintCommand(_ *cobra.Command, args []string) error {
 	for _, file := range files {
 		processFile(file, stats)
 	}
+	processEncryptionPolicyLint(stats)
 
 	printSummary(stats)
 
@@ -121,6 +122,60 @@ func runLintCommand(_ *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func processEncryptionPolicyLint(stats *lintStats) {
+	cfg, err := config.Load(cfgFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error loading config for encryption lint: %v\n", err)
+		stats.hasErrors = true
+		return
+	}
+
+	if !cfg.Encryption.Enabled {
+		return
+	}
+
+	results, _, _, err := evaluateEncryptionKeyPolicy(cfg, "")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error checking encryption keys: %v\n", err)
+		stats.hasErrors = true
+		return
+	}
+
+	issues := make([]lint.Issue, 0, len(results)+1)
+	if !cfg.Encryption.EnforceStrength {
+		issues = append(issues, lint.Issue{
+			Line:     1,
+			Severity: lint.SeverityWarning,
+			Message:  "encryption.enforce_strength is false; build will not fail on weak encryption keys",
+		})
+	}
+
+	for _, result := range results {
+		if result.Err == nil {
+			continue
+		}
+		issues = append(issues, lint.Issue{
+			Line:     1,
+			Severity: lint.SeverityError,
+			Message:  fmt.Sprintf("encryption key %q failed policy (%s): %v", result.KeyName, result.EnvName, result.Err),
+		})
+	}
+
+	if len(issues) == 0 {
+		return
+	}
+
+	stats.filesWithIssues++
+	stats.totalIssues += len(issues)
+	fmt.Printf("\n[encryption-config]:\n")
+	for _, issue := range issues {
+		printIssue(issue)
+		if issue.Severity == lint.SeverityError {
+			stats.hasErrors = true
+		}
+	}
 }
 
 // getFilesFromConfig discovers files using the configured glob patterns.

@@ -29,6 +29,9 @@ Plugins that generate output from post data follow this boundary: they may use f
 | `default_key` | `string` | `"default"` | Key name used when a post has no explicit key |
 | `decryption_hint` | `string` | `""` | Help text shown to visitors next to the password prompt |
 | `private_tags` | `map[string]string` | `{}` | Maps tag names (or templateKey values) to encryption key names |
+| `enforce_strength` | `bool` | `true` | Require keys to meet the configured strength policy before encrypting any private post |
+| `min_estimated_crack_time` | `string` | `"10y"` | Minimum estimated crack time for each password (supports `y`, `d`, `h`, `m`, `s` units) |
+| `min_password_length` | `int` | `14` | Minimum password length enforced for every encryption key |
 
 ### Environment Variables
 
@@ -47,10 +50,33 @@ Config-level overrides:
 | `MARKATA_GO_ENCRYPTION_ENABLED` | `encryption.enabled` |
 | `MARKATA_GO_ENCRYPTION_DEFAULT_KEY` | `encryption.default_key` |
 | `MARKATA_GO_ENCRYPTION_DECRYPTION_HINT` | `encryption.decryption_hint` |
+| `MARKATA_GO_ENCRYPTION_ENFORCE_STRENGTH` | `encryption.enforce_strength` |
+| `MARKATA_GO_ENCRYPTION_MIN_ESTIMATED_CRACK_TIME` | `encryption.min_estimated_crack_time` |
+| `MARKATA_GO_ENCRYPTION_MIN_PASSWORD_LENGTH` | `encryption.min_password_length` |
 
 ### `.env` File Support
 
 A `.env` file in the project root is loaded automatically during config loading (before config file parsing). Real environment variables take precedence over `.env` values.
+
+## Password Strength Policy
+
+All encryption keys used by private posts must satisfy the configured strength policy **before** any encryption occurs. The defaults are strict: `enforce_strength = true`, `min_estimated_crack_time = "10y"`, and `min_password_length = 14`. The policy evaluates each password without ever logging or storing the plaintext.
+
+### Duration parsing
+
+- The `min_estimated_crack_time` value supports `y` (365 days), `d` (24 hours), `h`, `m`, and `s` units and may combine them (e.g., `1y6d`).
+- Standard `time.ParseDuration` units (`ns`, `us`, `ms`, `s`, `m`, `h`) are also accepted when you omit year/day units.
+
+### Estimator assumptions
+
+- Password strength estimation uses the `zxcvbn` algorithm (`github.com/nbutton23/zxcvbn-go`), which detects common passwords, dictionary words, keyboard walks, repeats, and predictable substitutions.
+- Crack-time estimates follow zxcvbn's offline slow-hash model: 10ms per guess split across 100 attackers (about 10,000 guesses/second).
+- The resulting estimate is compared against `min_estimated_crack_time`. Passwords with too-short length or insufficient estimated crack time cause a policy violation.
+
+### Enforcement
+
+- If any private post references a key whose password violates the policy, the build aborts with `EncryptionBuildError` (a `CriticalError`). The error lists the affected posts, the key name, and the policy reason — it never includes the plaintext password or hint.
+- Strength enforcement runs before encryption so no private content is ever published if the policy fails.
 
 ## Data Model
 
@@ -135,6 +161,43 @@ When `enabled = false`, the plugin's `Render()` method returns `nil` immediately
 - **Output format**: Base64-encoded concatenation of salt + IV + ciphertext
 
 Client-side decryption uses the Web Crypto API with matching parameters.
+
+## CLI Utilities
+
+### `encryption generate-password`
+
+Generate a policy-compliant encryption password without invoking the full build. The command prints the generated password to stdout so it can be captured in scripts or piped into other tools.
+
+```
+markata-go encryption generate-password
+markata-go encryption generate-password --length 20
+```
+
+- **Default length**: `14` (matches `min_password_length`).
+- **Length flag**: `--length` allows requesting longer passwords; it is rejected if less than the configured minimum length.
+- **Output**: password only to stdout (no extra text). Use shell redirection or copy/paste as needed.
+- **Guarantees**: The generated password satisfies both the minimum length and estimated crack time thresholds.
+
+### `encryption check`
+
+Check configured key material against the active encryption policy without running a full build.
+
+```
+markata-go encryption check
+markata-go encryption check --key default
+```
+
+- By default this checks all keys referenced by `default_key` and `private_tags`.
+- The command exits non-zero if a required key is missing or fails policy checks.
+- Output identifies key names and env var names only; plaintext passwords are never printed.
+
+## Lint Integration
+
+The `markata-go lint` command MUST include an encryption policy rule when encryption is enabled:
+
+- report an error if a required encryption key is missing from environment variables,
+- report an error if a required key fails `min_password_length` or `min_estimated_crack_time`,
+- report a warning when `enforce_strength` is disabled, since builds will not enforce policy.
 
 ## Config Merging
 

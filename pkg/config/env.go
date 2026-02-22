@@ -160,6 +160,14 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.Encryption.DefaultKey = value
 	case "encryption_decryption_hint":
 		config.Encryption.DecryptionHint = value
+	case "encryption_enforce_strength":
+		config.Encryption.EnforceStrength = parseBool(value)
+	case "encryption_min_estimated_crack_time":
+		config.Encryption.MinEstimatedCrackTime = value
+	case "encryption_min_password_length":
+		if v, err := strconv.Atoi(value); err == nil {
+			config.Encryption.MinPasswordLength = v
+		}
 	// Blogroll settings
 	case "blogroll_enabled":
 		config.Blogroll.Enabled = parseBool(value)

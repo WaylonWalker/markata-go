@@ -63,6 +63,9 @@ Encryption is **enabled by default** with `default_key = "default"`. You only ne
 [encryption]
 enabled = true                           # default: true
 default_key = "default"                  # default: "default"
+enforce_strength = true                  # default: true
+min_estimated_crack_time = "10y"        # default: "10y"
+min_password_length = 14                  # default: 14
 decryption_hint = "DM me for access"     # optional hint shown to visitors
 
 [encryption.private_tags]
@@ -76,6 +79,9 @@ draft-ideas = "default"                  # tag "draft-ideas" encrypts with key "
 | `default_key` | string | `"default"` | Key name used when a post doesn't specify one |
 | `decryption_hint` | string | `""` | Help text shown next to the password prompt |
 | `private_tags` | map | `{}` | Maps tag names to encryption key names |
+| `enforce_strength` | bool | `true` | Require keys to meet the configured strength policy before encrypting private posts |
+| `min_estimated_crack_time` | string | `"10y"` | Minimum estimated crack time for each key (supports `y`, `d`, `h`, `m`, `s`) |
+| `min_password_length` | int | `14` | Minimum password length required for every encryption key |
 
 ### Environment Variables
 
@@ -96,6 +102,9 @@ You can also override config options via environment:
 MARKATA_GO_ENCRYPTION_ENABLED=true
 MARKATA_GO_ENCRYPTION_DEFAULT_KEY=default
 MARKATA_GO_ENCRYPTION_DECRYPTION_HINT="Contact me for access"
+MARKATA_GO_ENCRYPTION_ENFORCE_STRENGTH=false
+MARKATA_GO_ENCRYPTION_MIN_ESTIMATED_CRACK_TIME=5d
+MARKATA_GO_ENCRYPTION_MIN_PASSWORD_LENGTH=20
 ```
 
 ### .env File Support
@@ -113,6 +122,37 @@ Rules:
 - Values can be quoted with single or double quotes
 - Real environment variables take precedence over `.env` values
 - The `.env` file should be in your `.gitignore`
+
+## Password Strength Policy
+
+Every encryption key used by a private post must satisfy the configured strength policy before the plugin encrypts the content. The defaults are strict:
+
+- `enforce_strength = true` (can be disabled, but keys will no longer be validated)
+- `min_estimated_crack_time = "10y"` (supports `y`, `d`, `h`, `m`, `s` units)
+- `min_password_length = 14`
+
+Strength estimation uses the zxcvbn algorithm (dictionary/pattern-aware), so common passwords like `password12345` are treated as weak even when they include numbers.
+
+If any key violates those thresholds, the build halts with an `EncryptionBuildError` that lists the affected posts and key names. Passwords and hints never appear in the error text.
+
+### CLI Password Generator
+
+Generate a compliant password without running the full build:
+
+```
+markata-go encryption generate-password
+markata-go encryption generate-password --length 20
+markata-go encryption check
+markata-go encryption check --key default
+```
+
+The command prints only the password to stdout, making it easy to pipe into your `.env` file or a password manager. The optional `--length` flag requests a longer password (it must be at least the configured `min_password_length`). The generated password already meets the default crack-time and length thresholds.
+
+`encryption check` validates configured keys against your active policy and exits non-zero when a key is missing or weak. By default it checks every key referenced by `default_key` and `private_tags`.
+
+## Lint Rule
+
+`markata-go lint` now includes an encryption policy check. When encryption is enabled, lint reports an error if configured keys are missing or fail strength thresholds.
 
 ## Making Posts Private
 
