@@ -1116,10 +1116,10 @@ body:has(.background-decoration) div.feed {
 }
 
 @supports (grid-template-rows: subgrid) {
-  .feed-layout-grid .posts > .card-article,
-  .feed-layout-grid .post-list > .card-article,
-  .feed-layout-grid .posts > .card-default,
-  .feed-layout-grid .post-list > .card-default {
+  .feed-layout-grid:not(.feed-layout-masonry) .posts > .card-article,
+  .feed-layout-grid:not(.feed-layout-masonry) .post-list > .card-article,
+  .feed-layout-grid:not(.feed-layout-masonry) .posts > .card-default,
+  .feed-layout-grid:not(.feed-layout-masonry) .post-list > .card-default {
     display: grid;
     grid-template-rows: subgrid;
     grid-row: span 3;

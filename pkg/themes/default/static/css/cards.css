@@ -26,15 +26,18 @@
    ========================================================================== */
 
 /* Grid layout with subgrid support */
-.feed-layout-grid,
-.feed-layout-masonry {
+.feed-layout-grid .posts,
+.feed-layout-grid .post-list,
+.blogroll-grid.feed-layout-grid {
   max-width: var(--grid-max-width, 1400px) !important;
   width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
 
-.feed-layout-grid {
+.feed-layout-grid .posts,
+.feed-layout-grid .post-list,
+.blogroll-grid.feed-layout-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
   gap: var(--space-6);
@@ -43,7 +46,9 @@
 
 /* Progressive Enhancement: Native Masonry */
 @supports (grid-template-rows: masonry) {
-  .feed-layout-masonry {
+  .feed-layout-masonry .posts,
+  .feed-layout-masonry .post-list,
+  .blogroll-grid.feed-layout-masonry {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
     grid-template-rows: masonry;
@@ -55,7 +60,9 @@
 /* CSS Subgrid for Card Alignment across rows */
 @supports (grid-template-rows: subgrid) {
   /* Only apply subgrid in the grid layout (not masonry as it packs items) */
-  .feed-layout-grid .card {
+  .feed-layout-grid:not(.feed-layout-masonry) .posts > .card,
+  .feed-layout-grid:not(.feed-layout-masonry) .post-list > .card,
+  .blogroll-grid.feed-layout-grid:not(.feed-layout-masonry) > .blogroll-card {
     grid-row: span 3;
     display: grid;
     grid-template-rows: subgrid;

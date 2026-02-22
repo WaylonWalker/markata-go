@@ -1254,7 +1254,7 @@
 
 /* CSS Subgrid for Blogroll Card Alignment across rows */
 @supports (grid-template-rows: subgrid) {
-  .blogroll-grid.feed-layout-grid .blogroll-card {
+  .blogroll-grid.feed-layout-grid:not(.feed-layout-masonry) .blogroll-card {
     grid-row: span 3;
     display: grid;
     grid-template-rows: subgrid;
