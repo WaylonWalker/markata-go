@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"html"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/yuin/goldmark/parser"
 )
 
 // WikilinksPlugin transforms [[slug]] and [[slug|text]] wikilink syntax
@@ -87,7 +89,7 @@ func (p *WikilinksPlugin) Transform(m *lifecycle.Manager) error {
 // It captures:
 // - Group 1: The slug
 // - Group 2: Optional display text (after the pipe)
-var wikilinkRegex = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\]`)
+var wikilinkRegex = regexp.MustCompile(`\[\[([^\]|]+)(?:\|([^\]]+))?\]\](\{[^}]+\})?`)
 
 // wikilinksCodeBlockRegex matches fenced code blocks to avoid transforming wikilinks inside them.
 var wikilinksCodeBlockRegex = regexp.MustCompile("(?s)(```[^`]*```|~~~[^~]*~~~)")
@@ -138,6 +140,7 @@ func (p *WikilinksPlugin) processWikilinks(content string, postIndex *lifecycle.
 // processWikilinksInText processes wikilinks in a text segment (not inside code blocks).
 // Uses the shared PostIndex for O(1) lookups.
 // Records successfully resolved slugs in the dependencies slice.
+
 func (p *WikilinksPlugin) processWikilinksInText(text string, postIndex *lifecycle.PostIndex, warnings, dependencies *[]string) string {
 	return wikilinkRegex.ReplaceAllStringFunc(text, func(match string) string {
 		// Extract groups from the match
@@ -152,54 +155,132 @@ func (p *WikilinksPlugin) processWikilinksInText(text string, postIndex *lifecyc
 			displayText = strings.TrimSpace(groups[2])
 		}
 
-		// Use the shared PostIndex for lookup
-		targetPost := postIndex.LookupBySlug(slug)
-
-		if targetPost == nil {
-			// Target post not found - warn and keep original syntax
-			*warnings = append(*warnings, fmt.Sprintf("broken wikilink: [[%s]]", slug))
-			return match
+		attrBlock := ""
+		if len(groups) >= 4 && groups[3] != "" {
+			attrBlock = groups[3]
 		}
 
-		// Record this as a dependency for incremental builds
-		*dependencies = append(*dependencies, targetPost.Slug)
-
-		// Determine the display text
-		if displayText == "" {
-			// Use post title if available, otherwise use slug
-			if targetPost.Title != nil && *targetPost.Title != "" {
-				displayText = *targetPost.Title
-			} else {
-				displayText = targetPost.Slug
-			}
-		}
-
-		// Generate HTML anchor tag with wikilink class for styling
-		href := targetPost.Href
-		if href == "" {
-			href = "/" + targetPost.Slug + "/"
-		}
-
-		// Build data attributes for tooltip
-		// Skip metadata for private posts to prevent content leaks
-		dataAttrs := ""
-		if !targetPost.Private {
-			if targetPost.Title != nil && *targetPost.Title != "" {
-				dataAttrs += fmt.Sprintf(` data-title=%q`, html.EscapeString(*targetPost.Title))
-			}
-			if targetPost.Description != nil && *targetPost.Description != "" {
-				dataAttrs += fmt.Sprintf(` data-description=%q`, html.EscapeString(*targetPost.Description))
-			}
-			if targetPost.Date != nil {
-				dataAttrs += fmt.Sprintf(` data-date=%q`, targetPost.Date.Format("2006-01-02"))
-			}
-		}
-
-		return fmt.Sprintf(`<a href=%q class="wikilink"%s>%s</a>`,
-			html.EscapeString(href),
-			dataAttrs,
-			html.EscapeString(displayText))
+		return p.renderWikilink(match, slug, displayText, attrBlock, postIndex, warnings, dependencies)
 	})
+}
+
+func (p *WikilinksPlugin) renderWikilink(match, slug, displayText, attrBlock string, postIndex *lifecycle.PostIndex, warnings, dependencies *[]string) string {
+	// Use the shared PostIndex for lookup
+	targetPost := postIndex.LookupBySlug(slug)
+
+	if targetPost == nil {
+		// Target post not found - warn and keep original syntax
+		*warnings = append(*warnings, fmt.Sprintf("broken wikilink: [[%s]]", slug))
+		return match
+	}
+
+	// Record this as a dependency for incremental builds
+	*dependencies = append(*dependencies, targetPost.Slug)
+
+	// Determine the display text
+	if displayText == "" {
+		// Use post title if available, otherwise use slug
+		if targetPost.Title != nil && *targetPost.Title != "" {
+			displayText = *targetPost.Title
+		} else {
+			displayText = targetPost.Slug
+		}
+	}
+
+	// Generate HTML anchor tag with wikilink class for styling
+	href := targetPost.Href
+	if href == "" {
+		href = "/" + targetPost.Slug + "/"
+	}
+
+	dataAttrs := p.renderWikilinkDataAttrs(targetPost)
+
+	classAttr, extra := buildWikilinkAttributes(attrBlock)
+
+	return fmt.Sprintf(`<a href=%q class=%q%s%s>%s</a>`,
+		html.EscapeString(href),
+		classAttr,
+		dataAttrs,
+		extra,
+		html.EscapeString(displayText))
+}
+
+func (p *WikilinksPlugin) renderWikilinkDataAttrs(targetPost *models.Post) string {
+	// Build data attributes for tooltip
+	// Skip metadata for private posts to prevent content leaks
+	dataAttrs := ""
+	if !targetPost.Private {
+		if targetPost.Title != nil && *targetPost.Title != "" {
+			dataAttrs += fmt.Sprintf(` data-title=%q`, html.EscapeString(*targetPost.Title))
+		}
+		if targetPost.Description != nil && *targetPost.Description != "" {
+			dataAttrs += fmt.Sprintf(` data-description=%q`, html.EscapeString(*targetPost.Description))
+		}
+		if targetPost.Date != nil {
+			dataAttrs += fmt.Sprintf(` data-date=%q`, targetPost.Date.Format("2006-01-02"))
+		}
+	}
+
+	return dataAttrs
+}
+
+func buildWikilinkAttributes(attrBlock string) (classAttr, extra string) {
+	classAttr = "wikilink"
+	idAttr := ""
+	extraAttrs := map[string]string{}
+	if attrBlock != "" {
+		if attrs, ok := parseAttributeOnly(attrBlock); ok {
+			classes, id, extra := splitAttributes(attrs)
+			if len(classes) > 0 {
+				classAttr = classAttr + " " + strings.Join(classes, " ")
+			}
+			if id != "" {
+				idAttr = id
+			}
+			for key, val := range extra {
+				extraAttrs[key] = val
+			}
+		}
+	}
+
+	attrParts := make([]string, 0, len(extraAttrs))
+	for key := range extraAttrs {
+		attrParts = append(attrParts, key)
+	}
+	sort.Strings(attrParts)
+
+	var extraBuilder strings.Builder
+	for _, key := range attrParts {
+		extraBuilder.WriteString(fmt.Sprintf(` %s=%q`, html.EscapeString(key), html.EscapeString(extraAttrs[key])))
+	}
+	if idAttr != "" {
+		extraBuilder.WriteString(fmt.Sprintf(` id=%q`, html.EscapeString(idAttr)))
+	}
+
+	return classAttr, extraBuilder.String()
+}
+
+func splitAttributes(attrs parser.Attributes) (classes []string, id string, extra map[string]string) {
+	classes = []string{}
+	id = ""
+	extra = map[string]string{}
+	for _, attr := range attrs {
+		name := string(attr.Name)
+		value := normalizeAttributeValue(attr.Value)
+		if name == "class" {
+			classes = append(classes, strings.Fields(value)...)
+			continue
+		}
+		if name == "id" {
+			id = value
+			continue
+		}
+		if name == "" {
+			continue
+		}
+		extra[name] = value
+	}
+	return classes, id, extra
 }
 
 // SetWarnOnBroken enables or disables warnings for broken links.

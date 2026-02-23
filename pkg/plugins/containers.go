@@ -26,6 +26,8 @@ type Container struct {
 	ContainerID string
 	// ExtraAttrs holds additional attributes
 	ExtraAttrs map[string]string
+	// Depth holds the number of leading colons used to open the container
+	Depth int
 }
 
 // Kind returns the kind of this node.
@@ -45,11 +47,12 @@ func (n *Container) Dump(source []byte, level int) {
 }
 
 // NewContainer creates a new Container node.
-func NewContainer(classes []string, id string, attrs map[string]string) *Container {
+func NewContainer(classes []string, id string, attrs map[string]string, depth int) *Container {
 	return &Container{
 		Classes:     classes,
 		ContainerID: id,
 		ExtraAttrs:  attrs,
+		Depth:       depth,
 	}
 }
 
@@ -57,7 +60,7 @@ func NewContainer(classes []string, id string, attrs map[string]string) *Contain
 // ::: class1 class2 {#id .extra-class key=value}
 // Group 1: classes (space-separated)
 // Group 2: optional attribute block
-var containerRegex = regexp.MustCompile(`^:::\s*(\S.*?)?\s*(?:\{([^}]*)\})?\s*$`)
+var containerRegex = regexp.MustCompile(`^(:{3,})\s*(\S.*?)?\s*(?:\{([^}]*)\})?\s*$`)
 
 // containerParser parses ::: container syntax.
 type containerParser struct{}
@@ -76,38 +79,41 @@ func (p *containerParser) Trigger() []byte {
 func (p *containerParser) Open(_ ast.Node, reader text.Reader, _ parser.Context) (ast.Node, parser.State) {
 	line, segment := reader.PeekLine()
 	lineStr := string(line)
+	trimmedLine := strings.TrimLeft(lineStr, " \t")
 
 	// Check for opening :::
-	if !strings.HasPrefix(lineStr, ":::") {
+	if !strings.HasPrefix(trimmedLine, ":::") {
 		return nil, parser.NoChildren
 	}
 
-	// Check for closing ::: (just ":::" with optional whitespace)
-	trimmed := strings.TrimSpace(lineStr)
-	if trimmed == ":::" {
-		// This is a closing tag, not an opening
+	// Check for closing ::: (or more) with optional whitespace
+	trimmed := strings.TrimSpace(trimmedLine)
+	if isContainerClose(trimmed) {
 		return nil, parser.NoChildren
 	}
 
 	// Parse the opening line
-	matches := containerRegex.FindStringSubmatch(lineStr)
+	matches := containerRegex.FindStringSubmatch(trimmedLine)
 	if matches == nil {
 		return nil, parser.NoChildren
 	}
 
+	marker := matches[1]
+	depth := len(marker)
+
 	// Extract classes
 	var classes []string
-	if matches[1] != "" {
+	if matches[2] != "" {
 		// Split by whitespace
-		classes = append(classes, strings.Fields(matches[1])...)
+		classes = append(classes, strings.Fields(matches[2])...)
 	}
 
 	// Extract attributes from {#id .class key=value} block
 	var id string
 	attrs := make(map[string]string)
 
-	if matches[2] != "" {
-		attrStr := matches[2]
+	if matches[3] != "" {
+		attrStr := matches[3]
 		for _, part := range strings.Fields(attrStr) {
 			if strings.HasPrefix(part, "#") {
 				id = part[1:]
@@ -122,7 +128,7 @@ func (p *containerParser) Open(_ ast.Node, reader text.Reader, _ parser.Context)
 	}
 
 	// Create the container node
-	node := NewContainer(classes, id, attrs)
+	node := NewContainer(classes, id, attrs, depth)
 
 	// Advance past the opening line
 	reader.Advance(segment.Len() - 1)
@@ -143,14 +149,22 @@ func (p *containerParser) Open(_ ast.Node, reader text.Reader, _ parser.Context)
 }
 
 // Continue is called for each subsequent line.
-func (p *containerParser) Continue(_ ast.Node, reader text.Reader, _ parser.Context) parser.State {
+func (p *containerParser) Continue(node ast.Node, reader text.Reader, _ parser.Context) parser.State {
 	line, segment := reader.PeekLine()
 	lineStr := strings.TrimSpace(string(line))
+	trimmed := strings.TrimLeft(lineStr, " \t")
 
-	// Check for closing :::
-	if lineStr == ":::" {
-		reader.Advance(segment.Len())
-		return parser.Close
+	if isContainerClose(trimmed) {
+		depth := len(trimmed)
+		if container, ok := node.(*Container); ok {
+			if depth == container.Depth {
+				reader.Advance(segment.Len())
+				return parser.Close
+			}
+			if depth < container.Depth {
+				return parser.Close
+			}
+		}
 	}
 
 	return parser.Continue | parser.HasChildren
@@ -161,6 +175,18 @@ func (p *containerParser) Close(_ ast.Node, _ text.Reader, _ parser.Context) {
 	// Nothing special to do
 }
 
+func isContainerClose(line string) bool {
+	if len(line) < 3 {
+		return false
+	}
+	for _, r := range line {
+		if r != ':' {
+			return false
+		}
+	}
+	return true
+}
+
 // CanInterruptParagraph returns true if this parser can interrupt a paragraph.
 func (p *containerParser) CanInterruptParagraph() bool {
 	return true
@@ -168,7 +194,7 @@ func (p *containerParser) CanInterruptParagraph() bool {
 
 // CanAcceptIndentedLine returns true if this parser can accept an indented line.
 func (p *containerParser) CanAcceptIndentedLine() bool {
-	return false
+	return true
 }
 
 // containerHTMLRenderer renders Container nodes to HTML.
