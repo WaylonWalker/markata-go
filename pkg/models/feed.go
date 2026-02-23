@@ -63,6 +63,12 @@ type FeedConfig struct {
 	// PaginationType specifies the pagination strategy (manual, htmx, js)
 	PaginationType PaginationType `json:"pagination_type" yaml:"pagination_type" toml:"pagination_type"`
 
+	// Limit is a hard cap on the number of posts in the feed (0 = unlimited)
+	Limit int `json:"limit" yaml:"limit" toml:"limit"`
+
+	// Offset skips the first N posts after filtering/sorting (0 = none)
+	Offset int `json:"offset" yaml:"offset" toml:"offset"`
+
 	// Formats specifies which output formats to generate
 	Formats FeedFormats `json:"formats" yaml:"formats" toml:"formats"`
 

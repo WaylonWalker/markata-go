@@ -1142,6 +1142,8 @@ func feedToMap(f *models.FeedConfig) map[string]interface{} {
 		"sort":           f.Sort,
 		"reverse":        f.Reverse,
 		"items_per_page": f.ItemsPerPage,
+		"limit":          f.Limit,
+		"offset":         f.Offset,
 		"posts":          PostsToMaps(f.Posts),
 		"formats":        formats,
 	}

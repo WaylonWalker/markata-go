@@ -1523,6 +1523,8 @@ Each feed is defined as an array item. The default config ships with an archive 
 | `reverse` | bool | `false` | Reverse sort order |
 | `items_per_page` | int | inherited | Items per page (inherits from defaults) |
 | `orphan_threshold` | int | inherited | Orphan threshold (inherits from defaults) |
+| `limit` | int | `0` | Hard cap on total items (0 = unlimited) |
+| `offset` | int | `0` | Skip the first N items (0 = none) |
 | `formats` | object | inherited | Output formats (inherits from defaults) |
 | `templates` | object | inherited | Templates (inherits from defaults) |
 

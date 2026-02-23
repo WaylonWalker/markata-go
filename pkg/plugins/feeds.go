@@ -97,6 +97,7 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 		}
 
 		// Store posts in feed config
+		filteredPosts = applyFeedLimitOffset(filteredPosts, fc)
 		fc.Posts = filteredPosts
 
 		// Get base URL for pagination
@@ -125,6 +126,45 @@ func (p *FeedsPlugin) Collect(m *lifecycle.Manager) error {
 	m.Cache().Set("feed_configs", feedConfigs)
 
 	return nil
+}
+
+func applyFeedLimitOffset(posts []*models.Post, fc *models.FeedConfig) []*models.Post {
+	if len(posts) == 0 {
+		return posts
+	}
+
+	offset := fc.Offset
+	if offset < 0 {
+		offset = 0
+	}
+
+	limit := fc.Limit
+	if limit < 0 {
+		limit = 0
+	}
+
+	if offset == 0 && limit == 0 {
+		return posts
+	}
+
+	if offset >= len(posts) {
+		return posts[:0]
+	}
+
+	limited := posts
+	if offset > 0 {
+		limited = limited[offset:]
+	}
+
+	if limit == 0 {
+		return limited
+	}
+
+	if limit >= len(limited) {
+		return limited
+	}
+
+	return limited[:limit]
 }
 
 func (p *FeedsPlugin) shouldSkipFeedCollect(fc *models.FeedConfig, m *lifecycle.Manager) bool {

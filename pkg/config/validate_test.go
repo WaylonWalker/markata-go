@@ -203,6 +203,29 @@ func TestValidateConfig_FeedNegativeItemsPerPage(t *testing.T) {
 	}
 }
 
+func TestValidateConfig_FeedNegativeLimitOffset(t *testing.T) {
+	config := &models.Config{
+		GlobConfig: models.GlobConfig{
+			Patterns: []string{"**/*.md"},
+		},
+		Feeds: []models.FeedConfig{
+			{
+				Slug:   "blog",
+				Limit:  -1,
+				Offset: -2,
+				Formats: models.FeedFormats{
+					HTML: true,
+				},
+			},
+		},
+	}
+
+	errs := ValidateConfig(config)
+	if !HasErrors(errs) {
+		t.Error("ValidateConfig() should error for negative limit/offset")
+	}
+}
+
 func TestValidateConfig_FeedNoFormats(t *testing.T) {
 	config := &models.Config{
 		GlobConfig: models.GlobConfig{

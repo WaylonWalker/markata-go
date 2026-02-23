@@ -34,7 +34,7 @@
   </div>
   {% endif %}
 
-  <div class="posts posts-list" id="posts-list">
+  <div class="posts posts-list feed-layout-grid feed-layout-masonry" id="posts-list">
     {% if page.pagination_type == "js" %}
     {# For JS pagination, render ALL posts - JavaScript will handle showing/hiding #}
     {% for post in feed.posts %}

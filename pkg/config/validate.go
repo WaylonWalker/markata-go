@@ -253,6 +253,30 @@ func validateFeedConfigWithPositions(index int, feed *models.FeedConfig, tracker
 		))
 	}
 
+	// Validate limit
+	if feed.Limit < 0 {
+		configErrors.Add(NewConfigErrorWithFix(
+			tracker,
+			prefix+".limit",
+			fmt.Sprintf("%d", feed.Limit),
+			"must be >= 0",
+			GetFixSuggestion("negative_value", "limit", ""),
+			false,
+		))
+	}
+
+	// Validate offset
+	if feed.Offset < 0 {
+		configErrors.Add(NewConfigErrorWithFix(
+			tracker,
+			prefix+".offset",
+			fmt.Sprintf("%d", feed.Offset),
+			"must be >= 0",
+			GetFixSuggestion("negative_value", "offset", ""),
+			false,
+		))
+	}
+
 	// Validate orphan_threshold
 	if feed.OrphanThreshold < 0 {
 		configErrors.Add(NewConfigErrorWithFix(
@@ -312,6 +336,22 @@ func validateFeedConfig(index int, feed *models.FeedConfig) []error {
 	if feed.ItemsPerPage < 0 {
 		errs = append(errs, ValidationError{
 			Field:   prefix + ".items_per_page",
+			Message: "must be >= 0",
+		})
+	}
+
+	// Validate limit
+	if feed.Limit < 0 {
+		errs = append(errs, ValidationError{
+			Field:   prefix + ".limit",
+			Message: "must be >= 0",
+		})
+	}
+
+	// Validate offset
+	if feed.Offset < 0 {
+		errs = append(errs, ValidationError{
+			Field:   prefix + ".offset",
 			Message: "must be >= 0",
 		})
 	}

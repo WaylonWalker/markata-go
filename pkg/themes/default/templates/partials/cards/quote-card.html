@@ -1,27 +1,31 @@
 {# Quote Card - Blockquote styling for quotes, quotations #}
 {# Large quote with source attribution #}
 <article class="card card-quote h-entry">
-  <a class="u-url" href="{{ post.href }}" hidden></a>
-  <blockquote class="card-blockquote e-content">
-    {% if post.quote %}
-    <p>{{ post.quote }}</p>
-    {% elif post.description %}
-    <p>{{ post.description }}</p>
-    {% elif post.article_html %}
-    <div>{{ post.article_html | striptags | truncatechars:300 }}</div>
+  <header class="card-header">
+    {% if post.title %}
+    <h3 class="card-title p-name"><a href="{{ post.href }}">{{ post.title }}</a></h3>
     {% endif %}
-  </blockquote>
+  </header>
 
-  <footer class="card-attribution">
+  <div class="card-body">
+    <a class="u-url" href="{{ post.href }}" hidden></a>
+    <blockquote class="card-blockquote e-content">
+      {% if post.quote %}
+      <p>{{ post.quote }}</p>
+      {% elif post.description %}
+      <p>{{ post.description }}</p>
+      {% elif post.article_html %}
+      <div>{{ post.article_html | striptags | truncatechars:300 }}</div>
+      {% endif %}
+    </blockquote>
+  </div>
+
+  <footer class="card-meta">
     {% if post.source or post.author %}
     <cite class="h-cite">
       {% if post.author %}<span class="quote-author p-author">{{ post.author }}</span>{% endif %}
       {% if post.source %}<span class="quote-source p-name">{{ post.source }}</span>{% endif %}
     </cite>
-    {% endif %}
-
-    {% if post.title %}
-    <a href="{{ post.href }}" class="card-title-link p-name">{{ post.title }}</a>
     {% endif %}
 
     {% if post.date %}
