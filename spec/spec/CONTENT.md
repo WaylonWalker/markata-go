@@ -244,7 +244,7 @@ Implementations SHOULD support:
 
 The attribute syntax `{...}` allows adding CSS classes, IDs, and other attributes to elements.
 
-#### Block Elements (Headings, Paragraphs)
+#### Block Elements (Headings, Paragraphs, Lists, Blockquotes, Tables)
 
 ```markdown
 ## My Section {.highlighted}
@@ -252,6 +252,19 @@ The attribute syntax `{...}` allows adding CSS classes, IDs, and other attribute
 ## Installation {#install}
 
 ## Features {#features .important}
+
+Paragraph text
+{.lead}
+
+> Blockquote text
+{.callout}
+
+- List item
+  {.item}
+
+| Col |
+|---|
+| Cell {.cell} |
 ```
 
 Output:
@@ -259,9 +272,23 @@ Output:
 <h2 class="highlighted" id="my-section">My Section</h2>
 <h2 id="install">Installation</h2>
 <h2 id="features" class="important">Features</h2>
+<p class="lead">Paragraph text</p>
+<blockquote class="callout">
+  <p>Blockquote text</p>
+</blockquote>
+<ul>
+  <li class="item">List item</li>
+</ul>
+<table>
+  <tbody>
+    <tr>
+      <td class="cell">Cell</td>
+    </tr>
+  </tbody>
+</table>
 ```
 
-#### Inline Elements (Images, Links)
+#### Inline Elements (Images, Links, Emphasis, Code, Strikethrough, Wikilinks)
 
 ```markdown
 ![alt text](image.webp){.more-cinematic}
@@ -271,6 +298,14 @@ Output:
 ![hero](hero.png){#hero-image}
 
 [Read more](url){.external-link}
+
+*note*{.accent}
+
+`code`{.inline-code}
+
+~~deprecated~~{.deprecated}
+
+[[hello-world]]{.wikilink-pill}
 ```
 
 Output:
@@ -279,6 +314,10 @@ Output:
 <img src="photo.jpg" alt="photo" class="shadow bordered">
 <img src="hero.png" alt="hero" id="hero-image">
 <a href="url" class="external-link">Read more</a>
+<em class="accent">note</em>
+<code class="inline-code">code</code>
+<del class="deprecated">deprecated</del>
+<a href="/hello-world/" class="wikilink wikilink-pill">Hello World</a>
 ```
 
 #### Supported Attribute Formats

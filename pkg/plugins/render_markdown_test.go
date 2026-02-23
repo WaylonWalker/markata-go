@@ -653,6 +653,51 @@ func TestRenderMarkdownPlugin_AttributeSyntax(t *testing.T) {
 			input:    "[Main link](https://example.com){#main-link}",
 			expected: `id="main-link"`,
 		},
+		{
+			name:     "paragraph with class",
+			input:    "A paragraph\n{.lead}",
+			expected: `class="lead"`,
+		},
+		{
+			name:     "blockquote with class",
+			input:    "> Quoted text\n{.callout}",
+			expected: `class="callout"`,
+		},
+		{
+			name:     "list item with class",
+			input:    "- Item text\n", // list item class syntax is not supported
+			expected: `<li>`,
+		},
+		{
+			name:     "list item with inline class",
+			input:    "- hello {.item}",
+			expected: `class="item"`,
+		},
+		{
+			name:     "list item with attribute line",
+			input:    "- hello\n  {.item}",
+			expected: `class="item"`,
+		},
+		{
+			name:     "emphasis with class",
+			input:    "*note*{.accent}",
+			expected: `class="accent"`,
+		},
+		{
+			name:     "inline code with class",
+			input:    "`code`{.mono}",
+			expected: `class="mono"`,
+		},
+		{
+			name:     "strikethrough with class",
+			input:    "~~old~~{.deprecated}",
+			expected: `class="deprecated"`,
+		},
+		{
+			name:     "table cell with class",
+			input:    "| Col |\n|---|\n| Cell {.cell} |",
+			expected: `class="cell"`,
+		},
 	}
 
 	p := NewRenderMarkdownPlugin()

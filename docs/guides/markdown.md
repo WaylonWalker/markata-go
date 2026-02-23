@@ -992,7 +992,7 @@ Common aliases are supported:
 
 ## Attribute Syntax
 
-markata-go supports adding CSS classes, IDs, and other attributes to elements using the brace syntax `{...}`. This works for both block-level elements (like headings) and inline elements (like images and links).
+markata-go supports adding CSS classes, IDs, and other attributes to elements using the brace syntax `{...}`. This works for block-level elements (headings, paragraphs, blockquotes, lists, tables) and inline elements (images, links, emphasis, code, strikethrough).
 
 ### Adding Classes to Images
 
@@ -1085,6 +1085,67 @@ Add classes or custom IDs to headings:
 <h2 class="highlighted" id="featured-section">Featured Section</h2>
 <h2 id="install">Installation</h2>
 <h2 id="notice" class="warning-header">Important Notice</h2>
+```
+
+### Styling Paragraphs and Block Elements
+
+**Input:**
+
+```markdown
+A short paragraph
+{.lead}
+
+> A callout blockquote
+{.callout}
+
+- A list item
+  {.item}
+
+| Col |
+|---|
+| Cell {.cell} |
+```
+
+**Output:**
+
+```html
+<p class="lead">A short paragraph</p>
+<blockquote class="callout">
+  <p>A callout blockquote</p>
+</blockquote>
+<ul>
+  <li class="item">A list item</li>
+</ul>
+<table>
+  <tbody>
+    <tr>
+      <td class="cell">Cell</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+### Styling Inline Text
+
+**Input:**
+
+```markdown
+*note*{.accent}
+
+`code`{.inline-code}
+
+~~deprecated~~{.deprecated}
+
+[[hello-world]]{.wikilink-pill}
+```
+
+**Output:**
+
+```html
+<em class="accent">note</em>
+<code class="inline-code">code</code>
+<del class="deprecated">deprecated</del>
+<a href="/hello-world/" class="wikilink wikilink-pill">Hello World</a>
 ```
 
 ### Syntax Reference
