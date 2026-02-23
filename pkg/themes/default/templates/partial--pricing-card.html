@@ -1,0 +1,37 @@
+<div class="pricing-table" style="--pricing-columns: {{ tiers | length }};">
+    {% for tier in tiers %}
+    <div class="pricing-tier {% if tier.featured %}pricing-tier--featured{% endif %}" {% if tier.color %}style="--pricing-tier-accent: {{ tier.color }};"{% endif %}>
+        {% if tier.badge %}
+        <span class="pricing-tier__badge">{{ tier.badge }}</span>
+        {% endif %}
+
+        <h3 class="pricing-tier__name">{{ tier.name }}</h3>
+
+        <div class="pricing-tier__price">
+            <span class="pricing-tier__currency">{{ currency | default('$') }}</span>
+            <span class="pricing-tier__amount">{{ tier.price }}</span>
+            {% if tier.period %}
+            <span class="pricing-tier__period">{{ period | default('/mo') }}</span>
+            {% endif %}
+        </div>
+
+        {% if tier.description %}
+        <p class="pricing-tier__description">{{ tier.description }}</p>
+        {% endif %}
+
+        {% if tier.features %}
+        <ul class="pricing-tier__features">
+            {% for feature in tier.features %}
+            <li>{{ feature }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if tier.cta %}
+        <a href="{{ tier.href | default('#') }}" class="pricing-tier__cta btn {% if tier.featured %}btn--primary{% else %}btn--outline{% endif %}">
+            {{ tier.cta }}
+        </a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>

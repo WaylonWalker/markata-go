@@ -123,74 +123,105 @@ func (p *TemplatesPlugin) resolveTemplate(post *models.Post) string {
 // 5. Global default for format (default_templates.html, etc.)
 // 6. Hardcoded default (post.html, default.txt, etc.)
 func (p *TemplatesPlugin) resolveTemplateForFormat(post *models.Post, format string) string {
-	// 1. Check per-format override in frontmatter
-	if post.Templates != nil {
-		if tmpl, ok := post.Templates[format]; ok && tmpl != "" {
-			return tmpl
-		}
+	if tmpl := resolvePerFormatOverride(post, format); tmpl != "" {
+		return tmpl
 	}
 
-	// 2. Check if template is a preset name
-	if post.Template != "" && p.config != nil {
-		presets := getTemplatePresets(p.config)
-		if preset, ok := presets[post.Template]; ok {
-			tmpl := preset.TemplateForFormat(format)
-			if tmpl != "" {
-				return tmpl
-			}
-		}
+	if tmpl := p.resolvePresetTemplate(post, format); tmpl != "" {
+		return tmpl
 	}
 
-	// 3. Use template as explicit file (if has extension) and adapt for format
-	if post.Template != "" && strings.Contains(post.Template, ".") {
-		return adaptTemplateForFormat(post.Template, format)
+	if tmpl := resolveExplicitTemplateFile(post, format); tmpl != "" {
+		return tmpl
 	}
 
-	// 4. Use template as-is if it doesn't have an extension
-	// This might be a preset name that wasn't found, fall through to layout
-	if post.Template != "" {
-		// For HTML, use the template directly
-		if format == formatHTML {
-			return post.Template
-		}
-		// For other formats, try to adapt it
-		return adaptTemplateForFormat(post.Template+".html", format)
+	if tmpl := resolveLayoutOverride(post, format); tmpl != "" {
+		return tmpl
 	}
 
-	// 5. Use layout configuration to determine template
-	if p.layoutConfig != nil {
-		// Get feed slug for feed-based layout lookup
-		feedSlug := post.PrevNextFeed
-		if feedSlug == "" {
-			if feed, ok := post.Extra["feed"].(string); ok {
-				feedSlug = feed
-			}
-		}
-
-		// Get post path for path-based layout lookup
-		postPath := post.Href
-		if postPath == "" {
-			postPath = "/" + strings.TrimPrefix(post.Path, "/")
-		}
-
-		// Resolve layout based on path and feed
-		layout := p.layoutConfig.ResolveLayout(postPath, feedSlug)
-		if layout != "" {
-			baseTemplate := models.LayoutToTemplate(layout)
-			return adaptTemplateForFormat(baseTemplate, format)
-		}
+	if tmpl := p.resolveLayoutConfig(post, format); tmpl != "" {
+		return tmpl
 	}
 
-	// 6. Check global default templates from config
-	if p.config != nil {
-		defaultTemplates := getDefaultTemplates(p.config)
-		if tmpl, ok := defaultTemplates[format]; ok && tmpl != "" {
-			return tmpl
-		}
+	if tmpl := p.resolveDefaultTemplates(format); tmpl != "" {
+		return tmpl
 	}
 
-	// 7. Fall back to hardcoded defaults per format
 	return getHardcodedDefault(format)
+}
+
+func resolvePerFormatOverride(post *models.Post, format string) string {
+	if post.Templates == nil {
+		return ""
+	}
+	if tmpl, ok := post.Templates[format]; ok && tmpl != "" {
+		return tmpl
+	}
+	return ""
+}
+
+func (p *TemplatesPlugin) resolvePresetTemplate(post *models.Post, format string) string {
+	if post.Template == "" || p.config == nil {
+		return ""
+	}
+	presets := getTemplatePresets(p.config)
+	preset, ok := presets[post.Template]
+	if !ok {
+		return ""
+	}
+	return preset.TemplateForFormat(format)
+}
+
+func resolveExplicitTemplateFile(post *models.Post, format string) string {
+	if post.Template == "" || !strings.Contains(post.Template, ".") {
+		return ""
+	}
+	return adaptTemplateForFormat(post.Template, format)
+}
+
+func resolveLayoutOverride(post *models.Post, format string) string {
+	layout, ok := post.Extra["layout"].(string)
+	if !ok || layout == "" {
+		return ""
+	}
+	baseTemplate := models.LayoutToTemplate(layout)
+	return adaptTemplateForFormat(baseTemplate, format)
+}
+
+func (p *TemplatesPlugin) resolveLayoutConfig(post *models.Post, format string) string {
+	if p.layoutConfig == nil {
+		return ""
+	}
+
+	feedSlug := post.PrevNextFeed
+	if feedSlug == "" {
+		if feed, ok := post.Extra["feed"].(string); ok {
+			feedSlug = feed
+		}
+	}
+
+	postPath := post.Href
+	if postPath == "" {
+		postPath = "/" + strings.TrimPrefix(post.Path, "/")
+	}
+
+	layout := p.layoutConfig.ResolveLayout(postPath, feedSlug)
+	if layout == "" {
+		return ""
+	}
+	baseTemplate := models.LayoutToTemplate(layout)
+	return adaptTemplateForFormat(baseTemplate, format)
+}
+
+func (p *TemplatesPlugin) resolveDefaultTemplates(format string) string {
+	if p.config == nil {
+		return ""
+	}
+	defaultTemplates := getDefaultTemplates(p.config)
+	if tmpl, ok := defaultTemplates[format]; ok && tmpl != "" {
+		return tmpl
+	}
+	return ""
 }
 
 // adaptTemplateForFormat adapts a template name for a specific output format.

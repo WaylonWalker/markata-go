@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} | {{ config.title | default:'My Site' }}{% endblock %}
+{% block description %}{{ post.description | default:'' }}{% endblock %}
+
+{% block meta %}
+{{ block.Super() }}
+<link rel="canonical" href="{{ config.url }}{{ post.href }}">
+{% if config.post_formats.markdown %}
+<link rel="alternate" type="text/markdown" title="Markdown Source" href="/{{ post.slug }}.md">
+{% endif %}
+{% if config.post_formats.text %}
+<link rel="alternate" type="text/plain" title="Plain Text" href="/{{ post.slug }}.txt">
+{% endif %}
+{% if config.post_formats.og %}
+<link rel="alternate" type="text/html" title="Social Card" href="{{ post.href }}og/">
+{% endif %}
+{% endblock %}
+
+{% block progress %}
+<div class="article-progress" role="presentation" aria-hidden="true">
+  <span class="article-progress__indicator"></span>
+</div>
+{% endblock %}
+
+{% block content %}
+<article class="post post-modern h-entry" data-pagefind-body>
+  <a class="u-url" href="{{ config.url }}{{ post.href }}" hidden></a>
+
+  <header class="post-hero">
+    <div class="post-hero__meta">
+      <p class="post-eyebrow">{% if post.Extra.kicker %}{{ post.Extra.kicker }}{% else %}Feature{% endif %}</p>
+      <h1 class="post-title p-name" data-pagefind-meta="title">{{ post.title }}</h1>
+      {% if post.description %}
+      <p class="post-dek p-summary" data-pagefind-meta="excerpt">{{ post.description | striptags }}</p>
+      {% endif %}
+
+      <div class="post-meta post-meta--hero">
+        {% include "components/post_byline.html" %}
+      </div>
+
+      {% if post.tags %}
+      <div class="tags post-tags">
+        {% for tag in post.tags %}
+        <a href="/tags/{{ tag | slugify }}/" class="tag p-category">{{ tag }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% if post.cover_image %}
+    <figure class="post-hero__media">
+      <img src="{{ post.cover_image }}" alt="" loading="lazy" data-pagefind-meta="image[content]">
+    </figure>
+    {% endif %}
+  </header>
+
+  <div class="post-modern__body">
+    <div class="post-content e-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
+      {{ body | safe }}
+    </div>
+
+    <aside class="post-rail" data-pagefind-ignore>
+      <div class="post-rail__card">
+        <h2 class="post-rail__title">Details</h2>
+        <dl class="post-rail__meta">
+          {% if post.date %}
+          <div>
+            <dt>Published</dt>
+            <dd><time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time></dd>
+          </div>
+          {% endif %}
+          {% if post.reading_time %}
+          <div>
+            <dt>Reading</dt>
+            <dd>{{ post.reading_time }} min</dd>
+          </div>
+          {% endif %}
+          {% if post.Extra.series %}
+          <div>
+            <dt>Series</dt>
+            <dd>{{ post.Extra.series }}</dd>
+          </div>
+          {% endif %}
+        </dl>
+      </div>
+
+      {% if post.Extra.highlights %}
+      <div class="post-rail__card">
+        <h2 class="post-rail__title">Highlights</h2>
+        <ul class="post-rail__list">
+          {% for item in post.Extra.highlights %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </aside>
+  </div>
+
+  {% include "components/post_graph.html" %}
+
+  {% if config.components.share.enabled %}
+  {% include "components/share.html" %}
+  {% endif %}
+
+  {% if post.tags %}
+  <footer class="post-footer">
+    <div class="tags">
+      {% for tag in post.tags %}
+      <a href="/tags/{{ tag | slugify }}/" class="tag p-category" data-pagefind-filter="tag">{{ tag }}</a>
+      {% endfor %}
+    </div>
+  </footer>
+  {% endif %}
+
+  {% include "partials/webmentions.html" %}
+</article>
+{% endblock %}

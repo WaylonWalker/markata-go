@@ -1,0 +1,65 @@
+{# Editorial Layout - Magazine-style homepage with content prioritization #}
+{% extends "base.html" %}
+
+{% block title %}{{ post.title | default:config.title }}{% endblock %}
+
+{% block body_class %}layout layout--editorial{% endblock %}
+
+{% block header %}
+<header class="site-header site-header--full site-header--sticky" data-pagefind-ignore>
+    <div class="container">
+        <a href="/" class="site-title">
+            {% if config.logo %}
+            <img src="{{ config.logo }}" alt="{{ config.title }}" class="site-logo" width="32" height="32">
+            {% endif %}
+            {{ config.title }}
+        </a>
+        {% include "components/nav.html" %}
+        <div class="header-actions">
+            {% if config.search.enabled %}
+            {% include "components/search.html" %}
+            {% endif %}
+            <button class="theme-toggle" type="button" aria-label="Toggle theme"></button>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block main %}
+<div class="layout-container layout-container--editorial">
+    {% if config.layout.editorial.show_featured and post.featured %}
+    <section class="featured-editorial" aria-label="Featured Story">
+        <div class="featured-editorial__container container">
+            <div class="featured-editorial__primary">
+                {% include "partials/cards/article-card.html" with post=post.featured.primary size="large" %}
+            </div>
+            {% if post.featured.secondary %}
+            <div class="featured-editorial__secondary">
+                {% for item in post.featured.secondary %}
+                {% include "partials/cards/article-card.html" with post=item size="small" %}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
+    <main class="layout-content layout-content--editorial container" id="main-content">
+        <div class="editorial-body">
+            {{ body | safe }}
+        </div>
+
+        {% if config.layout.editorial.bento_enabled and post.bento %}
+        <section class="editorial-bento" aria-label="Bento Highlights">
+            {% include "partial--bento-grid.html" with items=post.bento %}
+        </section>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}
+
+{% block footer %}
+{% if config.layout.editorial.footer_style != 'none' %}
+{% include "components/footer.html" %}
+{% endif %}
+{% endblock %}

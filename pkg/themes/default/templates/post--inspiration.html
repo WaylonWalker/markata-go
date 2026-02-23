@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} | {{ config.title | default:'My Site' }}{% endblock %}
+{% block description %}{{ post.description | default:'' }}{% endblock %}
+
+{% block meta %}
+{{ block.Super() }}
+<link rel="canonical" href="{{ config.url }}{{ post.href }}">
+{% if config.post_formats.og %}
+<link rel="alternate" type="text/html" title="Social Card" href="{{ post.href }}og/">
+{% endif %}
+{% endblock %}
+
+{% block progress %}
+<div class="article-progress" role="presentation" aria-hidden="true">
+  <span class="article-progress__indicator"></span>
+</div>
+{% endblock %}
+
+{% block content %}
+<article class="post post-inspiration h-entry" data-pagefind-body>
+  <a class="u-url" href="{{ config.url }}{{ post.href }}" hidden></a>
+
+  <header class="post-inspiration__header">
+    <div>
+      <p class="post-eyebrow">{% if post.Extra.kicker %}{{ post.Extra.kicker }}{% else %}Inspiration Board{% endif %}</p>
+      <h1 class="post-title p-name" data-pagefind-meta="title">{{ post.title }}</h1>
+      {% if post.description %}
+      <p class="post-dek p-summary" data-pagefind-meta="excerpt">{{ post.description | striptags }}</p>
+      {% endif %}
+    </div>
+
+    {% if post.cover_image %}
+    <figure class="post-inspiration__hero">
+      <img src="{{ post.cover_image }}" alt="" loading="lazy" data-pagefind-meta="image[content]">
+    </figure>
+    {% endif %}
+  </header>
+
+  <div class="post-inspiration__meta">
+    {% include "components/post_byline.html" %}
+    {% if post.tags %}
+    <div class="tags post-tags">
+      {% for tag in post.tags %}
+      <a href="/tags/{{ tag | slugify }}/" class="tag p-category">{{ tag }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="post-inspiration__layout">
+    <div class="post-content e-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
+      {{ body | safe }}
+    </div>
+
+    {% if post.Extra.inspiration %}
+    <section class="inspiration-board" aria-label="Inspiration board" data-pagefind-ignore>
+      {% for item in post.Extra.inspiration %}
+      <article class="inspiration-card">
+        {% if item.image %}
+        <div class="inspiration-card__media">
+          {% if item.url %}
+          <a href="{{ item.url }}" target="_blank" rel="noopener">
+            <img src="{{ item.image }}" alt="" loading="lazy">
+          </a>
+          {% else %}
+          <img src="{{ item.image }}" alt="" loading="lazy">
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="inspiration-card__body">
+          {% if item.title %}
+          <h3 class="inspiration-card__title">{{ item.title }}</h3>
+          {% endif %}
+          {% if item.note %}
+          <p class="inspiration-card__note">{{ item.note }}</p>
+          {% endif %}
+          {% if item.url %}
+          <a href="{{ item.url }}" class="inspiration-card__link" target="_blank" rel="noopener">Source</a>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </section>
+    {% endif %}
+  </div>
+
+  {% include "components/post_graph.html" %}
+
+  {% if config.components.share.enabled %}
+  {% include "components/share.html" %}
+  {% endif %}
+
+  {% include "partials/webmentions.html" %}
+</article>
+{% endblock %}

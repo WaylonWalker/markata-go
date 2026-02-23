@@ -591,6 +591,7 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		"description":    true,
 		"template":       true,
 		"templates":      true,
+		"layout":         true,
 		"slug":           true,
 		"secret_key":     true,
 		"private_key":    true,
@@ -644,6 +645,11 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 		post.Template = template
 	} else if template := GetString(metadata, "templateKey"); template != "" {
 		post.Template = template
+	}
+
+	// Layout - allow per-post layout override via frontmatter
+	if layout := GetString(metadata, "layout"); layout != "" {
+		post.Set("layout", layout)
 	}
 
 	// Templates - per-format template overrides
