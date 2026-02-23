@@ -266,6 +266,9 @@ func TestIsSelectorUsed(t *testing.T) {
 		{"span", false},
 		{"div.foo", true},
 		{"div.unused", false},
+		{":root", true},
+		{"::selection", true},
+		{":where(*)", true},
 		{".foo, .unused", true},       // One of multiple matches
 		{".unused1, .unused2", false}, // None match
 	}
