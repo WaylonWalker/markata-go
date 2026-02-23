@@ -461,6 +461,8 @@ type tomlFeedConfig struct {
 	Reverse         bool              `toml:"reverse"`
 	ItemsPerPage    int               `toml:"items_per_page"`
 	OrphanThreshold int               `toml:"orphan_threshold"`
+	Limit           int               `toml:"limit"`
+	Offset          int               `toml:"offset"`
 	PaginationType  string            `toml:"pagination_type"`
 	Formats         tomlFeedFormats   `toml:"formats"`
 	Templates       tomlFeedTemplates `toml:"templates"`
@@ -1601,6 +1603,8 @@ func (f *tomlFeedConfig) toFeedConfig() models.FeedConfig {
 		Reverse:         f.Reverse,
 		ItemsPerPage:    f.ItemsPerPage,
 		OrphanThreshold: f.OrphanThreshold,
+		Limit:           f.Limit,
+		Offset:          f.Offset,
 		PaginationType:  models.PaginationType(f.PaginationType),
 		Formats:         f.Formats.toFeedFormats(),
 		Templates:       f.Templates.toFeedTemplates(),
@@ -1732,6 +1736,8 @@ type yamlFeedConfig struct {
 	Reverse         bool              `yaml:"reverse"`
 	ItemsPerPage    int               `yaml:"items_per_page"`
 	OrphanThreshold int               `yaml:"orphan_threshold"`
+	Limit           int               `yaml:"limit"`
+	Offset          int               `yaml:"offset"`
 	PaginationType  string            `yaml:"pagination_type"`
 	Formats         yamlFeedFormats   `yaml:"formats"`
 	Templates       yamlFeedTemplates `yaml:"templates"`
@@ -2882,6 +2888,8 @@ func (f *yamlFeedConfig) toFeedConfig() models.FeedConfig {
 		Reverse:         f.Reverse,
 		ItemsPerPage:    f.ItemsPerPage,
 		OrphanThreshold: f.OrphanThreshold,
+		Limit:           f.Limit,
+		Offset:          f.Offset,
 		PaginationType:  models.PaginationType(f.PaginationType),
 		Formats:         f.Formats.toFeedFormats(),
 		Templates:       f.Templates.toFeedTemplates(),
@@ -3013,6 +3021,8 @@ type jsonFeedConfig struct {
 	Reverse         bool              `json:"reverse"`
 	ItemsPerPage    int               `json:"items_per_page"`
 	OrphanThreshold int               `json:"orphan_threshold"`
+	Limit           int               `json:"limit"`
+	Offset          int               `json:"offset"`
 	PaginationType  string            `json:"pagination_type"`
 	Formats         jsonFeedFormats   `json:"formats"`
 	Templates       jsonFeedTemplates `json:"templates"`
@@ -4163,6 +4173,8 @@ func (f *jsonFeedConfig) toFeedConfig() models.FeedConfig {
 		Reverse:         f.Reverse,
 		ItemsPerPage:    f.ItemsPerPage,
 		OrphanThreshold: f.OrphanThreshold,
+		Limit:           f.Limit,
+		Offset:          f.Offset,
 		PaginationType:  models.PaginationType(f.PaginationType),
 		Formats:         f.Formats.toFeedFormats(),
 		Templates:       f.Templates.toFeedTemplates(),
