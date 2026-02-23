@@ -164,6 +164,13 @@ func isSingleSelectorUsed(selector string, used *UsedSelectors, opts PurgeOption
 	ids := ExtractIDsFromSelector(selector)
 	elements := ExtractElementsFromSelector(selector)
 	attrs := ExtractAttributesFromSelector(selector)
+	hasPseudo := strings.Contains(selector, ":")
+
+	// Keep pseudo-only selectors (e.g., :root, ::selection) to avoid
+	// dropping base/theme rules that are not tied to specific elements.
+	if hasPseudo && len(classes) == 0 && len(ids) == 0 && len(attrs) == 0 && len(elements) == 0 {
+		return true
+	}
 
 	// For pure element selectors (no class/id), check if element is used
 	if len(classes) == 0 && len(ids) == 0 && len(attrs) == 0 && len(elements) > 0 {
