@@ -693,6 +693,22 @@ output_dir = "assets/vendor"
 verify_integrity = true
 ```
 
+### CSS Purge (`[my-ssg.css_purge]`)
+
+```toml
+[my-ssg.css_purge]
+enabled = false
+verbose = false
+preserve = ["js-*", "htmx-*", "theme-*", "palette-*"]
+preserve_attributes = ["data-theme", "data-palette"]
+skip_files = ["vendor/*", "normalize.css"]
+warning_threshold = 0
+```
+
+CSS purge removes unused rules by scanning generated HTML and keeping only selectors
+that are actually present. The purge logic always preserves key @-rules and keeps
+pseudo-only selectors like `:root` or `::selection` to avoid dropping base/theme styles.
+
 ### Theme (`[my-ssg.theme]`)
 
 ```toml

@@ -363,6 +363,22 @@ custom_css = "my-styles.css"
 
 See the [[themes-and-styling|Themes Guide]] for detailed customization options.
 
+### CSS Purge (`[markata-go.css_purge]`)
+
+```toml
+[markata-go.css_purge]
+enabled = false
+verbose = false
+preserve = ["js-*", "htmx-*", "theme-*", "palette-*"]
+preserve_attributes = ["data-theme", "data-palette"]
+skip_files = ["vendor/*", "normalize.css"]
+warning_threshold = 0
+```
+
+CSS purge removes unused rules by scanning generated HTML and keeping only selectors
+that are actually present. The purge logic always preserves key @-rules and keeps
+pseudo-only selectors like `:root` or `::selection` to avoid dropping base/theme styles.
+
 ### Aesthetic Settings (`[markata-go]`)
 
 Aesthetics control the non-color visual aspects of your site: border radius, spacing, shadows, and borders. While palettes control *what colors* you use, aesthetics control *how things are shaped*.
