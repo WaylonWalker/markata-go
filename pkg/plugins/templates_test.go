@@ -230,7 +230,17 @@ func TestTemplatesPlugin_ResolveTemplate(t *testing.T) {
 		want         string
 	}{
 		{
-			name:         "explicit template in frontmatter takes priority",
+			name:         "explicit layout in frontmatter takes priority",
+			layoutConfig: &models.LayoutConfig{Name: "docs"},
+			post: &models.Post{
+				Template: "post",
+				Href:     "/docs/getting-started/",
+				Extra:    map[string]interface{}{"layout": "modern"},
+			},
+			want: "post--modern.html",
+		},
+		{
+			name:         "explicit template file takes priority when set",
 			layoutConfig: &models.LayoutConfig{Name: "docs"},
 			post: &models.Post{
 				Template: "custom.html",

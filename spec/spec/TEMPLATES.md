@@ -129,21 +129,24 @@ Template for individual posts:
 
 ---
 
-## Modern Post Templates
+## Modern Post Layouts
 
-Modern post templates provide richer layouts while keeping all existing post fields optional. These templates are opt-in via frontmatter `template` and always extend `base.html`.
+Modern post layouts provide richer page shells while keeping all existing post fields optional. These layouts are opt-in via frontmatter `layout` and always extend `base.html`. The `template` field remains the post content type (used for feed card routing).
 
-### Template Names
+### Layout Names
 
-- `post--modern.html` - Contemporary article layout with hero media, metadata rail, and structured sections.
-- `post--inspiration.html` - Inspiration board layout with a visual grid of references.
+- `modern` -> `post--modern.html` (hero media, metadata rail, structured sections)
+- `inspiration` -> `post--inspiration.html` (inspiration board grid)
+- `editorial` -> `layout--editorial.html` (magazine-style homepage layout)
+- `storyteller` -> `layout--storyteller.html` (immersive narrative layout)
 
 ### Frontmatter Usage
 
 ```yaml
 ---
 title: "Modern Post"
-template: post--modern.html
+template: post
+layout: modern
 description: "Short summary for listings and SEO"
 cover_image: /images/hero.jpg
 tags: [design, inspiration]
@@ -153,7 +156,8 @@ tags: [design, inspiration]
 ```yaml
 ---
 title: "Inspiration Board"
-template: post--inspiration.html
+template: post
+layout: inspiration
 description: "Mood and reference board"
 cover_image: /images/hero.jpg
 inspiration:

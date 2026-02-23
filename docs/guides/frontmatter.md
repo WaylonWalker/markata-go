@@ -336,18 +336,30 @@ description: "Learn how to use goroutines for concurrent programming in Go."
 
 ### template (string)
 
-The HTML template file to use for rendering this post.
+The content type used for feed card routing and template presets. Use `layout` to select the page shell.
 
 ```yaml
-template: "tutorial.html"
+template: "post"
 ```
 
 - **Type:** string
-- **Default:** `"post.html"`
-- **Used for:** Custom layouts per post
+- **Default:** `"post"`
+- **Used for:** Feed card routing and template presets
 
-Templates are looked up in:
-1. `templates/` directory in your project
+### layout (string)
+
+The page layout template to use for rendering the full page wrapper.
+
+```yaml
+layout: "editorial"
+```
+
+- **Type:** string
+- **Default:** Resolved from `[markata-go.layout]` config
+- **Used for:** Full-page layout selection
+
+Layouts are looked up as:
+1. `layout--<name>.html` in `templates/`
 2. Theme templates
 3. Default theme fallback
 
@@ -365,7 +377,8 @@ Templates are looked up in:
 | `draft` | bool | `false` | No | Whether this is a work-in-progress |
 | `tags` | []string | `[]` | No | List of categorization tags |
 | `description` | string | Auto-generated | No | Brief summary for SEO/meta tags |
-| `template` | string | `"post.html"` | No | Template file to use for rendering |
+| `template` | string | `"post"` | No | Content type for feed card routing |
+| `layout` | string | Config default | No | Layout shell for the page |
 | `skip` | bool | `false` | No | Skip this file during processing entirely |
 | `authors` | []string | `[]` | No | List of author IDs (multi-author support) |
 | `author` | string | None | No | Legacy single-author name or ID |

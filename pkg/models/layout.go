@@ -89,6 +89,14 @@ func LayoutToTemplate(layout string) string {
 		return "layouts/landing.html"
 	case "bare":
 		return "layouts/bare.html"
+	case "modern":
+		return "post--modern.html"
+	case "inspiration":
+		return "post--inspiration.html"
+	case "editorial":
+		return "layout--editorial.html"
+	case "storyteller":
+		return "layout--storyteller.html"
 	default:
 		// For custom layouts, assume the layout name is the template name
 		if strings.HasSuffix(layout, ".html") {

@@ -534,16 +534,17 @@ This post will use `templates/landing.html` instead of the default `post.html`.
 
 ---
 
-## Modern Post Templates
+## Modern Post Layouts
 
-Markata-go ships opt-in modern post layouts you can enable per post using `template` in frontmatter.
+Markata-go ships opt-in modern post layouts you can enable per post using `layout` in frontmatter. Use `template: post` for the content type and `layout` for the page shell.
 
 ### Modern Article
 
 ```yaml
 ---
 title: "Modern Post"
-template: post--modern.html
+template: post
+layout: modern
 description: "A modern layout with hero media and a metadata rail"
 cover_image: /images/hero.jpg
 tags: [design, ui]
@@ -555,7 +556,8 @@ tags: [design, ui]
 ```yaml
 ---
 title: "Inspiration Board"
-template: post--inspiration.html
+template: post
+layout: inspiration
 description: "Mood and references for a new layout"
 cover_image: /images/hero.jpg
 inspiration:
@@ -570,6 +572,34 @@ inspiration:
 ```
 
 Inspiration items are optional and support `image`, `title`, `url`, and `note`. The layout degrades gracefully if only some fields are provided.
+
+### Marketing Layouts
+
+For homepage and marketing pages, use layout-specific shells:
+
+```yaml
+---
+title: "Editorial"
+template: post
+layout: editorial
+layout_config:
+  editorial:
+    show_featured: true
+    bento_enabled: true
+---
+```
+
+```yaml
+---
+title: "Storyteller"
+template: post
+layout: storyteller
+layout_config:
+  storyteller:
+    progress_indicator: true
+    scroll_reveal: true
+---
+```
 
 ### Creating a Landing Page Template
 
