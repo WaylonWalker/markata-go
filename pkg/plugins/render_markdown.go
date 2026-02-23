@@ -163,9 +163,9 @@ func createMarkdownRenderer(chromaTheme string, lineNumbers bool, extConfig Mark
 			parser.WithAutoHeadingID(),
 			// Enable attribute syntax for {.class}, {#id}, {key=value} on block elements
 			parser.WithAttribute(),
-			// Enable inline attribute syntax for images and links
+			// Enable inline attribute syntax for inline and block elements
 			parser.WithASTTransformers(
-				util.Prioritized(&InlineAttributeTransformer{}, 100),
+				util.Prioritized(&AttributeTransformer{}, -100),
 			),
 		),
 		goldmark.WithRendererOptions(
