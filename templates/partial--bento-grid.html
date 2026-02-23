@@ -1,0 +1,31 @@
+<section class="bento-grid" style="--bento-gap: {{ gap | default('var(--space-6)') }}; --bento-columns: {{ columns | default(3) }};">
+    {% for item in items %}
+    <div class="bento-item {% if item.size %}bento-item--{{ item.size }}{% endif %}" {% if item.color %}style="--bento-item-accent: {{ item.color }};"{% endif %}>
+        {% if item.icon %}
+        <div class="bento-item__icon" aria-hidden="true">
+            {% if item.icon|lower|endswith:".svg" %}
+            <img src="{{ item.icon | theme_asset }}" alt="">
+            {% else %}
+            <i class="icon-{{ item.icon }}"></i>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="bento-item__body">
+            {% if item.title %}
+            <h3 class="bento-item__title">{{ item.title }}</h3>
+            {% endif %}
+
+            {% if item.content %}
+            <div class="bento-item__content">
+                {{ item.content | safe }}
+            </div>
+            {% endif %}
+        </div>
+
+        {% if item.href %}
+        <a href="{{ item.href }}" class="bento-item__link" aria-label="Learn more about {{ item.title }}"></a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</section>

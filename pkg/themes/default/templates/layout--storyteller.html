@@ -1,0 +1,54 @@
+{# Storyteller Layout - Immersive full-height narrative layout #}
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} | {{ config.title }}{% endblock %}
+
+{% block body_class %}layout layout--storyteller{% if config.layout.storyteller.parallax_enabled %} layout--parallax{% endif %}{% endblock %}
+
+{% block header %}
+<header class="site-header site-header--minimal site-header--sticky" data-pagefind-ignore>
+    <div class="container">
+        <a href="/" class="site-title">
+            {% if config.logo %}
+            <img src="{{ config.logo }}" alt="{{ config.title }}" class="site-logo" width="32" height="32">
+            {% endif %}
+            {{ config.title }}
+        </a>
+        <div class="header-actions">
+            {% if config.layout.storyteller.progress_indicator %}
+            <div class="story-progress" role="progressbar" aria-label="Reading progress">
+                <div class="story-progress__bar"></div>
+            </div>
+            {% endif %}
+            {% include "components/share.html" %}
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block main %}
+<div class="layout-container layout-container--storyteller">
+    <main class="layout-content layout-content--storyteller" id="main-content">
+        <article class="post-content storyteller-article {% if post.css_class %} {{ post.css_class }}{% endif %}">
+            {# The content will be rendered as full-height sections if configured #}
+            {{ body | safe }}
+        </article>
+    </main>
+</div>
+{% endblock %}
+
+{% block footer %}
+{% if config.layout.storyteller.footer_style != 'none' %}
+{% include "components/footer.html" %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% if config.layout.storyteller.scroll_reveal %}
+<script src="{{ 'js/scroll-reveal.js' | theme_asset }}" defer></script>
+{% endif %}
+{% if config.layout.storyteller.progress_indicator %}
+<script src="{{ 'js/story-progress.js' | theme_asset }}" defer></script>
+{% endif %}
+{% endblock %}
