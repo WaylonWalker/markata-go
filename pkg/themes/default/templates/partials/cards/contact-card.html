@@ -2,40 +2,44 @@
 {# Shows avatar (from image/icon/avatar fields), name, description, handle #}
 <article class="card card-contact h-card h-entry">
   <a class="u-url" href="{{ post.href }}" hidden></a>
-  <div class="card-contact-layout">
-    {% with post.avatar|media_url:post.image as avatar_src %}
-    {% if avatar_src %}
-    <a href="{{ post.href }}" class="card-contact-avatar-link">
-      <div class="card-contact-avatar">
-        <img src="{{ avatar_src }}" alt="{{ post.title | default:post.slug }}" class="u-photo" loading="lazy">
+  <header class="card-header">
+    <div class="card-contact-layout">
+      {% with post.avatar|media_url:post.image as avatar_src %}
+      {% if avatar_src %}
+      <a href="{{ post.href }}" class="card-contact-avatar-link">
+        <div class="card-contact-avatar">
+          <img src="{{ avatar_src }}" alt="{{ post.title | default:post.slug }}" class="u-photo" loading="lazy">
+        </div>
+      </a>
+      {% else %}
+      <a href="{{ post.href }}" class="card-contact-avatar-link">
+        <div class="card-contact-avatar card-contact-initials">
+          {{ post.title | default:post.slug | first | upper }}
+        </div>
+      </a>
+      {% endif %}
+      {% endwith %}
+
+      <div class="card-contact-header-text">
+        <h3 class="card-title p-name">
+          <a href="{{ post.href }}">{{ post.title | default:post.slug }}</a>
+        </h3>
+
+        {% if post.handle %}
+        <span class="card-contact-handle p-nickname">@{{ post.handle }}</span>
+        {% endif %}
       </div>
-    </a>
-    {% else %}
-    <a href="{{ post.href }}" class="card-contact-avatar-link">
-      <div class="card-contact-avatar card-contact-initials">
-        {{ post.title | default:post.slug | first | upper }}
-      </div>
-    </a>
-    {% endif %}
-    {% endwith %}
-
-    <div class="card-contact-body">
-      <h3 class="card-title p-name">
-        <a href="{{ post.href }}">{{ post.title | default:post.slug }}</a>
-      </h3>
-
-      {% if post.handle %}
-      <span class="card-contact-handle p-nickname">@{{ post.handle }}</span>
-      {% endif %}
-
-      {% if post.description %}
-      <p class="card-contact-bio p-note">{{ post.description }}</p>
-      {% endif %}
-
-      {% if post.url %}
-      <a href="{{ post.url }}" class="card-contact-site u-url" rel="noopener" target="_blank">{{ post.url }}</a>
-      {% endif %}
     </div>
+  </header>
+
+  <div class="card-body">
+    {% if post.description %}
+    <p class="card-contact-bio p-note">{{ post.description }}</p>
+    {% endif %}
+
+    {% if post.url %}
+    <a href="{{ post.url }}" class="card-contact-site u-url" rel="noopener" target="_blank">{{ post.url }}</a>
+    {% endif %}
   </div>
 
   <footer class="card-meta">

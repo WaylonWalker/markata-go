@@ -403,6 +403,93 @@ include_content = true
 	}
 }
 
+func TestParseTOML_FeedLimitOffset(t *testing.T) {
+	data := []byte(`
+[markata-go]
+[[markata-go.feeds]]
+slug = "blog"
+limit = 3
+offset = 2
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if len(config.Feeds) != 1 {
+		t.Fatalf("len(Feeds) = %d, want 1", len(config.Feeds))
+	}
+
+	feed := config.Feeds[0]
+	if feed.Limit != 3 {
+		t.Errorf("Limit = %d, want 3", feed.Limit)
+	}
+	if feed.Offset != 2 {
+		t.Errorf("Offset = %d, want 2", feed.Offset)
+	}
+}
+
+func TestParseYAML_FeedLimitOffset(t *testing.T) {
+	data := []byte(`
+markata-go:
+  feeds:
+    - slug: blog
+      limit: 4
+      offset: 1
+`)
+
+	config, err := ParseYAML(data)
+	if err != nil {
+		t.Fatalf("ParseYAML() error = %v", err)
+	}
+
+	if len(config.Feeds) != 1 {
+		t.Fatalf("len(Feeds) = %d, want 1", len(config.Feeds))
+	}
+
+	feed := config.Feeds[0]
+	if feed.Limit != 4 {
+		t.Errorf("Limit = %d, want 4", feed.Limit)
+	}
+	if feed.Offset != 1 {
+		t.Errorf("Offset = %d, want 1", feed.Offset)
+	}
+}
+
+func TestParseJSON_FeedLimitOffset(t *testing.T) {
+	data := []byte(`
+{
+  "markata-go": {
+    "feeds": [
+      {
+        "slug": "blog",
+        "limit": 2,
+        "offset": 3
+      }
+    ]
+  }
+}
+`)
+
+	config, err := ParseJSON(data)
+	if err != nil {
+		t.Fatalf("ParseJSON() error = %v", err)
+	}
+
+	if len(config.Feeds) != 1 {
+		t.Fatalf("len(Feeds) = %d, want 1", len(config.Feeds))
+	}
+
+	feed := config.Feeds[0]
+	if feed.Limit != 2 {
+		t.Errorf("Limit = %d, want 2", feed.Limit)
+	}
+	if feed.Offset != 3 {
+		t.Errorf("Offset = %d, want 3", feed.Offset)
+	}
+}
+
 func TestParseTOML_MarkdownConfig(t *testing.T) {
 	data := []byte(`
 [markata-go]

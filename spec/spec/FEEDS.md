@@ -63,6 +63,10 @@ include_private = false            # Include private posts (default: false)
 items_per_page = 10                # 0 = no pagination (all on one page)
 orphan_threshold = 3               # If last page has ≤3 items, merge with previous
 
+# Limit/Offset
+limit = 0                          # Hard cap on total items (0 = unlimited)
+offset = 0                         # Skip the first N items (0 = none)
+
 # Output Formats (all optional, defaults shown)
 [markata-go.feeds.formats]
 html = true                        # /blog/index.html, /blog/page/2/index.html
@@ -101,6 +105,8 @@ sitemap = "sitemap.xml"            # Template for sitemap
 | `sort` | string? | Sort field |
 | `reverse` | bool | Sort direction |
 | `include_private` | bool | Include private posts in feed (default: false) |
+| `limit` | int | Hard cap on total items (0 = unlimited) |
+| `offset` | int | Skip the first N items (0 = none) |
 | `posts` | List[Post] | All matching posts (pre-pagination) |
 | `page_posts` | List[Post] | Posts for current page |
 | `pagination` | Pagination | Pagination info |
@@ -138,6 +144,14 @@ HTML pages include `<link rel="hub">` tags in the `<head>` for each hub.
 | `next_url` | string? | URL to next page |
 | `page_urls` | List[string] | URLs for all pages |
 | `pagination_type` | string | Pagination strategy (htmx, manual, js) |
+
+### Limit + Offset
+
+Feeds can hard-cap the result set before pagination. After filtering and sorting,
+the feed applies `offset` (skip N posts) and `limit` (keep at most N posts). The
+remaining posts are then paginated.
+
+Defaults: `limit = 0` and `offset = 0` (disabled).
 
 ---
 
@@ -1231,14 +1245,14 @@ If no `[markata-go.feeds.defaults]` is specified, these built-in values apply:
 
 | Format | Default Limit | Configurable |
 |--------|---------------|--------------|
-| HTML | Paginated | `items_per_page` |
-| Simple HTML | Paginated | `items_per_page` |
-| RSS | 20 | `syndication.max_items` or `max_items` |
-| Atom | 20 | `syndication.max_items` or `max_items` |
-| JSON | All | `items_per_page` |
-| Markdown | All | `items_per_page` |
-| Text | All | `items_per_page` |
-| Sitemap | All | N/A (always includes all posts) |
+| HTML | Paginated | `items_per_page` + `limit` / `offset` |
+| Simple HTML | Paginated | `items_per_page` + `limit` / `offset` |
+| RSS | 20 | `syndication.max_items` + `limit` / `offset` |
+| Atom | 20 | `syndication.max_items` + `limit` / `offset` |
+| JSON | All | `limit` / `offset` |
+| Markdown | All | `limit` / `offset` |
+| Text | All | `limit` / `offset` |
+| Sitemap | All | `limit` / `offset` |
 
 ---
 

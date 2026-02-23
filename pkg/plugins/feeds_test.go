@@ -228,6 +228,56 @@ func TestFeedsPlugin_ReverseSorting(t *testing.T) {
 	}
 }
 
+func TestFeedsPlugin_LimitOffset(t *testing.T) {
+	m := lifecycle.NewManager()
+
+	date1 := time.Date(2024, 1, 20, 0, 0, 0, 0, time.UTC)
+	date2 := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	date3 := time.Date(2024, 1, 10, 0, 0, 0, 0, time.UTC)
+	date4 := time.Date(2024, 1, 5, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post 1"), Date: &date1},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("Post 2"), Date: &date2},
+		{Path: "post3.md", Slug: "post3", Title: strPtr("Post 3"), Date: &date3},
+		{Path: "post4.md", Slug: "post4", Title: strPtr("Post 4"), Date: &date4},
+	})
+
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"feeds": []models.FeedConfig{
+			{
+				Slug:   "limited",
+				Title:  "Limited",
+				Limit:  2,
+				Offset: 1,
+			},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewFeedsPlugin()
+	if err := plugin.Collect(m); err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+	if len(feeds) != 1 {
+		t.Fatalf("expected 1 feed, got %d", len(feeds))
+	}
+
+	posts := feeds[0].Posts
+	if len(posts) != 2 {
+		t.Fatalf("expected 2 posts after limit/offset, got %d", len(posts))
+	}
+	if posts[0].Slug != "post2" {
+		t.Errorf("first post should be post2 after offset, got %q", posts[0].Slug)
+	}
+	if posts[1].Slug != "post3" {
+		t.Errorf("second post should be post3 after limit, got %q", posts[1].Slug)
+	}
+}
+
 func TestFeedsPlugin_Pagination(t *testing.T) {
 	m := lifecycle.NewManager()
 

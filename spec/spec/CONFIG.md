@@ -652,6 +652,8 @@ description = "All posts"
 filter = "published == True"
 sort = "date"
 reverse = true
+limit = 0
+offset = 0
 ```
 
 ### Serve (`[my-ssg.serve]`)

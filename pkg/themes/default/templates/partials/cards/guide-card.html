@@ -1,22 +1,23 @@
 {# Guide Card - Step/chapter indicator for guides, series, tutorials #}
 {# Shows step number (from forloop.counter), title, description #}
 <article class="card card-guide h-entry">
-  <div class="card-step-indicator">
-    <span class="step-number">{{ forloop.counter | default:"1" }}</span>
-  </div>
+  <header class="card-header">
+    <div class="card-step-indicator">
+      <span class="step-number">{{ forloop.counter | default:"1" }}</span>
+    </div>
+    <h3 class="card-title p-name"><a class="u-url" href="{{ post.href }}">{{ post.title | default:post.slug }}</a></h3>
+  </header>
 
   <div class="card-body">
-    <h3 class="card-title p-name"><a class="u-url" href="{{ post.href }}">{{ post.title | default:post.slug }}</a></h3>
-
     {% if post.description %}
     <p class="card-description p-summary">{{ post.description | truncatechars:200 }}</p>
     {% endif %}
-
-    <footer class="card-meta">
-      {% if post.date %}
-      <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
-      {% endif %}
-      {% if post.reading_time %}<span class="reading-time">{{ post.reading_time }} min</span>{% endif %}
-    </footer>
   </div>
+
+  <footer class="card-meta">
+    {% if post.date %}
+    <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
+    {% endif %}
+    {% if post.reading_time %}<span class="reading-time">{{ post.reading_time }} min</span>{% endif %}
+  </footer>
 </article>

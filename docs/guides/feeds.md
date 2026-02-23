@@ -91,6 +91,10 @@ include_private = false            # Include private posts (default: false)
 items_per_page = 10                # 0 = no pagination (all on one page)
 orphan_threshold = 3               # If last page has <=3 items, merge with previous
 
+# Limit/Offset
+limit = 0                          # Hard cap on total items (0 = unlimited)
+offset = 0                         # Skip the first N items (0 = none)
+
 # Output Formats
 [markata-go.feeds.formats]
 html = true                        # /blog/index.html, /blog/page/2/index.html
@@ -212,6 +216,21 @@ slug = "blog"
 items_per_page = 10           # Posts per page (0 = all on one page)
 orphan_threshold = 3          # Merge last page if <= N items
 pagination_type = "manual"    # Pagination strategy
+```
+
+## Limit + Offset
+
+Use `limit` and `offset` to hard-cap a feed before pagination. This is useful for
+"latest N" lists or skipping a fixed number of entries.
+
+```toml
+[[markata-go.feeds]]
+slug = "blog"
+filter = "published == True"
+sort = "date"
+reverse = true
+limit = 3      # Only include 3 posts total
+offset = 1     # Skip the newest post
 ```
 
 ## Feed Timestamps
@@ -1180,6 +1199,8 @@ RSS/Atom feeds include `rel="hub"` and `rel="self"` links when WebSub is enabled
 | `items_per_page` | int | `10` | Posts per page (0=no pagination) |
 | `orphan_threshold` | int | `3` | Min items for separate page |
 | `pagination_type` | string | `"manual"` | `manual`, `htmx`, or `js` |
+| `limit` | int | `0` | Hard cap on total items (0 = unlimited) |
+| `offset` | int | `0` | Skip the first N items (0 = none) |
 | `formats` | object | - | Output formats |
 | `templates` | object | - | Custom templates |
 
