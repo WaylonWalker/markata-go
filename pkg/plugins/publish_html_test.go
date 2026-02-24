@@ -313,6 +313,54 @@ func TestPublishHTMLPlugin_OGCardWithoutFrontmatterImageOmitsImageTag(t *testing
 	}
 }
 
+func TestPublishHTMLPlugin_OGCardSupportsVideoFrontmatter(t *testing.T) {
+	tempDir := t.TempDir()
+	plugin := NewPublishHTMLPlugin()
+
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"url":          "https://example.com",
+			"title":        "Test Site",
+			"post_formats": models.PostFormatsConfig{OG: true},
+		},
+	}
+
+	title := "Post With Video"
+	post := &models.Post{
+		Path:        "test.md",
+		Slug:        "test-post",
+		Title:       &title,
+		HTML:        "<html><body>Test content</body></html>",
+		Published:   true,
+		Draft:       false,
+		Skip:        false,
+		ArticleHTML: "<p>Test content</p>",
+		Extra: map[string]interface{}{
+			"video": "https://cdn.example.com/posts/clip.mp4",
+		},
+	}
+
+	m := createTestManager(t, config)
+	if err := plugin.writePost(post, config, nil, m); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+
+	ogPath := filepath.Join(tempDir, "test-post", "og", "index.html")
+	content, err := os.ReadFile(ogPath)
+	if err != nil {
+		t.Fatalf("failed to read OG card: %v", err)
+	}
+
+	ogHTML := string(content)
+	if !strings.Contains(ogHTML, "<video") {
+		t.Errorf("OG card should include video tag when video frontmatter is set. Got: %s", ogHTML)
+	}
+	if strings.Contains(ogHTML, "<img") {
+		t.Errorf("OG card should not include image tag when video frontmatter is set. Got: %s", ogHTML)
+	}
+}
+
 // TestPublishHTMLPlugin_ShadowPagesDocumentation tests the expected behavior is documented.
 func TestPublishHTMLPlugin_ShadowPagesDocumentation(t *testing.T) {
 	// This test documents the shadow pages behavior:
