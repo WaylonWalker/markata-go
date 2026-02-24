@@ -130,6 +130,7 @@ await page.screenshot({ path: 'og-image.png' });
 
 The default OG card template includes:
 - Post title (large, prominent)
+- Frontmatter media when present (`image` → `cover_image` → `og_image`)
 - Author name and site URL
 - Publication date
 - Theme palette and background styling

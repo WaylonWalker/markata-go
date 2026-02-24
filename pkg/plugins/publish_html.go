@@ -39,6 +39,31 @@ func isSpecialFile(slug string) bool {
 	return false
 }
 
+func getPostExtraString(post *models.Post, keys ...string) string {
+	if post == nil || post.Extra == nil {
+		return ""
+	}
+
+	for _, key := range keys {
+		value, ok := post.Extra[key]
+		if !ok {
+			continue
+		}
+
+		strValue, ok := value.(string)
+		if !ok {
+			continue
+		}
+
+		trimmed := strings.TrimSpace(strValue)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+
+	return ""
+}
+
 // PublishHTMLPlugin writes individual post HTML files during the write stage.
 // It supports multiple output formats: HTML, Markdown source, and OG card HTML.
 type PublishHTMLPlugin struct {
@@ -727,6 +752,8 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
 		dateStr = post.Date.Format("January 2, 2006")
 	}
 
+	imageURL := getPostExtraString(post, "image", "cover_image", "og_image")
+
 	// Build canonical URL for the original post
 	canonicalURL := siteURL + "/" + post.Slug + "/"
 
@@ -774,6 +801,31 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
             display: flex;
             flex-direction: column;
             justify-content: center;
+            gap: 24px;
+        }
+        .og-layout {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 36px;
+        }
+        .og-copy {
+            flex: 1;
+            min-width: 0;
+        }
+        .og-image-wrap {
+            width: 360px;
+            height: 320px;
+            border-radius: 18px;
+            overflow: hidden;
+            border: 2px solid #e2e8f0;
+            box-shadow: 0 14px 35px -16px rgba(0, 0, 0, 0.45);
+            flex-shrink: 0;
+        }
+        .og-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
         h1 {
             font-size: 56px;
@@ -831,15 +883,24 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
 <body>
     <div class="og-card">
         <div class="og-content">
-            <h1>{{.Title}}</h1>
-            {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
-            {{if .Tags}}
-            <div class="tags">
-                {{range .TagsDisplay}}
-                <span class="tag">{{.}}</span>
+            <div class="og-layout">
+                <div class="og-copy">
+                    <h1>{{.Title}}</h1>
+                    {{if .Description}}<p class="description">{{.Description}}</p>{{end}}
+                    {{if .Tags}}
+                    <div class="tags">
+                        {{range .TagsDisplay}}
+                        <span class="tag">{{.}}</span>
+                        {{end}}
+                    </div>
+                    {{end}}
+                </div>
+                {{if .ImageURL}}
+                <div class="og-image-wrap">
+                    <img src="{{.ImageURL}}" alt="{{.Title}}" class="og-image">
+                </div>
                 {{end}}
             </div>
-            {{end}}
         </div>
         <div class="og-footer">
             <span class="site-name">{{.SiteTitle}}</span>
@@ -868,6 +929,7 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
 		DateStr      string
 		Tags         []string
 		TagsDisplay  []string
+		ImageURL     string
 		SiteTitle    string
 		CanonicalURL string
 	}{
@@ -876,6 +938,7 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
 		DateStr:      dateStr,
 		Tags:         post.Tags,
 		TagsDisplay:  tagsDisplay,
+		ImageURL:     imageURL,
 		SiteTitle:    siteTitle,
 		CanonicalURL: canonicalURL,
 	}
