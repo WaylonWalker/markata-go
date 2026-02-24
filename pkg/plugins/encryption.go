@@ -4,6 +4,7 @@ package plugins
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -26,7 +27,10 @@ type EncryptionBuildError struct {
 }
 
 func (e *EncryptionBuildError) Error() string {
-	return fmt.Sprintf("encryption error: %s (posts: %s)", e.Msg, strings.Join(e.Posts, ", "))
+	if len(e.Posts) == 0 {
+		return fmt.Sprintf("encryption error: %s", e.Msg)
+	}
+	return fmt.Sprintf("encryption error: %s\n%s", e.Msg, strings.Join(e.Posts, "\n"))
 }
 
 // IsCritical marks this error as a build-halting error.
@@ -94,9 +98,9 @@ func (p *EncryptionPlugin) Configure(m *lifecycle.Manager) error {
 		p.defaultKey = modelsConfig.Encryption.DefaultKey
 		p.decryptionHint = modelsConfig.Encryption.DecryptionHint
 		p.enforceStrength = modelsConfig.Encryption.EnforceStrength
-		p.minPasswordLength = modelsConfig.Encryption.MinPasswordLength
+		p.minPasswordLength = modelsConfig.Encryption.MinPasswordLength // pragma: allowlist secret
 		if p.minPasswordLength == 0 {
-			p.minPasswordLength = encryption.DefaultMinPasswordLength
+			p.minPasswordLength = encryption.DefaultMinPasswordLength // pragma: allowlist secret
 		}
 		durationStr := modelsConfig.Encryption.MinEstimatedCrackTime
 		if durationStr == "" {
@@ -254,7 +258,7 @@ func (p *EncryptionPlugin) Transform(m *lifecycle.Manager) error {
 	}
 
 	p.applyPrivateTags(m.Posts())
-	return nil
+	return p.validatePrivatePosts(m.Posts())
 }
 
 // Render encrypts content for private posts with encryption keys.
@@ -278,45 +282,8 @@ func (p *EncryptionPlugin) Render(m *lifecycle.Manager) error {
 
 	// Check that every private post can be encrypted.
 	// This is a safety check: we must NEVER expose private content unencrypted.
-	var failedPosts []string
-	passwordCache := make(map[string]string)
-	policyCache := make(map[string]error)
-	for _, post := range privatePosts {
-		keyName := post.SecretKey
-		if keyName == "" {
-			keyName = p.defaultKey
-		}
-		if keyName == "" {
-			failedPosts = append(failedPosts, fmt.Sprintf("%s (no encryption key specified and no default key configured)", post.Path))
-			continue
-		}
-		normalized := strings.ToLower(keyName)
-		if _, cached := passwordCache[normalized]; !cached {
-			var password string
-			var err error
-			password, err = p.getKeyPassword(keyName)
-			if err != nil {
-				failedPosts = append(failedPosts, fmt.Sprintf("%s (key %q: set %s%s in environment or .env)",
-					post.Path, keyName, EncryptionEnvPrefix, strings.ToUpper(keyName)))
-				continue
-			}
-			passwordCache[normalized] = password
-			if p.enforceStrength {
-				policyCache[normalized] = p.validatePasswordPolicy(password)
-			} else {
-				policyCache[normalized] = nil
-			}
-		}
-		if err := policyCache[normalized]; err != nil {
-			failedPosts = append(failedPosts, fmt.Sprintf("%s (key %q: %s)", post.Path, keyName, err.Error()))
-		}
-	}
-
-	if len(failedPosts) > 0 {
-		return &EncryptionBuildError{
-			Posts: failedPosts,
-			Msg:   "private posts found without available encryption keys. Build halted to prevent exposing private content",
-		}
+	if err := p.validatePrivatePosts(privatePosts); err != nil {
+		return err
 	}
 
 	// Filter to posts that actually have content to encrypt
@@ -333,6 +300,122 @@ func (p *EncryptionPlugin) Render(m *lifecycle.Manager) error {
 	return m.ProcessPostsSliceConcurrently(postsToEncrypt, func(post *models.Post) error {
 		return p.encryptPostWithCache(post, cache)
 	})
+}
+
+func (p *EncryptionPlugin) validatePrivatePosts(posts []*models.Post) error {
+	if len(posts) == 0 {
+		return nil
+	}
+
+	var failures []encryptionFailure
+	passwordCache := make(map[string]string)
+	policyCache := make(map[string]error)
+	for _, post := range posts {
+		if post.Skip || post.Draft || !post.Private {
+			continue
+		}
+		keyName := post.SecretKey
+		if keyName == "" {
+			keyName = p.defaultKey
+		}
+		if keyName == "" {
+			failures = append(failures, encryptionFailure{
+				postPath: post.Path,
+				keyName:  "(none)",
+				reason:   "no encryption key specified and no default key configured",
+			})
+			continue
+		}
+		normalized := strings.ToLower(keyName)
+		if _, cached := passwordCache[normalized]; !cached {
+			var password string
+			var err error
+			password, err = p.getKeyPassword(keyName)
+			if err != nil {
+				failures = append(failures, encryptionFailure{
+					postPath: post.Path,
+					keyName:  keyName,
+					reason:   fmt.Sprintf("set %s%s in environment or .env", EncryptionEnvPrefix, strings.ToUpper(keyName)),
+				})
+				continue
+			}
+			passwordCache[normalized] = password
+			if p.enforceStrength {
+				policyCache[normalized] = p.validatePasswordPolicy(password)
+			} else {
+				policyCache[normalized] = nil
+			}
+		}
+		if err := policyCache[normalized]; err != nil {
+			failures = append(failures, encryptionFailure{
+				postPath: post.Path,
+				keyName:  keyName,
+				reason:   err.Error(),
+			})
+		}
+	}
+
+	if len(failures) == 0 {
+		return nil
+	}
+
+	return &EncryptionBuildError{
+		Posts: summarizeEncryptionFailures(failures),
+		Msg:   "private posts found without available encryption keys. Build halted to prevent exposing private content",
+	}
+}
+
+const maxEncryptionFailureSamples = 3
+
+type encryptionFailure struct {
+	postPath string
+	keyName  string
+	reason   string
+}
+
+type encryptionFailureGroup struct {
+	keyName string
+	reason  string
+	posts   []string
+}
+
+func summarizeEncryptionFailures(failures []encryptionFailure) []string {
+	if len(failures) == 0 {
+		return nil
+	}
+
+	groups := make(map[string]*encryptionFailureGroup)
+	keys := make([]string, 0, len(failures))
+	for _, failure := range failures {
+		groupKey := failure.keyName + "\x00" + failure.reason
+		group, ok := groups[groupKey]
+		if !ok {
+			group = &encryptionFailureGroup{keyName: failure.keyName, reason: failure.reason}
+			groups[groupKey] = group
+			keys = append(keys, groupKey)
+		}
+		group.posts = append(group.posts, failure.postPath)
+	}
+
+	sort.Strings(keys)
+	lines := make([]string, 0, len(keys))
+	for _, key := range keys {
+		group := groups[key]
+		sample := group.posts
+		more := false
+		if len(sample) > maxEncryptionFailureSamples {
+			sample = sample[:maxEncryptionFailureSamples]
+			more = true
+		}
+		line := fmt.Sprintf("key %q: %s (posts: %d, sample: %s", group.keyName, group.reason, len(group.posts), strings.Join(sample, ", "))
+		if more {
+			line += ", ..."
+		}
+		line += ")"
+		lines = append(lines, line)
+	}
+
+	return lines
 }
 
 func (p *EncryptionPlugin) validatePasswordPolicy(password string) error {

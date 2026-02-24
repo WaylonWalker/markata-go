@@ -221,12 +221,11 @@ gratitude = "default"    # Matches posts with tag "gratitude" OR templateKey "gr
 
 ### Missing Keys Fail the Build
 
-If any private post has no available encryption key, the build **fails with a critical error** listing all affected posts and the expected environment variables:
+If any private post has no available encryption key, the build **fails early with a critical error** that summarizes the failures by key and reason:
 
 ```
-encryption error: private posts found without available encryption keys.
-Build halted to prevent exposing private content
-(posts: diary/2024-01-15.md (key "personal": set MARKATA_GO_ENCRYPTION_KEY_PERSONAL in environment or .env))
+encryption error: private posts found without available encryption keys. Build halted to prevent exposing private content
+key "personal": set MARKATA_GO_ENCRYPTION_KEY_PERSONAL in environment or .env (posts: 12, sample: diary/2024-01-15.md, diary/2024-01-16.md, diary/2024-01-17.md)
 ```
 
 This is intentional. Private content must never be published unencrypted.
