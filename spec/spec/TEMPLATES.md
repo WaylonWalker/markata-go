@@ -205,6 +205,14 @@ post template when possible:
 The default theme ships both `post-og.html` and `og-card.html` so OG cards match the
 site palette and background styling.
 
+When an OG card template renders post media, it MUST use this frontmatter fallback order:
+
+1. `image`
+2. `cover_image`
+3. `og_image`
+
+If none of these fields are present, the OG card renders a text-only layout.
+
 ### Feed Templates
 
 | Variable | Type | Description |
