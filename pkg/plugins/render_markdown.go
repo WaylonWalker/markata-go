@@ -41,6 +41,8 @@ type RenderMarkdownPlugin struct {
 	cache *buildcache.Cache // build cache for HTML caching
 }
 
+const renderMarkdownCacheVersion = "render-markdown-v2"
+
 // NewRenderMarkdownPlugin creates a new RenderMarkdownPlugin with goldmark configured.
 // The goldmark instance is configured with:
 // - GFM extensions (tables, strikethrough, autolinks, task lists)
@@ -351,7 +353,7 @@ func (p *RenderMarkdownPlugin) Render(m *lifecycle.Manager) error {
 
 		// Try to get cached HTML if content hasn't changed
 		if p.cache != nil {
-			contentHash := buildcache.ContentHash(post.Content)
+			contentHash := renderMarkdownContentHash(post.Content)
 			if cachedHTML := p.cache.GetCachedArticleHTML(post.Path, contentHash); cachedHTML != "" {
 				post.ArticleHTML = cachedHTML
 				// Detect CSS requirements from cached HTML
@@ -403,7 +405,7 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 
 	// Cache the result for future incremental builds
 	if p.cache != nil {
-		contentHash := buildcache.ContentHash(post.Content)
+		contentHash := renderMarkdownContentHash(post.Content)
 		//nolint:errcheck // caching is best-effort, failures are non-fatal
 		p.cache.CacheArticleHTML(post.Path, contentHash, renderedHTML)
 	}
@@ -431,6 +433,10 @@ func (p *RenderMarkdownPlugin) doRender(content string) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+func renderMarkdownContentHash(content string) string {
+	return buildcache.ContentHash(renderMarkdownCacheVersion + "\n" + content)
 }
 
 // detectCSSRequirements scans the rendered HTML and sets flags in post.Extra
