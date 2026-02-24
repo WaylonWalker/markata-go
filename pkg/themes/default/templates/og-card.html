@@ -78,7 +78,8 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
         }
 
-        .og-media img {
+        .og-media img,
+        .og-media video {
             display: block;
             width: 100%;
             height: 100%;
@@ -184,8 +185,9 @@
     {% if config.theme.palette %}
     <link rel="stylesheet" href="/css/palette.css">
     {% endif %}
+{% with post.image|media_url:post.cover_image|media_url:post.og_image|media_url:post.video as media_src %}
 </head>
-<body class="{% if post.image or post.cover_image or post.og_image %}has-media {% endif %}{% if post.title|length < 20 %}title-xs{% elif post.title|length < 40 %}title-sm{% elif post.title|length < 60 %}title-md{% elif post.title|length < 100 %}title-lg{% else %}title-xl{% endif %}">
+<body class="{% if media_src %}has-media {% endif %}{% if post.title|length < 20 %}title-xs{% elif post.title|length < 40 %}title-sm{% elif post.title|length < 60 %}title-md{% elif post.title|length < 100 %}title-lg{% else %}title-xl{% endif %}">
     <!-- Background Decorations -->
     {% if config.theme.background.enabled %}
     {% for bg in config.theme.background.backgrounds %}
@@ -197,14 +199,14 @@
         <div class="og-copy">
             <h1 class="og-title">{{ post.title }}</h1>
         </div>
-        {% if post.image or post.cover_image or post.og_image %}
+        {% if media_src %}
         <figure class="og-media">
-            {% if post.image %}
-            <img src="{{ post.image }}" alt="{{ post.title }}">
-            {% elif post.cover_image %}
-            <img src="{{ post.cover_image }}" alt="{{ post.title }}">
+            {% if media_src|is_video %}
+            <video class="og-image" autoplay muted loop playsinline>
+                <source src="{{ media_src }}" type="video/{% with media_src|lower as src_lower %}{% if src_lower|endswith:".mp4" or src_lower|endswith:".m4v" %}mp4{% elif src_lower|endswith:".webm" %}webm{% elif src_lower|endswith:".mov" %}quicktime{% else %}ogg{% endif %}{% endwith %}">
+            </video>
             {% else %}
-            <img src="{{ post.og_image }}" alt="{{ post.title }}">
+            <img src="{{ media_src }}" alt="{{ post.title }}" class="og-image">
             {% endif %}
         </figure>
         {% endif %}
@@ -227,4 +229,5 @@
         {% endif %}
     </footer>
 </body>
+{% endwith %}
 </html>
