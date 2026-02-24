@@ -1626,6 +1626,30 @@ Renders as:
 </details>
 ```
 
+## Container Blocks
+
+Use `:::` containers when you need free-form cards or panels that simply wrap the Markdown you already have. Each opening line begins with `:::` plus optional classes, IDs, and attribute blocks, and the closing line must be a bare `:::` on its own line. Because the parser treats anything beyond `:::` as a new opening, you cannot annotate the closing line with a name or class; keep it clean so nested containers close in the right order.
+
+### Example: card with a header and nested section
+
+```markdown
+:::card {#hero-panel}
+### Getting started
+
+Provide a short overview of the feature here.
+
+:::card {#cta}
+Call-to-action content that lives inside the hero panel.
+:::
+
+Continue with supporting text after the nested card.
+:::
+```
+
+This renders as nested `<div class="card">` elements with the header, inner card, and trailing paragraph preserved. The inner card closes as soon as `:::` appears, then the outer card continues and closes when its own bare `:::` appears further down the page. This pattern lets you sprinkle headings, lists, images, and other blocks between nested containers without confusing the parser.
+
+Need more detail? See `spec/spec/CONTAINER_SYNTAX.md` for the full syntax overview and the expectations of the container parser.
+
 ---
 
 ## See Also
