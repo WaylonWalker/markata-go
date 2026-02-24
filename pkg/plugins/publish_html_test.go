@@ -193,6 +193,126 @@ func TestPublishHTMLPlugin_OGCardCanonicalURL(t *testing.T) {
 	}
 }
 
+func TestPublishHTMLPlugin_OGCardIncludesFrontmatterImage(t *testing.T) {
+	tests := []struct {
+		name     string
+		extra    map[string]interface{}
+		imageURL string
+	}{
+		{
+			name: "uses image field first",
+			extra: map[string]interface{}{
+				"image":       "https://cdn.example.com/posts/image.webp",
+				"cover_image": "https://cdn.example.com/posts/cover.webp",
+				"og_image":    "https://cdn.example.com/posts/og.webp",
+			},
+			imageURL: "https://cdn.example.com/posts/image.webp",
+		},
+		{
+			name: "falls back to cover_image",
+			extra: map[string]interface{}{
+				"cover_image": "https://cdn.example.com/posts/cover.webp",
+			},
+			imageURL: "https://cdn.example.com/posts/cover.webp",
+		},
+		{
+			name: "falls back to og_image",
+			extra: map[string]interface{}{
+				"og_image": "https://cdn.example.com/posts/og.webp",
+			},
+			imageURL: "https://cdn.example.com/posts/og.webp",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			plugin := NewPublishHTMLPlugin()
+
+			config := &lifecycle.Config{
+				OutputDir: tempDir,
+				Extra: map[string]interface{}{
+					"url":          "https://example.com",
+					"title":        "Test Site",
+					"post_formats": models.PostFormatsConfig{OG: true},
+				},
+			}
+
+			title := "Post With Frontmatter Image"
+			post := &models.Post{
+				Path:        "test.md",
+				Slug:        "test-post",
+				Title:       &title,
+				HTML:        "<html><body>Test content</body></html>",
+				Published:   true,
+				Draft:       false,
+				Skip:        false,
+				ArticleHTML: "<p>Test content</p>",
+				Extra:       tt.extra,
+			}
+
+			m := createTestManager(t, config)
+			if err := plugin.writePost(post, config, nil, m); err != nil {
+				t.Fatalf("writePost() error = %v", err)
+			}
+
+			ogPath := filepath.Join(tempDir, "test-post", "og", "index.html")
+			content, err := os.ReadFile(ogPath)
+			if err != nil {
+				t.Fatalf("failed to read OG card: %v", err)
+			}
+
+			ogHTML := string(content)
+			expectedImageTag := fmt.Sprintf("src=%q", tt.imageURL)
+			if !strings.Contains(ogHTML, expectedImageTag) {
+				t.Errorf("OG card should include expected image source.\nExpected: %s\nGot: %s", expectedImageTag, ogHTML)
+			}
+		})
+	}
+}
+
+func TestPublishHTMLPlugin_OGCardWithoutFrontmatterImageOmitsImageTag(t *testing.T) {
+	tempDir := t.TempDir()
+	plugin := NewPublishHTMLPlugin()
+
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"url":          "https://example.com",
+			"title":        "Test Site",
+			"post_formats": models.PostFormatsConfig{OG: true},
+		},
+	}
+
+	title := "Post Without Image"
+	post := &models.Post{
+		Path:        "test.md",
+		Slug:        "test-post",
+		Title:       &title,
+		HTML:        "<html><body>Test content</body></html>",
+		Published:   true,
+		Draft:       false,
+		Skip:        false,
+		ArticleHTML: "<p>Test content</p>",
+	}
+
+	m := createTestManager(t, config)
+	if err := plugin.writePost(post, config, nil, m); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+
+	ogPath := filepath.Join(tempDir, "test-post", "og", "index.html")
+	content, err := os.ReadFile(ogPath)
+	if err != nil {
+		t.Fatalf("failed to read OG card: %v", err)
+	}
+
+	ogHTML := string(content)
+	if strings.Contains(ogHTML, "class=\"og-image\"") {
+		t.Errorf("OG card should not include image tag when no frontmatter image is set. Got: %s", ogHTML)
+	}
+}
+
 // TestPublishHTMLPlugin_ShadowPagesDocumentation tests the expected behavior is documented.
 func TestPublishHTMLPlugin_ShadowPagesDocumentation(t *testing.T) {
 	// This test documents the shadow pages behavior:

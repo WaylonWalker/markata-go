@@ -54,6 +54,36 @@
             padding: 48px 64px;
             padding-bottom: 160px; /* Space for larger footer */
             overflow: hidden;
+            gap: 28px;
+        }
+
+        .has-media .og-container {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 420px;
+            align-items: center;
+            gap: 36px;
+        }
+
+        .og-copy {
+            min-width: 0;
+        }
+
+        .og-media {
+            width: 100%;
+            max-height: 320px;
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid var(--og-border);
+            background: rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+        }
+
+        .og-media img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            min-height: 320px;
+            object-fit: cover;
         }
 
         /* Title with gradient */
@@ -67,6 +97,10 @@
             max-width: 100%;
             word-wrap: break-word;
             hyphens: auto;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            -webkit-line-clamp: 4;
         }
 
         /* Footer bar - use !important to override any background CSS */
@@ -134,6 +168,12 @@
         /* Extra long titles (100+ chars) */
         .title-xl .og-title { font-size: 2.5rem; }
 
+        .has-media.title-xs .og-title { font-size: 5.5rem; }
+        .has-media.title-sm .og-title { font-size: 4.4rem; }
+        .has-media.title-md .og-title { font-size: 3.4rem; }
+        .has-media.title-lg .og-title { font-size: 2.7rem; }
+        .has-media.title-xl .og-title { font-size: 2.2rem; }
+
         /* Background decoration styles */
         {% if config.theme.background.css %}
         {{ config.theme.background.css | safe }}
@@ -145,7 +185,7 @@
     <link rel="stylesheet" href="/css/palette.css">
     {% endif %}
 </head>
-<body class="{% if post.title|length < 20 %}title-xs{% elif post.title|length < 40 %}title-sm{% elif post.title|length < 60 %}title-md{% elif post.title|length < 100 %}title-lg{% else %}title-xl{% endif %}">
+<body class="{% if post.image or post.cover_image or post.og_image %}has-media {% endif %}{% if post.title|length < 20 %}title-xs{% elif post.title|length < 40 %}title-sm{% elif post.title|length < 60 %}title-md{% elif post.title|length < 100 %}title-lg{% else %}title-xl{% endif %}">
     <!-- Background Decorations -->
     {% if config.theme.background.enabled %}
     {% for bg in config.theme.background.backgrounds %}
@@ -154,7 +194,20 @@
     {% endif %}
 
     <div class="og-container">
-        <h1 class="og-title">{{ post.title }}</h1>
+        <div class="og-copy">
+            <h1 class="og-title">{{ post.title }}</h1>
+        </div>
+        {% if post.image or post.cover_image or post.og_image %}
+        <figure class="og-media">
+            {% if post.image %}
+            <img src="{{ post.image }}" alt="{{ post.title }}">
+            {% elif post.cover_image %}
+            <img src="{{ post.cover_image }}" alt="{{ post.title }}">
+            {% else %}
+            <img src="{{ post.og_image }}" alt="{{ post.title }}">
+            {% endif %}
+        </figure>
+        {% endif %}
     </div>
 
     <footer class="og-footer">
