@@ -210,8 +210,9 @@ When an OG card template renders post media, it MUST use this frontmatter fallba
 1. `image`
 2. `cover_image`
 3. `og_image`
+4. `video`
 
-If none of these fields are present, the OG card renders a text-only layout.
+If the resolved media is a video file, the OG template should render a video tag instead of an image tag. If none of these fields are present, the OG card renders a text-only layout.
 
 ### Feed Templates
 

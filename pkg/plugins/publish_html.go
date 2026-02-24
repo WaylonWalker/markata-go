@@ -64,6 +64,35 @@ func getPostExtraString(post *models.Post, keys ...string) string {
 	return ""
 }
 
+var ogVideoExtensions = map[string]string{
+	".mp4":  "video/mp4",
+	".m4v":  "video/mp4",
+	".webm": "video/webm",
+	".mov":  "video/quicktime",
+	".ogv":  "video/ogg",
+	".ogg":  "video/ogg",
+}
+
+func isOGVideoURL(url string) bool {
+	if url == "" {
+		return false
+	}
+	ext := strings.ToLower(filepath.Ext(url))
+	_, ok := ogVideoExtensions[ext]
+	return ok
+}
+
+func ogVideoMIMEType(url string) string {
+	if url == "" {
+		return ""
+	}
+	ext := strings.ToLower(filepath.Ext(url))
+	if mime, ok := ogVideoExtensions[ext]; ok {
+		return mime
+	}
+	return ""
+}
+
 // PublishHTMLPlugin writes individual post HTML files during the write stage.
 // It supports multiple output formats: HTML, Markdown source, and OG card HTML.
 type PublishHTMLPlugin struct {
@@ -753,6 +782,16 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
 	}
 
 	imageURL := getPostExtraString(post, "image", "cover_image", "og_image")
+	videoURL := getPostExtraString(post, "video")
+	mediaURL := imageURL
+	if mediaURL == "" {
+		mediaURL = videoURL
+	}
+	isVideo := isOGVideoURL(mediaURL)
+	mediaType := ""
+	if isVideo {
+		mediaType = ogVideoMIMEType(mediaURL)
+	}
 
 	// Build canonical URL for the original post
 	canonicalURL := siteURL + "/" + post.Slug + "/"
@@ -822,7 +861,8 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
             box-shadow: 0 14px 35px -16px rgba(0, 0, 0, 0.45);
             flex-shrink: 0;
         }
-        .og-image {
+        .og-image,
+        .og-video {
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -895,9 +935,15 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
                     </div>
                     {{end}}
                 </div>
-                {{if .ImageURL}}
+                {{if .HasMedia}}
                 <div class="og-image-wrap">
-                    <img src="{{.ImageURL}}" alt="{{.Title}}" class="og-image">
+                    {{if .IsVideo}}
+                    <video class="og-video" autoplay muted loop playsinline>
+                        <source src="{{.MediaURL}}" type="{{.MediaType}}">
+                    </video>
+                    {{else}}
+                    <img src="{{.MediaURL}}" alt="{{.Title}}" class="og-image">
+                    {{end}}
                 </div>
                 {{end}}
             </div>
@@ -929,7 +975,10 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
 		DateStr      string
 		Tags         []string
 		TagsDisplay  []string
-		ImageURL     string
+		HasMedia     bool
+		IsVideo      bool
+		MediaType    string
+		MediaURL     string
 		SiteTitle    string
 		CanonicalURL string
 	}{
@@ -938,7 +987,10 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
 		DateStr:      dateStr,
 		Tags:         post.Tags,
 		TagsDisplay:  tagsDisplay,
-		ImageURL:     imageURL,
+		HasMedia:     mediaURL != "",
+		IsVideo:      isVideo,
+		MediaType:    mediaType,
+		MediaURL:     mediaURL,
 		SiteTitle:    siteTitle,
 		CanonicalURL: canonicalURL,
 	}
