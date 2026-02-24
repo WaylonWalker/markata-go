@@ -91,3 +91,46 @@ Trailing paragraph after nested card.
 		t.Fatalf("trailing content should appear before outer card closes: %s", html)
 	}
 }
+
+func TestNestedContainersWithConsecutiveOpenersAndTable(t *testing.T) {
+	content := `::: card
+::: header
+## Wicket{.center}
+
+100 hp
+
+:::
+
+![A pickture of wicket, the wise old bird](/wicket.webp)
+figcaption
+
+| hp | 5 |
+| --- | --- |
+| ac | 15 |
+| speed | 30 |
+
+:::`
+
+	html := renderMarkdownForTest(t, content)
+	outerStart := strings.Index(html, `<div class="card">`)
+	if outerStart == -1 {
+		t.Fatalf("outer card not rendered: %s", html)
+	}
+	if !strings.Contains(html, `<div class="header">`) {
+		t.Fatalf("inner header container not rendered: %s", html)
+	}
+	figureIdx := strings.Index(html, "<figure>")
+	if figureIdx == -1 {
+		t.Fatalf("figure should be inside container: %s", html)
+	}
+	outerClose := strings.LastIndex(html, "</div>")
+	if outerClose == -1 {
+		t.Fatalf("outer container did not close: %s", html)
+	}
+	if figureIdx > outerClose {
+		t.Fatalf("outer card closed before figure/table content: %s", html)
+	}
+	if strings.Contains(html, "<p>:::</p>") {
+		t.Fatalf("closing marker leaked into output: %s", html)
+	}
+}

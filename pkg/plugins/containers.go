@@ -3,6 +3,7 @@ package plugins
 
 import (
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/yuin/goldmark"
@@ -123,21 +124,7 @@ func (p *containerParser) Open(_ ast.Node, reader text.Reader, _ parser.Context)
 
 	// Create the container node
 	node := NewContainer(classes, id, attrs)
-
-	// Advance past the opening line
-	reader.Advance(segment.Len() - 1)
-	// Find the newline
-	for {
-		line, _ := reader.PeekLine()
-		if len(line) == 0 {
-			break
-		}
-		if line[0] == '\n' {
-			reader.Advance(1)
-			break
-		}
-		reader.Advance(1)
-	}
+	reader.Advance(advanceLineContentLen(line, segment))
 
 	return node, parser.HasChildren
 }
@@ -149,11 +136,159 @@ func (p *containerParser) Continue(_ ast.Node, reader text.Reader, _ parser.Cont
 
 	// Check for closing :::
 	if lineStr == ":::" {
-		reader.Advance(segment.Len())
+		reader.Advance(advanceLineContentLen(line, segment))
 		return parser.Close
 	}
 
 	return parser.Continue | parser.HasChildren
+}
+
+func advanceLineContentLen(line []byte, segment text.Segment) int {
+	newlineLen := 0
+	if len(line) > 0 && line[len(line)-1] == '\n' {
+		newlineLen = 1
+	}
+
+	return segment.Stop - segment.Start - newlineLen + segment.Padding
+}
+
+func parseContainerLine(line string) (classes []string, id string, attrs map[string]string, isOpen bool) {
+	matches := containerRegex.FindStringSubmatch(line)
+	if matches == nil || strings.TrimSpace(line) == ":::" {
+		return nil, "", nil, false
+	}
+
+	if matches[1] != "" {
+		classes = append(classes, strings.Fields(matches[1])...)
+	}
+
+	attrs = make(map[string]string)
+	if matches[2] != "" {
+		attrStr := matches[2]
+		for _, part := range strings.Fields(attrStr) {
+			if strings.HasPrefix(part, "#") {
+				id = part[1:]
+			} else if strings.HasPrefix(part, ".") {
+				classes = append(classes, part[1:])
+			} else if idx := strings.Index(part, "="); idx > 0 {
+				key := part[:idx]
+				value := strings.Trim(part[idx+1:], `"'`)
+				attrs[key] = value
+			}
+		}
+	}
+
+	return classes, id, attrs, true
+}
+
+func renderContainerOpenTag(classes []string, id string, attrs map[string]string) string {
+	var b strings.Builder
+	b.WriteString("<div")
+	if id != "" {
+		b.WriteString(` id="`)
+		b.WriteString(escapeHTMLAttr(id))
+		b.WriteString(`"`)
+	}
+	if len(classes) > 0 {
+		b.WriteString(` class="`)
+		for i, class := range classes {
+			if i > 0 {
+				b.WriteByte(' ')
+			}
+			b.WriteString(escapeHTMLAttr(class))
+		}
+		b.WriteString(`"`)
+	}
+	if len(attrs) > 0 {
+		keys := make([]string, 0, len(attrs))
+		for key := range attrs {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			b.WriteByte(' ')
+			b.WriteString(escapeHTMLAttr(key))
+			b.WriteString(`="`)
+			b.WriteString(escapeHTMLAttr(attrs[key]))
+			b.WriteString(`"`)
+		}
+	}
+	b.WriteString(">")
+	return b.String()
+}
+
+func rewriteContainerBlocks(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	output := make([]string, 0, len(lines))
+	openCount := 0
+	inFence := false
+	fenceMarker := ""
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		if marker, ok := fencedCodeMarker(trimmed); ok {
+			if !inFence {
+				inFence = true
+				fenceMarker = marker
+			} else if marker == fenceMarker {
+				inFence = false
+				fenceMarker = ""
+			}
+			output = append(output, line)
+			continue
+		}
+
+		if inFence {
+			output = append(output, line)
+			continue
+		}
+
+		if trimmed == ":::" {
+			if openCount > 0 {
+				output = append(output, "")
+				output = append(output, "</div>")
+				openCount--
+				continue
+			}
+			output = append(output, line)
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, ":::") {
+			classes, id, attrs, ok := parseContainerLine(trimmed)
+			if ok {
+				output = append(output, renderContainerOpenTag(classes, id, attrs))
+				output = append(output, "")
+				openCount++
+				continue
+			}
+		}
+
+		output = append(output, line)
+	}
+
+	for openCount > 0 {
+		output = append(output, "</div>")
+		openCount--
+	}
+
+	return strings.Join(output, "\n")
+}
+
+func fencedCodeMarker(trimmedLine string) (string, bool) {
+	if len(trimmedLine) < 3 {
+		return "", false
+	}
+
+	if strings.HasPrefix(trimmedLine, "```") {
+		return "```", true
+	}
+	if strings.HasPrefix(trimmedLine, "~~~") {
+		return "~~~", true
+	}
+
+	return "", false
 }
 
 // Close is called when the block ends.

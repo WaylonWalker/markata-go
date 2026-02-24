@@ -415,6 +415,8 @@ func (p *RenderMarkdownPlugin) renderPost(post *models.Post) error {
 
 // doRender performs the actual markdown to HTML conversion.
 func (p *RenderMarkdownPlugin) doRender(content string) (string, error) {
+	content = rewriteContainerBlocks(content)
+
 	// Get buffer from pool
 	buf, ok := markdownBufferPool.Get().(*bytes.Buffer)
 	if !ok {

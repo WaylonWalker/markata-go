@@ -43,6 +43,8 @@ General-purpose containers (`::: ...`) provide lightweight card-style wrappers t
 
 - Containers can sit inside list items and blockquotes, but the closing `:::` line must not be indented deeper than its opening line (the parser treats indented `:::` as text). For inline content such as headings, just write them normally inside the container.
 
+- During markdown rendering, container markers are rewritten to raw `<div>` tags before block parsing so nested containers can safely wrap figures, tables, and other transformed markdown blocks without prematurely closing outer containers.
+
 ## Testing
 
 - The parser behavior is exercised by `pkg/plugins/containers_test.go`, which renders Markdown strings through the `RenderMarkdownPlugin` and asserts that the nested `<div>` structure, headers, and content order stay intact when inner containers open and close.

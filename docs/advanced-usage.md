@@ -1646,7 +1646,7 @@ Continue with supporting text after the nested card.
 :::
 ```
 
-This renders as nested `<div class="card">` elements with the header, inner card, and trailing paragraph preserved. The inner card closes as soon as `:::` appears, then the outer card continues and closes when its own bare `:::` appears further down the page. This pattern lets you sprinkle headings, lists, images, and other blocks between nested containers without confusing the parser.
+This renders as nested `<div class="card">` elements with the header, inner card, and trailing paragraph preserved. The inner card closes as soon as `:::` appears, then the outer card continues and closes when its own bare `:::` appears further down the page. This pattern lets you sprinkle headings, lists, images, tables, and other blocks between nested containers without confusing the parser.
 
 Need more detail? See `spec/spec/CONTAINER_SYNTAX.md` for the full syntax overview and the expectations of the container parser.
 
