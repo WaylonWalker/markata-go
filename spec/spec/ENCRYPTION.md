@@ -145,6 +145,17 @@ The following plugins respect `post.Private` to prevent leaking private content 
 
 `EncryptionBuildError` implements the `lifecycle.CriticalError` interface (`IsCritical() bool` returns `true`). This causes the lifecycle manager to halt the build even though the Render stage is normally non-critical.
 
+Encryption key validation MUST run during the Transform stage after private tag/templateKey assignment. This fails the build early before expensive render plugins run when keys are missing or violate policy. Render still re-validates before encryption as a safety check.
+
+When key validation fails, the error output MUST be summarized by key and reason. Each summary entry includes:
+
+- key name
+- policy or missing-key reason
+- total count of affected posts
+- a short sample list (up to 3 paths)
+
+The full list of post paths should not be printed in the error message.
+
 ### Skipped Posts
 
 Posts with `Draft = true` or `Skip = true` are excluded from all encryption processing. They are not subject to key validation and are never encrypted.
