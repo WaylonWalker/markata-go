@@ -40,6 +40,9 @@ func SetTrustedMediaDomains(domains []string) {
 	trustedMediaMu.Lock()
 	defer trustedMediaMu.Unlock()
 	trustedMediaDomains = map[string]struct{}{}
+	if len(domains) == 0 {
+		domains = models.DefaultTrustedMediaDomains
+	}
 	for _, domain := range domains {
 		domain = strings.ToLower(strings.TrimSpace(domain))
 		if domain == "" {
