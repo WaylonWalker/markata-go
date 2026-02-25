@@ -35,6 +35,7 @@ type configSource interface {
 	getShortcuts() shortcutsConverter
 	getAuthors() authorsConverter
 	getGarden() gardenConverter
+	getTemplates() templatesConverter
 }
 
 // baseConfigData holds the basic config fields that are directly assignable.
@@ -149,6 +150,10 @@ type gardenConverter interface {
 	toGardenConfig() models.GardenConfig
 }
 
+type templatesConverter interface {
+	toTemplatesConfig() models.TemplatesConfig
+}
+
 // buildConfig constructs a models.Config from a configSource.
 // This helper eliminates code duplication across TOML, YAML, and JSON config converters.
 func buildConfig(src configSource) *models.Config {
@@ -250,6 +255,9 @@ func buildConfig(src configSource) *models.Config {
 
 	// Convert Garden config
 	config.Garden = src.getGarden().toGardenConfig()
+
+	// Convert Templates config
+	config.Templates = src.getTemplates().toTemplatesConfig()
 
 	return config
 }
@@ -379,6 +387,7 @@ type tomlConfig struct {
 	Shortcuts     tomlShortcutsConfig     `toml:"shortcuts"`
 	Authors       tomlAuthorsConfig       `toml:"authors"`
 	Garden        tomlGardenConfig        `toml:"garden"`
+	Templates     tomlTemplatesConfig     `toml:"templates"`
 	UnknownFields map[string]any          `toml:"-"`
 }
 
@@ -386,6 +395,22 @@ type tomlNavItem struct {
 	Label    string `toml:"label"`
 	URL      string `toml:"url"`
 	External bool   `toml:"external"`
+}
+
+type tomlTemplatesConfig struct {
+	Media tomlTemplatesMediaConfig `toml:"media"`
+}
+
+type tomlTemplatesMediaConfig struct {
+	TrustedDomains []string `toml:"trusted_domains"`
+}
+
+func (t *tomlTemplatesConfig) toTemplatesConfig() models.TemplatesConfig {
+	cfg := models.NewTemplatesConfig()
+	if t.Media.TrustedDomains != nil {
+		cfg.Media.TrustedDomains = append([]string{}, t.Media.TrustedDomains...)
+	}
+	return cfg
 }
 
 type tomlFooterConfig struct {
@@ -1533,6 +1558,7 @@ func (c *tomlConfig) getMentions() mentionsConverter           { return &c.Menti
 func (c *tomlConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
 func (c *tomlConfig) getAuthors() authorsConverter             { return &c.Authors }
 func (c *tomlConfig) getGarden() gardenConverter               { return &c.Garden }
+func (c *tomlConfig) getTemplates() templatesConverter         { return &c.Templates }
 
 func (c *tomlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -1721,12 +1747,29 @@ type yamlConfig struct {
 	Shortcuts     yamlShortcutsConfig     `yaml:"shortcuts"`
 	Authors       yamlAuthorsConfig       `yaml:"authors"`
 	Garden        yamlGardenConfig        `yaml:"garden"`
+	Templates     yamlTemplatesConfig     `yaml:"templates"`
 }
 
 type yamlNavItem struct {
 	Label    string `yaml:"label"`
 	URL      string `yaml:"url"`
 	External bool   `yaml:"external"`
+}
+
+type yamlTemplatesConfig struct {
+	Media yamlTemplatesMediaConfig `yaml:"media"`
+}
+
+type yamlTemplatesMediaConfig struct {
+	TrustedDomains []string `yaml:"trusted_domains"`
+}
+
+func (t *yamlTemplatesConfig) toTemplatesConfig() models.TemplatesConfig {
+	cfg := models.NewTemplatesConfig()
+	if t.Media.TrustedDomains != nil {
+		cfg.Media.TrustedDomains = append([]string{}, t.Media.TrustedDomains...)
+	}
+	return cfg
 }
 
 type yamlFooterConfig struct {
@@ -2898,6 +2941,7 @@ func (c *yamlConfig) getMentions() mentionsConverter           { return &c.Menti
 func (c *yamlConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
 func (c *yamlConfig) getAuthors() authorsConverter             { return &c.Authors }
 func (c *yamlConfig) getGarden() gardenConverter               { return &c.Garden }
+func (c *yamlConfig) getTemplates() templatesConverter         { return &c.Templates }
 
 func (c *yamlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -3022,12 +3066,29 @@ type jsonConfig struct {
 	Shortcuts     jsonShortcutsConfig     `json:"shortcuts"`
 	Authors       jsonAuthorsConfig       `json:"authors"`
 	Garden        jsonGardenConfig        `json:"garden"`
+	Templates     jsonTemplatesConfig     `json:"templates"`
 }
 
 type jsonNavItem struct {
 	Label    string `json:"label"`
 	URL      string `json:"url"`
 	External bool   `json:"external"`
+}
+
+type jsonTemplatesConfig struct {
+	Media jsonTemplatesMediaConfig `json:"media"`
+}
+
+type jsonTemplatesMediaConfig struct {
+	TrustedDomains []string `json:"trusted_domains"`
+}
+
+func (t *jsonTemplatesConfig) toTemplatesConfig() models.TemplatesConfig {
+	cfg := models.NewTemplatesConfig()
+	if t.Media.TrustedDomains != nil {
+		cfg.Media.TrustedDomains = append([]string{}, t.Media.TrustedDomains...)
+	}
+	return cfg
 }
 
 type jsonFooterConfig struct {
@@ -4199,6 +4260,7 @@ func (c *jsonConfig) getWebSub() webSubConverter               { return &c.WebSu
 func (c *jsonConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
 func (c *jsonConfig) getAuthors() authorsConverter             { return &c.Authors }
 func (c *jsonConfig) getGarden() gardenConverter               { return &c.Garden }
+func (c *jsonConfig) getTemplates() templatesConverter         { return &c.Templates }
 
 func (c *jsonConfig) toConfig() *models.Config {
 	return buildConfig(c)

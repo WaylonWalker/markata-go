@@ -169,6 +169,9 @@ func registerFilters() {
 		// Media detection filters
 		pongo2.RegisterFilter("is_video", filterIsVideo)
 		pongo2.RegisterFilter("media_url", filterMediaURL)
+		pongo2.RegisterFilter("with_size", filterWithSize)
+		pongo2.RegisterFilter("video_mime", filterVideoMIME)
+		pongo2.RegisterFilter("poster_url", filterPosterURL)
 	})
 }
 
@@ -1092,11 +1095,7 @@ func isVideoFile(filename string) bool {
 // filterIsVideo returns true if the input string has a video file extension.
 // Usage: {% if post.image|is_video %}...{% endif %}
 func filterIsVideo(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
-	s := in.String()
-	if s == "" {
-		return pongo2.AsValue(false), nil
-	}
-	return pongo2.AsValue(isVideoFile(s)), nil
+	return pongo2.AsValue(IsVideoURL(in.String())), nil
 }
 
 // filterMediaURL resolves a media URL from multiple fields.
@@ -1112,6 +1111,72 @@ func filterMediaURL(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		return param, nil
 	}
 	return pongo2.AsValue(""), nil
+}
+
+// filterWithSize decorates a trusted URL with width/height query params.
+// Usage: {{ media_src | with_size:"1200,675" }}
+func filterWithSize(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	if in.IsNil() {
+		return in, nil
+	}
+	if param == nil || param.IsNil() {
+		return in, nil
+	}
+	parts := strings.SplitN(param.String(), ",", 2)
+	if len(parts) != 2 {
+		return in, nil
+	}
+	width, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+	if err != nil || width <= 0 {
+		return in, nil
+	}
+	height, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err != nil || height <= 0 {
+		return in, nil
+	}
+	return pongo2.AsValue(WithSize(in.String(), width, height)), nil
+}
+
+// filterVideoMIME infers the video MIME type.
+func filterVideoMIME(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	return pongo2.AsValue(VideoMIMEType(in.String())), nil
+}
+
+// filterPosterURL resolves a poster candidate map or derived fallback.
+// Param is the video URL used for poster derivation.
+func filterPosterURL(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	if data := valueToStringMap(in); data != nil {
+		mediaURL := ""
+		if param != nil && !param.IsNil() {
+			mediaURL = param.String()
+		}
+		return pongo2.AsValue(PosterURLFromMap(data, mediaURL)), nil
+	}
+	candidate := strings.TrimSpace(in.String())
+	if candidate != "" {
+		return pongo2.AsValue(candidate), nil
+	}
+	return pongo2.AsValue(""), nil
+}
+
+func valueToStringMap(v *pongo2.Value) map[string]interface{} {
+	if v == nil || v.IsNil() {
+		return nil
+	}
+	if data, ok := v.Interface().(map[string]interface{}); ok {
+		return data
+	}
+	if data, ok := v.Interface().(map[string]string); ok {
+		result := make(map[string]interface{}, len(data))
+		for k, val := range data {
+			result[k] = val
+		}
+		return result
+	}
+	if post, ok := v.Interface().(*models.Post); ok {
+		return GetPostMap(post)
+	}
+	return nil
 }
 
 // filterContributionData generates Cal-Heatmap compatible JSON data from posts.

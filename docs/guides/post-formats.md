@@ -138,6 +138,16 @@ The default OG card template includes:
 You can customize the OG card appearance by providing your own `post-og.html` template.
 If no post-specific OG template exists, `og-card.html` is used as a fallback.
 
+### Shared OG/Feed/Embed Media Helpers
+
+OG cards, feed cards, and embed cards now share a media pipeline so the same image/video looks identical in every context. All three templates should:
+
+- Call `with_size(width, height)` on photo/video URLs so the generated media query string carries precise `w` and `h` values that align with the pixel dimensions the template renders. Accurate sizing prevents visual drift when downstream screenshot tools or clients ingest the card.
+- Use the query/fragment-safe `is_video` filter when deciding whether to render a `<video>` tag, and let the `poster_url` helper resolve the poster image.
+- Respect the poster alias precedence: `poster_image`, `poster`, `video_poster`, `video_thumbnail`, `thumbnail`, `thumb`. `poster_url` checks those values first, and only when none are defined does it fall back to deriving a `.webp` thumbnail from the video URL on allowlisted hosts.
+
+Only relative URLs and media hosted on the safe domain allowlist receive the sizing/presenter treatment. The default allowlist includes `dropper.wayl.one`, `dropper.waylonwalker.com`, and `dropper-dev.wayl.one`, but you can add or override entries via `[markata-go.templates.media]` in your `markata-go.toml`. Untrusted hosts skip the extra query params and auto-generated posters so you stay in control of which domains get the richer metadata. Custom templates can still opt out entirely by using their own helpers instead of `with_size`/`poster_url`.
+
 ## Standard Web Txt Files
 
 markata-go supports generating standard web txt files at their expected canonical URLs:

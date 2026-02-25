@@ -840,6 +840,20 @@ When enabled, markata-go emits WebSub discovery links:
 
 ---
 
+### Templates (`[my-ssg.templates]`)
+
+```toml
+[my-ssg.templates.media]
+trusted_domains = [
+  "dropper.wayl.one",
+  "dropper.waylonwalker.com",
+  "dropper-dev.wayl.one",
+]
+```
+
+- `media.trusted_domains` controls which hosts the built-in template helpers will decorate with `w`/`h` sizing parameters and derived posters. Relative URLs are always treated as trusted.
+- The default values match the dropper CDN. Override this list when you serve media through a different host so that video posters and cached previews stay consistent.
+
 ## See Also
 
 - [SPEC.md](./SPEC.md) - Core specification

@@ -373,6 +373,9 @@ type Config struct {
 	// TemplatesDir is the directory containing templates (default: "templates")
 	TemplatesDir string `json:"templates_dir" yaml:"templates_dir" toml:"templates_dir"`
 
+	// Templates config exposes helper-specific settings for rendering built-in cards
+	Templates TemplatesConfig `json:"templates" yaml:"templates" toml:"templates"`
+
 	// Nav is the list of navigation links
 	Nav []NavItem `json:"nav" yaml:"nav" toml:"nav"`
 
@@ -496,6 +499,36 @@ type Config struct {
 	// Extra holds arbitrary plugin configurations that aren't part of the core config.
 	// Plugin-specific configs like [markata-go.image_zoom] are stored here.
 	Extra map[string]any `json:"-" yaml:"-" toml:"-"`
+}
+
+// DefaultTrustedMediaDomains is the default allowlist for media helpers.
+var DefaultTrustedMediaDomains = []string{
+	"dropper.wayl.one",
+	"dropper.waylonwalker.com",
+	"dropper-dev.wayl.one",
+}
+
+// TemplatesMediaConfig configures template helper behavior around media URLs.
+type TemplatesMediaConfig struct {
+	// TrustedDomains is the allowlist of hosts that can receive auto sizing/poster helpers.
+	TrustedDomains []string `json:"trusted_domains" yaml:"trusted_domains" toml:"trusted_domains"`
+}
+
+// TemplatesConfig contains template-specific configuration.
+type TemplatesConfig struct {
+	// Media holds settings that affect media helpers (with_size, poster_url, etc.)
+	Media TemplatesMediaConfig `json:"media" yaml:"media" toml:"media"`
+}
+
+// NewTemplatesMediaConfig returns the default TemplatesMediaConfig.
+func NewTemplatesMediaConfig() TemplatesMediaConfig {
+	trusted := append([]string{}, DefaultTrustedMediaDomains...)
+	return TemplatesMediaConfig{TrustedDomains: trusted}
+}
+
+// NewTemplatesConfig returns the default TemplatesConfig.
+func NewTemplatesConfig() TemplatesConfig {
+	return TemplatesConfig{Media: NewTemplatesMediaConfig()}
 }
 
 // HeadConfig configures elements added to the HTML <head> section.
@@ -2724,6 +2757,7 @@ func NewConfig() *Config {
 		OutputDir:     "output",
 		AssetsDir:     "static",
 		TemplatesDir:  "templates",
+		Templates:     NewTemplatesConfig(),
 		Hooks:         []string{"default"},
 		DisabledHooks: []string{},
 		GlobConfig: GlobConfig{

@@ -441,6 +441,11 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"theme":         themeMap,
 		"authors":       authorsMap,
 		"license":       licenseValue,
+		"templates": map[string]interface{}{
+			"media": map[string]interface{}{
+				"trusted_domains": append([]string{}, c.Templates.Media.TrustedDomains...),
+			},
+		},
 	}
 
 	// Add Extra map for plugin configs (e.g., glightbox_enabled, glightbox_options)
