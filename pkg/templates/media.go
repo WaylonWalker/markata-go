@@ -12,7 +12,7 @@ import (
 
 var (
 	trustedMediaMu      sync.RWMutex
-	trustedMediaDomains map[string]struct{}
+	trustedMediaDomains = buildTrustedMediaDomainSet(models.DefaultTrustedMediaDomains)
 	videoMimeTypes      = map[string]string{
 		".mp4":  "video/mp4",
 		".m4v":  "video/mp4",
@@ -31,10 +31,6 @@ var (
 	}
 )
 
-func init() {
-	SetTrustedMediaDomains(models.DefaultTrustedMediaDomains)
-}
-
 // SetTrustedMediaDomains replaces the trusted domains allowlist for media helpers.
 func SetTrustedMediaDomains(domains []string) {
 	trustedMediaMu.Lock()
@@ -50,6 +46,18 @@ func SetTrustedMediaDomains(domains []string) {
 		}
 		trustedMediaDomains[domain] = struct{}{}
 	}
+}
+
+func buildTrustedMediaDomainSet(domains []string) map[string]struct{} {
+	set := make(map[string]struct{}, len(domains))
+	for _, domain := range domains {
+		domain = strings.ToLower(strings.TrimSpace(domain))
+		if domain == "" {
+			continue
+		}
+		set[domain] = struct{}{}
+	}
+	return set
 }
 
 // WithSize appends or overwrites the w/h query parameters for trusted URLs.

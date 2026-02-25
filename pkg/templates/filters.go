@@ -1080,18 +1080,6 @@ func filterString(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	return pongo2.AsValue(in.String()), nil
 }
 
-// videoExtensions is the canonical set of video file extensions.
-var videoExtensions = map[string]bool{
-	".mp4": true, ".webm": true, ".mov": true,
-	".m4v": true, ".ogv": true, ".ogg": true,
-}
-
-// isVideoFile checks if a filename has a video extension.
-func isVideoFile(filename string) bool {
-	ext := strings.ToLower(filepath.Ext(filename))
-	return videoExtensions[ext]
-}
-
 // filterIsVideo returns true if the input string has a video file extension.
 // Usage: {% if post.image|is_video %}...{% endif %}
 func filterIsVideo(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
