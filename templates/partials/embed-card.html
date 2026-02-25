@@ -1,6 +1,9 @@
 {# Embed card partial for internal post embeds #}
 {# Used by the embeds plugin when processing ![[slug]] syntax #}
 
+{% if post.template == "photo" or post.template == "shot" or post.template == "shots" or post.template == "image" or post.template == "gallery" or post.template == "video" or post.template == "clip" or post.template == "cast" or post.template == "stream" %}
+{% include "partials/cards/card-router.html" %}
+{% else %}
 <div class="{{ card_class|default:'embed-card' }}">
   <a href="{{ post.href }}" class="embed-card-link">
     <div class="embed-card-content">
@@ -14,3 +17,4 @@
     </div>
   </a>
 </div>
+{% endif %}
