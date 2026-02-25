@@ -200,11 +200,11 @@
             <h1 class="og-title">{{ post.title }}</h1>
         </div>
         {% if media_src %}
-        {% with media_src|with_size:"1200,630" as sized_media %}
+        {% with media_src|with_size:"418,320" as sized_media %}
         <figure class="og-media">
             {% if media_src|is_video %}
             {% set poster_candidate = post | poster_url:media_src %}
-            <video class="og-image" autoplay muted loop playsinline{% if poster_candidate %} poster="{{ poster_candidate | with_size:"1200,630" }}"{% endif %}>
+            <video class="og-image" autoplay muted loop playsinline{% if poster_candidate %} poster="{{ poster_candidate | with_size:"418,320" }}"{% endif %}>
                 <source src="{{ sized_media }}"{% with media_src|video_mime as mime %}{% if mime %} type="{{ mime }}"{% endif %}{% endwith %}>
             </video>
             {% else %}

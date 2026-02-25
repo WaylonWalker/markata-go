@@ -765,13 +765,13 @@ func (p *PublishHTMLPlugin) renderOGWithBuiltinTemplate(post *models.Post, confi
 	}
 	decoratedMediaURL := mediaURL
 	if decoratedMediaURL != "" {
-		decoratedMediaURL = templates.WithSize(decoratedMediaURL, 1200, 630)
+		decoratedMediaURL = templates.WithSize(decoratedMediaURL, 360, 320)
 	}
 	posterURL := ""
 	if isVideo {
 		posterURL = templates.PosterURLFromMap(templates.GetPostMap(post), mediaURL)
 		if posterURL != "" {
-			posterURL = templates.WithSize(posterURL, 1200, 630)
+			posterURL = templates.WithSize(posterURL, 360, 320)
 		}
 	}
 

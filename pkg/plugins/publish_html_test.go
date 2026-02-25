@@ -402,7 +402,7 @@ func TestPublishHTMLPlugin_OGCardVideoPosterAlias(t *testing.T) {
 		},
 	}
 	ogHTML := renderOGHTML(t, post)
-	if !strings.Contains(ogHTML, "poster=\"https://dropper.wayl.one/media/poster.png") || !strings.Contains(ogHTML, "w=1200") || !strings.Contains(ogHTML, "h=630") {
+	if !strings.Contains(ogHTML, "poster=\"https://dropper.wayl.one/media/poster.png") || !strings.Contains(ogHTML, "w=360") || !strings.Contains(ogHTML, "h=320") {
 		t.Errorf("OG card should include poster alias with size parameters. Got: %s", ogHTML)
 	}
 	if !strings.Contains(ogHTML, "type=\"video/mp4\"") {
@@ -426,7 +426,7 @@ func TestPublishHTMLPlugin_OGCardVideoPosterFallback(t *testing.T) {
 		},
 	}
 	ogHTML := renderOGHTML(t, post)
-	if !strings.Contains(ogHTML, "poster=\"https://dropper.wayl.one/media/clip.webp") || !strings.Contains(ogHTML, "w=1200") || !strings.Contains(ogHTML, "h=630") {
+	if !strings.Contains(ogHTML, "poster=\"https://dropper.wayl.one/media/clip.webp") || !strings.Contains(ogHTML, "w=360") || !strings.Contains(ogHTML, "h=320") {
 		t.Errorf("OG card should derive .webp poster for trusted video. Got: %s", ogHTML)
 	}
 }
