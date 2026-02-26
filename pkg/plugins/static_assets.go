@@ -70,7 +70,7 @@ func (p *StaticAssetsPlugin) Configure(m *lifecycle.Manager) error {
 	}
 
 	// 3. Hash project assets (highest priority, overrides theme)
-	projectStaticDir := "static"
+	projectStaticDir := StaticDir
 	if _, err := os.Stat(projectStaticDir); err == nil {
 		if err := p.hashDirectoryAssets(projectStaticDir, "", assetHashes); err != nil {
 			return fmt.Errorf("hashing project assets: %w", err)
@@ -138,7 +138,7 @@ func (p *StaticAssetsPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	// Layer 3: Copy project static files (highest priority, overrides theme files)
-	projectStaticDir := "static"
+	projectStaticDir := StaticDir
 	if _, err := os.Stat(projectStaticDir); err == nil {
 		if err := p.copyDir(projectStaticDir, outputDir); err != nil {
 			return fmt.Errorf("copying project static files: %w", err)

@@ -239,9 +239,9 @@ func GetBool(metadata map[string]interface{}, key string, defaultVal bool) bool 
 		return b
 	case string:
 		switch strings.ToLower(b) {
-		case "true", "yes", "on":
+		case BoolTrue, Yes, "on":
 			return true
-		case "false", "no", "off":
+		case BoolFalse, No, Off:
 			return false
 		}
 	}

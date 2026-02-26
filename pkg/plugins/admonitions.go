@@ -89,7 +89,7 @@ func boolToString(b bool) string {
 	if b {
 		return BoolTrue
 	}
-	return "false"
+	return BoolFalse
 }
 
 // NewAdmonition creates a new Admonition node.

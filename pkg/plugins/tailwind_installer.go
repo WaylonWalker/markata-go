@@ -81,7 +81,7 @@ func NewTailwindInstallerConfig() TailwindInstallerConfig {
 	autoInstall := true
 	return TailwindInstallerConfig{
 		AutoInstall: &autoInstall,
-		Version:     "latest",
+		Version:     Latest,
 		CacheDir:    "",
 	}
 }
@@ -105,7 +105,7 @@ var tailwindPlatformMapping = map[string]map[string]string{
 func NewTailwindInstaller() *TailwindInstaller {
 	return &TailwindInstaller{
 		CacheDir: "",
-		Version:  "latest",
+		Version:  Latest,
 		client: &http.Client{
 			Timeout: tailwindHTTPTimeout,
 		},
@@ -221,66 +221,19 @@ func (i *TailwindInstaller) IsTailwindCached(version string) (bool, error) {
 
 // GetLatestTailwindVersion fetches the latest Tailwind version from GitHub releases.
 func (i *TailwindInstaller) GetLatestTailwindVersion() (string, error) {
-	currentURL := tailwindReleaseBaseURL + "/latest"
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+	v, err := getLatestGitHubReleaseVersion(tailwindReleaseBaseURL)
+	if err != nil {
+		return "", NewTailwindInstallError("version_check", "failed to check latest version", err)
 	}
-
-	const maxRedirects = 10
-	for redirectCount := 0; redirectCount < maxRedirects; redirectCount++ {
-		req, err := http.NewRequestWithContext(ctx, "HEAD", currentURL, http.NoBody)
-		if err != nil {
-			return "", NewTailwindInstallError("version_check", "failed to create request", err)
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return "", NewTailwindInstallError("version_check", "failed to check latest version", err)
-		}
-		resp.Body.Close()
-
-		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
-			location := resp.Header.Get("Location")
-			if location == "" {
-				return "", NewTailwindInstallError("version_check", "redirect without location header", nil)
-			}
-
-			parts := strings.Split(location, "/")
-			if len(parts) > 0 {
-				lastPart := parts[len(parts)-1]
-				if strings.HasPrefix(lastPart, "v") && strings.Contains(lastPart, ".") {
-					return lastPart, nil
-				}
-			}
-
-			currentURL = location
-			continue
-		}
-
-		parts := strings.Split(currentURL, "/")
-		if len(parts) > 0 {
-			lastPart := parts[len(parts)-1]
-			if strings.HasPrefix(lastPart, "v") && strings.Contains(lastPart, ".") {
-				return lastPart, nil
-			}
-		}
-
-		return "", NewTailwindInstallError("version_check", "could not find version in final URL", nil)
+	if v == "" {
+		return "", NewTailwindInstallError("version_check", "could not find version in final URL or too many redirects", nil)
 	}
-
-	return "", NewTailwindInstallError("version_check", "too many redirects", nil)
+	return v, nil
 }
 
 // ResolveTailwindVersion resolves "latest" to an actual version number.
 func (i *TailwindInstaller) ResolveTailwindVersion() (string, error) {
-	if i.Version != "latest" && i.Version != "" {
+	if i.Version != Latest && i.Version != "" {
 		return i.Version, nil
 	}
 	return i.GetLatestTailwindVersion()
@@ -596,8 +549,8 @@ func tailwindConfigStringSlice(value interface{}) []string {
 
 func tailwindNormalizeVersion(version string) (string, error) {
 	trimmed := strings.TrimSpace(version)
-	if trimmed == "" || trimmed == "latest" {
-		return "latest", nil
+	if trimmed == "" || trimmed == Latest {
+		return Latest, nil
 	}
 	if strings.HasPrefix(trimmed, "v") {
 		return trimmed, nil

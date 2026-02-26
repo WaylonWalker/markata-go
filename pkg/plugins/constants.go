@@ -7,6 +7,24 @@ const (
 	// BoolTrue is the string representation of true.
 	BoolTrue = "true"
 
+	// BoolFalse is the string representation of false.
+	BoolFalse = "false"
+
+	// Off is the string representation of off.
+	Off = "off"
+
+	// Yes is the string representation of yes.
+	Yes = "yes"
+
+	// No is the string representation of no.
+	No = "no"
+
+	// Latest is the string representation of latest.
+	Latest = "latest"
+
+	// StaticDir is the static directory name.
+	StaticDir = "static"
+
 	// AdmonitionTypeAside is the aside admonition type.
 	AdmonitionTypeAside = "aside"
 

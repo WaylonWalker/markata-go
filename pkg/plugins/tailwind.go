@@ -93,20 +93,34 @@ func (p *TailwindPlugin) parseTailwindConfig(extra map[string]interface{}) model
 		return result
 	}
 
+	p.parseTailwindConfigInclude(raw, &result)
+	p.parseTailwindConfigStrings(raw, &result)
+	p.parseTailwindConfigBools(raw, &result)
+
+	if rawExtra := raw["extra_args"]; rawExtra != nil {
+		result.ExtraArgs = tailwindConfigStringSlice(rawExtra)
+	}
+
+	return result
+}
+
+func (p *TailwindPlugin) parseTailwindConfigInclude(raw map[string]interface{}, result *models.TailwindConfig) {
 	if include, ok := raw["include"]; ok {
 		if v := tailwindConfigString(include); v != "" {
 			result.Include = &v
 		} else if b, ok := include.(bool); ok {
 			if b {
-				value := "css"
+				value := tailwindIncludeCSS
 				result.Include = &value
 			} else {
-				value := "false"
+				value := BoolFalse
 				result.Include = &value
 			}
 		}
 	}
+}
 
+func (p *TailwindPlugin) parseTailwindConfigStrings(raw map[string]interface{}, result *models.TailwindConfig) {
 	if v := tailwindConfigString(raw["input"]); v != "" {
 		result.Input = v
 	}
@@ -119,6 +133,20 @@ func (p *TailwindPlugin) parseTailwindConfig(extra map[string]interface{}) model
 	if v := tailwindConfigString(raw["config"]); v != "" {
 		result.ConfigFile = v
 	}
+	if v := tailwindConfigString(raw["version"]); v != "" {
+		if normalized, err := tailwindNormalizeVersion(v); err == nil {
+			result.Version = normalized
+		}
+	}
+	if v := tailwindConfigString(raw["cache_dir"]); v != "" {
+		result.CacheDir = v
+	}
+	if v := tailwindConfigString(raw["binary"]); v != "" {
+		result.Binary = v
+	}
+}
+
+func (p *TailwindPlugin) parseTailwindConfigBools(raw map[string]interface{}, result *models.TailwindConfig) {
 	if rawBuild, ok := raw["build"]; ok {
 		value := tailwindConfigBoolean(rawBuild, true)
 		result.Build = &value
@@ -131,26 +159,10 @@ func (p *TailwindPlugin) parseTailwindConfig(extra map[string]interface{}) model
 		value := tailwindConfigBoolean(rawAuto, true)
 		result.AutoInstall = &value
 	}
-	if v := tailwindConfigString(raw["version"]); v != "" {
-		if normalized, err := tailwindNormalizeVersion(v); err == nil {
-			result.Version = normalized
-		}
-	}
-	if v := tailwindConfigString(raw["cache_dir"]); v != "" {
-		result.CacheDir = v
-	}
-	if v := tailwindConfigString(raw["binary"]); v != "" {
-		result.Binary = v
-	}
-	if rawExtra := raw["extra_args"]; rawExtra != nil {
-		result.ExtraArgs = tailwindConfigStringSlice(rawExtra)
-	}
 	if rawVerbose, ok := raw["verbose"]; ok {
 		value := tailwindConfigBoolean(rawVerbose, false)
 		result.Verbose = &value
 	}
-
-	return result
 }
 
 func (p *TailwindPlugin) runTailwindBuild(config *lifecycle.Config) error {
@@ -170,7 +182,7 @@ func (p *TailwindPlugin) runTailwindBuild(config *lifecycle.Config) error {
 		return fmt.Errorf("tailwind: creating output directory: %w", err)
 	}
 
-	cliPath, err := p.findOrInstallTailwind(config)
+	cliPath, err := p.findOrInstallTailwind()
 	if err != nil {
 		return err
 	}
@@ -216,7 +228,7 @@ func (p *TailwindPlugin) runTailwindBuild(config *lifecycle.Config) error {
 	return nil
 }
 
-func (p *TailwindPlugin) findOrInstallTailwind(config *lifecycle.Config) (string, error) {
+func (p *TailwindPlugin) findOrInstallTailwind() (string, error) {
 	if p.config.Binary != "" {
 		if _, err := os.Stat(p.config.Binary); err == nil {
 			return p.config.Binary, nil

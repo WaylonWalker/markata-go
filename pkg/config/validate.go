@@ -106,7 +106,7 @@ func ValidateConfig(config *models.Config) []error {
 	}
 
 	// Warn if Tailwind CSS is included but css_purge is disabled
-	if tailwindIncludeMode(config) == "css" && !isCSSPurgeEnabled(config) {
+	if tailwindIncludeMode(config) == CSS && !isCSSPurgeEnabled(config) {
 		errs = append(errs, ValidationError{
 			Field:   "tailwind.include",
 			Message: "Tailwind CSS output is large; enable css_purge to reduce CSS size",
@@ -193,11 +193,11 @@ func ValidateConfigWithPositions(config *models.Config, tracker *PositionTracker
 	}
 
 	// Warn if Tailwind CSS is included but css_purge is disabled
-	if tailwindIncludeMode(config) == "css" && !isCSSPurgeEnabled(config) {
+	if tailwindIncludeMode(config) == CSS && !isCSSPurgeEnabled(config) {
 		configErrors.Add(NewConfigErrorWithFix(
 			tracker,
 			"tailwind.include",
-			"css",
+			CSS,
 			"Tailwind CSS output is large; enable css_purge to reduce CSS size",
 			"Enable [markata-go.css_purge].enabled = true",
 			true,
@@ -511,7 +511,7 @@ func tailwindIncludeMode(config *models.Config) string {
 				if !b {
 					return ""
 				}
-				return "css"
+				return CSS
 			}
 		}
 		return ""
@@ -554,7 +554,7 @@ func normalizeTailwindInclude(value string) string {
 	switch value {
 	case "", "false", "off", "0", "none":
 		return ""
-	case "css", "js":
+	case CSS, "js":
 		return value
 	default:
 		return ""
