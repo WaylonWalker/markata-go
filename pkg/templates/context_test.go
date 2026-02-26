@@ -70,3 +70,31 @@ func TestPostToMap_InlinksOutlinks(t *testing.T) {
 		t.Errorf("unexpected source_post title: %#v", sourceMap["title"])
 	}
 }
+
+func TestSwitcherToMap_Defaults(t *testing.T) {
+	m := SwitcherToMap(nil)
+
+	if got, ok := m["enabled"].(bool); !ok || got {
+		t.Fatalf("enabled = %#v, want false", m["enabled"])
+	}
+	if got, ok := m["mode_toggle"].(bool); !ok || !got {
+		t.Fatalf("mode_toggle = %#v, want true", m["mode_toggle"])
+	}
+}
+
+func TestSwitcherToMap_ModeToggleFromConfig(t *testing.T) {
+	modeToggle := false
+	enabled := true
+
+	m := SwitcherToMap(&models.ThemeSwitcherConfig{
+		Enabled:    &enabled,
+		ModeToggle: &modeToggle,
+	})
+
+	if got, ok := m["enabled"].(bool); !ok || !got {
+		t.Fatalf("enabled = %#v, want true", m["enabled"])
+	}
+	if got, ok := m["mode_toggle"].(bool); !ok || got {
+		t.Fatalf("mode_toggle = %#v, want false", m["mode_toggle"])
+	}
+}

@@ -820,6 +820,11 @@ type ThemeConfig struct {
 	// If not set, auto-detected from base Palette name
 	PaletteDark string `json:"palette_dark,omitempty" yaml:"palette_dark,omitempty" toml:"palette_dark,omitempty"`
 
+	// FallbackMode controls which mode is used when no explicit user preference
+	// is saved and the system preference is unavailable/unspecified.
+	// Valid values: "dark", "light" (default: "dark").
+	FallbackMode string `json:"fallback_mode,omitempty" yaml:"fallback_mode,omitempty" toml:"fallback_mode,omitempty"`
+
 	// SeedColor is the hex color used to generate a triadic palette if Palette == "generated"
 	SeedColor string `json:"seed_color,omitempty" yaml:"seed_color,omitempty" toml:"seed_color,omitempty"`
 
@@ -845,6 +850,9 @@ type ThemeSwitcherConfig struct {
 	// Enabled controls whether the palette switcher is shown (default: false)
 	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
 
+	// ModeToggle controls whether the dark/light mode toggle is shown (default: true)
+	ModeToggle *bool `json:"mode_toggle,omitempty" yaml:"mode_toggle,omitempty" toml:"mode_toggle,omitempty"`
+
 	// IncludeAll includes all discovered palettes in the switcher (default: true)
 	// When false, only palettes in the Include list are shown
 	IncludeAll *bool `json:"include_all,omitempty" yaml:"include_all,omitempty" toml:"include_all,omitempty"`
@@ -864,9 +872,11 @@ type ThemeSwitcherConfig struct {
 // NewThemeSwitcherConfig creates a new ThemeSwitcherConfig with default values.
 func NewThemeSwitcherConfig() ThemeSwitcherConfig {
 	enabled := false
+	modeToggle := true
 	includeAll := true
 	return ThemeSwitcherConfig{
 		Enabled:    &enabled,
+		ModeToggle: &modeToggle,
 		IncludeAll: &includeAll,
 		Include:    []string{},
 		Exclude:    []string{},
@@ -890,6 +900,15 @@ func (s *ThemeSwitcherConfig) IsIncludeAll() bool {
 		return true
 	}
 	return *s.IncludeAll
+}
+
+// IsModeToggleEnabled returns whether the dark/light mode toggle is enabled.
+// Defaults to true if not explicitly set.
+func (s *ThemeSwitcherConfig) IsModeToggleEnabled() bool {
+	if s.ModeToggle == nil {
+		return true
+	}
+	return *s.ModeToggle
 }
 
 // ThemeCalendarConfig configures automatic theme switching based on date ranges.
@@ -2772,11 +2791,12 @@ func NewConfig() *Config {
 		FeedDefaults: NewFeedDefaults(),
 		Concurrency:  0,
 		Theme: ThemeConfig{
-			Name:      "default",
-			Palette:   "default-light",
-			Variables: make(map[string]string),
-			Font:      NewFontConfig(),
-			Switcher:  NewThemeSwitcherConfig(),
+			Name:         "default",
+			Palette:      "default-light",
+			FallbackMode: "dark",
+			Variables:    make(map[string]string),
+			Font:         NewFontConfig(),
+			Switcher:     NewThemeSwitcherConfig(),
 		},
 		ThemeCalendar:    NewThemeCalendarConfig(),
 		PostFormats:      NewPostFormatsConfig(),
@@ -2832,11 +2852,12 @@ func (c *Config) NeedsLicenseWarning() bool {
 // NewThemeConfig creates a new ThemeConfig with default values.
 func NewThemeConfig() ThemeConfig {
 	return ThemeConfig{
-		Name:      "default",
-		Palette:   "default-light",
-		Variables: make(map[string]string),
-		Font:      NewFontConfig(),
-		Switcher:  NewThemeSwitcherConfig(),
+		Name:         "default",
+		Palette:      "default-light",
+		FallbackMode: "dark",
+		Variables:    make(map[string]string),
+		Font:         NewFontConfig(),
+		Switcher:     NewThemeSwitcherConfig(),
 	}
 }
 

@@ -946,6 +946,7 @@ func ThemeToMap(t *models.ThemeConfig) map[string]interface{} {
 		"palette":       t.Palette,
 		"palette_light": t.PaletteLight,
 		"palette_dark":  t.PaletteDark,
+		"fallback_mode": t.FallbackMode,
 		"variables":     t.Variables,
 		"custom_css":    t.CustomCSS,
 		"background":    backgroundMap,
@@ -960,6 +961,7 @@ func SwitcherToMap(s *models.ThemeSwitcherConfig) map[string]interface{} {
 	if s == nil {
 		return map[string]interface{}{
 			"enabled":     false,
+			"mode_toggle": true,
 			"include_all": true,
 			"position":    "header",
 		}
@@ -967,6 +969,7 @@ func SwitcherToMap(s *models.ThemeSwitcherConfig) map[string]interface{} {
 
 	return map[string]interface{}{
 		"enabled":     s.IsEnabled(),
+		"mode_toggle": s.IsModeToggleEnabled(),
 		"include_all": s.IsIncludeAll(),
 		"include":     s.Include,
 		"exclude":     s.Exclude,

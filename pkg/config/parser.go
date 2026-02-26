@@ -424,6 +424,7 @@ type tomlThemeConfig struct {
 	Palette      string                  `toml:"palette"`
 	PaletteLight string                  `toml:"palette_light"`
 	PaletteDark  string                  `toml:"palette_dark"`
+	FallbackMode string                  `toml:"fallback_mode"`
 	SeedColor    string                  `toml:"seed_color"`
 	Variables    map[string]string       `toml:"variables"`
 	CustomCSS    string                  `toml:"custom_css"`
@@ -434,6 +435,7 @@ type tomlThemeConfig struct {
 
 type tomlThemeSwitcherConfig struct {
 	Enabled    *bool    `toml:"enabled"`
+	ModeToggle *bool    `toml:"mode_toggle"`
 	IncludeAll *bool    `toml:"include_all"`
 	Include    []string `toml:"include"`
 	Exclude    []string `toml:"exclude"`
@@ -1582,6 +1584,7 @@ func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
 		Palette:      t.Palette,
 		PaletteLight: t.PaletteLight,
 		PaletteDark:  t.PaletteDark,
+		FallbackMode: t.FallbackMode,
 		SeedColor:    t.SeedColor,
 		Variables:    variables,
 		CustomCSS:    t.CustomCSS,
@@ -1594,6 +1597,7 @@ func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
 func (s *tomlThemeSwitcherConfig) toThemeSwitcherConfig() models.ThemeSwitcherConfig {
 	return models.ThemeSwitcherConfig{
 		Enabled:    s.Enabled,
+		ModeToggle: s.ModeToggle,
 		IncludeAll: s.IncludeAll,
 		Include:    s.Include,
 		Exclude:    s.Exclude,
@@ -2227,6 +2231,7 @@ type yamlThemeConfig struct {
 	Palette      string                  `yaml:"palette"`
 	PaletteLight string                  `yaml:"palette_light"`
 	PaletteDark  string                  `yaml:"palette_dark"`
+	FallbackMode string                  `yaml:"fallback_mode"`
 	SeedColor    string                  `yaml:"seed_color"`
 	Variables    map[string]string       `yaml:"variables"`
 	CustomCSS    string                  `yaml:"custom_css"`
@@ -2237,6 +2242,7 @@ type yamlThemeConfig struct {
 
 type yamlThemeSwitcherConfig struct {
 	Enabled    *bool    `yaml:"enabled"`
+	ModeToggle *bool    `yaml:"mode_toggle"`
 	IncludeAll *bool    `yaml:"include_all"`
 	Include    []string `yaml:"include"`
 	Exclude    []string `yaml:"exclude"`
@@ -2282,6 +2288,7 @@ func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
 		Palette:      t.Palette,
 		PaletteLight: t.PaletteLight,
 		PaletteDark:  t.PaletteDark,
+		FallbackMode: t.FallbackMode,
 		SeedColor:    t.SeedColor,
 		Variables:    variables,
 		CustomCSS:    t.CustomCSS,
@@ -2294,6 +2301,7 @@ func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
 func (s *yamlThemeSwitcherConfig) toThemeSwitcherConfig() models.ThemeSwitcherConfig {
 	return models.ThemeSwitcherConfig{
 		Enabled:    s.Enabled,
+		ModeToggle: s.ModeToggle,
 		IncludeAll: s.IncludeAll,
 		Include:    s.Include,
 		Exclude:    s.Exclude,
@@ -3546,6 +3554,7 @@ type jsonThemeConfig struct {
 	Palette      string                  `json:"palette"`
 	PaletteLight string                  `json:"palette_light"`
 	PaletteDark  string                  `json:"palette_dark"`
+	FallbackMode string                  `json:"fallback_mode"`
 	SeedColor    string                  `json:"seed_color"`
 	Variables    map[string]string       `json:"variables"`
 	CustomCSS    string                  `json:"custom_css"`
@@ -3556,6 +3565,7 @@ type jsonThemeConfig struct {
 
 type jsonThemeSwitcherConfig struct {
 	Enabled    *bool    `json:"enabled"`
+	ModeToggle *bool    `json:"mode_toggle"`
 	IncludeAll *bool    `json:"include_all"`
 	Include    []string `json:"include"`
 	Exclude    []string `json:"exclude"`
@@ -3601,6 +3611,7 @@ func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
 		Palette:      t.Palette,
 		PaletteLight: t.PaletteLight,
 		PaletteDark:  t.PaletteDark,
+		FallbackMode: t.FallbackMode,
 		SeedColor:    t.SeedColor,
 		Variables:    variables,
 		CustomCSS:    t.CustomCSS,
@@ -3613,6 +3624,7 @@ func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
 func (s *jsonThemeSwitcherConfig) toThemeSwitcherConfig() models.ThemeSwitcherConfig {
 	return models.ThemeSwitcherConfig{
 		Enabled:    s.Enabled,
+		ModeToggle: s.ModeToggle,
 		IncludeAll: s.IncludeAll,
 		Include:    s.Include,
 		Exclude:    s.Exclude,

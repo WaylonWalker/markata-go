@@ -48,6 +48,7 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Get palette configuration from config.Extra["theme"]
 	paletteName, paletteLight, paletteDark, seedColor := p.getPaletteConfig(config.Extra)
+	fallbackMode := p.getThemeFallbackMode(config.Extra)
 	userVariables := p.getThemeVariables(config.Extra)
 	if paletteName == "" {
 		return nil
@@ -80,9 +81,9 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 
 	var css string
 	if switcherEnabled {
-		css = p.generateMultiPaletteCSS(loader, config.Extra, paletteName, paletteLight, paletteDark, userVariables)
+		css = p.generateMultiPaletteCSS(loader, config.Extra, paletteName, paletteLight, paletteDark, userVariables, fallbackMode)
 	} else {
-		css = p.generateSinglePaletteCSS(loader, paletteName, paletteLight, paletteDark, userVariables)
+		css = p.generateSinglePaletteCSS(loader, paletteName, paletteLight, paletteDark, userVariables, fallbackMode)
 	}
 
 	// Compute hash of generated CSS
@@ -109,6 +110,7 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 
 	// Get palette configuration from config.Extra["theme"]
 	paletteName, paletteLight, paletteDark, seedColor := p.getPaletteConfig(config.Extra)
+	fallbackMode := p.getThemeFallbackMode(config.Extra)
 	userVariables := p.getThemeVariables(config.Extra)
 	if paletteName == "" {
 		// No palette configured, skip
@@ -146,10 +148,10 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	var css string
 	if switcherEnabled {
 		// Generate CSS for all palettes when switcher is enabled
-		css = p.generateMultiPaletteCSS(loader, config.Extra, paletteName, paletteLight, paletteDark, userVariables)
+		css = p.generateMultiPaletteCSS(loader, config.Extra, paletteName, paletteLight, paletteDark, userVariables, fallbackMode)
 	} else {
 		// Generate CSS for just the configured light/dark pair
-		css = p.generateSinglePaletteCSS(loader, paletteName, paletteLight, paletteDark, userVariables)
+		css = p.generateSinglePaletteCSS(loader, paletteName, paletteLight, paletteDark, userVariables, fallbackMode)
 	}
 
 	// Write to output directory
@@ -218,7 +220,7 @@ func (p *PaletteCSSPlugin) getSwitcherConfig(extra map[string]interface{}) model
 }
 
 // generateSinglePaletteCSS generates CSS for a single light/dark palette pair.
-func (p *PaletteCSSPlugin) generateSinglePaletteCSS(loader *palettes.Loader, paletteName, paletteLight, paletteDark string, overrides map[string]string) string {
+func (p *PaletteCSSPlugin) generateSinglePaletteCSS(loader *palettes.Loader, paletteName, paletteLight, paletteDark string, overrides map[string]string, fallbackMode string) string {
 	// Get effective light and dark palette names
 	lightName, darkName := palettes.GetEffectivePalettes(paletteName, paletteLight, paletteDark)
 
@@ -255,7 +257,7 @@ func (p *PaletteCSSPlugin) generateSinglePaletteCSS(loader *palettes.Loader, pal
 	}
 
 	// Generate theme-compatible CSS with both variants
-	return p.generateThemeCSSWithVariants(lightPalette, darkPalette, lightName, darkName, overrides)
+	return p.generateThemeCSSWithVariants(lightPalette, darkPalette, lightName, darkName, overrides, fallbackMode)
 }
 
 // PaletteManifestEntry represents a palette entry in the manifest.
@@ -267,7 +269,7 @@ type PaletteManifestEntry struct {
 }
 
 // generateMultiPaletteCSS generates CSS for all available palettes when switcher is enabled.
-func (p *PaletteCSSPlugin) generateMultiPaletteCSS(loader *palettes.Loader, extra map[string]interface{}, paletteName, paletteLight, paletteDark string, overrides map[string]string) string {
+func (p *PaletteCSSPlugin) generateMultiPaletteCSS(loader *palettes.Loader, extra map[string]interface{}, paletteName, paletteLight, paletteDark string, overrides map[string]string, fallbackMode string) string {
 	var buf bytes.Buffer
 
 	buf.WriteString("@layer reset, tokens, base, components, utilities, overrides;\n\n")
@@ -277,7 +279,7 @@ func (p *PaletteCSSPlugin) generateMultiPaletteCSS(loader *palettes.Loader, extr
 	allPalettes, err := loader.Discover()
 	if err != nil {
 		// Fall back to single palette CSS on error
-		return p.generateSinglePaletteCSS(loader, paletteName, paletteLight, paletteDark, overrides)
+		return p.generateSinglePaletteCSS(loader, paletteName, paletteLight, paletteDark, overrides, fallbackMode)
 	}
 
 	// Filter palettes based on switcher config
@@ -334,36 +336,49 @@ func (p *PaletteCSSPlugin) generateMultiPaletteCSS(loader *palettes.Loader, extr
 		buf.WriteString("}\n\n")
 	}
 
-	// Generate default light mode (using configured light palette)
-	// Only applies when no specific data-palette is set
-	if lightName != "" {
-		lightPalette, err := loader.Load(lightName)
-		if err == nil {
-			buf.WriteString(fmt.Sprintf("/* Default light mode - %s */\n", lightName))
-			buf.WriteString(":root:not([data-palette]),\n")
-			buf.WriteString("[data-theme=\"light\"]:not([data-palette]) {\n")
-			p.writePaletteVariables(&buf, lightPalette)
-			buf.WriteString("}\n\n")
+	if normalizeThemeFallbackMode(fallbackMode) == "light" {
+		// Light fallback (default)
+		if lightName != "" {
+			lightPalette, err := loader.Load(lightName)
+			if err == nil {
+				buf.WriteString(fmt.Sprintf("/* Default light mode - %s */\n", lightName))
+				buf.WriteString(":root:not([data-theme=\"dark\"]):not([data-palette]),\n")
+				buf.WriteString("[data-theme=\"light\"]:not([data-palette]) {\n")
+				p.writePaletteVariables(&buf, lightPalette)
+				buf.WriteString("}\n\n")
+			}
 		}
-	}
 
-	// Generate default dark mode (using configured dark palette)
-	// Only applies when no specific data-palette is set
-	if darkName != "" {
-		darkPalette, err := loader.Load(darkName)
-		if err == nil {
-			buf.WriteString(fmt.Sprintf("/* Default dark mode - %s */\n", darkName))
-			buf.WriteString("[data-theme=\"dark\"]:not([data-palette]) {\n")
-			p.writePaletteVariables(&buf, darkPalette)
-			buf.WriteString("}\n\n")
+		if darkName != "" {
+			darkPalette, err := loader.Load(darkName)
+			if err == nil {
+				buf.WriteString(fmt.Sprintf("/* Dark mode - %s */\n", darkName))
+				buf.WriteString("[data-theme=\"dark\"]:not([data-palette]) {\n")
+				p.writePaletteVariables(&buf, darkPalette)
+				buf.WriteString("}\n\n")
+			}
+		}
+	} else {
+		// Dark fallback (default)
+		if darkName != "" {
+			darkPalette, err := loader.Load(darkName)
+			if err == nil {
+				buf.WriteString(fmt.Sprintf("/* Default dark mode - %s */\n", darkName))
+				buf.WriteString(":root:not([data-theme=\"light\"]):not([data-palette]),\n")
+				buf.WriteString("[data-theme=\"dark\"]:not([data-palette]) {\n")
+				p.writePaletteVariables(&buf, darkPalette)
+				buf.WriteString("}\n\n")
+			}
+		}
 
-			// Also add prefers-color-scheme media query for auto mode
-			buf.WriteString("/* Auto dark mode based on system preference */\n")
-			buf.WriteString("@media (prefers-color-scheme: dark) {\n")
-			buf.WriteString("  :root:not([data-theme=\"light\"]):not([data-palette]) {\n")
-			p.writePaletteVariablesIndented(&buf, darkPalette, "    ")
-			buf.WriteString("  }\n")
-			buf.WriteString("}\n")
+		if lightName != "" {
+			lightPalette, err := loader.Load(lightName)
+			if err == nil {
+				buf.WriteString(fmt.Sprintf("/* Light mode - %s */\n", lightName))
+				buf.WriteString("[data-theme=\"light\"]:not([data-palette]) {\n")
+				p.writePaletteVariables(&buf, lightPalette)
+				buf.WriteString("}\n\n")
+			}
 		}
 	}
 
@@ -457,7 +472,7 @@ func getBaseName(name string) string {
 // generateThemeCSSWithVariants generates CSS with both light and dark palette variants.
 // The CSS uses data-theme attribute for switching between variants.
 // It preserves all non-color variables (typography, spacing, layout, gradients) from the default theme.
-func (p *PaletteCSSPlugin) generateThemeCSSWithVariants(lightPalette, darkPalette *palettes.Palette, lightName, darkName string, overrides map[string]string) string {
+func (p *PaletteCSSPlugin) generateThemeCSSWithVariants(lightPalette, darkPalette *palettes.Palette, lightName, darkName string, overrides map[string]string, fallbackMode string) string {
 	var buf bytes.Buffer
 
 	buf.WriteString("@layer reset, tokens, base, components, utilities, overrides;\n\n")
@@ -479,35 +494,72 @@ func (p *PaletteCSSPlugin) generateThemeCSSWithVariants(lightPalette, darkPalett
 
 	buf.WriteString("}\n\n")
 
-	// Generate light mode (default) styles
-	if lightPalette != nil {
-		buf.WriteString(fmt.Sprintf("/* Light mode - %s */\n", lightPalette.Name))
-		buf.WriteString(":root,\n")
-		buf.WriteString("[data-theme=\"light\"] {\n")
-		p.writePaletteVariables(&buf, lightPalette)
-		buf.WriteString("}\n\n")
-	}
+	if normalizeThemeFallbackMode(fallbackMode) == "light" {
+		if lightPalette != nil {
+			buf.WriteString(fmt.Sprintf("/* Default light mode - %s */\n", lightPalette.Name))
+			buf.WriteString(":root:not([data-theme=\"dark\"]),\n")
+			buf.WriteString("[data-theme=\"light\"] {\n")
+			p.writePaletteVariables(&buf, lightPalette)
+			buf.WriteString("}\n\n")
+		}
 
-	// Generate dark mode styles
-	if darkPalette != nil {
-		buf.WriteString(fmt.Sprintf("/* Dark mode - %s */\n", darkPalette.Name))
-		buf.WriteString("[data-theme=\"dark\"] {\n")
-		p.writePaletteVariables(&buf, darkPalette)
-		buf.WriteString("}\n\n")
+		if darkPalette != nil {
+			buf.WriteString(fmt.Sprintf("/* Dark mode - %s */\n", darkPalette.Name))
+			buf.WriteString("[data-theme=\"dark\"] {\n")
+			p.writePaletteVariables(&buf, darkPalette)
+			buf.WriteString("}\n\n")
+		}
+	} else {
+		// Dark fallback (default)
+		if darkPalette != nil {
+			buf.WriteString(fmt.Sprintf("/* Dark mode - %s */\n", darkPalette.Name))
+			buf.WriteString(":root:not([data-theme=\"light\"]),\n")
+			buf.WriteString("[data-theme=\"dark\"] {\n")
+			p.writePaletteVariables(&buf, darkPalette)
+			buf.WriteString("}\n\n")
+		}
 
-		// Also add prefers-color-scheme media query for auto mode
-		buf.WriteString("/* Auto dark mode based on system preference */\n")
-		buf.WriteString("@media (prefers-color-scheme: dark) {\n")
-		buf.WriteString("  :root:not([data-theme=\"light\"]) {\n")
-		p.writePaletteVariablesIndented(&buf, darkPalette, "    ")
-		buf.WriteString("  }\n")
-		buf.WriteString("}\n")
+		if lightPalette != nil {
+			buf.WriteString(fmt.Sprintf("/* Light mode - %s */\n", lightPalette.Name))
+			buf.WriteString("[data-theme=\"light\"] {\n")
+			p.writePaletteVariables(&buf, lightPalette)
+			buf.WriteString("}\n\n")
+		}
 	}
 
 	buf.WriteString("}\n\n")
 	p.writeThemeOverrides(&buf, overrides)
 
 	return buf.String()
+}
+
+func (p *PaletteCSSPlugin) getThemeFallbackMode(extra map[string]interface{}) string {
+	if extra == nil {
+		return "dark"
+	}
+
+	if modelsConfig, ok := extra["models_config"].(*models.Config); ok {
+		return normalizeThemeFallbackMode(modelsConfig.Theme.FallbackMode)
+	}
+
+	if themeConfig, ok := extra["theme"].(models.ThemeConfig); ok {
+		return normalizeThemeFallbackMode(themeConfig.FallbackMode)
+	}
+
+	if theme, ok := extra["theme"].(map[string]interface{}); ok {
+		if mode, ok := theme["fallback_mode"].(string); ok {
+			return normalizeThemeFallbackMode(mode)
+		}
+	}
+
+	return "dark"
+}
+
+func normalizeThemeFallbackMode(mode string) string {
+	if strings.EqualFold(strings.TrimSpace(mode), "light") {
+		return "light"
+	}
+	return "dark"
 }
 
 // writePaletteVariables writes CSS custom properties for a palette.

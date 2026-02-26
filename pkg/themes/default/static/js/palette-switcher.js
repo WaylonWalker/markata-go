@@ -12,6 +12,16 @@
   const MODE_KEY = 'color-mode'; // 'light' or 'dark'
   const AESTHETIC_KEY = 'selected-aesthetic';
 
+  const SUN_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"></circle><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>';
+  const MOON_ICON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M21 14.8A8.8 8.8 0 1 1 9.2 3a7.1 7.1 0 0 0 11.8 11.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
+
+  function getFallbackMode() {
+    if (typeof window !== 'undefined' && window.__markataThemeFallbackMode === 'light') {
+      return 'light';
+    }
+    return 'dark';
+  }
+
   // Aesthetic list is populated from CSS manifest dynamically
   let AESTHETICS = [];
 
@@ -61,6 +71,10 @@
     const styles = getComputedStyle(document.documentElement);
     const value = styles.getPropertyValue('--palette-switcher-enabled').trim();
     return value === '1' || value === 'true' || value === '"1"';
+  }
+
+  function isModeToggleEnabled() {
+    return document.querySelector('.palette-mode-toggle') !== null;
   }
 
   /**
@@ -166,14 +180,11 @@
    * Get current color mode preference
    */
   function getColorMode() {
-    const stored = localStorage.getItem(MODE_KEY);
+    const stored = localStorage.getItem(MODE_KEY) || localStorage.getItem('theme');
     if (stored) return stored;
 
-    // Check system preference
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    return 'light';
+    // Default to configured fallback mode unless user explicitly chose a mode.
+    return getFallbackMode();
   }
 
   /**
@@ -181,6 +192,7 @@
    */
   function setColorMode(mode) {
     localStorage.setItem(MODE_KEY, mode);
+    localStorage.setItem('theme', mode);
 
     const root = document.documentElement;
     root.dataset.theme = mode;
@@ -247,7 +259,7 @@
   function updateModeToggle(mode) {
     const toggle = document.querySelector('.palette-mode-toggle');
     if (toggle) {
-      const icon = mode === 'dark' ? '\u263E' : '\u2600'; // moon/sun
+      const icon = mode === 'dark' ? MOON_ICON_SVG : SUN_ICON_SVG;
       const label = mode === 'dark' ? 'Dark' : 'Light';
       toggle.innerHTML = `<span class="mode-icon">${icon}</span>`;
       toggle.title = `${label} mode - click to toggle`;
@@ -270,10 +282,33 @@
     });
   }
 
+  function initModeToggleOnly(container) {
+    const scope = container || document;
+    const modeToggle = scope.querySelector('.palette-mode-toggle');
+    if (!modeToggle) {
+      return;
+    }
+
+    if (modeToggle.dataset.modeToggleBound !== 'true') {
+      modeToggle.addEventListener('click', () => {
+        const current = getColorMode();
+        setColorMode(current === 'dark' ? 'light' : 'dark');
+      });
+      modeToggle.dataset.modeToggleBound = 'true';
+    }
+
+    setColorMode(getColorMode());
+  }
+
   /**
    * Enhance an existing HTML-based theme switcher
    */
   function enhanceExistingSwitcher(container, families) {
+    if (container.dataset.paletteSwitcherEnhanced === 'true') {
+      return;
+    }
+    container.dataset.paletteSwitcherEnhanced = 'true';
+
     // Wire up the existing mode toggle
     const modeToggle = container.querySelector('.palette-mode-toggle');
     if (modeToggle) {
@@ -289,6 +324,8 @@
     const dropdown = container.querySelector('.palette-family-dropdown');
 
     if (familyList && familyBtn && dropdown) {
+      familyList.innerHTML = '';
+
       // Sort families alphabetically
       const sortedFamilies = Array.from(families.entries()).sort((a, b) =>
         a[1].displayName.localeCompare(b[1].displayName)
@@ -400,23 +437,31 @@
    * Create the palette switcher UI
    */
   function createSwitcher() {
+    const existingSwitcher = document.querySelector('.theme-switcher');
     if (!isSwitcherEnabled()) {
+      if (existingSwitcher) {
+        initModeToggleOnly(existingSwitcher);
+      }
       return;
     }
 
     const manifest = getManifest();
-    if (manifest.length === 0) {
-      return;
-    }
-
     const families = groupByFamily(manifest);
 
     // Check if we have an existing theme-switcher from HTML template
-    const existingSwitcher = document.querySelector('.theme-switcher');
     if (existingSwitcher) {
       // Enhance existing switcher instead of creating new one
       enhanceExistingSwitcher(existingSwitcher, families);
       return;
+    }
+
+    if (manifest.length === 0) {
+      return;
+    }
+
+    const existingFallback = document.querySelector('.palette-switcher');
+    if (existingFallback) {
+      existingFallback.remove();
     }
 
     // Create new container (fallback if no HTML template)
@@ -606,9 +651,13 @@
     function check() {
       attempts++;
       const styles = getComputedStyle(document.documentElement);
-      const manifest = styles.getPropertyValue('--palette-manifest').trim();
+      const paletteManifest = styles.getPropertyValue('--palette-manifest').trim();
+      const aestheticManifest = styles.getPropertyValue('--aesthetic-manifest').trim();
 
-      if (manifest && manifest.length > 10) {
+      const paletteReady = paletteManifest && paletteManifest !== 'none' && paletteManifest.length > 10;
+      const aestheticReady = aestheticManifest && aestheticManifest !== 'none' && aestheticManifest.length > 10;
+
+      if (paletteReady && aestheticReady) {
         callback();
       } else if (attempts < maxAttempts) {
         setTimeout(check, 100);
@@ -621,10 +670,16 @@
   }
 
   function init() {
+    if (!isSwitcherEnabled()) {
+      initModeToggleOnly();
+      return;
+    }
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         waitForStylesheets(() => {
           createSwitcher();
+          initAestheticSelector();
         });
       });
     });
@@ -726,6 +781,33 @@
     }));
   }
 
+  function initAestheticSelector() {
+    const select = document.getElementById('aesthetic-select');
+    if (!select) {
+      return;
+    }
+
+    const manifest = getAestheticManifest();
+    if (manifest.length > 0) {
+      select.innerHTML = '';
+      manifest.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.name;
+        option.textContent = item.displayName || item.name;
+        select.appendChild(option);
+      });
+    }
+
+    if (select.dataset.aestheticBound !== 'true') {
+      select.addEventListener('change', (e) => {
+        setAesthetic(e.target.value);
+      });
+      select.dataset.aestheticBound = 'true';
+    }
+
+    setAesthetic(getAesthetic());
+  }
+
   /**
    * Cycle to next/previous aesthetic
    */
@@ -776,6 +858,10 @@
       sortedFamilyNames = Array.from(families.keys()).sort((a, b) =>
         getFamilyDisplayName(a).localeCompare(getFamilyDisplayName(b))
       );
+    }
+
+    if (sortedFamilyNames.length === 0) {
+      return;
     }
 
     const currentFamily = localStorage.getItem(FAMILY_KEY) || sortedFamilyNames[0];
@@ -832,77 +918,84 @@
     }
 
     waitForRegistry(function() {
-      // [ = previous family
-      window.shortcutsRegistry.register({
-        key: '[',
-        modifiers: [],
-        description: 'Previous palette',
-        group: 'theme',
-        handler: function(e) {
-          e.preventDefault();
-          cycleFamily('prev');
-        },
-        priority: 50
-      });
+      if (isSwitcherEnabled()) {
+        // , = previous family
+        window.shortcutsRegistry.register({
+          key: ',',
+          modifiers: [],
+          description: 'Previous palette',
+          group: 'theme',
+          handler: function(e) {
+            e.preventDefault();
+            cycleFamily('prev');
+          },
+          priority: 50
+        });
 
-      // ] = next family
-      window.shortcutsRegistry.register({
-        key: ']',
-        modifiers: [],
-        description: 'Next palette',
-        group: 'theme',
-        handler: function(e) {
-          e.preventDefault();
-          cycleFamily('next');
-        },
-        priority: 50
-      });
+        // . = next family
+        window.shortcutsRegistry.register({
+          key: '.',
+          modifiers: [],
+          description: 'Next palette',
+          group: 'theme',
+          handler: function(e) {
+            e.preventDefault();
+            cycleFamily('next');
+          },
+          priority: 50
+        });
 
-      // { (Shift+[) = previous aesthetic
-      window.shortcutsRegistry.register({
-        key: '{',
-        modifiers: [],
-        description: 'Previous aesthetic',
-        group: 'theme',
-        handler: function(e) {
-          e.preventDefault();
-          cycleAesthetic('prev');
-        },
-        priority: 50
-      });
+        // < (Shift+,) = previous aesthetic
+        window.shortcutsRegistry.register({
+          key: '<',
+          modifiers: [],
+          description: 'Previous aesthetic',
+          group: 'theme',
+          handler: function(e) {
+            e.preventDefault();
+            cycleAesthetic('prev');
+          },
+          priority: 50
+        });
 
-      // } (Shift+]) = next aesthetic
-      window.shortcutsRegistry.register({
-        key: '}',
-        modifiers: [],
-        description: 'Next aesthetic',
-        group: 'theme',
-        handler: function(e) {
-          e.preventDefault();
-          cycleAesthetic('next');
-        },
-        priority: 50
-      });
+        // > (Shift+.) = next aesthetic
+        window.shortcutsRegistry.register({
+          key: '>',
+          modifiers: [],
+          description: 'Next aesthetic',
+          group: 'theme',
+          handler: function(e) {
+            e.preventDefault();
+            cycleAesthetic('next');
+          },
+          priority: 50
+        });
+      }
 
-      // \ = toggle dark/light
-      window.shortcutsRegistry.register({
-        key: '\\',
-        modifiers: [],
-        description: 'Toggle dark/light mode',
-        group: 'theme',
-        handler: function(e) {
-          e.preventDefault();
-          const current = getColorMode();
-          setColorMode(current === 'dark' ? 'light' : 'dark');
-          showNotification(current === 'dark' ? 'Light Mode' : 'Dark Mode');
-        },
-        priority: 50
-      });
+      if (isModeToggleEnabled()) {
+        // \ = toggle dark/light
+        window.shortcutsRegistry.register({
+          key: '\\',
+          modifiers: [],
+          description: 'Toggle dark/light mode',
+          group: 'theme',
+          handler: function(e) {
+            e.preventDefault();
+            const current = getColorMode();
+            setColorMode(current === 'dark' ? 'light' : 'dark');
+            showNotification(current === 'dark' ? 'Light Mode' : 'Dark Mode');
+          },
+          priority: 50
+        });
+      }
     });
   }
 
   // Initialize keyboard shortcuts
   setupKeyboardShortcuts();
+
+  window.initPaletteSwitcher = init;
+  window.addEventListener('view-transition-complete', init);
 
   // Expose API
   window.markata = window.markata || {};

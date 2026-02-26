@@ -717,6 +717,7 @@ pseudo-only selectors like `:root` or `::selection` to avoid dropping base/theme
 [my-ssg.theme]
 name = "default"              # Theme name (built-in or installed)
 custom_css = ""               # Path to custom CSS file (loaded after theme CSS)
+fallback_mode = "dark"        # Fallback when system preference is unavailable: "dark" or "light"
 
 # Theme-specific options (defined by theme)
 [my-ssg.theme.options]
