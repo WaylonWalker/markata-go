@@ -14,10 +14,10 @@
             --og-border: var(--color-border, #403d52);
             --og-surface: var(--color-surface, #1f1d2e);
 
-            /* Gradient colors - themed to match popular palettes */
-            --og-gradient-start: var(--color-error, #eb6f92);
-            --og-gradient-mid: var(--color-accent, #c4a7e7);
-            --og-gradient-end: var(--color-warning, #f6c177);
+            /* Gradient colors - derived from primary palette hues */
+            --og-gradient-start: var(--color-primary-dark, var(--color-primary, #9ccfd8));
+            --og-gradient-mid: var(--color-primary, #9ccfd8);
+            --og-gradient-end: var(--color-primary-light, var(--color-link, #c4a7e7));
 
             /* Font */
             --og-font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -200,15 +200,18 @@
             <h1 class="og-title">{{ post.title }}</h1>
         </div>
         {% if media_src %}
+        {% with media_src|with_size:"418,320" as sized_media %}
         <figure class="og-media">
             {% if media_src|is_video %}
-            <video class="og-image" autoplay muted loop playsinline>
-                <source src="{{ media_src }}" type="video/{% with media_src|lower as src_lower %}{% if src_lower|endswith:".mp4" or src_lower|endswith:".m4v" %}mp4{% elif src_lower|endswith:".webm" %}webm{% elif src_lower|endswith:".mov" %}quicktime{% else %}ogg{% endif %}{% endwith %}">
+            {% set poster_candidate = post | poster_url:media_src %}
+            <video class="og-image" autoplay muted loop playsinline{% if poster_candidate %} poster="{{ poster_candidate | with_size:"418,320" }}"{% endif %}>
+                <source src="{{ sized_media }}"{% with media_src|video_mime as mime %}{% if mime %} type="{{ mime }}"{% endif %}{% endwith %}>
             </video>
             {% else %}
-            <img src="{{ media_src }}" alt="{{ post.title }}" class="og-image">
+            <img src="{{ sized_media }}" alt="{{ post.title }}" class="og-image">
             {% endif %}
         </figure>
+        {% endwith %}
         {% endif %}
     </div>
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // MDVideoPlugin converts markdown image syntax for video files into HTML video elements.
@@ -165,7 +166,7 @@ func (p *MDVideoPlugin) processPost(post *models.Post) error {
 		}
 
 		// Build the video tag
-		return p.buildVideoTag(src, alt)
+		return p.buildVideoTag(post, src, alt)
 	})
 
 	post.ArticleHTML = result
@@ -219,7 +220,7 @@ func (p *MDVideoPlugin) getVideoMIMEType(url string) string {
 }
 
 // buildVideoTag constructs the HTML video element.
-func (p *MDVideoPlugin) buildVideoTag(src, alt string) string {
+func (p *MDVideoPlugin) buildVideoTag(post *models.Post, src, alt string) string {
 	var attrs []string
 
 	// Add boolean attributes (order matters for consistency)
@@ -247,6 +248,10 @@ func (p *MDVideoPlugin) buildVideoTag(src, alt string) string {
 	// Add class if configured
 	if p.config.VideoClass != "" {
 		attrs = append(attrs, `class="`+p.config.VideoClass+`"`)
+	}
+
+	if poster := templates.PosterURLFromMap(templates.GetPostMap(post), src); poster != "" {
+		attrs = append(attrs, `poster="`+poster+`"`)
 	}
 
 	// Build the opening tag

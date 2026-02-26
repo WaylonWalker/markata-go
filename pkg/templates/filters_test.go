@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -654,5 +655,101 @@ func TestFilterMediaURL(t *testing.T) {
 				t.Errorf("filterMediaURL(%q, %q) = %q, want %q", tt.primary, tt.fallback, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestFilterIsVideoWithQueryFragment(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	ctx := NewContext(nil, "", nil)
+	result, err := engine.RenderString("{{ 'https://dropper.wayl.one/movie.mp4?token=1#watch' | is_video }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if result != "True" {
+		t.Errorf("is_video should treat query/fragment URLs as video, got %q", result)
+	}
+}
+
+func TestFilterWithSizeTrustedRelativeAndUntrusted(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	ctx := NewContext(nil, "", nil)
+
+	trusted, err := engine.RenderString("{{ 'https://dropper.wayl.one/image.jpg' | with_size:\"1200,675\" }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if !strings.Contains(trusted, "w=1200") || !strings.Contains(trusted, "h=675") {
+		t.Errorf("with_size should append params for trusted hosts, got %q", trusted)
+	}
+
+	relative, err := engine.RenderString("{{ '/media/image.png' | with_size:\"1200,675\" }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if !strings.HasPrefix(relative, "/media/image.png?") || !strings.Contains(relative, "w=1200") || !strings.Contains(relative, "h=675") {
+		t.Errorf("with_size should decorate relative URLs, got %q", relative)
+	}
+
+	untrusted, err := engine.RenderString("{{ 'https://example.com/image.jpg' | with_size:\"1200,675\" }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if untrusted != "https://example.com/image.jpg" {
+		t.Errorf("with_size should leave untrusted hosts untouched, got %q", untrusted)
+	}
+}
+
+func TestFilterVideoMIMEHandlesQueryFragment(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	ctx := NewContext(nil, "", nil)
+	result, err := engine.RenderString("{{ 'https://dropper.wayl.one/movie.mp4?token=1#watch' | video_mime }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if result != "video/mp4" {
+		t.Errorf("video_mime should ignore query/fragment, got %q", result)
+	}
+}
+
+func TestFilterPosterURLAliasAndFallback(t *testing.T) {
+	engine, err := NewEngine("")
+	if err != nil {
+		t.Fatalf("Failed to create engine: %v", err)
+	}
+	title := "Alias Test"
+	post := &models.Post{
+		Title: &title,
+		Extra: map[string]interface{}{
+			"poster_image": "https://dropper.wayl.one/poster.png",
+			"poster":       "https://dropper.wayl.one/fallback.png",
+			"thumbnail":    "https://dropper.wayl.one/thumb.png",
+		},
+	}
+	ctx := NewContext(post, "", nil)
+	result, err := engine.RenderString("{{ post | poster_url:'https://dropper.wayl.one/video.mp4' }}", ctx)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if result != "https://dropper.wayl.one/poster.png" {
+		t.Errorf("poster_url should honor poster_image first, got %q", result)
+	}
+
+	post2 := &models.Post{}
+	ctx2 := NewContext(post2, "", nil)
+	fallback, err := engine.RenderString("{{ post | poster_url:'https://dropper.wayl.one/video.mp4' }}", ctx2)
+	if err != nil {
+		t.Fatalf("RenderString() error: %v", err)
+	}
+	if fallback != "https://dropper.wayl.one/video.webp" {
+		t.Errorf("poster_url should derive .webp when no alias exists, got %q", fallback)
 	}
 }

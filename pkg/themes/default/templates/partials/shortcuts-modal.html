@@ -90,24 +90,30 @@
                 </table>
             </section>
 
-            {# Theme Section - only shown when theme switcher is enabled #}
-            {% if config.theme.switcher.enabled %}
+            {# Theme Section #}
+            {% set show_mode_toggle = (config.theme.switcher.mode_toggle | default:true) and (config.header.show_theme_toggle | default:true) %}
+            {% set show_full_switcher = config.theme.switcher.enabled %}
+            {% if show_mode_toggle or show_full_switcher %}
             <section class="shortcuts-section">
                 <h3 class="shortcuts-section-title">Theme</h3>
                 <table class="shortcuts-table">
                     <tbody>
+                        {% if show_full_switcher %}
                         <tr>
-                            <td><kbd>[</kbd> / <kbd>]</kbd></td>
+                            <td><kbd>,</kbd> / <kbd>.</kbd></td>
                             <td>Previous / Next palette</td>
                         </tr>
                         <tr>
-                            <td><kbd>{</kbd> / <kbd>}</kbd></td>
+                            <td><kbd>&lt;</kbd> / <kbd>&gt;</kbd></td>
                             <td>Previous / Next aesthetic</td>
                         </tr>
+                        {% endif %}
+                        {% if show_mode_toggle %}
                         <tr>
                             <td><kbd>\</kbd></td>
                             <td>Toggle dark/light mode</td>
                         </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </section>

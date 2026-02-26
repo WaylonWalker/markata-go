@@ -568,7 +568,7 @@ Implementations MUST provide at least the `default` theme.
 
 A clean, minimal theme with:
 - Responsive layout
-- Dark mode support (prefers-color-scheme)
+- Dark mode default with explicit user override
 - Styled admonitions
 - Syntax highlighting
 - Typography optimized for reading
@@ -718,11 +718,11 @@ admonition-error-border = "red"
 name = "default"              # Layout theme
 palette = "catppuccin-mocha"  # Color palette
 
-# Or with auto dark/light mode
+# Or with explicit light-mode override
 [markata-go.theme]
 name = "default"
 palette = "catppuccin-latte"        # Light mode palette
-palette_dark = "catppuccin-mocha"   # Dark mode palette (prefers-color-scheme)
+palette_dark = "catppuccin-mocha"   # Dark mode palette
 ```
 
 #### Inline Palette Customization
@@ -832,7 +832,15 @@ palettes/
 
 If no palette is specified in configuration:
 - **Default palette:** `default-light` is used
-- **Dark mode:** If `palette_dark` is not specified but the user's system prefers dark mode, and a matching dark variant exists (e.g., `default-dark` for `default-light`), it will be used automatically
+- **Mode fallback:** If no explicit user preference is saved, markata-go uses `theme.fallback_mode` (default: `"dark"`)
+- **User preference wins:** Light mode is only used when the visitor explicitly selects light mode
+
+```toml
+[markata-go.theme]
+palette = "catppuccin-latte"
+palette_dark = "catppuccin-mocha"
+fallback_mode = "dark"  # "dark" (default) or "light"
+```
 
 ```toml
 # Explicit light/dark configuration (recommended)
@@ -911,11 +919,9 @@ Palettes are compiled to CSS custom properties:
   /* ... */
 }
 
-/* Dark mode override (if palette_dark specified) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark palette colors override here */
-  }
+/* Light mode override (when visitor explicitly chooses light mode) */
+[data-theme="light"] {
+  /* Light palette colors override here */
 }
 ```
 
@@ -1183,7 +1189,7 @@ The base template (`base.html`) uses these flags to conditionally load CSS:
 {% endif %}
 
 <!-- Feature-based CSS -->
-{% if config.theme.switcher.enabled %}
+{% if config.theme.switcher.enabled or (config.theme.switcher.mode_toggle and config.header.show_theme_toggle) %}
 <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset }}">
 {% endif %}
 ```
@@ -1198,6 +1204,8 @@ The `conditional-css.js` script solves this by:
 3. Injecting the needed `<link>` tags into `<head>` if not already present
 4. Removing conditional CSS that is no longer needed
 
+Any JS-driven theme controls rendered in `<body>` (palette family selector, dark/light toggle, and aesthetic selector) MUST also re-initialize on `view-transition-complete` so controls and option lists remain interactive after navigation.
+
 ### CSS File Categories
 
 | Category | Files | Loading Condition |
@@ -1209,7 +1217,7 @@ The `conditional-css.js` script solves this by:
 | Features | `webmentions.css` | `post.webmentions` or `needs_webmentions_css` |
 | Features | `encryption.css` | `has_encrypted_content` |
 | Features | `glightbox.min.css` | `glightbox_enabled` and `needs_image_zoom` |
-| Features | `palette-switcher.css` | `config.theme.switcher.enabled` |
+| Features | `palette-switcher.css` | `config.theme.switcher.enabled` or (`config.theme.switcher.mode_toggle` and `config.header.show_theme_toggle`) |
 
 ### Estimated Savings
 

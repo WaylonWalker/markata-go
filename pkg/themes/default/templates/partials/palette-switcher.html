@@ -2,14 +2,23 @@
 {# Rendered when config.theme.switcher.enabled is true #}
 {# Contains: palette family dropdown, dark/light toggle, aesthetic dropdown #}
 
-{% if config.theme.switcher.enabled %}
-<div class="theme-switcher" data-pagefind-ignore>
+{% set show_mode_toggle = (config.theme.switcher.mode_toggle | default:true) and (config.header.show_theme_toggle | default:true) %}
+{% set show_full_switcher = config.theme.switcher.enabled %}
+{% if show_mode_toggle or show_full_switcher %}
+<div class="theme-switcher{% if not show_full_switcher %} theme-switcher--mode-only{% endif %}" data-pagefind-ignore>
   {# Dark/Light Mode Toggle #}
+  {% if show_mode_toggle %}
   <button class="palette-mode-toggle" type="button" aria-label="Toggle dark/light mode" title="Toggle dark/light mode">
-    <span class="mode-icon" aria-hidden="true"></span>
+    <span class="mode-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="18" height="18" focusable="false">
+        <path d="M21 14.8A8.8 8.8 0 1 1 9.2 3a7.1 7.1 0 0 0 11.8 11.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </span>
   </button>
+  {% endif %}
 
   {# Palette Family Selector #}
+  {% if show_full_switcher %}
   <div class="palette-family-wrapper">
     <button class="palette-family-btn" type="button" aria-haspopup="listbox" aria-expanded="false">
       <span>Theme</span>
@@ -31,8 +40,10 @@
       {# Options are populated dynamically by palette-switcher.js from --aesthetic-manifest #}
     </select>
   </div>
+  {% endif %}
 </div>
 
+{% if show_full_switcher %}
 <style>
 /* Aesthetic selector styling - matches palette-switcher design */
 .aesthetic-wrapper {
@@ -90,124 +101,7 @@
   }
 }
 </style>
+{% endif %}
 
-<script>
-(function() {
-  'use strict';
-
-  const AESTHETIC_KEY = 'selected-aesthetic';
-
-  // Extract the manifest dynamically from CSS properties.
-  function getAestheticManifest() {
-    const styles = getComputedStyle(document.documentElement);
-    let manifest = styles.getPropertyValue('--aesthetic-manifest').trim();
-
-    if (!manifest || manifest === 'none' || manifest === '') {
-      return [];
-    }
-
-    try {
-      if (manifest.startsWith("'") && manifest.endsWith("'")) {
-        manifest = manifest.slice(1, -1);
-      }
-      if (manifest.startsWith('"') && manifest.endsWith('"')) {
-        manifest = manifest.slice(1, -1);
-      }
-      manifest = manifest.replace(/\\'/g, "'");
-
-      return JSON.parse(manifest);
-    } catch (e) {
-      console.warn('[palette-switcher] Failed to parse aesthetic manifest:', e);
-      return [];
-    }
-  }
-
-  function getDefaultAesthetic() {
-    const styles = getComputedStyle(document.documentElement);
-    let def = styles.getPropertyValue('--aesthetic-default').trim();
-    if (def.startsWith("'") || def.startsWith('"')) {
-      def = def.slice(1, -1);
-    }
-    return def || 'balanced';
-  }
-
-  function applyAesthetic(name) {
-    const root = document.documentElement;
-
-    // Set data attribute for CSS targeting (auto-handled by generated aesthetic.css)
-    root.dataset.aesthetic = name;
-
-    // Persist selection
-    localStorage.setItem(AESTHETIC_KEY, name);
-
-    // Dispatch event for other components
-    window.dispatchEvent(new CustomEvent('aesthetic-change', {
-      detail: { aesthetic: name }
-    }));
-  }
-
-  function initAesthetic() {
-    const select = document.getElementById('aesthetic-select');
-    if (!select) return;
-
-    const manifest = getAestheticManifest();
-    const defaultAesthetic = getDefaultAesthetic();
-
-    // Populate the dropdown
-    if (manifest && manifest.length > 0) {
-      select.innerHTML = ''; // clear initial content
-      manifest.forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.name;
-        // Capitalize display name
-        option.textContent = item.displayName ? item.displayName.charAt(0).toUpperCase() + item.displayName.slice(1) : item.name;
-        select.appendChild(option);
-      });
-    }
-
-    // Load saved aesthetic
-    let saved = localStorage.getItem(AESTHETIC_KEY);
-    // fallback to default if saved not in manifest
-    if (!saved || (manifest.length > 0 && !manifest.find(m => m.name === saved))) {
-      saved = defaultAesthetic;
-    }
-
-    select.value = saved;
-    applyAesthetic(saved);
-
-    // Handle changes - use global API if available (for consistency with keyboard shortcuts)
-    select.addEventListener('change', (e) => {
-      if (window.markata && window.markata.paletteSwitcher && window.markata.paletteSwitcher.setAesthetic) {
-        window.markata.paletteSwitcher.setAesthetic(e.target.value);
-      } else {
-        applyAesthetic(e.target.value);
-      }
-    });
-
-    // Listen for aesthetic changes from keyboard shortcuts
-    window.addEventListener('aesthetic-change', (e) => {
-      if (e.detail && e.detail.aesthetic && select.value !== e.detail.aesthetic) {
-        select.value = e.detail.aesthetic;
-      }
-    });
-  }
-
-  // Initialize on DOM ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAesthetic);
-  } else {
-    // try immediately, but if styles haven't loaded, try again soon.
-    initAesthetic();
-    setTimeout(initAesthetic, 100);
-  }
-
-  // Expose API
-  window.markata = window.markata || {};
-  window.markata.aesthetic = {
-    apply: applyAesthetic,
-    get: () => localStorage.getItem(AESTHETIC_KEY) || getDefaultAesthetic(),
-    list: () => getAestheticManifest().map(m => m.name)
-  };
-})();
-</script>
+{# Aesthetic initialization is handled by static/js/palette-switcher.js and re-runs after view transitions. #}
 {% endif %}

@@ -1,0 +1,7 @@
+{# Load mode toggle styles when theme toggle is visible; include aesthetic CSS for switcher UI. #}
+{% if (config.theme.switcher.mode_toggle and config.header.show_theme_toggle) or config.theme.switcher.enabled %}
+<link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset_hashed }}">
+{% endif %}
+{% if config.theme.switcher.enabled %}
+<link rel="stylesheet" href="{{ 'css/aesthetic.css' | theme_asset_hashed }}">
+{% endif %}

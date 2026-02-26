@@ -717,6 +717,7 @@ pseudo-only selectors like `:root` or `::selection` to avoid dropping base/theme
 [my-ssg.theme]
 name = "default"              # Theme name (built-in or installed)
 custom_css = ""               # Path to custom CSS file (loaded after theme CSS)
+fallback_mode = "dark"        # Fallback when system preference is unavailable: "dark" or "light"
 
 # Theme-specific options (defined by theme)
 [my-ssg.theme.options]
@@ -839,6 +840,20 @@ When enabled, markata-go emits WebSub discovery links:
 - `hubs` defaults to an empty list
 
 ---
+
+### Templates (`[my-ssg.templates]`)
+
+```toml
+[my-ssg.templates.media]
+trusted_domains = [
+  "dropper.wayl.one",
+  "dropper.waylonwalker.com",
+  "dropper-dev.wayl.one",
+]
+```
+
+- `media.trusted_domains` controls which hosts the built-in template helpers will decorate with `w`/`h` sizing parameters and derived posters. Relative URLs are always treated as trusted.
+- The default values match the dropper CDN. Override this list when you serve media through a different host so that video posters and cached previews stay consistent.
 
 ## See Also
 
