@@ -17,6 +17,11 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
+const (
+	themeModeDark  = "dark"
+	themeModeLight = "light"
+)
+
 // PaletteCSSPlugin generates CSS variables from the configured color palette.
 // It runs during the Write stage and creates/overwrites css/palette.css
 // with the palette's CSS custom properties. It runs after static_assets
@@ -336,7 +341,7 @@ func (p *PaletteCSSPlugin) generateMultiPaletteCSS(loader *palettes.Loader, extr
 		buf.WriteString("}\n\n")
 	}
 
-	if normalizeThemeFallbackMode(fallbackMode) == "light" {
+	if normalizeThemeFallbackMode(fallbackMode) == themeModeLight {
 		// Light fallback (default)
 		if lightName != "" {
 			lightPalette, err := loader.Load(lightName)
@@ -494,7 +499,7 @@ func (p *PaletteCSSPlugin) generateThemeCSSWithVariants(lightPalette, darkPalett
 
 	buf.WriteString("}\n\n")
 
-	if normalizeThemeFallbackMode(fallbackMode) == "light" {
+	if normalizeThemeFallbackMode(fallbackMode) == themeModeLight {
 		if lightPalette != nil {
 			buf.WriteString(fmt.Sprintf("/* Default light mode - %s */\n", lightPalette.Name))
 			buf.WriteString(":root:not([data-theme=\"dark\"]),\n")
@@ -535,7 +540,7 @@ func (p *PaletteCSSPlugin) generateThemeCSSWithVariants(lightPalette, darkPalett
 
 func (p *PaletteCSSPlugin) getThemeFallbackMode(extra map[string]interface{}) string {
 	if extra == nil {
-		return "dark"
+		return themeModeDark
 	}
 
 	if modelsConfig, ok := extra["models_config"].(*models.Config); ok {
@@ -552,14 +557,14 @@ func (p *PaletteCSSPlugin) getThemeFallbackMode(extra map[string]interface{}) st
 		}
 	}
 
-	return "dark"
+	return themeModeDark
 }
 
 func normalizeThemeFallbackMode(mode string) string {
-	if strings.EqualFold(strings.TrimSpace(mode), "light") {
-		return "light"
+	if strings.EqualFold(strings.TrimSpace(mode), themeModeLight) {
+		return themeModeLight
 	}
-	return "dark"
+	return themeModeDark
 }
 
 // writePaletteVariables writes CSS custom properties for a palette.
