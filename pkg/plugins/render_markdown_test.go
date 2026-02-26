@@ -664,6 +664,11 @@ func TestRenderMarkdownPlugin_AttributeSyntax(t *testing.T) {
 			expected: `class="callout"`,
 		},
 		{
+			name:     "blockquote with class line",
+			input:    "> Quoted text\n> {.callout}",
+			expected: `class="callout"`,
+		},
+		{
 			name:     "list item with class",
 			input:    "- Item text\n", // list item class syntax is not supported
 			expected: `<li>`,

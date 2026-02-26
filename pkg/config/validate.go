@@ -105,6 +105,15 @@ func ValidateConfig(config *models.Config) []error {
 		})
 	}
 
+	// Warn if Tailwind CSS is included but css_purge is disabled
+	if tailwindIncludeMode(config) == "css" && !isCSSPurgeEnabled(config) {
+		errs = append(errs, ValidationError{
+			Field:   "tailwind.include",
+			Message: "Tailwind CSS output is large; enable css_purge to reduce CSS size",
+			IsWarn:  true,
+		})
+	}
+
 	// Sort errors first, then warnings
 	sortErrors(errs)
 
@@ -180,6 +189,18 @@ func ValidateConfigWithPositions(config *models.Config, tracker *PositionTracker
 			"must be >= 0",
 			GetFixSuggestion("negative_value", "orphan_threshold", ""),
 			false,
+		))
+	}
+
+	// Warn if Tailwind CSS is included but css_purge is disabled
+	if tailwindIncludeMode(config) == "css" && !isCSSPurgeEnabled(config) {
+		configErrors.Add(NewConfigErrorWithFix(
+			tracker,
+			"tailwind.include",
+			"css",
+			"Tailwind CSS output is large; enable css_purge to reduce CSS size",
+			"Enable [markata-go.css_purge].enabled = true",
+			true,
 		))
 	}
 
@@ -460,6 +481,84 @@ func ValidateAndWarn(config *models.Config, warnFunc func(error)) []error {
 	}
 
 	return actualErrors
+}
+
+func tailwindIncludeMode(config *models.Config) string {
+	if config == nil {
+		return ""
+	}
+
+	if config.Extra == nil {
+		return ""
+	}
+
+	raw, ok := config.Extra["tailwind"]
+	if !ok {
+		return ""
+	}
+
+	switch value := raw.(type) {
+	case models.TailwindConfig:
+		return normalizeTailwindInclude(value.IncludeMode())
+	case *models.TailwindConfig:
+		return normalizeTailwindInclude(value.IncludeMode())
+	case map[string]interface{}:
+		if include, ok := value["include"]; ok {
+			if s, ok := include.(string); ok {
+				return normalizeTailwindInclude(s)
+			}
+			if b, ok := include.(bool); ok {
+				if !b {
+					return ""
+				}
+				return "css"
+			}
+		}
+		return ""
+	default:
+		return ""
+	}
+}
+
+func isCSSPurgeEnabled(config *models.Config) bool {
+	if config == nil {
+		return false
+	}
+
+	if config.Extra == nil {
+		return false
+	}
+
+	raw, ok := config.Extra["css_purge"]
+	if !ok {
+		return false
+	}
+
+	switch value := raw.(type) {
+	case models.CSSPurgeConfig:
+		return value.Enabled
+	case *models.CSSPurgeConfig:
+		return value.Enabled
+	case map[string]interface{}:
+		if enabled, ok := value["enabled"].(bool); ok {
+			return enabled
+		}
+		return false
+	default:
+		return false
+	}
+}
+
+func normalizeTailwindInclude(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	switch value {
+	case "", "false", "off", "0", "none":
+		return ""
+	case "css", "js":
+		return value
+	default:
+		return ""
+	}
 }
 
 // FormatConfigError formats a ConfigError for CLI display with colors and context.

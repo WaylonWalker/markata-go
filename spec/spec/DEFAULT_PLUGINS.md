@@ -20,6 +20,7 @@ This document specifies all built-in plugins that ship with the static site gene
 │  PRE-RENDER PROCESSING                                               │
 │    ├─ auto_description   Generate descriptions from content         │
 │    └─ jinja_md           Process template expressions in content     │
+│    └─ tailwind           Run Tailwind CLI, set CSS/JS includes        │
 │                                                                      │
 │  RENDER                                                              │
 │    ├─ render_markdown    Convert markdown to HTML                    │
@@ -1563,6 +1564,7 @@ DEFAULT_PLUGINS = [
     "load",                 # Parse files
     "auto_description",     # Generate descriptions
     "jinja_md",             # Process jinja in markdown
+    "tailwind",             # Build Tailwind CSS and inject includes
     "render_markdown",      # Markdown → HTML
     "wikilinks",            # Resolve internal links
     "heading_anchors",      # Add heading anchors

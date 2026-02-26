@@ -1061,6 +1061,9 @@ func findWikilinks(content string) []WikilinkInfo {
 	return results
 }
 
+// inlineAttributesRegex matches inline attributes {.class #id key="value"}
+var inlineAttributesRegex = regexp.MustCompile(`\{[.#][^}]+\}`)
+
 // extractExcerpt extracts the first paragraph as an excerpt.
 func extractExcerpt(content string, maxLen int) string {
 	// Remove leading whitespace and headers
@@ -1085,6 +1088,11 @@ func extractExcerpt(content string, maxLen int) string {
 	}
 
 	excerpt := strings.Join(textLines, " ")
+
+	// Strip inline attributes like {.text-gray-500}
+	excerpt = inlineAttributesRegex.ReplaceAllString(excerpt, "")
+	excerpt = strings.TrimSpace(excerpt)
+
 	if len(excerpt) > maxLen {
 		excerpt = excerpt[:maxLen-3] + "..."
 	}

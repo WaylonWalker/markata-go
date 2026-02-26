@@ -221,9 +221,17 @@ func (t *AttributeTransformer) applyAttributeOnlyParagraph(para *ast.Paragraph, 
 	var target ast.Node
 	switch parent.(type) {
 	case *ast.Blockquote:
-		target = parent
+		if prev := para.PreviousSibling(); prev != nil {
+			target = prev
+		} else {
+			target = parent
+		}
 	case *extensionast.TableCell:
-		target = parent
+		if prev := para.PreviousSibling(); prev != nil {
+			target = prev
+		} else {
+			target = parent
+		}
 	default:
 		target = para.PreviousSibling()
 	}

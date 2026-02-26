@@ -75,6 +75,16 @@ RUN wget -q "https://github.com/Pagefind/pagefind/releases/download/${PAGEFIND_V
     && chmod +x /usr/local/bin/pagefind \
     && rm /tmp/pagefind.tar.gz
 
+# Install Tailwind CSS CLI as a standalone binary (musl-static)
+ARG TAILWIND_VERSION=v4.2.1
+RUN wget -q "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-x64-musl" \
+        -O /tmp/tailwindcss \
+    && wget -q "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/sha256sums.txt" \
+        -O /tmp/tailwindcss.sha256sums \
+    && grep "tailwindcss-linux-x64-musl" /tmp/tailwindcss.sha256sums | sha256sum -c - \
+    && install -m 0755 /tmp/tailwindcss /usr/local/bin/tailwindcss \
+    && rm /tmp/tailwindcss /tmp/tailwindcss.sha256sums
+
 # Copy the binary
 COPY --from=builder /app/markata-go /usr/local/bin/markata-go
 
