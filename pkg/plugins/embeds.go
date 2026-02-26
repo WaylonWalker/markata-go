@@ -21,6 +21,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // EmbedsPlugin processes embed syntax in markdown content.
@@ -573,6 +574,20 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 		}
 	}
 
+	mediaURL := getPostExtraString(post, "image", "cover_image", "og_image", "video")
+	isVideo := templates.IsVideoURL(mediaURL)
+	mediaSource := ""
+	posterURL := ""
+	if mediaURL != "" {
+		mediaSource = templates.WithSize(mediaURL, 200, 150)
+		if isVideo {
+			posterURL = templates.PosterURLFromMap(templates.GetPostMap(post), mediaURL)
+			if posterURL != "" {
+				posterURL = templates.WithSize(posterURL, 200, 150)
+			}
+		}
+	}
+
 	sb.WriteString(`<div class="`)
 	sb.WriteString(html.EscapeString(p.config.InternalCardClass))
 	sb.WriteString(`">`)
@@ -582,6 +597,38 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 	sb.WriteString(html.EscapeString(href))
 	sb.WriteString(`" class="embed-card-link">`)
 	sb.WriteString("\n")
+
+	if mediaSource != "" {
+		sb.WriteString(`    <div class="embed-card-image">`)
+		sb.WriteString("\n")
+		if isVideo {
+			sb.WriteString(`      <video class="embed-card-video" autoplay muted loop playsinline`)
+			if posterURL != "" {
+				sb.WriteString(` poster="`)
+				sb.WriteString(html.EscapeString(posterURL))
+				sb.WriteString(`"`)
+			}
+			sb.WriteString(`>`)
+			sb.WriteString("\n")
+			sb.WriteString(`        <source src="`)
+			sb.WriteString(html.EscapeString(mediaSource))
+			if mimeType := templates.VideoMIMEType(mediaURL); mimeType != "" {
+				sb.WriteString(`" type="`)
+				sb.WriteString(html.EscapeString(mimeType))
+			}
+			sb.WriteString(`">`)
+			sb.WriteString("\n")
+			sb.WriteString(`      </video>`)
+			sb.WriteString("\n")
+		} else {
+			sb.WriteString(`      <img src="`)
+			sb.WriteString(html.EscapeString(mediaSource))
+			sb.WriteString(`" alt="" width="200" height="150" loading="lazy">`)
+			sb.WriteString("\n")
+		}
+		sb.WriteString(`    </div>`)
+		sb.WriteString("\n")
+	}
 
 	sb.WriteString(`    <div class="embed-card-content">`)
 	sb.WriteString("\n")

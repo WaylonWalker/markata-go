@@ -338,7 +338,8 @@ When enabled, markata-go generates JSON-LD structured data for:
 |-------|------|---------|-------------|
 | `name` | string | `"default"` | Theme name |
 | `palette` | string | `"default-light"` | Color palette to use |
-| `palette_dark` | string | `""` | Dark mode palette (for prefers-color-scheme) |
+| `palette_dark` | string | `""` | Dark mode palette |
+| `fallback_mode` | string | `"dark"` | Fallback when system color preference is unavailable (`"dark"` or `"light"`) |
 | `custom_css` | string | `""` | Custom CSS file path (relative to static/) |
 | `variables` | map | `{}` | CSS variable overrides |
 
@@ -349,6 +350,9 @@ palette = "catppuccin-mocha"
 
 # Optional: different palette for dark mode
 palette_dark = "catppuccin-mocha"
+
+# Optional: fallback when system preference is unavailable
+fallback_mode = "dark"  # or "light"
 
 # Optional: override specific CSS variables
 [markata-go.theme.variables]
@@ -1154,7 +1158,7 @@ Configure the header component for layouts.
 | `show_title` | bool | `true` | Display site title |
 | `show_nav` | bool | `true` | Display navigation links |
 | `show_search` | bool | `true` | Display search box |
-| `show_theme_toggle` | bool | `true` | Display theme toggle button |
+| `show_theme_toggle` | bool | `true` | Display dark/light toggle in header (legacy gate; also controlled by `theme.switcher.mode_toggle`) |
 
 ```toml
 [markata-go.header]

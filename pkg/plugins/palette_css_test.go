@@ -113,6 +113,168 @@ func TestPaletteCSSPlugin_Write_GeneratesCSS(t *testing.T) {
 	}
 }
 
+func TestPaletteCSSPlugin_Write_DefaultsToDarkWithoutSystemPreference(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	p := NewPaletteCSSPlugin()
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{
+		OutputDir: tmpDir,
+		Extra: map[string]interface{}{
+			"theme": models.ThemeConfig{
+				Name:         "default",
+				Palette:      "catppuccin-latte",
+				PaletteDark:  "catppuccin-mocha",
+				PaletteLight: "catppuccin-latte",
+			},
+		},
+	})
+
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write error: %v", err)
+	}
+
+	cssPath := filepath.Join(tmpDir, "css", "palette.css")
+	content, err := os.ReadFile(cssPath)
+	if err != nil {
+		t.Fatalf("failed to read palette.css: %v", err)
+	}
+
+	css := string(content)
+	if !strings.Contains(css, ":root:not([data-theme=\"light\"])") {
+		t.Error("expected dark mode to be the default fallback selector")
+	}
+	if !strings.Contains(css, "[data-theme=\"light\"]") {
+		t.Error("expected explicit light mode selector")
+	}
+	if strings.Contains(css, "prefers-color-scheme") {
+		t.Error("did not expect prefers-color-scheme media queries")
+	}
+}
+
+func TestPaletteCSSPlugin_Write_MultiPaletteDefaultsToDarkWithoutSystemPreference(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	p := NewPaletteCSSPlugin()
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{
+		OutputDir: tmpDir,
+		Extra: map[string]interface{}{
+			"theme": map[string]interface{}{
+				"palette":       "catppuccin-latte",
+				"palette_light": "catppuccin-latte",
+				"palette_dark":  "catppuccin-mocha",
+				"switcher": map[string]interface{}{
+					"enabled": true,
+				},
+			},
+		},
+	})
+
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write error: %v", err)
+	}
+
+	cssPath := filepath.Join(tmpDir, "css", "palette.css")
+	content, err := os.ReadFile(cssPath)
+	if err != nil {
+		t.Fatalf("failed to read palette.css: %v", err)
+	}
+
+	css := string(content)
+	if !strings.Contains(css, ":root:not([data-theme=\"light\"]):not([data-palette])") {
+		t.Error("expected multi-palette default dark fallback selector")
+	}
+	if !strings.Contains(css, "[data-theme=\"light\"]:not([data-palette])") {
+		t.Error("expected explicit light mode selector in multi-palette CSS")
+	}
+	if strings.Contains(css, "prefers-color-scheme") {
+		t.Error("did not expect prefers-color-scheme media queries in multi-palette CSS")
+	}
+}
+
+func TestPaletteCSSPlugin_Write_UsesLightFallbackModeWhenConfigured(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	p := NewPaletteCSSPlugin()
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{
+		OutputDir: tmpDir,
+		Extra: map[string]interface{}{
+			"theme": models.ThemeConfig{
+				Name:         "default",
+				Palette:      "catppuccin-latte",
+				PaletteDark:  "catppuccin-mocha",
+				PaletteLight: "catppuccin-latte",
+				FallbackMode: "light",
+			},
+		},
+	})
+
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write error: %v", err)
+	}
+
+	cssPath := filepath.Join(tmpDir, "css", "palette.css")
+	content, err := os.ReadFile(cssPath)
+	if err != nil {
+		t.Fatalf("failed to read palette.css: %v", err)
+	}
+
+	css := string(content)
+	if !strings.Contains(css, ":root:not([data-theme=\"dark\"])") {
+		t.Error("expected light mode to be the default fallback selector")
+	}
+	if !strings.Contains(css, "[data-theme=\"dark\"]") {
+		t.Error("expected explicit dark mode selector when fallback_mode=light")
+	}
+	if strings.Contains(css, "prefers-color-scheme") {
+		t.Error("did not expect prefers-color-scheme media queries when fallback_mode=light")
+	}
+}
+
+func TestPaletteCSSPlugin_Write_MultiPaletteUsesLightFallbackModeWhenConfigured(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	p := NewPaletteCSSPlugin()
+	m := lifecycle.NewManager()
+	m.SetConfig(&lifecycle.Config{
+		OutputDir: tmpDir,
+		Extra: map[string]interface{}{
+			"theme": map[string]interface{}{
+				"palette":       "catppuccin-latte",
+				"palette_light": "catppuccin-latte",
+				"palette_dark":  "catppuccin-mocha",
+				"fallback_mode": "light",
+				"switcher": map[string]interface{}{
+					"enabled": true,
+				},
+			},
+		},
+	})
+
+	if err := p.Write(m); err != nil {
+		t.Fatalf("Write error: %v", err)
+	}
+
+	cssPath := filepath.Join(tmpDir, "css", "palette.css")
+	content, err := os.ReadFile(cssPath)
+	if err != nil {
+		t.Fatalf("failed to read palette.css: %v", err)
+	}
+
+	css := string(content)
+	if !strings.Contains(css, ":root:not([data-theme=\"dark\"]):not([data-palette])") {
+		t.Error("expected multi-palette light fallback selector when fallback_mode=light")
+	}
+	if !strings.Contains(css, "[data-theme=\"dark\"]:not([data-palette])") {
+		t.Error("expected explicit dark mode selector in multi-palette CSS when fallback_mode=light")
+	}
+	if strings.Contains(css, "prefers-color-scheme") {
+		t.Error("did not expect prefers-color-scheme media queries in multi-palette CSS when fallback_mode=light")
+	}
+}
+
 func TestPaletteCSSPlugin_Write_AppliesThemeVariables(t *testing.T) {
 	tmpDir := t.TempDir()
 

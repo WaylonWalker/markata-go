@@ -196,17 +196,27 @@ Because the indicator is just another element in the post template, you can also
 
 ## Dark Mode Support
 
-markata-go supports automatic dark/light mode switching based on user's system preference.
+markata-go uses an explicit theme mode model:
+- use dark by default (or `theme.fallback_mode`), and
+- switch to light only when the visitor explicitly chooses light mode.
 
 ### Using Different Palettes for Light/Dark
 
 ```toml
 [markata-go.theme]
 palette = "catppuccin-latte"        # Light mode
-palette_dark = "catppuccin-mocha"   # Dark mode (prefers-color-scheme: dark)
+palette_dark = "catppuccin-mocha"   # Dark mode palette
 ```
 
-The site automatically switches based on the visitor's system settings.
+By default, the site renders in dark mode.
+When a visitor explicitly switches to light mode, that preference is saved in localStorage and reused on future visits.
+
+```toml
+[markata-go.theme]
+palette = "catppuccin-latte"
+palette_dark = "catppuccin-mocha"
+fallback_mode = "dark"  # or "light"
+```
 
 ---
 
@@ -217,16 +227,20 @@ Allow visitors to choose any available color palette at runtime through an inter
 - **Dark/Light toggle**: A sun/moon button to instantly switch between dark and light mode
 - **Palette family selector**: A dropdown to choose from palette families (Catppuccin, Gruvbox, Rose Pine, etc.)
 - **Smart variant selection**: Automatically picks the appropriate light/dark variant based on current mode
-- **Keyboard shortcuts**: `]` next family, `[` previous family, `\` toggle dark/light mode
+- **Keyboard shortcuts**: `.` next family, `,` previous family, `>` next aesthetic, `<` previous aesthetic, `\` toggle dark/light mode
 - **Toast notifications**: Visual feedback when cycling through palettes
 
 ### Enabling the Switcher
+
+The dark/light mode toggle is available independently.
+Enable this full switcher when you also want palette family and aesthetic controls:
 
 ```toml
 [markata-go.theme]
 palette = "rose-pine"  # Default palette
 
 [markata-go.theme.switcher]
+mode_toggle = true
 enabled = true
 include_all = true  # Include all 70+ built-in palettes
 ```
@@ -239,9 +253,11 @@ The palette switcher includes convenient keyboard shortcuts:
 
 | Key | Action |
 |-----|--------|
-| `]` | Switch to next palette family |
-| `[` | Switch to previous palette family |
-| `\` | Toggle dark/light mode |
+| `.` | Switch to next palette family (full switcher only) |
+| `,` | Switch to previous palette family (full switcher only) |
+| `>` | Switch to next aesthetic (full switcher only) |
+| `<` | Switch to previous aesthetic (full switcher only) |
+| `\` | Toggle dark/light mode (mode toggle only) |
 
 These shortcuts work anywhere on the page and show a toast notification with the new palette name.
 
@@ -271,11 +287,14 @@ include = ["catppuccin-mocha", "catppuccin-latte", "nord-dark", "nord-light"]
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `enabled` | boolean | `false` | Show the palette switcher UI |
+| `mode_toggle` | boolean | `true` | Show the dark/light mode toggle |
+| `enabled` | boolean | `false` | Show the full palette switcher UI |
 | `include_all` | boolean | `true` | Include all discovered palettes |
 | `include` | array | `[]` | Palettes to include (when `include_all` is false) |
 | `exclude` | array | `[]` | Palettes to exclude (when `include_all` is true) |
 | `position` | string | `"header"` | Where to place the switcher |
+
+The mode toggle is also gated by `[markata-go.header].show_theme_toggle` for backward compatibility.
 
 ### How It Works
 
@@ -829,9 +848,11 @@ When the palette switcher is enabled, these shortcuts also work for aesthetics:
 
 | Key | Action |
 |-----|--------|
-| `]` | Next palette family |
-| `[` | Previous palette family |
-| `\` | Toggle dark/light mode |
+| `.` | Next palette family (full switcher only) |
+| `,` | Previous palette family (full switcher only) |
+| `>` | Next aesthetic (full switcher only) |
+| `<` | Previous aesthetic (full switcher only) |
+| `\` | Toggle dark/light mode (mode toggle only) |
 
 ---
 

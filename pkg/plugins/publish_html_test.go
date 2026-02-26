@@ -20,6 +20,30 @@ func createTestManager(t *testing.T, config *lifecycle.Config) *lifecycle.Manage
 	return m
 }
 
+func renderOGHTML(t *testing.T, post *models.Post) string {
+	t.Helper()
+	tempDir := t.TempDir()
+	plugin := NewPublishHTMLPlugin()
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"url":          "https://example.com",
+			"title":        "Test Site",
+			"post_formats": models.PostFormatsConfig{OG: true},
+		},
+	}
+	m := createTestManager(t, config)
+	if err := plugin.writePost(post, config, nil, m); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+	ogPath := filepath.Join(tempDir, post.Slug, "og", "index.html")
+	content, err := os.ReadFile(ogPath)
+	if err != nil {
+		t.Fatalf("failed to read OG card: %v", err)
+	}
+	return string(content)
+}
+
 // TestPublishHTMLPlugin_ShadowPages tests that unpublished posts are rendered as shadow pages.
 func TestPublishHTMLPlugin_ShadowPages(t *testing.T) {
 	tests := []struct {
@@ -358,6 +382,52 @@ func TestPublishHTMLPlugin_OGCardSupportsVideoFrontmatter(t *testing.T) {
 	}
 	if strings.Contains(ogHTML, "<img") {
 		t.Errorf("OG card should not include image tag when video frontmatter is set. Got: %s", ogHTML)
+	}
+}
+
+func TestPublishHTMLPlugin_OGCardVideoPosterAlias(t *testing.T) {
+	title := "Video Poster Alias"
+	post := &models.Post{
+		Path:        "test.md",
+		Slug:        "poster-alias",
+		Title:       &title,
+		HTML:        "<html><body>Test content</body></html>",
+		Published:   true,
+		Draft:       false,
+		Skip:        false,
+		ArticleHTML: "<p>Test content</p>",
+		Extra: map[string]interface{}{
+			"video":        "https://dropper.wayl.one/media/clip.mp4?token=abc#frag",
+			"poster_image": "https://dropper.wayl.one/media/poster.png",
+		},
+	}
+	ogHTML := renderOGHTML(t, post)
+	if !strings.Contains(ogHTML, "poster=\"https://dropper.wayl.one/media/poster.png") || !strings.Contains(ogHTML, "w=360") || !strings.Contains(ogHTML, "h=320") {
+		t.Errorf("OG card should include poster alias with size parameters. Got: %s", ogHTML)
+	}
+	if !strings.Contains(ogHTML, "type=\"video/mp4\"") {
+		t.Errorf("OG card video source should include correct MIME type even with query/fragment. Got: %s", ogHTML)
+	}
+}
+
+func TestPublishHTMLPlugin_OGCardVideoPosterFallback(t *testing.T) {
+	title := "Video Poster Fallback"
+	post := &models.Post{
+		Path:        "test.md",
+		Slug:        "poster-fallback",
+		Title:       &title,
+		HTML:        "<html><body>Test content</body></html>",
+		Published:   true,
+		Draft:       false,
+		Skip:        false,
+		ArticleHTML: "<p>Test content</p>",
+		Extra: map[string]interface{}{
+			"video": "https://dropper.wayl.one/media/clip.mp4",
+		},
+	}
+	ogHTML := renderOGHTML(t, post)
+	if !strings.Contains(ogHTML, "poster=\"https://dropper.wayl.one/media/clip.webp") || !strings.Contains(ogHTML, "w=360") || !strings.Contains(ogHTML, "h=320") {
+		t.Errorf("OG card should derive .webp poster for trusted video. Got: %s", ogHTML)
 	}
 }
 

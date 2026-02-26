@@ -50,7 +50,14 @@
 }
 
 .mode-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
+}
+
+.mode-icon svg {
+  display: block;
 }
 
 /* Family selector wrapper */

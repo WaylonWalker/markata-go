@@ -373,6 +373,9 @@ type Config struct {
 	// TemplatesDir is the directory containing templates (default: "templates")
 	TemplatesDir string `json:"templates_dir" yaml:"templates_dir" toml:"templates_dir"`
 
+	// Templates config exposes helper-specific settings for rendering built-in cards
+	Templates TemplatesConfig `json:"templates" yaml:"templates" toml:"templates"`
+
 	// Nav is the list of navigation links
 	Nav []NavItem `json:"nav" yaml:"nav" toml:"nav"`
 
@@ -496,6 +499,36 @@ type Config struct {
 	// Extra holds arbitrary plugin configurations that aren't part of the core config.
 	// Plugin-specific configs like [markata-go.image_zoom] are stored here.
 	Extra map[string]any `json:"-" yaml:"-" toml:"-"`
+}
+
+// DefaultTrustedMediaDomains is the default allowlist for media helpers.
+var DefaultTrustedMediaDomains = []string{
+	"dropper.wayl.one",
+	"dropper.waylonwalker.com",
+	"dropper-dev.wayl.one",
+}
+
+// TemplatesMediaConfig configures template helper behavior around media URLs.
+type TemplatesMediaConfig struct {
+	// TrustedDomains is the allowlist of hosts that can receive auto sizing/poster helpers.
+	TrustedDomains []string `json:"trusted_domains" yaml:"trusted_domains" toml:"trusted_domains"`
+}
+
+// TemplatesConfig contains template-specific configuration.
+type TemplatesConfig struct {
+	// Media holds settings that affect media helpers (with_size, poster_url, etc.)
+	Media TemplatesMediaConfig `json:"media" yaml:"media" toml:"media"`
+}
+
+// NewTemplatesMediaConfig returns the default TemplatesMediaConfig.
+func NewTemplatesMediaConfig() TemplatesMediaConfig {
+	trusted := append([]string{}, DefaultTrustedMediaDomains...)
+	return TemplatesMediaConfig{TrustedDomains: trusted}
+}
+
+// NewTemplatesConfig returns the default TemplatesConfig.
+func NewTemplatesConfig() TemplatesConfig {
+	return TemplatesConfig{Media: NewTemplatesMediaConfig()}
 }
 
 // HeadConfig configures elements added to the HTML <head> section.
@@ -787,6 +820,11 @@ type ThemeConfig struct {
 	// If not set, auto-detected from base Palette name
 	PaletteDark string `json:"palette_dark,omitempty" yaml:"palette_dark,omitempty" toml:"palette_dark,omitempty"`
 
+	// FallbackMode controls which mode is used when no explicit user preference
+	// is saved and the system preference is unavailable/unspecified.
+	// Valid values: "dark", "light" (default: "dark").
+	FallbackMode string `json:"fallback_mode,omitempty" yaml:"fallback_mode,omitempty" toml:"fallback_mode,omitempty"`
+
 	// SeedColor is the hex color used to generate a triadic palette if Palette == "generated"
 	SeedColor string `json:"seed_color,omitempty" yaml:"seed_color,omitempty" toml:"seed_color,omitempty"`
 
@@ -812,6 +850,9 @@ type ThemeSwitcherConfig struct {
 	// Enabled controls whether the palette switcher is shown (default: false)
 	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
 
+	// ModeToggle controls whether the dark/light mode toggle is shown (default: true)
+	ModeToggle *bool `json:"mode_toggle,omitempty" yaml:"mode_toggle,omitempty" toml:"mode_toggle,omitempty"`
+
 	// IncludeAll includes all discovered palettes in the switcher (default: true)
 	// When false, only palettes in the Include list are shown
 	IncludeAll *bool `json:"include_all,omitempty" yaml:"include_all,omitempty" toml:"include_all,omitempty"`
@@ -831,9 +872,11 @@ type ThemeSwitcherConfig struct {
 // NewThemeSwitcherConfig creates a new ThemeSwitcherConfig with default values.
 func NewThemeSwitcherConfig() ThemeSwitcherConfig {
 	enabled := false
+	modeToggle := true
 	includeAll := true
 	return ThemeSwitcherConfig{
 		Enabled:    &enabled,
+		ModeToggle: &modeToggle,
 		IncludeAll: &includeAll,
 		Include:    []string{},
 		Exclude:    []string{},
@@ -857,6 +900,15 @@ func (s *ThemeSwitcherConfig) IsIncludeAll() bool {
 		return true
 	}
 	return *s.IncludeAll
+}
+
+// IsModeToggleEnabled returns whether the dark/light mode toggle is enabled.
+// Defaults to true if not explicitly set.
+func (s *ThemeSwitcherConfig) IsModeToggleEnabled() bool {
+	if s.ModeToggle == nil {
+		return true
+	}
+	return *s.ModeToggle
 }
 
 // ThemeCalendarConfig configures automatic theme switching based on date ranges.
@@ -2724,6 +2776,7 @@ func NewConfig() *Config {
 		OutputDir:     "output",
 		AssetsDir:     "static",
 		TemplatesDir:  "templates",
+		Templates:     NewTemplatesConfig(),
 		Hooks:         []string{"default"},
 		DisabledHooks: []string{},
 		GlobConfig: GlobConfig{
@@ -2738,11 +2791,12 @@ func NewConfig() *Config {
 		FeedDefaults: NewFeedDefaults(),
 		Concurrency:  0,
 		Theme: ThemeConfig{
-			Name:      "default",
-			Palette:   "default-light",
-			Variables: make(map[string]string),
-			Font:      NewFontConfig(),
-			Switcher:  NewThemeSwitcherConfig(),
+			Name:         "default",
+			Palette:      "default-light",
+			FallbackMode: "dark",
+			Variables:    make(map[string]string),
+			Font:         NewFontConfig(),
+			Switcher:     NewThemeSwitcherConfig(),
 		},
 		ThemeCalendar:    NewThemeCalendarConfig(),
 		PostFormats:      NewPostFormatsConfig(),
@@ -2798,11 +2852,12 @@ func (c *Config) NeedsLicenseWarning() bool {
 // NewThemeConfig creates a new ThemeConfig with default values.
 func NewThemeConfig() ThemeConfig {
 	return ThemeConfig{
-		Name:      "default",
-		Palette:   "default-light",
-		Variables: make(map[string]string),
-		Font:      NewFontConfig(),
-		Switcher:  NewThemeSwitcherConfig(),
+		Name:         "default",
+		Palette:      "default-light",
+		FallbackMode: "dark",
+		Variables:    make(map[string]string),
+		Font:         NewFontConfig(),
+		Switcher:     NewThemeSwitcherConfig(),
 	}
 }
 

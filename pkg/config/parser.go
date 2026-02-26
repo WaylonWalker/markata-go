@@ -35,6 +35,7 @@ type configSource interface {
 	getShortcuts() shortcutsConverter
 	getAuthors() authorsConverter
 	getGarden() gardenConverter
+	getTemplates() templatesConverter
 }
 
 // baseConfigData holds the basic config fields that are directly assignable.
@@ -149,6 +150,10 @@ type gardenConverter interface {
 	toGardenConfig() models.GardenConfig
 }
 
+type templatesConverter interface {
+	toTemplatesConfig() models.TemplatesConfig
+}
+
 // buildConfig constructs a models.Config from a configSource.
 // This helper eliminates code duplication across TOML, YAML, and JSON config converters.
 func buildConfig(src configSource) *models.Config {
@@ -250,6 +255,9 @@ func buildConfig(src configSource) *models.Config {
 
 	// Convert Garden config
 	config.Garden = src.getGarden().toGardenConfig()
+
+	// Convert Templates config
+	config.Templates = src.getTemplates().toTemplatesConfig()
 
 	return config
 }
@@ -379,6 +387,7 @@ type tomlConfig struct {
 	Shortcuts     tomlShortcutsConfig     `toml:"shortcuts"`
 	Authors       tomlAuthorsConfig       `toml:"authors"`
 	Garden        tomlGardenConfig        `toml:"garden"`
+	Templates     tomlTemplatesConfig     `toml:"templates"`
 	UnknownFields map[string]any          `toml:"-"`
 }
 
@@ -386,6 +395,22 @@ type tomlNavItem struct {
 	Label    string `toml:"label"`
 	URL      string `toml:"url"`
 	External bool   `toml:"external"`
+}
+
+type tomlTemplatesConfig struct {
+	Media tomlTemplatesMediaConfig `toml:"media"`
+}
+
+type tomlTemplatesMediaConfig struct {
+	TrustedDomains []string `toml:"trusted_domains"`
+}
+
+func (t *tomlTemplatesConfig) toTemplatesConfig() models.TemplatesConfig {
+	cfg := models.NewTemplatesConfig()
+	if t.Media.TrustedDomains != nil {
+		cfg.Media.TrustedDomains = append([]string{}, t.Media.TrustedDomains...)
+	}
+	return cfg
 }
 
 type tomlFooterConfig struct {
@@ -399,6 +424,7 @@ type tomlThemeConfig struct {
 	Palette      string                  `toml:"palette"`
 	PaletteLight string                  `toml:"palette_light"`
 	PaletteDark  string                  `toml:"palette_dark"`
+	FallbackMode string                  `toml:"fallback_mode"`
 	SeedColor    string                  `toml:"seed_color"`
 	Variables    map[string]string       `toml:"variables"`
 	CustomCSS    string                  `toml:"custom_css"`
@@ -409,6 +435,7 @@ type tomlThemeConfig struct {
 
 type tomlThemeSwitcherConfig struct {
 	Enabled    *bool    `toml:"enabled"`
+	ModeToggle *bool    `toml:"mode_toggle"`
 	IncludeAll *bool    `toml:"include_all"`
 	Include    []string `toml:"include"`
 	Exclude    []string `toml:"exclude"`
@@ -1533,6 +1560,7 @@ func (c *tomlConfig) getMentions() mentionsConverter           { return &c.Menti
 func (c *tomlConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
 func (c *tomlConfig) getAuthors() authorsConverter             { return &c.Authors }
 func (c *tomlConfig) getGarden() gardenConverter               { return &c.Garden }
+func (c *tomlConfig) getTemplates() templatesConverter         { return &c.Templates }
 
 func (c *tomlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -1556,6 +1584,7 @@ func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
 		Palette:      t.Palette,
 		PaletteLight: t.PaletteLight,
 		PaletteDark:  t.PaletteDark,
+		FallbackMode: t.FallbackMode,
 		SeedColor:    t.SeedColor,
 		Variables:    variables,
 		CustomCSS:    t.CustomCSS,
@@ -1568,6 +1597,7 @@ func (t *tomlThemeConfig) toThemeConfig() models.ThemeConfig {
 func (s *tomlThemeSwitcherConfig) toThemeSwitcherConfig() models.ThemeSwitcherConfig {
 	return models.ThemeSwitcherConfig{
 		Enabled:    s.Enabled,
+		ModeToggle: s.ModeToggle,
 		IncludeAll: s.IncludeAll,
 		Include:    s.Include,
 		Exclude:    s.Exclude,
@@ -1721,12 +1751,29 @@ type yamlConfig struct {
 	Shortcuts     yamlShortcutsConfig     `yaml:"shortcuts"`
 	Authors       yamlAuthorsConfig       `yaml:"authors"`
 	Garden        yamlGardenConfig        `yaml:"garden"`
+	Templates     yamlTemplatesConfig     `yaml:"templates"`
 }
 
 type yamlNavItem struct {
 	Label    string `yaml:"label"`
 	URL      string `yaml:"url"`
 	External bool   `yaml:"external"`
+}
+
+type yamlTemplatesConfig struct {
+	Media yamlTemplatesMediaConfig `yaml:"media"`
+}
+
+type yamlTemplatesMediaConfig struct {
+	TrustedDomains []string `yaml:"trusted_domains"`
+}
+
+func (t *yamlTemplatesConfig) toTemplatesConfig() models.TemplatesConfig {
+	cfg := models.NewTemplatesConfig()
+	if t.Media.TrustedDomains != nil {
+		cfg.Media.TrustedDomains = append([]string{}, t.Media.TrustedDomains...)
+	}
+	return cfg
 }
 
 type yamlFooterConfig struct {
@@ -2184,6 +2231,7 @@ type yamlThemeConfig struct {
 	Palette      string                  `yaml:"palette"`
 	PaletteLight string                  `yaml:"palette_light"`
 	PaletteDark  string                  `yaml:"palette_dark"`
+	FallbackMode string                  `yaml:"fallback_mode"`
 	SeedColor    string                  `yaml:"seed_color"`
 	Variables    map[string]string       `yaml:"variables"`
 	CustomCSS    string                  `yaml:"custom_css"`
@@ -2194,6 +2242,7 @@ type yamlThemeConfig struct {
 
 type yamlThemeSwitcherConfig struct {
 	Enabled    *bool    `yaml:"enabled"`
+	ModeToggle *bool    `yaml:"mode_toggle"`
 	IncludeAll *bool    `yaml:"include_all"`
 	Include    []string `yaml:"include"`
 	Exclude    []string `yaml:"exclude"`
@@ -2239,6 +2288,7 @@ func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
 		Palette:      t.Palette,
 		PaletteLight: t.PaletteLight,
 		PaletteDark:  t.PaletteDark,
+		FallbackMode: t.FallbackMode,
 		SeedColor:    t.SeedColor,
 		Variables:    variables,
 		CustomCSS:    t.CustomCSS,
@@ -2251,6 +2301,7 @@ func (t *yamlThemeConfig) toThemeConfig() models.ThemeConfig {
 func (s *yamlThemeSwitcherConfig) toThemeSwitcherConfig() models.ThemeSwitcherConfig {
 	return models.ThemeSwitcherConfig{
 		Enabled:    s.Enabled,
+		ModeToggle: s.ModeToggle,
 		IncludeAll: s.IncludeAll,
 		Include:    s.Include,
 		Exclude:    s.Exclude,
@@ -2898,6 +2949,7 @@ func (c *yamlConfig) getMentions() mentionsConverter           { return &c.Menti
 func (c *yamlConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
 func (c *yamlConfig) getAuthors() authorsConverter             { return &c.Authors }
 func (c *yamlConfig) getGarden() gardenConverter               { return &c.Garden }
+func (c *yamlConfig) getTemplates() templatesConverter         { return &c.Templates }
 
 func (c *yamlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -3022,12 +3074,29 @@ type jsonConfig struct {
 	Shortcuts     jsonShortcutsConfig     `json:"shortcuts"`
 	Authors       jsonAuthorsConfig       `json:"authors"`
 	Garden        jsonGardenConfig        `json:"garden"`
+	Templates     jsonTemplatesConfig     `json:"templates"`
 }
 
 type jsonNavItem struct {
 	Label    string `json:"label"`
 	URL      string `json:"url"`
 	External bool   `json:"external"`
+}
+
+type jsonTemplatesConfig struct {
+	Media jsonTemplatesMediaConfig `json:"media"`
+}
+
+type jsonTemplatesMediaConfig struct {
+	TrustedDomains []string `json:"trusted_domains"`
+}
+
+func (t *jsonTemplatesConfig) toTemplatesConfig() models.TemplatesConfig {
+	cfg := models.NewTemplatesConfig()
+	if t.Media.TrustedDomains != nil {
+		cfg.Media.TrustedDomains = append([]string{}, t.Media.TrustedDomains...)
+	}
+	return cfg
 }
 
 type jsonFooterConfig struct {
@@ -3485,6 +3554,7 @@ type jsonThemeConfig struct {
 	Palette      string                  `json:"palette"`
 	PaletteLight string                  `json:"palette_light"`
 	PaletteDark  string                  `json:"palette_dark"`
+	FallbackMode string                  `json:"fallback_mode"`
 	SeedColor    string                  `json:"seed_color"`
 	Variables    map[string]string       `json:"variables"`
 	CustomCSS    string                  `json:"custom_css"`
@@ -3495,6 +3565,7 @@ type jsonThemeConfig struct {
 
 type jsonThemeSwitcherConfig struct {
 	Enabled    *bool    `json:"enabled"`
+	ModeToggle *bool    `json:"mode_toggle"`
 	IncludeAll *bool    `json:"include_all"`
 	Include    []string `json:"include"`
 	Exclude    []string `json:"exclude"`
@@ -3540,6 +3611,7 @@ func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
 		Palette:      t.Palette,
 		PaletteLight: t.PaletteLight,
 		PaletteDark:  t.PaletteDark,
+		FallbackMode: t.FallbackMode,
 		SeedColor:    t.SeedColor,
 		Variables:    variables,
 		CustomCSS:    t.CustomCSS,
@@ -3552,6 +3624,7 @@ func (t *jsonThemeConfig) toThemeConfig() models.ThemeConfig {
 func (s *jsonThemeSwitcherConfig) toThemeSwitcherConfig() models.ThemeSwitcherConfig {
 	return models.ThemeSwitcherConfig{
 		Enabled:    s.Enabled,
+		ModeToggle: s.ModeToggle,
 		IncludeAll: s.IncludeAll,
 		Include:    s.Include,
 		Exclude:    s.Exclude,
@@ -4199,6 +4272,7 @@ func (c *jsonConfig) getWebSub() webSubConverter               { return &c.WebSu
 func (c *jsonConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
 func (c *jsonConfig) getAuthors() authorsConverter             { return &c.Authors }
 func (c *jsonConfig) getGarden() gardenConverter               { return &c.Garden }
+func (c *jsonConfig) getTemplates() templatesConverter         { return &c.Templates }
 
 func (c *jsonConfig) toConfig() *models.Config {
 	return buildConfig(c)

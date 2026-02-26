@@ -11,6 +11,26 @@
   {% endblock %}
 
   {% block head %}
+  <script>
+    (function() {
+      var fallbackMode = '{% if config.theme.fallback_mode == "light" %}light{% else %}dark{% endif %}';
+      window.__markataThemeFallbackMode = fallbackMode;
+
+      var mode = fallbackMode;
+      try {
+        var stored = localStorage.getItem('color-mode') || localStorage.getItem('theme');
+        if (stored === 'light' || stored === 'dark') {
+          mode = stored;
+        }
+      } catch (_) {
+        // ignore storage access failures
+      }
+
+      document.documentElement.dataset.theme = mode;
+      document.documentElement.classList.toggle('dark', mode === 'dark');
+    })();
+  </script>
+
   <!-- Core CSS (always loaded) -->
   <link rel="stylesheet" href="{{ 'css/variables.css' | theme_asset_hashed }}">
   <link rel="stylesheet" href="{{ 'css/palette.css' | theme_asset_hashed }}">
@@ -36,9 +56,7 @@
   {% endif %}
 
   <!-- Palette Switcher CSS (when enabled) -->
-  {% if config.theme.switcher.enabled %}
-  <link rel="stylesheet" href="{{ 'css/palette-switcher.css' | theme_asset_hashed }}">
-  {% endif %}
+  {% include "partials/palette-switcher-styles.html" %}
 
   <!-- Search CSS: layout styles load eagerly, pagefind UI loads on interaction -->
   {% if config.search.enabled %}
@@ -402,7 +420,7 @@
 
    <!-- Palette Switcher JS (when enabled) -->
    {# Note: Must load AFTER shortcuts-registry for keyboard shortcut registration #}
-   {% if config.theme.switcher.enabled %}
+   {% if config.theme.switcher.enabled or (config.theme.switcher.mode_toggle and config.header.show_theme_toggle) %}
    <script src="{{ 'js/palette-switcher.js' | theme_asset_hashed }}" defer></script>
    {% endif %}
 

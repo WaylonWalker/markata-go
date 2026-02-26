@@ -123,6 +123,13 @@
   const STORAGE_KEY = 'theme';
   const DARK_CLASS = 'dark';
 
+  function getFallbackMode() {
+    if (typeof window !== 'undefined' && window.__markataThemeFallbackMode === 'light') {
+      return 'light';
+    }
+    return 'dark';
+  }
+
   /**
    * Get palette names from CSS custom properties
    * @returns {{light: string, dark: string}} Palette names
@@ -141,14 +148,11 @@
    */
   function getTheme() {
     // Check localStorage first
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('color-mode');
     if (stored) return stored;
 
-    // Fall back to system preference
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    return 'light';
+    // Default to configured fallback mode unless user explicitly chose a theme.
+    return getFallbackMode();
   }
 
   /**
@@ -170,6 +174,7 @@
 
     // Persist preference
     localStorage.setItem(STORAGE_KEY, theme);
+    localStorage.setItem('color-mode', theme);
 
     // Update toggle button aria-label
     const label = theme === 'dark'
@@ -200,14 +205,6 @@
 
   // Toggle button click
   toggle.addEventListener('click', toggleTheme);
-
-  // Listen for system theme changes
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-    // Only auto-switch if user hasn't set a preference
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      setTheme(e.matches ? 'dark' : 'light');
-    }
-  });
 
   // Expose theme API globally for programmatic control
   window.markata = window.markata || {};

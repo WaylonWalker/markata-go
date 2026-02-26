@@ -52,6 +52,9 @@ func (p *TemplatesPlugin) Configure(m *lifecycle.Manager) error {
 	if config == nil {
 		return fmt.Errorf("config is nil")
 	}
+	if modelsConfig, ok := config.Extra["models_config"].(*models.Config); ok && modelsConfig != nil {
+		templates.SetTrustedMediaDomains(modelsConfig.Templates.Media.TrustedDomains)
+	}
 
 	// Get templates directory from config
 	templatesDir := PluginNameTemplates
@@ -845,6 +848,7 @@ func toModelsConfigUncached(config *lifecycle.Config) *models.Config {
 		Description:  getStringFromExtra(config.Extra, "description"),
 		Author:       getStringFromExtra(config.Extra, "author"),
 		TemplatesDir: getStringFromExtra(config.Extra, "templates_dir"),
+		Templates:    models.NewTemplatesConfig(),
 	}
 
 	// Copy nav items if available
@@ -918,6 +922,12 @@ func toModelsConfigUncached(config *lifecycle.Config) *models.Config {
 
 // copyPluginConfigs copies plugin-specific config sections from lifecycle.Config to models.Config.
 func copyPluginConfigs(config *lifecycle.Config, modelsConfig *models.Config) {
+	if templatesCfg, ok := config.Extra["templates"].(models.TemplatesConfig); ok {
+		modelsConfig.Templates = templatesCfg
+	} else if templatesCfgPtr, ok := config.Extra["templates"].(*models.TemplatesConfig); ok && templatesCfgPtr != nil {
+		modelsConfig.Templates = *templatesCfgPtr
+	}
+
 	// Copy Components config if available
 	if components, ok := config.Extra["components"].(models.ComponentsConfig); ok {
 		modelsConfig.Components = components

@@ -115,6 +115,35 @@ hubs = ["https://hub.example.com/"]
 	}
 }
 
+func TestParseTOML_ThemeSwitcherModeToggle(t *testing.T) {
+	data := []byte(`
+[markata-go]
+title = "Test Site"
+
+[markata-go.header]
+show_theme_toggle = false
+
+[markata-go.theme.switcher]
+mode_toggle = true
+enabled = false
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if config.Theme.Switcher.ModeToggle == nil || *config.Theme.Switcher.ModeToggle != true {
+		t.Fatalf("Theme.Switcher.ModeToggle = %v, want true", config.Theme.Switcher.ModeToggle)
+	}
+	if config.Theme.Switcher.Enabled == nil || *config.Theme.Switcher.Enabled != false {
+		t.Fatalf("Theme.Switcher.Enabled = %v, want false", config.Theme.Switcher.Enabled)
+	}
+	if config.Header.ShowThemeToggle == nil || *config.Header.ShowThemeToggle != false {
+		t.Fatalf("Header.ShowThemeToggle = %v, want false", config.Header.ShowThemeToggle)
+	}
+}
+
 func TestParseTOML_InvalidSyntax(t *testing.T) {
 	data := []byte(`invalid toml {{{{ syntax`)
 
