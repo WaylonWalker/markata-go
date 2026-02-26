@@ -102,6 +102,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["link_avatars"] = func() lifecycle.Plugin { return NewLinkAvatarsPlugin() }
 	pluginRegistry.constructors["authors"] = func() lifecycle.Plugin { return NewAuthorsPlugin() }
 	pluginRegistry.constructors["series"] = func() lifecycle.Plugin { return NewSeriesPlugin() }
+	pluginRegistry.constructors["tailwind"] = func() lifecycle.Plugin { return NewTailwindPlugin() }
 }
 
 // RegisterPluginConstructor registers a plugin constructor with the given name.
@@ -154,6 +155,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewGlobPlugin(),
 		NewBackgroundPlugin(), // Configure background decorations early
 		NewCDNAssetsPlugin(),  // Download CDN assets for self-hosting (Configure + Write)
+		NewTailwindPlugin(),   // Build Tailwind CSS and inject includes
 
 		// Load stage plugins
 		NewLoadPlugin(),

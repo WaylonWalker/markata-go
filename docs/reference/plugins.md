@@ -32,6 +32,7 @@ Configure -> Glob -> Load -> Transform -> Render -> Collect -> Write -> Cleanup
 | Load | Parse files into posts | load, frontmatter |
 | Transform | Pre-render modifications | description, reading_time, stats, breadcrumbs, jinja_md, wikilinks, toc |
 | Render | Convert content to HTML | render_markdown, templates, admonitions, heading_anchors, link_collector, mermaid, glossary, csv_fence, youtube |
+| Configure | Build-time tooling | tailwind, cdn_assets, pagefind |
 | Collect | Build collections/feeds | series, feeds, auto_feeds, prevnext, overwrite_check, static_file_conflicts |
 | Write | Output files to disk | publish_html, random_post, publish_feeds, sitemap, rss, atom, jsonfeed, static_assets, redirects |
 | Cleanup | Post-build tasks | pagefind |
@@ -3663,6 +3664,61 @@ The lightbox overlay is themed to match the site's dark palette. CSS overrides i
 - svg-pan-zoom JS (~29KB, BSD-2 license) is only loaded on first diagram click
 - GLightbox CSS/JS is loaded with the page (shared with image_zoom if enabled)
 - Pan-zoom instance is destroyed on lightbox close to prevent memory leaks
+
+---
+
+### tailwind
+
+**Name:** `tailwind`  \
+**Stage:** Configure (build step)  \
+**Purpose:** Runs the Tailwind standalone CLI during builds and optionally injects
+compiled CSS or the Tailwind CDN JS script into your site.
+
+**Status:** Enabled by default (via `hooks = ["default"]`). Set `build = false` or
+`include = false` to disable parts of the behavior.
+
+**Configuration (TOML):**
+```toml
+[markata-go.tailwind]
+include = "css"                # "css", "js", or false (default: "css")
+input = "tailwind.css"          # Input CSS (relative to assets_dir)
+output = "tailwind.full.css"    # Output CSS (relative to assets_dir)
+config_file = ""                # Optional tailwind.config.js path
+build = true                     # Run Tailwind CLI during build
+minify = true                    # Pass --minify to Tailwind CLI
+auto_install = true              # Auto-download Tailwind CLI (default: true)
+version = "latest"              # Tailwind CLI version tag
+cache_dir = ""                  # Cache dir for Tailwind CLI
+binary = ""                     # Optional path to tailwindcss binary
+extra_args = ""                 # Extra CLI arguments
+verbose = false                  # Verbose installer/build logs
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `include` | string \| bool | `"css"` | Load the compiled CSS (`"css"`), inject the CDN JS (`"js"`), or disable auto-inclusion (`false`). |
+| `input` | string | `"tailwind.css"` | Tailwind input CSS (relative to `assets_dir`). |
+| `output` | string | `"tailwind.full.css"` | Output CSS path (relative to `assets_dir`). |
+| `config_file` | string | `""` | Optional path to `tailwind.config.js`. |
+| `build` | bool | `true` | Run Tailwind CLI during build. |
+| `minify` | bool | `true` | Add `--minify` to the Tailwind CLI. |
+| `auto_install` | bool | `true` | Download the Tailwind CLI if missing. |
+| `version` | string | `"latest"` | Tailwind CLI version tag. |
+| `cache_dir` | string | `""` | Cache directory for the Tailwind CLI binary. |
+| `binary` | string | `""` | Optional explicit `tailwindcss` binary path. |
+| `extra_args` | string | `""` | Extra CLI arguments appended to the command. |
+| `verbose` | bool | `false` | Verbose install/build output. |
+
+**Behavior:**
+1. Runs Tailwind CLI before assets are copied to output.
+2. Resolves `input`/`output` relative to `assets_dir` (absolute paths are respected).
+3. `include = "css"` sets `theme.custom_css` to the output if it's empty.
+4. `include = "js"` injects the Tailwind CDN script and respects assets mode for vendoring.
+5. When `include = "css"` and CSS purge is disabled, a validation warning is emitted.
+
+**Notes:**
+- Tailwind CLI is downloaded with checksum verification (versioned per platform).
+- If `auto_install = false`, the plugin uses `binary` or searches `PATH`.
 
 ### Examples
 

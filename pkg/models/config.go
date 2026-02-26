@@ -1906,6 +1906,113 @@ func NewCSSPurgeConfig() CSSPurgeConfig {
 	}
 }
 
+// TailwindConfig configures Tailwind CSS automation and inclusion.
+type TailwindConfig struct {
+	// Include controls how Tailwind is injected: "css", "js", or false.
+	// Empty means use the default (css).
+	Include *string `json:"include,omitempty" yaml:"include,omitempty" toml:"include,omitempty"`
+
+	// Input is the Tailwind input CSS file path. Relative paths are resolved
+	// against assets_dir unless they already start with assets_dir.
+	Input string `json:"input,omitempty" yaml:"input,omitempty" toml:"input,omitempty"`
+
+	// Output is the Tailwind output CSS file path. Relative paths are resolved
+	// against assets_dir unless they already start with assets_dir.
+	Output string `json:"output,omitempty" yaml:"output,omitempty" toml:"output,omitempty"`
+
+	// ConfigFile is the Tailwind config file path (optional).
+	ConfigFile string `json:"config,omitempty" yaml:"config,omitempty" toml:"config,omitempty"`
+
+	// Build controls whether Tailwind should be executed automatically (default: true).
+	Build *bool `json:"build,omitempty" yaml:"build,omitempty" toml:"build,omitempty"`
+
+	// Minify enables Tailwind's built-in minification (default: true).
+	Minify *bool `json:"minify,omitempty" yaml:"minify,omitempty" toml:"minify,omitempty"`
+
+	// AutoInstall enables automatic Tailwind CLI installation (default: true).
+	AutoInstall *bool `json:"auto_install,omitempty" yaml:"auto_install,omitempty" toml:"auto_install,omitempty"`
+
+	// Version is the Tailwind CLI version to install (default: "latest").
+	Version string `json:"version,omitempty" yaml:"version,omitempty" toml:"version,omitempty"`
+
+	// CacheDir is the directory for caching Tailwind binaries (default: XDG cache).
+	CacheDir string `json:"cache_dir,omitempty" yaml:"cache_dir,omitempty" toml:"cache_dir,omitempty"`
+
+	// Binary is the explicit path to the Tailwind CLI binary (optional).
+	Binary string `json:"binary,omitempty" yaml:"binary,omitempty" toml:"binary,omitempty"`
+
+	// ExtraArgs are additional arguments passed to the Tailwind CLI.
+	ExtraArgs []string `json:"extra_args,omitempty" yaml:"extra_args,omitempty" toml:"extra_args,omitempty"`
+
+	// Verbose enables verbose Tailwind CLI output (default: false).
+	Verbose *bool `json:"verbose,omitempty" yaml:"verbose,omitempty" toml:"verbose,omitempty"`
+}
+
+// NewTailwindConfig creates a new TailwindConfig with default values.
+func NewTailwindConfig() TailwindConfig {
+	build := true
+	autoInstall := true
+	minify := true
+	include := "css"
+	return TailwindConfig{
+		Include:     &include,
+		Input:       "tailwind.css",
+		Output:      "tailwind.full.css",
+		ConfigFile:  "",
+		Build:       &build,
+		Minify:      &minify,
+		AutoInstall: &autoInstall,
+		Version:     "latest",
+		CacheDir:    "",
+		Binary:      "",
+		ExtraArgs:   []string{},
+	}
+}
+
+// IsBuildEnabled returns whether Tailwind auto-build is enabled.
+// Defaults to true if not explicitly set.
+func (t *TailwindConfig) IsBuildEnabled() bool {
+	if t.Build == nil {
+		return true
+	}
+	return *t.Build
+}
+
+// IsMinifyEnabled returns whether Tailwind minification is enabled.
+// Defaults to true if not explicitly set.
+func (t *TailwindConfig) IsMinifyEnabled() bool {
+	if t.Minify == nil {
+		return true
+	}
+	return *t.Minify
+}
+
+// IsAutoInstallEnabled returns whether Tailwind auto-install is enabled.
+// Defaults to true if not explicitly set.
+func (t *TailwindConfig) IsAutoInstallEnabled() bool {
+	if t.AutoInstall == nil {
+		return true
+	}
+	return *t.AutoInstall
+}
+
+// IsVerbose returns whether Tailwind CLI should be verbose.
+// Defaults to false if not explicitly set.
+func (t *TailwindConfig) IsVerbose() bool {
+	if t.Verbose == nil {
+		return false
+	}
+	return *t.Verbose
+}
+
+// IncludeMode resolves the Tailwind include mode with defaults.
+func (t *TailwindConfig) IncludeMode() string {
+	if t.Include == nil {
+		return "css"
+	}
+	return *t.Include
+}
+
 // ImageZoomConfig configures the image_zoom plugin for lightbox functionality.
 type ImageZoomConfig struct {
 	// Enabled controls whether image zoom is active (default: false)

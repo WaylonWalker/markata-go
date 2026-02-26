@@ -154,6 +154,16 @@ var assetRegistry = []Asset{
 		Version:   "0.3.4",
 		Type:      "css",
 	},
+
+	// Tailwind CSS CDN JS
+	{
+		Name:      "tailwindcss-js",
+		URL:       "https://cdn.tailwindcss.com",
+		LocalPath: "tailwindcss/tailwindcss.js",
+		Integrity: "",
+		Version:   "cdn",
+		Type:      "js",
+	},
 }
 
 // Registry returns a copy of all registered assets.
