@@ -144,6 +144,44 @@ enabled = false
 	}
 }
 
+func TestParseTOML_PostConnectionsComponent(t *testing.T) {
+	data := []byte(`
+[markata-go]
+title = "Test Site"
+
+[markata-go.components.post_connections]
+enabled = true
+display = ["list", "graph"]
+graph_min_links = 3
+graph_max_links = 0
+list_min_links = 1
+list_max_links = 5
+inlinks_limit = 4
+outlinks_limit = 6
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if config.Components.PostConnections.Enabled == nil || *config.Components.PostConnections.Enabled != true {
+		t.Fatalf("PostConnections.Enabled = %v, want true", config.Components.PostConnections.Enabled)
+	}
+	if len(config.Components.PostConnections.Display) != 2 {
+		t.Fatalf("PostConnections.Display len = %d, want 2", len(config.Components.PostConnections.Display))
+	}
+	if config.Components.PostConnections.ListMaxLinks != 5 {
+		t.Fatalf("PostConnections.ListMaxLinks = %d, want 5", config.Components.PostConnections.ListMaxLinks)
+	}
+	if config.Components.PostConnections.InlinksLimit != 4 {
+		t.Fatalf("PostConnections.InlinksLimit = %d, want 4", config.Components.PostConnections.InlinksLimit)
+	}
+	if config.Components.PostConnections.OutlinksLimit != 6 {
+		t.Fatalf("PostConnections.OutlinksLimit = %d, want 6", config.Components.PostConnections.OutlinksLimit)
+	}
+}
+
 func TestParseTOML_InvalidSyntax(t *testing.T) {
 	data := []byte(`invalid toml {{{{ syntax`)
 

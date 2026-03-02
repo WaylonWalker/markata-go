@@ -486,6 +486,45 @@ func TestGardenViewPlugin_ApplyNodeLimit_UnderLimit(t *testing.T) {
 	}
 }
 
+func TestGardenViewPlugin_ApplyNodeLimit_ReservesTagsWhenPostsExceedLimit(t *testing.T) {
+	p := newTestGardenPlugin()
+	config := newTestGardenConfig()
+	config.MaxNodes = 5
+
+	graph := GardenGraph{
+		Nodes: []GardenNode{
+			{ID: "post:a", Type: "post"},
+			{ID: "post:b", Type: "post"},
+			{ID: "post:c", Type: "post"},
+			{ID: "post:d", Type: "post"},
+			{ID: "post:e", Type: "post"},
+			{ID: "post:f", Type: "post"},
+			{ID: "tag:top", Type: "tag", Count: 9},
+			{ID: "tag:other", Type: "tag", Count: 3},
+		},
+		Edges: []GardenEdge{
+			{Source: "post:a", Target: "tag:top", Type: "tag"},
+			{Source: "post:b", Target: "tag:other", Type: "tag"},
+		},
+	}
+
+	p.applyNodeLimit(&graph, &config)
+
+	if len(graph.Nodes) != 5 {
+		t.Fatalf("expected 5 nodes after limit, got %d", len(graph.Nodes))
+	}
+
+	tagCount := 0
+	for _, node := range graph.Nodes {
+		if node.Type == "tag" {
+			tagCount++
+		}
+	}
+	if tagCount == 0 {
+		t.Fatalf("expected at least one tag node to be preserved")
+	}
+}
+
 func TestGardenViewPlugin_SortGraph_Deterministic(t *testing.T) {
 	p := newTestGardenPlugin()
 

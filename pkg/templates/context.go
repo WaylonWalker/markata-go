@@ -558,13 +558,52 @@ func componentsToMap(c *models.ComponentsConfig) map[string]interface{} {
 		"custom":    shareCustom,
 	}
 
+	postConnDefaults := models.NewPostConnectionsComponentConfig()
+	postConnEnabled := c.PostConnections.IsEnabled()
+	postConnModes := c.PostConnections.Modes()
+	postConnMin := c.PostConnections.MinLinks
+	if postConnMin == 0 {
+		postConnMin = postConnDefaults.MinLinks
+	}
+	postConnGraphMin := c.PostConnections.GraphMinLinks
+	if postConnGraphMin == 0 {
+		postConnGraphMin = postConnDefaults.GraphMinLinks
+	}
+	postConnListMin := c.PostConnections.ListMinLinks
+	if postConnListMin == 0 {
+		postConnListMin = postConnDefaults.ListMinLinks
+	}
+	postConnInlinksLimit := c.PostConnections.InlinksLimit
+	if postConnInlinksLimit == 0 {
+		postConnInlinksLimit = postConnDefaults.InlinksLimit
+	}
+	postConnOutlinksLimit := c.PostConnections.OutlinksLimit
+	if postConnOutlinksLimit == 0 {
+		postConnOutlinksLimit = postConnDefaults.OutlinksLimit
+	}
+	postConnectionsMap := map[string]interface{}{
+		"enabled":         postConnEnabled,
+		"display":         postConnModes,
+		"display_graph":   c.PostConnections.HasMode(models.PostConnectionsDisplayGraph),
+		"display_list":    c.PostConnections.HasMode(models.PostConnectionsDisplayList),
+		"min_links":       postConnMin,
+		"max_links":       c.PostConnections.MaxLinks,
+		"graph_min_links": postConnGraphMin,
+		"graph_max_links": c.PostConnections.GraphMaxLinks,
+		"list_min_links":  postConnListMin,
+		"list_max_links":  c.PostConnections.ListMaxLinks,
+		"inlinks_limit":   postConnInlinksLimit,
+		"outlinks_limit":  postConnOutlinksLimit,
+	}
+
 	return map[string]interface{}{
-		"nav":          navMap,
-		"footer":       footerMap,
-		"doc_sidebar":  docSidebarMap,
-		"feed_sidebar": feedSidebarMap,
-		"card_router":  cardRouterMap,
-		"share":        shareMap,
+		"nav":              navMap,
+		"footer":           footerMap,
+		"doc_sidebar":      docSidebarMap,
+		"feed_sidebar":     feedSidebarMap,
+		"card_router":      cardRouterMap,
+		"share":            shareMap,
+		"post_connections": postConnectionsMap,
 	}
 }
 

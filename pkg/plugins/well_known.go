@@ -1,10 +1,13 @@
 package plugins
 
 import (
+	"encoding/json"
 	"fmt"
+	"html"
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -41,6 +44,25 @@ type wellKnownData struct {
 	GeneratorVersion string
 	SSHFingerprint   string
 	KeybaseUsername  string
+	Links            []wellKnownLinksDomain
+	InternalLinks    []wellKnownInternalTarget
+}
+
+type wellKnownLink struct {
+	SourceURL string `json:"sourceUrl"`
+	TargetURL string `json:"targetUrl"`
+}
+
+type wellKnownLinksDomain struct {
+	Domain string          `json:"domain"`
+	Count  int             `json:"count"`
+	Links  []wellKnownLink `json:"links"`
+}
+
+type wellKnownInternalTarget struct {
+	TargetURL string          `json:"targetUrl"`
+	Count     int             `json:"count"`
+	Links     []wellKnownLink `json:"links"`
 }
 
 func (d wellKnownData) toMap() map[string]interface{} {
@@ -105,6 +127,8 @@ func (p *WellKnownPlugin) Write(m *lifecycle.Manager) error {
 	}
 
 	data := buildWellKnownData(config, wellKnownConfig, p.now())
+	data.Links = buildWellKnownLinks(m.Posts())
+	data.InternalLinks = buildWellKnownInternalLinks(m.Posts())
 	entries := resolveWellKnownEntries(wellKnownConfig)
 
 	// Add avatar endpoint if author image is available
@@ -263,6 +287,11 @@ func resolveWellKnownEntries(wellKnownConfig models.WellKnownConfig) []wellKnown
 		case "nodeinfo":
 			addEntry(wellKnownEntries["nodeinfo"])
 			addEntry(wellKnownEntries["nodeinfo-2.0"])
+		case "links":
+			addEntry(wellKnownEntries["links"])
+			addEntry(wellKnownEntries["internal-links"])
+			addEntry(wellKnownEntries["external-links"])
+			addEntry(wellKnownEntries["internal-links-page"])
 		default:
 			if entry, ok := wellKnownEntries[name]; ok {
 				addEntry(entry)
@@ -284,6 +313,8 @@ func (p *WellKnownPlugin) renderEntry(entry wellKnownEntry, engine *templates.En
 	if engine != nil && engine.TemplateExists(entry.template) {
 		ctx := templates.NewContext(nil, "", ToModelsConfig(config))
 		ctx.Extra["well_known"] = data.toMap()
+		ctx.Extra["well_known_links"] = data.Links
+		ctx.Extra["well_known_internal_links"] = data.InternalLinks
 		ctx = ctx.WithCore(m)
 		result, err := engine.Render(entry.template, ctx)
 		if err == nil {
@@ -296,6 +327,423 @@ func (p *WellKnownPlugin) renderEntry(entry wellKnownEntry, engine *templates.En
 	}
 
 	return normalizeWellKnownContent(entry.fallback(data)), nil
+}
+
+func buildWellKnownLinks(posts []*models.Post) []wellKnownLinksDomain {
+	byDomain := make(map[string][]wellKnownLink)
+	seen := make(map[string]struct{})
+
+	for _, post := range posts {
+		if post == nil {
+			continue
+		}
+		for _, link := range post.Outlinks {
+			if link == nil || link.IsInternal {
+				continue
+			}
+
+			targetURL := strings.TrimSpace(link.TargetURL)
+			if targetURL == "" {
+				continue
+			}
+			targetParsed, err := url.Parse(targetURL)
+			if err != nil {
+				continue
+			}
+			domain := strings.ToLower(strings.TrimSpace(targetParsed.Hostname()))
+			if domain == "" {
+				continue
+			}
+
+			sourceURL := strings.TrimSpace(link.SourceURL)
+			if sourceURL == "" && post.Href != "" {
+				sourceURL = post.Href
+			}
+
+			dedupeKey := domain + "|" + sourceURL + "|" + targetURL
+			if _, ok := seen[dedupeKey]; ok {
+				continue
+			}
+			seen[dedupeKey] = struct{}{}
+
+			byDomain[domain] = append(byDomain[domain], wellKnownLink{
+				SourceURL: sourceURL,
+				TargetURL: targetURL,
+			})
+		}
+	}
+
+	result := make([]wellKnownLinksDomain, 0, len(byDomain))
+	for domain, links := range byDomain {
+		sort.Slice(links, func(i, j int) bool {
+			if links[i].SourceURL == links[j].SourceURL {
+				return links[i].TargetURL < links[j].TargetURL
+			}
+			return links[i].SourceURL < links[j].SourceURL
+		})
+		result = append(result, wellKnownLinksDomain{
+			Domain: domain,
+			Count:  len(links),
+			Links:  links,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Count == result[j].Count {
+			return result[i].Domain < result[j].Domain
+		}
+		return result[i].Count > result[j].Count
+	})
+
+	return result
+}
+
+func buildWellKnownInternalLinks(posts []*models.Post) []wellKnownInternalTarget {
+	byTarget := make(map[string][]wellKnownLink)
+	seen := make(map[string]struct{})
+
+	for _, post := range posts {
+		if post == nil {
+			continue
+		}
+		for _, link := range post.Outlinks {
+			if link == nil || !link.IsInternal {
+				continue
+			}
+
+			targetURL := strings.TrimSpace(link.TargetURL)
+			if targetURL == "" {
+				continue
+			}
+
+			normalizedTarget := normalizeInternalTarget(targetURL)
+			if normalizedTarget == "" {
+				continue
+			}
+
+			sourceURL := strings.TrimSpace(link.SourceURL)
+			if sourceURL == "" && post.Href != "" {
+				sourceURL = post.Href
+			}
+
+			dedupeKey := normalizedTarget + "|" + sourceURL + "|" + targetURL
+			if _, ok := seen[dedupeKey]; ok {
+				continue
+			}
+			seen[dedupeKey] = struct{}{}
+
+			byTarget[normalizedTarget] = append(byTarget[normalizedTarget], wellKnownLink{
+				SourceURL: sourceURL,
+				TargetURL: targetURL,
+			})
+		}
+	}
+
+	result := make([]wellKnownInternalTarget, 0, len(byTarget))
+	for targetURL, links := range byTarget {
+		sort.Slice(links, func(i, j int) bool {
+			if links[i].SourceURL == links[j].SourceURL {
+				return links[i].TargetURL < links[j].TargetURL
+			}
+			return links[i].SourceURL < links[j].SourceURL
+		})
+		result = append(result, wellKnownInternalTarget{
+			TargetURL: targetURL,
+			Count:     len(links),
+			Links:     links,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Count == result[j].Count {
+			return result[i].TargetURL < result[j].TargetURL
+		}
+		return result[i].Count > result[j].Count
+	})
+
+	return result
+}
+
+func normalizeInternalTarget(targetURL string) string {
+	trimmed := strings.TrimSpace(targetURL)
+	if trimmed == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return trimmed
+	}
+
+	path := parsed.Path
+	if path == "" {
+		path = trimmed
+	}
+	if strings.HasSuffix(path, "/") && path != "/" {
+		path = strings.TrimSuffix(path, "/")
+	}
+	if parsed.RawQuery != "" {
+		path = path + "?" + parsed.RawQuery
+	}
+
+	return path
+}
+
+func marshalWellKnownLinks(links []wellKnownLinksDomain) string {
+	if links == nil {
+		links = []wellKnownLinksDomain{}
+	}
+	b, err := json.Marshal(links)
+	if err != nil {
+		return "[]"
+	}
+	return string(b)
+}
+
+func marshalWellKnownInternalLinks(links []wellKnownInternalTarget) string {
+	if links == nil {
+		links = []wellKnownInternalTarget{}
+	}
+	b, err := json.Marshal(links)
+	if err != nil {
+		return "[]"
+	}
+	return string(b)
+}
+
+func renderExternalLinksHTML(data wellKnownData) string {
+	title := "External Links"
+	if data.SiteTitle != "" {
+		title = data.SiteTitle + " External Links"
+	}
+
+	totalLinks := 0
+	maxCount := 0
+	for _, domain := range data.Links {
+		totalLinks += domain.Count
+		if domain.Count > maxCount {
+			maxCount = domain.Count
+		}
+	}
+
+	var builder strings.Builder
+	builder.WriteString("<!doctype html>\n")
+	builder.WriteString("<html lang=\"en\">\n<head>\n")
+	builder.WriteString("  <meta charset=\"utf-8\">\n")
+	builder.WriteString("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
+	builder.WriteString("  <title>" + html.EscapeString(title) + "</title>\n")
+	builder.WriteString("  <style>\n")
+	builder.WriteString("    :root{color-scheme:light dark;--accent:#2563eb;--bar:#93c5fd;--bar-bg:#e5e7eb44;}body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:70rem;margin:2rem auto;padding:0 1rem;line-height:1.5;}h1{margin-bottom:.25rem;}p{margin-top:0;color:#666;}section{border:1px solid #ccc3;border-radius:.6rem;padding:1rem;margin:1rem 0;}ul{padding-left:1.2rem;margin:.5rem 0 0;}li+li{margin-top:.35rem;}small{color:#777;}code{font-size:.9em;}a{color:inherit;}\n")
+	builder.WriteString("    .external-links-chart{margin:1.25rem 0 2rem;}\n")
+	builder.WriteString("    .external-links-chart ol{list-style:decimal;margin:0;padding-left:1.5rem;}\n")
+	builder.WriteString("    .external-links-chart li{margin:.35rem 0;}\n")
+	builder.WriteString("    .external-links-row{display:grid;grid-template-columns:minmax(12rem,24rem) minmax(8rem,1fr) auto;align-items:center;gap:.75rem;}\n")
+	builder.WriteString("    .external-links-domain{display:flex;align-items:center;gap:.5rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\n")
+	builder.WriteString("    .external-links-domain img{width:16px;height:16px;border-radius:3px;flex:none;}\n")
+	builder.WriteString("    .external-links-bar{height:.65rem;background:var(--bar-bg);border-radius:999px;overflow:hidden;}\n")
+	builder.WriteString("    .external-links-bar-fill{display:block;height:100%;background:linear-gradient(90deg,var(--bar),var(--accent));border-radius:999px;}\n")
+	builder.WriteString("    .external-links-count{font-variant-numeric:tabular-nums;min-width:2.5rem;text-align:right;}\n")
+	builder.WriteString("    .external-links-links{margin-top:.75rem;}\n")
+	builder.WriteString("    @media (max-width:720px){.external-links-row{grid-template-columns:1fr auto;}.external-links-bar{grid-column:1 / -1;}}\n")
+	builder.WriteString("  </style>\n")
+	builder.WriteString("</head>\n<body>\n")
+	builder.WriteString("  <header>\n")
+	builder.WriteString("    <h1>External Links</h1>\n")
+	builder.WriteString("    <p>")
+	builder.WriteString(fmt.Sprintf("%d links across %d domains", totalLinks, len(data.Links)))
+	if data.SiteURL != "" {
+		builder.WriteString(" from <a href=\"")
+		builder.WriteString(html.EscapeString(withTrailingSlash(data.SiteURL)))
+		builder.WriteString("\">")
+		builder.WriteString(html.EscapeString(withTrailingSlash(data.SiteURL)))
+		builder.WriteString("</a>")
+	}
+	builder.WriteString(". JSON source: <a href=\"/.well-known/links\"><code>/.well-known/links</code></a>.</p>\n")
+	builder.WriteString("  </header>\n")
+	builder.WriteString("  <section class=\"external-links-chart\">\n")
+	builder.WriteString("    <h2>Domains</h2>\n")
+	builder.WriteString("    <ol>\n")
+	for _, domain := range data.Links {
+		barWidth := 0
+		if maxCount > 0 {
+			barWidth = (domain.Count * 100) / maxCount
+		}
+		if barWidth < 1 && domain.Count > 0 {
+			barWidth = 1
+		}
+		faviconURL := "https://www.google.com/s2/favicons?domain=" + url.QueryEscape(domain.Domain) + "&sz=32"
+
+		builder.WriteString("      <li><div class=\"external-links-row\">\n")
+		builder.WriteString("        <a class=\"external-links-domain\" href=\"#domain-")
+		builder.WriteString(html.EscapeString(domain.Domain))
+		builder.WriteString("\">\n")
+		builder.WriteString("          <img src=\"")
+		builder.WriteString(html.EscapeString(faviconURL))
+		builder.WriteString("\" alt=\"\">\n")
+		builder.WriteString("          <span>")
+		builder.WriteString(html.EscapeString(domain.Domain))
+		builder.WriteString("</span>\n")
+		builder.WriteString("        </a>\n")
+		builder.WriteString("        <span class=\"external-links-bar\" aria-hidden=\"true\"><span class=\"external-links-bar-fill\" style=\"width:")
+		builder.WriteString(fmt.Sprintf("%d", barWidth))
+		builder.WriteString("%\"></span></span>\n")
+		builder.WriteString("        <span class=\"external-links-count\">")
+		builder.WriteString(fmt.Sprintf("%d", domain.Count))
+		builder.WriteString("</span>\n")
+		builder.WriteString("      </div></li>\n")
+	}
+	builder.WriteString("    </ol>\n")
+	builder.WriteString("  </section>\n")
+
+	for _, domain := range data.Links {
+		builder.WriteString("  <section>\n")
+		builder.WriteString("    <h2 id=\"domain-" + html.EscapeString(domain.Domain) + "\">" + html.EscapeString(domain.Domain) + " <small>(" + fmt.Sprintf("%d", domain.Count) + ")</small></h2>\n")
+		builder.WriteString("    <ul class=\"external-links-links\">\n")
+		for _, link := range domain.Links {
+			source := link.SourceURL
+			if source == "" {
+				source = "(unknown source)"
+			}
+			builder.WriteString("      <li><a href=\"")
+			builder.WriteString(html.EscapeString(link.TargetURL))
+			builder.WriteString("\">")
+			builder.WriteString(html.EscapeString(link.TargetURL))
+			builder.WriteString("</a> <small>from ")
+			if link.SourceURL != "" {
+				builder.WriteString("<a href=\"")
+				builder.WriteString(html.EscapeString(link.SourceURL))
+				builder.WriteString("\">")
+				builder.WriteString(html.EscapeString(source))
+				builder.WriteString("</a>")
+			} else {
+				builder.WriteString(html.EscapeString(source))
+			}
+			builder.WriteString("</small></li>\n")
+		}
+		builder.WriteString("    </ul>\n")
+		builder.WriteString("  </section>\n")
+	}
+
+	builder.WriteString("</body>\n</html>\n")
+
+	return builder.String()
+}
+
+func renderInternalLinksHTML(data wellKnownData) string {
+	title := "Internal Links"
+	if data.SiteTitle != "" {
+		title = data.SiteTitle + " Internal Links"
+	}
+
+	totalLinks := 0
+	maxCount := 0
+	for _, target := range data.InternalLinks {
+		totalLinks += target.Count
+		if target.Count > maxCount {
+			maxCount = target.Count
+		}
+	}
+
+	var builder strings.Builder
+	builder.WriteString("<!doctype html>\n")
+	builder.WriteString("<html lang=\"en\">\n<head>\n")
+	builder.WriteString("  <meta charset=\"utf-8\">\n")
+	builder.WriteString("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
+	builder.WriteString("  <title>" + html.EscapeString(title) + "</title>\n")
+	builder.WriteString("  <style>\n")
+	builder.WriteString("    :root{color-scheme:light dark;--accent:#059669;--bar:#6ee7b7;--bar-bg:#e5e7eb44;}body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:70rem;margin:2rem auto;padding:0 1rem;line-height:1.5;}h1{margin-bottom:.25rem;}p{margin-top:0;color:#666;}section{border:1px solid #ccc3;border-radius:.6rem;padding:1rem;margin:1rem 0;}ul{padding-left:1.2rem;margin:.5rem 0 0;}li+li{margin-top:.35rem;}small{color:#777;}code{font-size:.9em;}a{color:inherit;}\n")
+	builder.WriteString("    .internal-links-chart{margin:1.25rem 0 2rem;}\n")
+	builder.WriteString("    .internal-links-chart ol{list-style:decimal;margin:0;padding-left:1.5rem;}\n")
+	builder.WriteString("    .internal-links-chart li{margin:.35rem 0;}\n")
+	builder.WriteString("    .internal-links-row{display:grid;grid-template-columns:minmax(16rem,26rem) minmax(8rem,1fr) auto;align-items:center;gap:.75rem;}\n")
+	builder.WriteString("    .internal-links-target{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\n")
+	builder.WriteString("    .internal-links-bar{height:.65rem;background:var(--bar-bg);border-radius:999px;overflow:hidden;}\n")
+	builder.WriteString("    .internal-links-bar-fill{display:block;height:100%;background:linear-gradient(90deg,var(--bar),var(--accent));border-radius:999px;}\n")
+	builder.WriteString("    .internal-links-count{font-variant-numeric:tabular-nums;min-width:2.5rem;text-align:right;}\n")
+	builder.WriteString("    .internal-links-links{margin-top:.75rem;}\n")
+	builder.WriteString("    @media (max-width:720px){.internal-links-row{grid-template-columns:1fr auto;}.internal-links-bar{grid-column:1 / -1;}}\n")
+	builder.WriteString("  </style>\n")
+	builder.WriteString("</head>\n<body>\n")
+	builder.WriteString("  <header>\n")
+	builder.WriteString("    <h1>Internal Links</h1>\n")
+	builder.WriteString("    <p>")
+	builder.WriteString(fmt.Sprintf("%d links across %d destinations", totalLinks, len(data.InternalLinks)))
+	if data.SiteURL != "" {
+		builder.WriteString(" on <a href=\"")
+		builder.WriteString(html.EscapeString(withTrailingSlash(data.SiteURL)))
+		builder.WriteString("\">")
+		builder.WriteString(html.EscapeString(withTrailingSlash(data.SiteURL)))
+		builder.WriteString("</a>")
+	}
+	builder.WriteString(". JSON source: <a href=\"/.well-known/internal-links\"><code>/.well-known/internal-links</code></a>.</p>\n")
+	builder.WriteString("  </header>\n")
+	builder.WriteString("  <section class=\"internal-links-chart\">\n")
+	builder.WriteString("    <h2>Destinations</h2>\n")
+	builder.WriteString("    <ol>\n")
+	for idx, target := range data.InternalLinks {
+		barWidth := 0
+		if maxCount > 0 {
+			barWidth = (target.Count * 100) / maxCount
+		}
+		if barWidth < 1 && target.Count > 0 {
+			barWidth = 1
+		}
+
+		builder.WriteString("      <li><div class=\"internal-links-row\">\n")
+		builder.WriteString("        <a class=\"internal-links-target\" href=\"#target-")
+		builder.WriteString(fmt.Sprintf("%d", idx+1))
+		builder.WriteString("\">")
+		builder.WriteString(html.EscapeString(target.TargetURL))
+		builder.WriteString("</a>\n")
+		builder.WriteString("        <span class=\"internal-links-bar\" aria-hidden=\"true\"><span class=\"internal-links-bar-fill\" style=\"width:")
+		builder.WriteString(fmt.Sprintf("%d", barWidth))
+		builder.WriteString("%\"></span></span>\n")
+		builder.WriteString("        <span class=\"internal-links-count\">")
+		builder.WriteString(fmt.Sprintf("%d", target.Count))
+		builder.WriteString("</span>\n")
+		builder.WriteString("      </div></li>\n")
+	}
+	builder.WriteString("    </ol>\n")
+	builder.WriteString("  </section>\n")
+
+	for idx, target := range data.InternalLinks {
+		builder.WriteString("  <section>\n")
+		builder.WriteString("    <h2 id=\"target-")
+		builder.WriteString(fmt.Sprintf("%d", idx+1))
+		builder.WriteString("\">")
+		builder.WriteString(html.EscapeString(target.TargetURL))
+		builder.WriteString(" <small>(")
+		builder.WriteString(fmt.Sprintf("%d", target.Count))
+		builder.WriteString(")</small></h2>\n")
+		builder.WriteString("    <ul class=\"internal-links-links\">\n")
+		for _, link := range target.Links {
+			source := link.SourceURL
+			if source == "" {
+				source = "(unknown source)"
+			}
+			builder.WriteString("      <li>")
+			if link.SourceURL != "" {
+				builder.WriteString("<a href=\"")
+				builder.WriteString(html.EscapeString(link.SourceURL))
+				builder.WriteString("\">")
+				builder.WriteString(html.EscapeString(source))
+				builder.WriteString("</a>")
+			} else {
+				builder.WriteString(html.EscapeString(source))
+			}
+			builder.WriteString(" <small>to <a href=\"")
+			builder.WriteString(html.EscapeString(link.TargetURL))
+			builder.WriteString("\">")
+			builder.WriteString(html.EscapeString(link.TargetURL))
+			builder.WriteString("</a></small></li>\n")
+		}
+		builder.WriteString("    </ul>\n")
+		builder.WriteString("  </section>\n")
+	}
+
+	builder.WriteString("</body>\n</html>\n")
+
+	return builder.String()
 }
 
 func writeWellKnownFile(outputDir, relativePath, content string) error {
@@ -440,6 +888,38 @@ var wellKnownEntries = map[string]wellKnownEntry{
 		template: "well-known/time.txt",
 		fallback: func(data wellKnownData) string {
 			return data.BuildTime
+		},
+	},
+	"links": {
+		name:     "links",
+		path:     wellKnownDir + "/links",
+		template: "well-known/links.json",
+		fallback: func(data wellKnownData) string {
+			return marshalWellKnownLinks(data.Links)
+		},
+	},
+	"internal-links": {
+		name:     "internal-links",
+		path:     wellKnownDir + "/internal-links",
+		template: "well-known/internal-links.json",
+		fallback: func(data wellKnownData) string {
+			return marshalWellKnownInternalLinks(data.InternalLinks)
+		},
+	},
+	"external-links": {
+		name:     "external-links",
+		path:     "external-links/index.html",
+		template: "external-links.html",
+		fallback: func(data wellKnownData) string {
+			return renderExternalLinksHTML(data)
+		},
+	},
+	"internal-links-page": {
+		name:     "internal-links-page",
+		path:     "internal-links/index.html",
+		template: "internal-links.html",
+		fallback: func(data wellKnownData) string {
+			return renderInternalLinksHTML(data)
 		},
 	},
 	"sshfp": {

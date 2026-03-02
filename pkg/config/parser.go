@@ -829,6 +829,20 @@ type tomlComponentsConfig struct {
 	FeedSidebar tomlFeedSidebarConfig     `toml:"feed_sidebar"`
 	CardRouter  tomlCardRouterConfig      `toml:"card_router"`
 	Share       tomlShareComponentConfig  `toml:"share"`
+	PostConn    tomlPostConnectionsConfig `toml:"post_connections"`
+}
+
+type tomlPostConnectionsConfig struct {
+	Enabled       *bool    `toml:"enabled"`
+	Display       []string `toml:"display"`
+	MinLinks      int      `toml:"min_links"`
+	MaxLinks      int      `toml:"max_links"`
+	GraphMinLinks int      `toml:"graph_min_links"`
+	GraphMaxLinks int      `toml:"graph_max_links"`
+	ListMinLinks  int      `toml:"list_min_links"`
+	ListMaxLinks  int      `toml:"list_max_links"`
+	InlinksLimit  int      `toml:"inlinks_limit"`
+	OutlinksLimit int      `toml:"outlinks_limit"`
 }
 
 type tomlNavComponentConfig struct {
@@ -1407,6 +1421,18 @@ func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Position:  c.Share.Position,
 			Title:     c.Share.Title,
 			Custom:    map[string]models.SharePlatformConfig{},
+		},
+		PostConnections: models.PostConnectionsComponentConfig{
+			Enabled:       c.PostConn.Enabled,
+			Display:       append([]string{}, c.PostConn.Display...),
+			MinLinks:      c.PostConn.MinLinks,
+			MaxLinks:      c.PostConn.MaxLinks,
+			GraphMinLinks: c.PostConn.GraphMinLinks,
+			GraphMaxLinks: c.PostConn.GraphMaxLinks,
+			ListMinLinks:  c.PostConn.ListMinLinks,
+			ListMaxLinks:  c.PostConn.ListMaxLinks,
+			InlinksLimit:  c.PostConn.InlinksLimit,
+			OutlinksLimit: c.PostConn.OutlinksLimit,
 		},
 	}
 
@@ -2376,6 +2402,20 @@ type yamlComponentsConfig struct {
 	FeedSidebar yamlFeedSidebarConfig     `yaml:"feed_sidebar"`
 	CardRouter  yamlCardRouterConfig      `yaml:"card_router"`
 	Share       yamlShareComponentConfig  `yaml:"share"`
+	PostConn    yamlPostConnectionsConfig `yaml:"post_connections"`
+}
+
+type yamlPostConnectionsConfig struct {
+	Enabled       *bool    `yaml:"enabled"`
+	Display       []string `yaml:"display"`
+	MinLinks      int      `yaml:"min_links"`
+	MaxLinks      int      `yaml:"max_links"`
+	GraphMinLinks int      `yaml:"graph_min_links"`
+	GraphMaxLinks int      `yaml:"graph_max_links"`
+	ListMinLinks  int      `yaml:"list_min_links"`
+	ListMaxLinks  int      `yaml:"list_max_links"`
+	InlinksLimit  int      `yaml:"inlinks_limit"`
+	OutlinksLimit int      `yaml:"outlinks_limit"`
 }
 
 type yamlNavComponentConfig struct {
@@ -2824,6 +2864,18 @@ func (c *yamlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Position:  c.Share.Position,
 			Title:     c.Share.Title,
 			Custom:    map[string]models.SharePlatformConfig{},
+		},
+		PostConnections: models.PostConnectionsComponentConfig{
+			Enabled:       c.PostConn.Enabled,
+			Display:       append([]string{}, c.PostConn.Display...),
+			MinLinks:      c.PostConn.MinLinks,
+			MaxLinks:      c.PostConn.MaxLinks,
+			GraphMinLinks: c.PostConn.GraphMinLinks,
+			GraphMaxLinks: c.PostConn.GraphMaxLinks,
+			ListMinLinks:  c.PostConn.ListMinLinks,
+			ListMaxLinks:  c.PostConn.ListMaxLinks,
+			InlinksLimit:  c.PostConn.InlinksLimit,
+			OutlinksLimit: c.PostConn.OutlinksLimit,
 		},
 	}
 
@@ -3699,6 +3751,20 @@ type jsonComponentsConfig struct {
 	FeedSidebar jsonFeedSidebarConfig     `json:"feed_sidebar"`
 	CardRouter  jsonCardRouterConfig      `json:"card_router"`
 	Share       jsonShareComponentConfig  `json:"share"`
+	PostConn    jsonPostConnectionsConfig `json:"post_connections"`
+}
+
+type jsonPostConnectionsConfig struct {
+	Enabled       *bool    `json:"enabled"`
+	Display       []string `json:"display"`
+	MinLinks      int      `json:"min_links"`
+	MaxLinks      int      `json:"max_links"`
+	GraphMinLinks int      `json:"graph_min_links"`
+	GraphMaxLinks int      `json:"graph_max_links"`
+	ListMinLinks  int      `json:"list_min_links"`
+	ListMaxLinks  int      `json:"list_max_links"`
+	InlinksLimit  int      `json:"inlinks_limit"`
+	OutlinksLimit int      `json:"outlinks_limit"`
 }
 
 type jsonNavComponentConfig struct {
@@ -4147,6 +4213,18 @@ func (c *jsonComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Position:  c.Share.Position,
 			Title:     c.Share.Title,
 			Custom:    map[string]models.SharePlatformConfig{},
+		},
+		PostConnections: models.PostConnectionsComponentConfig{
+			Enabled:       c.PostConn.Enabled,
+			Display:       append([]string{}, c.PostConn.Display...),
+			MinLinks:      c.PostConn.MinLinks,
+			MaxLinks:      c.PostConn.MaxLinks,
+			GraphMinLinks: c.PostConn.GraphMinLinks,
+			GraphMaxLinks: c.PostConn.GraphMaxLinks,
+			ListMinLinks:  c.PostConn.ListMinLinks,
+			ListMaxLinks:  c.PostConn.ListMaxLinks,
+			InlinksLimit:  c.PostConn.InlinksLimit,
+			OutlinksLimit: c.PostConn.OutlinksLimit,
 		},
 	}
 
