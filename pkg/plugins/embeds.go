@@ -376,6 +376,7 @@ const (
 	embedModeHover       = "hover"
 	embedModeImageOnly   = "image_only"
 	embedOptionPhoto     = "photo"
+	embedOptionImage     = "image"
 	embedOptionVideo     = "video"
 	embedOptionLink      = "link"
 
@@ -549,6 +550,8 @@ func (p *EmbedsPlugin) processInternalEmbedsInText(text string, idx *lifecycle.P
 }
 
 // buildInternalEmbedCard creates HTML for an internal embed card.
+//
+//nolint:gocyclo // multiple embed modes and media fallbacks are intentionally explicit
 func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText string) string {
 	var sb strings.Builder
 
@@ -575,10 +578,10 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 		}
 	}
 
-	mediaURL := getPostExtraString(post, "image", "cover_image", "og_image", embedOptionVideo)
+	mediaURL := getPostExtraString(post, embedOptionImage, "cover_image", "og_image", embedOptionVideo)
 	isVideo := templates.IsVideoURL(mediaURL)
 	templateName := strings.ToLower(post.Template)
-	isPhotoTemplate := templateName == embedOptionPhoto || templateName == "shot" || templateName == "shots" || templateName == "image" || templateName == "gallery"
+	isPhotoTemplate := templateName == embedOptionPhoto || templateName == "shot" || templateName == "shots" || templateName == embedOptionImage || templateName == "gallery"
 	isPhotoCard := isPhotoTemplate || (mediaURL != "" && !isVideo)
 	mediaSource := ""
 	posterURL := ""

@@ -296,67 +296,82 @@ func evalStringMethod(s, method string, args []interface{}) (interface{}, error)
 
 // getField gets a field value from a post
 func getField(post *models.Post, name string) (interface{}, error) {
-	// Handle known fields directly for better performance
+	if val, ok := getKnownField(post, name); ok {
+		return val, nil
+	}
+	if val, ok := getFieldFromExtras(post, name); ok {
+		return val, nil
+	}
+	return nil, nil
+}
+
+//nolint:gocyclo // exhaustive field mapping for post accessors
+func getKnownField(post *models.Post, name string) (interface{}, bool) {
 	switch name {
 	case "path", "Path":
-		return post.Path, nil
+		return post.Path, true
 	case "content", "Content":
-		return post.Content, nil
+		return post.Content, true
 	case "slug", "Slug":
-		return post.Slug, nil
+		return post.Slug, true
 	case "href", "Href":
-		return post.Href, nil
+		return post.Href, true
 	case "title", "Title":
 		if post.Title == nil {
-			return nil, nil
+			return nil, true
 		}
-		return *post.Title, nil
+		return *post.Title, true
 	case "date", "Date":
 		if post.Date == nil {
-			return nil, nil
+			return nil, true
 		}
-		return *post.Date, nil
+		return *post.Date, true
 	case "published", "Published":
-		return post.Published, nil
+		return post.Published, true
 	case "draft", "Draft":
-		return post.Draft, nil
+		return post.Draft, true
 	case "skip", "Skip":
-		return post.Skip, nil
+		return post.Skip, true
 	case "tags", "Tags":
-		return post.Tags, nil
+		return post.Tags, true
 	case "authors", "Authors":
-		return post.GetAuthors(), nil
+		return post.GetAuthors(), true
 	case "author", "Author":
 		if post.Author != nil && *post.Author != "" {
-			return *post.Author, nil
+			return *post.Author, true
 		}
 		authors := post.GetAuthors()
 		if len(authors) > 0 {
-			return authors[0], nil
+			return authors[0], true
 		}
-		return nil, nil
+		return nil, true
 	case "description", "Description":
 		if post.Description == nil {
-			return nil, nil
+			return nil, true
 		}
-		return *post.Description, nil
+		return *post.Description, true
 	case "template", "Template":
-		return post.Template, nil
+		return post.Template, true
 	case "html", "HTML":
-		return post.HTML, nil
+		return post.HTML, true
 	case "article_html", "ArticleHTML":
-		return post.ArticleHTML, nil
+		return post.ArticleHTML, true
 	default:
-		// Check in Extra map
-		if val, ok := post.Extra[name]; ok {
-			return val, nil
-		}
-		// Try lowercase
-		if val, ok := post.Extra[strings.ToLower(name)]; ok {
-			return val, nil
-		}
-		return nil, nil
+		return nil, false
 	}
+}
+
+func getFieldFromExtras(post *models.Post, name string) (interface{}, bool) {
+	if post == nil || post.Extra == nil {
+		return nil, false
+	}
+	if val, ok := post.Extra[name]; ok {
+		return val, true
+	}
+	if val, ok := post.Extra[strings.ToLower(name)]; ok {
+		return val, true
+	}
+	return nil, false
 }
 
 // getFieldFromValue gets a field from a reflect value

@@ -3,6 +3,7 @@ package plugins
 import (
 	"fmt"
 	"html"
+	"math"
 	"regexp"
 	"strings"
 
@@ -29,16 +30,14 @@ const (
 	templateTypeContact   = "contact"
 	templateTypeArticle   = "article"
 	templateTypeGratitude = "gratitude"
+	templateTypeTutorial  = "tutorial"
 )
 
 // createFeedPostsFunc exposes a helper that returns the latest posts for a feed.
 func createFeedPostsFunc(m *lifecycle.Manager) func(slug string, args ...interface{}) ([]map[string]interface{}, error) {
 	return func(slug string, args ...interface{}) ([]map[string]interface{}, error) {
 		limit := parseLimitArg(args)
-		posts, _, err := getFeedPosts(slug, limit, m)
-		if err != nil {
-			return nil, err
-		}
+		posts, _ := getFeedPosts(slug, limit, m)
 		if len(posts) == 0 {
 			return []map[string]interface{}{}, nil
 		}
@@ -50,8 +49,8 @@ func createFeedPostsFunc(m *lifecycle.Manager) func(slug string, args ...interfa
 func createRenderFeedFunc(m *lifecycle.Manager) func(slug string, args ...interface{}) (*pongo2.Value, error) {
 	return func(slug string, args ...interface{}) (*pongo2.Value, error) {
 		opts := parseRenderFeedArgs(args)
-		posts, fc, err := getFeedPosts(slug, opts.limit, m)
-		if err != nil || len(posts) == 0 || fc == nil {
+		posts, fc := getFeedPosts(slug, opts.limit, m)
+		if len(posts) == 0 || fc == nil {
 			return pongo2.AsSafeValue(""), nil
 		}
 
@@ -68,7 +67,7 @@ func createRenderFeedFunc(m *lifecycle.Manager) func(slug string, args ...interf
 
 		htmlSnippet, tmplErr := renderFeedWithTemplate(ctx, opts, m)
 		if tmplErr != nil {
-			htmlSnippet = fallbackFeedHTML(postMaps, opts.variant)
+			htmlSnippet = fallbackFeedHTML(postMaps)
 		}
 
 		return pongo2.AsSafeValue(htmlSnippet), nil
@@ -78,11 +77,11 @@ func createRenderFeedFunc(m *lifecycle.Manager) func(slug string, args ...interf
 func parseLimitArg(args []interface{}) int {
 	for _, arg := range args {
 		if n, ok := numericValue(arg); ok {
-			return maxInt(n, 0)
+			return nonNegativeInt(n)
 		}
 		if cfg, ok := arg.(map[string]interface{}); ok {
 			if limitVal, ok := getNumberFromMap(cfg, "limit"); ok {
-				return maxInt(limitVal, 0)
+				return nonNegativeInt(limitVal)
 			}
 		}
 	}
@@ -101,13 +100,13 @@ func parseRenderFeedArgs(args []interface{}) renderFeedArgs {
 		switch v := arg.(type) {
 		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
 			if n, ok := numericValue(v); ok {
-				opts.limit = maxInt(n, 0)
+				opts.limit = nonNegativeInt(n)
 			}
 		case string:
 			opts.variant = strings.ToLower(v)
 		case map[string]interface{}:
 			if limitVal, ok := getNumberFromMap(v, "limit"); ok {
-				opts.limit = maxInt(limitVal, 0)
+				opts.limit = nonNegativeInt(limitVal)
 			}
 			if variantVal, ok := v["variant"].(string); ok && variantVal != "" {
 				opts.variant = strings.ToLower(variantVal)
@@ -123,30 +122,27 @@ func parseRenderFeedArgs(args []interface{}) renderFeedArgs {
 	return opts
 }
 
-func getFeedPosts(slug string, limit int, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig, error) {
+func getFeedPosts(slug string, limit int, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig) {
 	if slug == "" {
 		slug = ""
 	}
 
 	if posts, fc, ok := postsFromCache(slug, limit, m); ok {
-		return posts, fc, nil
+		return posts, fc
 	}
 
 	fc := getFeedBySlugFromConfig(slug, m.Config())
 	if fc == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 
-	posts, err := computeFeedPosts(fc, m)
-	if err != nil {
-		return nil, nil, err
-	}
+	posts := computeFeedPosts(fc, m)
 
 	if limit > 0 && limit < len(posts) {
 		posts = posts[:limit]
 	}
 
-	return posts, fc, nil
+	return posts, fc
 }
 
 func postsFromCache(slug string, limit int, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig, bool) {
@@ -188,20 +184,20 @@ func getFeedBySlugFromConfig(slug string, cfg *lifecycle.Config) *models.FeedCon
 	return GetFeedBySlug(slug, configs)
 }
 
-func computeFeedPosts(fc *models.FeedConfig, m *lifecycle.Manager) ([]*models.Post, error) {
+func computeFeedPosts(fc *models.FeedConfig, m *lifecycle.Manager) []*models.Post {
 	if fc == nil {
-		return nil, nil
+		return nil
 	}
 
 	posts := filterPostsForFeed(fc, m)
 	if len(posts) == 0 {
-		return posts, nil
+		return posts
 	}
 
 	sortField, reverse := feedSort(fc)
 	sortPosts(posts, sortField, reverse)
 	posts = applyFeedLimitOffset(posts, fc)
-	return posts, nil
+	return posts
 }
 
 func filterPostsForFeed(fc *models.FeedConfig, m *lifecycle.Manager) []*models.Post {
@@ -330,7 +326,7 @@ func resolveThemeName(cfg *lifecycle.Config) string {
 	return themeName
 }
 
-func fallbackFeedHTML(posts []map[string]interface{}, variant string) string {
+func fallbackFeedHTML(posts []map[string]interface{}) string {
 	builder := &strings.Builder{}
 	builder.WriteString("<div class=\"feed h-feed\">")
 	builder.WriteString("<div class=\"posts posts-list\" id=\"posts-list\">")
@@ -340,7 +336,7 @@ func fallbackFeedHTML(posts []map[string]interface{}, variant string) string {
 			builder.WriteString(renderPhotoFigure(post))
 			continue
 		}
-		builder.WriteString(fmt.Sprintf("<article class=\"card card-%s h-entry\">", html.EscapeString(templateType)))
+		fmt.Fprintf(builder, "<article class=\"card card-%s h-entry\">", html.EscapeString(templateType))
 		if templateType == templateTypeLink {
 			builder.WriteString(renderLinkHeader(post))
 		} else {
@@ -369,7 +365,7 @@ func renderFeedLink(post map[string]interface{}) string {
 		title = fmt.Sprint(post["slug"])
 	}
 	builder := &strings.Builder{}
-	builder.WriteString(fmt.Sprintf("<a href=\"%s\"><strong>%s</strong></a>", html.EscapeString(href), html.EscapeString(title)))
+	fmt.Fprintf(builder, "<a href=\"%s\"><strong>%s</strong></a>", html.EscapeString(href), html.EscapeString(title))
 	return builder.String()
 }
 
@@ -385,7 +381,7 @@ func renderLinkHeader(post map[string]interface{}) string {
 	b := &strings.Builder{}
 	b.WriteString("<div class=\"card-link-wrapper\">")
 	b.WriteString("<div class=\"card-link-content\">")
-	b.WriteString(fmt.Sprintf("<a class=\"card-title p-name u-url\" href=\"%s\">%s</a>", html.EscapeString(href), html.EscapeString(title)))
+	fmt.Fprintf(b, "<a class=\"card-title p-name u-url\" href=\"%s\">%s</a>", html.EscapeString(href), html.EscapeString(title))
 	b.WriteString("</div></div>")
 	return b.String()
 }
@@ -396,7 +392,7 @@ func renderFeedMeta(post map[string]interface{}) string {
 	b := &strings.Builder{}
 	b.WriteString("<footer class=\"card-meta\">")
 	if date != "" && date != nilString {
-		b.WriteString(fmt.Sprintf("<time>%s</time>", html.EscapeString(date)))
+		fmt.Fprintf(b, "<time>%s</time>", html.EscapeString(date))
 	}
 	if len(tags) > 0 {
 		b.WriteString("<div class=\"card-tags\">")
@@ -405,7 +401,7 @@ func renderFeedMeta(post map[string]interface{}) string {
 				continue
 			}
 			slug := models.Slugify(tag)
-			b.WriteString(fmt.Sprintf("<a href=\"/tags/%s/\" class=\"tag p-category\">%s</a>", html.EscapeString(slug), html.EscapeString(tag)))
+			fmt.Fprintf(b, "<a href=\"/tags/%s/\" class=\"tag p-category\">%s</a>", html.EscapeString(slug), html.EscapeString(tag))
 		}
 		b.WriteString("</div>")
 	}
@@ -438,7 +434,7 @@ func extractTags(post map[string]interface{}) []string {
 func cardTypeForPost(post map[string]interface{}) string {
 	template := strings.ToLower(firstNonEmpty(post, "template", "templateKey"))
 	switch template {
-	case "blog-post", templateTypeArticle, templateTypePost, "essay", "tutorial":
+	case "blog-post", templateTypeArticle, templateTypePost, "essay", templateTypeTutorial:
 		return templateTypeArticle
 	case templateTypeNote, "ping", "thought", "status", "tweet":
 		return templateTypeNote
@@ -450,7 +446,7 @@ func cardTypeForPost(post map[string]interface{}) string {
 		return templateTypeLink
 	case templateTypeQuote, "quotation":
 		return templateTypeQuote
-	case templateTypeGuide, "series", "step", "chapter":
+	case templateTypeGuide, seriesKey, "step", "chapter":
 		return templateTypeGuide
 	case templateTypeGratitude, templateTypeInline, "micro":
 		return templateTypeInline
@@ -477,7 +473,7 @@ func renderLinkSnippet(post map[string]interface{}) string {
 	cleaned = truncateWords(cleaned, 60)
 	b := &strings.Builder{}
 	b.WriteString("<div class=\"card-link-body\">")
-	b.WriteString(fmt.Sprintf("<p class=\"card-link-snippet p-summary\">%s</p>", html.EscapeString(cleaned)))
+	fmt.Fprintf(b, "<p class=\"card-link-snippet p-summary\">%s</p>", html.EscapeString(cleaned))
 	b.WriteString("</div>")
 	return b.String()
 }
@@ -506,7 +502,7 @@ func renderGenericSnippet(post map[string]interface{}, templateType string) stri
 	cleaned = truncateWords(cleaned, limit)
 	b := &strings.Builder{}
 	b.WriteString("<div class=\"card-body\">")
-	b.WriteString(fmt.Sprintf("<p class=\"card-description p-summary\">%s</p>", html.EscapeString(cleaned)))
+	fmt.Fprintf(b, "<p class=\"card-description p-summary\">%s</p>", html.EscapeString(cleaned))
 	b.WriteString("</div>")
 	return b.String()
 }
@@ -540,8 +536,8 @@ func renderPhotoFigure(post map[string]interface{}) string {
 	caption := firstNonEmpty(post, "description", "title", "slug")
 	builder := &strings.Builder{}
 	builder.WriteString("<figure class=\"photo-figure h-entry\">")
-	builder.WriteString(fmt.Sprintf("<a href=\"%s\"><img src=\"%s\" alt=\"%s\" loading=\"lazy\"></a>", html.EscapeString(href), html.EscapeString(image), html.EscapeString(caption)))
-	builder.WriteString(fmt.Sprintf("<figcaption class=\"p-summary\">%s</figcaption>", html.EscapeString(caption)))
+	fmt.Fprintf(builder, "<a href=\"%s\"><img src=\"%s\" alt=\"%s\" loading=\"lazy\"></a>", html.EscapeString(href), html.EscapeString(image), html.EscapeString(caption))
+	fmt.Fprintf(builder, "<figcaption class=\"p-summary\">%s</figcaption>", html.EscapeString(caption))
 	builder.WriteString("</figure>")
 	return builder.String()
 }
@@ -569,23 +565,30 @@ func numericValue(value interface{}) (int, bool) {
 	}
 	switch v := value.(type) {
 	case uint:
-		return int(v), true
+		return clampUint64ToInt(uint64(v)), true
 	case uint8:
-		return int(v), true
+		return clampUint64ToInt(uint64(v)), true
 	case uint16:
-		return int(v), true
+		return clampUint64ToInt(uint64(v)), true
 	case uint32:
-		return int(v), true
+		return clampUint64ToInt(uint64(v)), true
 	case uint64:
-		return int(v), true
+		return clampUint64ToInt(v), true
 	default:
 		return 0, false
 	}
 }
 
-func maxInt(value, fallback int) int {
-	if value < fallback {
-		return fallback
+func clampUint64ToInt(value uint64) int {
+	if value > math.MaxInt {
+		return math.MaxInt
+	}
+	return int(value)
+}
+
+func nonNegativeInt(value int) int {
+	if value < 0 {
+		return 0
 	}
 	return value
 }
