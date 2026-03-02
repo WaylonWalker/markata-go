@@ -910,17 +910,13 @@ var wellKnownEntries = map[string]wellKnownEntry{
 		name:     "external-links",
 		path:     "external-links/index.html",
 		template: "external-links.html",
-		fallback: func(data wellKnownData) string {
-			return renderExternalLinksHTML(data)
-		},
+		fallback: renderExternalLinksHTML,
 	},
 	"internal-links-page": {
 		name:     "internal-links-page",
 		path:     "internal-links/index.html",
 		template: "internal-links.html",
-		fallback: func(data wellKnownData) string {
-			return renderInternalLinksHTML(data)
-		},
+		fallback: renderInternalLinksHTML,
 	},
 	"sshfp": {
 		name:     "sshfp",
