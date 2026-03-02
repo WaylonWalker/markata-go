@@ -576,6 +576,9 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 
 	mediaURL := getPostExtraString(post, "image", "cover_image", "og_image", "video")
 	isVideo := templates.IsVideoURL(mediaURL)
+	templateName := strings.ToLower(post.Template)
+	isPhotoTemplate := templateName == "photo" || templateName == "shot" || templateName == "shots" || templateName == "image" || templateName == "gallery"
+	isPhotoCard := isPhotoTemplate || (mediaURL != "" && !isVideo)
 	mediaSource := ""
 	posterURL := ""
 	if mediaURL != "" {
@@ -586,6 +589,36 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 				posterURL = templates.WithSize(posterURL, 200, 150)
 			}
 		}
+	}
+
+	if isPhotoCard && mediaSource != "" {
+		caption := description
+		if caption == "" {
+			caption = title
+		}
+
+		sb.WriteString(`<figure class="embed-figure">`)
+		sb.WriteString("\n")
+		sb.WriteString(`  <a href="`)
+		sb.WriteString(html.EscapeString(href))
+		sb.WriteString(`" class="u-url">`)
+		sb.WriteString("\n")
+		sb.WriteString(`    <img src="`)
+		sb.WriteString(html.EscapeString(mediaSource))
+		sb.WriteString(`" alt="`)
+		sb.WriteString(html.EscapeString(title))
+		sb.WriteString(`" width="200" height="150" loading="lazy">`)
+		sb.WriteString("\n")
+		sb.WriteString(`  </a>`)
+		sb.WriteString("\n")
+		sb.WriteString(`  <figcaption>`)
+		sb.WriteString(html.EscapeString(caption))
+		sb.WriteString(`</figcaption>`)
+		sb.WriteString("\n")
+		sb.WriteString(`</figure>`)
+		sb.WriteString("\n")
+
+		return sb.String()
 	}
 
 	sb.WriteString(`<div class="`)
@@ -599,7 +632,11 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 	sb.WriteString("\n")
 
 	if mediaSource != "" {
-		sb.WriteString(`    <div class="embed-card-image">`)
+		if isPhotoCard {
+			sb.WriteString(`    <figure class="embed-card-image">`)
+		} else {
+			sb.WriteString(`    <div class="embed-card-image">`)
+		}
 		sb.WriteString("\n")
 		if isVideo {
 			sb.WriteString(`      <video class="embed-card-video" autoplay muted loop playsinline`)
@@ -623,10 +660,24 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 		} else {
 			sb.WriteString(`      <img src="`)
 			sb.WriteString(html.EscapeString(mediaSource))
-			sb.WriteString(`" alt="" width="200" height="150" loading="lazy">`)
+			sb.WriteString(`" alt="`)
+			sb.WriteString(html.EscapeString(title))
+			sb.WriteString(`" width="200" height="150" loading="lazy">`)
 			sb.WriteString("\n")
 		}
-		sb.WriteString(`    </div>`)
+		if isPhotoCard {
+			caption := description
+			if caption == "" {
+				caption = title
+			}
+			sb.WriteString(`      <figcaption>`)
+			sb.WriteString(html.EscapeString(caption))
+			sb.WriteString(`</figcaption>`)
+			sb.WriteString("\n")
+			sb.WriteString(`    </figure>`)
+		} else {
+			sb.WriteString(`    </div>`)
+		}
 		sb.WriteString("\n")
 	}
 

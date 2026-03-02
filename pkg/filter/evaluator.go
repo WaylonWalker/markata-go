@@ -324,6 +324,17 @@ func getField(post *models.Post, name string) (interface{}, error) {
 		return post.Skip, nil
 	case "tags", "Tags":
 		return post.Tags, nil
+	case "authors", "Authors":
+		return post.GetAuthors(), nil
+	case "author", "Author":
+		if post.Author != nil && *post.Author != "" {
+			return *post.Author, nil
+		}
+		authors := post.GetAuthors()
+		if len(authors) > 0 {
+			return authors[0], nil
+		}
+		return nil, nil
 	case "description", "Description":
 		if post.Description == nil {
 			return nil, nil

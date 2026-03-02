@@ -235,6 +235,23 @@ Always available:
 
 ---
 
+## Feed Embed Helpers
+
+Two helper callables make it easy to surface feed posts inside templates and `jinja_md`-enabled markdown without embedding raw HTML.
+
+### `feed_posts(feed_slug, limit=...)`
+
+- Returns a list of post maps (same shape as `templates.PostsToMaps`) for the requested feed slug.
+- Accepts either a numeric positional argument or an options map containing `"limit"` to cap the results; zero or missing limit returns the full feed output.
+- Respects the feed configuration (`filter`, `sort`, `offset`, `limit`, `include_private`) but never fails the build when the slug is missing—an empty list is returned instead.
+
+### `render_feed(feed_slug, options={})`
+
+- Renders a safe HTML snippet for the feed's latest posts using the default partial `partials/feed_preview.html`. The `card` layout now embeds `partials/cards/card-router.html`, giving each post type (article, note, photo, video, link, quote, guide, etc.) its own card markup. Photo/shot cards wrap the media in a `<figure>` and render a `<figcaption>` caption derived from the description/title so the visual output resembles a figure with caption. The `list` layout keeps the compact list styles.
+- Supported options: `limit` (numeric override), `variant` (`"card"` or `"list"`, default `"card"`), and `template` (custom template path). If `template` is provided, its output must accept `posts`, `feed`, and `variant` in the context.
+- The helper looks up the shared `templates.engine` from the manager cache and gracefully falls back to simple markup when the engine or template is unavailable so that markdown renderers can use it even before the full render stage runs.
+---
+
 ## Template Syntax
 
 ### Variables

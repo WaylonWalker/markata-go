@@ -1,0 +1,572 @@
+package plugins
+
+import (
+	"fmt"
+	"html"
+	"regexp"
+	"strings"
+
+	"github.com/WaylonWalker/markata-go/pkg/filter"
+	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
+	"github.com/flosch/pongo2/v6"
+)
+
+const defaultFeedEmbedTemplate = "partials/feed_preview.html"
+
+// createFeedPostsFunc exposes a helper that returns the latest posts for a feed.
+func createFeedPostsFunc(m *lifecycle.Manager) func(slug string, args ...interface{}) ([]map[string]interface{}, error) {
+	return func(slug string, args ...interface{}) ([]map[string]interface{}, error) {
+		limit := parseLimitArg(args)
+		posts, _, err := getFeedPosts(slug, limit, m)
+		if err != nil {
+			return nil, err
+		}
+		if len(posts) == 0 {
+			return []map[string]interface{}{}, nil
+		}
+		return templates.PostsToMaps(posts), nil
+	}
+}
+
+// createRenderFeedFunc renders a feed snippet as safe HTML.
+func createRenderFeedFunc(m *lifecycle.Manager) func(slug string, args ...interface{}) (*pongo2.Value, error) {
+	return func(slug string, args ...interface{}) (*pongo2.Value, error) {
+		opts := parseRenderFeedArgs(args)
+		posts, fc, err := getFeedPosts(slug, opts.limit, m)
+		if err != nil || len(posts) == 0 || fc == nil {
+			return pongo2.AsSafeValue(""), nil
+		}
+
+		postMaps := templates.PostsToMaps(posts)
+		ctx := map[string]interface{}{
+			"posts":   postMaps,
+			"variant": opts.variant,
+			"feed": map[string]interface{}{
+				"slug":        fc.Slug,
+				"title":       fc.Title,
+				"description": fc.Description,
+			},
+		}
+
+		htmlSnippet, tmplErr := renderFeedWithTemplate(ctx, opts, m)
+		if tmplErr != nil {
+			htmlSnippet = fallbackFeedHTML(postMaps, opts.variant)
+		}
+
+		return pongo2.AsSafeValue(htmlSnippet), nil
+	}
+}
+
+func parseLimitArg(args []interface{}) int {
+	for _, arg := range args {
+		if n, ok := numericValue(arg); ok {
+			return maxInt(n, 0)
+		}
+		if cfg, ok := arg.(map[string]interface{}); ok {
+			if limitVal, ok := getNumberFromMap(cfg, "limit"); ok {
+				return maxInt(limitVal, 0)
+			}
+		}
+	}
+	return 0
+}
+
+type renderFeedArgs struct {
+	limit    int
+	variant  string
+	template string
+}
+
+func parseRenderFeedArgs(args []interface{}) renderFeedArgs {
+	opts := renderFeedArgs{variant: "card"}
+	for _, arg := range args {
+		switch v := arg.(type) {
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+			if n, ok := numericValue(v); ok {
+				opts.limit = maxInt(n, 0)
+			}
+		case string:
+			opts.variant = strings.ToLower(v)
+		case map[string]interface{}:
+			if limitVal, ok := getNumberFromMap(v, "limit"); ok {
+				opts.limit = maxInt(limitVal, 0)
+			}
+			if variantVal, ok := v["variant"].(string); ok && variantVal != "" {
+				opts.variant = strings.ToLower(variantVal)
+			}
+			if templateVal, ok := v["template"].(string); ok && templateVal != "" {
+				opts.template = templateVal
+			}
+		}
+	}
+	if opts.variant == "" {
+		opts.variant = "card"
+	}
+	return opts
+}
+
+func getFeedPosts(slug string, limit int, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig, error) {
+	if slug == "" {
+		slug = ""
+	}
+
+	if posts, fc, ok := postsFromCache(slug, limit, m); ok {
+		return posts, fc, nil
+	}
+
+	fc := getFeedBySlugFromConfig(slug, m.Config())
+	if fc == nil {
+		return nil, nil, nil
+	}
+
+	posts, err := computeFeedPosts(fc, m)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if limit > 0 && limit < len(posts) {
+		posts = posts[:limit]
+	}
+
+	return posts, fc, nil
+}
+
+func postsFromCache(slug string, limit int, m *lifecycle.Manager) ([]*models.Post, *models.FeedConfig, bool) {
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		return nil, nil, false
+	}
+
+	configs, ok := cached.([]models.FeedConfig)
+	if !ok {
+		return nil, nil, false
+	}
+
+	fc := GetFeedBySlug(slug, configs)
+	if fc == nil {
+		return nil, nil, false
+	}
+
+	posts := cloneFeedPosts(fc.Posts)
+	if len(posts) == 0 {
+		return nil, fc, true
+	}
+
+	if limit > 0 && limit < len(posts) {
+		posts = posts[:limit]
+	}
+
+	return posts, fc, true
+}
+
+func getFeedBySlugFromConfig(slug string, cfg *lifecycle.Config) *models.FeedConfig {
+	if cfg == nil {
+		return nil
+	}
+	configs := getFeedConfigs(cfg)
+	if len(configs) == 0 {
+		return nil
+	}
+	return GetFeedBySlug(slug, configs)
+}
+
+func computeFeedPosts(fc *models.FeedConfig, m *lifecycle.Manager) ([]*models.Post, error) {
+	if fc == nil {
+		return nil, nil
+	}
+
+	posts := filterPostsForFeed(fc, m)
+	if len(posts) == 0 {
+		return posts, nil
+	}
+
+	sortField, reverse := feedSort(fc)
+	sortPosts(posts, sortField, reverse)
+	posts = applyFeedLimitOffset(posts, fc)
+	return posts, nil
+}
+
+func filterPostsForFeed(fc *models.FeedConfig, m *lifecycle.Manager) []*models.Post {
+	candidate := make([]*models.Post, 0, len(m.Posts()))
+	for _, post := range m.Posts() {
+		if fc.IncludePrivate || !post.Private {
+			candidate = append(candidate, post)
+		}
+	}
+
+	if fc.Filter == "" {
+		return cloneFeedPosts(candidate)
+	}
+
+	parsed, err := filter.Parse(fc.Filter)
+	if err != nil {
+		return cloneFeedPosts(candidate)
+	}
+
+	return cloneFeedPosts(parsed.MatchAll(candidate))
+}
+
+func feedSort(fc *models.FeedConfig) (string, bool) {
+	sortField := fc.Sort
+	reverse := fc.Reverse
+	if fc.Type == models.FeedTypeGuide {
+		if sortField == "" {
+			sortField = "guide_order"
+			reverse = false
+		}
+	}
+	if sortField == "" {
+		sortField = "date"
+		reverse = true
+	}
+	return sortField, reverse
+}
+
+func renderFeedWithTemplate(ctx map[string]interface{}, opts renderFeedArgs, m *lifecycle.Manager) (string, error) {
+	engine, err := ensureTemplateEngine(m)
+	if err != nil {
+		return "", err
+	}
+
+	templateName := opts.template
+	if templateName == "" {
+		templateName = defaultFeedEmbedTemplate
+	}
+
+	if !engine.TemplateExists(templateName) {
+		templateName = defaultFeedEmbedTemplate
+		if !engine.TemplateExists(templateName) {
+			return "", fmt.Errorf("template %q not found", templateName)
+		}
+	}
+
+	return engine.RenderToString(templateName, ctx)
+}
+
+func getTemplateEngine(m *lifecycle.Manager) *templates.Engine {
+	cached, ok := m.Cache().Get("templates.engine")
+	if !ok {
+		return nil
+	}
+	engine, _ := cached.(*templates.Engine)
+	return engine
+}
+
+func ensureTemplateEngine(m *lifecycle.Manager) (*templates.Engine, error) {
+	if engine := getTemplateEngine(m); engine != nil {
+		return engine, nil
+	}
+
+	cfg := m.Config()
+	if cfg == nil {
+		return nil, fmt.Errorf("config unavailable")
+	}
+
+	templatesDir := PluginNameTemplates
+	if cfg.Extra != nil {
+		if dir, ok := cfg.Extra["templates_dir"].(string); ok && dir != "" {
+			templatesDir = dir
+		}
+	}
+
+	themeName := resolveThemeName(cfg)
+	engine, err := templates.NewEngineWithTheme(templatesDir, themeName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize template engine: %w", err)
+	}
+
+	m.Cache().Set("templates.engine", engine)
+	return engine, nil
+}
+
+func resolveThemeName(cfg *lifecycle.Config) string {
+	themeName := ThemeDefault
+	if cfg == nil || cfg.Extra == nil {
+		return themeName
+	}
+
+	if raw, ok := cfg.Extra["theme"]; ok {
+		switch typed := raw.(type) {
+		case models.ThemeConfig:
+			if typed.Name != "" {
+				return typed.Name
+			}
+		case *models.ThemeConfig:
+			if typed != nil && typed.Name != "" {
+				return typed.Name
+			}
+		case map[string]interface{}:
+			if name, ok := typed["name"].(string); ok && name != "" {
+				return name
+			}
+		case string:
+			if typed != "" {
+				return typed
+			}
+		}
+	}
+
+	return themeName
+}
+
+func fallbackFeedHTML(posts []map[string]interface{}, variant string) string {
+	builder := &strings.Builder{}
+	builder.WriteString("<div class=\"feed h-feed\">")
+	builder.WriteString("<div class=\"posts posts-list\" id=\"posts-list\">")
+	for _, post := range posts {
+		templateType := cardTypeForPost(post)
+		if templateType == "photo" {
+			builder.WriteString(renderPhotoFigure(post))
+			continue
+		}
+		builder.WriteString(fmt.Sprintf("<article class=\"card card-%s h-entry\">", html.EscapeString(templateType)))
+		if templateType == "link" {
+			builder.WriteString(renderLinkHeader(post))
+		} else {
+			builder.WriteString(renderFeedLink(post))
+		}
+		if templateType == "link" {
+			builder.WriteString(renderLinkSnippet(post))
+		} else if snippet := renderGenericSnippet(post, templateType); snippet != "" {
+			builder.WriteString(snippet)
+		}
+		builder.WriteString(renderFeedMeta(post))
+		builder.WriteString("</article>")
+	}
+	builder.WriteString("</div>")
+	builder.WriteString("</div>")
+	return builder.String()
+}
+
+func renderFeedLink(post map[string]interface{}) string {
+	href := fmt.Sprint(post["href"])
+	if href == "" {
+		href = "/"
+	}
+	title := fmt.Sprint(post["title"])
+	if title == "" || title == "<nil>" {
+		title = fmt.Sprint(post["slug"])
+	}
+	builder := &strings.Builder{}
+	builder.WriteString(fmt.Sprintf("<a href=\"%s\"><strong>%s</strong></a>", html.EscapeString(href), html.EscapeString(title)))
+	return builder.String()
+}
+
+func renderLinkHeader(post map[string]interface{}) string {
+	href := fmt.Sprint(post["href"])
+	if href == "" {
+		href = "/"
+	}
+	title := fmt.Sprint(post["title"])
+	if title == "" || title == "<nil>" {
+		title = fmt.Sprint(post["slug"])
+	}
+	b := &strings.Builder{}
+	b.WriteString("<div class=\"card-link-wrapper\">")
+	b.WriteString("<div class=\"card-link-content\">")
+	b.WriteString(fmt.Sprintf("<a class=\"card-title p-name u-url\" href=\"%s\">%s</a>", html.EscapeString(href), html.EscapeString(title)))
+	b.WriteString("</div></div>")
+	return b.String()
+}
+
+func renderFeedMeta(post map[string]interface{}) string {
+	date := fmt.Sprint(post["date"])
+	tags := extractTags(post)
+	b := &strings.Builder{}
+	b.WriteString("<footer class=\"card-meta\">")
+	if date != "" && date != "<nil>" {
+		b.WriteString(fmt.Sprintf("<time>%s</time>", html.EscapeString(date)))
+	}
+	if len(tags) > 0 {
+		b.WriteString("<div class=\"card-tags\">")
+		for _, tag := range tags {
+			if tag == "" {
+				continue
+			}
+			slug := models.Slugify(tag)
+			b.WriteString(fmt.Sprintf("<a href=\"/tags/%s/\" class=\"tag p-category\">%s</a>", html.EscapeString(slug), html.EscapeString(tag)))
+		}
+		b.WriteString("</div>")
+	}
+	b.WriteString("</footer>")
+	return b.String()
+}
+
+func extractTags(post map[string]interface{}) []string {
+	if raw, ok := post["tags"]; ok && raw != nil {
+		switch typed := raw.(type) {
+		case []string:
+			return typed
+		case []interface{}:
+			result := make([]string, 0, len(typed))
+			for _, item := range typed {
+				if s, ok := item.(string); ok {
+					result = append(result, s)
+				}
+			}
+			return result
+		case string:
+			if typed != "" {
+				return []string{typed}
+			}
+		}
+	}
+	return nil
+}
+
+func cardTypeForPost(post map[string]interface{}) string {
+	template := strings.ToLower(firstNonEmpty(post, "template", "templateKey"))
+	switch template {
+	case "blog-post", "article", "post", "essay", "tutorial":
+		return "article"
+	case "note", "ping", "thought", "status", "tweet":
+		return "note"
+	case "photo", "shot", "shots", "image", "gallery":
+		return "photo"
+	case "video", "clip", "cast", "stream":
+		return "video"
+	case "link", "bookmark", "til", "stars":
+		return "link"
+	case "quote", "quotation":
+		return "quote"
+	case "guide", "series", "step", "chapter":
+		return "guide"
+	case "gratitude", "inline", "micro":
+		return "inline"
+	case "contact", "character", "person":
+		return "contact"
+	default:
+		return "default"
+	}
+}
+
+var htmlTagStripper = regexp.MustCompile(`(?s)<[^>]*>`)
+
+func renderLinkSnippet(post map[string]interface{}) string {
+	preview := firstNonEmpty(post, "article_html", "html", "content", "description")
+	if preview == "" {
+		return ""
+	}
+	cleaned := htmlTagStripper.ReplaceAllString(preview, "")
+	cleaned = html.UnescapeString(cleaned)
+	cleaned = strings.TrimSpace(cleaned)
+	if cleaned == "" {
+		return ""
+	}
+	cleaned = truncateWords(cleaned, 60)
+	b := &strings.Builder{}
+	b.WriteString("<div class=\"card-link-body\">")
+	b.WriteString(fmt.Sprintf("<p class=\"card-link-snippet p-summary\">%s</p>", html.EscapeString(cleaned)))
+	b.WriteString("</div>")
+	return b.String()
+}
+
+func renderGenericSnippet(post map[string]interface{}, templateType string) string {
+	var source string
+	switch templateType {
+	case "article":
+		source = firstNonEmpty(post, "article_html", "html", "description", "content")
+	default:
+		source = firstNonEmpty(post, "description", "article_html", "html", "content")
+	}
+	if source == "" {
+		return ""
+	}
+	cleaned := htmlTagStripper.ReplaceAllString(source, "")
+	cleaned = html.UnescapeString(cleaned)
+	cleaned = strings.TrimSpace(cleaned)
+	if cleaned == "" {
+		return ""
+	}
+	limit := 45
+	if templateType == "article" {
+		limit = 70
+	}
+	cleaned = truncateWords(cleaned, limit)
+	b := &strings.Builder{}
+	b.WriteString("<div class=\"card-body\">")
+	b.WriteString(fmt.Sprintf("<p class=\"card-description p-summary\">%s</p>", html.EscapeString(cleaned)))
+	b.WriteString("</div>")
+	return b.String()
+}
+
+func truncateWords(text string, limit int) string {
+	if limit <= 0 {
+		return text
+	}
+	words := strings.Fields(text)
+	if len(words) <= limit {
+		return text
+	}
+	return strings.Join(words[:limit], " ") + "..."
+}
+
+func renderPhotoFigure(post map[string]interface{}) string {
+	href := fmt.Sprint(post["href"])
+	if href == "" {
+		href = "/"
+	}
+	image := firstNonEmpty(post, "image", "cover", "cover_image", "og_image")
+	if image == "" {
+		slug := firstNonEmpty(post, "slug")
+		if slug != "" {
+			image = "/" + strings.Trim(slug, "/") + "/og/"
+		}
+	}
+	if image == "" {
+		return ""
+	}
+	caption := firstNonEmpty(post, "description", "title", "slug")
+	builder := &strings.Builder{}
+	builder.WriteString("<figure class=\"photo-figure h-entry\">")
+	builder.WriteString(fmt.Sprintf("<a href=\"%s\"><img src=\"%s\" alt=\"%s\" loading=\"lazy\"></a>", html.EscapeString(href), html.EscapeString(image), html.EscapeString(caption)))
+	builder.WriteString(fmt.Sprintf("<figcaption class=\"p-summary\">%s</figcaption>", html.EscapeString(caption)))
+	builder.WriteString("</figure>")
+	return builder.String()
+}
+
+func firstNonEmpty(post map[string]interface{}, keys ...string) string {
+	for _, key := range keys {
+		v := fmt.Sprint(post[key])
+		if v != "" && v != "<nil>" {
+			return v
+		}
+	}
+	return ""
+}
+
+func getNumberFromMap(opts map[string]interface{}, key string) (int, bool) {
+	if raw, ok := opts[key]; ok {
+		return numericValue(raw)
+	}
+	return 0, false
+}
+
+func numericValue(value interface{}) (int, bool) {
+	if n, ok := toInt(value); ok {
+		return n, true
+	}
+	switch v := value.(type) {
+	case uint:
+		return int(v), true
+	case uint8:
+		return int(v), true
+	case uint16:
+		return int(v), true
+	case uint32:
+		return int(v), true
+	case uint64:
+		return int(v), true
+	default:
+		return 0, false
+	}
+}
+
+func maxInt(value, fallback int) int {
+	if value < fallback {
+		return fallback
+	}
+	return value
+}

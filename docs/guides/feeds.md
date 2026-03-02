@@ -43,6 +43,51 @@ Feeds solve a common problem in static site generation: you need the same collec
 3. **Flexible** - Every "index page" is a feed: home, archives, tags, categories, search indexes
 4. **Familiar** - Mirrors how content platforms work (RSS readers, APIs, syndication)
 
+## Embedding Feeds in Content
+
+The `jinja_md` plugin and page templates expose two helpers that surface feed data without littering Markdown with raw HTML.
+
+### `render_feed` snippet helper
+
+```jinja
+{{ render_feed("blog", 5, "card") }}
+```
+
+- Renders the latest posts for a feed slug using the default partial `partials/feed_preview.html`. The `card` layout now includes `partials/cards/card-router.html`, so each post renders with the card for its template (article, note, photo, etc.) and photo/shot cards display their media inside a `<figure>` plus `<figcaption>` caption. `variant` accepts `card` or `list` and defaults to `card`.
+- `limit` truncates the rendered posts even if the feed definition includes more items. The helper gracefully falls back to a simple `<section>` if the template or engine is unavailable.
+- You can pass options as positional args (`limit`, `variant`) in markdown/Jinja content, or with an options map in full templates. The template override key remains `template` (for example, `{"template": "partials/custom-feed.html"}` in template files).
+
+#### Last 5 blog/shot/ping/thought example
+
+```jinja
+{{ render_feed("blog", 5, "card") }}
+{{ render_feed("shot", 5, "list") }}
+{{ render_feed("ping", 5, "card") }}
+{{ render_feed("thought", 5, "card") }}
+```
+
+Each `render_feed` call delimits the latest posts for that feed slug. The default partial already styles cards and lists, letting Markdown stay declarative.
+
+### `feed_posts` data helper
+
+When you need total control over markup (e.g., a custom grid or table), use `feed_posts` to iterate over post maps.
+
+```jinja
+{% set latest_blog = feed_posts("blog", {"limit": 3}) %}
+<ul class="latest-blog">
+  {% for post in latest_blog %}
+  <li>
+    <a href="{{ post.href }}">{{ post.title }}</a>
+    {% if post.date %}
+    <time datetime="{{ post.date | atom_date }}">{{ post.date | date:"Jan 2, 2006" }}</time>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+```
+
+`feed_posts` returns the same map shape that templates receive (`href`, `title`, `description`, `date`, `tags`, etc.), making it ideal for layouts that differ from the default card/list styling.
+
 ## Basic Feed Configuration
 
 A feed is defined in your `markata-go.toml` using the `[[markata-go.feeds]]` array:

@@ -37,10 +37,8 @@
   <link rel="stylesheet" href="{{ 'css/main.css' | theme_asset_hashed }}">
   <link rel="stylesheet" href="{{ 'css/components.css' | theme_asset_hashed }}">
 
-  <!-- Cards CSS (only on feed/index pages) -->
-  {% if needs_cards_css %}
+  <!-- Cards CSS -->
   <link rel="stylesheet" href="{{ 'css/cards.css' | theme_asset_hashed }}">
-  {% endif %}
 
   <!-- Admonitions CSS (only when content uses admonitions) -->
   {% if needs_admonitions_css %}
