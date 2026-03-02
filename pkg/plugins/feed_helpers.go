@@ -15,6 +15,22 @@ import (
 
 const defaultFeedEmbedTemplate = "partials/feed_preview.html"
 
+const (
+	nilString             = "<nil>"
+	templateTypePost      = "post"
+	templateTypeLink      = "link"
+	templateTypeNote      = "note"
+	templateTypeInline    = "inline"
+	templateTypeDefault   = "default"
+	templateTypePhoto     = "photo"
+	templateTypeVideo     = "video"
+	templateTypeGuide     = "guide"
+	templateTypeQuote     = "quote"
+	templateTypeContact   = "contact"
+	templateTypeArticle   = "article"
+	templateTypeGratitude = "gratitude"
+)
+
 // createFeedPostsFunc exposes a helper that returns the latest posts for a feed.
 func createFeedPostsFunc(m *lifecycle.Manager) func(slug string, args ...interface{}) ([]map[string]interface{}, error) {
 	return func(slug string, args ...interface{}) ([]map[string]interface{}, error) {
@@ -250,7 +266,10 @@ func getTemplateEngine(m *lifecycle.Manager) *templates.Engine {
 	if !ok {
 		return nil
 	}
-	engine, _ := cached.(*templates.Engine)
+	engine, ok := cached.(*templates.Engine)
+	if !ok {
+		return nil
+	}
 	return engine
 }
 
@@ -317,17 +336,17 @@ func fallbackFeedHTML(posts []map[string]interface{}, variant string) string {
 	builder.WriteString("<div class=\"posts posts-list\" id=\"posts-list\">")
 	for _, post := range posts {
 		templateType := cardTypeForPost(post)
-		if templateType == "photo" {
+		if templateType == templateTypePhoto {
 			builder.WriteString(renderPhotoFigure(post))
 			continue
 		}
 		builder.WriteString(fmt.Sprintf("<article class=\"card card-%s h-entry\">", html.EscapeString(templateType)))
-		if templateType == "link" {
+		if templateType == templateTypeLink {
 			builder.WriteString(renderLinkHeader(post))
 		} else {
 			builder.WriteString(renderFeedLink(post))
 		}
-		if templateType == "link" {
+		if templateType == templateTypeLink {
 			builder.WriteString(renderLinkSnippet(post))
 		} else if snippet := renderGenericSnippet(post, templateType); snippet != "" {
 			builder.WriteString(snippet)
@@ -346,7 +365,7 @@ func renderFeedLink(post map[string]interface{}) string {
 		href = "/"
 	}
 	title := fmt.Sprint(post["title"])
-	if title == "" || title == "<nil>" {
+	if title == "" || title == nilString {
 		title = fmt.Sprint(post["slug"])
 	}
 	builder := &strings.Builder{}
@@ -360,7 +379,7 @@ func renderLinkHeader(post map[string]interface{}) string {
 		href = "/"
 	}
 	title := fmt.Sprint(post["title"])
-	if title == "" || title == "<nil>" {
+	if title == "" || title == nilString {
 		title = fmt.Sprint(post["slug"])
 	}
 	b := &strings.Builder{}
@@ -376,7 +395,7 @@ func renderFeedMeta(post map[string]interface{}) string {
 	tags := extractTags(post)
 	b := &strings.Builder{}
 	b.WriteString("<footer class=\"card-meta\">")
-	if date != "" && date != "<nil>" {
+	if date != "" && date != nilString {
 		b.WriteString(fmt.Sprintf("<time>%s</time>", html.EscapeString(date)))
 	}
 	if len(tags) > 0 {
@@ -419,26 +438,26 @@ func extractTags(post map[string]interface{}) []string {
 func cardTypeForPost(post map[string]interface{}) string {
 	template := strings.ToLower(firstNonEmpty(post, "template", "templateKey"))
 	switch template {
-	case "blog-post", "article", "post", "essay", "tutorial":
-		return "article"
-	case "note", "ping", "thought", "status", "tweet":
-		return "note"
-	case "photo", "shot", "shots", "image", "gallery":
-		return "photo"
-	case "video", "clip", "cast", "stream":
-		return "video"
-	case "link", "bookmark", "til", "stars":
-		return "link"
-	case "quote", "quotation":
-		return "quote"
-	case "guide", "series", "step", "chapter":
-		return "guide"
-	case "gratitude", "inline", "micro":
-		return "inline"
-	case "contact", "character", "person":
-		return "contact"
+	case "blog-post", templateTypeArticle, templateTypePost, "essay", "tutorial":
+		return templateTypeArticle
+	case templateTypeNote, "ping", "thought", "status", "tweet":
+		return templateTypeNote
+	case templateTypePhoto, "shot", "shots", "image", "gallery":
+		return templateTypePhoto
+	case templateTypeVideo, "clip", "cast", "stream":
+		return templateTypeVideo
+	case templateTypeLink, "bookmark", "til", "stars":
+		return templateTypeLink
+	case templateTypeQuote, "quotation":
+		return templateTypeQuote
+	case templateTypeGuide, "series", "step", "chapter":
+		return templateTypeGuide
+	case templateTypeGratitude, templateTypeInline, "micro":
+		return templateTypeInline
+	case templateTypeContact, "character", "person":
+		return templateTypeContact
 	default:
-		return "default"
+		return templateTypeDefault
 	}
 }
 
@@ -466,7 +485,7 @@ func renderLinkSnippet(post map[string]interface{}) string {
 func renderGenericSnippet(post map[string]interface{}, templateType string) string {
 	var source string
 	switch templateType {
-	case "article":
+	case templateTypeArticle:
 		source = firstNonEmpty(post, "article_html", "html", "description", "content")
 	default:
 		source = firstNonEmpty(post, "description", "article_html", "html", "content")
@@ -481,7 +500,7 @@ func renderGenericSnippet(post map[string]interface{}, templateType string) stri
 		return ""
 	}
 	limit := 45
-	if templateType == "article" {
+	if templateType == templateTypeArticle {
 		limit = 70
 	}
 	cleaned = truncateWords(cleaned, limit)
@@ -530,7 +549,7 @@ func renderPhotoFigure(post map[string]interface{}) string {
 func firstNonEmpty(post map[string]interface{}, keys ...string) string {
 	for _, key := range keys {
 		v := fmt.Sprint(post[key])
-		if v != "" && v != "<nil>" {
+		if v != "" && v != nilString {
 			return v
 		}
 	}

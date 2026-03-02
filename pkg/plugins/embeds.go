@@ -375,6 +375,7 @@ const (
 	embedModePerformance = "performance"
 	embedModeHover       = "hover"
 	embedModeImageOnly   = "image_only"
+	embedOptionPhoto     = "photo"
 	embedOptionVideo     = "video"
 	embedOptionLink      = "link"
 
@@ -574,10 +575,10 @@ func (p *EmbedsPlugin) buildInternalEmbedCard(post *models.Post, displayText str
 		}
 	}
 
-	mediaURL := getPostExtraString(post, "image", "cover_image", "og_image", "video")
+	mediaURL := getPostExtraString(post, "image", "cover_image", "og_image", embedOptionVideo)
 	isVideo := templates.IsVideoURL(mediaURL)
 	templateName := strings.ToLower(post.Template)
-	isPhotoTemplate := templateName == "photo" || templateName == "shot" || templateName == "shots" || templateName == "image" || templateName == "gallery"
+	isPhotoTemplate := templateName == embedOptionPhoto || templateName == "shot" || templateName == "shots" || templateName == "image" || templateName == "gallery"
 	isPhotoCard := isPhotoTemplate || (mediaURL != "" && !isVideo)
 	mediaSource := ""
 	posterURL := ""
@@ -1351,9 +1352,9 @@ func (p *EmbedsPlugin) extractHTMLTitle(htmlContent string) string {
 // defaultModeByType returns the default mode for an oEmbed type.
 func defaultModeByType(oembedType string) string {
 	switch strings.ToLower(oembedType) {
-	case "photo":
+	case embedOptionPhoto:
 		return embedModeImageOnly
-	case "video":
+	case embedOptionVideo:
 		return embedModeRich
 	case embedModeRich:
 		return embedModeRich

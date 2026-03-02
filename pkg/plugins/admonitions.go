@@ -56,6 +56,12 @@ var admonitionTypes = map[string]bool{
 // Group 5: optional unquoted title (everything after type/modifiers if no quotes)
 var admonitionRegex = regexp.MustCompile(`^(\?\?\?\+?|!!!)\s+([\w-]+)(?:\s+(left|right|inline(?:\s+end)?))?\s*(?:"([^"]*)"|(.*))?$`)
 
+const (
+	positionInline    = "inline"
+	positionInlineEnd = "inline end"
+	positionRight     = "right"
+)
+
 // KindAdmonition is the AST node kind for admonitions.
 var KindAdmonition = ast.NewNodeKind("Admonition")
 
@@ -145,10 +151,10 @@ func (p *AdmonitionParser) Open(_ ast.Node, reader text.Reader, _ parser.Context
 	position := ""
 	if adType == AdmonitionTypeAside && modifier != "" {
 		switch modifier {
-		case PositionLeft, "inline":
+		case PositionLeft, positionInline:
 			position = PositionLeft
-		case "right", "inline end":
-			position = "right"
+		case positionRight, positionInlineEnd:
+			position = positionRight
 		}
 	}
 
