@@ -131,6 +131,11 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	}
 	lcConfig.Extra["search"] = searchConfig
 
+	if cfg.Searchcraft.ResolvedIndex == "" {
+		cfg.Searchcraft.ResolvedIndex = cfg.Searchcraft.ResolveIndexName(cfg.Title)
+	}
+	lcConfig.Extra["searchcraft"] = cfg.Searchcraft
+
 	// Copy arbitrary plugin configs from cfg.Extra (e.g., image_zoom, wikilinks)
 	if cfg.Extra != nil {
 		for key, value := range cfg.Extra {

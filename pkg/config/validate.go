@@ -105,6 +105,32 @@ func ValidateConfig(config *models.Config) []error {
 		})
 	}
 
+	if config.Searchcraft.IsEnabled() {
+		if config.Searchcraft.Endpoint == "" {
+			errs = append(errs, ValidationError{
+				Field:   "searchcraft.endpoint",
+				Message: "required when searchcraft is enabled",
+			})
+		} else if validateErr := validateURL(config.Searchcraft.Endpoint); validateErr != nil {
+			errs = append(errs, ValidationError{
+				Field:   "searchcraft.endpoint",
+				Message: validateErr.Error(),
+			})
+		}
+		if config.Searchcraft.IngestKey == "" {
+			errs = append(errs, ValidationError{
+				Field:   "searchcraft.ingest_key",
+				Message: "required when searchcraft is enabled",
+			})
+		}
+		if config.Searchcraft.BatchSize < 0 {
+			errs = append(errs, ValidationError{
+				Field:   "searchcraft.batch_size",
+				Message: "must be >= 0",
+			})
+		}
+	}
+
 	// Sort errors first, then warnings
 	sortErrors(errs)
 
@@ -181,6 +207,41 @@ func ValidateConfigWithPositions(config *models.Config, tracker *PositionTracker
 			GetFixSuggestion("negative_value", "orphan_threshold", ""),
 			false,
 		))
+	}
+
+	if config.Searchcraft.IsEnabled() {
+		if config.Searchcraft.Endpoint == "" {
+			configErrors.Add(NewConfigErrorWithFix(
+				tracker,
+				"searchcraft.endpoint",
+				"",
+				"required when searchcraft is enabled",
+				GetFixSuggestion("required_value", "endpoint", ""),
+				false,
+			))
+		} else {
+			validateURLWithDetails(config.Searchcraft.Endpoint, tracker, configErrors)
+		}
+		if config.Searchcraft.IngestKey == "" {
+			configErrors.Add(NewConfigErrorWithFix(
+				tracker,
+				"searchcraft.ingest_key",
+				"",
+				"required when searchcraft is enabled",
+				GetFixSuggestion("required_value", "ingest_key", ""),
+				false,
+			))
+		}
+		if config.Searchcraft.BatchSize < 0 {
+			configErrors.Add(NewConfigErrorWithFix(
+				tracker,
+				"searchcraft.batch_size",
+				fmt.Sprintf("%d", config.Searchcraft.BatchSize),
+				"must be >= 0",
+				GetFixSuggestion("negative_value", "batch_size", ""),
+				false,
+			))
+		}
 	}
 
 	return configErrors

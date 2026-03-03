@@ -1,5 +1,13 @@
 package models
 
+import (
+	"regexp"
+	"strings"
+)
+
+var searchcraftIndexInvalid = regexp.MustCompile(`[^a-z0-9\-_]+`)
+var searchcraftIndexTrim = regexp.MustCompile(`[-_]{2,}`)
+
 // NavItem represents a navigation link.
 type NavItem struct {
 	// Label is the display text for the nav link
@@ -436,6 +444,9 @@ type Config struct {
 	// Search configures site-wide search functionality using Pagefind
 	Search SearchConfig `json:"search" yaml:"search" toml:"search"`
 
+	// Searchcraft configures remote semantic search syncing
+	Searchcraft SearchcraftConfig `json:"searchcraft" yaml:"searchcraft" toml:"searchcraft"`
+
 	// Layout configures the layout system for page structure
 	Layout LayoutConfig `json:"layout" yaml:"layout" toml:"layout"`
 
@@ -715,6 +726,101 @@ func NewSearchConfig() SearchConfig {
 			CacheDir:         "",
 		},
 		Feeds: []SearchFeedConfig{},
+	}
+}
+
+// SearchcraftConfig configures synchronization with Searchcraft Core.
+type SearchcraftConfig struct {
+	Enabled        *bool  `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+	Endpoint       string `json:"endpoint,omitempty" yaml:"endpoint,omitempty" toml:"endpoint,omitempty"`
+	IngestKey      string `json:"ingest_key,omitempty" yaml:"ingest_key,omitempty" toml:"ingest_key,omitempty"`
+	ReadKey        string `json:"read_key,omitempty" yaml:"read_key,omitempty" toml:"read_key,omitempty"`
+	SiteName       string `json:"site_name,omitempty" yaml:"site_name,omitempty" toml:"site_name,omitempty"`
+	IndexName      string `json:"index_name,omitempty" yaml:"index_name,omitempty" toml:"index_name,omitempty"`
+	IndexPrefix    string `json:"index_prefix,omitempty" yaml:"index_prefix,omitempty" toml:"index_prefix,omitempty"`
+	IndexSeparator string `json:"index_separator,omitempty" yaml:"index_separator,omitempty" toml:"index_separator,omitempty"`
+	IndexPerSite   bool   `json:"index_per_site,omitempty" yaml:"index_per_site,omitempty" toml:"index_per_site,omitempty"`
+	BatchSize      int    `json:"batch_size,omitempty" yaml:"batch_size,omitempty" toml:"batch_size,omitempty"`
+	DeleteMissing  bool   `json:"delete_missing,omitempty" yaml:"delete_missing,omitempty" toml:"delete_missing,omitempty"`
+	IncludeDrafts  bool   `json:"include_drafts,omitempty" yaml:"include_drafts,omitempty" toml:"include_drafts,omitempty"`
+	IncludePrivate bool   `json:"include_private,omitempty" yaml:"include_private,omitempty" toml:"include_private,omitempty"`
+	SkipOnFastMode bool   `json:"skip_on_fast_mode,omitempty" yaml:"skip_on_fast_mode,omitempty" toml:"skip_on_fast_mode,omitempty"`
+	ResolvedIndex  string `json:"resolved_index,omitempty" yaml:"resolved_index,omitempty" toml:"resolved_index,omitempty"`
+}
+
+// IsEnabled reports whether Searchcraft syncing is permitted.
+func (s *SearchcraftConfig) IsEnabled() bool {
+	if s == nil || s.Enabled == nil {
+		return false
+	}
+	return *s.Enabled
+}
+
+// BatchSizeOrDefault returns a sane batch size for ingest requests.
+func (s *SearchcraftConfig) BatchSizeOrDefault() int {
+	if s == nil || s.BatchSize <= 0 {
+		return 100
+	}
+	return s.BatchSize
+}
+
+// ResolveIndexName computes the Searchcraft index name, honoring overrides.
+func (s *SearchcraftConfig) ResolveIndexName(siteName string) string {
+	if s == nil {
+		return ""
+	}
+	if s.IndexName != "" {
+		return sanitizeSearchcraftName(s.IndexName)
+	}
+	prefix := s.IndexPrefix
+	if prefix == "" {
+		prefix = "markata"
+	}
+	prefix = sanitizeSearchcraftName(prefix)
+	suffix := siteName
+	if s.SiteName != "" {
+		suffix = s.SiteName
+	}
+	if suffix == "" {
+		suffix = "site"
+	}
+	if !s.IndexPerSite {
+		return prefix
+	}
+	suffix = sanitizeSearchcraftName(suffix)
+	sep := s.IndexSeparator
+	if sep == "" {
+		sep = "_"
+	}
+	return prefix + sep + suffix
+}
+
+func sanitizeSearchcraftName(value string) string {
+	if value == "" {
+		return ""
+	}
+	normalized := strings.ToLower(value)
+	normalized = searchcraftIndexInvalid.ReplaceAllString(normalized, "-")
+	normalized = searchcraftIndexTrim.ReplaceAllString(normalized, "-")
+	normalized = strings.Trim(normalized, "-_")
+	if normalized == "" {
+		return "site"
+	}
+	return normalized
+}
+
+// NewSearchcraftConfig returns the default (disabled) Searchcraft settings.
+func NewSearchcraftConfig() SearchcraftConfig {
+	enabled := false
+	return SearchcraftConfig{
+		Enabled:        &enabled,
+		Endpoint:       "http://localhost:8000",
+		IndexPrefix:    "markata",
+		IndexSeparator: "_",
+		IndexPerSite:   true,
+		BatchSize:      100,
+		DeleteMissing:  true,
+		SkipOnFastMode: true,
 	}
 }
 

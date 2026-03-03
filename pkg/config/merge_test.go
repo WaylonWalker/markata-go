@@ -238,6 +238,30 @@ func TestMergeConfigs_Feeds(t *testing.T) {
 	}
 }
 
+func TestMergeConfigs_Searchcraft(t *testing.T) {
+	baseEnabled := false
+	overrideEnabled := true
+	base := &models.Config{Searchcraft: models.SearchcraftConfig{Enabled: &baseEnabled, Endpoint: "http://localhost:8000", BatchSize: 100}}
+	override := &models.Config{Searchcraft: models.SearchcraftConfig{Enabled: &overrideEnabled, Endpoint: "http://localhost:18000", IngestKey: "ingest", ReadKey: "read", BatchSize: 50}}
+
+	result := MergeConfigs(base, override)
+	if result.Searchcraft.Enabled == nil || !*result.Searchcraft.Enabled {
+		t.Fatalf("expected enabled=true, got %#v", result.Searchcraft.Enabled)
+	}
+	if result.Searchcraft.Endpoint != "http://localhost:18000" {
+		t.Fatalf("unexpected endpoint: %q", result.Searchcraft.Endpoint)
+	}
+	if result.Searchcraft.IngestKey != "ingest" {
+		t.Fatalf("unexpected ingest_key: %q", result.Searchcraft.IngestKey)
+	}
+	if result.Searchcraft.ReadKey != "read" {
+		t.Fatalf("unexpected read_key: %q", result.Searchcraft.ReadKey)
+	}
+	if result.Searchcraft.BatchSize != 50 {
+		t.Fatalf("unexpected batch_size: %d", result.Searchcraft.BatchSize)
+	}
+}
+
 func TestMergeSlice_Replace(t *testing.T) {
 	base := []string{"a", "b", "c"}
 	override := []string{"x", "y"}

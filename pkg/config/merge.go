@@ -120,8 +120,54 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Garden - merge
 	result.Garden = mergeGardenConfig(base.Garden, override.Garden)
 
+	// Searchcraft - merge
+	result.Searchcraft = mergeSearchcraftConfig(base.Searchcraft, override.Searchcraft)
+
 	// Extra (plugin configs) - merge
 	result.Extra = mergeExtra(base.Extra, override.Extra)
+
+	return result
+}
+
+// mergeSearchcraftConfig merges SearchcraftConfig values.
+func mergeSearchcraftConfig(base, override models.SearchcraftConfig) models.SearchcraftConfig {
+	result := base
+
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+	if override.Endpoint != "" {
+		result.Endpoint = override.Endpoint
+	}
+	if override.IngestKey != "" {
+		result.IngestKey = override.IngestKey
+	}
+	if override.ReadKey != "" {
+		result.ReadKey = override.ReadKey
+	}
+	if override.SiteName != "" {
+		result.SiteName = override.SiteName
+	}
+	if override.IndexName != "" {
+		result.IndexName = override.IndexName
+	}
+	if override.IndexPrefix != "" {
+		result.IndexPrefix = override.IndexPrefix
+	}
+	if override.IndexSeparator != "" {
+		result.IndexSeparator = override.IndexSeparator
+	}
+	result.IndexPerSite = result.IndexPerSite || override.IndexPerSite
+	if override.BatchSize > 0 {
+		result.BatchSize = override.BatchSize
+	}
+	result.DeleteMissing = result.DeleteMissing || override.DeleteMissing
+	result.IncludeDrafts = result.IncludeDrafts || override.IncludeDrafts
+	result.IncludePrivate = result.IncludePrivate || override.IncludePrivate
+	result.SkipOnFastMode = result.SkipOnFastMode || override.SkipOnFastMode
+	if override.ResolvedIndex != "" {
+		result.ResolvedIndex = override.ResolvedIndex
+	}
 
 	return result
 }
