@@ -59,3 +59,23 @@ func TestComputeDocumentHashDeterminism(t *testing.T) {
 		t.Fatalf("hash should be deterministic")
 	}
 }
+
+func TestBuildSearchcraftCardHTML_NilInputs(t *testing.T) {
+	if got := buildSearchcraftCardHTML(nil, models.NewConfig(), nil); got != "" {
+		t.Fatalf("expected empty html for nil post, got %q", got)
+	}
+	post := &models.Post{Slug: "example", Href: "/example/"}
+	if got := buildSearchcraftCardHTML(post, nil, nil); got != "" {
+		t.Fatalf("expected empty html for nil config/engine, got %q", got)
+	}
+}
+
+func TestSearchcraftIndexHasField(t *testing.T) {
+	payload := []byte(`{"status":200,"data":{"fields":{"title":{"type":"text"},"card_html":{"type":"text"}}}}`)
+	if !searchcraftIndexHasField(payload, "card_html") {
+		t.Fatalf("expected card_html field to be detected")
+	}
+	if searchcraftIndexHasField(payload, "missing") {
+		t.Fatalf("did not expect missing field to be detected")
+	}
+}

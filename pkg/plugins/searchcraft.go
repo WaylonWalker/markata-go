@@ -19,6 +19,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 // SearchcraftPlugin syncs posts to a Searchcraft Core instance after builds.
@@ -58,6 +59,11 @@ func (p *SearchcraftPlugin) Cleanup(m *lifecycle.Manager) error {
 		return nil
 	}
 	modelsCfg, _ := getModelsConfig(cfg)
+	renderCfg := modelsCfg
+	if renderCfg == nil {
+		renderCfg = models.NewConfig()
+	}
+	cardEngine := initSearchcraftCardEngine(cfg, renderCfg)
 	siteName := resolveSiteName(modelsCfg, cfg)
 	index := sc.ResolvedIndex
 	if index == "" {
@@ -67,13 +73,17 @@ func (p *SearchcraftPlugin) Cleanup(m *lifecycle.Manager) error {
 		fmt.Println("[searchcraft] WARNING: resolved index name is empty; skipping sync")
 		return nil
 	}
+	forceSync, err := p.ensureIndex(index, sc)
+	if err != nil {
+		fmt.Printf("[searchcraft] WARNING: failed to ensure index: %v\n", err)
+	}
 	posts := m.Posts()
 	docs := make([]searchcraftDocument, 0, len(posts))
 	for _, post := range posts {
 		if !shouldIndexPost(post, sc) {
 			continue
 		}
-		doc := buildSearchcraftDocument(post, modelsCfg, cfg, sc)
+		doc := buildSearchcraftDocument(post, modelsCfg, cfg, sc, renderCfg, cardEngine)
 		if doc != nil {
 			docs = append(docs, *doc)
 		}
@@ -90,7 +100,14 @@ func (p *SearchcraftPlugin) Cleanup(m *lifecycle.Manager) error {
 	for _, doc := range docs {
 		hash := computeDocumentHash(doc)
 		current[doc.ID] = true
-		if entry, ok := cache.Entries[doc.ID]; ok && entry.DocumentHash == hash {
+		if !forceSync {
+			if entry, ok := cache.Entries[doc.ID]; ok && entry.DocumentHash == hash {
+				continue
+			}
+		}
+		if forceSync {
+			cache.Entries[doc.ID] = searchcraftCacheEntry{DocumentHash: hash, UpdatedAt: now}
+			docsToIngest = append(docsToIngest, doc)
 			continue
 		}
 		docsToIngest = append(docsToIngest, doc)
@@ -143,9 +160,6 @@ func (p *SearchcraftPlugin) sendDocuments(index string, cfg models.SearchcraftCo
 	if len(docs) == 0 {
 		return nil
 	}
-	if err := p.ensureIndex(index, cfg); err != nil {
-		return err
-	}
 	endpoint := strings.TrimRight(cfg.Endpoint, "/")
 	batchSize := cfg.BatchSizeOrDefault()
 	for start := 0; start < len(docs); start += batchSize {
@@ -160,29 +174,46 @@ func (p *SearchcraftPlugin) sendDocuments(index string, cfg models.SearchcraftCo
 	return nil
 }
 
-func (p *SearchcraftPlugin) ensureIndex(index string, cfg models.SearchcraftConfig) error {
+func (p *SearchcraftPlugin) ensureIndex(index string, cfg models.SearchcraftConfig) (bool, error) {
 	endpoint := strings.TrimRight(cfg.Endpoint, "/")
 	urlPath := fmt.Sprintf("%s/index/%s", endpoint, url.PathEscape(index))
 	req, err := http.NewRequest(http.MethodGet, urlPath, nil)
 	if err != nil {
-		return err
+		return false, err
 	}
 	req.Header.Set("Authorization", cfg.IngestKey)
 	resp, err := p.client.Do(req)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 400 {
-		return nil
+		payload, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return false, fmt.Errorf("searchcraft index check read failed: %w", readErr)
+		}
+		if !searchcraftIndexHasField(payload, "card_html") {
+			fmt.Printf("[searchcraft] index %s missing card_html field, recreating schema\n", index)
+			if createErr := p.createIndex(endpoint, index, cfg, true); createErr != nil {
+				return false, createErr
+			}
+			return true, nil
+		}
+		return false, nil
 	}
 	if resp.StatusCode != http.StatusNotFound {
 		msg, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("searchcraft index check failed: %s", strings.TrimSpace(string(msg)))
+		return false, fmt.Errorf("searchcraft index check failed: %s", strings.TrimSpace(string(msg)))
 	}
+	if createErr := p.createIndex(endpoint, index, cfg, false); createErr != nil {
+		return false, createErr
+	}
+	return true, nil
+}
 
+func (p *SearchcraftPlugin) createIndex(endpoint, index string, cfg models.SearchcraftConfig, overrideIfExists bool) error {
 	payload := map[string]any{
-		"override_if_exists": false,
+		"override_if_exists": overrideIfExists,
 		"index": map[string]any{
 			"name":              index,
 			"language":          "en",
@@ -194,6 +225,7 @@ func (p *SearchcraftPlugin) ensureIndex(index string, cfg models.SearchcraftConf
 				"summary":      map[string]any{"type": "text", "stored": true},
 				"body":         map[string]any{"type": "text", "stored": true},
 				"content":      map[string]any{"type": "text", "stored": true},
+				"card_html":    map[string]any{"type": "text", "stored": true, "indexed": false},
 				"tags":         map[string]any{"type": "text", "stored": true, "multi": true},
 				"url":          map[string]any{"type": "text", "stored": true},
 				"path":         map[string]any{"type": "text", "stored": true},
@@ -231,6 +263,22 @@ func (p *SearchcraftPlugin) ensureIndex(index string, cfg models.SearchcraftConf
 	}
 	fmt.Printf("[searchcraft] created index %s\n", index)
 	return nil
+}
+
+func searchcraftIndexHasField(payload []byte, fieldName string) bool {
+	if len(payload) == 0 || fieldName == "" {
+		return false
+	}
+	var response struct {
+		Data struct {
+			Fields map[string]any `json:"fields"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(payload, &response); err != nil {
+		return false
+	}
+	_, ok := response.Data.Fields[fieldName]
+	return ok
 }
 
 func (p *SearchcraftPlugin) postDocuments(endpoint, index string, cfg models.SearchcraftConfig, docs []searchcraftDocument) error {
@@ -299,7 +347,7 @@ func shouldIndexPost(post *models.Post, cfg models.SearchcraftConfig) bool {
 	return true
 }
 
-func buildSearchcraftDocument(post *models.Post, modelsCfg *models.Config, cfg *lifecycle.Config, sc models.SearchcraftConfig) *searchcraftDocument {
+func buildSearchcraftDocument(post *models.Post, modelsCfg *models.Config, cfg *lifecycle.Config, sc models.SearchcraftConfig, renderCfg *models.Config, cardEngine *templates.Engine) *searchcraftDocument {
 	if post == nil {
 		return nil
 	}
@@ -328,12 +376,14 @@ func buildSearchcraftDocument(post *models.Post, modelsCfg *models.Config, cfg *
 	siteName := resolveSiteName(modelsCfg, cfg)
 	publishedAt := formatTime(post.Date)
 	modifiedAt := formatTime(post.Modified)
+	cardHTML := buildSearchcraftCardHTML(post, renderCfg, cardEngine)
 	return &searchcraftDocument{
 		ID:          id,
 		Title:       title,
 		Summary:     summary,
 		Body:        body,
 		Content:     content,
+		CardHTML:    cardHTML,
 		Tags:        tags,
 		URL:         urlValue,
 		Path:        post.Href,
@@ -355,6 +405,7 @@ type searchcraftDocument struct {
 	Summary     string   `json:"summary,omitempty"`
 	Body        string   `json:"body,omitempty"`
 	Content     string   `json:"content,omitempty"`
+	CardHTML    string   `json:"card_html,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
 	URL         string   `json:"url,omitempty"`
 	Path        string   `json:"path,omitempty"`
@@ -397,6 +448,7 @@ func computeDocumentHash(doc searchcraftDocument) string {
 	writeString(h, doc.Summary)
 	writeString(h, doc.Body)
 	writeString(h, doc.Content)
+	writeString(h, doc.CardHTML)
 	writeString(h, doc.URL)
 	writeString(h, doc.Path)
 	writeString(h, doc.Site)
@@ -508,4 +560,45 @@ func isFastMode(cfg *lifecycle.Config) bool {
 		return fast
 	}
 	return false
+}
+
+func initSearchcraftCardEngine(cfg *lifecycle.Config, modelsCfg *models.Config) *templates.Engine {
+	templatesDir := "templates"
+	if modelsCfg != nil && modelsCfg.TemplatesDir != "" {
+		templatesDir = modelsCfg.TemplatesDir
+	} else if cfg != nil && cfg.Extra != nil {
+		if dir, ok := cfg.Extra["templates_dir"].(string); ok && dir != "" {
+			templatesDir = dir
+		}
+	}
+
+	themeName := "default"
+	if modelsCfg != nil && modelsCfg.Theme.Name != "" {
+		themeName = modelsCfg.Theme.Name
+	}
+
+	engine, err := templates.NewEngineWithTheme(templatesDir, themeName)
+	if err != nil {
+		fmt.Printf("[searchcraft] WARNING: failed to initialize card renderer: %v\n", err)
+		return nil
+	}
+	return engine
+}
+
+func buildSearchcraftCardHTML(post *models.Post, modelsCfg *models.Config, engine *templates.Engine) string {
+	if post == nil || modelsCfg == nil || engine == nil {
+		return ""
+	}
+
+	ctx := templates.NewContext(post, post.ArticleHTML, modelsCfg)
+	html, err := engine.Render("partials/cards/card-router.html", ctx)
+	if err == nil {
+		return strings.TrimSpace(html)
+	}
+
+	fallback, fallbackErr := engine.Render("partials/card.html", ctx)
+	if fallbackErr != nil {
+		return ""
+	}
+	return strings.TrimSpace(fallback)
 }

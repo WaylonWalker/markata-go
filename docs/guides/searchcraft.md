@@ -68,7 +68,8 @@ The configuration is validated at build time. Invalid endpoints or missing keys 
 
 - The Searchcraft cleanup plugin runs after HTML is written.
 - It filters posts by the `published`, `draft`, and `private` flags according to `include_drafts`/`include_private`.
-- Documents include rich metadata (`id`, `title`, `summary`, `body`, `content`, `tags`, `authors`, `url`, `path`, `site`, `feed`, `template`, `published_at`, `modified_at`, `published`, `draft`, `private`).
+- Documents include rich metadata (`id`, `title`, `summary`, `body`, `content`, `card_html`, `tags`, `authors`, `url`, `path`, `site`, `feed`, `template`, `published_at`, `modified_at`, `published`, `draft`, `private`).
+- `card_html` is rendered from `partials/cards/card-router.html`, so `/search` can display the exact same card markup used in feeds.
 - Each document is hashed (SHA256) and compared against `.markata/searchcraft-cache.json`. Unchanged posts are skipped.
 - Changed posts are upserted via `POST /index/{index}/documents` and deletions are issued per slug via `DELETE /index/{index}/documents/query` when `delete_missing` is `true`.
 - The cache file mirrors the build cache directory so future builds know what changed.
@@ -107,7 +108,7 @@ async function search(query) {
 </script>
 ```
 
-The `/search` page can render results with the `searchcraft` payload fields for titles, excerpts, tags, and URLs. Pass `read_key` through environment variables or a secure secrets store so you can rotate it independently of builds.
+The `/search` page can render results with `hit.doc.card_html` for exact feed/embed card parity. If `card_html` is missing, fall back to title/summary rendering. Pass `read_key` through environment variables or a secure secrets store so you can rotate it independently of builds.
 
 ## Next steps
 

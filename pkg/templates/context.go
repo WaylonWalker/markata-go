@@ -382,6 +382,9 @@ func configToMap(c *models.Config) map[string]interface{} {
 	// Convert search to map
 	searchMap := searchToMap(&c.Search)
 
+	// Convert searchcraft to map
+	searchcraftMap := searchcraftToMap(&c.Searchcraft)
+
 	// Convert WebSub to map
 	webSubMap := webSubToMap(&c.WebSub)
 
@@ -433,6 +436,7 @@ func configToMap(c *models.Config) map[string]interface{} {
 		"post_formats":  postFormatsMap,
 		"head":          headMap,
 		"search":        searchMap,
+		"searchcraft":   searchcraftMap,
 		"websub":        webSubMap,
 		"layout":        layoutMap,
 		"sidebar":       sidebarMap,
@@ -453,6 +457,32 @@ func configToMap(c *models.Config) map[string]interface{} {
 		result["Extra"] = c.Extra
 	}
 
+	return result
+}
+
+func searchcraftToMap(c *models.SearchcraftConfig) map[string]interface{} {
+	if c == nil {
+		return map[string]interface{}{}
+	}
+	result := map[string]interface{}{
+		"endpoint":          c.Endpoint,
+		"ingest_key":        c.IngestKey,
+		"read_key":          c.ReadKey,
+		"site_name":         c.SiteName,
+		"index_name":        c.IndexName,
+		"index_prefix":      c.IndexPrefix,
+		"index_separator":   c.IndexSeparator,
+		"index_per_site":    c.IndexPerSite,
+		"batch_size":        c.BatchSize,
+		"delete_missing":    c.DeleteMissing,
+		"include_drafts":    c.IncludeDrafts,
+		"include_private":   c.IncludePrivate,
+		"skip_on_fast_mode": c.SkipOnFastMode,
+		"resolved_index":    c.ResolvedIndex,
+	}
+	if c.Enabled != nil {
+		result["enabled"] = *c.Enabled
+	}
 	return result
 }
 

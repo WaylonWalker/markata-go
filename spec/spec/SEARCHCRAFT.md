@@ -49,6 +49,7 @@ Each Searchcraft document includes the following fields:
 | `summary` | Description/excerpt. |
 | `body` | Rendered HTML article body. |
 | `content` | Raw markdown content. |
+| `card_html` | Pre-rendered card markup from `partials/cards/card-router.html` (exact feed card layout per post type). |
 | `tags` | Sorted list of tags. |
 | `authors` | List of author IDs. |
 | `url` | Absolute URL (`config.url` + `post.href`). |
@@ -98,4 +99,5 @@ Document hashes are derived from the concatenation of these fields plus boolean 
 ## Frontend Considerations
 
 - Supply `read_key` to the search page so it can call `POST /index/{index}/search`.
+- Render `doc.card_html` directly on `/search` to reuse the same card templates used by feeds and embeds.
 - The search payload is served by static pages (e.g., `/search`) and uses the resolved index name for the current site.
