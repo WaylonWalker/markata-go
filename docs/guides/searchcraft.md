@@ -147,6 +147,8 @@ For separate-host builds, add an internal ingress hostname (or VPN-only route) t
 
 ## Kubernetes (production pattern)
 
+See [[searchcraft-kubernetes|Searchcraft on Kubernetes]] for a full, copy-paste deployment with PVC, ingress split (read vs write), and NetworkPolicy examples.
+
 Core pieces:
 
 - `Deployment` for Searchcraft container
