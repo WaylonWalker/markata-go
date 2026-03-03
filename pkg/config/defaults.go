@@ -30,6 +30,8 @@ func DefaultConfig() *models.Config {
 		FeedDefaults: models.NewFeedDefaults(),
 		WellKnown:    models.NewWellKnownConfig(),
 		WebSub:       models.NewWebSubConfig(),
+		Search:       models.NewSearchConfig(),
+		Searchcraft:  models.NewSearchcraftConfig(),
 		Encryption:   models.NewEncryptionConfig(),
 	}
 }

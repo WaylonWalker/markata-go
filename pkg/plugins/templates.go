@@ -905,6 +905,12 @@ func toModelsConfigUncached(config *lifecycle.Config) *models.Config {
 		modelsConfig.Search = models.NewSearchConfig()
 	}
 
+	if searchcraft, ok := config.Extra["searchcraft"].(models.SearchcraftConfig); ok {
+		modelsConfig.Searchcraft = searchcraft
+	} else {
+		modelsConfig.Searchcraft = models.NewSearchcraftConfig()
+	}
+
 	// Copy remaining plugin configs
 	copyPluginConfigs(config, modelsConfig)
 

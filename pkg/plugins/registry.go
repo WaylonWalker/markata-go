@@ -71,6 +71,7 @@ func registerBuiltinPluginsLocked() {
 	pluginRegistry.constructors["overwrite_check"] = func() lifecycle.Plugin { return NewOverwriteCheckPlugin() }
 	pluginRegistry.constructors["structured_data"] = func() lifecycle.Plugin { return NewStructuredDataPlugin() }
 	pluginRegistry.constructors["pagefind"] = func() lifecycle.Plugin { return NewPagefindPlugin() }
+	pluginRegistry.constructors["searchcraft"] = func() lifecycle.Plugin { return NewSearchcraftPlugin() }
 	pluginRegistry.constructors["stats"] = func() lifecycle.Plugin { return NewStatsPlugin() }
 	pluginRegistry.constructors["breadcrumbs"] = func() lifecycle.Plugin { return NewBreadcrumbsPlugin() }
 	pluginRegistry.constructors["embeds"] = func() lifecycle.Plugin { return NewEmbedsPlugin() }
@@ -227,6 +228,7 @@ func DefaultPlugins() []lifecycle.Plugin {
 		NewJSMinifyPlugin(),  // Minify JS files (reduces ~50% file size)
 		NewCSSPurgePlugin(),  // Remove unused CSS (before search index)
 		NewPagefindPlugin(),  // Generate search index (requires all HTML written first)
+		NewSearchcraftPlugin(),
 	}
 }
 

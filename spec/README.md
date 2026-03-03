@@ -52,6 +52,7 @@ The docs explain *why* and *usage* - user-friendly guides, examples, tutorials.
 | [FEEDS.md](./spec/FEEDS.md) | **Feed system - the core differentiator** |
 | [DEFAULT_PLUGINS.md](./spec/DEFAULT_PLUGINS.md) | All 15 built-in plugins |
 | [PLUGINS.md](./spec/PLUGINS.md) | Plugin development guide |
+| [SEARCHCRAFT.md](./spec/SEARCHCRAFT.md) | Searchcraft integration and indexing |
 | [DATA_MODEL.md](./spec/DATA_MODEL.md) | Post/Config schemas, querying, error types |
 | [CONTENT.md](./spec/CONTENT.md) | Markdown processing, frontmatter, admonitions |
 | [TEMPLATES.md](./spec/TEMPLATES.md) | Template system, engine differences |

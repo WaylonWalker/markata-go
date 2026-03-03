@@ -4257,6 +4257,42 @@ enabled = false
 - If search is disabled, no index is generated
 - Site functions normally without search functionality
 
+### searchcraft
+
+**Name:** `searchcraft`  
+**Stage:** Cleanup  
+**Priority:** Last  
+**Purpose:** Uploads post metadata to [Searchcraft Core](https://www.searchcraft.io/) for semantic, multi-site search and keeps the remote index in sync with the build output.
+
+**Configuration (TOML):**
+```toml
+[markata-go.searchcraft]
+enabled = true
+endpoint = "https://search.example.com"
+ingest_key = "${SEARCHCRAFT_INGEST_KEY}"
+read_key = "${SEARCHCRAFT_READ_KEY}"
+index_prefix = "waylonwalker"
+index_per_site = true
+batch_size = 100
+delete_missing = true
+skip_on_fast_mode = true
+```
+
+**Behavior:**
+1. Runs after the entire site is written, reads `models.Config` and post metadata, then filters posts (published/private/draft) according to the configuration.
+2. Builds Searchcraft documents with fields (id, title, summary, body, content, card_html, tags, authors, url, path, site, feed, published/modified timestamps, template, published, draft, private).
+3. Computes a SHA256 hash per document and caches it in `.markata/searchcraft-cache.json` so unchanged posts are skipped.
+4. Upserts changed documents via `POST /index/{index}/documents` in configurable batches.
+5. Deletes removed documents with `DELETE /index/{index}/documents/query` when `delete_missing` is enabled.
+6. Normalizes the index name as `{index_prefix}_{normalized_site_name}` by default, or uses `index_name` override to target a shared index.
+7. Honors `skip_on_fast_mode` so remote syncing can be skipped during fast/local builds.
+
+**Notes:**
+- Requires a reachable Searchcraft Core endpoint and an ingestion key with write access.
+- `read_key` is used by the /search page to perform client-side queries; expose only the read key publicly.
+- Keep `ingest_key` private to build/CI environments and restrict write endpoints by network policy.
+- Configure `include_drafts`, `include_private`, and `batch_size` to control which posts are synchronized.
+
 **Lazy loading:**
 Pagefind CSS and JS are loaded on user interaction (hover on search, press `/`, press `Ctrl+K`) rather than eagerly on page load. This saves ~30-50KB on initial page load for pages where search is not used.
 

@@ -46,6 +46,8 @@ A comprehensive, extendable static site generator written in Go.
 
 - [[deployment-guide|Deployment]] - Host your site
 - [[ci-cd-guide|CI/CD]] - Automated builds and deployments
+- [[searchcraft|Searchcraft Integration]] - Semantic search with secure self-hosting
+- [[searchcraft-kubernetes|Searchcraft on Kubernetes]] - Secure k8s deployment pattern
   - [[github-actions|GitHub Actions]] - Deploy with GitHub Actions
   - [[gitlab-ci|GitLab CI]] - Deploy with GitLab CI
 

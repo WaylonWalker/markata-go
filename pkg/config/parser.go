@@ -56,6 +56,7 @@ type baseConfigData struct {
 	Concurrency   int
 	Theme         models.ThemeConfig
 	Footer        models.FooterConfig
+	Searchcraft   models.SearchcraftConfig
 }
 
 // navItemData holds nav item fields.
@@ -177,6 +178,7 @@ func buildConfig(src configSource) *models.Config {
 		Concurrency: base.Concurrency,
 		Theme:       base.Theme,
 		Footer:      base.Footer,
+		Searchcraft: base.Searchcraft,
 	}
 	config.License = models.LicenseValue{Raw: base.License}
 
@@ -304,7 +306,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"content_templates": true, "footer_layout": true, "search": true,
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
 			"tag_aggregator": true, "websub": true, "shortcuts": true, "encryption": true,
-			"authors": true, "garden": true,
+			"authors": true, "garden": true, "searchcraft": true,
 		}
 
 		// Copy unknown sections to Extra
@@ -350,45 +352,46 @@ func ParseJSON(data []byte) (*models.Config, error) {
 
 // tomlConfig is an internal struct for parsing TOML configuration.
 type tomlConfig struct {
-	OutputDir     string                  `toml:"output_dir"`
-	URL           string                  `toml:"url"`
-	Title         string                  `toml:"title"`
-	Description   string                  `toml:"description"`
-	Author        string                  `toml:"author"`
-	License       interface{}             `toml:"license"`
-	AssetsDir     string                  `toml:"assets_dir"`
-	TemplatesDir  string                  `toml:"templates_dir"`
-	Nav           []tomlNavItem           `toml:"nav"`
-	Footer        tomlFooterConfig        `toml:"footer"`
-	Hooks         []string                `toml:"hooks"`
-	DisabledHooks []string                `toml:"disabled_hooks"`
-	Glob          tomlGlobConfig          `toml:"glob"`
-	Markdown      tomlMarkdownConfig      `toml:"markdown"`
-	Feeds         []tomlFeedConfig        `toml:"feeds"`
-	FeedDefaults  tomlFeedDefaults        `toml:"feed_defaults"`
-	Concurrency   int                     `toml:"concurrency"`
-	Theme         tomlThemeConfig         `toml:"theme"`
-	PostFormats   tomlPostFormatsConfig   `toml:"post_formats"`
-	WellKnown     tomlWellKnownConfig     `toml:"well_known"`
-	SEO           tomlSEOConfig           `toml:"seo"`
-	IndieAuth     tomlIndieAuthConfig     `toml:"indieauth"`
-	Webmention    tomlWebmentionConfig    `toml:"webmention"`
-	Components    tomlComponentsConfig    `toml:"components"`
-	Layout        tomlLayoutConfig        `toml:"layout"`
-	Sidebar       tomlSidebarConfig       `toml:"sidebar"`
-	Toc           tomlTocConfig           `toml:"toc"`
-	Header        tomlHeaderLayoutConfig  `toml:"header"`
-	Blogroll      tomlBlogrollConfig      `toml:"blogroll"`
-	Tags          tomlTagsConfig          `toml:"tags"`
-	Encryption    tomlEncryptionConfig    `toml:"encryption"`
-	TagAggregator tomlTagAggregatorConfig `toml:"tag_aggregator"`
-	Mentions      tomlMentionsConfig      `toml:"mentions"`
-	WebSub        tomlWebSubConfig        `toml:"websub"`
-	Shortcuts     tomlShortcutsConfig     `toml:"shortcuts"`
-	Authors       tomlAuthorsConfig       `toml:"authors"`
-	Garden        tomlGardenConfig        `toml:"garden"`
-	Templates     tomlTemplatesConfig     `toml:"templates"`
-	UnknownFields map[string]any          `toml:"-"`
+	OutputDir     string                   `toml:"output_dir"`
+	URL           string                   `toml:"url"`
+	Title         string                   `toml:"title"`
+	Description   string                   `toml:"description"`
+	Author        string                   `toml:"author"`
+	License       interface{}              `toml:"license"`
+	AssetsDir     string                   `toml:"assets_dir"`
+	TemplatesDir  string                   `toml:"templates_dir"`
+	Nav           []tomlNavItem            `toml:"nav"`
+	Footer        tomlFooterConfig         `toml:"footer"`
+	Hooks         []string                 `toml:"hooks"`
+	DisabledHooks []string                 `toml:"disabled_hooks"`
+	Glob          tomlGlobConfig           `toml:"glob"`
+	Markdown      tomlMarkdownConfig       `toml:"markdown"`
+	Feeds         []tomlFeedConfig         `toml:"feeds"`
+	FeedDefaults  tomlFeedDefaults         `toml:"feed_defaults"`
+	Concurrency   int                      `toml:"concurrency"`
+	Theme         tomlThemeConfig          `toml:"theme"`
+	PostFormats   tomlPostFormatsConfig    `toml:"post_formats"`
+	WellKnown     tomlWellKnownConfig      `toml:"well_known"`
+	SEO           tomlSEOConfig            `toml:"seo"`
+	IndieAuth     tomlIndieAuthConfig      `toml:"indieauth"`
+	Webmention    tomlWebmentionConfig     `toml:"webmention"`
+	Components    tomlComponentsConfig     `toml:"components"`
+	Layout        tomlLayoutConfig         `toml:"layout"`
+	Sidebar       tomlSidebarConfig        `toml:"sidebar"`
+	Toc           tomlTocConfig            `toml:"toc"`
+	Header        tomlHeaderLayoutConfig   `toml:"header"`
+	Blogroll      tomlBlogrollConfig       `toml:"blogroll"`
+	Tags          tomlTagsConfig           `toml:"tags"`
+	Encryption    tomlEncryptionConfig     `toml:"encryption"`
+	TagAggregator tomlTagAggregatorConfig  `toml:"tag_aggregator"`
+	Mentions      tomlMentionsConfig       `toml:"mentions"`
+	Searchcraft   models.SearchcraftConfig `toml:"searchcraft"`
+	WebSub        tomlWebSubConfig         `toml:"websub"`
+	Shortcuts     tomlShortcutsConfig      `toml:"shortcuts"`
+	Authors       tomlAuthorsConfig        `toml:"authors"`
+	Garden        tomlGardenConfig         `toml:"garden"`
+	Templates     tomlTemplatesConfig      `toml:"templates"`
+	UnknownFields map[string]any           `toml:"-"`
 }
 
 type tomlNavItem struct {
@@ -1521,6 +1524,7 @@ func (c *tomlConfig) getBaseConfig() baseConfigData {
 		Concurrency:   c.Concurrency,
 		Theme:         c.Theme.toThemeConfig(),
 		Footer:        c.Footer.toFooterConfig(),
+		Searchcraft:   c.Searchcraft,
 	}
 }
 
@@ -1714,44 +1718,45 @@ func (d *tomlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 
 // yamlConfig is an internal struct for parsing YAML configuration.
 type yamlConfig struct {
-	OutputDir     string                  `yaml:"output_dir"`
-	URL           string                  `yaml:"url"`
-	Title         string                  `yaml:"title"`
-	Description   string                  `yaml:"description"`
-	Author        string                  `yaml:"author"`
-	License       interface{}             `yaml:"license"`
-	AssetsDir     string                  `yaml:"assets_dir"`
-	TemplatesDir  string                  `yaml:"templates_dir"`
-	Nav           []yamlNavItem           `yaml:"nav"`
-	Footer        yamlFooterConfig        `yaml:"footer"`
-	Hooks         []string                `yaml:"hooks"`
-	DisabledHooks []string                `yaml:"disabled_hooks"`
-	Glob          yamlGlobConfig          `yaml:"glob"`
-	Markdown      yamlMarkdownConfig      `yaml:"markdown"`
-	Feeds         []yamlFeedConfig        `yaml:"feeds"`
-	FeedDefaults  yamlFeedDefaults        `yaml:"feed_defaults"`
-	Concurrency   int                     `yaml:"concurrency"`
-	Theme         yamlThemeConfig         `yaml:"theme"`
-	PostFormats   yamlPostFormatsConfig   `yaml:"post_formats"`
-	WellKnown     yamlWellKnownConfig     `yaml:"well_known"`
-	IndieAuth     yamlIndieAuthConfig     `yaml:"indieauth"`
-	Webmention    yamlWebmentionConfig    `yaml:"webmention"`
-	SEO           yamlSEOConfig           `yaml:"seo"`
-	Components    yamlComponentsConfig    `yaml:"components"`
-	Layout        yamlLayoutConfig        `yaml:"layout"`
-	Sidebar       yamlSidebarConfig       `yaml:"sidebar"`
-	Toc           yamlTocConfig           `yaml:"toc"`
-	Header        yamlHeaderLayoutConfig  `yaml:"header"`
-	Blogroll      yamlBlogrollConfig      `yaml:"blogroll"`
-	Tags          yamlTagsConfig          `yaml:"tags"`
-	Encryption    yamlEncryptionConfig    `yaml:"encryption"`
-	TagAggregator yamlTagAggregatorConfig `yaml:"tag_aggregator"`
-	Mentions      yamlMentionsConfig      `yaml:"mentions"`
-	WebSub        yamlWebSubConfig        `yaml:"websub"`
-	Shortcuts     yamlShortcutsConfig     `yaml:"shortcuts"`
-	Authors       yamlAuthorsConfig       `yaml:"authors"`
-	Garden        yamlGardenConfig        `yaml:"garden"`
-	Templates     yamlTemplatesConfig     `yaml:"templates"`
+	OutputDir     string                   `yaml:"output_dir"`
+	URL           string                   `yaml:"url"`
+	Title         string                   `yaml:"title"`
+	Description   string                   `yaml:"description"`
+	Author        string                   `yaml:"author"`
+	License       interface{}              `yaml:"license"`
+	AssetsDir     string                   `yaml:"assets_dir"`
+	TemplatesDir  string                   `yaml:"templates_dir"`
+	Nav           []yamlNavItem            `yaml:"nav"`
+	Footer        yamlFooterConfig         `yaml:"footer"`
+	Hooks         []string                 `yaml:"hooks"`
+	DisabledHooks []string                 `yaml:"disabled_hooks"`
+	Glob          yamlGlobConfig           `yaml:"glob"`
+	Markdown      yamlMarkdownConfig       `yaml:"markdown"`
+	Feeds         []yamlFeedConfig         `yaml:"feeds"`
+	FeedDefaults  yamlFeedDefaults         `yaml:"feed_defaults"`
+	Concurrency   int                      `yaml:"concurrency"`
+	Theme         yamlThemeConfig          `yaml:"theme"`
+	PostFormats   yamlPostFormatsConfig    `yaml:"post_formats"`
+	WellKnown     yamlWellKnownConfig      `yaml:"well_known"`
+	IndieAuth     yamlIndieAuthConfig      `yaml:"indieauth"`
+	Webmention    yamlWebmentionConfig     `yaml:"webmention"`
+	SEO           yamlSEOConfig            `yaml:"seo"`
+	Components    yamlComponentsConfig     `yaml:"components"`
+	Layout        yamlLayoutConfig         `yaml:"layout"`
+	Sidebar       yamlSidebarConfig        `yaml:"sidebar"`
+	Toc           yamlTocConfig            `yaml:"toc"`
+	Header        yamlHeaderLayoutConfig   `yaml:"header"`
+	Blogroll      yamlBlogrollConfig       `yaml:"blogroll"`
+	Tags          yamlTagsConfig           `yaml:"tags"`
+	Encryption    yamlEncryptionConfig     `yaml:"encryption"`
+	TagAggregator yamlTagAggregatorConfig  `yaml:"tag_aggregator"`
+	Mentions      yamlMentionsConfig       `yaml:"mentions"`
+	Searchcraft   models.SearchcraftConfig `yaml:"searchcraft"`
+	WebSub        yamlWebSubConfig         `yaml:"websub"`
+	Shortcuts     yamlShortcutsConfig      `yaml:"shortcuts"`
+	Authors       yamlAuthorsConfig        `yaml:"authors"`
+	Garden        yamlGardenConfig         `yaml:"garden"`
+	Templates     yamlTemplatesConfig      `yaml:"templates"`
 }
 
 type yamlNavItem struct {
@@ -2910,6 +2915,7 @@ func (c *yamlConfig) getBaseConfig() baseConfigData {
 		Concurrency:   c.Concurrency,
 		Theme:         c.Theme.toThemeConfig(),
 		Footer:        c.Footer.toFooterConfig(),
+		Searchcraft:   c.Searchcraft,
 	}
 }
 
@@ -3037,44 +3043,45 @@ func (d *yamlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 
 // jsonConfig is an internal struct for parsing JSON configuration.
 type jsonConfig struct {
-	OutputDir     string                  `json:"output_dir"`
-	URL           string                  `json:"url"`
-	Title         string                  `json:"title"`
-	Description   string                  `json:"description"`
-	Author        string                  `json:"author"`
-	License       interface{}             `json:"license"`
-	AssetsDir     string                  `json:"assets_dir"`
-	TemplatesDir  string                  `json:"templates_dir"`
-	Nav           []jsonNavItem           `json:"nav"`
-	Footer        jsonFooterConfig        `json:"footer"`
-	Hooks         []string                `json:"hooks"`
-	DisabledHooks []string                `json:"disabled_hooks"`
-	Glob          jsonGlobConfig          `json:"glob"`
-	Markdown      jsonMarkdownConfig      `json:"markdown"`
-	Feeds         []jsonFeedConfig        `json:"feeds"`
-	FeedDefaults  jsonFeedDefaults        `json:"feed_defaults"`
-	Concurrency   int                     `json:"concurrency"`
-	Theme         jsonThemeConfig         `json:"theme"`
-	PostFormats   jsonPostFormatsConfig   `json:"post_formats"`
-	WellKnown     jsonWellKnownConfig     `json:"well_known"`
-	IndieAuth     jsonIndieAuthConfig     `json:"indieauth"`
-	Webmention    jsonWebmentionConfig    `json:"webmention"`
-	SEO           jsonSEOConfig           `json:"seo"`
-	Components    jsonComponentsConfig    `json:"components"`
-	Layout        jsonLayoutConfig        `json:"layout"`
-	Sidebar       jsonSidebarConfig       `json:"sidebar"`
-	Toc           jsonTocConfig           `json:"toc"`
-	Header        jsonHeaderLayoutConfig  `json:"header"`
-	Blogroll      jsonBlogrollConfig      `json:"blogroll"`
-	Tags          jsonTagsConfig          `json:"tags"`
-	Encryption    jsonEncryptionConfig    `json:"encryption"`
-	TagAggregator jsonTagAggregatorConfig `json:"tag_aggregator"`
-	Mentions      jsonMentionsConfig      `json:"mentions"`
-	WebSub        jsonWebSubConfig        `json:"websub"`
-	Shortcuts     jsonShortcutsConfig     `json:"shortcuts"`
-	Authors       jsonAuthorsConfig       `json:"authors"`
-	Garden        jsonGardenConfig        `json:"garden"`
-	Templates     jsonTemplatesConfig     `json:"templates"`
+	OutputDir     string                   `json:"output_dir"`
+	URL           string                   `json:"url"`
+	Title         string                   `json:"title"`
+	Description   string                   `json:"description"`
+	Author        string                   `json:"author"`
+	License       interface{}              `json:"license"`
+	AssetsDir     string                   `json:"assets_dir"`
+	TemplatesDir  string                   `json:"templates_dir"`
+	Nav           []jsonNavItem            `json:"nav"`
+	Footer        jsonFooterConfig         `json:"footer"`
+	Hooks         []string                 `json:"hooks"`
+	DisabledHooks []string                 `json:"disabled_hooks"`
+	Glob          jsonGlobConfig           `json:"glob"`
+	Markdown      jsonMarkdownConfig       `json:"markdown"`
+	Feeds         []jsonFeedConfig         `json:"feeds"`
+	FeedDefaults  jsonFeedDefaults         `json:"feed_defaults"`
+	Concurrency   int                      `json:"concurrency"`
+	Theme         jsonThemeConfig          `json:"theme"`
+	PostFormats   jsonPostFormatsConfig    `json:"post_formats"`
+	WellKnown     jsonWellKnownConfig      `json:"well_known"`
+	IndieAuth     jsonIndieAuthConfig      `json:"indieauth"`
+	Webmention    jsonWebmentionConfig     `json:"webmention"`
+	SEO           jsonSEOConfig            `json:"seo"`
+	Components    jsonComponentsConfig     `json:"components"`
+	Layout        jsonLayoutConfig         `json:"layout"`
+	Sidebar       jsonSidebarConfig        `json:"sidebar"`
+	Toc           jsonTocConfig            `json:"toc"`
+	Header        jsonHeaderLayoutConfig   `json:"header"`
+	Blogroll      jsonBlogrollConfig       `json:"blogroll"`
+	Tags          jsonTagsConfig           `json:"tags"`
+	Encryption    jsonEncryptionConfig     `json:"encryption"`
+	TagAggregator jsonTagAggregatorConfig  `json:"tag_aggregator"`
+	Mentions      jsonMentionsConfig       `json:"mentions"`
+	Searchcraft   models.SearchcraftConfig `json:"searchcraft"`
+	WebSub        jsonWebSubConfig         `json:"websub"`
+	Shortcuts     jsonShortcutsConfig      `json:"shortcuts"`
+	Authors       jsonAuthorsConfig        `json:"authors"`
+	Garden        jsonGardenConfig         `json:"garden"`
+	Templates     jsonTemplatesConfig      `json:"templates"`
 }
 
 type jsonNavItem struct {
@@ -4233,6 +4240,7 @@ func (c *jsonConfig) getBaseConfig() baseConfigData {
 		Concurrency:   c.Concurrency,
 		Theme:         c.Theme.toThemeConfig(),
 		Footer:        c.Footer.toFooterConfig(),
+		Searchcraft:   c.Searchcraft,
 	}
 }
 
