@@ -98,3 +98,23 @@ func TestSwitcherToMap_ModeToggleFromConfig(t *testing.T) {
 		t.Fatalf("mode_toggle = %#v, want false", m["mode_toggle"])
 	}
 }
+
+func TestComponentsToMap_PostConnectionsDefaults(t *testing.T) {
+	components := models.NewComponentsConfig()
+	m := componentsToMap(&components)
+
+	postConnections, ok := m["post_connections"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("post_connections map missing: %#v", m["post_connections"])
+	}
+
+	if got, ok := postConnections["display_graph"].(bool); !ok || !got {
+		t.Fatalf("display_graph = %#v, want true", postConnections["display_graph"])
+	}
+	if got, ok := postConnections["display_list"].(bool); !ok || got {
+		t.Fatalf("display_list = %#v, want false", postConnections["display_list"])
+	}
+	if got, ok := postConnections["graph_min_links"].(int); !ok || got != 3 {
+		t.Fatalf("graph_min_links = %#v, want 3", postConnections["graph_min_links"])
+	}
+}

@@ -1,4 +1,68 @@
-{% if graph_json and post and post.href %}
+{% if post and post.href %}
+{% set inlinks_count = 0 %}
+{% if post.inlinks %}{% set inlinks_count = post.inlinks|length %}{% endif %}
+{% set outlinks_count = 0 %}
+{% if post.outlinks %}{% set outlinks_count = post.outlinks|length %}{% endif %}
+{% set total_connections = inlinks_count + outlinks_count %}
+{% set post_connections = config.components.post_connections %}
+{% set within_component_min = total_connections >= post_connections.min_links %}
+{% set within_component_max = (post_connections.max_links == 0) or (total_connections <= post_connections.max_links) %}
+{% set show_component = post_connections.enabled and within_component_min and within_component_max %}
+{% set within_graph_min = total_connections >= post_connections.graph_min_links %}
+{% set within_graph_max = (post_connections.graph_max_links == 0) or (total_connections <= post_connections.graph_max_links) %}
+{% set show_graph = show_component and graph_json and post_connections.display_graph and within_graph_min and within_graph_max %}
+{% set within_list_min = total_connections >= post_connections.list_min_links %}
+{% set within_list_max = (post_connections.list_max_links == 0) or (total_connections <= post_connections.list_max_links) %}
+{% set show_list = show_component and post_connections.display_list and within_list_min and within_list_max %}
+
+{% if show_list %}
+<section class="post-connections-list" aria-label="Post link connections">
+  <div class="post-connections-list__header">
+    <h2>Connections</h2>
+    <p class="post-connections-list__description">Posts and links connected to this entry.</p>
+  </div>
+
+  {% if inlinks_count > 0 %}
+  <div class="post-connections-list__group">
+    <h3>Inlinks ({{ inlinks_count }})</h3>
+    <ul>
+      {% for link in post.inlinks %}
+      {% if loop.index <= post_connections.inlinks_limit %}
+      <li>
+        {% if link.source_post and link.source_post.href %}
+        <a href="{{ link.source_post.href }}">{{ link.source_post.title | default:link.source_url }}</a>
+        {% else %}
+        <a href="{{ link.source_url }}">{{ link.source_url }}</a>
+        {% endif %}
+      </li>
+      {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if outlinks_count > 0 %}
+  <div class="post-connections-list__group">
+    <h3>Outlinks ({{ outlinks_count }})</h3>
+    <ul>
+      {% for link in post.outlinks %}
+      {% if loop.index <= post_connections.outlinks_limit %}
+      <li>
+        {% if link.target_post and link.target_post.href %}
+        <a href="{{ link.target_post.href }}">{{ link.target_post.title | default:link.target_url }}</a>
+        {% else %}
+        <a href="{{ link.target_url }}">{{ link.target_domain | default:link.target_url }}</a>
+        {% endif %}
+      </li>
+      {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if show_graph %}
 <section class="post-graph" data-graph="{{ graph_json }}" data-post="{{ post.href }}">
   <div class="post-graph__header">
     <div>
@@ -26,6 +90,45 @@
     <div class="post-graph__tooltip" aria-live="polite"></div>
   </div>
 </section>
+{% endif %}
+
+{% if show_list %}
+<style>
+.post-connections-list {
+  margin: var(--space-8, 2rem) 0 var(--space-6, 1.5rem);
+  padding: var(--space-4, 1rem);
+  border-radius: var(--radius-lg, 0.5rem);
+  background: var(--color-surface, #222);
+}
+
+.post-connections-list__header h2 { margin-bottom: var(--space-1, 0.25rem); }
+.post-connections-list__description {
+  color: var(--garden-muted, #999);
+  font-size: var(--text-sm, 0.875rem);
+  margin-bottom: var(--space-3, 0.75rem);
+}
+
+.post-connections-list__group + .post-connections-list__group {
+  margin-top: var(--space-4, 1rem);
+}
+
+.post-connections-list__group h3 {
+  font-size: var(--text-sm, 0.875rem);
+  margin-bottom: var(--space-2, 0.5rem);
+}
+
+.post-connections-list__group ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.post-connections-list__group li + li {
+  margin-top: 0.2rem;
+}
+</style>
+{% endif %}
+
+{% if show_graph %}
 
 <style>
 .post-graph {
@@ -556,4 +659,5 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
+{% endif %}
 {% endif %}

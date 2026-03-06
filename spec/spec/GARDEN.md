@@ -149,6 +149,14 @@ The post template can include a compact graph preview for the current post, usin
 
 The preview filters down to the current post plus its directly connected tags and posts. If the post is not present in the graph or has no connections, the preview should not render.
 
+The post connections component is configured via `[markata-go.components.post_connections]` and supports two modes:
+
+- `display = ["graph"]` for canvas-only graph rendering
+- `display = ["list"]` for inlinks/outlinks list rendering
+- `display = ["list", "graph"]` to allow both with independent thresholds
+
+Implementations MUST support independent lower/upper bounds for each mode (`graph_min_links`, `graph_max_links`, `list_min_links`, `list_max_links`) and independent list truncation (`inlinks_limit`, `outlinks_limit`). The default graph lower bound is `3` connections.
+
 ### TagCluster
 
 | Field        | Type           | Description                             |
