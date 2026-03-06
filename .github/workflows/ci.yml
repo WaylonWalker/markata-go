@@ -111,7 +111,7 @@ jobs:
           ./markata-go --help
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: markata-go-linux-amd64
           path: markata-go
