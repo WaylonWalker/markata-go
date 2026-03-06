@@ -29,7 +29,7 @@
       <div class="garden-graph-controls">
         <label class="garden-graph-control">
           <span>Nodes</span>
-          <input type="range" class="garden-graph-limit" min="20" max="200" step="10" value="100" />
+          <input type="range" class="garden-graph-limit" min="20" max="200" step="1" value="100" />
           <span class="garden-graph-limit-value">100</span>
         </label>
         <button class="garden-graph-btn garden-graph-advanced-toggle" type="button" aria-expanded="false">Advanced</button>
@@ -134,6 +134,15 @@
       The full knowledge graph is available as
       <a href="{{ graph_json }}">graph.json</a>
       for use with visualization tools.
+      {% if config.well_known.enabled and 'links' in config.well_known.auto_generate %}
+      Outbound link data is also available at
+      <a href="/.well-known/links">/.well-known/links</a>
+      and a browsable page at
+      <a href="/external-links/">/external-links/</a>.
+      Internal link data is available at
+      <a href="/.well-known/internal-links">/.well-known/internal-links</a>
+      and <a href="/internal-links/">/internal-links/</a>.
+      {% endif %}
     </p>
   </section>
   {% endif %}
@@ -184,7 +193,8 @@
 }
 
 .garden-graph {
-  margin: var(--space-6, 1.5rem) calc(var(--content-width, 65ch) * -0.25) var(--space-10, 2.5rem);
+  margin: var(--space-6, 1.5rem) auto var(--space-10, 2.5rem);
+  max-width: 100%;
   padding: var(--space-4, 1rem);
   border: 1px solid var(--garden-border);
   border-radius: var(--radius-lg, 0.5rem);
@@ -260,7 +270,8 @@
 .garden-graph-canvas {
   position: relative;
   height: clamp(520px, 75vw, 1020px);
-  width: min(92vw, 1120px);
+  width: 100%;
+  max-width: 1120px;
   border-radius: 28px;
   border: 1px solid var(--garden-border);
   background: var(--garden-background);
@@ -287,6 +298,7 @@
   width: 100%;
   height: 100%;
   display: block;
+  touch-action: none;
 }
 
 .garden-graph-tooltip {
@@ -563,7 +575,7 @@
   }
 
   .garden-graph-canvas {
-    width: 92vw;
+    width: 100%;
     height: 80vw;
   }
 }
@@ -572,126 +584,126 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   var grid = document.getElementById('garden-clusters');
-  if (!grid) return;
+  if (grid) {
+    var buttons = document.querySelectorAll('.sort-btn');
+    var searchInput = document.getElementById('garden-search');
+    var focusToggle = document.getElementById('garden-focus');
+    var currentSort = null;
+    var isReversed = false;
+    var focusedTag = null;
 
-  var buttons = document.querySelectorAll('.sort-btn');
-  var searchInput = document.getElementById('garden-search');
-  var focusToggle = document.getElementById('garden-focus');
-  var currentSort = null;
-  var isReversed = false;
-  var focusedTag = null;
+    buttons.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var sortType = this.dataset.sort;
 
-  buttons.forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var sortType = this.dataset.sort;
+        if (currentSort === sortType) {
+          isReversed = !isReversed;
+        } else {
+          currentSort = sortType;
+          isReversed = false;
+          buttons.forEach(function(b) {
+            b.setAttribute('aria-pressed', 'false');
+            b.removeAttribute('data-reversed');
+          });
+          this.setAttribute('aria-pressed', 'true');
+        }
 
-      if (currentSort === sortType) {
-        isReversed = !isReversed;
-      } else {
-        currentSort = sortType;
-        isReversed = false;
-        buttons.forEach(function(b) {
-          b.setAttribute('aria-pressed', 'false');
-          b.removeAttribute('data-reversed');
-        });
-        this.setAttribute('aria-pressed', 'true');
-      }
+        if (isReversed) {
+          this.setAttribute('data-reversed', 'true');
+        } else {
+          this.removeAttribute('data-reversed');
+        }
 
-      if (isReversed) {
-        this.setAttribute('data-reversed', 'true');
-      } else {
-        this.removeAttribute('data-reversed');
-      }
-
-      sortClusters(sortType, isReversed);
+        sortClusters(sortType, isReversed);
+      });
     });
-  });
 
-  if (searchInput) {
-    searchInput.addEventListener('input', function() {
-      filterClusters(this.value);
-    });
-  }
-
-  if (focusToggle) {
-    focusToggle.addEventListener('change', function() {
-      if (!this.checked) {
-        focusedTag = null;
-      }
-      filterClusters(searchInput ? searchInput.value : '');
-    });
-  }
-
-  grid.addEventListener('click', function(event) {
-    var related = event.target.closest('.garden-related-tag');
-    if (!related) return;
-    var name = related.dataset.name;
-    if (!name) return;
-    event.preventDefault();
-    focusedTag = name.toLowerCase();
     if (searchInput) {
-      searchInput.value = name;
+      searchInput.addEventListener('input', function() {
+        filterClusters(this.value);
+      });
     }
+
     if (focusToggle) {
-      focusToggle.checked = true;
+      focusToggle.addEventListener('change', function() {
+        if (!this.checked) {
+          focusedTag = null;
+        }
+        filterClusters(searchInput ? searchInput.value : '');
+      });
     }
-    filterClusters(name);
-  });
 
-  grid.addEventListener('click', function(event) {
-    var cluster = event.target.closest('.garden-cluster');
-    if (!cluster) return;
-    if (event.defaultPrevented) return;
-    if (focusToggle && focusToggle.checked) {
+    grid.addEventListener('click', function(event) {
+      var related = event.target.closest('.garden-related-tag');
+      if (!related) return;
+      var name = related.dataset.name;
+      if (!name) return;
       event.preventDefault();
-      focusedTag = cluster.dataset.name.toLowerCase();
+      focusedTag = name.toLowerCase();
       if (searchInput) {
-        searchInput.value = cluster.dataset.name;
+        searchInput.value = name;
       }
-      filterClusters(cluster.dataset.name);
+      if (focusToggle) {
+        focusToggle.checked = true;
+      }
+      filterClusters(name);
+    });
+
+    grid.addEventListener('click', function(event) {
+      var cluster = event.target.closest('.garden-cluster');
+      if (!cluster) return;
+      if (event.defaultPrevented) return;
+      if (focusToggle && focusToggle.checked) {
+        event.preventDefault();
+        focusedTag = cluster.dataset.name.toLowerCase();
+        if (searchInput) {
+          searchInput.value = cluster.dataset.name;
+        }
+        filterClusters(cluster.dataset.name);
+      }
+    });
+
+    function sortClusters(sortType, reverse) {
+      var items = Array.from(grid.querySelectorAll('.garden-cluster'));
+
+      items.sort(function(a, b) {
+        if (sortType === 'alpha') {
+          var aName = a.dataset.name.toLowerCase();
+          var bName = b.dataset.name.toLowerCase();
+          return reverse
+            ? bName.localeCompare(aName)
+            : aName.localeCompare(bName);
+        } else if (sortType === 'count') {
+          var aCount = parseInt(a.dataset.count, 10);
+          var bCount = parseInt(b.dataset.count, 10);
+          return reverse
+            ? aCount - bCount
+            : bCount - aCount;
+        } else if (sortType === 'related') {
+          var aRelated = parseInt(a.dataset.relatedCount, 10) || 0;
+          var bRelated = parseInt(b.dataset.relatedCount, 10) || 0;
+          return reverse
+            ? aRelated - bRelated
+            : bRelated - aRelated;
+        }
+        return 0;
+      });
+
+      items.forEach(function(item) { grid.appendChild(item); });
     }
-  });
 
-  function sortClusters(sortType, reverse) {
-    var items = Array.from(grid.querySelectorAll('.garden-cluster'));
+    function filterClusters(query) {
+      var items = Array.from(grid.querySelectorAll('.garden-cluster'));
+      var needle = (query || '').trim().toLowerCase();
 
-    items.sort(function(a, b) {
-      if (sortType === 'alpha') {
-        var aName = a.dataset.name.toLowerCase();
-        var bName = b.dataset.name.toLowerCase();
-        return reverse
-          ? bName.localeCompare(aName)
-          : aName.localeCompare(bName);
-      } else if (sortType === 'count') {
-        var aCount = parseInt(a.dataset.count, 10);
-        var bCount = parseInt(b.dataset.count, 10);
-        return reverse
-          ? aCount - bCount
-          : bCount - aCount;
-      } else if (sortType === 'related') {
-        var aRelated = parseInt(a.dataset.relatedCount, 10) || 0;
-        var bRelated = parseInt(b.dataset.relatedCount, 10) || 0;
-        return reverse
-          ? aRelated - bRelated
-          : bRelated - aRelated;
-      }
-      return 0;
-    });
-
-    items.forEach(function(item) { grid.appendChild(item); });
-  }
-
-  function filterClusters(query) {
-    var items = Array.from(grid.querySelectorAll('.garden-cluster'));
-    var needle = (query || '').trim().toLowerCase();
-
-    items.forEach(function(item) {
-      var name = item.dataset.name.toLowerCase();
-      var related = item.dataset.related || '';
-      var matchesSearch = !needle || name.indexOf(needle) !== -1 || related.indexOf(needle) !== -1;
-      var matchesFocus = !focusedTag || name === focusedTag || related.indexOf(focusedTag) !== -1;
-      item.style.display = (matchesSearch && matchesFocus) ? '' : 'none';
-    });
+      items.forEach(function(item) {
+        var name = item.dataset.name.toLowerCase();
+        var related = item.dataset.related || '';
+        var matchesSearch = !needle || name.indexOf(needle) !== -1 || related.indexOf(needle) !== -1;
+        var matchesFocus = !focusedTag || name === focusedTag || related.indexOf(focusedTag) !== -1;
+        item.style.display = (matchesSearch && matchesFocus) ? '' : 'none';
+      });
+    }
   }
 
   function loadD3(callback) {
@@ -779,18 +791,33 @@ document.addEventListener('DOMContentLoaded', function() {
           y: centerY + Math.sin(angle) * distance
         };
       }
-      var tagNodes = graphData.nodes.filter(function(node) { return node.type === 'tag'; });
-      tagNodes.sort(function(a, b) { return b.count - a.count; });
-      tagNodes = tagNodes.slice(0, limit);
+      var allTagNodes = graphData.nodes.filter(function(node) { return node.type === 'tag'; });
+      allTagNodes.sort(function(a, b) { return b.count - a.count; });
       var postNodes = [];
+      var allPostNodes = [];
       if (includePosts) {
-        postNodes = graphData.nodes.filter(function(node) { return node.type === 'post'; });
-        postNodes.sort(function(a, b) {
+        allPostNodes = graphData.nodes.filter(function(node) { return node.type === 'post'; });
+        allPostNodes.sort(function(a, b) {
           var aDate = Date.parse(a.date || '') || 0;
           var bDate = Date.parse(b.date || '') || 0;
           return bDate - aDate;
         });
-      postNodes = postNodes.slice(0, Math.max(20, Math.round(limit * 0.5)));
+      }
+
+      var totalAvailable = allTagNodes.length + (includePosts ? allPostNodes.length : 0);
+      var resolvedLimit = Math.max(parseInt(limitInput ? limitInput.min : '20', 10) || 20, Math.min(limit, totalAvailable));
+
+      var tagNodes = [];
+      if (resolvedLimit >= totalAvailable) {
+        tagNodes = allTagNodes;
+        if (includePosts) {
+          postNodes = allPostNodes;
+        }
+      } else {
+        tagNodes = allTagNodes.slice(0, resolvedLimit);
+        if (includePosts) {
+          postNodes = allPostNodes.slice(0, Math.max(20, Math.round(resolvedLimit * 0.5)));
+        }
       }
 
       nodeMap = new Map();
@@ -844,8 +871,15 @@ document.addEventListener('DOMContentLoaded', function() {
       });
 
       if (limitInput) {
-        var totalTags = graphData.nodes.filter(function(node) { return node.type === 'tag'; }).length;
-        limitInput.max = String(Math.max(parseInt(limitInput.min, 10), totalTags));
+        var minLimit = parseInt(limitInput.min, 10) || 20;
+        var maxLimit = Math.max(minLimit, totalAvailable);
+        limitInput.max = String(maxLimit);
+        if (parseInt(limitInput.value, 10) > maxLimit) {
+          limitInput.value = String(maxLimit);
+        }
+        if (limitValue) {
+          limitValue.textContent = limitInput.value;
+        }
       }
 
       applyTagSizing();
@@ -1125,14 +1159,47 @@ document.addEventListener('DOMContentLoaded', function() {
       canvasWrap.classList.remove('is-dragging');
     }
 
+    function hasFullscreenAPI() {
+      return !!(canvasWrap && (canvasWrap.requestFullscreen || canvasWrap.webkitRequestFullscreen));
+    }
+
+    function requestWrapFullscreen() {
+      if (!canvasWrap) return;
+      if (canvasWrap.requestFullscreen) {
+        canvasWrap.requestFullscreen();
+      } else if (canvasWrap.webkitRequestFullscreen) {
+        canvasWrap.webkitRequestFullscreen();
+      }
+    }
+
+    function exitWrapFullscreen() {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    }
+
+    function isWrapFullscreen() {
+      return document.fullscreenElement === canvasWrap || document.webkitFullscreenElement === canvasWrap;
+    }
+
+    function syncFullscreenButton() {
+      if (!fullscreenButton) return;
+      var active = isWrapFullscreen();
+      fullscreenButton.setAttribute('aria-pressed', active ? 'true' : 'false');
+      fullscreenButton.textContent = active ? 'Exit full screen' : 'Full screen';
+    }
+
     if (canvas) {
-      canvas.addEventListener('mousemove', onPointerMove);
-      canvas.addEventListener('mouseleave', onPointerLeave);
+      canvas.addEventListener('pointermove', onPointerMove);
+      canvas.addEventListener('pointerleave', onPointerLeave);
       canvas.addEventListener('click', onClick);
       canvas.addEventListener('wheel', onWheel, { passive: false });
-      canvas.addEventListener('mousedown', onPointerDown);
-      window.addEventListener('mousemove', onPointerMoveDrag);
-      window.addEventListener('mouseup', onPointerUp);
+      canvas.addEventListener('pointerdown', onPointerDown);
+      window.addEventListener('pointermove', onPointerMoveDrag);
+      window.addEventListener('pointerup', onPointerUp);
+      window.addEventListener('pointercancel', onPointerUp);
     }
 
     if (limitInput) {
@@ -1203,6 +1270,20 @@ document.addEventListener('DOMContentLoaded', function() {
         zoom = 1;
         rebuild();
       });
+    }
+
+    if (fullscreenButton && hasFullscreenAPI()) {
+      fullscreenButton.hidden = false;
+      fullscreenButton.addEventListener('click', function() {
+        if (isWrapFullscreen()) {
+          exitWrapFullscreen();
+        } else {
+          requestWrapFullscreen();
+        }
+      });
+      document.addEventListener('fullscreenchange', syncFullscreenButton);
+      document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
+      syncFullscreenButton();
     }
 
     var prevAnimate = null;

@@ -1219,6 +1219,10 @@ for post in core.filter("not skip"):
 - `/.well-known/nodeinfo`
 - `/nodeinfo/2.0`
 - `/.well-known/time`
+- `/.well-known/links`
+- `/.well-known/internal-links`
+- `/external-links/` (`index.html`)
+- `/internal-links/` (`index.html`)
 - `/.well-known/sshfp` (optional)
 - `/.well-known/keybase.txt` (optional)
 
@@ -1227,6 +1231,8 @@ for post in core.filter("not skip"):
 |----------|------|-------------|
 | `config` | Config | Site configuration |
 | `well_known` | map | Derived values (site URL, host, build time, author, etc.) |
+| `well_known_links` | array | Outbound link buckets (domain, count, list of source/target pairs) |
+| `well_known_internal_links` | array | Internal link buckets (target URL, count, list of source targets) |
 
 **Hook behavior:**
 

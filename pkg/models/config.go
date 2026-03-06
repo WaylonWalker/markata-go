@@ -56,7 +56,15 @@ type ComponentsConfig struct {
 
 	// Share configures the per-post share component
 	Share ShareComponentConfig `json:"share" yaml:"share" toml:"share"`
+
+	// PostConnections configures inlink/outlink list and graph rendering on posts
+	PostConnections PostConnectionsComponentConfig `json:"post_connections" yaml:"post_connections" toml:"post_connections"`
 }
+
+const (
+	PostConnectionsDisplayGraph = "graph"
+	PostConnectionsDisplayList  = "list"
+)
 
 // NavComponentConfig configures the navigation component.
 type NavComponentConfig struct {
@@ -164,6 +172,82 @@ type ShareComponentConfig struct {
 
 	// Custom maps platform keys to bespoke definitions
 	Custom map[string]SharePlatformConfig `json:"custom,omitempty" yaml:"custom,omitempty" toml:"custom,omitempty"`
+}
+
+// PostConnectionsComponentConfig configures post connection UI (list/graph).
+type PostConnectionsComponentConfig struct {
+	// Enabled toggles the entire post connections component (default: true)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Display selects which render modes are enabled: "graph", "list", or both.
+	Display []string `json:"display,omitempty" yaml:"display,omitempty" toml:"display,omitempty"`
+
+	// MinLinks is the minimum total inlinks+outlinks required to show any mode.
+	MinLinks int `json:"min_links,omitempty" yaml:"min_links,omitempty" toml:"min_links,omitempty"`
+
+	// MaxLinks is the maximum total inlinks+outlinks allowed to show any mode (0 = no max).
+	MaxLinks int `json:"max_links,omitempty" yaml:"max_links,omitempty" toml:"max_links,omitempty"`
+
+	// GraphMinLinks is the minimum total inlinks+outlinks required for graph mode.
+	GraphMinLinks int `json:"graph_min_links,omitempty" yaml:"graph_min_links,omitempty" toml:"graph_min_links,omitempty"`
+
+	// GraphMaxLinks is the maximum total inlinks+outlinks allowed for graph mode (0 = no max).
+	GraphMaxLinks int `json:"graph_max_links,omitempty" yaml:"graph_max_links,omitempty" toml:"graph_max_links,omitempty"`
+
+	// ListMinLinks is the minimum total inlinks+outlinks required for list mode.
+	ListMinLinks int `json:"list_min_links,omitempty" yaml:"list_min_links,omitempty" toml:"list_min_links,omitempty"`
+
+	// ListMaxLinks is the maximum total inlinks+outlinks allowed for list mode (0 = no max).
+	ListMaxLinks int `json:"list_max_links,omitempty" yaml:"list_max_links,omitempty" toml:"list_max_links,omitempty"`
+
+	// InlinksLimit limits rendered inlinks in list mode (default: 8).
+	InlinksLimit int `json:"inlinks_limit,omitempty" yaml:"inlinks_limit,omitempty" toml:"inlinks_limit,omitempty"`
+
+	// OutlinksLimit limits rendered outlinks in list mode (default: 8).
+	OutlinksLimit int `json:"outlinks_limit,omitempty" yaml:"outlinks_limit,omitempty" toml:"outlinks_limit,omitempty"`
+}
+
+// NewPostConnectionsComponentConfig returns default post connections config.
+func NewPostConnectionsComponentConfig() PostConnectionsComponentConfig {
+	enabled := true
+	return PostConnectionsComponentConfig{
+		Enabled:       &enabled,
+		Display:       []string{PostConnectionsDisplayGraph},
+		MinLinks:      1,
+		MaxLinks:      0,
+		GraphMinLinks: 3,
+		GraphMaxLinks: 0,
+		ListMinLinks:  1,
+		ListMaxLinks:  0,
+		InlinksLimit:  8,
+		OutlinksLimit: 8,
+	}
+}
+
+// IsEnabled reports whether post connections component is enabled.
+func (c PostConnectionsComponentConfig) IsEnabled() bool {
+	if c.Enabled == nil {
+		return true
+	}
+	return *c.Enabled
+}
+
+// Modes returns configured display modes with sane defaults.
+func (c PostConnectionsComponentConfig) Modes() []string {
+	if len(c.Display) == 0 {
+		return []string{PostConnectionsDisplayGraph}
+	}
+	return append([]string{}, c.Display...)
+}
+
+// HasMode reports whether a display mode is enabled.
+func (c PostConnectionsComponentConfig) HasMode(mode string) bool {
+	for _, item := range c.Modes() {
+		if item == mode {
+			return true
+		}
+	}
+	return false
 }
 
 // NewShareComponentConfig returns the default share component configuration.
@@ -311,7 +395,8 @@ func NewComponentsConfig() ComponentsConfig {
 			Position: "left",
 			Width:    "250px",
 		},
-		Share: NewShareComponentConfig(),
+		Share:           NewShareComponentConfig(),
+		PostConnections: NewPostConnectionsComponentConfig(),
 	}
 }
 
@@ -1720,6 +1805,7 @@ var DefaultWellKnownAutoGenerate = []string{
 	"webfinger",
 	"nodeinfo",
 	"time",
+	"links",
 }
 
 // NewWellKnownConfig creates a WellKnownConfig with default values.

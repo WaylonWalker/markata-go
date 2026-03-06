@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Internal Links{% endblock %}
+{% block description %}Internal links grouped by destination{% endblock %}
+
+{% block content %}
+<article class="links-page">
+  <header>
+    <h1>Internal Links</h1>
+    <p>
+      Internal links grouped by destination.
+      Raw JSON: <a href="/.well-known/internal-links">/.well-known/internal-links</a>.
+      Also see <a href="/external-links/">/external-links/</a> and <a href="/garden/">/garden/</a>.
+    </p>
+  </header>
+
+  <section class="links-chart">
+    <h2>Destinations</h2>
+    <ol>
+      {% for item in well_known_internal_links %}
+      <li>
+        <div class="links-row" data-count="{{ item.Count }}">
+          <a class="links-label" href="#target-{{ forloop.counter }}">{{ item.TargetURL }}</a>
+          <span class="links-bar" aria-hidden="true"><span class="links-bar-fill"></span></span>
+          <span class="links-count">{{ item.Count }}</span>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  {% for item in well_known_internal_links %}
+  <section>
+    <h2 id="target-{{ forloop.counter }}">{{ item.TargetURL }} <small>({{ item.Count }})</small></h2>
+    <ul>
+      {% for link in item.Links %}
+      <li>
+        <a href="{{ link.SourceURL }}">{{ link.SourceURL }}</a>
+        <small>to <a href="{{ link.TargetURL }}">{{ link.TargetURL }}</a></small>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+</article>
+
+<style>
+.links-page {
+  max-width: min(72rem, 100%);
+  margin: 0 auto;
+  background: var(--article-bg, color-mix(in srgb, var(--color-background) 95%, transparent));
+  box-shadow: var(--article-shadow, 0 4px 24px rgba(0, 0, 0, 0.35));
+  border-radius: var(--article-radius, var(--radius-lg, 0.5rem));
+  padding: var(--space-6, 1.5rem);
+}
+.links-page p { color: var(--color-text-muted, #777); }
+.links-page a { overflow-wrap: anywhere; word-break: break-word; }
+.links-page section { min-width: 0; }
+.links-chart ol { margin: 0; padding-left: 1rem; }
+.links-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(6rem, 1fr) auto; gap: 0.75rem; align-items: center; }
+.links-label { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.links-bar { height: 0.65rem; background: color-mix(in srgb, var(--color-border, #999) 30%, transparent); border-radius: 999px; overflow: hidden; }
+.links-bar-fill { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #6ee7b7, #059669); border-radius: 999px; }
+.links-count { font-variant-numeric: tabular-nums; min-width: 2.5rem; text-align: right; }
+
+@media (max-width: 768px) {
+  .links-page { padding: var(--space-3, 0.75rem) var(--space-2, 0.5rem); }
+  .links-chart ol { padding-left: 0.75rem; }
+  .links-row { grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem; }
+  .links-bar { grid-column: 1 / -1; }
+  .links-count { min-width: 2rem; }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var rows = Array.from(document.querySelectorAll('.links-row'));
+  if (!rows.length) return;
+  var max = rows.reduce(function (acc, row) {
+    var n = parseInt(row.getAttribute('data-count') || '0', 10);
+    return Math.max(acc, n);
+  }, 0);
+  rows.forEach(function (row) {
+    var count = parseInt(row.getAttribute('data-count') || '0', 10);
+    var pct = max > 0 ? Math.max(1, Math.round((count / max) * 100)) : 0;
+    var fill = row.querySelector('.links-bar-fill');
+    if (fill) fill.style.width = String(pct) + '%';
+  });
+});
+</script>
+{% endblock %}

@@ -417,18 +417,42 @@ func (p *GardenViewPlugin) applyNodeLimit(graph *GardenGraph, config *models.Gar
 		}
 	}
 
-	// If posts alone exceed the limit, keep all posts
+	// Keep highest-signal tags first when trimming.
+	sort.Slice(tagNodes, func(i, j int) bool {
+		return tagNodes[i].Count > tagNodes[j].Count
+	})
+
+	// If posts alone exceed the limit, reserve space for tags when available.
 	if len(postNodes) >= maxNodes {
-		graph.Nodes = postNodes[:maxNodes]
+		if len(tagNodes) == 0 {
+			graph.Nodes = postNodes[:maxNodes]
+			p.pruneEdges(graph)
+			return
+		}
+
+		tagSlots := maxNodes / 5
+		if tagSlots < 1 {
+			tagSlots = 1
+		}
+		if tagSlots > len(tagNodes) {
+			tagSlots = len(tagNodes)
+		}
+		if tagSlots >= maxNodes {
+			tagSlots = maxNodes - 1
+		}
+
+		postSlots := maxNodes - tagSlots
+		if postSlots < 0 {
+			postSlots = 0
+		}
+
+		graph.Nodes = make([]GardenNode, 0, postSlots+tagSlots)
+		graph.Nodes = append(graph.Nodes, postNodes[:postSlots]...)
+		graph.Nodes = append(graph.Nodes, tagNodes[:tagSlots]...)
 		// Remove edges referencing removed nodes
 		p.pruneEdges(graph)
 		return
 	}
-
-	// Sort tags by count (descending) and keep the top ones
-	sort.Slice(tagNodes, func(i, j int) bool {
-		return tagNodes[i].Count > tagNodes[j].Count
-	})
 
 	remaining := maxNodes - len(postNodes)
 	if remaining > len(tagNodes) {

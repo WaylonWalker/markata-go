@@ -2697,10 +2697,23 @@ emit_posts_json = false        # optional
 - `/.well-known/webfinger`
 - `/.well-known/nodeinfo` and `/nodeinfo/2.0`
 - `/.well-known/time`
+- `/.well-known/links`
+- `/.well-known/internal-links`
+- `/external-links/index.html`
+- `/internal-links/index.html`
 
 **Optional files:**
 - `/.well-known/sshfp` (when `ssh_fingerprint` is set)
 - `/.well-known/keybase.txt` (when `keybase_username` is set)
+
+**Template overrides & context:**
+- Templates in `templates/well-known/` override the built-in host discovery responses.
+- Themes or sites can provide `templates/external-links.html` (for `/external-links/`) and `templates/internal-links.html` (for `/internal-links/`).
+- When rendering the link pages, the context includes `well_known_links` (outbound domain buckets) and `well_known_internal_links` (internal target buckets) in addition to `well_known`.
+
+**Template context additions:**
+- `well_known_links`: list of `{domain, count, links}` objects describing outbound destinations.
+- `well_known_internal_links`: list of `{targetUrl, count, links}` objects describing grouped internal targets.
 
 ---
 

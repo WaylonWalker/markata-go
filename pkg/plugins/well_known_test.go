@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,24 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+type linksDomainFixture struct {
+	Domain string `json:"domain"`
+	Count  int    `json:"count"`
+	Links  []struct {
+		SourceURL string `json:"sourceUrl"`
+		TargetURL string `json:"targetUrl"`
+	} `json:"links"`
+}
+
+type internalTargetFixture struct {
+	TargetURL string `json:"targetUrl"`
+	Count     int    `json:"count"`
+	Links     []struct {
+		SourceURL string `json:"sourceUrl"`
+		TargetURL string `json:"targetUrl"`
+	} `json:"links"`
+}
 
 func TestWellKnownPlugin_Write_DefaultEntries(t *testing.T) {
 	outputDir := t.TempDir()
@@ -43,7 +62,11 @@ func TestWellKnownPlugin_Write_DefaultEntries(t *testing.T) {
 		".well-known/webfinger",
 		".well-known/nodeinfo",
 		".well-known/time",
+		".well-known/links",
+		".well-known/internal-links",
 		"nodeinfo/2.0",
+		"external-links/index.html",
+		"internal-links/index.html",
 	}
 
 	for _, rel := range expected {
@@ -59,6 +82,76 @@ func TestWellKnownPlugin_Write_DefaultEntries(t *testing.T) {
 	}
 	if string(content) != "2026-02-04T12:34:56Z\n" {
 		t.Fatalf("time content = %q, want %q", string(content), "2026-02-04T12:34:56Z\n")
+	}
+}
+
+func TestWellKnownPlugin_Write_ExternalLinksPage(t *testing.T) {
+	outputDir := t.TempDir()
+	enabled := true
+	wellKnownConfig := models.WellKnownConfig{
+		Enabled:      &enabled,
+		AutoGenerate: []string{"links"},
+	}
+
+	config := &lifecycle.Config{
+		OutputDir: outputDir,
+		Extra: map[string]interface{}{
+			"url":        "https://example.com",
+			"title":      "Example Site",
+			"well_known": wellKnownConfig,
+		},
+	}
+
+	posts := []*models.Post{
+		{
+			Href: "/alpha/",
+			Outlinks: []*models.Link{
+				{SourceURL: "https://example.com/alpha/", TargetURL: "https://go.dev/doc", IsInternal: false},
+				{SourceURL: "https://example.com/alpha/", TargetURL: "https://example.com/about/", IsInternal: true},
+			},
+		},
+	}
+
+	m := lifecycle.NewManager()
+	m.SetConfig(config)
+	m.SetPosts(posts)
+
+	plugin := NewWellKnownPlugin()
+	if err := plugin.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	pagePath := filepath.Join(outputDir, filepath.FromSlash("external-links/index.html"))
+	content, err := os.ReadFile(pagePath)
+	if err != nil {
+		t.Fatalf("reading external links page: %v", err)
+	}
+
+	htmlBody := string(content)
+	if !strings.Contains(htmlBody, "External Links") {
+		t.Fatalf("expected title on external links page")
+	}
+	if !strings.Contains(htmlBody, "https://go.dev/doc") {
+		t.Fatalf("expected outbound link on external links page")
+	}
+	if !strings.Contains(htmlBody, "/.well-known/links") {
+		t.Fatalf("expected well-known links reference on external links page")
+	}
+	if !strings.Contains(htmlBody, "external-links-bar-fill") {
+		t.Fatalf("expected bar graph rows on external links page")
+	}
+
+	internalPagePath := filepath.Join(outputDir, filepath.FromSlash("internal-links/index.html"))
+	internalContent, err := os.ReadFile(internalPagePath)
+	if err != nil {
+		t.Fatalf("reading internal links page: %v", err)
+	}
+	internalHTML := string(internalContent)
+	if !strings.Contains(internalHTML, "Internal Links") {
+		t.Fatalf("expected title on internal links page")
+	}
+	if !strings.Contains(internalHTML, "/.well-known/internal-links") {
+		t.Fatalf("expected well-known internal links reference on internal links page")
 	}
 }
 
@@ -279,5 +372,92 @@ func TestGetAuthorImageURL(t *testing.T) {
 				t.Errorf("getAuthorImageURL() = %q, want %q", result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestWellKnownPlugin_Write_LinksResource(t *testing.T) {
+	outputDir := t.TempDir()
+	enabled := true
+	wellKnownConfig := models.WellKnownConfig{
+		Enabled:      &enabled,
+		AutoGenerate: []string{"links"},
+	}
+
+	config := &lifecycle.Config{
+		OutputDir: outputDir,
+		Extra: map[string]interface{}{
+			"url":        "https://example.com",
+			"well_known": wellKnownConfig,
+		},
+	}
+
+	posts := []*models.Post{
+		{
+			Href: "/alpha/",
+			Outlinks: []*models.Link{
+				{SourceURL: "https://example.com/alpha/", TargetURL: "https://go.dev/doc", IsInternal: false},
+				{SourceURL: "https://example.com/alpha/", TargetURL: "https://go.dev/doc", IsInternal: false}, // duplicate
+				{SourceURL: "https://example.com/alpha/", TargetURL: "https://pkg.go.dev/", IsInternal: false},
+				{SourceURL: "https://example.com/alpha/", TargetURL: "https://example.com/internal/", IsInternal: true},
+			},
+		},
+		{
+			Href: "/beta/",
+			Outlinks: []*models.Link{
+				{SourceURL: "https://example.com/beta/", TargetURL: "https://go.dev/ref/spec", IsInternal: false},
+			},
+		},
+	}
+
+	m := lifecycle.NewManager()
+	m.SetConfig(config)
+	m.SetPosts(posts)
+
+	plugin := NewWellKnownPlugin()
+	if err := plugin.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	linksPath := filepath.Join(outputDir, filepath.FromSlash(".well-known/links"))
+	content, err := os.ReadFile(linksPath)
+	if err != nil {
+		t.Fatalf("reading links file: %v", err)
+	}
+
+	var domains []linksDomainFixture
+	if err := json.Unmarshal(content, &domains); err != nil {
+		t.Fatalf("unmarshal links JSON: %v", err)
+	}
+
+	if len(domains) != 2 {
+		t.Fatalf("expected 2 domains, got %d", len(domains))
+	}
+
+	if domains[0].Domain != "go.dev" || domains[0].Count != 2 {
+		t.Fatalf("expected go.dev with count 2, got %#v", domains[0])
+	}
+	if domains[1].Domain != "pkg.go.dev" || domains[1].Count != 1 {
+		t.Fatalf("expected pkg.go.dev with count 1, got %#v", domains[1])
+	}
+
+	internalPath := filepath.Join(outputDir, filepath.FromSlash(".well-known/internal-links"))
+	internalContent, err := os.ReadFile(internalPath)
+	if err != nil {
+		t.Fatalf("reading internal links file: %v", err)
+	}
+
+	var targets []internalTargetFixture
+	if err := json.Unmarshal(internalContent, &targets); err != nil {
+		t.Fatalf("unmarshal internal links JSON: %v", err)
+	}
+
+	if len(targets) != 1 {
+		t.Fatalf("expected 1 internal target, got %d", len(targets))
+	}
+	if targets[0].TargetURL != "/internal" && targets[0].TargetURL != "/internal/" {
+		t.Fatalf("expected internal target /internal, got %q", targets[0].TargetURL)
+	}
+	if targets[0].Count != 1 {
+		t.Fatalf("expected internal target count 1, got %d", targets[0].Count)
 	}
 }

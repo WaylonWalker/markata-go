@@ -574,6 +574,38 @@ Supported placeholders for share URLs:
 
 Copying uses the Clipboard API with a DOM fallback, updates the button label/tooltip to "Link copied" for 2 seconds, and shows a small desktop-only toast. Built-in platforms include Twitter, Bluesky, LinkedIn, WhatsApp, Facebook, Telegram, Pinterest, Reddit, Hacker News, Email, and Copy Link, each with a coordinated icon from `pkg/themes/default/static/icons/share/`.
 
+#### Post Connections Component (`[markata-go.components.post_connections]`)
+
+Configure backlinks/outlinks UI on post pages. You can render a graph, a list, or both, and tune thresholds independently.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `true` | Enable post connections UI. |
+| `display` | array | `['graph']` | Modes to render: `graph`, `list`, or both. |
+| `min_links` | int | `1` | Lower bound (inlinks + outlinks) to render any mode. |
+| `max_links` | int | `0` | Upper bound to render any mode (`0` = no max). |
+| `graph_min_links` | int | `3` | Lower bound for graph mode. |
+| `graph_max_links` | int | `0` | Upper bound for graph mode (`0` = no max). |
+| `list_min_links` | int | `1` | Lower bound for list mode. |
+| `list_max_links` | int | `0` | Upper bound for list mode (`0` = no max). |
+| `inlinks_limit` | int | `8` | Max inlinks shown in list mode. |
+| `outlinks_limit` | int | `8` | Max outlinks shown in list mode. |
+
+```toml
+[markata-go.components.post_connections]
+enabled = true
+display = ["list", "graph"]
+
+# Show list first, then graph for denser pages
+list_min_links = 1
+list_max_links = 5
+graph_min_links = 6
+graph_max_links = 0
+
+inlinks_limit = 6
+outlinks_limit = 10
+```
+
 ### IndieAuth Settings (`[markata-go.indieauth]`)
 
 [IndieAuth](https://indieauth.net/) is a decentralized identity protocol that allows you to use your own domain to sign in to websites. markata-go can add the necessary `<link>` tags to your site's HTML head.
@@ -1341,7 +1373,7 @@ See the [[post-formats|Post Output Formats Guide]] for detailed usage including 
 ```toml
 [markata-go.well_known]
 enabled = true
-auto_generate = ["host-meta", "host-meta.json", "webfinger", "nodeinfo", "time"]
+auto_generate = ["host-meta", "host-meta.json", "webfinger", "nodeinfo", "time", "links"]
 
 # Optional entries requiring config
 ssh_fingerprint = "SHA256:abcdef..."
@@ -1354,10 +1386,14 @@ keybase_username = "username"
 - `/.well-known/webfinger`
 - `/.well-known/nodeinfo` and `/nodeinfo/2.0`
 - `/.well-known/time`
+- `/.well-known/links` (grouped outbound links by target domain; enabled by default)
+- `/.well-known/internal-links` (grouped internal links by target URL; enabled by default)
+- `/external-links/` (HTML view of the same grouped outbound link data)
+- `/internal-links/` (HTML view of grouped internal link destinations)
 - `/.well-known/sshfp` (when `ssh_fingerprint` is set)
 - `/.well-known/keybase.txt` (when `keybase_username` is set)
 
-Templates live under `templates/well-known/` and can be overridden per theme.
+Templates live under `templates/well-known/` plus `templates/external-links.html` and `templates/internal-links.html` for the HTML page overrides.
 
 ### Content Templates (`[content_templates]`)
 
