@@ -138,6 +138,62 @@ func TestEmbedsPlugin_InternalEmbed_WithDisplayText(t *testing.T) {
 	}
 }
 
+func TestEmbedsPlugin_InternalEmbed_PhotoRendersFigure(t *testing.T) {
+	p := NewEmbedsPlugin()
+
+	m := lifecycle.NewManager()
+
+	targetTitle := "Wicket's Lab"
+	targetDesc := "Wicket carefully mixing a fresh batch of focus potion in his oak tree lab."
+	targetPost := &models.Post{
+		Path:        "wickets-lab.md",
+		Slug:        "wickets-lab",
+		Href:        "/wickets-lab/",
+		Template:    "photo",
+		Title:       &targetTitle,
+		Description: &targetDesc,
+		Extra: map[string]interface{}{
+			"image": "/wickets-lab.png",
+		},
+	}
+
+	sourcePost := &models.Post{
+		Path:    "source.md",
+		Slug:    "source-post",
+		Content: "Here is an embed: ![[wickets-lab]]",
+	}
+
+	m.SetPosts([]*models.Post{targetPost, sourcePost})
+
+	err := p.Transform(m)
+	if err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	posts := m.Posts()
+	var result *models.Post
+	for _, post := range posts {
+		if post.Slug == "source-post" {
+			result = post
+			break
+		}
+	}
+
+	if result == nil {
+		t.Fatal("source post not found")
+	}
+
+	if !containsString(result.Content, "<figure class=\"embed-figure\">") {
+		t.Fatalf("expected figure wrapper for photo embed, got: %s", result.Content)
+	}
+	if !containsString(result.Content, "<figcaption>") {
+		t.Fatalf("expected figcaption for photo embed, got: %s", result.Content)
+	}
+	if !containsString(result.Content, targetDesc) {
+		t.Fatalf("expected photo description in embed output, got: %s", result.Content)
+	}
+}
+
 func TestEmbedsPlugin_InternalEmbed_NotFound(t *testing.T) {
 	p := NewEmbedsPlugin()
 

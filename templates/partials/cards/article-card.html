@@ -6,7 +6,11 @@
   </header>
 
   <div class="card-excerpt p-summary">
+    {% if post.article_html %}
     {{ post.article_html | excerpt | safe }}
+    {% elif post.description %}
+    <p>{{ post.description }}</p>
+    {% endif %}
   </div>
 
   <footer class="card-meta">

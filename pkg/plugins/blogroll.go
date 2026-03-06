@@ -140,7 +140,7 @@ func extractAtomEntryImage(entry *atomEntry) string {
 
 	// Try media:content with medium=image
 	for _, mc := range entry.MediaContent {
-		if mc.URL != "" && mc.Medium == "image" {
+		if mc.URL != "" && mc.Medium == mediumImage {
 			return mc.URL
 		}
 	}
