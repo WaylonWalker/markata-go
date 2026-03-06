@@ -45,6 +45,18 @@ func withTags(tags ...string) func(*models.Post) {
 	}
 }
 
+func withAuthors(authors ...string) func(*models.Post) {
+	return func(p *models.Post) {
+		p.Authors = authors
+	}
+}
+
+func withAuthor(author string) func(*models.Post) {
+	return func(p *models.Post) {
+		p.Author = &author
+	}
+}
+
 func withDate(date time.Time) func(*models.Post) {
 	return func(p *models.Post) {
 		p.Date = &date
@@ -86,6 +98,18 @@ func TestEvaluate_BooleanComparison(t *testing.T) {
 			name:     "published != False",
 			expr:     "published != False",
 			post:     makePost(withPublished(true)),
+			expected: true,
+		},
+		{
+			name:     "author == value (from authors array)",
+			expr:     "author == 'waylon'",
+			post:     makePost(withAuthors("waylon", "wyatt")),
+			expected: true,
+		},
+		{
+			name:     "author == value (legacy author field)",
+			expr:     "author == 'waylon'",
+			post:     makePost(withAuthor("waylon")),
 			expected: true,
 		},
 	}
@@ -137,6 +161,18 @@ func TestEvaluate_StringInList(t *testing.T) {
 			expr:     `"python" in tags`,
 			post:     makePost(withTags("python")),
 			expected: true,
+		},
+		{
+			name:     "author in authors (present)",
+			expr:     "'waylon' in authors",
+			post:     makePost(withAuthors("waylon", "wyatt")),
+			expected: true,
+		},
+		{
+			name:     "author in authors (absent)",
+			expr:     "'waylon' in authors",
+			post:     makePost(withAuthors("wyatt")),
+			expected: false,
 		},
 	}
 

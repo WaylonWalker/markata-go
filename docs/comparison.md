@@ -1140,6 +1140,21 @@ markata-go, Eleventy (Nunjucks), and Zola (Tera) have the most similar syntax.
 | Maximum flexibility | Eleventy |
 | Largest theme ecosystem | Hugo or Jekyll |
 
+### Latest Post Embeds
+
+| Static Site Generator | Ergonomic Pattern for "Latest N" Posts |
+|------------------------|--------------------------------------|
+| `markata-go` | `render_feed("slug", {"limit": N, "variant": "card"})` drops in `partials/feed_preview.html`, which now routes to `partials/cards/card-router.html` so each post type renders with its template-specific card (photo/shot cards render as `<figure>`s with captions). `feed_posts()` still returns template-friendly maps for bespoke layouts without raw HTML. |
+| Hugo | `{{ range first 5 (where .Site.RegularPages "Section" "posts") }}` with cards over `.RenderString` or `partialCached`. Card layouts require custom partials. |
+| Jekyll | `{% for post in site.posts limit:5 %}` and include a `_includes/post-card.html` for card styling. Data access via `site.posts` is immediate. |
+| Eleventy | Define a collection (`collections.posts`) and `{% for post of collections.posts | slice(0,5) %}`. Custom card markup is handled via Nunjucks includes or shortcodes. |
+| Zola | Use `paginate(get_section("posts"))` or `range (section.pages) | sort_by(date | desc) | slice(0,5)` in Tera templates; card markup lives in `templates/partials/` includes. |
+| Pelican | Templates iterate `articles[:5]` (or `category.articles`) and rely on Jinja macros for cards; feeds and data come from the engine during `generate_context`. |
+| Astro | `const posts = await collections.getCollection("posts")` + `posts.slice(0,5)` inside `<Fragment>` plus lightweight components for cards. |
+| Zensical | Built on MkDocs, so "latest" snippets come from nav lists or MkDocs plugins like `mkdocs-blog-plugin`; there is no first-class post collection, so you either maintain a hand-written list or read a data file and render it via a custom macro. |
+
+markata-go's new helpers deliver both data and rendered cards with sensible defaults, matching or surpassing the ergonomics of the other SSGs while keeping Markdown clean.
+
 ---
 
 ## Conclusion

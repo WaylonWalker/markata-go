@@ -1,7 +1,26 @@
 {# Embed card partial for internal post embeds #}
 {# Used by the embeds plugin when processing ![[slug]] syntax #}
 
-{% if post.template == "photo" or post.template == "shot" or post.template == "shots" or post.template == "image" or post.template == "gallery" or post.template == "video" or post.template == "clip" or post.template == "cast" or post.template == "stream" %}
+{% set embed_template = post.template|default:post.templateKey %}
+{% if embed_template == "photo" or embed_template == "shot" or embed_template == "shots" or embed_template == "image" or embed_template == "gallery" or post.image or post.cover or post.cover_image or post.og_image %}
+{% include "partials/cards/photo-card.html" %}
+{% elif embed_template == "video" or embed_template == "clip" or embed_template == "cast" or embed_template == "stream" %}
+{% include "partials/cards/video-card.html" %}
+{% elif embed_template == "contact" or embed_template == "character" or embed_template == "person" %}
+{% include "partials/cards/contact-card.html" %}
+{% elif embed_template == "note" or embed_template == "ping" or embed_template == "thought" or embed_template == "status" or embed_template == "tweet" %}
+{% include "partials/cards/note-card.html" %}
+{% elif embed_template == "blog-post" or embed_template == "article" or embed_template == "post" or embed_template == "essay" or embed_template == "tutorial" %}
+{% include "partials/cards/article-card.html" %}
+{% elif embed_template == "link" or embed_template == "bookmark" or embed_template == "til" or embed_template == "stars" %}
+{% include "partials/cards/link-card.html" %}
+{% elif embed_template == "quote" or embed_template == "quotation" %}
+{% include "partials/cards/quote-card.html" %}
+{% elif embed_template == "guide" or embed_template == "series" or embed_template == "step" or embed_template == "chapter" %}
+{% include "partials/cards/guide-card.html" %}
+{% elif embed_template == "gratitude" or embed_template == "inline" or embed_template == "micro" %}
+{% include "partials/cards/inline-card.html" %}
+{% elif embed_template %}
 {% include "partials/cards/card-router.html" %}
 {% else %}
 <div class="{{ card_class|default:'embed-card' }}">

@@ -89,6 +89,8 @@ func (p *JinjaMdPlugin) Transform(m *lifecycle.Manager) error {
 		// Add helper functions as extra context
 		ctx.Set("filter", createFilterFunc(m))
 		ctx.Set("map", createMapFunc(m))
+		ctx.Set("feed_posts", createFeedPostsFunc(m))
+		ctx.Set("render_feed", createRenderFeedFunc(m))
 
 		// Add private_paths for robots.txt generation
 		ctx.Set("private_paths", privatePaths)

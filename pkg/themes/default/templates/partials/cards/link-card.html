@@ -2,12 +2,12 @@
 {# Shows domain, title, description in preview card style #}
 <article class="card card-link h-entry">
   <header class="card-header">
-    <a href="{{ post.href }}" class="card-link-wrapper u-url">
-      {% if post.image %}
-      <div class="card-link-image">
-        <img src="{{ post.image }}" alt="" class="u-photo" width="120" height="80" loading="lazy">
-      </div>
-      {% endif %}
+  <div class="card-link-wrapper">
+    {% if post.image %}
+    <div class="card-link-image">
+      <img src="{{ post.image }}" alt="" class="u-photo" width="120" height="80" loading="lazy">
+    </div>
+    {% endif %}
 
       <div class="card-link-content">
         {% if post.url %}
@@ -16,9 +16,9 @@
         <data class="u-bookmark-of" value="{{ post.url }}" hidden></data>
         {% endif %}
 
-        <h3 class="card-title p-name">{{ post.title | default:post.slug }}</h3>
-      </div>
-    </a>
+      <a href="{{ post.href }}" class="card-title p-name u-url">{{ post.title | default:post.slug }}</a>
+    </div>
+  </div>
   </header>
 
   <div class="card-body">

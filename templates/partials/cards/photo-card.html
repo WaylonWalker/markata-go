@@ -1,38 +1,20 @@
-{# Photo Card - Image/video prominent for shots, photos, gallery posts #}
-{# Large media with aspect-ratio, caption/description below #}
-{# Auto-detects video files by extension: .mp4, .webm, .mov, .m4v, .ogv #}
-{# Supports both image and video frontmatter fields interchangeably #}
-<article class="card card-photo h-entry">
-  {% with post.image|media_url:post.video as media_src %}
-  {% if media_src %}
-  {% with media_src|with_size:"1200,675" as sized_media %}
-  <a href="{{ post.href }}" class="card-image-link u-url">
+{# Photo preview is intentionally only figure/figcaption #}
+{% with post.image|media_url:post.video as media_src %}
+{% if media_src %}
+{% with media_src|with_size:"1200,675" as sized_media %}
+<figure class="photo-figure h-entry">
+  <a href="{{ post.href }}" class="u-url">
     {% if media_src|is_video %}
     {% set poster_candidate = post | poster_url:media_src %}
-    <video class="card-image u-video" autoplay muted loop playsinline{% if poster_candidate %} poster="{{ poster_candidate | with_size:"1200,675" }}"{% endif %}>
+    <video class="u-video" autoplay muted loop playsinline{% if poster_candidate %} poster="{{ poster_candidate | with_size:"1200,675" }}"{% endif %}>
       <source src="{{ sized_media }}"{% with media_src|video_mime as mime %}{% if mime %} type="{{ mime }}"{% endif %}{% endwith %}>
     </video>
     {% else %}
-    <img src="{{ sized_media }}" alt="{{ post.title | default:post.description | default:'Photo' }}" class="card-image u-photo" width="1200" height="675" loading="lazy">
+    <img src="{{ sized_media }}" alt="{{ post.title | default:post.description | default:'Photo' }}" class="u-photo" width="1200" height="675" loading="lazy">
     {% endif %}
   </a>
-  {% endwith %}
-  {% endif %}
-  {% endwith %}
-
-  <div class="card-body">
-    {% if post.title %}
-    <h3 class="card-title p-name"><a href="{{ post.href }}">{{ post.title }}</a></h3>
-    {% endif %}
-
-    {% if post.description %}
-    <p class="card-caption p-summary">{{ post.description }}</p>
-    {% endif %}
-
-    <footer class="card-meta">
-      {% if post.date %}
-      <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
-      {% endif %}
-    </footer>
-  </div>
-</article>
+  <figcaption class="p-summary">{{ post.description | default:post.title | default:'Photo' }}</figcaption>
+</figure>
+{% endwith %}
+{% endif %}
+{% endwith %}

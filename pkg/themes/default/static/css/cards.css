@@ -110,6 +110,13 @@
   color: var(--color-primary);
 }
 
+.card .card-description,
+.card .card-excerpt,
+.card .card-link-snippet,
+.card-note .card-text {
+  color: var(--color-text-muted);
+}
+
 /* Card meta (date, reading time, etc.) */
 .card .card-meta {
   display: flex;
@@ -160,7 +167,7 @@
 }
 
 .card-article .card-excerpt {
-  color: var(--color-text);
+  color: var(--color-text-muted);
   font-size: var(--text-base);
   line-height: var(--leading-relaxed);
   margin-bottom: var(--space-3);
@@ -375,14 +382,28 @@
    ========================================================================== */
 
 .card-link {
+  display: flex;
+  flex-direction: column;
   padding: 0;
   overflow: hidden;
 }
 
 .card-link .card-link-wrapper {
   display: flex;
+  align-items: flex-start;
   text-decoration: none;
   color: inherit;
+}
+
+.card-link .card-link-body {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.card-link .card-link-snippet {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
 }
 
 .card-link .card-link-image {
@@ -444,6 +465,7 @@
 }
 
 .card-link .card-meta {
+  margin-top: auto;
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
