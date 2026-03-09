@@ -3682,15 +3682,15 @@ compiled CSS or the Tailwind CDN JS script into your site.
 [markata-go.tailwind]
 include = "css"                # "css", "js", or false (default: "css")
 input = "tailwind.css"          # Input CSS (relative to assets_dir)
-output = "tailwind.full.css"    # Output CSS (relative to assets_dir)
+output = "markata-tailwind.css" # Output CSS (relative to assets_dir)
 config_file = ""                # Optional tailwind.config.js path
 build = true                     # Run Tailwind CLI during build
 minify = true                    # Pass --minify to Tailwind CLI
 auto_install = true              # Auto-download Tailwind CLI (default: true)
-version = "latest"              # Tailwind CLI version tag
+version = "v3.4.19"             # Managed Tailwind CLI version tag
 cache_dir = ""                  # Cache dir for Tailwind CLI
 binary = ""                     # Optional path to tailwindcss binary
-extra_args = ""                 # Extra CLI arguments
+extra_args = []                  # Optional extra CLI arguments
 verbose = false                  # Verbose installer/build logs
 ```
 
@@ -3698,26 +3698,29 @@ verbose = false                  # Verbose installer/build logs
 |-------|------|---------|-------------|
 | `include` | string \| bool | `"css"` | Load the compiled CSS (`"css"`), inject the CDN JS (`"js"`), or disable auto-inclusion (`false`). |
 | `input` | string | `"tailwind.css"` | Tailwind input CSS (relative to `assets_dir`). |
-| `output` | string | `"tailwind.full.css"` | Output CSS path (relative to `assets_dir`). |
+| `output` | string | `"markata-tailwind.css"` | Output CSS path (relative to `assets_dir`). |
 | `config_file` | string | `""` | Optional path to `tailwind.config.js`. |
 | `build` | bool | `true` | Run Tailwind CLI during build. |
 | `minify` | bool | `true` | Add `--minify` to the Tailwind CLI. |
-| `auto_install` | bool | `true` | Download the Tailwind CLI if missing. |
-| `version` | string | `"latest"` | Tailwind CLI version tag. |
+| `auto_install` | bool | `true` | Use the managed Tailwind CLI download instead of relying on `PATH`. |
+| `version` | string | `"v3.4.19"` | Managed Tailwind CLI version tag. |
 | `cache_dir` | string | `""` | Cache directory for the Tailwind CLI binary. |
 | `binary` | string | `""` | Optional explicit `tailwindcss` binary path. |
-| `extra_args` | string | `""` | Extra CLI arguments appended to the command. |
+| `extra_args` | string[] | `[]` | Extra CLI arguments appended to the command. |
 | `verbose` | bool | `false` | Verbose install/build output. |
 
 **Behavior:**
-1. Runs Tailwind CLI before assets are copied to output.
+1. Runs Tailwind CLI before assets are copied to output, then again after HTML is generated so output pages can participate in scanning.
 2. Resolves `input`/`output` relative to `assets_dir` (absolute paths are respected).
-3. `include = "css"` sets `theme.custom_css` to the output if it's empty.
-4. `include = "js"` injects the Tailwind CDN script and respects assets mode for vendoring.
-5. When `include = "css"` and CSS purge is disabled, a validation warning is emitted.
+3. If `input` is missing, generates a default Tailwind entry CSS file automatically.
+4. If `extra_args` is empty and `config_file` is unset, generates a temporary Tailwind config from `glob.patterns` and generated `output/**/*.html`.
+5. `include = "css"` sets `theme.custom_css` to the output if it's empty.
+6. `include = "js"` injects the Tailwind CDN script and respects assets mode for vendoring.
+7. When `include = "css"` and CSS purge is disabled, a validation warning is emitted.
 
 **Notes:**
 - Tailwind CLI is downloaded with checksum verification (versioned per platform).
+- With default settings, markata-go prefers the managed Tailwind binary for consistency.
 - If `auto_install = false`, the plugin uses `binary` or searches `PATH`.
 
 ### Examples

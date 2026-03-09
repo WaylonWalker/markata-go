@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -38,7 +39,7 @@ func getLatestGitHubReleaseVersion(baseURL string) (string, error) {
 		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
 			location := resp.Header.Get("Location")
 			if location == "" {
-				return "", err
+				return "", fmt.Errorf("missing redirect location for %s", currentURL)
 			}
 
 			parts := strings.Split(location, "/")
@@ -61,8 +62,8 @@ func getLatestGitHubReleaseVersion(baseURL string) (string, error) {
 			}
 		}
 
-		return "", nil
+		return "", fmt.Errorf("could not find version in final URL: %s", currentURL)
 	}
 
-	return "", nil
+	return "", fmt.Errorf("too many redirects resolving %s", baseURL)
 }

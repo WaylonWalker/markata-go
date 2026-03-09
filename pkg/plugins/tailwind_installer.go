@@ -65,6 +65,7 @@ type TailwindInstallerConfig struct {
 	AutoInstall *bool  `json:"auto_install,omitempty" yaml:"auto_install,omitempty" toml:"auto_install,omitempty"`
 	Version     string `json:"version,omitempty" yaml:"version,omitempty" toml:"version,omitempty"`
 	CacheDir    string `json:"cache_dir,omitempty" yaml:"cache_dir,omitempty" toml:"cache_dir,omitempty"`
+	Verbose     *bool  `json:"verbose,omitempty" yaml:"verbose,omitempty" toml:"verbose,omitempty"`
 }
 
 // IsAutoInstallEnabled returns whether auto-install is enabled.
@@ -120,6 +121,9 @@ func NewTailwindInstallerWithConfig(config TailwindInstallerConfig) *TailwindIns
 	}
 	if config.Version != "" {
 		installer.Version = config.Version
+	}
+	if config.Verbose != nil {
+		installer.Verbose = *config.Verbose
 	}
 	return installer
 }
@@ -295,7 +299,8 @@ func (i *TailwindInstaller) fetchTailwindChecksum(version, platformAsset string)
 		if len(fields) < 2 {
 			continue
 		}
-		if fields[1] == targetName {
+		filename := strings.TrimPrefix(fields[1], "./")
+		if filename == targetName {
 			checksum := strings.ToLower(fields[0])
 			if len(checksum) != 64 {
 				return "", NewTailwindInstallError(
@@ -347,13 +352,13 @@ func (i *TailwindInstaller) downloadTailwindAsset(version, platformAsset string)
 	}
 	defer tmpFile.Close()
 
-	written, err := io.Copy(tmpFile, resp.Body)
+	written, err := io.Copy(tmpFile, io.LimitReader(resp.Body, tailwindMaxBinarySize+1))
 	if err != nil {
 		os.Remove(tmpFile.Name())
 		return "", NewTailwindInstallError("download", "failed to write downloaded file", err)
 	}
 
-	if written == tailwindMaxBinarySize {
+	if written > tailwindMaxBinarySize {
 		os.Remove(tmpFile.Name())
 		return "", NewTailwindInstallError("download", "binary exceeds maximum allowed size", nil)
 	}

@@ -49,13 +49,9 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 	config := m.Config()
 
 	// Check if caching is disabled
-	if config.Extra != nil {
-		if cacheConfig, ok := config.Extra["build_cache"].(map[string]interface{}); ok {
-			if enabled, ok := cacheConfig["enabled"].(bool); ok && !enabled {
-				p.enabled = false
-				return nil
-			}
-		}
+	if !p.isEnabled(config) {
+		p.enabled = false
+		return nil
 	}
 
 	// Load existing cache
@@ -77,8 +73,15 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 	m.Cache().Set("build_cache", cache)
 
 	// Compute and check config hash
-	// For now, use a simple hash of the config file if it exists
+	// Use explicit config path(s) when available, otherwise fall back to local defaults
 	configFiles := []string{"markata-go.toml", "markata-go.yaml", "markata-go.json"}
+	if config.Extra != nil {
+		if paths, ok := config.Extra["config_paths"].([]string); ok && len(paths) > 0 {
+			configFiles = paths
+		} else if path, ok := config.Extra["config_path"].(string); ok && path != "" {
+			configFiles = []string{path}
+		}
+	}
 	for _, cf := range configFiles {
 		if hash, err := buildcache.HashFile(cf); err == nil {
 			if cache.SetConfigHash(hash) {
@@ -111,6 +114,21 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 	}
 
 	return p.configureIncrementalServe(m, cache)
+}
+
+func (p *BuildCachePlugin) isEnabled(config *lifecycle.Config) bool {
+	if config == nil || config.Extra == nil {
+		return true
+	}
+	cacheConfig, ok := config.Extra["build_cache"].(map[string]interface{})
+	if !ok {
+		return true
+	}
+	enabled, ok := cacheConfig["enabled"].(bool)
+	if !ok {
+		return true
+	}
+	return enabled
 }
 
 func (p *BuildCachePlugin) configureIncrementalServe(m *lifecycle.Manager, cache *buildcache.Cache) error {

@@ -1,0 +1,149 @@
+--- pkg/plugins/pagefind_installer.go
++++ pkg/plugins/pagefind_installer.go
+@@ -256,66 +256,11 @@
+ // GetLatestVersion fetches the latest Pagefind version from GitHub releases.
+ func (i *PagefindInstaller) GetLatestVersion() (string, error) {
+-	// Use GitHub's redirect to get the latest release
+-	currentURL := defaultReleaseBaseURL + "/latest"
+-
+-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+-	defer cancel()
+-
+-	// Use a client that doesn't follow redirects automatically
+-	client := &http.Client{
+-		Timeout: 30 * time.Second,
+-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+-			return http.ErrUseLastResponse
+-		},
+-	}
+-
+-	// Follow redirects manually until we find a version tag
+-	// GitHub may redirect through multiple hops (e.g., repo rename + /latest -> /tag/vX.Y.Z)
+-	const maxRedirects = 10
+-	for redirectCount := 0; redirectCount < maxRedirects; redirectCount++ {
+-		req, err := http.NewRequestWithContext(ctx, "HEAD", currentURL, http.NoBody)
+-		if err != nil {
+-			return "", NewPagefindInstallError("version_check", "failed to create request", err)
+-		}
+-
+-		resp, err := client.Do(req)
+-		if err != nil {
+-			return "", NewPagefindInstallError("version_check", "failed to check latest version", err)
+-		}
+-		resp.Body.Close()
+-
+-		// Check if this is a redirect
+-		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+-			location := resp.Header.Get("Location")
+-			if location == "" {
+-				return "", NewPagefindInstallError("version_check", "redirect without location header", nil)
+-			}
+-
+-			// Check if this redirect contains a version tag
+-			parts := strings.Split(location, "/")
+-			if len(parts) > 0 {
+-				lastPart := parts[len(parts)-1]
+-				if strings.HasPrefix(lastPart, "v") && strings.Contains(lastPart, ".") {
+-					// Found a version tag like v1.4.0
+-					return lastPart, nil
+-				}
+-			}
+-
+-			// Not a version URL, follow the redirect
+-			currentURL = location
+-			continue
+-		}
+-
+-		// If we got a 200 OK, we're at the final URL - shouldn't happen for /latest
+-		// Try to extract version from current URL
+-		parts := strings.Split(currentURL, "/")
+-		if len(parts) > 0 {
+-			lastPart := parts[len(parts)-1]
+-			if strings.HasPrefix(lastPart, "v") && strings.Contains(lastPart, ".") {
+-				return lastPart, nil
+-			}
+-		}
+-
+-		return "", NewPagefindInstallError("version_check", "could not find version in final URL", nil)
+-	}
+-
+-	return "", NewPagefindInstallError("version_check", "too many redirects", nil)
++	v, err := getLatestGitHubReleaseVersion(defaultReleaseBaseURL, "pagefind")
++	if err != nil {
++		return "", NewPagefindInstallError("version_check", "failed to check latest version", err)
++	}
++	if v == "" {
++		return "", NewPagefindInstallError("version_check", "could not find version", nil)
++	}
++	return v, nil
+ }
+
+--- pkg/plugins/tailwind_installer.go
++++ pkg/plugins/tailwind_installer.go
+@@ -222,57 +222,11 @@
+ // GetLatestTailwindVersion fetches the latest Tailwind version from GitHub releases.
+ func (i *TailwindInstaller) GetLatestTailwindVersion() (string, error) {
+-	currentURL := tailwindReleaseBaseURL + "/latest"
+-
+-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+-	defer cancel()
+-
+-	client := &http.Client{
+-		Timeout: 30 * time.Second,
+-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+-			return http.ErrUseLastResponse
+-		},
+-	}
+-
+-	const maxRedirects = 10
+-	for redirectCount := 0; redirectCount < maxRedirects; redirectCount++ {
+-		req, err := http.NewRequestWithContext(ctx, "HEAD", currentURL, http.NoBody)
+-		if err != nil {
+-			return "", NewTailwindInstallError("version_check", "failed to create request", err)
+-		}
+-
+-		resp, err := client.Do(req)
+-		if err != nil {
+-			return "", NewTailwindInstallError("version_check", "failed to check latest version", err)
+-		}
+-		resp.Body.Close()
+-
+-		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+-			location := resp.Header.Get("Location")
+-			if location == "" {
+-				return "", NewTailwindInstallError("version_check", "redirect without location header", nil)
+-			}
+-
+-			parts := strings.Split(location, "/")
+-			if len(parts) > 0 {
+-				lastPart := parts[len(parts)-1]
+-				if strings.HasPrefix(lastPart, "v") && strings.Contains(lastPart, ".") {
+-					return lastPart, nil
+-				}
+-			}
+-
+-			currentURL = location
+-			continue
+-		}
+-
+-		parts := strings.Split(currentURL, "/")
+-		if len(parts) > 0 {
+-			lastPart := parts[len(parts)-1]
+-			if strings.HasPrefix(lastPart, "v") && strings.Contains(lastPart, ".") {
+-				return lastPart, nil
+-			}
+-		}
+-
+-		return "", NewTailwindInstallError("version_check", "could not find version in final URL", nil)
+-	}
+-
+-	return "", NewTailwindInstallError("version_check", "too many redirects", nil)
++	v, err := getLatestGitHubReleaseVersion(tailwindReleaseBaseURL, "tailwind")
++	if err != nil {
++		return "", NewTailwindInstallError("version_check", "failed to check latest version", err)
++	}
++	if v == "" {
++		return "", NewTailwindInstallError("version_check", "could not find version", nil)
++	}
++	return v, nil
+ }

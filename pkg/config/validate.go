@@ -550,6 +550,10 @@ func isCSSPurgeEnabled(config *models.Config) bool {
 }
 
 func normalizeTailwindInclude(value string) string {
+	return configNormalizeTailwindInclude(value)
+}
+
+func configNormalizeTailwindInclude(value string) string {
 	value = strings.TrimSpace(strings.ToLower(value))
 	switch value {
 	case "", "false", "off", "0", "none":

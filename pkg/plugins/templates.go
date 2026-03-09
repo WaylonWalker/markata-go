@@ -933,14 +933,19 @@ func copyPluginConfigs(config *lifecycle.Config, modelsConfig *models.Config) {
 		modelsConfig.WebSub = websub
 	}
 
+	// Copy Theme config if available
+	if theme, ok := config.Extra["theme"].(models.ThemeConfig); ok {
+		modelsConfig.Theme = theme
+	}
+	if theme, ok := config.Extra["theme"].(map[string]interface{}); ok {
+		modelsConfig.Theme = themeFromMap(theme, modelsConfig.Theme)
+	}
 	// Copy Head config if available
 	if head, ok := config.Extra["head"].(models.HeadConfig); ok {
 		modelsConfig.Head = head
 	}
-
-	// Copy Theme config if available
-	if theme, ok := config.Extra["theme"].(models.ThemeConfig); ok {
-		modelsConfig.Theme = theme
+	if headMap, ok := config.Extra["head"].(map[string]interface{}); ok {
+		modelsConfig.Head = headFromMap(headMap, modelsConfig.Head)
 	}
 
 	// Copy Assets config if available
@@ -975,6 +980,135 @@ func getStringFromExtra(extra map[string]interface{}, key string) string {
 		return v
 	}
 	return ""
+}
+
+func themeFromMap(theme map[string]interface{}, fallback models.ThemeConfig) models.ThemeConfig {
+	result := fallback
+	if theme == nil {
+		return result
+	}
+	if name, ok := theme["name"].(string); ok && name != "" {
+		result.Name = name
+	}
+	if palette, ok := theme["palette"].(string); ok && palette != "" {
+		result.Palette = palette
+	}
+	if paletteLight, ok := theme["palette_light"].(string); ok && paletteLight != "" {
+		result.PaletteLight = paletteLight
+	}
+	if paletteDark, ok := theme["palette_dark"].(string); ok && paletteDark != "" {
+		result.PaletteDark = paletteDark
+	}
+	if customCSS, ok := theme["custom_css"].(string); ok {
+		result.CustomCSS = customCSS
+	}
+	switch variables := theme["variables"].(type) {
+	case map[string]string:
+		result.Variables = variables
+	case map[string]interface{}:
+		result.Variables = make(map[string]string, len(variables))
+		for key, value := range variables {
+			if v, ok := value.(string); ok {
+				result.Variables[key] = v
+			}
+		}
+	}
+	return result
+}
+
+func headFromMap(head map[string]interface{}, fallback models.HeadConfig) models.HeadConfig {
+	result := fallback
+	if head == nil {
+		return result
+	}
+	if text, ok := head["text"].(string); ok {
+		result.Text = text
+	}
+	result.Meta = metaTagsFromValue(head["meta"], result.Meta)
+	result.Link = linkTagsFromValue(head["link"], result.Link)
+	result.Script = scriptTagsFromValue(head["script"], result.Script)
+	return result
+}
+
+func metaTagsFromValue(value interface{}, fallback []models.MetaTag) []models.MetaTag {
+	switch meta := value.(type) {
+	case []models.MetaTag:
+		return meta
+	case []interface{}:
+		result := make([]models.MetaTag, 0, len(meta))
+		for _, entry := range meta {
+			m, ok := entry.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			tag := models.MetaTag{}
+			if name, ok := m["name"].(string); ok {
+				tag.Name = name
+			}
+			if property, ok := m["property"].(string); ok {
+				tag.Property = property
+			}
+			if content, ok := m["content"].(string); ok {
+				tag.Content = content
+			}
+			result = append(result, tag)
+		}
+		return result
+	default:
+		return fallback
+	}
+}
+
+func linkTagsFromValue(value interface{}, fallback []models.LinkTag) []models.LinkTag {
+	switch links := value.(type) {
+	case []models.LinkTag:
+		return links
+	case []interface{}:
+		result := make([]models.LinkTag, 0, len(links))
+		for _, entry := range links {
+			m, ok := entry.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			tag := models.LinkTag{}
+			if rel, ok := m["rel"].(string); ok {
+				tag.Rel = rel
+			}
+			if href, ok := m["href"].(string); ok {
+				tag.Href = href
+			}
+			if crossorigin, ok := m["crossorigin"].(bool); ok {
+				tag.Crossorigin = crossorigin
+			}
+			result = append(result, tag)
+		}
+		return result
+	default:
+		return fallback
+	}
+}
+
+func scriptTagsFromValue(value interface{}, fallback []models.ScriptTag) []models.ScriptTag {
+	switch scripts := value.(type) {
+	case []models.ScriptTag:
+		return scripts
+	case []interface{}:
+		result := make([]models.ScriptTag, 0, len(scripts))
+		for _, entry := range scripts {
+			m, ok := entry.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			tag := models.ScriptTag{}
+			if src, ok := m["src"].(string); ok {
+				tag.Src = src
+			}
+			result = append(result, tag)
+		}
+		return result
+	default:
+		return fallback
+	}
 }
 
 // getStringFromMap safely gets a string value from a map.

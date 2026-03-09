@@ -388,15 +388,15 @@ into your theme so you don't need a separate build step.
 [markata-go.tailwind]
 include = "css"                # "css", "js", or false (default: "css")
 input = "tailwind.css"          # Input CSS (relative to assets_dir)
-output = "tailwind.full.css"    # Output CSS (relative to assets_dir)
+output = "markata-tailwind.css" # Output CSS (relative to assets_dir)
 config_file = ""                # Optional tailwind.config.js path
 build = true                     # Run Tailwind CLI during build
 minify = true                    # Pass --minify to Tailwind CLI
 auto_install = true              # Auto-download Tailwind CLI (default: true)
-version = "latest"              # Tailwind CLI version tag (e.g. "v3.4.14")
+version = "v3.4.19"             # Managed Tailwind CLI version tag
 cache_dir = ""                  # Cache dir for Tailwind CLI
 binary = ""                     # Optional path to tailwindcss binary
-extra_args = ""                 # Extra CLI arguments
+extra_args = []                  # Optional extra CLI arguments
 verbose = false                  # Verbose installer/build logs
 ```
 
@@ -404,12 +404,22 @@ verbose = false                  # Verbose installer/build logs
 
 - `input`/`output` resolve relative to `assets_dir` and are copied/fingerprinted
   like any other static asset.
+- If `input` does not exist, markata-go generates a default Tailwind entry file for
+  you, so basic utility usage works without creating `tailwind.css` first.
+- If `extra_args` is empty and `config_file` is unset, markata-go generates a
+  temporary Tailwind config that scans your configured content globs and generated
+  `output/**/*.html`, so no separate content wiring is needed.
 - `include = "css"` loads the compiled CSS. If `theme.custom_css` is unset, the
   Tailwind output is assigned automatically. Explicit `theme.custom_css` always wins.
 - `include = "js"` injects `https://cdn.tailwindcss.com` in the document head.
   When `[markata-go.assets].mode = "self-hosted"`, markata-go vendors this script
   and uses the local URL from `asset_urls`.
 - `include = false` disables auto-inclusion; the build can still run.
+
+By default markata-go uses its managed Tailwind CLI version instead of a global
+`tailwindcss` on your `PATH`, which keeps builds consistent across machines. Set
+`auto_install = false` or `binary = "/path/to/tailwindcss"` only when you want to
+override that behavior.
 
 **Validation warning:** If `include = "css"` and `[markata-go.css_purge].enabled = false`,
 markata-go emits a warning because Tailwind outputs an intentionally large CSS bundle.

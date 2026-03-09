@@ -1869,7 +1869,7 @@ type TailwindConfig struct {
 	Output string `json:"output,omitempty" yaml:"output,omitempty" toml:"output,omitempty"`
 
 	// ConfigFile is the Tailwind config file path (optional).
-	ConfigFile string `json:"config,omitempty" yaml:"config,omitempty" toml:"config,omitempty"`
+	ConfigFile string `json:"config_file,omitempty" yaml:"config_file,omitempty" toml:"config_file,omitempty"`
 
 	// Build controls whether Tailwind should be executed automatically (default: true).
 	Build *bool `json:"build,omitempty" yaml:"build,omitempty" toml:"build,omitempty"`
@@ -1905,12 +1905,12 @@ func NewTailwindConfig() TailwindConfig {
 	return TailwindConfig{
 		Include:     &include,
 		Input:       "tailwind.css",
-		Output:      "tailwind.full.css",
+		Output:      "markata-tailwind.css",
 		ConfigFile:  "",
 		Build:       &build,
 		Minify:      &minify,
 		AutoInstall: &autoInstall,
-		Version:     "latest",
+		Version:     "v3.4.19",
 		CacheDir:    "",
 		Binary:      "",
 		ExtraArgs:   []string{},

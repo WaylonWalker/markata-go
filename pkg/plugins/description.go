@@ -72,7 +72,7 @@ func (p *DescriptionPlugin) Transform(m *lifecycle.Manager) error {
 
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		if post.Description != nil && *post.Description != "" {
-			cleaned := p.stripWikilinks(*post.Description)
+			cleaned := p.stripMarkdown(p.stripWikilinks(*post.Description))
 			post.Description = &cleaned
 			return nil
 		}

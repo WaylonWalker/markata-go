@@ -659,6 +659,11 @@ func TestRenderMarkdownPlugin_AttributeSyntax(t *testing.T) {
 			expected: `class="lead"`,
 		},
 		{
+			name:     "paragraph with class no space",
+			input:    "A paragraph{.lead}",
+			expected: `class="lead"`,
+		},
+		{
 			name:     "blockquote with class",
 			input:    "> Quoted text\n{.callout}",
 			expected: `class="callout"`,
@@ -676,6 +681,11 @@ func TestRenderMarkdownPlugin_AttributeSyntax(t *testing.T) {
 		{
 			name:     "list item with inline class",
 			input:    "- hello {.item}",
+			expected: `class="item"`,
+		},
+		{
+			name:     "list item with inline class no space",
+			input:    "- hello{.item}",
 			expected: `class="item"`,
 		},
 		{

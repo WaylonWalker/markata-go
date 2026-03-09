@@ -296,7 +296,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"content_templates": true, "footer_layout": true, "search": true,
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
 			"tag_aggregator": true, "websub": true, "shortcuts": true, "encryption": true,
-			"authors": true, "garden": true,
+			"authors": true, "garden": true, "tailwind": false, "css_purge": false,
 		}
 
 		// Copy unknown sections to Extra
@@ -1212,7 +1212,7 @@ func (e *tomlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 		config.MinEstimatedCrackTime = defaults.MinEstimatedCrackTime
 	}
 	if config.MinPasswordLength == 0 {
-		config.MinPasswordLength = defaults.MinPasswordLength
+		config.MinPasswordLength = defaults.MinPasswordLength // pragma: allowlist secret
 	}
 
 	return config
@@ -1907,7 +1907,7 @@ func (e *yamlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 		config.MinEstimatedCrackTime = defaults.MinEstimatedCrackTime
 	}
 	if config.MinPasswordLength == 0 {
-		config.MinPasswordLength = defaults.MinPasswordLength
+		config.MinPasswordLength = defaults.MinPasswordLength // pragma: allowlist secret
 	}
 
 	return config
@@ -3208,7 +3208,7 @@ func (e *jsonEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 		config.MinEstimatedCrackTime = defaults.MinEstimatedCrackTime
 	}
 	if config.MinPasswordLength == 0 {
-		config.MinPasswordLength = defaults.MinPasswordLength
+		config.MinPasswordLength = defaults.MinPasswordLength // pragma: allowlist secret
 	}
 
 	return config

@@ -11,11 +11,24 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
 const (
-	tailwindIncludeCSS = "css"
-	tailwindIncludeJS  = "js"
+	tailwindIncludeCSS      = "css"
+	tailwindIncludeJS       = "js"
+	tailwindDefaultInputCSS = "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n"
+)
+
+type tailwindInstaller interface {
+	Install() (string, error)
+}
+
+var (
+	tailwindLookPath     = exec.LookPath
+	newTailwindInstaller = func(config TailwindInstallerConfig) tailwindInstaller {
+		return NewTailwindInstallerWithConfig(config)
+	}
 )
 
 // TailwindPlugin runs the Tailwind standalone CLI and wires inclusion into the head.
@@ -41,6 +54,9 @@ func (p *TailwindPlugin) Priority(stage lifecycle.Stage) int {
 	if stage == lifecycle.StageConfigure {
 		return lifecycle.PriorityEarly
 	}
+	if stage == lifecycle.StageCleanup {
+		return lifecycle.PriorityEarly
+	}
 	return lifecycle.PriorityDefault
 }
 
@@ -55,8 +71,22 @@ func (p *TailwindPlugin) Configure(m *lifecycle.Manager) error {
 		config.Extra = make(map[string]interface{})
 	}
 
+	if config.Extra["models_config"] == nil {
+		config.Extra["models_config"] = p.buildModelsConfig(config)
+	}
+
 	if assetURLs, ok := config.Extra["asset_urls"].(map[string]string); ok {
 		p.assetURLs = assetURLs
+	}
+	if p.assetURLs == nil {
+		if assetURLsAny, ok := config.Extra["asset_urls"].(map[string]interface{}); ok {
+			p.assetURLs = make(map[string]string)
+			for key, value := range assetURLsAny {
+				if v, ok := value.(string); ok {
+					p.assetURLs[key] = v
+				}
+			}
+		}
 	}
 
 	p.config = p.parseTailwindConfig(config.Extra)
@@ -64,7 +94,7 @@ func (p *TailwindPlugin) Configure(m *lifecycle.Manager) error {
 	includeMode := normalizeTailwindInclude(p.config.IncludeMode())
 
 	if p.config.IsBuildEnabled() {
-		if err := p.runTailwindBuild(config); err != nil {
+		if err := p.runTailwindBuild(config, false); err != nil {
 			return err
 		}
 	}
@@ -75,7 +105,97 @@ func (p *TailwindPlugin) Configure(m *lifecycle.Manager) error {
 		}
 	}
 
+	if modelsConfig, ok := config.Extra["models_config"].(*models.Config); ok && modelsConfig != nil {
+		config.Extra["theme"] = modelsConfig.Theme
+		config.Extra["head"] = modelsConfig.Head
+		templates.ClearConfigMapCache()
+		if p.config.IsVerbose() {
+			fmt.Printf("[tailwind] theme in extra: %#v\n", config.Extra["theme"])
+			fmt.Printf("[tailwind] modelsConfig theme: %#v\n", modelsConfig.Theme)
+		}
+	}
+
 	return nil
+}
+
+// Cleanup rebuilds Tailwind after HTML has been written so content globs that
+// point at generated output (for example output/**/*.html) can produce the
+// final utility set before minification and CSS purge run.
+func (p *TailwindPlugin) Cleanup(m *lifecycle.Manager) error {
+	config := m.Config()
+	if config == nil {
+		return nil
+	}
+
+	includeMode := normalizeTailwindInclude(p.config.IncludeMode())
+	if includeMode != tailwindIncludeCSS || !p.config.IsBuildEnabled() {
+		return nil
+	}
+
+	if err := p.runTailwindBuild(config, true); err != nil {
+		return err
+	}
+
+	return p.syncBuiltCSSToOutput(config)
+}
+
+func (p *TailwindPlugin) buildModelsConfig(config *lifecycle.Config) *models.Config {
+	if config == nil {
+		return nil
+	}
+	return &models.Config{
+		OutputDir: config.OutputDir,
+		URL:       getStringFromExtra(config.Extra, "url"),
+		Title:     getStringFromExtra(config.Extra, "title"),
+		Author:    getStringFromExtra(config.Extra, "author"),
+		AssetsDir: getStringFromExtra(config.Extra, "assets_dir"),
+		Theme:     extractThemeConfig(config.Extra),
+		Head:      extractHeadConfig(config.Extra),
+	}
+}
+
+func extractThemeConfig(extra map[string]interface{}) models.ThemeConfig {
+	if extra == nil {
+		return models.ThemeConfig{}
+	}
+	if theme, ok := extra["theme"].(models.ThemeConfig); ok {
+		return theme
+	}
+	if theme, ok := extra["theme"].(map[string]interface{}); ok {
+		result := models.ThemeConfig{}
+		if name, ok := theme["name"].(string); ok && name != "" {
+			result.Name = name
+		}
+		if palette, ok := theme["palette"].(string); ok && palette != "" {
+			result.Palette = palette
+		}
+		if paletteLight, ok := theme["palette_light"].(string); ok && paletteLight != "" {
+			result.PaletteLight = paletteLight
+		}
+		if paletteDark, ok := theme["palette_dark"].(string); ok && paletteDark != "" {
+			result.PaletteDark = paletteDark
+		}
+		if customCSS, ok := theme["custom_css"].(string); ok {
+			result.CustomCSS = customCSS
+		}
+		if result.CustomCSS == "" {
+			if customCSS, ok := theme["custom_css"].([]byte); ok {
+				result.CustomCSS = string(customCSS)
+			}
+		}
+		return result
+	}
+	return models.ThemeConfig{}
+}
+
+func extractHeadConfig(extra map[string]interface{}) models.HeadConfig {
+	if extra == nil {
+		return models.HeadConfig{}
+	}
+	if head, ok := extra["head"].(models.HeadConfig); ok {
+		return head
+	}
+	return models.HeadConfig{}
 }
 
 func (p *TailwindPlugin) parseTailwindConfig(extra map[string]interface{}) models.TailwindConfig {
@@ -165,17 +285,23 @@ func (p *TailwindPlugin) parseTailwindConfigBools(raw map[string]interface{}, re
 	}
 }
 
-func (p *TailwindPlugin) runTailwindBuild(config *lifecycle.Config) error {
-	inputPath := p.resolveAssetPath(config, p.config.Input)
+func (p *TailwindPlugin) runTailwindBuild(config *lifecycle.Config, includeOutputHTML bool) error {
+	inputPath, cleanupInput, err := p.resolveBuildInput(config)
+	if err != nil {
+		return err
+	}
+	defer cleanupInput()
+
+	configPath, cleanupConfig, err := p.resolveBuildConfigFile(config, includeOutputHTML)
+	if err != nil {
+		return err
+	}
+	defer cleanupConfig()
+
 	outputPath := p.resolveAssetPath(config, p.config.Output)
 
 	if inputPath == "" || outputPath == "" {
 		return fmt.Errorf("tailwind: input and output paths must be set")
-	}
-
-	if _, err := os.Stat(inputPath); err != nil {
-		fmt.Printf("[tailwind] WARNING: input file not found: %s (skipping build)\n", inputPath)
-		return nil
 	}
 
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
@@ -189,10 +315,9 @@ func (p *TailwindPlugin) runTailwindBuild(config *lifecycle.Config) error {
 	if cliPath == "" {
 		return nil
 	}
-
 	args := []string{"-i", inputPath, "-o", outputPath}
-	if p.config.ConfigFile != "" {
-		args = append(args, "--config", p.config.ConfigFile)
+	if configPath != "" {
+		args = append(args, "--config", configPath)
 	}
 	if p.config.IsMinifyEnabled() {
 		args = append(args, "--minify")
@@ -235,11 +360,10 @@ func (p *TailwindPlugin) findOrInstallTailwind() (string, error) {
 		}
 	}
 
-	if path, err := exec.LookPath(getTailwindBinaryName()); err == nil {
-		return path, nil
-	}
-
 	if !p.config.IsAutoInstallEnabled() {
+		if path, err := tailwindLookPath(getTailwindBinaryName()); err == nil {
+			return path, nil
+		}
 		fmt.Printf("[tailwind] WARNING: tailwindcss not found in PATH, skipping build\n")
 		fmt.Printf("[tailwind] Install it or set [markata-go.tailwind].auto_install = true\n")
 		return "", nil
@@ -250,14 +374,14 @@ func (p *TailwindPlugin) findOrInstallTailwind() (string, error) {
 		version = normalized
 	}
 
-	installer := NewTailwindInstallerWithConfig(TailwindInstallerConfig{
+	installer := newTailwindInstaller(TailwindInstallerConfig{
 		Version:  version,
 		CacheDir: p.config.CacheDir,
+		Verbose:  p.config.Verbose,
 	})
-	installer.Verbose = p.config.IsVerbose()
 
 	if p.config.IsVerbose() {
-		fmt.Printf("[tailwind] tailwindcss not found in PATH, attempting auto-install...\n")
+		fmt.Printf("[tailwind] using managed Tailwind CLI %s\n", version)
 	}
 
 	installedPath, err := installer.Install()
@@ -276,18 +400,11 @@ func (p *TailwindPlugin) injectIncludes(config *lifecycle.Config, includeMode st
 
 	if includeMode == tailwindIncludeCSS {
 		if strings.TrimSpace(modelsConfig.Theme.CustomCSS) == "" {
-			outputPath := p.resolveAssetPath(config, p.config.Output)
-			if outputPath != "" {
-				if _, err := os.Stat(outputPath); err == nil {
-					modelsConfig.Theme.CustomCSS = p.relativeAssetPath(config, p.config.Output)
-				} else {
-					fmt.Printf("[tailwind] WARNING: output CSS not found: %s (skipping include)\n", outputPath)
-					return nil
-				}
+			relPath := p.relativeAssetPath(config, p.config.Output)
+			if relPath != "" {
+				modelsConfig.Theme.CustomCSS = relPath
 			}
 		}
-		config.Extra["theme"] = modelsConfig.Theme
-		config.Extra["models_config"] = modelsConfig
 		return nil
 	}
 
@@ -299,8 +416,6 @@ func (p *TailwindPlugin) injectIncludes(config *lifecycle.Config, includeMode st
 		if !headHasScript(modelsConfig.Head.Script, scriptSrc) {
 			modelsConfig.Head.Script = append(modelsConfig.Head.Script, models.ScriptTag{Src: scriptSrc})
 		}
-		config.Extra["head"] = modelsConfig.Head
-		config.Extra["models_config"] = modelsConfig
 	}
 
 	return nil
@@ -375,16 +490,174 @@ func (p *TailwindPlugin) relativeAssetPath(config *lifecycle.Config, path string
 	return filepath.ToSlash(trimmed)
 }
 
-func normalizeTailwindInclude(value string) string {
-	value = strings.TrimSpace(strings.ToLower(value))
-	switch value {
-	case "", "false", "off", "0", "none":
-		return ""
-	case "css", "js":
-		return value
-	default:
-		return ""
+func (p *TailwindPlugin) syncBuiltCSSToOutput(config *lifecycle.Config) error {
+	outputPath := p.resolveAssetPath(config, p.config.Output)
+	if outputPath == "" {
+		return nil
 	}
+
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("tailwind: reading built css: %w", err)
+	}
+
+	relPath := p.relativeAssetPath(config, p.config.Output)
+	if relPath == "" {
+		return nil
+	}
+
+	destPath := filepath.Join(config.OutputDir, filepath.FromSlash(relPath))
+	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		return fmt.Errorf("tailwind: creating output css directory: %w", err)
+	}
+	if err := os.WriteFile(destPath, data, 0o600); err != nil {
+		return fmt.Errorf("tailwind: syncing built css to output: %w", err)
+	}
+
+	return nil
+}
+
+func (p *TailwindPlugin) resolveBuildInput(config *lifecycle.Config) (inputPath string, cleanup func(), err error) {
+	inputPath = p.resolveAssetPath(config, p.config.Input)
+	if inputPath != "" {
+		if _, err := os.Stat(inputPath); err == nil {
+			return inputPath, func() {}, nil
+		} else if err != nil && !os.IsNotExist(err) {
+			return "", nil, fmt.Errorf("tailwind: checking input file: %w", err)
+		}
+	}
+
+	tmpFile, err := os.CreateTemp("", "markata-tailwind-*.css")
+	if err != nil {
+		return "", nil, fmt.Errorf("tailwind: creating default input css: %w", err)
+	}
+
+	cleanup = func() {
+		_ = os.Remove(tmpFile.Name())
+	}
+
+	if _, err := tmpFile.WriteString(tailwindDefaultInputCSS); err != nil {
+		cleanup()
+		_ = tmpFile.Close()
+		return "", nil, fmt.Errorf("tailwind: writing default input css: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("tailwind: closing default input css: %w", err)
+	}
+
+	if p.config.IsVerbose() {
+		fmt.Printf("[tailwind] input CSS missing, using generated default input\n")
+	}
+
+	return tmpFile.Name(), cleanup, nil
+}
+
+func (p *TailwindPlugin) resolveBuildConfigFile(config *lifecycle.Config, includeOutputHTML bool) (configPath string, cleanup func(), err error) {
+	if p.config.ConfigFile != "" || len(p.config.ExtraArgs) > 0 {
+		return p.config.ConfigFile, func() {}, nil
+	}
+
+	patterns := p.defaultContentPatterns(config, includeOutputHTML)
+	if len(patterns) == 0 {
+		return "", func() {}, nil
+	}
+
+	tmpFile, err := os.CreateTemp("", "markata-tailwind-*.config.js")
+	if err != nil {
+		return "", nil, fmt.Errorf("tailwind: creating default config file: %w", err)
+	}
+
+	cleanup = func() {
+		_ = os.Remove(tmpFile.Name())
+	}
+
+	content := make([]string, 0, len(patterns))
+	for _, pattern := range patterns {
+		content = append(content, fmt.Sprintf("  %q", filepath.ToSlash(pattern)))
+	}
+
+	configJS := "module.exports = {\ncontent: [\n" + strings.Join(content, ",\n") + "\n]\n}\n"
+	if _, err := tmpFile.WriteString(configJS); err != nil {
+		cleanup()
+		_ = tmpFile.Close()
+		return "", nil, fmt.Errorf("tailwind: writing default config file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("tailwind: closing default config file: %w", err)
+	}
+
+	if p.config.IsVerbose() {
+		fmt.Printf("[tailwind] generated default config with %d content patterns\n", len(patterns))
+	}
+
+	return tmpFile.Name(), cleanup, nil
+}
+
+func (p *TailwindPlugin) defaultContentArgs(config *lifecycle.Config, includeOutputHTML bool) []string {
+	patterns := p.defaultContentPatterns(config, includeOutputHTML)
+	if len(patterns) == 0 {
+		return nil
+	}
+	return []string{"--content", strings.Join(patterns, ",")}
+}
+
+func (p *TailwindPlugin) defaultContentPatterns(config *lifecycle.Config, includeOutputHTML bool) []string {
+	if config == nil {
+		return nil
+	}
+
+	contentDir := config.ContentDir
+	if strings.TrimSpace(contentDir) == "" {
+		contentDir = "."
+	}
+	if !filepath.IsAbs(contentDir) {
+		if cwd, err := os.Getwd(); err == nil {
+			contentDir = filepath.Join(cwd, contentDir)
+		}
+	}
+
+	patterns := make([]string, 0, len(config.GlobPatterns)+1)
+	seen := make(map[string]struct{}, len(config.GlobPatterns)+1)
+
+	globPatterns := config.GlobPatterns
+	if len(globPatterns) == 0 {
+		globPatterns = []string{"**/*.md"}
+	}
+
+	for _, pattern := range globPatterns {
+		pattern = strings.TrimSpace(pattern)
+		if pattern == "" {
+			continue
+		}
+		fullPattern := pattern
+		if !filepath.IsAbs(pattern) {
+			fullPattern = filepath.Join(contentDir, pattern)
+		}
+		fullPattern = filepath.ToSlash(fullPattern)
+		if _, ok := seen[fullPattern]; ok {
+			continue
+		}
+		seen[fullPattern] = struct{}{}
+		patterns = append(patterns, fullPattern)
+	}
+
+	if includeOutputHTML && strings.TrimSpace(config.OutputDir) != "" {
+		outputPattern := filepath.ToSlash(filepath.Join(config.OutputDir, "**", "*.html"))
+		if _, ok := seen[outputPattern]; !ok {
+			patterns = append(patterns, outputPattern)
+		}
+	}
+
+	return patterns
+}
+
+func normalizeTailwindInclude(value string) string {
+	return tailwindNormalizeInclude(value)
 }
 
 func headHasScript(scripts []models.ScriptTag, src string) bool {
@@ -399,10 +672,23 @@ func headHasScript(scripts []models.ScriptTag, src string) bool {
 	return false
 }
 
+func tailwindNormalizeInclude(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	switch value {
+	case "", "false", "off", "0", "none":
+		return ""
+	case "css", "js":
+		return value
+	default:
+		return ""
+	}
+}
+
 // Ensure TailwindPlugin implements the required interfaces.
 var (
 	_ lifecycle.Plugin          = (*TailwindPlugin)(nil)
 	_ lifecycle.ConfigurePlugin = (*TailwindPlugin)(nil)
+	_ lifecycle.CleanupPlugin   = (*TailwindPlugin)(nil)
 	_ lifecycle.PriorityPlugin  = (*TailwindPlugin)(nil)
 )
 
