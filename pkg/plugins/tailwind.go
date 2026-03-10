@@ -400,9 +400,9 @@ func (p *TailwindPlugin) injectIncludes(config *lifecycle.Config, includeMode st
 
 	if includeMode == tailwindIncludeCSS {
 		if strings.TrimSpace(modelsConfig.Theme.CustomCSS) == "" {
-			relPath := p.relativeAssetPath(config, p.config.Output)
-			if relPath != "" {
-				modelsConfig.Theme.CustomCSS = relPath
+			includePath := p.includeAssetPath(config, p.config.Output)
+			if includePath != "" {
+				modelsConfig.Theme.CustomCSS = includePath
 			}
 		}
 		return nil
@@ -490,6 +490,17 @@ func (p *TailwindPlugin) relativeAssetPath(config *lifecycle.Config, path string
 	return filepath.ToSlash(trimmed)
 }
 
+func (p *TailwindPlugin) includeAssetPath(config *lifecycle.Config, path string) string {
+	relPath := p.relativeAssetPath(config, path)
+	if relPath == "" {
+		return ""
+	}
+	if filepath.IsAbs(relPath) {
+		return ""
+	}
+	return relPath
+}
+
 func (p *TailwindPlugin) syncBuiltCSSToOutput(config *lifecycle.Config) error {
 	outputPath := p.resolveAssetPath(config, p.config.Output)
 	if outputPath == "" {
@@ -504,7 +515,7 @@ func (p *TailwindPlugin) syncBuiltCSSToOutput(config *lifecycle.Config) error {
 		return fmt.Errorf("tailwind: reading built css: %w", err)
 	}
 
-	relPath := p.relativeAssetPath(config, p.config.Output)
+	relPath := p.includeAssetPath(config, p.config.Output)
 	if relPath == "" {
 		return nil
 	}

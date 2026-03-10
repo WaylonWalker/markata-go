@@ -4,6 +4,7 @@ package plugins
 import (
 	"log"
 	"path/filepath"
+	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
@@ -82,14 +83,10 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 			configFiles = []string{path}
 		}
 	}
-	for _, cf := range configFiles {
-		if hash, err := buildcache.HashFile(cf); err == nil {
-			if cache.SetConfigHash(hash) {
-				// Config changed - cache was invalidated
-				log.Printf("[build_cache] Config changed, full rebuild required")
-			}
-			break
-		}
+	configHash := buildcache.ContentHash(configFilesHash(configFiles))
+	if configHash != "" && cache.SetConfigHash(configHash) {
+		// Config changed - cache was invalidated
+		log.Printf("[build_cache] Config changed, full rebuild required")
 	}
 
 	// Compute and check templates hash
@@ -129,6 +126,21 @@ func (p *BuildCachePlugin) isEnabled(config *lifecycle.Config) bool {
 		return true
 	}
 	return enabled
+}
+
+func configFilesHash(paths []string) string {
+	if len(paths) == 0 {
+		return ""
+	}
+
+	hashes := make([]string, 0, len(paths))
+	for _, path := range paths {
+		if hash, err := buildcache.HashFile(path); err == nil && hash != "" {
+			hashes = append(hashes, path+":"+hash)
+		}
+	}
+
+	return strings.Join(hashes, "\n")
 }
 
 func (p *BuildCachePlugin) configureIncrementalServe(m *lifecycle.Manager, cache *buildcache.Cache) error {

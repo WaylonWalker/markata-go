@@ -76,6 +76,16 @@ func TestTailwindPlugin_ResolveBuildConfigFile_GeneratesContentConfig(t *testing
 	}
 }
 
+func TestTailwindPlugin_IncludeAssetPath_RejectsAbsoluteOutput(t *testing.T) {
+	plugin := NewTailwindPlugin()
+	config := &lifecycle.Config{Extra: map[string]interface{}{"assets_dir": "/repo/static"}}
+
+	got := plugin.includeAssetPath(config, "/tmp/markata-tailwind.css")
+	if got != "" {
+		t.Fatalf("includeAssetPath() = %q, want empty string for absolute output outside assets dir", got)
+	}
+}
+
 func TestTailwindPlugin_ResolveBuildInput_GeneratesDefaultInput(t *testing.T) {
 	plugin := NewTailwindPlugin()
 	plugin.config = models.NewTailwindConfig()
