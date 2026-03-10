@@ -98,6 +98,27 @@ func TestTailwindPlugin_IncludeAssetPath_AcceptsAbsoluteOutputInsideAssetsDir(t 
 	}
 }
 
+func TestIsAbsoluteOrRootedPath(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		{name: "unix absolute", input: "/repo/pages/**/*.md", want: true},
+		{name: "windows absolute", input: `C:\repo\pages\**\*.md`, want: true},
+		{name: "windows rooted", input: `\repo\pages\**\*.md`, want: true},
+		{name: "relative", input: "pages/**/*.md", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isAbsoluteOrRootedPath(tt.input); got != tt.want {
+				t.Fatalf("isAbsoluteOrRootedPath(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestTailwindPlugin_ResolveBuildInput_GeneratesDefaultInput(t *testing.T) {
 	plugin := NewTailwindPlugin()
 	plugin.config = models.NewTailwindConfig()

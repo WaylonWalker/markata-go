@@ -501,7 +501,7 @@ func (p *TailwindPlugin) includeAssetPath(config *lifecycle.Config, path string)
 	if relPath == "" {
 		return ""
 	}
-	if filepath.IsAbs(relPath) {
+	if isAbsoluteOrRootedPath(relPath) {
 		return ""
 	}
 	return relPath
@@ -632,7 +632,7 @@ func (p *TailwindPlugin) defaultContentPatterns(config *lifecycle.Config, includ
 	if strings.TrimSpace(contentDir) == "" {
 		contentDir = "."
 	}
-	if !filepath.IsAbs(contentDir) {
+	if !isAbsoluteOrRootedPath(contentDir) {
 		if cwd, err := os.Getwd(); err == nil {
 			contentDir = filepath.Join(cwd, contentDir)
 		}
@@ -652,7 +652,7 @@ func (p *TailwindPlugin) defaultContentPatterns(config *lifecycle.Config, includ
 			continue
 		}
 		fullPattern := pattern
-		if !filepath.IsAbs(pattern) {
+		if !isAbsoluteOrRootedPath(pattern) {
 			fullPattern = filepath.Join(contentDir, pattern)
 		}
 		fullPattern = filepath.ToSlash(fullPattern)
@@ -675,6 +675,19 @@ func (p *TailwindPlugin) defaultContentPatterns(config *lifecycle.Config, includ
 
 func normalizeTailwindInclude(value string) string {
 	return tailwindNormalizeInclude(value)
+}
+
+func isAbsoluteOrRootedPath(path string) bool {
+	if filepath.IsAbs(path) {
+		return true
+	}
+	if len(path) >= 3 && (path[1] == ':' && (path[2] == '\\' || path[2] == '/')) {
+		return true
+	}
+	if path != "" && (path[0] == '/' || path[0] == '\\') {
+		return true
+	}
+	return false
 }
 
 func headHasScript(scripts []models.ScriptTag, src string) bool {
