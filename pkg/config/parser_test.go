@@ -2,6 +2,8 @@ package config
 
 import (
 	"testing"
+
+	"github.com/BurntSushi/toml"
 )
 
 func TestParseTOML(t *testing.T) {
@@ -401,6 +403,79 @@ use_gitignore = false
 	}
 }
 
+func TestParseTOML_GlobSlugMode(t *testing.T) {
+	data := []byte(`
+[markata-go]
+[markata-go.glob]
+slug_mode = "path"
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if config.GlobConfig.SlugMode != "path" {
+		t.Errorf("SlugMode = %q, want %q", config.GlobConfig.SlugMode, "path")
+	}
+}
+
+func TestParseTOML_GlobSlugRules(t *testing.T) {
+	data := []byte(`
+[markata-go]
+[markata-go.glob]
+slug_mode = "flat"
+
+[[markata-go.glob.slug_rules]]
+prefix = "posts/blog"
+mode = "flat"
+
+[[markata-go.glob.slug_rules]]
+prefix = "posts/notes"
+mode = "path"
+`)
+
+	config, err := ParseTOML(data)
+	if err != nil {
+		t.Fatalf("ParseTOML() error = %v", err)
+	}
+
+	if len(config.GlobConfig.SlugRules) != 2 {
+		t.Fatalf("len(SlugRules) = %d, want 2", len(config.GlobConfig.SlugRules))
+	}
+	if config.GlobConfig.SlugRules[1].Prefix != "posts/notes" {
+		t.Errorf("Prefix = %q, want %q", config.GlobConfig.SlugRules[1].Prefix, "posts/notes")
+	}
+}
+
+func TestParseTOML_GlobSlugRulesDecoder(t *testing.T) {
+	data := []byte(`
+[markata-go]
+
+[markata-go.glob]
+slug_mode = "flat"
+
+[[markata-go.glob.slug_rules]]
+prefix = "posts/blog"
+mode = "flat"
+
+[[markata-go.glob.slug_rules]]
+prefix = "posts/notes"
+mode = "path"
+`)
+
+	var wrapper struct {
+		MarkataGo tomlConfig `toml:"markata-go"`
+	}
+	if err := toml.Unmarshal(data, &wrapper); err != nil {
+		t.Fatalf("toml.Unmarshal() error = %v", err)
+	}
+
+	if len(wrapper.MarkataGo.Glob.SlugRules) != 2 {
+		t.Fatalf("decoder len(SlugRules) = %d, want 2", len(wrapper.MarkataGo.Glob.SlugRules))
+	}
+}
+
 func TestParseTOML_FeedFormats(t *testing.T) {
 	data := []byte(`
 [markata-go]
@@ -710,7 +785,8 @@ func TestParseJSON_NestedConfig(t *testing.T) {
     "output_dir": "public",
     "glob": {
       "patterns": ["posts/**/*.md", "pages/*.md"],
-      "use_gitignore": true
+	      "use_gitignore": true,
+	      "slug_mode": "path"
     },
     "feed_defaults": {
       "items_per_page": 20,
@@ -733,6 +809,9 @@ func TestParseJSON_NestedConfig(t *testing.T) {
 
 	if len(config.GlobConfig.Patterns) != 2 {
 		t.Errorf("len(Patterns) = %d, want 2", len(config.GlobConfig.Patterns))
+	}
+	if config.GlobConfig.SlugMode != "path" {
+		t.Errorf("SlugMode = %q, want %q", config.GlobConfig.SlugMode, "path")
 	}
 	if config.FeedDefaults.ItemsPerPage != 20 {
 		t.Errorf("ItemsPerPage = %d, want 20", config.FeedDefaults.ItemsPerPage)

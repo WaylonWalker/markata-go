@@ -573,6 +573,74 @@ func TestPost_GenerateSlug_RegularMdNotAffected(t *testing.T) {
 	}
 }
 
+func TestPost_GenerateSlugWithMode_Path(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		expected string
+	}{
+		{name: "posts root file", path: "posts/hello-world.md", expected: "hello-world"},
+		{name: "pages nested file", path: "pages/docs/getting-started.md", expected: "docs/getting-started"},
+		{name: "posts nested index", path: "posts/notes/index.md", expected: "notes"},
+		{name: "pages nested readme", path: "pages/docs/README.md", expected: "docs"},
+		{name: "deep nested path", path: "posts/blog/2026/my-post.md", expected: "blog/2026/my-post"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewPost(tt.path)
+			p.GenerateSlugWithMode(SlugModePath)
+			if p.Slug != tt.expected {
+				t.Errorf("Slug: got %q, want %q", p.Slug, tt.expected)
+			}
+		})
+	}
+}
+
+func TestNormalizeSlugMode(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{input: "flat", want: SlugModeFlat},
+		{input: "path", want: SlugModePath},
+		{input: "directory", want: SlugModePath},
+		{input: "nested", want: SlugModePath},
+		{input: "", want: SlugModeFlat},
+		{input: "unknown", want: SlugModeFlat},
+	}
+
+	for _, tt := range tests {
+		if got := NormalizeSlugMode(tt.input); got != tt.want {
+			t.Errorf("NormalizeSlugMode(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestSlugModeForPath(t *testing.T) {
+	rules := []SlugRule{
+		{Prefix: "posts/blog", Mode: SlugModeFlat},
+		{Prefix: "posts/notes", Mode: SlugModePath},
+		{Prefix: "posts/notes/daily", Mode: SlugModeFlat},
+	}
+
+	tests := []struct {
+		path string
+		want string
+	}{
+		{path: "posts/blog/launch.md", want: SlugModeFlat},
+		{path: "posts/notes/today.md", want: SlugModePath},
+		{path: "posts/notes/daily/entry.md", want: SlugModeFlat},
+		{path: "pages/docs/intro.md", want: SlugModeFlat},
+	}
+
+	for _, tt := range tests {
+		if got := SlugModeForPath(tt.path, SlugModeFlat, rules); got != tt.want {
+			t.Errorf("SlugModeForPath(%q) = %q, want %q", tt.path, got, tt.want)
+		}
+	}
+}
+
 // =============================================================================
 // Slug Generation Issue #433 - Periods replaced with dashes
 // =============================================================================
