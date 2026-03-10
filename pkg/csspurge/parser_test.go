@@ -148,6 +148,8 @@ func TestExtractClassesFromSelector(t *testing.T) {
 		{"#id.class", []string{"class"}},
 		{"[type].form-control", []string{"form-control"}},
 		{".btn-primary:hover", []string{"btn-primary"}},
+		{".hover\\:bg-blue-700:hover", []string{"hover\\:bg-blue-700"}},
+		{".focus\\:ring-2.hover\\:bg-blue-700:hover", []string{"focus\\:ring-2", "hover\\:bg-blue-700"}},
 	}
 
 	for _, tt := range tests {

@@ -53,6 +53,11 @@ func TestDescriptionPlugin_StripMarkdown(t *testing.T) {
 			expected: "Read this post and external",
 		},
 		{
+			name:     "inline attributes stripped",
+			input:    "Some text {.text-gray-500 .italic} and {#my-id} with {.my-class}",
+			expected: "Some text and with",
+		},
+		{
 			name:     "bold text",
 			input:    "This is **bold** text",
 			expected: "This is ** text", // Note: emphasis regex has known limitations

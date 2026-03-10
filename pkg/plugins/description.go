@@ -72,7 +72,7 @@ func (p *DescriptionPlugin) Transform(m *lifecycle.Manager) error {
 
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		if post.Description != nil && *post.Description != "" {
-			cleaned := p.stripWikilinks(*post.Description)
+			cleaned := p.stripMarkdown(p.stripWikilinks(*post.Description))
 			post.Description = &cleaned
 			return nil
 		}
@@ -130,6 +130,9 @@ var (
 
 	// Match multiple whitespace
 	multiSpaceRegex = regexp.MustCompile(`\s+`)
+
+	// Match inline attributes {.class #id key="value"}
+	inlineAttributesRegex = regexp.MustCompile(`\{[.#][^}]+\}`)
 )
 
 // generateDescription creates a description from markdown content.
@@ -227,6 +230,9 @@ func (p *DescriptionPlugin) stripMarkdown(text string) string {
 		}
 		return ""
 	})
+
+	// Remove inline attributes
+	text = inlineAttributesRegex.ReplaceAllString(text, "")
 
 	// Remove inline code
 	text = inlineCodeRegex.ReplaceAllString(text, "")

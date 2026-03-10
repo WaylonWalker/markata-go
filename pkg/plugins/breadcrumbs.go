@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"path"
 	"strings"
+	"unicode"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -403,7 +404,18 @@ func (p *BreadcrumbsPlugin) humanizeSegment(segment string) string {
 	label = strings.ReplaceAll(label, "_", " ")
 
 	// Title case
-	return strings.Title(label) //nolint:staticcheck // Title is fine for basic usage
+	upperNext := true
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			upperNext = true
+			return r
+		}
+		if upperNext {
+			upperNext = false
+			return unicode.ToTitle(r)
+		}
+		return r
+	}, label)
 }
 
 // getPostTitle returns the post's title for display.

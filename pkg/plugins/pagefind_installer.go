@@ -108,7 +108,7 @@ func NewPagefindInstallerConfig() PagefindInstallerConfig {
 	autoInstall := true
 	return PagefindInstallerConfig{
 		AutoInstall: &autoInstall,
-		Version:     "latest",
+		Version:     Latest,
 		CacheDir:    "",
 	}
 }
@@ -135,7 +135,7 @@ var platformMapping = map[string]map[string]string{
 func NewPagefindInstaller() *PagefindInstaller {
 	return &PagefindInstaller{
 		CacheDir: "",
-		Version:  "latest",
+		Version:  Latest,
 		client: &http.Client{
 			Timeout: defaultHTTPTimeout,
 		},
@@ -256,76 +256,19 @@ func (i *PagefindInstaller) IsCached(version string) (bool, error) {
 // GetLatestVersion fetches the latest Pagefind version from GitHub releases.
 // It follows redirect chains (e.g., repo renames) until it finds the final URL with the version tag.
 func (i *PagefindInstaller) GetLatestVersion() (string, error) {
-	// Use GitHub's redirect to get the latest release
-	currentURL := defaultReleaseBaseURL + "/latest"
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// Use a client that doesn't follow redirects automatically
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+	v, err := getLatestGitHubReleaseVersion(defaultReleaseBaseURL)
+	if err != nil {
+		return "", NewPagefindInstallError("version_check", "failed to check latest version", err)
 	}
-
-	// Follow redirects manually until we find a version tag
-	// GitHub may redirect through multiple hops (e.g., repo rename + /latest -> /tag/vX.Y.Z)
-	const maxRedirects = 10
-	for redirectCount := 0; redirectCount < maxRedirects; redirectCount++ {
-		req, err := http.NewRequestWithContext(ctx, "HEAD", currentURL, http.NoBody)
-		if err != nil {
-			return "", NewPagefindInstallError("version_check", "failed to create request", err)
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			return "", NewPagefindInstallError("version_check", "failed to check latest version", err)
-		}
-		resp.Body.Close()
-
-		// Check if this is a redirect
-		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
-			location := resp.Header.Get("Location")
-			if location == "" {
-				return "", NewPagefindInstallError("version_check", "redirect without location header", nil)
-			}
-
-			// Check if this redirect contains a version tag
-			parts := strings.Split(location, "/")
-			if len(parts) > 0 {
-				lastPart := parts[len(parts)-1]
-				if strings.HasPrefix(lastPart, "v") && strings.Contains(lastPart, ".") {
-					// Found a version tag like v1.4.0
-					return lastPart, nil
-				}
-			}
-
-			// Not a version URL, follow the redirect
-			currentURL = location
-			continue
-		}
-
-		// If we got a 200 OK, we're at the final URL - shouldn't happen for /latest
-		// Try to extract version from current URL
-		parts := strings.Split(currentURL, "/")
-		if len(parts) > 0 {
-			lastPart := parts[len(parts)-1]
-			if strings.HasPrefix(lastPart, "v") && strings.Contains(lastPart, ".") {
-				return lastPart, nil
-			}
-		}
-
-		return "", NewPagefindInstallError("version_check", "could not find version in final URL", nil)
+	if v == "" {
+		return "", NewPagefindInstallError("version_check", "could not find version in final URL or too many redirects", nil)
 	}
-
-	return "", NewPagefindInstallError("version_check", "too many redirects", nil)
+	return v, nil
 }
 
 // ResolveVersion resolves "latest" to an actual version number.
 func (i *PagefindInstaller) ResolveVersion() (string, error) {
-	if i.Version != "latest" && i.Version != "" {
+	if i.Version != Latest && i.Version != "" {
 		return i.Version, nil
 	}
 
