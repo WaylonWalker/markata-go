@@ -787,6 +787,49 @@ og = true        # Enable social card HTML for screenshot tools
 
 ---
 
+### Glob Settings (`[my-ssg.glob]`)
+
+```toml
+[my-ssg.glob]
+patterns = ["posts/**/*.md", "pages/**/*.md"]
+use_gitignore = true
+slug_mode = "flat"    # "flat" (default) or "path"
+```
+
+The glob section controls both file discovery and the default slug derivation strategy.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `patterns` | string[] | `["pages/**/*.md", "posts/**/*.md"]` | Glob patterns to find content files |
+| `use_gitignore` | bool | `true` | Respect `.gitignore` when discovering content |
+| `slug_mode` | string | `"flat"` | How to derive slugs when frontmatter does not set `slug` |
+
+`slug_mode` values:
+
+- `flat` - Current markata behavior. Slugs come from the filename only. Examples: `posts/2026/hello.md -> hello`, `docs/index.md -> docs`.
+- `path` - Derive slugs from the relative content path. Leading `posts/` and `pages/` path segments are removed. `index.md`, `README.md`, and `readme.md` become the root of their containing directory. Examples: `posts/notes/today.md -> notes/today`, `pages/docs/README.md -> docs`.
+
+Optional path-specific overrides can be declared with `slug_rules`:
+
+```toml
+[my-ssg.glob]
+slug_mode = "flat"
+
+[[my-ssg.glob.slug_rules]]
+prefix = "posts/blog"
+mode = "flat"
+
+[[my-ssg.glob.slug_rules]]
+prefix = "posts/notes"
+mode = "path"
+```
+
+Rules use the longest matching prefix, so more specific directories win.
+
+Explicit frontmatter `slug` always wins over `slug_mode`.
+
+---
+
 ### Well-Known Files (`[my-ssg.well_known]`)
 
 ```toml

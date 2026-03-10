@@ -780,12 +780,38 @@ src = "/js/analytics.js"
 |-------|------|---------|-------------|
 | `patterns` | string[] | `["pages/**/*.md", "posts/**/*.md"]` | Glob patterns to find content files |
 | `use_gitignore` | bool | `true` | Respect .gitignore when finding files |
+| `slug_mode` | string | `"flat"` | Slug derivation mode: `flat` or `path` |
 
 ```toml
 [markata-go.glob]
 patterns = ["posts/**/*.md", "pages/*.md", "docs/**/*.md"]
 use_gitignore = true
+slug_mode = "flat"
 ```
+
+`slug_mode` controls how markata derives a slug when frontmatter does not explicitly set `slug`:
+
+- `flat` keeps the current default behavior and uses the filename only. `posts/2026/hello-world.md` becomes `hello-world`.
+- `path` derives the slug from the content path, strips leading `posts/` or `pages/`, and treats `index.md` or `README.md` as the directory root. `posts/notes/today.md` becomes `notes/today`, and `pages/docs/README.md` becomes `docs`.
+
+Frontmatter `slug` still overrides either mode.
+
+You can also mix both behaviors by directory with `slug_rules`:
+
+```toml
+[markata-go.glob]
+slug_mode = "flat"
+
+[[markata-go.glob.slug_rules]]
+prefix = "posts/blog"
+mode = "flat"
+
+[[markata-go.glob.slug_rules]]
+prefix = "posts/notes"
+mode = "path"
+```
+
+Rules match by content path prefix, and the longest matching prefix wins. That lets you keep primary content flat while letting notes or docs stay nested.
 
 ### Markdown Settings (`[markata-go.markdown]`)
 

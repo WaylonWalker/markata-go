@@ -355,6 +355,12 @@ func mergeGlobConfig(base, override models.GlobConfig) models.GlobConfig {
 	// Since we can't distinguish between "explicitly set to false" and "not set",
 	// we always take the override value
 	result.UseGitignore = override.UseGitignore
+	if override.SlugMode != "" {
+		result.SlugMode = override.SlugMode
+	}
+	if len(override.SlugRules) > 0 {
+		result.SlugRules = append([]models.SlugRule{}, override.SlugRules...)
+	}
 
 	return result
 }
@@ -508,7 +514,7 @@ func mergeEncryptionConfig(base, override models.EncryptionConfig) models.Encryp
 		result.MinEstimatedCrackTime = override.MinEstimatedCrackTime
 	}
 	if override.MinPasswordLength != 0 {
-		result.MinPasswordLength = override.MinPasswordLength
+		result.MinPasswordLength = override.MinPasswordLength // pragma: allowlist secret
 	}
 
 	// Merge private_tags: override entries take precedence over base

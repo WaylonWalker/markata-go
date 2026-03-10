@@ -52,6 +52,8 @@ type baseConfigData struct {
 	DisabledHooks []string
 	GlobPatterns  []string
 	UseGitignore  *bool
+	SlugMode      string
+	SlugRules     []models.SlugRule
 	Extensions    []string
 	Concurrency   int
 	Theme         models.ThemeConfig
@@ -169,7 +171,9 @@ func buildConfig(src configSource) *models.Config {
 		Hooks:         base.Hooks,
 		DisabledHooks: base.DisabledHooks,
 		GlobConfig: models.GlobConfig{
-			Patterns: base.GlobPatterns,
+			Patterns:  base.GlobPatterns,
+			SlugMode:  base.SlugMode,
+			SlugRules: append([]models.SlugRule{}, base.SlugRules...),
 		},
 		MarkdownConfig: models.MarkdownConfig{
 			Extensions: base.Extensions,
@@ -284,6 +288,10 @@ func ParseTOML(data []byte) (*models.Config, error) {
 
 	// Extract the markata-go section as a map
 	if markataGoRaw, ok := rawWrapper["markata-go"].(map[string]any); ok {
+		if globRaw, ok := markataGoRaw["glob"].(map[string]any); ok && len(config.GlobConfig.SlugRules) == 0 {
+			config.GlobConfig.SlugRules = extractSlugRules(globRaw["slug_rules"])
+		}
+
 		// Initialize Extra if needed
 		if config.Extra == nil {
 			config.Extra = make(map[string]any)
@@ -316,6 +324,34 @@ func ParseTOML(data []byte) (*models.Config, error) {
 	}
 
 	return config, nil
+}
+
+func extractSlugRules(raw any) []models.SlugRule {
+	entries, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+
+	rules := make([]models.SlugRule, 0, len(entries))
+	for _, entry := range entries {
+		m, ok := entry.(map[string]any)
+		if !ok {
+			continue
+		}
+		rules = append(rules, models.SlugRule{
+			Prefix: stringValue(m["prefix"]),
+			Mode:   stringValue(m["mode"]),
+		})
+	}
+	return rules
+}
+
+func stringValue(v any) string {
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return s
 }
 
 // ParseYAML parses YAML configuration data into a Config struct.
@@ -471,8 +507,15 @@ type tomlFontConfig struct {
 }
 
 type tomlGlobConfig struct {
-	Patterns     []string `toml:"patterns"`
-	UseGitignore *bool    `toml:"use_gitignore"`
+	Patterns     []string       `toml:"patterns"`
+	UseGitignore *bool          `toml:"use_gitignore"`
+	SlugMode     string         `toml:"slug_mode"`
+	SlugRules    []tomlSlugRule `toml:"slug_rules"`
+}
+
+type tomlSlugRule struct {
+	Prefix string `toml:"prefix"`
+	Mode   string `toml:"mode"`
 }
 
 type tomlMarkdownConfig struct {
@@ -1253,7 +1296,7 @@ func (e *tomlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 		config.MinEstimatedCrackTime = defaults.MinEstimatedCrackTime
 	}
 	if config.MinPasswordLength == 0 {
-		config.MinPasswordLength = defaults.MinPasswordLength
+		config.MinPasswordLength = defaults.MinPasswordLength // pragma: allowlist secret
 	}
 
 	return config
@@ -1543,6 +1586,8 @@ func (c *tomlConfig) getBaseConfig() baseConfigData {
 		DisabledHooks: c.DisabledHooks,
 		GlobPatterns:  c.Glob.Patterns,
 		UseGitignore:  c.Glob.UseGitignore,
+		SlugMode:      c.Glob.SlugMode,
+		SlugRules:     c.Glob.toSlugRules(),
 		Extensions:    c.Markdown.Extensions,
 		Concurrency:   c.Concurrency,
 		Theme:         c.Theme.toThemeConfig(),
@@ -1808,8 +1853,15 @@ type yamlFooterConfig struct {
 }
 
 type yamlGlobConfig struct {
-	Patterns     []string `yaml:"patterns"`
-	UseGitignore *bool    `yaml:"use_gitignore"`
+	Patterns     []string       `yaml:"patterns"`
+	UseGitignore *bool          `yaml:"use_gitignore"`
+	SlugMode     string         `yaml:"slug_mode"`
+	SlugRules    []yamlSlugRule `yaml:"slug_rules"`
+}
+
+type yamlSlugRule struct {
+	Prefix string `yaml:"prefix"`
+	Mode   string `yaml:"mode"`
 }
 
 type yamlMarkdownConfig struct {
@@ -1980,7 +2032,7 @@ func (e *yamlEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 		config.MinEstimatedCrackTime = defaults.MinEstimatedCrackTime
 	}
 	if config.MinPasswordLength == 0 {
-		config.MinPasswordLength = defaults.MinPasswordLength
+		config.MinPasswordLength = defaults.MinPasswordLength // pragma: allowlist secret
 	}
 
 	return config
@@ -2958,6 +3010,8 @@ func (c *yamlConfig) getBaseConfig() baseConfigData {
 		DisabledHooks: c.DisabledHooks,
 		GlobPatterns:  c.Glob.Patterns,
 		UseGitignore:  c.Glob.UseGitignore,
+		SlugMode:      c.Glob.SlugMode,
+		SlugRules:     c.Glob.toSlugRules(),
 		Extensions:    c.Markdown.Extensions,
 		Concurrency:   c.Concurrency,
 		Theme:         c.Theme.toThemeConfig(),
@@ -3157,12 +3211,43 @@ type jsonFooterConfig struct {
 }
 
 type jsonGlobConfig struct {
-	Patterns     []string `json:"patterns"`
-	UseGitignore *bool    `json:"use_gitignore"`
+	Patterns     []string       `json:"patterns"`
+	UseGitignore *bool          `json:"use_gitignore"`
+	SlugMode     string         `json:"slug_mode"`
+	SlugRules    []jsonSlugRule `json:"slug_rules"`
+}
+
+type jsonSlugRule struct {
+	Prefix string `json:"prefix"`
+	Mode   string `json:"mode"`
 }
 
 type jsonMarkdownConfig struct {
 	Extensions []string `json:"extensions"`
+}
+
+func (g tomlGlobConfig) toSlugRules() []models.SlugRule {
+	rules := make([]models.SlugRule, 0, len(g.SlugRules))
+	for _, rule := range g.SlugRules {
+		rules = append(rules, models.SlugRule{Prefix: rule.Prefix, Mode: rule.Mode})
+	}
+	return rules
+}
+
+func (g yamlGlobConfig) toSlugRules() []models.SlugRule {
+	rules := make([]models.SlugRule, 0, len(g.SlugRules))
+	for _, rule := range g.SlugRules {
+		rules = append(rules, models.SlugRule{Prefix: rule.Prefix, Mode: rule.Mode})
+	}
+	return rules
+}
+
+func (g jsonGlobConfig) toSlugRules() []models.SlugRule {
+	rules := make([]models.SlugRule, 0, len(g.SlugRules))
+	for _, rule := range g.SlugRules {
+		rules = append(rules, models.SlugRule{Prefix: rule.Prefix, Mode: rule.Mode})
+	}
+	return rules
 }
 
 type jsonFeedConfig struct {
@@ -3329,7 +3414,7 @@ func (e *jsonEncryptionConfig) toEncryptionConfig() models.EncryptionConfig {
 		config.MinEstimatedCrackTime = defaults.MinEstimatedCrackTime
 	}
 	if config.MinPasswordLength == 0 {
-		config.MinPasswordLength = defaults.MinPasswordLength
+		config.MinPasswordLength = defaults.MinPasswordLength // pragma: allowlist secret
 	}
 
 	return config
@@ -4307,6 +4392,8 @@ func (c *jsonConfig) getBaseConfig() baseConfigData {
 		DisabledHooks: c.DisabledHooks,
 		GlobPatterns:  c.Glob.Patterns,
 		UseGitignore:  c.Glob.UseGitignore,
+		SlugMode:      c.Glob.SlugMode,
+		SlugRules:     c.Glob.toSlugRules(),
 		Extensions:    c.Markdown.Extensions,
 		Concurrency:   c.Concurrency,
 		Theme:         c.Theme.toThemeConfig(),

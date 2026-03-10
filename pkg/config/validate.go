@@ -62,6 +62,27 @@ func ValidateConfig(config *models.Config) []error {
 		})
 	}
 
+	if config.GlobConfig.SlugMode != "" && !models.IsValidSlugMode(config.GlobConfig.SlugMode) {
+		errs = append(errs, ValidationError{
+			Field:   "glob.slug_mode",
+			Message: `must be one of: "flat", "path"`,
+		})
+	}
+	for i, rule := range config.GlobConfig.SlugRules {
+		if strings.TrimSpace(rule.Prefix) == "" {
+			errs = append(errs, ValidationError{
+				Field:   fmt.Sprintf("glob.slug_rules[%d].prefix", i),
+				Message: "must not be empty",
+			})
+		}
+		if !models.IsValidSlugMode(rule.Mode) {
+			errs = append(errs, ValidationError{
+				Field:   fmt.Sprintf("glob.slug_rules[%d].mode", i),
+				Message: `must be one of: "flat", "path"`,
+			})
+		}
+	}
+
 	// Validate license configuration
 	if !config.License.IsDisabled() {
 		if key, ok := config.License.Key(); ok {
@@ -152,6 +173,39 @@ func ValidateConfigWithPositions(config *models.Config, tracker *PositionTracker
 			GetFixSuggestion("empty_patterns", "", ""),
 			true,
 		))
+	}
+
+	if config.GlobConfig.SlugMode != "" && !models.IsValidSlugMode(config.GlobConfig.SlugMode) {
+		configErrors.Add(NewConfigErrorWithFix(
+			tracker,
+			"glob.slug_mode",
+			config.GlobConfig.SlugMode,
+			`must be one of: "flat", "path"`,
+			"Use \"flat\" for filename-based slugs or \"path\" for directory-based slugs.",
+			false,
+		))
+	}
+	for i, rule := range config.GlobConfig.SlugRules {
+		if strings.TrimSpace(rule.Prefix) == "" {
+			configErrors.Add(NewConfigErrorWithFix(
+				tracker,
+				fmt.Sprintf("glob.slug_rules[%d].prefix", i),
+				rule.Prefix,
+				"must not be empty",
+				"Set a content path prefix like \"posts/blog\" or remove the rule.",
+				false,
+			))
+		}
+		if !models.IsValidSlugMode(rule.Mode) {
+			configErrors.Add(NewConfigErrorWithFix(
+				tracker,
+				fmt.Sprintf("glob.slug_rules[%d].mode", i),
+				rule.Mode,
+				`must be one of: "flat", "path"`,
+				"Use \"flat\" or \"path\".",
+				false,
+			))
+		}
 	}
 
 	// Validate feed configurations

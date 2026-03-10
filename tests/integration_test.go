@@ -201,6 +201,90 @@ Content here`)
 	}
 }
 
+func TestOutputStructure_PathSlugModeFromContentPath(t *testing.T) {
+	site := newTestSite(t)
+	site.addPost("posts/notes/today.md", `---
+title: Today
+published: true
+---
+Content here`)
+
+	m := lifecycle.NewManager()
+	cfg := &lifecycle.Config{
+		ContentDir:   site.contentDir,
+		OutputDir:    site.outputDir,
+		GlobPatterns: []string{"**/*.md"},
+		Extra:        make(map[string]interface{}),
+	}
+	modelsConfig := config.DefaultConfig()
+	modelsConfig.GlobConfig.SlugMode = models.SlugModePath
+	cfg.Extra["models_config"] = modelsConfig
+	cfg.Extra["url"] = "https://example.com"
+	cfg.Extra["title"] = "Test Site"
+	m.SetConfig(cfg)
+
+	m.RegisterPlugin(plugins.NewGlobPlugin())
+	m.RegisterPlugin(plugins.NewLoadPlugin())
+	m.RegisterPlugin(plugins.NewRenderMarkdownPlugin())
+	m.RegisterPlugin(plugins.NewPublishHTMLPlugin())
+
+	if err := m.Run(); err != nil {
+		t.Fatalf("build failed: %v", err)
+	}
+
+	if !site.fileExists("notes/today/index.html") {
+		t.Error("expected output/notes/today/index.html to exist")
+	}
+}
+
+func TestOutputStructure_SlugRulesHybridMode(t *testing.T) {
+	site := newTestSite(t)
+	site.addPost("posts/blog/launch-post.md", `---
+title: Launch
+published: true
+---
+Launch content`)
+	site.addPost("posts/notes/today.md", `---
+title: Today
+published: true
+---
+Notes content`)
+
+	m := lifecycle.NewManager()
+	cfg := &lifecycle.Config{
+		ContentDir:   site.contentDir,
+		OutputDir:    site.outputDir,
+		GlobPatterns: []string{"**/*.md"},
+		Extra:        make(map[string]interface{}),
+	}
+	modelsConfig := config.DefaultConfig()
+	modelsConfig.GlobConfig.SlugMode = models.SlugModeFlat
+	modelsConfig.GlobConfig.SlugRules = []models.SlugRule{
+		{Prefix: "posts/blog", Mode: models.SlugModeFlat},
+		{Prefix: "posts/notes", Mode: models.SlugModePath},
+	}
+	cfg.Extra["models_config"] = modelsConfig
+	cfg.Extra["url"] = "https://example.com"
+	cfg.Extra["title"] = "Test Site"
+	m.SetConfig(cfg)
+
+	m.RegisterPlugin(plugins.NewGlobPlugin())
+	m.RegisterPlugin(plugins.NewLoadPlugin())
+	m.RegisterPlugin(plugins.NewRenderMarkdownPlugin())
+	m.RegisterPlugin(plugins.NewPublishHTMLPlugin())
+
+	if err := m.Run(); err != nil {
+		t.Fatalf("build failed: %v", err)
+	}
+
+	if !site.fileExists("launch-post/index.html") {
+		t.Error("expected output/launch-post/index.html to exist")
+	}
+	if !site.fileExists("notes/today/index.html") {
+		t.Error("expected output/notes/today/index.html to exist")
+	}
+}
+
 func TestLinkAvatars_RootAbsoluteAssetsOnNestedPage(t *testing.T) {
 	site := newTestSite(t)
 	site.addPost("instant-pot-chicken-teriyaki.md", `---

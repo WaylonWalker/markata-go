@@ -16,6 +16,8 @@ func DefaultConfig() *models.Config {
 		GlobConfig: models.GlobConfig{
 			Patterns:     []string{"pages/**/*.md", "posts/**/*.md"},
 			UseGitignore: true,
+			SlugMode:     models.SlugModeFlat,
+			SlugRules:    nil,
 		},
 		Feeds: []models.FeedConfig{
 			{

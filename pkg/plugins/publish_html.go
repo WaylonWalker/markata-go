@@ -200,7 +200,7 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 	// Determine output path
 	// Use slug to create: output_dir/slug/index.html
 	if !post.Has("_slug_explicit") && post.Slug == "" {
-		post.GenerateSlug()
+		post.GenerateSlugWithMode(configuredSlugMode(config, post.Path))
 	}
 
 	outputDir := config.OutputDir
