@@ -85,13 +85,13 @@ use_gitignore = true
 **Stage:** Load  
 **Purpose:** Reads discovered files and parses them into Post objects with frontmatter and content.
 
-**Configuration:** None (uses `content_dir` from main config)
+**Configuration:** Uses `[markata-go.glob]` for discovery and default slug behavior
 
 **Behavior:**
 1. Reads each file as UTF-8
 2. Extracts YAML frontmatter between `---` delimiters
 3. Creates Post object with parsed metadata and content
-4. Generates slug from frontmatter, title, or filename
+4. Generates slug from frontmatter or the configured slug mode (`flat` filename-based by default, optional `path` mode for nested content)
 5. Generates href as `/{slug}/`
 
 **Post fields set:**

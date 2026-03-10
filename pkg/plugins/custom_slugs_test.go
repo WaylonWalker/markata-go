@@ -188,6 +188,67 @@ Content`,
 	}
 }
 
+func TestLoadPlugin_PathSlugMode(t *testing.T) {
+	plugin := NewLoadPlugin()
+	plugin.slugMode = models.SlugModePath
+
+	tests := []struct {
+		name     string
+		path     string
+		wantSlug string
+		wantHref string
+	}{
+		{name: "posts nested file", path: "posts/notes/today.md", wantSlug: "notes/today", wantHref: "/notes/today/"},
+		{name: "posts index file", path: "posts/notes/index.md", wantSlug: "notes", wantHref: "/notes/"},
+		{name: "pages readme file", path: "pages/docs/README.md", wantSlug: "docs", wantHref: "/docs/"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			post, err := plugin.parseFile(tt.path, "---\npublished: true\n---\ncontent")
+			if err != nil {
+				t.Fatalf("parseFile() error = %v", err)
+			}
+			if post.Slug != tt.wantSlug {
+				t.Errorf("Slug = %q, want %q", post.Slug, tt.wantSlug)
+			}
+			if post.Href != tt.wantHref {
+				t.Errorf("Href = %q, want %q", post.Href, tt.wantHref)
+			}
+		})
+	}
+}
+
+func TestLoadPlugin_SlugRules(t *testing.T) {
+	plugin := NewLoadPlugin()
+	plugin.slugMode = models.SlugModeFlat
+	plugin.slugRules = []models.SlugRule{
+		{Prefix: "posts/blog", Mode: models.SlugModeFlat},
+		{Prefix: "posts/notes", Mode: models.SlugModePath},
+	}
+
+	tests := []struct {
+		name     string
+		path     string
+		wantSlug string
+	}{
+		{name: "blog stays flat", path: "posts/blog/launch-post.md", wantSlug: "launch-post"},
+		{name: "notes become nested", path: "posts/notes/today.md", wantSlug: "notes/today"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			post, err := plugin.parseFile(tt.path, "---\npublished: true\n---\ncontent")
+			if err != nil {
+				t.Fatalf("parseFile() error = %v", err)
+			}
+			if post.Slug != tt.wantSlug {
+				t.Errorf("Slug = %q, want %q", post.Slug, tt.wantSlug)
+			}
+		})
+	}
+}
+
 func TestOverwriteCheckPlugin_DetectsConflicts(t *testing.T) {
 	// Create posts with explicitly set empty slugs (both would be homepage)
 	posts := []*models.Post{

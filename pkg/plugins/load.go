@@ -29,16 +29,24 @@ var (
 )
 
 // LoadPlugin parses markdown files into Post objects.
-type LoadPlugin struct{}
+type LoadPlugin struct {
+	slugMode  string
+	slugRules []models.SlugRule
+}
 
 // NewLoadPlugin creates a new LoadPlugin.
 func NewLoadPlugin() *LoadPlugin {
-	return &LoadPlugin{}
+	return &LoadPlugin{slugMode: models.SlugModeFlat}
 }
 
 // Name returns the plugin identifier.
 func (p *LoadPlugin) Name() string {
 	return "load"
+}
+
+func (p *LoadPlugin) Configure(m *lifecycle.Manager) error {
+	p.slugMode, p.slugRules = configuredSlugSettings(m.Config())
+	return nil
 }
 
 // Load reads and parses all discovered files into Post objects.
@@ -531,7 +539,15 @@ func (p *LoadPlugin) loadSequential(m *lifecycle.Manager, files []string, baseDi
 // This is a lightweight helper for cache-backed workflows that need
 // frontmatter parsing and slug generation without running the full lifecycle.
 func ParsePostFromContent(path, content string) (*models.Post, error) {
-	loader := &LoadPlugin{}
+	return ParsePostFromContentWithConfig(path, content, nil)
+}
+
+func ParsePostFromContentWithConfig(path, content string, cfg *models.Config) (*models.Post, error) {
+	loader := NewLoadPlugin()
+	if cfg != nil {
+		loader.slugMode = models.NormalizeSlugMode(cfg.GlobConfig.SlugMode)
+		loader.slugRules = append([]models.SlugRule{}, cfg.GlobConfig.SlugRules...)
+	}
 	return loader.parseFile(path, content)
 }
 
@@ -556,7 +572,7 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 	// Generate slug if not explicitly set in frontmatter
 	// If slug was explicitly set (even to empty string), respect it
 	if !post.Has("_slug_explicit") && post.Slug == "" {
-		post.GenerateSlug()
+		post.GenerateSlugWithMode(models.SlugModeForPath(path, p.slugMode, p.slugRules))
 	}
 
 	// Generate href from slug
@@ -567,6 +583,24 @@ func (p *LoadPlugin) parseFile(path, content string) (*models.Post, error) {
 	post.InputHash = buildcache.ComputePostInputHash(body, rawFrontmatter, post.Template)
 
 	return post, nil
+}
+
+func configuredSlugSettings(cfg *lifecycle.Config) (string, []models.SlugRule) {
+	if cfg == nil {
+		return models.SlugModeFlat, nil
+	}
+	if modelsConfig, ok := cfg.Extra["models_config"].(*models.Config); ok && modelsConfig != nil {
+		return models.NormalizeSlugMode(modelsConfig.GlobConfig.SlugMode), append([]models.SlugRule{}, modelsConfig.GlobConfig.SlugRules...)
+	}
+	if raw, ok := cfg.Extra["slug_mode"].(string); ok {
+		return models.NormalizeSlugMode(raw), nil
+	}
+	return models.SlugModeFlat, nil
+}
+
+func configuredSlugMode(cfg *lifecycle.Config, path string) string {
+	mode, rules := configuredSlugSettings(cfg)
+	return models.SlugModeForPath(path, mode, rules)
 }
 
 // Date field aliases for publication date (first match wins).

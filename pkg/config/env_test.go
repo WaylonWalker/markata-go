@@ -105,6 +105,7 @@ func TestApplyEnvOverrides_ListFields(t *testing.T) {
 		"MARKATA_GO_HOOKS":               "markdown,template,sitemap",
 		"MARKATA_GO_DISABLED_HOOKS":      "seo,analytics",
 		"MARKATA_GO_GLOB_PATTERNS":       "posts/**/*.md,pages/*.md",
+		"MARKATA_GO_GLOB_SLUG_MODE":      "path",
 		"MARKATA_GO_MARKDOWN_EXTENSIONS": "tables,footnotes",
 	})
 	defer cleanup()
@@ -137,6 +138,10 @@ func TestApplyEnvOverrides_ListFields(t *testing.T) {
 				}
 			}
 		})
+	}
+
+	if config.GlobConfig.SlugMode != "path" {
+		t.Errorf("SlugMode = %q, want %q", config.GlobConfig.SlugMode, "path")
 	}
 }
 

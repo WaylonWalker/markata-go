@@ -1151,6 +1151,18 @@ type GlobConfig struct {
 
 	// UseGitignore determines whether to respect .gitignore files
 	UseGitignore bool `json:"use_gitignore" yaml:"use_gitignore" toml:"use_gitignore"`
+
+	// SlugMode controls how slugs are derived from matched source paths.
+	SlugMode string `json:"slug_mode" yaml:"slug_mode" toml:"slug_mode"`
+
+	// SlugRules override slug mode for specific content path prefixes.
+	SlugRules []SlugRule `json:"slug_rules,omitempty" yaml:"slug_rules,omitempty" toml:"slug_rules,omitempty"`
+}
+
+// SlugRule selects a slug mode for files under a content path prefix.
+type SlugRule struct {
+	Prefix string `json:"prefix" yaml:"prefix" toml:"prefix"`
+	Mode   string `json:"mode" yaml:"mode" toml:"mode"`
 }
 
 // MarkdownConfig configures markdown processing.

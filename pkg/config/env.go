@@ -80,6 +80,8 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.GlobConfig.Patterns = parseStringList(value)
 	case "glob_use_gitignore":
 		config.GlobConfig.UseGitignore = parseBool(value)
+	case "glob_slug_mode":
+		config.GlobConfig.SlugMode = value
 	case "markdown_extensions":
 		config.MarkdownConfig.Extensions = parseStringList(value)
 	case "feed_defaults_items_per_page", "feeds_defaults_items_per_page":

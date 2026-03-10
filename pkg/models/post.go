@@ -3,6 +3,7 @@ package models
 import (
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 )
@@ -162,6 +163,54 @@ var slugifyRegex = regexp.MustCompile(`[^a-z0-9\-_]+`)
 // multiHyphenRegex matches multiple consecutive hyphens
 var multiHyphenRegex = regexp.MustCompile(`-+`)
 
+const (
+	SlugModeFlat = "flat"
+	SlugModePath = "path"
+)
+
+var slugModeAliases = map[string]string{
+	SlugModeFlat:   SlugModeFlat,
+	SlugModePath:   SlugModePath,
+	"directory":    SlugModePath,
+	"dir":          SlugModePath,
+	"nested":       SlugModePath,
+	"hierarchical": SlugModePath,
+}
+
+var contentRootDirs = []string{"posts", "pages"}
+
+func NormalizeSlugRulePrefix(prefix string) string {
+	prefix = filepath.Clean(strings.TrimSpace(prefix))
+	prefix = strings.ReplaceAll(prefix, string(filepath.Separator), "/")
+	prefix = strings.TrimPrefix(prefix, "./")
+	if prefix == "." {
+		return ""
+	}
+	return strings.Trim(prefix, "/")
+}
+
+func SlugModeForPath(path, defaultMode string, rules []SlugRule) string {
+	normalizedPath := NormalizeSlugRulePrefix(path)
+	bestMode := NormalizeSlugMode(defaultMode)
+	bestPrefixLen := -1
+
+	for _, rule := range rules {
+		prefix := NormalizeSlugRulePrefix(rule.Prefix)
+		if prefix == "" {
+			continue
+		}
+		if normalizedPath != prefix && !strings.HasPrefix(normalizedPath, prefix+"/") {
+			continue
+		}
+		if len(prefix) > bestPrefixLen {
+			bestPrefixLen = len(prefix)
+			bestMode = NormalizeSlugMode(rule.Mode)
+		}
+	}
+
+	return bestMode
+}
+
 // KnownExtensions contains file extensions that should be stripped from filenames.
 // Extensions not in this list are treated as part of the filename.
 var KnownExtensions = map[string]bool{
@@ -181,48 +230,30 @@ func StripKnownExtension(filename string) string {
 	return filename
 }
 
-// GenerateSlug generates a URL-safe slug from the title or path.
-// If a title is set, it uses the title; otherwise, it derives the slug from the file path.
-//
-// Special handling for index.md files:
-//   - ./index.md → "" (empty slug, becomes homepage)
-//   - docs/index.md → "docs"
-//   - blog/guides/index.md → "blog/guides"
+func IsValidSlugMode(mode string) bool {
+	_, ok := slugModeAliases[strings.ToLower(strings.TrimSpace(mode))]
+	return ok
+}
+
+func NormalizeSlugMode(mode string) string {
+	if normalized, ok := slugModeAliases[strings.ToLower(strings.TrimSpace(mode))]; ok {
+		return normalized
+	}
+	return SlugModeFlat
+}
+
+// GenerateSlug generates a URL-safe slug using the default flat mode.
 func (p *Post) GenerateSlug() {
-	var source string
+	p.GenerateSlugWithMode(SlugModeFlat)
+}
 
-	// Check for index.md special case
-	base := filepath.Base(p.Path)
-	if strings.EqualFold(base, "index.md") {
-		// For index.md files, use the directory path as the slug
-		dir := filepath.Dir(p.Path)
-		// Clean up the directory path
-		dir = filepath.Clean(dir)
-		// Remove leading ./ or just .
-		if dir == "." {
-			p.Slug = "" // Root index.md becomes homepage
-			return
-		}
-		// Use directory path as slug (normalized)
-		slug := strings.ToLower(dir)
-		slug = strings.ReplaceAll(slug, string(filepath.Separator), "/")
-		slug = strings.TrimPrefix(slug, "./")
-		p.Slug = slug
-		return
+func (p *Post) GenerateSlugWithMode(mode string) {
+	switch NormalizeSlugMode(mode) {
+	case SlugModePath:
+		p.Slug = generatePathSlug(p.Path, p.Title)
+	default:
+		p.Slug = generateFlatSlug(p.Path, p.Title)
 	}
-
-	// Priority: basename > title
-	// Use the filename without known extension as the primary source
-	// Only strip recognized file extensions, keeping periods in version numbers etc.
-	basename := StripKnownExtension(base)
-	if basename != "" {
-		source = basename
-	} else if p.Title != nil && *p.Title != "" {
-		// Fallback to title if basename is somehow empty
-		source = *p.Title
-	}
-
-	p.Slug = Slugify(source)
 }
 
 // Slugify converts a string to a URL-safe slug.
@@ -245,6 +276,73 @@ func Slugify(s string) string {
 	slug = strings.Trim(slug, "-")
 
 	return slug
+}
+
+func generateFlatSlug(path string, title *string) string {
+	base := filepath.Base(path)
+	if isDirectoryRootFile(base) {
+		dir := filepath.Clean(filepath.Dir(path))
+		if dir == "." {
+			return ""
+		}
+		dir = strings.ReplaceAll(dir, string(filepath.Separator), "/")
+		dir = strings.TrimPrefix(dir, "./")
+		return strings.ToLower(strings.Trim(dir, "/"))
+	}
+	basename := StripKnownExtension(base)
+	if basename != "" {
+		return Slugify(basename)
+	}
+	if title != nil && *title != "" {
+		return Slugify(*title)
+	}
+	return ""
+}
+
+func generatePathSlug(path string, title *string) string {
+	relPath := filepath.Clean(path)
+	relPath = strings.ReplaceAll(relPath, string(filepath.Separator), "/")
+	relPath = strings.TrimPrefix(relPath, "./")
+	relPath = strings.Trim(relPath, "/")
+	if relPath == "" || relPath == "." {
+		return ""
+	}
+
+	parts := strings.Split(relPath, "/")
+	if len(parts) > 0 && slices.Contains(contentRootDirs, strings.ToLower(parts[0])) {
+		parts = parts[1:]
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+
+	last := parts[len(parts)-1]
+	if isDirectoryRootFile(last) {
+		parts = parts[:len(parts)-1]
+	} else {
+		basename := StripKnownExtension(last)
+		if basename != "" {
+			parts[len(parts)-1] = basename
+		} else if title != nil && *title != "" {
+			parts[len(parts)-1] = *title
+		}
+	}
+
+	slugParts := make([]string, 0, len(parts))
+	for _, part := range parts {
+		slug := Slugify(part)
+		if slug == "" {
+			continue
+		}
+		slugParts = append(slugParts, slug)
+	}
+
+	return strings.Join(slugParts, "/")
+}
+
+func isDirectoryRootFile(path string) bool {
+	name := strings.ToLower(StripKnownExtension(filepath.Base(path)))
+	return name == "index" || name == "readme"
 }
 
 // GenerateHref generates the relative URL path from the slug.

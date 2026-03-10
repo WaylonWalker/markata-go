@@ -161,7 +161,7 @@ func buildPostsFromCache(
 		return postsByPath, nil
 	}
 
-	updated, err := loadChangedPosts(contentDir, changed)
+	updated, err := loadChangedPosts(contentDir, changed, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -299,21 +299,33 @@ func diffFiles(files []string, contentDir string, cached map[string]FileInfo) (c
 	return current, changed, nil
 }
 
-func loadChangedPosts(contentDir string, changed map[string]bool) ([]*models.Post, error) {
+func loadChangedPosts(contentDir string, changed map[string]bool, cfg *lifecycle.Config) ([]*models.Post, error) {
 	posts := make([]*models.Post, 0, len(changed))
+	modelsConfig := modelsConfigFromLifecycleConfig(cfg)
 	for path := range changed {
 		fullPath := filepath.Join(contentDir, path)
 		content, err := os.ReadFile(fullPath)
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", path, err)
 		}
-		post, err := plugins.ParsePostFromContent(path, string(content))
+		post, err := plugins.ParsePostFromContentWithConfig(path, string(content), modelsConfig)
 		if err != nil {
 			return nil, fmt.Errorf("parse %s: %w", path, err)
 		}
 		posts = append(posts, post)
 	}
 	return posts, nil
+}
+
+func modelsConfigFromLifecycleConfig(cfg *lifecycle.Config) *models.Config {
+	if cfg == nil {
+		return nil
+	}
+	modelsConfig, ok := cfg.Extra["models_config"].(*models.Config)
+	if !ok {
+		return nil
+	}
+	return modelsConfig
 }
 
 func applyTransforms(cfg *lifecycle.Config, posts []*models.Post) error {
