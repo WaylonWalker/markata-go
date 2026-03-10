@@ -711,6 +711,50 @@ CSS purge removes unused rules by scanning generated HTML and keeping only selec
 that are actually present. The purge logic always preserves key @-rules and keeps
 pseudo-only selectors like `:root` or `::selection` to avoid dropping base/theme styles.
 
+### Tailwind (`[my-ssg.tailwind]`)
+
+```toml
+[my-ssg.tailwind]
+include = "css"                # "css", "js", or false (default: "css")
+input = "tailwind.css"          # Input CSS (relative to assets_dir)
+output = "markata-tailwind.css" # Output CSS (relative to assets_dir)
+config_file = ""                # Optional tailwind.config.js path
+build = true                     # Run Tailwind CLI during build
+minify = true                    # Pass --minify to Tailwind CLI
+auto_install = true              # Auto-download Tailwind CLI (default: true)
+version = "v3.4.19"             # Managed Tailwind CLI version tag
+cache_dir = ""                  # Cache dir for Tailwind CLI
+binary = ""                     # Optional path to tailwindcss binary
+extra_args = []                  # Optional extra CLI arguments
+verbose = false                  # Verbose installer/build logs
+```
+
+Tailwind automation runs a markata-managed standalone Tailwind CLI and writes the
+compiled CSS into your assets directory so it is copied and fingerprinted like any
+other static file. The zero-setup default is: enable Tailwind in config and build.
+If `tailwind.css` is missing, markata-go generates a default input containing
+`@tailwind base`, `@tailwind components`, and `@tailwind utilities`.
+
+Behavior:
+
+- `build = true` runs the Tailwind CLI during configure and again after HTML is
+  written so generated pages can be included in content scanning.
+- `input`/`output` resolve relative to `assets_dir` (absolute paths are respected).
+- If `extra_args` is empty and `config_file` is unset, markata-go generates a
+  temporary Tailwind config with content globs derived from `glob.patterns` plus
+  `output/**/*.html` on the final build pass.
+- `include = "css"` ensures the output CSS is included in templates. If
+  `theme.custom_css` is unset, it is set to the output path. The plugin does not
+  override explicit `theme.custom_css` values.
+- `include = "js"` injects `<script src="https://cdn.tailwindcss.com"></script>`
+  into the document head. If `[my-ssg.assets].mode` is self-hosted, the JS is
+  pulled from the vendor asset registry and served locally.
+- `include = false` disables automatic inclusion; build can still run.
+- If `include = "css"` and CSS purge is disabled, a validation warning is emitted.
+- `auto_install = true` downloads and uses the managed Tailwind CLI (versioned,
+  checksum verified) into the cache directory when needed. This is preferred over
+  `PATH` for consistent builds. If disabled, `binary` or `PATH` is used.
+
 ### Theme (`[my-ssg.theme]`)
 
 ```toml

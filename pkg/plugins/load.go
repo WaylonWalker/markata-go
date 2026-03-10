@@ -635,8 +635,11 @@ func (p *LoadPlugin) applyMetadata(post *models.Post, metadata map[string]interf
 	}
 
 	// Description
-	if desc := GetString(metadata, "description"); desc != "" {
-		post.Description = &desc
+	if desc, ok := metadata["description"]; ok {
+		if value, ok := desc.(string); ok {
+			cleaned := strings.TrimSpace(value)
+			post.Description = &cleaned
+		}
 	}
 
 	// Template - support both 'template' and 'templateKey' for Python markata compatibility

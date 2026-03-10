@@ -47,6 +47,7 @@ The builder image MAY include:
 - `libavif-apps` (provides `avifenc`)
 - `libwebp-tools` (provides `cwebp`)
 - `pagefind` (standalone binary for search index generation)
+- `tailwindcss` (standalone Tailwind CLI for CSS builds)
 - `openssh-client` (for rsync over SSH)
 - `tzdata`
 

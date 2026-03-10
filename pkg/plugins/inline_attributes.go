@@ -36,11 +36,6 @@ import (
 //	`code`{.inline-code}
 type AttributeTransformer struct{}
 
-// inlineAttrPattern matches attribute syntax at the start of text: {.class}, {#id}
-// This pattern is anchored to the start of the accumulated text to match attributes
-// that immediately follow an inline element.
-var inlineAttrPattern = regexp.MustCompile(`^\{[^}]+\}`)
-
 // attributeOnlyPattern matches a line that only contains attribute syntax.
 var attributeOnlyPattern = regexp.MustCompile(`^\s*\{[^}]+\}\s*$`)
 
@@ -115,79 +110,68 @@ func (t *AttributeTransformer) processInlineAttributesInContainer(container ast.
 	var textContent strings.Builder
 	var textNodes []*ast.Text
 	var stringNodes []*ast.String
+	lastInlineChild := false
+
+	flush := func() {
+		if lastInlineChild {
+			t.applyInlineAttributesSuffix(container, lastInlineElement, textContent.String(), textNodes, stringNodes)
+		} else {
+			t.applyBlockTrailingAttributes(container, textContent.String(), textNodes, stringNodes)
+		}
+		textContent.Reset()
+		textNodes = nil
+		stringNodes = nil
+		lastInlineElement = nil
+		lastInlineChild = false
+	}
 
 	for child := container.FirstChild(); child != nil; child = child.NextSibling() {
 		switch node := child.(type) {
 		case *ast.Image, *ast.Link, *ast.Emphasis, *ast.CodeSpan, *ast.AutoLink, *extensionast.Strikethrough:
-			// If we have accumulated text, process it first
-			t.applyAttributesIfMatch(container, lastInlineElement, textContent.String(), textNodes, stringNodes)
-			textContent.Reset()
-			textNodes = nil
-			stringNodes = nil
+			flush()
 			lastInlineElement = node
+			lastInlineChild = true
 
 		case *ast.Text:
-			if lastInlineElement != nil {
-				// Accumulate text content (may be split by Linkify extension)
-				content := string(node.Segment.Value(reader.Source()))
-				textContent.WriteString(content)
-				if node.SoftLineBreak() || node.HardLineBreak() {
-					textContent.WriteString("\n")
-				}
-				textNodes = append(textNodes, node)
-				break
+			content := string(node.Segment.Value(reader.Source()))
+			textContent.WriteString(content)
+			if node.SoftLineBreak() || node.HardLineBreak() {
+				textContent.WriteString("\n")
 			}
-
-			// No inline element to attach attributes to; reset accumulator
-			textContent.Reset()
-			textNodes = nil
-			stringNodes = nil
+			textNodes = append(textNodes, node)
+			if lastInlineElement == nil {
+				lastInlineChild = false
+			}
 
 		case *ast.String:
-			if lastInlineElement == nil {
-				textContent.Reset()
-				textNodes = nil
-				stringNodes = nil
-				break
-			}
 			textContent.WriteString(string(node.Value))
 			stringNodes = append(stringNodes, node)
+			if lastInlineElement == nil {
+				lastInlineChild = false
+			}
 
 		default:
-			// Process accumulated text before resetting
-			t.applyAttributesIfMatch(container, lastInlineElement, textContent.String(), textNodes, stringNodes)
-			textContent.Reset()
-			textNodes = nil
-			stringNodes = nil
-			lastInlineElement = nil
+			flush()
 		}
 	}
 
-	// Handle any remaining text after the last inline element
-	t.applyAttributesIfMatch(container, lastInlineElement, textContent.String(), textNodes, stringNodes)
+	flush()
 }
 
 // applyAttributesIfMatch checks if the accumulated text matches the attribute pattern
 // and applies the attributes to the inline element if so.
-func (t *AttributeTransformer) applyAttributesIfMatch(container, element ast.Node, attrText string, textNodes []*ast.Text, stringNodes []*ast.String) {
+func (t *AttributeTransformer) applyInlineAttributesSuffix(container, element ast.Node, attrText string, textNodes []*ast.Text, stringNodes []*ast.String) {
 	if element == nil || attrText == "" {
 		return
 	}
 
-	if !inlineAttrPattern.MatchString(attrText) {
-		return
-	}
-	attrs, remaining, ok := parseLeadingAttributes(attrText)
+	attrs, remaining, ok := parseTrailingAttributeSuffix(attrText)
 	if !ok {
 		return
 	}
 
-	// Parse and apply attributes
 	applyParsedAttributes(element, attrs)
-
-	// Check if there's remaining text after the attribute syntax
 	if remaining == "" {
-		// Remove all accumulated text nodes
 		for _, tn := range textNodes {
 			container.RemoveChild(container, tn)
 		}
@@ -197,6 +181,27 @@ func (t *AttributeTransformer) applyAttributesIfMatch(container, element ast.Nod
 		return
 	}
 
+	replaceTextNodes(container, remaining, textNodes, stringNodes)
+}
+
+func (t *AttributeTransformer) applyBlockTrailingAttributes(container ast.Node, attrText string, textNodes []*ast.Text, stringNodes []*ast.String) {
+	if attrText == "" {
+		return
+	}
+	attrs, remaining, ok := parseTrailingAttributeSuffix(attrText)
+	if !ok {
+		return
+	}
+	applyParsedAttributes(container, attrs)
+	if remaining == "" {
+		for _, tn := range textNodes {
+			container.RemoveChild(container, tn)
+		}
+		for _, sn := range stringNodes {
+			container.RemoveChild(container, sn)
+		}
+		return
+	}
 	replaceTextNodes(container, remaining, textNodes, stringNodes)
 }
 
@@ -221,9 +226,17 @@ func (t *AttributeTransformer) applyAttributeOnlyParagraph(para *ast.Paragraph, 
 	var target ast.Node
 	switch parent.(type) {
 	case *ast.Blockquote:
-		target = parent
+		if prev := para.PreviousSibling(); prev != nil {
+			target = prev
+		} else {
+			target = parent
+		}
 	case *extensionast.TableCell:
-		target = parent
+		if prev := para.PreviousSibling(); prev != nil {
+			target = prev
+		} else {
+			target = parent
+		}
 	default:
 		target = para.PreviousSibling()
 	}
@@ -484,12 +497,6 @@ func parseTrailingAttributes(textValue string) (attrs parser.Attributes, remaini
 	start := strings.LastIndex(trimmed[:end], "{")
 	if start == -1 {
 		return nil, "", false
-	}
-	if start > 0 {
-		prev := trimmed[start-1]
-		if prev != ' ' && prev != '\t' && prev != '\n' {
-			return nil, "", false
-		}
 	}
 	block := trimmed[start : end+1]
 	attrs, ok = parser.ParseAttributes(text.NewReader([]byte(block)))

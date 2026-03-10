@@ -187,9 +187,9 @@ func encodeTomlValue(value any) (string, error) {
 		return fmt.Sprintf("%q", v), nil
 	case bool:
 		if v {
-			return "true", nil
+			return BoolTrue, nil
 		}
-		return "false", nil
+		return BoolFalse, nil
 	case int:
 		return fmt.Sprintf("%d", v), nil
 	case int64:

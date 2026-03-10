@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/config"
@@ -13,37 +14,24 @@ import (
 
 // createManager creates and configures a lifecycle manager with all plugins.
 func createManager(cfgPath string) (*lifecycle.Manager, error) {
-	// Load config, with optional merge configs
-	var cfg *models.Config
-	var err error
-
-	if len(mergeConfigFiles) > 0 {
-		// Use merge mode: base config + overrides
-		// If cfgPath is empty, discover the base config
-		basePath := cfgPath
-		if basePath == "" {
-			discovered, discoverErr := config.Discover()
-			if discoverErr == nil {
-				basePath = discovered
-			}
-		}
-
-		cfg, err = config.LoadWithMerge(basePath, mergeConfigFiles...)
-		if err != nil {
-			return nil, fmt.Errorf("loading merged config: %w", err)
-		}
-	} else {
-		// Standard load (single config or auto-discover)
-		cfg, err = config.Load(cfgPath)
-		if err != nil {
-			return nil, fmt.Errorf("loading config: %w", err)
-		}
+	cfg, configPathUsed, configPaths, err := loadManagerConfig(cfgPath)
+	if err != nil {
+		return nil, err
 	}
 
 	// Apply output directory override from CLI flag
 	if outputDir != "" {
 		cfg.OutputDir = outputDir
 	}
+
+	baseDir := resolveConfigBaseDir(configPathUsed)
+	contentDir := "."
+	if baseDir != "" {
+		contentDir = baseDir
+	}
+	cfg.OutputDir = resolveConfigRelativePath(baseDir, cfg.OutputDir)
+	cfg.AssetsDir = resolveConfigRelativePath(baseDir, cfg.AssetsDir)
+	cfg.TemplatesDir = resolveConfigRelativePath(baseDir, cfg.TemplatesDir)
 
 	// Validate config
 	validationErrs := config.ValidateConfig(cfg)
@@ -66,7 +54,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 
 	// Convert models.Config to lifecycle.Config
 	lcConfig := &lifecycle.Config{
-		ContentDir:   ".",
+		ContentDir:   contentDir,
 		OutputDir:    cfg.OutputDir,
 		GlobPatterns: cfg.GlobConfig.Patterns,
 		Extra:        make(map[string]interface{}),
@@ -140,6 +128,12 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 
 	// Store full models.Config for components that need direct access (e.g., 404 page handler)
 	lcConfig.Extra["models_config"] = cfg
+	if configPathUsed != "" {
+		lcConfig.Extra["config_path"] = configPathUsed
+	}
+	if len(configPaths) > 0 {
+		lcConfig.Extra["config_paths"] = configPaths
+	}
 
 	m.SetConfig(lcConfig)
 
@@ -152,6 +146,68 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	registerDefaultPlugins(m)
 
 	return m, nil
+}
+
+func loadManagerConfig(cfgPath string) (cfg *models.Config, configPathUsed string, configPaths []string, err error) {
+	configPathUsed = cfgPath
+
+	if len(mergeConfigFiles) > 0 {
+		basePath := cfgPath
+		if basePath == "" {
+			discovered, discoverErr := config.Discover()
+			if discoverErr == nil {
+				basePath = discovered
+			}
+		}
+		configPathUsed = basePath
+
+		cfg, err = config.LoadWithMerge(basePath, mergeConfigFiles...)
+		if err != nil {
+			return nil, "", nil, fmt.Errorf("loading merged config: %w", err)
+		}
+		if basePath != "" {
+			configPaths = append(configPaths, basePath)
+		}
+		for _, path := range mergeConfigFiles {
+			if path != "" {
+				configPaths = append(configPaths, path)
+			}
+		}
+		return cfg, configPathUsed, configPaths, nil
+	}
+
+	cfg, err = config.Load(cfgPath)
+	if err != nil {
+		return nil, "", nil, fmt.Errorf("loading config: %w", err)
+	}
+	if configPathUsed == "" {
+		if discovered, discoverErr := config.Discover(); discoverErr == nil {
+			configPathUsed = discovered
+		}
+	}
+	if configPathUsed != "" {
+		configPaths = append(configPaths, configPathUsed)
+	}
+
+	return cfg, configPathUsed, configPaths, nil
+}
+
+func resolveConfigBaseDir(configPath string) string {
+	if configPath == "" {
+		return ""
+	}
+	absPath, err := filepath.Abs(configPath)
+	if err != nil {
+		return filepath.Dir(configPath)
+	}
+	return filepath.Dir(absPath)
+}
+
+func resolveConfigRelativePath(baseDir, path string) string {
+	if path == "" || baseDir == "" || filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(baseDir, path)
 }
 
 func licenseWarningMessage(cfg *models.Config) string {

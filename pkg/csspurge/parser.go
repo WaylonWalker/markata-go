@@ -30,7 +30,7 @@ var (
 	selectorSplitRegex = regexp.MustCompile(`\s*,\s*`)
 
 	// Extract class names from selector: .class-name
-	classRegex = regexp.MustCompile(`\.(-?[_a-zA-Z][_a-zA-Z0-9-]*)`)
+	classRegex = regexp.MustCompile(`\.(-?[_a-zA-Z][_a-zA-Z0-9-]*(?:\\:[_a-zA-Z0-9-]+)*)`)
 
 	// Extract ID from selector: #id-name
 	idRegex = regexp.MustCompile(`#(-?[_a-zA-Z][_a-zA-Z0-9-]*)`)
