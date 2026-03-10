@@ -471,9 +471,15 @@ func (p *TailwindPlugin) relativeAssetPath(config *lifecycle.Config, path string
 	if assetsDir == "" {
 		assetsDir = "static"
 	}
+	absAssetsDir := assetsDir
+	if !filepath.IsAbs(absAssetsDir) {
+		if cwd, err := os.Getwd(); err == nil {
+			absAssetsDir = filepath.Join(cwd, assetsDir)
+		}
+	}
 
 	if filepath.IsAbs(trimmed) {
-		rel, err := filepath.Rel(assetsDir, trimmed)
+		rel, err := filepath.Rel(absAssetsDir, trimmed)
 		if err != nil || strings.HasPrefix(rel, "..") {
 			return trimmed
 		}
