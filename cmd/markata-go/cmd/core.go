@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/config"
@@ -22,6 +23,15 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	if outputDir != "" {
 		cfg.OutputDir = outputDir
 	}
+
+	baseDir := resolveConfigBaseDir(configPathUsed)
+	contentDir := "."
+	if baseDir != "" {
+		contentDir = baseDir
+	}
+	cfg.OutputDir = resolveConfigRelativePath(baseDir, cfg.OutputDir)
+	cfg.AssetsDir = resolveConfigRelativePath(baseDir, cfg.AssetsDir)
+	cfg.TemplatesDir = resolveConfigRelativePath(baseDir, cfg.TemplatesDir)
 
 	// Validate config
 	validationErrs := config.ValidateConfig(cfg)
@@ -44,7 +54,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 
 	// Convert models.Config to lifecycle.Config
 	lcConfig := &lifecycle.Config{
-		ContentDir:   ".",
+		ContentDir:   contentDir,
 		OutputDir:    cfg.OutputDir,
 		GlobPatterns: cfg.GlobConfig.Patterns,
 		Extra:        make(map[string]interface{}),
@@ -179,6 +189,24 @@ func loadManagerConfig(cfgPath string) (cfg *models.Config, configPathUsed strin
 	}
 
 	return cfg, configPathUsed, configPaths, nil
+}
+
+func resolveConfigBaseDir(configPath string) string {
+	if configPath == "" {
+		return ""
+	}
+	absPath, err := filepath.Abs(configPath)
+	if err != nil {
+		return filepath.Dir(configPath)
+	}
+	return filepath.Dir(absPath)
+}
+
+func resolveConfigRelativePath(baseDir, path string) string {
+	if path == "" || baseDir == "" || filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(baseDir, path)
 }
 
 func licenseWarningMessage(cfg *models.Config) string {
