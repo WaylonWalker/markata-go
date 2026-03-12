@@ -81,9 +81,7 @@ func init() {
 func runBuildCommand(_ *cobra.Command, _ []string) error {
 	startTime := time.Now()
 
-	if verbose {
-		fmt.Println("Starting build...")
-	}
+	verbosef("Starting build...")
 
 	// Create the manager
 	m, err := createManager(cfgFile)
@@ -96,10 +94,7 @@ func runBuildCommand(_ *cobra.Command, _ []string) error {
 		applyFastMode(m)
 	}
 
-	if verbose {
-		fmt.Printf("Configuration loaded (output: %s, patterns: %v)\n",
-			m.Config().OutputDir, m.Config().GlobPatterns)
-	}
+	verbosef("Configuration loaded (output: %s, patterns: %v)", m.Config().OutputDir, m.Config().GlobPatterns)
 
 	// Clean directories if requested
 	if buildCleanAll || buildClean {
@@ -128,9 +123,9 @@ func runBuildCommand(_ *cobra.Command, _ []string) error {
 
 	// Print warnings
 	if len(result.Warnings) > 0 && verbose {
-		fmt.Println("\nWarnings:")
+		errln("\nWarnings:")
 		for _, w := range result.Warnings {
-			fmt.Printf("  - %s\n", w)
+			errlnf("  - %s", w)
 		}
 	}
 
@@ -190,7 +185,7 @@ func cleanBuildDirs(m *lifecycle.Manager) error {
 
 // runDryBuild performs a dry run build showing what would be processed.
 func runDryBuild(m *lifecycle.Manager) error {
-	fmt.Println("Dry run mode - no files will be written")
+	errln("Dry run mode - no files will be written")
 
 	// Run stages up to Write (but not Write)
 	stages := []lifecycle.Stage{
@@ -204,26 +199,24 @@ func runDryBuild(m *lifecycle.Manager) error {
 	}
 
 	for _, stage := range stages {
-		if verbose {
-			fmt.Printf("Running stage: %s\n", stage)
-		}
+		verbosef("Running stage: %s", stage)
 		if err := m.RunTo(stage); err != nil {
 			return fmt.Errorf("stage %s failed: %w", stage, err)
 		}
 	}
 
 	// Print what would be written
-	fmt.Printf("Files discovered: %d\n", len(m.Files()))
-	fmt.Printf("Posts to process: %d\n", len(m.Posts()))
-	fmt.Printf("Feeds to generate: %d\n", len(m.Feeds()))
+	outlnf("Files discovered: %d", len(m.Files()))
+	outlnf("Posts to process: %d", len(m.Posts()))
+	outlnf("Feeds to generate: %d", len(m.Feeds()))
 
 	if verbose {
-		fmt.Println("\nFiles that would be processed:")
+		errln("\nFiles that would be processed:")
 		for _, f := range m.Files() {
-			fmt.Printf("  - %s\n", f)
+			errlnf("  - %s", f)
 		}
 
-		fmt.Println("\nPosts that would be generated:")
+		errln("\nPosts that would be generated:")
 		for _, p := range m.Posts() {
 			title := p.Slug
 			if p.Title != nil {
@@ -235,12 +228,12 @@ func runDryBuild(m *lifecycle.Manager) error {
 			} else if !p.Published {
 				status = "unpublished"
 			}
-			fmt.Printf("  - %s (%s) [%s]\n", title, p.Slug, status)
+			errlnf("  - %s (%s) [%s]", title, p.Slug, status)
 		}
 
-		fmt.Println("\nFeeds that would be generated:")
+		errln("\nFeeds that would be generated:")
 		for _, f := range m.Feeds() {
-			fmt.Printf("  - %s (%d posts)\n", f.Name, len(f.Posts))
+			errlnf("  - %s (%d posts)", f.Name, len(f.Posts))
 		}
 	}
 
@@ -248,25 +241,25 @@ func runDryBuild(m *lifecycle.Manager) error {
 	if outputDir == "" {
 		outputDir = defaultOutputDir
 	}
-	fmt.Printf("\nOutput directory: %s\n", filepath.Clean(outputDir))
+	outlnf("\nOutput directory: %s", filepath.Clean(outputDir))
 
 	return nil
 }
 
 // printBuildResult prints a summary of the build result.
 func printBuildResult(result *BuildResult) {
-	fmt.Println("\nBuild completed successfully!")
-	fmt.Printf("  Posts processed: %d\n", result.PostsProcessed)
+	outln("\nBuild completed successfully!")
+	outlnf("  Posts processed: %d", result.PostsProcessed)
 
 	// Only show feeds if any were generated
 	if result.FeedsGenerated > 0 {
-		fmt.Printf("  Feeds generated: %d\n", result.FeedsGenerated)
+		outlnf("  Feeds generated: %d", result.FeedsGenerated)
 	}
 
 	// Show blogroll status if configured
 	printBlogrollStatus(result.BlogrollStatus)
 
-	fmt.Printf("  Duration: %.2fs\n", result.Duration)
+	outlnf("  Duration: %.2fs", result.Duration)
 }
 
 // printBlogrollStatus prints the blogroll feature status.
@@ -277,11 +270,10 @@ func printBlogrollStatus(status BlogrollStatus) {
 
 	if status.Enabled {
 		// Active blogroll - show pages and feed count
-		fmt.Printf("  Blogroll: /blogroll, /reader (%d %s)\n",
-			status.FeedsFetched, pluralize(status.FeedsFetched, "feed", "feeds"))
+		outlnf("  Blogroll: /blogroll, /reader (%d %s)", status.FeedsFetched, pluralize(status.FeedsFetched, "feed", "feeds"))
 	} else if status.FeedsConfigured > 0 {
 		// Configured but disabled - show warning
-		fmt.Printf("  \u26a0 Blogroll: feeds configured but enabled=false\n")
+		warnf("Blogroll: feeds configured but enabled=false")
 	}
 }
 

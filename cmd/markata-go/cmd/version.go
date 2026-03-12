@@ -31,14 +31,15 @@ var versionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, _ []string) {
 		short, err := cmd.Flags().GetBool("short")
 		if err != nil {
-			fmt.Printf("Error getting flag: %v\n", err)
+			errlnf("Error getting flag: %v", err)
 			return
 		}
+		currentCmd = cmd
 		if short {
-			fmt.Println(GetVersion())
+			outln(GetVersion())
 			return
 		}
-		fmt.Println(GetVersionInfo())
+		outln(GetVersionInfo())
 	},
 }
 

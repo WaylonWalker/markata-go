@@ -81,6 +81,12 @@ Given the same inputs, produce the same outputs. Cache expensive operations (mar
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## CLI UX
+
+The CLI is a first-class interface to the system. Shared command-line behavior
+for output streams, prompt handling, color, help text, and errors is defined in
+[CLI_UX.md](./CLI_UX.md).
+
 ---
 
 ## Core Interface

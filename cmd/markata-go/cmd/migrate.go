@@ -244,7 +244,7 @@ func runMigrateCommand(_ *cobra.Command, _ []string) error {
 
 	// Exit with appropriate code
 	if result.HasErrors() {
-		os.Exit(result.ExitCode())
+		return newExitCodeError(result.ExitCode(), nil)
 	}
 
 	return nil
@@ -486,7 +486,7 @@ func runMigrateCompareCommand(_ *cobra.Command, _ []string) error {
 
 	// Exit with appropriate code for scripting
 	if result.HasDifferences() {
-		os.Exit(result.ExitCode())
+		return newExitCodeError(result.ExitCode(), nil)
 	}
 
 	return nil

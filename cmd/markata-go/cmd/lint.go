@@ -74,7 +74,8 @@ type lintStats struct {
 	hasErrors       bool
 }
 
-func runLintCommand(_ *cobra.Command, args []string) error {
+func runLintCommand(cmd *cobra.Command, args []string) error {
+	currentCmd = cmd
 	var files []string
 	var err error
 
@@ -101,9 +102,9 @@ func runLintCommand(_ *cobra.Command, args []string) error {
 
 	// Dry run: just show which files would be checked
 	if lintDryRun {
-		fmt.Printf("Would lint %d file(s):\n", len(files))
+		outlnf("Would lint %d file(s):", len(files))
 		for _, f := range files {
-			fmt.Printf("  %s\n", f)
+			outlnf("  %s", f)
 		}
 		return nil
 	}
@@ -127,7 +128,7 @@ func runLintCommand(_ *cobra.Command, args []string) error {
 func processEncryptionPolicyLint(stats *lintStats) {
 	cfg, err := config.Load(cfgFile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading config for encryption lint: %v\n", err)
+		errlnf("Error loading config for encryption lint: %v", err)
 		stats.hasErrors = true
 		return
 	}
@@ -138,7 +139,7 @@ func processEncryptionPolicyLint(stats *lintStats) {
 
 	results, _, _, err := evaluateEncryptionKeyPolicy(cfg, "")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error checking encryption keys: %v\n", err)
+		errlnf("Error checking encryption keys: %v", err)
 		stats.hasErrors = true
 		return
 	}
@@ -169,7 +170,7 @@ func processEncryptionPolicyLint(stats *lintStats) {
 
 	stats.filesWithIssues++
 	stats.totalIssues += len(issues)
-	fmt.Printf("\n[encryption-config]:\n")
+	outln("\n[encryption-config]:")
 	for _, issue := range issues {
 		printIssue(issue)
 		if issue.Severity == lint.SeverityError {
@@ -344,7 +345,7 @@ func expandGlobPatterns(args []string) ([]string, error) {
 			if _, err := os.Stat(pattern); err == nil {
 				files = append(files, pattern)
 			} else {
-				fmt.Fprintf(os.Stderr, "Warning: no files match pattern %q\n", pattern)
+				warnf("no files match pattern %q", pattern)
 			}
 		} else {
 			files = append(files, matches...)
@@ -365,7 +366,7 @@ func processFile(file string, stats *lintStats) {
 
 	content, err := os.ReadFile(file)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading %s: %v\n", file, err)
+		errlnf("Error reading %s: %v", file, err)
 		return
 	}
 
@@ -390,7 +391,7 @@ func processFile(file string, stats *lintStats) {
 		}
 	}
 
-	fmt.Printf("\n%s:\n", file)
+	outlnf("\n%s:", file)
 	for _, issue := range result.Issues {
 		printIssue(issue)
 		if issue.Severity == lint.SeverityError {
@@ -401,10 +402,10 @@ func processFile(file string, stats *lintStats) {
 	// Write fixed content if --fix was used
 	if lintFix && result.Fixed != result.Content {
 		if err := os.WriteFile(file, []byte(result.Fixed), 0o600); err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", file, err)
+			errlnf("Error writing %s: %v", file, err)
 		} else {
 			stats.totalFixed++
-			fmt.Printf("  → Fixed %d issue(s)\n", len(result.Issues))
+			outlnf("  -> Fixed %d issue(s)", len(result.Issues))
 		}
 	}
 }
@@ -418,14 +419,14 @@ func printIssue(issue lint.Issue) {
 		location += fmt.Sprintf(", col %d", issue.Column)
 	}
 
-	fmt.Printf("  %s%s%s [%s]: %s\n",
+	out("  %s%s%s [%s]: %s\n",
 		severityColor, issue.Severity.String(), resetColor,
 		location, issue.Message)
 }
 
 // getSeverityColors returns ANSI color codes for a severity level.
 func getSeverityColors(severity lint.Severity) (color, reset string) {
-	if !isTerminal() {
+	if !colorEnabledOnOutput() {
 		return "", ""
 	}
 
@@ -443,34 +444,25 @@ func getSeverityColors(severity lint.Severity) (color, reset string) {
 
 // printSummary prints the linting summary.
 func printSummary(stats *lintStats) {
-	fmt.Println()
+	outln()
 	if stats.totalIssues == 0 {
-		fmt.Printf("✓ %d file(s) linted, no issues found\n", stats.totalFiles)
+		outlnf("OK %d file(s) linted, no issues found", stats.totalFiles)
 	} else {
-		fmt.Printf("✗ %d file(s) linted, %d issue(s) in %d file(s)\n",
+		outlnf("FAIL %d file(s) linted, %d issue(s) in %d file(s)",
 			stats.totalFiles, stats.totalIssues, stats.filesWithIssues)
 
 		if lintFix {
-			fmt.Printf("  → Fixed %d file(s)\n", stats.totalFixed)
+			outlnf("  -> Fixed %d file(s)", stats.totalFixed)
 		} else if stats.fixableIssues > 0 {
 			// Show fixable count and suggest fix command
 			nonFixable := stats.totalIssues - stats.fixableIssues
-			fmt.Printf("ℹ  %d issue(s) can be automatically fixed", stats.fixableIssues)
+			out("INFO %d issue(s) can be automatically fixed", stats.fixableIssues)
 			if nonFixable > 0 {
-				fmt.Printf(", %d cannot", nonFixable)
+				out(", %d cannot", nonFixable)
 			}
-			fmt.Println()
-			fmt.Println()
-			fmt.Println("Run 'markata-go lint --fix' to automatically fix fixable issues")
+			outln()
+			outln()
+			outln("Run 'markata-go lint --fix' to automatically fix fixable issues")
 		}
 	}
-}
-
-// isTerminal returns true if stdout appears to be a terminal.
-func isTerminal() bool {
-	fi, err := os.Stdout.Stat()
-	if err != nil {
-		return false
-	}
-	return (fi.Mode() & os.ModeCharDevice) != 0
 }

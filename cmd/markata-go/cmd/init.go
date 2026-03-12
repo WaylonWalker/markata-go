@@ -61,9 +61,9 @@ func init() {
 // prompt displays a question and returns the user's response or a default value.
 func prompt(reader *bufio.Reader, question, defaultVal string) string {
 	if defaultVal != "" {
-		fmt.Printf("%s [%s]: ", question, defaultVal)
+		errf("%s [%s]: ", question, defaultVal)
 	} else {
-		fmt.Printf("%s: ", question)
+		errf("%s: ", question)
 	}
 	input, err := reader.ReadString('\n')
 	if err != nil {
@@ -134,12 +134,12 @@ func getAvailableFeatures(configured map[string]bool) []featureInfo {
 
 // promptMenuChoice displays a numbered menu and returns the selected option.
 func promptMenuChoice(reader *bufio.Reader, question string, options []string) int {
-	fmt.Println()
-	fmt.Println(question)
+	errln()
+	errln(question)
 	for i, opt := range options {
-		fmt.Printf("  %d) %s\n", i+1, opt)
+		errlnf("  %d) %s", i+1, opt)
 	}
-	fmt.Print("\nEnter choice [1]: ")
+	errf("\nEnter choice [1]: ")
 
 	input, err := reader.ReadString('\n')
 	if err != nil || strings.TrimSpace(input) == "" {
@@ -161,12 +161,12 @@ func promptMenuChoiceDefault(reader *bufio.Reader, question string, options []st
 		defaultIndex = 0
 	}
 
-	fmt.Println()
-	fmt.Println(question)
+	errln()
+	errln(question)
 	for i, opt := range options {
-		fmt.Printf("  %d) %s\n", i+1, opt)
+		errlnf("  %d) %s", i+1, opt)
 	}
-	fmt.Printf("\nEnter choice [%d]: ", defaultIndex+1)
+	errf("\nEnter choice [%d]: ", defaultIndex+1)
 
 	input, err := reader.ReadString('\n')
 	if err != nil || strings.TrimSpace(input) == "" {
@@ -194,28 +194,28 @@ func promptRadioBool(reader *bufio.Reader, question string, defaultEnabled bool)
 
 // promptFeatureSelection displays checkboxes for feature selection.
 func promptFeatureSelection(reader *bufio.Reader, features []featureInfo) []string {
-	fmt.Println()
-	fmt.Println("Select features to add (enter numbers separated by spaces):")
-	fmt.Println()
+	errln()
+	errln("Select features to add (enter numbers separated by spaces):")
+	errln()
 
 	availableIdx := []int{}
 	for i, f := range features {
 		status := "[ ]"
 		if f.Configured {
 			status = "[x]"
-			fmt.Printf("  %d) %s %s (already configured)\n", i+1, status, f.Description)
+			errlnf("  %d) %s %s (already configured)", i+1, status, f.Description)
 		} else {
-			fmt.Printf("  %d) %s %s\n", i+1, status, f.Description)
+			errlnf("  %d) %s %s", i+1, status, f.Description)
 			availableIdx = append(availableIdx, i)
 		}
 	}
 
 	if len(availableIdx) == 0 {
-		fmt.Println("\n  All features are already configured!")
+		errln("\n  All features are already configured!")
 		return nil
 	}
 
-	fmt.Print("\nEnter numbers (e.g., 1 3): ")
+	errf("\nEnter numbers (e.g., 1 3): ")
 	input, err := reader.ReadString('\n')
 	if err != nil {
 		return nil
@@ -1152,10 +1152,14 @@ func runExistingProjectWizard(reader *bufio.Reader, configPath string) error {
 	}
 }
 
-func runInitCommand(_ *cobra.Command, _ []string) error {
+func runInitCommand(cmd *cobra.Command, _ []string) error {
+	currentCmd = cmd
+	if noInput {
+		return fmt.Errorf("interactive setup is disabled by --no-input; rerun without it or pass a config file path to 'markata-go config init'")
+	}
 	// Determine if we should use the huh TUI wizard
 	// Use plain mode if: --plain flag is set, or stdin is not a TTY
-	usePlain := initPlain || !isStdinTerminal()
+	usePlain := initPlain || !inputIsTerminal() || !outputIsTerminal()
 
 	configPath := defaultConfigFilename
 
@@ -1163,11 +1167,11 @@ func runInitCommand(_ *cobra.Command, _ []string) error {
 	if _, err := os.Stat(configPath); err == nil {
 		if initForce {
 			// Force mode - proceed with new project setup
-			fmt.Println("--force specified, overwriting existing configuration")
+			infof("--force specified, overwriting existing configuration")
 		} else {
 			// Run the wizard for existing projects
 			if usePlain {
-				reader := bufio.NewReader(os.Stdin)
+				reader := bufio.NewReader(inReader())
 				return runExistingProjectWizard(reader, configPath)
 			}
 			// Try to load existing config to get palette for theming
@@ -1191,15 +1195,6 @@ func runInitCommand(_ *cobra.Command, _ []string) error {
 	return applyWizardState(state, initForce)
 }
 
-// isStdinTerminal checks if stdin is a terminal (for init wizard).
-func isStdinTerminal() bool {
-	stat, err := os.Stdin.Stat()
-	if err != nil {
-		return false
-	}
-	return (stat.Mode() & os.ModeCharDevice) != 0
-}
-
 // getPaletteFromConfig attempts to extract the palette name from an existing config file.
 func getPaletteFromConfig(configPath string) string {
 	cfg, err := config.Load(configPath)
@@ -1211,7 +1206,7 @@ func getPaletteFromConfig(configPath string) string {
 
 // runPlainNewProjectWizard runs the plain text wizard for new projects.
 func runPlainNewProjectWizard() error {
-	reader := bufio.NewReader(os.Stdin)
+	reader := bufio.NewReader(inReader())
 
 	fmt.Println()
 	fmt.Println("Welcome to markata-go!")

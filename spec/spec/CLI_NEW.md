@@ -27,6 +27,7 @@ markata-go new [title] [flags]
 | `--draft` | | Create as a draft | `false` |
 | `--tags` | | Comma-separated list of tags | `""` |
 | `--plain` | | Use plain text prompts instead of TUI | Auto-detected |
+| `--no-input` | | Disable prompts and interactive UI | `false` |
 
 **Note:** `--draft` defaults to `false`. New posts are created as published by
 default (`published: true`, `draft: false`).
@@ -38,6 +39,10 @@ charmbracelet/huh forms. The wizard falls back to plain text prompts when:
 
 - The `--plain` flag is specified
 - stdin is not a TTY
+
+If `--no-input` is set, the command MUST NOT prompt or launch the TUI wizard.
+When required input is missing, it MUST return an error telling the user to pass
+the title argument.
 
 ### Wizard Flow
 
@@ -214,6 +219,9 @@ markata-go new "My Post" --template page --tags "go,web" --dir custom-dir
 
 All options come from flags. No prompts are shown. The defaults apply for any
 unspecified flags.
+
+When `--no-input` is set and no title argument is provided, the command returns
+an error instead of prompting.
 
 ## Error Handling
 

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -37,7 +36,7 @@ Example:
   markata-go explain plugins      # Explain plugin system`,
 	Args:              cobra.MaximumNArgs(1),
 	ValidArgsFunction: explainValidArgs,
-	Run:               runExplain,
+	RunE:              runExplain,
 }
 
 func init() {
@@ -59,7 +58,8 @@ func explainValidArgs(_ *cobra.Command, _ []string, _ string) ([]string, cobra.S
 	}, cobra.ShellCompDirectiveNoFileComp
 }
 
-func runExplain(_ *cobra.Command, args []string) {
+func runExplain(cmd *cobra.Command, args []string) error {
+	currentCmd = cmd
 	topic := ""
 	if len(args) > 0 {
 		topic = args[0]
@@ -88,12 +88,11 @@ func runExplain(_ *cobra.Command, args []string) {
 	case "feeds":
 		content = explainFeeds
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown topic: %s\n\n", topic)
-		fmt.Fprintln(os.Stderr, "Available topics: build, serve, new, init, config, plugins, lifecycle, templates, feeds")
-		os.Exit(1)
+		return fmt.Errorf("unknown topic %q; run 'markata-go explain --help' to see available topics", topic)
 	}
 
-	fmt.Println(content)
+	outln(content)
+	return nil
 }
 
 const explainGeneral = `# markata-go
