@@ -1195,11 +1195,6 @@ func runInitCommand(cmd *cobra.Command, _ []string) error {
 	return applyWizardState(state, initForce)
 }
 
-// isStdinTerminal checks if stdin is a terminal (for init wizard).
-func isStdinTerminal() bool {
-	return inputIsTerminal()
-}
-
 // getPaletteFromConfig attempts to extract the palette name from an existing config file.
 func getPaletteFromConfig(configPath string) string {
 	cfg, err := config.Load(configPath)

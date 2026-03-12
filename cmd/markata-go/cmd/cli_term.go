@@ -13,10 +13,6 @@ func outputIsTerminal() bool {
 	return streamIsTerminal(outWriter())
 }
 
-func errorIsTerminal() bool {
-	return streamIsTerminal(errWriter())
-}
-
 func streamIsTerminal(stream any) bool {
 	return fileLikeTerminal(stream)
 }
@@ -31,10 +27,6 @@ func fileLikeTerminal(stream any) bool {
 		return false
 	}
 	return (stat.Mode() & os.ModeCharDevice) != 0
-}
-
-func colorEnabledOnError() bool {
-	return colorEnabledFor(errorIsTerminal())
 }
 
 func colorEnabledOnOutput() bool {
