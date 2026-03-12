@@ -18,7 +18,9 @@ func TestVersionCommand_ShortUsesStdoutOnly(t *testing.T) {
 		t.Fatalf("set short flag: %v", err)
 	}
 	defer func() {
-		_ = versionCmd.Flags().Set("short", "false")
+		if err := versionCmd.Flags().Set("short", "false"); err != nil {
+			t.Fatalf("reset short flag: %v", err)
+		}
 	}()
 
 	versionCmd.Run(versionCmd, nil)
