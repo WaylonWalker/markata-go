@@ -177,7 +177,8 @@ func init() {
 	serveCmd.Flags().BoolVar(&serveFast, "fast", false, "skip minification and CSS purging for faster builds")
 }
 
-func runServeCommand(_ *cobra.Command, _ []string) error {
+func runServeCommand(cmd *cobra.Command, _ []string) error {
+	currentCmd = cmd
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -230,7 +231,7 @@ func runServeCommand(_ *cobra.Command, _ []string) error {
 
 	waitForGoroutines(&wg)
 
-	fmt.Println("Server stopped")
+	errln("Server stopped")
 	return nil
 }
 
@@ -240,9 +241,9 @@ func setupServeSignals(cancel context.CancelFunc) {
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigCh
-		fmt.Println("\nInterrupt received - shutting down...")
+		errln("\nInterrupt received - shutting down...")
 		if isRebuilding.Load() {
-			fmt.Println("Rebuild in progress - canceling...")
+			errln("Rebuild in progress - canceling...")
 		}
 		cancel()
 	}()
@@ -297,7 +298,7 @@ func setupWatcher(ctx context.Context, m *lifecycle.Manager, wg *sync.WaitGroup)
 		return nil, func() {}, fmt.Errorf("failed to setup file watching: %w", err)
 	}
 
-	fmt.Println("Watching for file changes...")
+	infof("Watching for file changes...")
 
 	return rebuildCh, func() { _ = watcher.Close() }, nil
 }
@@ -313,8 +314,8 @@ func startHTTPServer(addr string, handler http.Handler) (server *http.Server, se
 	serverErrCh := make(chan error, 1)
 	serverStartedCh := make(chan struct{})
 	go func() {
-		fmt.Printf("\nServing at http://%s\n", addr)
-		fmt.Println("Press Ctrl+C to stop")
+		infof("\nServing at http://%s", addr)
+		infof("Press Ctrl+C to stop")
 		close(serverStartedCh) // Signal that server is ready
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			serverErrCh <- err
@@ -327,9 +328,7 @@ func startHTTPServer(addr string, handler http.Handler) (server *http.Server, se
 func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.WaitGroup) {
 	setBuildStatus(buildStatusBuilding, "", "")
 	notifyBuildStatus()
-	if verbose {
-		fmt.Println("Running initial build...")
-	}
+	verbosef("Running initial build...")
 
 	if serveFast {
 		lifecycle.SetServeFullRebuild(m, false)
@@ -358,13 +357,13 @@ func startInitialBuild(m *lifecycle.Manager, rebuildCh chan struct{}, wg *sync.W
 		if buildErr != nil {
 			setBuildStatus(buildStatusError, buildErr.Error(), "")
 			notifyBuildStatus()
-			fmt.Printf("Initial build failed: %v\n", buildErr)
+			errlnf("Initial build failed: %v", buildErr)
 			return
 		}
 
 		setBuildStatus(buildStatusSuccess, "", licenseWarningMessage(getModelsConfig(m)))
 		notifyBuildStatus()
-		fmt.Printf("Built %d posts, %d feeds\n", result.PostsProcessed, result.FeedsGenerated)
+		infof("Built %d posts, %d feeds", result.PostsProcessed, result.FeedsGenerated)
 		notifyLiveReload()
 		if serveFast {
 			if cached, ok := m.Cache().Get("build_cache"); ok {
@@ -381,7 +380,7 @@ func waitForShutdown(ctx context.Context, server *http.Server, serverErr <-chan 
 	select {
 	case <-ctx.Done():
 		// Graceful shutdown
-		fmt.Println("Initiating graceful shutdown...")
+		infof("Initiating graceful shutdown...")
 
 		// Close live reload connections first
 		closeAllLiveReloadConnections()
@@ -390,11 +389,11 @@ func waitForShutdown(ctx context.Context, server *http.Server, serverErr <-chan 
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer shutdownCancel()
 
-		fmt.Printf("Shutting down HTTP server (timeout: 2s)...\n")
+		verbosef("Shutting down HTTP server (timeout: 2s)...")
 		if err := server.Shutdown(shutdownCtx); err != nil {
-			fmt.Printf("Server shutdown error: %v\n", err)
+			errlnf("Server shutdown error: %v", err)
 		} else {
-			fmt.Println("HTTP server shutdown completed")
+			verbosef("HTTP server shutdown completed")
 		}
 	case err := <-serverErr:
 		return fmt.Errorf("server error: %w", err)
@@ -407,9 +406,9 @@ func waitForGoroutines(wg *sync.WaitGroup) {
 	// Wait for goroutines to finish with timeout
 	activeConnections := liveReloadCount.Load()
 	if verbose || activeConnections > 0 {
-		fmt.Printf("Waiting for goroutines to finish (active SSE connections: %d)...\n", activeConnections)
+		verbosef("Waiting for goroutines to finish (active SSE connections: %d)...", activeConnections)
 	} else {
-		fmt.Println("Waiting for goroutines to finish...")
+		verbosef("Waiting for goroutines to finish...")
 	}
 
 	done := make(chan struct{})
@@ -420,11 +419,11 @@ func waitForGoroutines(wg *sync.WaitGroup) {
 
 	select {
 	case <-done:
-		fmt.Println("All tracked goroutines finished")
+		verbosef("All tracked goroutines finished")
 	case <-time.After(1 * time.Second):
-		fmt.Printf("Shutdown timeout after 1s - forcing exit\n")
+		errlnf("Shutdown timeout after 1s - forcing exit")
 		if activeConnections > 0 {
-			fmt.Printf("Note: Had %d active SSE connections that may not have closed cleanly\n", activeConnections)
+			errlnf("Note: had %d active SSE connections that may not have closed cleanly", activeConnections)
 		}
 	}
 }
@@ -441,7 +440,7 @@ func createHandler(outputDir string) http.Handler {
 		status := getBuildStatus()
 		// Log requests in verbose mode
 		if verbose {
-			fmt.Printf("[%s] %s %s\n", time.Now().Format("15:04:05"), r.Method, r.URL.Path)
+			verbosef("[%s] %s %s", time.Now().Format("15:04:05"), r.Method, r.URL.Path)
 		}
 
 		// Handle live reload endpoint
@@ -505,7 +504,7 @@ func serveHTMLWithLiveReload(w http.ResponseWriter, path, outputDir string, stat
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if _, err := w.Write([]byte(html)); err != nil && verbose {
-		fmt.Printf("Error writing response: %v\n", err)
+		verbosef("Error writing response: %v", err)
 	}
 }
 
@@ -915,7 +914,7 @@ func handleLiveReload(w http.ResponseWriter, r *http.Request) {
 	liveReloadClientsMu.Unlock()
 
 	if verbose {
-		fmt.Printf("Live reload client connected (total: %d)\n", liveReloadCount.Load())
+		verbosef("Live reload client connected (total: %d)", liveReloadCount.Load())
 	}
 
 	// Ensure client is removed on disconnect
@@ -933,7 +932,7 @@ func handleLiveReload(w http.ResponseWriter, r *http.Request) {
 		liveReloadClientsMu.Unlock()
 
 		if verbose {
-			fmt.Printf("Live reload client disconnected (total: %d)\n", liveReloadCount.Load())
+			verbosef("Live reload client disconnected (total: %d)", liveReloadCount.Load())
 		}
 	}()
 
@@ -964,7 +963,7 @@ func handleLiveReload(w http.ResponseWriter, r *http.Request) {
 			return
 		case <-liveReloadShutdown:
 			if verbose {
-				fmt.Printf("SSE handler received global shutdown signal\n")
+				verbosef("SSE handler received global shutdown signal")
 			}
 			return
 		}
@@ -1007,7 +1006,7 @@ func closeAllLiveReloadConnections() {
 
 	count := len(liveReloadClients)
 	if count > 0 {
-		fmt.Printf("Closing %d live reload connection(s)...\n", count)
+		verbosef("Closing %d live reload connection(s)...", count)
 
 		// Signal global shutdown - this will cause all SSE handlers to exit
 		select {
@@ -1030,7 +1029,7 @@ func closeAllLiveReloadConnections() {
 		// Clear the map
 		clear(liveReloadClients)
 		liveReloadCount.Store(0)
-		fmt.Printf("Closed all live reload connections\n")
+		verbosef("Closed all live reload connections")
 	}
 }
 
@@ -1071,10 +1070,10 @@ func handleNewDirectory(watcher *fsnotify.Watcher, event fsnotify.Event) {
 	// Add the new directory and any subdirectories to the watcher
 	if watchErr := addDirRecursive(watcher, event.Name); watchErr != nil {
 		if verbose {
-			fmt.Printf("Failed to watch new directory %s: %v\n", event.Name, watchErr)
+			verbosef("Failed to watch new directory %s: %v", event.Name, watchErr)
 		}
 	} else if verbose {
-		fmt.Printf("Now watching new directory: %s\n", event.Name)
+		verbosef("Now watching new directory: %s", event.Name)
 	}
 }
 
@@ -1084,7 +1083,7 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 		select {
 		case <-ctx.Done():
 			if verbose {
-				fmt.Println("File watcher canceled")
+				verbosef("File watcher canceled")
 			}
 			return
 		case event, ok := <-watcher.Events:
@@ -1103,7 +1102,7 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 			// Rename is important for editors that save via temp file + rename (vim, vscode, etc.)
 			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) != 0 {
 				if verbose {
-					fmt.Printf("File changed: %s (%s)\n", event.Name, event.Op.String())
+					verbosef("File changed: %s (%s)", event.Name, event.Op.String())
 				}
 
 				recordServeChangedPath(event)
@@ -1123,7 +1122,7 @@ func watchFiles(ctx context.Context, watcher *fsnotify.Watcher, rebuildCh chan<-
 			if !ok {
 				return
 			}
-			fmt.Printf("Watcher error: %v\n", err)
+			errlnf("Watcher error: %v", err)
 		}
 	}
 }
@@ -1279,7 +1278,7 @@ func handleRebuilds(ctx context.Context, rebuildCh chan struct{}) {
 				}
 			}
 			if verbose {
-				fmt.Println("Rebuild handler canceled")
+				verbosef("Rebuild handler canceled")
 			}
 			return
 		case <-rebuildCh:
@@ -1322,7 +1321,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		}
 	}()
 
-	fmt.Println("\nRebuilding...")
+	infof("\nRebuilding...")
 	setBuildStatus(buildStatusBuilding, "", "")
 	notifyBuildStatus()
 	startTime := time.Now()
@@ -1330,7 +1329,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	// Check if context is canceled before starting rebuild
 	select {
 	case <-ctx.Done():
-		fmt.Println("Rebuild canceled")
+		verbosef("Rebuild canceled")
 		return
 	default:
 	}
@@ -1339,7 +1338,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	if err != nil {
 		setBuildStatus(buildStatusError, err.Error(), "")
 		notifyBuildStatus()
-		fmt.Printf("Rebuild failed: %v\n", err)
+		errlnf("Rebuild failed: %v", err)
 		return
 	}
 
@@ -1370,7 +1369,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	// Check for cancellation after creating manager
 	select {
 	case <-ctx.Done():
-		fmt.Println("Rebuild canceled")
+		verbosef("Rebuild canceled")
 		return
 	default:
 	}
@@ -1379,7 +1378,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	if err != nil {
 		setBuildStatus(buildStatusError, err.Error(), "")
 		notifyBuildStatus()
-		fmt.Printf("Rebuild failed: %v\n", err)
+		errlnf("Rebuild failed: %v", err)
 		return
 	}
 	if serveFast {
@@ -1394,7 +1393,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	// Check for cancellation after build
 	select {
 	case <-ctx.Done():
-		fmt.Println("Rebuild canceled")
+		verbosef("Rebuild canceled")
 		return
 	default:
 	}
@@ -1402,8 +1401,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 	duration := time.Since(startTime)
 	setBuildStatus(buildStatusSuccess, "", licenseWarningMessage(getModelsConfig(m)))
 	notifyBuildStatus()
-	fmt.Printf("Rebuilt in %.2fs (%d posts, %d feeds)\n",
-		duration.Seconds(), result.PostsProcessed, result.FeedsGenerated)
+	infof("Rebuilt in %.2fs (%d posts, %d feeds)", duration.Seconds(), result.PostsProcessed, result.FeedsGenerated)
 
 	// Notify live reload clients
 	notifyLiveReload()
@@ -1429,7 +1427,7 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths 
 		lifecycle.SetServeRemovedPaths(m, nil)
 		lifecycle.SetServeGlobDirty(m, true)
 		if verbose {
-			fmt.Printf("[serve] incremental disabled: normalized=%d removed=%d force_full=%t outside=%t content_dir=%s\n", len(normalized), len(normalizedRemoved), forceFull, outside || outsideRemoved, contentDir)
+			verbosef("[serve] incremental disabled: normalized=%d removed=%d force_full=%t outside=%t content_dir=%s", len(normalized), len(normalizedRemoved), forceFull, outside || outsideRemoved, contentDir)
 		}
 		return
 	}
@@ -1460,7 +1458,7 @@ func configureServeIncremental(m *lifecycle.Manager, changedPaths, removedPaths 
 	lifecycle.SetServeRemovedPaths(m, normalizedRemoved)
 	lifecycle.SetServeGlobDirty(m, globDirty)
 	if verbose {
-		fmt.Printf("[serve] incremental enabled: changed=%d removed=%d glob_dirty=%t content_dir=%s\n", len(normalized), len(normalizedRemoved), globDirty, contentDir)
+		verbosef("[serve] incremental enabled: changed=%d removed=%d glob_dirty=%t content_dir=%s", len(normalized), len(normalizedRemoved), globDirty, contentDir)
 	}
 }
 
@@ -1536,7 +1534,7 @@ func addDirRecursive(watcher *fsnotify.Watcher, root string) error {
 		// Add directories to watcher
 		if d.IsDir() {
 			if verbose {
-				fmt.Printf("Watching: %s\n", path)
+				verbosef("Watching: %s", path)
 			}
 			return watcher.Add(path)
 		}

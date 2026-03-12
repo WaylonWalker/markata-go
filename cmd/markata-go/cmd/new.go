@@ -442,9 +442,9 @@ type interactiveInput struct {
 
 // runInteractiveMode prompts the user for input when no title is provided.
 func runInteractiveMode(cmd *cobra.Command, templates map[string]ContentTemplate) (*interactiveInput, error) {
-	reader := bufio.NewReader(os.Stdin)
+	reader := bufio.NewReader(inReader())
 
-	fmt.Println()
+	errln()
 
 	// Get title
 	title := promptNew(reader, "Title", "")
@@ -461,7 +461,7 @@ func runInteractiveMode(cmd *cobra.Command, templates map[string]ContentTemplate
 			templateNames = append(templateNames, name)
 		}
 		sort.Strings(templateNames)
-		fmt.Printf("Available templates: %s\n", strings.Join(templateNames, ", "))
+		errlnf("Available templates: %s", strings.Join(templateNames, ", "))
 		templateInput := promptNew(reader, "Template", "post")
 		if t, ok := templates[templateInput]; ok {
 			newTemplate = templateInput
@@ -491,7 +491,7 @@ func runInteractiveMode(cmd *cobra.Command, templates map[string]ContentTemplate
 		newDraft = promptYesNoNew(reader, "Create as draft?", true)
 	}
 
-	fmt.Println()
+	errln()
 
 	return &interactiveInput{
 		title:    title,
@@ -524,15 +524,15 @@ func writeContentFile(title, slug, outputDir string, draft bool, tags []string, 
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
-	fmt.Printf("Created: %s\n", fullPath)
+	outlnf("Created: %s", fullPath)
 	if verbose {
-		fmt.Printf("  Template: %s\n", newTemplate)
-		fmt.Printf("  Title: %s\n", title)
-		fmt.Printf("  Slug: %s\n", slug)
-		fmt.Printf("  Date: %s\n", now.Format("2006-01-02"))
-		fmt.Printf("  Draft: %t\n", draft)
+		errlnf("  Template: %s", newTemplate)
+		errlnf("  Title: %s", title)
+		errlnf("  Slug: %s", slug)
+		errlnf("  Date: %s", now.Format("2006-01-02"))
+		errlnf("  Draft: %t", draft)
 		if len(tags) > 0 {
-			fmt.Printf("  Tags: %s\n", strings.Join(tags, ", "))
+			errlnf("  Tags: %s", strings.Join(tags, ", "))
 		}
 	}
 
@@ -540,6 +540,7 @@ func writeContentFile(title, slug, outputDir string, draft bool, tags []string, 
 }
 
 func runNewCommand(cmd *cobra.Command, args []string) error {
+	currentCmd = cmd
 	// Handle --list flag
 	if newList {
 		return listTemplates()
@@ -564,8 +565,11 @@ func runNewCommand(cmd *cobra.Command, args []string) error {
 
 	// If no title provided, run interactive mode
 	if len(args) == 0 {
+		if noInput {
+			return fmt.Errorf("title is required when --no-input is set; run 'markata-go new \"My Post\"' or pass a title argument")
+		}
 		// Determine if we should use the huh TUI wizard
-		usePlain := newPlain || !isStdinTerminal()
+		usePlain := newPlain || !inputIsTerminal() || !outputIsTerminal()
 
 		if usePlain {
 			// Use legacy plain text interactive mode
@@ -611,7 +615,7 @@ func listTemplates() error {
 	templates := loadTemplates()
 
 	if len(templates) == 0 {
-		fmt.Println("No templates available.")
+		outln("No templates available.")
 		return nil
 	}
 
@@ -622,14 +626,14 @@ func listTemplates() error {
 	}
 	sort.Strings(names)
 
-	fmt.Println("Available content templates:")
-	fmt.Println()
+	outln("Available content templates:")
+	outln()
 	for _, name := range names {
 		t := templates[name]
-		fmt.Printf("  %-12s -> %s/  (%s)\n", name, t.Directory, t.Source)
+		outlnf("  %-12s -> %s/  (%s)", name, t.Directory, t.Source)
 	}
-	fmt.Println()
-	fmt.Println("Use --template <name> or -t <name> to select a template.")
+	outln()
+	outln("Use --template <name> or -t <name> to select a template.")
 	return nil
 }
 
@@ -751,9 +755,9 @@ Write your content here...
 // promptNew displays a question and returns the user's response or a default value.
 func promptNew(reader *bufio.Reader, question, defaultVal string) string {
 	if defaultVal != "" {
-		fmt.Printf("%s [%s]: ", question, defaultVal)
+		errf("%s [%s]: ", question, defaultVal)
 	} else {
-		fmt.Printf("%s: ", question)
+		errf("%s: ", question)
 	}
 	input, err := reader.ReadString('\n')
 	if err != nil {
@@ -772,7 +776,7 @@ func promptYesNoNew(reader *bufio.Reader, question string, defaultYes bool) bool
 	if defaultYes {
 		defaultStr = "Y/n"
 	}
-	fmt.Printf("%s (%s): ", question, defaultStr)
+	errf("%s (%s): ", question, defaultStr)
 	input, err := reader.ReadString('\n')
 	if err != nil {
 		return defaultYes
