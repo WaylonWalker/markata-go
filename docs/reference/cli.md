@@ -31,7 +31,10 @@ These flags are available for all commands:
 | `--config` | `-c` | Path to configuration file | Auto-discovered |
 | `--merge-config` | `-m` | Additional config file(s) to merge (can be used multiple times) | None |
 | `--output` | `-o` | Output directory (overrides config) | `public` |
+| `--quiet` | `-q` | Suppress non-essential progress and status output | `false` |
 | `--verbose` | `-v` | Enable verbose output | `false` |
+| `--no-color` | | Disable ANSI color on all streams | `false` |
+| `--no-input` | | Disable prompts and interactive UI | `false` |
 
 ### Config File Discovery
 
@@ -45,6 +48,22 @@ When `--config` is not specified, markata-go searches for configuration files in
 6. `.markata-go.json`
 
 See [[configuration-guide|Configuration]] for details on configuration options.
+
+### CLI UX Conventions
+
+markata-go follows a few shared CLI rules:
+
+- primary command results are written to `stdout`
+- warnings, progress, prompts, and errors are written to `stderr`
+- color is disabled when output is not a terminal, when `NO_COLOR` is set, when
+  `TERM=dumb`, or when `--no-color` is passed
+- interactive commands such as `new` and `init` honor `--no-input`
+- commands that expose structured data should prefer explicit machine-readable
+  modes such as `--json` or `--format json`
+
+Docs: https://github.com/WaylonWalker/markata-go/tree/main/docs
+
+Issues: https://github.com/WaylonWalker/markata-go/issues
 
 ---
 

@@ -209,10 +209,10 @@ func runConfigShowCommand(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to marshal JSON: %w", err)
 		}
-		fmt.Println(string(data))
+		outln(string(data))
 
 	case formatTOML:
-		if err := toml.NewEncoder(os.Stdout).Encode(cfg); err != nil {
+		if err := toml.NewEncoder(outWriter()).Encode(cfg); err != nil {
 			return fmt.Errorf("failed to marshal TOML: %w", err)
 		}
 
@@ -221,14 +221,14 @@ func runConfigShowCommand(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to marshal YAML: %w", err)
 		}
-		fmt.Print(string(data))
+		outText(string(data))
 
 	default:
 		data, err := yaml.Marshal(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to marshal YAML: %w", err)
 		}
-		fmt.Print(string(data))
+		outText(string(data))
 	}
 
 	return nil
@@ -296,23 +296,23 @@ func configToMap(cfg *models.Config) (map[string]interface{}, error) {
 // showDiffConfig prints only user-provided values that differ from defaults.
 func showDiffConfig(userMap map[string]interface{}, userConfigFile string) error {
 	if len(userMap) == 0 {
-		fmt.Println("# No user configuration found")
-		fmt.Println("# All values are defaults")
+		outln("# No user configuration found")
+		outln("# All values are defaults")
 		return nil
 	}
 
 	if userConfigFile != "" {
-		fmt.Printf("# User configuration from: %s\n", userConfigFile)
+		outlnf("# User configuration from: %s", userConfigFile)
 	}
-	fmt.Println("# Values below differ from defaults:")
-	fmt.Println()
+	outln("# Values below differ from defaults:")
+	outln()
 
 	// Output the user config as YAML with comments
 	data, err := yaml.Marshal(userMap)
 	if err != nil {
 		return fmt.Errorf("failed to marshal diff: %w", err)
 	}
-	fmt.Print(string(data))
+	outText(string(data))
 
 	return nil
 }
@@ -320,13 +320,13 @@ func showDiffConfig(userMap map[string]interface{}, userConfigFile string) error
 // showAnnotatedConfig prints the merged config with source annotations.
 func showAnnotatedConfig(merged, user map[string]interface{}, userConfigFile string) error {
 	// Print header
-	fmt.Println("# Configuration with source annotations")
+	outln("# Configuration with source annotations")
 	if userConfigFile != "" {
-		fmt.Printf("# User config: %s\n", userConfigFile)
+		outlnf("# User config: %s", userConfigFile)
 	} else {
-		fmt.Println("# User config: (none found, using defaults)")
+		outln("# User config: (none found, using defaults)")
 	}
-	fmt.Println()
+	outln()
 
 	// Get YAML representation of merged config
 	data, err := yaml.Marshal(merged)
@@ -338,7 +338,7 @@ func showAnnotatedConfig(merged, user map[string]interface{}, userConfigFile str
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {
 		if line == "" {
-			fmt.Println()
+			outln()
 			continue
 		}
 
@@ -346,14 +346,14 @@ func showAnnotatedConfig(merged, user map[string]interface{}, userConfigFile str
 		trimmed := strings.TrimLeft(line, " ")
 		if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "#") {
 			// Array item or comment - just print
-			fmt.Println(line)
+			outln(line)
 			continue
 		}
 
 		// Try to extract key from "key: value" format
 		colonIdx := strings.Index(trimmed, ":")
 		if colonIdx == -1 {
-			fmt.Println(line)
+			outln(line)
 			continue
 		}
 
@@ -380,13 +380,13 @@ func showAnnotatedConfig(merged, user map[string]interface{}, userConfigFile str
 		// Only annotate leaf values (lines with values after the colon)
 		valueAfterColon := strings.TrimSpace(trimmed[colonIdx+1:])
 		if valueAfterColon != "" && !strings.HasPrefix(valueAfterColon, "|") && !strings.HasPrefix(valueAfterColon, ">") {
-			fmt.Printf("%s%s# %s\n", line, strings.Repeat(" ", padding), source)
+			outlnf("%s%s# %s", line, strings.Repeat(" ", padding), source)
 		} else {
 			// It's a parent key (object/map) - check if any child is from user
 			if indent == 0 && isKeyInMap(user, key) {
-				fmt.Printf("%s%s# %s (partial)\n", line, strings.Repeat(" ", padding), source)
+				outlnf("%s%s# %s (partial)", line, strings.Repeat(" ", padding), source)
 			} else {
-				fmt.Println(line)
+				outln(line)
 			}
 		}
 	}
@@ -423,17 +423,17 @@ func runConfigGetCommand(_ *cobra.Command, args []string) error {
 	// Print value
 	switch v := value.(type) {
 	case string:
-		fmt.Println(v)
+		outln(v)
 	case []string:
 		for _, s := range v {
-			fmt.Println(s)
+			outln(s)
 		}
 	default:
 		data, err := json.MarshalIndent(v, "", "  ")
 		if err != nil {
-			fmt.Printf("%v\n", v)
+			outlnf("%v", v)
 		} else {
-			fmt.Println(string(data))
+			outln(string(data))
 		}
 	}
 
@@ -452,18 +452,18 @@ func runConfigValidateCommand(_ *cobra.Command, _ []string) error {
 
 	// Print warnings
 	if len(warnings) > 0 {
-		fmt.Println("Warnings:")
+		errln("Warnings:")
 		for _, w := range warnings {
-			fmt.Printf("  - %v\n", w)
+			errlnf("  - %v", w)
 		}
-		fmt.Println()
+		errln()
 	}
 
 	// Print errors
 	if len(actualErrors) > 0 {
-		fmt.Println("Errors:")
+		errln("Errors:")
 		for _, e := range actualErrors {
-			fmt.Printf("  - %v\n", e)
+			errlnf("  - %v", e)
 		}
 		return fmt.Errorf("configuration validation failed")
 	}
@@ -481,15 +481,15 @@ func runConfigValidateCommand(_ *cobra.Command, _ []string) error {
 		configPath = "(defaults)"
 	}
 
-	fmt.Printf("Configuration is valid: %s\n", configPath)
+	outlnf("Configuration is valid: %s", configPath)
 
 	if verbose {
-		fmt.Printf("\nConfiguration summary:\n")
-		fmt.Printf("  Output directory: %s\n", cfg.OutputDir)
-		fmt.Printf("  Site URL: %s\n", cfg.URL)
-		fmt.Printf("  Site title: %s\n", cfg.Title)
-		fmt.Printf("  Glob patterns: %v\n", cfg.GlobConfig.Patterns)
-		fmt.Printf("  Feeds defined: %d\n", len(cfg.Feeds))
+		errln("\nConfiguration summary:")
+		errlnf("  Output directory: %s", cfg.OutputDir)
+		errlnf("  Site URL: %s", cfg.URL)
+		errlnf("  Site title: %s", cfg.Title)
+		errlnf("  Glob patterns: %v", cfg.GlobConfig.Patterns)
+		errlnf("  Feeds defined: %d", len(cfg.Feeds))
 	}
 
 	return nil
@@ -523,7 +523,7 @@ func runConfigInitCommand(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
-	fmt.Printf("Created: %s\n", filename)
+	outlnf("Created: %s", filename)
 	return nil
 }
 
@@ -551,9 +551,9 @@ func runConfigSetCommand(_ *cobra.Command, args []string) error {
 
 	// If dry-run, just show what would change
 	if configSetDryRun {
-		fmt.Printf("Would update %s in %s:\n", key, configPath)
-		fmt.Printf("  Old: %v\n", formatValueForDisplay(oldValue))
-		fmt.Printf("  New: %v\n", formatValueForDisplay(parsedValue))
+		outlnf("Would update %s in %s:", key, configPath)
+		outlnf("  Old: %v", formatValueForDisplay(oldValue))
+		outlnf("  New: %v", formatValueForDisplay(parsedValue))
 		return nil
 	}
 
@@ -563,14 +563,14 @@ func runConfigSetCommand(_ *cobra.Command, args []string) error {
 		if err := copyFile(configPath, backupPath); err != nil {
 			return fmt.Errorf("failed to create backup: %w", err)
 		}
-		fmt.Printf("Created backup: %s\n", backupPath)
+		errlnf("Created backup: %s", backupPath)
 	}
 
 	if err := config.SetValueInFile(configPath, key, parsedValue); err != nil {
 		return fmt.Errorf("failed to set value: %w", err)
 	}
 
-	fmt.Printf("Updated %s in %s\n", key, configPath)
+	outlnf("Updated %s in %s", key, configPath)
 	return nil
 }
 

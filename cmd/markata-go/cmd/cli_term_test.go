@@ -1,0 +1,54 @@
+package cmd
+
+import "testing"
+
+func TestColorEnabledFor_NoColorEnv(t *testing.T) {
+	originalNoColor := noColor
+	defer func() { noColor = originalNoColor }()
+
+	t.Setenv("NO_COLOR", "1")
+	noColor = false
+
+	if colorEnabledFor(true) {
+		t.Fatal("expected color to be disabled when NO_COLOR is set")
+	}
+}
+
+func TestColorEnabledFor_TermDumb(t *testing.T) {
+	originalNoColor := noColor
+	defer func() { noColor = originalNoColor }()
+
+	t.Setenv("NO_COLOR", "")
+	t.Setenv("TERM", "dumb")
+	noColor = false
+
+	if colorEnabledFor(true) {
+		t.Fatal("expected color to be disabled when TERM=dumb")
+	}
+}
+
+func TestColorEnabledFor_NoColorFlag(t *testing.T) {
+	originalNoColor := noColor
+	defer func() { noColor = originalNoColor }()
+
+	t.Setenv("NO_COLOR", "")
+	t.Setenv("TERM", "xterm-256color")
+	noColor = true
+
+	if colorEnabledFor(true) {
+		t.Fatal("expected color to be disabled when --no-color is set")
+	}
+}
+
+func TestColorEnabledFor_NonTTY(t *testing.T) {
+	originalNoColor := noColor
+	defer func() { noColor = originalNoColor }()
+
+	t.Setenv("NO_COLOR", "")
+	t.Setenv("TERM", "xterm-256color")
+	noColor = false
+
+	if colorEnabledFor(false) {
+		t.Fatal("expected color to be disabled on non-TTY output")
+	}
+}

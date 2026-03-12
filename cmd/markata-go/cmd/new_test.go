@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,6 +54,25 @@ func TestGenerateSlug(t *testing.T) {
 				t.Errorf("generateSlug(%q) = %q, want %q", tt.title, result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestRunNewCommand_NoInputRequiresTitle(t *testing.T) {
+	originalNoInput := noInput
+	defer func() { noInput = originalNoInput }()
+
+	stdout := bytes.NewBuffer(nil)
+	stderr := bytes.NewBuffer(nil)
+	newCmd.SetOut(stdout)
+	newCmd.SetErr(stderr)
+
+	noInput = true
+	err := runNewCommand(newCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when --no-input is set without a title")
+	}
+	if !strings.Contains(err.Error(), "title is required when --no-input is set") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
