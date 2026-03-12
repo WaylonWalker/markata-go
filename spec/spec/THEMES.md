@@ -1408,6 +1408,25 @@ video {
 }
 ```
 
+### Fullscreen Media Performance
+
+Themes MUST keep fullscreen video playback smooth when decorative backgrounds are enabled.
+
+- Content containers MUST NOT apply `backdrop-filter: blur(0px)` or an equivalent no-op filter by default.
+- Backdrop blur for article, feed, or main content wrappers MUST be opt-in via configuration.
+- Theme-level `::backdrop` styling MUST NOT apply blur globally because it also affects fullscreen media backdrops.
+- When blur is disabled, the computed backdrop filter for those wrappers SHOULD be `none` so browsers can promote fullscreen video without repeated page recompositing.
+
+Recommended background configuration fields:
+
+```toml
+[markata-go.theme.background]
+enabled = true
+article_bg = "color-mix(in srgb, var(--color-background) 88%, transparent)"
+article_blur_enabled = false  # default; safer for fullscreen video
+article_blur = "12px"        # only used when article_blur_enabled = true
+```
+
 ### Full-Width Media
 
 Support for edge-to-edge media display:
