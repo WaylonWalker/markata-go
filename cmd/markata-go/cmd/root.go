@@ -23,6 +23,15 @@ var (
 	// verbose enables verbose output.
 	verbose bool
 
+	// quiet suppresses non-essential status output.
+	quiet bool
+
+	// noColor disables ANSI color output on all streams.
+	noColor bool
+
+	// noInput disables prompts and interactive UI.
+	noInput bool
+
 	// cpuProfile is the path to write CPU profile data.
 	cpuProfile string
 
@@ -49,6 +58,16 @@ Example usage:
   markata-go new "My Post"   # Create a new post
   markata-go config show     # Show resolved configuration
 
+Common help:
+  markata-go help build      # Explain a subcommand
+  markata-go list posts      # Inspect posts from the CLI
+
+Documentation:
+  https://github.com/WaylonWalker/markata-go/tree/main/docs
+
+Issues:
+  https://github.com/WaylonWalker/markata-go/issues
+
 Profiling:
   markata-go build --cpuprofile cpu.prof   # Write CPU profile
   markata-go build --memprofile mem.prof   # Write memory profile
@@ -59,7 +78,8 @@ Profiling:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Version:       Version,
-	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		currentCmd = cmd
 		// Start CPU profiling if requested
 		if cpuProfile != "" {
 			f, err := os.Create(cpuProfile)
@@ -71,20 +91,18 @@ Profiling:
 				f.Close()
 				return fmt.Errorf("failed to start CPU profile: %w", err)
 			}
-			if verbose {
-				fmt.Fprintf(os.Stderr, "CPU profiling enabled, writing to %s\n", cpuProfile)
-			}
+			verbosef("CPU profiling enabled, writing to %s", cpuProfile)
 		}
 		return nil
 	},
-	PersistentPostRunE: func(_ *cobra.Command, _ []string) error {
+	PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
+		currentCmd = cmd
 		// Stop CPU profiling
 		if cpuProfileFile != nil {
 			pprof.StopCPUProfile()
 			cpuProfileFile.Close()
-			if verbose {
-				fmt.Fprintf(os.Stderr, "CPU profile written to %s\n", cpuProfile)
-			}
+			cpuProfileFile = nil
+			verbosef("CPU profile written to %s", cpuProfile)
 		}
 
 		// Write memory profile if requested
@@ -99,9 +117,7 @@ Profiling:
 			if err := pprof.WriteHeapProfile(f); err != nil {
 				return fmt.Errorf("failed to write memory profile: %w", err)
 			}
-			if verbose {
-				fmt.Fprintf(os.Stderr, "Memory profile written to %s\n", memProfile)
-			}
+			verbosef("Memory profile written to %s", memProfile)
 		}
 		return nil
 	},
@@ -120,7 +136,10 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file path (default: auto-discover)")
 	rootCmd.PersistentFlags().StringSliceVarP(&mergeConfigFiles, "merge-config", "m", nil, "additional config file(s) to merge with base config (can be specified multiple times)")
 	rootCmd.PersistentFlags().StringVarP(&outputDir, "output", "o", "", "output directory (overrides config)")
+	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "suppress non-essential status output")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
+	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable ANSI color on all streams")
+	rootCmd.PersistentFlags().BoolVar(&noInput, "no-input", false, "disable prompts and interactive UI")
 
 	// Profiling flags
 	rootCmd.PersistentFlags().StringVar(&cpuProfile, "cpuprofile", "", "write CPU profile to file")
@@ -130,7 +149,5 @@ func init() {
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	// Config initialization is handled by the core package when needed
-	if verbose {
-		fmt.Fprintln(os.Stderr, "Verbose mode enabled")
-	}
+	verbosef("Verbose mode enabled")
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -355,7 +354,7 @@ func renderPosts(format string, posts []*models.Post) error {
 		return renderPostsCSV(rows)
 	case listFormatPath:
 		for _, row := range rows {
-			fmt.Fprintln(os.Stdout, row.Path)
+			outln(row.Path)
 		}
 		return nil
 	default:
@@ -375,7 +374,7 @@ func postToRow(post *models.Post) postRow {
 }
 
 func renderPostsTable(rows []postRow) error {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(outWriter(), 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "TITLE\tDATE\tWORDS\tREAD\tTAGS\tPATH")
 	fmt.Fprintln(w, "-----\t----\t-----\t----\t----\t----")
 	for _, row := range rows {
@@ -392,7 +391,7 @@ func renderPostsTable(rows []postRow) error {
 }
 
 func renderPostsCSV(rows []postRow) error {
-	w := csv.NewWriter(os.Stdout)
+	w := csv.NewWriter(outWriter())
 	if err := w.Write([]string{"title", "date", "words", "reading_time", "tags", "path"}); err != nil {
 		return err
 	}
@@ -497,7 +496,7 @@ func renderTags(format string, rows []tagRow) error {
 		return renderTagsCSV(rows)
 	case listFormatPath:
 		for _, row := range rows {
-			fmt.Fprintln(os.Stdout, row.Name)
+			outln(row.Name)
 		}
 		return nil
 	default:
@@ -506,7 +505,7 @@ func renderTags(format string, rows []tagRow) error {
 }
 
 func renderTagsTable(rows []tagRow) error {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(outWriter(), 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "TAG\tCOUNT\tWORDS\tREAD\tSLUG")
 	fmt.Fprintln(w, "---\t-----\t-----\t----\t----")
 	for _, row := range rows {
@@ -522,7 +521,7 @@ func renderTagsTable(rows []tagRow) error {
 }
 
 func renderTagsCSV(rows []tagRow) error {
-	w := csv.NewWriter(os.Stdout)
+	w := csv.NewWriter(outWriter())
 	if err := w.Write([]string{"name", "count", "words", "reading_time", "slug"}); err != nil {
 		return err
 	}
@@ -615,7 +614,7 @@ func renderFeeds(format string, rows []feedRow) error {
 			if value == "" {
 				value = row.Name
 			}
-			fmt.Fprintln(os.Stdout, value)
+			outln(value)
 		}
 		return nil
 	default:
@@ -624,7 +623,7 @@ func renderFeeds(format string, rows []feedRow) error {
 }
 
 func renderFeedsTable(rows []feedRow) error {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(outWriter(), 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "NAME\tPOSTS\tWORDS\tTOTAL READ\tAVG READ\tOUTPUT")
 	fmt.Fprintln(w, "----\t-----\t-----\t----------\t--------\t------")
 	for _, row := range rows {
@@ -641,7 +640,7 @@ func renderFeedsTable(rows []feedRow) error {
 }
 
 func renderFeedsCSV(rows []feedRow) error {
-	w := csv.NewWriter(os.Stdout)
+	w := csv.NewWriter(outWriter())
 	if err := w.Write([]string{"name", "posts", "words", "reading_time", "avg_reading_time", "output"}); err != nil {
 		return err
 	}
@@ -663,7 +662,7 @@ func renderFeedsCSV(rows []feedRow) error {
 }
 
 func renderJSON(v interface{}) error {
-	enc := json.NewEncoder(os.Stdout)
+	enc := json.NewEncoder(outWriter())
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
 }

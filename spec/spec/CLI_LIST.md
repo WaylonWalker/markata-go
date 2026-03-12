@@ -93,6 +93,9 @@ Use `list feeds posts` with a feed name to print the posts in that feed:
 - `json` values use raw types (ints for counts, minutes for reading time).
 - `csv` uses a header row with column names.
 - `path` outputs one value per line with no header.
+- Record output is written to `stdout` so it can be piped directly to other
+  tools.
+- Warnings and errors are written to `stderr`.
 
 ## Cache
 

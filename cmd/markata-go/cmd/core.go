@@ -40,7 +40,7 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	// Print warnings
 	for _, w := range warnings {
 		if verbose || isLicenseWarning(w) {
-			fmt.Printf("Warning: %v\n", w)
+			warnf("%v", w)
 		}
 	}
 
@@ -242,9 +242,7 @@ func applyFastMode(m *lifecycle.Manager) {
 	m.Config().Extra["mentions_disabled"] = true
 	m.Config().Extra["feeds_incremental"] = true
 	m.Config().Extra["cache_cleanup_async"] = true
-	if verbose {
-		fmt.Println("Fast mode: skipping minification, CSS purging, blogroll, and mentions")
-	}
+	verbosef("Fast mode: skipping minification, CSS purging, blogroll, and mentions")
 }
 
 // BuildResult holds the result of a build operation.
@@ -288,21 +286,19 @@ func runBuild(m *lifecycle.Manager) (*BuildResult, error) {
 
 	for _, stage := range stages {
 		stageStart := time.Now()
-		if verbose {
-			fmt.Printf("  [%s] running...\n", stage)
-		}
+		verbosef("  [%s] running...", stage)
 		if err := m.RunTo(stage); err != nil {
 			return nil, fmt.Errorf("stage %s: %w", stage, err)
 		}
 		if verbose {
-			fmt.Printf("  [%s] done in %s\n", stage, time.Since(stageStart).Truncate(100*time.Microsecond))
+			verbosef("  [%s] done in %s", stage, time.Since(stageStart).Truncate(100*time.Microsecond))
 			switch stage {
 			case lifecycle.StageGlob:
-				fmt.Printf("  [%s] discovered %d files\n", stage, len(m.Files()))
+				verbosef("  [%s] discovered %d files", stage, len(m.Files()))
 			case lifecycle.StageLoad:
-				fmt.Printf("  [%s] loaded %d posts\n", stage, len(m.Posts()))
+				verbosef("  [%s] loaded %d posts", stage, len(m.Posts()))
 			case lifecycle.StageCollect:
-				fmt.Printf("  [%s] collected %d feeds\n", stage, len(m.Feeds()))
+				verbosef("  [%s] collected %d feeds", stage, len(m.Feeds()))
 			case lifecycle.StageConfigure, lifecycle.StageValidate, lifecycle.StageTransform,
 				lifecycle.StageRender, lifecycle.StageWrite, lifecycle.StageCleanup:
 				// No extra logging for these stages
