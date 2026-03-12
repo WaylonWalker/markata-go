@@ -1270,18 +1270,28 @@ css = '''
 | `backgrounds[].z_index` | integer | Stacking order (-1 is default, behind content) |
 | `scripts` | array | Script URLs to load for background functionality |
 | `css` | string | Custom CSS for styling background elements |
+| `article_bg` | string | Background applied to post/feed content when decorations are enabled |
+| `article_blur_enabled` | boolean | Opt in to backdrop blur on content containers (default: false) |
+| `article_blur` | string | Blur amount used only when `article_blur_enabled = true` |
+| `article_shadow` | string | Box shadow for post/feed content wrappers |
+| `article_border` | string | Border for post/feed content wrappers |
+| `article_radius` | string | Border radius for post/feed content wrappers |
 
 ### Tips for Background Decorations
 
 1. **Performance**: Complex animations can impact performance. Test on lower-powered devices.
 
-2. **Accessibility**: Ensure backgrounds don't interfere with content readability. Use `pointer-events: none` (applied automatically).
+2. **Fullscreen video**: Keep `article_blur_enabled = false` unless you specifically want frosted-glass content. Even a no-op blur can hurt fullscreen video playback on some browsers.
 
-3. **Z-Index**: Use negative values to place backgrounds behind content. Positive values overlay content.
+   Also avoid adding global `::backdrop` blur, since that affects fullscreen media as well as dialogs.
 
-4. **Web Components**: Custom elements like `<snow-fall>` provide encapsulated, reusable effects.
+3. **Accessibility**: Ensure backgrounds don't interfere with content readability. Use `pointer-events: none` (applied automatically).
 
-5. **Reduced Motion**: Consider respecting `prefers-reduced-motion` in your CSS:
+4. **Z-Index**: Use negative values to place backgrounds behind content. Positive values overlay content.
+
+5. **Web Components**: Custom elements like `<snow-fall>` provide encapsulated, reusable effects.
+
+6. **Reduced Motion**: Consider respecting `prefers-reduced-motion` in your CSS:
 
 ```css
 @media (prefers-reduced-motion: reduce) {
@@ -1289,6 +1299,33 @@ css = '''
     animation: none !important;
   }
 }
+```
+
+### Readable Content Over Decorations
+
+Use article wrapper styling to keep content readable without forcing blur:
+
+```toml
+[markata-go.theme.background]
+enabled = true
+article_bg = "color-mix(in srgb, var(--color-background) 88%, transparent)"
+article_shadow = "0 12px 32px rgba(0, 0, 0, 0.12)"
+article_border = "1px solid color-mix(in srgb, var(--color-border) 60%, transparent)"
+article_radius = "1rem"
+
+backgrounds = [
+  { html = '<div class="stars"></div>', z_index = -10 },
+]
+```
+
+If you do want a frosted-glass effect, enable it explicitly:
+
+```toml
+[markata-go.theme.background]
+enabled = true
+article_bg = "rgba(255, 255, 255, 0.72)"
+article_blur_enabled = true
+article_blur = "12px"
 ```
 
 ### Example: Particle Background

@@ -11,6 +11,7 @@
     :root {
       {% if config.theme.background.article_bg %}--article-bg: {{ config.theme.background.article_bg }};{% endif %}
       {% if config.theme.background.article_blur %}--article-blur: {{ config.theme.background.article_blur }};{% endif %}
+      {% if config.theme.background.article_blur_enabled and config.theme.background.article_blur %}--article-backdrop-filter: blur(var(--article-blur));{% endif %}
       {% if config.theme.background.article_shadow %}--article-shadow: {{ config.theme.background.article_shadow }};{% endif %}
       {% if config.theme.background.article_border %}--article-border: {{ config.theme.background.article_border }};{% endif %}
       {% if config.theme.background.article_radius %}--article-radius: {{ config.theme.background.article_radius }};{% endif %}
