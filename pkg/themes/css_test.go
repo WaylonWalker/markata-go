@@ -236,3 +236,29 @@ func TestCSSSpacingVariables(t *testing.T) {
 		}
 	})
 }
+
+// TestCSSBackdropFilterOptIn validates that expensive backdrop filters stay opt-in.
+func TestCSSBackdropFilterOptIn(t *testing.T) {
+	cssContent, err := ReadStatic("css/main.css")
+	if err != nil {
+		t.Fatalf("Failed to read main.css: %v", err)
+	}
+	css := string(cssContent)
+
+	t.Run("background containers default to no backdrop filter", func(t *testing.T) {
+		if strings.Contains(css, "backdrop-filter: blur(var(--article-blur, 0px))") {
+			t.Error("content containers should not apply blur(0px); use an opt-in filter variable instead")
+		}
+
+		if !strings.Contains(css, "backdrop-filter: var(--article-backdrop-filter, none)") {
+			t.Error("content containers should default backdrop-filter to none unless explicitly enabled")
+		}
+	})
+
+	t.Run("shared backdrop avoids blur for fullscreen media", func(t *testing.T) {
+		sharedBackdrop := regexp.MustCompile(`::backdrop\s*\{[^}]*backdrop-filter:`)
+		if sharedBackdrop.MatchString(css) {
+			t.Error("shared ::backdrop styling should not blur fullscreen media backgrounds")
+		}
+	})
+}
