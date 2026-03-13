@@ -21,6 +21,8 @@ var (
 	ansiPattern  = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 )
 
+const summaryTag = "summary"
+
 type Options struct {
 	ANSI        bool
 	Palette     string
@@ -97,6 +99,7 @@ func (r *Renderer) Render(src string) string {
 	return strings.TrimSpace(strings.Join(blocks, "\n\n"))
 }
 
+//nolint:gocyclo // HTML block dispatch is clearer as a single switch.
 func (r *Renderer) renderBlocks(node *html.Node) []string {
 	if node == nil {
 		return nil
@@ -243,7 +246,10 @@ func (r *Renderer) renderHeading(node *html.Node) string {
 		return ""
 	}
 
-	level, _ := strconv.Atoi(strings.TrimPrefix(node.Data, "h"))
+	level := 1
+	if parsedLevel, err := strconv.Atoi(strings.TrimPrefix(node.Data, "h")); err == nil {
+		level = parsedLevel
+	}
 	plain := StripANSI(text)
 
 	switch level {
@@ -338,6 +344,7 @@ func (r *Renderer) renderCodeBlock(node *html.Node) string {
 	return label + "\n" + prefixLines(highlighted, "  ")
 }
 
+//nolint:gocyclo // Table extraction and formatting stay together for readability.
 func (r *Renderer) renderTable(node *html.Node) string {
 	rows := [][]string{}
 	headerRows := 0
@@ -426,12 +433,12 @@ func (r *Renderer) renderAdmonition(node *html.Node) string {
 
 func (r *Renderer) renderDetails(node *html.Node) string {
 	summary := "Details"
-	if summaryNode := findDescendant(node, "summary"); summaryNode != nil {
+	if summaryNode := findDescendant(node, summaryTag); summaryNode != nil {
 		summary = strings.TrimSpace(r.renderInlineChildren(summaryNode))
 	}
 	content := []string{r.theme.strong.wrap(summary)}
 	for child := node.FirstChild; child != nil; child = child.NextSibling {
-		if child.Type == html.ElementNode && child.Data == "summary" {
+		if child.Type == html.ElementNode && child.Data == summaryTag {
 			continue
 		}
 		content = append(content, r.renderBlocks(child)...)
@@ -442,6 +449,7 @@ func (r *Renderer) renderDetails(node *html.Node) string {
 func (r *Renderer) highlightCode(code, lang string) string {
 	lexer := lexers.Get(lang)
 	if lexer == nil {
+		//nolint:misspell // Chroma exposes Analyse with British spelling.
 		lexer = lexers.Analyse(code)
 	}
 	if lexer == nil {
@@ -486,20 +494,20 @@ func (r *Renderer) admonitionStyle(kind string) ansiStyle {
 
 func buildTheme(options Options) theme {
 	base := theme{
-		headline:  makeStyle(options.ANSI, "#7c3aed", "", true, false, false, false),
-		muted:     makeStyle(options.ANSI, "#6b7280", "", false, false, false, false),
-		link:      makeStyle(options.ANSI, "#2563eb", "", false, false, true, false),
-		quote:     makeStyle(options.ANSI, "#6b7280", "", false, false, false, false),
-		code:      makeStyle(options.ANSI, "#dc2626", "", false, false, false, false),
-		border:    makeStyle(options.ANSI, "#94a3b8", "", false, false, false, false),
-		success:   makeStyle(options.ANSI, "#16a34a", "", true, false, false, false),
-		warning:   makeStyle(options.ANSI, "#d97706", "", true, false, false, false),
-		danger:    makeStyle(options.ANSI, "#dc2626", "", true, false, false, false),
-		info:      makeStyle(options.ANSI, "#0f766e", "", true, false, false, false),
-		strong:    makeStyle(options.ANSI, "", "", true, false, false, false),
-		emph:      makeStyle(options.ANSI, "", "", false, true, false, false),
-		underline: makeStyle(options.ANSI, "", "", false, false, true, false),
-		strike:    makeStyle(options.ANSI, "", "", false, false, false, true),
+		headline:  makeStyle(options.ANSI, "#7c3aed", true, false, false, false),
+		muted:     makeStyle(options.ANSI, "#6b7280", false, false, false, false),
+		link:      makeStyle(options.ANSI, "#2563eb", false, false, true, false),
+		quote:     makeStyle(options.ANSI, "#6b7280", false, false, false, false),
+		code:      makeStyle(options.ANSI, "#dc2626", false, false, false, false),
+		border:    makeStyle(options.ANSI, "#94a3b8", false, false, false, false),
+		success:   makeStyle(options.ANSI, "#16a34a", true, false, false, false),
+		warning:   makeStyle(options.ANSI, "#d97706", true, false, false, false),
+		danger:    makeStyle(options.ANSI, "#dc2626", true, false, false, false),
+		info:      makeStyle(options.ANSI, "#0f766e", true, false, false, false),
+		strong:    makeStyle(options.ANSI, "", true, false, false, false),
+		emph:      makeStyle(options.ANSI, "", false, true, false, false),
+		underline: makeStyle(options.ANSI, "", false, false, true, false),
+		strike:    makeStyle(options.ANSI, "", false, false, false, true),
 	}
 
 	if options.Palette == "" {
@@ -513,38 +521,38 @@ func buildTheme(options Options) theme {
 	}
 
 	if hex := palette.Resolve("accent"); hex != "" {
-		base.headline = makeStyle(options.ANSI, hex, "", true, false, false, false)
+		base.headline = makeStyle(options.ANSI, hex, true, false, false, false)
 	}
 	if hex := palette.Resolve("text-muted"); hex != "" {
-		base.muted = makeStyle(options.ANSI, hex, "", false, false, false, false)
+		base.muted = makeStyle(options.ANSI, hex, false, false, false, false)
 		base.quote = base.muted
 	}
 	if hex := palette.Resolve("link"); hex != "" {
-		base.link = makeStyle(options.ANSI, hex, "", false, false, true, false)
+		base.link = makeStyle(options.ANSI, hex, false, false, true, false)
 	}
 	if hex := palette.Resolve("success"); hex != "" {
-		base.success = makeStyle(options.ANSI, hex, "", true, false, false, false)
+		base.success = makeStyle(options.ANSI, hex, true, false, false, false)
 	}
 	if hex := palette.Resolve("warning"); hex != "" {
-		base.warning = makeStyle(options.ANSI, hex, "", true, false, false, false)
+		base.warning = makeStyle(options.ANSI, hex, true, false, false, false)
 	}
 	if hex := palette.Resolve("error"); hex != "" {
-		base.danger = makeStyle(options.ANSI, hex, "", true, false, false, false)
+		base.danger = makeStyle(options.ANSI, hex, true, false, false, false)
 	}
 	if hex := palette.Resolve("info"); hex != "" {
-		base.info = makeStyle(options.ANSI, hex, "", true, false, false, false)
+		base.info = makeStyle(options.ANSI, hex, true, false, false, false)
 	}
 	if hex := palette.Resolve("border"); hex != "" {
-		base.border = makeStyle(options.ANSI, hex, "", false, false, false, false)
+		base.border = makeStyle(options.ANSI, hex, false, false, false, false)
 	}
 	if hex := palette.Resolve("accent"); hex != "" {
-		base.code = makeStyle(options.ANSI, hex, "", false, false, false, false)
+		base.code = makeStyle(options.ANSI, hex, false, false, false, false)
 	}
 
 	return base
 }
 
-func makeStyle(enabled bool, fg, bg string, bold, italic, underline, strike bool) ansiStyle {
+func makeStyle(enabled bool, fg string, bold, italic, underline, strike bool) ansiStyle {
 	if !enabled {
 		return ansiStyle{}
 	}
@@ -563,9 +571,6 @@ func makeStyle(enabled bool, fg, bg string, bold, italic, underline, strike bool
 	}
 	if fg != "" {
 		parts = append(parts, colorSequence(fg, false))
-	}
-	if bg != "" {
-		parts = append(parts, colorSequence(bg, true))
 	}
 	if len(parts) == 0 {
 		return ansiStyle{}
@@ -766,7 +771,7 @@ func findAdmonitionTitle(r *Renderer, node *html.Node) string {
 		if child.Type != html.ElementNode {
 			continue
 		}
-		if child.Data == "summary" || hasClass(child, "admonition-title") {
+		if child.Data == summaryTag || hasClass(child, "admonition-title") {
 			return r.renderInlineChildren(child)
 		}
 	}
@@ -776,7 +781,7 @@ func findAdmonitionTitle(r *Renderer, node *html.Node) string {
 func findAdmonitionBody(r *Renderer, node *html.Node) string {
 	parts := []string{}
 	for child := node.FirstChild; child != nil; child = child.NextSibling {
-		if child.Type == html.ElementNode && (child.Data == "summary" || hasClass(child, "admonition-title")) {
+		if child.Type == html.ElementNode && (child.Data == summaryTag || hasClass(child, "admonition-title")) {
 			continue
 		}
 		parts = append(parts, r.renderBlocks(child)...)
