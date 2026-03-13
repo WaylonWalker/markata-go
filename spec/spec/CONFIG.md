@@ -785,7 +785,8 @@ See [THEMES.md](./THEMES.md) for complete theming documentation.
 [my-ssg.post_formats]
 html = true       # /slug/index.html (default: true)
 markdown = true   # /slug.md - raw source with frontmatter (default: true)
-text = true       # /slug.txt - plain text content (default: true)
+text = true       # /slug.txt - plain terminal-friendly content (default: true)
+ansi = true       # /slug.ansi - ANSI-styled terminal output (default: false)
 og = true         # /slug/og/index.html - social card for screenshots
 ```
 
@@ -795,12 +796,33 @@ This section controls what output formats are generated for each post:
 |--------|---------|-------------|-------------|
 | `html` | `true` | `/slug/index.html` | Standard rendered HTML page |
 | `markdown` | `true` | `/slug.md` | Raw markdown with reconstructed frontmatter |
-| `text` | `true` | `/slug.txt` | Plain text content |
+| `text` | `true` | `/slug.txt` | Plain terminal-friendly content with no ANSI escapes |
+| `ansi` | `false` | `/slug.ansi` | ANSI-styled terminal page output |
 | `og` | `true` | `/slug/og/index.html` | OpenGraph card HTML (1200x630) for social screenshots |
 
-**Directory-based Redirects for txt/md:**
+`text` and `ansi` are separate explicit variants:
 
-For `.txt` and `.md` formats, content is placed at the canonical short URL (`/slug.txt`, `/slug.md`). Redirects are provided at `/slug.txt/index.html` (for hosts that serve `index.html` in a directory) and `/slug/index.txt/index.html` (for backwards compatibility).
+- `text` MUST emit readable plain text with no ANSI escape sequences.
+- `ansi` MUST emit the same terminal-oriented structure with ANSI styling for capable clients.
+- ANSI output is opt-in via the `.ansi` path; markata-go MUST NOT inject ANSI escape sequences into `.txt` output.
+
+Terminal rendering for both `text` and `ansi` variants MUST:
+
+- derive structure from rendered page content when rendered HTML is available
+- preserve headings, emphasis, links, blockquotes, lists, horizontal rules, tables, admonitions, and code fences in terminal-safe form
+- degrade cleanly to plain text when ANSI styling is disabled
+- keep canonical `.txt` endpoints readable in clients that do not support ANSI
+
+Theme-aware ANSI rendering MUST derive colors from the active site palette when possible. Palette resolution for ANSI output follows:
+
+1. `theme.palette`
+2. `theme.palette_dark`
+3. `theme.palette_light`
+4. built-in dark fallback palette
+
+**Directory-based Redirects for txt/md/ansi:**
+
+For `.txt`, `.md`, and `.ansi` formats, content is placed at the canonical short URL (`/slug.txt`, `/slug.md`, `/slug.ansi`). Redirects are provided at `/slug.<ext>/index.html` (for hosts that serve `index.html` in a directory) and `/slug/index.<ext>/index.html` (for backwards compatibility).
 
 **Special Files (robots, llms, humans, security, ads):**
 
@@ -818,6 +840,7 @@ This enables standard web txt files to be served at their expected locations:
 **Use cases:**
 - **markdown**: API consumers, "view source" links, copy-paste code
 - **text**: Standard web txt files, plain text readers, CLI tools
+- **ansi**: `curl`, pagers, and intentional terminal reading experiences
 - **og**: Automated social image generation with puppeteer/playwright
 
 **Example:**
@@ -825,7 +848,8 @@ This enables standard web txt files to be served at their expected locations:
 [markata-go.post_formats]
 html = true
 markdown = true  # Enable raw markdown output at /slug.md
-text = true      # Enable plain text output at /slug.txt
+text = true      # Enable plain terminal-friendly output at /slug.txt
+ansi = true      # Enable ANSI terminal output at /slug.ansi
 og = true        # Enable social card HTML for screenshot tools
 ```
 

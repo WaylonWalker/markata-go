@@ -288,6 +288,9 @@ func mergePostFormatsConfig(base, override models.PostFormatsConfig) models.Post
 	if override.Text {
 		result.Text = true
 	}
+	if override.ANSI {
+		result.ANSI = true
+	}
 	if override.OG {
 		result.OG = true
 	}
