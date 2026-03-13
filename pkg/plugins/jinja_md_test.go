@@ -291,6 +291,7 @@ func TestCollectPrivatePathsForJinja(t *testing.T) {
 			expected: []string{
 				"/secret/",
 				"/secret.txt",
+				"/secret.ansi",
 				"/secret.md",
 				"/secret.og/",
 			},
@@ -304,6 +305,7 @@ func TestCollectPrivatePathsForJinja(t *testing.T) {
 			expected: []string{
 				"/secret/",
 				"/secret.txt",
+				"/secret.ansi",
 				"/secret.md",
 				"/secret.og/",
 			},
@@ -318,6 +320,7 @@ func TestCollectPrivatePathsForJinja(t *testing.T) {
 			expected: []string{
 				"/real-private/",
 				"/real-private.txt",
+				"/real-private.ansi",
 				"/real-private.md",
 				"/real-private.og/",
 			},
@@ -332,10 +335,12 @@ func TestCollectPrivatePathsForJinja(t *testing.T) {
 			expected: []string{
 				"/private1/",
 				"/private1.txt",
+				"/private1.ansi",
 				"/private1.md",
 				"/private1.og/",
 				"/private2/",
 				"/private2.txt",
+				"/private2.ansi",
 				"/private2.md",
 				"/private2.og/",
 			},

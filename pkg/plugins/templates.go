@@ -20,6 +20,7 @@ const (
 	formatHTML     = "html"
 	formatTxt      = "txt"
 	formatText     = "text"
+	formatANSI     = "ansi"
 	formatMarkdown = "markdown"
 	formatMD       = "md"
 	formatOG       = "og"
@@ -207,6 +208,8 @@ func adaptTemplateForFormat(template, format string) string {
 		return template
 	case formatTxt, formatText:
 		return base + ".txt"
+	case formatANSI:
+		return base + ".ansi"
 	case formatMarkdown, formatMD:
 		return base + ".md"
 	case formatOG:
@@ -223,6 +226,8 @@ func getHardcodedDefault(format string) string {
 		return defaultTemplate
 	case formatTxt, formatText:
 		return "default.txt"
+	case formatANSI:
+		return "default.ansi"
 	case formatMarkdown, formatMD:
 		return "raw.txt"
 	case formatOG:
@@ -789,7 +794,7 @@ func sortPostsByDate(posts []*models.Post, reverse bool) {
 
 // collectPrivatePaths returns a list of paths (hrefs) for all private posts.
 // These paths are used in robots.txt templates to add Disallow directives.
-// Includes all format variants (.txt, .md, .og) and excludes the robots post itself.
+// Includes all format variants (.txt, .ansi, .md, .og) and excludes the robots post itself.
 func collectPrivatePaths(posts []*models.Post) []string {
 	var paths []string
 	for _, post := range posts {
@@ -801,10 +806,11 @@ func collectPrivatePaths(posts []*models.Post) []string {
 			// Add base href (e.g., /slug/)
 			paths = append(paths, post.Href)
 			// Add format variants
-			// For regular posts: /slug.txt, /slug.md, /slug.og/
+			// For regular posts: /slug.txt, /slug.ansi, /slug.md, /slug.og/
 			if post.Slug != "" {
 				paths = append(paths,
 					"/"+post.Slug+".txt",
+					"/"+post.Slug+".ansi",
 					"/"+post.Slug+".md",
 					"/"+post.Slug+".og/",
 				)

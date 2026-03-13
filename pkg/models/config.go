@@ -1787,8 +1787,12 @@ type PostFormatsConfig struct {
 	Markdown bool `json:"markdown" yaml:"markdown" toml:"markdown"`
 
 	// Text enables plain text output (default: false)
-	// Generates: /slug.txt (content only, no formatting)
+	// Generates: /slug.txt (terminal-friendly plain text)
 	Text bool `json:"text" yaml:"text" toml:"text"`
+
+	// ANSI enables ANSI-styled terminal output (default: false)
+	// Generates: /slug.ansi (terminal-friendly styled output)
+	ANSI bool `json:"ansi" yaml:"ansi" toml:"ansi"`
 
 	// OG enables OpenGraph card HTML output for social image generation (default: false)
 	// Generates: /slug/og/index.html (1200x630 optimized for screenshots)
@@ -1855,6 +1859,9 @@ type TemplatePreset struct {
 	// Text template file for txt output
 	Text string `json:"txt" yaml:"txt" toml:"txt"`
 
+	// ANSI template file for ansi output
+	ANSI string `json:"ansi,omitempty" yaml:"ansi,omitempty" toml:"ansi,omitempty"`
+
 	// Markdown template file for markdown output
 	Markdown string `json:"markdown" yaml:"markdown" toml:"markdown"`
 
@@ -1870,6 +1877,8 @@ func (p *TemplatePreset) TemplateForFormat(format string) string {
 		return p.HTML
 	case "txt", "text":
 		return p.Text
+	case "ansi":
+		return p.ANSI
 	case "markdown", "md":
 		return p.Markdown
 	case "og":
@@ -1880,13 +1889,14 @@ func (p *TemplatePreset) TemplateForFormat(format string) string {
 }
 
 // NewPostFormatsConfig creates a new PostFormatsConfig with default values.
-// By default, all post output formats are enabled.
+// HTML, markdown, text, and OG are enabled by default. ANSI stays opt-in.
 func NewPostFormatsConfig() PostFormatsConfig {
 	enabled := true
 	return PostFormatsConfig{
 		HTML:     &enabled,
 		Markdown: true,
 		Text:     true,
+		ANSI:     false,
 		OG:       true,
 	}
 }

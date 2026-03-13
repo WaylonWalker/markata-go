@@ -109,7 +109,7 @@ func (p *JinjaMdPlugin) Transform(m *lifecycle.Manager) error {
 
 // collectPrivatePathsForJinja returns a list of paths (hrefs) for all private posts.
 // These paths are used in robots.txt templates to add Disallow directives.
-// Includes all format variants (.txt, .md, .og) and excludes the robots post itself.
+// Includes all format variants (.txt, .ansi, .md, .og) and excludes the robots post itself.
 func collectPrivatePathsForJinja(posts []*models.Post) []string {
 	var paths []string
 	for _, post := range posts {
@@ -121,10 +121,11 @@ func collectPrivatePathsForJinja(posts []*models.Post) []string {
 			// Add base href (e.g., /slug/)
 			paths = append(paths, post.Href)
 			// Add format variants
-			// For regular posts: /slug.txt, /slug.md, /slug.og/
+			// For regular posts: /slug.txt, /slug.ansi, /slug.md, /slug.og/
 			if post.Slug != "" {
 				paths = append(paths,
 					"/"+post.Slug+".txt",
+					"/"+post.Slug+".ansi",
 					"/"+post.Slug+".md",
 					"/"+post.Slug+".og/",
 				)

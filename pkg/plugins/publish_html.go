@@ -10,10 +10,11 @@ import (
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
-	"github.com/WaylonWalker/markata-go/pkg/htmltotext"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
+	"github.com/WaylonWalker/markata-go/pkg/terminalpage"
 )
 
 // defaultTxtTemplate is the default template name for txt output.
@@ -21,6 +22,12 @@ const defaultTxtTemplate = "default.txt"
 
 // rawTxtTemplate is the template name for raw txt output.
 const rawTxtTemplate = "raw.txt"
+
+// defaultAnsiTemplate is the default template name for ANSI output.
+const defaultAnsiTemplate = "default.ansi"
+
+// rawAnsiTemplate is the template name for raw ANSI output.
+const rawAnsiTemplate = "raw.ansi"
 
 // rawMdTemplate is the template name for raw markdown output.
 const rawMdTemplate = "raw.md"
@@ -249,6 +256,15 @@ func (p *PublishHTMLPlugin) writePost(post *models.Post, config *lifecycle.Confi
 		}
 	}
 
+	// Write ANSI terminal format
+	if postFormats.ANSI && !post.Private {
+		ansiContent := p.renderANSIContent(post, config, engine)
+		skipRedirect := postFormats.IsHTMLEnabled()
+		if err := p.writeReversedFormatOutput(post.Slug, "ansi", ansiContent, config.OutputDir, skipRedirect); err != nil {
+			return err
+		}
+	}
+
 	// Write OG format (social card HTML)
 	// Skip for private posts to prevent metadata leaks in OG cards
 	if postFormats.OG && !post.Private {
@@ -284,6 +300,7 @@ func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecyc
 	} else {
 		_ = os.RemoveAll(filepath.Join(postDir, "index.md"))
 		_ = os.RemoveAll(filepath.Join(postDir, "index.txt"))
+		_ = os.RemoveAll(filepath.Join(postDir, "index.ansi"))
 		_ = os.RemoveAll(filepath.Join(postDir, "og"))
 		_ = os.Remove(filepath.Join(postDir, "index.html"))
 	}
@@ -292,6 +309,9 @@ func (p *PublishHTMLPlugin) removePostOutputs(sourcePath string, config *lifecyc
 	}
 	if postFormats.Text {
 		_ = os.Remove(filepath.Join(outputDir, slug+".txt"))
+	}
+	if postFormats.ANSI {
+		_ = os.Remove(filepath.Join(outputDir, slug+".ansi"))
 	}
 	_ = os.RemoveAll(filepath.Join(postDir, "og"))
 
@@ -369,6 +389,8 @@ func (p *PublishHTMLPlugin) buildFormatContent(post *models.Post, config *lifecy
 	switch format {
 	case formatTxt, formatText:
 		return p.buildTextContentFallback(post)
+	case formatANSI:
+		return p.buildANSIContentFallback(post, config)
 	case formatMarkdown, formatMD:
 		return p.buildMarkdownContent(post)
 	default:
@@ -431,120 +453,165 @@ func (p *PublishHTMLPlugin) buildMarkdownContent(post *models.Post) string {
 	return buf.String()
 }
 
-// renderTextContent renders plain text content for a post using templates.
-// Template resolution order:
-// 1. Frontmatter: template field ending in .txt, or templates.txt field
-// 2. Config layout settings (if configured)
-// 3. Default: "default.txt"
-//
-// Falls back to hardcoded format if no template engine is available.
 func (p *PublishHTMLPlugin) renderTextContent(post *models.Post, config *lifecycle.Config, engine *templates.Engine) string {
-	// If no template engine available, use fallback
-	if engine == nil {
-		return p.buildTextContentFallback(post)
+	return p.renderTerminalContent(post, config, engine, false)
+}
+
+func (p *PublishHTMLPlugin) renderANSIContent(post *models.Post, config *lifecycle.Config, engine *templates.Engine) string {
+	return p.renderTerminalContent(post, config, engine, true)
+}
+
+func (p *PublishHTMLPlugin) renderTerminalContent(
+	post *models.Post,
+	config *lifecycle.Config,
+	engine *templates.Engine,
+	ansi bool,
+) string {
+	if isSpecialFile(post.Slug) {
+		return post.Content
 	}
 
-	// Resolve template name for txt format
-	templateName := p.resolveTextTemplate(post, engine)
+	body := p.buildTerminalPage(post, config, ansi)
+	if engine == nil {
+		return body
+	}
 
-	// Build template context
-	ctx := templates.NewContext(post, post.Content, ToModelsConfig(config))
+	templateName := p.resolveTerminalTemplate(post, engine, ansi)
+	if templateName == rawTxtTemplate || templateName == rawAnsiTemplate {
+		return post.Content
+	}
 
-	// Render the template
+	ctx := templates.NewContext(post, body, ToModelsConfig(config))
 	result, err := engine.Render(templateName, ctx)
 	if err != nil {
-		// If template rendering fails, fall back to hardcoded format
-		return p.buildTextContentFallback(post)
+		return body
 	}
-
 	return result
 }
 
-// resolveTextTemplate determines which template to use for txt output.
-// Resolution order:
-// 1. Check post frontmatter for template ending in .txt
-// 2. Check post.Extra["templates"]["txt"] for format-specific template
-// 3. Check if "raw.txt" should be used for special files (robots.txt, etc.)
-// 4. Fall back to "default.txt"
-func (p *PublishHTMLPlugin) resolveTextTemplate(post *models.Post, engine *templates.Engine) string {
-	// 1. Check if post has explicit txt template in frontmatter
-	if post.Template != "" && strings.HasSuffix(post.Template, ".txt") {
-		if engine.TemplateExists(post.Template) {
-			return post.Template
-		}
+func (p *PublishHTMLPlugin) resolveTerminalTemplate(post *models.Post, engine *templates.Engine, ansi bool) string {
+	format := formatTxt
+	defaultTemplateName := defaultTxtTemplate
+	rawTemplateName := rawTxtTemplate
+	formatTemplateKey := "txt"
+	shorthandTemplateKey := "txt_template"
+	if ansi {
+		format = formatANSI
+		defaultTemplateName = defaultAnsiTemplate
+		rawTemplateName = rawAnsiTemplate
+		formatTemplateKey = formatANSI
+		shorthandTemplateKey = "ansi_template"
 	}
 
-	// 2. Check for templates.txt in Extra (format-specific template)
+	templateName := p.resolveTemplateForFormat(post, format)
+	if templateName != "" && engine.TemplateExists(templateName) {
+		return templateName
+	}
+
 	if post.Extra != nil {
 		if templatesMap, ok := post.Extra["templates"].(map[string]interface{}); ok {
-			if txtTemplate, ok := templatesMap["txt"].(string); ok && txtTemplate != "" {
-				if engine.TemplateExists(txtTemplate) {
-					return txtTemplate
+			if formatTemplate, ok := templatesMap[formatTemplateKey].(string); ok && formatTemplate != "" {
+				if engine.TemplateExists(formatTemplate) {
+					return formatTemplate
 				}
 			}
 		}
-		// Also check for txt_template shorthand
-		if txtTemplate, ok := post.Extra["txt_template"].(string); ok && txtTemplate != "" {
-			if engine.TemplateExists(txtTemplate) {
-				return txtTemplate
+		if formatTemplate, ok := post.Extra[shorthandTemplateKey].(string); ok && formatTemplate != "" {
+			if engine.TemplateExists(formatTemplate) {
+				return formatTemplate
 			}
 		}
 	}
 
-	// 3. Check for special files that should use raw.txt template
-	// Files like robots.txt, llms.txt, humans.txt typically just need raw content
-	if isSpecialFile(post.Slug) {
-		if engine.TemplateExists(rawTxtTemplate) {
-			return rawTxtTemplate
-		}
+	if isSpecialFile(post.Slug) && engine.TemplateExists(rawTemplateName) {
+		return rawTemplateName
 	}
-
-	// 4. Fall back to default.txt
-	if engine.TemplateExists(defaultTxtTemplate) {
-		return defaultTxtTemplate
+	if engine.TemplateExists(defaultTemplateName) {
+		return defaultTemplateName
 	}
-
-	// If default.txt doesn't exist, try raw.txt
-	if engine.TemplateExists(rawTxtTemplate) {
-		return rawTxtTemplate
+	if engine.TemplateExists(rawTemplateName) {
+		return rawTemplateName
 	}
-
-	// Last resort: return default.txt and let it fail gracefully
-	return defaultTxtTemplate
+	return defaultTemplateName
 }
 
-// buildTextContentFallback builds plain text content without templates.
-// This is the fallback when no template engine is available.
-// Returns plain text with title, description, date, and content.
-// HTML content is converted to plain text with footnote-style link references.
 func (p *PublishHTMLPlugin) buildTextContentFallback(post *models.Post) string {
+	return p.buildTerminalPage(post, nil, false)
+}
+
+func (p *PublishHTMLPlugin) buildANSIContentFallback(post *models.Post, config *lifecycle.Config) string {
+	return p.buildTerminalPage(post, config, true)
+}
+
+func (p *PublishHTMLPlugin) buildTerminalPage(post *models.Post, config *lifecycle.Config, ansi bool) string {
 	var buf strings.Builder
 
-	// Write title as heading
-	if post.Title != nil {
+	if post.Title != nil && *post.Title != "" {
 		buf.WriteString(*post.Title)
 		buf.WriteString("\n")
-		buf.WriteString(strings.Repeat("=", len(*post.Title)))
+		buf.WriteString(strings.Repeat("=", len([]rune(*post.Title))))
 		buf.WriteString("\n\n")
 	}
-
-	// Write description if present
 	if post.Description != nil && *post.Description != "" {
 		buf.WriteString(*post.Description)
 		buf.WriteString("\n\n")
 	}
-
-	// Write date if present
 	if post.Date != nil {
 		buf.WriteString("Date: ")
 		buf.WriteString(post.Date.Format("January 2, 2006"))
 		buf.WriteString("\n\n")
 	}
 
-	// Convert HTML content to plain text with footnote-style links
-	buf.WriteString(htmltotext.Convert(post.Content))
+	paletteName, variant := resolveTerminalPalette(config)
+	chromaStyle := palettes.ChromaTheme(paletteName)
+	if chromaStyle == "" {
+		chromaStyle = palettes.ChromaThemeForVariant(variant)
+	}
 
-	return buf.String()
+	source := post.ArticleHTML
+	if strings.TrimSpace(source) == "" {
+		source = post.HTML
+	}
+	if strings.TrimSpace(source) == "" {
+		source = post.Content
+	}
+
+	body := terminalpage.RenderHTML(source, terminalpage.Options{
+		ANSI:        ansi,
+		Palette:     paletteName,
+		ChromaStyle: chromaStyle,
+	})
+	buf.WriteString(body)
+
+	return strings.TrimSpace(buf.String())
+}
+
+func resolveTerminalPalette(config *lifecycle.Config) (string, palettes.Variant) {
+	if config == nil {
+		return "", palettes.VariantDark
+	}
+	modelsConfig := ToModelsConfig(config)
+	theme := modelsConfig.Theme
+	if theme.Palette != "" {
+		return theme.Palette, inferPaletteVariant(theme.Palette)
+	}
+	if theme.PaletteDark != "" {
+		return theme.PaletteDark, palettes.VariantDark
+	}
+	if theme.PaletteLight != "" {
+		return theme.PaletteLight, palettes.VariantLight
+	}
+	return "", palettes.VariantDark
+}
+
+func inferPaletteVariant(paletteName string) palettes.Variant {
+	lightPatterns := []string{"-light", "-latte", "-dawn", "-day", "-lotus", "modus-operandi"}
+	for _, pattern := range lightPatterns {
+		if strings.Contains(paletteName, pattern) {
+			return palettes.VariantLight
+		}
+	}
+	return palettes.VariantDark
 }
 
 // writeReversedFormatOutput writes content for .txt and .md formats.
