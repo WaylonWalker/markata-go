@@ -1063,12 +1063,16 @@ For plain text strings that never contain HTML (like title and description), use
 ### Example: default.txt
 
 ```django
-{{ post.title|safe }}
-
-{{ post.description|safe }}
-
-{{ post.content|plaintext }}
+{{ body|safe }}
 ```
+
+### Example: default.ansi
+
+```django
+{{ body|safe }}
+```
+
+For terminal output templates, `body` contains the fully rendered terminal page for the selected format. `default.txt` uses the plain terminal renderer, while `default.ansi` uses the ANSI-styled renderer.
 
 ### Link Footnotes
 

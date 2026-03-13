@@ -475,11 +475,13 @@ func TestMergePostFormatsConfig_OverrideMarkdownAndOG(t *testing.T) {
 	base := models.PostFormatsConfig{
 		HTML:     &htmlEnabled,
 		Markdown: false,
+		ANSI:     false,
 		OG:       false,
 	}
 	override := models.PostFormatsConfig{
 		HTML:     nil, // Not set, should keep base
 		Markdown: true,
+		ANSI:     true,
 		OG:       true,
 	}
 
@@ -490,6 +492,9 @@ func TestMergePostFormatsConfig_OverrideMarkdownAndOG(t *testing.T) {
 	}
 	if !result.Markdown {
 		t.Error("Markdown should be true (from override)")
+	}
+	if !result.ANSI {
+		t.Error("ANSI should be true (from override)")
 	}
 	if !result.OG {
 		t.Error("OG should be true (from override)")
@@ -502,11 +507,13 @@ func TestMergePostFormatsConfig_OverrideHTML(t *testing.T) {
 	base := models.PostFormatsConfig{
 		HTML:     &htmlEnabled,
 		Markdown: false,
+		ANSI:     false,
 		OG:       false,
 	}
 	override := models.PostFormatsConfig{
 		HTML:     &htmlDisabled, // Explicitly set to false
 		Markdown: false,
+		ANSI:     false,
 		OG:       false,
 	}
 
@@ -522,11 +529,13 @@ func TestMergePostFormatsConfig_PreserveBase(t *testing.T) {
 	base := models.PostFormatsConfig{
 		HTML:     &htmlEnabled,
 		Markdown: true,
+		ANSI:     true,
 		OG:       true,
 	}
 	override := models.PostFormatsConfig{
 		HTML:     nil,
 		Markdown: false, // Won't override since false is zero value
+		ANSI:     false,
 		OG:       false,
 	}
 
@@ -539,6 +548,9 @@ func TestMergePostFormatsConfig_PreserveBase(t *testing.T) {
 	if !result.Markdown {
 		t.Error("Markdown should be true (preserved from base)")
 	}
+	if !result.ANSI {
+		t.Error("ANSI should be true (preserved from base)")
+	}
 	if !result.OG {
 		t.Error("OG should be true (preserved from base)")
 	}
@@ -550,6 +562,7 @@ func TestMergeConfigs_PostFormats(t *testing.T) {
 		PostFormats: models.PostFormatsConfig{
 			HTML:     &htmlEnabled,
 			Markdown: false,
+			ANSI:     false,
 			OG:       false,
 		},
 	}
@@ -557,6 +570,7 @@ func TestMergeConfigs_PostFormats(t *testing.T) {
 		PostFormats: models.PostFormatsConfig{
 			HTML:     nil,
 			Markdown: true,
+			ANSI:     true,
 			OG:       true,
 		},
 	}
@@ -568,6 +582,9 @@ func TestMergeConfigs_PostFormats(t *testing.T) {
 	}
 	if !result.PostFormats.Markdown {
 		t.Error("PostFormats.Markdown should be true (from override)")
+	}
+	if !result.PostFormats.ANSI {
+		t.Error("PostFormats.ANSI should be true (from override)")
 	}
 	if !result.PostFormats.OG {
 		t.Error("PostFormats.OG should be true (from override)")
