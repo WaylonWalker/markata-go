@@ -770,7 +770,7 @@ func TestPublishHTMLPlugin_TxtTemplateRendering(t *testing.T) {
 		Published:   true,
 		Draft:       false,
 		Skip:        false,
-		ArticleHTML: "<p>Test</p>",
+		ArticleHTML: "<p>This is the post content.</p>",
 	}
 
 	// Create manager for testing
@@ -827,6 +827,7 @@ func TestPublishHTMLPlugin_FormatExtRedirectsWithHTMLEnabled(t *testing.T) {
 				HTML:     &htmlEnabled,
 				Markdown: true,
 				Text:     true,
+				ANSI:     true,
 			},
 		},
 	}
@@ -858,6 +859,7 @@ func TestPublishHTMLPlugin_FormatExtRedirectsWithHTMLEnabled(t *testing.T) {
 	// /test.md       -> markdown content
 	// /test/index.html    -> HTML content (NOT a redirect)
 	// /test/index.txt/index.html -> redirect to /test.txt
+	// /test/index.ansi/index.html -> redirect to /test.ansi
 	// /test/index.md/index.html  -> redirect to /test.md
 
 	// 1. Verify /test/index.html exists and contains HTML content (NOT a redirect)
@@ -884,7 +886,17 @@ func TestPublishHTMLPlugin_FormatExtRedirectsWithHTMLEnabled(t *testing.T) {
 		t.Error("/test.txt should contain text content, not HTML")
 	}
 
-	// 3. Verify /test.md exists with markdown content
+	// 3. Verify /test.ansi exists with ANSI terminal content
+	ansiContentPath := filepath.Join(tempDir, "test.ansi")
+	ansiContent, err := os.ReadFile(ansiContentPath)
+	if err != nil {
+		t.Fatalf("failed to read ansi file %s: %v", ansiContentPath, err)
+	}
+	if strings.Contains(string(ansiContent), "<!DOCTYPE html>") {
+		t.Error("/test.ansi should contain terminal content, not HTML")
+	}
+
+	// 4. Verify /test.md exists with markdown content
 	mdContentPath := filepath.Join(tempDir, "test.md")
 	mdContent, err := os.ReadFile(mdContentPath)
 	if err != nil {
@@ -894,7 +906,7 @@ func TestPublishHTMLPlugin_FormatExtRedirectsWithHTMLEnabled(t *testing.T) {
 		t.Error("/test.md should contain markdown content, not HTML")
 	}
 
-	// 4. Verify /test/index.txt/index.html exists and is a redirect to /test.txt
+	// 5. Verify /test/index.txt/index.html exists and is a redirect to /test.txt
 	txtIndexRedirectPath := filepath.Join(tempDir, "test", "index.txt", "index.html")
 	txtIndexRedirectContent, err := os.ReadFile(txtIndexRedirectPath)
 	if err != nil {
@@ -904,7 +916,17 @@ func TestPublishHTMLPlugin_FormatExtRedirectsWithHTMLEnabled(t *testing.T) {
 		t.Error("/test/index.txt/index.html should redirect to /test.txt")
 	}
 
-	// 5. Verify /test/index.md/index.html exists and is a redirect to /test.md
+	// 6. Verify /test/index.ansi/index.html exists and is a redirect to /test.ansi
+	ansiIndexRedirectPath := filepath.Join(tempDir, "test", "index.ansi", "index.html")
+	ansiIndexRedirectContent, err := os.ReadFile(ansiIndexRedirectPath)
+	if err != nil {
+		t.Fatalf("failed to read ansi index redirect %s: %v", ansiIndexRedirectPath, err)
+	}
+	if !strings.Contains(string(ansiIndexRedirectContent), "/test.ansi") {
+		t.Error("/test/index.ansi/index.html should redirect to /test.ansi")
+	}
+
+	// 7. Verify /test/index.md/index.html exists and is a redirect to /test.md
 	mdIndexRedirectPath := filepath.Join(tempDir, "test", "index.md", "index.html")
 	mdIndexRedirectContent, err := os.ReadFile(mdIndexRedirectPath)
 	if err != nil {
@@ -1006,6 +1028,7 @@ func TestPublishHTMLPlugin_PrivatePostsNoAlternateFormats(t *testing.T) {
 				HTML:     &htmlEnabled,
 				Markdown: true,
 				Text:     true,
+				ANSI:     true,
 				OG:       true,
 			},
 		},
@@ -1052,6 +1075,12 @@ func TestPublishHTMLPlugin_PrivatePostsNoAlternateFormats(t *testing.T) {
 		t.Error("Private post .txt file should NOT be written (would leak plaintext)")
 	}
 
+	// .ansi should NOT be written
+	ansiPath := filepath.Join(tempDir, "secret-post.ansi")
+	if _, err := os.Stat(ansiPath); !os.IsNotExist(err) {
+		t.Error("Private post .ansi file should NOT be written (would leak plaintext)")
+	}
+
 	// OG card should NOT be written
 	ogPath := filepath.Join(tempDir, "secret-post", "og", "index.html")
 	if _, err := os.Stat(ogPath); !os.IsNotExist(err) {
@@ -1075,6 +1104,7 @@ func TestPublishHTMLPlugin_NonPrivatePostGetsAllFormats(t *testing.T) {
 				HTML:     &htmlEnabled,
 				Markdown: true,
 				Text:     true,
+				ANSI:     true,
 				OG:       false, // OG requires template engine, skip for simplicity
 			},
 		},
@@ -1118,5 +1148,11 @@ func TestPublishHTMLPlugin_NonPrivatePostGetsAllFormats(t *testing.T) {
 	txtPath := filepath.Join(tempDir, "public-post.txt")
 	if _, err := os.Stat(txtPath); os.IsNotExist(err) {
 		t.Error("Public post .txt file should be written")
+	}
+
+	// .ansi should be written
+	ansiPath := filepath.Join(tempDir, "public-post.ansi")
+	if _, err := os.Stat(ansiPath); os.IsNotExist(err) {
+		t.Error("Public post .ansi file should be written")
 	}
 }

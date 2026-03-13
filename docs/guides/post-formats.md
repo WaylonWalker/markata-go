@@ -1,6 +1,6 @@
 ---
 title: "Post Output Formats"
-description: "Configure multiple output formats for posts including HTML, Markdown source, plain text, and OpenGraph cards"
+description: "Configure multiple output formats for posts including HTML, Markdown source, plain text, ANSI terminal output, and OpenGraph cards"
 date: 2026-01-22
 published: true
 tags:
@@ -12,7 +12,7 @@ tags:
 
 # Post Output Formats
 
-markata-go can generate multiple output formats for each post beyond the standard HTML. This enables use cases like providing raw markdown for API consumers, plain text for accessibility, or generating social media preview cards.
+markata-go can generate multiple output formats for each post beyond the standard HTML. This enables use cases like providing raw markdown for API consumers, plain text for accessibility, ANSI terminal output for `curl`, or generating social media preview cards.
 
 ## Configuration
 
@@ -23,10 +23,11 @@ Configure output formats in your `markata-go.toml`:
 html = true       # Standard HTML (default: true)
 markdown = true   # Raw markdown source (default: true)
 text = true       # Plain text output (default: true)
+ansi = true       # ANSI terminal output (default: false)
 og = true         # OpenGraph card HTML (default: true)
 ```
 
-By default, all post formats are enabled. This allows standard web txt files like `robots.txt`, `llms.txt`, and `humans.txt` to work out of the box while also providing social sharing cards.
+By default, HTML, Markdown, plain text, and OG formats are enabled. ANSI output is opt-in so you can add rich terminal rendering without introducing escape sequences into existing `.txt` endpoints.
 
 ## Available Formats
 
@@ -72,7 +73,7 @@ Your original markdown content...
 
 ### Plain Text
 
-Outputs a plain text version of the content, perfect for:
+Outputs a plain terminal-friendly version of the rendered page, perfect for:
 - Standard web txt files (robots.txt, llms.txt, humans.txt)
 - Screen readers and accessibility tools
 - Command-line readers (curl, wget)
@@ -86,11 +87,11 @@ Outputs a plain text version of the content, perfect for:
 text = true  # Enabled by default
 ```
 
-The text output includes:
-- Title (underlined with `=`)
-- Description (if present)
-- Date
-- Raw markdown content
+The text output includes terminal-safe structure derived from the rendered page:
+- Title, description, and date
+- Headings, links, emphasis, and separators
+- Blockquotes, admonitions, lists, and tables
+- Readable code blocks without ANSI escapes
 
 Example output:
 ```
@@ -103,6 +104,34 @@ Date: January 22, 2026
 
 The actual content of the post in plain text form...
 ```
+
+### ANSI Terminal
+
+Outputs a richer terminal-first version of the rendered page with ANSI color and emphasis.
+
+**Output:** `/your-post.ansi` (canonical) with redirect from `/your-post/index.ansi`
+
+```toml
+[markata-go.post_formats]
+ansi = true  # Disabled by default; opt in when you want terminal styling
+```
+
+ANSI output uses the active site palette when possible and preserves terminal-friendly formatting for:
+- headings and emphasis
+- links and metadata
+- blockquotes and admonitions
+- lists, rules, and tables
+- syntax-highlighted code fences
+
+Use it with `curl`, `less -R`, or any ANSI-capable pager:
+
+```bash
+curl https://example.com/your-post.ansi
+curl https://example.com/your-post.ansi | less -R
+curl https://example.com/your-post.txt
+```
+
+`/your-post.txt` stays free of ANSI escape codes. `/your-post.ansi` is the explicit opt-in rich terminal variant.
 
 ### OpenGraph Card (OG)
 
@@ -200,12 +229,13 @@ With text format enabled (default), these generate:
 
 ## Reversed Redirects
 
-For `.txt` and `.md` formats, markata-go uses **reversed redirects** to ensure content is at the canonical URL:
+For `.txt`, `.ansi`, and `.md` formats, markata-go uses **reversed redirects** to ensure content is at the canonical URL:
 
 | Canonical Location | Redirect From |
 |-------------------|---------------|
 | `/my-post.md` | `/my-post/index.md` |
 | `/my-post.txt` | `/my-post/index.txt` |
+| `/my-post.ansi` | `/my-post/index.ansi` |
 
 This is the opposite of HTML, which uses directory-based URLs:
 

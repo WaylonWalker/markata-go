@@ -15,6 +15,9 @@
 {% if config.post_formats.text %}
 <link rel="alternate" type="text/plain" title="Plain Text" href="/{{ post.slug }}.txt">
 {% endif %}
+{% if config.post_formats.ansi %}
+<link rel="alternate" type="text/plain" title="ANSI Terminal" href="/{{ post.slug }}.ansi">
+{% endif %}
 {% if config.post_formats.og %}
 <link rel="alternate" type="text/html" title="Social Card" href="{{ post.href }}og/">
 {% endif %}

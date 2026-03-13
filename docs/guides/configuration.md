@@ -1404,7 +1404,8 @@ See the [Blogroll Guide](/docs/guides/blogroll/) for detailed configuration and 
 |-------|------|---------|-------------|
 | `html` | bool | `true` | Generate standard HTML pages |
 | `markdown` | bool | `true` | Generate raw markdown source |
-| `text` | bool | `true` | Generate plain text output |
+| `text` | bool | `true` | Generate plain terminal-friendly text output |
+| `ansi` | bool | `false` | Generate ANSI-styled terminal output |
 | `og` | bool | `true` | Generate OpenGraph card HTML |
 
 ```toml
@@ -1412,16 +1413,18 @@ See the [Blogroll Guide](/docs/guides/blogroll/) for detailed configuration and 
 html = true       # /slug/index.html (default)
 markdown = true   # /slug.md (canonical) - enabled by default
 text = true       # /slug.txt (canonical) - enabled by default
+ansi = true       # /slug.ansi (canonical) - opt-in rich terminal output
 og = true         # /slug/og/index.html (social card)
 ```
 
-**Reversed Redirects for txt/md**: For `.txt` and `.md` formats, content is placed at the canonical URL (`/slug.txt`, `/slug.md`) with backwards-compatible redirects at `/slug/index.txt` and `/slug/index.txt/index.html`. This supports standard web txt files like `robots.txt`, `llms.txt`, and `humans.txt`.
+**Reversed Redirects for txt/md/ansi**: For `.txt`, `.md`, and `.ansi` formats, content is placed at the canonical URL (`/slug.txt`, `/slug.md`, `/slug.ansi`) with backwards-compatible redirects at `/slug/index.<ext>` and `/slug/index.<ext>/index.html`. This supports standard web txt files like `robots.txt`, `llms.txt`, and `humans.txt` while adding an explicit ANSI terminal view.
 
 **Canonical URLs and Alternate Links**: When post formats are enabled, markata-go automatically adds:
 
 - `<link rel="canonical">` pointing to the post's primary URL (for SEO)
 - `<link rel="alternate">` for each enabled format:
   - Markdown: `type="text/markdown"` linking to `/slug.md`
+  - ANSI terminal: `type="text/plain"` linking to `/slug.ansi`
   - OG Card: `type="text/html"` linking to `og/`
 
 **Visible Format Links**: When alternate formats are enabled, posts and feeds display visible links allowing visitors to access content in their preferred format.

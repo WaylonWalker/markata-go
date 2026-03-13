@@ -538,12 +538,14 @@ func TestTemplatesPlugin_ResolveTemplateForFormat_WithPresets(t *testing.T) {
 				"blog": {
 					HTML:     "blog.html",
 					Text:     "blog.txt",
+					ANSI:     "blog.ansi",
 					Markdown: "blog.md",
 					OG:       "blog-og.html",
 				},
 				"docs": {
 					HTML:     "docs.html",
 					Text:     "docs.txt",
+					ANSI:     "docs.ansi",
 					Markdown: "docs.md",
 					OG:       "docs-og.html",
 				},
@@ -580,6 +582,14 @@ func TestTemplatesPlugin_ResolveTemplateForFormat_WithPresets(t *testing.T) {
 			},
 			format: "markdown",
 			want:   "docs.md",
+		},
+		{
+			name: "preset resolves ansi template",
+			post: &models.Post{
+				Template: "blog",
+			},
+			format: "ansi",
+			want:   "blog.ansi",
 		},
 		{
 			name: "preset resolves og template",
@@ -624,11 +634,14 @@ func TestAdaptTemplateForFormat(t *testing.T) {
 		{"post.html", "html", "post.html"},
 		{"post.html", "txt", "post.txt"},
 		{"post.html", "text", "post.txt"},
+		{"post.html", "ansi", "post.ansi"},
 		{"post.html", "markdown", "post.md"},
 		{"post.html", "md", "post.md"},
 		{"post.html", "og", "post-og.html"},
 		{"blog.html", "txt", "blog.txt"},
+		{"blog.html", "ansi", "blog.ansi"},
 		{"layouts/docs.html", "txt", "layouts/docs.txt"},
+		{"layouts/docs.html", "ansi", "layouts/docs.ansi"},
 	}
 
 	for _, tt := range tests {
@@ -649,6 +662,7 @@ func TestGetHardcodedDefault(t *testing.T) {
 		{"html", "post.html"},
 		{"txt", "default.txt"},
 		{"text", "default.txt"},
+		{"ansi", "default.ansi"},
 		{"markdown", "raw.txt"},
 		{"md", "raw.txt"},
 		{"og", "og-card.html"},
@@ -691,6 +705,7 @@ func TestCollectPrivatePaths(t *testing.T) {
 			expected: []string{
 				"/secret/",
 				"/secret.txt",
+				"/secret.ansi",
 				"/secret.md",
 				"/secret.og/",
 			},
@@ -704,6 +719,7 @@ func TestCollectPrivatePaths(t *testing.T) {
 			expected: []string{
 				"/secret/",
 				"/secret.txt",
+				"/secret.ansi",
 				"/secret.md",
 				"/secret.og/",
 			},
@@ -718,6 +734,7 @@ func TestCollectPrivatePaths(t *testing.T) {
 			expected: []string{
 				"/real-private/",
 				"/real-private.txt",
+				"/real-private.ansi",
 				"/real-private.md",
 				"/real-private.og/",
 			},
@@ -732,10 +749,12 @@ func TestCollectPrivatePaths(t *testing.T) {
 			expected: []string{
 				"/private1/",
 				"/private1.txt",
+				"/private1.ansi",
 				"/private1.md",
 				"/private1.og/",
 				"/private2/",
 				"/private2.txt",
+				"/private2.ansi",
 				"/private2.md",
 				"/private2.og/",
 			},

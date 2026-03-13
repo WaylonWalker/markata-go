@@ -12,6 +12,7 @@ Templates wrap rendered markdown content in HTML layouts. The system supports:
 - Control flow (if/for)
 - Filters and functions
 - Custom template per post
+- Format-specific templates for `.txt`, `.ansi`, `.md`, and OG outputs
 
 ---
 
@@ -213,6 +214,24 @@ When an OG card template renders post media, it MUST use this frontmatter fallba
 4. `video`
 
 If the resolved media is a video file, the OG template should render a video tag instead of an image tag. If none of these fields are present, the OG card renders a text-only layout.
+
+### Terminal Templates
+
+Plain terminal and ANSI terminal outputs use dedicated format templates resolved with the same per-format rules as HTML and OG output:
+
+- `post.html` -> `post.txt`
+- `post.html` -> `post.ansi`
+- if no format-specific template exists, fall back to `default.txt` or `default.ansi`
+
+Terminal templates receive:
+
+- `body`: the fully rendered terminal page for the target format
+- `post`: post metadata and rendered fields
+- `config`: resolved configuration including theme and post format settings
+
+Terminal templates SHOULD render `{{ body|safe }}` when they want the default terminal page body. Custom templates MAY mix `body` with additional metadata or custom separators.
+
+`default.txt` MUST emit plain text only. `default.ansi` MAY include ANSI escape sequences and SHOULD preserve semantic emphasis, links, admonitions, blockquotes, tables, and syntax-highlighted code blocks in a terminal-safe form.
 
 ### Feed Templates
 
