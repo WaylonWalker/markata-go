@@ -8,7 +8,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
+	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -53,32 +56,11 @@ func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	// Check if this is an incremental build with few changes
-	// If so, skip Pagefind to save time (search index is still valid)
 	cache := GetBuildCache(m)
-	if cache != nil {
-		stats := cache.GetStats()
-		total := stats.Skipped + stats.Rebuilt
-
-		// Skip when no posts were rebuilt (all cached)
-		if total > 0 && stats.Rebuilt == 0 {
-			fmt.Printf("[pagefind] Skipping search index update (no posts changed)\n")
-			return nil
-		}
-
-		// Skip Pagefind if we rebuilt less than 5% of posts
-		// or fewer than 50 posts (whichever is smaller)
-		threshold := total / 20 // 5%
-		if threshold > 50 {
-			threshold = 50
-		}
-		if threshold < 1 {
-			threshold = 1
-		}
-		if stats.Rebuilt > 0 && stats.Rebuilt < threshold {
-			fmt.Printf("[pagefind] Skipping search index update (incremental build: %d/%d posts changed)\n", stats.Rebuilt, total)
-			return nil
-		}
+	corpusHash := p.computeCorpusHash(m, searchConfig)
+	if cache != nil && corpusHash != "" && cache.GetPagefindCorpusHash() == corpusHash && p.indexExists(config, searchConfig) {
+		fmt.Printf("[pagefind] Skipping search index update (search corpus unchanged)\n")
+		return nil
 	}
 
 	verbose := searchConfig.Pagefind.IsVerbose()
@@ -97,7 +79,18 @@ func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	return p.runPagefind(pagefindPath, config, searchConfig, verbose)
+	if err := p.runPagefind(pagefindPath, config, searchConfig, verbose); err != nil {
+		return err
+	}
+
+	if cache != nil && corpusHash != "" {
+		cache.SetPagefindCorpusHash(corpusHash)
+		if err := cache.Save(); err != nil {
+			fmt.Printf("[pagefind] WARNING: failed to persist pagefind corpus hash: %v\n", err)
+		}
+	}
+
+	return nil
 }
 
 // findOrInstallPagefind locates or automatically installs the Pagefind binary.
@@ -233,6 +226,84 @@ func getSearchConfig(config *lifecycle.Config) models.SearchConfig {
 		}
 	}
 	return models.NewSearchConfig()
+}
+
+func (p *PagefindPlugin) computeCorpusHash(m *lifecycle.Manager, searchConfig models.SearchConfig) string {
+	posts := m.Posts()
+	sort.Slice(posts, func(i, j int) bool {
+		return posts[i].Path < posts[j].Path
+	})
+
+	var builder strings.Builder
+	builder.WriteString(searchConfig.Position)
+	builder.WriteString("\n")
+	builder.WriteString(searchConfig.Placeholder)
+	builder.WriteString("\n")
+	builder.WriteString(searchConfig.Pagefind.BundleDir)
+	builder.WriteString("\n")
+	builder.WriteString(searchConfig.Pagefind.RootSelector)
+	for _, selector := range searchConfig.Pagefind.ExcludeSelectors {
+		builder.WriteString("\n")
+		builder.WriteString(selector)
+	}
+
+	for _, post := range posts {
+		if post == nil || post.Skip || post.Draft || !post.Published || post.Private || isSearchExcluded(post) {
+			continue
+		}
+		builder.WriteString("\n--post:")
+		builder.WriteString(post.Path)
+		builder.WriteString("\n--href:")
+		builder.WriteString(post.Href)
+		builder.WriteString("\n--slug:")
+		builder.WriteString(post.Slug)
+		builder.WriteString("\n--title:")
+		builder.WriteString(postTitle(post))
+		builder.WriteString("\n--description:")
+		builder.WriteString(postDescription(post))
+		builder.WriteString("\n--article-hash:")
+		builder.WriteString(buildcache.ContentHash(post.ArticleHTML))
+		for _, tag := range post.Tags {
+			builder.WriteString("\n--tag:")
+			builder.WriteString(tag)
+		}
+	}
+
+	return buildcache.ContentHash(builder.String())
+}
+
+func (p *PagefindPlugin) indexExists(config *lifecycle.Config, searchConfig models.SearchConfig) bool {
+	bundleDir := searchConfig.Pagefind.BundleDir
+	if bundleDir == "" {
+		bundleDir = defaultBundleDir
+	}
+	indexPath := filepath.Join(config.OutputDir, bundleDir, "pagefind.js")
+	_, err := os.Stat(indexPath)
+	return err == nil
+}
+
+func isSearchExcluded(post *models.Post) bool {
+	if post == nil || post.Extra == nil {
+		return false
+	}
+	if value, ok := post.Extra["search_exclude"].(bool); ok {
+		return value
+	}
+	return false
+}
+
+func postTitle(post *models.Post) string {
+	if post == nil || post.Title == nil {
+		return ""
+	}
+	return *post.Title
+}
+
+func postDescription(post *models.Post) string {
+	if post == nil || post.Description == nil {
+		return ""
+	}
+	return *post.Description
 }
 
 // Ensure PagefindPlugin implements the required interfaces.

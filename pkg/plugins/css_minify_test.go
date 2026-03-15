@@ -300,6 +300,16 @@ body {
 	}
 }
 
+func TestCSSMinifyPlugin_IsExcluded_PagefindAssets(t *testing.T) {
+	p := NewCSSMinifyPlugin()
+	if !p.isExcluded("/tmp/output/_pagefind/pagefind-ui.css") {
+		t.Fatal("expected _pagefind/pagefind-ui.css to be excluded")
+	}
+	if p.isExcluded("/tmp/output/css/main.css") {
+		t.Fatal("did not expect normal CSS asset to be excluded")
+	}
+}
+
 func TestCSSMinifyPlugin_Write_PreserveComments(t *testing.T) {
 	tmpDir := t.TempDir()
 	cssDir := filepath.Join(tmpDir, "css")

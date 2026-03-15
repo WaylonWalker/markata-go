@@ -1,8 +1,12 @@
 package plugins
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -217,6 +221,40 @@ func TestExtractSiteURL(t *testing.T) {
 				t.Errorf("extractSiteURL(%q) = %q, want %q", tt.feedURL, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestMentionsPlugin_LoadFromCache_UsesLastFetchedTimestamp(t *testing.T) {
+	tmpDir := t.TempDir()
+	p := NewMentionsPlugin()
+	now := time.Now()
+	metadata := &models.MentionMetadata{
+		Domain:      "example.com",
+		Name:        "Example",
+		URL:         "https://example.com",
+		LastFetched: now,
+	}
+
+	cachePath := filepath.Join(tmpDir, p.cacheKey(metadata.Domain)+".json")
+	data, err := json.Marshal(metadata)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	if err := os.WriteFile(cachePath, data, 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	oldTime := now.Add(-14 * 24 * time.Hour)
+	if err := os.Chtimes(cachePath, oldTime, oldTime); err != nil {
+		t.Fatalf("Chtimes() error = %v", err)
+	}
+
+	cached := p.loadFromCache(metadata.Domain, tmpDir, 7*24*time.Hour)
+	if cached == nil {
+		t.Fatal("loadFromCache() = nil, want cached metadata")
+	}
+	if cached.Name != "Example" {
+		t.Fatalf("cached.Name = %q, want Example", cached.Name)
 	}
 }
 

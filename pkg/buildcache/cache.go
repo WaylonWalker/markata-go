@@ -78,6 +78,12 @@ type Cache struct {
 	// GardenHash caches the garden view output state
 	GardenHash string `json:"garden_hash,omitempty"`
 
+	// TailwindManifestHash caches the generated Tailwind token manifest state.
+	TailwindManifestHash string `json:"tailwind_manifest_hash,omitempty"`
+
+	// PagefindCorpusHash caches the searchable HTML corpus state.
+	PagefindCorpusHash string `json:"pagefind_corpus_hash,omitempty"`
+
 	// Graph tracks dependencies between posts for transitive invalidation
 	Graph *DependencyGraph `json:"graph,omitempty"`
 
@@ -200,6 +206,12 @@ type PostCache struct {
 
 	// GardenHash is a hash of fields that affect garden view output for this post.
 	GardenHash string `json:"garden_hash,omitempty"`
+
+	// TailwindHTMLHash is a hash of the final HTML used for Tailwind token extraction.
+	TailwindHTMLHash string `json:"tailwind_html_hash,omitempty"`
+
+	// TailwindTokens stores the extracted Tailwind-relevant tokens for the post.
+	TailwindTokens string `json:"tailwind_tokens,omitempty"`
 }
 
 // FeedCache stores cached metadata for a single feed.
@@ -307,6 +319,9 @@ func (c *Cache) SetConfigHash(hash string) bool {
 	// Config changed - invalidate all posts
 	c.ConfigHash = hash
 	c.Posts = make(map[string]*PostCache)
+	c.Feeds = make(map[string]*FeedCache)
+	c.TailwindManifestHash = ""
+	c.PagefindCorpusHash = ""
 	c.dirty = true
 	return true
 }
@@ -323,6 +338,9 @@ func (c *Cache) SetTemplatesHash(hash string) bool {
 	// Templates changed - invalidate all posts
 	c.TemplatesHash = hash
 	c.Posts = make(map[string]*PostCache)
+	c.Feeds = make(map[string]*FeedCache)
+	c.TailwindManifestHash = ""
+	c.PagefindCorpusHash = ""
 	c.dirty = true
 	return true
 }
@@ -340,6 +358,9 @@ func (c *Cache) SetAssetsHash(hash string) bool {
 	// Assets changed - invalidate all posts
 	c.AssetsHash = hash
 	c.Posts = make(map[string]*PostCache)
+	c.Feeds = make(map[string]*FeedCache)
+	c.TailwindManifestHash = ""
+	c.PagefindCorpusHash = ""
 	c.dirty = true
 	return true
 }
@@ -756,6 +777,78 @@ func (c *Cache) CacheGlossaryHTML(sourcePath, combinedHash, html string) {
 			GlossaryHTML: html,
 		}
 	}
+	c.dirty = true
+}
+
+// GetCachedTailwindTokens returns cached Tailwind tokens if the HTML hash matches.
+func (c *Cache) GetCachedTailwindTokens(sourcePath, htmlHash string) (string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	cached, ok := c.Posts[sourcePath]
+	if !ok {
+		return "", false
+	}
+	if cached.TailwindHTMLHash == "" || cached.TailwindHTMLHash != htmlHash {
+		return "", false
+	}
+	return cached.TailwindTokens, true
+}
+
+// CacheTailwindTokens stores extracted Tailwind tokens keyed by final HTML hash.
+func (c *Cache) CacheTailwindTokens(sourcePath, htmlHash, tokens string) {
+	if sourcePath == "" || htmlHash == "" {
+		return
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if cached, ok := c.Posts[sourcePath]; ok {
+		cached.TailwindHTMLHash = htmlHash
+		cached.TailwindTokens = tokens
+	} else {
+		c.Posts[sourcePath] = &PostCache{
+			TailwindHTMLHash: htmlHash,
+			TailwindTokens:   tokens,
+		}
+	}
+	c.dirty = true
+}
+
+// GetTailwindManifestHash returns the cached Tailwind manifest hash.
+func (c *Cache) GetTailwindManifestHash() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.TailwindManifestHash
+}
+
+// SetTailwindManifestHash stores the Tailwind manifest hash.
+func (c *Cache) SetTailwindManifestHash(hash string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.TailwindManifestHash == hash {
+		return
+	}
+	c.TailwindManifestHash = hash
+	c.dirty = true
+}
+
+// GetPagefindCorpusHash returns the cached Pagefind corpus hash.
+func (c *Cache) GetPagefindCorpusHash() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.PagefindCorpusHash
+}
+
+// SetPagefindCorpusHash stores the Pagefind corpus hash.
+func (c *Cache) SetPagefindCorpusHash(hash string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.PagefindCorpusHash == hash {
+		return
+	}
+	c.PagefindCorpusHash = hash
 	c.dirty = true
 }
 

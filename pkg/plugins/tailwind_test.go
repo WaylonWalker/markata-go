@@ -19,21 +19,27 @@ func (s stubTailwindInstaller) Install() (string, error) {
 	return s.path, s.err
 }
 
-func TestTailwindPlugin_DefaultContentArgs(t *testing.T) {
+func TestTailwindPlugin_GeneratedTailwindContentPaths(t *testing.T) {
 	plugin := NewTailwindPlugin()
+	tmpDir := t.TempDir()
+	assetsDir := filepath.Join(tmpDir, "static")
+	templatesDir := filepath.Join(tmpDir, "templates")
+	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(assetsDir) error = %v", err)
+	}
+	if err := os.MkdirAll(templatesDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(templatesDir) error = %v", err)
+	}
+
 	config := &lifecycle.Config{
-		ContentDir:   "/repo",
-		OutputDir:    "/repo/output",
-		GlobPatterns: []string{"pages/**/*.md", "posts/**/*.md"},
+		Extra: map[string]interface{}{
+			"assets_dir":    assetsDir,
+			"templates_dir": templatesDir,
+		},
 	}
 
-	args := plugin.defaultContentArgs(config, true)
-	if len(args) != 2 || args[0] != "--content" {
-		t.Fatalf("defaultContentArgs() = %v, want [--content patterns]", args)
-	}
-
-	patterns := strings.Split(args[1], ",")
-	want := []string{"/repo/pages/**/*.md", "/repo/posts/**/*.md", "/repo/output/**/*.html"}
+	patterns := plugin.generatedTailwindContentPaths(config, "/tmp/manifest.txt")
+	want := []string{"/tmp/manifest.txt", filepath.ToSlash(filepath.Join(assetsDir, "**", "*.js")), filepath.ToSlash(filepath.Join(templatesDir, "**", "*.html")), filepath.ToSlash(filepath.Join(templatesDir, "**", "*.js")), filepath.ToSlash(filepath.Join(templatesDir, "**", "*.md"))}
 	for _, needle := range want {
 		found := false
 		for _, pattern := range patterns {
@@ -52,13 +58,9 @@ func TestTailwindPlugin_ResolveBuildConfigFile_GeneratesContentConfig(t *testing
 	plugin := NewTailwindPlugin()
 	plugin.config = models.NewTailwindConfig()
 
-	config := &lifecycle.Config{
-		ContentDir:   "/repo",
-		OutputDir:    "/repo/output",
-		GlobPatterns: []string{"pages/**/*.md", "posts/**/*.md"},
-	}
+	config := &lifecycle.Config{}
 
-	configPath, cleanup, err := plugin.resolveBuildConfigFile(config, true)
+	configPath, cleanup, err := plugin.resolveBuildConfigFile(config, []string{"/tmp/manifest.txt", "/tmp/templates/**/*.html"})
 	if err != nil {
 		t.Fatalf("resolveBuildConfigFile() error = %v", err)
 	}
@@ -69,9 +71,19 @@ func TestTailwindPlugin_ResolveBuildConfigFile_GeneratesContentConfig(t *testing
 		t.Fatalf("ReadFile(%q) error = %v", configPath, err)
 	}
 	text := string(data)
-	for _, needle := range []string{"module.exports", "/repo/pages/**/*.md", "/repo/posts/**/*.md", "/repo/output/**/*.html"} {
+	for _, needle := range []string{"module.exports", "/tmp/manifest.txt", "/tmp/templates/**/*.html"} {
 		if !strings.Contains(text, needle) {
 			t.Fatalf("generated config missing %q:\n%s", needle, text)
+		}
+	}
+}
+
+func TestExtractTailwindTokens(t *testing.T) {
+	html := `<main class="prose prose-zinc dark:prose-invert"><div class='grid grid-cols-2 gap-4'></div><p class="prose prose-zinc"></p></main>`
+	got := extractTailwindTokens(html)
+	for _, needle := range []string{"dark:prose-invert", "gap-4", "grid", "grid-cols-2", "prose", "prose-zinc"} {
+		if !strings.Contains(got, needle) {
+			t.Fatalf("extractTailwindTokens() missing %q in %q", needle, got)
 		}
 	}
 }

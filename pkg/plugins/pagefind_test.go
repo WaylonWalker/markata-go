@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -255,6 +256,37 @@ func TestNewSearchConfig(t *testing.T) {
 
 	if len(sc.Feeds) != 0 {
 		t.Errorf("Feeds should be empty, got %v", sc.Feeds)
+	}
+}
+
+func TestPagefindPlugin_CleanupSkipsWhenCorpusUnchanged(t *testing.T) {
+	plugin := NewPagefindPlugin()
+	m := lifecycle.NewManager()
+	config := lifecycle.NewConfig()
+	config.OutputDir = t.TempDir()
+	config.Extra["search"] = models.NewSearchConfig()
+	m.SetConfig(config)
+
+	post := models.NewPost("pages/test.md")
+	post.Published = true
+	post.HTML = `<html><body><main data-pagefind-body>Test</main></body></html>`
+	m.SetPosts([]*models.Post{post})
+
+	bundleDir := defaultBundleDir
+	indexPath := filepath.Join(config.OutputDir, bundleDir, "pagefind.js")
+	if err := os.MkdirAll(filepath.Dir(indexPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll(indexPath) error = %v", err)
+	}
+	if err := os.WriteFile(indexPath, []byte("ok"), 0o600); err != nil {
+		t.Fatalf("WriteFile(indexPath) error = %v", err)
+	}
+
+	cache := buildcache.New(t.TempDir())
+	cache.SetPagefindCorpusHash(plugin.computeCorpusHash(m, models.NewSearchConfig()))
+	m.Cache().Set("build_cache", cache)
+
+	if err := plugin.Cleanup(m); err != nil {
+		t.Fatalf("Cleanup() error = %v", err)
 	}
 }
 

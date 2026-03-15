@@ -167,6 +167,10 @@ func (p *CSSMinifyPlugin) findCSSFiles(dir string) ([]string, error) {
 
 // isExcluded checks if a file should be excluded from minification.
 func (p *CSSMinifyPlugin) isExcluded(filePath string) bool {
+	if isPagefindAsset(filePath) {
+		return true
+	}
+
 	filename := filepath.Base(filePath)
 	return isExcludedByPatterns(filename, p.exclude)
 }

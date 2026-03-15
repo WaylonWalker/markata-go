@@ -3683,7 +3683,7 @@ The lightbox overlay is themed to match the site's dark palette. CSS overrides i
 ### tailwind
 
 **Name:** `tailwind`  \
-**Stage:** Configure (build step)  \
+**Stage:** Configure + Cleanup  \
 **Purpose:** Runs the Tailwind standalone CLI during builds and optionally injects
 compiled CSS or the Tailwind CDN JS script into your site.
 
@@ -3723,13 +3723,14 @@ verbose = false                  # Verbose installer/build logs
 | `verbose` | bool | `false` | Verbose install/build output. |
 
 **Behavior:**
-1. Runs Tailwind CLI before assets are copied to output, then again after HTML is generated so output pages can participate in scanning.
+1. Injects Tailwind includes during Configure, then rebuilds CSS during Cleanup only when the effective utility manifest changes.
 2. Resolves `input`/`output` relative to `assets_dir` (absolute paths are respected).
 3. If `input` is missing, generates a default Tailwind entry CSS file automatically.
-4. If `extra_args` is empty and `config_file` is unset, generates a temporary Tailwind config from `glob.patterns` and generated `output/**/*.html`.
+4. If `extra_args` is empty and `config_file` is unset, generates a temporary Tailwind config from a cached token manifest derived from rendered HTML plus local JS/template sources.
 5. `include = "css"` sets `theme.custom_css` to the output if it's empty.
 6. `include = "js"` injects the Tailwind CDN script and respects assets mode for vendoring.
-7. When `include = "css"` and CSS purge is disabled, a validation warning is emitted.
+7. Fast mode skips Tailwind rebuilds when the compiled asset already exists.
+8. When `include = "css"` and CSS purge is disabled, a validation warning is emitted.
 
 **Notes:**
 - Tailwind CLI is downloaded with checksum verification (versioned per platform).
@@ -4277,8 +4278,9 @@ exclude_selectors = []      # CSS selectors to exclude from indexing
 1. Runs in Cleanup stage with `PriorityLast` (after all HTML files are written)
 2. Checks if search is enabled in configuration
 3. Checks if `pagefind` CLI is available in PATH
-4. Executes `pagefind --site {output_dir}` with configured options
-5. Generates search index in `{output_dir}/_pagefind/`
+4. Hashes the searchable corpus and skips Pagefind when indexed content is unchanged
+5. Executes `pagefind --site {output_dir}` with configured options when a refresh is needed
+6. Generates search index in `{output_dir}/_pagefind/`
 
 **Generated files:**
 ```

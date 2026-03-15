@@ -155,6 +155,25 @@ func applyEnvOverride(config *models.Config, key, value string) {
 			searchConfig.Pagefind.Verbose = &verbose
 			config.Extra["search"] = searchConfig
 		}
+	case "search_enabled":
+		if config.Extra == nil {
+			config.Extra = make(map[string]interface{})
+		}
+		searchConfig, _ := config.Extra["search"].(models.SearchConfig)
+		enabled := parseBool(value)
+		searchConfig.Enabled = &enabled
+		config.Extra["search"] = searchConfig
+	case "tailwind_build":
+		if config.Extra == nil {
+			config.Extra = make(map[string]interface{})
+		}
+		tailwindConfig, ok := config.Extra["tailwind"].(models.TailwindConfig)
+		if !ok {
+			tailwindConfig = models.NewTailwindConfig()
+		}
+		build := parseBool(value)
+		tailwindConfig.Build = &build
+		config.Extra["tailwind"] = tailwindConfig
 	// Encryption settings
 	case "encryption_enabled":
 		config.Encryption.Enabled = parseBool(value)

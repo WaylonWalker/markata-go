@@ -3,6 +3,8 @@ package config
 import (
 	"os"
 	"testing"
+
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 func TestApplyEnvOverrides_StringFields(t *testing.T) {
@@ -215,6 +217,27 @@ func TestApplyEnvOverrides_BlogrollEnabled(t *testing.T) {
 				t.Errorf("Blogroll.Enabled = %v, want %v for env value %q", config.Blogroll.Enabled, tt.want, tt.envValue)
 			}
 		})
+	}
+}
+
+func TestApplyEnvOverrides_TailwindBuild(t *testing.T) {
+	cleanup := setEnvVars(t, map[string]string{
+		"MARKATA_GO_TAILWIND_BUILD": "false",
+	})
+	defer cleanup()
+
+	config := DefaultConfig()
+	config.Extra["tailwind"] = models.NewTailwindConfig()
+	if err := ApplyEnvOverrides(config); err != nil {
+		t.Fatalf("ApplyEnvOverrides() error = %v", err)
+	}
+
+	tailwindConfig, ok := config.Extra["tailwind"].(models.TailwindConfig)
+	if !ok {
+		t.Fatalf("tailwind config missing from Extra: %#v", config.Extra["tailwind"])
+	}
+	if tailwindConfig.Build == nil || *tailwindConfig.Build {
+		t.Fatalf("Tailwind.Build = %#v, want false", tailwindConfig.Build)
 	}
 }
 

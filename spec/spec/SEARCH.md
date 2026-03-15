@@ -6,6 +6,8 @@ This document specifies the search functionality for markata-go sites using Page
 
 Search is **enabled by default** for all markata-go sites. The implementation uses [Pagefind](https://pagefind.app/), a static site search library that generates an optimized search index during the build process.
 
+Fast mode (`build --fast`, `serve --fast`) skips Pagefind indexing.
+
 ## Architecture
 
 ### Build Process
@@ -15,6 +17,8 @@ Search is **enabled by default** for all markata-go sites. The implementation us
    - Executes `pagefind` CLI to index the output directory
    - Generates search index in `_pagefind/` directory
    - Copies Pagefind UI assets
+3. **Incremental optimization** - markata-go hashes the searchable corpus and
+   skips Pagefind entirely when the indexed content is unchanged.
 
 ### Runtime Behavior
 

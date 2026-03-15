@@ -737,12 +737,13 @@ If `tailwind.css` is missing, markata-go generates a default input containing
 
 Behavior:
 
-- `build = true` runs the Tailwind CLI during configure and again after HTML is
-  written so generated pages can be included in content scanning.
+- `build = true` injects the Tailwind output during configure and performs the
+  actual Tailwind rebuild in cleanup when needed.
 - `input`/`output` resolve relative to `assets_dir` (absolute paths are respected).
 - If `extra_args` is empty and `config_file` is unset, markata-go generates a
-  temporary Tailwind config with content globs derived from `glob.patterns` plus
-  `output/**/*.html` on the final build pass.
+  temporary Tailwind config that scans a generated token manifest derived from
+  rendered page HTML plus local JS/template sources. The manifest is hashed and
+  cached so Tailwind is skipped when the effective utility set is unchanged.
 - `include = "css"` ensures the output CSS is included in templates. If
   `theme.custom_css` is unset, it is set to the output path. The plugin does not
   override explicit `theme.custom_css` values.
@@ -754,6 +755,8 @@ Behavior:
 - `auto_install = true` downloads and uses the managed Tailwind CLI (versioned,
   checksum verified) into the cache directory when needed. This is preferred over
   `PATH` for consistent builds. If disabled, `binary` or `PATH` is used.
+- Fast mode skips Tailwind rebuilds when the compiled CSS asset already exists,
+  keeping development builds fast without requiring a separate output directory.
 
 ### Theme (`[my-ssg.theme]`)
 

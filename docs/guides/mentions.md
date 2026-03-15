@@ -367,6 +367,10 @@ Follow @example on social       <!-- Transformed -->
 |--------|------|---------|-------------|
 | `enabled` | bool | `true` | Enable/disable mentions processing |
 | `css_class` | string | `"mention"` | CSS class for mention links |
+| `cache_dir` | string | `"cache/mentions"` | Directory for cached external metadata |
+| `cache_duration` | string | `"168h"` | How long external metadata stays fresh |
+| `timeout` | int | `30` | HTTP timeout in seconds |
+| `concurrent_requests` | int | `3` | Max concurrent external metadata fetches |
 | `from_posts` | array | see below | List of internal post sources. Default: two sources with `filter = "template == 'contact'"` and `filter = "template == 'author'"`, both with `handle_field = "handle"` |
 
 ### from_posts Options

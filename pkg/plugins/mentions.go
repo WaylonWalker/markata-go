@@ -323,14 +323,8 @@ func (p *MentionsPlugin) cacheKey(domain string) string {
 func (p *MentionsPlugin) loadFromCache(domain, cacheDir string, maxAge time.Duration) *models.MentionMetadata {
 	cacheFile := filepath.Join(cacheDir, p.cacheKey(domain)+".json")
 
-	info, err := os.Stat(cacheFile)
-	if err != nil {
+	if _, err := os.Stat(cacheFile); err != nil {
 		return nil // Cache file doesn't exist
-	}
-
-	// Check if cache is expired
-	if time.Since(info.ModTime()) > maxAge {
-		return nil
 	}
 
 	data, err := os.ReadFile(cacheFile)

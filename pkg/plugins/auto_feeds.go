@@ -66,6 +66,17 @@ const (
 // and CollectPlugin to generate the actual feed content.
 type AutoFeedsPlugin struct{}
 
+type autoStringGroup struct {
+	SlugPart string
+	Display  string
+	Variants []string
+}
+
+type autoTagGroup struct {
+	autoStringGroup
+	IncludePrivate bool
+}
+
 // NewAutoFeedsPlugin creates a new AutoFeedsPlugin.
 func NewAutoFeedsPlugin() *AutoFeedsPlugin {
 	return &AutoFeedsPlugin{}
@@ -127,35 +138,26 @@ func (p *AutoFeedsPlugin) registerTagSyntheticPosts(m *lifecycle.Manager, posts 
 	if prefix == "" {
 		prefix = defaultTagsPrefix
 	}
+	groups := collectAutoTagGroups(posts, map[string]string{})
 
-	// Collect all unique tags
-	tagsMap := make(map[string]bool)
-	for _, post := range posts {
-		for _, tag := range post.Tags {
-			tagsMap[tag] = true
+	// Register synthetic post for each tag slug
+	for _, group := range groups {
+		slug := prefix + "/" + group.SlugPart
+		aliases := make([]interface{}, 0, len(group.Variants)+1)
+		for _, variant := range group.Variants {
+			aliases = append(aliases, variant)
 		}
-	}
-
-	// Sort tags for deterministic ordering
-	tags := make([]string, 0, len(tagsMap))
-	for tag := range tagsMap {
-		tags = append(tags, tag)
-	}
-	sort.Strings(tags)
-
-	// Register synthetic post for each tag
-	for _, tag := range tags {
-		slug := prefix + "/" + slugify(tag)
+		aliases = append(aliases, group.SlugPart)
 		syntheticPost := &models.Post{
 			Slug:        slug,
-			Title:       autoFeedsStrPtr(fmt.Sprintf("Posts tagged: %s", tag)),
-			Description: autoFeedsStrPtr(fmt.Sprintf("All posts with the tag %q", tag)),
+			Title:       autoFeedsStrPtr(fmt.Sprintf("Posts tagged: %s", group.Display)),
+			Description: autoFeedsStrPtr(fmt.Sprintf("All posts with the tag %q", group.Display)),
 			Href:        "/" + slug + "/",
 			Published:   true,
 			Skip:        true,
 			// Add aliases so [[ python ]] resolves to tags/python
 			Extra: map[string]interface{}{
-				"aliases": []interface{}{tag, slugify(tag)},
+				"aliases": aliases,
 			},
 		}
 		m.AddPost(syntheticPost)
@@ -168,35 +170,26 @@ func (p *AutoFeedsPlugin) registerCategorySyntheticPosts(m *lifecycle.Manager, p
 	if prefix == "" {
 		prefix = defaultCategoriesPrefix
 	}
+	groups := collectAutoCategoryGroups(posts)
 
-	// Collect all unique categories
-	categoriesMap := make(map[string]bool)
-	for _, post := range posts {
-		if cat, ok := post.Extra["category"].(string); ok && cat != "" {
-			categoriesMap[cat] = true
+	// Register synthetic post for each category slug
+	for _, group := range groups {
+		slug := prefix + "/" + group.SlugPart
+		aliases := make([]interface{}, 0, len(group.Variants)+1)
+		for _, variant := range group.Variants {
+			aliases = append(aliases, variant)
 		}
-	}
-
-	// Sort categories for deterministic ordering
-	categories := make([]string, 0, len(categoriesMap))
-	for cat := range categoriesMap {
-		categories = append(categories, cat)
-	}
-	sort.Strings(categories)
-
-	// Register synthetic post for each category
-	for _, cat := range categories {
-		slug := prefix + "/" + slugify(cat)
+		aliases = append(aliases, group.SlugPart)
 		syntheticPost := &models.Post{
 			Slug:        slug,
-			Title:       autoFeedsStrPtr(fmt.Sprintf("Category: %s", cat)),
-			Description: autoFeedsStrPtr(fmt.Sprintf("All posts in the %q category", cat)),
+			Title:       autoFeedsStrPtr(fmt.Sprintf("Category: %s", group.Display)),
+			Description: autoFeedsStrPtr(fmt.Sprintf("All posts in the %q category", group.Display)),
 			Href:        "/" + slug + "/",
 			Published:   true,
 			Skip:        true,
 			// Add aliases so [[ Technology ]] resolves to categories/technology
 			Extra: map[string]interface{}{
-				"aliases": []interface{}{cat, slugify(cat)},
+				"aliases": aliases,
 			},
 		}
 		m.AddPost(syntheticPost)
@@ -416,40 +409,24 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 // privateTags maps lowercased tag names to encryption key names; feeds for
 // these tags include private posts so their encrypted content appears on the page.
 func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeedTypeConfig, privateTags map[string]string) []models.FeedConfig {
-	// Collect all unique tags
-	tagCounts := make(map[string]int)
-	for _, post := range posts {
-		for _, tag := range post.Tags {
-			tagCounts[tag]++
-		}
-	}
-
-	// Sort tags alphabetically
-	tags := make([]string, 0, len(tagCounts))
-	for tag := range tagCounts {
-		tags = append(tags, tag)
-	}
-	sort.Strings(tags)
-
-	// Create feed config for each tag
-	feeds := make([]models.FeedConfig, 0, len(tags))
+	groups := collectAutoTagGroups(posts, privateTags)
+	feeds := make([]models.FeedConfig, 0, len(groups))
 	prefix := config.SlugPrefix
 	if prefix == "" {
 		prefix = defaultTagsPrefix
 	}
 
-	for _, tag := range tags {
-		slug := prefix + "/" + slugify(tag)
-		_, isPrivateTag := privateTags[strings.ToLower(tag)]
+	for _, group := range groups {
+		slug := prefix + "/" + group.SlugPart
 		feeds = append(feeds, models.FeedConfig{
 			Slug:           slug,
-			Title:          fmt.Sprintf("Posts tagged: %s", tag),
-			Description:    fmt.Sprintf("All posts with the tag %q", tag),
-			Filter:         fmt.Sprintf("%q in tags", tag),
+			Title:          fmt.Sprintf("Posts tagged: %s", group.Display),
+			Description:    fmt.Sprintf("All posts with the tag %q", group.Display),
+			Filter:         buildTagFilterExpression(group.Variants),
 			Sort:           "date",
 			Reverse:        true,
 			Formats:        config.Formats,
-			IncludePrivate: isPrivateTag,
+			IncludePrivate: group.IncludePrivate,
 		})
 	}
 
@@ -460,43 +437,30 @@ func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, confi
 	if len(changedSet) == 0 {
 		return nil
 	}
-	// Collect tags from changed posts only
-	tagCounts := make(map[string]int)
-	for _, post := range posts {
-		if !changedSet[post.Slug] {
-			continue
-		}
-		for _, tag := range post.Tags {
-			tagCounts[tag]++
-		}
-	}
-	if len(tagCounts) == 0 {
+	changedSlugs := collectChangedTagSlugs(posts, changedSet)
+	if len(changedSlugs) == 0 {
 		return nil
 	}
-	// Sort tags alphabetically
-	tags := make([]string, 0, len(tagCounts))
-	for tag := range tagCounts {
-		tags = append(tags, tag)
-	}
-	sort.Strings(tags)
-
-	feeds := make([]models.FeedConfig, 0, len(tags))
+	groups := collectAutoTagGroups(posts, privateTags)
+	feeds := make([]models.FeedConfig, 0, len(changedSlugs))
 	prefix := config.SlugPrefix
 	if prefix == "" {
 		prefix = defaultTagsPrefix
 	}
-	for _, tag := range tags {
-		slug := prefix + "/" + slugify(tag)
-		_, isPrivateTag := privateTags[strings.ToLower(tag)]
+	for _, group := range groups {
+		if !changedSlugs[group.SlugPart] {
+			continue
+		}
+		slug := prefix + "/" + group.SlugPart
 		feeds = append(feeds, models.FeedConfig{
 			Slug:           slug,
-			Title:          fmt.Sprintf("Posts tagged: %s", tag),
-			Description:    fmt.Sprintf("All posts with the tag %q", tag),
-			Filter:         fmt.Sprintf("%q in tags", tag),
+			Title:          fmt.Sprintf("Posts tagged: %s", group.Display),
+			Description:    fmt.Sprintf("All posts with the tag %q", group.Display),
+			Filter:         buildTagFilterExpression(group.Variants),
 			Sort:           "date",
 			Reverse:        true,
 			Formats:        config.Formats,
-			IncludePrivate: isPrivateTag,
+			IncludePrivate: group.IncludePrivate,
 		})
 	}
 
@@ -505,35 +469,20 @@ func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, confi
 
 // generateCategoryFeeds creates feed configurations for each unique category.
 func (p *AutoFeedsPlugin) generateCategoryFeeds(posts []*models.Post, config AutoFeedTypeConfig) []models.FeedConfig {
-	// Collect all unique categories from Extra["category"]
-	categoryCounts := make(map[string]int)
-	for _, post := range posts {
-		if cat, ok := post.Extra["category"].(string); ok && cat != "" {
-			categoryCounts[cat]++
-		}
-	}
-
-	// Sort categories alphabetically
-	categories := make([]string, 0, len(categoryCounts))
-	for cat := range categoryCounts {
-		categories = append(categories, cat)
-	}
-	sort.Strings(categories)
-
-	// Create feed config for each category
-	feeds := make([]models.FeedConfig, 0, len(categories))
+	groups := collectAutoCategoryGroups(posts)
+	feeds := make([]models.FeedConfig, 0, len(groups))
 	prefix := config.SlugPrefix
 	if prefix == "" {
 		prefix = defaultCategoriesPrefix
 	}
 
-	for _, cat := range categories {
-		slug := prefix + "/" + slugify(cat)
+	for _, group := range groups {
+		slug := prefix + "/" + group.SlugPart
 		feeds = append(feeds, models.FeedConfig{
 			Slug:        slug,
-			Title:       fmt.Sprintf("Category: %s", cat),
-			Description: fmt.Sprintf("All posts in the %q category", cat),
-			Filter:      fmt.Sprintf("category == %q", cat),
+			Title:       fmt.Sprintf("Category: %s", group.Display),
+			Description: fmt.Sprintf("All posts in the %q category", group.Display),
+			Filter:      buildCategoryFilterExpression(group.Variants),
 			Sort:        "date",
 			Reverse:     true,
 			Formats:     config.Formats,
@@ -547,37 +496,26 @@ func (p *AutoFeedsPlugin) generateCategoryFeedsForChanged(posts []*models.Post, 
 	if len(changedSet) == 0 {
 		return nil
 	}
-	categoryCounts := make(map[string]int)
-	for _, post := range posts {
-		if !changedSet[post.Slug] {
-			continue
-		}
-		if cat, ok := post.Extra["category"].(string); ok && cat != "" {
-			categoryCounts[cat]++
-		}
-	}
-	if len(categoryCounts) == 0 {
+	changedSlugs := collectChangedCategorySlugs(posts, changedSet)
+	if len(changedSlugs) == 0 {
 		return nil
 	}
-	// Sort categories alphabetically
-	categories := make([]string, 0, len(categoryCounts))
-	for cat := range categoryCounts {
-		categories = append(categories, cat)
-	}
-	sort.Strings(categories)
-
-	feeds := make([]models.FeedConfig, 0, len(categories))
+	groups := collectAutoCategoryGroups(posts)
+	feeds := make([]models.FeedConfig, 0, len(changedSlugs))
 	prefix := config.SlugPrefix
 	if prefix == "" {
 		prefix = defaultCategoriesPrefix
 	}
-	for _, cat := range categories {
-		slug := prefix + "/" + slugify(cat)
+	for _, group := range groups {
+		if !changedSlugs[group.SlugPart] {
+			continue
+		}
+		slug := prefix + "/" + group.SlugPart
 		feeds = append(feeds, models.FeedConfig{
 			Slug:        slug,
-			Title:       fmt.Sprintf("Category: %s", cat),
-			Description: fmt.Sprintf("All posts in the %q category", cat),
-			Filter:      fmt.Sprintf("category == %q", cat),
+			Title:       fmt.Sprintf("Category: %s", group.Display),
+			Description: fmt.Sprintf("All posts in the %q category", group.Display),
+			Filter:      buildCategoryFilterExpression(group.Variants),
 			Sort:        "date",
 			Reverse:     true,
 			Formats:     config.Formats,
@@ -811,6 +749,157 @@ func getAutoFeedsConfig(config *lifecycle.Config) AutoFeedsConfig {
 // This is a convenience wrapper around models.Slugify for internal use.
 func slugify(s string) string {
 	return models.Slugify(s)
+}
+
+func collectAutoTagGroups(posts []*models.Post, privateTags map[string]string) []autoTagGroup {
+	groups := make(map[string]*autoTagGroup)
+	for _, post := range posts {
+		for _, tag := range post.Tags {
+			slug := slugify(tag)
+			if slug == "" {
+				continue
+			}
+			group, ok := groups[slug]
+			if !ok {
+				group = &autoTagGroup{autoStringGroup: autoStringGroup{SlugPart: slug, Display: tag}}
+				groups[slug] = group
+			}
+			group.Display = pickPreferredAutoLabel(group.Display, tag)
+			group.Variants = appendUniqueSorted(group.Variants, tag)
+			if _, ok := privateTags[strings.ToLower(tag)]; ok {
+				group.IncludePrivate = true
+			}
+		}
+	}
+
+	result := make([]autoTagGroup, 0, len(groups))
+	for _, group := range groups {
+		result = append(result, *group)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].SlugPart < result[j].SlugPart
+	})
+	return result
+}
+
+func collectAutoCategoryGroups(posts []*models.Post) []autoStringGroup {
+	groups := make(map[string]*autoStringGroup)
+	for _, post := range posts {
+		cat, ok := post.Extra["category"].(string)
+		if !ok || cat == "" {
+			continue
+		}
+		slug := slugify(cat)
+		if slug == "" {
+			continue
+		}
+		group, ok := groups[slug]
+		if !ok {
+			group = &autoStringGroup{SlugPart: slug, Display: cat}
+			groups[slug] = group
+		}
+		group.Display = pickPreferredAutoLabel(group.Display, cat)
+		group.Variants = appendUniqueSorted(group.Variants, cat)
+	}
+
+	result := make([]autoStringGroup, 0, len(groups))
+	for _, group := range groups {
+		result = append(result, *group)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].SlugPart < result[j].SlugPart
+	})
+	return result
+}
+
+func collectChangedTagSlugs(posts []*models.Post, changedSet map[string]bool) map[string]bool {
+	result := make(map[string]bool)
+	for _, post := range posts {
+		if !changedSet[post.Slug] {
+			continue
+		}
+		for _, tag := range post.Tags {
+			slug := slugify(tag)
+			if slug != "" {
+				result[slug] = true
+			}
+		}
+	}
+	return result
+}
+
+func collectChangedCategorySlugs(posts []*models.Post, changedSet map[string]bool) map[string]bool {
+	result := make(map[string]bool)
+	for _, post := range posts {
+		if !changedSet[post.Slug] {
+			continue
+		}
+		cat, ok := post.Extra["category"].(string)
+		if !ok || cat == "" {
+			continue
+		}
+		slug := slugify(cat)
+		if slug != "" {
+			result[slug] = true
+		}
+	}
+	return result
+}
+
+func pickPreferredAutoLabel(current, candidate string) string {
+	if current == "" {
+		return candidate
+	}
+	currentScore, currentKey := autoLabelPreference(current)
+	candidateScore, candidateKey := autoLabelPreference(candidate)
+	if candidateScore < currentScore {
+		return candidate
+	}
+	if candidateScore > currentScore {
+		return current
+	}
+	if candidateKey < currentKey {
+		return candidate
+	}
+	return current
+}
+
+func autoLabelPreference(value string) (int, string) {
+	trimmed := strings.TrimSpace(value)
+	score := 1
+	if strings.Contains(trimmed, " ") {
+		score = 0
+	} else if strings.Contains(trimmed, "-") {
+		score = 2
+	}
+	return score, strings.ToLower(trimmed)
+}
+
+func appendUniqueSorted(values []string, value string) []string {
+	for _, existing := range values {
+		if existing == value {
+			return values
+		}
+	}
+	values = append(values, value)
+	sort.Strings(values)
+	return values
+}
+
+func buildTagFilterExpression(variants []string) string {
+	parts := make([]string, 0, len(variants))
+	for _, variant := range variants {
+		parts = append(parts, fmt.Sprintf("%q in tags", variant))
+	}
+	return strings.Join(parts, " or ")
+}
+
+func buildCategoryFilterExpression(variants []string) string {
+	parts := make([]string, 0, len(variants))
+	for _, variant := range variants {
+		parts = append(parts, fmt.Sprintf("category == %q", variant))
+	}
+	return strings.Join(parts, " or ")
 }
 
 // getPrivateTagsConfig returns the lowercased private_tags map from the
