@@ -212,6 +212,16 @@ func TestJSMinifyPlugin_Write_Disabled(t *testing.T) {
 	}
 }
 
+func TestJSMinifyPlugin_IsExcluded_PagefindAssets(t *testing.T) {
+	p := NewJSMinifyPlugin()
+	if !p.isExcluded("/tmp/output/_pagefind/pagefind.js") {
+		t.Fatal("expected _pagefind/pagefind.js to be excluded")
+	}
+	if p.isExcluded("/tmp/output/js/app.js") {
+		t.Fatal("did not expect normal JS asset to be excluded")
+	}
+}
+
 func TestJSMinifyPlugin_Write_Exclude(t *testing.T) {
 	tmpDir := t.TempDir()
 	jsDir := filepath.Join(tmpDir, "js")

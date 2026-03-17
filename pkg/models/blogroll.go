@@ -18,7 +18,7 @@ type BlogrollConfig struct {
 	// CacheDir is the directory for caching fetched feeds (default: "cache/blogroll")
 	CacheDir string `json:"cache_dir" yaml:"cache_dir" toml:"cache_dir"`
 
-	// CacheDuration is how long to cache fetched feeds (default: "1h")
+	// CacheDuration is how long to cache fetched feeds (default: "24h")
 	CacheDuration string `json:"cache_duration" yaml:"cache_duration" toml:"cache_duration"`
 
 	// Timeout is the HTTP request timeout in seconds (default: 30)
@@ -59,7 +59,7 @@ func NewBlogrollConfig() BlogrollConfig {
 		BlogrollSlug:         "blogroll",
 		ReaderSlug:           "reader",
 		CacheDir:             "cache/blogroll",
-		CacheDuration:        "1h",
+		CacheDuration:        "24h",
 		Timeout:              30,
 		ConcurrentRequests:   5,
 		MaxEntriesPerFeed:    50,

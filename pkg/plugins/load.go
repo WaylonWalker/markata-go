@@ -392,7 +392,7 @@ func computePostFeedItemHash(post *models.Post) string {
 		b.WriteString(*post.Description)
 	}
 	b.WriteByte('\x00')
-	b.WriteString(post.ArticleHTML)
+	b.WriteString(post.Content)
 	b.WriteByte('\x00')
 	if len(post.Tags) > 0 {
 		tags := append([]string(nil), post.Tags...)

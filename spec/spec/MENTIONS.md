@@ -36,6 +36,10 @@ Hey @bob, welcome!   <!-- Resolves to @bob, comma is preserved as text -->
 [markata-go.mentions]
 enabled = true                    # Enable/disable the plugin (default: true)
 css_class = "mention"             # CSS class for links (default: "mention")
+cache_dir = "cache/mentions"      # Metadata cache directory
+cache_duration = "168h"           # Cache TTL for fetched metadata
+timeout = 30                      # HTTP timeout in seconds
+concurrent_requests = 3           # Max concurrent metadata fetches
 
 # Source handles from internal posts (optional - a default source is provided, see below)
 [[markata-go.mentions.from_posts]]
@@ -51,7 +55,14 @@ avatar_field = "avatar"           # Frontmatter field for avatar URL (optional, 
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Enable/disable mentions processing |
 | `css_class` | string | `"mention"` | CSS class applied to mention links |
+| `cache_dir` | string | `"cache/mentions"` | Directory for mention metadata cache |
+| `cache_duration` | string | `"168h"` | How long fetched metadata stays fresh |
+| `timeout` | int | `30` | HTTP timeout in seconds |
+| `concurrent_requests` | int | `3` | Max concurrent external metadata fetches |
 | `from_posts` | array | see below | List of internal post sources |
+
+Mention metadata freshness is determined by the cached `last_fetched` timestamp,
+not the cache file mtime, so touching cache files does not accidentally invalidate them.
 
 ### from_posts Default
 

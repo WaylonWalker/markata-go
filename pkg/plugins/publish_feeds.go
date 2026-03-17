@@ -152,8 +152,6 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 
 	// Get build cache for incremental builds
 	buildCache := GetBuildCache(m)
-	var changedSlugs map[string]bool
-
 	// Track skipped feeds
 	var skippedCount int
 	var rebuiltCount int
@@ -167,7 +165,7 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	if numFeeds <= 2 {
 		for i := range feedConfigs {
 			fc := &feedConfigs[i]
-			skip, hash := p.shouldSkipFeed(fc, buildCache, changedSlugs, outputDir)
+			skip, hash := p.shouldSkipFeed(fc, buildCache, outputDir)
 			if skip {
 				skippedCount++
 				continue
@@ -189,7 +187,7 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
-		skip, hash := p.shouldSkipFeed(fc, buildCache, changedSlugs, outputDir)
+		skip, hash := p.shouldSkipFeed(fc, buildCache, outputDir)
 		if skip {
 			skippedCount++
 			continue
@@ -250,7 +248,7 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 	if numFeeds <= 2 {
 		for i := range feedConfigs {
 			fc := &feedConfigs[i]
-			skip, hash := p.shouldSkipFeed(fc, buildCache, nil, outputDir)
+			skip, hash := p.shouldSkipFeed(fc, buildCache, outputDir)
 			if skip {
 				skippedCount++
 				continue
@@ -274,7 +272,7 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 				sem <- struct{}{}
 				defer func() { <-sem }()
 
-				skip, hash := p.shouldSkipFeed(fc, buildCache, nil, outputDir)
+				skip, hash := p.shouldSkipFeed(fc, buildCache, outputDir)
 				if skip {
 					skippedCount++
 					return
@@ -327,6 +325,22 @@ func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
 	// This ensures sort order changes are detected.
 	for _, post := range fc.Posts {
 		writeStringField(post.Slug)
+		writeStringField(computePostFeedItemHash(post))
+	}
+
+	for i := range fc.Pages {
+		page := &fc.Pages[i]
+		writeIntField(page.Number)
+		writeBoolField(page.HasPrev)
+		writeBoolField(page.HasNext)
+		writeStringField(page.PrevURL)
+		writeStringField(page.NextURL)
+		writeIntField(page.TotalPages)
+		writeIntField(page.TotalItems)
+		writeIntField(page.ItemsPerPage)
+		for _, url := range page.PageURLs {
+			writeStringField(url)
+		}
 	}
 
 	// Hash all feed config fields that affect output
@@ -373,7 +387,7 @@ func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
 // shouldSkipFeed checks if a feed can be skipped (incremental build).
 // Returns (skip bool, hash string) - hash is returned so callers can reuse it
 // for caching without recomputing.
-func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interface{}, _ map[string]bool, outputDir string) (skip bool, hash string) {
+func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interface{}, outputDir string) (skip bool, hash string) {
 	// Always compute hash since we return it for caching
 	currentHash := p.computeFeedHash(fc)
 
@@ -386,28 +400,16 @@ func (p *PublishFeedsPlugin) shouldSkipFeed(fc *models.FeedConfig, cache interfa
 		return false, currentHash
 	}
 
-	// Check if any post in this feed has feed-relevant changes
-	if len(fc.Posts) > 0 {
-		for _, post := range fc.Posts {
-			currentPostHash := computePostFeedItemHash(post)
-			cachedPostHash, _, _ := bc.GetPostSemanticHashes(post.Path)
-			if cachedPostHash != currentPostHash {
-				return false, currentHash
-			}
-		}
-	}
-
-	// Check if feed hash changed (post list membership)
+	// Check if feed hash changed (membership, order, page structure, content)
 	cachedHash := bc.GetFeedHash(fc.Slug)
 	if cachedHash != currentHash {
 		return false, currentHash // Need to rebuild
 	}
 
-	// Check if output files exist
-	feedDir := p.determineFeedDir(outputDir, fc.Slug)
-	indexPath := filepath.Join(feedDir, "index.html")
-	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
-		return false, currentHash // Need to rebuild
+	for _, path := range p.expectedFeedOutputPaths(fc, outputDir) {
+		if _, err := os.Stat(path); err != nil {
+			return false, currentHash
+		}
 	}
 
 	return true, currentHash // Can skip
@@ -425,6 +427,72 @@ func (p *PublishFeedsPlugin) cacheFeedHash(fc *models.FeedConfig, cache interfac
 	bc.SetFeedHash(fc.Slug, hash)
 }
 
+func (p *PublishFeedsPlugin) expectedFeedOutputPaths(fc *models.FeedConfig, outputDir string) []string {
+	feedDir := p.determineFeedDir(outputDir, fc.Slug)
+	paths := make([]string, 0, len(fc.Pages)*2+8)
+	add := func(path string) {
+		if path != "" {
+			paths = append(paths, path)
+		}
+	}
+
+	if fc.Formats.HTML {
+		for i := range fc.Pages {
+			if fc.Pages[i].Number == 1 {
+				add(filepath.Join(feedDir, "index.html"))
+			} else {
+				add(filepath.Join(feedDir, "page", fmt.Sprintf("%d", fc.Pages[i].Number), "index.html"))
+			}
+		}
+	}
+
+	if fc.Formats.SimpleHTML {
+		for i := range fc.Pages {
+			if fc.Pages[i].Number == 1 {
+				add(filepath.Join(feedDir, "simple", "index.html"))
+			} else {
+				add(filepath.Join(feedDir, "simple", "page", fmt.Sprintf("%d", fc.Pages[i].Number), "index.html"))
+			}
+		}
+	}
+
+	if fc.Formats.RSS {
+		add(filepath.Join(feedDir, "rss.xml"))
+		add(filepath.Join(outputDir, "rss.xsl"))
+	}
+	if fc.Formats.Atom {
+		add(filepath.Join(feedDir, "atom.xml"))
+		add(filepath.Join(outputDir, "atom.xsl"))
+	}
+	if fc.Formats.JSON {
+		add(filepath.Join(feedDir, "feed.json"))
+		if fc.Slug != "" {
+			add(filepath.Join(outputDir, fc.Slug+".json", "index.html"))
+		}
+	}
+	if fc.Formats.Markdown {
+		if fc.Slug == "" {
+			add(filepath.Join(outputDir, "index.md"))
+		} else {
+			add(filepath.Join(outputDir, fc.Slug+".md"))
+			add(filepath.Join(outputDir, fc.Slug, "index.md", "index.html"))
+		}
+	}
+	if fc.Formats.Text {
+		if fc.Slug == "" {
+			add(filepath.Join(outputDir, "index.txt"))
+		} else {
+			add(filepath.Join(outputDir, fc.Slug+".txt"))
+			add(filepath.Join(outputDir, fc.Slug, "index.txt", "index.html"))
+		}
+	}
+	if fc.Formats.Sitemap {
+		add(filepath.Join(feedDir, "sitemap.xml"))
+	}
+
+	return paths
+}
+
 // feedFormatPublisher defines how to publish a specific feed format.
 type feedFormatPublisher struct {
 	name       string // Format name for error messages
@@ -437,6 +505,7 @@ type feedFormatPublisher struct {
 // publishFeed publishes a single feed in all configured formats.
 func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycle.Config, outputDir string) error {
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
+	modelsConfig := ToModelsConfig(config)
 
 	if err := os.MkdirAll(feedDir, 0o755); err != nil {
 		return fmt.Errorf("creating feed directory: %w", err)
@@ -444,8 +513,8 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 
 	// Define all format publishers with their configurations
 	publishers := []feedFormatPublisher{
-		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(fc, config, feedDir) }},
-		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(fc, config, feedDir) }},
+		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(fc, config, modelsConfig, feedDir) }},
+		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(fc, config, modelsConfig, feedDir) }},
 		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(fc, config, feedDir) }},
 		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(fc, config, feedDir) }},
 		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(fc, config, feedDir) }, ext: "json", targetFile: "feed.json"},
@@ -483,6 +552,10 @@ func (p *PublishFeedsPlugin) safeWriteFile(path string, content []byte) error {
 		}
 	}
 
+	if existing, err := os.ReadFile(path); err == nil && bytes.Equal(existing, content) {
+		return nil
+	}
+
 	//nolint:gosec // G306: Output files need 0644 for web serving
 	return os.WriteFile(path, content, 0o644)
 }
@@ -516,7 +589,7 @@ func (p *PublishFeedsPlugin) publishFormat(pub feedFormatPublisher, slug, output
 }
 
 // publishHTMLPages publishes HTML pages for a paginated feed.
-func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, feedDir string) error {
+func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, modelsConfig *models.Config, feedDir string) error {
 	for i := range fc.Pages {
 		page := &fc.Pages[i]
 		// Determine output path
@@ -532,14 +605,12 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 		}
 
 		// Generate HTML content
-		html, err := p.generateFeedPageHTML(fc, page, config)
+		html, err := p.generateFeedPageHTML(fc, page, config, modelsConfig)
 		if err != nil {
 			return fmt.Errorf("generating page %d: %w", page.Number, err)
 		}
 
-		// Write file
-		//nolint:gosec // G306: HTML output files need 0644 for web serving
-		if err := os.WriteFile(pagePath, []byte(html), 0o644); err != nil {
+		if err := p.safeWriteFile(pagePath, []byte(html)); err != nil {
 			return fmt.Errorf("writing page %d: %w", page.Number, err)
 		}
 	}
@@ -549,7 +620,7 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 
 // publishSimpleHTMLPages publishes the simple (compact list) HTML pages for a feed.
 // Output is written to feedDir/simple/ with pagination at feedDir/simple/page/N/.
-func (p *PublishFeedsPlugin) publishSimpleHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, feedDir string) error {
+func (p *PublishFeedsPlugin) publishSimpleHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, modelsConfig *models.Config, feedDir string) error {
 	simpleDir := filepath.Join(feedDir, "simple")
 
 	// Compute the base URL prefix for simple feed pagination links.
@@ -582,13 +653,12 @@ func (p *PublishFeedsPlugin) publishSimpleHTMLPages(fc *models.FeedConfig, confi
 		}
 
 		// Generate HTML content using simple-feed.html template
-		htmlContent, err := p.generateSimpleFeedPageHTML(fc, &adjustedPage, config)
+		htmlContent, err := p.generateSimpleFeedPageHTML(fc, &adjustedPage, config, modelsConfig)
 		if err != nil {
 			return fmt.Errorf("generating simple page %d: %w", adjustedPage.Number, err)
 		}
 
-		//nolint:gosec // G306: HTML output files need 0644 for web serving
-		if err := os.WriteFile(pagePath, []byte(htmlContent), 0o644); err != nil {
+		if err := p.safeWriteFile(pagePath, []byte(htmlContent)); err != nil {
 			return fmt.Errorf("writing simple page %d: %w", adjustedPage.Number, err)
 		}
 	}
@@ -627,7 +697,7 @@ func (p *PublishFeedsPlugin) adjustPageURLsForSimple(page *models.FeedPage, simp
 }
 
 // generateSimpleFeedPageHTML generates HTML for a simple feed page using the simple-feed.html template.
-func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config) (string, error) {
+func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config, modelsConfig *models.Config) (string, error) {
 	// Get templates directory from config
 	templatesDir := PluginNameTemplates
 	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
@@ -661,7 +731,9 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 	// Try to use pongo2 template engine (cached)
 	engine, err := p.getOrCreateEngine(templatesDir, themeName)
 	if err == nil && engine.TemplateExists(templateName) {
-		modelsConfig := ToModelsConfig(config)
+		if modelsConfig == nil {
+			modelsConfig = ToModelsConfig(config)
+		}
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
 
 		// Feed pages always need cards CSS
@@ -680,7 +752,7 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 }
 
 // generateFeedPageHTML generates HTML for a feed page.
-func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config) (string, error) {
+func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config, modelsConfig *models.Config) (string, error) {
 	// Get templates directory from config
 	templatesDir := PluginNameTemplates
 	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
@@ -713,7 +785,9 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 	if err == nil && engine.TemplateExists("feed.html") {
 		// Use shared config conversion to ensure all fields are available
 		// (search, head, components, theme, etc. - required by base.html)
-		modelsConfig := ToModelsConfig(config)
+		if modelsConfig == nil {
+			modelsConfig = ToModelsConfig(config)
+		}
 
 		// Create feed context
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
@@ -1065,8 +1139,7 @@ func (p *PublishFeedsPlugin) writeFeedFormatRedirect(slug, ext, targetFile, outp
 	// Write index.html inside the directory
 	// This allows /slug.ext to be served without trailing slash on most static hosts
 	outputPath := filepath.Join(redirectDir, "index.html")
-	//nolint:gosec // G306: Output files need 0644 for web serving
-	if err := os.WriteFile(outputPath, []byte(redirectHTML), 0o644); err != nil {
+	if err := p.safeWriteFile(outputPath, []byte(redirectHTML)); err != nil {
 		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
 	}
 
@@ -1107,8 +1180,7 @@ func (p *PublishFeedsPlugin) writeReversedFeedRedirect(slug, ext, outputDir stri
 	// Write index.html inside the directory
 	// This allows /slug/index.ext to be served without trailing slash on most static hosts
 	outputPath := filepath.Join(redirectDir, "index.html")
-	//nolint:gosec // G306: Output files need 0644 for web serving
-	if err := os.WriteFile(outputPath, []byte(redirectHTML), 0o644); err != nil {
+	if err := p.safeWriteFile(outputPath, []byte(redirectHTML)); err != nil {
 		return fmt.Errorf("writing redirect %s: %w", outputPath, err)
 	}
 
@@ -1159,8 +1231,7 @@ func (p *PublishFeedsPlugin) copyXSLStylesheets(config *lifecycle.Config, output
 
 		// Write to output directory
 		dstPath := filepath.Join(outputDir, xslFile)
-		//nolint:gosec // G306: XSL files need 0644 for web serving
-		if err := os.WriteFile(dstPath, content, 0o644); err != nil {
+		if err := p.safeWriteFile(dstPath, content); err != nil {
 			return fmt.Errorf("writing XSL file %s: %w", dstPath, err)
 		}
 	}

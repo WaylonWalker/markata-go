@@ -927,6 +927,10 @@ post:{path}:
   article_html: "<p>...</p>"         # Cached rendered markdown
 ```
 
+Incremental cleanup plugins may also persist global hashes for derived artifacts,
+such as Tailwind utility manifests and the Pagefind search corpus, so expensive
+whole-site rebuilds can be skipped when the effective output is unchanged.
+
 ### Dependency Tracking
 
 Posts may depend on:

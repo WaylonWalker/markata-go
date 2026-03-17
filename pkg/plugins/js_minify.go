@@ -157,6 +157,10 @@ func (p *JSMinifyPlugin) findJSFiles(dir string) ([]string, error) {
 
 // isExcluded checks if a file should be excluded from minification.
 func (p *JSMinifyPlugin) isExcluded(filePath string) bool {
+	if isPagefindAsset(filePath) {
+		return true
+	}
+
 	filename := filepath.Base(filePath)
 
 	// Always skip already-minified files
@@ -165,6 +169,11 @@ func (p *JSMinifyPlugin) isExcluded(filePath string) bool {
 	}
 
 	return isExcludedByPatterns(filename, p.exclude)
+}
+
+func isPagefindAsset(filePath string) bool {
+	normalized := filepath.ToSlash(filePath)
+	return strings.Contains(normalized, "/_pagefind/")
 }
 
 // minifyFile minifies a single JS file in place.

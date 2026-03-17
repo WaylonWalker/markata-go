@@ -884,12 +884,14 @@ func updateFeedFromParsed(feed *models.ExternalFeed, parsed *blogrollParsedFeed)
 // fetchFeed fetches a single feed with caching.
 func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir string, cacheDuration time.Duration, timeout, maxEntries int) *models.ExternalFeed {
 	feed := initFeedFromConfig(config)
+	var staleCached *models.ExternalFeed
 
 	// Check cache
 	if cacheDir != "" {
 		if cached := p.loadFromCache(config.URL, cacheDir, cacheDuration); cached != nil {
 			return mergeCachedFeed(cached, config)
 		}
+		staleCached = p.loadFromCacheAny(config.URL, cacheDir)
 	}
 
 	// Fetch the feed
@@ -899,7 +901,7 @@ func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir st
 	req, err := http.NewRequestWithContext(ctx, "GET", config.URL, http.NoBody)
 	if err != nil {
 		feed.Error = fmt.Sprintf("create request: %v", err)
-		return feed
+		return p.handleFeedFetchFailure(feed, staleCached, config, cacheDir)
 	}
 
 	req.Header.Set("User-Agent", "markata-go/1.0 (RSS Reader)")
@@ -912,20 +914,20 @@ func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir st
 	resp, err := client.Do(req)
 	if err != nil {
 		feed.Error = fmt.Sprintf("fetch: %v", err)
-		return feed
+		return p.handleFeedFetchFailure(feed, staleCached, config, cacheDir)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		feed.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
-		return feed
+		return p.handleFeedFetchFailure(feed, staleCached, config, cacheDir)
 	}
 
 	// Parse the feed using simple XML parsing
 	parsedFeed, entries, err := parseBlogrollFeedResponse(resp)
 	if err != nil {
 		feed.Error = fmt.Sprintf("parse: %v", err)
-		return feed
+		return p.handleFeedFetchFailure(feed, staleCached, config, cacheDir)
 	}
 
 	// Update feed with parsed values
@@ -956,6 +958,20 @@ func (p *BlogrollPlugin) fetchFeed(config models.ExternalFeedConfig, cacheDir st
 		p.saveToCache(feed, cacheDir)
 	}
 
+	return feed
+}
+
+func (p *BlogrollPlugin) handleFeedFetchFailure(feed, staleCached *models.ExternalFeed, config models.ExternalFeedConfig, cacheDir string) *models.ExternalFeed {
+	now := time.Now()
+	if feed != nil {
+		feed.LastFetched = &now
+	}
+	if staleCached != nil {
+		return mergeCachedFeed(staleCached, config)
+	}
+	if cacheDir != "" && feed != nil {
+		p.saveToCache(feed, cacheDir)
+	}
 	return feed
 }
 
@@ -1003,17 +1019,30 @@ func entryDate(entry *models.ExternalEntry) *time.Time {
 
 // loadFromCache loads a feed from cache if valid.
 func (p *BlogrollPlugin) loadFromCache(url, cacheDir string, maxAge time.Duration) *models.ExternalFeed {
+	feed := p.loadFromCacheAny(url, cacheDir)
+	if feed == nil {
+		return nil
+	}
+
+	fetchedAt := time.Time{}
+	if feed.LastFetched != nil {
+		fetchedAt = *feed.LastFetched
+	}
+	if fetchedAt.IsZero() {
+		cacheFile := filepath.Join(cacheDir, p.cacheKey(url)+".json")
+		if info, err := os.Stat(cacheFile); err == nil {
+			fetchedAt = info.ModTime()
+		}
+	}
+	if fetchedAt.IsZero() || time.Since(fetchedAt) > maxAge {
+		return nil
+	}
+
+	return feed
+}
+
+func (p *BlogrollPlugin) loadFromCacheAny(url, cacheDir string) *models.ExternalFeed {
 	cacheFile := filepath.Join(cacheDir, p.cacheKey(url)+".json")
-
-	info, err := os.Stat(cacheFile)
-	if err != nil {
-		return nil
-	}
-
-	// Check if cache is still valid
-	if time.Since(info.ModTime()) > maxAge {
-		return nil
-	}
 
 	data, err := os.ReadFile(cacheFile)
 	if err != nil {

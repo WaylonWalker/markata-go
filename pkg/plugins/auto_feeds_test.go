@@ -124,6 +124,91 @@ func TestAutoFeedsPlugin_CustomSlugPrefix(t *testing.T) {
 	}
 }
 
+func TestAutoFeedsPlugin_TagFeeds_CollapsesSlugCollisions(t *testing.T) {
+	m := lifecycle.NewManager()
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+
+	m.SetPosts([]*models.Post{
+		{Path: "post1.md", Slug: "post1", Title: strPtr("Post 1"), Tags: []string{"open source", "3d printing"}, Date: &date},
+		{Path: "post2.md", Slug: "post2", Title: strPtr("Post 2"), Tags: []string{"open-source", "3d-printing"}, Date: &date},
+	})
+
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"auto_feeds": AutoFeedsConfig{
+			Tags: AutoFeedTypeConfig{Enabled: true, SlugPrefix: "tags"},
+		},
+	}
+	m.SetConfig(config)
+
+	plugin := NewAutoFeedsPlugin()
+	if err := plugin.Collect(m); err != nil {
+		t.Fatalf("Collect() error: %v", err)
+	}
+
+	feeds := m.Feeds()
+	if len(feeds) != 2 {
+		t.Fatalf("expected 2 collapsed tag feeds, got %d", len(feeds))
+	}
+
+	feedMap := make(map[string]*lifecycle.Feed)
+	for _, f := range feeds {
+		feedMap[f.Name] = f
+	}
+
+	feed, ok := feedMap["tags/open-source"]
+	if !ok {
+		t.Fatalf("expected tags/open-source feed")
+	}
+	if feed.Title != "Posts tagged: open source" {
+		t.Fatalf("feed title = %q, want %q", feed.Title, "Posts tagged: open source")
+	}
+
+	allConfigs, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		t.Fatal("feed_configs missing from cache")
+	}
+	configs, ok := allConfigs.([]models.FeedConfig)
+	if !ok {
+		t.Fatalf("feed_configs has wrong type: %T", allConfigs)
+	}
+	var matched *models.FeedConfig
+	for i := range configs {
+		if configs[i].Slug == "tags/open-source" {
+			matched = &configs[i]
+			break
+		}
+	}
+	if matched == nil {
+		t.Fatal("tags/open-source config not found")
+	}
+	wantFilter := `"open source" in tags or "open-source" in tags`
+	if matched.Filter != wantFilter {
+		t.Fatalf("filter = %q, want %q", matched.Filter, wantFilter)
+	}
+}
+
+func TestAutoFeedsPlugin_GenerateTagFeedsForChanged_UsesCanonicalGroup(t *testing.T) {
+	plugin := NewAutoFeedsPlugin()
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	posts := []*models.Post{
+		{Path: "post1.md", Slug: "post1", Tags: []string{"open source"}, Date: &date},
+		{Path: "post2.md", Slug: "post2", Tags: []string{"open-source"}, Date: &date},
+	}
+
+	feeds := plugin.generateTagFeedsForChanged(posts, AutoFeedTypeConfig{SlugPrefix: "tags"}, map[string]string{}, map[string]bool{"post2": true})
+	if len(feeds) != 1 {
+		t.Fatalf("expected 1 changed feed, got %d", len(feeds))
+	}
+	if feeds[0].Title != "Posts tagged: open source" {
+		t.Fatalf("title = %q, want %q", feeds[0].Title, "Posts tagged: open source")
+	}
+	wantFilter := `"open source" in tags or "open-source" in tags`
+	if feeds[0].Filter != wantFilter {
+		t.Fatalf("filter = %q, want %q", feeds[0].Filter, wantFilter)
+	}
+}
+
 func TestAutoFeedsPlugin_CategoryFeeds(t *testing.T) {
 	m := lifecycle.NewManager()
 

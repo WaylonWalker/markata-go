@@ -26,7 +26,8 @@ var (
 	// buildDryRun shows what would be built without building.
 	buildDryRun bool
 
-	// buildFast skips expensive non-essential plugins (minification, CSS purging)
+	// buildFast skips expensive non-essential plugins (minification, CSS purging,
+	// Tailwind rebuilds, and Pagefind indexing)
 	// for faster development iteration.
 	buildFast bool
 )
@@ -54,10 +55,11 @@ Clean modes:
                (blogroll feeds, embeds metadata, mentions, webmentions).
                These are expensive to re-fetch from remote servers.
 
-Fast mode:
-  --fast       Skip minification (JS/CSS) and CSS purging for faster builds.
-               Useful during development iteration when you don't need
-               optimized output.
+	Fast mode:
+	  --fast       Skip minification (JS/CSS), CSS purging, Tailwind rebuilds,
+	               and Pagefind indexing for faster builds.
+	               Useful during development iteration when you don't need
+	               optimized output.
 
 Example usage:
   markata-go build              # Standard build
@@ -75,7 +77,7 @@ func init() {
 	buildCmd.Flags().BoolVar(&buildClean, "clean", false, "clean output directory and build cache before build")
 	buildCmd.Flags().BoolVar(&buildCleanAll, "clean-all", false, "clean everything including external plugin caches (blogroll, embeds, etc.)")
 	buildCmd.Flags().BoolVar(&buildDryRun, "dry-run", false, "show what would be built without building")
-	buildCmd.Flags().BoolVar(&buildFast, "fast", false, "skip minification and CSS purging for faster builds")
+	buildCmd.Flags().BoolVar(&buildFast, "fast", false, "skip minification, CSS purging, tailwind rebuilds, and pagefind indexing for faster builds")
 }
 
 func runBuildCommand(_ *cobra.Command, _ []string) error {

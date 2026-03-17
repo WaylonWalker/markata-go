@@ -3,12 +3,14 @@ package plugins
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -93,12 +95,6 @@ func (p *TailwindPlugin) Configure(m *lifecycle.Manager) error {
 
 	includeMode := normalizeTailwindInclude(p.config.IncludeMode())
 
-	if p.config.IsBuildEnabled() {
-		if err := p.runTailwindBuild(config, false); err != nil {
-			return err
-		}
-	}
-
 	if includeMode != "" {
 		if err := p.injectIncludes(config, includeMode); err != nil {
 			return err
@@ -132,8 +128,20 @@ func (p *TailwindPlugin) Cleanup(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	if err := p.runTailwindBuild(config, true); err != nil {
+	plan, err := p.prepareTailwindBuildPlan(m)
+	if err != nil {
 		return err
+	}
+	defer plan.cleanup()
+
+	if plan.shouldBuild {
+		if err := p.runTailwindBuild(config, plan.contentPaths); err != nil {
+			return err
+		}
+	}
+
+	if cache := GetBuildCache(m); cache != nil && plan.manifestHash != "" {
+		cache.SetTailwindManifestHash(plan.manifestHash)
 	}
 
 	return p.syncBuiltCSSToOutput(config)
@@ -285,14 +293,14 @@ func (p *TailwindPlugin) parseTailwindConfigBools(raw map[string]interface{}, re
 	}
 }
 
-func (p *TailwindPlugin) runTailwindBuild(config *lifecycle.Config, includeOutputHTML bool) error {
+func (p *TailwindPlugin) runTailwindBuild(config *lifecycle.Config, contentPaths []string) error {
 	inputPath, cleanupInput, err := p.resolveBuildInput(config)
 	if err != nil {
 		return err
 	}
 	defer cleanupInput()
 
-	configPath, cleanupConfig, err := p.resolveBuildConfigFile(config, includeOutputHTML)
+	configPath, cleanupConfig, err := p.resolveBuildConfigFile(config, contentPaths)
 	if err != nil {
 		return err
 	}
@@ -442,7 +450,7 @@ func (p *TailwindPlugin) resolveAssetPath(config *lifecycle.Config, path string)
 		}
 	}
 	if assetsDir == "" {
-		assetsDir = "static"
+		assetsDir = StaticDir
 	}
 
 	if strings.HasPrefix(trimmed, assetsDir+string(filepath.Separator)) || strings.HasPrefix(trimmed, assetsDir+"/") {
@@ -469,7 +477,7 @@ func (p *TailwindPlugin) relativeAssetPath(config *lifecycle.Config, path string
 		}
 	}
 	if assetsDir == "" {
-		assetsDir = "static"
+		assetsDir = StaticDir
 	}
 	absAssetsDir := assetsDir
 	if !filepath.IsAbs(absAssetsDir) {
@@ -533,7 +541,25 @@ func (p *TailwindPlugin) syncBuiltCSSToOutput(config *lifecycle.Config) error {
 	if err := os.WriteFile(destPath, data, 0o600); err != nil {
 		return fmt.Errorf("tailwind: syncing built css to output: %w", err)
 	}
+	return p.writeHashedTailwindCopy(destPath, data)
+}
 
+func (p *TailwindPlugin) writeHashedTailwindCopy(destPath string, data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
+	ext := filepath.Ext(destPath)
+	if ext == "" {
+		return nil
+	}
+	hash := fmt.Sprintf("%x", sha256.Sum256(data))[:8]
+	hashedPath := strings.TrimSuffix(destPath, ext) + "." + hash + ext
+	if hashedPath == destPath {
+		return nil
+	}
+	if err := os.WriteFile(hashedPath, data, 0o600); err != nil {
+		return fmt.Errorf("tailwind: writing hashed css copy: %w", err)
+	}
 	return nil
 }
 
@@ -573,13 +599,12 @@ func (p *TailwindPlugin) resolveBuildInput(config *lifecycle.Config) (inputPath 
 	return tmpFile.Name(), cleanup, nil
 }
 
-func (p *TailwindPlugin) resolveBuildConfigFile(config *lifecycle.Config, includeOutputHTML bool) (configPath string, cleanup func(), err error) {
+func (p *TailwindPlugin) resolveBuildConfigFile(_ *lifecycle.Config, contentPaths []string) (configPath string, cleanup func(), err error) {
 	if p.config.ConfigFile != "" || len(p.config.ExtraArgs) > 0 {
 		return p.config.ConfigFile, func() {}, nil
 	}
 
-	patterns := p.defaultContentPatterns(config, includeOutputHTML)
-	if len(patterns) == 0 {
+	if len(contentPaths) == 0 {
 		return "", func() {}, nil
 	}
 
@@ -592,8 +617,8 @@ func (p *TailwindPlugin) resolveBuildConfigFile(config *lifecycle.Config, includ
 		_ = os.Remove(tmpFile.Name())
 	}
 
-	content := make([]string, 0, len(patterns))
-	for _, pattern := range patterns {
+	content := make([]string, 0, len(contentPaths))
+	for _, pattern := range contentPaths {
 		content = append(content, fmt.Sprintf("  %q", filepath.ToSlash(pattern)))
 	}
 
@@ -609,68 +634,62 @@ func (p *TailwindPlugin) resolveBuildConfigFile(config *lifecycle.Config, includ
 	}
 
 	if p.config.IsVerbose() {
-		fmt.Printf("[tailwind] generated default config with %d content patterns\n", len(patterns))
+		fmt.Printf("[tailwind] generated default config with %d content patterns\n", len(contentPaths))
 	}
 
 	return tmpFile.Name(), cleanup, nil
 }
 
-func (p *TailwindPlugin) defaultContentArgs(config *lifecycle.Config, includeOutputHTML bool) []string {
-	patterns := p.defaultContentPatterns(config, includeOutputHTML)
-	if len(patterns) == 0 {
-		return nil
-	}
-	return []string{"--content", strings.Join(patterns, ",")}
+func (p *TailwindPlugin) usesGeneratedContentConfig() bool {
+	return p.config.ConfigFile == "" && len(p.config.ExtraArgs) == 0
 }
 
-func (p *TailwindPlugin) defaultContentPatterns(config *lifecycle.Config, includeOutputHTML bool) []string {
-	if config == nil {
-		return nil
+func (p *TailwindPlugin) tailwindOutputExists(config *lifecycle.Config) bool {
+	outputPath := p.resolveAssetPath(config, p.config.Output)
+	if outputPath == "" {
+		return false
 	}
+	_, err := os.Stat(outputPath)
+	return err == nil
+}
 
-	contentDir := config.ContentDir
-	if strings.TrimSpace(contentDir) == "" {
-		contentDir = "."
+func (p *TailwindPlugin) computeTailwindManifestHash(config *lifecycle.Config, manifest string) string {
+	var builder strings.Builder
+	builder.WriteString(manifest)
+	builder.WriteString("\n--tailwind-version:")
+	builder.WriteString(strings.TrimSpace(p.config.Version))
+	builder.WriteString("\n--tailwind-include:")
+	builder.WriteString(strings.TrimSpace(p.config.IncludeMode()))
+	builder.WriteString("\n--tailwind-output:")
+	builder.WriteString(strings.TrimSpace(p.config.Output))
+	builder.WriteString("\n--tailwind-input-hash:")
+	builder.WriteString(p.tailwindInputHash(config))
+	builder.WriteString("\n--tailwind-minify:")
+	if p.config.IsMinifyEnabled() {
+		builder.WriteString("true")
+	} else {
+		builder.WriteString("false")
 	}
-	if !isAbsoluteOrRootedPath(contentDir) {
-		if cwd, err := os.Getwd(); err == nil {
-			contentDir = filepath.Join(cwd, contentDir)
-		}
+	if p.config.ConfigFile != "" {
+		builder.WriteString("\n--tailwind-config-hash:")
+		builder.WriteString(hashFileContents(p.config.ConfigFile))
 	}
-
-	patterns := make([]string, 0, len(config.GlobPatterns)+1)
-	seen := make(map[string]struct{}, len(config.GlobPatterns)+1)
-
-	globPatterns := config.GlobPatterns
-	if len(globPatterns) == 0 {
-		globPatterns = []string{"**/*.md"}
+	if len(p.config.ExtraArgs) > 0 {
+		builder.WriteString("\n--tailwind-extra-args:")
+		builder.WriteString(strings.Join(p.config.ExtraArgs, "\x00"))
 	}
+	return buildcache.ContentHash(builder.String())
+}
 
-	for _, pattern := range globPatterns {
-		pattern = strings.TrimSpace(pattern)
-		if pattern == "" {
-			continue
-		}
-		fullPattern := pattern
-		if !isAbsoluteOrRootedPath(pattern) {
-			fullPattern = filepath.Join(contentDir, pattern)
-		}
-		fullPattern = filepath.ToSlash(fullPattern)
-		if _, ok := seen[fullPattern]; ok {
-			continue
-		}
-		seen[fullPattern] = struct{}{}
-		patterns = append(patterns, fullPattern)
+func (p *TailwindPlugin) tailwindInputHash(config *lifecycle.Config) string {
+	inputPath := p.resolveAssetPath(config, p.config.Input)
+	if inputPath == "" {
+		return buildcache.ContentHash(tailwindDefaultInputCSS)
 	}
-
-	if includeOutputHTML && strings.TrimSpace(config.OutputDir) != "" {
-		outputPattern := filepath.ToSlash(filepath.Join(config.OutputDir, "**", "*.html"))
-		if _, ok := seen[outputPattern]; !ok {
-			patterns = append(patterns, outputPattern)
-		}
+	if data, err := os.ReadFile(inputPath); err == nil {
+		return buildcache.ContentHash(string(data))
 	}
-
-	return patterns
+	return buildcache.ContentHash(tailwindDefaultInputCSS)
 }
 
 func normalizeTailwindInclude(value string) string {

@@ -1,7 +1,12 @@
 package plugins
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
 // =============================================================================
@@ -111,5 +116,31 @@ func TestGenerateFallbackImageURL_URLWithUnicode(t *testing.T) {
 	expected := "https://shots.example.com/?url=https%3A%2F%2Fexample.com%2Fpost%2F%E6%97%A5%E6%9C%AC%E8%AA%9E"
 	if result != expected {
 		t.Errorf("generateFallbackImageURL() = %q, want %q", result, expected)
+	}
+}
+
+func TestBlogrollPlugin_LoadFromCache_UsesLastFetchedTimestamp(t *testing.T) {
+	tmpDir := t.TempDir()
+	p := NewBlogrollPlugin()
+	now := time.Now()
+	feed := &models.ExternalFeed{
+		FeedURL:     "https://example.com/feed.xml",
+		Title:       "Example",
+		LastFetched: &now,
+	}
+	p.saveToCache(feed, tmpDir)
+
+	cachePath := filepath.Join(tmpDir, p.cacheKey(feed.FeedURL)+".json")
+	oldTime := now.Add(-48 * time.Hour)
+	if err := os.Chtimes(cachePath, oldTime, oldTime); err != nil {
+		t.Fatalf("Chtimes() error = %v", err)
+	}
+
+	cached := p.loadFromCache(feed.FeedURL, tmpDir, 24*time.Hour)
+	if cached == nil {
+		t.Fatal("loadFromCache() = nil, want cached feed")
+	}
+	if cached.Title != "Example" {
+		t.Fatalf("cached.Title = %q, want Example", cached.Title)
 	}
 }

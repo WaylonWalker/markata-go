@@ -46,7 +46,7 @@ Run `markata-go build` and you'll have:
 [markata-go.blogroll]
 enabled = true                    # Enable the blogroll plugin
 cache_dir = "cache/blogroll"      # Where to cache fetched feeds
-cache_duration = "1h"             # How long to cache (default: 1 hour)
+cache_duration = "24h"            # How long to cache (default: 24 hours)
 timeout = 30                      # HTTP request timeout in seconds
 concurrent_requests = 5           # Max parallel feed fetches
 max_entries_per_feed = 50         # Global default entries per feed
@@ -514,29 +514,30 @@ The blogroll plugin caches fetched feeds to avoid hitting external servers on ev
 ```toml
 [markata-go.blogroll]
 cache_dir = "cache/blogroll"    # Cache directory
-cache_duration = "1h"           # How long to cache feeds
+cache_duration = "24h"          # How long to cache feeds
 ```
 
 ### Cache Behavior
 
 1. On first build, all feeds are fetched and cached
-2. On subsequent builds, cached feeds are used if still valid
-3. Cache expires after `cache_duration`
-4. Delete `cache/blogroll/` to force a fresh fetch
+2. On subsequent builds, cached feeds are used until `cache_duration` expires
+3. Expiration is based on the cached feed's recorded fetch time, not file mtimes
+4. If a refresh fails, the stale cached feed is reused instead of failing open
+5. Delete `cache/blogroll/` to force a fresh fetch
 
 ### Cache Duration Examples
 
 ```toml
 cache_duration = "30m"    # 30 minutes
-cache_duration = "1h"     # 1 hour (default)
+cache_duration = "1h"     # 1 hour
 cache_duration = "6h"     # 6 hours
-cache_duration = "24h"    # 1 day
+cache_duration = "24h"    # 1 day (default)
 cache_duration = "168h"   # 1 week
 ```
 
 **Recommendations:**
-- Development: `"5m"` - See changes quickly
-- Production: `"1h"` to `"6h"` - Balance freshness and build speed
+- Development: `"30m"` to `"1h"` - Good balance without hammering feeds
+- Production: `"24h"` to `"168h"` - Prioritize build speed and stable caches
 - High-traffic: `"24h"` or more - Reduce external requests
 
 ## Error Handling
@@ -755,7 +756,7 @@ max_entries = 50              # Override global max_entries_per_feed
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Enable blogroll plugin |
 | `cache_dir` | string | `"cache/blogroll"` | Cache directory |
-| `cache_duration` | string | `"1h"` | Cache TTL (Go duration) |
+| `cache_duration` | string | `"24h"` | Cache TTL (Go duration) |
 | `timeout` | int | `30` | HTTP timeout in seconds |
 | `concurrent_requests` | int | `5` | Max parallel fetches |
 | `max_entries_per_feed` | int | `50` | Global max entries per feed |
