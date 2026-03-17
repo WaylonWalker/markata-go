@@ -2023,7 +2023,7 @@ code {
 pre {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  line-height: var(--leading-relaxed);
+  line-height: normal;
   padding: var(--space-4);
   background: var(--color-surface);
   border-radius: var(--radius-lg);
