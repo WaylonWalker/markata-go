@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/BurntSushi/toml v1.6.0
-	github.com/PuerkitoBio/goquery v1.11.0
+	github.com/PuerkitoBio/goquery v1.12.0
 	github.com/alecthomas/chroma/v2 v2.20.0
 	github.com/andybalholm/cascadia v1.3.3
 	github.com/bmatcuk/doublestar/v4 v4.10.0
