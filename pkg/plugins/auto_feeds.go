@@ -864,15 +864,16 @@ func pickPreferredAutoLabel(current, candidate string) string {
 	return current
 }
 
-func autoLabelPreference(value string) (int, string) {
+func autoLabelPreference(value string) (score int, key string) {
 	trimmed := strings.TrimSpace(value)
-	score := 1
+	score = 1
 	if strings.Contains(trimmed, " ") {
 		score = 0
 	} else if strings.Contains(trimmed, "-") {
 		score = 2
 	}
-	return score, strings.ToLower(trimmed)
+	key = strings.ToLower(trimmed)
+	return score, key
 }
 
 func appendUniqueSorted(values []string, value string) []string {

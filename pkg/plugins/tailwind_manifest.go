@@ -43,10 +43,7 @@ func (p *TailwindPlugin) prepareTailwindBuildPlan(m *lifecycle.Manager) (*tailwi
 		return plan, nil
 	}
 
-	manifest, err := p.buildTailwindManifest(m)
-	if err != nil {
-		return nil, err
-	}
+	manifest := p.buildTailwindManifest(m)
 
 	manifestHash := p.computeTailwindManifestHash(config, manifest)
 	plan.manifestHash = manifestHash
@@ -71,7 +68,7 @@ func (p *TailwindPlugin) prepareTailwindBuildPlan(m *lifecycle.Manager) (*tailwi
 	return plan, nil
 }
 
-func (p *TailwindPlugin) buildTailwindManifest(m *lifecycle.Manager) (string, error) {
+func (p *TailwindPlugin) buildTailwindManifest(m *lifecycle.Manager) string {
 	posts := m.Posts()
 	sort.Slice(posts, func(i, j int) bool {
 		return posts[i].Path < posts[j].Path
@@ -104,7 +101,7 @@ func (p *TailwindPlugin) buildTailwindManifest(m *lifecycle.Manager) (string, er
 		tokens = append(tokens, token)
 	}
 	sort.Strings(tokens)
-	return strings.Join(tokens, "\n"), nil
+	return strings.Join(tokens, "\n")
 }
 
 func (p *TailwindPlugin) generatedTailwindContentPaths(config *lifecycle.Config, manifestPath string) []string {
@@ -165,13 +162,13 @@ func tailwindTemplatePatterns(config *lifecycle.Config) []string {
 	}
 }
 
-func writeTailwindManifest(content string) (string, func(), error) {
+func writeTailwindManifest(content string) (path string, cleanup func(), err error) {
 	tmpFile, err := os.CreateTemp("", "markata-tailwind-manifest-*.txt")
 	if err != nil {
 		return "", nil, fmt.Errorf("tailwind: creating token manifest: %w", err)
 	}
 
-	cleanup := func() {
+	cleanup = func() {
 		_ = os.Remove(tmpFile.Name())
 	}
 

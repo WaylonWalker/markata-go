@@ -328,7 +328,8 @@ func (p *PublishFeedsPlugin) computeFeedHash(fc *models.FeedConfig) string {
 		writeStringField(computePostFeedItemHash(post))
 	}
 
-	for _, page := range fc.Pages {
+	for i := range fc.Pages {
+		page := &fc.Pages[i]
 		writeIntField(page.Number)
 		writeBoolField(page.HasPrev)
 		writeBoolField(page.HasNext)

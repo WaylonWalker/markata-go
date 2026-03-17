@@ -168,7 +168,10 @@ func TestAutoFeedsPlugin_TagFeeds_CollapsesSlugCollisions(t *testing.T) {
 	if !ok {
 		t.Fatal("feed_configs missing from cache")
 	}
-	configs := allConfigs.([]models.FeedConfig)
+	configs, ok := allConfigs.([]models.FeedConfig)
+	if !ok {
+		t.Fatalf("feed_configs has wrong type: %T", allConfigs)
+	}
 	var matched *models.FeedConfig
 	for i := range configs {
 		if configs[i].Slug == "tags/open-source" {

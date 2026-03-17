@@ -159,7 +159,10 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		if config.Extra == nil {
 			config.Extra = make(map[string]interface{})
 		}
-		searchConfig, _ := config.Extra["search"].(models.SearchConfig)
+		searchConfig, ok := config.Extra["search"].(models.SearchConfig)
+		if !ok {
+			searchConfig = models.SearchConfig{}
+		}
 		enabled := parseBool(value)
 		searchConfig.Enabled = &enabled
 		config.Extra["search"] = searchConfig

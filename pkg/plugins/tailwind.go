@@ -450,7 +450,7 @@ func (p *TailwindPlugin) resolveAssetPath(config *lifecycle.Config, path string)
 		}
 	}
 	if assetsDir == "" {
-		assetsDir = "static"
+		assetsDir = StaticDir
 	}
 
 	if strings.HasPrefix(trimmed, assetsDir+string(filepath.Separator)) || strings.HasPrefix(trimmed, assetsDir+"/") {
@@ -477,7 +477,7 @@ func (p *TailwindPlugin) relativeAssetPath(config *lifecycle.Config, path string
 		}
 	}
 	if assetsDir == "" {
-		assetsDir = "static"
+		assetsDir = StaticDir
 	}
 	absAssetsDir := assetsDir
 	if !filepath.IsAbs(absAssetsDir) {
@@ -541,11 +541,7 @@ func (p *TailwindPlugin) syncBuiltCSSToOutput(config *lifecycle.Config) error {
 	if err := os.WriteFile(destPath, data, 0o600); err != nil {
 		return fmt.Errorf("tailwind: syncing built css to output: %w", err)
 	}
-	if err := p.writeHashedTailwindCopy(destPath, data); err != nil {
-		return err
-	}
-
-	return nil
+	return p.writeHashedTailwindCopy(destPath, data)
 }
 
 func (p *TailwindPlugin) writeHashedTailwindCopy(destPath string, data []byte) error {
@@ -603,7 +599,7 @@ func (p *TailwindPlugin) resolveBuildInput(config *lifecycle.Config) (inputPath 
 	return tmpFile.Name(), cleanup, nil
 }
 
-func (p *TailwindPlugin) resolveBuildConfigFile(config *lifecycle.Config, contentPaths []string) (configPath string, cleanup func(), err error) {
+func (p *TailwindPlugin) resolveBuildConfigFile(_ *lifecycle.Config, contentPaths []string) (configPath string, cleanup func(), err error) {
 	if p.config.ConfigFile != "" || len(p.config.ExtraArgs) > 0 {
 		return p.config.ConfigFile, func() {}, nil
 	}
