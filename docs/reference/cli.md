@@ -85,6 +85,7 @@ markata-go build [flags]
 |------|-------|-------------|---------|
 | `--clean` | | Remove output directory before building | `false` |
 | `--dry-run` | | Show what would be built without writing files | `false` |
+| `--fast` | | Skip minification, CSS purge, Tailwind rebuilds, and Pagefind indexing | `false` |
 | `--verbose` | `-v` | Enable verbose logging | `false` |
 | `--output` | `-o` | Override output directory | from config |
 
@@ -99,6 +100,9 @@ markata-go build --clean
 
 # Preview what would be built
 markata-go build --dry-run
+
+# Fast dev build
+markata-go build --fast
 
 # Build with verbose output
 markata-go build -v
@@ -136,6 +140,8 @@ The build command executes the full 9-stage lifecycle:
 9. **Cleanup** - Release resources
 
 When `--verbose` is enabled, build output includes per-stage timing to highlight slow stages.
+`--fast` keeps the same HTML output path but skips minification, CSS purge, Tailwind rebuilds,
+and Pagefind indexing for a tighter dev loop.
 
 ---
 
@@ -157,7 +163,7 @@ markata-go serve [flags]
 | `--host` | | Host address to bind to | `localhost` |
 | `--watch` | | Enable file watching and auto-rebuild | `true` |
 | `--no-watch` | | Disable file watching (legacy, overrides --watch) | `false` |
-| `--fast` | | Skip minification/CSS purge and disable blogroll/mentions for faster rebuilds | `false` |
+| `--fast` | | Skip minification/CSS purge, Tailwind rebuilds, Pagefind indexing, and disable blogroll/mentions | `false` |
 | `--verbose` | `-v` | Enable verbose logging | `false` |
 
 #### Examples
@@ -429,6 +435,7 @@ The `init` command provides a rich TUI (Text User Interface) wizard powered by [
 - Multi-select for features
 - Form validation
 - Styled using your site's configured palette (for existing projects)
+- Post format prompts include optional ANSI terminal output
 
 **Plain mode example:**
 

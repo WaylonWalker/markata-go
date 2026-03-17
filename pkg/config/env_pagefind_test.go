@@ -14,6 +14,22 @@ func TestApplyEnvOverrides_PagefindSettings(t *testing.T) {
 		expectedFunc func(*models.Config) bool
 	}{
 		{
+			name: "search_enabled false",
+			envVars: map[string]string{
+				"MARKATA_GO_SEARCH_ENABLED": "false",
+			},
+			expectedFunc: func(c *models.Config) bool {
+				if c.Extra == nil {
+					return false
+				}
+				searchConfig, ok := c.Extra["search"].(models.SearchConfig)
+				if !ok {
+					return false
+				}
+				return searchConfig.Enabled != nil && *searchConfig.Enabled == false
+			},
+		},
+		{
 			name: "search_pagefind_auto_install true",
 			envVars: map[string]string{
 				"MARKATA_GO_SEARCH_PAGEFIND_AUTO_INSTALL": "true",

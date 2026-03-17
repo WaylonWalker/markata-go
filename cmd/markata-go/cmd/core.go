@@ -242,7 +242,7 @@ func applyFastMode(m *lifecycle.Manager) {
 	m.Config().Extra["mentions_disabled"] = true
 	m.Config().Extra["feeds_incremental"] = true
 	m.Config().Extra["cache_cleanup_async"] = true
-	verbosef("Fast mode: skipping minification, CSS purging, blogroll, and mentions")
+	verbosef("Fast mode: skipping minification, CSS purging, tailwind rebuilds, pagefind indexing, blogroll, and mentions")
 }
 
 // BuildResult holds the result of a build operation.

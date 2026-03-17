@@ -411,14 +411,16 @@ verbose = false                  # Verbose installer/build logs
 - If `input` does not exist, markata-go generates a default Tailwind entry file for
   you, so basic utility usage works without creating `tailwind.css` first.
 - If `extra_args` is empty and `config_file` is unset, markata-go generates a
-  temporary Tailwind config that scans your configured content globs and generated
-  `output/**/*.html`, so no separate content wiring is needed.
+  temporary Tailwind config that scans a generated token manifest built from
+  rendered page HTML plus local JS/template sources. The manifest is hashed so
+  Tailwind is skipped when the effective utility set has not changed.
 - `include = "css"` loads the compiled CSS. If `theme.custom_css` is unset, the
   Tailwind output is assigned automatically. Explicit `theme.custom_css` always wins.
 - `include = "js"` injects `https://cdn.tailwindcss.com` in the document head.
   When `[markata-go.assets].mode = "self-hosted"`, markata-go vendors this script
   and uses the local URL from `asset_urls`.
 - `include = false` disables auto-inclusion; the build can still run.
+- Fast mode skips Tailwind rebuilds when the compiled asset already exists.
 
 By default markata-go uses its managed Tailwind CLI version instead of a global
 `tailwindcss` on your `PATH`, which keeps builds consistent across machines. Set
@@ -1330,12 +1332,14 @@ ignore_domains = ["localhost", "127.0.0.1"]
 ### Blogroll Configuration (`[markata-go.blogroll]`)
 
 Configure the blogroll and RSS reader functionality to display feeds from blogs you follow.
+Blogroll fetches are cached by fetch timestamp, and stale cached results are reused when
+refresh attempts fail.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Enable blogroll plugin |
 | `cache_dir` | string | `"cache/blogroll"` | Cache directory |
-| `cache_duration` | string | `"1h"` | Cache TTL (Go duration format) |
+| `cache_duration` | string | `"24h"` | Cache TTL (Go duration format) |
 | `timeout` | int | `30` | HTTP timeout in seconds |
 | `concurrent_requests` | int | `5` | Max parallel feed fetches |
 | `max_entries_per_feed` | int | `50` | Max entries per feed |
@@ -1344,7 +1348,7 @@ Configure the blogroll and RSS reader functionality to display feeds from blogs 
 [markata-go.blogroll]
 enabled = true
 cache_dir = "cache/blogroll"
-cache_duration = "1h"
+cache_duration = "24h"
 timeout = 30
 concurrent_requests = 5
 max_entries_per_feed = 50

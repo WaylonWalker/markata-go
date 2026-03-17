@@ -53,7 +53,7 @@ type MentionsConfig struct {
 	// CacheDir is the directory for caching fetched mention metadata (default: "cache/mentions")
 	CacheDir string `json:"cache_dir,omitempty" yaml:"cache_dir,omitempty" toml:"cache_dir,omitempty"`
 
-	// CacheDuration is how long to cache fetched metadata (default: "24h")
+	// CacheDuration is how long to cache fetched metadata (default: "168h")
 	// Mentions change less frequently than RSS feeds, so use longer cache
 	CacheDuration string `json:"cache_duration,omitempty" yaml:"cache_duration,omitempty" toml:"cache_duration,omitempty"`
 
@@ -105,7 +105,7 @@ func NewMentionsConfig() MentionsConfig {
 			},
 		},
 		CacheDir:           "cache/mentions",
-		CacheDuration:      "24h",
+		CacheDuration:      "168h",
 		Timeout:            30,
 		ConcurrentRequests: 3,
 	}
@@ -139,10 +139,10 @@ func (m *MentionsConfig) GetCacheDir() string {
 }
 
 // GetCacheDuration returns the cache duration for mention metadata.
-// Defaults to "24h" if not set.
+// Defaults to "168h" if not set.
 func (m *MentionsConfig) GetCacheDuration() string {
 	if m.CacheDuration == "" {
-		return "24h"
+		return "168h"
 	}
 	return m.CacheDuration
 }

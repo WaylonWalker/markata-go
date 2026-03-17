@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
@@ -435,5 +436,128 @@ func TestComputeFeedHash_IdenticalConfigsProduceSameHash(t *testing.T) {
 
 	if hash1 != hash2 {
 		t.Errorf("identical configs should produce same hash: %s != %s", hash1, hash2)
+	}
+}
+
+func TestComputeFeedHash_PostContentChangeProducesDifferentHash(t *testing.T) {
+	p := NewPublishFeedsPlugin()
+	title := "Post"
+	description := "Desc"
+	feed := &models.FeedConfig{
+		Slug:         "archive",
+		Title:        "Archive",
+		ItemsPerPage: 10,
+		Formats:      models.FeedFormats{HTML: true},
+		Posts: []*models.Post{{
+			Path:        "pages/post.md",
+			Slug:        "post",
+			Href:        "/post/",
+			Title:       &title,
+			Description: &description,
+			Published:   true,
+			Content:     "hello",
+			ArticleHTML: "<p>hello</p>",
+		}},
+		Pages: []models.FeedPage{{Number: 1, Posts: []*models.Post{{Slug: "post"}}}},
+	}
+
+	hash1 := p.computeFeedHash(feed)
+	feed.Posts[0].Content = "goodbye"
+	hash2 := p.computeFeedHash(feed)
+
+	if hash1 == hash2 {
+		t.Fatalf("hash should change when post feed content changes: %s", hash1)
+	}
+}
+
+func TestComputeFeedHash_RenderDecorationsDoNotChangeHash(t *testing.T) {
+	p := NewPublishFeedsPlugin()
+	title := "Post"
+	feed := &models.FeedConfig{
+		Slug:         "archive",
+		Title:        "Archive",
+		ItemsPerPage: 10,
+		Formats:      models.FeedFormats{HTML: true},
+		Posts: []*models.Post{{
+			Path:        "pages/post.md",
+			Slug:        "post",
+			Href:        "/post/",
+			Title:       &title,
+			Published:   true,
+			Content:     "hello",
+			ArticleHTML: "<p>hello</p>",
+		}},
+	}
+
+	hash1 := p.computeFeedHash(feed)
+	feed.Posts[0].ArticleHTML = `<p class="has-avatar">hello</p>`
+	hash2 := p.computeFeedHash(feed)
+
+	if hash1 != hash2 {
+		t.Fatalf("hash should ignore downstream render decorations: %s != %s", hash1, hash2)
+	}
+}
+
+func TestPublishFeedsPlugin_ShouldSkipFeedWhenOutputsExist(t *testing.T) {
+	plugin := NewPublishFeedsPlugin()
+	outputDir := t.TempDir()
+	title := "Post"
+
+	config := lifecycle.NewConfig()
+	config.OutputDir = outputDir
+	config.Extra = map[string]interface{}{
+		"url":   "https://example.com",
+		"title": "Test Site",
+	}
+
+	feed := &models.FeedConfig{
+		Slug:         "archive",
+		Title:        "Archive",
+		Description:  "All posts",
+		ItemsPerPage: 10,
+		Formats: models.FeedFormats{
+			HTML:     true,
+			JSON:     true,
+			Markdown: true,
+		},
+		Posts: []*models.Post{{
+			Path:        "pages/post.md",
+			Slug:        "post",
+			Href:        "/post/",
+			Title:       &title,
+			Published:   true,
+			ArticleHTML: "<p>hello</p>",
+		}},
+	}
+	feed.Pages = []models.FeedPage{{
+		Number:       1,
+		Posts:        feed.Posts,
+		TotalPages:   1,
+		TotalItems:   1,
+		ItemsPerPage: 10,
+		PageURLs:     []string{"/archive/"},
+	}}
+
+	if err := plugin.publishFeed(feed, config, outputDir); err != nil {
+		t.Fatalf("publishFeed() error = %v", err)
+	}
+
+	cache := buildcache.New(t.TempDir())
+	hash := plugin.computeFeedHash(feed)
+	cache.SetFeedHash(feed.Slug, hash)
+
+	skip, gotHash := plugin.shouldSkipFeed(feed, cache, outputDir)
+	if !skip {
+		t.Fatalf("shouldSkipFeed() = false, want true")
+	}
+	if gotHash != hash {
+		t.Fatalf("shouldSkipFeed() hash = %q, want %q", gotHash, hash)
+	}
+
+	if err := os.Remove(filepath.Join(outputDir, "archive", "feed.json")); err != nil {
+		t.Fatalf("Remove(feed.json) error = %v", err)
+	}
+	if skip, _ := plugin.shouldSkipFeed(feed, cache, outputDir); skip {
+		t.Fatalf("shouldSkipFeed() = true after deleting output, want false")
 	}
 }

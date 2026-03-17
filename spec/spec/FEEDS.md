@@ -121,6 +121,11 @@ Feed timestamps are deterministic and based on content, not build time:
 
 This ensures no-change incremental builds produce identical feed outputs.
 
+Feed rebuild invalidation is based on feed membership/order, pagination structure,
+and semantic post fields used by syndication outputs (title, slug, href, dates,
+description, tags, image, and raw content). Downstream decorative HTML transforms
+such as avatar injection do not force feed rebuilds.
+
 ### WebSub Discovery
 
 When WebSub is enabled, feed outputs include discovery links so hubs and subscribers can find the feed endpoint:
