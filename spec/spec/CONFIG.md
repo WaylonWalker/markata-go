@@ -716,6 +716,7 @@ pseudo-only selectors like `:root` or `::selection` to avoid dropping base/theme
 ```toml
 [my-ssg.tailwind]
 include = "css"                # "css", "js", or false (default: "css")
+preflight = false               # Enable Tailwind Preflight reset styles (default: false)
 input = "tailwind.css"          # Input CSS (relative to assets_dir)
 output = "markata-tailwind.css" # Output CSS (relative to assets_dir)
 config_file = ""                # Optional tailwind.config.js path
@@ -739,11 +740,15 @@ Behavior:
 
 - `build = true` injects the Tailwind output during configure and performs the
   actual Tailwind rebuild in cleanup when needed.
+- `preflight = false` is the default for markata-go-managed Tailwind configs so
+  Tailwind utilities work without resetting the built-in theme's typography and
+  spacing. Set `preflight = true` for Tailwind-first sites that want the reset.
 - `input`/`output` resolve relative to `assets_dir` (absolute paths are respected).
 - If `extra_args` is empty and `config_file` is unset, markata-go generates a
   temporary Tailwind config that scans a generated token manifest derived from
-  rendered page HTML plus local JS/template sources. The manifest is hashed and
-  cached so Tailwind is skipped when the effective utility set is unchanged.
+  rendered page HTML plus local JS/template sources. The generated config also
+  sets `corePlugins.preflight` from `tailwind.preflight`. The manifest is hashed
+  and cached so Tailwind is skipped when the effective utility set is unchanged.
 - `include = "css"` ensures the output CSS is included in templates. If
   `theme.custom_css` is unset, it is set to the output path. The plugin does not
   override explicit `theme.custom_css` values.
