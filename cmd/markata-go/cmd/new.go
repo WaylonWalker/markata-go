@@ -16,6 +16,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var contentTemplateAliases = map[string][]string{
+	"article": {"blog-post", "essay", "tutorial"},
+	"note":    {"ping", "thought", "status", "tweet"},
+	"photo":   {"shot", "shots", "image", "gallery"},
+	"video":   {"clip", "cast", "stream"},
+	"link":    {"bookmark", "til", "stars"},
+	"quote":   {"quotation"},
+	"guide":   {"series", "step", "chapter"},
+	"inline":  {"gratitude", "micro"},
+	"contact": {"character", "person"},
+}
+
 var (
 	// newDir is the directory for new posts (overrides template placement).
 	newDir string
@@ -305,6 +317,57 @@ func loadTemplates() map[string]ContentTemplate {
 	return templates
 }
 
+func formatTemplateName(name string) string {
+	aliases := contentTemplateAliases[name]
+	if len(aliases) == 0 {
+		return name
+	}
+
+	return fmt.Sprintf("%s (aka: %s)", name, strings.Join(aliases, ", "))
+}
+
+func formatTemplateEntry(name string, template ContentTemplate) string {
+	return fmt.Sprintf("%s -> %s/ (%s)", formatTemplateName(name), template.Directory, template.Source)
+}
+
+func resolveTemplateAlias(name string) (string, bool) {
+	for canonical, aliases := range contentTemplateAliases {
+		for _, alias := range aliases {
+			if alias == name {
+				return canonical, true
+			}
+		}
+	}
+
+	return "", false
+}
+
+func resolveTemplateSelection(name string, templates map[string]ContentTemplate) (ContentTemplate, string, bool) {
+	if template, exists := templates[name]; exists {
+		return template, name, true
+	}
+
+	canonical, ok := resolveTemplateAlias(name)
+	if !ok {
+		return ContentTemplate{}, "", false
+	}
+
+	template, exists := templates[canonical]
+	if !exists {
+		return ContentTemplate{}, "", false
+	}
+
+	frontmatter := make(map[string]interface{}, len(template.Frontmatter))
+	for k, v := range template.Frontmatter {
+		frontmatter[k] = v
+	}
+	frontmatter["template"] = name
+	frontmatter["templateKey"] = name
+	template.Frontmatter = frontmatter
+
+	return template, canonical, true
+}
+
 // loadTemplatesFromDir loads templates from markdown files in a directory.
 func loadTemplatesFromDir(dir string, templates map[string]ContentTemplate) {
 	entries, err := os.ReadDir(dir)
@@ -452,7 +515,10 @@ func runInteractiveMode(cmd *cobra.Command, templates map[string]ContentTemplate
 		return nil, fmt.Errorf("title is required")
 	}
 
-	template := templates[newTemplate]
+	template, _, ok := resolveTemplateSelection(newTemplate, templates)
+	if !ok {
+		return nil, fmt.Errorf("unknown template %q", newTemplate)
+	}
 
 	// Get template (only prompt if not explicitly set via flag)
 	if !cmd.Flags().Changed("template") {
@@ -461,9 +527,12 @@ func runInteractiveMode(cmd *cobra.Command, templates map[string]ContentTemplate
 			templateNames = append(templateNames, name)
 		}
 		sort.Strings(templateNames)
-		errlnf("Available templates: %s", strings.Join(templateNames, ", "))
+		errln("Available templates:")
+		for _, name := range templateNames {
+			errlnf("  %s", formatTemplateEntry(name, templates[name]))
+		}
 		templateInput := promptNew(reader, "Template", "post")
-		if t, ok := templates[templateInput]; ok {
+		if t, _, ok := resolveTemplateSelection(templateInput, templates); ok {
 			newTemplate = templateInput
 			template = t
 		}
@@ -488,7 +557,7 @@ func runInteractiveMode(cmd *cobra.Command, templates map[string]ContentTemplate
 
 	// Get draft status (only prompt if not explicitly set via flag)
 	if !cmd.Flags().Changed("draft") {
-		newDraft = promptYesNoNew(reader, "Create as draft?", true)
+		newDraft = promptYesNoNew(reader, "Create as draft?", false)
 	}
 
 	errln()
@@ -550,7 +619,7 @@ func runNewCommand(cmd *cobra.Command, args []string) error {
 	templates := loadTemplates()
 
 	// Validate template exists
-	template, exists := templates[newTemplate]
+	template, _, exists := resolveTemplateSelection(newTemplate, templates)
 	if !exists {
 		availableNames := make([]string, 0, len(templates))
 		for name := range templates {
@@ -559,7 +628,6 @@ func runNewCommand(cmd *cobra.Command, args []string) error {
 		sort.Strings(availableNames)
 		return fmt.Errorf("unknown template %q; available templates: %s", newTemplate, strings.Join(availableNames, ", "))
 	}
-
 	var title string
 	var tags []string
 
@@ -630,7 +698,7 @@ func listTemplates() error {
 	outln()
 	for _, name := range names {
 		t := templates[name]
-		outlnf("  %-12s -> %s/  (%s)", name, t.Directory, t.Source)
+		outlnf("  %s", formatTemplateEntry(name, t))
 	}
 	outln()
 	outln("Use --template <name> or -t <name> to select a template.")
@@ -680,9 +748,6 @@ func generateTemplatedContent(title, slug string, date time.Time, draft bool, ta
 	sb.WriteString("---\n")
 	sb.Write(fmBytes)
 	sb.WriteString("---\n\n")
-	sb.WriteString("# ")
-	sb.WriteString(title)
-	sb.WriteString("\n\n")
 
 	// Use template body or default
 	body := template.Body
@@ -746,10 +811,8 @@ tags: %s
 description: ""
 ---
 
-# %s
-
 Write your content here...
-`, title, slug, date.Format("2006-01-02"), published, draft, tagsYAML, title)
+`, title, slug, date.Format("2006-01-02"), published, draft, tagsYAML)
 }
 
 // promptNew displays a question and returns the user's response or a default value.

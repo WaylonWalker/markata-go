@@ -457,7 +457,7 @@ Creating project structure...
 Create your first post? (Y/n): y
 Post title [Hello World]: My First Post
 
-  ✓ Created posts/my-first-post.md
+  ✓ Created pages/post/my-first-post.md
 
 Done! Run 'markata-go serve' to start.
 ```
@@ -504,14 +504,24 @@ markata-go new [title] [flags]
 
 | Template | Directory | Description |
 |----------|-----------|-------------|
-| `post` | `posts/` | Blog posts with standard frontmatter |
+| `post` | `pages/post/` | Blog posts with standard frontmatter |
 | `page` | `pages/` | Static pages |
 | `docs` | `docs/` | Documentation pages |
+| `article` (`blog-post`, `essay`, `tutorial`) | `pages/article/` | Long-form article content |
+| `note` (`ping`, `thought`, `status`, `tweet`) | `pages/note/` | Short note and micro-post content |
+| `photo` (`shot`, `shots`, `image`, `gallery`) | `pages/photo/` | Image-focused posts |
+| `video` (`clip`, `cast`, `stream`) | `pages/video/` | Video posts |
+| `link` (`bookmark`, `til`, `stars`) | `pages/link/` | Link and bookmark posts |
+| `quote` (`quotation`) | `pages/quote/` | Quote posts with attribution |
+| `guide` (`series`, `step`, `chapter`) | `pages/guide/` | Guides and multi-part content |
+| `inline` (`gratitude`, `micro`) | `pages/inline/` | Inline feed-first content |
+| `contact` (`character`, `person`) | `pages/contact/` | Profile/contact pages |
+| `author` | `pages/author/` | Author profile pages |
 
 #### Examples
 
 ```bash
-# Create a new post (creates posts/my-first-post.md)
+# Create a new post (creates pages/post/my-first-post.md)
 markata-go new "My First Post"
 
 # Use a different template
@@ -530,15 +540,15 @@ markata-go new "Hello World" --template post --dir blog
 
 # Create as a draft (opt-in, default is published)
 markata-go new "Work in Progress" --draft
-# Creates: posts/work-in-progress.md with draft: true
+# Creates: pages/post/work-in-progress.md with draft: true
 
 # Create as published (default behavior)
 markata-go new "Ready to Publish"
-# Creates: posts/ready-to-publish.md with draft: false, published: true
+# Creates: pages/post/ready-to-publish.md with draft: false, published: true
 
 # Create with tags
 markata-go new "Go Tutorial" --tags "go,tutorial,programming"
-# Creates: posts/go-tutorial.md with tags: ["go", "tutorial", "programming"]
+# Creates: pages/post/go-tutorial.md with tags: ["go", "tutorial", "programming"]
 
 # Interactive mode (no arguments) - launches TUI wizard
 markata-go new
@@ -554,9 +564,11 @@ Templates control the default frontmatter and output directory for new content.
 
 **Template Discovery:**
 
-1. **Built-in templates** - `post`, `page`, `docs` are always available
+1. **Built-in templates** - `post`, `page`, `docs`, `article`, `note`, `photo`, `video`, `link`, `quote`, `guide`, `inline`, `contact`, and `author` are always available
 2. **Config templates** - Defined in `markata-go.toml` under `[content_templates]`
 3. **File templates** - Markdown files in `content-templates/` directory
+
+Built-in content types with aliases are shown in `markata-go new --list` as `type (aka: alias1, alias2)`. You can also pass those aliases directly to `--template`; for example, `--template ping` resolves to the built-in `note` template while preserving `template: ping` in frontmatter.
 
 **Configuration Example:**
 
@@ -622,17 +634,17 @@ The wizard guides you through:
 $ markata-go new
 
 ? Select a template
-  > post - Blog post (posts/)
+  > post - Blog post (pages/post/)
     page - Static page (pages/)
     docs - Documentation (docs/)
 
 ? Title: My New Post
-? Select a directory: posts (default)
+? Select a directory: pages/post (default)
 ? Select tags: [go, tutorial]
 ? Make this post private? No
-? Create my-new-post.md in posts/? Yes
+? Create my-new-post.md in pages/post/? Yes
 
-Created: posts/my-new-post.md
+Created: pages/post/my-new-post.md
 ```
 
 **Plain text mode:** Use `--plain` or pipe input to get simple text prompts instead of the TUI.
@@ -656,10 +668,10 @@ tags:
 description: ""
 ---
 
-# My First Post
-
 Write your content here...
 ```
+
+The generated body does not include a starter H1. markata-go renders the page title from frontmatter, so content should start with regular body text or an `##` heading.
 
 The slug is automatically generated from the title by:
 - Converting to lowercase

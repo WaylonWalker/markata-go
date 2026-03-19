@@ -1480,7 +1480,7 @@ Content templates configure the `markata-go new` command, controlling default fr
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `directory` | string | `"content-templates"` | Directory for user-defined template files |
-| `placement` | object | `{post:"posts",page:"pages",docs:"docs"}` | Map of template names to output directories |
+| `placement` | object | `{post:"pages/post",page:"pages",docs:"docs"}` | Map of template names to output directories |
 | `templates` | array | `[]` | Custom template definitions |
 
 ```toml
@@ -1544,6 +1544,10 @@ markata-go new "My Post"                  # Use default (post) template
 markata-go new "Tutorial" -t tutorial     # Use custom template
 markata-go new "Recipe" -t recipe --dir custom  # Override directory
 ```
+
+Built-in content templates are listed with aliases in `markata-go new --list`, such as `note (aka: ping, thought, status, tweet)`. Built-in aliases are also accepted directly with `--template`.
+
+Generated files include frontmatter plus the configured body template, but they do not include a starter `# H1` heading. markata-go already renders the page title from frontmatter, so starter content should begin with body text or `##` sections.
 
 See [[cli-reference|CLI Reference]] for complete `new` command documentation.
 
