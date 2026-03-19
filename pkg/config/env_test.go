@@ -241,6 +241,27 @@ func TestApplyEnvOverrides_TailwindBuild(t *testing.T) {
 	}
 }
 
+func TestApplyEnvOverrides_TailwindPreflight(t *testing.T) {
+	cleanup := setEnvVars(t, map[string]string{
+		"MARKATA_GO_TAILWIND_PREFLIGHT": "true",
+	})
+	defer cleanup()
+
+	config := DefaultConfig()
+	config.Extra["tailwind"] = models.NewTailwindConfig()
+	if err := ApplyEnvOverrides(config); err != nil {
+		t.Fatalf("ApplyEnvOverrides() error = %v", err)
+	}
+
+	tailwindConfig, ok := config.Extra["tailwind"].(models.TailwindConfig)
+	if !ok {
+		t.Fatalf("tailwind config missing from Extra: %#v", config.Extra["tailwind"])
+	}
+	if tailwindConfig.Preflight == nil || !*tailwindConfig.Preflight {
+		t.Fatalf("Tailwind.Preflight = %#v, want true", tailwindConfig.Preflight)
+	}
+}
+
 func TestApplyEnvOverrides_CaseInsensitive(t *testing.T) {
 	// Test that keys are case-insensitive
 	cleanup := setEnvVars(t, map[string]string{

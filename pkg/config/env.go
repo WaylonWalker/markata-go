@@ -177,6 +177,17 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		build := parseBool(value)
 		tailwindConfig.Build = &build
 		config.Extra["tailwind"] = tailwindConfig
+	case "tailwind_preflight":
+		if config.Extra == nil {
+			config.Extra = make(map[string]interface{})
+		}
+		tailwindConfig, ok := config.Extra["tailwind"].(models.TailwindConfig)
+		if !ok {
+			tailwindConfig = models.NewTailwindConfig()
+		}
+		preflight := parseBool(value)
+		tailwindConfig.Preflight = &preflight
+		config.Extra["tailwind"] = tailwindConfig
 	// Encryption settings
 	case "encryption_enabled":
 		config.Encryption.Enabled = parseBool(value)

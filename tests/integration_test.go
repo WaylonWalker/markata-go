@@ -454,6 +454,60 @@ This post is long enough to trigger the reading progress indicator.
 	}
 }
 
+func TestTailwindManagedConfig_DisablesPreflightByDefault(t *testing.T) {
+	site := newTestSite(t)
+	site.addPost("tailwind.md", `---
+title: Tailwind Defaults
+published: true
+---
+# Heading
+
+<div class="text-red-500 font-bold">utility text</div>
+`)
+
+	m := lifecycle.NewManager()
+	cfg := &lifecycle.Config{
+		ContentDir:   site.contentDir,
+		OutputDir:    site.outputDir,
+		GlobPatterns: []string{"**/*.md"},
+		Extra:        make(map[string]interface{}),
+	}
+	cfg.Extra["url"] = "https://example.com"
+	cfg.Extra["title"] = "Test Site"
+	cfg.Extra["tailwind"] = models.NewTailwindConfig()
+	m.SetConfig(cfg)
+
+	templatesPlugin := plugins.NewTemplatesPlugin()
+	if err := templatesPlugin.Configure(m); err != nil {
+		t.Fatalf("templates configure failed: %v", err)
+	}
+
+	m.RegisterPlugin(plugins.NewTailwindPlugin())
+	m.RegisterPlugin(plugins.NewStaticAssetsPlugin())
+	m.RegisterPlugin(plugins.NewGlobPlugin())
+	m.RegisterPlugin(plugins.NewLoadPlugin())
+	m.RegisterPlugin(plugins.NewRenderMarkdownPlugin())
+	m.RegisterPlugin(templatesPlugin)
+	m.RegisterPlugin(plugins.NewPublishHTMLPlugin())
+
+	if err := m.Run(); err != nil {
+		t.Fatalf("build failed: %v", err)
+	}
+
+	html := site.readFile("tailwind/index.html")
+	if !strings.Contains(html, "/markata-tailwind.css") {
+		t.Fatalf("expected managed Tailwind CSS to be included, got %s", html)
+	}
+
+	tailwindCSS := site.readFile("markata-tailwind.css")
+	if strings.Contains(tailwindCSS, "h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}") {
+		t.Fatal("expected preflight heading reset to be disabled in managed Tailwind CSS")
+	}
+	if !strings.Contains(tailwindCSS, ".text-red-500") {
+		t.Fatal("expected Tailwind utility class to be generated")
+	}
+}
+
 // =============================================================================
 // Feed Format Tests (from tests.yaml feed_formats)
 // =============================================================================

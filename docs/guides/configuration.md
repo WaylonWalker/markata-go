@@ -391,6 +391,7 @@ into your theme so you don't need a separate build step.
 ```toml
 [markata-go.tailwind]
 include = "css"                # "css", "js", or false (default: "css")
+preflight = false               # Enable Tailwind Preflight reset styles (default: false)
 input = "tailwind.css"          # Input CSS (relative to assets_dir)
 output = "markata-tailwind.css" # Output CSS (relative to assets_dir)
 config_file = ""                # Optional tailwind.config.js path
@@ -412,8 +413,10 @@ verbose = false                  # Verbose installer/build logs
   you, so basic utility usage works without creating `tailwind.css` first.
 - If `extra_args` is empty and `config_file` is unset, markata-go generates a
   temporary Tailwind config that scans a generated token manifest built from
-  rendered page HTML plus local JS/template sources. The manifest is hashed so
-  Tailwind is skipped when the effective utility set has not changed.
+  rendered page HTML plus local JS/template sources. That generated config
+  disables Tailwind Preflight by default so utilities do not override markata-go's
+  built-in theme styles. Set `preflight = true` to opt back into the reset. The
+  manifest is hashed so Tailwind is skipped when the effective utility set has not changed.
 - `include = "css"` loads the compiled CSS. If `theme.custom_css` is unset, the
   Tailwind output is assigned automatically. Explicit `theme.custom_css` always wins.
 - `include = "js"` injects `https://cdn.tailwindcss.com` in the document head.
@@ -429,6 +432,9 @@ override that behavior.
 
 **Validation warning:** If `include = "css"` and `[markata-go.css_purge].enabled = false`,
 markata-go emits a warning because Tailwind outputs an intentionally large CSS bundle.
+
+For Tailwind-first sites with a custom reset strategy, either set `preflight = true`
+or provide your own `config_file`. User-supplied Tailwind config files are respected as-is.
 
 ### Aesthetic Settings (`[markata-go]`)
 

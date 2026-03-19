@@ -76,6 +76,48 @@ func TestTailwindPlugin_ResolveBuildConfigFile_GeneratesContentConfig(t *testing
 			t.Fatalf("generated config missing %q:\n%s", needle, text)
 		}
 	}
+	if !strings.Contains(text, "preflight: false") {
+		t.Fatalf("generated config should disable preflight by default:\n%s", text)
+	}
+}
+
+func TestTailwindPlugin_ResolveBuildConfigFile_AllowsPreflightOptIn(t *testing.T) {
+	plugin := NewTailwindPlugin()
+	plugin.config = models.NewTailwindConfig()
+	preflight := true
+	plugin.config.Preflight = &preflight
+
+	configPath, cleanup, err := plugin.resolveBuildConfigFile(&lifecycle.Config{}, []string{"/tmp/manifest.txt"})
+	if err != nil {
+		t.Fatalf("resolveBuildConfigFile() error = %v", err)
+	}
+	defer cleanup()
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile(%q) error = %v", configPath, err)
+	}
+	text := string(data)
+	if !strings.Contains(text, "preflight: true") {
+		t.Fatalf("generated config should preserve explicit preflight opt-in:\n%s", text)
+	}
+}
+
+func TestTailwindPlugin_ManifestHashChangesWhenPreflightChanges(t *testing.T) {
+	tmpDir := t.TempDir()
+	plugin := NewTailwindPlugin()
+	plugin.config = models.NewTailwindConfig()
+	config := &lifecycle.Config{Extra: map[string]interface{}{"assets_dir": tmpDir}}
+
+	baseHash := plugin.computeTailwindManifestHash(config, "tokens")
+
+	preflight := true
+	plugin.config.Preflight = &preflight
+	preflightHash := plugin.computeTailwindManifestHash(config, "tokens")
+
+	if baseHash == preflightHash {
+		t.Fatal("expected manifest hash to change when preflight setting changes")
+	}
 }
 
 func TestExtractTailwindTokens(t *testing.T) {

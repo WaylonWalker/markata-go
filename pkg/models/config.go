@@ -2020,6 +2020,11 @@ type TailwindConfig struct {
 	// Empty means use the default (css).
 	Include *string `json:"include,omitempty" yaml:"include,omitempty" toml:"include,omitempty"`
 
+	// Preflight controls whether Tailwind's base reset styles are enabled.
+	// Defaults to false for markata-go's built-in theme so utility classes work
+	// without overriding existing theme typography and spacing.
+	Preflight *bool `json:"preflight,omitempty" yaml:"preflight,omitempty" toml:"preflight,omitempty"`
+
 	// Input is the Tailwind input CSS file path. Relative paths are resolved
 	// against assets_dir unless they already start with assets_dir.
 	Input string `json:"input,omitempty" yaml:"input,omitempty" toml:"input,omitempty"`
@@ -2062,8 +2067,10 @@ func NewTailwindConfig() TailwindConfig {
 	autoInstall := true
 	minify := true
 	include := "css"
+	preflight := false
 	return TailwindConfig{
 		Include:     &include,
+		Preflight:   &preflight,
 		Input:       "tailwind.css",
 		Output:      "markata-tailwind.css",
 		ConfigFile:  "",
@@ -2119,6 +2126,15 @@ func (t *TailwindConfig) IncludeMode() string {
 		return "css"
 	}
 	return *t.Include
+}
+
+// IsPreflightEnabled returns whether Tailwind preflight reset styles are enabled.
+// Defaults to false if not explicitly set.
+func (t *TailwindConfig) IsPreflightEnabled() bool {
+	if t.Preflight == nil {
+		return false
+	}
+	return *t.Preflight
 }
 
 // ImageZoomConfig configures the image_zoom plugin for lightbox functionality.

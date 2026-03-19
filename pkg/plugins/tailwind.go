@@ -279,6 +279,10 @@ func (p *TailwindPlugin) parseTailwindConfigBools(raw map[string]interface{}, re
 		value := tailwindConfigBoolean(rawBuild, true)
 		result.Build = &value
 	}
+	if rawPreflight, ok := raw["preflight"]; ok {
+		value := tailwindConfigBoolean(rawPreflight, false)
+		result.Preflight = &value
+	}
 	if rawMinify, ok := raw["minify"]; ok {
 		value := tailwindConfigBoolean(rawMinify, true)
 		result.Minify = &value
@@ -622,7 +626,7 @@ func (p *TailwindPlugin) resolveBuildConfigFile(_ *lifecycle.Config, contentPath
 		content = append(content, fmt.Sprintf("  %q", filepath.ToSlash(pattern)))
 	}
 
-	configJS := "module.exports = {\ncontent: [\n" + strings.Join(content, ",\n") + "\n]\n}\n"
+	configJS := "module.exports = {\ncontent: [\n" + strings.Join(content, ",\n") + "\n],\ncorePlugins: {\n  preflight: " + boolToJS(p.config.IsPreflightEnabled()) + "\n}\n}\n"
 	if _, err := tmpFile.WriteString(configJS); err != nil {
 		cleanup()
 		_ = tmpFile.Close()
@@ -666,6 +670,12 @@ func (p *TailwindPlugin) computeTailwindManifestHash(config *lifecycle.Config, m
 	builder.WriteString(p.tailwindInputHash(config))
 	builder.WriteString("\n--tailwind-minify:")
 	if p.config.IsMinifyEnabled() {
+		builder.WriteString("true")
+	} else {
+		builder.WriteString("false")
+	}
+	builder.WriteString("\n--tailwind-preflight:")
+	if p.config.IsPreflightEnabled() {
 		builder.WriteString("true")
 	} else {
 		builder.WriteString("false")
@@ -719,6 +729,13 @@ func headHasScript(scripts []models.ScriptTag, src string) bool {
 		}
 	}
 	return false
+}
+
+func boolToJS(value bool) string {
+	if value {
+		return BoolTrue
+	}
+	return BoolFalse
 }
 
 func tailwindNormalizeInclude(value string) string {

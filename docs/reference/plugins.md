@@ -3694,6 +3694,7 @@ compiled CSS or the Tailwind CDN JS script into your site.
 ```toml
 [markata-go.tailwind]
 include = "css"                # "css", "js", or false (default: "css")
+preflight = false               # Enable Tailwind Preflight reset styles (default: false)
 input = "tailwind.css"          # Input CSS (relative to assets_dir)
 output = "markata-tailwind.css" # Output CSS (relative to assets_dir)
 config_file = ""                # Optional tailwind.config.js path
@@ -3710,6 +3711,7 @@ verbose = false                  # Verbose installer/build logs
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `include` | string \| bool | `"css"` | Load the compiled CSS (`"css"`), inject the CDN JS (`"js"`), or disable auto-inclusion (`false`). |
+| `preflight` | bool | `false` | Enable Tailwind Preflight reset styles in markata-go's generated Tailwind config. |
 | `input` | string | `"tailwind.css"` | Tailwind input CSS (relative to `assets_dir`). |
 | `output` | string | `"markata-tailwind.css"` | Output CSS path (relative to `assets_dir`). |
 | `config_file` | string | `""` | Optional path to `tailwind.config.js`. |
@@ -3726,7 +3728,7 @@ verbose = false                  # Verbose installer/build logs
 1. Injects Tailwind includes during Configure, then rebuilds CSS during Cleanup only when the effective utility manifest changes.
 2. Resolves `input`/`output` relative to `assets_dir` (absolute paths are respected).
 3. If `input` is missing, generates a default Tailwind entry CSS file automatically.
-4. If `extra_args` is empty and `config_file` is unset, generates a temporary Tailwind config from a cached token manifest derived from rendered HTML plus local JS/template sources.
+4. If `extra_args` is empty and `config_file` is unset, generates a temporary Tailwind config from a cached token manifest derived from rendered HTML plus local JS/template sources, with `corePlugins.preflight` controlled by `tailwind.preflight`.
 5. `include = "css"` sets `theme.custom_css` to the output if it's empty.
 6. `include = "js"` injects the Tailwind CDN script and respects assets mode for vendoring.
 7. Fast mode skips Tailwind rebuilds when the compiled asset already exists.
@@ -3735,6 +3737,7 @@ verbose = false                  # Verbose installer/build logs
 **Notes:**
 - Tailwind CLI is downloaded with checksum verification (versioned per platform).
 - With default settings, markata-go prefers the managed Tailwind binary for consistency.
+- Preflight defaults to off in markata-go-managed configs so utility classes can be layered onto the built-in theme without resetting post typography.
 - If `auto_install = false`, the plugin uses `binary` or searches `PATH`.
 
 ### Examples
