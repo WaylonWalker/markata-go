@@ -422,6 +422,13 @@
    <script src="{{ 'js/palette-switcher.js' | theme_asset_hashed }}" defer></script>
    {% endif %}
 
+   {% if config.components.post_connections.enabled and config.components.post_connections.display_graph %}
+   <script>
+     window.MARKATA_GO_D3_URL = '{% if config.Extra.asset_urls.d3 %}{{ config.Extra.asset_urls.d3 }}{% else %}https://d3js.org/d3.v7.min.js{% endif %}';
+   </script>
+   <script src="{{ 'js/post-graph.js' | theme_asset_hashed }}" defer></script>
+   {% endif %}
+
   <!-- View Transitions API - Global Navigation Interceptor -->
   {% if config.view_transitions.enabled | default:true %}
   <script>

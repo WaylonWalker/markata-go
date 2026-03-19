@@ -149,6 +149,8 @@ The post template can include a compact graph preview for the current post, usin
 
 The preview filters down to the current post plus its directly connected tags and posts. If the post is not present in the graph or has no connections, the preview should not render.
 
+Implementations MUST initialize the post graph on first page load and re-initialize it after `view-transition-complete` so graph previews continue working during SPA-style page swaps.
+
 The post connections component is configured via `[markata-go.components.post_connections]` and supports two modes:
 
 - `display = ["graph"]` for canvas-only graph rendering
