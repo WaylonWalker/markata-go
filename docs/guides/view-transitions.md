@@ -68,7 +68,7 @@ document.addEventListener('click', (e) => {
 
 ### 2. Content Fetching
 
-The new page is fetched via the Fetch API:
+The new page is fetched and parsed before the transition starts so the current view stays responsive while network work happens:
 
 ```javascript
 const response = await fetch(url);
@@ -348,12 +348,14 @@ link.dataset.transitionType = 'slide';
 
 ### Prefetching
 
-Prefetch pages on hover for instant transitions:
+markata-go prefetches transition-managed links on hover/focus and can eagerly warm nearby pagination targets so `[` and `]` navigation feels more immediate:
 
 ```javascript
-// Future enhancement - not yet implemented
-link.addEventListener('mouseenter', () => {
-  fetch(link.href); // Prefetch
+document.addEventListener('mouseover', (event) => {
+  const link = event.target.closest('a');
+  if (link) {
+    window.prefetchViewTransitionUrl(link.href);
+  }
 });
 ```
 

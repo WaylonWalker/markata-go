@@ -1196,7 +1196,7 @@ The base template (`base.html`) uses these flags to conditionally load CSS:
 
 ### View-Transition Safety Net
 
-Because view transitions (SPA-like navigation) only swap `document.body.innerHTML` and NOT `<head>`, CSS `<link>` tags persist from the original page. When navigating from a page without conditional CSS (e.g., a plain text post) to a page that needs it (e.g., a post with code blocks), the CSS would be missing.
+Because view transitions (SPA-like navigation) currently swap `document.body.innerHTML` and NOT `<head>`, CSS `<link>` tags persist from the original page. When navigating from a page without conditional CSS (e.g., a plain text post) to a page that needs it (e.g., a post with code blocks), the CSS would be missing.
 
 The `conditional-css.js` script solves this by:
 1. Listening for `view-transition-complete` events dispatched by `view-transitions.js`
@@ -1205,6 +1205,8 @@ The `conditional-css.js` script solves this by:
 4. Removing conditional CSS that is no longer needed
 
 Any JS-driven theme controls rendered in `<body>` (palette family selector, dark/light toggle, and aesthetic selector) MUST also re-initialize on `view-transition-complete` so controls and option lists remain interactive after navigation.
+
+View-transition navigations SHOULD fetch and parse the destination document before calling `document.startViewTransition()` so the current page is not visually frozen during network I/O. Implementations SHOULD allow normal browser caching for HTML navigations and MAY prefetch likely next destinations (for example hovered links or pagination targets) to reduce latency for keyboard-driven page jumps.
 
 ### CSS File Categories
 

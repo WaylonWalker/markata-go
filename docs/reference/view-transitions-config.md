@@ -101,6 +101,8 @@ debug = true
 ```
 View Transitions API initialized
 Starting view transition to: /blog/my-post/
+Prefetching URL: /blog/next-post/
+\[view-transitions\] timing { fetchMs: 18.4, parseMs: 4.2, swapMs: 7.3, reinitMs: 5.1, totalMs: 42.6 }
 View transition completed
 Skipping link with class: no-transition
 ```
@@ -108,6 +110,7 @@ Skipping link with class: no-transition
 **Useful for:**
 - Debugging transition issues
 - Seeing which links are being intercepted
+- Inspecting fetch/parse/swap/reinit timing in the browser console
 - Understanding why certain links are skipped
 
 ---
@@ -388,6 +391,13 @@ Or just omit the section entirely - view transitions are enabled by default!
 2. Check if link is external (`target="_blank"`)
 3. Check if link has HTMX attributes (`hx-get`, etc.)
 4. Enable `debug = true` to see why link is skipped
+
+### "Navigation feels sluggish"
+
+1. Enable `debug = true` and watch the `fetchMs`, `parseMs`, `swapMs`, and `reinitMs` timing log
+2. Check whether the transition was prefetched (`prefetched: true`)
+3. Use the browser Network tab to confirm HTML responses are served from cache when expected
+4. Profile re-initialization listeners after `view-transition-complete` if `reinitMs` is consistently high
 
 ### "Scripts not working after transition"
 
