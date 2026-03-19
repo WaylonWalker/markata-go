@@ -330,12 +330,12 @@
       return;
     }
 
-    var nextLink = document.querySelector('a.pagination-next');
+    var nextLink = document.querySelector('[data-action="next"], a.pagination-next');
     if (nextLink && nextLink.href) {
       window.prefetchViewTransitionUrl(nextLink.href);
     }
 
-    var prevLink = document.querySelector('a.pagination-prev');
+    var prevLink = document.querySelector('[data-action="prev"], a.pagination-prev');
     if (prevLink && prevLink.href) {
       window.prefetchViewTransitionUrl(prevLink.href);
     }

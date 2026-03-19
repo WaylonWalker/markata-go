@@ -82,8 +82,9 @@ The browser animates between old and new content:
 
 ```javascript
 document.startViewTransition(() => {
-  // Update DOM
-  document.body.innerHTML = newDoc.body.innerHTML;
+  // Update the changing layout regions
+  document.querySelector('#view-transition-page').innerHTML =
+    newDoc.querySelector('#view-transition-page').innerHTML;
   document.title = newDoc.title;
   history.pushState(null, '', url);
 });
@@ -256,6 +257,7 @@ Now cards will morph smoothly when navigating!
 2. **Optimize images** - Images in new content delay transition
 3. **Minimize inline scripts** - Scripts need re-initialization
 4. **Use caching** - Browser caches reduce fetch time
+5. **Swap smaller regions** - Replacing the page wrapper is usually cheaper than replacing the entire `body`
 
 ## Accessibility
 

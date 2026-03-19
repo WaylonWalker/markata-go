@@ -19,28 +19,30 @@ View Transitions can be configured via your `markata.toml` or YAML config file. 
 
 ## Configuration Options
 
-Add a `[view_transitions]` section to your config:
+Add a `[markata-go.view_transitions]` section to your config:
 
 ```toml
-[view_transitions]
+[markata-go.view_transitions]
 enabled = true              # Enable/disable view transitions globally
 debug = false               # Log debug messages to console
-duration = 300              # Default transition duration in ms
+duration = 120              # Default transition duration in ms
 update_meta = true          # Update meta tags on navigation
 scroll_to_top = true        # Scroll to top on navigation (unless hash present)
 skip_classes = []           # Additional CSS classes to skip
 skip_selectors = []         # Additional selectors to skip
 ```
 
+In TOML, nest this under `[markata-go.view_transitions]` because markata-go loads site config from the top-level `[markata-go]` table.
+
 ## Quick Examples
 
 ### TOML (`markata.toml`)
 
 ```toml
-[view_transitions]
+[markata-go.view_transitions]
 enabled = true
 debug = false
-duration = 300
+duration = 120
 update_meta = true
 scroll_to_top = true
 skip_classes = ["no-transition", "external-link"]
@@ -50,18 +52,19 @@ skip_selectors = ["[data-skip-transition]", ".modal a"]
 ### YAML (`markata.yaml`)
 
 ```yaml
-view_transitions:
-  enabled: true
-  debug: false
-  duration: 300
-  update_meta: true
-  scroll_to_top: true
-  skip_classes:
-    - no-transition
-    - external-link
-  skip_selectors:
-    - "[data-skip-transition]"
-    - ".modal a"
+markata-go:
+  view_transitions:
+    enabled: true
+    debug: false
+    duration: 120
+    update_meta: true
+    scroll_to_top: true
+    skip_classes:
+      - no-transition
+      - external-link
+    skip_selectors:
+      - "[data-skip-transition]"
+      - ".modal a"
 ```
 
 ## Option Reference
@@ -74,7 +77,7 @@ view_transitions:
 Enable or disable view transitions globally.
 
 ```toml
-[view_transitions]
+[markata-go.view_transitions]
 enabled = false  # Disable view transitions completely
 ```
 
@@ -92,7 +95,7 @@ When disabled, all navigation uses standard browser behavior (no transitions).
 Enable debug logging to browser console.
 
 ```toml
-[view_transitions]
+[markata-go.view_transitions]
 debug = true
 ```
 
@@ -118,13 +121,13 @@ Skipping link with class: no-transition
 ### `duration`
 
 **Type**: Integer (milliseconds)  
-**Default**: `300`
+**Default**: `120`
 
 Default transition duration in milliseconds. Used as a reference value.
 
 ```toml
-[view_transitions]
-duration = 500  # Slower transitions
+[markata-go.view_transitions]
+duration = 220  # Slower transitions
 ```
 
 **Note**: The actual animation duration is controlled by CSS:
@@ -355,10 +358,10 @@ location.reload();
 If you don't add `[view_transitions]` to your config, these defaults apply:
 
 ```toml
-[view_transitions]
+[markata-go.view_transitions]
 enabled = true              # View transitions ON by default
 debug = false               # No console logging
-duration = 300              # 300ms reference duration
+duration = 120              # 120ms reference duration
 update_meta = true          # Update meta tags
 scroll_to_top = true        # Scroll to top on navigation
 skip_classes = []           # No custom skip classes
@@ -398,6 +401,7 @@ Or just omit the section entirely - view transitions are enabled by default!
 2. Check whether the transition was prefetched (`prefetched: true`)
 3. Use the browser Network tab to confirm HTML responses are served from cache when expected
 4. Profile re-initialization listeners after `view-transition-complete` if `reinitMs` is consistently high
+5. If `swapMs` is high, check whether the page is replacing more DOM than necessary
 
 ### "Scripts not working after transition"
 

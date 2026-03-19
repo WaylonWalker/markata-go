@@ -31,7 +31,7 @@
     debug: false,
     skipClasses: [],
     skipSelectors: [],
-    transitionDuration: 150,
+    transitionDuration: 120,
     updateMeta: true,
     scrollToTop: true,
   };
@@ -303,11 +303,63 @@
     return fetchDocument(url, { metrics: metrics });
   }
 
+  function syncBodyAttributes(newDoc) {
+    if (!newDoc || !newDoc.body) return;
+
+    const currentAttributes = Array.from(document.body.attributes);
+    for (const attribute of currentAttributes) {
+      if (!newDoc.body.hasAttribute(attribute.name)) {
+        document.body.removeAttribute(attribute.name);
+      }
+    }
+
+    Array.from(newDoc.body.attributes).forEach((attribute) => {
+      document.body.setAttribute(attribute.name, attribute.value);
+    });
+  }
+
+  function replaceElementContents(selector, newDoc) {
+    const currentElement = document.querySelector(selector);
+    const nextElement = newDoc.querySelector(selector);
+
+    if (!currentElement || !nextElement) {
+      return false;
+    }
+
+    currentElement.innerHTML = nextElement.innerHTML;
+    return true;
+  }
+
+  function replaceElement(selector, newDoc) {
+    const currentElement = document.querySelector(selector);
+    const nextElement = newDoc.querySelector(selector);
+
+    if (!currentElement || !nextElement) {
+      return false;
+    }
+
+    currentElement.replaceWith(nextElement.cloneNode(true));
+    return true;
+  }
+
+  function updateLayoutRegions(newDoc) {
+    const replacedPage = replaceElementContents('#view-transition-page', newDoc);
+    if (!replacedPage) {
+      document.body.innerHTML = newDoc.body.innerHTML;
+      return false;
+    }
+
+    replaceElement('#view-transition-progress', newDoc);
+    return true;
+  }
+
   /**
    * Update the current document with content from new document
    */
   function updateDocument(newDoc, metrics) {
     const swapStartedAt = getNow();
+
+    syncBodyAttributes(newDoc);
 
     // Update title
     document.title = newDoc.title;
@@ -317,11 +369,11 @@
       updateMetaTags(newDoc);
     }
 
-    // Replace body content
-    document.body.innerHTML = newDoc.body.innerHTML;
+    // Replace the main layout region instead of the entire body when possible.
+    updateLayoutRegions(newDoc);
 
     // Re-execute inline module scripts (e.g. mermaid, chartjs).
-    // innerHTML assignment does not run <script> tags, so we clone them
+    // Replaced fragments do not run <script> tags, so we clone module scripts
     // into fresh elements which the browser will evaluate.
     document.body.querySelectorAll('script[type="module"]').forEach(old => {
       const fresh = document.createElement('script');
