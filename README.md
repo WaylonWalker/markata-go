@@ -274,10 +274,10 @@ markata-go serve -v           # Verbose logging
 Create a new post.
 
 ```bash
-markata-go new "My First Post"         # Creates posts/my-first-post.md
+markata-go new "My First Post"         # Creates pages/post/my-first-post.md
 markata-go new "Hello World" --dir blog  # Creates blog/hello-world.md
-markata-go new "Draft" --draft          # Create as draft (default)
-markata-go new "Published" --draft=false # Create as published
+markata-go new "Draft" --draft          # Create as draft
+markata-go new "Published" --draft=false # Create as published (default)
 ```
 
 ### `markata-go config`

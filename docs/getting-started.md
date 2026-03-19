@@ -160,7 +160,7 @@ Create a new post with the `new` command:
 
 ```bash
 markata-go new "My First Post"
-# Creates: posts/my-first-post.md
+# Creates: pages/post/my-first-post.md
 ```
 
 This generates a markdown file with YAML frontmatter:
@@ -170,13 +170,12 @@ This generates a markdown file with YAML frontmatter:
 title: "My First Post"
 slug: "my-first-post"
 date: 2026-01-21
-published: false
-draft: true
+published: true
+draft: false
 tags: []
-template: "post.html"
+description: ""
+template: post
 ---
-
-# My First Post
 
 Write your content here...
 ```
@@ -188,11 +187,11 @@ Write your content here...
 | `title` | string | - | Post title |
 | `slug` | string | auto | URL-safe identifier (auto-generated from title) |
 | `date` | date | - | Publication date |
-| `published` | bool | `false` | Whether the post is publicly visible |
+| `published` | bool | `true` | Whether the post is publicly visible |
 | `draft` | bool | `false` | Mark as work-in-progress |
 | `tags` | []string | `[]` | List of tags for categorization |
-| `description` | string | auto | Meta description (auto-generated if not set) |
-| `template` | string | `post.html` | Template file to use |
+| `description` | string | `""` | Meta description placeholder |
+| `template` | string | `post` | Content template to use |
 
 Any additional fields are stored in `Extra` and accessible in templates.
 

@@ -211,7 +211,10 @@ func runHuhNewWizard(templates map[string]ContentTemplate) (*newWizardState, err
 	theme := createHuhTheme(paletteName)
 
 	state := &newWizardState{
-		Template: newTemplate,
+		Template: "post",
+	}
+	if _, resolvedName, ok := resolveTemplateSelection(newTemplate, templates); ok {
+		state.Template = resolvedName
 	}
 
 	// Build all groups for a single form with back navigation.
@@ -567,7 +570,7 @@ func buildTemplateOptions(templates map[string]ContentTemplate) []huh.Option[str
 	options := make([]huh.Option[string], 0, len(names))
 	for _, name := range names {
 		t := templates[name]
-		label := fmt.Sprintf("%s -> %s/ (%s)", name, t.Directory, t.Source)
+		label := formatTemplateEntry(name, t)
 		options = append(options, huh.NewOption(label, name))
 	}
 	return options
@@ -720,7 +723,10 @@ func containsString(slice []string, val string) bool {
 
 // applyNewWizardState generates and writes the content file from wizard state.
 func applyNewWizardState(state *newWizardState, templates map[string]ContentTemplate) error {
-	template := templates[state.Template]
+	template, _, ok := resolveTemplateSelection(state.Template, templates)
+	if !ok {
+		return fmt.Errorf("unknown template %q", state.Template)
+	}
 
 	// Override directory from wizard state
 	outputDir := state.Directory

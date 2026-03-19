@@ -77,7 +77,9 @@ the title argument.
 - `huh.Select` showing all available templates
 - Default: `post` (or value from `--template` flag)
 - Templates sourced from: builtins, config, content-templates/ directory
-- Each option shows: `name -> directory/ (source)`
+- Built-in supported content types are shown with aliases when available, for example `note (aka: ping, thought, status, tweet)`
+- Each option shows: `name (aka: aliases) -> directory/ (source)` when aliases exist, otherwise `name -> directory/ (source)`
+- The command accepts either the canonical built-in type or any built-in alias via `--template`; aliases are written back to frontmatter as the selected `template`/`templateKey` value
 
 #### 3. Directory Selection
 
@@ -141,10 +143,10 @@ authors:              # Only if multi-author configured
   - author-id
 ---
 
-# The Post Title
-
 Write your content here...
 ```
+
+The generated markdown body MUST NOT include a default H1 heading. Page templates already render the post title as the document H1, so generated starter content begins directly with the template body.
 
 ### Defaults
 
@@ -163,7 +165,7 @@ Write your content here...
 
 ```toml
 [content_templates.placement]
-post = "posts"
+post = "pages/post"
 page = "pages"
 docs = "docs"
 article = "pages/article"

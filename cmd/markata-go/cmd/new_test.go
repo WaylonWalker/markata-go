@@ -7,7 +7,18 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/spf13/cobra"
 )
+
+func resetNewCommandFlags() {
+	newDir = ""
+	newDraft = false
+	newTags = ""
+	newTemplate = "post"
+	newList = false
+	newPlain = false
+}
 
 func TestGenerateSlug(t *testing.T) {
 	tests := []struct {
@@ -58,6 +69,7 @@ func TestGenerateSlug(t *testing.T) {
 }
 
 func TestRunNewCommand_NoInputRequiresTitle(t *testing.T) {
+	resetNewCommandFlags()
 	originalNoInput := noInput
 	defer func() { noInput = originalNoInput }()
 
@@ -73,6 +85,41 @@ func TestRunNewCommand_NoInputRequiresTitle(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "title is required when --no-input is set") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunInteractiveMode_TemplateAlias(t *testing.T) {
+	resetNewCommandFlags()
+	newTemplate = "ping"
+
+	cmd := &cobra.Command{}
+	cmd.SetIn(strings.NewReader("My Ping\nnotes\n\nn\n"))
+	cmd.SetOut(bytes.NewBuffer(nil))
+	cmd.SetErr(bytes.NewBuffer(nil))
+	currentCmd = cmd
+	defer func() { currentCmd = nil }()
+
+	input, err := runInteractiveMode(cmd, builtinTemplates())
+	if err != nil {
+		t.Fatalf("runInteractiveMode returned error: %v", err)
+	}
+	if got := input.template.Frontmatter["template"]; got != "ping" {
+		t.Fatalf("template frontmatter = %v, want ping", got)
+	}
+	if got := input.template.Frontmatter["templateKey"]; got != "ping" {
+		t.Fatalf("templateKey frontmatter = %v, want ping", got)
+	}
+	if input.template.Directory != "pages/note" {
+		t.Fatalf("directory = %q, want %q", input.template.Directory, "pages/note")
+	}
+	if newDir != "pages/note" {
+		t.Fatalf("newDir = %q, want %q", newDir, "pages/note")
+	}
+	if newDraft {
+		t.Fatal("expected draft prompt to leave newDraft false")
+	}
+	if input.title != "My Ping" {
+		t.Fatalf("title = %q, want %q", input.title, "My Ping")
 	}
 }
 
@@ -304,14 +351,46 @@ func TestGenerateTemplatedContent(t *testing.T) {
 		t.Error("content should contain tags")
 	}
 
-	// Check heading
-	if !strings.Contains(content, "# My Test Post") {
-		t.Error("content should contain heading")
+	if strings.Contains(content, "# My Test Post") {
+		t.Error("content should not contain an H1 heading")
 	}
 
 	// Check body
 	if !strings.Contains(content, "Start writing here...") {
 		t.Error("content should contain template body")
+	}
+}
+
+func TestResolveTemplateSelection_Alias(t *testing.T) {
+	templates := builtinTemplates()
+
+	template, resolvedName, ok := resolveTemplateSelection("ping", templates)
+	if !ok {
+		t.Fatal("expected alias template resolution to succeed")
+	}
+	if resolvedName != "note" {
+		t.Fatalf("resolvedName = %q, want %q", resolvedName, "note")
+	}
+	if got := template.Frontmatter["template"]; got != "ping" {
+		t.Fatalf("template frontmatter = %v, want ping", got)
+	}
+	if got := template.Frontmatter["templateKey"]; got != "ping" {
+		t.Fatalf("templateKey frontmatter = %v, want ping", got)
+	}
+	if template.Directory != templates["note"].Directory {
+		t.Fatalf("directory = %q, want %q", template.Directory, templates["note"].Directory)
+	}
+}
+
+func TestFormatTemplateEntry_IncludesAliases(t *testing.T) {
+	template := builtinTemplates()["note"]
+	entry := formatTemplateEntry("note", template)
+
+	if !strings.Contains(entry, "note (aka: ping, thought, status, tweet)") {
+		t.Fatalf("entry = %q, expected aliases", entry)
+	}
+	if !strings.Contains(entry, "-> pages/note/") {
+		t.Fatalf("entry = %q, expected directory", entry)
 	}
 }
 
@@ -392,6 +471,9 @@ func TestGeneratePostContentWithTags(t *testing.T) {
 	contentNoTags := generatePostContentWithTags("No Tags", "no-tags", date, true, nil)
 	if !strings.Contains(contentNoTags, "tags: []") {
 		t.Error("should contain empty tags array")
+	}
+	if strings.Contains(content, "# Test Post") {
+		t.Error("should not contain an H1 heading")
 	}
 }
 
