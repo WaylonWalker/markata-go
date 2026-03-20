@@ -829,6 +829,12 @@
   display: none;
 }
 
+.post-copy__summary-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: 0 0 auto;
+}
+
 .post-copy__summary::after {
   content: "+";
   font-size: 1rem;
