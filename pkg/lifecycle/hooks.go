@@ -153,22 +153,25 @@ func executeHooks[T Plugin](
 	sorted := sortPluginsByPriority(plugins, stage)
 
 	for _, p := range sorted {
-		if typed, ok := check(p); ok {
-			start := time.Now()
-			if err := execute(typed); err != nil {
-				// Check if the error itself is marked as critical
-				errIsCritical := critical || isCriticalError(err)
-				hookErrors.Add(stage, p.Name(), err, errIsCritical)
-				if errIsCritical {
-					// Stop on first critical error
-					return hookErrors
-				}
+		typed, ok := check(p)
+		if !ok {
+			continue
+		}
+
+		start := time.Now()
+		if err := execute(typed); err != nil {
+			// Check if the error itself is marked as critical
+			errIsCritical := critical || isCriticalError(err)
+			hookErrors.Add(stage, p.Name(), err, errIsCritical)
+			if errIsCritical {
+				// Stop on first critical error
+				return hookErrors
 			}
-			elapsed := time.Since(start)
-			buildstats.RecordPlugin(string(stage), p.Name(), elapsed)
-			if elapsed > 50*time.Millisecond {
-				logging.Component(p.Name()).Phase(string(stage)).Printf("took %v", elapsed)
-			}
+		}
+		elapsed := time.Since(start)
+		buildstats.RecordPlugin(string(stage), p.Name(), elapsed)
+		if elapsed > 50*time.Millisecond {
+			logging.Component(p.Name()).Phase(string(stage)).Printf("took %v", elapsed)
 		}
 	}
 

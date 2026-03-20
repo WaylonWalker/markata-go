@@ -30,10 +30,7 @@ func timevalDuration(tv unix.Timeval) time.Duration {
 	return time.Duration(tv.Sec)*time.Second + time.Duration(tv.Usec)*time.Microsecond
 }
 
-func parseProcIO(data []byte) (uint64, uint64) {
-	var readBytes uint64
-	var writeBytes uint64
-
+func parseProcIO(data []byte) (readBytes, writeBytes uint64) {
 	for _, line := range strings.Split(string(data), "\n") {
 		key, value, ok := strings.Cut(line, ":")
 		if !ok {

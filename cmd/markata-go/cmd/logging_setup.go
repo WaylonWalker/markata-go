@@ -36,7 +36,9 @@ func configureLoggerForManager(m *lifecycle.Manager) {
 	if resolved, ok := resolveLoggerTheme(m); ok {
 		theme = resolved
 	}
-	_ = configureCommandLogger(theme)
+	if err := configureCommandLogger(theme); err != nil {
+		errlnf("Warning: failed to configure themed logging: %v", err)
+	}
 }
 
 func resolveLoggerTheme(m *lifecycle.Manager) (logging.Theme, bool) {

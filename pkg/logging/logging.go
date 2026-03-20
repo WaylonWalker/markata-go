@@ -273,7 +273,7 @@ func (w *Writer) render(msg string) string {
 	return styledTimestamp + " " + styledComponent + " " + w.styleMessage(body, entry.Level)
 }
 
-func splitComponent(msg string) (string, string) {
+func splitComponent(msg string) (component, body string) {
 	trimmed := strings.TrimSpace(msg)
 	if trimmed == "" {
 		return "", ""
@@ -297,7 +297,7 @@ func encodeEntry(entry Entry, message string) string {
 	return metaPrefix + sanitizeMeta(entry.Component) + "|" + sanitizeMeta(entry.Phase) + "|" + sanitizeMeta(entry.Level) + metaSep + message
 }
 
-func decodeEntry(message string) (Entry, string) {
+func decodeEntry(message string) (entry Entry, body string) {
 	if !strings.HasPrefix(message, metaPrefix) {
 		return Entry{}, message
 	}

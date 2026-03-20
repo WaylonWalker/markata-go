@@ -26,7 +26,7 @@ func colorizeOutput(text, color string) string {
 }
 
 func ansiTrueColor(hex string) string {
-	if len(hex) == 0 || hex[0] != '#' {
+	if hex == "" || hex[0] != '#' {
 		return ""
 	}
 	parsed, err := palettes.ParseHexColor(hex)
