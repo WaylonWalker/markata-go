@@ -1867,11 +1867,11 @@ article.post {
 
 /* Default cross-fade for everything (fixes old+new overlap flash). */
 ::view-transition-old(root) {
-   animation: fade-out 160ms ease both;
+   animation: fade-out 80ms ease both;
 }
 
 ::view-transition-new(root) {
-   animation: fade-in 200ms ease both;
+   animation: fade-in 100ms ease both;
 }
 
 /* Root transition container */
@@ -1894,32 +1894,32 @@ article.post {
 
 @keyframes slide-up {
    from {
-      transform: translateY(20px);
+      transform: translateY(8px);
    }
 }
 
 @keyframes slide-down {
    from {
-      transform: translateY(-20px);
+      transform: translateY(-8px);
    }
 }
 
 /* Main content gets a slightly more directional motion. */
 ::view-transition-old(main-content) {
-   animation: fade-out 140ms ease both;
+   animation: fade-out 70ms ease both;
 }
 
 ::view-transition-new(main-content) {
-   animation: fade-in 220ms ease both, slide-up 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+   animation: fade-in 110ms ease both, slide-up 120ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 /* Lists feel snappier than full article transitions. */
 ::view-transition-old(posts-list) {
-   animation: fade-out 120ms ease both;
+   animation: fade-out 60ms ease both;
 }
 
 ::view-transition-new(posts-list) {
-   animation: fade-in 180ms ease both, slide-down 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+   animation: fade-in 90ms ease both, slide-down 100ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 /* ==========================================================================

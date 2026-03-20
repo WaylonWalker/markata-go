@@ -114,6 +114,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Mentions - merge
 	result.Mentions = mergeMentionsConfig(base.Mentions, override.Mentions)
 
+	// ViewTransitions - merge
+	result.ViewTransitions = mergeViewTransitionsConfig(base.ViewTransitions, override.ViewTransitions)
+
 	// Authors - merge
 	result.Authors = mergeAuthorsConfig(base.Authors, override.Authors)
 
@@ -122,6 +125,35 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 
 	// Extra (plugin configs) - merge
 	result.Extra = mergeExtra(base.Extra, override.Extra)
+
+	return result
+}
+
+// mergeViewTransitionsConfig merges ViewTransitionsConfig, preferring explicit override values.
+func mergeViewTransitionsConfig(base, override models.ViewTransitionsConfig) models.ViewTransitionsConfig {
+	result := base
+
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+	if override.Debug != nil {
+		result.Debug = override.Debug
+	}
+	if override.Duration != 0 {
+		result.Duration = override.Duration
+	}
+	if override.UpdateMeta != nil {
+		result.UpdateMeta = override.UpdateMeta
+	}
+	if override.ScrollToTop != nil {
+		result.ScrollToTop = override.ScrollToTop
+	}
+	if len(override.SkipClasses) > 0 {
+		result.SkipClasses = override.SkipClasses
+	}
+	if len(override.SkipSelectors) > 0 {
+		result.SkipSelectors = override.SkipSelectors
+	}
 
 	return result
 }

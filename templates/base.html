@@ -177,9 +177,11 @@
   </header>
   {% endblock %}
 
-  {% block progress %}{% endblock %}
+  <div id="view-transition-progress">
+    {% block progress %}{% endblock %}
+  </div>
 
-  <div class="page-wrapper">
+  <div class="page-wrapper" id="view-transition-page">
     {% block main %}
       {# Left sidebar for feed navigation (if enabled) #}
       {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
@@ -364,6 +366,12 @@
           placeholder: '{{ config.search.placeholder | default:"Search…" }}'
         }
       });
+
+      var pagefindInput = root.querySelector('.pagefind-ui__search-input');
+      if (pagefindInput) {
+        if (!pagefindInput.id) pagefindInput.id = 'pagefind-search-input';
+        if (!pagefindInput.name) pagefindInput.name = 'search';
+      }
     };
 
     // Lazy-load pagefind: only fetch CSS + JS on first interaction

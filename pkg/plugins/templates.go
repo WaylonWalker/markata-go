@@ -913,6 +913,12 @@ func toModelsConfigUncached(config *lifecycle.Config) *models.Config {
 		modelsConfig.Search = models.NewSearchConfig()
 	}
 
+	if viewTransitions, ok := config.Extra["view_transitions"].(models.ViewTransitionsConfig); ok {
+		modelsConfig.ViewTransitions = viewTransitions
+	} else {
+		modelsConfig.ViewTransitions = models.NewViewTransitionsConfig()
+	}
+
 	// Copy remaining plugin configs
 	copyPluginConfigs(config, modelsConfig)
 

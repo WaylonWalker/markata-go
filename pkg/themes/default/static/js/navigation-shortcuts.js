@@ -318,11 +318,38 @@
   }
 
   /**
+   * Preload adjacent pages for faster pagination
+   */
+  function preloadAdjacentPages() {
+    // Only preload if we're not heavily resource constrained
+    if (navigator.connection && navigator.connection.saveData) {
+      return;
+    }
+
+    if (typeof window.prefetchViewTransitionUrl !== 'function') {
+      return;
+    }
+
+    var nextLink = document.querySelector('[data-action="next"], a.pagination-next');
+    if (nextLink && nextLink.href) {
+      window.prefetchViewTransitionUrl(nextLink.href);
+    }
+
+    var prevLink = document.querySelector('[data-action="prev"], a.pagination-prev');
+    if (prevLink && prevLink.href) {
+      window.prefetchViewTransitionUrl(prevLink.href);
+    }
+  }
+
+  /**
    * Initialize navigation shortcuts
    */
   function init() {
     // Clean up previous state
     cleanup();
+
+    // Preload adjacent pages for instant pagination via keyboard shortcuts
+    preloadAdjacentPages();
 
     // Initialize cards
     state.cards = getCards();

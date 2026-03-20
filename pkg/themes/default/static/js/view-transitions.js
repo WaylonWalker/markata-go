@@ -31,12 +31,65 @@
     debug: false,
     skipClasses: [],
     skipSelectors: [],
-    transitionDuration: 150,
+    transitionDuration: 120,
     updateMeta: true,
     scrollToTop: true,
   };
 
   const HTML_EXTENSIONS = new Set(['.html', '.htm', '.xhtml']);
+  const prefetchedDocuments = new Map();
+
+  function getNow() {
+    if (window.performance && typeof window.performance.now === 'function') {
+      return window.performance.now();
+    }
+
+    return Date.now();
+  }
+
+  function roundTiming(value) {
+    return Math.round(value * 10) / 10;
+  }
+
+  function createNavigationMetrics(url, source) {
+    return {
+      url: url,
+      source: source,
+      prefetched: false,
+      fetchMs: 0,
+      parseMs: 0,
+      swapMs: 0,
+      reinitMs: 0,
+      totalMs: 0,
+      startedAt: getNow(),
+    };
+  }
+
+  function finalizeNavigationMetrics(metrics) {
+    if (!metrics) return;
+
+    metrics.totalMs = roundTiming(getNow() - metrics.startedAt);
+
+    const finalized = {
+      url: metrics.url,
+      source: metrics.source,
+      prefetched: metrics.prefetched,
+      fetchMs: roundTiming(metrics.fetchMs),
+      parseMs: roundTiming(metrics.parseMs),
+      swapMs: roundTiming(metrics.swapMs),
+      reinitMs: roundTiming(metrics.reinitMs),
+      totalMs: metrics.totalMs,
+    };
+
+    window.__lastViewTransitionMetrics = finalized;
+    window.dispatchEvent(new CustomEvent('view-transition-timing', { detail: finalized }));
+
+    if (config.debug) {
+      console.log('[view-transitions] timing', finalized);
+    }
+
+    return finalized;
+  }
 
   function normalizePathname(p) {
     if (typeof p !== 'string') return '';
@@ -191,17 +244,29 @@
   }
 
   /**
-   * Navigate to a URL with view transition
+   * Fetch document for transition
    */
-  async function navigateWithTransition(url) {
-    // Fetch new page content with cache bypass to ensure fresh content
-    // This prevents stale content (e.g., wrong pagination active state) after navigation
-    const response = await fetch(url, {
-      cache: 'no-store',
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml',
-      },
-    });
+  function buildFetchOptions(extraOptions) {
+    const options = Object.assign({}, extraOptions || {});
+    options.headers = Object.assign({
+      'Accept': 'text/html,application/xhtml+xml',
+    }, options.headers || {});
+
+    return options;
+  }
+
+  async function fetchDocument(url, options) {
+    const metrics = options && options.metrics;
+    const fetchOptions = options && options.fetchOptions;
+    const fetchStartedAt = getNow();
+
+    // Fetch new page content.
+    // Allow default caching so prefetching and back/forward navigation is instantaneous.
+    const response = await fetch(url, buildFetchOptions(fetchOptions));
+
+    if (metrics) {
+      metrics.fetchMs += getNow() - fetchStartedAt;
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -215,17 +280,87 @@
     const html = await response.text();
 
     // Parse new document
+    const parseStartedAt = getNow();
     const parser = new DOMParser();
     const newDoc = parser.parseFromString(html, 'text/html');
 
-    // Update document
-    updateDocument(newDoc);
+    if (metrics) {
+      metrics.parseMs += getNow() - parseStartedAt;
+    }
+
+    return newDoc;
+  }
+
+  async function resolveDocument(url, metrics) {
+    if (prefetchedDocuments.has(url)) {
+      metrics.prefetched = true;
+
+      const prefetchedDocument = prefetchedDocuments.get(url);
+      prefetchedDocuments.delete(url);
+      return prefetchedDocument;
+    }
+
+    return fetchDocument(url, { metrics: metrics });
+  }
+
+  function syncBodyAttributes(newDoc) {
+    if (!newDoc || !newDoc.body) return;
+
+    const currentAttributes = Array.from(document.body.attributes);
+    for (const attribute of currentAttributes) {
+      if (!newDoc.body.hasAttribute(attribute.name)) {
+        document.body.removeAttribute(attribute.name);
+      }
+    }
+
+    Array.from(newDoc.body.attributes).forEach((attribute) => {
+      document.body.setAttribute(attribute.name, attribute.value);
+    });
+  }
+
+  function replaceElementContents(selector, newDoc) {
+    const currentElement = document.querySelector(selector);
+    const nextElement = newDoc.querySelector(selector);
+
+    if (!currentElement || !nextElement) {
+      return false;
+    }
+
+    currentElement.innerHTML = nextElement.innerHTML;
+    return true;
+  }
+
+  function replaceElement(selector, newDoc) {
+    const currentElement = document.querySelector(selector);
+    const nextElement = newDoc.querySelector(selector);
+
+    if (!currentElement || !nextElement) {
+      return false;
+    }
+
+    currentElement.replaceWith(nextElement.cloneNode(true));
+    return true;
+  }
+
+  function updateLayoutRegions(newDoc) {
+    const replacedPage = replaceElementContents('#view-transition-page', newDoc);
+    if (!replacedPage) {
+      document.body.innerHTML = newDoc.body.innerHTML;
+      return false;
+    }
+
+    replaceElement('#view-transition-progress', newDoc);
+    return true;
   }
 
   /**
    * Update the current document with content from new document
    */
-  function updateDocument(newDoc) {
+  function updateDocument(newDoc, metrics) {
+    const swapStartedAt = getNow();
+
+    syncBodyAttributes(newDoc);
+
     // Update title
     document.title = newDoc.title;
 
@@ -234,11 +369,11 @@
       updateMetaTags(newDoc);
     }
 
-    // Replace body content
-    document.body.innerHTML = newDoc.body.innerHTML;
+    // Replace the main layout region instead of the entire body when possible.
+    updateLayoutRegions(newDoc);
 
     // Re-execute inline module scripts (e.g. mermaid, chartjs).
-    // innerHTML assignment does not run <script> tags, so we clone them
+    // Replaced fragments do not run <script> tags, so we clone module scripts
     // into fresh elements which the browser will evaluate.
     document.body.querySelectorAll('script[type="module"]').forEach(old => {
       const fresh = document.createElement('script');
@@ -247,8 +382,17 @@
       old.replaceWith(fresh);
     });
 
+    if (metrics) {
+      metrics.swapMs += getNow() - swapStartedAt;
+    }
+
     // Re-initialize scripts
+    const reinitStartedAt = getNow();
     reinitializeScripts();
+
+    if (metrics) {
+      metrics.reinitMs += getNow() - reinitStartedAt;
+    }
 
     // Scroll to top (or to hash if present)
     if (config.scrollToTop) {
@@ -353,15 +497,22 @@
     if (config.debug) console.log('Starting view transition to:', url);
 
     try {
-      // Start view transition
-      const transition = document.startViewTransition(async () => {
-        await navigateWithTransition(url);
+      // 1. Fetch the new document first so the screen doesn't freeze
+      // waiting for the network request.
+      const metrics = createNavigationMetrics(url, 'click');
+      const newDoc = await resolveDocument(url, metrics);
+
+      // 2. Start view transition with the parsed document
+      const transition = document.startViewTransition(() => {
+        updateDocument(newDoc, metrics);
         // Update URL after content is loaded
         history.pushState(null, '', url);
       });
 
       // Wait for transition to complete
       await transition.finished;
+
+      finalizeNavigationMetrics(metrics);
 
       if (config.debug) console.log('View transition completed');
     } catch (error) {
@@ -389,16 +540,60 @@
     }
 
     try {
-      const transition = document.startViewTransition(async () => {
-        await navigateWithTransition(window.location.href);
+      const url = window.location.href;
+      const metrics = createNavigationMetrics(url, 'popstate');
+      const newDoc = await resolveDocument(url, metrics);
+
+      const transition = document.startViewTransition(() => {
+        updateDocument(newDoc, metrics);
       });
 
       await transition.finished;
+
+      finalizeNavigationMetrics(metrics);
     } catch (error) {
       console.error('View transition failed on popstate:', error);
       // Fallback to reload
       window.location.reload();
     }
+  }
+
+  /**
+   * Prefetch a URL to make subsequent navigation instant
+   */
+  function prefetchUrl(url) {
+    // Only prefetch if we're not heavily resource constrained
+    if (navigator.connection && navigator.connection.saveData) {
+      return;
+    }
+
+    if (!url || prefetchedDocuments.has(url)) return;
+
+    if (config.debug) console.log('Prefetching URL:', url);
+
+    const prefetchedDocument = fetchDocument(url, {
+      fetchOptions: { priority: 'low' },
+    }).catch((error) => {
+      prefetchedDocuments.delete(url);
+
+      if (config.debug) {
+        console.warn('[view-transitions] prefetch failed', url, error);
+      }
+
+      throw error;
+    });
+
+    prefetchedDocuments.set(url, prefetchedDocument);
+  }
+
+  /**
+   * Handle hovering over links to prefetch them
+   */
+  function handleLinkHover(event) {
+    const link = event.target.closest('a');
+    if (!link || !shouldTransition(link)) return;
+
+    prefetchUrl(link.href);
   }
 
   /**
@@ -408,6 +603,13 @@
     // Use event delegation on document for better performance
     document.removeEventListener('click', handleNavigationClick);
     document.addEventListener('click', handleNavigationClick);
+
+    // Add prefetch on hover/focus for instant transitions
+    document.removeEventListener('mouseover', handleLinkHover);
+    document.addEventListener('mouseover', handleLinkHover, { passive: true });
+
+    document.removeEventListener('focusin', handleLinkHover);
+    document.addEventListener('focusin', handleLinkHover, { passive: true });
   }
 
   /**
@@ -424,6 +626,7 @@
 
     // Expose reinitialization function for other scripts
     window.reinitViewTransitions = initNavigationInterceptor;
+    window.prefetchViewTransitionUrl = prefetchUrl;
 
     // Expose config for runtime inspection
     window.VIEW_TRANSITIONS_CONFIG = config;

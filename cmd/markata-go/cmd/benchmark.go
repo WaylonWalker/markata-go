@@ -418,6 +418,9 @@ func createBenchmarkManager(cfgPath, workDir string) (*lifecycle.Manager, error)
 	// Pass mentions configuration
 	lcConfig.Extra["mentions"] = cfg.Mentions
 
+	// Pass view transitions configuration
+	lcConfig.Extra["view_transitions"] = cfg.ViewTransitions
+
 	m.SetConfig(lcConfig)
 
 	if cfg.Concurrency > 0 {
