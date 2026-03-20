@@ -1,9 +1,15 @@
 package cmd
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
+	"github.com/spf13/cobra"
 )
 
 func TestResolveConfigBaseDir(t *testing.T) {
@@ -40,5 +46,52 @@ func TestResolveConfigRelativePath(t *testing.T) {
 				t.Fatalf("resolveConfigRelativePath(%q) = %q, want %q", tt.path, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestPrintBuildResult_IncludesBenchmarkSummary(t *testing.T) {
+	stdout := bytes.NewBuffer(nil)
+	command := &cobra.Command{Use: "build"}
+	command.SetOut(stdout)
+	currentCmd = command
+	defer func() { currentCmd = nil }()
+
+	printBuildResult(&BuildResult{
+		PostsProcessed: 12,
+		FeedsGenerated: 3,
+		Duration:       9.87,
+		Benchmark: buildstats.Summary{
+			Total: 10 * time.Second,
+			Resources: buildstats.ResourceBreakdown{
+				CPU:         2 * time.Second,
+				NetworkWait: 5 * time.Second,
+				DiskWait:    2 * time.Second,
+				Idle:        1 * time.Second,
+			},
+			Hotspots: []buildstats.Hotspot{
+				{Stage: "collect", Plugin: "blogroll", Duration: 3 * time.Second},
+				{Stage: "render", Plugin: "link_avatars", Duration: 2 * time.Second},
+			},
+		},
+	})
+
+	output := stdout.String()
+	for _, want := range []string{
+		"Build completed successfully!",
+		"Posts processed: 12",
+		"Feeds generated: 3",
+		"Resource profile: estimated wall time",
+		"CPU",
+		"Network wait",
+		"Disk wait",
+		"Idle",
+		"Hotspots:",
+		"collect/blogroll",
+		"render/link_avatars",
+		"Duration: 9.87s",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("output missing %q:\n%s", want, output)
+		}
 	}
 }

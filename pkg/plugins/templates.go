@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -11,9 +10,12 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
+
+var templatesLog = logging.Component("templates").Phase("render")
 
 // Output format constants.
 const (
@@ -305,7 +307,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		}
 	}
 	t1 := time.Now()
-	log.Printf("[templates] Phase 1a classify: %d cacheable, %d need render (took %v)", len(cacheablePosts), len(postsNeedingRender), t1.Sub(t0))
+	templatesLog.Printf("Phase 1a classify: %d cacheable, %d need render (took %v)", len(cacheablePosts), len(postsNeedingRender), t1.Sub(t0))
 
 	// Phase 1b: Batch-read all cached HTML files concurrently.
 	// This converts ~2900 sequential os.ReadFile calls into a parallel batch,
@@ -314,7 +316,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		p.batchRestoreCachedHTML(cacheablePosts, cache, &postsNeedingRender, m.Concurrency())
 	}
 	t2 := time.Now()
-	log.Printf("[templates] Phase 1b batch restore: took %v, %d now need render", t2.Sub(t1), len(postsNeedingRender))
+	templatesLog.Printf("Phase 1b batch restore: took %v, %d now need render", t2.Sub(t1), len(postsNeedingRender))
 
 	// Phase 2: Process only posts that need rendering concurrently
 	err := m.ProcessPostsSliceConcurrently(postsNeedingRender, func(post *models.Post) error {
@@ -338,7 +340,7 @@ func (p *TemplatesPlugin) Render(m *lifecycle.Manager) error {
 		return nil
 	})
 	t3 := time.Now()
-	log.Printf("[templates] Phase 2 render: took %v", t3.Sub(t2))
+	templatesLog.Printf("Phase 2 render: took %v", t3.Sub(t2))
 	return err
 }
 

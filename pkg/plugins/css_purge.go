@@ -9,8 +9,11 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/csspurge"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+var cssPurgeLog = logging.Component("css_purge").Phase("cleanup")
 
 // CSSPurgePlugin removes unused CSS rules from stylesheets based on
 // which selectors are actually used in the generated HTML files.
@@ -54,7 +57,7 @@ func (p *CSSPurgePlugin) Cleanup(m *lifecycle.Manager) error {
 	verbose := purgeConfig.Verbose
 
 	if verbose {
-		fmt.Printf("[css_purge] Analyzing CSS usage in %s\n", outputDir)
+		cssPurgeLog.Printf("Analyzing CSS usage in %s", outputDir)
 	}
 
 	// Step 1: Find and scan HTML files
@@ -74,7 +77,7 @@ func (p *CSSPurgePlugin) Cleanup(m *lifecycle.Manager) error {
 
 	if len(cssFiles) == 0 {
 		if verbose {
-			fmt.Printf("[css_purge] No CSS files found, skipping\n")
+			cssPurgeLog.Printf("No CSS files found, skipping")
 		}
 		return nil
 	}
@@ -108,19 +111,19 @@ func scanHTMLFilesForSelectors(outputDir string, concurrency int, verbose bool) 
 
 	if len(htmlFiles) == 0 {
 		if verbose {
-			fmt.Printf("[css_purge] No HTML files found, skipping\n")
+			cssPurgeLog.Printf("No HTML files found, skipping")
 		}
 		return nil, nil
 	}
 
 	if verbose {
-		fmt.Printf("[css_purge] Found %d HTML files to analyze\n", len(htmlFiles))
+		cssPurgeLog.Printf("Found %d HTML files to analyze", len(htmlFiles))
 	}
 
 	used := scanHTMLFilesConcurrently(htmlFiles, concurrency)
 
 	if verbose {
-		fmt.Printf("[css_purge] Found %d classes, %d IDs, %d elements, %d attributes\n",
+		cssPurgeLog.Printf("Found %d classes, %d IDs, %d elements, %d attributes",
 			len(used.Classes), len(used.IDs), len(used.Elements), len(used.Attributes))
 	}
 
@@ -158,7 +161,7 @@ func processCSSFiles(cssFiles []string, outputDir string, used *csspurge.UsedSel
 
 		if shouldSkipCSSFile(relPath, purgeConfig.SkipFiles) {
 			if verbose {
-				fmt.Printf("[css_purge] Skipping %s (matches skip pattern)\n", relPath)
+				cssPurgeLog.Printf("Skipping %s (matches skip pattern)", relPath)
 			}
 			stats.filesSkipped++
 			continue
@@ -174,7 +177,7 @@ func processCSSFiles(cssFiles []string, outputDir string, used *csspurge.UsedSel
 func processSingleCSSFile(cssFile, relPath string, used *csspurge.UsedSelectors, opts csspurge.PurgeOptions, stats *purgeProcessingStats, verbose bool) {
 	content, err := os.ReadFile(cssFile)
 	if err != nil {
-		fmt.Printf("[css_purge] WARNING: failed to read %s: %v\n", relPath, err)
+		cssPurgeLog.Warnf("failed to read %s: %v", relPath, err)
 		return
 	}
 
@@ -186,17 +189,17 @@ func processSingleCSSFile(cssFile, relPath string, used *csspurge.UsedSelectors,
 	if purgeStats.RemovedRules > 0 {
 		//nolint:gosec // G306: CSS output files need 0644 for web serving
 		if err := os.WriteFile(cssFile, []byte(purged), 0o644); err != nil {
-			fmt.Printf("[css_purge] WARNING: failed to write %s: %v\n", relPath, err)
+			cssPurgeLog.Warnf("failed to write %s: %v", relPath, err)
 			return
 		}
 
 		if verbose {
-			fmt.Printf("[css_purge] %s: removed %d/%d rules (%.1f%% reduction, %d -> %d bytes)\n",
+			cssPurgeLog.Printf("%s: removed %d/%d rules (%.1f%% reduction, %d -> %d bytes)",
 				relPath, purgeStats.RemovedRules, purgeStats.TotalRules,
 				purgeStats.SavingsPercent(), purgeStats.OriginalSize, purgeStats.PurgedSize)
 		}
 	} else if verbose {
-		fmt.Printf("[css_purge] %s: all %d rules are used\n", relPath, purgeStats.TotalRules)
+		cssPurgeLog.Printf("%s: all %d rules are used", relPath, purgeStats.TotalRules)
 	}
 
 	stats.filesProcessed++
@@ -206,19 +209,17 @@ func processSingleCSSFile(cssFile, relPath string, used *csspurge.UsedSelectors,
 func reportPurgeSummary(stats purgeProcessingStats, purgeConfig models.CSSPurgeConfig, verbose bool) {
 	if stats.filesProcessed > 0 {
 		savings := float64(stats.totalOriginal-stats.totalPurged) / float64(stats.totalOriginal) * 100
-		fmt.Printf("[css_purge] Processed %d CSS files: %d -> %d bytes (%.1f%% reduction)\n",
+		cssPurgeLog.Printf("Processed %d CSS files: %d -> %d bytes (%.1f%% reduction)",
 			stats.filesProcessed, stats.totalOriginal, stats.totalPurged, savings)
 
 		if purgeConfig.WarningThreshold > 0 && int(savings) > purgeConfig.WarningThreshold {
-			fmt.Printf("[css_purge] WARNING: Removed %.1f%% of CSS (threshold: %d%%). "+
-				"This might indicate overly aggressive purging. "+
-				"Consider adding patterns to 'preserve' config.\n",
+			cssPurgeLog.Warnf("Removed %.1f%% of CSS (threshold: %d%%). This might indicate overly aggressive purging. Consider adding patterns to 'preserve' config.",
 				savings, purgeConfig.WarningThreshold)
 		}
 	}
 
 	if stats.filesSkipped > 0 && verbose {
-		fmt.Printf("[css_purge] Skipped %d CSS files\n", stats.filesSkipped)
+		cssPurgeLog.Printf("Skipped %d CSS files", stats.filesSkipped)
 	}
 }
 
@@ -308,7 +309,7 @@ func scanHTMLFilesConcurrently(files []string, concurrency int) *csspurge.UsedSe
 	// Check for errors
 	for err := range errors {
 		// Log but don't fail - partial analysis is still useful
-		fmt.Printf("[css_purge] WARNING: %v\n", err)
+		cssPurgeLog.Warnf("%v", err)
 	}
 
 	// Merge results

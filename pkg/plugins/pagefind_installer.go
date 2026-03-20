@@ -16,7 +16,11 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 )
+
+var pagefindInstallLog = logging.Component("pagefind_installer").Phase("cleanup")
 
 // Constants for Pagefind installer.
 const (
@@ -344,7 +348,7 @@ func (i *PagefindInstaller) downloadAsset(version, platformAsset string) (string
 	assetURL := buildAssetURL(version, platformAsset)
 
 	if i.Verbose {
-		fmt.Printf("[pagefind] Downloading Pagefind %s for %s...\n", version, platformAsset)
+		pagefindInstallLog.Printf("Downloading Pagefind %s for %s...", version, platformAsset)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
@@ -384,7 +388,7 @@ func (i *PagefindInstaller) downloadAsset(version, platformAsset string) (string
 	}
 
 	if i.Verbose {
-		fmt.Printf("[pagefind] Downloaded %d bytes\n", written)
+		pagefindInstallLog.Printf("Downloaded %d bytes", written)
 	}
 
 	return tmpFile.Name(), nil
@@ -414,7 +418,7 @@ func verifyChecksum(filePath, expectedChecksum string, verbose bool) error {
 	}
 
 	if verbose {
-		fmt.Printf("[pagefind] Checksum verified: %s\n", actualChecksum[:16]+"...")
+		pagefindInstallLog.Printf("Checksum verified: %s", actualChecksum[:16]+"...")
 	}
 	return nil
 }
@@ -491,7 +495,7 @@ func (i *PagefindInstaller) extractBinary(archivePath, version string) (string, 
 		}
 
 		if i.Verbose {
-			fmt.Printf("[pagefind] Extracted %s to %s\n", binaryName, versionDir)
+			pagefindInstallLog.Printf("Extracted %s to %s", binaryName, versionDir)
 		}
 		break
 	}
@@ -524,7 +528,7 @@ func (i *PagefindInstaller) Install() (string, error) {
 			return "", err
 		}
 		if i.Verbose {
-			fmt.Printf("[pagefind] Using cached Pagefind %s\n", version)
+			pagefindInstallLog.Printf("Using cached Pagefind %s", version)
 		}
 		return binaryPath, nil
 	}
@@ -560,7 +564,7 @@ func (i *PagefindInstaller) Install() (string, error) {
 	}
 
 	if i.Verbose {
-		fmt.Printf("[pagefind] Successfully installed Pagefind %s\n", version)
+		pagefindInstallLog.Printf("Successfully installed Pagefind %s", version)
 	}
 	return binaryPath, nil
 }

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
@@ -42,6 +43,7 @@ func NewEmbedsPlugin() *EmbedsPlugin {
 	client := &http.Client{
 		Timeout: time.Duration(config.Timeout) * time.Second,
 	}
+	buildstats.InstrumentHTTPClient(client)
 	return &EmbedsPlugin{
 		config:     config,
 		httpClient: client,

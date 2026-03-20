@@ -13,6 +13,10 @@ func outputIsTerminal() bool {
 	return streamIsTerminal(outWriter())
 }
 
+func errorOutputIsTerminal() bool {
+	return streamIsTerminal(errWriter())
+}
+
 func streamIsTerminal(stream any) bool {
 	return fileLikeTerminal(stream)
 }
@@ -34,7 +38,13 @@ func colorEnabledOnOutput() bool {
 }
 
 func colorEnabledFor(isTTY bool) bool {
-	if noColor || !isTTY {
+	if noColor || logFormat == "plain" {
+		return false
+	}
+	if forceColor {
+		return true
+	}
+	if !isTTY {
 		return false
 	}
 	if os.Getenv("TERM") == "dumb" {

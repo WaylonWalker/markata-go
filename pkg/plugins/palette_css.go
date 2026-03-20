@@ -5,17 +5,19 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
+
+var paletteCSSLog = logging.Component("palette_css")
 
 const (
 	themeModeDark  = "dark"
@@ -64,19 +66,19 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 
 	if paletteName == "generated" {
 		if seedColor == "" {
-			log.Printf("[palette_css] Warning: palette is 'generated' but no seed_color provided. Using fallback.")
+			paletteCSSLog.Phase("configure").Warnf("palette is 'generated' but no seed_color provided. Using fallback.")
 		} else {
 			lightP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantLight)
 			if err == nil {
 				loader.AddPalette("generated-light", lightP)
 			} else {
-				log.Printf("[palette_css] Error generating light palette from seed %q: %v", seedColor, err)
+				paletteCSSLog.Phase("configure").Errorf("generating light palette from seed %q: %v", seedColor, err)
 			}
 			darkP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantDark)
 			if err == nil {
 				loader.AddPalette("generated-dark", darkP)
 			} else {
-				log.Printf("[palette_css] Error generating dark palette from seed %q: %v", seedColor, err)
+				paletteCSSLog.Phase("configure").Errorf("generating dark palette from seed %q: %v", seedColor, err)
 			}
 		}
 	}
@@ -98,7 +100,7 @@ func (p *PaletteCSSPlugin) Configure(m *lifecycle.Manager) error {
 	m.SetAssetHash("css/palette.css", hash)
 	templates.SetAssetHashes(map[string]string{"css/palette.css": hash})
 
-	log.Printf("[palette_css] Registered hash %s for palette.css", hash)
+	paletteCSSLog.Phase("configure").Printf("Registered hash %s for palette.css", hash)
 
 	return nil
 }
@@ -119,11 +121,11 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	userVariables := p.getThemeVariables(config.Extra)
 	if paletteName == "" {
 		// No palette configured, skip
-		log.Printf("[palette_css] No palette configured, skipping CSS generation")
+		paletteCSSLog.Phase("write").Printf("No palette configured, skipping CSS generation")
 		return nil
 	}
 
-	log.Printf("[palette_css] Generating CSS for palette: %s (light: %s, dark: %s)", paletteName, paletteLight, paletteDark)
+	paletteCSSLog.Phase("write").Printf("Generating CSS for palette: %s (light: %s, dark: %s)", paletteName, paletteLight, paletteDark)
 
 	// Check if theme switcher is enabled
 	switcherEnabled := p.isSwitcherEnabled(config.Extra)
@@ -133,19 +135,19 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 
 	if paletteName == "generated" {
 		if seedColor == "" {
-			log.Printf("[palette_css] Warning: palette is 'generated' but no seed_color provided. Using fallback.")
+			paletteCSSLog.Phase("write").Warnf("palette is 'generated' but no seed_color provided. Using fallback.")
 		} else {
 			lightP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantLight)
 			if err == nil {
 				loader.AddPalette("generated-light", lightP)
 			} else {
-				log.Printf("[palette_css] Error generating light palette from seed %q: %v", seedColor, err)
+				paletteCSSLog.Phase("write").Errorf("generating light palette from seed %q: %v", seedColor, err)
 			}
 			darkP, err := palettes.GenerateTriadicPalette(seedColor, palettes.VariantDark)
 			if err == nil {
 				loader.AddPalette("generated-dark", darkP)
 			} else {
-				log.Printf("[palette_css] Error generating dark palette from seed %q: %v", seedColor, err)
+				paletteCSSLog.Phase("write").Errorf("generating dark palette from seed %q: %v", seedColor, err)
 			}
 		}
 	}
@@ -164,7 +166,7 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 	cssPath := filepath.Join(cssDir, "palette.css")
 	if existing, err := os.ReadFile(cssPath); err == nil {
 		if bytes.Equal(existing, []byte(css)) {
-			log.Printf("[palette_css] CSS unchanged, skipping write")
+			paletteCSSLog.Phase("write").Printf("CSS unchanged, skipping write")
 			return nil
 		}
 	} else if !os.IsNotExist(err) {
@@ -188,7 +190,7 @@ func (p *PaletteCSSPlugin) Write(m *lifecycle.Manager) error {
 		}
 	}
 
-	log.Printf("[palette_css] Wrote %d bytes to %s", len(css), cssPath)
+	paletteCSSLog.Phase("write").Printf("Wrote %d bytes to %s", len(css), cssPath)
 
 	return nil
 }
