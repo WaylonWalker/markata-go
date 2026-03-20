@@ -9,6 +9,7 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
+	"github.com/WaylonWalker/markata-go/pkg/terminalpage"
 )
 
 // createTestManager creates a minimal lifecycle manager for testing.
@@ -794,7 +795,7 @@ func TestPublishHTMLPlugin_TxtTemplateRendering(t *testing.T) {
 	if !strings.Contains(contentStr, "My Test Title") {
 		t.Error("txt file should contain the title")
 	}
-	if !strings.Contains(contentStr, "=============") {
+	if !strings.Contains(contentStr, strings.Repeat(terminalpage.DoubleRule, len("My Test Title"))) {
 		t.Error("txt file should contain title underline")
 	}
 

@@ -12,7 +12,7 @@ func TestRenderHTML_PlainPreservesStructure(t *testing.T) {
 
 	checks := []string{
 		"Title",
-		"=====",
+		"━━━━━",
 		"Go <https://go.dev>",
 		"│ Quoted text",
 		"| Name",
@@ -25,6 +25,40 @@ func TestRenderHTML_PlainPreservesStructure(t *testing.T) {
 	}
 	if strings.Contains(got, "\x1b[") {
 		t.Fatalf("plain output should not contain ANSI escapes: %q", got)
+	}
+}
+
+func TestRenderHTML_StripsHeadingAnchorLinks(t *testing.T) {
+	input := `<h2 id="intro">Intro <a href="#intro" class="heading-anchor">#</a></h2><p>Body</p>`
+
+	got := RenderHTML(input, Options{})
+
+	if strings.Contains(got, "# <#intro>") || strings.Contains(got, `href="#intro"`) {
+		t.Fatalf("expected heading anchor link removed, got:\n%s", got)
+	}
+	if !strings.Contains(got, "Intro") {
+		t.Fatalf("expected heading text preserved, got:\n%s", got)
+	}
+}
+
+func TestRenderHTML_PlainCodeBlocksUseFences(t *testing.T) {
+	input := `<pre><code class="language-python">from datetime import datetime
+
+def test_copy():
+    now = datetime.now()
+    print(now)
+</code></pre>`
+
+	got := RenderHTML(input, Options{})
+
+	if !strings.Contains(got, "```python") {
+		t.Fatalf("expected fenced code block with language, got:\n%s", got)
+	}
+	if !strings.Contains(got, "def test_copy():") {
+		t.Fatalf("expected code content preserved, got:\n%s", got)
+	}
+	if !strings.Contains(got, "\n    now = datetime.now()\n") {
+		t.Fatalf("expected code newlines preserved, got:\n%s", got)
 	}
 }
 

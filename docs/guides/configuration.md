@@ -601,6 +601,8 @@ feeds = ["tutorials", "guides"]
 
 Add a "Share this post" grid to the end of every article so readers can send your content to social platforms or copy the link.
 
+Post pages also include a separate `Copy this post` control near the article title. That top-of-post menu always exposes `URL`, `Rich`, `Markdown`, and `Text` clipboard options based on the current post output and does not require extra configuration.
+
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `true` | Show the component. |
