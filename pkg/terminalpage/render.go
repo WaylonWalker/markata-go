@@ -23,6 +23,11 @@ var (
 
 const summaryTag = "summary"
 
+const (
+	DoubleRule = "━"
+	SingleRule = "─"
+)
+
 type Options struct {
 	ANSI        bool
 	Palette     string
@@ -210,6 +215,9 @@ func (r *Renderer) renderInlineNode(node *html.Node) string {
 			return r.theme.code.wrap(content)
 		case "a":
 			href := getAttr(node, "href")
+			if shouldSkipAnchorLink(node, href) {
+				return ""
+			}
 			if href == "" {
 				return content
 			}
@@ -254,9 +262,9 @@ func (r *Renderer) renderHeading(node *html.Node) string {
 
 	switch level {
 	case 1:
-		return r.theme.headline.wrap(text) + "\n" + r.theme.border.wrap(strings.Repeat("=", len([]rune(plain))))
+		return r.theme.headline.wrap(text) + "\n" + r.theme.border.wrap(strings.Repeat(DoubleRule, len([]rune(plain))))
 	case 2:
-		return r.theme.headline.wrap(text) + "\n" + r.theme.border.wrap(strings.Repeat("-", len([]rune(plain))))
+		return r.theme.headline.wrap(text) + "\n" + r.theme.border.wrap(strings.Repeat(SingleRule, len([]rune(plain))))
 	default:
 		prefix := strings.Repeat("#", level) + " "
 		return r.theme.headline.wrap(prefix + text)
@@ -329,11 +337,11 @@ func (r *Renderer) renderCodeBlock(node *html.Node) string {
 	}
 
 	if !r.options.ANSI {
-		label := "code"
+		fence := "```"
 		if lang != "" {
-			label = lang
+			fence += lang
 		}
-		return "[" + label + "]\n" + prefixLines(code, "    ")
+		return fence + "\n" + code + "\n```"
 	}
 
 	highlighted := r.highlightCode(code, lang)
@@ -615,6 +623,28 @@ func collapseInlineWhitespace(text string) string {
 
 func sameLinkText(text, href string) bool {
 	return strings.TrimSuffix(text, "/") == strings.TrimSuffix(href, "/")
+}
+
+func shouldSkipAnchorLink(node *html.Node, href string) bool {
+	if href == "" {
+		return false
+	}
+	if hasClass(node, "anchor") || hasClass(node, "heading-anchor") {
+		return true
+	}
+	return strings.HasPrefix(href, "#") && isHeadingTag(node.Parent)
+}
+
+func isHeadingTag(node *html.Node) bool {
+	if node == nil || node.Type != html.ElementNode {
+		return false
+	}
+	switch node.Data {
+	case "h1", "h2", "h3", "h4", "h5", "h6":
+		return true
+	default:
+		return false
+	}
 }
 
 func getAttr(node *html.Node, key string) string {

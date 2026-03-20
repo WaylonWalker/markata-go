@@ -637,6 +637,28 @@ Custom entries can reuse the built-in keys (e.g., override the icon for `copy`) 
 - Responsive states stack items on narrow viewports and transition with `transform`/`opacity` to feel deliberate.
 
 
+### Post Copy Control
+
+The post copy control provides a compact "Copy this post" menu near the top of article templates so readers can copy a canonical URL, rich HTML, markdown, or plain text without selecting the whole document manually.
+
+**Placement**: Injected into `post.html` (and theme equivalents) inside the article header after description/metadata so it is visible before the article body.
+
+**Behavior**:
+
+1. Renders a disclosure button labeled "Copy this post" with four actions: `URL`, `Rich`, `Markdown`, and `Text`.
+2. `URL` copies the canonical post URL (`config.url` + `post.href`).
+3. `Rich` writes both `text/html` and `text/plain` clipboard payloads when the browser supports `ClipboardItem`, using the article title plus rendered article content so pasting into chat tools such as Slack or Teams preserves structure.
+4. `Markdown` copies a markdown-friendly payload containing the post title, source URL, and raw markdown body (`post.content`).
+5. `Text` copies a plain-text payload containing the title, URL, and text derived from the rendered article body.
+6. When rich clipboard APIs are unavailable, the control falls back to plain-text clipboard writes and still reports success/failure through an `aria-live` status message.
+
+**Implementation notes**:
+
+- The control is automatic on post pages and does not require extra configuration.
+- Rich copy must rewrite relative links/media URLs in the copied fragment to absolute URLs before writing HTML to the clipboard.
+- The menu closes after a successful copy and exposes short-lived visual feedback for the chosen action.
+
+
 ---
 
 ## CSS Structure
