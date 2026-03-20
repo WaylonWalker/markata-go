@@ -64,8 +64,26 @@ stream:
 - `TERM=dumb`
 - the user passes `--no-color`
 
+Commands MAY also offer explicit formatting controls for operational logs.
+When they do, the supported modes SHOULD include:
+
+- `plain` - unstyled, stable text for copy/paste and scripting
+- `rich` - colored, more scannable human-oriented logs
+- `auto` - choose `rich` for interactive terminals and `plain` otherwise
+
+If both force-enable and force-disable color flags exist, commands MUST reject
+conflicting combinations such as `--color` with `--no-color`.
+
+Rich log format MAY use structured logging metadata to drive presentation.
+When phase metadata is available, lifecycle-oriented logs SHOULD colorize by
+phase rather than by component name alone. If a site palette is configured,
+rich logs SHOULD prefer palette-derived colors when they remain readable.
+
 Commands SHOULD make color decisions per stream. For example, `stderr` MAY stay
 colored when `stdout` is piped.
+
+When color is enabled for an interactive stream, human-facing summaries SHOULD
+use color by default to improve scannability.
 
 Commands MUST preserve readable plain output when color is disabled.
 
@@ -139,6 +157,13 @@ Unexpected diagnostic detail belongs in verbose/debug modes, not normal output.
 
 - `build` and `serve` print progress and warnings to `stderr`, with summaries and
   explicit results remaining readable in both terminal and redirected use.
+- `build` SHOULD include a concise benchmark summary in its final result output,
+  including estimated wall-time spent on CPU work, network wait, disk wait, and
+  idle time, plus the slowest lifecycle hotspots.
+- `build` SHOULD offer an explicit machine-readable benchmark mode such as
+  `--benchmark-json` for scripting and regression analysis.
+- Detailed per-stage benchmark summaries SHOULD be opt-in via verbose mode or a
+  dedicated benchmark detail flag, rather than always-on in normal output.
 - `config`, `list`, `version`, and `explain` keep their primary output on
   `stdout`.
 - `new` and `init` support interactive prompts by default and honor

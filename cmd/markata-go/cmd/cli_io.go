@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -63,23 +64,30 @@ func errf(format string, args ...any) {
 	_, _ = fmt.Fprintf(errWriter(), format, args...)
 }
 
+func cliLogger() logging.Logger {
+	if cmd := activeCmd(); cmd != nil {
+		return logging.Component(cmd.Name())
+	}
+	return logging.Component("cli")
+}
+
 func infof(format string, args ...any) {
 	if quiet {
 		return
 	}
-	errlnf(format, args...)
+	cliLogger().Infof(format, args...)
 }
 
 func verbosef(format string, args ...any) {
 	if !verbose || quiet {
 		return
 	}
-	errlnf(format, args...)
+	cliLogger().Phase("cli").Level("debug").Printf(format, args...)
 }
 
 func warnf(format string, args ...any) {
 	if quiet {
 		return
 	}
-	errlnf("Warning: "+format, args...)
+	cliLogger().Warnf(format, args...)
 }

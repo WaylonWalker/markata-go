@@ -14,7 +14,11 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 )
+
+var tailwindInstallLog = logging.Component("tailwind_installer").Phase("cleanup")
 
 const (
 	tailwindBinaryName        = "tailwindcss"
@@ -321,7 +325,7 @@ func (i *TailwindInstaller) downloadTailwindAsset(version, platformAsset string)
 	assetURL := buildTailwindAssetURL(version, platformAsset)
 
 	if i.Verbose {
-		fmt.Printf("[tailwind] Downloading Tailwind %s for %s...\n", version, platformAsset)
+		tailwindInstallLog.Printf("Downloading Tailwind %s for %s...", version, platformAsset)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), tailwindHTTPTimeout)
@@ -364,7 +368,7 @@ func (i *TailwindInstaller) downloadTailwindAsset(version, platformAsset string)
 	}
 
 	if i.Verbose {
-		fmt.Printf("[tailwind] Downloaded %d bytes\n", written)
+		tailwindInstallLog.Printf("Downloaded %d bytes", written)
 	}
 
 	return tmpFile.Name(), nil
@@ -393,7 +397,7 @@ func verifyTailwindChecksum(filePath, expectedChecksum string, verbose bool) err
 	}
 
 	if verbose {
-		fmt.Printf("[tailwind] Checksum verified: %s\n", actualChecksum[:16]+"...")
+		tailwindInstallLog.Printf("Checksum verified: %s", actualChecksum[:16]+"...")
 	}
 
 	return nil
@@ -436,7 +440,7 @@ func (i *TailwindInstaller) installTailwindBinary(downloadPath, version string) 
 	}
 
 	if i.Verbose {
-		fmt.Printf("[tailwind] Installed Tailwind %s to %s\n", version, destPath)
+		tailwindInstallLog.Printf("Installed Tailwind %s to %s", version, destPath)
 	}
 
 	return destPath, nil
@@ -460,7 +464,7 @@ func (i *TailwindInstaller) Install() (string, error) {
 			return "", err
 		}
 		if i.Verbose {
-			fmt.Printf("[tailwind] Using cached Tailwind %s\n", version)
+			tailwindInstallLog.Printf("Using cached Tailwind %s", version)
 		}
 		return binaryPath, nil
 	}

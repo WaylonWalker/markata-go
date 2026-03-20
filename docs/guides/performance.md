@@ -63,6 +63,65 @@ go test -bench=BenchmarkBuild -run='^$' -benchmem -count=10 ./benchmarks/...
 
 ## Understanding Benchmark Output
 
+### Build Summary Hotspots
+
+The default `markata-go build` summary now includes two fast feedback signals:
+
+- **Resource profile** - estimated wall-time spent on CPU work, network wait, disk wait, and idle time
+- **Hotspots** - the slowest lifecycle plugin hooks from that build
+
+Example:
+
+```text
+Build completed successfully!
+  Resource profile (estimated wall time):
+    CPU             18.2s (20.1%)
+    Network wait    42.7s (47.1%)
+    Disk wait       24.4s (26.9%)
+    Idle             5.4s ( 5.9%)
+  Hotspots:
+    collect/blogroll 31.77s
+    cleanup/pagefind 26.32s
+    write/publish_feeds 8.54s
+```
+
+Use this summary to decide what tool to reach for next:
+
+- mostly `CPU` -> capture a CPU profile with `just perf-profile`
+- mostly `Network wait` -> inspect plugins that fetch remote content or external metadata
+- mostly `Disk wait` -> inspect globbing, publishing, cache save/load, and index generation
+- mostly `Idle` -> look for subprocess waits, scheduler gaps, or work that is happening outside the Go process
+
+### JSON Benchmarks
+
+Use machine-readable output when you want to compare builds over time or ingest
+results into another tool:
+
+```bash
+markata-go build --benchmark-json benchmark.json
+markata-go build --benchmark-json - > benchmark.json
+```
+
+The JSON output includes:
+
+- whole-build resource totals
+- per-stage timings and per-stage estimated resources
+- plugin timing entries used for hotspot ranking
+- build counts and warnings
+
+### Per-Stage Detail
+
+Keep the default footer small for everyday use, and opt into stage detail when
+debugging:
+
+```bash
+markata-go build -v --benchmark-detailed
+```
+
+This adds a per-stage estimated wall-time breakdown so you can see whether a
+slow build is CPU-heavy in `render`, disk-heavy in `write`, or mostly idle in a
+subprocess-oriented cleanup stage.
+
 ### Raw Output
 
 ```

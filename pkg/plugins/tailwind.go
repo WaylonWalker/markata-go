@@ -9,9 +9,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
@@ -32,6 +34,8 @@ var (
 		return NewTailwindInstallerWithConfig(config)
 	}
 )
+
+var tailwindLog = logging.Component("tailwind").Phase("cleanup")
 
 // TailwindPlugin runs the Tailwind standalone CLI and wires inclusion into the head.
 type TailwindPlugin struct {
@@ -106,8 +110,8 @@ func (p *TailwindPlugin) Configure(m *lifecycle.Manager) error {
 		config.Extra["head"] = modelsConfig.Head
 		templates.ClearConfigMapCache()
 		if p.config.IsVerbose() {
-			fmt.Printf("[tailwind] theme in extra: %#v\n", config.Extra["theme"])
-			fmt.Printf("[tailwind] modelsConfig theme: %#v\n", modelsConfig.Theme)
+			tailwindLog.Printf("theme in extra: %#v", config.Extra["theme"])
+			tailwindLog.Printf("modelsConfig theme: %#v", modelsConfig.Theme)
 		}
 	}
 
@@ -341,6 +345,8 @@ func (p *TailwindPlugin) runTailwindBuild(config *lifecycle.Config, contentPaths
 	cmd := exec.Command(cliPath, args...)
 	cmd.Dir = "."
 	cmd.Env = os.Environ()
+	start := time.Now()
+	tailwindLog.Printf("Running subprocess: %s %s", cliPath, strings.Join(args, " "))
 
 	if p.config.IsVerbose() {
 		cmd.Stdout = os.Stdout
@@ -355,12 +361,14 @@ func (p *TailwindPlugin) runTailwindBuild(config *lifecycle.Config, contentPaths
 			}
 			return fmt.Errorf("tailwind build failed: %w", err)
 		}
+		tailwindLog.Printf("Subprocess completed in %v", time.Since(start))
 		return nil
 	}
 
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("tailwind build failed: %w", err)
 	}
+	tailwindLog.Printf("Subprocess completed in %v", time.Since(start))
 
 	return nil
 }
@@ -376,8 +384,8 @@ func (p *TailwindPlugin) findOrInstallTailwind() (string, error) {
 		if path, err := tailwindLookPath(getTailwindBinaryName()); err == nil {
 			return path, nil
 		}
-		fmt.Printf("[tailwind] WARNING: tailwindcss not found in PATH, skipping build\n")
-		fmt.Printf("[tailwind] Install it or set [markata-go.tailwind].auto_install = true\n")
+		tailwindLog.Warnf("tailwindcss not found in PATH, skipping build")
+		tailwindLog.Printf("Install it or set [markata-go.tailwind].auto_install = true")
 		return "", nil
 	}
 
@@ -393,7 +401,7 @@ func (p *TailwindPlugin) findOrInstallTailwind() (string, error) {
 	})
 
 	if p.config.IsVerbose() {
-		fmt.Printf("[tailwind] using managed Tailwind CLI %s\n", version)
+		tailwindLog.Printf("Using managed Tailwind CLI %s", version)
 	}
 
 	installedPath, err := installer.Install()
@@ -597,7 +605,7 @@ func (p *TailwindPlugin) resolveBuildInput(config *lifecycle.Config) (inputPath 
 	}
 
 	if p.config.IsVerbose() {
-		fmt.Printf("[tailwind] input CSS missing, using generated default input\n")
+		tailwindLog.Printf("Input CSS missing, using generated default input")
 	}
 
 	return tmpFile.Name(), cleanup, nil
@@ -638,7 +646,7 @@ func (p *TailwindPlugin) resolveBuildConfigFile(_ *lifecycle.Config, contentPath
 	}
 
 	if p.config.IsVerbose() {
-		fmt.Printf("[tailwind] generated default config with %d content patterns\n", len(contentPaths))
+		tailwindLog.Printf("Generated default config with %d content patterns", len(contentPaths))
 	}
 
 	return tmpFile.Name(), cleanup, nil

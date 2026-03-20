@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/config"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -252,6 +253,7 @@ type BuildResult struct {
 	FilesWritten   int
 	Warnings       []string
 	Duration       float64
+	Benchmark      buildstats.Summary
 
 	// BlogrollStatus holds blogroll feature status
 	BlogrollStatus BlogrollStatus
@@ -270,7 +272,15 @@ type BlogrollStatus struct {
 }
 
 // runBuild executes a full build and returns the result.
-func runBuild(m *lifecycle.Manager) (*BuildResult, error) {
+func runBuild(m *lifecycle.Manager) (result *BuildResult, err error) {
+	profile := buildstats.Start()
+	defer func() {
+		summary := profile.Stop()
+		if result != nil {
+			result.Benchmark = summary
+		}
+	}()
+
 	// Run all lifecycle stages with verbose output if enabled
 	stages := []lifecycle.Stage{
 		lifecycle.StageConfigure,
@@ -286,12 +296,17 @@ func runBuild(m *lifecycle.Manager) (*BuildResult, error) {
 
 	for _, stage := range stages {
 		stageStart := time.Now()
+		buildstats.SetActiveStage(string(stage))
 		verbosef("  [%s] running...", stage)
 		if err := m.RunTo(stage); err != nil {
+			buildstats.SetActiveStage("")
 			return nil, fmt.Errorf("stage %s: %w", stage, err)
 		}
+		buildstats.SetActiveStage("")
+		stageElapsed := time.Since(stageStart)
+		buildstats.RecordStage(string(stage), stageElapsed)
 		if verbose {
-			verbosef("  [%s] done in %s", stage, time.Since(stageStart).Truncate(100*time.Microsecond))
+			verbosef("  [%s] done in %s", stage, stageElapsed.Truncate(100*time.Microsecond))
 			switch stage {
 			case lifecycle.StageGlob:
 				verbosef("  [%s] discovered %d files", stage, len(m.Files()))
@@ -307,7 +322,7 @@ func runBuild(m *lifecycle.Manager) (*BuildResult, error) {
 	}
 
 	// Collect results
-	result := &BuildResult{
+	result = &BuildResult{
 		PostsProcessed: len(m.Posts()),
 		FeedsGenerated: len(m.Feeds()),
 	}

@@ -17,8 +17,11 @@ import (
 	"golang.org/x/net/html/atom"
 
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+var imageOptimizationLog = logging.Component("image_optimization").Phase("write")
 
 // ImageOptimizationPlugin generates modern image formats for local images.
 // It rewrites HTML to use <picture> with AVIF/WebP sources and caches encodes.
@@ -142,13 +145,13 @@ func (p *ImageOptimizationPlugin) Write(m *lifecycle.Manager) error {
 	for _, target := range targets {
 		outputPath, err := resolveImageOutputPath(outputDir, target)
 		if err != nil {
-			fmt.Printf("[image_optimization] WARNING: %v\n", err)
+			imageOptimizationLog.Warnf("%v", err)
 			continue
 		}
 
 		info, err := os.Stat(outputPath)
 		if err != nil {
-			fmt.Printf("[image_optimization] WARNING: source image not found: %s\n", outputPath)
+			imageOptimizationLog.Warnf("source image not found: %s", outputPath)
 			continue
 		}
 
@@ -178,12 +181,12 @@ func (p *ImageOptimizationPlugin) Write(m *lifecycle.Manager) error {
 				}
 
 				if err := p.encodeImage(outputPath, variant.Path, format, quality, encoder, variant.Width); err != nil {
-					fmt.Printf("[image_optimization] WARNING: %v\n", err)
+					imageOptimizationLog.Warnf("%v", err)
 					continue
 				}
 
 				if err := writeImageCache(cachePath, outputPath, info, format, variant.Width, quality, encoder); err != nil {
-					fmt.Printf("[image_optimization] WARNING: cache write failed: %v\n", err)
+					imageOptimizationLog.Warnf("cache write failed: %v", err)
 				}
 			}
 		}
@@ -396,9 +399,9 @@ func (p *ImageOptimizationPlugin) warnMissingEncoder(format string) {
 	p.warnedEncoders[format] = true
 	switch format {
 	case formatAVIF:
-		fmt.Printf("[image_optimization] WARNING: avifenc not found; skipping AVIF output\n")
+		imageOptimizationLog.Warnf("avifenc not found; skipping AVIF output")
 	case formatWebP:
-		fmt.Printf("[image_optimization] WARNING: cwebp not found; skipping WebP output\n")
+		imageOptimizationLog.Warnf("cwebp not found; skipping WebP output")
 	}
 }
 

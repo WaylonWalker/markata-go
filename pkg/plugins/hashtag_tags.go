@@ -69,11 +69,11 @@ func (p *HashtagTagsPlugin) Transform(m *lifecycle.Manager) error {
 	tagStats := p.buildTagStats(m)
 
 	if len(tagStats) == 0 {
-		log.Printf("hashtag_tags: no tags found, skipping")
+		log.Printf("[hashtag_tags] No tags found, skipping")
 		return nil
 	}
 
-	log.Printf("hashtag_tags: found %d tags", len(tagStats))
+	log.Printf("[hashtag_tags] Found %d tags", len(tagStats))
 
 	// Cache tag stats for other plugins
 	m.Cache().Set("hashtag_tag_stats", tagStats)
@@ -95,7 +95,7 @@ func (p *HashtagTagsPlugin) Transform(m *lifecycle.Manager) error {
 		}
 	}
 
-	log.Printf("hashtag_tags: processing %d posts", len(posts))
+	log.Printf("[hashtag_tags] Processing %d posts", len(posts))
 
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		content := p.processHashtagsInContent(post.Content, tagStats)

@@ -10,11 +10,15 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
+
+var pagefindLog = logging.Component("pagefind").Phase("cleanup")
 
 // defaultBundleDir is the default directory name for Pagefind search index files.
 const defaultBundleDir = "_pagefind"
@@ -59,7 +63,7 @@ func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
 	cache := GetBuildCache(m)
 	corpusHash := p.computeCorpusHash(m, searchConfig)
 	if cache != nil && corpusHash != "" && cache.GetPagefindCorpusHash() == corpusHash && p.indexExists(config, searchConfig) {
-		fmt.Printf("[pagefind] Skipping search index update (search corpus unchanged)\n")
+		pagefindLog.Printf("Skipping search index update (search corpus unchanged)")
 		return nil
 	}
 
@@ -69,8 +73,8 @@ func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
 	pagefindPath, err := p.findOrInstallPagefind(searchConfig, verbose)
 	if err != nil {
 		// Log warning but don't fail the build
-		fmt.Printf("[pagefind] WARNING: %v\n", err)
-		fmt.Printf("[pagefind] The site will work fine, just without search functionality\n")
+		pagefindLog.Warnf("%v", err)
+		pagefindLog.Printf("The site will work fine, just without search functionality")
 		return nil
 	}
 
@@ -86,7 +90,7 @@ func (p *PagefindPlugin) Cleanup(m *lifecycle.Manager) error {
 	if cache != nil && corpusHash != "" {
 		cache.SetPagefindCorpusHash(corpusHash)
 		if err := cache.Save(); err != nil {
-			fmt.Printf("[pagefind] WARNING: failed to persist pagefind corpus hash: %v\n", err)
+			pagefindLog.Warnf("failed to persist pagefind corpus hash: %v", err)
 		}
 	}
 
@@ -104,9 +108,9 @@ func (p *PagefindPlugin) findOrInstallPagefind(searchConfig models.SearchConfig,
 
 	// Check if auto-install is enabled
 	if !searchConfig.Pagefind.IsAutoInstallEnabled() {
-		fmt.Printf("[pagefind] WARNING: pagefind not found in PATH, skipping search index generation\n")
-		fmt.Printf("[pagefind] Install with: npm install -g pagefind  OR  cargo install pagefind\n")
-		fmt.Printf("[pagefind] Or enable auto_install in config: [search.pagefind] auto_install = true\n")
+		pagefindLog.Warnf("pagefind not found in PATH, skipping search index generation")
+		pagefindLog.Printf("Install with: npm install -g pagefind OR cargo install pagefind")
+		pagefindLog.Printf("Or enable auto_install in config: [search.pagefind] auto_install = true")
 		return "", nil
 	}
 
@@ -119,7 +123,7 @@ func (p *PagefindPlugin) findOrInstallPagefind(searchConfig models.SearchConfig,
 
 	// Attempt to install
 	if verbose {
-		fmt.Printf("[pagefind] Pagefind not found in PATH, attempting auto-install...\n")
+		pagefindLog.Printf("Pagefind not found in PATH, attempting auto-install...")
 	}
 	installedPath, err := installer.Install()
 	if err != nil {
@@ -163,10 +167,12 @@ func (p *PagefindPlugin) runPagefind(pagefindPath string, config *lifecycle.Conf
 
 	// Run pagefind
 	if verbose {
-		fmt.Printf("[pagefind] Generating search index in %s/%s\n", outputDir, bundleDir)
+		pagefindLog.Printf("Generating search index in %s/%s", outputDir, bundleDir)
 	}
 	cmd := exec.Command(pagefindPath, args...)
 	cmd.Dir = "." // Run from project root
+	start := time.Now()
+	pagefindLog.Printf("Running subprocess: %s %s", pagefindPath, strings.Join(args, " "))
 
 	// Capture output - show all in verbose mode, only errors when quiet
 	if verbose {
@@ -185,6 +191,7 @@ func (p *PagefindPlugin) runPagefind(pagefindPath string, config *lifecycle.Conf
 			}
 			return fmt.Errorf("pagefind indexing failed: %w", err)
 		}
+		pagefindLog.Printf("Subprocess completed in %v", time.Since(start))
 
 		// Verify the index was created
 		indexPath := filepath.Join(outputDir, bundleDir, "pagefind.js")
@@ -198,6 +205,7 @@ func (p *PagefindPlugin) runPagefind(pagefindPath string, config *lifecycle.Conf
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("pagefind indexing failed: %w", err)
 	}
+	pagefindLog.Printf("Subprocess completed in %v", time.Since(start))
 
 	// Verify the index was created
 	indexPath := filepath.Join(outputDir, bundleDir, "pagefind.js")
@@ -205,7 +213,7 @@ func (p *PagefindPlugin) runPagefind(pagefindPath string, config *lifecycle.Conf
 		return fmt.Errorf("pagefind did not create expected index file: %s", indexPath)
 	}
 
-	fmt.Printf("[pagefind] Search index generated successfully\n")
+	pagefindLog.Printf("Search index generated successfully")
 	return nil
 }
 

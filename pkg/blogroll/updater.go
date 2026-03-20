@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 )
 
 // Pre-compiled regex patterns for HTML metadata extraction.
@@ -51,10 +53,13 @@ func NewUpdater(timeout time.Duration) *Updater {
 	if timeout <= 0 {
 		timeout = 30 * time.Second
 	}
+	client := &http.Client{
+		Timeout: timeout,
+	}
+	buildstats.InstrumentHTTPClient(client)
+
 	return &Updater{
-		client: &http.Client{
-			Timeout: timeout,
-		},
+		client:  client,
 		timeout: timeout,
 	}
 }

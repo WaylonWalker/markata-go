@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 
@@ -116,9 +117,12 @@ type LinkAvatarsPlugin struct {
 
 // NewLinkAvatarsPlugin creates a new LinkAvatarsPlugin.
 func NewLinkAvatarsPlugin() *LinkAvatarsPlugin {
+	client := &http.Client{Timeout: 10 * time.Second}
+	buildstats.InstrumentHTTPClient(client)
+
 	return &LinkAvatarsPlugin{
 		config: defaultLinkAvatarsConfig(),
-		client: &http.Client{Timeout: 10 * time.Second},
+		client: client,
 	}
 }
 

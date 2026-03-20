@@ -3,10 +3,11 @@ package lifecycle
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sort"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
@@ -164,8 +165,9 @@ func executeHooks[T Plugin](
 				}
 			}
 			elapsed := time.Since(start)
+			buildstats.RecordPlugin(string(stage), p.Name(), elapsed)
 			if elapsed > 50*time.Millisecond {
-				log.Printf("[lifecycle] %s/%s took %v", stage, p.Name(), elapsed)
+				logging.Component(p.Name()).Phase(string(stage)).Printf("took %v", elapsed)
 			}
 		}
 	}
