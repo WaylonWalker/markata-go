@@ -1,11 +1,15 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/WaylonWalker/markata-go/pkg/buildstats"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/spf13/cobra"
@@ -30,6 +34,12 @@ var (
 	// Tailwind rebuilds, and Pagefind indexing)
 	// for faster development iteration.
 	buildFast bool
+
+	// buildBenchmarkJSON writes benchmark details as JSON. Use "-" for stdout.
+	buildBenchmarkJSON string
+
+	// buildBenchmarkDetailed prints per-stage benchmark detail.
+	buildBenchmarkDetailed bool
 )
 
 // buildCmd represents the build command.
@@ -78,6 +88,9 @@ func init() {
 	buildCmd.Flags().BoolVar(&buildCleanAll, "clean-all", false, "clean everything including external plugin caches (blogroll, embeds, etc.)")
 	buildCmd.Flags().BoolVar(&buildDryRun, "dry-run", false, "show what would be built without building")
 	buildCmd.Flags().BoolVar(&buildFast, "fast", false, "skip minification, CSS purging, tailwind rebuilds, and pagefind indexing for faster builds")
+	buildCmd.Flags().StringVar(&buildBenchmarkJSON, "benchmark-json", "", "write benchmark details as JSON (use '-' for stdout)")
+	buildCmd.Flags().Lookup("benchmark-json").NoOptDefVal = "-"
+	buildCmd.Flags().BoolVar(&buildBenchmarkDetailed, "benchmark-detailed", false, "print per-stage benchmark resource summaries")
 }
 
 func runBuildCommand(_ *cobra.Command, _ []string) error {
@@ -90,6 +103,7 @@ func runBuildCommand(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
 	}
+	configureLoggerForManager(m)
 
 	// Pass fast mode flag to plugins via config
 	if buildFast {
@@ -120,8 +134,20 @@ func runBuildCommand(_ *cobra.Command, _ []string) error {
 	duration := time.Since(startTime)
 	result.Duration = duration.Seconds()
 
-	// Print results
-	printBuildResult(result)
+	if buildBenchmarkJSON == "-" {
+		if err := writeBenchmarkJSON(outWriter(), result); err != nil {
+			return fmt.Errorf("writing benchmark json: %w", err)
+		}
+	} else {
+		// Print results
+		printBuildResult(result)
+	}
+
+	if buildBenchmarkJSON != "" && buildBenchmarkJSON != "-" {
+		if err := writeBenchmarkJSONFile(buildBenchmarkJSON, result); err != nil {
+			return fmt.Errorf("writing benchmark json file: %w", err)
+		}
+	}
 
 	// Print warnings
 	if len(result.Warnings) > 0 && verbose {
@@ -153,8 +179,8 @@ func cleanBuildDirs(m *lifecycle.Manager) error {
 	}
 
 	if verbose {
-		fmt.Printf("Cleaning output directory: %s\n", outputPath)
-		fmt.Printf("Cleaning cache directory: %s\n", cacheDir)
+		verbosef("Cleaning output directory: %s", outputPath)
+		verbosef("Cleaning cache directory: %s", cacheDir)
 	}
 
 	if !buildDryRun {
@@ -171,7 +197,7 @@ func cleanBuildDirs(m *lifecycle.Manager) error {
 		if modelsConfig, ok := m.Config().Extra["models_config"].(*models.Config); ok {
 			for _, dir := range modelsConfig.ExternalCacheDirs() {
 				if verbose {
-					fmt.Printf("Cleaning external cache: %s\n", dir)
+					verbosef("Cleaning external cache: %s", dir)
 				}
 				if !buildDryRun {
 					if err := os.RemoveAll(dir); err != nil && !os.IsNotExist(err) {
@@ -250,18 +276,153 @@ func runDryBuild(m *lifecycle.Manager) error {
 
 // printBuildResult prints a summary of the build result.
 func printBuildResult(result *BuildResult) {
-	outln("\nBuild completed successfully!")
-	outlnf("  Posts processed: %d", result.PostsProcessed)
+	outln("\n" + colorizeOutput("Build completed successfully!", currentLogTheme.Component))
+	outlnf("  %s %d", buildLabel("Posts processed:"), result.PostsProcessed)
 
 	// Only show feeds if any were generated
 	if result.FeedsGenerated > 0 {
-		outlnf("  Feeds generated: %d", result.FeedsGenerated)
+		outlnf("  %s %d", buildLabel("Feeds generated:"), result.FeedsGenerated)
 	}
 
 	// Show blogroll status if configured
 	printBlogrollStatus(result.BlogrollStatus)
+	printBuildBenchmarkSummary(result.Benchmark)
 
-	outlnf("  Duration: %.2fs", result.Duration)
+	outlnf("  %s %.2fs", buildLabel("Duration:"), result.Duration)
+}
+
+func printBuildBenchmarkSummary(summary buildstats.Summary) {
+	if summary.Total <= 0 {
+		return
+	}
+
+	outlnf("  %s %s", buildLabel("Resource profile:"), colorizeOutput("estimated wall time", currentLogTheme.Component))
+	printResourceLine("CPU", summary.Resources.CPU, summary.Total)
+	printResourceLine("Network wait", summary.Resources.NetworkWait, summary.Total)
+	printResourceLine("Disk wait", summary.Resources.DiskWait, summary.Total)
+	printResourceLine("Idle", summary.Resources.Idle, summary.Total)
+
+	if verbose || buildBenchmarkDetailed {
+		printStageBenchmarkSummary(summary)
+	}
+
+	hotspots := topHotspots(summary.Hotspots, 5)
+	if len(hotspots) == 0 {
+		return
+	}
+
+	outlnf("  %s", buildLabel("Hotspots:"))
+	for _, hotspot := range hotspots {
+		outlnf("    %s %s", hotspotKey(hotspot.Stage, hotspot.Plugin), formatDuration(hotspot.Duration))
+	}
+}
+
+func printResourceLine(label string, duration, total time.Duration) {
+	outlnf("    %-12s %8s (%5.1f%%)", colorizeOutput(label, currentLogTheme.Warning), formatDuration(duration), percent(duration, total))
+}
+
+func printStageBenchmarkSummary(summary buildstats.Summary) {
+	stages := nonZeroStages(summary.Stages)
+	if len(stages) == 0 {
+		return
+	}
+
+	outlnf("  %s %s", buildLabel("Stage resources:"), colorizeOutput("estimated wall time", currentLogTheme.Component))
+	for _, stage := range stages {
+		outlnf("    %s total=%-8s cpu=%-8s net=%-8s disk=%-8s idle=%-8s",
+			colorizeOutput(stage.Stage, stageThemeColor(stage.Stage)),
+			formatDuration(stage.Duration),
+			formatDuration(stage.Resources.CPU),
+			formatDuration(stage.Resources.NetworkWait),
+			formatDuration(stage.Resources.DiskWait),
+			formatDuration(stage.Resources.Idle),
+		)
+	}
+}
+
+func nonZeroStages(stages []buildstats.StageTiming) []buildstats.StageTiming {
+	filtered := make([]buildstats.StageTiming, 0, len(stages))
+	for _, stage := range stages {
+		if stage.Duration <= 0 {
+			continue
+		}
+		filtered = append(filtered, stage)
+	}
+	return filtered
+}
+
+func topHotspots(hotspots []buildstats.Hotspot, limit int) []buildstats.Hotspot {
+	if len(hotspots) == 0 || limit <= 0 {
+		return nil
+	}
+	if len(hotspots) < limit {
+		limit = len(hotspots)
+	}
+	return hotspots[:limit]
+}
+
+func formatDuration(duration time.Duration) string {
+	text := duration.Round(10 * time.Millisecond).String()
+	if text != "0s" && strings.HasSuffix(text, "0s") {
+		return strings.TrimSuffix(text, "0s") + "s"
+	}
+	return text
+}
+
+func percent(duration, total time.Duration) float64 {
+	if total <= 0 {
+		return 0
+	}
+	return float64(duration) / float64(total) * 100
+}
+
+func hotspotKey(stage, plugin string) string {
+	return colorizeOutput(stage+"/"+plugin, stageThemeColor(stage))
+}
+
+func buildLabel(name string) string {
+	return colorizeOutput(name, currentLogTheme.Warning)
+}
+
+func stageThemeColor(stage string) string {
+	if stageColor, ok := currentLogTheme.PhaseColor[stage]; ok && stageColor != "" {
+		return stageColor
+	}
+	return currentLogTheme.Component
+}
+
+type benchmarkJSONOutput struct {
+	PostsProcessed int                `json:"posts_processed"`
+	FeedsGenerated int                `json:"feeds_generated"`
+	Duration       float64            `json:"duration_seconds"`
+	Warnings       []string           `json:"warnings,omitempty"`
+	Benchmark      buildstats.Summary `json:"benchmark"`
+	Blogroll       BlogrollStatus     `json:"blogroll"`
+}
+
+func writeBenchmarkJSONFile(path string, result *BuildResult) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil && filepath.Dir(path) != "." {
+		return err
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	return writeBenchmarkJSON(file, result)
+}
+
+func writeBenchmarkJSON(w io.Writer, result *BuildResult) error {
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(benchmarkJSONOutput{
+		PostsProcessed: result.PostsProcessed,
+		FeedsGenerated: result.FeedsGenerated,
+		Duration:       result.Duration,
+		Warnings:       result.Warnings,
+		Benchmark:      result.Benchmark,
+		Blogroll:       result.BlogrollStatus,
+	})
 }
 
 // printBlogrollStatus prints the blogroll feature status.
@@ -272,7 +433,7 @@ func printBlogrollStatus(status BlogrollStatus) {
 
 	if status.Enabled {
 		// Active blogroll - show pages and feed count
-		outlnf("  Blogroll: /blogroll, /reader (%d %s)", status.FeedsFetched, pluralize(status.FeedsFetched, "feed", "feeds"))
+		outlnf("  %s /blogroll, /reader (%d %s)", buildLabel("Blogroll:"), status.FeedsFetched, pluralize(status.FeedsFetched, "feed", "feeds"))
 	} else if status.FeedsConfigured > 0 {
 		// Configured but disabled - show warning
 		warnf("Blogroll: feeds configured but enabled=false")

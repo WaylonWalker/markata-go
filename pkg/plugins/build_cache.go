@@ -2,13 +2,15 @@
 package plugins
 
 import (
-	"log"
 	"path/filepath"
 	"strings"
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 )
+
+var buildCacheLog = logging.Component("build_cache")
 
 // BuildCachePlugin manages incremental build caching.
 // It loads the build cache at the start and saves it at the end.
@@ -86,7 +88,7 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 	configHash := buildcache.ContentHash(configFilesHash(configFiles))
 	if configHash != "" && cache.SetConfigHash(configHash) {
 		// Config changed - cache was invalidated
-		log.Printf("[build_cache] Config changed, full rebuild required")
+		buildCacheLog.Phase("configure").Printf("Config changed, full rebuild required")
 	}
 
 	// Compute and check templates hash
@@ -97,7 +99,7 @@ func (p *BuildCachePlugin) Configure(m *lifecycle.Manager) error {
 	if hash, err := buildcache.HashDirectory(templatesDir, []string{".html", ".txt", ".md"}); err == nil && hash != "" {
 		if cache.SetTemplatesHash(hash) {
 			// Templates changed - cache was invalidated
-			log.Printf("[build_cache] Templates changed, full rebuild required")
+			buildCacheLog.Phase("configure").Printf("Templates changed, full rebuild required")
 		}
 	}
 
@@ -185,7 +187,7 @@ func (p *BuildCachePlugin) Cleanup(m *lifecycle.Manager) error {
 		if async, ok := extra["cache_cleanup_async"].(bool); ok && async {
 			go func() {
 				if err := p.cleanupCache(m); err != nil {
-					log.Printf("[build_cache] async cleanup failed: %v", err)
+					buildCacheLog.Phase("cleanup").Errorf("async cleanup failed: %v", err)
 				}
 			}()
 			return nil
@@ -213,7 +215,7 @@ func (p *BuildCachePlugin) cleanupCache(m *lifecycle.Manager) error {
 	}
 	removed := p.cache.RemoveStale(currentPaths)
 	if removed > 0 {
-		log.Printf("[build_cache] Removed %d stale cache entries", removed)
+		buildCacheLog.Phase("cleanup").Printf("Removed %d stale cache entries", removed)
 	}
 
 	// Save cache
@@ -225,13 +227,13 @@ func (p *BuildCachePlugin) saveCache(m *lifecycle.Manager) error {
 		return nil
 	}
 	if err := p.cache.Save(); err != nil {
-		log.Printf("[build_cache] Failed to save build cache: %v", err)
+		buildCacheLog.Phase("cleanup").Errorf("failed to save build cache: %v", err)
 	}
 
 	// Log stats
 	skipped, rebuilt := p.cache.Stats()
 	if skipped > 0 || rebuilt > 0 {
-		log.Printf("[build_cache] Incremental build: %d skipped, %d rebuilt", skipped, rebuilt)
+		buildCacheLog.Phase("cleanup").Printf("Incremental build: %d skipped, %d rebuilt", skipped, rebuilt)
 		m.Cache().Set("build_cache_skipped", skipped)
 		m.Cache().Set("build_cache_rebuilt", rebuilt)
 	}
@@ -239,7 +241,7 @@ func (p *BuildCachePlugin) saveCache(m *lifecycle.Manager) error {
 	// Log dependency graph stats
 	graphSize := p.cache.GraphSize()
 	if graphSize > 0 {
-		log.Printf("[build_cache] Dependency graph: %d posts with dependencies tracked", graphSize)
+		buildCacheLog.Phase("cleanup").Printf("Dependency graph: %d posts with dependencies tracked", graphSize)
 	}
 
 	return nil
@@ -266,7 +268,7 @@ func (p *BuildCachePlugin) Transform(m *lifecycle.Manager) error {
 	}
 
 	if depsRecorded > 0 {
-		log.Printf("[build_cache] Recorded dependencies for %d posts", depsRecorded)
+		buildCacheLog.Phase("transform").Printf("Recorded dependencies for %d posts", depsRecorded)
 	}
 
 	return nil

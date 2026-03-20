@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"html"
 	"html/template"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,10 +16,13 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 	"github.com/WaylonWalker/markata-go/pkg/themes"
 )
+
+var publishFeedsLog = logging.Component("publish_feeds").Phase("write")
 
 // PublishFeedsPlugin writes feeds to multiple output formats during the write stage.
 // It also registers synthetic posts in the Configure stage so they can be resolved by wikilinks.
@@ -137,7 +139,7 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 			if async, ok := extra["feeds_async"].(bool); ok && async {
 				go func() {
 					if err := p.publishFeedsAsync(m, feedConfigs); err != nil {
-						log.Printf("[publish_feeds] async publish failed: %v", err)
+						publishFeedsLog.Errorf("async publish failed: %v", err)
 					}
 				}()
 				return nil
@@ -215,7 +217,7 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 
 	// Log incremental stats if any feeds were skipped
 	if skippedCount > 0 {
-		log.Printf("[publish_feeds] Incremental: %d feeds skipped, %d rebuilt", skippedCount, rebuiltCount)
+		publishFeedsLog.Printf("Incremental: %d feeds skipped, %d rebuilt", skippedCount, rebuiltCount)
 	}
 
 	// Check for errors
@@ -296,7 +298,7 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 	}
 
 	if skippedCount > 0 || rebuiltCount > 0 {
-		log.Printf("[publish_feeds] Async: %d feeds skipped, %d rebuilt", skippedCount, rebuiltCount)
+		publishFeedsLog.Printf("Async: %d feeds skipped, %d rebuilt", skippedCount, rebuiltCount)
 	}
 
 	return nil
@@ -741,7 +743,7 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 
 		htmlContent, err := engine.Render(templateName, ctx)
 		if err != nil {
-			log.Printf("[publish_feeds] Warning: template rendering failed for %s: %v (falling back to built-in template)", templateName, err)
+			publishFeedsLog.Warnf("template rendering failed for %s: %v (falling back to built-in template)", templateName, err)
 		} else {
 			return htmlContent, nil
 		}
@@ -807,7 +809,7 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 		html, err := engine.Render("feed.html", ctx)
 		if err != nil {
 			// Log template rendering errors to help debug issues
-			log.Printf("[publish_feeds] Warning: template rendering failed for feed.html: %v (falling back to built-in template)", err)
+			publishFeedsLog.Warnf("template rendering failed for feed.html: %v (falling back to built-in template)", err)
 		} else {
 			return html, nil
 		}

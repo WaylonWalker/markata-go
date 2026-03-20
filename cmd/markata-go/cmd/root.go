@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime/pprof"
 
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -28,6 +29,12 @@ var (
 
 	// noColor disables ANSI color output on all streams.
 	noColor bool
+
+	// forceColor forces ANSI color output even for non-TTY streams.
+	forceColor bool
+
+	// logFormat controls centralized log formatting.
+	logFormat string
 
 	// noInput disables prompts and interactive UI.
 	noInput bool
@@ -80,6 +87,14 @@ Profiling:
 	Version:       Version,
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		currentCmd = cmd
+		if noColor && forceColor {
+			return fmt.Errorf("cannot use --color and --no-color together")
+		}
+
+		if err := configureCommandLogger(logging.DefaultTheme()); err != nil {
+			return err
+		}
+
 		// Start CPU profiling if requested
 		if cpuProfile != "" {
 			f, err := os.Create(cpuProfile)
@@ -138,7 +153,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&outputDir, "output", "o", "", "output directory (overrides config)")
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "suppress non-essential status output")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
+	rootCmd.PersistentFlags().BoolVar(&forceColor, "color", false, "force ANSI color output")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable ANSI color on all streams")
+	rootCmd.PersistentFlags().StringVar(&logFormat, "log-format", "auto", "log formatting: auto, plain, or rich")
 	rootCmd.PersistentFlags().BoolVar(&noInput, "no-input", false, "disable prompts and interactive UI")
 
 	// Profiling flags

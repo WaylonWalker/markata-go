@@ -82,11 +82,11 @@ func (p *MentionsPlugin) Transform(m *lifecycle.Manager) error {
 	// Build handle resolution map from blogroll config
 	handleMap := p.buildHandleMap(m)
 
-	log.Printf("mentions: found %d handles in handleMap", len(handleMap))
+	log.Printf("[mentions] Found %d handles in handleMap", len(handleMap))
 
 	if len(handleMap) == 0 {
 		// No blogroll entries, nothing to resolve
-		log.Printf("mentions: no handle map entries, skipping")
+		log.Printf("[mentions] No handle map entries, skipping")
 		return nil
 	}
 
@@ -103,7 +103,7 @@ func (p *MentionsPlugin) Transform(m *lifecycle.Manager) error {
 		return !post.Skip && post.Content != ""
 	})
 
-	log.Printf("mentions: processing %d posts", len(posts))
+	log.Printf("[mentions] Processing %d posts", len(posts))
 
 	return m.ProcessPostsSliceConcurrently(posts, func(post *models.Post) error {
 		content := p.processChatAdmonitionTitles(post, handleMap)
@@ -182,7 +182,7 @@ func (p *MentionsPlugin) registerAlias(alias string, entry *mentionEntry, handle
 		return
 	}
 	if _, exists := handleMap[normalizedAlias]; exists {
-		log.Printf("warning: duplicate alias %q (first entry wins)", normalizedAlias)
+		log.Printf("[mentions] Warning: duplicate alias %q (first entry wins)", normalizedAlias)
 		return
 	}
 	handleMap[normalizedAlias] = entry
@@ -240,7 +240,7 @@ func (p *MentionsPlugin) registerAuthors(config *lifecycle.Config, handleMap map
 	}
 
 	if registered > 0 {
-		log.Printf("mentions: registered %d authors as mentionable contacts", registered)
+		log.Printf("[mentions] Registered %d authors as mentionable contacts", registered)
 	}
 }
 
@@ -284,7 +284,7 @@ func (p *MentionsPlugin) buildHandleMap(m *lifecycle.Manager) map[string]*mentio
 	blogrollConfig := getBlogrollConfig(config)
 	mentionsConfig := getMentionsConfig(config)
 
-	log.Printf("mentions: blogroll config enabled: %v, feeds count: %d", blogrollConfig.Enabled, len(blogrollConfig.Feeds))
+	log.Printf("[mentions] Blogroll config enabled: %v, feeds count: %d", blogrollConfig.Enabled, len(blogrollConfig.Feeds))
 
 	// Register from blogroll if enabled
 	if blogrollConfig.Enabled {

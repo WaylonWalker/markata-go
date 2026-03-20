@@ -33,7 +33,9 @@ These flags are available for all commands:
 | `--output` | `-o` | Output directory (overrides config) | `public` |
 | `--quiet` | `-q` | Suppress non-essential progress and status output | `false` |
 | `--verbose` | `-v` | Enable verbose output | `false` |
+| `--color` | | Force ANSI color output | `false` |
 | `--no-color` | | Disable ANSI color on all streams | `false` |
+| `--log-format` | | Log formatting: `auto`, `plain`, or `rich` | `auto` |
 | `--no-input` | | Disable prompts and interactive UI | `false` |
 
 ### Config File Discovery
@@ -55,6 +57,10 @@ markata-go follows a few shared CLI rules:
 
 - primary command results are written to `stdout`
 - warnings, progress, prompts, and errors are written to `stderr`
+- interactive terminal output uses color by default when the target stream is a TTY
+- operational logs use centralized formatting; `--log-format auto` chooses rich logs for TTYs and plain logs otherwise
+- `--color` forces ANSI color output, while `--no-color` disables it everywhere
+- rich logs can use structured metadata such as lifecycle phase, and builds/serve runs can tint log colors from the configured site palette
 - color is disabled when output is not a terminal, when `NO_COLOR` is set, when
   `TERM=dumb`, or when `--no-color` is passed
 - interactive commands such as `new` and `init` honor `--no-input`
@@ -86,6 +92,8 @@ markata-go build [flags]
 | `--clean` | | Remove output directory before building | `false` |
 | `--dry-run` | | Show what would be built without writing files | `false` |
 | `--fast` | | Skip minification, CSS purge, Tailwind rebuilds, and Pagefind indexing | `false` |
+| `--benchmark-json` | | Write benchmark details as JSON; use `-` for stdout | `""` |
+| `--benchmark-detailed` | | Print per-stage benchmark resource summaries | `false` |
 | `--verbose` | `-v` | Enable verbose logging | `false` |
 | `--output` | `-o` | Override output directory | from config |
 
@@ -142,6 +150,19 @@ The build command executes the full 9-stage lifecycle:
 When `--verbose` is enabled, build output includes per-stage timing to highlight slow stages.
 `--fast` keeps the same HTML output path but skips minification, CSS purge, Tailwind rebuilds,
 and Pagefind indexing for a tighter dev loop.
+
+Successful builds also print a compact benchmark summary with:
+
+- estimated wall-time spent on CPU work, network wait, disk wait, and idle time
+- the slowest lifecycle hotspots so you can spot expensive plugins quickly
+
+For deeper analysis:
+
+- `markata-go build --benchmark-json benchmark.json` writes machine-readable benchmark data to a file
+- `markata-go build --benchmark-json -` writes only the benchmark JSON to stdout
+- `markata-go build -v --benchmark-detailed` adds per-stage resource summaries to the build footer
+
+The resource profile is approximate. It is intended for local hotspot hunting, not precise system profiling.
 
 ---
 

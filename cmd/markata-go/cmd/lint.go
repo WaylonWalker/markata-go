@@ -22,14 +22,6 @@ var (
 	lintDryRun bool
 )
 
-// ANSI color codes for terminal output.
-const (
-	colorRed    = "\033[31m"
-	colorYellow = "\033[33m"
-	colorBlue   = "\033[34m"
-	colorReset  = "\033[0m"
-)
-
 // lintCmd represents the lint command.
 var lintCmd = &cobra.Command{
 	Use:   "lint [files...]",
@@ -412,33 +404,27 @@ func processFile(file string, stats *lintStats) {
 
 // printIssue prints a single lint issue with colors.
 func printIssue(issue lint.Issue) {
-	severityColor, resetColor := getSeverityColors(issue.Severity)
+	severityText := severityLabel(issue.Severity)
 
 	location := fmt.Sprintf("line %d", issue.Line)
 	if issue.Column > 0 {
 		location += fmt.Sprintf(", col %d", issue.Column)
 	}
 
-	out("  %s%s%s [%s]: %s\n",
-		severityColor, issue.Severity.String(), resetColor,
-		location, issue.Message)
+	out("  %s [%s]: %s\n", severityText, location, issue.Message)
 }
 
-// getSeverityColors returns ANSI color codes for a severity level.
-func getSeverityColors(severity lint.Severity) (color, reset string) {
-	if !colorEnabledOnOutput() {
-		return "", ""
-	}
-
+// severityLabel returns a themed severity label.
+func severityLabel(severity lint.Severity) string {
 	switch severity {
 	case lint.SeverityError:
-		return colorRed, colorReset
+		return colorizeOutput(severity.String(), currentLogTheme.Error)
 	case lint.SeverityWarning:
-		return colorYellow, colorReset
+		return colorizeOutput(severity.String(), currentLogTheme.Warning)
 	case lint.SeverityInfo:
-		return colorBlue, colorReset
+		return colorizeOutput(severity.String(), currentLogTheme.Component)
 	default:
-		return "", ""
+		return severity.String()
 	}
 }
 

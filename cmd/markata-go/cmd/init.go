@@ -252,33 +252,33 @@ func backupConfig(path string) error {
 		return fmt.Errorf("failed to write backup: %w", err)
 	}
 
-	fmt.Printf("  Backed up config to %s\n", backupPath)
+	outlnf("  Backed up config to %s", backupPath)
 	return nil
 }
 
 // addFeatureTheme prompts for theme/palette configuration.
 func addFeatureTheme(reader *bufio.Reader, cfg *models.Config) error {
-	fmt.Println()
-	fmt.Println("Theme/Palette Configuration")
-	fmt.Println("----------------------------")
+	outln()
+	outln("Theme/Palette Configuration")
+	outln("----------------------------")
 
 	// List some available palettes
 	loader := palettes.NewLoader()
 	availablePalettes, err := loader.Discover()
 	if err != nil {
-		fmt.Println("(Could not discover palettes, using default)")
+		outln("(Could not discover palettes, using default)")
 	} else {
-		fmt.Println("Available palettes:")
+		outln("Available palettes:")
 		// Show a sample of palettes
 		shown := 0
 		for _, p := range availablePalettes {
 			if shown < 10 {
-				fmt.Printf("  - %s (%s)\n", p.Name, p.Variant)
+				outlnf("  - %s (%s)", p.Name, p.Variant)
 				shown++
 			}
 		}
 		if len(availablePalettes) > 10 {
-			fmt.Printf("  ... and %d more (run 'markata-go palette list' to see all)\n", len(availablePalettes)-10)
+			outlnf("  ... and %d more (run 'markata-go palette list' to see all)", len(availablePalettes)-10)
 		}
 	}
 
@@ -290,9 +290,9 @@ func addFeatureTheme(reader *bufio.Reader, cfg *models.Config) error {
 
 // addFeatureSEO prompts for SEO configuration.
 func addFeatureSEO(reader *bufio.Reader, cfg *models.Config) error {
-	fmt.Println()
-	fmt.Println("SEO Configuration")
-	fmt.Println("-----------------")
+	outln()
+	outln("SEO Configuration")
+	outln("-----------------")
 
 	handle := prompt(reader, "Twitter/X handle (without @)", cfg.SEO.TwitterHandle)
 	if handle != "" {
@@ -312,9 +312,9 @@ func addFeatureSEO(reader *bufio.Reader, cfg *models.Config) error {
 
 // addFeaturePostFormats prompts for post format configuration.
 func addFeaturePostFormats(reader *bufio.Reader, cfg *models.Config) error {
-	fmt.Println()
-	fmt.Println("Post Output Formats")
-	fmt.Println("-------------------")
+	outln()
+	outln("Post Output Formats")
+	outln("-------------------")
 
 	htmlEnabled := promptRadioBool(reader, "HTML output", cfg.PostFormats.IsHTMLEnabled())
 	cfg.PostFormats.HTML = &htmlEnabled
@@ -328,9 +328,9 @@ func addFeaturePostFormats(reader *bufio.Reader, cfg *models.Config) error {
 
 // addFeatureAdvancedFeeds prompts for advanced feed configuration.
 func addFeatureAdvancedFeeds(reader *bufio.Reader, cfg *models.Config) error {
-	fmt.Println()
-	fmt.Println("Advanced Feed Formats")
-	fmt.Println("---------------------")
+	outln()
+	outln("Advanced Feed Formats")
+	outln("---------------------")
 
 	cfg.FeedDefaults.Formats.HTML = promptRadioBool(reader, "HTML feed output", cfg.FeedDefaults.Formats.HTML)
 	cfg.FeedDefaults.Formats.RSS = promptRadioBool(reader, "RSS feed output", cfg.FeedDefaults.Formats.RSS)
@@ -358,41 +358,41 @@ func addFeature(reader *bufio.Reader, feature string, cfg *models.Config) error 
 
 // displayCurrentConfig shows the current configuration.
 func displayCurrentConfig(cfg *models.Config) {
-	fmt.Println()
-	fmt.Println("Current Configuration")
-	fmt.Println("=====================")
-	fmt.Println()
-	fmt.Printf("Site Information:\n")
-	fmt.Printf("  Title:       %s\n", cfg.Title)
-	fmt.Printf("  URL:         %s\n", cfg.URL)
-	fmt.Printf("  Description: %s\n", cfg.Description)
-	fmt.Printf("  Author:      %s\n", cfg.Author)
-	fmt.Println()
-	fmt.Printf("Directories:\n")
-	fmt.Printf("  Output:      %s\n", cfg.OutputDir)
-	fmt.Printf("  Templates:   %s\n", cfg.TemplatesDir)
-	fmt.Printf("  Assets:      %s\n", cfg.AssetsDir)
-	fmt.Println()
-	fmt.Printf("Theme:\n")
-	fmt.Printf("  Palette:     %s\n", cfg.Theme.Palette)
-	fmt.Println()
-	fmt.Printf("SEO:\n")
-	fmt.Printf("  Twitter:     %s\n", valueOrNone(cfg.SEO.TwitterHandle))
-	fmt.Printf("  Default Img: %s\n", valueOrNone(cfg.SEO.DefaultImage))
-	fmt.Println()
-	fmt.Printf("Post Formats:\n")
-	fmt.Printf("  HTML:        %v\n", cfg.PostFormats.IsHTMLEnabled())
-	fmt.Printf("  Markdown:    %v\n", cfg.PostFormats.Markdown)
-	fmt.Printf("  Text:        %v\n", cfg.PostFormats.Text)
-	fmt.Printf("  OG Cards:    %v\n", cfg.PostFormats.OG)
-	fmt.Println()
-	fmt.Printf("Feed Formats (defaults):\n")
-	fmt.Printf("  HTML:        %v\n", cfg.FeedDefaults.Formats.HTML)
-	fmt.Printf("  RSS:         %v\n", cfg.FeedDefaults.Formats.RSS)
-	fmt.Printf("  Atom:        %v\n", cfg.FeedDefaults.Formats.Atom)
-	fmt.Printf("  JSON:        %v\n", cfg.FeedDefaults.Formats.JSON)
-	fmt.Printf("  Sitemap:     %v\n", cfg.FeedDefaults.Formats.Sitemap)
-	fmt.Println()
+	outln()
+	outln("Current Configuration")
+	outln("=====================")
+	outln()
+	outln("Site Information:")
+	outlnf("  Title:       %s", cfg.Title)
+	outlnf("  URL:         %s", cfg.URL)
+	outlnf("  Description: %s", cfg.Description)
+	outlnf("  Author:      %s", cfg.Author)
+	outln()
+	outln("Directories:")
+	outlnf("  Output:      %s", cfg.OutputDir)
+	outlnf("  Templates:   %s", cfg.TemplatesDir)
+	outlnf("  Assets:      %s", cfg.AssetsDir)
+	outln()
+	outln("Theme:")
+	outlnf("  Palette:     %s", cfg.Theme.Palette)
+	outln()
+	outln("SEO:")
+	outlnf("  Twitter:     %s", valueOrNone(cfg.SEO.TwitterHandle))
+	outlnf("  Default Img: %s", valueOrNone(cfg.SEO.DefaultImage))
+	outln()
+	outln("Post Formats:")
+	outlnf("  HTML:        %v", cfg.PostFormats.IsHTMLEnabled())
+	outlnf("  Markdown:    %v", cfg.PostFormats.Markdown)
+	outlnf("  Text:        %v", cfg.PostFormats.Text)
+	outlnf("  OG Cards:    %v", cfg.PostFormats.OG)
+	outln()
+	outln("Feed Formats (defaults):")
+	outlnf("  HTML:        %v", cfg.FeedDefaults.Formats.HTML)
+	outlnf("  RSS:         %v", cfg.FeedDefaults.Formats.RSS)
+	outlnf("  Atom:        %v", cfg.FeedDefaults.Formats.Atom)
+	outlnf("  JSON:        %v", cfg.FeedDefaults.Formats.JSON)
+	outlnf("  Sitemap:     %v", cfg.FeedDefaults.Formats.Sitemap)
+	outln()
 }
 
 func valueOrNone(s string) string {
@@ -434,7 +434,7 @@ func venderContentTemplates(force bool) error {
 
 		// Check if file exists
 		if _, err := os.Stat(filename); err == nil && !force {
-			fmt.Printf("  ! Skipped %s (exists, use --force to overwrite)\n", filename)
+			outlnf("  ! Skipped %s (exists, use --force to overwrite)", filename)
 			skipped++
 			continue
 		}
@@ -443,7 +443,7 @@ func venderContentTemplates(force bool) error {
 		if err := os.WriteFile(filename, []byte(content), 0o644); err != nil { //nolint:gosec // template files should be readable
 			return fmt.Errorf("failed to write %s: %w", filename, err)
 		}
-		fmt.Printf("  Created %s\n", filename)
+		outlnf("  Created %s", filename)
 		written++
 	}
 
@@ -454,10 +454,10 @@ func venderContentTemplates(force bool) error {
 		if err := os.WriteFile(readmePath, []byte(readme), 0o644); err != nil { //nolint:gosec // readme should be readable
 			return fmt.Errorf("failed to write README: %w", err)
 		}
-		fmt.Printf("  Created %s\n", readmePath)
+		outlnf("  Created %s", readmePath)
 	}
 
-	fmt.Printf("\n  Vendored %d content templates (%d skipped)\n", written, skipped)
+	outlnf("\n  Vendored %d content templates (%d skipped)", written, skipped)
 	return nil
 }
 
@@ -485,7 +485,7 @@ func venderPalettes(force bool) error {
 
 		// Check if file exists
 		if _, err := os.Stat(fullPath); err == nil && !force {
-			fmt.Printf("  ! Skipped %s (exists, use --force to overwrite)\n", fullPath)
+			outlnf("  ! Skipped %s (exists, use --force to overwrite)", fullPath)
 			skipped++
 			continue
 		}
@@ -493,7 +493,7 @@ func venderPalettes(force bool) error {
 		if err := os.WriteFile(fullPath, data, 0o644); err != nil { //nolint:gosec // palette files should be readable
 			return fmt.Errorf("failed to write %s: %w", fullPath, err)
 		}
-		fmt.Printf("  Created %s\n", fullPath)
+		outlnf("  Created %s", fullPath)
 		written++
 	}
 
@@ -504,10 +504,10 @@ func venderPalettes(force bool) error {
 		if err := os.WriteFile(readmePath, []byte(readme), 0o644); err != nil { //nolint:gosec // readme should be readable
 			return fmt.Errorf("failed to write README: %w", err)
 		}
-		fmt.Printf("  Created %s\n", readmePath)
+		outlnf("  Created %s", readmePath)
 	}
 
-	fmt.Printf("\n  Vendored %d palettes (%d skipped)\n", written, skipped)
+	outlnf("\n  Vendored %d palettes (%d skipped)", written, skipped)
 	return nil
 }
 
@@ -541,7 +541,7 @@ func venderLayouts(force bool) error {
 
 		// Check if file exists
 		if _, err := os.Stat(fullPath); err == nil && !force {
-			fmt.Printf("  ! Skipped %s (exists, use --force to overwrite)\n", fullPath)
+			outlnf("  ! Skipped %s (exists, use --force to overwrite)", fullPath)
 			skipped++
 			continue
 		}
@@ -555,7 +555,7 @@ func venderLayouts(force bool) error {
 		if err := os.WriteFile(fullPath, data, 0o644); err != nil { //nolint:gosec // template files should be readable
 			return fmt.Errorf("failed to write %s: %w", fullPath, err)
 		}
-		fmt.Printf("  Created %s\n", fullPath)
+		outlnf("  Created %s", fullPath)
 		written++
 	}
 
@@ -566,10 +566,10 @@ func venderLayouts(force bool) error {
 		if err := os.WriteFile(readmePath, []byte(readme), 0o644); err != nil { //nolint:gosec // readme should be readable
 			return fmt.Errorf("failed to write README: %w", err)
 		}
-		fmt.Printf("  Created %s\n", readmePath)
+		outlnf("  Created %s", readmePath)
 	}
 
-	fmt.Printf("\n  Vendored %d layout templates (%d skipped)\n", written, skipped)
+	outlnf("\n  Vendored %d layout templates (%d skipped)", written, skipped)
 	return nil
 }
 
@@ -881,14 +881,14 @@ func promptVendSelection(reader *bufio.Reader) []string {
 		{"layouts", "HTML layout templates (Jinja2/Pongo2)"},
 	}
 
-	fmt.Println()
-	fmt.Println("Select assets to vend (enter numbers separated by spaces):")
-	fmt.Println()
+	outln()
+	outln("Select assets to vend (enter numbers separated by spaces):")
+	outln()
 	for i, opt := range vendOptions {
-		fmt.Printf("  %d) [ ] %s\n", i+1, opt.description)
+		outlnf("  %d) [ ] %s", i+1, opt.description)
 	}
-	fmt.Println()
-	fmt.Print("Enter numbers (e.g., 1 2 3 for all): ")
+	outln()
+	out("Enter numbers (e.g., 1 2 3 for all): ")
 
 	input, err := reader.ReadString('\n')
 	if err != nil {
@@ -912,20 +912,20 @@ func promptVendSelection(reader *bufio.Reader) []string {
 // runVendAssets runs the vending process for selected asset types.
 func runVendAssets(force bool, assets []string) error {
 	for _, asset := range assets {
-		fmt.Println()
+		outln()
 		switch asset {
 		case "templates":
-			fmt.Println("Vending content templates...")
+			outln("Vending content templates...")
 			if err := venderContentTemplates(force); err != nil {
 				return fmt.Errorf("failed to vend content templates: %w", err)
 			}
 		case "palettes":
-			fmt.Println("Vending palettes...")
+			outln("Vending palettes...")
 			if err := venderPalettes(force); err != nil {
 				return fmt.Errorf("failed to vend palettes: %w", err)
 			}
 		case "layouts":
-			fmt.Println("Vending layout templates...")
+			outln("Vending layout templates...")
 			if err := venderLayouts(force); err != nil {
 				return fmt.Errorf("failed to vend layouts: %w", err)
 			}
@@ -936,9 +936,9 @@ func runVendAssets(force bool, assets []string) error {
 
 // updateSiteInfo prompts for updated site information.
 func updateSiteInfo(reader *bufio.Reader, cfg *models.Config) error {
-	fmt.Println()
-	fmt.Println("Update Site Information")
-	fmt.Println("-----------------------")
+	outln()
+	outln("Update Site Information")
+	outln("-----------------------")
 
 	cfg.Title = prompt(reader, "Site title", cfg.Title)
 	cfg.Description = prompt(reader, "Description", cfg.Description)
@@ -1052,8 +1052,8 @@ func writeConfigTOML(path string, cfg *models.Config) error {
 
 // runExistingProjectWizard runs the wizard for an existing project.
 func runExistingProjectWizard(reader *bufio.Reader, configPath string) error {
-	fmt.Println()
-	fmt.Println("Found existing markata-go.toml")
+	outln()
+	outln("Found existing markata-go.toml")
 
 	// Load existing config
 	cfg, err := config.Load(configPath)
@@ -1079,7 +1079,7 @@ func runExistingProjectWizard(reader *bufio.Reader, configPath string) error {
 			selected := promptFeatureSelection(reader, features)
 
 			if len(selected) == 0 {
-				fmt.Println("\nNo features selected.")
+				outln("\nNo features selected.")
 				continue
 			}
 
@@ -1092,17 +1092,17 @@ func runExistingProjectWizard(reader *bufio.Reader, configPath string) error {
 
 			// Backup and write config
 			if err := backupConfig(configPath); err != nil {
-				fmt.Printf("  Warning: %v\n", err)
+				warnf("%v", err)
 			}
 
 			if err := writeConfigTOML(configPath, cfg); err != nil {
 				return fmt.Errorf("failed to write config: %w", err)
 			}
 
-			fmt.Println()
-			fmt.Println("  Updated markata-go.toml with new features")
-			fmt.Println()
-			fmt.Println("Run 'markata-go build' to apply changes!")
+			outln()
+			outln("  Updated markata-go.toml with new features")
+			outln()
+			outln("Run 'markata-go build' to apply changes!")
 			return nil
 
 		case 1: // Update site information
@@ -1112,23 +1112,23 @@ func runExistingProjectWizard(reader *bufio.Reader, configPath string) error {
 
 			// Backup and write config
 			if err := backupConfig(configPath); err != nil {
-				fmt.Printf("  Warning: %v\n", err)
+				warnf("%v", err)
 			}
 
 			if err := writeConfigTOML(configPath, cfg); err != nil {
 				return fmt.Errorf("failed to write config: %w", err)
 			}
 
-			fmt.Println()
-			fmt.Println("  Updated markata-go.toml")
-			fmt.Println()
-			fmt.Println("Run 'markata-go build' to apply changes!")
+			outln()
+			outln("  Updated markata-go.toml")
+			outln()
+			outln("Run 'markata-go build' to apply changes!")
 			return nil
 
 		case 2: // Vend built-in assets
 			selected := promptVendSelection(reader)
 			if len(selected) == 0 {
-				fmt.Println("\nNo assets selected.")
+				outln("\nNo assets selected.")
 				continue
 			}
 
@@ -1136,9 +1136,9 @@ func runExistingProjectWizard(reader *bufio.Reader, configPath string) error {
 				return err
 			}
 
-			fmt.Println()
-			fmt.Println("Assets vendored successfully!")
-			fmt.Println("Local files will now override built-in defaults.")
+			outln()
+			outln("Assets vendored successfully!")
+			outln("Local files will now override built-in defaults.")
 			return nil
 
 		case 3: // View current configuration
@@ -1146,7 +1146,7 @@ func runExistingProjectWizard(reader *bufio.Reader, configPath string) error {
 			// Continue the loop to show menu again
 
 		case 4: // Exit
-			fmt.Println("\nExiting without changes.")
+			outln("\nExiting without changes.")
 			return nil
 		}
 	}
@@ -1208,9 +1208,9 @@ func getPaletteFromConfig(configPath string) string {
 func runPlainNewProjectWizard() error {
 	reader := bufio.NewReader(inReader())
 
-	fmt.Println()
-	fmt.Println("Welcome to markata-go!")
-	fmt.Println()
+	outln()
+	outln("Welcome to markata-go!")
+	outln()
 
 	// Gather site information
 	title := prompt(reader, "Site title", "My Site")
@@ -1218,8 +1218,8 @@ func runPlainNewProjectWizard() error {
 	author := prompt(reader, "Author", "")
 	url := prompt(reader, "URL", "https://example.com")
 
-	fmt.Println()
-	fmt.Println("Creating project structure...")
+	outln()
+	outln("Creating project structure...")
 
 	// Create directories
 	dirs := []string{"posts", "static"}
@@ -1227,7 +1227,7 @@ func runPlainNewProjectWizard() error {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
-		fmt.Printf("  Created %s/\n", dir)
+		outlnf("  Created %s/", dir)
 	}
 
 	// Create config with defaults and user input
@@ -1239,7 +1239,7 @@ func runPlainNewProjectWizard() error {
 	cfg.GlobConfig.UseGitignore = true
 
 	// Ask about optional features for new projects
-	fmt.Println()
+	outln()
 	if promptRadioBool(reader, "Configure additional features", false) {
 		configured := detectConfiguredFeatures(cfg)
 		features := getAvailableFeatures(configured)
@@ -1257,9 +1257,9 @@ func runPlainNewProjectWizard() error {
 	if err := writeConfigTOML(configPath, cfg); err != nil {
 		return fmt.Errorf("failed to write %s: %w", defaultConfigFilename, err)
 	}
-	fmt.Printf("  Created %s\n", defaultConfigFilename)
+	outlnf("  Created %s", defaultConfigFilename)
 
-	fmt.Println()
+	outln()
 
 	// Offer to vend built-in assets
 	if promptRadioBool(reader, "Vend built-in assets for customization? (Obsidian-compatible)", false) {
@@ -1268,12 +1268,12 @@ func runPlainNewProjectWizard() error {
 			if err := runVendAssets(initForce, selected); err != nil {
 				return err
 			}
-			fmt.Println()
-			fmt.Println("Assets vendored! Local files will override built-in defaults.")
+			outln()
+			outln("Assets vendored! Local files will override built-in defaults.")
 		}
 	}
 
-	fmt.Println()
+	outln()
 
 	// Offer to create first post
 	if promptRadioBool(reader, "Create your first post", true) {
@@ -1285,20 +1285,20 @@ func runPlainNewProjectWizard() error {
 
 		// Check if file already exists
 		if _, err := os.Stat(fullPath); err == nil && !initForce {
-			fmt.Printf("  ! Post already exists: %s (skipped)\n", fullPath)
+			outlnf("  ! Post already exists: %s (skipped)", fullPath)
 		} else {
 			now := time.Now()
 			content := generatePostContent(title, slug, now, false)
 			if err := os.WriteFile(fullPath, []byte(content), 0o644); err != nil { //nolint:gosec // content files should be readable
 				return fmt.Errorf("failed to write post: %w", err)
 			}
-			fmt.Printf("  Created %s\n", fullPath)
+			outlnf("  Created %s", fullPath)
 		}
 	}
 
-	fmt.Println()
-	fmt.Println("Done! Run 'markata-go serve' to start.")
-	fmt.Println()
+	outln()
+	outln("Done! Run 'markata-go serve' to start.")
+	outln()
 
 	return nil
 }

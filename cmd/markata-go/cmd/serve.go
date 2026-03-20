@@ -190,6 +190,7 @@ func runServeCommand(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("initialization failed: %w", err)
 	}
+	configureLoggerForManager(m)
 
 	// Apply fast mode if requested
 	if serveFast {
@@ -1341,6 +1342,7 @@ func doRebuild(ctx context.Context, rebuildCh chan<- struct{}) {
 		errlnf("Rebuild failed: %v", err)
 		return
 	}
+	configureLoggerForManager(m)
 
 	changedPaths, removedPaths, forceFull, globDirty := consumeServeChanges()
 	configureServeIncremental(m, changedPaths, removedPaths, forceFull, globDirty)

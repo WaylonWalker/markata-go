@@ -11,11 +11,14 @@ import (
 
 	"github.com/WaylonWalker/markata-go/pkg/buildcache"
 	"github.com/WaylonWalker/markata-go/pkg/lifecycle"
+	"github.com/WaylonWalker/markata-go/pkg/logging"
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 	"github.com/WaylonWalker/markata-go/pkg/terminalpage"
 )
+
+var publishHTMLLog = logging.Component("publish_html").Phase("write")
 
 // defaultTxtTemplate is the default template name for txt output.
 const defaultTxtTemplate = "default.txt"
@@ -792,7 +795,7 @@ func (p *PublishHTMLPlugin) renderOGWithThemeTemplate(post *models.Post, config 
 	result, err := engine.Render("og-card.html", ctx)
 	if err != nil {
 		// Log error and fall back to built-in template
-		fmt.Printf("Warning: failed to render og-card.html template: %v, falling back to built-in\n", err)
+		publishHTMLLog.Warnf("failed to render og-card.html template: %v, falling back to built-in", err)
 		return p.renderOGWithBuiltinTemplate(post, config)
 	}
 
