@@ -149,9 +149,10 @@ func buildPurgeOptions(purgeConfig models.CSSPurgeConfig, verbose bool) csspurge
 	}
 }
 
-// processCSSFiles processes each CSS file and returns statistics.
+// processCSSFiles processes each CSS file concurrently and returns statistics.
 func processCSSFiles(cssFiles []string, outputDir string, used *csspurge.UsedSelectors, opts csspurge.PurgeOptions, purgeConfig models.CSSPurgeConfig, verbose bool) purgeProcessingStats {
-	var stats purgeProcessingStats
+	filteredFiles := make([]string, 0, len(cssFiles))
+	skippedCount := 0
 
 	for _, cssFile := range cssFiles {
 		relPath, err := filepath.Rel(outputDir, cssFile)
@@ -163,46 +164,115 @@ func processCSSFiles(cssFiles []string, outputDir string, used *csspurge.UsedSel
 			if verbose {
 				cssPurgeLog.Printf("Skipping %s (matches skip pattern)", relPath)
 			}
-			stats.filesSkipped++
+			skippedCount++
 			continue
 		}
 
-		processSingleCSSFile(cssFile, relPath, used, opts, &stats, verbose)
+		filteredFiles = append(filteredFiles, cssFile)
+	}
+
+	if len(filteredFiles) == 0 {
+		return purgeProcessingStats{filesSkipped: skippedCount}
+	}
+
+	return processCSSFilesConcurrently(filteredFiles, outputDir, used, opts, verbose, skippedCount)
+}
+
+// cssFileResult holds the result of processing a single CSS file.
+type cssFileResult struct {
+	cssFile    string
+	relPath    string
+	origSize   int
+	purgedSize int
+	rules      int
+	removed    int
+}
+
+// processCSSFilesConcurrently processes CSS files using a worker pool.
+func processCSSFilesConcurrently(cssFiles []string, outputDir string, used *csspurge.UsedSelectors, opts csspurge.PurgeOptions, verbose bool, skippedCount int) purgeProcessingStats {
+	concurrency := len(cssFiles)
+	if concurrency > 16 {
+		concurrency = 16
+	}
+
+	if verbose {
+		fmt.Printf("[css_purge] Processing %d CSS files with %d workers\n", len(cssFiles), concurrency)
+	}
+
+	jobs := make(chan string, len(cssFiles))
+	results := make(chan cssFileResult, len(cssFiles))
+	errors := make(chan error, len(cssFiles))
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for cssFile := range jobs {
+				relPath, err := filepath.Rel(outputDir, cssFile)
+				if err != nil {
+					relPath = cssFile
+				}
+
+				result := cssFileResult{cssFile: cssFile, relPath: relPath}
+				content, err := os.ReadFile(cssFile)
+				if err != nil {
+					errors <- fmt.Errorf("reading %s: %w", relPath, err)
+					continue
+				}
+
+				purged, purgeStats := csspurge.PurgeCSS(string(content), used, opts)
+
+				result.origSize = purgeStats.OriginalSize
+				result.purgedSize = purgeStats.PurgedSize
+				result.rules = purgeStats.TotalRules
+				result.removed = purgeStats.RemovedRules
+
+				if purgeStats.RemovedRules > 0 {
+					//nolint:gosec // G306: CSS output files need 0644 for web serving
+					if err := os.WriteFile(cssFile, []byte(purged), 0o644); err != nil {
+						errors <- fmt.Errorf("writing %s: %w", relPath, err)
+						continue
+					}
+				}
+
+				results <- result
+			}
+		}()
+	}
+
+	for _, cssFile := range cssFiles {
+		jobs <- cssFile
+	}
+	close(jobs)
+
+	wg.Wait()
+	close(results)
+	close(errors)
+
+	for err := range errors {
+		fmt.Printf("[css_purge] WARNING: %v\n", err)
+	}
+
+	var stats purgeProcessingStats
+	stats.filesSkipped = skippedCount
+
+	for result := range results {
+		stats.totalOriginal += result.origSize
+		stats.totalPurged += result.purgedSize
+		stats.filesProcessed++
+
+		if verbose && result.removed > 0 {
+			savings := float64(result.origSize-result.purgedSize) / float64(result.origSize) * 100
+			fmt.Printf("[css_purge] %s: removed %d/%d rules (%.1f%% reduction, %d -> %d bytes)\n",
+				result.relPath, result.removed, result.rules, savings, result.origSize, result.purgedSize)
+		} else if verbose {
+			fmt.Printf("[css_purge] %s: all %d rules are used\n", result.relPath, result.rules)
+		}
 	}
 
 	return stats
-}
-
-// processSingleCSSFile processes a single CSS file.
-func processSingleCSSFile(cssFile, relPath string, used *csspurge.UsedSelectors, opts csspurge.PurgeOptions, stats *purgeProcessingStats, verbose bool) {
-	content, err := os.ReadFile(cssFile)
-	if err != nil {
-		cssPurgeLog.Warnf("failed to read %s: %v", relPath, err)
-		return
-	}
-
-	purged, purgeStats := csspurge.PurgeCSS(string(content), used, opts)
-
-	stats.totalOriginal += purgeStats.OriginalSize
-	stats.totalPurged += purgeStats.PurgedSize
-
-	if purgeStats.RemovedRules > 0 {
-		//nolint:gosec // G306: CSS output files need 0644 for web serving
-		if err := os.WriteFile(cssFile, []byte(purged), 0o644); err != nil {
-			cssPurgeLog.Warnf("failed to write %s: %v", relPath, err)
-			return
-		}
-
-		if verbose {
-			cssPurgeLog.Printf("%s: removed %d/%d rules (%.1f%% reduction, %d -> %d bytes)",
-				relPath, purgeStats.RemovedRules, purgeStats.TotalRules,
-				purgeStats.SavingsPercent(), purgeStats.OriginalSize, purgeStats.PurgedSize)
-		}
-	} else if verbose {
-		cssPurgeLog.Printf("%s: all %d rules are used", relPath, purgeStats.TotalRules)
-	}
-
-	stats.filesProcessed++
 }
 
 // reportPurgeSummary reports the purging summary.
