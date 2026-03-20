@@ -557,6 +557,9 @@ type Config struct {
 	// Shortcuts configures user-defined keyboard shortcuts
 	Shortcuts ShortcutsConfig `json:"shortcuts" yaml:"shortcuts" toml:"shortcuts"`
 
+	// ViewTransitions configures client-side animated page navigation.
+	ViewTransitions ViewTransitionsConfig `json:"view_transitions" yaml:"view_transitions" toml:"view_transitions"`
+
 	// Tags configures the tags listing page at /tags
 	Tags TagsConfig `json:"tags" yaml:"tags" toml:"tags"`
 
@@ -2445,6 +2448,48 @@ func NewShortcutsConfig() ShortcutsConfig {
 	}
 }
 
+// ViewTransitionsConfig configures client-side page transition behavior.
+type ViewTransitionsConfig struct {
+	// Enabled controls whether the transition script is injected.
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Debug enables browser console logging and timing output.
+	Debug *bool `json:"debug,omitempty" yaml:"debug,omitempty" toml:"debug,omitempty"`
+
+	// Duration is the reference transition duration in milliseconds.
+	Duration int `json:"duration,omitempty" yaml:"duration,omitempty" toml:"duration,omitempty"`
+
+	// UpdateMeta controls whether head meta tags are synchronized on navigation.
+	UpdateMeta *bool `json:"update_meta,omitempty" yaml:"update_meta,omitempty" toml:"update_meta,omitempty"`
+
+	// ScrollToTop controls whether navigation scrolls to the top unless a hash is present.
+	ScrollToTop *bool `json:"scroll_to_top,omitempty" yaml:"scroll_to_top,omitempty" toml:"scroll_to_top,omitempty"`
+
+	// SkipClasses are additional CSS classes that should bypass transitions.
+	SkipClasses []string `json:"skip_classes,omitempty" yaml:"skip_classes,omitempty" toml:"skip_classes,omitempty"`
+
+	// SkipSelectors are additional selectors that should bypass transitions.
+	SkipSelectors []string `json:"skip_selectors,omitempty" yaml:"skip_selectors,omitempty" toml:"skip_selectors,omitempty"`
+}
+
+// NewViewTransitionsConfig creates a new ViewTransitionsConfig with default values.
+func NewViewTransitionsConfig() ViewTransitionsConfig {
+	enabled := true
+	debug := false
+	updateMeta := true
+	scrollToTop := true
+
+	return ViewTransitionsConfig{
+		Enabled:       &enabled,
+		Debug:         &debug,
+		Duration:      300,
+		UpdateMeta:    &updateMeta,
+		ScrollToTop:   &scrollToTop,
+		SkipClasses:   []string{},
+		SkipSelectors: []string{},
+	}
+}
+
 // HasCustomShortcuts returns true if any custom shortcuts are defined.
 func (s *ShortcutsConfig) HasCustomShortcuts() bool {
 	return len(s.Navigation) > 0
@@ -3049,6 +3094,7 @@ func NewConfig() *Config {
 		ResourceHints:    NewResourceHintsConfig(),
 		Encryption:       NewEncryptionConfig(),
 		Shortcuts:        NewShortcutsConfig(),
+		ViewTransitions:  NewViewTransitionsConfig(),
 		Tags:             NewTagsConfig(),
 		Garden:           NewGardenConfig(),
 		Assets:           NewAssetsConfig(),

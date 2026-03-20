@@ -33,6 +33,7 @@ type configSource interface {
 	getMentions() mentionsConverter
 	getWebSub() webSubConverter
 	getShortcuts() shortcutsConverter
+	getViewTransitions() viewTransitionsConverter
 	getAuthors() authorsConverter
 	getGarden() gardenConverter
 	getTemplates() templatesConverter
@@ -142,6 +143,10 @@ type webSubConverter interface {
 
 type shortcutsConverter interface {
 	toShortcutsConfig() models.ShortcutsConfig
+}
+
+type viewTransitionsConverter interface {
+	toViewTransitionsConfig() models.ViewTransitionsConfig
 }
 
 type authorsConverter interface {
@@ -254,6 +259,9 @@ func buildConfig(src configSource) *models.Config {
 	// Convert Shortcuts config
 	config.Shortcuts = src.getShortcuts().toShortcutsConfig()
 
+	// Convert ViewTransitions config
+	config.ViewTransitions = src.getViewTransitions().toViewTransitionsConfig()
+
 	// Convert Authors config
 	config.Authors = src.getAuthors().toAuthorsConfig()
 
@@ -311,7 +319,7 @@ func ParseTOML(data []byte) (*models.Config, error) {
 			"default_templates": true, "auto_feeds": true, "head": true,
 			"content_templates": true, "footer_layout": true, "search": true,
 			"plugins": true, "thoughts": true, "wikilinks": true, "tags": true,
-			"tag_aggregator": true, "websub": true, "shortcuts": true, "encryption": true,
+			"tag_aggregator": true, "websub": true, "shortcuts": true, "view_transitions": true, "encryption": true,
 			"authors": true, "garden": true, "tailwind": false, "css_purge": false,
 		}
 
@@ -386,45 +394,46 @@ func ParseJSON(data []byte) (*models.Config, error) {
 
 // tomlConfig is an internal struct for parsing TOML configuration.
 type tomlConfig struct {
-	OutputDir     string                  `toml:"output_dir"`
-	URL           string                  `toml:"url"`
-	Title         string                  `toml:"title"`
-	Description   string                  `toml:"description"`
-	Author        string                  `toml:"author"`
-	License       interface{}             `toml:"license"`
-	AssetsDir     string                  `toml:"assets_dir"`
-	TemplatesDir  string                  `toml:"templates_dir"`
-	Nav           []tomlNavItem           `toml:"nav"`
-	Footer        tomlFooterConfig        `toml:"footer"`
-	Hooks         []string                `toml:"hooks"`
-	DisabledHooks []string                `toml:"disabled_hooks"`
-	Glob          tomlGlobConfig          `toml:"glob"`
-	Markdown      tomlMarkdownConfig      `toml:"markdown"`
-	Feeds         []tomlFeedConfig        `toml:"feeds"`
-	FeedDefaults  tomlFeedDefaults        `toml:"feed_defaults"`
-	Concurrency   int                     `toml:"concurrency"`
-	Theme         tomlThemeConfig         `toml:"theme"`
-	PostFormats   tomlPostFormatsConfig   `toml:"post_formats"`
-	WellKnown     tomlWellKnownConfig     `toml:"well_known"`
-	SEO           tomlSEOConfig           `toml:"seo"`
-	IndieAuth     tomlIndieAuthConfig     `toml:"indieauth"`
-	Webmention    tomlWebmentionConfig    `toml:"webmention"`
-	Components    tomlComponentsConfig    `toml:"components"`
-	Layout        tomlLayoutConfig        `toml:"layout"`
-	Sidebar       tomlSidebarConfig       `toml:"sidebar"`
-	Toc           tomlTocConfig           `toml:"toc"`
-	Header        tomlHeaderLayoutConfig  `toml:"header"`
-	Blogroll      tomlBlogrollConfig      `toml:"blogroll"`
-	Tags          tomlTagsConfig          `toml:"tags"`
-	Encryption    tomlEncryptionConfig    `toml:"encryption"`
-	TagAggregator tomlTagAggregatorConfig `toml:"tag_aggregator"`
-	Mentions      tomlMentionsConfig      `toml:"mentions"`
-	WebSub        tomlWebSubConfig        `toml:"websub"`
-	Shortcuts     tomlShortcutsConfig     `toml:"shortcuts"`
-	Authors       tomlAuthorsConfig       `toml:"authors"`
-	Garden        tomlGardenConfig        `toml:"garden"`
-	Templates     tomlTemplatesConfig     `toml:"templates"`
-	UnknownFields map[string]any          `toml:"-"`
+	OutputDir       string                    `toml:"output_dir"`
+	URL             string                    `toml:"url"`
+	Title           string                    `toml:"title"`
+	Description     string                    `toml:"description"`
+	Author          string                    `toml:"author"`
+	License         interface{}               `toml:"license"`
+	AssetsDir       string                    `toml:"assets_dir"`
+	TemplatesDir    string                    `toml:"templates_dir"`
+	Nav             []tomlNavItem             `toml:"nav"`
+	Footer          tomlFooterConfig          `toml:"footer"`
+	Hooks           []string                  `toml:"hooks"`
+	DisabledHooks   []string                  `toml:"disabled_hooks"`
+	Glob            tomlGlobConfig            `toml:"glob"`
+	Markdown        tomlMarkdownConfig        `toml:"markdown"`
+	Feeds           []tomlFeedConfig          `toml:"feeds"`
+	FeedDefaults    tomlFeedDefaults          `toml:"feed_defaults"`
+	Concurrency     int                       `toml:"concurrency"`
+	Theme           tomlThemeConfig           `toml:"theme"`
+	PostFormats     tomlPostFormatsConfig     `toml:"post_formats"`
+	WellKnown       tomlWellKnownConfig       `toml:"well_known"`
+	SEO             tomlSEOConfig             `toml:"seo"`
+	IndieAuth       tomlIndieAuthConfig       `toml:"indieauth"`
+	Webmention      tomlWebmentionConfig      `toml:"webmention"`
+	Components      tomlComponentsConfig      `toml:"components"`
+	Layout          tomlLayoutConfig          `toml:"layout"`
+	Sidebar         tomlSidebarConfig         `toml:"sidebar"`
+	Toc             tomlTocConfig             `toml:"toc"`
+	Header          tomlHeaderLayoutConfig    `toml:"header"`
+	Blogroll        tomlBlogrollConfig        `toml:"blogroll"`
+	Tags            tomlTagsConfig            `toml:"tags"`
+	Encryption      tomlEncryptionConfig      `toml:"encryption"`
+	TagAggregator   tomlTagAggregatorConfig   `toml:"tag_aggregator"`
+	Mentions        tomlMentionsConfig        `toml:"mentions"`
+	WebSub          tomlWebSubConfig          `toml:"websub"`
+	Shortcuts       tomlShortcutsConfig       `toml:"shortcuts"`
+	ViewTransitions tomlViewTransitionsConfig `toml:"view_transitions"`
+	Authors         tomlAuthorsConfig         `toml:"authors"`
+	Garden          tomlGardenConfig          `toml:"garden"`
+	Templates       tomlTemplatesConfig       `toml:"templates"`
+	UnknownFields   map[string]any            `toml:"-"`
 }
 
 type tomlNavItem struct {
@@ -697,12 +706,57 @@ type tomlShortcutsConfig struct {
 	Navigation map[string]string `toml:"navigation"`
 }
 
+type tomlViewTransitionsConfig struct {
+	Enabled       *bool    `toml:"enabled"`
+	Debug         *bool    `toml:"debug"`
+	Duration      int      `toml:"duration"`
+	UpdateMeta    *bool    `toml:"update_meta"`
+	ScrollToTop   *bool    `toml:"scroll_to_top"`
+	SkipClasses   []string `toml:"skip_classes"`
+	SkipSelectors []string `toml:"skip_selectors"`
+}
+
 func (s *tomlShortcutsConfig) toShortcutsConfig() models.ShortcutsConfig {
 	config := models.ShortcutsConfig{
 		Navigation: s.Navigation,
 	}
 	if config.Navigation == nil {
 		config.Navigation = make(map[string]string)
+	}
+	return config
+}
+
+func (v *tomlViewTransitionsConfig) toViewTransitionsConfig() models.ViewTransitionsConfig {
+	defaults := models.NewViewTransitionsConfig()
+	config := models.ViewTransitionsConfig{
+		Enabled:       v.Enabled,
+		Debug:         v.Debug,
+		Duration:      v.Duration,
+		UpdateMeta:    v.UpdateMeta,
+		ScrollToTop:   v.ScrollToTop,
+		SkipClasses:   v.SkipClasses,
+		SkipSelectors: v.SkipSelectors,
+	}
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Debug == nil {
+		config.Debug = defaults.Debug
+	}
+	if config.Duration == 0 {
+		config.Duration = defaults.Duration
+	}
+	if config.UpdateMeta == nil {
+		config.UpdateMeta = defaults.UpdateMeta
+	}
+	if config.ScrollToTop == nil {
+		config.ScrollToTop = defaults.ScrollToTop
+	}
+	if config.SkipClasses == nil {
+		config.SkipClasses = defaults.SkipClasses
+	}
+	if config.SkipSelectors == nil {
+		config.SkipSelectors = defaults.SkipSelectors
 	}
 	return config
 }
@@ -1613,27 +1667,28 @@ func (c *tomlConfig) getFeeds() []feedConfigConverter {
 	return feeds
 }
 
-func (c *tomlConfig) getFeedDefaults() feedDefaultsConverter   { return &c.FeedDefaults }
-func (c *tomlConfig) getPostFormats() postFormatsConverter     { return &c.PostFormats }
-func (c *tomlConfig) getWellKnown() wellKnownConverter         { return &c.WellKnown }
-func (c *tomlConfig) getSEO() seoConverter                     { return &c.SEO }
-func (c *tomlConfig) getIndieAuth() indieAuthConverter         { return &c.IndieAuth }
-func (c *tomlConfig) getWebmention() webmentionConverter       { return &c.Webmention }
-func (c *tomlConfig) getComponents() componentsConverter       { return &c.Components }
-func (c *tomlConfig) getLayout() layoutConverter               { return &c.Layout }
-func (c *tomlConfig) getSidebar() sidebarConverter             { return &c.Sidebar }
-func (c *tomlConfig) getToc() tocConverter                     { return &c.Toc }
-func (c *tomlConfig) getHeader() headerConverter               { return &c.Header }
-func (c *tomlConfig) getBlogroll() blogrollConverter           { return &c.Blogroll }
-func (c *tomlConfig) getTags() tagsConverter                   { return &c.Tags }
-func (c *tomlConfig) getEncryption() encryptionConverter       { return &c.Encryption }
-func (c *tomlConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAggregator }
-func (c *tomlConfig) getWebSub() webSubConverter               { return &c.WebSub }
-func (c *tomlConfig) getMentions() mentionsConverter           { return &c.Mentions }
-func (c *tomlConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
-func (c *tomlConfig) getAuthors() authorsConverter             { return &c.Authors }
-func (c *tomlConfig) getGarden() gardenConverter               { return &c.Garden }
-func (c *tomlConfig) getTemplates() templatesConverter         { return &c.Templates }
+func (c *tomlConfig) getFeedDefaults() feedDefaultsConverter       { return &c.FeedDefaults }
+func (c *tomlConfig) getPostFormats() postFormatsConverter         { return &c.PostFormats }
+func (c *tomlConfig) getWellKnown() wellKnownConverter             { return &c.WellKnown }
+func (c *tomlConfig) getSEO() seoConverter                         { return &c.SEO }
+func (c *tomlConfig) getIndieAuth() indieAuthConverter             { return &c.IndieAuth }
+func (c *tomlConfig) getWebmention() webmentionConverter           { return &c.Webmention }
+func (c *tomlConfig) getComponents() componentsConverter           { return &c.Components }
+func (c *tomlConfig) getLayout() layoutConverter                   { return &c.Layout }
+func (c *tomlConfig) getSidebar() sidebarConverter                 { return &c.Sidebar }
+func (c *tomlConfig) getToc() tocConverter                         { return &c.Toc }
+func (c *tomlConfig) getHeader() headerConverter                   { return &c.Header }
+func (c *tomlConfig) getBlogroll() blogrollConverter               { return &c.Blogroll }
+func (c *tomlConfig) getTags() tagsConverter                       { return &c.Tags }
+func (c *tomlConfig) getEncryption() encryptionConverter           { return &c.Encryption }
+func (c *tomlConfig) getTagAggregator() tagAggregatorConverter     { return &c.TagAggregator }
+func (c *tomlConfig) getWebSub() webSubConverter                   { return &c.WebSub }
+func (c *tomlConfig) getMentions() mentionsConverter               { return &c.Mentions }
+func (c *tomlConfig) getShortcuts() shortcutsConverter             { return &c.Shortcuts }
+func (c *tomlConfig) getViewTransitions() viewTransitionsConverter { return &c.ViewTransitions }
+func (c *tomlConfig) getAuthors() authorsConverter                 { return &c.Authors }
+func (c *tomlConfig) getGarden() gardenConverter                   { return &c.Garden }
+func (c *tomlConfig) getTemplates() templatesConverter             { return &c.Templates }
 
 func (c *tomlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -1787,44 +1842,45 @@ func (d *tomlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 
 // yamlConfig is an internal struct for parsing YAML configuration.
 type yamlConfig struct {
-	OutputDir     string                  `yaml:"output_dir"`
-	URL           string                  `yaml:"url"`
-	Title         string                  `yaml:"title"`
-	Description   string                  `yaml:"description"`
-	Author        string                  `yaml:"author"`
-	License       interface{}             `yaml:"license"`
-	AssetsDir     string                  `yaml:"assets_dir"`
-	TemplatesDir  string                  `yaml:"templates_dir"`
-	Nav           []yamlNavItem           `yaml:"nav"`
-	Footer        yamlFooterConfig        `yaml:"footer"`
-	Hooks         []string                `yaml:"hooks"`
-	DisabledHooks []string                `yaml:"disabled_hooks"`
-	Glob          yamlGlobConfig          `yaml:"glob"`
-	Markdown      yamlMarkdownConfig      `yaml:"markdown"`
-	Feeds         []yamlFeedConfig        `yaml:"feeds"`
-	FeedDefaults  yamlFeedDefaults        `yaml:"feed_defaults"`
-	Concurrency   int                     `yaml:"concurrency"`
-	Theme         yamlThemeConfig         `yaml:"theme"`
-	PostFormats   yamlPostFormatsConfig   `yaml:"post_formats"`
-	WellKnown     yamlWellKnownConfig     `yaml:"well_known"`
-	IndieAuth     yamlIndieAuthConfig     `yaml:"indieauth"`
-	Webmention    yamlWebmentionConfig    `yaml:"webmention"`
-	SEO           yamlSEOConfig           `yaml:"seo"`
-	Components    yamlComponentsConfig    `yaml:"components"`
-	Layout        yamlLayoutConfig        `yaml:"layout"`
-	Sidebar       yamlSidebarConfig       `yaml:"sidebar"`
-	Toc           yamlTocConfig           `yaml:"toc"`
-	Header        yamlHeaderLayoutConfig  `yaml:"header"`
-	Blogroll      yamlBlogrollConfig      `yaml:"blogroll"`
-	Tags          yamlTagsConfig          `yaml:"tags"`
-	Encryption    yamlEncryptionConfig    `yaml:"encryption"`
-	TagAggregator yamlTagAggregatorConfig `yaml:"tag_aggregator"`
-	Mentions      yamlMentionsConfig      `yaml:"mentions"`
-	WebSub        yamlWebSubConfig        `yaml:"websub"`
-	Shortcuts     yamlShortcutsConfig     `yaml:"shortcuts"`
-	Authors       yamlAuthorsConfig       `yaml:"authors"`
-	Garden        yamlGardenConfig        `yaml:"garden"`
-	Templates     yamlTemplatesConfig     `yaml:"templates"`
+	OutputDir       string                    `yaml:"output_dir"`
+	URL             string                    `yaml:"url"`
+	Title           string                    `yaml:"title"`
+	Description     string                    `yaml:"description"`
+	Author          string                    `yaml:"author"`
+	License         interface{}               `yaml:"license"`
+	AssetsDir       string                    `yaml:"assets_dir"`
+	TemplatesDir    string                    `yaml:"templates_dir"`
+	Nav             []yamlNavItem             `yaml:"nav"`
+	Footer          yamlFooterConfig          `yaml:"footer"`
+	Hooks           []string                  `yaml:"hooks"`
+	DisabledHooks   []string                  `yaml:"disabled_hooks"`
+	Glob            yamlGlobConfig            `yaml:"glob"`
+	Markdown        yamlMarkdownConfig        `yaml:"markdown"`
+	Feeds           []yamlFeedConfig          `yaml:"feeds"`
+	FeedDefaults    yamlFeedDefaults          `yaml:"feed_defaults"`
+	Concurrency     int                       `yaml:"concurrency"`
+	Theme           yamlThemeConfig           `yaml:"theme"`
+	PostFormats     yamlPostFormatsConfig     `yaml:"post_formats"`
+	WellKnown       yamlWellKnownConfig       `yaml:"well_known"`
+	IndieAuth       yamlIndieAuthConfig       `yaml:"indieauth"`
+	Webmention      yamlWebmentionConfig      `yaml:"webmention"`
+	SEO             yamlSEOConfig             `yaml:"seo"`
+	Components      yamlComponentsConfig      `yaml:"components"`
+	Layout          yamlLayoutConfig          `yaml:"layout"`
+	Sidebar         yamlSidebarConfig         `yaml:"sidebar"`
+	Toc             yamlTocConfig             `yaml:"toc"`
+	Header          yamlHeaderLayoutConfig    `yaml:"header"`
+	Blogroll        yamlBlogrollConfig        `yaml:"blogroll"`
+	Tags            yamlTagsConfig            `yaml:"tags"`
+	Encryption      yamlEncryptionConfig      `yaml:"encryption"`
+	TagAggregator   yamlTagAggregatorConfig   `yaml:"tag_aggregator"`
+	Mentions        yamlMentionsConfig        `yaml:"mentions"`
+	WebSub          yamlWebSubConfig          `yaml:"websub"`
+	Shortcuts       yamlShortcutsConfig       `yaml:"shortcuts"`
+	ViewTransitions yamlViewTransitionsConfig `yaml:"view_transitions"`
+	Authors         yamlAuthorsConfig         `yaml:"authors"`
+	Garden          yamlGardenConfig          `yaml:"garden"`
+	Templates       yamlTemplatesConfig       `yaml:"templates"`
 }
 
 type yamlNavItem struct {
@@ -2163,12 +2219,57 @@ type yamlShortcutsConfig struct {
 	Navigation map[string]string `yaml:"navigation"`
 }
 
+type yamlViewTransitionsConfig struct {
+	Enabled       *bool    `yaml:"enabled"`
+	Debug         *bool    `yaml:"debug"`
+	Duration      int      `yaml:"duration"`
+	UpdateMeta    *bool    `yaml:"update_meta"`
+	ScrollToTop   *bool    `yaml:"scroll_to_top"`
+	SkipClasses   []string `yaml:"skip_classes"`
+	SkipSelectors []string `yaml:"skip_selectors"`
+}
+
 func (s *yamlShortcutsConfig) toShortcutsConfig() models.ShortcutsConfig {
 	config := models.ShortcutsConfig{
 		Navigation: s.Navigation,
 	}
 	if config.Navigation == nil {
 		config.Navigation = make(map[string]string)
+	}
+	return config
+}
+
+func (v *yamlViewTransitionsConfig) toViewTransitionsConfig() models.ViewTransitionsConfig {
+	defaults := models.NewViewTransitionsConfig()
+	config := models.ViewTransitionsConfig{
+		Enabled:       v.Enabled,
+		Debug:         v.Debug,
+		Duration:      v.Duration,
+		UpdateMeta:    v.UpdateMeta,
+		ScrollToTop:   v.ScrollToTop,
+		SkipClasses:   v.SkipClasses,
+		SkipSelectors: v.SkipSelectors,
+	}
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Debug == nil {
+		config.Debug = defaults.Debug
+	}
+	if config.Duration == 0 {
+		config.Duration = defaults.Duration
+	}
+	if config.UpdateMeta == nil {
+		config.UpdateMeta = defaults.UpdateMeta
+	}
+	if config.ScrollToTop == nil {
+		config.ScrollToTop = defaults.ScrollToTop
+	}
+	if config.SkipClasses == nil {
+		config.SkipClasses = defaults.SkipClasses
+	}
+	if config.SkipSelectors == nil {
+		config.SkipSelectors = defaults.SkipSelectors
 	}
 	return config
 }
@@ -3039,27 +3140,28 @@ func (c *yamlConfig) getFeeds() []feedConfigConverter {
 	return feeds
 }
 
-func (c *yamlConfig) getFeedDefaults() feedDefaultsConverter   { return &c.FeedDefaults }
-func (c *yamlConfig) getPostFormats() postFormatsConverter     { return &c.PostFormats }
-func (c *yamlConfig) getWellKnown() wellKnownConverter         { return &c.WellKnown }
-func (c *yamlConfig) getSEO() seoConverter                     { return &c.SEO }
-func (c *yamlConfig) getIndieAuth() indieAuthConverter         { return &c.IndieAuth }
-func (c *yamlConfig) getWebmention() webmentionConverter       { return &c.Webmention }
-func (c *yamlConfig) getComponents() componentsConverter       { return &c.Components }
-func (c *yamlConfig) getLayout() layoutConverter               { return &c.Layout }
-func (c *yamlConfig) getSidebar() sidebarConverter             { return &c.Sidebar }
-func (c *yamlConfig) getToc() tocConverter                     { return &c.Toc }
-func (c *yamlConfig) getHeader() headerConverter               { return &c.Header }
-func (c *yamlConfig) getBlogroll() blogrollConverter           { return &c.Blogroll }
-func (c *yamlConfig) getTags() tagsConverter                   { return &c.Tags }
-func (c *yamlConfig) getEncryption() encryptionConverter       { return &c.Encryption }
-func (c *yamlConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAggregator }
-func (c *yamlConfig) getWebSub() webSubConverter               { return &c.WebSub }
-func (c *yamlConfig) getMentions() mentionsConverter           { return &c.Mentions }
-func (c *yamlConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
-func (c *yamlConfig) getAuthors() authorsConverter             { return &c.Authors }
-func (c *yamlConfig) getGarden() gardenConverter               { return &c.Garden }
-func (c *yamlConfig) getTemplates() templatesConverter         { return &c.Templates }
+func (c *yamlConfig) getFeedDefaults() feedDefaultsConverter       { return &c.FeedDefaults }
+func (c *yamlConfig) getPostFormats() postFormatsConverter         { return &c.PostFormats }
+func (c *yamlConfig) getWellKnown() wellKnownConverter             { return &c.WellKnown }
+func (c *yamlConfig) getSEO() seoConverter                         { return &c.SEO }
+func (c *yamlConfig) getIndieAuth() indieAuthConverter             { return &c.IndieAuth }
+func (c *yamlConfig) getWebmention() webmentionConverter           { return &c.Webmention }
+func (c *yamlConfig) getComponents() componentsConverter           { return &c.Components }
+func (c *yamlConfig) getLayout() layoutConverter                   { return &c.Layout }
+func (c *yamlConfig) getSidebar() sidebarConverter                 { return &c.Sidebar }
+func (c *yamlConfig) getToc() tocConverter                         { return &c.Toc }
+func (c *yamlConfig) getHeader() headerConverter                   { return &c.Header }
+func (c *yamlConfig) getBlogroll() blogrollConverter               { return &c.Blogroll }
+func (c *yamlConfig) getTags() tagsConverter                       { return &c.Tags }
+func (c *yamlConfig) getEncryption() encryptionConverter           { return &c.Encryption }
+func (c *yamlConfig) getTagAggregator() tagAggregatorConverter     { return &c.TagAggregator }
+func (c *yamlConfig) getWebSub() webSubConverter                   { return &c.WebSub }
+func (c *yamlConfig) getMentions() mentionsConverter               { return &c.Mentions }
+func (c *yamlConfig) getShortcuts() shortcutsConverter             { return &c.Shortcuts }
+func (c *yamlConfig) getViewTransitions() viewTransitionsConverter { return &c.ViewTransitions }
+func (c *yamlConfig) getAuthors() authorsConverter                 { return &c.Authors }
+func (c *yamlConfig) getGarden() gardenConverter                   { return &c.Garden }
+func (c *yamlConfig) getTemplates() templatesConverter             { return &c.Templates }
 
 func (c *yamlConfig) toConfig() *models.Config {
 	return buildConfig(c)
@@ -3147,44 +3249,45 @@ func (d *yamlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 
 // jsonConfig is an internal struct for parsing JSON configuration.
 type jsonConfig struct {
-	OutputDir     string                  `json:"output_dir"`
-	URL           string                  `json:"url"`
-	Title         string                  `json:"title"`
-	Description   string                  `json:"description"`
-	Author        string                  `json:"author"`
-	License       interface{}             `json:"license"`
-	AssetsDir     string                  `json:"assets_dir"`
-	TemplatesDir  string                  `json:"templates_dir"`
-	Nav           []jsonNavItem           `json:"nav"`
-	Footer        jsonFooterConfig        `json:"footer"`
-	Hooks         []string                `json:"hooks"`
-	DisabledHooks []string                `json:"disabled_hooks"`
-	Glob          jsonGlobConfig          `json:"glob"`
-	Markdown      jsonMarkdownConfig      `json:"markdown"`
-	Feeds         []jsonFeedConfig        `json:"feeds"`
-	FeedDefaults  jsonFeedDefaults        `json:"feed_defaults"`
-	Concurrency   int                     `json:"concurrency"`
-	Theme         jsonThemeConfig         `json:"theme"`
-	PostFormats   jsonPostFormatsConfig   `json:"post_formats"`
-	WellKnown     jsonWellKnownConfig     `json:"well_known"`
-	IndieAuth     jsonIndieAuthConfig     `json:"indieauth"`
-	Webmention    jsonWebmentionConfig    `json:"webmention"`
-	SEO           jsonSEOConfig           `json:"seo"`
-	Components    jsonComponentsConfig    `json:"components"`
-	Layout        jsonLayoutConfig        `json:"layout"`
-	Sidebar       jsonSidebarConfig       `json:"sidebar"`
-	Toc           jsonTocConfig           `json:"toc"`
-	Header        jsonHeaderLayoutConfig  `json:"header"`
-	Blogroll      jsonBlogrollConfig      `json:"blogroll"`
-	Tags          jsonTagsConfig          `json:"tags"`
-	Encryption    jsonEncryptionConfig    `json:"encryption"`
-	TagAggregator jsonTagAggregatorConfig `json:"tag_aggregator"`
-	Mentions      jsonMentionsConfig      `json:"mentions"`
-	WebSub        jsonWebSubConfig        `json:"websub"`
-	Shortcuts     jsonShortcutsConfig     `json:"shortcuts"`
-	Authors       jsonAuthorsConfig       `json:"authors"`
-	Garden        jsonGardenConfig        `json:"garden"`
-	Templates     jsonTemplatesConfig     `json:"templates"`
+	OutputDir       string                    `json:"output_dir"`
+	URL             string                    `json:"url"`
+	Title           string                    `json:"title"`
+	Description     string                    `json:"description"`
+	Author          string                    `json:"author"`
+	License         interface{}               `json:"license"`
+	AssetsDir       string                    `json:"assets_dir"`
+	TemplatesDir    string                    `json:"templates_dir"`
+	Nav             []jsonNavItem             `json:"nav"`
+	Footer          jsonFooterConfig          `json:"footer"`
+	Hooks           []string                  `json:"hooks"`
+	DisabledHooks   []string                  `json:"disabled_hooks"`
+	Glob            jsonGlobConfig            `json:"glob"`
+	Markdown        jsonMarkdownConfig        `json:"markdown"`
+	Feeds           []jsonFeedConfig          `json:"feeds"`
+	FeedDefaults    jsonFeedDefaults          `json:"feed_defaults"`
+	Concurrency     int                       `json:"concurrency"`
+	Theme           jsonThemeConfig           `json:"theme"`
+	PostFormats     jsonPostFormatsConfig     `json:"post_formats"`
+	WellKnown       jsonWellKnownConfig       `json:"well_known"`
+	IndieAuth       jsonIndieAuthConfig       `json:"indieauth"`
+	Webmention      jsonWebmentionConfig      `json:"webmention"`
+	SEO             jsonSEOConfig             `json:"seo"`
+	Components      jsonComponentsConfig      `json:"components"`
+	Layout          jsonLayoutConfig          `json:"layout"`
+	Sidebar         jsonSidebarConfig         `json:"sidebar"`
+	Toc             jsonTocConfig             `json:"toc"`
+	Header          jsonHeaderLayoutConfig    `json:"header"`
+	Blogroll        jsonBlogrollConfig        `json:"blogroll"`
+	Tags            jsonTagsConfig            `json:"tags"`
+	Encryption      jsonEncryptionConfig      `json:"encryption"`
+	TagAggregator   jsonTagAggregatorConfig   `json:"tag_aggregator"`
+	Mentions        jsonMentionsConfig        `json:"mentions"`
+	WebSub          jsonWebSubConfig          `json:"websub"`
+	Shortcuts       jsonShortcutsConfig       `json:"shortcuts"`
+	ViewTransitions jsonViewTransitionsConfig `json:"view_transitions"`
+	Authors         jsonAuthorsConfig         `json:"authors"`
+	Garden          jsonGardenConfig          `json:"garden"`
+	Templates       jsonTemplatesConfig       `json:"templates"`
 }
 
 type jsonNavItem struct {
@@ -3547,12 +3650,57 @@ type jsonShortcutsConfig struct {
 	Navigation map[string]string `json:"navigation"`
 }
 
+type jsonViewTransitionsConfig struct {
+	Enabled       *bool    `json:"enabled"`
+	Debug         *bool    `json:"debug"`
+	Duration      int      `json:"duration"`
+	UpdateMeta    *bool    `json:"update_meta"`
+	ScrollToTop   *bool    `json:"scroll_to_top"`
+	SkipClasses   []string `json:"skip_classes"`
+	SkipSelectors []string `json:"skip_selectors"`
+}
+
 func (s *jsonShortcutsConfig) toShortcutsConfig() models.ShortcutsConfig {
 	config := models.ShortcutsConfig{
 		Navigation: s.Navigation,
 	}
 	if config.Navigation == nil {
 		config.Navigation = make(map[string]string)
+	}
+	return config
+}
+
+func (v *jsonViewTransitionsConfig) toViewTransitionsConfig() models.ViewTransitionsConfig {
+	defaults := models.NewViewTransitionsConfig()
+	config := models.ViewTransitionsConfig{
+		Enabled:       v.Enabled,
+		Debug:         v.Debug,
+		Duration:      v.Duration,
+		UpdateMeta:    v.UpdateMeta,
+		ScrollToTop:   v.ScrollToTop,
+		SkipClasses:   v.SkipClasses,
+		SkipSelectors: v.SkipSelectors,
+	}
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Debug == nil {
+		config.Debug = defaults.Debug
+	}
+	if config.Duration == 0 {
+		config.Duration = defaults.Duration
+	}
+	if config.UpdateMeta == nil {
+		config.UpdateMeta = defaults.UpdateMeta
+	}
+	if config.ScrollToTop == nil {
+		config.ScrollToTop = defaults.ScrollToTop
+	}
+	if config.SkipClasses == nil {
+		config.SkipClasses = defaults.SkipClasses
+	}
+	if config.SkipSelectors == nil {
+		config.SkipSelectors = defaults.SkipSelectors
 	}
 	return config
 }
@@ -4423,27 +4571,28 @@ func (c *jsonConfig) getFeeds() []feedConfigConverter {
 	return feeds
 }
 
-func (c *jsonConfig) getFeedDefaults() feedDefaultsConverter   { return &c.FeedDefaults }
-func (c *jsonConfig) getPostFormats() postFormatsConverter     { return &c.PostFormats }
-func (c *jsonConfig) getWellKnown() wellKnownConverter         { return &c.WellKnown }
-func (c *jsonConfig) getSEO() seoConverter                     { return &c.SEO }
-func (c *jsonConfig) getIndieAuth() indieAuthConverter         { return &c.IndieAuth }
-func (c *jsonConfig) getWebmention() webmentionConverter       { return &c.Webmention }
-func (c *jsonConfig) getComponents() componentsConverter       { return &c.Components }
-func (c *jsonConfig) getLayout() layoutConverter               { return &c.Layout }
-func (c *jsonConfig) getSidebar() sidebarConverter             { return &c.Sidebar }
-func (c *jsonConfig) getToc() tocConverter                     { return &c.Toc }
-func (c *jsonConfig) getHeader() headerConverter               { return &c.Header }
-func (c *jsonConfig) getBlogroll() blogrollConverter           { return &c.Blogroll }
-func (c *jsonConfig) getTags() tagsConverter                   { return &c.Tags }
-func (c *jsonConfig) getEncryption() encryptionConverter       { return &c.Encryption }
-func (c *jsonConfig) getTagAggregator() tagAggregatorConverter { return &c.TagAggregator }
-func (c *jsonConfig) getMentions() mentionsConverter           { return &c.Mentions }
-func (c *jsonConfig) getWebSub() webSubConverter               { return &c.WebSub }
-func (c *jsonConfig) getShortcuts() shortcutsConverter         { return &c.Shortcuts }
-func (c *jsonConfig) getAuthors() authorsConverter             { return &c.Authors }
-func (c *jsonConfig) getGarden() gardenConverter               { return &c.Garden }
-func (c *jsonConfig) getTemplates() templatesConverter         { return &c.Templates }
+func (c *jsonConfig) getFeedDefaults() feedDefaultsConverter       { return &c.FeedDefaults }
+func (c *jsonConfig) getPostFormats() postFormatsConverter         { return &c.PostFormats }
+func (c *jsonConfig) getWellKnown() wellKnownConverter             { return &c.WellKnown }
+func (c *jsonConfig) getSEO() seoConverter                         { return &c.SEO }
+func (c *jsonConfig) getIndieAuth() indieAuthConverter             { return &c.IndieAuth }
+func (c *jsonConfig) getWebmention() webmentionConverter           { return &c.Webmention }
+func (c *jsonConfig) getComponents() componentsConverter           { return &c.Components }
+func (c *jsonConfig) getLayout() layoutConverter                   { return &c.Layout }
+func (c *jsonConfig) getSidebar() sidebarConverter                 { return &c.Sidebar }
+func (c *jsonConfig) getToc() tocConverter                         { return &c.Toc }
+func (c *jsonConfig) getHeader() headerConverter                   { return &c.Header }
+func (c *jsonConfig) getBlogroll() blogrollConverter               { return &c.Blogroll }
+func (c *jsonConfig) getTags() tagsConverter                       { return &c.Tags }
+func (c *jsonConfig) getEncryption() encryptionConverter           { return &c.Encryption }
+func (c *jsonConfig) getTagAggregator() tagAggregatorConverter     { return &c.TagAggregator }
+func (c *jsonConfig) getMentions() mentionsConverter               { return &c.Mentions }
+func (c *jsonConfig) getWebSub() webSubConverter                   { return &c.WebSub }
+func (c *jsonConfig) getShortcuts() shortcutsConverter             { return &c.Shortcuts }
+func (c *jsonConfig) getViewTransitions() viewTransitionsConverter { return &c.ViewTransitions }
+func (c *jsonConfig) getAuthors() authorsConverter                 { return &c.Authors }
+func (c *jsonConfig) getGarden() gardenConverter                   { return &c.Garden }
+func (c *jsonConfig) getTemplates() templatesConverter             { return &c.Templates }
 
 func (c *jsonConfig) toConfig() *models.Config {
 	return buildConfig(c)

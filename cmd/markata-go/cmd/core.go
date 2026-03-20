@@ -107,6 +107,9 @@ func createManager(cfgPath string) (*lifecycle.Manager, error) {
 	// Pass tags configuration
 	lcConfig.Extra["tags"] = cfg.Tags
 
+	// Pass view transitions configuration
+	lcConfig.Extra["view_transitions"] = cfg.ViewTransitions
+
 	// Pass garden configuration
 	lcConfig.Extra["garden"] = cfg.Garden
 

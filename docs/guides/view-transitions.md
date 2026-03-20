@@ -68,7 +68,7 @@ document.addEventListener('click', (e) => {
 
 ### 2. Content Fetching
 
-The new page is fetched via the Fetch API:
+The new page is fetched and parsed before the transition starts so the current view stays responsive while network work happens:
 
 ```javascript
 const response = await fetch(url);
@@ -82,8 +82,9 @@ The browser animates between old and new content:
 
 ```javascript
 document.startViewTransition(() => {
-  // Update DOM
-  document.body.innerHTML = newDoc.body.innerHTML;
+  // Update the changing layout regions
+  document.querySelector('#view-transition-page').innerHTML =
+    newDoc.querySelector('#view-transition-page').innerHTML;
   document.title = newDoc.title;
   history.pushState(null, '', url);
 });
@@ -256,6 +257,7 @@ Now cards will morph smoothly when navigating!
 2. **Optimize images** - Images in new content delay transition
 3. **Minimize inline scripts** - Scripts need re-initialization
 4. **Use caching** - Browser caches reduce fetch time
+5. **Swap smaller regions** - Replacing the page wrapper is usually cheaper than replacing the entire `body`
 
 ## Accessibility
 
@@ -348,12 +350,14 @@ link.dataset.transitionType = 'slide';
 
 ### Prefetching
 
-Prefetch pages on hover for instant transitions:
+markata-go prefetches transition-managed links on hover/focus and can eagerly warm nearby pagination targets so `[` and `]` navigation feels more immediate:
 
 ```javascript
-// Future enhancement - not yet implemented
-link.addEventListener('mouseenter', () => {
-  fetch(link.href); // Prefetch
+document.addEventListener('mouseover', (event) => {
+  const link = event.target.closest('a');
+  if (link) {
+    window.prefetchViewTransitionUrl(link.href);
+  }
 });
 ```
 
