@@ -159,8 +159,11 @@ func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	var rebuiltCount int
 
 	// Process feeds concurrently with a worker pool
-	// Limit concurrency to avoid overwhelming the system
-	const maxConcurrency = 8
+	// Use lifecycle concurrency (auto-detected from CPU cores, capped at 16)
+	maxConcurrency := m.Concurrency()
+	if maxConcurrency < 8 {
+		maxConcurrency = 8
+	}
 	numFeeds := len(feedConfigs)
 
 	// For small numbers of feeds, just process sequentially
@@ -245,7 +248,10 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 	var skippedCount int
 	var rebuiltCount int
 
-	const maxConcurrency = 8
+	maxConcurrency := m.Concurrency()
+	if maxConcurrency < 8 {
+		maxConcurrency = 8
+	}
 	numFeeds := len(feedConfigs)
 	if numFeeds <= 2 {
 		for i := range feedConfigs {
