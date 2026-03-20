@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/WaylonWalker/markata-go/pkg/models"
@@ -111,6 +112,26 @@ func TestMDVideoPlugin_ProcessPost_WithQueryParams(t *testing.T) {
 	}
 	if !contains(post.ArticleHTML, "kickflip") {
 		t.Error("Expected alt text preserved as fallback")
+	}
+}
+
+func TestMDVideoPlugin_ProcessPost_DownsizesPosterOnly(t *testing.T) {
+	p := NewMDVideoPlugin()
+
+	post := &models.Post{
+		ArticleHTML: `<img src="https://dropper.waylonwalker.com/file/6f042a91.mp4?width=500" alt="kickflip">`,
+	}
+
+	err := p.processPost(post)
+	if err != nil {
+		t.Fatalf("processPost() error = %v", err)
+	}
+
+	if !strings.Contains(post.ArticleHTML, `src="https://dropper.waylonwalker.com/file/6f042a91.mp4?width=500"`) {
+		t.Errorf("Expected full video source preserved, got: %s", post.ArticleHTML)
+	}
+	if !strings.Contains(post.ArticleHTML, `poster="https://dropper.waylonwalker.com/file/6f042a91.webp?h=675`) || !strings.Contains(post.ArticleHTML, `w=1200`) {
+		t.Errorf("Expected downsized poster URL, got: %s", post.ArticleHTML)
 	}
 }
 
