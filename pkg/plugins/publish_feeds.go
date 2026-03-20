@@ -122,31 +122,49 @@ func (p *PublishFeedsPlugin) Configure(m *lifecycle.Manager) error {
 // Uses incremental build cache to skip feeds with unchanged content.
 func (p *PublishFeedsPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
-	outputDir := config.OutputDir
-	// ensure we have access to feed configs before potentially async publish
-	var feedConfigs []models.FeedConfig
-	if cached, ok := m.Cache().Get("feed_configs"); ok {
-		if fcs, ok := cached.([]models.FeedConfig); ok {
-			feedConfigs = fcs
-		}
-	}
+	feedConfigs := getCachedFeedConfigs(m)
 	if len(feedConfigs) == 0 {
 		return nil
 	}
 
-	if lifecycle.IsServeFastMode(m) {
-		if extra := config.Extra; extra != nil {
-			if async, ok := extra["feeds_async"].(bool); ok && async {
-				go func() {
-					if err := p.publishFeedsAsync(m, feedConfigs); err != nil {
-						publishFeedsLog.Errorf("async publish failed: %v", err)
-					}
-				}()
-				return nil
+	if shouldPublishFeedsAsync(m) {
+		go func() {
+			if err := p.publishFeedsAsync(m, feedConfigs); err != nil {
+				publishFeedsLog.Errorf("async publish failed: %v", err)
 			}
+		}()
+		return nil
+	}
+
+	return p.publishFeeds(m, config, feedConfigs)
+}
+
+func getCachedFeedConfigs(m *lifecycle.Manager) []models.FeedConfig {
+	if cached, ok := m.Cache().Get("feed_configs"); ok {
+		if fcs, ok := cached.([]models.FeedConfig); ok {
+			return fcs
 		}
 	}
 
+	return nil
+}
+
+func shouldPublishFeedsAsync(m *lifecycle.Manager) bool {
+	if !lifecycle.IsServeFastMode(m) {
+		return false
+	}
+
+	extra := m.Config().Extra
+	if extra == nil {
+		return false
+	}
+
+	async, ok := extra["feeds_async"].(bool)
+	return ok && async
+}
+
+func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycle.Config, feedConfigs []models.FeedConfig) error {
+	outputDir := config.OutputDir
 	// Copy XSL stylesheets to output directory for styled RSS/Atom feeds
 	if err := p.copyXSLStylesheets(config, outputDir); err != nil {
 		return fmt.Errorf("copying XSL stylesheets: %w", err)
