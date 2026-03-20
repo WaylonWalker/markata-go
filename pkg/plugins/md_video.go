@@ -251,6 +251,7 @@ func (p *MDVideoPlugin) buildVideoTag(post *models.Post, src, alt string) string
 	}
 
 	if poster := templates.PosterURLFromMap(templates.GetPostMap(post), src); poster != "" {
+		poster = templates.WithSize(poster, 1200, 675)
 		attrs = append(attrs, `poster="`+poster+`"`)
 	}
 
