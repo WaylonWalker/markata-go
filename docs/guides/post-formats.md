@@ -280,6 +280,19 @@ For posts with `markdown`, `text`, or `og` enabled, visitors see:
 For feeds, visitors see subscription options:
 - **Subscribe:** RSS | Atom | JSON | Markdown | Text
 
+## Copying Posts for Chat and Notes
+
+Post pages also expose a `Copy this post` control near the top of the article. It is designed for the common workflow of dropping a post into Slack, Teams, notes apps, or a code editor without manually selecting the page.
+
+Available copy modes:
+
+- `URL` - copies the canonical post URL.
+- `Rich` - copies HTML plus plain text so chat clients can preserve headings, links, and formatting when they support rich paste.
+- `Markdown` - copies the post title, URL, and raw markdown body.
+- `Text` - copies the post title, URL, and a plain-text rendering of the article.
+
+The rich option uses the browser clipboard API to write both `text/html` and `text/plain` payloads. When that API is unavailable, markata-go falls back to plain-text clipboard writes so copying still works in older browsers.
+
 ## Content Negotiation
 
 markata-go's canonical short URLs (`/slug.md`, `/slug.txt`) plus HTML directory pages (`/slug/index.html`) enable server-side content negotiation. This allows clients to request their preferred format using HTTP `Accept` headers.

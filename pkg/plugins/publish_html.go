@@ -15,7 +15,6 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 	"github.com/WaylonWalker/markata-go/pkg/palettes"
 	"github.com/WaylonWalker/markata-go/pkg/templates"
-	"github.com/WaylonWalker/markata-go/pkg/terminalpage"
 )
 
 var publishHTMLLog = logging.Component("publish_html").Phase("write")
@@ -395,7 +394,7 @@ func (p *PublishHTMLPlugin) buildFormatContent(post *models.Post, config *lifecy
 	case formatANSI:
 		return p.buildANSIContentFallback(post, config)
 	case formatMarkdown, formatMD:
-		return p.buildMarkdownContent(post)
+		return buildMarkdownContent(post)
 	default:
 		return post.Content
 	}
@@ -420,42 +419,6 @@ func (p *PublishHTMLPlugin) resolveTemplateForFormat(post *models.Post, format s
 	return ""
 }
 
-// buildMarkdownContent builds the markdown content with frontmatter for a post.
-// Returns the full markdown string with YAML frontmatter.
-func (p *PublishHTMLPlugin) buildMarkdownContent(post *models.Post) string {
-	// Reconstruct frontmatter
-	var buf strings.Builder
-	buf.WriteString("---\n")
-
-	if post.Title != nil {
-		buf.WriteString(fmt.Sprintf("title: %q\n", *post.Title))
-	}
-	if post.Description != nil {
-		buf.WriteString(fmt.Sprintf("description: %q\n", *post.Description))
-	}
-	if post.Date != nil {
-		buf.WriteString(fmt.Sprintf("date: %s\n", post.Date.Format("2006-01-02")))
-	}
-	buf.WriteString(fmt.Sprintf("published: %t\n", post.Published))
-	if post.Draft {
-		buf.WriteString(fmt.Sprintf("draft: %t\n", post.Draft))
-	}
-	if len(post.Tags) > 0 {
-		buf.WriteString("tags:\n")
-		for _, tag := range post.Tags {
-			buf.WriteString(fmt.Sprintf("  - %s\n", tag))
-		}
-	}
-	if post.Template != "" && post.Template != defaultTemplate {
-		buf.WriteString(fmt.Sprintf("template: %s\n", post.Template))
-	}
-
-	buf.WriteString("---\n\n")
-	buf.WriteString(post.Content)
-
-	return buf.String()
-}
-
 func (p *PublishHTMLPlugin) renderTextContent(post *models.Post, config *lifecycle.Config, engine *templates.Engine) string {
 	return p.renderTerminalContent(post, config, engine, false)
 }
@@ -474,7 +437,7 @@ func (p *PublishHTMLPlugin) renderTerminalContent(
 		return post.Content
 	}
 
-	body := p.buildTerminalPage(post, config, ansi)
+	body := buildTerminalPage(post, config, ansi)
 	if engine == nil {
 		return body
 	}
@@ -539,54 +502,11 @@ func (p *PublishHTMLPlugin) resolveTerminalTemplate(post *models.Post, engine *t
 }
 
 func (p *PublishHTMLPlugin) buildTextContentFallback(post *models.Post) string {
-	return p.buildTerminalPage(post, nil, false)
+	return buildTerminalPage(post, nil, false)
 }
 
 func (p *PublishHTMLPlugin) buildANSIContentFallback(post *models.Post, config *lifecycle.Config) string {
-	return p.buildTerminalPage(post, config, true)
-}
-
-func (p *PublishHTMLPlugin) buildTerminalPage(post *models.Post, config *lifecycle.Config, ansi bool) string {
-	var buf strings.Builder
-
-	if post.Title != nil && *post.Title != "" {
-		buf.WriteString(*post.Title)
-		buf.WriteString("\n")
-		buf.WriteString(strings.Repeat("=", len([]rune(*post.Title))))
-		buf.WriteString("\n\n")
-	}
-	if post.Description != nil && *post.Description != "" {
-		buf.WriteString(*post.Description)
-		buf.WriteString("\n\n")
-	}
-	if post.Date != nil {
-		buf.WriteString("Date: ")
-		buf.WriteString(post.Date.Format("January 2, 2006"))
-		buf.WriteString("\n\n")
-	}
-
-	paletteName, variant := resolveTerminalPalette(config)
-	chromaStyle := palettes.ChromaTheme(paletteName)
-	if chromaStyle == "" {
-		chromaStyle = palettes.ChromaThemeForVariant(variant)
-	}
-
-	source := post.ArticleHTML
-	if strings.TrimSpace(source) == "" {
-		source = post.HTML
-	}
-	if strings.TrimSpace(source) == "" {
-		source = post.Content
-	}
-
-	body := terminalpage.RenderHTML(source, terminalpage.Options{
-		ANSI:        ansi,
-		Palette:     paletteName,
-		ChromaStyle: chromaStyle,
-	})
-	buf.WriteString(body)
-
-	return strings.TrimSpace(buf.String())
+	return buildTerminalPage(post, config, true)
 }
 
 func resolveTerminalPalette(config *lifecycle.Config) (string, palettes.Variant) {
