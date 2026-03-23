@@ -148,9 +148,38 @@ func buildTerminalPage(post *models.Post, config *lifecycle.Config, ansi bool) s
 		Palette:     paletteName,
 		ChromaStyle: chromaStyle,
 	})
+
+	mediaLinks := terminalMediaLinks(post, body)
+	if len(mediaLinks) > 0 {
+		if body != "" {
+			buf.WriteString(strings.Join(mediaLinks, "\n"))
+			buf.WriteString("\n\n")
+		} else {
+			buf.WriteString(strings.Join(mediaLinks, "\n"))
+		}
+	}
 	buf.WriteString(body)
 
 	return strings.TrimSpace(buf.String())
+}
+
+func terminalMediaLinks(post *models.Post, body string) []string {
+	if post == nil {
+		return nil
+	}
+
+	links := []string{}
+	appendMediaLink := func(label, url string) {
+		if url == "" || strings.Contains(body, url) {
+			return
+		}
+		links = append(links, label+": "+url)
+	}
+
+	appendMediaLink("Image", getPostExtraString(post, "image", "cover_image", "og_image"))
+	appendMediaLink("Video", getPostExtraString(post, "video"))
+
+	return links
 }
 
 func buildMarkdownContent(post *models.Post) string {
