@@ -810,6 +810,59 @@ func TestPublishHTMLPlugin_TxtTemplateRendering(t *testing.T) {
 	}
 }
 
+func TestPublishHTMLPlugin_TerminalOutputsIncludeFrontmatterMediaLinks(t *testing.T) {
+	tempDir := t.TempDir()
+	plugin := NewPublishHTMLPlugin()
+
+	htmlEnabled := true
+	config := &lifecycle.Config{
+		OutputDir: tempDir,
+		Extra: map[string]interface{}{
+			"post_formats": models.PostFormatsConfig{
+				HTML: &htmlEnabled,
+				Text: true,
+				ANSI: true,
+			},
+		},
+	}
+
+	title := "Media Post"
+	post := &models.Post{
+		Path:        "media.md",
+		Slug:        "media-post",
+		Title:       &title,
+		Content:     "post body",
+		ArticleHTML: "<p>post body</p>",
+		Published:   true,
+		Extra: map[string]interface{}{
+			"image": "https://cdn.example.com/poster.webp",
+			"video": "https://cdn.example.com/demo.mp4",
+		},
+	}
+
+	m := createTestManager(t, config)
+	if err := plugin.writePost(post, config, nil, m); err != nil {
+		t.Fatalf("writePost() error = %v", err)
+	}
+
+	for _, path := range []string{
+		filepath.Join(tempDir, "media-post.txt"),
+		filepath.Join(tempDir, "media-post.ansi"),
+	} {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("failed to read %s: %v", path, err)
+		}
+		text := terminalpage.StripANSI(string(content))
+		if !strings.Contains(text, "Image: https://cdn.example.com/poster.webp") {
+			t.Fatalf("expected image link in %s, got:\n%s", path, text)
+		}
+		if !strings.Contains(text, "Video: https://cdn.example.com/demo.mp4") {
+			t.Fatalf("expected video link in %s, got:\n%s", path, text)
+		}
+	}
+}
+
 // TestPublishHTMLPlugin_FormatExtRedirectsWithHTMLEnabled tests that redirect pages
 // are created at /slug.ext/index.html (e.g., /test.txt/index.html) even when HTML
 // format is enabled. This allows users to navigate to /test.txt/ and be redirected

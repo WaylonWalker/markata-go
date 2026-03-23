@@ -818,6 +818,7 @@ Terminal rendering for both `text` and `ansi` variants MUST:
 
 - derive structure from rendered page content when rendered HTML is available
 - preserve headings, emphasis, links, blockquotes, lists, horizontal rules, tables, admonitions, and code fences in terminal-safe form
+- preserve image and video references as readable labeled URLs when media appears inline or in frontmatter
 - degrade cleanly to plain text when ANSI styling is disabled
 - keep canonical `.txt` endpoints readable in clients that do not support ANSI
 

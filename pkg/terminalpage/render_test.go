@@ -78,6 +78,22 @@ func TestRenderHTML_ANSIHighlightsCodeAndAdmonitions(t *testing.T) {
 	}
 }
 
+func TestRenderHTML_PreservesMediaLinks(t *testing.T) {
+	input := `<p><img src="https://example.com/diagram.png" alt="Diagram"></p><p><video controls><source src="https://example.com/demo.mp4" type="video/mp4"></video></p>`
+
+	plain := RenderHTML(input, Options{})
+	ansi := StripANSI(RenderHTML(input, Options{ANSI: true, Palette: "default-dark", ChromaStyle: "github-dark"}))
+
+	for _, got := range []string{plain, ansi} {
+		if !strings.Contains(got, "Image: Diagram <https://example.com/diagram.png>") {
+			t.Fatalf("expected image link in output, got:\n%s", got)
+		}
+		if !strings.Contains(got, "Video: <https://example.com/demo.mp4>") {
+			t.Fatalf("expected video link in output, got:\n%s", got)
+		}
+	}
+}
+
 func TestStripANSI_RemovesEscapeSequences(t *testing.T) {
 	input := "\x1b[1mhello\x1b[0m \x1b[38;2;255;0;0mworld\x1b[0m"
 	if got := StripANSI(input); got != "hello world" {

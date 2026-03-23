@@ -90,6 +90,7 @@ text = true  # Enabled by default
 The text output includes terminal-safe structure derived from the rendered page:
 - Title, description, and date
 - Headings, links, emphasis, and separators
+- Image and video references as readable URLs
 - Blockquotes, admonitions, lists, and tables
 - Readable code blocks without ANSI escapes
 
@@ -119,6 +120,7 @@ ansi = true  # Disabled by default; opt in when you want terminal styling
 ANSI output uses the active site palette when possible and preserves terminal-friendly formatting for:
 - headings and emphasis
 - links and metadata
+- image and video references
 - blockquotes and admonitions
 - lists, rules, and tables
 - syntax-highlighted code fences
