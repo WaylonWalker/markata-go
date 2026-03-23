@@ -189,6 +189,7 @@ func (r *Renderer) renderInlineChildren(node *html.Node) string {
 	return strings.TrimSpace(collapseInlineWhitespace(strings.Join(parts, "")))
 }
 
+//nolint:gocyclo // Inline HTML handling is easier to reason about as one switch.
 func (r *Renderer) renderInlineNode(node *html.Node) string {
 	if node == nil {
 		return ""
