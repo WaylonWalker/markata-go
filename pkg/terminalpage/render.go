@@ -229,15 +229,13 @@ func (r *Renderer) renderInlineNode(node *html.Node) string {
 			}
 			return r.theme.link.wrap(content) + " <" + r.theme.muted.wrap(href) + ">"
 		case "img":
-			alt := getAttr(node, "alt")
-			src := getAttr(node, "src")
-			if alt == "" {
-				alt = "Image"
-			}
-			if src == "" {
-				return alt
-			}
-			return alt + " <" + src + ">"
+			return renderImageReference(node)
+		case "video":
+			return renderMediaReference(node, "Video")
+		case "audio":
+			return renderMediaReference(node, "Audio")
+		case "source":
+			return ""
 		case "br":
 			return "\n"
 		default:
@@ -651,6 +649,57 @@ func getAttr(node *html.Node, key string) string {
 	for _, attr := range node.Attr {
 		if attr.Key == key {
 			return attr.Val
+		}
+	}
+	return ""
+}
+
+func renderImageReference(node *html.Node) string {
+	label := firstNonEmpty(getAttr(node, "alt"), getAttr(node, "title"), "Image")
+	src := firstNonEmpty(getAttr(node, "src"), getAttr(node, "data-src"))
+	if src == "" {
+		return "Image: " + label
+	}
+	if label == "Image" {
+		return "Image: <" + src + ">"
+	}
+	return "Image: " + label + " <" + src + ">"
+}
+
+func renderMediaReference(node *html.Node, fallback string) string {
+	label := firstNonEmpty(getAttr(node, "aria-label"), getAttr(node, "title"), fallback)
+	src := firstNonEmpty(getAttr(node, "src"), getAttr(node, "data-src"), mediaSourceFromChildren(node))
+	if src == "" {
+		return fallback + ": " + label
+	}
+	if label == fallback {
+		return fallback + ": <" + src + ">"
+	}
+	return fallback + ": " + label + " <" + src + ">"
+}
+
+func mediaSourceFromChildren(node *html.Node) string {
+	if node == nil {
+		return ""
+	}
+	for child := node.FirstChild; child != nil; child = child.NextSibling {
+		if child.Type == html.ElementNode && child.Data == "source" {
+			if src := firstNonEmpty(getAttr(child, "src"), getAttr(child, "data-src")); src != "" {
+				return src
+			}
+		}
+		if src := mediaSourceFromChildren(child); src != "" {
+			return src
+		}
+	}
+	return ""
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed != "" {
+			return trimmed
 		}
 	}
 	return ""
