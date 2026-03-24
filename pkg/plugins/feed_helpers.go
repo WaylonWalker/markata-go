@@ -642,3 +642,70 @@ func nonNegativeInt(value int) int {
 	}
 	return value
 }
+
+// createRenderSlashesFunc returns a Jinja-callable that renders slash pages as
+// a grid of pill links.  It queries the "slashes" feed (posts tagged "slash")
+// and emits <div class="home-slashes">…</div>.
+func createRenderSlashesFunc(m *lifecycle.Manager) func(args ...interface{}) (*pongo2.Value, error) {
+	return func(args ...interface{}) (*pongo2.Value, error) {
+		// Allow an optional limit argument (default 0 = all)
+		limit := 0
+		for _, arg := range args {
+			if n, ok := numericValue(arg); ok {
+				limit = nonNegativeInt(n)
+			}
+		}
+
+		posts, _ := getFeedPosts("slashes", limit, m)
+		if len(posts) == 0 {
+			return pongo2.AsSafeValue(""), nil
+		}
+
+		var sb strings.Builder
+		sb.WriteString(`<div class="home-slashes">`)
+		for _, p := range posts {
+			// Derive display name: prefer the href (e.g. /now/) to look like a slash page
+			display := p.Href
+			if display == "" {
+				display = "/" + p.Slug + "/"
+			}
+			sb.WriteString(`<a href="`)
+			sb.WriteString(html.EscapeString(p.Href))
+			sb.WriteString(`" class="home-slash-link">`)
+			sb.WriteString(html.EscapeString(display))
+			sb.WriteString(`</a>`)
+		}
+		sb.WriteString(`</div>`)
+		return pongo2.AsSafeValue(sb.String()), nil
+	}
+}
+
+// createIncludePostFunc returns a Jinja-callable that looks up a post by slug
+// and returns its rendered ArticleHTML.  This lets templates and jinja-enabled
+// markdown compose pages from other posts:
+//
+//	{{ include_post("components/sidebar") }}
+func createIncludePostFunc(m *lifecycle.Manager) func(slug string) (*pongo2.Value, error) {
+	return func(slug string) (*pongo2.Value, error) {
+		slug = strings.TrimSpace(slug)
+		if slug == "" {
+			return pongo2.AsSafeValue(""), nil
+		}
+		// Normalize: strip leading/trailing slashes
+		slug = strings.Trim(slug, "/")
+
+		for _, p := range m.Posts() {
+			if p.Slug == slug {
+				if p.ArticleHTML != "" {
+					return pongo2.AsSafeValue(p.ArticleHTML), nil
+				}
+				// Fallback to raw content if not yet rendered
+				if p.Content != "" {
+					return pongo2.AsSafeValue(p.Content), nil
+				}
+				return pongo2.AsSafeValue(""), nil
+			}
+		}
+		return pongo2.AsSafeValue("<!-- include_post: post not found: " + html.EscapeString(slug) + " -->"), nil
+	}
+}

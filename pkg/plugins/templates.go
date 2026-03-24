@@ -539,6 +539,8 @@ func (p *TemplatesPlugin) renderPost(post *models.Post, config *lifecycle.Config
 	ctx = ctx.WithCore(m)
 	ctx.Set("feed_posts", createFeedPostsFunc(m))
 	ctx.Set("render_feed", createRenderFeedFunc(m))
+	ctx.Set("render_slashes", createRenderSlashesFunc(m))
+	ctx.Set("include_post", createIncludePostFunc(m))
 	ctx.Set("private_paths", privatePaths)
 	if modelsConfig.Garden.IsExportJSON() {
 		ctx.Set("graph_json", "/"+modelsConfig.Garden.GetPath()+"/graph.json")
