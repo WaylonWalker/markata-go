@@ -65,6 +65,14 @@ func createRenderFeedFunc(m *lifecycle.Manager) func(slug string, args ...interf
 			},
 		}
 
+		// Include config so card-router can access card_router.mappings
+		if cfg := m.Config(); cfg != nil {
+			modelsConfig := ToModelsConfig(cfg)
+			if modelsConfig != nil {
+				ctx["config"] = templates.GetConfigMap(modelsConfig)
+			}
+		}
+
 		htmlSnippet, tmplErr := renderFeedWithTemplate(ctx, opts, m)
 		if tmplErr != nil {
 			htmlSnippet = fallbackFeedHTML(postMaps)
@@ -254,7 +262,48 @@ func renderFeedWithTemplate(ctx map[string]interface{}, opts renderFeedArgs, m *
 		}
 	}
 
-	return engine.RenderToString(templateName, ctx)
+	result, err := engine.RenderToString(templateName, ctx)
+	if err != nil {
+		return "", err
+	}
+	return normalizeTemplateWhitespace(result), nil
+}
+
+// normalizeTemplateWhitespace cleans up whitespace artifacts from pongo2 template
+// rendering. Pongo2 replaces {% %} tags with empty strings but preserves surrounding
+// whitespace, creating blank lines and whitespace-only lines. When this HTML is
+// injected into markdown (via render_feed), goldmark can misinterpret indented lines
+// after blank lines as indented code blocks (CommonMark: 4+ leading spaces = code).
+//
+// This function:
+//  1. Left-trims every line (removes leading whitespace) so no line starts with 4+ spaces
+//  2. Collapses consecutive blank lines into at most one
+//  3. Removes leading/trailing blank lines
+func normalizeTemplateWhitespace(s string) string {
+	lines := strings.Split(s, "\n")
+	out := make([]string, 0, len(lines))
+	prevBlank := false
+	for _, line := range lines {
+		trimmed := strings.TrimLeft(line, " \t")
+		if trimmed == "" {
+			if prevBlank {
+				continue // collapse consecutive blank lines
+			}
+			out = append(out, "")
+			prevBlank = true
+		} else {
+			out = append(out, trimmed)
+			prevBlank = false
+		}
+	}
+	// Trim leading/trailing blank lines
+	for len(out) > 0 && out[0] == "" {
+		out = out[1:]
+	}
+	for len(out) > 0 && out[len(out)-1] == "" {
+		out = out[:len(out)-1]
+	}
+	return strings.Join(out, "\n")
 }
 
 func getTemplateEngine(m *lifecycle.Manager) *templates.Engine {

@@ -1102,7 +1102,9 @@ func filterMediaURL(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 }
 
 // filterWithSize decorates a trusted URL with width/height query params.
-// Usage: {{ media_src | with_size:"1200,675" }}
+// Usage: {{ media_src | with_size:"1200,675" }}  -- width + height
+//
+//	{{ media_src | with_size:"1200" }}       -- width-only (CDN preserves aspect ratio)
 func filterWithSize(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	if in.IsNil() {
 		return in, nil
@@ -1111,16 +1113,16 @@ func filterWithSize(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		return in, nil
 	}
 	parts := strings.SplitN(param.String(), ",", 2)
-	if len(parts) != 2 {
-		return in, nil
-	}
 	width, err := strconv.Atoi(strings.TrimSpace(parts[0]))
 	if err != nil || width <= 0 {
 		return in, nil
 	}
-	height, err := strconv.Atoi(strings.TrimSpace(parts[1]))
-	if err != nil || height <= 0 {
-		return in, nil
+	height := 0
+	if len(parts) == 2 {
+		h, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+		if err == nil && h > 0 {
+			height = h
+		}
 	}
 	return pongo2.AsValue(WithSize(in.String(), width, height)), nil
 }

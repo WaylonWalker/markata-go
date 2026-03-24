@@ -157,6 +157,46 @@
   padding: var(--space-6);
 }
 
+/* Embed-style: cover image on left, content on right */
+.card-article.has-cover {
+  display: flex;
+  padding: 0;
+  overflow: hidden;
+}
+
+.card-article .card-cover {
+  flex-shrink: 0;
+  width: 220px;
+  min-height: 160px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.card-article .card-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.card-article.has-cover:hover .card-cover-img {
+  transform: scale(1.03);
+}
+
+.card-article.has-cover .card-content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Push footer to bottom in embed layout */
+.card-article.has-cover .card-body {
+  flex: 1;
+}
+
 .card-article .card-header {
   margin-bottom: var(--space-3);
 }
@@ -166,11 +206,25 @@
   margin-bottom: var(--space-3);
 }
 
+/* Slightly smaller title in embed layout to balance with image */
+.card-article.has-cover .card-title {
+  font-size: var(--text-xl);
+  margin-bottom: var(--space-2);
+}
+
 .card-article .card-excerpt {
   color: var(--color-text-muted);
   font-size: var(--text-base);
   line-height: var(--leading-relaxed);
   margin-bottom: var(--space-3);
+}
+
+/* Clamp only when space is tight (embed with cover image) */
+.card-article.has-cover .card-excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .card-article .reading-time::before {
@@ -217,12 +271,6 @@
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   line-height: var(--leading-relaxed);
-
-  /* Limit to 3 lines */
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 .card-note .card-meta {
@@ -396,6 +444,11 @@
 }
 
 .card-link .card-link-body {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+/* card-body inside link cards needs its own padding since card-link has padding:0 */
+.card-link .card-body {
   padding: 0 var(--space-4) var(--space-4);
 }
 
@@ -948,8 +1001,27 @@
     padding: var(--space-4);
   }
 
+  /* Stack embed layout vertically on tablet */
+  .card-article.has-cover {
+    flex-direction: column;
+  }
+
+  .card-article .card-cover {
+    width: 100%;
+    min-height: 0;
+    height: 180px;
+  }
+
+  .card-article.has-cover .card-content {
+    padding: var(--space-4);
+  }
+
   .card-article .card-title {
     font-size: var(--text-xl);
+  }
+
+  .card-article.has-cover .card-title {
+    font-size: var(--text-lg);
   }
 
   /* Note card */
@@ -1039,6 +1111,14 @@
     font-size: var(--text-lg);
   }
 
+  .card-article.has-cover .card-title {
+    font-size: var(--text-base);
+  }
+
+  .card-article .card-cover {
+    height: 140px;
+  }
+
   .card-note .card-text {
     -webkit-line-clamp: 2;
   }
@@ -1068,6 +1148,60 @@
   .card-inline .card-content img {
     max-height: 150px;
   }
+}
+
+/* ==========================================================================
+   Card Classes - Grid span utilities from frontmatter card_classes
+   Applied via wrapper div in card-router.html when post has card_classes set
+   ========================================================================== */
+
+.col-span-2 { grid-column: span 2; }
+.col-span-3 { grid-column: span 3; }
+.col-span-4 { grid-column: span 4; }
+.row-span-1 { grid-row: span 1; }
+.row-span-2 { grid-row: span 2; }
+.row-span-3 { grid-row: span 3; }
+
+/* Cards inside span wrappers must fill the wrapper */
+[class*="col-span-"] > .card,
+[class*="col-span-"] > .photo-figure,
+[class*="row-span-"] > .card,
+[class*="row-span-"] > .photo-figure {
+  height: 100%;
+}
+
+/* Photo figures spanning rows: image fills available space */
+[class*="row-span-"] > .photo-figure {
+  display: flex;
+  flex-direction: column;
+}
+
+[class*="row-span-"] > .photo-figure > a {
+  flex: 1;
+  display: block;
+  min-height: 0;
+}
+
+[class*="row-span-"] > .photo-figure img,
+[class*="row-span-"] > .photo-figure video {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+/* aspect-auto: let the natural aspect ratio show instead of forced 16:9 */
+.aspect-auto img,
+.aspect-auto video {
+  aspect-ratio: auto !important;
+}
+
+/* Responsive: collapse spans on small screens */
+@media (max-width: 600px) {
+  .col-span-2,
+  .col-span-3,
+  .col-span-4 { grid-column: span 1; }
+  .row-span-2,
+  .row-span-3 { grid-row: span 1; }
 }
 
 /* ==========================================================================

@@ -1,28 +1,28 @@
-{# Article Card - High prominence for blog posts, tutorials, essays #}
-{# Large title, excerpt, tags, reading time, generous padding #}
-<article class="card card-article h-entry">
-  <header class="card-header">
-    <h2 class="card-title p-name"><a class="u-url" href="{{ post.href }}">{{ post.title | default:post.slug }}</a></h2>
-  </header>
-
-  <div class="card-body">
-    <div class="card-excerpt p-summary">
-      {{ post.article_html | excerpt | safe }}
-    </div>
-  </div>
-
-  <footer class="card-meta">
-    {% if post.date %}
-    <time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>
-    {% endif %}
-    {% if post.reading_time %}<span class="reading-time">{{ post.reading_time }} min read</span>{% endif %}
-    {% include "partials/webmention-counts.html" %}
-    {% if post.tags %}
-    <div class="card-tags">
-      {% for tag in post.tags %}
-      <a href="/tags/{{ tag | slugify }}/" class="tag p-category">{{ tag }}</a>
-      {% endfor %}
-    </div>
-    {% endif %}
-  </footer>
+{# Article Card - Embed-style card with optional cover image #}
+{# Shows: cover image (if available), title, description/excerpt, meta #}
+{# Check both image and cover frontmatter fields #}
+{% with post.image|default:post.cover as cover_val %}
+{% with cover_val|media_url:post.video as media_src %}
+<article class="card card-article h-entry{% if media_src %} has-cover{% endif %}">
+{% if media_src %}
+<a href="{{ post.href }}" class="card-cover u-url">
+<img src="{{ media_src|with_size:"600" }}" alt="{{ post.title | default:post.slug }}" class="card-cover-img u-photo" loading="lazy">
+</a>
+{% endif %}
+<div class="card-content">
+<header class="card-header">
+<h2 class="card-title p-name"><a class="u-url" href="{{ post.href }}">{{ post.title | default:post.slug }}</a></h2>
+</header>
+<div class="card-body">
+<div class="card-excerpt p-summary">{{ post.description }}</div>
+</div>
+<footer class="card-meta">
+{% if post.date %}<time class="dt-published" datetime="{{ post.date | atom_date }}">{{ post.date | date:"January 2, 2006" }}</time>{% endif %}
+{% if post.reading_time %}<span class="reading-time">{{ post.reading_time }} min read</span>{% endif %}
+{% include "partials/webmention-counts.html" %}
+{% if post.tags %}<div class="card-tags">{% for tag in post.tags %}<a href="/tags/{{ tag | slugify }}/" class="tag p-category">{{ tag }}</a>{% endfor %}</div>{% endif %}
+</footer>
+</div>
 </article>
+{% endwith %}
+{% endwith %}
