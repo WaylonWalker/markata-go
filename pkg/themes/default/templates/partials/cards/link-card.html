@@ -22,9 +22,7 @@
   </header>
 
   <div class="card-body">
-    {% if post.description %}
-    <p class="card-description p-summary">{{ post.description }}</p>
-    {% endif %}
+    <div class="card-excerpt p-summary">{{ post.article_html|excerpt:"paragraphs=3,chars=800" | default:post.description }}</div>
   </div>
 
   <footer class="card-meta">

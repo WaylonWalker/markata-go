@@ -1034,7 +1034,7 @@ func filterExcerpt(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		result += "\n<p>...</p>"
 	}
 
-	return pongo2.AsValue(result), nil
+	return pongo2.AsSafeValue(result), nil
 }
 
 // cleanExcerptHTML preserves inline formatting tags (code, strong, em, a, etc.)

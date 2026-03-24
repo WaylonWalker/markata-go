@@ -436,6 +436,38 @@
   overflow: hidden;
 }
 
+/* Wide layout: title and excerpt share one row on desktop */
+@media (min-width: 769px) {
+  .card-link {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+  }
+
+  .card-link .card-header {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .card-link .card-body {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .card-link .card-meta {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  /* Revert to stacked layout inside narrow sidebar contexts */
+  aside .card-link {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 .card-link .card-link-wrapper {
   display: flex;
   align-items: flex-start;
@@ -449,7 +481,7 @@
 
 /* card-body inside link cards needs its own padding since card-link has padding:0 */
 .card-link .card-body {
-  padding: 0 var(--space-4) var(--space-4);
+  padding: var(--space-3) var(--space-4);
 }
 
 .card-link .card-link-snippet {
@@ -477,7 +509,7 @@
 
 .card-link .card-link-content {
   flex: 1;
-  padding: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   min-width: 0;
 }
 
@@ -485,7 +517,7 @@
   display: block;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
   text-transform: lowercase;
 
   /* Truncate long URLs */
@@ -497,7 +529,7 @@
 .card-link .card-title {
   font-size: var(--text-base);
   font-weight: 600;
-  margin-bottom: var(--space-2);
+  margin-bottom: 0;
 
   /* Limit to 2 lines */
   display: -webkit-box;
@@ -506,7 +538,8 @@
   overflow: hidden;
 }
 
-.card-link .card-description {
+.card-link .card-description,
+.card-link .card-excerpt {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 
@@ -517,11 +550,33 @@
   overflow: hidden;
 }
 
+/* Flatten paragraph margins inside excerpt so line-clamp works across <p> children */
+.card-link .card-excerpt p {
+  display: inline;
+}
+
+/* Add a space between consecutive paragraphs rendered inline */
+.card-link .card-excerpt p + p::before {
+  content: " ";
+}
+
 .card-link .card-meta {
   margin-top: auto;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-4);
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
+}
+
+/* Sidebar link cards: de-emphasize title, show more content */
+aside .card-link .card-title {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  -webkit-line-clamp: 1;
+}
+
+aside .card-link .card-excerpt {
+  -webkit-line-clamp: 4;
+  font-size: var(--text-sm);
 }
 
 /* ==========================================================================

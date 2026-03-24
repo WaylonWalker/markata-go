@@ -33,6 +33,30 @@ const (
 	templateTypeTutorial  = "tutorial"
 )
 
+// ensureArticleHTML renders markdown on-demand for any feed post whose
+// ArticleHTML has not yet been populated (e.g. when render_feed is called
+// from jinja_md during StageTransform, before render_markdown runs).
+// The rendered HTML is stored on the post so later stages can reuse it.
+func ensureArticleHTML(posts []*models.Post, m *lifecycle.Manager) {
+	cached, ok := m.Cache().Get(CacheKeyMarkdownRenderer)
+	if !ok {
+		return
+	}
+	renderFn, ok := cached.(MarkdownRenderFunc)
+	if !ok {
+		return
+	}
+
+	for _, post := range posts {
+		if post.ArticleHTML == "" && post.Content != "" && !post.Skip {
+			if rendered, err := renderFn(post.Content); err == nil {
+				post.ArticleHTML = rendered
+				templates.InvalidatePost(post)
+			}
+		}
+	}
+}
+
 // createFeedPostsFunc exposes a helper that returns the latest posts for a feed.
 func createFeedPostsFunc(m *lifecycle.Manager) func(slug string, args ...interface{}) ([]map[string]interface{}, error) {
 	return func(slug string, args ...interface{}) ([]map[string]interface{}, error) {
@@ -41,6 +65,7 @@ func createFeedPostsFunc(m *lifecycle.Manager) func(slug string, args ...interfa
 		if len(posts) == 0 {
 			return []map[string]interface{}{}, nil
 		}
+		ensureArticleHTML(posts, m)
 		return templates.PostsToMaps(posts), nil
 	}
 }
@@ -54,6 +79,7 @@ func createRenderFeedFunc(m *lifecycle.Manager) func(slug string, args ...interf
 			return pongo2.AsSafeValue(""), nil
 		}
 
+		ensureArticleHTML(posts, m)
 		postMaps := templates.PostsToMaps(posts)
 		ctx := map[string]interface{}{
 			"posts":   postMaps,
