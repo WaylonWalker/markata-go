@@ -3,6 +3,7 @@ package templates
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -139,6 +140,7 @@ func registerFilters() {
 		// URL filters
 		pongo2.RegisterFilter("urlencode", filterURLEncode)
 		pongo2.RegisterFilter("absolute_url", filterAbsoluteURL)
+		pongo2.RegisterFilter("domain", filterDomain)
 
 		// Theme/asset filters (per THEMES.md spec)
 		pongo2.RegisterFilter("theme_asset", filterThemeAsset)
@@ -658,6 +660,20 @@ func filterAbsoluteURL(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	}
 
 	return pongo2.AsValue(baseURL + path), nil
+}
+
+// filterDomain extracts the hostname from a URL string.
+// Usage: {{ "https://htmx.org/examples/foo/" | domain }} => "htmx.org"
+func filterDomain(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	raw := in.String()
+	if raw == "" {
+		return pongo2.AsValue(""), nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return in, nil
+	}
+	return pongo2.AsValue(u.Hostname()), nil
 }
 
 // filterThemeAsset returns a URL path for theme static assets.

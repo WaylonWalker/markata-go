@@ -513,17 +513,30 @@
   min-width: 0;
 }
 
+/* Reset <p> wrappers injected by the markdown processor around domain/data elements */
+.card-link .card-link-content p,
+.card-link .card-meta p {
+  margin: 0;
+  display: inline;
+}
+
 .card-link .card-domain {
   display: block;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-  margin-bottom: var(--space-1);
+  margin-top: var(--space-1);
+  text-decoration: none;
   text-transform: lowercase;
 
   /* Truncate long URLs */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.card-link .card-domain:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
 }
 
 .card-link .card-title {
@@ -575,7 +588,7 @@ aside .card-link .card-title {
 }
 
 aside .card-link .card-excerpt {
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 6;
   font-size: var(--text-sm);
 }
 
