@@ -1271,16 +1271,36 @@ func (c Context) ToPongo2() pongo2.Context {
 		configMap["theme"] = ThemeToMap(&c.Config.Theme)
 	}
 
+	resolvedContentSidebar := map[string]interface{}{
+		"enabled":  false,
+		"position": "",
+		"width":    "",
+		"slug":     "",
+	}
+	if configMap != nil {
+		if components, ok := configMap["components"].(map[string]interface{}); ok {
+			if sidebar, ok := components["content_sidebar"].(map[string]interface{}); ok {
+				resolvedContentSidebar = map[string]interface{}{
+					"enabled":  sidebar["enabled"],
+					"position": sidebar["position"],
+					"width":    sidebar["width"],
+					"slug":     sidebar["slug"],
+				}
+			}
+		}
+	}
+
 	ctx := pongo2.Context{
-		"post":          postMap,
-		"body":          c.Body,
-		"config":        configMap,
-		"feed":          feedToMap(c.Feed),
-		"page":          feedPageToMap(c.FeedPage),
-		"posts":         PostsToMaps(c.Posts),
-		"core":          c.Core,
-		"sidebar_items": sidebarItemsToMaps(c.SidebarItems),
-		"sidebar_title": c.SidebarTitle,
+		"post":                     postMap,
+		"body":                     c.Body,
+		"config":                   configMap,
+		"feed":                     feedToMap(c.Feed),
+		"page":                     feedPageToMap(c.FeedPage),
+		"posts":                    PostsToMaps(c.Posts),
+		"core":                     c.Core,
+		"sidebar_items":            sidebarItemsToMaps(c.SidebarItems),
+		"sidebar_title":            c.SidebarTitle,
+		"resolved_content_sidebar": resolvedContentSidebar,
 	}
 
 	// Add post fields directly for convenience (if post exists)
@@ -1302,6 +1322,15 @@ func (c Context) ToPongo2() pongo2.Context {
 				// Don't override existing keys
 				if _, exists := ctx[k]; !exists {
 					ctx[k] = v
+				}
+			}
+
+			if sidebarSlug, ok := c.Post.Extra["sidebar_slug"].(string); ok && sidebarSlug != "" {
+				ctx["resolved_content_sidebar"] = map[string]interface{}{
+					"enabled":  true,
+					"position": resolvedContentSidebar["position"],
+					"width":    resolvedContentSidebar["width"],
+					"slug":     sidebarSlug,
 				}
 			}
 		}

@@ -314,6 +314,13 @@ func TestContext_ToPongo2(t *testing.T) {
 		t.Errorf("default_author_id not set correctly, got %v", p2ctx["default_author_id"])
 	}
 
+	resolvedSidebar, ok := p2ctx["resolved_content_sidebar"].(map[string]interface{})
+	if !ok {
+		t.Error("resolved_content_sidebar not set in context as map")
+	} else if resolvedSidebar["enabled"] != false {
+		t.Errorf("resolved_content_sidebar.enabled default incorrect, got %v", resolvedSidebar["enabled"])
+	}
+
 	// Check extra fields from post
 	if p2ctx["custom_field"] != "custom_value" {
 		t.Error("custom field from post.Extra not set")
@@ -322,6 +329,50 @@ func TestContext_ToPongo2(t *testing.T) {
 	// Check extra context values
 	if p2ctx["extra_key"] != "extra_value" {
 		t.Error("extra context value not set")
+	}
+}
+
+func TestContext_ToPongo2_ResolvedContentSidebar(t *testing.T) {
+	title := "Test Post"
+	enabled := true
+	post := &models.Post{
+		Title: &title,
+		Extra: map[string]interface{}{"sidebar_slug": "components/page-sidebar"},
+	}
+
+	config := &models.Config{
+		Components: models.ComponentsConfig{
+			ContentSidebar: models.ContentSidebarConfig{
+				Enabled:  &enabled,
+				Position: "left",
+				Width:    "280px",
+				Slug:     "components/global-sidebar",
+			},
+		},
+	}
+
+	ctx := NewContext(post, "", config)
+	p2ctx := ctx.ToPongo2()
+
+	resolvedSidebar, ok := p2ctx["resolved_content_sidebar"].(map[string]interface{})
+	if !ok {
+		t.Fatal("resolved_content_sidebar not set in context as map")
+	}
+
+	if resolvedSidebar["enabled"] != true {
+		t.Errorf("resolved_content_sidebar.enabled incorrect, got %v", resolvedSidebar["enabled"])
+	}
+	if resolvedSidebar["position"] != "left" {
+		t.Errorf("resolved_content_sidebar.position incorrect, got %v", resolvedSidebar["position"])
+	}
+	if resolvedSidebar["width"] != "280px" {
+		t.Errorf("resolved_content_sidebar.width incorrect, got %v", resolvedSidebar["width"])
+	}
+	if resolvedSidebar["slug"] != "components/page-sidebar" {
+		t.Errorf("resolved_content_sidebar.slug incorrect, got %v", resolvedSidebar["slug"])
+	}
+	if p2ctx["sidebar_slug"] != "components/page-sidebar" {
+		t.Errorf("sidebar_slug extra field not exposed, got %v", p2ctx["sidebar_slug"])
 	}
 }
 

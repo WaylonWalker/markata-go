@@ -207,7 +207,7 @@
       {% endif %}
 
       {# Left content sidebar (if enabled and position is left) #}
-      {% if config.components.content_sidebar.enabled and config.components.content_sidebar.position == 'left' %}
+      {% if resolved_content_sidebar.enabled and resolved_content_sidebar.position == 'left' %}
       {% include "components/content_sidebar.html" %}
       {% endif %}
 
@@ -216,7 +216,7 @@
       </main>
 
       {# Right content sidebar (if enabled and position is right) #}
-      {% if config.components.content_sidebar.enabled and config.components.content_sidebar.position == 'right' %}
+      {% if resolved_content_sidebar.enabled and resolved_content_sidebar.position == 'right' %}
       {% include "components/content_sidebar.html" %}
       {% endif %}
 
