@@ -33,6 +33,30 @@ const (
 	templateTypeTutorial  = "tutorial"
 )
 
+// ensureArticleHTML renders markdown on-demand for any feed post whose
+// ArticleHTML has not yet been populated (e.g. when render_feed is called
+// from jinja_md during StageTransform, before render_markdown runs).
+// The rendered HTML is stored on the post so later stages can reuse it.
+func ensureArticleHTML(posts []*models.Post, m *lifecycle.Manager) {
+	cached, ok := m.Cache().Get(CacheKeyMarkdownRenderer)
+	if !ok {
+		return
+	}
+	renderFn, ok := cached.(MarkdownRenderFunc)
+	if !ok {
+		return
+	}
+
+	for _, post := range posts {
+		if post.ArticleHTML == "" && post.Content != "" && !post.Skip {
+			if rendered, err := renderFn(post.Content); err == nil {
+				post.ArticleHTML = rendered
+				templates.InvalidatePost(post)
+			}
+		}
+	}
+}
+
 // createFeedPostsFunc exposes a helper that returns the latest posts for a feed.
 func createFeedPostsFunc(m *lifecycle.Manager) func(slug string, args ...interface{}) ([]map[string]interface{}, error) {
 	return func(slug string, args ...interface{}) ([]map[string]interface{}, error) {
@@ -41,6 +65,7 @@ func createFeedPostsFunc(m *lifecycle.Manager) func(slug string, args ...interfa
 		if len(posts) == 0 {
 			return []map[string]interface{}{}, nil
 		}
+		ensureArticleHTML(posts, m)
 		return templates.PostsToMaps(posts), nil
 	}
 }
@@ -54,6 +79,7 @@ func createRenderFeedFunc(m *lifecycle.Manager) func(slug string, args ...interf
 			return pongo2.AsSafeValue(""), nil
 		}
 
+		ensureArticleHTML(posts, m)
 		postMaps := templates.PostsToMaps(posts)
 		ctx := map[string]interface{}{
 			"posts":   postMaps,
@@ -63,6 +89,14 @@ func createRenderFeedFunc(m *lifecycle.Manager) func(slug string, args ...interf
 				"title":       fc.Title,
 				"description": fc.Description,
 			},
+		}
+
+		// Include config so card-router can access card_router.mappings
+		if cfg := m.Config(); cfg != nil {
+			modelsConfig := ToModelsConfig(cfg)
+			if modelsConfig != nil {
+				ctx["config"] = templates.GetConfigMap(modelsConfig)
+			}
 		}
 
 		htmlSnippet, tmplErr := renderFeedWithTemplate(ctx, opts, m)
@@ -254,7 +288,48 @@ func renderFeedWithTemplate(ctx map[string]interface{}, opts renderFeedArgs, m *
 		}
 	}
 
-	return engine.RenderToString(templateName, ctx)
+	result, err := engine.RenderToString(templateName, ctx)
+	if err != nil {
+		return "", err
+	}
+	return normalizeTemplateWhitespace(result), nil
+}
+
+// normalizeTemplateWhitespace cleans up whitespace artifacts from pongo2 template
+// rendering. Pongo2 replaces {% %} tags with empty strings but preserves surrounding
+// whitespace, creating blank lines and whitespace-only lines. When this HTML is
+// injected into markdown (via render_feed), goldmark can misinterpret indented lines
+// after blank lines as indented code blocks (CommonMark: 4+ leading spaces = code).
+//
+// This function:
+//  1. Left-trims every line (removes leading whitespace) so no line starts with 4+ spaces
+//  2. Collapses consecutive blank lines into at most one
+//  3. Removes leading/trailing blank lines
+func normalizeTemplateWhitespace(s string) string {
+	lines := strings.Split(s, "\n")
+	out := make([]string, 0, len(lines))
+	prevBlank := false
+	for _, line := range lines {
+		trimmed := strings.TrimLeft(line, " \t")
+		if trimmed == "" {
+			if prevBlank {
+				continue // collapse consecutive blank lines
+			}
+			out = append(out, "")
+			prevBlank = true
+		} else {
+			out = append(out, trimmed)
+			prevBlank = false
+		}
+	}
+	// Trim leading/trailing blank lines
+	for len(out) > 0 && out[0] == "" {
+		out = out[1:]
+	}
+	for len(out) > 0 && out[len(out)-1] == "" {
+		out = out[:len(out)-1]
+	}
+	return strings.Join(out, "\n")
 }
 
 func getTemplateEngine(m *lifecycle.Manager) *templates.Engine {
@@ -592,4 +667,71 @@ func nonNegativeInt(value int) int {
 		return 0
 	}
 	return value
+}
+
+// createRenderSlashesFunc returns a Jinja-callable that renders slash pages as
+// a grid of pill links.  It queries the "slashes" feed (posts tagged "slash")
+// and emits <div class="home-slashes">…</div>.
+func createRenderSlashesFunc(m *lifecycle.Manager) func(args ...interface{}) (*pongo2.Value, error) {
+	return func(args ...interface{}) (*pongo2.Value, error) {
+		// Allow an optional limit argument (default 0 = all)
+		limit := 0
+		for _, arg := range args {
+			if n, ok := numericValue(arg); ok {
+				limit = nonNegativeInt(n)
+			}
+		}
+
+		posts, _ := getFeedPosts("slashes", limit, m)
+		if len(posts) == 0 {
+			return pongo2.AsSafeValue(""), nil
+		}
+
+		var sb strings.Builder
+		sb.WriteString(`<div class="home-slashes">`)
+		for _, p := range posts {
+			// Derive display name: prefer the href (e.g. /now/) to look like a slash page
+			display := p.Href
+			if display == "" {
+				display = "/" + p.Slug + "/"
+			}
+			sb.WriteString(`<a href="`)
+			sb.WriteString(html.EscapeString(p.Href))
+			sb.WriteString(`" class="home-slash-link">`)
+			sb.WriteString(html.EscapeString(display))
+			sb.WriteString(`</a>`)
+		}
+		sb.WriteString(`</div>`)
+		return pongo2.AsSafeValue(sb.String()), nil
+	}
+}
+
+// createIncludePostFunc returns a Jinja-callable that looks up a post by slug
+// and returns its rendered ArticleHTML.  This lets templates and jinja-enabled
+// markdown compose pages from other posts:
+//
+//	{{ include_post("components/sidebar") }}
+func createIncludePostFunc(m *lifecycle.Manager) func(slug string) (*pongo2.Value, error) {
+	return func(slug string) (*pongo2.Value, error) {
+		slug = strings.TrimSpace(slug)
+		if slug == "" {
+			return pongo2.AsSafeValue(""), nil
+		}
+		// Normalize: strip leading/trailing slashes
+		slug = strings.Trim(slug, "/")
+
+		for _, p := range m.Posts() {
+			if p.Slug == slug {
+				if p.ArticleHTML != "" {
+					return pongo2.AsSafeValue(p.ArticleHTML), nil
+				}
+				// Fallback to raw content if not yet rendered
+				if p.Content != "" {
+					return pongo2.AsSafeValue(p.Content), nil
+				}
+				return pongo2.AsSafeValue(""), nil
+			}
+		}
+		return pongo2.AsSafeValue("<!-- include_post: post not found: " + html.EscapeString(slug) + " -->"), nil
+	}
 }

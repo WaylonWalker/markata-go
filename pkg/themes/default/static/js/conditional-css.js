@@ -20,7 +20,8 @@
     'chroma':      '.chroma',
     'cards':       '.card, .posts-list',
     'webmentions': '.webmentions',
-    'encryption':  '.encrypted-content, [data-encrypted]'
+    'encryption':  '.encrypted-content, [data-encrypted]',
+    'home':        '.home-hero, .home-feeds'
   };
 
   /**

@@ -687,6 +687,20 @@ func mergeComponentsConfig(base, override models.ComponentsConfig) models.Compon
 		result.FeedSidebar.Feeds = override.FeedSidebar.Feeds
 	}
 
+	// Merge ContentSidebar component
+	if override.ContentSidebar.Enabled != nil {
+		result.ContentSidebar.Enabled = override.ContentSidebar.Enabled
+	}
+	if override.ContentSidebar.Position != "" {
+		result.ContentSidebar.Position = override.ContentSidebar.Position
+	}
+	if override.ContentSidebar.Width != "" {
+		result.ContentSidebar.Width = override.ContentSidebar.Width
+	}
+	if override.ContentSidebar.Slug != "" {
+		result.ContentSidebar.Slug = override.ContentSidebar.Slug
+	}
+
 	// Merge CardRouter component - mappings from override take precedence
 	if len(override.CardRouter.Mappings) > 0 {
 		if result.CardRouter.Mappings == nil {

@@ -1,6 +1,10 @@
 {# Card Router - Routes to appropriate card template based on config mapping #}
 {# Uses config.components.card_router.mappings to determine card type #}
 {# Card types: article, note, photo, video, link, quote, guide, inline, contact, default #}
+{# Supports card_classes frontmatter for grid span control (col-span-2, row-span-2, etc.) #}
+
+{# Wrap card in a div when card_classes is set for CSS grid span support #}
+{% if post.card_classes %}<div class="{{ post.card_classes }}">{% endif %}
 
 {# Look up card type from config mappings, defaulting to "default" #}
 {% with card_type=config.components.card_router.mappings|getitem:post.template|default:"default" %}
@@ -37,3 +41,5 @@
 {% endif %}
 
 {% endwith %}
+
+{% if post.card_classes %}</div>{% endif %}

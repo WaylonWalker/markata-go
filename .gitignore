@@ -978,3 +978,6 @@ mem.prof
 cache
 output
 .markata
+
+# Test-generated artifacts (tailwind rebuilds on every test run)
+tests/static/markata-tailwind.css
