@@ -1,7 +1,7 @@
 {# Homepage Layout -- frontmatter-driven with config fallbacks, extends base.html #}
 {# Frontmatter fields: hero_first_name, hero_last_name, hero_tagline, hero_avatar, #}
 {#   hero_links (list of {label, url}), intro_cards (list of {slug, heading, link}), #}
-{#   sidebar_slug (string). All optional -- falls back to config values. #}
+  {#   sidebar_slug (string). All optional -- falls back to config values. #}
 {% extends "base.html" %}
 
 {% block title %}{{ config.title | default:'My Site' }}{% endblock %}
@@ -94,13 +94,13 @@
   {# ── Markdown content: feed sections rendered by Jinja ── #}
   <div class="home-feeds">
     <div class="home-width">
-      {% if post.sidebar_slug %}
+      {% if resolved_content_sidebar and resolved_content_sidebar.slug %}
       <div class="home-main-rail">
         <div class="home-main-content post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
           {{ body | safe }}
         </div>
         <aside class="home-sidebar">
-          {{ include_post(post.sidebar_slug) | safe }}
+          {{ include_post(resolved_content_sidebar.slug) | safe }}
         </aside>
       </div>
       {% else %}
