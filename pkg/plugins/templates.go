@@ -157,7 +157,7 @@ func (p *TemplatesPlugin) resolveTemplateForFormat(post *models.Post, format str
 	if post.Template != "" {
 		// For HTML, use the template directly
 		if format == formatHTML {
-			return post.Template
+			return post.Template + ".html"
 		}
 		// For other formats, try to adapt it
 		return adaptTemplateForFormat(post.Template+".html", format)

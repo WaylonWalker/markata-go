@@ -1323,6 +1323,11 @@ func (c Context) ToPongo2() pongo2.Context {
 				topLevelAuthors[id] = authorToMap(&a)
 			}
 			ctx["authors"] = topLevelAuthors
+
+			if defaultAuthor, defaultID := models.GetDefaultAuthor(c.Config.Authors.Authors); defaultAuthor != nil {
+				ctx["default_author"] = authorToMap(defaultAuthor)
+				ctx["default_author_id"] = defaultID
+			}
 		}
 	}
 

@@ -238,6 +238,7 @@ func TestEngine_RenderString_DateFilters(t *testing.T) {
 
 func TestContext_ToPongo2(t *testing.T) {
 	title := "Test Post"
+	avatar := "/8bitcc.png"
 	post := &models.Post{
 		Title:     &title,
 		Slug:      "test-post",
@@ -249,6 +250,17 @@ func TestContext_ToPongo2(t *testing.T) {
 	config := &models.Config{
 		Title: "Test Site",
 		URL:   "https://test.com",
+		Authors: models.AuthorsConfig{Authors: map[string]models.Author{
+			"waylon": {
+				Name:    "Waylon Walker",
+				Avatar:  &avatar,
+				Default: true,
+				Active:  true,
+				Social: map[string]string{
+					"github": "https://github.com/WaylonWalker",
+				},
+			},
+		}},
 	}
 
 	ctx := NewContext(post, "<p>Body HTML</p>", config)
@@ -284,6 +296,22 @@ func TestContext_ToPongo2(t *testing.T) {
 	}
 	if p2ctx["site_url"] != "https://test.com" {
 		t.Error("site_url shortcut not set correctly")
+	}
+
+	defaultAuthor, ok := p2ctx["default_author"].(map[string]interface{})
+	if !ok {
+		t.Error("default_author not set in context as map")
+	} else {
+		if defaultAuthor["name"] != "Waylon Walker" {
+			t.Errorf("default_author.name not set correctly, got %v", defaultAuthor["name"])
+		}
+		if defaultAuthor["avatar"] != "/8bitcc.png" {
+			t.Errorf("default_author.avatar not set correctly, got %v", defaultAuthor["avatar"])
+		}
+	}
+
+	if p2ctx["default_author_id"] != "waylon" {
+		t.Errorf("default_author_id not set correctly, got %v", p2ctx["default_author_id"])
 	}
 
 	// Check extra fields from post

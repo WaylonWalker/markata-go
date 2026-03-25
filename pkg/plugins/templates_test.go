@@ -479,6 +479,15 @@ func TestTemplatesPlugin_ResolveTemplateForFormat(t *testing.T) {
 			want:   "custom.html",
 		},
 		{
+			name: "html format appends extension for extensionless template name",
+			post: &models.Post{
+				Template: "home",
+			},
+			config: nil,
+			format: "html",
+			want:   "home.html",
+		},
+		{
 			name: "og format adapts template",
 			post: &models.Post{
 				Template: "post.html",

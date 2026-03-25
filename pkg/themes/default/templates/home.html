@@ -61,6 +61,12 @@
             <a href="{{ link.url }}" class="home-hero__pill">{{ link.label }}</a>
             {% endfor %}
           </div>
+          {% elif default_author and default_author.social %}
+          <div class="home-hero__links">
+            {% for label, url in default_author.social %}
+            <a href="{{ url }}" class="home-hero__pill">{{ label }}</a>
+            {% endfor %}
+          </div>
           {% endif %}
         </div>
       </div>
