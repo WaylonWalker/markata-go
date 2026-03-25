@@ -206,9 +206,19 @@
       {% include "components/feed_sidebar.html" %}
       {% endif %}
 
+      {# Left content sidebar (if enabled and position is left) #}
+      {% if config.components.content_sidebar.enabled and config.components.content_sidebar.position == 'left' %}
+      {% include "components/content_sidebar.html" %}
+      {% endif %}
+
       <main class="main-content" id="main-content" tabindex="-1">
         {% block content %}{% endblock %}
       </main>
+
+      {# Right content sidebar (if enabled and position is right) #}
+      {% if config.components.content_sidebar.enabled and config.components.content_sidebar.position == 'right' %}
+      {% include "components/content_sidebar.html" %}
+      {% endif %}
 
       {# Right sidebar for document TOC (if enabled) #}
       {% if config.components.doc_sidebar.enabled and config.components.doc_sidebar.position == 'right' %}

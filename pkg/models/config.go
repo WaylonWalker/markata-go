@@ -51,6 +51,9 @@ type ComponentsConfig struct {
 	// FeedSidebar configures the feed sidebar (series/collection navigation)
 	FeedSidebar FeedSidebarConfig `json:"feed_sidebar" yaml:"feed_sidebar" toml:"feed_sidebar"`
 
+	// ContentSidebar configures a content sidebar that renders a post as an aside
+	ContentSidebar ContentSidebarConfig `json:"content_sidebar" yaml:"content_sidebar" toml:"content_sidebar"`
+
 	// CardRouter configures the card template routing for feeds
 	CardRouter CardRouterConfig `json:"card_router" yaml:"card_router" toml:"card_router"`
 
@@ -133,6 +136,24 @@ type FeedSidebarConfig struct {
 
 	// Feeds is the list of feed slugs to show navigation for
 	Feeds []string `json:"feeds,omitempty" yaml:"feeds,omitempty" toml:"feeds,omitempty"`
+}
+
+// ContentSidebarConfig configures a content sidebar that renders a post
+// by slug as an aside widget on every page. Unlike feed_sidebar and doc_sidebar
+// which are navigational, this displays arbitrary rendered content (e.g. feeds,
+// slash page grids, or any unpublished component post).
+type ContentSidebarConfig struct {
+	// Enabled controls whether the content sidebar is displayed (default: false)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Position controls sidebar position: "left", "right" (default: "right")
+	Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
+
+	// Width is the sidebar width (default: "320px")
+	Width string `json:"width,omitempty" yaml:"width,omitempty" toml:"width,omitempty"`
+
+	// Slug is the post slug whose rendered content is included in the sidebar
+	Slug string `json:"slug,omitempty" yaml:"slug,omitempty" toml:"slug,omitempty"`
 }
 
 // CardRouterConfig configures the card template routing for feeds.
@@ -369,6 +390,7 @@ func NewComponentsConfig() ComponentsConfig {
 	footerEnabled := true
 	docSidebarEnabled := false
 	feedSidebarEnabled := false
+	contentSidebarEnabled := false
 	showCopyright := true
 	showBuiltWith := true
 
@@ -394,6 +416,11 @@ func NewComponentsConfig() ComponentsConfig {
 			Enabled:  &feedSidebarEnabled,
 			Position: "left",
 			Width:    "250px",
+		},
+		ContentSidebar: ContentSidebarConfig{
+			Enabled:  &contentSidebarEnabled,
+			Position: "right",
+			Width:    "380px",
 		},
 		Share:           NewShareComponentConfig(),
 		PostConnections: NewPostConnectionsComponentConfig(),
@@ -430,6 +457,14 @@ func (c *ComponentsConfig) IsFeedSidebarEnabled() bool {
 		return false
 	}
 	return *c.FeedSidebar.Enabled
+}
+
+// IsContentSidebarEnabled returns whether the content sidebar is enabled.
+func (c *ComponentsConfig) IsContentSidebarEnabled() bool {
+	if c.ContentSidebar.Enabled == nil {
+		return false
+	}
+	return *c.ContentSidebar.Enabled
 }
 
 // Config represents the site configuration for markata-go.

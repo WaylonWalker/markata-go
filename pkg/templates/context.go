@@ -596,11 +596,24 @@ func componentsToMap(c *models.ComponentsConfig) map[string]interface{} {
 		"outlinks_limit":  postConnOutlinksLimit,
 	}
 
+	// Convert content_sidebar component
+	contentSidebarEnabled := false
+	if c.ContentSidebar.Enabled != nil {
+		contentSidebarEnabled = *c.ContentSidebar.Enabled
+	}
+	contentSidebarMap := map[string]interface{}{
+		"enabled":  contentSidebarEnabled,
+		"position": c.ContentSidebar.Position,
+		"width":    c.ContentSidebar.Width,
+		"slug":     c.ContentSidebar.Slug,
+	}
+
 	return map[string]interface{}{
 		"nav":              navMap,
 		"footer":           footerMap,
 		"doc_sidebar":      docSidebarMap,
 		"feed_sidebar":     feedSidebarMap,
+		"content_sidebar":  contentSidebarMap,
 		"card_router":      cardRouterMap,
 		"share":            shareMap,
 		"post_connections": postConnectionsMap,

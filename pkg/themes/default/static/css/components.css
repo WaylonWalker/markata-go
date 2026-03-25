@@ -444,8 +444,104 @@
 }
 
 /* ==========================================================================
-   Responsive: Hide sidebars on mobile
+   Content Sidebar (renders a post slug as an aside widget)
    ========================================================================== */
+
+.content-sidebar {
+  position: sticky;
+  top: 1rem;
+  width: 380px;
+  height: fit-content;
+  flex-shrink: 0;
+}
+
+.content-sidebar--left {
+  order: -1;
+  margin-right: 2rem;
+}
+
+.content-sidebar--right {
+  order: 1;
+  margin-left: 2rem;
+}
+
+.content-sidebar-inner {
+  font-size: 0.875rem;
+}
+
+/* Slash pages grid (rendered by render_slashes() in content sidebar) */
+.home-slashes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 150px));
+  gap: var(--space-2);
+}
+
+.home-slash-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-slash-link:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-bg, #000) 8%, transparent);
+}
+
+/* ==========================================================================
+   Responsive: Sidebars on smaller screens
+   ========================================================================== */
+
+/* Narrow content sidebar on medium screens */
+@media (max-width: 1400px) {
+  .content-sidebar {
+    width: 280px;
+  }
+
+  .content-sidebar--left {
+    margin-right: 1.5rem;
+  }
+
+  .content-sidebar--right {
+    margin-left: 1.5rem;
+  }
+}
+
+/* Stack content sidebar below content on tablet-ish screens */
+@media (max-width: 1200px) {
+  .content-sidebar {
+    position: static;
+    width: 600px;
+    max-width: calc(100% - 2rem);
+    margin-top: var(--space-8, 2rem);
+    align-self: center;
+    order: 99;
+  }
+
+  .content-sidebar-inner {
+    text-align: center;
+  }
+
+  .content-sidebar-inner .feed,
+  .content-sidebar-inner .card {
+    text-align: left;
+  }
+
+  .content-sidebar--left,
+  .content-sidebar--right {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
 
 @media (max-width: 1024px) {
   .page-wrapper {
@@ -475,6 +571,10 @@
   .page-wrapper {
     padding: 0;
   }
+
+  .home-slashes {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 130px));
+  }
 }
 
 @media (max-width: 375px) {
@@ -486,7 +586,8 @@
 /* Show sidebars in a collapsed/expandable form on tablet */
 @media (max-width: 1024px) and (min-width: 768px) {
   .doc-sidebar,
-  .feed-sidebar {
+  .feed-sidebar,
+  .content-sidebar {
     display: block;
     position: relative;
     top: 0;

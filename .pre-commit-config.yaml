@@ -86,12 +86,12 @@ repos:
         files: go\.(mod|sum)$
         pass_filenames: false
 
-  # golangci-lint (fast mode for pre-commit, use system binary)
+  # golangci-lint (only lint changes relative to HEAD for speed)
   - repo: local
     hooks:
       - id: golangci-lint
         name: golangci-lint
-        entry: golangci-lint run --fast --timeout=3m
+        entry: golangci-lint run --new-from-rev=HEAD --timeout=5m
         language: system
         types: [go]
         pass_filenames: false
