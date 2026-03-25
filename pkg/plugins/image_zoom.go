@@ -151,6 +151,26 @@ func (p *ImageZoomPlugin) Render(m *lifecycle.Manager) error {
 	return nil
 }
 
+// isInsideAnchor checks whether position pos in html is inside an <a> element
+// by scanning backwards for the nearest <a or </a> tag. If the nearest
+// anchor-related tag is an opening <a (not a closing </a>), the position is
+// considered inside an anchor.
+func isInsideAnchor(html string, pos int) bool {
+	before := html[:pos]
+	// Find the last opening anchor tag
+	lastOpen := strings.LastIndex(before, "<a ")
+	if lastOpen == -1 {
+		lastOpen = strings.LastIndex(before, "<a\n")
+	}
+	if lastOpen == -1 {
+		return false
+	}
+	// Find the last closing anchor tag
+	lastClose := strings.LastIndex(before, "</a>")
+	// If the last opening <a> is after the last </a>, we're inside an anchor
+	return lastOpen > lastClose
+}
+
 // imageZoomImgTagRegex matches <img> tags and captures their attributes.
 var imageZoomImgTagRegex = regexp.MustCompile(`<img\s+([^>]*)>`)
 
@@ -189,19 +209,33 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 	// Track if we found any zoomable images
 	foundZoomable := false
 
-	// Process all img tags
-	result := imageZoomImgTagRegex.ReplaceAllStringFunc(post.ArticleHTML, func(match string) string {
-		// Extract the attributes
-		submatches := imageZoomImgTagRegex.FindStringSubmatch(match)
-		if len(submatches) < 2 {
-			return match
-		}
-		attrs := submatches[1]
+	// Process all img tags using index-based replacement so we can inspect
+	// the surrounding HTML for each match (e.g. detect parent <a> tags).
+	html := post.ArticleHTML
+	matches := imageZoomImgTagRegex.FindAllStringSubmatchIndex(html, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+
+	var buf strings.Builder
+	buf.Grow(len(html) + len(matches)*100) // pre-allocate
+	lastEnd := 0
+
+	for _, loc := range matches {
+		// loc[0..1] = full match, loc[2..3] = capture group 1 (attrs)
+		matchStart, matchEnd := loc[0], loc[1]
+		attrStart, attrEnd := loc[2], loc[3]
+		attrs := html[attrStart:attrEnd]
+
+		// Write everything before this match
+		buf.WriteString(html[lastEnd:matchStart])
+		lastEnd = matchEnd
 
 		// Check if already has glightbox attribute
 		if strings.Contains(attrs, "data-glightbox") {
 			foundZoomable = true
-			return match
+			buf.WriteString(html[matchStart:matchEnd])
+			continue
 		}
 
 		// Check for {data-zoomable} or {.zoomable} markers in alt text
@@ -211,7 +245,8 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 		shouldZoom := hasZoomableMarker || postZoomEnabled
 
 		if !shouldZoom {
-			return match
+			buf.WriteString(html[matchStart:matchEnd])
+			continue
 		}
 
 		foundZoomable = true
@@ -252,9 +287,32 @@ func (p *ImageZoomPlugin) processPost(post *models.Post) error {
 		// Add the data-glightbox attribute
 		cleanedAttrs = cleanedAttrs + " " + glightboxAttr
 
-		// Wrap image in anchor for lightbox functionality
-		return `<a href="` + src + `" class="glightbox-link"><img ` + cleanedAttrs + `></a>`
-	})
+		// Check if this <img> is already inside an <a> tag by looking at
+		// the HTML before the match: find the last <a or </a> and see
+		// which one is closer. If the last anchor-related tag is an
+		// opening <a (not </a>), the image is inside an anchor.
+		insideAnchor := isInsideAnchor(html, matchStart)
+
+		if insideAnchor {
+			// Image is already inside an anchor — just add glightbox
+			// attributes to the <img> without wrapping in another <a>.
+			// GLightbox can target img.glightbox directly.
+			buf.WriteString(`<img `)
+			buf.WriteString(cleanedAttrs)
+			buf.WriteByte('>')
+		} else {
+			// Wrap image in anchor for lightbox functionality
+			buf.WriteString(`<a href="`)
+			buf.WriteString(src)
+			buf.WriteString(`" class="glightbox-link"><img `)
+			buf.WriteString(cleanedAttrs)
+			buf.WriteString(`></a>`)
+		}
+	}
+
+	// Write remaining HTML after the last match
+	buf.WriteString(html[lastEnd:])
+	result := buf.String()
 
 	// Store whether this post needs the glightbox library
 	if foundZoomable {

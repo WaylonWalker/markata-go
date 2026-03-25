@@ -41,6 +41,15 @@ type RenderMarkdownPlugin struct {
 	cache *buildcache.Cache // build cache for HTML caching
 }
 
+// CacheKeyMarkdownRenderer is the manager cache key for the markdown render
+// function.  Other plugins (e.g. feed helpers) can retrieve and call this to
+// render markdown on-demand when ArticleHTML has not yet been populated.
+const CacheKeyMarkdownRenderer = "markdown.renderer"
+
+// MarkdownRenderFunc is the signature of the on-demand markdown renderer
+// stored under CacheKeyMarkdownRenderer.
+type MarkdownRenderFunc func(content string) (string, error)
+
 // NewRenderMarkdownPlugin creates a new RenderMarkdownPlugin with goldmark configured.
 // The goldmark instance is configured with:
 // - GFM extensions (tables, strikethrough, autolinks, task lists)
@@ -202,6 +211,11 @@ func (p *RenderMarkdownPlugin) Configure(m *lifecycle.Manager) error {
 
 	// Reconfigure the markdown renderer with the resolved theme and extensions
 	p.md = createMarkdownRenderer(chromaTheme, lineNumbers, extConfig)
+
+	// Register the render function so other plugins (e.g. feed helpers during
+	// jinja_md transform) can render markdown on-demand when ArticleHTML has
+	// not yet been populated by the Render stage.
+	m.Cache().Set(CacheKeyMarkdownRenderer, MarkdownRenderFunc(p.doRender))
 
 	return nil
 }

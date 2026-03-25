@@ -3,6 +3,7 @@ package templates
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -139,6 +140,7 @@ func registerFilters() {
 		// URL filters
 		pongo2.RegisterFilter("urlencode", filterURLEncode)
 		pongo2.RegisterFilter("absolute_url", filterAbsoluteURL)
+		pongo2.RegisterFilter("domain", filterDomain)
 
 		// Theme/asset filters (per THEMES.md spec)
 		pongo2.RegisterFilter("theme_asset", filterThemeAsset)
@@ -660,6 +662,20 @@ func filterAbsoluteURL(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	return pongo2.AsValue(baseURL + path), nil
 }
 
+// filterDomain extracts the hostname from a URL string.
+// Usage: {{ "https://htmx.org/examples/foo/" | domain }} => "htmx.org"
+func filterDomain(in, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	raw := in.String()
+	if raw == "" {
+		return pongo2.AsValue(""), nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return in, nil
+	}
+	return pongo2.AsValue(u.Hostname()), nil
+}
+
 // filterThemeAsset returns a URL path for theme static assets.
 // Usage: {{ 'css/main.css' | theme_asset }}
 // Returns: /css/main.css (theme assets are copied to root of output)
@@ -1034,7 +1050,7 @@ func filterExcerpt(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		result += "\n<p>...</p>"
 	}
 
-	return pongo2.AsValue(result), nil
+	return pongo2.AsSafeValue(result), nil
 }
 
 // cleanExcerptHTML preserves inline formatting tags (code, strong, em, a, etc.)
@@ -1102,7 +1118,9 @@ func filterMediaURL(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 }
 
 // filterWithSize decorates a trusted URL with width/height query params.
-// Usage: {{ media_src | with_size:"1200,675" }}
+// Usage: {{ media_src | with_size:"1200,675" }}  -- width + height
+//
+//	{{ media_src | with_size:"1200" }}       -- width-only (CDN preserves aspect ratio)
 func filterWithSize(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	if in.IsNil() {
 		return in, nil
@@ -1111,16 +1129,16 @@ func filterWithSize(in, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 		return in, nil
 	}
 	parts := strings.SplitN(param.String(), ",", 2)
-	if len(parts) != 2 {
-		return in, nil
-	}
 	width, err := strconv.Atoi(strings.TrimSpace(parts[0]))
 	if err != nil || width <= 0 {
 		return in, nil
 	}
-	height, err := strconv.Atoi(strings.TrimSpace(parts[1]))
-	if err != nil || height <= 0 {
-		return in, nil
+	height := 0
+	if len(parts) == 2 {
+		h, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+		if err == nil && h > 0 {
+			height = h
+		}
 	}
 	return pongo2.AsValue(WithSize(in.String(), width, height)), nil
 }

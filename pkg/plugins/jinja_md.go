@@ -91,6 +91,8 @@ func (p *JinjaMdPlugin) Transform(m *lifecycle.Manager) error {
 		ctx.Set("map", createMapFunc(m))
 		ctx.Set("feed_posts", createFeedPostsFunc(m))
 		ctx.Set("render_feed", createRenderFeedFunc(m))
+		ctx.Set("render_slashes", createRenderSlashesFunc(m))
+		ctx.Set("include_post", createIncludePostFunc(m))
 
 		// Add private_paths for robots.txt generation
 		ctx.Set("private_paths", privatePaths)

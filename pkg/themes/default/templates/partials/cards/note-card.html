@@ -1,16 +1,20 @@
 {# Note Card - Low prominence for pings, thoughts, status updates #}
-{# Minimal styling, left border accent, no title shown #}
+{# Minimal styling, left border accent, shows title and body content #}
 <article class="card card-note h-entry">
   <header class="card-header">
+    {% if post.title %}
+    <h3 class="card-title p-name"><a class="u-url" href="{{ post.href }}">{{ post.title | default:post.slug }}</a></h3>
+    {% else %}
     <a class="u-url" href="{{ post.href }}" hidden></a>
+    {% endif %}
   </header>
 
   <div class="card-body">
     <div class="card-content">
-      {% if post.description %}
+      {% if post.content %}
+      <div class="card-text p-content">{{ post.content | plaintext | truncatechars:1000 }}</div>
+      {% elif post.description %}
       <p class="card-text p-content">{{ post.description }}</p>
-      {% elif post.article_html %}
-      <div class="card-text p-content">{{ post.article_html | striptags | truncatechars:200 }}</div>
       {% endif %}
     </div>
   </div>

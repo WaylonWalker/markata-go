@@ -133,6 +133,10 @@ var (
 
 	// Match inline attributes {.class #id key="value"}
 	inlineAttributesRegex = regexp.MustCompile(`\{[.#][^}]+\}`)
+
+	// Match Jinja/template expressions {{ ... }} and {% ... %} and {# ... #}
+	// These may appear in content with jinja: true before the jinja_md plugin resolves them
+	jinjaExprRegex = regexp.MustCompile(`\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\}`)
 )
 
 // generateDescription creates a description from markdown content.
@@ -212,6 +216,8 @@ func (p *DescriptionPlugin) extractFirstParagraph(content string) string {
 
 // stripMarkdown removes markdown formatting from text.
 func (p *DescriptionPlugin) stripMarkdown(text string) string {
+	// Remove Jinja/template expressions (before other processing)
+	text = jinjaExprRegex.ReplaceAllString(text, "")
 	// Remove images (before links to handle nested patterns)
 	text = markdownImageRegex.ReplaceAllString(text, "")
 

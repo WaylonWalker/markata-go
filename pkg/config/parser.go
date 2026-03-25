@@ -921,13 +921,14 @@ func (w *tomlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 }
 
 type tomlComponentsConfig struct {
-	Nav         tomlNavComponentConfig    `toml:"nav"`
-	Footer      tomlFooterComponentConfig `toml:"footer"`
-	DocSidebar  tomlDocSidebarConfig      `toml:"doc_sidebar"`
-	FeedSidebar tomlFeedSidebarConfig     `toml:"feed_sidebar"`
-	CardRouter  tomlCardRouterConfig      `toml:"card_router"`
-	Share       tomlShareComponentConfig  `toml:"share"`
-	PostConn    tomlPostConnectionsConfig `toml:"post_connections"`
+	Nav            tomlNavComponentConfig    `toml:"nav"`
+	Footer         tomlFooterComponentConfig `toml:"footer"`
+	DocSidebar     tomlDocSidebarConfig      `toml:"doc_sidebar"`
+	FeedSidebar    tomlFeedSidebarConfig     `toml:"feed_sidebar"`
+	ContentSidebar tomlContentSidebarConfig  `toml:"content_sidebar"`
+	CardRouter     tomlCardRouterConfig      `toml:"card_router"`
+	Share          tomlShareComponentConfig  `toml:"share"`
+	PostConn       tomlPostConnectionsConfig `toml:"post_connections"`
 }
 
 type tomlPostConnectionsConfig struct {
@@ -971,6 +972,13 @@ type tomlFeedSidebarConfig struct {
 	Width    string   `toml:"width"`
 	Title    string   `toml:"title"`
 	Feeds    []string `toml:"feeds"`
+}
+
+type tomlContentSidebarConfig struct {
+	Enabled  *bool  `toml:"enabled"`
+	Position string `toml:"position"`
+	Width    string `toml:"width"`
+	Slug     string `toml:"slug"`
 }
 
 type tomlCardRouterConfig struct {
@@ -1509,6 +1517,12 @@ func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Width:    c.FeedSidebar.Width,
 			Title:    c.FeedSidebar.Title,
 			Feeds:    c.FeedSidebar.Feeds,
+		},
+		ContentSidebar: models.ContentSidebarConfig{
+			Enabled:  c.ContentSidebar.Enabled,
+			Position: c.ContentSidebar.Position,
+			Width:    c.ContentSidebar.Width,
+			Slug:     c.ContentSidebar.Slug,
 		},
 		CardRouter: models.CardRouterConfig{
 			Mappings: c.CardRouter.Mappings,
@@ -2552,13 +2566,14 @@ func (w *yamlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 }
 
 type yamlComponentsConfig struct {
-	Nav         yamlNavComponentConfig    `yaml:"nav"`
-	Footer      yamlFooterComponentConfig `yaml:"footer"`
-	DocSidebar  yamlDocSidebarConfig      `yaml:"doc_sidebar"`
-	FeedSidebar yamlFeedSidebarConfig     `yaml:"feed_sidebar"`
-	CardRouter  yamlCardRouterConfig      `yaml:"card_router"`
-	Share       yamlShareComponentConfig  `yaml:"share"`
-	PostConn    yamlPostConnectionsConfig `yaml:"post_connections"`
+	Nav            yamlNavComponentConfig    `yaml:"nav"`
+	Footer         yamlFooterComponentConfig `yaml:"footer"`
+	DocSidebar     yamlDocSidebarConfig      `yaml:"doc_sidebar"`
+	FeedSidebar    yamlFeedSidebarConfig     `yaml:"feed_sidebar"`
+	ContentSidebar yamlContentSidebarConfig  `yaml:"content_sidebar"`
+	CardRouter     yamlCardRouterConfig      `yaml:"card_router"`
+	Share          yamlShareComponentConfig  `yaml:"share"`
+	PostConn       yamlPostConnectionsConfig `yaml:"post_connections"`
 }
 
 type yamlPostConnectionsConfig struct {
@@ -2602,6 +2617,13 @@ type yamlFeedSidebarConfig struct {
 	Width    string   `yaml:"width"`
 	Title    string   `yaml:"title"`
 	Feeds    []string `yaml:"feeds"`
+}
+
+type yamlContentSidebarConfig struct {
+	Enabled  *bool  `yaml:"enabled"`
+	Position string `yaml:"position"`
+	Width    string `yaml:"width"`
+	Slug     string `yaml:"slug"`
 }
 
 type yamlCardRouterConfig struct {
@@ -3013,6 +3035,19 @@ func (c *yamlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Width:    c.DocSidebar.Width,
 			MinDepth: c.DocSidebar.MinDepth,
 			MaxDepth: c.DocSidebar.MaxDepth,
+		},
+		FeedSidebar: models.FeedSidebarConfig{
+			Enabled:  c.FeedSidebar.Enabled,
+			Position: c.FeedSidebar.Position,
+			Width:    c.FeedSidebar.Width,
+			Title:    c.FeedSidebar.Title,
+			Feeds:    c.FeedSidebar.Feeds,
+		},
+		ContentSidebar: models.ContentSidebarConfig{
+			Enabled:  c.ContentSidebar.Enabled,
+			Position: c.ContentSidebar.Position,
+			Width:    c.ContentSidebar.Width,
+			Slug:     c.ContentSidebar.Slug,
 		},
 		Share: models.ShareComponentConfig{
 			Enabled:   c.Share.Enabled,
@@ -3983,13 +4018,14 @@ func (w *jsonWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 }
 
 type jsonComponentsConfig struct {
-	Nav         jsonNavComponentConfig    `json:"nav"`
-	Footer      jsonFooterComponentConfig `json:"footer"`
-	DocSidebar  jsonDocSidebarConfig      `json:"doc_sidebar"`
-	FeedSidebar jsonFeedSidebarConfig     `json:"feed_sidebar"`
-	CardRouter  jsonCardRouterConfig      `json:"card_router"`
-	Share       jsonShareComponentConfig  `json:"share"`
-	PostConn    jsonPostConnectionsConfig `json:"post_connections"`
+	Nav            jsonNavComponentConfig    `json:"nav"`
+	Footer         jsonFooterComponentConfig `json:"footer"`
+	DocSidebar     jsonDocSidebarConfig      `json:"doc_sidebar"`
+	FeedSidebar    jsonFeedSidebarConfig     `json:"feed_sidebar"`
+	ContentSidebar jsonContentSidebarConfig  `json:"content_sidebar"`
+	CardRouter     jsonCardRouterConfig      `json:"card_router"`
+	Share          jsonShareComponentConfig  `json:"share"`
+	PostConn       jsonPostConnectionsConfig `json:"post_connections"`
 }
 
 type jsonPostConnectionsConfig struct {
@@ -4033,6 +4069,13 @@ type jsonFeedSidebarConfig struct {
 	Width    string   `json:"width"`
 	Title    string   `json:"title"`
 	Feeds    []string `json:"feeds"`
+}
+
+type jsonContentSidebarConfig struct {
+	Enabled  *bool  `json:"enabled"`
+	Position string `json:"position"`
+	Width    string `json:"width"`
+	Slug     string `json:"slug"`
 }
 
 type jsonCardRouterConfig struct {
@@ -4444,6 +4487,19 @@ func (c *jsonComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			Width:    c.DocSidebar.Width,
 			MinDepth: c.DocSidebar.MinDepth,
 			MaxDepth: c.DocSidebar.MaxDepth,
+		},
+		FeedSidebar: models.FeedSidebarConfig{
+			Enabled:  c.FeedSidebar.Enabled,
+			Position: c.FeedSidebar.Position,
+			Width:    c.FeedSidebar.Width,
+			Title:    c.FeedSidebar.Title,
+			Feeds:    c.FeedSidebar.Feeds,
+		},
+		ContentSidebar: models.ContentSidebarConfig{
+			Enabled:  c.ContentSidebar.Enabled,
+			Position: c.ContentSidebar.Position,
+			Width:    c.ContentSidebar.Width,
+			Slug:     c.ContentSidebar.Slug,
 		},
 		Share: models.ShareComponentConfig{
 			Enabled:   c.Share.Enabled,

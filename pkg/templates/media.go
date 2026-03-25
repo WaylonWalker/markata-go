@@ -61,8 +61,10 @@ func buildTrustedMediaDomainSet(domains []string) map[string]struct{} {
 }
 
 // WithSize appends or overwrites the w/h query parameters for trusted URLs.
+// When height is 0 only the width param is set, letting the CDN preserve
+// the original aspect ratio (width-only sizing).
 func WithSize(raw string, width, height int) string {
-	if width <= 0 || height <= 0 {
+	if width <= 0 {
 		return raw
 	}
 	u, err := url.Parse(raw)
@@ -74,7 +76,11 @@ func WithSize(raw string, width, height int) string {
 	}
 	qs := u.Query()
 	qs.Set("w", strconv.Itoa(width))
-	qs.Set("h", strconv.Itoa(height))
+	if height > 0 {
+		qs.Set("h", strconv.Itoa(height))
+	} else {
+		qs.Del("h")
+	}
 	u.RawQuery = qs.Encode()
 	return u.String()
 }

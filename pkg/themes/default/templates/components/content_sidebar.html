@@ -1,0 +1,15 @@
+{# Content sidebar component template #}
+{# Renders a post by slug as an aside widget on every page #}
+{# Requires: resolved_content_sidebar in template context #}
+{# Requires: include_post template function #}
+
+{% with sidebar = resolved_content_sidebar %}
+{% if sidebar.enabled and sidebar.slug %}
+<aside class="content-sidebar content-sidebar--{{ sidebar.position | default:'right' }}"
+       aria-label="Content sidebar">
+    <div class="content-sidebar-inner">
+        {{ include_post(sidebar.slug) | safe }}
+    </div>
+</aside>
+{% endif %}
+{% endwith %}

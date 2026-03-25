@@ -596,11 +596,24 @@ func componentsToMap(c *models.ComponentsConfig) map[string]interface{} {
 		"outlinks_limit":  postConnOutlinksLimit,
 	}
 
+	// Convert content_sidebar component
+	contentSidebarEnabled := false
+	if c.ContentSidebar.Enabled != nil {
+		contentSidebarEnabled = *c.ContentSidebar.Enabled
+	}
+	contentSidebarMap := map[string]interface{}{
+		"enabled":  contentSidebarEnabled,
+		"position": c.ContentSidebar.Position,
+		"width":    c.ContentSidebar.Width,
+		"slug":     c.ContentSidebar.Slug,
+	}
+
 	return map[string]interface{}{
 		"nav":              navMap,
 		"footer":           footerMap,
 		"doc_sidebar":      docSidebarMap,
 		"feed_sidebar":     feedSidebarMap,
+		"content_sidebar":  contentSidebarMap,
 		"card_router":      cardRouterMap,
 		"share":            shareMap,
 		"post_connections": postConnectionsMap,
@@ -1258,87 +1271,148 @@ func (c Context) ToPongo2() pongo2.Context {
 		configMap["theme"] = ThemeToMap(&c.Config.Theme)
 	}
 
+	resolvedContentSidebar := resolveContentSidebar(configMap, c.Post)
 	ctx := pongo2.Context{
-		"post":          postMap,
-		"body":          c.Body,
-		"config":        configMap,
-		"feed":          feedToMap(c.Feed),
-		"page":          feedPageToMap(c.FeedPage),
-		"posts":         PostsToMaps(c.Posts),
-		"core":          c.Core,
-		"sidebar_items": sidebarItemsToMaps(c.SidebarItems),
-		"sidebar_title": c.SidebarTitle,
+		"post":                     postMap,
+		"body":                     c.Body,
+		"config":                   configMap,
+		"feed":                     feedToMap(c.Feed),
+		"page":                     feedPageToMap(c.FeedPage),
+		"posts":                    PostsToMaps(c.Posts),
+		"core":                     c.Core,
+		"sidebar_items":            sidebarItemsToMaps(c.SidebarItems),
+		"sidebar_title":            c.SidebarTitle,
+		"resolved_content_sidebar": resolvedContentSidebar,
 	}
 
-	// Add post fields directly for convenience (if post exists)
-	if postMap != nil {
-		ctx["title"] = postMap["title"]
-		ctx["date"] = postMap["date"]
-		ctx["tags"] = postMap["tags"]
-		ctx["slug"] = postMap["slug"]
-		ctx["href"] = postMap["href"]
-		ctx["published"] = postMap["published"]
-		ctx["draft"] = postMap["draft"]
-		ctx["private"] = postMap["private"]
-		ctx["description"] = postMap["description"]
-		ctx["article_html"] = postMap["article_html"]
-
-		// Add extra fields from post
-		if c.Post != nil && c.Post.Extra != nil {
-			for k, v := range c.Post.Extra {
-				// Don't override existing keys
-				if _, exists := ctx[k]; !exists {
-					ctx[k] = v
-				}
-			}
-		}
-	}
-
-	// Add config fields for convenience (if config exists)
-	if c.Config != nil {
-		ctx["site_title"] = c.Config.Title
-		ctx["site_url"] = c.Config.URL
-		ctx["site_description"] = c.Config.Description
-		ctx["site_author"] = c.Config.Author
-
-		// Expose authors map at top level for multi-author template access
-		// Templates use {% set author = authors[author_id] %} for per-post author lookup
-		if len(c.Config.Authors.Authors) > 0 {
-			topLevelAuthors := make(map[string]interface{}, len(c.Config.Authors.Authors))
-			for id := range c.Config.Authors.Authors {
-				a := c.Config.Authors.Authors[id]
-				topLevelAuthors[id] = authorToMap(&a)
-			}
-			ctx["authors"] = topLevelAuthors
-		}
-	}
-
-	// Add feed fields directly for convenience (if feed exists)
-	if c.Feed != nil {
-		ctx["feed_slug"] = c.Feed.Slug
-		ctx["feed_title"] = c.Feed.Title
-		ctx["feed_description"] = c.Feed.Description
-	}
-
-	// Add extra context values
-	if c.Extra != nil {
-		for k, v := range c.Extra {
-			// Don't override existing keys
-			if _, exists := ctx[k]; !exists {
-				// Convert Post types to maps for template access
-				switch typed := v.(type) {
-				case []*models.Post:
-					ctx[k] = PostsToMaps(typed)
-				case *models.Post:
-					ctx[k] = postToMap(typed)
-				default:
-					ctx[k] = v
-				}
-			}
-		}
-	}
+	addPostContext(&ctx, postMap, c.Post, resolvedContentSidebar)
+	addConfigContext(&ctx, c.Config)
+	addFeedContext(&ctx, c.Feed)
+	addExtraContext(&ctx, c.Extra)
 
 	return ctx
+}
+
+func resolveContentSidebar(configMap map[string]interface{}, post *models.Post) map[string]interface{} {
+	resolved := map[string]interface{}{
+		"enabled":  false,
+		"position": "",
+		"width":    "",
+		"slug":     "",
+	}
+
+	if configMap != nil {
+		if components, ok := configMap["components"].(map[string]interface{}); ok {
+			if sidebar, ok := components["content_sidebar"].(map[string]interface{}); ok {
+				resolved = map[string]interface{}{
+					"enabled":  sidebar["enabled"],
+					"position": sidebar["position"],
+					"width":    sidebar["width"],
+					"slug":     sidebar["slug"],
+				}
+			}
+		}
+	}
+
+	if post != nil && post.Extra != nil {
+		if sidebarSlug, ok := post.Extra["sidebar_slug"].(string); ok && sidebarSlug != "" {
+			resolved = map[string]interface{}{
+				"enabled":  true,
+				"position": resolved["position"],
+				"width":    resolved["width"],
+				"slug":     sidebarSlug,
+			}
+		}
+	}
+
+	return resolved
+}
+
+func addPostContext(ctx *pongo2.Context, postMap map[string]interface{}, post *models.Post, resolvedContentSidebar map[string]interface{}) {
+	if postMap == nil {
+		return
+	}
+
+	(*ctx)["title"] = postMap["title"]
+	(*ctx)["date"] = postMap["date"]
+	(*ctx)["tags"] = postMap["tags"]
+	(*ctx)["slug"] = postMap["slug"]
+	(*ctx)["href"] = postMap["href"]
+	(*ctx)["published"] = postMap["published"]
+	(*ctx)["draft"] = postMap["draft"]
+	(*ctx)["private"] = postMap["private"]
+	(*ctx)["description"] = postMap["description"]
+	(*ctx)["article_html"] = postMap["article_html"]
+
+	if post == nil || post.Extra == nil {
+		return
+	}
+
+	for k, v := range post.Extra {
+		if _, exists := (*ctx)[k]; !exists {
+			(*ctx)[k] = v
+		}
+	}
+
+	(*ctx)["resolved_content_sidebar"] = resolvedContentSidebar
+}
+
+func addConfigContext(ctx *pongo2.Context, config *models.Config) {
+	if config == nil {
+		return
+	}
+
+	(*ctx)["site_title"] = config.Title
+	(*ctx)["site_url"] = config.URL
+	(*ctx)["site_description"] = config.Description
+	(*ctx)["site_author"] = config.Author
+
+	if len(config.Authors.Authors) == 0 {
+		return
+	}
+
+	topLevelAuthors := make(map[string]interface{}, len(config.Authors.Authors))
+	for id := range config.Authors.Authors {
+		a := config.Authors.Authors[id]
+		topLevelAuthors[id] = authorToMap(&a)
+	}
+	(*ctx)["authors"] = topLevelAuthors
+
+	if defaultAuthor, defaultID := models.GetDefaultAuthor(config.Authors.Authors); defaultAuthor != nil {
+		(*ctx)["default_author"] = authorToMap(defaultAuthor)
+		(*ctx)["default_author_id"] = defaultID
+	}
+}
+
+func addFeedContext(ctx *pongo2.Context, feed *models.FeedConfig) {
+	if feed == nil {
+		return
+	}
+
+	(*ctx)["feed_slug"] = feed.Slug
+	(*ctx)["feed_title"] = feed.Title
+	(*ctx)["feed_description"] = feed.Description
+}
+
+func addExtraContext(ctx *pongo2.Context, extra map[string]interface{}) {
+	if extra == nil {
+		return
+	}
+
+	for k, v := range extra {
+		if _, exists := (*ctx)[k]; exists {
+			continue
+		}
+
+		switch typed := v.(type) {
+		case []*models.Post:
+			(*ctx)[k] = PostsToMaps(typed)
+		case *models.Post:
+			(*ctx)[k] = postToMap(typed)
+		default:
+			(*ctx)[k] = v
+		}
+	}
 }
 
 // Merge merges another context into this one.

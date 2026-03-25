@@ -1,0 +1,115 @@
+{# Homepage Layout -- frontmatter-driven with config fallbacks, extends base.html #}
+{# Frontmatter fields: hero_first_name, hero_last_name, hero_tagline, hero_avatar, #}
+{#   hero_links (list of {label, url}), intro_cards (list of {slug, heading, link}), #}
+  {#   sidebar_slug (string). All optional -- falls back to config values. #}
+{% extends "base.html" %}
+
+{% block title %}{{ config.title | default:'My Site' }}{% endblock %}
+{% block description %}{{ post.description | default:config.description | default:'' }}{% endblock %}
+
+{% block meta %}
+{{ block.Super() }}
+<link rel="canonical" href="{{ config.url }}/">
+<meta property="og:title" content="{{ config.title }}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ config.url }}/">
+{% if config.description %}
+<meta property="og:description" content="{{ config.description }}">
+{% endif %}
+{% endblock %}
+
+{% block head %}
+{{ block.Super() }}
+<link rel="stylesheet" href="{{ 'css/home.css' | theme_asset_hashed }}">
+{% endblock %}
+
+{% block body_class %}page-home{% endblock %}
+
+{# No reading progress bar on homepage #}
+{% block progress %}{% endblock %}
+
+{# Override main block -- still inside page-wrapper, but CSS removes constraints #}
+{% block main %}
+<main id="main-content" tabindex="-1">
+
+  {# ── Hero ── #}
+  {# Name: hero_first_name + hero_last_name > config.author > config.title #}
+  {# Tagline: hero_tagline > config.description #}
+  {# Avatar: hero_avatar > config.seo.author_image > config.seo.logo_url #}
+  <section class="home-hero" aria-label="Introduction">
+    <div class="home-width">
+      <div class="home-hero__inner">
+        {% with post.hero_avatar|default:config.seo.author_image|default:config.seo.logo_url as avatar_src %}
+        {% if avatar_src %}
+        <img class="home-hero__avatar" src="{{ avatar_src }}" alt="{{ post.hero_first_name | default:'' }} {{ post.hero_last_name | default:'' }}" width="160" height="160" loading="eager">
+        {% endif %}
+        {% endwith %}
+        <div class="home-hero__text">
+          {% if post.hero_first_name or post.hero_last_name %}
+          <h1 class="home-hero__name">{{ post.hero_first_name | default:'' }} <span class="home-hero__accent">{{ post.hero_last_name | default:'' }}</span></h1>
+          {% else %}
+          <h1 class="home-hero__name">{{ config.author | default:config.title | default:'Home' }}</h1>
+          {% endif %}
+          {% with post.hero_tagline|default:config.description as tagline %}
+          {% if tagline %}
+          <p class="home-hero__tagline">{{ tagline }}</p>
+          {% endif %}
+          {% endwith %}
+          {% if post.hero_links %}
+          <div class="home-hero__links">
+            {% for link in post.hero_links %}
+            <a href="{{ link.url }}" class="home-hero__pill">{{ link.label }}</a>
+            {% endfor %}
+          </div>
+          {% elif default_author and default_author.social %}
+          <div class="home-hero__links">
+            {% for label, url in default_author.social %}
+            <a href="{{ url }}" class="home-hero__pill">{{ label }}</a>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# ── Intro cards (about, now, etc.) via include_post ── #}
+  {% if post.intro_cards %}
+  <section class="home-section home-intro-grid" aria-label="Introduction cards">
+    <div class="home-width">
+      <div class="home-two-col">
+        {% for card in post.intro_cards %}
+        <div class="home-card">
+          {% if card.heading %}
+          <h2>{% if card.link %}<a href="{{ card.link }}">{{ card.heading }}</a>{% else %}{{ card.heading }}{% endif %}</h2>
+          {% endif %}
+          {{ include_post(card.slug) | safe }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {# ── Markdown content: feed sections rendered by Jinja ── #}
+  <div class="home-feeds">
+    <div class="home-width">
+      {% if resolved_content_sidebar and resolved_content_sidebar.slug %}
+      <div class="home-main-rail">
+        <div class="home-main-content post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
+          {{ body | safe }}
+        </div>
+        <aside class="home-sidebar">
+          {{ include_post(resolved_content_sidebar.slug) | safe }}
+        </aside>
+      </div>
+      {% else %}
+      <div class="home-main-content post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
+        {{ body | safe }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</main>
+{% endblock %}
