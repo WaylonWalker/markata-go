@@ -8,7 +8,7 @@
  * - `Shift+O` - Open in new tab
  * - `g h` - Go to home
  * - `g s` - Focus search
- * - `s` - Toggle simple/rich feed view (feed pages) or go to feed's simple view (post pages)
+ * - `s` - Toggle simple/rich feed view (feed pages) or reader mode (post pages)
  * - `[` - Previous page
  * - `]` - Next page
  * - `y y` - Copy URL to clipboard
@@ -173,48 +173,64 @@
     }
   }
 
-   /**
-    * Toggle between simple and rich feed views.
-    * On feed pages: toggles between /feed/ and /feed/simple/.
-    * On post pages: navigates to the active sidebar feed's simple view.
-    */
-   function toggleFeedView() {
-     // Case 1: On a dedicated feed page -- toggle between simple and rich
-     if (isDedicatedFeedPage()) {
-       var path = window.location.pathname;
-       var feedEl = document.querySelector('div.feed');
-       var isSimple = feedEl.classList.contains('feed-simple');
+    /**
+     * Toggle between simple and rich feed views.
+     * On feed pages: toggles between /feed/ and /feed/simple/.
+     * On post pages: toggles reader mode (hides chrome for distraction-free reading).
+     */
+    function toggleFeedView() {
+      // Case 1: On a dedicated feed page -- toggle between simple and rich
+      if (isDedicatedFeedPage()) {
+        var path = window.location.pathname;
+        var feedEl = document.querySelector('div.feed');
+        var isSimple = feedEl.classList.contains('feed-simple');
 
-       if (isSimple) {
-         // On simple feed -> go to rich feed: remove /simple/ from path
-         var richPath = path.replace(/\/simple\/(page\/\d+\/)?$/, '/');
-         // Preserve page number if present
-         var pageMatch = path.match(/\/simple\/page\/(\d+)\//);
-         if (pageMatch) {
-           richPath = path.replace(/\/simple\/page\/(\d+)\//, '/page/' + pageMatch[1] + '/');
-         }
-         window.location.href = richPath;
-       } else {
-         // On rich feed -> go to simple feed: insert /simple/ before any /page/ or at end
-         var simplePath;
-         var richPageMatch = path.match(/\/page\/(\d+)\/$/);
-         if (richPageMatch) {
-           simplePath = path.replace(/\/page\/(\d+)\/$/, '/simple/page/' + richPageMatch[1] + '/');
-         } else {
-           // Ensure trailing slash
-           simplePath = path.replace(/\/?$/, '/') + 'simple/';
-         }
-         window.location.href = simplePath;
-       }
-       return;
-     }
+        if (isSimple) {
+          // On simple feed -> go to rich feed: remove /simple/ from path
+          var richPath = path.replace(/\/simple\/(page\/\d+\/)?$/, '/');
+          // Preserve page number if present
+          var pageMatch = path.match(/\/simple\/page\/(\d+)\//);
+          if (pageMatch) {
+            richPath = path.replace(/\/simple\/page\/(\d+)\//, '/page/' + pageMatch[1] + '/');
+          }
+          window.location.href = richPath;
+        } else {
+          // On rich feed -> go to simple feed: insert /simple/ before any /page/ or at end
+          var simplePath;
+          var richPageMatch = path.match(/\/page\/(\d+)\/$/);
+          if (richPageMatch) {
+            simplePath = path.replace(/\/page\/(\d+)\/$/, '/simple/page/' + richPageMatch[1] + '/');
+          } else {
+            // Ensure trailing slash
+            simplePath = path.replace(/\/?$/, '/') + 'simple/';
+          }
+          window.location.href = simplePath;
+        }
+        return;
+      }
 
-     // Case 2: On a post page -- navigate to the active feed's simple view
-     var feedSlug = getPostPageFeedSlug();
-     if (feedSlug) {
-       window.location.href = '/' + feedSlug + '/simple/';
-     }
-   }
+      // Case 2: On a post page -- toggle reader mode
+      if (document.querySelector('article.post')) {
+        toggleReaderMode();
+      }
+    }
+
+    /**
+     * Toggle reader mode on post pages.
+     * Strips chrome (sidebar, nav, footer) for distraction-free reading.
+     * Press 's' again to restore normal view.
+     */
+    function toggleReaderMode() {
+      var body = document.body;
+      var isReaderMode = body.classList.toggle('reader-mode');
+
+      // Show a brief notification
+      if (isReaderMode) {
+        showNotification('Reader mode -- press s to exit');
+      } else {
+        showNotification('Reader mode off');
+      }
+    }
 
    /**
     * Get the active feed slug when on a post page.
@@ -521,7 +537,7 @@
           state.lastKey = null;
           state.lastKeyTime = 0;
          } else if (e.key === 's' && state.lastKey !== 'g') {
-           // Standalone s - toggle simple/rich feed view (works on feed and post pages)
+           // Standalone s - toggle simple/rich feed view (feed pages) or reader mode (post pages)
            e.preventDefault();
            toggleFeedView();
            state.lastKey = null;

@@ -3642,6 +3642,73 @@ figcaption {
 }
 
 /* ============================================
+   Reader Mode
+   ============================================
+
+   Activated by pressing 's' on post pages.
+   Hides chrome (sidebar, nav, footer) for distraction-free reading.
+   Press 's' again to toggle back.
+   ========================================================================== */
+
+body.reader-mode .site-header {
+  display: none;
+}
+
+body.reader-mode .feed-sidebar {
+  display: none;
+}
+
+body.reader-mode .content-sidebar {
+  display: none;
+}
+
+body.reader-mode .site-footer {
+  display: none;
+}
+
+body.reader-mode .post-nav {
+  display: none;
+}
+
+body.reader-mode .slot-bottom-banner {
+  display: none;
+}
+
+body.reader-mode .slot-after-post {
+  display: none;
+}
+
+body.reader-mode .page-wrapper {
+  display: block;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  grid-template-columns: none;
+}
+
+body.reader-mode article.post {
+  max-width: 100%;
+}
+
+/* Subtle reader-mode exit hint -- fixed bottom-right */
+body.reader-mode::after {
+  content: 'reader mode (s)';
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  font-size: 0.75rem;
+  font-family: var(--font-mono, monospace);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  opacity: 0.6;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* ============================================
    Optional Styles Moved to Separate Files
    ============================================ */
 
