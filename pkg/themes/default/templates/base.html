@@ -179,31 +179,127 @@
   <a href="#main-content" class="skip-link">Skip to main content</a>
   {% include "partials/background-decorations.html" %}
   {% block header %}
-  <header class="site-header">
+  <header class="site-header{% if resolved_slots.top_banner.enabled %} site-header--with-banner{% endif %}">
+    {# Top banner slot (announcements, alerts) - inside header for visual cohesion #}
+    {% if resolved_slots.top_banner.enabled %}
+    <div class="slot-top-banner{% if resolved_slots.top_banner.css_class %} {{ resolved_slots.top_banner.css_class }}{% endif %}">
+      <div class="top-banner-inner">
+        {{ include_post(resolved_slots.top_banner.slug) }}
+      </div>
+    </div>
+    {% endif %}
+
     <div class="container">
       <a href="/" class="site-title">{{ config.title | default:'My Site' }}</a>
-      {% include "components/nav.html" %}
 
-      {# Search and theme controls - pushed to right #}
-      <div class="header-controls">
-        {% if config.search.enabled and config.search.position == 'navbar' %}
-        {% include "components/search.html" %}
+      {# Hamburger toggle -- visible only on mobile (<768px) #}
+      <button class="hamburger-toggle" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobile-nav-group">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+
+      {# Nav + controls grouped so hamburger can toggle both #}
+      <div class="mobile-nav-group" id="mobile-nav-group" role="group" aria-label="Site navigation and controls">
+        {# Nav content slot overrides config-driven nav when enabled #}
+        {% if resolved_slots.nav_content.enabled %}
+        <nav class="slot-nav-content{% if resolved_slots.nav_content.css_class %} {{ resolved_slots.nav_content.css_class }}{% endif %}">
+          <div class="nav-inner">
+            {{ include_post(resolved_slots.nav_content.slug) }}
+          </div>
+        </nav>
+        {% else %}
+        {% include "components/nav.html" %}
         {% endif %}
-        {% include "partials/palette-switcher.html" %}
+
+        {# Search and theme controls - pushed to right #}
+        <div class="header-controls">
+          {% if config.search.enabled and config.search.position == 'navbar' %}
+          {% include "components/search.html" %}
+          {% endif %}
+          {% include "partials/palette-switcher.html" %}
+        </div>
       </div>
     </div>
   </header>
+
+  <script>
+  // Hamburger toggle -- inline for instant interactivity, no flash of open nav
+  (function() {
+    var btn = document.querySelector('.hamburger-toggle');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+      var expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!expanded));
+      document.querySelector('.mobile-nav-group').classList.toggle('mobile-nav-group--open');
+      btn.classList.toggle('hamburger-toggle--open');
+    });
+  })();
+
+  // Feed sidebar collapse toggle on tablet/mobile
+  // Deferred because the sidebar DOM is inside #view-transition-page which comes later.
+  // Also exposed as window.initSidebarToggle for re-binding after view transitions.
+  (function() {
+    function toggleSidebar(header) {
+      var sidebar = header.closest('.feed-sidebar');
+      var expanded = sidebar.classList.toggle('feed-sidebar--expanded');
+      header.setAttribute('aria-expanded', String(expanded));
+    }
+
+    function initSidebarToggle() {
+      var headers = document.querySelectorAll('.feed-sidebar .feed-nav-header');
+      headers.forEach(function(header) {
+        if (header.dataset.toggleBound) return;
+        header.dataset.toggleBound = '1';
+        header.addEventListener('click', function(e) {
+          // Don't toggle if clicking a link inside the header
+          if (e.target.closest('a')) return;
+          toggleSidebar(header);
+        });
+        header.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            if (e.target.closest('a')) return;
+            e.preventDefault();
+            toggleSidebar(header);
+          }
+        });
+      });
+    }
+    window.initSidebarToggle = initSidebarToggle;
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initSidebarToggle);
+    } else {
+      initSidebarToggle();
+    }
+  })();
+  </script>
+
   {% endblock %}
 
   <div id="view-transition-progress">
     {% block progress %}{% endblock %}
   </div>
 
+  {# Hero slot (below header, above main content) #}
+  {% if resolved_slots.hero.enabled %}
+  <div class="slot-hero{% if resolved_slots.hero.css_class %} {{ resolved_slots.hero.css_class }}{% endif %}">
+    <div class="hero-inner">
+      {{ include_post(resolved_slots.hero.slug) }}
+    </div>
+  </div>
+  {% endif %}
+
   <div class="page-wrapper" id="view-transition-page">
     {% block main %}
-      {# Left sidebar for feed navigation (if enabled) #}
-      {% if config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
+      {# Left sidebar: feed nav takes priority over markdown slot #}
+      {% if sidebar_posts and config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
       {% include "components/feed_sidebar.html" %}
+      {% elif resolved_slots.left_sidebar.enabled %}
+      <aside class="slot-left-sidebar{% if resolved_slots.left_sidebar.css_class %} {{ resolved_slots.left_sidebar.css_class }}{% endif %}"{% if resolved_slots.left_sidebar.width %} style="width: {{ resolved_slots.left_sidebar.width }}"{% endif %}>
+        <div class="left-sidebar-inner">
+          {{ include_post(resolved_slots.left_sidebar.slug) }}
+        </div>
+      </aside>
       {% endif %}
 
       {# Left content sidebar (if enabled and position is left) #}
@@ -213,6 +309,15 @@
 
       <main class="main-content" id="main-content" tabindex="-1">
         {% block content %}{% endblock %}
+
+        {# After-post slot (CTAs, related content - below post, inside main column) #}
+        {% if resolved_slots.after_post.enabled %}
+        <div class="slot-after-post{% if resolved_slots.after_post.css_class %} {{ resolved_slots.after_post.css_class }}{% endif %}">
+          <div class="after-post-cta">
+            {{ include_post(resolved_slots.after_post.slug) }}
+          </div>
+        </div>
+        {% endif %}
       </main>
 
       {# Right content sidebar (if enabled and position is right) #}
@@ -227,8 +332,27 @@
     {% endblock %}
   </div>
 
+  {# Bottom banner slot (newsletter signup, etc. - above footer) #}
+  {% if resolved_slots.bottom_banner.enabled %}
+  <div class="slot-bottom-banner{% if resolved_slots.bottom_banner.css_class %} {{ resolved_slots.bottom_banner.css_class }}{% endif %}">
+    <div class="bottom-banner-inner">
+      {{ include_post(resolved_slots.bottom_banner.slug) }}
+    </div>
+  </div>
+  {% endif %}
+
   {% block footer %}
+  {# Footer content slot overrides config-driven footer when enabled #}
+  {% if resolved_slots.footer_content.enabled %}
+  <footer class="site-footer slot-footer-content{% if resolved_slots.footer_content.css_class %} {{ resolved_slots.footer_content.css_class }}{% endif %}">
+    <div class="container">
+      {{ include_post(resolved_slots.footer_content.slug) }}
+    </div>
+    {% include "components/h-card.html" %}
+  </footer>
+  {% else %}
   {% include "components/footer.html" %}
+  {% endif %}
   {% endblock %}
 
   {% block htmx %}{% endblock %}
@@ -313,6 +437,13 @@
         const navigationScript = document.createElement('script');
         navigationScript.src = '{{ 'js/navigation-shortcuts.js' | theme_asset_hashed }}';
         document.body.appendChild(navigationScript);
+      }
+
+      // Feed Cycling - load if multiple feeds are available for the current post
+      if (document.getElementById('feed-sidebar-data')) {
+        const feedCyclingScript = document.createElement('script');
+        feedCyclingScript.src = '{{ 'js/feed-cycling.js' | theme_asset_hashed }}';
+        document.body.appendChild(feedCyclingScript);
       }
 
       // History Shortcuts - always available (go back/forward)

@@ -735,3 +735,50 @@ func createIncludePostFunc(m *lifecycle.Manager) func(slug string) (*pongo2.Valu
 		return pongo2.AsSafeValue("<!-- include_post: post not found: " + html.EscapeString(slug) + " -->"), nil
 	}
 }
+
+// createRenderTocFunc builds a template function that renders the pre-computed
+// TOC data for the current post as an HTML <nav> element.  The TOC entries are
+// already extracted during the transform phase and stored in post.Extra["toc"].
+// This function only formats the existing data -- it does NOT re-parse the
+// markdown, so it adds negligible overhead.
+//
+// Usage in templates:
+//
+//	{{ render_toc() }}
+func createRenderTocFunc(post *models.Post) func() (*pongo2.Value, error) {
+	return func() (*pongo2.Value, error) {
+		if post == nil || post.Extra == nil {
+			return pongo2.AsSafeValue(""), nil
+		}
+
+		entries, ok := post.Extra["toc"].([]*TocEntry)
+		if !ok || len(entries) == 0 {
+			return pongo2.AsSafeValue(""), nil
+		}
+
+		var buf strings.Builder
+		buf.WriteString(`<nav class="toc" aria-label="Table of Contents">`)
+		buf.WriteString("\n<ol>\n")
+		renderTocEntries(&buf, entries)
+		buf.WriteString("</ol>\n</nav>\n")
+
+		return pongo2.AsSafeValue(buf.String()), nil
+	}
+}
+
+// renderTocEntries recursively writes TocEntry nodes as nested <ol>/<li> HTML.
+func renderTocEntries(buf *strings.Builder, entries []*TocEntry) {
+	for _, e := range entries {
+		buf.WriteString(`<li><a href="#`)
+		buf.WriteString(html.EscapeString(e.ID))
+		buf.WriteString(`">`)
+		buf.WriteString(html.EscapeString(e.Text))
+		buf.WriteString("</a>")
+		if len(e.Children) > 0 {
+			buf.WriteString("\n<ol>\n")
+			renderTocEntries(buf, e.Children)
+			buf.WriteString("</ol>\n")
+		}
+		buf.WriteString("</li>\n")
+	}
+}

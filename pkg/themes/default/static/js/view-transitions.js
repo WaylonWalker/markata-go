@@ -343,10 +343,21 @@
   }
 
   function updateLayoutRegions(newDoc) {
+    // Preserve feed sidebar scroll position across DOM swap so
+    // the list doesn't jump to top before scrollIntoView runs.
+    var feedSidebar = document.querySelector('.feed-sidebar');
+    var savedScrollTop = feedSidebar ? feedSidebar.scrollTop : 0;
+
     const replacedPage = replaceElementContents('#view-transition-page', newDoc);
     if (!replacedPage) {
       document.body.innerHTML = newDoc.body.innerHTML;
       return false;
+    }
+
+    // Restore feed sidebar scroll position after content swap
+    var newFeedSidebar = document.querySelector('.feed-sidebar');
+    if (newFeedSidebar && savedScrollTop > 0) {
+      newFeedSidebar.scrollTop = savedScrollTop;
     }
 
     replaceElement('#view-transition-progress', newDoc);
@@ -465,6 +476,30 @@
 
     if (window.initNavigationShortcuts && typeof window.initNavigationShortcuts === 'function') {
       window.initNavigationShortcuts();
+    }
+
+    // Re-scroll feed sidebar active item into view (inline scripts don't re-run after DOM swap)
+    if (window.initFeedSidebarScroll && typeof window.initFeedSidebarScroll === 'function') {
+      window.initFeedSidebarScroll();
+    }
+
+    // Re-initialize feed cycling (parses new page's feed data)
+    if (window.initFeedCycling && typeof window.initFeedCycling === 'function') {
+      window.initFeedCycling();
+    }
+
+    // Re-bind feed sidebar collapse toggle (tablet/mobile)
+    if (window.initSidebarToggle && typeof window.initSidebarToggle === 'function') {
+      window.initSidebarToggle();
+    }
+
+    // Close hamburger menu after navigation (header is outside #view-transition-page so it persists)
+    var openHamburger = document.querySelector('.hamburger-toggle--open');
+    if (openHamburger) {
+      openHamburger.classList.remove('hamburger-toggle--open');
+      openHamburger.setAttribute('aria-expanded', 'false');
+      var navGroup = document.querySelector('.mobile-nav-group--open');
+      if (navGroup) navGroup.classList.remove('mobile-nav-group--open');
     }
 
     // Re-initialize mermaid diagrams (module script won't re-execute after DOM swap)
@@ -632,10 +667,23 @@
     window.VIEW_TRANSITIONS_CONFIG = config;
   }
 
+  // ── Feed Sidebar: scroll active item into view ──
+  // Defined outside init() so it's available even if view transitions are disabled.
+  window.initFeedSidebarScroll = function() {
+    var active = document.querySelector('.feed-nav-item--active');
+    if (active) {
+      active.scrollIntoView({ block: 'center', behavior: 'instant' });
+    }
+  };
+
   // Initialize when DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', function() {
+      init();
+      window.initFeedSidebarScroll();
+    });
   } else {
     init();
+    window.initFeedSidebarScroll();
   }
 })();

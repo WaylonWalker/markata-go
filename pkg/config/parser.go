@@ -920,6 +920,26 @@ func (w *tomlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 	}
 }
 
+// tomlComponentSlotConfig maps the TOML representation of a generic
+// markdown-driven component slot to models.ComponentSlotConfig.
+type tomlComponentSlotConfig struct {
+	Enabled  *bool  `toml:"enabled"`
+	Slug     string `toml:"slug"`
+	CSSClass string `toml:"css_class"`
+	Position string `toml:"position"`
+	Width    string `toml:"width"`
+}
+
+func (t *tomlComponentSlotConfig) toModel() models.ComponentSlotConfig {
+	return models.ComponentSlotConfig{
+		Enabled:  t.Enabled,
+		Slug:     t.Slug,
+		CSSClass: t.CSSClass,
+		Position: t.Position,
+		Width:    t.Width,
+	}
+}
+
 type tomlComponentsConfig struct {
 	Nav            tomlNavComponentConfig    `toml:"nav"`
 	Footer         tomlFooterComponentConfig `toml:"footer"`
@@ -929,6 +949,16 @@ type tomlComponentsConfig struct {
 	CardRouter     tomlCardRouterConfig      `toml:"card_router"`
 	Share          tomlShareComponentConfig  `toml:"share"`
 	PostConn       tomlPostConnectionsConfig `toml:"post_connections"`
+
+	// Markdown-driven component slots
+	TopBanner     tomlComponentSlotConfig            `toml:"top_banner"`
+	Hero          tomlComponentSlotConfig            `toml:"hero"`
+	LeftSidebar   tomlComponentSlotConfig            `toml:"left_sidebar"`
+	AfterPost     tomlComponentSlotConfig            `toml:"after_post"`
+	BottomBanner  tomlComponentSlotConfig            `toml:"bottom_banner"`
+	NavContent    tomlComponentSlotConfig            `toml:"nav_content"`
+	FooterContent tomlComponentSlotConfig            `toml:"footer_content"`
+	Slots         map[string]tomlComponentSlotConfig `toml:"slots"`
 }
 
 type tomlPostConnectionsConfig struct {
@@ -1546,6 +1576,23 @@ func (c *tomlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			InlinksLimit:  c.PostConn.InlinksLimit,
 			OutlinksLimit: c.PostConn.OutlinksLimit,
 		},
+
+		// Markdown-driven component slots
+		TopBanner:     c.TopBanner.toModel(),
+		Hero:          c.Hero.toModel(),
+		LeftSidebar:   c.LeftSidebar.toModel(),
+		AfterPost:     c.AfterPost.toModel(),
+		BottomBanner:  c.BottomBanner.toModel(),
+		NavContent:    c.NavContent.toModel(),
+		FooterContent: c.FooterContent.toModel(),
+	}
+
+	// Convert generic slots map
+	if len(c.Slots) > 0 {
+		config.Slots = make(map[string]models.ComponentSlotConfig, len(c.Slots))
+		for name, slot := range c.Slots {
+			config.Slots[name] = slot.toModel()
+		}
 	}
 
 	if len(c.Share.Platforms) == 0 {
@@ -2565,6 +2612,26 @@ func (w *yamlWebmentionConfig) toWebmentionConfig() models.WebmentionConfig {
 	}
 }
 
+// yamlComponentSlotConfig maps the YAML representation of a generic
+// markdown-driven component slot to models.ComponentSlotConfig.
+type yamlComponentSlotConfig struct {
+	Enabled  *bool  `yaml:"enabled"`
+	Slug     string `yaml:"slug"`
+	CSSClass string `yaml:"css_class"`
+	Position string `yaml:"position"`
+	Width    string `yaml:"width"`
+}
+
+func (y *yamlComponentSlotConfig) toModel() models.ComponentSlotConfig {
+	return models.ComponentSlotConfig{
+		Enabled:  y.Enabled,
+		Slug:     y.Slug,
+		CSSClass: y.CSSClass,
+		Position: y.Position,
+		Width:    y.Width,
+	}
+}
+
 type yamlComponentsConfig struct {
 	Nav            yamlNavComponentConfig    `yaml:"nav"`
 	Footer         yamlFooterComponentConfig `yaml:"footer"`
@@ -2574,6 +2641,16 @@ type yamlComponentsConfig struct {
 	CardRouter     yamlCardRouterConfig      `yaml:"card_router"`
 	Share          yamlShareComponentConfig  `yaml:"share"`
 	PostConn       yamlPostConnectionsConfig `yaml:"post_connections"`
+
+	// Markdown-driven component slots
+	TopBanner     yamlComponentSlotConfig            `yaml:"top_banner"`
+	Hero          yamlComponentSlotConfig            `yaml:"hero"`
+	LeftSidebar   yamlComponentSlotConfig            `yaml:"left_sidebar"`
+	AfterPost     yamlComponentSlotConfig            `yaml:"after_post"`
+	BottomBanner  yamlComponentSlotConfig            `yaml:"bottom_banner"`
+	NavContent    yamlComponentSlotConfig            `yaml:"nav_content"`
+	FooterContent yamlComponentSlotConfig            `yaml:"footer_content"`
+	Slots         map[string]yamlComponentSlotConfig `yaml:"slots"`
 }
 
 type yamlPostConnectionsConfig struct {
@@ -3068,6 +3145,23 @@ func (c *yamlComponentsConfig) toComponentsConfig() models.ComponentsConfig {
 			InlinksLimit:  c.PostConn.InlinksLimit,
 			OutlinksLimit: c.PostConn.OutlinksLimit,
 		},
+
+		// Markdown-driven component slots
+		TopBanner:     c.TopBanner.toModel(),
+		Hero:          c.Hero.toModel(),
+		LeftSidebar:   c.LeftSidebar.toModel(),
+		AfterPost:     c.AfterPost.toModel(),
+		BottomBanner:  c.BottomBanner.toModel(),
+		NavContent:    c.NavContent.toModel(),
+		FooterContent: c.FooterContent.toModel(),
+	}
+
+	// Convert generic slots map
+	if len(c.Slots) > 0 {
+		config.Slots = make(map[string]models.ComponentSlotConfig, len(c.Slots))
+		for name, slot := range c.Slots {
+			config.Slots[name] = slot.toModel()
+		}
 	}
 
 	if len(c.Share.Platforms) == 0 {

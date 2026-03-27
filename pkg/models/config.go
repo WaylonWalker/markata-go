@@ -36,6 +36,32 @@ type AuthorsConfig struct {
 	Authors map[string]Author `json:"authors,omitempty" yaml:"authors,omitempty" toml:"authors,omitempty"`
 }
 
+// ComponentSlotConfig configures a named component slot that renders a markdown
+// post (by slug) in a specific location of the page layout.  This is the
+// generic building block: every slot follows the same enabled/slug/css_class
+// pattern, and per-post frontmatter can override the slug.
+type ComponentSlotConfig struct {
+	// Enabled controls whether this slot is rendered (default: false)
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty" toml:"enabled,omitempty"`
+
+	// Slug is the post slug whose rendered ArticleHTML is included
+	Slug string `json:"slug,omitempty" yaml:"slug,omitempty" toml:"slug,omitempty"`
+
+	// CSSClass is an optional extra CSS class added to the wrapper element
+	CSSClass string `json:"css_class,omitempty" yaml:"css_class,omitempty" toml:"css_class,omitempty"`
+
+	// Position is an optional layout hint (e.g. "left", "right", "top", "bottom")
+	Position string `json:"position,omitempty" yaml:"position,omitempty" toml:"position,omitempty"`
+
+	// Width is an optional CSS width for sidebar-style slots
+	Width string `json:"width,omitempty" yaml:"width,omitempty" toml:"width,omitempty"`
+}
+
+// IsEnabled returns true when the slot is explicitly enabled and has a slug.
+func (s ComponentSlotConfig) IsEnabled() bool {
+	return s.Enabled != nil && *s.Enabled && s.Slug != ""
+}
+
 // ComponentsConfig configures the layout components system.
 // This enables configuration-driven control over common UI elements.
 type ComponentsConfig struct {
@@ -62,6 +88,33 @@ type ComponentsConfig struct {
 
 	// PostConnections configures inlink/outlink list and graph rendering on posts
 	PostConnections PostConnectionsComponentConfig `json:"post_connections" yaml:"post_connections" toml:"post_connections"`
+
+	// ── Markdown-driven component slots ──────────────────────────────────
+
+	// TopBanner renders a markdown post above the site header (announcements, alerts)
+	TopBanner ComponentSlotConfig `json:"top_banner" yaml:"top_banner" toml:"top_banner"`
+
+	// Hero renders a markdown post as the page hero section (below header, above content)
+	Hero ComponentSlotConfig `json:"hero" yaml:"hero" toml:"hero"`
+
+	// LeftSidebar renders a markdown post as a left sidebar
+	LeftSidebar ComponentSlotConfig `json:"left_sidebar" yaml:"left_sidebar" toml:"left_sidebar"`
+
+	// AfterPost renders a markdown post below the main content (CTAs, related content)
+	AfterPost ComponentSlotConfig `json:"after_post" yaml:"after_post" toml:"after_post"`
+
+	// BottomBanner renders a markdown post above the footer (newsletter signup, etc.)
+	BottomBanner ComponentSlotConfig `json:"bottom_banner" yaml:"bottom_banner" toml:"bottom_banner"`
+
+	// NavContent renders a markdown post as custom navigation (replaces config-driven nav)
+	NavContent ComponentSlotConfig `json:"nav_content" yaml:"nav_content" toml:"nav_content"`
+
+	// FooterContent renders a markdown post as custom footer (replaces config-driven footer)
+	FooterContent ComponentSlotConfig `json:"footer_content" yaml:"footer_content" toml:"footer_content"`
+
+	// Slots is a generic map for user-defined component slots beyond the named ones.
+	// Templates can reference these as {{ include_post(config.components.slots.<name>.slug) }}.
+	Slots map[string]ComponentSlotConfig `json:"slots,omitempty" yaml:"slots,omitempty" toml:"slots,omitempty"`
 }
 
 const (

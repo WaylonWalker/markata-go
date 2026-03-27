@@ -618,7 +618,6 @@ main.content-bg {
 .site-header {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  padding: var(--space-4);
 }
 
 .site-header .container {
@@ -628,6 +627,7 @@ main.content-bg {
   gap: var(--space-4);
   max-width: var(--page-width);
   margin: 0 auto;
+  padding: var(--space-4);
 }
 
 .site-title {
@@ -656,6 +656,52 @@ main.content-bg {
   justify-self: end;
   position: relative;
   z-index: 30;
+}
+
+/* Hamburger toggle -- hidden on desktop, shown at <=768px */
+.hamburger-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.375rem;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  align-items: center;
+  z-index: 31;
+}
+
+.hamburger-bar {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--color-text);
+  border-radius: 1px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* Animate into X when open */
+.hamburger-toggle--open .hamburger-bar:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+.hamburger-toggle--open .hamburger-bar:nth-child(2) {
+  opacity: 0;
+}
+.hamburger-toggle--open .hamburger-bar:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+/* On desktop, .mobile-nav-group is transparent -- contents use grid placement */
+.mobile-nav-group {
+  display: contents;
+}
+
+/* Respect reduced-motion preference for hamburger animation */
+@media (prefers-reduced-motion: reduce) {
+  .hamburger-bar {
+    transition: none;
+  }
 }
 
 /* Footer */
@@ -1045,11 +1091,36 @@ body:has(.background-decoration) article.post {
 }
 
 .post-nav .prev::before {
-  content: '\2190 ';
+  content: '[';
+  font-size: 0.7em;
+  padding: 0.0625em 0.3em;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-border) 30%, transparent);
+  margin-right: 0.5em;
+  vertical-align: baseline;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
 }
 
 .post-nav .next::after {
-  content: ' \2192';
+  content: ']';
+  font-size: 0.7em;
+  padding: 0.0625em 0.3em;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-border) 30%, transparent);
+  margin-left: 0.5em;
+  vertical-align: baseline;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.post-nav a:hover::before,
+.post-nav a:hover::after {
+  opacity: 1;
 }
 
 /* Feed / Post List */
@@ -1448,39 +1519,63 @@ a.wikilink.wikilink-missing {
 
   /* Reduce main padding on mobile */
   main {
-    padding: var(--space-4) var(--space-3);
+    padding: var(--space-3) var(--space-3);
     max-width: 100%;
   }
 
-  /* Header - wrap to multiple rows */
+  /* Header - compact single row with hamburger */
   .site-header {
-    padding: var(--space-3);
     overflow-x: hidden;
   }
 
   .site-header .container {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-3);
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0;
+    padding: var(--space-2) var(--space-3);
   }
 
-  /* Mobile header stacking: title, nav, then controls (search last) */
+  /* Title on the left, hamburger on the right, same row */
   .site-title {
     order: 1;
-    align-self: center;
-    margin: 0 auto;
-    text-align: center;
+    flex: 1 1 auto;
+    margin: 0;
+    text-align: left;
+    font-size: var(--text-lg);
+  }
+
+  /* Show hamburger */
+  .hamburger-toggle {
+    display: flex;
+    order: 2;
+  }
+
+  /* Nav group: hidden by default, full-width row below title when open */
+  .mobile-nav-group {
+    display: none;
+    order: 3;
+    flex-basis: 100%;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+    margin-top: var(--space-2);
+  }
+
+  .mobile-nav-group--open {
+    display: flex;
   }
 
   .site-header .site-nav {
-    order: 2;
     justify-content: flex-start;
     width: 100%;
+    flex-wrap: wrap;
+    gap: var(--space-3);
   }
 
   .header-controls {
-    order: 3;
     width: 100%;
     margin-left: 0;
     justify-content: flex-start;
@@ -1547,7 +1642,7 @@ a.wikilink.wikilink-missing {
 
   /* Reduce article padding on mobile */
   article.post {
-    padding: var(--space-4) 0;
+    padding: var(--space-2) 0;
   }
 
   .post-nav {
@@ -1568,10 +1663,10 @@ a.wikilink.wikilink-missing {
 
   /* Even tighter main padding */
   main {
-    padding: var(--space-3) var(--space-2);
+    padding: var(--space-2) var(--space-2);
   }
 
-  .site-header {
+  .site-header .container {
     padding: var(--space-2);
   }
 
@@ -1602,7 +1697,7 @@ a.wikilink.wikilink-missing {
   }
 
   article.post {
-    padding: var(--space-3) 0;
+    padding: var(--space-2) 0;
   }
 }
 
@@ -1618,7 +1713,7 @@ a.wikilink.wikilink-missing {
     padding: var(--space-2) var(--space-1);
   }
 
-  .site-header {
+  .site-header .container {
     padding: var(--space-2) var(--space-1);
   }
 

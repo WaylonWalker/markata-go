@@ -739,6 +739,46 @@ func mergeComponentsConfig(base, override models.ComponentsConfig) models.Compon
 		result.Share.Custom = nil
 	}
 
+	// Merge markdown-driven component slots
+	result.TopBanner = mergeComponentSlot(result.TopBanner, override.TopBanner)
+	result.Hero = mergeComponentSlot(result.Hero, override.Hero)
+	result.LeftSidebar = mergeComponentSlot(result.LeftSidebar, override.LeftSidebar)
+	result.AfterPost = mergeComponentSlot(result.AfterPost, override.AfterPost)
+	result.BottomBanner = mergeComponentSlot(result.BottomBanner, override.BottomBanner)
+	result.NavContent = mergeComponentSlot(result.NavContent, override.NavContent)
+	result.FooterContent = mergeComponentSlot(result.FooterContent, override.FooterContent)
+
+	// Merge generic slots map
+	if len(override.Slots) > 0 {
+		if result.Slots == nil {
+			result.Slots = make(map[string]models.ComponentSlotConfig)
+		}
+		for k, v := range override.Slots {
+			result.Slots[k] = mergeComponentSlot(result.Slots[k], v)
+		}
+	}
+
+	return result
+}
+
+// mergeComponentSlot merges a single ComponentSlotConfig.
+func mergeComponentSlot(base, override models.ComponentSlotConfig) models.ComponentSlotConfig {
+	result := base
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+	if override.Slug != "" {
+		result.Slug = override.Slug
+	}
+	if override.CSSClass != "" {
+		result.CSSClass = override.CSSClass
+	}
+	if override.Position != "" {
+		result.Position = override.Position
+	}
+	if override.Width != "" {
+		result.Width = override.Width
+	}
 	return result
 }
 

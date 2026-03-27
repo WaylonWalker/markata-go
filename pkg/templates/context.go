@@ -617,7 +617,44 @@ func componentsToMap(c *models.ComponentsConfig) map[string]interface{} {
 		"card_router":      cardRouterMap,
 		"share":            shareMap,
 		"post_connections": postConnectionsMap,
+		"top_banner":       componentSlotToMap(&c.TopBanner),
+		"hero":             componentSlotToMap(&c.Hero),
+		"left_sidebar":     componentSlotToMap(&c.LeftSidebar),
+		"after_post":       componentSlotToMap(&c.AfterPost),
+		"bottom_banner":    componentSlotToMap(&c.BottomBanner),
+		"nav_content":      componentSlotToMap(&c.NavContent),
+		"footer_content":   componentSlotToMap(&c.FooterContent),
+		"slots":            componentSlotsMapToMap(c.Slots),
 	}
+}
+
+// componentSlotToMap converts a ComponentSlotConfig to a template-friendly map.
+func componentSlotToMap(s *models.ComponentSlotConfig) map[string]interface{} {
+	enabled := false
+	if s.Enabled != nil {
+		enabled = *s.Enabled
+	}
+	return map[string]interface{}{
+		"enabled":   enabled,
+		"slug":      s.Slug,
+		"css_class": s.CSSClass,
+		"position":  s.Position,
+		"width":     s.Width,
+	}
+}
+
+// componentSlotsMapToMap converts the generic Slots map to a template-friendly
+// nested map so templates can access {{ config.components.slots.<name>.slug }}.
+func componentSlotsMapToMap(slots map[string]models.ComponentSlotConfig) map[string]interface{} {
+	if len(slots) == 0 {
+		return nil
+	}
+	result := make(map[string]interface{}, len(slots))
+	for name, slot := range slots {
+		s := slot // capture range variable
+		result[name] = componentSlotToMap(&s)
+	}
+	return result
 }
 
 // postFormatsToMap converts a PostFormatsConfig to a map for template access.
@@ -1272,6 +1309,7 @@ func (c Context) ToPongo2() pongo2.Context {
 	}
 
 	resolvedContentSidebar := resolveContentSidebar(configMap, c.Post)
+	resolvedSlots := resolveComponentSlots(configMap, c.Post)
 	ctx := pongo2.Context{
 		"post":                     postMap,
 		"body":                     c.Body,
@@ -1283,6 +1321,7 @@ func (c Context) ToPongo2() pongo2.Context {
 		"sidebar_items":            sidebarItemsToMaps(c.SidebarItems),
 		"sidebar_title":            c.SidebarTitle,
 		"resolved_content_sidebar": resolvedContentSidebar,
+		"resolved_slots":           resolvedSlots,
 	}
 
 	addPostContext(&ctx, postMap, c.Post, resolvedContentSidebar)
@@ -1326,6 +1365,85 @@ func resolveContentSidebar(configMap map[string]interface{}, post *models.Post) 
 	}
 
 	return resolved
+}
+
+// resolveComponentSlots builds a map of resolved slot configs for template
+// access.  Each named slot starts with the global config value and can be
+// overridden per-post via frontmatter keys like "<slot_name>_slug".
+// The result is added to the pongo2 context as "resolved_slots".
+func resolveComponentSlots(configMap map[string]interface{}, post *models.Post) map[string]interface{} {
+	slotNames := []string{
+		"top_banner", "hero", "left_sidebar", "after_post",
+		"bottom_banner", "nav_content", "footer_content",
+	}
+
+	result := make(map[string]interface{}, len(slotNames))
+
+	for _, name := range slotNames {
+		resolved := map[string]interface{}{
+			"enabled":   false,
+			"slug":      "",
+			"css_class": "",
+			"position":  "",
+			"width":     "",
+		}
+
+		// Pull global config defaults
+		if configMap != nil {
+			if components, ok := configMap["components"].(map[string]interface{}); ok {
+				if slotMap, ok := components[name].(map[string]interface{}); ok {
+					resolved = map[string]interface{}{
+						"enabled":   slotMap["enabled"],
+						"slug":      slotMap["slug"],
+						"css_class": slotMap["css_class"],
+						"position":  slotMap["position"],
+						"width":     slotMap["width"],
+					}
+				}
+			}
+		}
+
+		// Per-post frontmatter override: e.g. "hero_slug" overrides hero slot
+		if post != nil && post.Extra != nil {
+			overrideKey := name + "_slug"
+			if overrideSlug, ok := post.Extra[overrideKey].(string); ok && overrideSlug != "" {
+				resolved["enabled"] = true
+				resolved["slug"] = overrideSlug
+			}
+		}
+
+		result[name] = resolved
+	}
+
+	// Also resolve generic slots from config.components.slots.*
+	if configMap != nil {
+		if components, ok := configMap["components"].(map[string]interface{}); ok {
+			if slotsMap, ok := components["slots"].(map[string]interface{}); ok {
+				for slotName, slotVal := range slotsMap {
+					if slotConfig, ok := slotVal.(map[string]interface{}); ok {
+						resolved := map[string]interface{}{
+							"enabled":   slotConfig["enabled"],
+							"slug":      slotConfig["slug"],
+							"css_class": slotConfig["css_class"],
+							"position":  slotConfig["position"],
+							"width":     slotConfig["width"],
+						}
+						// Per-post override for generic slots too
+						if post != nil && post.Extra != nil {
+							overrideKey := slotName + "_slug"
+							if overrideSlug, ok := post.Extra[overrideKey].(string); ok && overrideSlug != "" {
+								resolved["enabled"] = true
+								resolved["slug"] = overrideSlug
+							}
+						}
+						result[slotName] = resolved
+					}
+				}
+			}
+		}
+	}
+
+	return result
 }
 
 func addPostContext(ctx *pongo2.Context, postMap map[string]interface{}, post *models.Post, resolvedContentSidebar map[string]interface{}) {
@@ -1409,6 +1527,8 @@ func addExtraContext(ctx *pongo2.Context, extra map[string]interface{}) {
 			(*ctx)[k] = PostsToMaps(typed)
 		case *models.Post:
 			(*ctx)[k] = postToMap(typed)
+		case *models.FeedConfig:
+			(*ctx)[k] = feedToMap(typed)
 		default:
 			(*ctx)[k] = v
 		}
