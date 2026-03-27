@@ -428,6 +428,34 @@
         priority: 55
       });
 
+      // J and K (Shift+j/k) - Previous/Next post in feed
+      // Vim-like list navigation: j/k move within the view (scroll or card
+      // select), J/K move to the adjacent item (prev/next post).
+      // Same handlers as [/] -- an additional binding for muscle-memory.
+      window.shortcutsRegistry.register({
+        key: 'K',
+        modifiers: [],
+        description: 'Previous post in feed',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          previousPage();
+        },
+        priority: 55
+      });
+
+      window.shortcutsRegistry.register({
+        key: 'J',
+        modifiers: [],
+        description: 'Next post in feed',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          nextPage();
+        },
+        priority: 55
+      });
+
       // Handle multi-key sequences: g h, g s, and standalone s for feed toggle
       document.addEventListener('keydown', function(e) {
         if (window.shortcutsRegistry.areDisabled()) return;
