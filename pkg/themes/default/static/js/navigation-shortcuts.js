@@ -219,16 +219,39 @@
      * Toggle reader mode on post pages.
      * Strips chrome (sidebar, nav, footer) for distraction-free reading.
      * Press 's' again to restore normal view.
+     * Persists via ?reader=1 URL parameter across navigation.
      */
     function toggleReaderMode() {
       var body = document.body;
       var isReaderMode = body.classList.toggle('reader-mode');
+
+      // Update URL parameter to persist across navigation
+      var url = new URL(window.location.href);
+      if (isReaderMode) {
+        url.searchParams.set('reader', '1');
+      } else {
+        url.searchParams.delete('reader');
+      }
+      history.replaceState(null, '', url.toString());
 
       // Show a brief notification
       if (isReaderMode) {
         showNotification('Reader mode -- press s to exit');
       } else {
         showNotification('Reader mode off');
+      }
+    }
+
+    /**
+     * Check for ?reader=1 URL param and apply reader-mode class.
+     * Called on init (page load and after view transitions).
+     */
+    function applyReaderModeFromURL() {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('reader') === '1' && document.querySelector('article.post')) {
+        document.body.classList.add('reader-mode');
+      } else {
+        document.body.classList.remove('reader-mode');
       }
     }
 
@@ -405,6 +428,9 @@
     // Clean up previous state
     cleanup();
 
+    // Apply reader mode from URL param (persists across view transitions)
+    applyReaderModeFromURL();
+
     // Preload adjacent pages for instant pagination via keyboard shortcuts
     preloadAdjacentPages();
 
@@ -570,6 +596,26 @@
           yKeyTime = 0;
         }
       });
+
+      // Propagate ?reader=1 to navigation links when reader mode is active.
+      // Uses capture phase so it runs before the view transition click handler.
+      document.addEventListener('click', function(e) {
+        if (!document.body.classList.contains('reader-mode')) return;
+
+        var link = e.target.closest('a');
+        if (!link || !link.href) return;
+
+        try {
+          var linkUrl = new URL(link.href);
+          // Only modify same-origin links
+          if (linkUrl.origin !== window.location.origin) return;
+          // Don't add if already present
+          if (linkUrl.searchParams.get('reader') === '1') return;
+
+          linkUrl.searchParams.set('reader', '1');
+          link.href = linkUrl.toString();
+        } catch (ex) { /* ignore invalid URLs */ }
+      }, true); // capture phase
 
       state.initialized = true;
     }
