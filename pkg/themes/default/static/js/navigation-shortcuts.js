@@ -8,7 +8,7 @@
  * - `Shift+O` - Open in new tab
  * - `g h` - Go to home
  * - `g s` - Focus search
- * - `s` - Toggle simple/rich feed view (on feed pages only)
+ * - `s` - Toggle simple/rich feed view (feed pages) or go to feed's simple view (post pages)
  * - `[` - Previous page
  * - `]` - Next page
  * - `y y` - Copy URL to clipboard
@@ -47,11 +47,12 @@
    };
 
    /**
-    * Check if we're on a feed page
-    * Feed pages have a <div class="feed"> wrapper
+    * Check if we're on a dedicated feed page (not a post page with an embedded feed widget).
+    * Feed pages have <div class="feed"> but NOT <article class="post">.
     */
-   function isFeedPage() {
-     return document.querySelector('div.feed') !== null;
+   function isDedicatedFeedPage() {
+     return document.querySelector('div.feed') !== null &&
+            document.querySelector('article.post') === null;
    }
 
    /**
@@ -174,38 +175,78 @@
 
    /**
     * Toggle between simple and rich feed views.
-    * On simple feed pages (URL contains /simple/), navigates to the rich feed.
-    * On rich feed pages, navigates to the simple feed variant.
-    * Only works on feed pages (div.feed element).
+    * On feed pages: toggles between /feed/ and /feed/simple/.
+    * On post pages: navigates to the active sidebar feed's simple view.
     */
    function toggleFeedView() {
-     if (!isFeedPage()) return;
+     // Case 1: On a dedicated feed page -- toggle between simple and rich
+     if (isDedicatedFeedPage()) {
+       var path = window.location.pathname;
+       var feedEl = document.querySelector('div.feed');
+       var isSimple = feedEl.classList.contains('feed-simple');
 
-     var path = window.location.pathname;
-     var feedEl = document.querySelector('div.feed');
-     var isSimple = feedEl.classList.contains('feed-simple');
-
-     if (isSimple) {
-       // On simple feed -> go to rich feed: remove /simple/ from path
-       var richPath = path.replace(/\/simple\/(page\/\d+\/)?$/, '/');
-       // Preserve page number if present
-       var pageMatch = path.match(/\/simple\/page\/(\d+)\//);
-       if (pageMatch) {
-         richPath = path.replace(/\/simple\/page\/(\d+)\//, '/page/' + pageMatch[1] + '/');
-       }
-       window.location.href = richPath;
-     } else {
-       // On rich feed -> go to simple feed: insert /simple/ before any /page/ or at end
-       var simplePath;
-       var richPageMatch = path.match(/\/page\/(\d+)\/$/);
-       if (richPageMatch) {
-         simplePath = path.replace(/\/page\/(\d+)\/$/, '/simple/page/' + richPageMatch[1] + '/');
+       if (isSimple) {
+         // On simple feed -> go to rich feed: remove /simple/ from path
+         var richPath = path.replace(/\/simple\/(page\/\d+\/)?$/, '/');
+         // Preserve page number if present
+         var pageMatch = path.match(/\/simple\/page\/(\d+)\//);
+         if (pageMatch) {
+           richPath = path.replace(/\/simple\/page\/(\d+)\//, '/page/' + pageMatch[1] + '/');
+         }
+         window.location.href = richPath;
        } else {
-         // Ensure trailing slash
-         simplePath = path.replace(/\/?$/, '/') + 'simple/';
+         // On rich feed -> go to simple feed: insert /simple/ before any /page/ or at end
+         var simplePath;
+         var richPageMatch = path.match(/\/page\/(\d+)\/$/);
+         if (richPageMatch) {
+           simplePath = path.replace(/\/page\/(\d+)\/$/, '/simple/page/' + richPageMatch[1] + '/');
+         } else {
+           // Ensure trailing slash
+           simplePath = path.replace(/\/?$/, '/') + 'simple/';
+         }
+         window.location.href = simplePath;
        }
-       window.location.href = simplePath;
+       return;
      }
+
+     // Case 2: On a post page -- navigate to the active feed's simple view
+     var feedSlug = getPostPageFeedSlug();
+     if (feedSlug) {
+       window.location.href = '/' + feedSlug + '/simple/';
+     }
+   }
+
+   /**
+    * Get the active feed slug when on a post page.
+    * Checks feed-cycling state first, then falls back to the sidebar title link.
+    */
+   function getPostPageFeedSlug() {
+     // Try feed-cycling JS state (if feed cycling is active)
+     try {
+       var dataEl = document.getElementById('feed-sidebar-data');
+       if (dataEl) {
+         var data = JSON.parse(dataEl.textContent);
+         // Check URL for ?feed= param (user may have cycled)
+         var params = new URLSearchParams(window.location.search);
+         var feedParam = params.get('feed');
+         if (feedParam) return feedParam;
+         // Fall back to the default feed from JSON
+         if (data.feeds && data.feeds[data.currentFeedIndex]) {
+           return data.feeds[data.currentFeedIndex].slug;
+         }
+       }
+     } catch (e) { /* ignore parse errors */ }
+
+     // Fall back to sidebar title link href
+     var titleLink = document.querySelector('.feed-nav-title a[href]');
+     if (titleLink) {
+       // Extract slug from href like "/blog/" -> "blog"
+       var href = titleLink.getAttribute('href');
+       var match = href.match(/^\/([^?#]+?)\/?$/);
+       if (match) return match[1];
+     }
+
+     return null;
    }
 
   /**
@@ -480,11 +521,9 @@
           state.lastKey = null;
           state.lastKeyTime = 0;
          } else if (e.key === 's' && state.lastKey !== 'g') {
-           // Standalone s - toggle simple/rich feed view (only on feed pages)
-           if (isFeedPage()) {
-             e.preventDefault();
-             toggleFeedView();
-           }
+           // Standalone s - toggle simple/rich feed view (works on feed and post pages)
+           e.preventDefault();
+           toggleFeedView();
            state.lastKey = null;
            state.lastKeyTime = 0;
         } else {
