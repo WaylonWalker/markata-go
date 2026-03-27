@@ -669,11 +669,18 @@
 
   // ── Feed Sidebar: scroll active item into view ──
   // Defined outside init() so it's available even if view transitions are disabled.
+  // Uses manual scrollTop math so that only the sidebar container scrolls --
+  // scrollIntoView() would scroll every ancestor including the page viewport.
   window.initFeedSidebarScroll = function() {
     var active = document.querySelector('.feed-nav-item--active');
-    if (active) {
-      active.scrollIntoView({ block: 'center', behavior: 'instant' });
-    }
+    if (!active) return;
+    var container = document.getElementById('feed-nav-collapsible');
+    if (!container) return;
+    var activeTop = active.offsetTop - container.offsetTop;
+    var activeHeight = active.offsetHeight;
+    var containerHeight = container.clientHeight;
+    // Center the active item within the scrollable container
+    container.scrollTop = activeTop - (containerHeight / 2) + (activeHeight / 2);
   };
 
   // Initialize when DOM is ready

@@ -362,9 +362,11 @@
     if (feedState.currentIndex !== feedState.data.currentFeedIndex) {
       renderFeed(feedState.currentIndex);
     } else {
-      // Just set the counter and feed links for the default feed
+      // Default feed -- still patch prev/next links with ?feed= so that
+      // [/] navigation preserves feed context across pages.
       updateCounter();
       updateFeedLinks(feedState.data.feeds[feedState.currentIndex]);
+      updatePrevNextLinks(feedState.data.feeds[feedState.currentIndex]);
     }
 
     // Register keyboard shortcuts
