@@ -293,14 +293,15 @@
 }
 
 .toc-title {
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 2px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
 .toc-list {
@@ -372,8 +373,11 @@
   max-height: inherit;
   background-color: var(--color-surface);
   border-radius: 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--color-border));
   overflow: hidden;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 5%, transparent),
+    0 4px 24px -4px rgba(0, 0, 0, 0.3);
 }
 
 /* Chrome: header + format links + hotkeys -- non-scrolling top area */
@@ -418,29 +422,33 @@
   justify-content: space-between;
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 15%, var(--color-surface));
+  border-bottom: 2px solid color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
 .feed-nav-title {
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text);
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
   margin-bottom: 0;
   padding-bottom: 0;
   border-bottom: none;
 }
 
 .feed-nav-counter {
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  background: color-mix(in srgb, var(--color-border) 40%, transparent);
-  padding: 0.125rem 0.375rem;
-  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-info, var(--color-text-muted));
+  background: color-mix(in srgb, var(--color-info, var(--color-primary)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-info, var(--color-primary)) 25%, transparent);
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
   line-height: 1;
   flex-shrink: 0;
+  letter-spacing: 0.05em;
 }
 
 .feed-nav-title a {
@@ -459,19 +467,21 @@
   gap: 0.25rem 0.5rem;
   margin-bottom: 0.5rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 15%, var(--color-surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
 }
 
 .feed-nav-format-link {
-  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
   color: var(--color-text-muted);
   text-decoration: none;
-  padding: 0.0625rem 0.25rem;
-  border: 1px solid var(--color-border);
+  padding: 0.125rem 0.375rem;
+  border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
   border-radius: 3px;
-  background: color-mix(in srgb, var(--color-border) 20%, transparent);
-  transition: color 0.2s, background-color 0.2s, border-color 0.2s;
+  background: transparent;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
   line-height: 1.2;
+  letter-spacing: 0.03em;
 }
 
 .feed-nav-format-link:hover {
@@ -501,24 +511,32 @@
 }
 
 .feed-nav-item--active .feed-nav-link {
-  color: var(--color-primary);
+  color: var(--color-text);
   font-weight: 600;
-  background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
-  border-radius: 4px;
+  background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border-radius: 0 4px 4px 0;
+  border-left: 3px solid var(--color-primary);
+  padding-left: calc(0.5rem - 3px);
+  box-shadow: inset 0 0 12px -4px color-mix(in srgb, var(--color-primary) 15%, transparent);
 }
 
 .feed-nav-link {
   color: var(--color-text-muted);
   text-decoration: none;
   display: block;
-  padding: 0.375rem 0.5rem;
-  transition: color 0.2s, background-color 0.2s;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s, transform 0.15s;
+  border-left: 3px solid transparent;
+  border-radius: 0 4px 4px 0;
 }
 
 .feed-nav-link:hover {
-  color: var(--color-primary);
-  background-color: var(--color-surface-hover, var(--color-border));
-  border-radius: 4px;
+  color: var(--color-text);
+  background-color: color-mix(in srgb, var(--color-text) 6%, transparent);
+  border-left-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  transform: translateX(2px);
 }
 
 .feed-nav-empty {
@@ -534,7 +552,7 @@
   gap: 0.5rem;
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 15%, var(--color-surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
 }
 
 .feed-nav-hotkey-group {
@@ -560,18 +578,32 @@
 }
 
 .feed-nav-hotkey {
-  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
   color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .feed-nav-hotkey kbd {
-  font-family: inherit;
-  font-size: 0.7rem;
-  padding: 0.0625rem 0.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--color-border) 30%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.125rem 0.35rem;
+  color: var(--color-text);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--color-surface) 80%, white 20%) 0%,
+    var(--color-surface) 100%);
+  border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
+  border-bottom-width: 2px;
+  border-bottom-color: color-mix(in srgb, var(--color-text) 25%, transparent);
+  border-radius: 4px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
+  line-height: 1;
+  min-width: 1.2em;
+  text-align: center;
+  display: inline-block;
 }
 
 /* ==========================================================================
@@ -2393,9 +2425,11 @@ article.kb-highlighted {
 /* Modal content container */
 .shortcuts-modal-content {
    background-color: var(--color-background);
-   border: 1px solid var(--color-border);
+   border: 1px solid color-mix(in srgb, var(--color-primary) 25%, var(--color-border));
    border-radius: 12px;
-   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+   box-shadow:
+     0 0 0 1px color-mix(in srgb, var(--color-primary) 8%, transparent),
+     0 24px 80px -12px rgba(0, 0, 0, 0.5);
    max-width: 700px;
    width: 100%;
    max-height: 85vh;
@@ -2417,9 +2451,11 @@ article.kb-highlighted {
 
 .shortcuts-modal-header h2 {
    margin: 0;
-   font-size: 1.5rem;
-   font-weight: 600;
+   font-family: var(--font-mono);
+   font-size: 1.25rem;
+   font-weight: 700;
    color: var(--color-text);
+   letter-spacing: -0.01em;
 }
 
 /* Close button in modal header */
@@ -2452,11 +2488,14 @@ article.kb-highlighted {
    flex: 1;
    padding: 1.5rem;
    overflow-y: auto;
+   columns: 2;
+   column-gap: 2rem;
 }
 
 /* Shortcut sections */
 .shortcuts-section {
    margin-bottom: 1.5rem;
+   break-inside: avoid;
 }
 
 .shortcuts-section:last-child {
@@ -2464,14 +2503,15 @@ article.kb-highlighted {
 }
 
 .shortcuts-section-title {
-   font-size: 0.75rem;
-   font-weight: 600;
+   font-family: var(--font-mono);
+   font-size: 0.7rem;
+   font-weight: 700;
    text-transform: uppercase;
-   letter-spacing: 0.05em;
-   color: var(--color-text-muted);
+   letter-spacing: 0.1em;
+   color: var(--color-primary);
    margin: 0 0 0.75rem 0;
    padding-bottom: 0.5rem;
-   border-bottom: 2px solid var(--color-border);
+   border-bottom: 2px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
 /* Shortcuts table */
@@ -2482,7 +2522,12 @@ article.kb-highlighted {
 }
 
 .shortcuts-table tbody tr {
-   border-bottom: 1px solid var(--color-border);
+   border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+   transition: background-color 0.12s ease;
+}
+
+.shortcuts-table tbody tr:hover {
+   background-color: color-mix(in srgb, var(--color-primary) 6%, transparent);
 }
 
 .shortcuts-table tbody tr:last-child {
@@ -2515,17 +2560,26 @@ article.kb-highlighted {
 .shortcuts-table kbd,
 kbd.kbd {
    display: inline-block;
-   padding: 0.15em 0.4em;
+   padding: 0.2em 0.45em;
    font-family: var(--font-mono, ui-monospace, monospace);
    font-size: 0.8em;
-   line-height: 1.4;
+   font-weight: 600;
+   line-height: 1.3;
    color: var(--color-text);
-   background-color: var(--color-surface);
-   border: 1px solid var(--color-border);
-   border-radius: 0.25em;
-   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+   background: linear-gradient(180deg,
+     color-mix(in srgb, var(--color-surface) 80%, white 20%) 0%,
+     var(--color-surface) 100%);
+   border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
+   border-bottom-width: 2px;
+   border-bottom-color: color-mix(in srgb, var(--color-text) 25%, transparent);
+   border-radius: 4px;
+   box-shadow:
+     0 1px 2px rgba(0, 0, 0, 0.2),
+     inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
    white-space: nowrap;
-   margin-right: 0.25em;
+   margin-right: 0.2em;
+   min-width: 1.4em;
+   text-align: center;
 }
 
 /* Special styling for modifier keys */
@@ -2904,6 +2958,7 @@ article.post {
 
    .shortcuts-modal-body {
        padding: 1rem 1.25rem;
+       columns: 1;
    }
 
    .shortcuts-modal-footer {
@@ -2945,14 +3000,21 @@ article.post {
    }
 
    .shortcuts-modal-content {
-       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+       box-shadow:
+         0 0 0 1px color-mix(in srgb, var(--color-primary) 8%, transparent),
+         0 24px 80px -12px rgba(0, 0, 0, 0.6);
    }
 
    .shortcuts-table kbd,
    kbd.kbd {
-       background-color: var(--color-surface);
-       border-color: var(--color-border);
-       box-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+       background: linear-gradient(180deg,
+         color-mix(in srgb, var(--color-surface) 80%, white 12%) 0%,
+         var(--color-surface) 100%);
+       border-color: color-mix(in srgb, var(--color-text) 18%, transparent);
+       border-bottom-color: color-mix(in srgb, var(--color-text) 25%, transparent);
+       box-shadow:
+         0 1px 3px rgba(0, 0, 0, 0.35),
+         inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
    }
 }
 
