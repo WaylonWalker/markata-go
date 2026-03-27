@@ -256,7 +256,13 @@
       var now = Date.now();
       var timeSinceLastKey = now - lastKeyTime;
 
-      if (key === 'g') {
+      if (e.key === 'G' && e.shiftKey) {
+        // Shift+G - scroll to bottom (check BEFORE lowercase 'g' branch)
+        e.preventDefault();
+        scrollToBottom();
+        lastKey = null;
+        lastKeyTime = 0;
+      } else if (key === 'g') {
         if (lastKey === 'g' && timeSinceLastKey < KEY_SEQUENCE_TIMEOUT) {
           // g g - scroll to top
           e.preventDefault();
@@ -267,12 +273,6 @@
           lastKey = 'g';
           lastKeyTime = now;
         }
-      } else if (e.shiftKey && key === 'g') {
-        // Shift+G - scroll to bottom
-        e.preventDefault();
-        scrollToBottom();
-        lastKey = null;
-        lastKeyTime = 0;
       } else {
         // Reset sequence on other keys
         lastKey = null;
