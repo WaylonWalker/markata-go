@@ -371,6 +371,22 @@
 
     // Register keyboard shortcuts
     registerShortcuts();
+
+    // Wire up clickable prev/next feed buttons
+    var prevBtn = document.getElementById('feed-nav-prev-feed');
+    var nextBtn = document.getElementById('feed-nav-next-feed');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        prevFeed();
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        nextFeed();
+      });
+    }
   }
 
   // Expose for view-transitions reinitializeScripts()

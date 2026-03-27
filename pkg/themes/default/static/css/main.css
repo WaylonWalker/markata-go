@@ -1096,17 +1096,12 @@ body:has(.background-decoration) article.post {
   font-size: 0.65em;
   font-weight: 600;
   padding: 0.125em 0.35em;
-  color: var(--color-text);
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--color-surface) 80%, white 20%) 0%,
-    var(--color-surface) 100%);
-  border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
   border-bottom-width: 2px;
-  border-bottom-color: color-mix(in srgb, var(--color-text) 25%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--color-text) 18%, transparent);
   border-radius: 4px;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
   margin-right: 0.5em;
   vertical-align: baseline;
   min-width: 1.2em;
@@ -1121,17 +1116,12 @@ body:has(.background-decoration) article.post {
   font-size: 0.65em;
   font-weight: 600;
   padding: 0.125em 0.35em;
-  color: var(--color-text);
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--color-surface) 80%, white 20%) 0%,
-    var(--color-surface) 100%);
-  border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
   border-bottom-width: 2px;
-  border-bottom-color: color-mix(in srgb, var(--color-text) 25%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--color-text) 18%, transparent);
   border-radius: 4px;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
   margin-left: 0.5em;
   vertical-align: baseline;
   min-width: 1.2em;
@@ -1144,9 +1134,6 @@ body:has(.background-decoration) article.post {
 .post-nav a:hover::after {
   color: var(--color-primary);
   border-color: var(--color-primary);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.2),
-    0 0 8px color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
 /* Feed / Post List */

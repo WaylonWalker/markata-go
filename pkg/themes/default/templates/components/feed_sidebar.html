@@ -29,7 +29,11 @@
             {% endif %}
 
             {% if sidebar_feeds_json %}
-            <span class="feed-nav-counter" id="feed-nav-counter" title="Press { or } to switch feeds"></span>
+            <span class="feed-nav-cycle" id="feed-nav-cycle">
+                <button class="feed-nav-cycle-btn" id="feed-nav-prev-feed" aria-label="Previous feed" title="Previous feed ({)">&lsaquo;</button>
+                <span class="feed-nav-counter" id="feed-nav-counter" title="Press { or } to switch feeds"></span>
+                <button class="feed-nav-cycle-btn" id="feed-nav-next-feed" aria-label="Next feed" title="Next feed (})">&rsaquo;</button>
+            </span>
             {% endif %}
         </div>
 
