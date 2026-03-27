@@ -11,6 +11,8 @@
 {% if sidebar.enabled and (sidebar_posts or feed.posts or posts) %}
 <aside class="feed-sidebar feed-sidebar--{{ sidebar.position | default:'left' }}" style="--feed-sidebar-width: {{ sidebar.width | default:'250px' }}" aria-label="Feed navigation">
     <nav class="feed-nav">
+        {# Chrome: header + links + hotkeys -- sticky on desktop so they stay visible #}
+        <div class="feed-nav-chrome">
         <div class="feed-nav-header" role="button" tabindex="0" aria-expanded="false" aria-controls="feed-nav-collapsible">
             {% if sidebar.title %}
             <h2 class="feed-nav-title" id="feed-nav-title">
@@ -31,7 +33,6 @@
             {% endif %}
         </div>
 
-        <div id="feed-nav-collapsible">
         {% if sidebar_feed.slug %}
         <div class="feed-nav-links" id="feed-nav-links">
             <a href="/{{ sidebar_feed.slug }}/" class="feed-nav-format-link" data-feed-format="web">web</a>
@@ -56,7 +57,9 @@
             </span>
             {% endif %}
         </div>
+        </div>{# /feed-nav-chrome #}
 
+        <div id="feed-nav-collapsible">
         {# Priority: sidebar_posts (injected for post pages) > feed.posts (feed pages) > posts (generic) #}
         {% if sidebar_posts %}
         <ul class="feed-nav-list" id="feed-nav-list">

@@ -345,8 +345,8 @@
   function updateLayoutRegions(newDoc) {
     // Preserve feed sidebar scroll position across DOM swap so
     // the list doesn't jump to top before scrollIntoView runs.
-    var feedSidebar = document.querySelector('.feed-sidebar');
-    var savedScrollTop = feedSidebar ? feedSidebar.scrollTop : 0;
+    var feedList = document.querySelector('#feed-nav-collapsible');
+    var savedScrollTop = feedList ? feedList.scrollTop : 0;
 
     const replacedPage = replaceElementContents('#view-transition-page', newDoc);
     if (!replacedPage) {
@@ -355,9 +355,9 @@
     }
 
     // Restore feed sidebar scroll position after content swap
-    var newFeedSidebar = document.querySelector('.feed-sidebar');
-    if (newFeedSidebar && savedScrollTop > 0) {
-      newFeedSidebar.scrollTop = savedScrollTop;
+    var newFeedList = document.querySelector('#feed-nav-collapsible');
+    if (newFeedList && savedScrollTop > 0) {
+      newFeedList.scrollTop = savedScrollTop;
     }
 
     replaceElement('#view-transition-progress', newDoc);

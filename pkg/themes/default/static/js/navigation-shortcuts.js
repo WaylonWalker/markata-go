@@ -399,35 +399,34 @@
       });
 
       // [ and ] - Previous/Next page
-      // Only register when pagination elements exist on the page.
       // Priority 55: higher than palette-switcher (50) so pagination wins.
-      // Without this guard, palette cycling ([/]) would be shadowed on all
-      // feed pages even when no pagination is present.
-      if (document.querySelector('[data-action="prev"], [data-action="next"], a.pagination-prev, a.pagination-next')) {
-        window.shortcutsRegistry.register({
-          key: '[',
-          modifiers: [],
-          description: 'Previous page',
-          group: 'navigation',
-          handler: function(e) {
-            e.preventDefault();
-            previousPage();
-          },
-          priority: 55
-        });
+      // Registered unconditionally -- handlers gracefully no-op when prev/next
+      // elements aren't on the current page. This ensures [/] work after
+      // view-transition navigation from a page without pagination (e.g. homepage)
+      // to a page with pagination (e.g. a post).
+      window.shortcutsRegistry.register({
+        key: '[',
+        modifiers: [],
+        description: 'Previous page',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          previousPage();
+        },
+        priority: 55
+      });
 
-        window.shortcutsRegistry.register({
-          key: ']',
-          modifiers: [],
-          description: 'Next page',
-          group: 'navigation',
-          handler: function(e) {
-            e.preventDefault();
-            nextPage();
-          },
-          priority: 55
-        });
-      }
+      window.shortcutsRegistry.register({
+        key: ']',
+        modifiers: [],
+        description: 'Next page',
+        group: 'navigation',
+        handler: function(e) {
+          e.preventDefault();
+          nextPage();
+        },
+        priority: 55
+      });
 
       // Handle multi-key sequences: g h, g s, and standalone s for feed toggle
       document.addEventListener('keydown', function(e) {
