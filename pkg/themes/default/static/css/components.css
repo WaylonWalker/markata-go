@@ -508,8 +508,8 @@
   transition: max-height 0.25s ease, opacity 0.2s ease, margin-bottom 0.25s ease, padding-bottom 0.25s ease;
 }
 
-.feed-sidebar:hover .feed-nav-links,
-.feed-sidebar:focus-within .feed-nav-links,
+.feed-nav-chrome:hover .feed-nav-links,
+.feed-nav-chrome:focus-within .feed-nav-links,
 .feed-sidebar.feed-sidebar--expanded .feed-nav-links {
   max-height: 4rem;
   opacity: 1;
@@ -608,8 +608,8 @@
   transition: max-height 0.25s ease, opacity 0.2s ease, margin-bottom 0.25s ease, padding-bottom 0.25s ease;
 }
 
-.feed-sidebar:hover .feed-nav-hotkeys,
-.feed-sidebar:focus-within .feed-nav-hotkeys,
+.feed-nav-chrome:hover .feed-nav-hotkeys,
+.feed-nav-chrome:focus-within .feed-nav-hotkeys,
 .feed-sidebar.feed-sidebar--expanded .feed-nav-hotkeys {
   max-height: 3rem;
   opacity: 1;
@@ -630,8 +630,8 @@
   transition: opacity 0.2s ease;
 }
 
-.feed-sidebar:hover .feed-nav-hotkey-group--nav,
-.feed-sidebar:focus-within .feed-nav-hotkey-group--nav {
+.feed-nav-chrome:hover .feed-nav-hotkey-group--nav,
+.feed-nav-chrome:focus-within .feed-nav-hotkey-group--nav {
   opacity: 1;
 }
 
@@ -1238,9 +1238,17 @@
   }
 
   .slot-footer-content .container p:first-child {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem 1rem;
+  }
+
+  .slot-footer-content .container p:first-child a {
+    padding: 0.5rem 0.25rem;
+    min-height: 44px;
+    display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
   }
 }
 
