@@ -538,7 +538,7 @@ func TestPublishFeedsPlugin_ShouldSkipFeedWhenOutputsExist(t *testing.T) {
 		PageURLs:     []string{"/archive/"},
 	}}
 
-	if err := plugin.publishFeed(feed, config, outputDir); err != nil {
+	if err := plugin.publishFeed(nil, feed, config, outputDir); err != nil {
 		t.Fatalf("publishFeed() error = %v", err)
 	}
 

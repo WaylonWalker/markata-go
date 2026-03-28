@@ -243,6 +243,28 @@ Terminal templates SHOULD render `{{ body|safe }}` when they want the default te
 | `config` | Config | Site configuration |
 | `core` | Core | Core instance |
 
+### Built-in Home Template Behavior
+
+The default theme ships a dedicated `home.html` template for custom homepages created from `index.md` or any post with `slug: ""`.
+
+The built-in `home.html` template MUST:
+
+1. Keep the above-the-fold area focused on a single introduction, with breathing room before any feed-heavy sections.
+2. Treat `hero_links` and other orientation links as guided entry points, not as a second full navigation bar.
+3. Render optional `intro_cards` as restrained previews of linked evergreen content rather than full competing articles.
+4. Separate the hero/intro region from the main feed rail with clear spatial separation so the homepage does not feel like a dense archive.
+
+### Built-in Archive Feed Behavior
+
+The archive feed remains the canonical mixed-content firehose. The built-in feed and card templates MUST preserve that behavior while keeping post types easy to distinguish.
+
+Archive feeds MUST:
+
+1. Continue rendering all included post types in a single chronological stream.
+2. Preserve distinct card treatments for different `template` values so articles, notes, links, photos, videos, guides, and other post types are scannable at a glance.
+3. Avoid collapsing all card types into a uniform presentation that hides content intent.
+4. Use distinctions that work with the active theme palette rather than hard-coding a separate archive color system.
+
 ### Global Variables
 
 Always available:

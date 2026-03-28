@@ -60,6 +60,8 @@ Both `template` and `templateKey` work in markata-go frontmatter.
 
 Each card type has different visual elements:
 
+On mixed archive feeds, markata-go keeps all post types in one chronological stream, but the built-in theme still distinguishes them with different card structures and subtle type cues. That means the archive stays a true firehose without making notes, links, photos, guides, and long-form posts blur together.
+
 ### Article Card
 - Large title (linked)
 - Content excerpt (first 3 paragraphs or 1500 characters)

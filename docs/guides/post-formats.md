@@ -469,6 +469,15 @@ This is my homepage content...
 
 This generates `/index.html` as your site's homepage, allowing custom content instead of requiring a feed with empty slug.
 
+In the default theme, `home.html` gives you a calmer homepage shell than a normal feed page:
+
+- a roomy hero for your primary introduction
+- optional `hero_links` for guided wayfinding
+- optional `intro_cards` for previewing evergreen pages like `/about/` or `/now/`
+- a main content rail below the fold so feed-heavy sections do not crowd the first screen
+
+The goal is to help visitors get oriented without turning the homepage into a full archive.
+
 ### Directory Index Pages
 
 Create `index.md` files in subdirectories for section landing pages:

@@ -193,7 +193,7 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 				skippedCount++
 				continue
 			}
-			if err := p.publishFeed(fc, config, outputDir); err != nil {
+			if err := p.publishFeed(m, fc, config, outputDir); err != nil {
 				return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 			}
 			p.cacheFeedHash(fc, buildCache, hash)
@@ -221,7 +221,7 @@ func (p *PublishFeedsPlugin) publishFeeds(m *lifecycle.Manager, config *lifecycl
 			semaphore <- struct{}{}        // Acquire
 			defer func() { <-semaphore }() // Release
 
-			if err := p.publishFeed(fc, config, outputDir); err != nil {
+			if err := p.publishFeed(m, fc, config, outputDir); err != nil {
 				errChan <- fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 				return
 			}
@@ -279,7 +279,7 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 				skippedCount++
 				continue
 			}
-			if err := p.publishFeed(fc, config, outputDir); err != nil {
+			if err := p.publishFeed(m, fc, config, outputDir); err != nil {
 				return fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 			}
 			rebuiltCount++
@@ -303,7 +303,7 @@ func (p *PublishFeedsPlugin) publishFeedsAsync(m *lifecycle.Manager, feedConfigs
 					skippedCount++
 					return
 				}
-				if err := p.publishFeed(fc, config, outputDir); err != nil {
+				if err := p.publishFeed(m, fc, config, outputDir); err != nil {
 					errChan <- fmt.Errorf("publishing feed %q: %w", fc.Slug, err)
 					return
 				}
@@ -529,7 +529,7 @@ type feedFormatPublisher struct {
 }
 
 // publishFeed publishes a single feed in all configured formats.
-func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycle.Config, outputDir string) error {
+func (p *PublishFeedsPlugin) publishFeed(m *lifecycle.Manager, fc *models.FeedConfig, config *lifecycle.Config, outputDir string) error {
 	feedDir := p.determineFeedDir(outputDir, fc.Slug)
 	modelsConfig := ToModelsConfig(config)
 
@@ -539,8 +539,8 @@ func (p *PublishFeedsPlugin) publishFeed(fc *models.FeedConfig, config *lifecycl
 
 	// Define all format publishers with their configurations
 	publishers := []feedFormatPublisher{
-		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(fc, config, modelsConfig, feedDir) }},
-		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(fc, config, modelsConfig, feedDir) }},
+		{name: "HTML", enabled: fc.Formats.HTML, publish: func() error { return p.publishHTMLPages(m, fc, config, modelsConfig, feedDir) }},
+		{name: "SimpleHTML", enabled: fc.Formats.SimpleHTML, publish: func() error { return p.publishSimpleHTMLPages(m, fc, config, modelsConfig, feedDir) }},
 		{name: "RSS", enabled: fc.Formats.RSS, publish: func() error { return p.publishRSS(fc, config, feedDir) }},
 		{name: "Atom", enabled: fc.Formats.Atom, publish: func() error { return p.publishAtom(fc, config, feedDir) }},
 		{name: "JSON", enabled: fc.Formats.JSON, publish: func() error { return p.publishJSON(fc, config, feedDir) }, ext: "json", targetFile: "feed.json"},
@@ -615,7 +615,7 @@ func (p *PublishFeedsPlugin) publishFormat(pub feedFormatPublisher, slug, output
 }
 
 // publishHTMLPages publishes HTML pages for a paginated feed.
-func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, modelsConfig *models.Config, feedDir string) error {
+func (p *PublishFeedsPlugin) publishHTMLPages(m *lifecycle.Manager, fc *models.FeedConfig, config *lifecycle.Config, modelsConfig *models.Config, feedDir string) error {
 	for i := range fc.Pages {
 		page := &fc.Pages[i]
 		// Determine output path
@@ -631,7 +631,7 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 		}
 
 		// Generate HTML content
-		html, err := p.generateFeedPageHTML(fc, page, config, modelsConfig)
+		html, err := p.generateFeedPageHTML(m, fc, page, config, modelsConfig)
 		if err != nil {
 			return fmt.Errorf("generating page %d: %w", page.Number, err)
 		}
@@ -646,7 +646,7 @@ func (p *PublishFeedsPlugin) publishHTMLPages(fc *models.FeedConfig, config *lif
 
 // publishSimpleHTMLPages publishes the simple (compact list) HTML pages for a feed.
 // Output is written to feedDir/simple/ with pagination at feedDir/simple/page/N/.
-func (p *PublishFeedsPlugin) publishSimpleHTMLPages(fc *models.FeedConfig, config *lifecycle.Config, modelsConfig *models.Config, feedDir string) error {
+func (p *PublishFeedsPlugin) publishSimpleHTMLPages(m *lifecycle.Manager, fc *models.FeedConfig, config *lifecycle.Config, modelsConfig *models.Config, feedDir string) error {
 	simpleDir := filepath.Join(feedDir, "simple")
 
 	// Compute the base URL prefix for simple feed pagination links.
@@ -679,7 +679,7 @@ func (p *PublishFeedsPlugin) publishSimpleHTMLPages(fc *models.FeedConfig, confi
 		}
 
 		// Generate HTML content using simple-feed.html template
-		htmlContent, err := p.generateSimpleFeedPageHTML(fc, &adjustedPage, config, modelsConfig)
+		htmlContent, err := p.generateSimpleFeedPageHTML(m, fc, &adjustedPage, config, modelsConfig)
 		if err != nil {
 			return fmt.Errorf("generating simple page %d: %w", adjustedPage.Number, err)
 		}
@@ -723,7 +723,7 @@ func (p *PublishFeedsPlugin) adjustPageURLsForSimple(page *models.FeedPage, simp
 }
 
 // generateSimpleFeedPageHTML generates HTML for a simple feed page using the simple-feed.html template.
-func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config, modelsConfig *models.Config) (string, error) {
+func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(m *lifecycle.Manager, fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config, modelsConfig *models.Config) (string, error) {
 	// Get templates directory from config
 	templatesDir := PluginNameTemplates
 	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
@@ -761,6 +761,7 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 			modelsConfig = ToModelsConfig(config)
 		}
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
+		ctx.Set("include_post", createIncludePostFunc(m))
 
 		// Feed pages always need cards CSS
 		ctx.Set("needs_cards_css", true)
@@ -778,7 +779,7 @@ func (p *PublishFeedsPlugin) generateSimpleFeedPageHTML(fc *models.FeedConfig, p
 }
 
 // generateFeedPageHTML generates HTML for a feed page.
-func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config, modelsConfig *models.Config) (string, error) {
+func (p *PublishFeedsPlugin) generateFeedPageHTML(m *lifecycle.Manager, fc *models.FeedConfig, page *models.FeedPage, config *lifecycle.Config, modelsConfig *models.Config) (string, error) {
 	// Get templates directory from config
 	templatesDir := PluginNameTemplates
 	if extra, ok := config.Extra["templates_dir"].(string); ok && extra != "" {
@@ -817,6 +818,7 @@ func (p *PublishFeedsPlugin) generateFeedPageHTML(fc *models.FeedConfig, page *m
 
 		// Create feed context
 		ctx := templates.NewFeedContext(fc, page, modelsConfig)
+		ctx.Set("include_post", createIncludePostFunc(m))
 
 		// Feed pages always need cards CSS
 		ctx.Set("needs_cards_css", true)

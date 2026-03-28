@@ -203,11 +203,17 @@
       <div class="mobile-nav-group" id="mobile-nav-group" role="group" aria-label="Site navigation and controls">
         {# Nav content slot overrides config-driven nav when enabled #}
         {% if resolved_slots.nav_content.enabled %}
+        {% with include_post(resolved_slots.nav_content.slug) as nav_slot_html %}
+        {% if nav_slot_html %}
         <nav class="slot-nav-content{% if resolved_slots.nav_content.css_class %} {{ resolved_slots.nav_content.css_class }}{% endif %}">
           <div class="nav-inner">
-            {{ include_post(resolved_slots.nav_content.slug) }}
+            {{ nav_slot_html }}
           </div>
         </nav>
+        {% else %}
+        {% include "components/nav.html" %}
+        {% endif %}
+        {% endwith %}
         {% else %}
         {% include "components/nav.html" %}
         {% endif %}
@@ -292,9 +298,9 @@
   <div class="page-wrapper" id="view-transition-page">
     {% block main %}
       {# Left sidebar: feed nav takes priority over markdown slot #}
-      {% if sidebar_posts and config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' %}
+      {% if sidebar_posts and config.components.feed_sidebar.enabled and config.components.feed_sidebar.position == 'left' and not (feed_slug and feed_slug|startswith:'archive') %}
       {% include "components/feed_sidebar.html" %}
-      {% elif resolved_slots.left_sidebar.enabled %}
+      {% elif resolved_slots.left_sidebar.enabled and not (feed_slug and feed_slug|startswith:'archive') %}
       <aside class="slot-left-sidebar{% if resolved_slots.left_sidebar.css_class %} {{ resolved_slots.left_sidebar.css_class }}{% endif %}"{% if resolved_slots.left_sidebar.width %} style="width: {{ resolved_slots.left_sidebar.width }}"{% endif %}>
         <div class="left-sidebar-inner">
           {{ include_post(resolved_slots.left_sidebar.slug) }}
@@ -303,7 +309,7 @@
       {% endif %}
 
       {# Left content sidebar (if enabled and position is left) #}
-      {% if resolved_content_sidebar.enabled and resolved_content_sidebar.position == 'left' %}
+      {% if resolved_content_sidebar.enabled and resolved_content_sidebar.position == 'left' and not (feed_slug and feed_slug|startswith:'archive') %}
       {% include "components/content_sidebar.html" %}
       {% endif %}
 
@@ -321,7 +327,7 @@
       </main>
 
       {# Right content sidebar (if enabled and position is right) #}
-      {% if resolved_content_sidebar.enabled and resolved_content_sidebar.position == 'right' %}
+      {% if resolved_content_sidebar.enabled and resolved_content_sidebar.position == 'right' and not (feed_slug and feed_slug|startswith:'archive') %}
       {% include "components/content_sidebar.html" %}
       {% endif %}
 
@@ -344,12 +350,18 @@
   {% block footer %}
   {# Footer content slot overrides config-driven footer when enabled #}
   {% if resolved_slots.footer_content.enabled %}
+  {% with include_post(resolved_slots.footer_content.slug) as footer_slot_html %}
+  {% if footer_slot_html %}
   <footer class="site-footer slot-footer-content{% if resolved_slots.footer_content.css_class %} {{ resolved_slots.footer_content.css_class }}{% endif %}">
     <div class="container">
-      {{ include_post(resolved_slots.footer_content.slug) }}
+      {{ footer_slot_html }}
     </div>
     {% include "components/h-card.html" %}
   </footer>
+  {% else %}
+  {% include "components/footer.html" %}
+  {% endif %}
+  {% endwith %}
   {% else %}
   {% include "components/footer.html" %}
   {% endif %}

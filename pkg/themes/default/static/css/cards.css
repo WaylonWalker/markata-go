@@ -21,6 +21,11 @@
   margin: 0 auto;
 }
 
+.feed--archive .posts,
+.feed--archive .posts-list {
+  max-width: 920px;
+}
+
 /* ==========================================================================
    Feed Layouts: Grid & Masonry
    ========================================================================== */
@@ -79,6 +84,73 @@
 .card {
   width: 100%;
   background: var(--color-surface);
+}
+
+.feed--archive .card {
+  box-shadow: none;
+}
+
+.feed--archive .card,
+.feed--archive .photo-figure {
+  position: relative;
+}
+
+.feed--archive .card::before,
+.feed--archive .photo-figure::before {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 3;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent);
+  background: color-mix(in srgb, var(--color-background) 82%, transparent);
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.feed--archive .card-article::before { content: "Article"; }
+.feed--archive .card-note::before { content: "Note"; }
+.feed--archive .photo-figure::before { content: "Shot"; }
+.feed--archive .card-video::before { content: "Video"; }
+.feed--archive .card-link::before { content: "Link"; }
+.feed--archive .card-quote::before { content: "Quote"; }
+.feed--archive .card-guide::before { content: "Guide"; }
+.feed--archive .card-inline::before { content: "Inline"; }
+.feed--archive .card-contact::before { content: "Contact"; }
+.feed--archive .card-default::before { content: "Post"; }
+
+.feed--archive .card-article,
+.feed--archive .card-guide,
+.feed--archive .card-contact,
+.feed--archive .card-default,
+.feed--archive .card-inline {
+  border-left: 3px solid color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+}
+
+.feed--archive .card-note {
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  border-left-width: 4px;
+  background: color-mix(in srgb, var(--color-surface) 94%, var(--color-background) 6%);
+}
+
+.feed--archive .card-link {
+  border-style: dashed;
+}
+
+.feed--archive .card-video .card-body,
+.feed--archive .card-photo .card-body {
+  padding-top: var(--space-5);
+}
+
+.feed--archive .photo-figure figcaption {
+  padding-top: var(--space-5);
 }
 
 /* Ensure card sections don't paint their own bands */

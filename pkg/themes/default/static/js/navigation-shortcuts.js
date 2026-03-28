@@ -434,11 +434,10 @@
     // Preload adjacent pages for instant pagination via keyboard shortcuts
     preloadAdjacentPages();
 
-    // Initialize cards
+    // Initialize cards -- but do NOT auto-highlight or scroll on page load.
+    // The first card will be highlighted when the user presses j/k.
     state.cards = getCards();
-    if (state.cards.length > 0) {
-      highlightCard(state.cards[0]);
-    }
+    state.selectedCard = null;
 
     // Only register these shortcuts once (they use document-level listeners internally)
     if (!state.initialized) {

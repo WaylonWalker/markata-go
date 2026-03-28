@@ -2,6 +2,7 @@
 
 {% block title %}{{ feed.title | default:config.title | default:"Posts" }}{% endblock %}
 {% block description %}{{ feed.description | default:config.description | default:"" }}{% endblock %}
+{% block body_class %}{% if feed_slug and feed_slug|startswith:'archive' %}page-archive{% endif %}{% endblock %}
 
 {% block htmx %}
 {% if page.pagination_type == "htmx" or page.pagination_type == "htmx-infinite" %}
@@ -15,8 +16,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="feed h-feed{% if feed.type == 'guide' %} feed--guide{% elif feed.type == 'series' %} feed--series{% endif %}">
-  <header class="feed-header">
+<div class="feed h-feed{% if feed.type == 'guide' %} feed--guide{% elif feed.type == 'series' %} feed--series{% endif %}{% if feed_slug and feed_slug|startswith:'archive' %} feed--archive{% endif %}"{% if feed_slug %} data-feed-slug="{{ feed_slug }}"{% endif %}>
+  <header class="feed-header{% if feed_slug and feed_slug|startswith:'archive' %} feed-header--archive{% endif %}">
     <h1 class="p-name">{{ feed.title | default:"Posts" }}</h1>
     {% if feed.description %}
     <p class="p-summary">{{ feed.description }}</p>

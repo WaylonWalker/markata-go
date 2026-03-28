@@ -32,61 +32,59 @@
 {% block main %}
 <main id="main-content" tabindex="-1">
 
-  {# ── Hero ── #}
+  {# ── Hero ── full-viewport landing with avatar, name, tagline, links #}
   {# Name: hero_first_name + hero_last_name > config.author > config.title #}
   {# Tagline: hero_tagline > config.description #}
   {# Avatar: hero_avatar > config.seo.author_image > config.seo.logo_url #}
+  {# Links: hero_links (list of {label, url}) -- optional nav anchors in the hero #}
   <section class="home-hero" aria-label="Introduction">
-    <div class="home-width">
-      <div class="home-hero__inner">
-        {% with post.hero_avatar|default:config.seo.author_image|default:config.seo.logo_url as avatar_src %}
-        {% if avatar_src %}
-        <img class="home-hero__avatar" src="{{ avatar_src }}" alt="{{ post.hero_first_name | default:'' }} {{ post.hero_last_name | default:'' }}" width="160" height="160" loading="eager">
-        {% endif %}
-        {% endwith %}
-        <div class="home-hero__text">
-          {% if post.hero_first_name or post.hero_last_name %}
-          <h1 class="home-hero__name">{{ post.hero_first_name | default:'' }} <span class="home-hero__accent">{{ post.hero_last_name | default:'' }}</span></h1>
-          {% else %}
-          <h1 class="home-hero__name">{{ config.author | default:config.title | default:'Home' }}</h1>
-          {% endif %}
-          {% with post.hero_tagline|default:config.description as tagline %}
-          {% if tagline %}
-          <p class="home-hero__tagline">{{ tagline }}</p>
-          {% endif %}
-          {% endwith %}
-          {% if post.hero_links %}
-          <div class="home-hero__links">
-            {% for link in post.hero_links %}
-            <a href="{{ link.url }}" class="home-hero__pill">{{ link.label }}</a>
-            {% endfor %}
-          </div>
-          {% elif default_author and default_author.social %}
-          <div class="home-hero__links">
-            {% for label, url in default_author.social %}
-            <a href="{{ url }}" class="home-hero__pill">{{ label }}</a>
-            {% endfor %}
-          </div>
-          {% endif %}
-        </div>
-      </div>
+    <div class="home-hero__center">
+      {% with post.hero_avatar|default:config.seo.author_image|default:config.seo.logo_url as avatar_src %}
+      {% if avatar_src %}
+      <img class="home-hero__avatar" src="{{ avatar_src }}" alt="{{ post.hero_first_name | default:'' }} {{ post.hero_last_name | default:'' }}" width="200" height="200" loading="eager">
+      {% endif %}
+      {% endwith %}
+
+      {% if post.hero_first_name or post.hero_last_name %}
+      <h1 class="home-hero__name">{{ post.hero_first_name | default:'' }} <span class="home-hero__accent">{{ post.hero_last_name | default:'' }}</span></h1>
+      {% else %}
+      <h1 class="home-hero__name">{{ config.author | default:config.title | default:'Home' }}</h1>
+      {% endif %}
+
+      {% with post.hero_tagline|default:config.description as tagline %}
+      {% if tagline %}
+      <p class="home-hero__tagline">{{ tagline }}</p>
+      {% endif %}
+      {% endwith %}
+
+      {% if post.hero_links %}
+      <nav class="home-hero__links" aria-label="Quick links">
+        {% for link in post.hero_links %}
+        <a href="{{ link.url }}" class="home-hero__link">{{ link.label }}</a>
+        {% endfor %}
+      </nav>
+      {% endif %}
+    </div>
+
+    <div class="home-hero__scroll" aria-hidden="true">
+      <span class="home-hero__scroll-line"></span>
     </div>
   </section>
 
-  {# ── Intro cards (about, now, etc.) via include_post ── #}
+  {# ── Discovery ── full-viewport about/now section with subtle background shift #}
   {% if post.intro_cards %}
-  <section class="home-section home-intro-grid" aria-label="Introduction cards">
-    <div class="home-width">
-      <div class="home-two-col">
-        {% for card in post.intro_cards %}
-        <div class="home-card">
-          {% if card.heading %}
-          <h2>{% if card.link %}<a href="{{ card.link }}">{{ card.heading }}</a>{% else %}{{ card.heading }}{% endif %}</h2>
-          {% endif %}
+  <section class="home-discovery" aria-label="About me">
+    <div class="home-discovery__inner">
+      {% for card in post.intro_cards %}
+      <div class="home-discovery__card">
+        {% if card.heading %}
+        <h2 class="home-discovery__heading">{% if card.link %}<a href="{{ card.link }}">{{ card.heading }}</a>{% else %}{{ card.heading }}{% endif %}</h2>
+        {% endif %}
+        <div class="home-discovery__body">
           {{ include_post(card.slug) | safe }}
         </div>
-        {% endfor %}
       </div>
+      {% endfor %}
     </div>
   </section>
   {% endif %}
@@ -94,20 +92,9 @@
   {# ── Markdown content: feed sections rendered by Jinja ── #}
   <div class="home-feeds">
     <div class="home-width">
-      {% if resolved_content_sidebar and resolved_content_sidebar.slug %}
-      <div class="home-main-rail">
-        <div class="home-main-content post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
-          {{ body | safe }}
-        </div>
-        <aside class="home-sidebar">
-          {{ include_post(resolved_content_sidebar.slug) | safe }}
-        </aside>
-      </div>
-      {% else %}
       <div class="home-main-content post-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
         {{ body | safe }}
       </div>
-      {% endif %}
     </div>
   </div>
 
