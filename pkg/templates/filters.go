@@ -994,10 +994,15 @@ func collectParagraphs(html string, cfg excerptConfig) []string {
 		pLen := len(text)
 
 		// Check if adding this paragraph would exceed maxChars
-		if totalChars+pLen > cfg.maxChars && len(paragraphs) > 0 {
+		if totalChars+pLen > cfg.maxChars {
 			remaining := cfg.maxChars - totalChars
-			if remaining > 50 {
-				truncated := truncateAtWordBoundary(text, remaining, true)
+			if remaining > 50 || len(paragraphs) == 0 {
+				// Always include at least one paragraph (truncated if needed)
+				truncLen := remaining
+				if truncLen < 50 {
+					truncLen = cfg.maxChars // Use full maxChars budget for first paragraph
+				}
+				truncated := truncateAtWordBoundary(text, truncLen, true)
 				paragraphs = append(paragraphs, "<p>"+truncated+"</p>")
 			}
 			break
