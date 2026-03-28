@@ -12,7 +12,7 @@
   <div class="card-body">
     <div class="card-content">
       {% if post.content %}
-      <div class="card-text p-content">{{ post.content | plaintext | truncatechars:1000 }}</div>
+      <div class="card-text p-content">{{ post.content | plaintext | truncatechars:120 }}</div>
       {% elif post.description %}
       <p class="card-text p-content">{{ post.description }}</p>
       {% endif %}
