@@ -1044,6 +1044,26 @@ body:has(.background-decoration) article.post {
   word-wrap: break-word;
 }
 
+/* Prose width: constrain text-heavy elements to a comfortable reading measure
+   while letting code blocks, images, and figures use the full content width */
+.post-content > p,
+.post-content > ul,
+.post-content > ol,
+.post-content > blockquote,
+.post-content > h1,
+.post-content > h2,
+.post-content > h3,
+.post-content > h4,
+.post-content > h5,
+.post-content > h6,
+.post-content > dl,
+.post-content > hr,
+.post-content > table,
+.post-content > details,
+.post-content > .admonition {
+  max-width: var(--prose-width);
+}
+
 .post-content > *:first-child {
   margin-top: 0;
 }
@@ -1758,6 +1778,79 @@ a.wikilink.wikilink-missing {
   article.post {
     padding: var(--space-2) 0;
   }
+}
+
+/* =================================================================
+   Content-type-specific styles
+   Uses body.post-type-{type} and article.post-type-{type} classes
+   Types: article, note, photo, link, video, quote, guide, inline
+   ================================================================= */
+
+/* --- Lightweight content types (note, photo, inline) --- */
+/* Hide progress bar for short-form content */
+body.post-type-note .article-progress,
+body.post-type-photo .article-progress,
+body.post-type-inline .article-progress {
+  display: none;
+}
+
+/* Tighter header spacing for lightweight types */
+.post-type-note .post-header,
+.post-type-photo .post-header,
+.post-type-inline .post-header {
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+}
+
+/* Smaller title for note-type content (pings, thoughts) */
+.post-type-note .post-header h1 {
+  font-size: var(--text-2xl);
+}
+
+/* Reduced bottom margin on content for lightweight types */
+.post-type-note .post-content,
+.post-type-photo .post-content,
+.post-type-inline .post-content {
+  margin-bottom: var(--space-4);
+}
+
+/* Simpler post-footer for lightweight types */
+.post-type-note .post-footer,
+.post-type-photo .post-footer,
+.post-type-inline .post-footer {
+  padding-top: var(--space-3);
+  border-top: none;
+}
+
+/* --- Photo/shot type: media-first --- */
+/* Let images in shots go full width of the content area */
+.post-type-photo .post-content img {
+  max-width: 100%;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
+}
+
+/* --- Link type (TIL, bookmarks): utility-forward --- */
+/* Slightly tighter spacing for TIL-style content */
+.post-type-link .post-content {
+  margin-bottom: var(--space-6);
+}
+
+/* --- Reduced decorative intensity for lightweight types --- */
+/* Softer article wrapper: less shadow, no backdrop blur */
+body.post-type-note article.post,
+body.post-type-photo article.post,
+body.post-type-inline article.post {
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+/* Lighter header border for lightweight types */
+.post-type-note .post-header,
+.post-type-photo .post-header,
+.post-type-inline .post-header {
+  border-bottom: none;
 }
 
 }

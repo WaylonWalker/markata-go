@@ -60,6 +60,7 @@
 
   /* Layout */
   --content-width: 65ch;
+  --prose-width: 65ch;
   --content-max-width: var(--content-width);
   --page-width: 1200px;
   --site-width: 1536px;   /* Matches Tailwind 2xl container breakpoint */

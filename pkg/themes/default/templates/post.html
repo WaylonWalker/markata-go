@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block body_class %}{% with card_type=config.components.card_router.mappings|getitem:post.template|default:"default" %}post-type-{{ card_type }}{% endwith %}{% if post.template %} post-template-{{ post.template }}{% endif %}{% endblock %}
+
 {% block title %}{{ post.title }} | {{ config.title | default:'My Site' }}{% endblock %}
 {% block description %}{{ post.description | default:'' }}{% endblock %}
 
@@ -65,7 +67,8 @@
 {% endblock %}
 
 {% block content %}
-<article class="post h-entry" data-pagefind-body>
+{% with card_type=config.components.card_router.mappings|getitem:post.template|default:"default" %}
+<article class="post h-entry post-type-{{ card_type }}{% if post.template %} post-template-{{ post.template }}{% endif %}" data-pagefind-body>
   {# Hidden canonical URL for microformats parsers #}
   <a class="u-url" href="{{ config.url }}{{ post.href }}" hidden></a>
 
@@ -73,25 +76,36 @@
     <div class="post-header__title-row">
       <h1 class="p-name" data-pagefind-meta="title">{{ post.title }}</h1>
 
-      {# Author byline (multi-author aware) #}
+      {# Author byline - show only for article/guide/default (full-length content) #}
+      {% if card_type == "article" or card_type == "guide" or card_type == "default" %}
       {% include "components/post_byline.html" %}
+      {% endif %}
     </div>
 
     {% if post.description %}
     <p class="post-description p-summary visually-hidden" data-pagefind-meta="excerpt">{{ post.description }}</p>
     {% endif %}
 
+    {# Copy button - show only for article/guide/default #}
+    {% if card_type == "article" or card_type == "guide" or card_type == "default" %}
     {% include "components/post_copy.html" %}
+    {% endif %}
   </header>
 
   <div class="post-content e-content{% if post.css_class %} {{ post.css_class }}{% endif %}">
     {{ body | safe }}
   </div>
 
+  {# Graph - show only for article/guide/link/default #}
+  {% if card_type == "article" or card_type == "guide" or card_type == "link" or card_type == "default" %}
   {% include "components/post_graph.html" %}
+  {% endif %}
 
+  {# Share - show only for article/guide/default #}
+  {% if card_type == "article" or card_type == "guide" or card_type == "default" %}
   {% if config.components.share.enabled %}
   {% include "components/share.html" %}
+  {% endif %}
   {% endif %}
 
   {% if post.tags %}
@@ -129,4 +143,5 @@
   {% if post.next %}<a href="{{ post.next.href }}" class="next" data-action="next">{{ post.next.title }}</a>{% endif %}
 </nav>
 {% endif %}
+{% endwith %}
 {% endblock %}
