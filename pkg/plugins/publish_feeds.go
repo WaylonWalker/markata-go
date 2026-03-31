@@ -1027,9 +1027,7 @@ func (p *PublishFeedsPlugin) syndicationFeedConfig(fc *models.FeedConfig, config
 	if archive {
 		clone := cloneFeedConfigWithPosts(fc, fc.Posts)
 		clone.Slug = path.Join(fc.Slug, defaultArchivePrefix)
-		if clone.Title != "" {
-			clone.Title += " Archive"
-		}
+		clone.Title = archiveTitleSuffix(clone.Title)
 		return clone
 	}
 

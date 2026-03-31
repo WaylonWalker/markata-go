@@ -16,19 +16,28 @@ type RSS struct {
 	XMLName xml.Name   `xml:"rss"`
 	Version string     `xml:"version,attr"`
 	Atom    string     `xml:"xmlns:atom,attr,omitempty"`
+	FH      string     `xml:"xmlns:fh,attr,omitempty"`
 	Channel RSSChannel `xml:"channel"`
 }
 
 // RSSChannel represents the channel element in an RSS feed.
 type RSSChannel struct {
-	Title         string     `xml:"title"`
-	Link          string     `xml:"link"`
-	Description   string     `xml:"description"`
-	Language      string     `xml:"language,omitempty"`
-	LastBuildDate string     `xml:"lastBuildDate,omitempty"`
-	AtomLinks     []AtomLink `xml:"atom:link,omitempty"`
-	Items         []RSSItem  `xml:"item"`
+	Title          string       `xml:"title"`
+	Link           string       `xml:"link"`
+	Description    string       `xml:"description"`
+	Language       string       `xml:"language,omitempty"`
+	LastBuildDate  string       `xml:"lastBuildDate,omitempty"`
+	ManagingEditor string       `xml:"managingEditor,omitempty"`
+	WebMaster      string       `xml:"webMaster,omitempty"`
+	Copyright      string       `xml:"copyright,omitempty"`
+	Generator      string       `xml:"generator,omitempty"`
+	Docs           string       `xml:"docs,omitempty"`
+	AtomLinks      []AtomLink   `xml:"atom:link,omitempty"`
+	Complete       *RSSComplete `xml:"fh:complete,omitempty"`
+	Items          []RSSItem    `xml:"item"`
 }
+
+type RSSComplete struct{}
 
 // AtomLink represents an atom:link element for RSS feed self-reference.
 type AtomLink struct {
@@ -39,12 +48,13 @@ type AtomLink struct {
 
 // RSSItem represents an item element in an RSS feed.
 type RSSItem struct {
-	Title       string  `xml:"title"`
-	Link        string  `xml:"link"`
-	Description string  `xml:"description"`
-	PubDate     string  `xml:"pubDate,omitempty"`
-	GUID        RSSGUID `xml:"guid"`
-	Author      string  `xml:"author,omitempty"`
+	Title       string   `xml:"title"`
+	Link        string   `xml:"link"`
+	Description string   `xml:"description"`
+	PubDate     string   `xml:"pubDate,omitempty"`
+	GUID        RSSGUID  `xml:"guid"`
+	Author      string   `xml:"author,omitempty"`
+	Categories  []string `xml:"category,omitempty"`
 }
 
 // RSSGUID represents a globally unique identifier for an RSS item.
@@ -55,42 +65,38 @@ type RSSGUID struct {
 
 // GenerateRSS generates an RSS 2.0 feed from a lifecycle.Feed.
 func GenerateRSS(feed *lifecycle.Feed, config *lifecycle.Config) (string, error) {
-	siteURL := getSiteURL(config)
-	siteTitle := getSiteTitle(config)
-	siteDesc := getSiteDescription(config)
-	feedURL := siteURL + "/" + feed.Path + "/rss.xml"
-
-	// Use feed title if available, otherwise use site title
-	title := feed.Title
-	if title == "" {
-		title = siteTitle
-	}
+	meta := getSiteMetadata(config)
+	feedURL := feedURLForFormat(meta.URL, feed.Path, "rss.xml")
+	homeURL := feedHomePageURL(meta.URL, feed.Path)
+	title := feedResolvedTitle(feed, meta)
+	description := feedResolvedDescription(feed, meta)
 
 	rss := RSS{
 		Version: "2.0",
 		Atom:    "http://www.w3.org/2005/Atom",
 		Channel: RSSChannel{
-			Title:       title,
-			Link:        siteURL,
-			Description: siteDesc,
-			Language:    "en-us",
-			AtomLinks:   buildRSSAtomLinks(feedURL, config),
-			Items:       make([]RSSItem, 0, len(feed.Posts)),
+			Title:          title,
+			Link:           homeURL,
+			Description:    description,
+			Language:       meta.Language,
+			ManagingEditor: meta.ManagingEditor,
+			WebMaster:      meta.WebMaster,
+			Copyright:      meta.Copyright,
+			Generator:      "markata-go",
+			Docs:           "https://www.rssboard.org/rss-specification",
+			AtomLinks:      buildRSSAtomLinks(feedURL, config),
+			Items:          make([]RSSItem, 0, len(feed.Posts)),
 		},
+	}
+	if isArchiveFeedPath(feed.Path) {
+		rss.FH = "http://purl.org/syndication/history/1.0"
+		rss.Channel.Complete = &RSSComplete{}
+		rss.Channel.AtomLinks = append(rss.Channel.AtomLinks, AtomLink{Href: feedArchiveCurrentURL(meta.URL, feed.Path, "rss.xml"), Rel: "current", Type: "application/rss+xml"})
 	}
 
 	// Set last build date based on most recent post date (deterministic)
-	var latest *time.Time
-	for _, post := range feed.Posts {
-		if post.Date == nil {
-			continue
-		}
-		if latest == nil || post.Date.After(*latest) {
-			t := *post.Date
-			latest = &t
-		}
-	}
-	if latest != nil {
+	latest := latestFeedTime(feed.Posts)
+	if !latest.IsZero() {
 		rss.Channel.LastBuildDate = latest.Format(time.RFC1123Z)
 	}
 
@@ -100,7 +106,7 @@ func GenerateRSS(feed *lifecycle.Feed, config *lifecycle.Config) (string, error)
 		if post.Private {
 			continue
 		}
-		item := postToRSSItem(post, siteURL)
+		item := postToRSSItem(post, meta)
 		rss.Channel.Items = append(rss.Channel.Items, item)
 	}
 
@@ -134,10 +140,11 @@ func buildRSSAtomLinks(feedURL string, config *lifecycle.Config) []AtomLink {
 // GenerateRSSFromFeedConfig generates an RSS 2.0 feed from a FeedConfig.
 func GenerateRSSFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Config) (string, error) {
 	feed := &lifecycle.Feed{
-		Name:  fc.Slug,
-		Title: fc.Title,
-		Posts: fc.Posts,
-		Path:  fc.Slug,
+		Name:        fc.Slug,
+		Title:       fc.Title,
+		Description: fc.Description,
+		Posts:       fc.Posts,
+		Path:        fc.Slug,
 	}
 	return GenerateRSS(feed, config)
 }
@@ -145,9 +152,9 @@ func GenerateRSSFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Config) 
 // postToRSSItem converts a Post to an RSSItem.
 // Note: Do NOT manually escape XML here - xml.MarshalIndent handles escaping automatically.
 // Manually escaping would cause double-encoding (e.g., & becomes &amp; then &amp;amp;).
-func postToRSSItem(post *models.Post, siteURL string) RSSItem {
+func postToRSSItem(post *models.Post, meta siteMetadata) RSSItem {
 	// Build permalink
-	permalink := siteURL + post.Href
+	permalink := meta.URL + post.Href
 
 	// Get title
 	title := ""
@@ -175,7 +182,7 @@ func postToRSSItem(post *models.Post, siteURL string) RSSItem {
 		pubDate = post.Date.Format(time.RFC1123Z)
 	}
 
-	return RSSItem{
+	item := RSSItem{
 		Title:       title,
 		Link:        permalink,
 		Description: description,
@@ -185,6 +192,13 @@ func postToRSSItem(post *models.Post, siteURL string) RSSItem {
 			IsPermaLink: true,
 		},
 	}
+	if author := firstAuthorForPost(post, meta); author != nil && author.Email != nil {
+		item.Author = *author.Email
+	}
+	if len(post.Tags) > 0 {
+		item.Categories = append([]string{}, post.Tags...)
+	}
+	return item
 }
 
 // getSiteURL retrieves the site URL from config.
@@ -212,6 +226,60 @@ func getSiteDescription(config *lifecycle.Config) string {
 	if config.Extra != nil {
 		if desc, ok := config.Extra["description"].(string); ok {
 			return desc
+		}
+	}
+	return ""
+}
+
+func getSiteAuthor(config *lifecycle.Config) string {
+	if config.Extra != nil {
+		if author, ok := config.Extra["author"].(string); ok {
+			return author
+		}
+	}
+	return ""
+}
+
+func getSiteLanguage(config *lifecycle.Config) string {
+	if config.Extra != nil {
+		if language, ok := config.Extra["language"].(string); ok {
+			return language
+		}
+	}
+	return ""
+}
+
+func getSiteAuthorURL(config *lifecycle.Config) string {
+	if config.Extra != nil {
+		if authorURL, ok := config.Extra["author_url"].(string); ok {
+			return authorURL
+		}
+	}
+	return ""
+}
+
+func getSiteManagingEditor(config *lifecycle.Config) string {
+	if config.Extra != nil {
+		if managingEditor, ok := config.Extra["managing_editor"].(string); ok {
+			return managingEditor
+		}
+	}
+	return ""
+}
+
+func getSiteWebMaster(config *lifecycle.Config) string {
+	if config.Extra != nil {
+		if webmaster, ok := config.Extra["webmaster"].(string); ok {
+			return webmaster
+		}
+	}
+	return ""
+}
+
+func getSiteCopyright(config *lifecycle.Config) string {
+	if config.Extra != nil {
+		if copyright, ok := config.Extra["copyright"].(string); ok {
+			return copyright
 		}
 	}
 	return ""

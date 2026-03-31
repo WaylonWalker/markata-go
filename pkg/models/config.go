@@ -484,6 +484,21 @@ type Config struct {
 	// Author is the site author
 	Author string `json:"author" yaml:"author" toml:"author"`
 
+	// Language is the site language used in feed and metadata outputs.
+	Language string `json:"language,omitempty" yaml:"language,omitempty" toml:"language,omitempty"`
+
+	// AuthorURL is the canonical URL for the site author.
+	AuthorURL string `json:"author_url,omitempty" yaml:"author_url,omitempty" toml:"author_url,omitempty"`
+
+	// ManagingEditor is the RSS managing editor contact.
+	ManagingEditor string `json:"managing_editor,omitempty" yaml:"managing_editor,omitempty" toml:"managing_editor,omitempty"`
+
+	// WebMaster is the RSS webmaster contact.
+	WebMaster string `json:"webmaster,omitempty" yaml:"webmaster,omitempty" toml:"webmaster,omitempty"`
+
+	// Copyright is the copyright notice for syndication outputs.
+	Copyright string `json:"copyright,omitempty" yaml:"copyright,omitempty" toml:"copyright,omitempty"`
+
 	// License controls the footer attribution (string key or false)
 	License LicenseValue `json:"license,omitempty" yaml:"license,omitempty" toml:"license,omitempty"`
 

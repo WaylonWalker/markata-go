@@ -58,36 +58,31 @@ const JSONFeedVersion = "https://jsonfeed.org/version/1.1"
 
 // GenerateJSONFeed generates a JSON Feed 1.1 document from a lifecycle.Feed.
 func GenerateJSONFeed(feed *lifecycle.Feed, config *lifecycle.Config) (string, error) {
-	siteURL := getSiteURL(config)
-	siteTitle := getSiteTitle(config)
-	siteDesc := getSiteDescription(config)
-	author := getSiteAuthor(config)
+	meta := getSiteMetadata(config)
 	feedPath := feed.Path
 	if feedPath == "" {
 		feedPath = DefaultFeedPath
 	}
-	feedURL := siteURL + "/" + feedPath + "/feed.json"
-
-	// Use feed title if available, otherwise use site title
-	title := feed.Title
-	if title == "" {
-		title = siteTitle
-	}
+	feedURL := feedURLForFormat(meta.URL, feedPath, "feed.json")
+	homePageURL := feedHomePageURL(meta.URL, feedPath)
+	title := feedResolvedTitle(feed, meta)
+	description := feedResolvedDescription(feed, meta)
 
 	jsonFeed := JSONFeed{
 		Version:     JSONFeedVersion,
 		Title:       title,
-		HomePageURL: siteURL,
+		HomePageURL: homePageURL,
 		FeedURL:     feedURL,
-		Description: siteDesc,
-		Language:    "en",
+		Description: description,
+		Language:    meta.Language,
+		Icon:        meta.LogoURL,
 		Items:       make([]JSONFeedItem, 0, len(feed.Posts)),
 	}
 
 	// Add author if available
-	if author != "" {
+	if meta.Author != "" {
 		jsonFeed.Authors = []JSONFeedAuthor{
-			{Name: author},
+			{Name: meta.Author, URL: meta.AuthorURL},
 		}
 	}
 
@@ -97,7 +92,7 @@ func GenerateJSONFeed(feed *lifecycle.Feed, config *lifecycle.Config) (string, e
 		if post.Private {
 			continue
 		}
-		item := postToJSONFeedItem(post, siteURL)
+		item := postToJSONFeedItem(post, meta)
 		jsonFeed.Items = append(jsonFeed.Items, item)
 	}
 
@@ -113,18 +108,19 @@ func GenerateJSONFeed(feed *lifecycle.Feed, config *lifecycle.Config) (string, e
 // GenerateJSONFeedFromFeedConfig generates a JSON Feed 1.1 from a FeedConfig.
 func GenerateJSONFeedFromFeedConfig(fc *models.FeedConfig, config *lifecycle.Config) (string, error) {
 	feed := &lifecycle.Feed{
-		Name:  fc.Slug,
-		Title: fc.Title,
-		Posts: fc.Posts,
-		Path:  fc.Slug,
+		Name:        fc.Slug,
+		Title:       fc.Title,
+		Description: fc.Description,
+		Posts:       fc.Posts,
+		Path:        fc.Slug,
 	}
 	return GenerateJSONFeed(feed, config)
 }
 
 // postToJSONFeedItem converts a Post to a JSONFeedItem.
-func postToJSONFeedItem(post *models.Post, siteURL string) JSONFeedItem {
+func postToJSONFeedItem(post *models.Post, meta siteMetadata) JSONFeedItem {
 	// Build permalink
-	permalink := siteURL + post.Href
+	permalink := meta.URL + post.Href
 
 	item := JSONFeedItem{
 		ID:  permalink,
@@ -156,6 +152,8 @@ func postToJSONFeedItem(post *models.Post, siteURL string) JSONFeedItem {
 		dateStr := post.Date.Format(time.RFC3339)
 		item.DatePublished = dateStr
 		item.DateModified = dateStr
+	} else {
+		item.DateModified = stableFallbackTime.Format(time.RFC3339)
 	}
 
 	// Add tags
@@ -168,6 +166,20 @@ func postToJSONFeedItem(post *models.Post, siteURL string) JSONFeedItem {
 		if img, ok := post.Extra["image"].(string); ok {
 			item.Image = img
 		}
+	}
+
+	if author := firstAuthorForPost(post, meta); author != nil {
+		jsonAuthor := JSONFeedAuthor{Name: author.Name}
+		if author.URL != nil {
+			jsonAuthor.URL = *author.URL
+		}
+		if author.Avatar != nil {
+			jsonAuthor.Avatar = *author.Avatar
+		}
+		item.Authors = []JSONFeedAuthor{jsonAuthor}
+	}
+	if meta.Language != "" {
+		item.Language = meta.Language
 	}
 
 	return item

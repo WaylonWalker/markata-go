@@ -1029,6 +1029,8 @@ These archive endpoints are not generated for the root subscription feed or the 
 - Archive feeds provide stable full-history endpoints for migration, catch-up, and archival use cases.
 - Per-feed archive variants give section feeds the same split between "recent" and "complete".
 
+Full-history endpoints MUST advertise complete-feed semantics using Feed History markers (`fh:complete`). They are complete feeds, not paginated archive documents.
+
 ### Opting Out
 
 Disable the built-in site archive feed:
@@ -1080,6 +1082,53 @@ description = "Browse the public feeds available on this site."
 template = "feeds.html"
 slug_prefix = "feeds"
 ```
+
+---
+
+## Feed Metadata
+
+RSS, Atom, and JSON Feed outputs MUST derive metadata from the site config and the feed definition.
+
+### Site Metadata
+
+The following site-level fields are available to syndication outputs:
+
+- `title`
+- `description`
+- `author`
+- `url`
+- `language`
+- `author_url`
+- `managing_editor`
+- `webmaster`
+- `copyright`
+
+### Feed-Level Metadata Rules
+
+- Feed title uses the feed title when set, otherwise the site title.
+- Feed description uses the feed description when set, otherwise the site description.
+- Feed home page URL points at the feed's HTML page when one exists.
+- Full-history archive feeds point their human-facing URL at the matching recent feed page.
+- Atom `subtitle` uses the resolved feed description.
+
+### Atom Requirements
+
+- Atom feeds MUST include `title`, `id`, and `updated`.
+- Atom entries MUST include `title`, `id`, and `updated`.
+- Atom feeds MUST include an author element. If no explicit `author` is configured, the site title is used as a fallback author name.
+- Full-history feeds MUST include the Feed History namespace and `fh:complete`.
+
+### RSS Requirements
+
+- RSS feeds SHOULD include `title`, `link`, `description`, `language`, `lastBuildDate`, `generator`, and `docs` when available.
+- RSS feeds SHOULD include `managingEditor`, `webMaster`, and `copyright` when configured.
+- Full-history feeds MUST include the Feed History namespace and `fh:complete`.
+
+### JSON Feed Requirements
+
+- JSON feeds SHOULD include `title`, `home_page_url`, `feed_url`, `description`, and `authors`.
+- If `author_url` is configured, it SHOULD be included in the author object.
+- If `language` is configured, it SHOULD be included at the feed level.
 
 ---
 

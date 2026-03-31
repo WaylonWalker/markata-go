@@ -2219,6 +2219,11 @@ title = "My Awesome Blog"
 description = "A blog about technology and life"
 url = "https://example.com"
 author = "Jane Doe"
+language = "en"
+author_url = "https://example.com/about/"
+managing_editor = "editor@example.com (Jane Doe)"
+webmaster = "webmaster@example.com (Jane Doe)"
+copyright = "Copyright 2026 Jane Doe"
 
 # Directory configuration
 output_dir = "public"

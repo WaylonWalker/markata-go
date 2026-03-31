@@ -35,6 +35,21 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	if override.Author != "" {
 		result.Author = override.Author
 	}
+	if override.Language != "" {
+		result.Language = override.Language
+	}
+	if override.AuthorURL != "" {
+		result.AuthorURL = override.AuthorURL
+	}
+	if override.ManagingEditor != "" {
+		result.ManagingEditor = override.ManagingEditor
+	}
+	if override.WebMaster != "" {
+		result.WebMaster = override.WebMaster
+	}
+	if override.Copyright != "" {
+		result.Copyright = override.Copyright
+	}
 	if override.AssetsDir != "" {
 		result.AssetsDir = override.AssetsDir
 	}

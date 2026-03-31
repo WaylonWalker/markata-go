@@ -858,13 +858,18 @@ func toModelsConfigUncached(config *lifecycle.Config) *models.Config {
 	}
 	// Convert lifecycle.Config to models.Config
 	modelsConfig := &models.Config{
-		OutputDir:    config.OutputDir,
-		Title:        getStringFromExtra(config.Extra, "title"),
-		URL:          getStringFromExtra(config.Extra, "url"),
-		Description:  getStringFromExtra(config.Extra, "description"),
-		Author:       getStringFromExtra(config.Extra, "author"),
-		TemplatesDir: getStringFromExtra(config.Extra, "templates_dir"),
-		Templates:    models.NewTemplatesConfig(),
+		OutputDir:      config.OutputDir,
+		Title:          getStringFromExtra(config.Extra, "title"),
+		URL:            getStringFromExtra(config.Extra, "url"),
+		Description:    getStringFromExtra(config.Extra, "description"),
+		Author:         getStringFromExtra(config.Extra, "author"),
+		Language:       getStringFromExtra(config.Extra, "language"),
+		AuthorURL:      getStringFromExtra(config.Extra, "author_url"),
+		ManagingEditor: getStringFromExtra(config.Extra, "managing_editor"),
+		WebMaster:      getStringFromExtra(config.Extra, "webmaster"),
+		Copyright:      getStringFromExtra(config.Extra, "copyright"),
+		TemplatesDir:   getStringFromExtra(config.Extra, "templates_dir"),
+		Templates:      models.NewTemplatesConfig(),
 	}
 
 	// Copy nav items if available
@@ -1000,6 +1005,12 @@ func copyPluginConfigs(config *lifecycle.Config, modelsConfig *models.Config) {
 		modelsConfig.Garden = garden
 	} else {
 		modelsConfig.Garden = models.NewGardenConfig()
+	}
+
+	if feedsPage, ok := config.Extra["feeds_page"].(models.FeedsPageConfig); ok {
+		modelsConfig.FeedsPage = feedsPage
+	} else {
+		modelsConfig.FeedsPage = models.NewFeedsPageConfig()
 	}
 }
 

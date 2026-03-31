@@ -594,7 +594,11 @@ url = "https://example.com"      # Base URL for absolute links
 title = "My Site"                 # Site title
 description = "A great site"      # Site description
 author = "Jane Doe"               # Default author
-lang = "en"                       # Site language
+language = "en"                   # Site language for feeds and metadata
+author_url = "https://example.com/about/"
+managing_editor = "editor@example.com (Jane Doe)"
+webmaster = "webmaster@example.com (Jane Doe)"
+copyright = "Copyright 2026 Jane Doe"
 
 # Plugin loading
 hooks = ["default"]               # Plugins to load

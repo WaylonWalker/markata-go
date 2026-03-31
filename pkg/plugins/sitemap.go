@@ -175,13 +175,17 @@ func (p *SitemapPlugin) generatedIndexPages(m *lifecycle.Manager, siteURL string
 }
 
 func (p *SitemapPlugin) buildSitemapIndex(m *lifecycle.Manager, siteURL string) *SitemapIndex {
-	entries := []SitemapIndexEntry{{Loc: siteURL + "/sitemap-pages.xml"}}
+	pagesLatest := sitemapLastMod(m.Posts())
+	entries := []SitemapIndexEntry{{Loc: siteURL + "/sitemap-pages.xml", LastMod: pagesLatest}}
 	feedConfigs := getCachedFeedConfigs(m)
 
 	for i := range feedConfigs {
 		fc := &feedConfigs[i]
 		if fc.Formats.Sitemap && fc.Slug != "" && !fc.IncludePrivate {
-			entries = append(entries, SitemapIndexEntry{Loc: siteURL + "/" + fc.Slug + "/sitemap.xml"})
+			entries = append(entries, SitemapIndexEntry{
+				Loc:     siteURL + "/" + fc.Slug + "/sitemap.xml",
+				LastMod: sitemapLastMod(fc.Posts),
+			})
 		}
 	}
 
@@ -215,7 +219,16 @@ type SitemapIndex struct {
 
 // SitemapIndexEntry represents a sitemap reference inside a sitemap index.
 type SitemapIndexEntry struct {
-	Loc string `xml:"loc"`
+	Loc     string `xml:"loc"`
+	LastMod string `xml:"lastmod,omitempty"`
+}
+
+func sitemapLastMod(posts []*models.Post) string {
+	latest := latestFeedTime(posts)
+	if latest.Equal(stableFallbackTime) {
+		return ""
+	}
+	return latest.Format("2006-01-02")
 }
 
 var (

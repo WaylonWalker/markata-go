@@ -188,6 +188,9 @@ func TestSitemapPlugin_Write_GeneratesSitemapIndex(t *testing.T) {
 	if !strings.Contains(string(indexContent), "https://example.com/blog/sitemap.xml") {
 		t.Fatalf("root sitemap index should reference feed sitemap")
 	}
+	if !strings.Contains(string(indexContent), "<lastmod>2024-01-15</lastmod>") {
+		t.Fatalf("root sitemap index should include sitemap lastmod")
+	}
 
 	pagesContent, err := os.ReadFile(filepath.Join(config.OutputDir, "sitemap-pages.xml"))
 	if err != nil {

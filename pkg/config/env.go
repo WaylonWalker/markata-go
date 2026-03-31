@@ -64,6 +64,16 @@ func applyEnvOverride(config *models.Config, key, value string) {
 		config.Description = value
 	case "author":
 		config.Author = value
+	case "language":
+		config.Language = value
+	case "author_url":
+		config.AuthorURL = value
+	case "managing_editor":
+		config.ManagingEditor = value
+	case "webmaster":
+		config.WebMaster = value
+	case "copyright":
+		config.Copyright = value
 	case "assets_dir":
 		config.AssetsDir = value
 	case "templates_dir":

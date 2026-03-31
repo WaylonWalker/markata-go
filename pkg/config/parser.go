@@ -42,24 +42,29 @@ type configSource interface {
 
 // baseConfigData holds the basic config fields that are directly assignable.
 type baseConfigData struct {
-	OutputDir     string
-	URL           string
-	Title         string
-	Description   string
-	Author        string
-	License       interface{}
-	AssetsDir     string
-	TemplatesDir  string
-	Hooks         []string
-	DisabledHooks []string
-	GlobPatterns  []string
-	UseGitignore  *bool
-	SlugMode      string
-	SlugRules     []models.SlugRule
-	Extensions    []string
-	Concurrency   int
-	Theme         models.ThemeConfig
-	Footer        models.FooterConfig
+	OutputDir      string
+	URL            string
+	Title          string
+	Description    string
+	Author         string
+	Language       string
+	AuthorURL      string
+	ManagingEditor string
+	WebMaster      string
+	Copyright      string
+	License        interface{}
+	AssetsDir      string
+	TemplatesDir   string
+	Hooks          []string
+	DisabledHooks  []string
+	GlobPatterns   []string
+	UseGitignore   *bool
+	SlugMode       string
+	SlugRules      []models.SlugRule
+	Extensions     []string
+	Concurrency    int
+	Theme          models.ThemeConfig
+	Footer         models.FooterConfig
 }
 
 // navItemData holds nav item fields.
@@ -171,15 +176,20 @@ type templatesConverter interface {
 func buildConfig(src configSource) *models.Config {
 	base := src.getBaseConfig()
 	config := &models.Config{
-		OutputDir:     base.OutputDir,
-		URL:           base.URL,
-		Title:         base.Title,
-		Description:   base.Description,
-		Author:        base.Author,
-		AssetsDir:     base.AssetsDir,
-		TemplatesDir:  base.TemplatesDir,
-		Hooks:         base.Hooks,
-		DisabledHooks: base.DisabledHooks,
+		OutputDir:      base.OutputDir,
+		URL:            base.URL,
+		Title:          base.Title,
+		Description:    base.Description,
+		Author:         base.Author,
+		Language:       base.Language,
+		AuthorURL:      base.AuthorURL,
+		ManagingEditor: base.ManagingEditor,
+		WebMaster:      base.WebMaster,
+		Copyright:      base.Copyright,
+		AssetsDir:      base.AssetsDir,
+		TemplatesDir:   base.TemplatesDir,
+		Hooks:          base.Hooks,
+		DisabledHooks:  base.DisabledHooks,
 		GlobConfig: models.GlobConfig{
 			Patterns:  base.GlobPatterns,
 			SlugMode:  base.SlugMode,
@@ -407,6 +417,11 @@ type tomlConfig struct {
 	Title           string                    `toml:"title"`
 	Description     string                    `toml:"description"`
 	Author          string                    `toml:"author"`
+	Language        string                    `toml:"language"`
+	AuthorURL       string                    `toml:"author_url"`
+	ManagingEditor  string                    `toml:"managing_editor"`
+	WebMaster       string                    `toml:"webmaster"`
+	Copyright       string                    `toml:"copyright"`
 	License         interface{}               `toml:"license"`
 	AssetsDir       string                    `toml:"assets_dir"`
 	TemplatesDir    string                    `toml:"templates_dir"`
@@ -1694,24 +1709,29 @@ func (w *tomlWellKnownConfig) toWellKnownConfig() models.WellKnownConfig {
 // configSource interface implementation for tomlConfig.
 func (c *tomlConfig) getBaseConfig() baseConfigData {
 	return baseConfigData{
-		OutputDir:     c.OutputDir,
-		URL:           c.URL,
-		Title:         c.Title,
-		Description:   c.Description,
-		Author:        c.Author,
-		License:       c.License,
-		AssetsDir:     c.AssetsDir,
-		TemplatesDir:  c.TemplatesDir,
-		Hooks:         c.Hooks,
-		DisabledHooks: c.DisabledHooks,
-		GlobPatterns:  c.Glob.Patterns,
-		UseGitignore:  c.Glob.UseGitignore,
-		SlugMode:      c.Glob.SlugMode,
-		SlugRules:     c.Glob.toSlugRules(),
-		Extensions:    c.Markdown.Extensions,
-		Concurrency:   c.Concurrency,
-		Theme:         c.Theme.toThemeConfig(),
-		Footer:        c.Footer.toFooterConfig(),
+		OutputDir:      c.OutputDir,
+		URL:            c.URL,
+		Title:          c.Title,
+		Description:    c.Description,
+		Author:         c.Author,
+		Language:       c.Language,
+		AuthorURL:      c.AuthorURL,
+		ManagingEditor: c.ManagingEditor,
+		WebMaster:      c.WebMaster,
+		Copyright:      c.Copyright,
+		License:        c.License,
+		AssetsDir:      c.AssetsDir,
+		TemplatesDir:   c.TemplatesDir,
+		Hooks:          c.Hooks,
+		DisabledHooks:  c.DisabledHooks,
+		GlobPatterns:   c.Glob.Patterns,
+		UseGitignore:   c.Glob.UseGitignore,
+		SlugMode:       c.Glob.SlugMode,
+		SlugRules:      c.Glob.toSlugRules(),
+		Extensions:     c.Markdown.Extensions,
+		Concurrency:    c.Concurrency,
+		Theme:          c.Theme.toThemeConfig(),
+		Footer:         c.Footer.toFooterConfig(),
 	}
 }
 
@@ -1915,6 +1935,11 @@ type yamlConfig struct {
 	Title           string                    `yaml:"title"`
 	Description     string                    `yaml:"description"`
 	Author          string                    `yaml:"author"`
+	Language        string                    `yaml:"language"`
+	AuthorURL       string                    `yaml:"author_url"`
+	ManagingEditor  string                    `yaml:"managing_editor"`
+	WebMaster       string                    `yaml:"webmaster"`
+	Copyright       string                    `yaml:"copyright"`
 	License         interface{}               `yaml:"license"`
 	AssetsDir       string                    `yaml:"assets_dir"`
 	TemplatesDir    string                    `yaml:"templates_dir"`
@@ -3234,24 +3259,29 @@ func (w *yamlWellKnownConfig) toWellKnownConfig() models.WellKnownConfig {
 // configSource interface implementation for yamlConfig.
 func (c *yamlConfig) getBaseConfig() baseConfigData {
 	return baseConfigData{
-		OutputDir:     c.OutputDir,
-		URL:           c.URL,
-		Title:         c.Title,
-		Description:   c.Description,
-		Author:        c.Author,
-		License:       c.License,
-		AssetsDir:     c.AssetsDir,
-		TemplatesDir:  c.TemplatesDir,
-		Hooks:         c.Hooks,
-		DisabledHooks: c.DisabledHooks,
-		GlobPatterns:  c.Glob.Patterns,
-		UseGitignore:  c.Glob.UseGitignore,
-		SlugMode:      c.Glob.SlugMode,
-		SlugRules:     c.Glob.toSlugRules(),
-		Extensions:    c.Markdown.Extensions,
-		Concurrency:   c.Concurrency,
-		Theme:         c.Theme.toThemeConfig(),
-		Footer:        c.Footer.toFooterConfig(),
+		OutputDir:      c.OutputDir,
+		URL:            c.URL,
+		Title:          c.Title,
+		Description:    c.Description,
+		Author:         c.Author,
+		Language:       c.Language,
+		AuthorURL:      c.AuthorURL,
+		ManagingEditor: c.ManagingEditor,
+		WebMaster:      c.WebMaster,
+		Copyright:      c.Copyright,
+		License:        c.License,
+		AssetsDir:      c.AssetsDir,
+		TemplatesDir:   c.TemplatesDir,
+		Hooks:          c.Hooks,
+		DisabledHooks:  c.DisabledHooks,
+		GlobPatterns:   c.Glob.Patterns,
+		UseGitignore:   c.Glob.UseGitignore,
+		SlugMode:       c.Glob.SlugMode,
+		SlugRules:      c.Glob.toSlugRules(),
+		Extensions:     c.Markdown.Extensions,
+		Concurrency:    c.Concurrency,
+		Theme:          c.Theme.toThemeConfig(),
+		Footer:         c.Footer.toFooterConfig(),
 	}
 }
 
@@ -3389,6 +3419,11 @@ type jsonConfig struct {
 	Title           string                    `json:"title"`
 	Description     string                    `json:"description"`
 	Author          string                    `json:"author"`
+	Language        string                    `json:"language"`
+	AuthorURL       string                    `json:"author_url"`
+	ManagingEditor  string                    `json:"managing_editor"`
+	WebMaster       string                    `json:"webmaster"`
+	Copyright       string                    `json:"copyright"`
 	License         interface{}               `json:"license"`
 	AssetsDir       string                    `json:"assets_dir"`
 	TemplatesDir    string                    `json:"templates_dir"`
@@ -4732,24 +4767,29 @@ func (w *jsonWellKnownConfig) toWellKnownConfig() models.WellKnownConfig {
 // configSource interface implementation for jsonConfig.
 func (c *jsonConfig) getBaseConfig() baseConfigData {
 	return baseConfigData{
-		OutputDir:     c.OutputDir,
-		URL:           c.URL,
-		Title:         c.Title,
-		Description:   c.Description,
-		Author:        c.Author,
-		License:       c.License,
-		AssetsDir:     c.AssetsDir,
-		TemplatesDir:  c.TemplatesDir,
-		Hooks:         c.Hooks,
-		DisabledHooks: c.DisabledHooks,
-		GlobPatterns:  c.Glob.Patterns,
-		UseGitignore:  c.Glob.UseGitignore,
-		SlugMode:      c.Glob.SlugMode,
-		SlugRules:     c.Glob.toSlugRules(),
-		Extensions:    c.Markdown.Extensions,
-		Concurrency:   c.Concurrency,
-		Theme:         c.Theme.toThemeConfig(),
-		Footer:        c.Footer.toFooterConfig(),
+		OutputDir:      c.OutputDir,
+		URL:            c.URL,
+		Title:          c.Title,
+		Description:    c.Description,
+		Author:         c.Author,
+		Language:       c.Language,
+		AuthorURL:      c.AuthorURL,
+		ManagingEditor: c.ManagingEditor,
+		WebMaster:      c.WebMaster,
+		Copyright:      c.Copyright,
+		License:        c.License,
+		AssetsDir:      c.AssetsDir,
+		TemplatesDir:   c.TemplatesDir,
+		Hooks:          c.Hooks,
+		DisabledHooks:  c.DisabledHooks,
+		GlobPatterns:   c.Glob.Patterns,
+		UseGitignore:   c.Glob.UseGitignore,
+		SlugMode:       c.Glob.SlugMode,
+		SlugRules:      c.Glob.toSlugRules(),
+		Extensions:     c.Markdown.Extensions,
+		Concurrency:    c.Concurrency,
+		Theme:          c.Theme.toThemeConfig(),
+		Footer:         c.Footer.toFooterConfig(),
 	}
 }
 

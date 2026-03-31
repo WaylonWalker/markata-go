@@ -63,7 +63,7 @@ func TestGenerateRSS_LastBuildDateDeterministic(t *testing.T) {
 	}
 }
 
-func TestGenerateAtom_UpdatedOmittedWhenNoDates(t *testing.T) {
+func TestGenerateAtom_UpdatedFallsBackWhenNoDates(t *testing.T) {
 	config := lifecycle.NewConfig()
 	config.Extra = map[string]interface{}{"url": "https://example.com"}
 
@@ -82,12 +82,12 @@ func TestGenerateAtom_UpdatedOmittedWhenNoDates(t *testing.T) {
 		t.Fatalf("GenerateAtom error: %v", err)
 	}
 
-	if strings.Contains(atom, "<updated>") {
-		t.Fatalf("expected updated to be omitted when no dates, got:\n%s", atom)
+	if !strings.Contains(atom, "<updated>1970-01-01T00:00:00Z</updated>") {
+		t.Fatalf("expected updated fallback when no dates, got:\n%s", atom)
 	}
 }
 
-func TestGenerateRSS_LastBuildDateOmittedWhenNoDates(t *testing.T) {
+func TestGenerateRSS_LastBuildDateFallsBackWhenNoDates(t *testing.T) {
 	config := lifecycle.NewConfig()
 	config.Extra = map[string]interface{}{"url": "https://example.com"}
 
@@ -106,7 +106,7 @@ func TestGenerateRSS_LastBuildDateOmittedWhenNoDates(t *testing.T) {
 		t.Fatalf("GenerateRSS error: %v", err)
 	}
 
-	if strings.Contains(rss, "<lastBuildDate>") {
-		t.Fatalf("expected lastBuildDate to be omitted when no dates, got:\n%s", rss)
+	if !strings.Contains(rss, "<lastBuildDate>Thu, 01 Jan 1970 00:00:00 +0000</lastBuildDate>") {
+		t.Fatalf("expected lastBuildDate fallback when no dates, got:\n%s", rss)
 	}
 }

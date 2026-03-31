@@ -1175,6 +1175,8 @@ The `subscription_feeds` plugin creates two internal feeds:
 
 The root feed publishes the recent window most readers expect. The archive feed publishes the full site history.
 
+Full-history feed endpoints now advertise complete-feed semantics with Feed History markers. They are complete feeds, not paginated archive shards.
+
 ### Opt Out
 
 Disable the built-in site archive feed:
@@ -1225,6 +1227,30 @@ atom = true
 - **Per-feed archives** (`/{slug}/archive/...`) - Full-history endpoints for section feeds without bloating the primary subscription feed
 
 This gives you one feed for "what's new" and one feed for "everything."
+
+## Feed Metadata
+
+markata-go now uses feed-specific metadata across RSS, Atom, and JSON Feed:
+
+- feed title falls back to site title
+- feed description falls back to site description
+- section feeds point to their own HTML page instead of the site root
+- Atom includes a subtitle from the resolved feed description
+- RSS can include `language`, `managing_editor`, `webmaster`, and `copyright`
+- JSON Feed authors include `author_url` when configured
+
+Configure those site-level fields like this:
+
+```toml
+title = "My Site"
+description = "Writing about Go and static sites"
+author = "Jane Doe"
+language = "en"
+author_url = "https://example.com/about/"
+managing_editor = "editor@example.com (Jane Doe)"
+webmaster = "webmaster@example.com (Jane Doe)"
+copyright = "Copyright 2026 Jane Doe"
+```
 
 ## Feeds Page
 
