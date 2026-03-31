@@ -161,7 +161,7 @@ func addSyntheticGroupedPost(m *lifecycle.Manager, prefix, slugPart, title, desc
 	})
 }
 
-func buildAutoFeedConfigs(groups []autoStringGroup, prefix string, titleFormat, descriptionFormat string, filterFn func([]string) string, formats models.FeedFormats, changedSlugs map[string]bool) []models.FeedConfig {
+func buildAutoFeedConfigs(groups []autoStringGroup, prefix, titleFormat, descriptionFormat string, filterFn func([]string) string, formats models.FeedFormats, changedSlugs map[string]bool) []models.FeedConfig {
 	feeds := make([]models.FeedConfig, 0, len(groups))
 	for _, group := range groups {
 		if changedSlugs != nil && !changedSlugs[group.SlugPart] {
