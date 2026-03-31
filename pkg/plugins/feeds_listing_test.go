@@ -87,8 +87,8 @@ func TestFeedsListingPlugin_Write_TruncatesGeneratedFeedsOnMainPage(t *testing.T
 	}
 
 	now := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
-	feedConfigs := make([]models.FeedConfig, 0, generatedFeedsPreviewLimit+2)
-	for i := 0; i < generatedFeedsPreviewLimit+2; i++ {
+	feedConfigs := make([]models.FeedConfig, 0, defaults.ItemsPerPage+16)
+	for i := 0; i < defaults.ItemsPerPage+16; i++ {
 		title := "Generated " + strconv.Itoa(i)
 		slug := "generated-" + strconv.Itoa(i)
 		feedConfigs = append(feedConfigs, models.FeedConfig{
@@ -119,8 +119,8 @@ func TestFeedsListingPlugin_Write_TruncatesGeneratedFeedsOnMainPage(t *testing.T
 	if !strings.Contains(mainBody, "Browse all 26 generated feeds") {
 		t.Fatalf("main feeds page should link to all generated feeds")
 	}
-	if got := strings.Count(mainBody, `class="feed-row"`); got != generatedFeedsPreviewLimit {
-		t.Fatalf("main feeds page should render %d preview rows, got %d", generatedFeedsPreviewLimit, got)
+	if got := strings.Count(mainBody, `class="feed-row"`); got != defaults.ItemsPerPage {
+		t.Fatalf("main feeds page should render %d preview rows, got %d", defaults.ItemsPerPage, got)
 	}
 
 	generatedBodyBytes, err := os.ReadFile(filepath.Join(config.OutputDir, "feeds", "generated", "index.html"))
@@ -128,7 +128,17 @@ func TestFeedsListingPlugin_Write_TruncatesGeneratedFeedsOnMainPage(t *testing.T
 		t.Fatalf("ReadFile(generated feeds page) error = %v", err)
 	}
 	generatedBody := string(generatedBodyBytes)
-	if !strings.Contains(generatedBody, "Generated 25") {
-		t.Fatalf("generated feeds page should include all generated feeds")
+	if !strings.Contains(generatedBody, `aria-label="Generated feeds pages"`) {
+		t.Fatalf("generated feeds page should include pagination controls")
+	}
+	if strings.Contains(generatedBody, "Generated 25") {
+		t.Fatalf("first generated feeds page should be paginated")
+	}
+	generatedPage2BodyBytes, err := os.ReadFile(filepath.Join(config.OutputDir, "feeds", "generated", "page", "2", "index.html"))
+	if err != nil {
+		t.Fatalf("ReadFile(generated feeds page 2) error = %v", err)
+	}
+	if !strings.Contains(string(generatedPage2BodyBytes), "Generated 25") {
+		t.Fatalf("generated feeds page 2 should include remaining generated feeds")
 	}
 }

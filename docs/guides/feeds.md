@@ -1260,7 +1260,7 @@ markata-go generates a `/feeds/` page by default. It lists all non-private feeds
 - post count and latest update date
 - links to HTML, RSS, Atom, JSON, sitemap, and archive variants when available
 
-On large sites, `/feeds/` shows all curated feeds plus a preview of generated feeds. The full generated-feeds directory lives at `/feeds/generated/`.
+On large sites, `/feeds/` shows all curated feeds plus the first page of generated feeds. The full generated-feeds directory lives under `/feeds/generated/` and follows the site's feed pagination defaults.
 
 Configure it like this:
 

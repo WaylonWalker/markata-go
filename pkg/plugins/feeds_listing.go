@@ -16,10 +16,7 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
-const (
-	homeFeedTitle              = "Home"
-	generatedFeedsPreviewLimit = 24
-)
+const homeFeedTitle = "Home"
 
 const (
 	feedVariantPage    = "page"
@@ -45,6 +42,19 @@ type FeedListingSection struct {
 	Feeds       []FeedListingInfo
 }
 
+type FeedListingPage struct {
+	Number       int
+	Feeds        []FeedListingInfo
+	HasPrev      bool
+	HasNext      bool
+	PrevURL      string
+	NextURL      string
+	TotalPages   int
+	TotalItems   int
+	ItemsPerPage int
+	PageURLs     []string
+}
+
 // FeedListingInfo contains the data rendered on the /feeds page.
 type FeedListingInfo struct {
 	Title           string
@@ -59,6 +69,7 @@ type FeedListingInfo struct {
 	PrimaryVariants []FeedVariantLink
 	ArchiveVariants []FeedVariantLink
 	UtilityVariants []FeedVariantLink
+	LatestPostTime  time.Time
 	SparklinePoints string
 	SparklineTitle  string
 	GeneratedBySite bool
@@ -100,35 +111,52 @@ func (p *FeedsListingPlugin) Write(m *lifecycle.Manager) error {
 	if len(feedConfigs) == 0 {
 		return nil
 	}
+	feedDefaults := getFeedDefaults(config)
 
-	sections, generatedSections := p.collectFeedSections(feedConfigs, config, &feedsPage)
+	sections, generatedFeedPages := p.collectFeedSections(feedConfigs, config, &feedsPage, feedDefaults)
 	if len(sections) == 0 {
 		return nil
 	}
 
-	if err := p.renderFeedsPage(config, &feedsPage, sections, feedsPage.SlugPrefix, feedsPage.Title, feedsPage.Description, nil); err != nil {
+	if err := p.renderFeedsPage(config, &feedsPage, sections, feedsPage.SlugPrefix, feedsPage.Title, feedsPage.Description, nil, nil); err != nil {
 		return err
 	}
 
-	if len(generatedSections) > 0 {
+	if len(generatedFeedPages) > 0 {
 		generatedTitle := "Generated Feeds"
 		generatedDescription := "Automatically updated feeds for broader site sections, archives, and collections."
 		pageLinks := []FeedVariantLink{{Label: "Back to feeds", Href: "/" + feedsPage.SlugPrefix + "/", Kind: feedVariantPage}}
-		return p.renderFeedsPage(
-			config,
-			&feedsPage,
-			generatedSections,
-			filepath.ToSlash(filepath.Join(feedsPage.SlugPrefix, "generated")),
-			generatedTitle,
-			generatedDescription,
-			pageLinks,
-		)
+		for i := range generatedFeedPages {
+			pageSlug := filepath.ToSlash(filepath.Join(feedsPage.SlugPrefix, "generated"))
+			if generatedFeedPages[i].Number > 1 {
+				pageSlug = filepath.ToSlash(filepath.Join(pageSlug, "page", fmt.Sprintf("%d", generatedFeedPages[i].Number)))
+			}
+			section := FeedListingSection{
+				ID:          "generated-feeds",
+				Title:       generatedTitle,
+				Description: generatedDescription,
+				TotalCount:  generatedFeedPages[i].TotalItems,
+				Feeds:       generatedFeedPages[i].Feeds,
+			}
+			if err := p.renderFeedsPage(
+				config,
+				&feedsPage,
+				[]FeedListingSection{section},
+				pageSlug,
+				generatedTitle,
+				generatedDescription,
+				pageLinks,
+				&generatedFeedPages[i],
+			); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
 }
 
-func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig, config *lifecycle.Config, feedsPage *models.FeedsPageConfig) ([]FeedListingSection, []FeedListingSection) {
+func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig, config *lifecycle.Config, feedsPage *models.FeedsPageConfig, feedDefaults models.FeedDefaults) ([]FeedListingSection, []FeedListingPage) {
 	syndication := getSyndicationConfig(config)
 	userDefined := make([]FeedListingInfo, 0, len(feedConfigs))
 	generated := make([]FeedListingInfo, 0, len(feedConfigs))
@@ -140,7 +168,7 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 			continue
 		}
 
-		postCount, latestDate := publicFeedStats(fc.Posts)
+		postCount, latestDate, latestTime := publicFeedStats(fc.Posts)
 		display, primary, archive, utility := splitFeedVariants(fc, syndication)
 		_, isConfigured := configuredSlugs[fc.Slug]
 		info := FeedListingInfo{
@@ -150,6 +178,7 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 			Href:            feedHTMLHref(fc),
 			PostCount:       postCount,
 			LatestPostDate:  latestDate,
+			LatestPostTime:  latestTime,
 			SubscribeCount:  feedSubscribeCount(fc, syndication, postCount),
 			ArchiveCount:    postCount,
 			DisplayVariants: display,
@@ -179,12 +208,18 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 		}
 		return userDefined[i].Title < userDefined[j].Title
 	})
-	sort.Slice(generated, func(i, j int) bool {
+	sort.SliceStable(generated, func(i, j int) bool {
+		if generated[i].PostCount != generated[j].PostCount {
+			return generated[i].PostCount > generated[j].PostCount
+		}
+		if !generated[i].LatestPostTime.Equal(generated[j].LatestPostTime) {
+			return generated[i].LatestPostTime.After(generated[j].LatestPostTime)
+		}
 		return generated[i].Title < generated[j].Title
 	})
 
 	sections := make([]FeedListingSection, 0, 2)
-	generatedPageSections := make([]FeedListingSection, 0, 1)
+	generatedPages := make([]FeedListingPage, 0)
 	if len(userDefined) > 0 {
 		sections = append(sections, FeedListingSection{
 			ID:          "configured-feeds",
@@ -195,19 +230,12 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 		})
 	}
 	if len(generated) > 0 {
+		generatedPages = paginateFeedListings(generated, feedDefaults, "/"+filepath.ToSlash(filepath.Join(feedsPage.SlugPrefix, "generated")))
 		preview := generated
-		truncated := len(preview) > generatedFeedsPreviewLimit
-		if len(preview) > generatedFeedsPreviewLimit {
-			preview = generated[:generatedFeedsPreviewLimit]
-		}
-		if truncated {
-			generatedPageSections = append(generatedPageSections, FeedListingSection{
-				ID:          "generated-feeds",
-				Title:       "Generated Feeds",
-				Description: "Automatically updated feeds for broader site sections, archives, and collections.",
-				TotalCount:  len(generated),
-				Feeds:       generated,
-			})
+		truncated := false
+		if len(generatedPages) > 0 {
+			preview = generatedPages[0].Feeds
+			truncated = generatedPages[0].TotalPages > 1
 		}
 
 		section := FeedListingSection{
@@ -224,10 +252,10 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 		sections = append(sections, section)
 	}
 
-	return sections, generatedPageSections
+	return sections, generatedPages
 }
 
-func publicFeedStats(posts []*models.Post) (count int, latestDate string) {
+func publicFeedStats(posts []*models.Post) (count int, latestDate string, latestTime time.Time) {
 	var latest time.Time
 	for _, post := range posts {
 		if post == nil || post.Private || post.Skip || post.Draft || !post.Published {
@@ -239,9 +267,9 @@ func publicFeedStats(posts []*models.Post) (count int, latestDate string) {
 		}
 	}
 	if latest.IsZero() {
-		return count, ""
+		return count, "", time.Time{}
 	}
-	return count, latest.Format("2006-01-02")
+	return count, latest.Format("2006-01-02"), latest
 }
 
 func feedDisplayTitle(fc *models.FeedConfig) string {
@@ -414,6 +442,71 @@ func monthlyPostBuckets(posts []*models.Post) []int {
 	return buckets
 }
 
+func paginateFeedListings(feeds []FeedListingInfo, defaults models.FeedDefaults, baseURL string) []FeedListingPage {
+	if len(feeds) == 0 {
+		return nil
+	}
+
+	itemsPerPage := defaults.ItemsPerPage
+	if itemsPerPage <= 0 {
+		itemsPerPage = 10
+	}
+	orphanThreshold := defaults.OrphanThreshold
+	if orphanThreshold <= 0 {
+		orphanThreshold = 3
+	}
+
+	pages := make([]FeedListingPage, 0)
+	for i := 0; i < len(feeds); i += itemsPerPage {
+		end := i + itemsPerPage
+		if end > len(feeds) {
+			end = len(feeds)
+		}
+		remaining := len(feeds) - end
+		if remaining > 0 && remaining < orphanThreshold {
+			end = len(feeds)
+		}
+		pageNum := len(pages) + 1
+		pages = append(pages, FeedListingPage{
+			Number:  pageNum,
+			Feeds:   feeds[i:end],
+			HasPrev: pageNum > 1,
+		})
+		if end >= len(feeds) {
+			break
+		}
+	}
+
+	totalPages := len(pages)
+	pageURLs := make([]string, totalPages)
+	for i := 0; i < totalPages; i++ {
+		if i == 0 {
+			pageURLs[i] = baseURL + "/"
+		} else {
+			pageURLs[i] = baseURL + "/page/" + fmt.Sprintf("%d", i+1) + "/"
+		}
+	}
+	for i := range pages {
+		pages[i].HasNext = i < totalPages-1
+		pages[i].TotalPages = totalPages
+		pages[i].TotalItems = len(feeds)
+		pages[i].ItemsPerPage = itemsPerPage
+		pages[i].PageURLs = pageURLs
+		if pages[i].HasPrev {
+			if i == 1 {
+				pages[i].PrevURL = baseURL + "/"
+			} else {
+				pages[i].PrevURL = baseURL + "/page/" + fmt.Sprintf("%d", i) + "/"
+			}
+		}
+		if pages[i].HasNext {
+			pages[i].NextURL = baseURL + "/page/" + fmt.Sprintf("%d", i+2) + "/"
+		}
+	}
+
+	return pages
+}
+
 func pathJoinURL(base, suffix string) string {
 	if base == "/" {
 		return "/" + suffix
@@ -429,6 +522,7 @@ func (p *FeedsListingPlugin) renderFeedsPage(
 	title string,
 	description string,
 	pageLinks []FeedVariantLink,
+	pagination *FeedListingPage,
 ) error {
 	feedsDir := filepath.Join(config.OutputDir, filepath.FromSlash(pageSlug))
 	if err := os.MkdirAll(feedsDir, 0o755); err != nil {
@@ -455,6 +549,7 @@ func (p *FeedsListingPlugin) renderFeedsPage(
 	ctx := templates.NewContext(syntheticPost, "", modelsConfig)
 	ctx.Extra["feed_sections"] = sections
 	ctx.Extra["page_links"] = pageLinks
+	ctx.Extra["pagination"] = pagination
 	totalFeeds := 0
 	for _, section := range sections {
 		totalFeeds += section.TotalCount

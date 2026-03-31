@@ -48,6 +48,14 @@
   margin-top: 0.75rem;
 }
 
+.page-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+}
+
 .feeds-count {
   font-size: 0.98rem;
 }
@@ -215,6 +223,11 @@
   text-decoration: underline;
 }
 
+.feed-link-current {
+  color: var(--color-primary, #007bff);
+  text-decoration: underline;
+}
+
 .feed-links-utility {
   margin-top: -0.05rem;
   padding-top: 0.1rem;
@@ -281,6 +294,19 @@
         <a href="{{ link.Href }}" class="feed-link">{{ link.Label }}</a>
         {% endfor %}
       </div>
+      {% endif %}
+      {% if pagination and pagination.TotalPages > 1 %}
+      <nav class="page-pagination" aria-label="Generated feeds pages">
+        {% if pagination.HasPrev %}<a href="{{ pagination.PrevURL }}" class="feed-link">Previous</a>{% endif %}
+        {% for url in pagination.PageURLs %}
+          {% if forloop.counter == pagination.Number %}
+          <span class="feed-link feed-link-current">{{ forloop.counter }}</span>
+          {% else %}
+          <a href="{{ url }}" class="feed-link">{{ forloop.counter }}</a>
+          {% endif %}
+        {% endfor %}
+        {% if pagination.HasNext %}<a href="{{ pagination.NextURL }}" class="feed-link">Next</a>{% endif %}
+      </nav>
       {% endif %}
     </header>
 

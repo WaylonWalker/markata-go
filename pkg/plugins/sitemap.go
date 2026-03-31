@@ -187,7 +187,12 @@ func hasGeneratedFeeds(feedConfigs []models.FeedConfig, config *lifecycle.Config
 			count++
 		}
 	}
-	return count > generatedFeedsPreviewLimit
+	defaults := getFeedDefaults(config)
+	pageSize := defaults.ItemsPerPage
+	if pageSize <= 0 {
+		pageSize = 10
+	}
+	return count > pageSize
 }
 
 func (p *SitemapPlugin) buildSitemapIndex(m *lifecycle.Manager, siteURL string) *SitemapIndex {

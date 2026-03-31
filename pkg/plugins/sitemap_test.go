@@ -174,7 +174,8 @@ func TestSitemapPlugin_Write_GeneratesSitemapIndex(t *testing.T) {
 		Slug:    "blog",
 		Formats: models.FeedFormats{HTML: true, Sitemap: true},
 	}}
-	for i := 0; i < generatedFeedsPreviewLimit+1; i++ {
+	defaults := models.NewFeedDefaults()
+	for i := 0; i < defaults.ItemsPerPage+1; i++ {
 		feedConfigs = append(feedConfigs, models.FeedConfig{
 			Slug:    fmt.Sprintf("generated-%d", i),
 			Formats: models.FeedFormats{HTML: true},
