@@ -335,7 +335,7 @@ When a post is marked private (by any method), markata-go suppresses it across a
 | `.md` / `.txt` alternates | Not generated for private posts |
 | OG image cards | Not generated for private posts |
 | RSS / Atom / JSON feeds | Private posts excluded entirely |
-| Feed pages | Private-tag feeds show encrypted cards with password prompts; other feeds exclude private posts |
+| Feed pages | Private posts are excluded from public feed pages; only feeds that explicitly set `include_private = true` can include them |
 | Embed cards (`![[slug]]`) | Shows a "Private Content" card with no title, description, or date |
 | Wikilinks (`[[slug]]`) | Link text is rendered but `data-title`, `data-description`, `data-date` attributes are omitted |
 | Wikilink hover previews | No hover preview is shown for private posts |
@@ -347,11 +347,11 @@ Privacy marking happens at the very start of the Transform stage -- before any o
 
 The encrypted article HTML is the **only** representation of your private content in the built site.
 
-### Feed pages for private tags
+### Feed pages and private tags
 
-When you configure `private_tags`, the corresponding auto-generated tag feed pages include your private posts as encrypted cards. Visitors see a grid of cards where each private card shows a lock icon and password prompt. Entering the password for one card decrypts all cards on the page that use the same key.
+`private_tags` marks matching posts as private and encrypted, but it does not make auto-generated tag feeds public-facing containers for those posts. Auto-generated tag, category, and archive feeds exclude private posts the same way other public feeds do.
 
-Subscription feeds (RSS, Atom, JSON Feed) still exclude private posts entirely -- encrypted content in an RSS reader would not be useful.
+If you intentionally need a private-aware archive or admin page, create an explicit feed with `include_private = true` and restrict where you publish it. Subscription feeds (RSS, Atom, JSON Feed) still exclude private posts entirely.
 
 ## Security Notes
 

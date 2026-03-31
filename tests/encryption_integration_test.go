@@ -295,6 +295,160 @@ This is a public blog post.`)
 	}
 }
 
+// TestIntegration_Encryption_PrivateTagAutoFeedsExcludePrivate verifies that
+// private-tag posts are encrypted on their own pages but excluded from the
+// public auto-generated feed outputs for that tag.
+func TestIntegration_Encryption_PrivateTagAutoFeedsExcludePrivate(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	t.Setenv("MARKATA_GO_ENCRYPTION_KEY_DEFAULT", "Lighthouse!Harbor!Cedar!42") // pragma: allowlist secret
+
+	site := newTestSite(t)
+
+	const privateTitle = "Private Diary Entry"
+	const secondPrivateTitle = "Second Private Diary Entry"
+
+	site.addPost("private-diary.md", `---
+title: `+privateTitle+`
+slug: private-diary
+published: true
+tags:
+  - diary
+---
+This private diary entry contains `+privateMarker+` in the body.`)
+
+	site.addPost("second-private-diary.md", `---
+title: `+secondPrivateTitle+`
+slug: second-private-diary
+published: true
+tags:
+  - diary
+---
+This second private diary entry also contains `+privateMarker+` in the body.`)
+
+	site.addPost("public-post.md", `---
+title: Public Post
+slug: public-post
+published: true
+tags:
+  - tutorial
+---
+This is a public post outside the private tag.`)
+
+	modelsConfig := models.NewConfig()
+	modelsConfig.Encryption.PrivateTags = map[string]string{
+		"diary": "default",
+	}
+
+	m := lifecycle.NewManager()
+	cfg := &lifecycle.Config{
+		ContentDir:   site.contentDir,
+		OutputDir:    site.outputDir,
+		GlobPatterns: []string{"**/*.md"},
+		Extra:        make(map[string]interface{}),
+	}
+	cfg.Extra["url"] = "https://example.com"
+	cfg.Extra["title"] = "Test Site"
+	cfg.Extra["models_config"] = modelsConfig
+	cfg.Extra["auto_feeds"] = plugins.AutoFeedsConfig{
+		Tags: plugins.AutoFeedTypeConfig{
+			Enabled:    true,
+			SlugPrefix: "tags",
+			Formats: models.FeedFormats{
+				HTML:       true,
+				SimpleHTML: true,
+				RSS:        true,
+				Atom:       true,
+				JSON:       true,
+				Markdown:   true,
+				Text:       true,
+			},
+		},
+	}
+	cfg.Extra["feed_defaults"] = models.FeedDefaults{
+		ItemsPerPage:    1,
+		OrphanThreshold: 0,
+	}
+	m.SetConfig(cfg)
+
+	m.RegisterPlugin(plugins.NewGlobPlugin())
+	m.RegisterPlugin(plugins.NewLoadPlugin())
+	m.RegisterPlugin(plugins.NewDescriptionPlugin())
+	m.RegisterPlugin(plugins.NewRenderMarkdownPlugin())
+	m.RegisterPlugin(plugins.NewEncryptionPlugin())
+	m.RegisterPlugin(plugins.NewAutoFeedsPlugin())
+	m.RegisterPlugin(plugins.NewPublishFeedsPlugin())
+	m.RegisterPlugin(plugins.NewPublishHTMLPlugin())
+
+	if err := m.Run(); err != nil {
+		t.Fatalf("build should succeed: %v", err)
+	}
+
+	feedConfigsValue, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		t.Fatal("feed_configs not found in cache")
+	}
+	feedConfigs, ok := feedConfigsValue.([]models.FeedConfig)
+	if !ok {
+		t.Fatalf("feed_configs has wrong type: %T", feedConfigsValue)
+	}
+
+	var diaryFeed *models.FeedConfig
+	for i := range feedConfigs {
+		if feedConfigs[i].Slug == "tags/diary" {
+			diaryFeed = &feedConfigs[i]
+			break
+		}
+	}
+	if diaryFeed == nil {
+		t.Fatal("tags/diary feed config not found")
+	}
+	if diaryFeed.IncludePrivate {
+		t.Fatal("tags/diary feed should not opt into private posts")
+	}
+	if len(diaryFeed.Posts) != 0 {
+		t.Fatalf("tags/diary feed should exclude private-tag posts, got %d posts", len(diaryFeed.Posts))
+	}
+	if len(diaryFeed.Pages) != 0 {
+		t.Fatalf("tags/diary feed should not paginate an empty public feed, got %d pages", len(diaryFeed.Pages))
+	}
+	for _, post := range diaryFeed.Posts {
+		if post.Private {
+			t.Fatalf("tags/diary feed should not include private post %q", post.Slug)
+		}
+	}
+
+	privatePage := site.readFile("private-diary/index.html")
+	if !strings.Contains(privatePage, `class="encrypted-content"`) {
+		t.Fatal("private diary page should still render encrypted content")
+	}
+
+	if site.fileExists("tags/diary/page/2/index.html") {
+		t.Fatal("private-only auto feed should not generate a public page 2")
+	}
+
+	feedFiles := []string{
+		"tags/diary/index.html",
+		"tags/diary/simple/index.html",
+		"tags/diary/rss.xml",
+		"tags/diary/atom.xml",
+		"tags/diary/feed.json",
+		"tags/diary.md",
+		"tags/diary.txt",
+	}
+
+	for _, path := range feedFiles {
+		if !site.fileExists(path) {
+			continue
+		}
+		content := site.readFile(path)
+		if strings.Contains(content, privateTitle) || strings.Contains(content, secondPrivateTitle) || strings.Contains(content, "/private-diary/") || strings.Contains(content, "/second-private-diary/") {
+			t.Fatalf("private diary post leaked into %s", path)
+		}
+	}
+}
+
 // TestIntegration_Encryption_FrontmatterAliases verifies that private_key and
 // encryption_key frontmatter fields work as aliases for secret_key.
 func TestIntegration_Encryption_FrontmatterAliases(t *testing.T) {
