@@ -92,12 +92,16 @@
 .feeds-listing {
   max-width: var(--content-width, 800px);
   margin-inline: auto;
-  padding: clamp(1rem, 2vw, 1.75rem) clamp(0.75rem, 2vw, 1.25rem) 3rem;
+  padding: clamp(0.85rem, 1.8vw, 1.4rem) clamp(0.75rem, 2vw, 1.1rem) 3rem;
 }
 
 .page-header {
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
   text-align: center;
+}
+
+.page-header h1 {
+  margin-bottom: 0.45rem;
 }
 
 .page-description,
@@ -105,9 +109,13 @@
   color: var(--color-text-muted, #666);
 }
 
+.feeds-count {
+  font-size: 0.98rem;
+}
+
 .feed-sections {
   display: grid;
-  gap: 2rem;
+  gap: 1.7rem;
 }
 
 .feed-section {
@@ -121,7 +129,8 @@
 }
 
 .feed-section-header h2 {
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.2rem;
+  font-size: clamp(1.45rem, 2vw, 1.8rem);
 }
 
 .feed-section-header p {
@@ -131,23 +140,23 @@
 
 .feed-list {
   display: grid;
-  gap: 1rem;
+  gap: 0.8rem;
 }
 
 .feed-row {
   display: grid;
-  gap: 0.95rem;
+  gap: 0.8rem;
   align-items: start;
-  padding: 1.25rem 1.35rem;
+  padding: 1rem 1.1rem;
   border: 1px solid var(--color-border, #ddd);
   border-radius: var(--radius-lg, 0.75rem);
   background: var(--article-bg, color-mix(in srgb, var(--color-background, #111) 94%, transparent));
-  box-shadow: 0 10px 30px color-mix(in srgb, black 10%, transparent);
+  box-shadow: 0 2px 12px color-mix(in srgb, black 6%, transparent);
 }
 
 .feed-main {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.6rem;
 }
 
 .feed-row-header {
@@ -159,6 +168,8 @@
 
 .feed-row-header h3 {
   margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.15;
 }
 
 .feed-row-header a {
@@ -173,11 +184,11 @@
 .feed-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem 0.5rem;
+  padding: 0.15rem 0.45rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-primary, #007bff) 12%, transparent);
   color: var(--color-text-muted, #666);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
@@ -185,19 +196,21 @@
 .feed-summary {
   margin: 0;
   color: var(--color-text-muted, #666);
+  font-size: 1rem;
+  line-height: 1.45;
 }
 
 .feed-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.9rem;
+  gap: 0.75rem;
   color: var(--color-text-muted, #666);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
 }
 
 .feed-links-row {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.3rem;
 }
 
 .feed-links-label {
@@ -215,7 +228,7 @@
 .feed-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 0.85rem;
+  gap: 0.35rem 0.8rem;
 }
 
 .feed-link {
@@ -225,7 +238,7 @@
   padding: 0.1rem 0;
   color: inherit;
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
 }
 
 .feed-link:hover {
@@ -240,8 +253,8 @@
 .feed-sparkline-wrap {
   display: grid;
   gap: 0.45rem;
-  margin-top: 0.25rem;
-  padding-top: 0.85rem;
+  margin-top: 0.15rem;
+  padding-top: 0.7rem;
   border-top: 1px solid color-mix(in srgb, var(--color-border, #ddd) 85%, transparent);
 }
 
@@ -254,8 +267,8 @@
 
 .feed-sparkline {
   width: 100%;
-  max-width: 280px;
-  height: 32px;
+  max-width: 240px;
+  height: 28px;
   overflow: visible;
 }
 
