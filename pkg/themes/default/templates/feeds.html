@@ -2,11 +2,24 @@
 
 {% block title %}{{ title | default:"Feeds" }}{% endblock %}
 {% block description %}{{ description | default:config.description | default:"" }}{% endblock %}
+{% block body_class %}page-feeds{% endblock %}
 {% block head %}
 {{ block.Super() }}
 <style>
+.page-feeds .page-wrapper {
+  max-width: 100%;
+  padding: 0;
+}
+
+.page-feeds .main-content {
+  max-width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .feeds-page {
   max-width: var(--content-width);
+  margin: 0 auto;
 }
 
 .feeds-listing {
@@ -235,7 +248,8 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block main %}
+<main class="main-content" id="main-content" tabindex="-1">
 <article class="post feeds-page">
   <div class="feeds-listing">
     <header class="page-header">
@@ -328,4 +342,5 @@
     {% endif %}
   </div>
 </article>
+</main>
 {% endblock %}
