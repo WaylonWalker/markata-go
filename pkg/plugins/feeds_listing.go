@@ -70,25 +70,26 @@ type SparklinePoint struct {
 
 // FeedListingInfo contains the data rendered on the /feeds page.
 type FeedListingInfo struct {
-	Title           string
-	Slug            string
-	Description     string
-	Href            string
-	PostCount       int
-	LatestPostDate  string
-	SubscribeCount  int
-	ArchiveCount    int
-	DisplayVariants []FeedVariantLink
-	PrimaryVariants []FeedVariantLink
-	ArchiveVariants []FeedVariantLink
-	UtilityVariants []FeedVariantLink
-	LatestPostTime  time.Time
-	SparklinePoints string
-	SparklineData   []SparklinePoint
-	SparklineTitle  string
-	SparklineStart  string
-	SparklineEnd    string
-	GeneratedBySite bool
+	Title            string
+	Slug             string
+	Description      string
+	Href             string
+	PostCount        int
+	LatestPostDate   string
+	SubscribeCount   int
+	ArchiveCount     int
+	DisplayVariants  []FeedVariantLink
+	PrimaryVariants  []FeedVariantLink
+	ArchiveVariants  []FeedVariantLink
+	UtilityVariants  []FeedVariantLink
+	LatestPostTime   time.Time
+	SparklinePoints  string
+	SparklineData    []SparklinePoint
+	SparklineTitle   string
+	SparklineSummary string
+	SparklineStart   string
+	SparklineEnd     string
+	GeneratedBySite  bool
 }
 
 // FeedsListingPlugin generates a feeds listing page at /feeds.
@@ -194,25 +195,26 @@ func (p *FeedsListingPlugin) collectFeedSections(
 		display, primary, archive, utility := splitFeedVariants(fc, syndication)
 		_, isConfigured := configuredSlugs[fc.Slug]
 		info := FeedListingInfo{
-			Title:           feedDisplayTitle(fc),
-			Slug:            fc.Slug,
-			Description:     fc.Description,
-			Href:            feedHTMLHref(fc),
-			PostCount:       postCount,
-			LatestPostDate:  latestDate,
-			LatestPostTime:  latestTime,
-			SubscribeCount:  feedSubscribeCount(fc, syndication, postCount),
-			ArchiveCount:    postCount,
-			DisplayVariants: display,
-			PrimaryVariants: primary,
-			ArchiveVariants: archive,
-			UtilityVariants: utility,
-			SparklinePoints: buildFeedSparkline(fc.Posts, sparklineRange),
-			SparklineData:   buildFeedSparklineData(fc.Posts, sparklineRange),
-			SparklineTitle:  buildFeedSparklineTitle(fc.Posts, sparklineRange),
-			SparklineStart:  buildFeedSparklineStart(sparklineRange),
-			SparklineEnd:    buildFeedSparklineEnd(sparklineRange),
-			GeneratedBySite: !isConfigured,
+			Title:            feedDisplayTitle(fc),
+			Slug:             fc.Slug,
+			Description:      fc.Description,
+			Href:             feedHTMLHref(fc),
+			PostCount:        postCount,
+			LatestPostDate:   latestDate,
+			LatestPostTime:   latestTime,
+			SubscribeCount:   feedSubscribeCount(fc, syndication, postCount),
+			ArchiveCount:     postCount,
+			DisplayVariants:  display,
+			PrimaryVariants:  primary,
+			ArchiveVariants:  archive,
+			UtilityVariants:  utility,
+			SparklinePoints:  buildFeedSparkline(fc.Posts, sparklineRange),
+			SparklineData:    buildFeedSparklineData(fc.Posts, sparklineRange),
+			SparklineTitle:   buildFeedSparklineTitle(fc.Posts, sparklineRange),
+			SparklineSummary: buildFeedSparklineSummary(fc.Posts, sparklineRange),
+			SparklineStart:   buildFeedSparklineStart(sparklineRange),
+			SparklineEnd:     buildFeedSparklineEnd(sparklineRange),
+			GeneratedBySite:  !isConfigured,
 		}
 
 		if isConfigured {
@@ -496,6 +498,15 @@ func buildFeedSparklineTitle(posts []*models.Post, window sparklineWindow) strin
 		window.Start.Format("2006-01"),
 		window.End.Format("2006-01"),
 	)
+}
+
+func buildFeedSparklineSummary(posts []*models.Post, window sparklineWindow) string {
+	data := buildFeedSparklineData(posts, window)
+	if len(data) == 0 {
+		return ""
+	}
+	last := data[len(data)-1]
+	return fmt.Sprintf("%s | %d posts", last.Month, last.Value)
 }
 
 func buildFeedSparklineStart(window sparklineWindow) string {

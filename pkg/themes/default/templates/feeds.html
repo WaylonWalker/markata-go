@@ -222,7 +222,7 @@
 
 .feed-sparkline-wrap {
   display: grid;
-  gap: 0.3rem;
+  gap: 0.25rem;
   justify-items: end;
   min-width: 180px;
   align-self: center;
@@ -233,6 +233,17 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted, #666);
+}
+
+.feed-sparkline-meta {
+  min-height: 1rem;
+  font-size: 0.72rem;
+  color: var(--color-text-muted, #666);
+  text-align: right;
+}
+
+.feed-sparkline-value {
+  display: inline-block;
 }
 
 .feed-sparkline {
@@ -331,6 +342,27 @@
   }
 }
 </style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.feed-sparkline-wrap').forEach(function (wrap) {
+    const value = wrap.querySelector('.feed-sparkline-value')
+    if (!value) return
+
+    const defaultValue = value.textContent
+    wrap.querySelectorAll('.feed-sparkline-hit').forEach(function (hit) {
+      const update = function () {
+        value.textContent = hit.dataset.label || defaultValue
+      }
+      hit.addEventListener('mouseenter', update)
+      hit.addEventListener('focus', update)
+    })
+
+    wrap.addEventListener('mouseleave', function () {
+      value.textContent = defaultValue
+    })
+  })
+})
+</script>
 {% endblock %}
 
 {% block main %}
@@ -458,12 +490,13 @@
                     <g class="feed-sparkline-point">
                       <line class="feed-sparkline-guide" x1="{{ point.X }}" y1="0" x2="{{ point.X }}" y2="28"></line>
                       <circle class="feed-sparkline-dot" cx="{{ point.X }}" cy="{{ point.Y }}" r="2.2"></circle>
-                      <rect class="feed-sparkline-hit" x="{{ point.X|add:"-2.6" }}" y="0" width="5.2" height="28">
-                        <title>{{ point.Month }} | {{ point.Value }} posts</title>
-                      </rect>
+                      <rect class="feed-sparkline-hit" x="{{ point.X|add:"-2.6" }}" y="0" width="5.2" height="28" data-label="{{ point.Month }} | {{ point.Value }} posts"></rect>
                     </g>
                     {% endfor %}
                   </svg>
+                  <div class="feed-sparkline-meta" aria-live="polite">
+                    <span class="feed-sparkline-value">{{ feed.SparklineSummary }}</span>
+                  </div>
                   {% if feed.SparklineStart and feed.SparklineEnd %}
                   <div class="feed-sparkline-axis" aria-hidden="true">
                     <span>{{ feed.SparklineStart }}</span>
