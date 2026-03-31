@@ -156,7 +156,7 @@ func TestMonthlyPostBuckets_UsesSharedWindow(t *testing.T) {
 		{Title: &title, Published: true, Date: testDate(2024, 1, 15)},
 		{Title: &title, Published: true, Date: testDate(2024, 4, 2)},
 	}
-	buckets := monthlyPostBuckets(posts, window)
+	buckets, _ := monthlyPostBuckets(posts, window)
 	if len(buckets) != 4 {
 		t.Fatalf("expected 4 monthly buckets, got %d", len(buckets))
 	}

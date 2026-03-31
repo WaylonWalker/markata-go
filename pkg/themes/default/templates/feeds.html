@@ -226,11 +226,53 @@
   justify-items: end;
   min-width: 180px;
   align-self: center;
-  position: relative;
 }
 
-.feed-sparkline-wrap::after {
-  content: attr(data-tooltip);
+.feed-sparkline-label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted, #666);
+}
+
+.feed-sparkline {
+  width: 180px;
+  height: 28px;
+  overflow: visible;
+}
+
+.feed-sparkline-hit {
+  fill: transparent;
+}
+
+.feed-sparkline-guide,
+.feed-sparkline-dot {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.feed-sparkline-guide {
+  stroke: color-mix(in srgb, var(--color-text-muted, #666) 80%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.feed-sparkline-dot {
+  fill: var(--color-primary, #007bff);
+}
+
+.feed-sparkline-point:hover .feed-sparkline-guide,
+.feed-sparkline-point:hover .feed-sparkline-dot,
+.feed-sparkline-point:focus-within .feed-sparkline-guide,
+.feed-sparkline-point:focus-within .feed-sparkline-dot {
+  opacity: 1;
+}
+
+.feed-sparkline-point {
+  cursor: crosshair;
+}
+
+.feed-sparkline-point-title {
   position: absolute;
   right: 0;
   bottom: calc(100% + 0.45rem);
@@ -249,23 +291,9 @@
   z-index: 20;
 }
 
-.feed-sparkline-wrap:hover::after,
-.feed-sparkline-wrap:focus-within::after {
+.feed-sparkline-wrap:hover .feed-sparkline-axis,
+.feed-sparkline-wrap:focus-within .feed-sparkline-axis {
   opacity: 1;
-  transform: translateY(0);
-}
-
-.feed-sparkline-label {
-  font-size: 0.74rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted, #666);
-}
-
-.feed-sparkline {
-  width: 180px;
-  height: 28px;
-  overflow: visible;
 }
 
 .feed-sparkline-axis {
@@ -275,6 +303,8 @@
   width: 180px;
   font-size: 0.68rem;
   color: var(--color-text-muted, #666);
+  opacity: 0;
+  transition: opacity 120ms ease;
 }
 
 .feed-sparkline polyline {
@@ -420,10 +450,19 @@
                   </div>
                 </div>
                 {% if feed.SparklinePoints %}
-                <div class="feed-sparkline-wrap" data-tooltip="{{ feed.SparklineTitle }}">
+                <div class="feed-sparkline-wrap">
                   <span class="feed-sparkline-label">Publishing rhythm</span>
                   <svg class="feed-sparkline" viewBox="0 0 96 28" role="img" aria-label="{{ feed.SparklineTitle }}">
                     <polyline points="{{ feed.SparklinePoints }}"></polyline>
+                    {% for point in feed.SparklineData %}
+                    <g class="feed-sparkline-point">
+                      <line class="feed-sparkline-guide" x1="{{ point.X }}" y1="0" x2="{{ point.X }}" y2="28"></line>
+                      <circle class="feed-sparkline-dot" cx="{{ point.X }}" cy="{{ point.Y }}" r="2.2"></circle>
+                      <rect class="feed-sparkline-hit" x="{{ point.X|add:"-2.6" }}" y="0" width="5.2" height="28">
+                        <title>{{ point.Month }} | {{ point.Value }} posts</title>
+                      </rect>
+                    </g>
+                    {% endfor %}
                   </svg>
                   {% if feed.SparklineStart and feed.SparklineEnd %}
                   <div class="feed-sparkline-axis" aria-hidden="true">

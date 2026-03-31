@@ -61,6 +61,13 @@ type sparklineWindow struct {
 	End   time.Time
 }
 
+type SparklinePoint struct {
+	X     float64
+	Y     float64
+	Month string
+	Value int
+}
+
 // FeedListingInfo contains the data rendered on the /feeds page.
 type FeedListingInfo struct {
 	Title           string
@@ -77,6 +84,7 @@ type FeedListingInfo struct {
 	UtilityVariants []FeedVariantLink
 	LatestPostTime  time.Time
 	SparklinePoints string
+	SparklineData   []SparklinePoint
 	SparklineTitle  string
 	SparklineStart  string
 	SparklineEnd    string
@@ -200,6 +208,7 @@ func (p *FeedsListingPlugin) collectFeedSections(
 			ArchiveVariants: archive,
 			UtilityVariants: utility,
 			SparklinePoints: buildFeedSparkline(fc.Posts, sparklineRange),
+			SparklineData:   buildFeedSparklineData(fc.Posts, sparklineRange),
 			SparklineTitle:  buildFeedSparklineTitle(fc.Posts, sparklineRange),
 			SparklineStart:  buildFeedSparklineStart(sparklineRange),
 			SparklineEnd:    buildFeedSparklineEnd(sparklineRange),
@@ -405,8 +414,50 @@ func configuredFeedSlugs(config *lifecycle.Config) map[string]int {
 }
 
 func buildFeedSparkline(posts []*models.Post, window sparklineWindow) string {
-	buckets := monthlyPostBuckets(posts, window)
+	buckets, months := monthlyPostBuckets(posts, window)
 	if len(buckets) < 2 {
+		return ""
+	}
+	return sparklinePolylinePoints(buckets, months)
+}
+
+func buildFeedSparklineData(posts []*models.Post, window sparklineWindow) []SparklinePoint {
+	buckets, months := monthlyPostBuckets(posts, window)
+	if len(buckets) < 2 {
+		return nil
+	}
+	maxValue := 0
+	for _, count := range buckets {
+		if count > maxValue {
+			maxValue = count
+		}
+	}
+	if maxValue == 0 {
+		return nil
+	}
+
+	const width = 96
+	const height = 28
+	step := float64(width) / float64(len(buckets)-1)
+	points := make([]SparklinePoint, 0, len(buckets))
+	for i, count := range buckets {
+		x := float64(i) * step
+		y := float64(height)
+		if maxValue > 0 {
+			y = float64(height) - ((float64(count) / float64(maxValue)) * float64(height-4))
+		}
+		points = append(points, SparklinePoint{
+			X:     x,
+			Y:     y,
+			Month: months[i].Format("Jan 2006"),
+			Value: count,
+		})
+	}
+	return points
+}
+
+func sparklinePolylinePoints(buckets []int, months []time.Time) string {
+	if len(buckets) == 0 || len(buckets) != len(months) {
 		return ""
 	}
 
@@ -436,7 +487,7 @@ func buildFeedSparkline(posts []*models.Post, window sparklineWindow) string {
 }
 
 func buildFeedSparklineTitle(posts []*models.Post, window sparklineWindow) string {
-	buckets := monthlyPostBuckets(posts, window)
+	buckets, _ := monthlyPostBuckets(posts, window)
 	if len(buckets) == 0 {
 		return ""
 	}
@@ -461,9 +512,9 @@ func buildFeedSparklineEnd(window sparklineWindow) string {
 	return window.End.Format("Jan 2006")
 }
 
-func monthlyPostBuckets(posts []*models.Post, window sparklineWindow) []int {
+func monthlyPostBuckets(posts []*models.Post, window sparklineWindow) ([]int, []time.Time) {
 	if window.Start.IsZero() || window.End.IsZero() || window.End.Before(window.Start) {
-		return nil
+		return nil, nil
 	}
 	counts := map[string]int{}
 	for _, post := range posts {
@@ -478,10 +529,12 @@ func monthlyPostBuckets(posts []*models.Post, window sparklineWindow) []int {
 		counts[monthKey]++
 	}
 	buckets := make([]int, 0, monthsBetweenInclusive(window.Start, window.End))
+	months := make([]time.Time, 0, monthsBetweenInclusive(window.Start, window.End))
 	for month := window.Start; !month.After(window.End); month = month.AddDate(0, 1, 0) {
 		buckets = append(buckets, counts[month.Format("2006-01")])
+		months = append(months, month)
 	}
-	return buckets
+	return buckets, months
 }
 
 func computeSparklineWindow(posts []*models.Post) sparklineWindow {
