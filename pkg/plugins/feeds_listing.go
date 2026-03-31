@@ -39,6 +39,7 @@ type FeedListingSection struct {
 	TotalCount  int
 	MoreHref    string
 	MoreLabel   string
+	Pagination  *FeedListingPage
 	Feeds       []FeedListingInfo
 }
 
@@ -125,7 +126,6 @@ func (p *FeedsListingPlugin) Write(m *lifecycle.Manager) error {
 	if len(generatedFeedPages) > 0 {
 		generatedTitle := "Generated Feeds"
 		generatedDescription := "Automatically updated feeds for broader site sections, archives, and collections."
-		pageLinks := []FeedVariantLink{{Label: "Back to feeds", Href: "/" + feedsPage.SlugPrefix + "/", Kind: feedVariantPage}}
 		for i := range generatedFeedPages {
 			pageSlug := filepath.ToSlash(filepath.Join(feedsPage.SlugPrefix, "generated"))
 			if generatedFeedPages[i].Number > 1 {
@@ -145,7 +145,7 @@ func (p *FeedsListingPlugin) Write(m *lifecycle.Manager) error {
 				pageSlug,
 				generatedTitle,
 				generatedDescription,
-				pageLinks,
+				nil,
 				&generatedFeedPages[i],
 			); err != nil {
 				return err
@@ -230,7 +230,12 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 		})
 	}
 	if len(generated) > 0 {
-		generatedPages = paginateFeedListings(generated, feedDefaults, "/"+filepath.ToSlash(filepath.Join(feedsPage.SlugPrefix, "generated")))
+		generatedPages = paginateFeedListings(
+			generated,
+			feedDefaults,
+			"/"+feedsPage.SlugPrefix+"/",
+			"/"+filepath.ToSlash(filepath.Join(feedsPage.SlugPrefix, "generated")),
+		)
 		preview := generated
 		truncated := false
 		if len(generatedPages) > 0 {
@@ -244,10 +249,10 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 			Description: "Automatically updated feeds for broader site sections, archives, and collections.",
 			TotalCount:  len(generated),
 			Feeds:       preview,
+			Pagination:  nil,
 		}
 		if truncated {
-			section.MoreHref = "/" + filepath.ToSlash(filepath.Join(feedsPage.SlugPrefix, "generated")) + "/"
-			section.MoreLabel = fmt.Sprintf("Browse all %d generated feeds", len(generated))
+			section.Pagination = &generatedPages[0]
 		}
 		sections = append(sections, section)
 	}
@@ -442,7 +447,7 @@ func monthlyPostBuckets(posts []*models.Post) []int {
 	return buckets
 }
 
-func paginateFeedListings(feeds []FeedListingInfo, defaults models.FeedDefaults, baseURL string) []FeedListingPage {
+func paginateFeedListings(feeds []FeedListingInfo, defaults models.FeedDefaults, firstPageURL, baseURL string) []FeedListingPage {
 	if len(feeds) == 0 {
 		return nil
 	}
@@ -481,7 +486,7 @@ func paginateFeedListings(feeds []FeedListingInfo, defaults models.FeedDefaults,
 	pageURLs := make([]string, totalPages)
 	for i := 0; i < totalPages; i++ {
 		if i == 0 {
-			pageURLs[i] = baseURL + "/"
+			pageURLs[i] = firstPageURL
 		} else {
 			pageURLs[i] = baseURL + "/page/" + fmt.Sprintf("%d", i+1) + "/"
 		}
@@ -494,7 +499,7 @@ func paginateFeedListings(feeds []FeedListingInfo, defaults models.FeedDefaults,
 		pages[i].PageURLs = pageURLs
 		if pages[i].HasPrev {
 			if i == 1 {
-				pages[i].PrevURL = baseURL + "/"
+				pages[i].PrevURL = firstPageURL
 			} else {
 				pages[i].PrevURL = baseURL + "/page/" + fmt.Sprintf("%d", i) + "/"
 			}

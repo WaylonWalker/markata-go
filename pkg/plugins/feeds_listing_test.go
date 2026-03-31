@@ -116,8 +116,11 @@ func TestFeedsListingPlugin_Write_TruncatesGeneratedFeedsOnMainPage(t *testing.T
 		t.Fatalf("ReadFile(main feeds page) error = %v", err)
 	}
 	mainBody := string(mainBodyBytes)
-	if !strings.Contains(mainBody, "Browse all 26 generated feeds") {
-		t.Fatalf("main feeds page should link to all generated feeds")
+	if !strings.Contains(mainBody, `aria-label="Generated Feeds pages"`) {
+		t.Fatalf("main feeds page should include generated feed pagination")
+	}
+	if !strings.Contains(mainBody, `href="/feeds/generated/page/2/"`) {
+		t.Fatalf("main feeds page should link to generated feeds page 2")
 	}
 	if got := strings.Count(mainBody, `class="feed-row"`); got != defaults.ItemsPerPage {
 		t.Fatalf("main feeds page should render %d preview rows, got %d", defaults.ItemsPerPage, got)

@@ -321,6 +321,19 @@
             <span>{{ section.TotalCount }} feed{{ section.TotalCount|pluralize }}</span>
             {% if section.MoreHref %}<a href="{{ section.MoreHref }}" class="feed-link">{{ section.MoreLabel }}</a>{% endif %}
           </div>
+          {% if section.Pagination and section.Pagination.TotalPages > 1 %}
+          <nav class="page-pagination" aria-label="{{ section.Title }} pages">
+            {% if section.Pagination.HasPrev %}<a href="{{ section.Pagination.PrevURL }}" class="feed-link">Previous</a>{% endif %}
+            {% for url in section.Pagination.PageURLs %}
+              {% if forloop.counter == section.Pagination.Number %}
+              <span class="feed-link feed-link-current">{{ forloop.counter }}</span>
+              {% else %}
+              <a href="{{ url }}" class="feed-link">{{ forloop.counter }}</a>
+              {% endif %}
+            {% endfor %}
+            {% if section.Pagination.HasNext %}<a href="{{ section.Pagination.NextURL }}" class="feed-link">Next</a>{% endif %}
+          </nav>
+          {% endif %}
         </header>
 
         <div class="feed-list">
