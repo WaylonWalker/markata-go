@@ -123,6 +123,9 @@ func MergeConfigs(base, override *models.Config) *models.Config {
 	// Garden - merge
 	result.Garden = mergeGardenConfig(base.Garden, override.Garden)
 
+	// Feeds page - merge
+	result.FeedsPage = mergeFeedsPageConfig(base.FeedsPage, override.FeedsPage)
+
 	// Extra (plugin configs) - merge
 	result.Extra = mergeExtra(base.Extra, override.Extra)
 
@@ -477,7 +480,29 @@ func mergeSyndicationConfig(base, override models.SyndicationConfig) models.Synd
 	}
 	// For IncludeContent, we take the override value
 	result.IncludeContent = override.IncludeContent || base.IncludeContent
+	result.SiteArchiveDisabled = override.SiteArchiveDisabled || base.SiteArchiveDisabled
+	result.FeedArchivesDisabled = override.FeedArchivesDisabled || base.FeedArchivesDisabled
 
+	return result
+}
+
+func mergeFeedsPageConfig(base, override models.FeedsPageConfig) models.FeedsPageConfig {
+	result := base
+	if override.Enabled != nil {
+		result.Enabled = override.Enabled
+	}
+	if override.Title != "" {
+		result.Title = override.Title
+	}
+	if override.Description != "" {
+		result.Description = override.Description
+	}
+	if override.Template != "" {
+		result.Template = override.Template
+	}
+	if override.SlugPrefix != "" {
+		result.SlugPrefix = override.SlugPrefix
+	}
 	return result
 }
 

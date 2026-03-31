@@ -28,6 +28,7 @@ type configSource interface {
 	getHeader() headerConverter
 	getBlogroll() blogrollConverter
 	getTags() tagsConverter
+	getFeedsPage() feedsPageConverter
 	getEncryption() encryptionConverter
 	getTagAggregator() tagAggregatorConverter
 	getMentions() mentionsConverter
@@ -123,6 +124,10 @@ type blogrollConverter interface {
 
 type tagsConverter interface {
 	toTagsConfig() models.TagsConfig
+}
+
+type feedsPageConverter interface {
+	toFeedsPageConfig() models.FeedsPageConfig
 }
 
 type encryptionConverter interface {
@@ -243,6 +248,9 @@ func buildConfig(src configSource) *models.Config {
 
 	// Convert Tags config
 	config.Tags = src.getTags().toTagsConfig()
+
+	// Convert Feeds page config
+	config.FeedsPage = src.getFeedsPage().toFeedsPageConfig()
 
 	// Convert Encryption config
 	config.Encryption = src.getEncryption().toEncryptionConfig()
@@ -424,6 +432,7 @@ type tomlConfig struct {
 	Header          tomlHeaderLayoutConfig    `toml:"header"`
 	Blogroll        tomlBlogrollConfig        `toml:"blogroll"`
 	Tags            tomlTagsConfig            `toml:"tags"`
+	FeedsPage       tomlFeedsPageConfig       `toml:"feeds_page"`
 	Encryption      tomlEncryptionConfig      `toml:"encryption"`
 	TagAggregator   tomlTagAggregatorConfig   `toml:"tag_aggregator"`
 	Mentions        tomlMentionsConfig        `toml:"mentions"`
@@ -543,6 +552,7 @@ type tomlFeedConfig struct {
 	Limit           int               `toml:"limit"`
 	Offset          int               `toml:"offset"`
 	PaginationType  string            `toml:"pagination_type"`
+	ArchiveDisabled bool              `toml:"archive_disabled"`
 	Formats         tomlFeedFormats   `toml:"formats"`
 	Templates       tomlFeedTemplates `toml:"templates"`
 }
@@ -578,8 +588,10 @@ type tomlFeedDefaults struct {
 }
 
 type tomlSyndicationConfig struct {
-	MaxItems       int  `toml:"max_items"`
-	IncludeContent bool `toml:"include_content"`
+	MaxItems             int  `toml:"max_items"`
+	IncludeContent       bool `toml:"include_content"`
+	SiteArchiveDisabled  bool `toml:"site_archive_disabled"`
+	FeedArchivesDisabled bool `toml:"feed_archives_disabled"`
 }
 
 type tomlPostFormatsConfig struct {
@@ -627,6 +639,14 @@ type tomlTagsConfig struct {
 	SlugPrefix  string   `toml:"slug_prefix"`
 }
 
+type tomlFeedsPageConfig struct {
+	Enabled     *bool  `toml:"enabled"`
+	Title       string `toml:"title"`
+	Description string `toml:"description"`
+	Template    string `toml:"template"`
+	SlugPrefix  string `toml:"slug_prefix"`
+}
+
 func (t *tomlTagsConfig) toTagsConfig() models.TagsConfig {
 	defaults := models.NewTagsConfig()
 
@@ -646,6 +666,36 @@ func (t *tomlTagsConfig) toTagsConfig() models.TagsConfig {
 	}
 	if config.Title == "" {
 		config.Title = defaults.Title
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.SlugPrefix == "" {
+		config.SlugPrefix = defaults.SlugPrefix
+	}
+
+	return config
+}
+
+func (t *tomlFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
+	defaults := models.NewFeedsPageConfig()
+
+	config := models.FeedsPageConfig{
+		Enabled:     t.Enabled,
+		Title:       t.Title,
+		Description: t.Description,
+		Template:    t.Template,
+		SlugPrefix:  t.SlugPrefix,
+	}
+
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Title == "" {
+		config.Title = defaults.Title
+	}
+	if config.Description == "" {
+		config.Description = defaults.Description
 	}
 	if config.Template == "" {
 		config.Template = defaults.Template
@@ -1694,6 +1744,7 @@ func (c *tomlConfig) getToc() tocConverter                         { return &c.T
 func (c *tomlConfig) getHeader() headerConverter                   { return &c.Header }
 func (c *tomlConfig) getBlogroll() blogrollConverter               { return &c.Blogroll }
 func (c *tomlConfig) getTags() tagsConverter                       { return &c.Tags }
+func (c *tomlConfig) getFeedsPage() feedsPageConverter             { return &c.FeedsPage }
 func (c *tomlConfig) getEncryption() encryptionConverter           { return &c.Encryption }
 func (c *tomlConfig) getTagAggregator() tagAggregatorConverter     { return &c.TagAggregator }
 func (c *tomlConfig) getWebSub() webSubConverter                   { return &c.WebSub }
@@ -1794,6 +1845,7 @@ func (f *tomlFeedConfig) toFeedConfig() models.FeedConfig {
 		Limit:           f.Limit,
 		Offset:          f.Offset,
 		PaginationType:  models.PaginationType(f.PaginationType),
+		ArchiveDisabled: f.ArchiveDisabled,
 		Formats:         f.Formats.toFeedFormats(),
 		Templates:       f.Templates.toFeedTemplates(),
 	}
@@ -1848,8 +1900,10 @@ func (d *tomlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 		Formats:         d.Formats.toFeedFormats(),
 		Templates:       d.Templates.toFeedTemplates(),
 		Syndication: models.SyndicationConfig{
-			MaxItems:       d.Syndication.MaxItems,
-			IncludeContent: d.Syndication.IncludeContent,
+			MaxItems:             d.Syndication.MaxItems,
+			IncludeContent:       d.Syndication.IncludeContent,
+			SiteArchiveDisabled:  d.Syndication.SiteArchiveDisabled,
+			FeedArchivesDisabled: d.Syndication.FeedArchivesDisabled,
 		},
 	}
 }
@@ -1886,6 +1940,7 @@ type yamlConfig struct {
 	Header          yamlHeaderLayoutConfig    `yaml:"header"`
 	Blogroll        yamlBlogrollConfig        `yaml:"blogroll"`
 	Tags            yamlTagsConfig            `yaml:"tags"`
+	FeedsPage       yamlFeedsPageConfig       `yaml:"feeds_page"`
 	Encryption      yamlEncryptionConfig      `yaml:"encryption"`
 	TagAggregator   yamlTagAggregatorConfig   `yaml:"tag_aggregator"`
 	Mentions        yamlMentionsConfig        `yaml:"mentions"`
@@ -1952,6 +2007,7 @@ type yamlFeedConfig struct {
 	Limit           int               `yaml:"limit"`
 	Offset          int               `yaml:"offset"`
 	PaginationType  string            `yaml:"pagination_type"`
+	ArchiveDisabled bool              `yaml:"archive_disabled"`
 	Formats         yamlFeedFormats   `yaml:"formats"`
 	Templates       yamlFeedTemplates `yaml:"templates"`
 }
@@ -1987,8 +2043,10 @@ type yamlFeedDefaults struct {
 }
 
 type yamlSyndicationConfig struct {
-	MaxItems       int  `yaml:"max_items"`
-	IncludeContent bool `yaml:"include_content"`
+	MaxItems             int  `yaml:"max_items"`
+	IncludeContent       bool `yaml:"include_content"`
+	SiteArchiveDisabled  bool `yaml:"site_archive_disabled"`
+	FeedArchivesDisabled bool `yaml:"feed_archives_disabled"`
 }
 
 type yamlPostFormatsConfig struct {
@@ -2055,6 +2113,44 @@ func (t *yamlTagsConfig) toTagsConfig() models.TagsConfig {
 	}
 	if config.Title == "" {
 		config.Title = defaults.Title
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.SlugPrefix == "" {
+		config.SlugPrefix = defaults.SlugPrefix
+	}
+
+	return config
+}
+
+type yamlFeedsPageConfig struct {
+	Enabled     *bool  `yaml:"enabled"`
+	Title       string `yaml:"title"`
+	Description string `yaml:"description"`
+	Template    string `yaml:"template"`
+	SlugPrefix  string `yaml:"slug_prefix"`
+}
+
+func (t *yamlFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
+	defaults := models.NewFeedsPageConfig()
+
+	config := models.FeedsPageConfig{
+		Enabled:     t.Enabled,
+		Title:       t.Title,
+		Description: t.Description,
+		Template:    t.Template,
+		SlugPrefix:  t.SlugPrefix,
+	}
+
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Title == "" {
+		config.Title = defaults.Title
+	}
+	if config.Description == "" {
+		config.Description = defaults.Description
 	}
 	if config.Template == "" {
 		config.Template = defaults.Template
@@ -3188,6 +3284,7 @@ func (c *yamlConfig) getToc() tocConverter                         { return &c.T
 func (c *yamlConfig) getHeader() headerConverter                   { return &c.Header }
 func (c *yamlConfig) getBlogroll() blogrollConverter               { return &c.Blogroll }
 func (c *yamlConfig) getTags() tagsConverter                       { return &c.Tags }
+func (c *yamlConfig) getFeedsPage() feedsPageConverter             { return &c.FeedsPage }
 func (c *yamlConfig) getEncryption() encryptionConverter           { return &c.Encryption }
 func (c *yamlConfig) getTagAggregator() tagAggregatorConverter     { return &c.TagAggregator }
 func (c *yamlConfig) getWebSub() webSubConverter                   { return &c.WebSub }
@@ -3222,6 +3319,7 @@ func (f *yamlFeedConfig) toFeedConfig() models.FeedConfig {
 		Limit:           f.Limit,
 		Offset:          f.Offset,
 		PaginationType:  models.PaginationType(f.PaginationType),
+		ArchiveDisabled: f.ArchiveDisabled,
 		Formats:         f.Formats.toFeedFormats(),
 		Templates:       f.Templates.toFeedTemplates(),
 	}
@@ -3276,8 +3374,10 @@ func (d *yamlFeedDefaults) toFeedDefaults() models.FeedDefaults {
 		Formats:         d.Formats.toFeedFormats(),
 		Templates:       d.Templates.toFeedTemplates(),
 		Syndication: models.SyndicationConfig{
-			MaxItems:       d.Syndication.MaxItems,
-			IncludeContent: d.Syndication.IncludeContent,
+			MaxItems:             d.Syndication.MaxItems,
+			IncludeContent:       d.Syndication.IncludeContent,
+			SiteArchiveDisabled:  d.Syndication.SiteArchiveDisabled,
+			FeedArchivesDisabled: d.Syndication.FeedArchivesDisabled,
 		},
 	}
 }
@@ -3314,6 +3414,7 @@ type jsonConfig struct {
 	Header          jsonHeaderLayoutConfig    `json:"header"`
 	Blogroll        jsonBlogrollConfig        `json:"blogroll"`
 	Tags            jsonTagsConfig            `json:"tags"`
+	FeedsPage       jsonFeedsPageConfig       `json:"feeds_page"`
 	Encryption      jsonEncryptionConfig      `json:"encryption"`
 	TagAggregator   jsonTagAggregatorConfig   `json:"tag_aggregator"`
 	Mentions        jsonMentionsConfig        `json:"mentions"`
@@ -3404,6 +3505,7 @@ type jsonFeedConfig struct {
 	Limit           int               `json:"limit"`
 	Offset          int               `json:"offset"`
 	PaginationType  string            `json:"pagination_type"`
+	ArchiveDisabled bool              `json:"archive_disabled"`
 	Formats         jsonFeedFormats   `json:"formats"`
 	Templates       jsonFeedTemplates `json:"templates"`
 }
@@ -3439,8 +3541,10 @@ type jsonFeedDefaults struct {
 }
 
 type jsonSyndicationConfig struct {
-	MaxItems       int  `json:"max_items"`
-	IncludeContent bool `json:"include_content"`
+	MaxItems             int  `json:"max_items"`
+	IncludeContent       bool `json:"include_content"`
+	SiteArchiveDisabled  bool `json:"site_archive_disabled"`
+	FeedArchivesDisabled bool `json:"feed_archives_disabled"`
 }
 
 type jsonPostFormatsConfig struct {
@@ -3488,6 +3592,14 @@ type jsonTagsConfig struct {
 	SlugPrefix  string   `json:"slug_prefix"`
 }
 
+type jsonFeedsPageConfig struct {
+	Enabled     *bool  `json:"enabled"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Template    string `json:"template"`
+	SlugPrefix  string `json:"slug_prefix"`
+}
+
 func (t *jsonTagsConfig) toTagsConfig() models.TagsConfig {
 	defaults := models.NewTagsConfig()
 
@@ -3507,6 +3619,36 @@ func (t *jsonTagsConfig) toTagsConfig() models.TagsConfig {
 	}
 	if config.Title == "" {
 		config.Title = defaults.Title
+	}
+	if config.Template == "" {
+		config.Template = defaults.Template
+	}
+	if config.SlugPrefix == "" {
+		config.SlugPrefix = defaults.SlugPrefix
+	}
+
+	return config
+}
+
+func (t *jsonFeedsPageConfig) toFeedsPageConfig() models.FeedsPageConfig {
+	defaults := models.NewFeedsPageConfig()
+
+	config := models.FeedsPageConfig{
+		Enabled:     t.Enabled,
+		Title:       t.Title,
+		Description: t.Description,
+		Template:    t.Template,
+		SlugPrefix:  t.SlugPrefix,
+	}
+
+	if config.Enabled == nil {
+		config.Enabled = defaults.Enabled
+	}
+	if config.Title == "" {
+		config.Title = defaults.Title
+	}
+	if config.Description == "" {
+		config.Description = defaults.Description
 	}
 	if config.Template == "" {
 		config.Template = defaults.Template
@@ -4640,6 +4782,7 @@ func (c *jsonConfig) getToc() tocConverter                         { return &c.T
 func (c *jsonConfig) getHeader() headerConverter                   { return &c.Header }
 func (c *jsonConfig) getBlogroll() blogrollConverter               { return &c.Blogroll }
 func (c *jsonConfig) getTags() tagsConverter                       { return &c.Tags }
+func (c *jsonConfig) getFeedsPage() feedsPageConverter             { return &c.FeedsPage }
 func (c *jsonConfig) getEncryption() encryptionConverter           { return &c.Encryption }
 func (c *jsonConfig) getTagAggregator() tagAggregatorConverter     { return &c.TagAggregator }
 func (c *jsonConfig) getMentions() mentionsConverter               { return &c.Mentions }
@@ -4674,6 +4817,7 @@ func (f *jsonFeedConfig) toFeedConfig() models.FeedConfig {
 		Limit:           f.Limit,
 		Offset:          f.Offset,
 		PaginationType:  models.PaginationType(f.PaginationType),
+		ArchiveDisabled: f.ArchiveDisabled,
 		Formats:         f.Formats.toFeedFormats(),
 		Templates:       f.Templates.toFeedTemplates(),
 	}
@@ -4728,8 +4872,10 @@ func (d *jsonFeedDefaults) toFeedDefaults() models.FeedDefaults {
 		Formats:         d.Formats.toFeedFormats(),
 		Templates:       d.Templates.toFeedTemplates(),
 		Syndication: models.SyndicationConfig{
-			MaxItems:       d.Syndication.MaxItems,
-			IncludeContent: d.Syndication.IncludeContent,
+			MaxItems:             d.Syndication.MaxItems,
+			IncludeContent:       d.Syndication.IncludeContent,
+			SiteArchiveDisabled:  d.Syndication.SiteArchiveDisabled,
+			FeedArchivesDisabled: d.Syndication.FeedArchivesDisabled,
 		},
 	}
 }

@@ -1624,6 +1624,15 @@ sitemap = "sitemap.xml"
 [markata-go.feed_defaults.syndication]
 max_items = 20
 include_content = true
+site_archive_disabled = false
+feed_archives_disabled = false
+
+[markata-go.feeds_page]
+enabled = true
+title = "Feeds"
+description = "Browse the public feeds available on this site."
+template = "feeds.html"
+slug_prefix = "feeds"
 ```
 
 ### Feed Format Options
@@ -1657,6 +1666,7 @@ Each feed is defined as an array item. The default config ships with an archive 
 | `offset` | int | `0` | Skip the first N items (0 = none) |
 | `formats` | object | inherited | Output formats (inherits from defaults) |
 | `templates` | object | inherited | Templates (inherits from defaults) |
+| `archive_disabled` | bool | `false` | Disable `/{slug}/archive/*` syndication endpoints for this feed |
 
 ```toml
 # Main blog feed

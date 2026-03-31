@@ -1153,10 +1153,18 @@ By default, these feeds are created automatically:
 
 | Path | Description |
 |------|-------------|
-| `/rss.xml` | Site RSS feed (all published posts) |
-| `/atom.xml` | Site Atom feed (all published posts) |
-| `/archive/rss.xml` | Archive RSS feed (same content as root) |
-| `/archive/atom.xml` | Archive Atom feed (same content as root) |
+| `/rss.xml` | Site RSS feed (recent posts, capped by `syndication.max_items`) |
+| `/atom.xml` | Site Atom feed (recent posts, capped by `syndication.max_items`) |
+| `/archive/rss.xml` | Site archive RSS feed (full history) |
+| `/archive/atom.xml` | Site archive Atom feed (full history) |
+
+For named feeds, markata-go also generates archive variants by default when RSS, Atom, or JSON is enabled:
+
+| Path | Description |
+|------|-------------|
+| `/blog/archive/rss.xml` | Full-history RSS for the `blog` feed |
+| `/blog/archive/atom.xml` | Full-history Atom for the `blog` feed |
+| `/blog/archive/feed.json` | Full-history JSON Feed for the `blog` feed |
 
 ### How It Works
 
@@ -1165,7 +1173,31 @@ The `subscription_feeds` plugin creates two internal feeds:
 1. **Root feed** (`slug = ""`) - Generates `/rss.xml` and `/atom.xml` (no HTML to avoid overwriting your home page)
 2. **Archive feed** (`slug = "archive"`) - Generates `/archive/rss.xml` and `/archive/atom.xml`
 
-Both feeds contain the same items: all published posts sorted by date (newest first).
+The root feed publishes the recent window most readers expect. The archive feed publishes the full site history.
+
+### Opt Out
+
+Disable the built-in site archive feed:
+
+```toml
+[markata-go.feeds.defaults.syndication]
+site_archive_disabled = true
+```
+
+Disable per-feed archive variants globally:
+
+```toml
+[markata-go.feeds.defaults.syndication]
+feed_archives_disabled = true
+```
+
+Disable archive variants for one feed:
+
+```toml
+[[markata-go.feeds]]
+slug = "blog"
+archive_disabled = true
+```
 
 ### Customizing Subscription Feeds
 
@@ -1188,10 +1220,30 @@ atom = true
 
 ### Why Both Root and Archive?
 
-- **Root feeds** (`/rss.xml`, `/atom.xml`) - The standard location feed readers check first
-- **Archive feeds** (`/archive/...`) - Alternative paths for services that expect feeds in subdirectories
+- **Root feeds** (`/rss.xml`, `/atom.xml`) - The standard recent window feed readers check first
+- **Archive feeds** (`/archive/...`) - Full-history endpoints for migration, catch-up, and archives
+- **Per-feed archives** (`/{slug}/archive/...`) - Full-history endpoints for section feeds without bloating the primary subscription feed
 
-Both contain identical content, ensuring maximum compatibility with feed readers and syndication services.
+This gives you one feed for "what's new" and one feed for "everything."
+
+## Feeds Page
+
+markata-go generates a `/feeds/` page by default. It lists all non-private feeds with:
+
+- title and description
+- post count and latest update date
+- links to HTML, RSS, Atom, JSON, sitemap, and archive variants when available
+
+Configure it like this:
+
+```toml
+[markata-go.feeds_page]
+enabled = true
+title = "Feeds"
+description = "Browse the public feeds available on this site."
+template = "feeds.html"
+slug_prefix = "feeds"
+```
 
 ## Manual Feed Discovery Links
 

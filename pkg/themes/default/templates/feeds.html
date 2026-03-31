@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title | default:"Feeds" }}{% endblock %}
+{% block description %}{{ description | default:config.description | default:"" }}{% endblock %}
+
+{% block content %}
+<div class="feeds-listing">
+  <header class="page-header">
+    <h1>{{ title | default:"Feeds" }}</h1>
+    {% if description %}<p class="page-description">{{ description }}</p>{% endif %}
+    <p class="feeds-count">{{ total_feeds }} feed{{ total_feeds|pluralize }} available</p>
+  </header>
+
+  {% if feed_list %}
+  <div class="feed-grid">
+    {% for feed in feed_list %}
+    <article class="feed-card">
+      <header class="feed-card-header">
+        <h2>{{ feed.Title }}</h2>
+        {% if feed.Description %}<p>{{ feed.Description }}</p>{% endif %}
+      </header>
+
+      <dl class="feed-stats">
+        <div>
+          <dt>Posts</dt>
+          <dd>{{ feed.PostCount }}</dd>
+        </div>
+        {% if feed.LatestDate %}
+        <div>
+          <dt>Updated</dt>
+          <dd>{{ feed.LatestDate }}</dd>
+        </div>
+        {% endif %}
+        <div>
+          <dt>Slug</dt>
+          <dd>{% if feed.Slug %}/{{ feed.Slug }}/{% else %}/{% endif %}</dd>
+        </div>
+      </dl>
+
+      {% if feed.Variants %}
+      <div class="feed-variants">
+        {% for variant in feed.Variants %}
+        <a href="{{ variant.Href }}" class="feed-variant feed-variant-{{ variant.Kind }}">{{ variant.Label }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="no-feeds">No public feeds found.</p>
+  {% endif %}
+</div>
+
+<style>
+.feeds-listing {
+  max-width: min(1100px, 100%);
+  margin: 0 auto;
+  padding: var(--spacing-lg, 2rem);
+}
+
+.page-header {
+  margin-bottom: var(--spacing-xl, 3rem);
+  text-align: center;
+}
+
+.page-description,
+.feeds-count {
+  color: var(--color-text-muted, #666);
+}
+
+.feed-grid {
+  display: grid;
+  gap: var(--spacing-lg, 1.5rem);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.feed-card {
+  display: grid;
+  gap: var(--spacing-md, 1rem);
+  padding: var(--spacing-lg, 1.5rem);
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--color-surface, #f7f7f7);
+}
+
+.feed-card-header h2 {
+  margin-bottom: 0.5rem;
+}
+
+.feed-card-header p {
+  margin: 0;
+  color: var(--color-text-muted, #666);
+}
+
+.feed-stats {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  margin: 0;
+}
+
+.feed-stats div {
+  padding: 0.75rem;
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--color-background, #fff);
+}
+
+.feed-stats dt {
+  margin-bottom: 0.25rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #666);
+}
+
+.feed-stats dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.feed-variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.feed-variant {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, #ddd);
+  background: var(--color-background, #fff);
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.feed-variant:hover {
+  border-color: var(--color-primary, #007bff);
+  color: var(--color-primary, #007bff);
+}
+</style>
+{% endblock %}

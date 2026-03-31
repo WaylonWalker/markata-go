@@ -644,6 +644,15 @@ sitemap = true
 [my-ssg.feeds.syndication]
 max_items = 20
 include_content = false
+site_archive_disabled = false
+feed_archives_disabled = false
+
+[my-ssg.feeds_page]
+enabled = true
+title = "Feeds"
+description = "Browse the public feeds available on this site."
+template = "feeds.html"
+slug_prefix = "feeds"
 
 [[my-ssg.feeds]]
 slug = "archive"
@@ -654,6 +663,10 @@ sort = "date"
 reverse = true
 limit = 0
 offset = 0
+
+[[my-ssg.feeds]]
+slug = "blog"
+archive_disabled = true
 ```
 
 ### Serve (`[my-ssg.serve]`)

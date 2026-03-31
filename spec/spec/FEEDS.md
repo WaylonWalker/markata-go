@@ -995,7 +995,7 @@ The `discovery_feed` variable is injected into template context with:
 
 ## Built-in Subscription Feeds
 
-markata-go automatically creates subscription feeds at the site root:
+markata-go automatically creates recent and archive subscription feeds without requiring manual configuration.
 
 ### Root Feed (slug="")
 
@@ -1003,6 +1003,7 @@ markata-go automatically creates subscription feeds at the site root:
 - **Atom:** `/atom.xml`
 - **HTML:** Not generated (won't overwrite `/index.html`)
 - **Filter:** `published == true`
+- **Item window:** limited by `feeds.defaults.syndication.max_items` (default: `20`)
 
 ### Archive Feed (slug="archive")
 
@@ -1010,19 +1011,75 @@ markata-go automatically creates subscription feeds at the site root:
 - **Atom:** `/archive/atom.xml`
 - **HTML:** Not generated
 - **Filter:** `published == true`
+- **Item window:** full feed history
 
-These feeds provide consistent subscription endpoints for readers without requiring manual configuration.
+### Per-Feed Archive Variants
 
-### Disabling Subscription Feeds
+For public feeds with RSS, Atom, or JSON enabled, markata-go also generates archive variants by default:
 
-To disable the auto-generated subscription feeds:
+- `/blog/archive/rss.xml`
+- `/blog/archive/atom.xml`
+- `/blog/archive/feed.json`
+
+These archive endpoints are not generated for the root subscription feed or the built-in `archive` feed, because those already have dedicated canonical archive URLs.
+
+### Purpose
+
+- Root subscription feeds provide the recent window most feed readers expect.
+- Archive feeds provide stable full-history endpoints for migration, catch-up, and archival use cases.
+- Per-feed archive variants give section feeds the same split between "recent" and "complete".
+
+### Opting Out
+
+Disable the built-in site archive feed:
 
 ```toml
-[markata-go]
-subscription_feeds_disabled = true
+[markata-go.feeds.defaults.syndication]
+site_archive_disabled = true
 ```
 
-Or define your own feeds with `slug = ""` or `slug = "archive"` to override the defaults.
+Disable per-feed archive variants globally:
+
+```toml
+[markata-go.feeds.defaults.syndication]
+feed_archives_disabled = true
+```
+
+Disable a specific feed's archive variants:
+
+```toml
+[[markata-go.feeds]]
+slug = "blog"
+archive_disabled = true
+```
+
+You can still define your own feeds with `slug = ""` or `slug = "archive"` to override the built-in subscription endpoints.
+
+---
+
+## Feeds Listing Page
+
+markata-go generates a `/feeds/` page by default. It lists all non-private feeds, their descriptions, post counts, latest update date, and links to available output variants.
+
+### Included Variants
+
+- HTML and simple HTML pages when enabled
+- RSS, Atom, and JSON feed endpoints
+- Feed sitemaps when enabled
+- Archive feed variants when available
+
+Feeds with `include_private = true` are excluded from the listing page.
+
+### Configuration
+
+```toml
+[markata-go.feeds_page]
+enabled = true
+title = "Feeds"
+description = "Browse the public feeds available on this site."
+template = "feeds.html"
+slug_prefix = "feeds"
+```
 
 ---
 
@@ -1060,8 +1117,9 @@ Feed configuration follows a **defaults → override** pattern. Global defaults 
 | HTML template | `defaults.templates.html` | `templates.html` |
 | RSS template | `defaults.templates.rss` | `templates.rss` |
 | Card template | `defaults.templates.card` | `templates.card` |
-| RSS max items | `syndication.max_items` | `max_items` |
-| Include content | `syndication.include_content` | `include_content` |
+| RSS/Atom max items | `syndication.max_items` | n/a |
+| Include content | `syndication.include_content` | n/a |
+| Disable archive variants | `syndication.feed_archives_disabled` | `archive_disabled` |
 
 ### Example: Defaults with Overrides
 
@@ -1090,6 +1148,8 @@ rss = "rss.xml"
 [markata-go.feeds.syndication]
 max_items = 20
 include_content = false
+site_archive_disabled = false
+feed_archives_disabled = false
 
 # =============================================================================
 # INDIVIDUAL FEEDS (inherit from defaults, override as needed)
@@ -1225,6 +1285,15 @@ sitemap = "sitemap.xml"
 [markata-go.feeds.syndication]
 max_items = 20                     # Max items in RSS/Atom feeds
 include_content = true             # Include full content or just summary
+site_archive_disabled = false      # Disable /archive/rss.xml and /archive/atom.xml
+feed_archives_disabled = false     # Disable /{slug}/archive/* feed variants
+
+[markata-go.feeds_page]
+enabled = true
+title = "Feeds"
+description = "Browse the public feeds available on this site."
+template = "feeds.html"
+slug_prefix = "feeds"
 ```
 
 ### Built-in Defaults
@@ -1245,6 +1314,9 @@ If no `[markata-go.feeds.defaults]` is specified, these built-in values apply:
 | `formats.sitemap` | true |
 | `syndication.max_items` | 20 |
 | `syndication.include_content` | true |
+| `syndication.site_archive_disabled` | false |
+| `syndication.feed_archives_disabled` | false |
+| `feeds_page.enabled` | true |
 
 ### Feed Item Limits
 
@@ -1252,12 +1324,13 @@ If no `[markata-go.feeds.defaults]` is specified, these built-in values apply:
 |--------|---------------|--------------|
 | HTML | Paginated | `items_per_page` + `limit` / `offset` |
 | Simple HTML | Paginated | `items_per_page` + `limit` / `offset` |
-| RSS | 20 | `syndication.max_items` + `limit` / `offset` |
-| Atom | 20 | `syndication.max_items` + `limit` / `offset` |
+| RSS | 20 | `syndication.max_items` |
+| Atom | 20 | `syndication.max_items` |
 | JSON | All | `limit` / `offset` |
 | Markdown | All | `limit` / `offset` |
 | Text | All | `limit` / `offset` |
 | Sitemap | All | `limit` / `offset` |
+| Archive RSS/Atom/JSON | All | full public feed history |
 
 ---
 

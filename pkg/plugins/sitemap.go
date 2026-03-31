@@ -12,22 +12,16 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/models"
 )
 
-// SitemapPlugin generates a sitemap.xml file during the write stage.
-// The sitemap includes all published posts and feed index pages.
+// SitemapPlugin generates the root sitemap index and the primary pages sitemap.
 type SitemapPlugin struct{}
 
 // NewSitemapPlugin creates a new SitemapPlugin.
-func NewSitemapPlugin() *SitemapPlugin {
-	return &SitemapPlugin{}
-}
+func NewSitemapPlugin() *SitemapPlugin { return &SitemapPlugin{} }
 
 // Name returns the unique name of the plugin.
-func (p *SitemapPlugin) Name() string {
-	return "sitemap"
-}
+func (p *SitemapPlugin) Name() string { return "sitemap" }
 
 // Priority returns the plugin priority for the given stage.
-// Sitemap should run late in the write stage, after all other content is written.
 func (p *SitemapPlugin) Priority(stage lifecycle.Stage) int {
 	if stage == lifecycle.StageWrite {
 		return lifecycle.PriorityLate
@@ -35,139 +29,176 @@ func (p *SitemapPlugin) Priority(stage lifecycle.Stage) int {
 	return lifecycle.PriorityDefault
 }
 
-// Write generates and writes the sitemap.xml file.
+// Write generates and writes sitemap files.
 func (p *SitemapPlugin) Write(m *lifecycle.Manager) error {
 	config := m.Config()
 	outputDir := config.OutputDir
-
-	// Ensure output directory exists
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("creating output directory: %w", err)
 	}
 
-	// Get site URL
 	siteURL := getSiteURL(config)
 	if siteURL == "" {
 		siteURL = DefaultSiteURL
 	}
 
-	// Build sitemap
-	sitemap := p.buildSitemap(m, siteURL)
-
-	// Marshal to XML
-	output, err := xml.MarshalIndent(sitemap, "", "    ")
+	pagesSitemap := p.buildPagesSitemap(m, siteURL)
+	pagesOutput, err := xml.MarshalIndent(pagesSitemap, "", "    ")
 	if err != nil {
-		return fmt.Errorf("marshaling sitemap: %w", err)
+		return fmt.Errorf("marshaling pages sitemap: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(outputDir, "sitemap-pages.xml"), []byte(xml.Header+string(pagesOutput)), 0o644); err != nil { //nolint:gosec // sitemap files must be world-readable
+		return fmt.Errorf("writing pages sitemap: %w", err)
 	}
 
-	// Add XML declaration
-	xmlContent := xml.Header + string(output)
-
-	// Write sitemap.xml
-	sitemapPath := filepath.Join(outputDir, "sitemap.xml")
-	if err := os.WriteFile(sitemapPath, []byte(xmlContent), 0o644); err != nil { //nolint:gosec // sitemap needs world-readable permissions for web serving
-		return fmt.Errorf("writing sitemap: %w", err)
+	index := p.buildSitemapIndex(m, siteURL)
+	indexOutput, err := xml.MarshalIndent(index, "", "    ")
+	if err != nil {
+		return fmt.Errorf("marshaling sitemap index: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(outputDir, "sitemap.xml"), []byte(xml.Header+string(indexOutput)), 0o644); err != nil { //nolint:gosec // sitemap files must be world-readable
+		return fmt.Errorf("writing sitemap index: %w", err)
 	}
 
 	return nil
 }
 
-// buildSitemap creates the sitemap structure from posts and feeds.
-//
-//nolint:gocyclo // complexity is due to straightforward iteration over posts and feeds
-func (p *SitemapPlugin) buildSitemap(m *lifecycle.Manager, siteURL string) *URLSet {
+func (p *SitemapPlugin) buildPagesSitemap(m *lifecycle.Manager, siteURL string) *URLSet {
 	sitemap := &URLSet{
 		XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9",
 		URLs:  make([]SitemapURL, 0),
 	}
 
-	// Find the most recent post date for the home page
-	var latestDate time.Time
 	posts := m.Posts()
+	var latestDate time.Time
 	for _, post := range posts {
-		if post.Published && !post.Draft && !post.Skip && post.Date != nil {
-			if post.Date.After(latestDate) {
-				latestDate = *post.Date
-			}
+		if post.Published && !post.Draft && !post.Skip && !post.Private && post.Date != nil && post.Date.After(latestDate) {
+			latestDate = *post.Date
 		}
 	}
 
-	// Add home page
-	homeURL := SitemapURL{
-		Loc:        siteURL + "/",
-		ChangeFreq: "daily",
-		Priority:   "1.0",
-	}
+	homeURL := SitemapURL{Loc: siteURL + "/", ChangeFreq: "daily", Priority: "1.0"}
 	if !latestDate.IsZero() {
 		homeURL.LastMod = latestDate.Format("2006-01-02")
 	}
 	sitemap.URLs = append(sitemap.URLs, homeURL)
 
-	// Add all published posts
 	for _, post := range posts {
 		if !post.Published || post.Draft || post.Skip || post.Private {
 			continue
 		}
-
-		url := SitemapURL{
-			Loc:        siteURL + post.Href,
-			ChangeFreq: "weekly",
-			Priority:   "0.8",
-		}
-
+		url := SitemapURL{Loc: siteURL + post.Href, ChangeFreq: "weekly", Priority: "0.8"}
 		if post.Date != nil {
 			url.LastMod = post.Date.Format("2006-01-02")
 		}
-
 		sitemap.URLs = append(sitemap.URLs, url)
 	}
 
-	// Add feed index pages
-	var feedConfigs []models.FeedConfig
-	if cached, ok := m.Cache().Get("feed_configs"); ok {
-		if fcs, ok := cached.([]models.FeedConfig); ok {
-			feedConfigs = fcs
-		}
-	}
-
-	for i := range feedConfigs {
-		fc := &feedConfigs[i]
-		if fc.Slug == "" {
-			continue // Skip root feed, already covered by home page
-		}
-
-		// Find the latest post date in this feed
-		var feedLatestDate time.Time
-		for _, post := range fc.Posts {
-			if post.Date != nil && post.Date.After(feedLatestDate) {
-				feedLatestDate = *post.Date
-			}
-		}
-
-		url := SitemapURL{
-			Loc:        siteURL + "/" + fc.Slug + "/",
-			ChangeFreq: "weekly",
-			Priority:   "0.6",
-		}
-
-		if !feedLatestDate.IsZero() {
-			url.LastMod = feedLatestDate.Format("2006-01-02")
-		}
-
+	for _, url := range p.generatedIndexPages(m, siteURL) {
 		sitemap.URLs = append(sitemap.URLs, url)
 	}
 
 	return sitemap
 }
 
-// URLSet represents the root element of a sitemap.
+// buildSitemap is retained for unit tests that verify the public URL set content.
+func (p *SitemapPlugin) buildSitemap(m *lifecycle.Manager, siteURL string) *URLSet {
+	sitemap := &URLSet{
+		XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9",
+		URLs:  make([]SitemapURL, 0),
+	}
+
+	posts := m.Posts()
+	var latestDate time.Time
+	for _, post := range posts {
+		if post.Published && !post.Draft && !post.Skip && !post.Private && post.Date != nil && post.Date.After(latestDate) {
+			latestDate = *post.Date
+		}
+	}
+
+	homeURL := SitemapURL{Loc: siteURL + "/", ChangeFreq: "daily", Priority: "1.0"}
+	if !latestDate.IsZero() {
+		homeURL.LastMod = latestDate.Format("2006-01-02")
+	}
+	sitemap.URLs = append(sitemap.URLs, homeURL)
+
+	for _, post := range posts {
+		if !post.Published || post.Draft || post.Skip || post.Private {
+			continue
+		}
+		url := SitemapURL{Loc: siteURL + post.Href, ChangeFreq: "weekly", Priority: "0.8"}
+		if post.Date != nil {
+			url.LastMod = post.Date.Format("2006-01-02")
+		}
+		sitemap.URLs = append(sitemap.URLs, url)
+	}
+
+	return sitemap
+}
+
+func (p *SitemapPlugin) generatedIndexPages(m *lifecycle.Manager, siteURL string) []SitemapURL {
+	feedConfigs := getCachedFeedConfigs(m)
+	urls := make([]SitemapURL, 0, len(feedConfigs)+2)
+
+	for i := range feedConfigs {
+		fc := &feedConfigs[i]
+		if fc.Slug == "" || !fc.Formats.HTML || fc.IncludePrivate {
+			continue
+		}
+
+		var latest time.Time
+		for _, post := range fc.Posts {
+			if post == nil || post.Private || post.Skip || post.Draft || !post.Published || post.Date == nil {
+				continue
+			}
+			if post.Date.After(latest) {
+				latest = *post.Date
+			}
+		}
+
+		url := SitemapURL{Loc: siteURL + "/" + fc.Slug + "/", ChangeFreq: "weekly", Priority: "0.6"}
+		if !latest.IsZero() {
+			url.LastMod = latest.Format("2006-01-02")
+		}
+		urls = append(urls, url)
+	}
+
+	if tagsConfig, ok := m.Config().Extra["tags"].(models.TagsConfig); ok && tagsConfig.IsEnabled() {
+		urls = append(urls, SitemapURL{Loc: siteURL + "/" + tagsConfig.SlugPrefix + "/", ChangeFreq: "weekly", Priority: "0.5"})
+	}
+	feedsPage := getFeedsPageConfig(m.Config())
+	if feedsPage.IsEnabled() {
+		urls = append(urls, SitemapURL{Loc: siteURL + "/" + feedsPage.SlugPrefix + "/", ChangeFreq: "weekly", Priority: "0.5"})
+	}
+
+	return urls
+}
+
+func (p *SitemapPlugin) buildSitemapIndex(m *lifecycle.Manager, siteURL string) *SitemapIndex {
+	entries := []SitemapIndexEntry{{Loc: siteURL + "/sitemap-pages.xml"}}
+	feedConfigs := getCachedFeedConfigs(m)
+
+	for i := range feedConfigs {
+		fc := &feedConfigs[i]
+		if fc.Formats.Sitemap && fc.Slug != "" && !fc.IncludePrivate {
+			entries = append(entries, SitemapIndexEntry{Loc: siteURL + "/" + fc.Slug + "/sitemap.xml"})
+		}
+	}
+
+	return &SitemapIndex{
+		XMLNS:    "http://www.sitemaps.org/schemas/sitemap/0.9",
+		Sitemaps: entries,
+	}
+}
+
+// URLSet represents a sitemap urlset document.
 type URLSet struct {
 	XMLName xml.Name     `xml:"urlset"`
 	XMLNS   string       `xml:"xmlns,attr"`
 	URLs    []SitemapURL `xml:"url"`
 }
 
-// SitemapURL represents a single URL entry in the sitemap.
+// SitemapURL represents a single URL entry in a sitemap.
 type SitemapURL struct {
 	Loc        string `xml:"loc"`
 	LastMod    string `xml:"lastmod,omitempty"`
@@ -175,7 +206,18 @@ type SitemapURL struct {
 	Priority   string `xml:"priority,omitempty"`
 }
 
-// Ensure SitemapPlugin implements the required interfaces.
+// SitemapIndex represents a sitemap index document.
+type SitemapIndex struct {
+	XMLName  xml.Name            `xml:"sitemapindex"`
+	XMLNS    string              `xml:"xmlns,attr"`
+	Sitemaps []SitemapIndexEntry `xml:"sitemap"`
+}
+
+// SitemapIndexEntry represents a sitemap reference inside a sitemap index.
+type SitemapIndexEntry struct {
+	Loc string `xml:"loc"`
+}
+
 var (
 	_ lifecycle.Plugin         = (*SitemapPlugin)(nil)
 	_ lifecycle.WritePlugin    = (*SitemapPlugin)(nil)

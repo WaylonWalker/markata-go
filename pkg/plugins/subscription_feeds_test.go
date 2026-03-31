@@ -168,6 +168,36 @@ func TestSubscriptionFeedsPlugin_Collect_DoesNotDuplicateExisting(t *testing.T) 
 	}
 }
 
+func TestSubscriptionFeedsPlugin_Collect_CanDisableSiteArchive(t *testing.T) {
+	plugin := NewSubscriptionFeedsPlugin()
+	defaults := models.NewFeedDefaults()
+	defaults.Syndication.SiteArchiveDisabled = true
+
+	config := lifecycle.NewConfig()
+	config.Extra = map[string]interface{}{
+		"title":         "Test Site",
+		"feed_defaults": defaults,
+	}
+
+	m := lifecycle.NewManager()
+	m.SetConfig(config)
+
+	if err := plugin.Collect(m); err != nil {
+		t.Fatalf("Collect() error = %v", err)
+	}
+
+	cached, ok := m.Cache().Get("feed_configs")
+	if !ok {
+		t.Fatal("feed_configs not found in cache")
+	}
+	feedConfigs := cached.([]models.FeedConfig)
+	for _, fc := range feedConfigs {
+		if fc.Slug == "archive" {
+			t.Fatal("archive subscription feed should not be injected when disabled")
+		}
+	}
+}
+
 func TestSubscriptionFeedsPlugin_Collect_Disabled(t *testing.T) {
 	plugin := NewSubscriptionFeedsPlugin()
 

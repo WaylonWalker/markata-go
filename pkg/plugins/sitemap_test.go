@@ -1,6 +1,9 @@
 package plugins
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -145,6 +148,53 @@ func TestSitemapPlugin_ExcludesDraftAndSkipPosts(t *testing.T) {
 	// Should only have 1 published, non-draft, non-skip, non-private post
 	if postURLCount != 1 {
 		t.Errorf("expected 1 post URL in sitemap, got %d", postURLCount)
+	}
+}
+
+func TestSitemapPlugin_Write_GeneratesSitemapIndex(t *testing.T) {
+	plugin := NewSitemapPlugin()
+	m := lifecycle.NewManager()
+	config := m.Config()
+	config.OutputDir = t.TempDir()
+	config.Extra = map[string]interface{}{
+		"url":           "https://example.com",
+		"feed_defaults": models.NewFeedDefaults(),
+		"feeds_page":    models.NewFeedsPageConfig(),
+	}
+
+	date := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
+	m.SetPosts([]*models.Post{{
+		Slug:      "published",
+		Href:      "/published/",
+		Published: true,
+		Date:      &date,
+	}})
+	m.Cache().Set("feed_configs", []models.FeedConfig{{
+		Slug:    "blog",
+		Formats: models.FeedFormats{HTML: true, Sitemap: true},
+	}})
+
+	if err := plugin.Write(m); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	indexContent, err := os.ReadFile(filepath.Join(config.OutputDir, "sitemap.xml"))
+	if err != nil {
+		t.Fatalf("ReadFile(sitemap.xml) error = %v", err)
+	}
+	if !strings.Contains(string(indexContent), "<sitemapindex") {
+		t.Fatalf("root sitemap should be a sitemap index")
+	}
+	if !strings.Contains(string(indexContent), "https://example.com/blog/sitemap.xml") {
+		t.Fatalf("root sitemap index should reference feed sitemap")
+	}
+
+	pagesContent, err := os.ReadFile(filepath.Join(config.OutputDir, "sitemap-pages.xml"))
+	if err != nil {
+		t.Fatalf("ReadFile(sitemap-pages.xml) error = %v", err)
+	}
+	if !strings.Contains(string(pagesContent), "https://example.com/feeds/") {
+		t.Fatalf("pages sitemap should include feeds listing page")
 	}
 }
 
