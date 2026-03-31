@@ -3,7 +3,7 @@
 {% block title %}{{ title | default:"Feeds" }}{% endblock %}
 {% block description %}{{ description | default:config.description | default:"" }}{% endblock %}
 {% block head %}
-{{ block.super }}
+{{ block.Super() }}
 <style>
 .feeds-page {
   max-width: var(--content-width);
