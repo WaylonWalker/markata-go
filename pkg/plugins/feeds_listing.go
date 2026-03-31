@@ -18,6 +18,13 @@ import (
 
 const homeFeedTitle = "Home"
 
+const (
+	feedVariantPage    = "page"
+	feedVariantExport  = "export"
+	feedVariantFeed    = DefaultFeedPath
+	feedVariantArchive = defaultArchivePrefix
+)
+
 // FeedVariantLink describes one publicly accessible output for a feed.
 type FeedVariantLink struct {
 	Label string
@@ -243,11 +250,11 @@ func splitFeedVariants(fc *models.FeedConfig, syndication models.SyndicationConf
 	variants := feedVariantLinks(fc, syndication)
 	for _, variant := range variants {
 		switch variant.Kind {
-		case "page", "export":
+		case feedVariantPage, feedVariantExport:
 			display = append(display, variant)
-		case "feed":
+		case feedVariantFeed:
 			primary = append(primary, variant)
-		case "archive":
+		case feedVariantArchive:
 			archive = append(archive, variant)
 		default:
 			utility = append(utility, variant)
@@ -278,8 +285,8 @@ func configuredFeedSlugs(config *lifecycle.Config) map[string]struct{} {
 	if !ok {
 		return slugs
 	}
-	for _, feed := range feeds {
-		slugs[feed.Slug] = struct{}{}
+	for i := range feeds {
+		slugs[feeds[i].Slug] = struct{}{}
 	}
 	return slugs
 }
