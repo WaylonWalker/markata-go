@@ -37,7 +37,7 @@
 
             {% if feed.PrimaryVariants %}
             <div class="feed-links-row">
-              <span class="feed-links-label">Subscribe</span>
+              <span class="feed-links-label">Subscribe <span class="feed-links-count">{{ feed.SubscribeCount }}</span></span>
               <div class="feed-links">
                 {% for variant in feed.PrimaryVariants %}
                 <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
@@ -48,7 +48,7 @@
 
             {% if feed.ArchiveVariants %}
             <div class="feed-links-row">
-              <span class="feed-links-label">Archive</span>
+              <span class="feed-links-label">Archive <span class="feed-links-count">{{ feed.ArchiveCount }}</span></span>
               <div class="feed-links">
                 {% for variant in feed.ArchiveVariants %}
                 <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
@@ -58,18 +58,16 @@
             {% endif %}
 
             {% if feed.UtilityVariants %}
-            <details class="feed-more">
-              <summary>More formats</summary>
+            <div class="feed-links-row">
+              <span class="feed-links-label">Other</span>
               <div class="feed-links feed-links-utility">
                 {% for variant in feed.UtilityVariants %}
                 <a href="{{ variant.Href }}" class="feed-link feed-link-{{ variant.Kind }}">{{ variant.Label }}</a>
                 {% endfor %}
               </div>
-            </details>
+            </div>
             {% endif %}
-          </div>
 
-          <div class="feed-aside">
             {% if feed.SparklinePoints %}
             <div class="feed-sparkline-wrap">
               <span class="feed-sparkline-label">Publishing rhythm</span>
@@ -92,9 +90,9 @@
 
 <style>
 .feeds-listing {
-  width: min(960px, calc(100vw - 2rem));
-  margin: 0 auto;
-  padding: clamp(1.25rem, 2vw, 2rem) 0 3rem;
+  max-width: var(--content-width, 800px);
+  margin-inline: auto;
+  padding: clamp(1rem, 2vw, 1.75rem) clamp(0.75rem, 2vw, 1.25rem) 3rem;
 }
 
 .page-header {
@@ -118,7 +116,7 @@
 }
 
 .feed-section-header {
-  padding-bottom: 0.75rem;
+  padding: 0 0 0.75rem;
   border-bottom: 1px solid var(--color-border, #ddd);
 }
 
@@ -138,13 +136,13 @@
 
 .feed-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px;
-  gap: 1rem 1.5rem;
+  gap: 0.95rem;
   align-items: start;
-  padding: 1.15rem 1.25rem;
+  padding: 1.25rem 1.35rem;
   border: 1px solid var(--color-border, #ddd);
   border-radius: var(--radius-lg, 0.75rem);
-  background: color-mix(in srgb, var(--color-surface, #f7f7f7) 72%, transparent);
+  background: var(--article-bg, color-mix(in srgb, var(--color-background, #111) 94%, transparent));
+  box-shadow: 0 10px 30px color-mix(in srgb, black 10%, transparent);
 }
 
 .feed-main {
@@ -209,10 +207,15 @@
   color: var(--color-text-muted, #666);
 }
 
+.feed-links-count {
+  margin-left: 0.35rem;
+  font-size: 0.92em;
+}
+
 .feed-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.5rem 0.85rem;
 }
 
 .feed-link {
@@ -230,28 +233,16 @@
   text-decoration: underline;
 }
 
-.feed-more {
-  margin-top: 0.15rem;
-}
-
-.feed-more summary {
-  cursor: pointer;
-  color: var(--color-text-muted, #666);
-}
-
 .feed-links-utility {
-  margin-top: 0.55rem;
-}
-
-.feed-aside {
-  display: flex;
-  justify-content: flex-end;
+  margin-top: 0;
 }
 
 .feed-sparkline-wrap {
   display: grid;
-  justify-items: end;
-  gap: 0.35rem;
+  gap: 0.45rem;
+  margin-top: 0.25rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-border, #ddd) 85%, transparent);
 }
 
 .feed-sparkline-label {
@@ -262,8 +253,9 @@
 }
 
 .feed-sparkline {
-  width: 96px;
-  height: 28px;
+  width: 100%;
+  max-width: 280px;
+  height: 32px;
   overflow: visible;
 }
 
@@ -275,16 +267,5 @@
   stroke-linejoin: round;
 }
 
-@media (max-width: 720px) {
-  .feed-row {
-    grid-template-columns: 1fr;
-  }
-
-  .feed-aside,
-  .feed-sparkline-wrap {
-    justify-content: start;
-    justify-items: start;
-  }
-}
 </style>
 {% endblock %}

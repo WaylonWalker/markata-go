@@ -39,6 +39,8 @@ type FeedListingInfo struct {
 	Href            string
 	PostCount       int
 	LatestPostDate  string
+	SubscribeCount  int
+	ArchiveCount    int
 	PrimaryVariants []FeedVariantLink
 	ArchiveVariants []FeedVariantLink
 	UtilityVariants []FeedVariantLink
@@ -113,6 +115,8 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 			Href:            feedHTMLHref(fc),
 			PostCount:       postCount,
 			LatestPostDate:  latestDate,
+			SubscribeCount:  feedSubscribeCount(fc, syndication, postCount),
+			ArchiveCount:    postCount,
 			PrimaryVariants: primary,
 			ArchiveVariants: archive,
 			UtilityVariants: utility,
@@ -246,6 +250,19 @@ func splitFeedVariants(fc *models.FeedConfig, syndication models.SyndicationConf
 		}
 	}
 	return primary, archive, utility
+}
+
+func feedSubscribeCount(fc *models.FeedConfig, syndication models.SyndicationConfig, totalPosts int) int {
+	if fc == nil {
+		return 0
+	}
+	if isArchiveFeed(fc) {
+		return totalPosts
+	}
+	if syndication.MaxItems <= 0 || totalPosts < syndication.MaxItems {
+		return totalPosts
+	}
+	return syndication.MaxItems
 }
 
 func configuredFeedSlugs(config *lifecycle.Config) map[string]struct{} {
