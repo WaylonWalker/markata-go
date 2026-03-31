@@ -78,6 +78,8 @@ type FeedListingInfo struct {
 	LatestPostTime  time.Time
 	SparklinePoints string
 	SparklineTitle  string
+	SparklineStart  string
+	SparklineEnd    string
 	GeneratedBySite bool
 }
 
@@ -199,6 +201,8 @@ func (p *FeedsListingPlugin) collectFeedSections(
 			UtilityVariants: utility,
 			SparklinePoints: buildFeedSparkline(fc.Posts, sparklineRange),
 			SparklineTitle:  buildFeedSparklineTitle(fc.Posts, sparklineRange),
+			SparklineStart:  buildFeedSparklineStart(sparklineRange),
+			SparklineEnd:    buildFeedSparklineEnd(sparklineRange),
 			GeneratedBySite: !isConfigured,
 		}
 
@@ -441,6 +445,20 @@ func buildFeedSparklineTitle(posts []*models.Post, window sparklineWindow) strin
 		window.Start.Format("2006-01"),
 		window.End.Format("2006-01"),
 	)
+}
+
+func buildFeedSparklineStart(window sparklineWindow) string {
+	if window.Start.IsZero() {
+		return ""
+	}
+	return window.Start.Format("Jan 2006")
+}
+
+func buildFeedSparklineEnd(window sparklineWindow) string {
+	if window.End.IsZero() {
+		return ""
+	}
+	return window.End.Format("Jan 2006")
 }
 
 func monthlyPostBuckets(posts []*models.Post, window sparklineWindow) []int {

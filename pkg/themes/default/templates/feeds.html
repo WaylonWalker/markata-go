@@ -241,6 +241,15 @@
   overflow: visible;
 }
 
+.feed-sparkline-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 180px;
+  font-size: 0.68rem;
+  color: var(--color-text-muted, #666);
+}
+
 .feed-sparkline polyline {
   fill: none;
   stroke: var(--color-primary, #007bff);
@@ -387,8 +396,15 @@
                 <div class="feed-sparkline-wrap">
                   <span class="feed-sparkline-label">Publishing rhythm</span>
                   <svg class="feed-sparkline" viewBox="0 0 96 28" role="img" aria-label="{{ feed.SparklineTitle }}">
+                    <title>{{ feed.SparklineTitle }}</title>
                     <polyline points="{{ feed.SparklinePoints }}"></polyline>
                   </svg>
+                  {% if feed.SparklineStart and feed.SparklineEnd %}
+                  <div class="feed-sparkline-axis" aria-hidden="true">
+                    <span>{{ feed.SparklineStart }}</span>
+                    <span>{{ feed.SparklineEnd }}</span>
+                  </div>
+                  {% endif %}
                 </div>
                 {% endif %}
               </header>
