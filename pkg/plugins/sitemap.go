@@ -167,9 +167,27 @@ func (p *SitemapPlugin) generatedIndexPages(m *lifecycle.Manager, siteURL string
 	feedsPage := getFeedsPageConfig(m.Config())
 	if feedsPage.IsEnabled() {
 		urls = append(urls, SitemapURL{Loc: siteURL + "/" + feedsPage.SlugPrefix + "/", ChangeFreq: "weekly", Priority: "0.5"})
+		if hasGeneratedFeeds(feedConfigs, m.Config()) {
+			urls = append(urls, SitemapURL{Loc: siteURL + "/" + feedsPage.SlugPrefix + "/generated/", ChangeFreq: "weekly", Priority: "0.4"})
+		}
 	}
 
 	return urls
+}
+
+func hasGeneratedFeeds(feedConfigs []models.FeedConfig, config *lifecycle.Config) bool {
+	configured := configuredFeedSlugs(config)
+	count := 0
+	for i := range feedConfigs {
+		fc := &feedConfigs[i]
+		if fc.IncludePrivate {
+			continue
+		}
+		if _, ok := configured[fc.Slug]; !ok {
+			count++
+		}
+	}
+	return count > generatedFeedsPreviewLimit
 }
 
 func (p *SitemapPlugin) buildSitemapIndex(m *lifecycle.Manager, siteURL string) *SitemapIndex {

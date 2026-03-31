@@ -1063,12 +1063,20 @@ You can still define your own feeds with `slug = ""` or `slug = "archive"` to ov
 
 markata-go generates a `/feeds/` page by default. It lists all non-private feeds, their descriptions, post counts, latest update date, and links to available output variants.
 
+To keep the main feeds directory fast on large sites, generated feeds are previewed on `/feeds/` and the complete generated-feeds list is published at `/feeds/generated/`.
+
 ### Included Variants
 
 - HTML and simple HTML pages when enabled
 - RSS, Atom, and JSON feed endpoints
 - Feed sitemaps when enabled
 - Archive feed variants when available
+
+### Generated Feed Preview
+
+- Curated feeds are always listed in full on `/feeds/`.
+- Generated feeds are shown in a capped preview on `/feeds/`.
+- The full generated-feeds directory is available at `/feeds/generated/`.
 
 Feeds with `include_private = true` are excluded from the listing page.
 

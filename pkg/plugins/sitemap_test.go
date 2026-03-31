@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -169,10 +170,17 @@ func TestSitemapPlugin_Write_GeneratesSitemapIndex(t *testing.T) {
 		Published: true,
 		Date:      &date,
 	}})
-	m.Cache().Set("feed_configs", []models.FeedConfig{{
+	feedConfigs := []models.FeedConfig{{
 		Slug:    "blog",
 		Formats: models.FeedFormats{HTML: true, Sitemap: true},
-	}})
+	}}
+	for i := 0; i < generatedFeedsPreviewLimit+1; i++ {
+		feedConfigs = append(feedConfigs, models.FeedConfig{
+			Slug:    fmt.Sprintf("generated-%d", i),
+			Formats: models.FeedFormats{HTML: true},
+		})
+	}
+	m.Cache().Set("feed_configs", feedConfigs)
 
 	if err := plugin.Write(m); err != nil {
 		t.Fatalf("Write() error = %v", err)
@@ -198,6 +206,9 @@ func TestSitemapPlugin_Write_GeneratesSitemapIndex(t *testing.T) {
 	}
 	if !strings.Contains(string(pagesContent), "https://example.com/feeds/") {
 		t.Fatalf("pages sitemap should include feeds listing page")
+	}
+	if !strings.Contains(string(pagesContent), "https://example.com/feeds/generated/") {
+		t.Fatalf("pages sitemap should include generated feeds page")
 	}
 }
 

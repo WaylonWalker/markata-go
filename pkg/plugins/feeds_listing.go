@@ -16,7 +16,10 @@ import (
 	"github.com/WaylonWalker/markata-go/pkg/templates"
 )
 
-const homeFeedTitle = "Home"
+const (
+	homeFeedTitle              = "Home"
+	generatedFeedsPreviewLimit = 24
+)
 
 const (
 	feedVariantPage    = "page"
@@ -36,6 +39,9 @@ type FeedListingSection struct {
 	ID          string
 	Title       string
 	Description string
+	TotalCount  int
+	MoreHref    string
+	MoreLabel   string
 	Feeds       []FeedListingInfo
 }
 
@@ -95,15 +101,34 @@ func (p *FeedsListingPlugin) Write(m *lifecycle.Manager) error {
 		return nil
 	}
 
-	sections := p.collectFeedSections(feedConfigs, config)
+	sections, generatedSections := p.collectFeedSections(feedConfigs, config, &feedsPage)
 	if len(sections) == 0 {
 		return nil
 	}
 
-	return p.renderFeedsPage(config, &feedsPage, sections)
+	if err := p.renderFeedsPage(config, &feedsPage, sections, feedsPage.SlugPrefix, feedsPage.Title, feedsPage.Description, nil); err != nil {
+		return err
+	}
+
+	if len(generatedSections) > 0 {
+		generatedTitle := "Generated Feeds"
+		generatedDescription := "Automatically updated feeds for broader site sections, archives, and collections."
+		pageLinks := []FeedVariantLink{{Label: "Back to feeds", Href: "/" + feedsPage.SlugPrefix + "/", Kind: feedVariantPage}}
+		return p.renderFeedsPage(
+			config,
+			&feedsPage,
+			generatedSections,
+			filepath.ToSlash(filepath.Join(feedsPage.SlugPrefix, "generated")),
+			generatedTitle,
+			generatedDescription,
+			pageLinks,
+		)
+	}
+
+	return nil
 }
 
-func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig, config *lifecycle.Config) []FeedListingSection {
+func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig, config *lifecycle.Config, feedsPage *models.FeedsPageConfig) ([]FeedListingSection, []FeedListingSection) {
 	syndication := getSyndicationConfig(config)
 	userDefined := make([]FeedListingInfo, 0, len(feedConfigs))
 	generated := make([]FeedListingInfo, 0, len(feedConfigs))
@@ -159,24 +184,47 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 	})
 
 	sections := make([]FeedListingSection, 0, 2)
+	generatedPageSections := make([]FeedListingSection, 0, 1)
 	if len(userDefined) > 0 {
 		sections = append(sections, FeedListingSection{
 			ID:          "configured-feeds",
 			Title:       "Curated Feeds",
 			Description: "Hand-picked collections grouped around the main themes of the site.",
+			TotalCount:  len(userDefined),
 			Feeds:       userDefined,
 		})
 	}
 	if len(generated) > 0 {
-		sections = append(sections, FeedListingSection{
+		preview := generated
+		truncated := len(preview) > generatedFeedsPreviewLimit
+		if len(preview) > generatedFeedsPreviewLimit {
+			preview = generated[:generatedFeedsPreviewLimit]
+		}
+		if truncated {
+			generatedPageSections = append(generatedPageSections, FeedListingSection{
+				ID:          "generated-feeds",
+				Title:       "Generated Feeds",
+				Description: "Automatically updated feeds for broader site sections, archives, and collections.",
+				TotalCount:  len(generated),
+				Feeds:       generated,
+			})
+		}
+
+		section := FeedListingSection{
 			ID:          "generated-feeds",
 			Title:       "Generated Feeds",
 			Description: "Automatically updated feeds for broader site sections, archives, and collections.",
-			Feeds:       generated,
-		})
+			TotalCount:  len(generated),
+			Feeds:       preview,
+		}
+		if truncated {
+			section.MoreHref = "/" + filepath.ToSlash(filepath.Join(feedsPage.SlugPrefix, "generated")) + "/"
+			section.MoreLabel = fmt.Sprintf("Browse all %d generated feeds", len(generated))
+		}
+		sections = append(sections, section)
 	}
 
-	return sections
+	return sections, generatedPageSections
 }
 
 func publicFeedStats(posts []*models.Post) (count int, latestDate string) {
@@ -373,8 +421,16 @@ func pathJoinURL(base, suffix string) string {
 	return base + suffix
 }
 
-func (p *FeedsListingPlugin) renderFeedsPage(config *lifecycle.Config, feedsPage *models.FeedsPageConfig, sections []FeedListingSection) error {
-	feedsDir := filepath.Join(config.OutputDir, feedsPage.SlugPrefix)
+func (p *FeedsListingPlugin) renderFeedsPage(
+	config *lifecycle.Config,
+	feedsPage *models.FeedsPageConfig,
+	sections []FeedListingSection,
+	pageSlug string,
+	title string,
+	description string,
+	pageLinks []FeedVariantLink,
+) error {
+	feedsDir := filepath.Join(config.OutputDir, filepath.FromSlash(pageSlug))
 	if err := os.MkdirAll(feedsDir, 0o755); err != nil {
 		return fmt.Errorf("creating feeds directory: %w", err)
 	}
@@ -390,19 +446,18 @@ func (p *FeedsListingPlugin) renderFeedsPage(config *lifecycle.Config, feedsPage
 	}
 
 	modelsConfig := ToModelsConfig(config)
-	title := feedsPage.Title
-	description := feedsPage.Description
 	syntheticPost := &models.Post{
-		Slug:        feedsPage.SlugPrefix,
+		Slug:        pageSlug,
 		Title:       &title,
 		Description: &description,
 	}
 
 	ctx := templates.NewContext(syntheticPost, "", modelsConfig)
 	ctx.Extra["feed_sections"] = sections
+	ctx.Extra["page_links"] = pageLinks
 	totalFeeds := 0
 	for _, section := range sections {
-		totalFeeds += len(section.Feeds)
+		totalFeeds += section.TotalCount
 	}
 	ctx.Extra["total_feeds"] = totalFeeds
 
@@ -416,7 +471,7 @@ func (p *FeedsListingPlugin) renderFeedsPage(config *lifecycle.Config, feedsPage
 		return fmt.Errorf("writing feeds listing page: %w", err)
 	}
 
-	log.Printf("[feeds_listing] Generated /%s/ with %d feeds", feedsPage.SlugPrefix, totalFeeds)
+	log.Printf("[feeds_listing] Generated /%s/ with %d feeds", pageSlug, totalFeeds)
 	return nil
 }
 
