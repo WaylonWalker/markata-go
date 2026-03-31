@@ -152,8 +152,8 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 	if len(userDefined) > 0 {
 		sections = append(sections, FeedListingSection{
 			ID:          "configured-feeds",
-			Title:       "Configured Feeds",
-			Description: "Feeds you defined explicitly in your site config.",
+			Title:       "Curated Feeds",
+			Description: "Hand-picked collections grouped around the main themes of the site.",
 			Feeds:       userDefined,
 		})
 	}
@@ -161,7 +161,7 @@ func (p *FeedsListingPlugin) collectFeedSections(feedConfigs []models.FeedConfig
 		sections = append(sections, FeedListingSection{
 			ID:          "generated-feeds",
 			Title:       "Generated Feeds",
-			Description: "Feeds markata-go created from built-in conventions or generated collections.",
+			Description: "Automatically updated feeds for broader site sections, archives, and collections.",
 			Feeds:       generated,
 		})
 	}
