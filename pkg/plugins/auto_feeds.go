@@ -131,67 +131,87 @@ func (p *AutoFeedsPlugin) Load(m *lifecycle.Manager) error {
 // autoFeedsStrPtr returns a pointer to the given string.
 func autoFeedsStrPtr(s string) *string { return &s }
 
+func autoFeedSlugPrefix(prefix, fallback string) string {
+	if prefix == "" {
+		return fallback
+	}
+	return prefix
+}
+
+func autoFeedAliases(variants []string, slugPart string) []interface{} {
+	aliases := make([]interface{}, 0, len(variants)+1)
+	for _, variant := range variants {
+		aliases = append(aliases, variant)
+	}
+	return append(aliases, slugPart)
+}
+
+func addSyntheticGroupedPost(m *lifecycle.Manager, prefix, slugPart, title, description string, variants []string) {
+	slug := prefix + "/" + slugPart
+	m.AddPost(&models.Post{
+		Slug:        slug,
+		Title:       autoFeedsStrPtr(title),
+		Description: autoFeedsStrPtr(description),
+		Href:        "/" + slug + "/",
+		Published:   true,
+		Skip:        true,
+		Extra: map[string]interface{}{
+			"aliases": autoFeedAliases(variants, slugPart),
+		},
+	})
+}
+
+func buildAutoFeedConfigs(groups []autoStringGroup, prefix string, titleFormat, descriptionFormat string, filterFn func([]string) string, formats models.FeedFormats, changedSlugs map[string]bool) []models.FeedConfig {
+	feeds := make([]models.FeedConfig, 0, len(groups))
+	for _, group := range groups {
+		if changedSlugs != nil && !changedSlugs[group.SlugPart] {
+			continue
+		}
+		slug := prefix + "/" + group.SlugPart
+		feeds = append(feeds, models.FeedConfig{
+			Slug:        slug,
+			Title:       fmt.Sprintf(titleFormat, group.Display),
+			Description: fmt.Sprintf(descriptionFormat, group.Display),
+			Filter:      filterFn(group.Variants),
+			Sort:        "date",
+			Reverse:     true,
+			Formats:     formats,
+		})
+	}
+	return feeds
+}
+
 // registerTagSyntheticPosts creates synthetic posts for tag feeds.
 func (p *AutoFeedsPlugin) registerTagSyntheticPosts(m *lifecycle.Manager, posts []*models.Post, config AutoFeedTypeConfig) {
-	prefix := config.SlugPrefix
-	if prefix == "" {
-		prefix = defaultTagsPrefix
-	}
+	prefix := autoFeedSlugPrefix(config.SlugPrefix, defaultTagsPrefix)
 	groups := collectAutoTagGroups(posts)
 
-	// Register synthetic post for each tag slug
 	for _, group := range groups {
-		slug := prefix + "/" + group.SlugPart
-		aliases := make([]interface{}, 0, len(group.Variants)+1)
-		for _, variant := range group.Variants {
-			aliases = append(aliases, variant)
-		}
-		aliases = append(aliases, group.SlugPart)
-		syntheticPost := &models.Post{
-			Slug:        slug,
-			Title:       autoFeedsStrPtr(fmt.Sprintf("Posts tagged: %s", group.Display)),
-			Description: autoFeedsStrPtr(fmt.Sprintf("All posts with the tag %q", group.Display)),
-			Href:        "/" + slug + "/",
-			Published:   true,
-			Skip:        true,
-			// Add aliases so [[ python ]] resolves to tags/python
-			Extra: map[string]interface{}{
-				"aliases": aliases,
-			},
-		}
-		m.AddPost(syntheticPost)
+		addSyntheticGroupedPost(
+			m,
+			prefix,
+			group.SlugPart,
+			fmt.Sprintf("Posts tagged: %s", group.Display),
+			fmt.Sprintf("All posts with the tag %q", group.Display),
+			group.Variants,
+		)
 	}
 }
 
 // registerCategorySyntheticPosts creates synthetic posts for category feeds.
 func (p *AutoFeedsPlugin) registerCategorySyntheticPosts(m *lifecycle.Manager, posts []*models.Post, config AutoFeedTypeConfig) {
-	prefix := config.SlugPrefix
-	if prefix == "" {
-		prefix = defaultCategoriesPrefix
-	}
+	prefix := autoFeedSlugPrefix(config.SlugPrefix, defaultCategoriesPrefix)
 	groups := collectAutoCategoryGroups(posts)
 
-	// Register synthetic post for each category slug
 	for _, group := range groups {
-		slug := prefix + "/" + group.SlugPart
-		aliases := make([]interface{}, 0, len(group.Variants)+1)
-		for _, variant := range group.Variants {
-			aliases = append(aliases, variant)
-		}
-		aliases = append(aliases, group.SlugPart)
-		syntheticPost := &models.Post{
-			Slug:        slug,
-			Title:       autoFeedsStrPtr(fmt.Sprintf("Category: %s", group.Display)),
-			Description: autoFeedsStrPtr(fmt.Sprintf("All posts in the %q category", group.Display)),
-			Href:        "/" + slug + "/",
-			Published:   true,
-			Skip:        true,
-			// Add aliases so [[ Technology ]] resolves to categories/technology
-			Extra: map[string]interface{}{
-				"aliases": aliases,
-			},
-		}
-		m.AddPost(syntheticPost)
+		addSyntheticGroupedPost(
+			m,
+			prefix,
+			group.SlugPart,
+			fmt.Sprintf("Category: %s", group.Display),
+			fmt.Sprintf("All posts in the %q category", group.Display),
+			group.Variants,
+		)
 	}
 }
 
@@ -403,26 +423,12 @@ func (p *AutoFeedsPlugin) Collect(m *lifecycle.Manager) error {
 // generateTagFeeds creates feed configurations for each unique tag.
 func (p *AutoFeedsPlugin) generateTagFeeds(posts []*models.Post, config AutoFeedTypeConfig) []models.FeedConfig {
 	groups := collectAutoTagGroups(posts)
-	feeds := make([]models.FeedConfig, 0, len(groups))
-	prefix := config.SlugPrefix
-	if prefix == "" {
-		prefix = defaultTagsPrefix
-	}
-
+	prefix := autoFeedSlugPrefix(config.SlugPrefix, defaultTagsPrefix)
+	stringGroups := make([]autoStringGroup, 0, len(groups))
 	for _, group := range groups {
-		slug := prefix + "/" + group.SlugPart
-		feeds = append(feeds, models.FeedConfig{
-			Slug:        slug,
-			Title:       fmt.Sprintf("Posts tagged: %s", group.Display),
-			Description: fmt.Sprintf("All posts with the tag %q", group.Display),
-			Filter:      buildTagFilterExpression(group.Variants),
-			Sort:        "date",
-			Reverse:     true,
-			Formats:     config.Formats,
-		})
+		stringGroups = append(stringGroups, group.autoStringGroup)
 	}
-
-	return feeds
+	return buildAutoFeedConfigs(stringGroups, prefix, "Posts tagged: %s", "All posts with the tag %q", buildTagFilterExpression, config.Formats, nil)
 }
 
 func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, changedSet map[string]bool) []models.FeedConfig {
@@ -434,53 +440,19 @@ func (p *AutoFeedsPlugin) generateTagFeedsForChanged(posts []*models.Post, confi
 		return nil
 	}
 	groups := collectAutoTagGroups(posts)
-	feeds := make([]models.FeedConfig, 0, len(changedSlugs))
-	prefix := config.SlugPrefix
-	if prefix == "" {
-		prefix = defaultTagsPrefix
-	}
+	prefix := autoFeedSlugPrefix(config.SlugPrefix, defaultTagsPrefix)
+	stringGroups := make([]autoStringGroup, 0, len(groups))
 	for _, group := range groups {
-		if !changedSlugs[group.SlugPart] {
-			continue
-		}
-		slug := prefix + "/" + group.SlugPart
-		feeds = append(feeds, models.FeedConfig{
-			Slug:        slug,
-			Title:       fmt.Sprintf("Posts tagged: %s", group.Display),
-			Description: fmt.Sprintf("All posts with the tag %q", group.Display),
-			Filter:      buildTagFilterExpression(group.Variants),
-			Sort:        "date",
-			Reverse:     true,
-			Formats:     config.Formats,
-		})
+		stringGroups = append(stringGroups, group.autoStringGroup)
 	}
-
-	return feeds
+	return buildAutoFeedConfigs(stringGroups, prefix, "Posts tagged: %s", "All posts with the tag %q", buildTagFilterExpression, config.Formats, changedSlugs)
 }
 
 // generateCategoryFeeds creates feed configurations for each unique category.
 func (p *AutoFeedsPlugin) generateCategoryFeeds(posts []*models.Post, config AutoFeedTypeConfig) []models.FeedConfig {
 	groups := collectAutoCategoryGroups(posts)
-	feeds := make([]models.FeedConfig, 0, len(groups))
-	prefix := config.SlugPrefix
-	if prefix == "" {
-		prefix = defaultCategoriesPrefix
-	}
-
-	for _, group := range groups {
-		slug := prefix + "/" + group.SlugPart
-		feeds = append(feeds, models.FeedConfig{
-			Slug:        slug,
-			Title:       fmt.Sprintf("Category: %s", group.Display),
-			Description: fmt.Sprintf("All posts in the %q category", group.Display),
-			Filter:      buildCategoryFilterExpression(group.Variants),
-			Sort:        "date",
-			Reverse:     true,
-			Formats:     config.Formats,
-		})
-	}
-
-	return feeds
+	prefix := autoFeedSlugPrefix(config.SlugPrefix, defaultCategoriesPrefix)
+	return buildAutoFeedConfigs(groups, prefix, "Category: %s", "All posts in the %q category", buildCategoryFilterExpression, config.Formats, nil)
 }
 
 func (p *AutoFeedsPlugin) generateCategoryFeedsForChanged(posts []*models.Post, config AutoFeedTypeConfig, changedSet map[string]bool) []models.FeedConfig {
@@ -492,28 +464,8 @@ func (p *AutoFeedsPlugin) generateCategoryFeedsForChanged(posts []*models.Post, 
 		return nil
 	}
 	groups := collectAutoCategoryGroups(posts)
-	feeds := make([]models.FeedConfig, 0, len(changedSlugs))
-	prefix := config.SlugPrefix
-	if prefix == "" {
-		prefix = defaultCategoriesPrefix
-	}
-	for _, group := range groups {
-		if !changedSlugs[group.SlugPart] {
-			continue
-		}
-		slug := prefix + "/" + group.SlugPart
-		feeds = append(feeds, models.FeedConfig{
-			Slug:        slug,
-			Title:       fmt.Sprintf("Category: %s", group.Display),
-			Description: fmt.Sprintf("All posts in the %q category", group.Display),
-			Filter:      buildCategoryFilterExpression(group.Variants),
-			Sort:        "date",
-			Reverse:     true,
-			Formats:     config.Formats,
-		})
-	}
-
-	return feeds
+	prefix := autoFeedSlugPrefix(config.SlugPrefix, defaultCategoriesPrefix)
+	return buildAutoFeedConfigs(groups, prefix, "Category: %s", "All posts in the %q category", buildCategoryFilterExpression, config.Formats, changedSlugs)
 }
 
 // generateArchiveFeeds creates feed configurations for year and month archives.
